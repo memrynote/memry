@@ -17,17 +17,28 @@ import {
   ROUNDTRIP_CASES,
   createSeededRandom
 } from '@memry/editor-schema/conformance'
+import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 import { parseNote } from '../vault/frontmatter'
 
-async function roundTrip(markdown: string): Promise<string> {
+/**
+ * House style: what the document alone re-derives. The author's bytes that
+ * ride beside a seeded doc (#1915) are cleared first, because they would make
+ * every case below trivially identity and hide the model faults this corpus
+ * exists to catch. `roundTripPreservingSource` is the pair the app runs.
+ */
+async function roundTrip(markdown: string, { preserveSource = false } = {}): Promise<string> {
   const doc = new Y.Doc()
   const ok = await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
   expect(ok, 'markdown reached the shared doc').toBe(true)
+  if (!preserveSource) writeMarkdownSourceToYDoc(doc, null)
   const out = await yDocToMarkdown(doc)
   expect(out, 'the doc serialized back at all').not.toBeNull()
   return out as string
 }
+
+const roundTripPreservingSource = (markdown: string): Promise<string> =>
+  roundTrip(markdown, { preserveSource: true })
 
 describe('round-trip conformance corpus, main pipeline', () => {
   const cases = ROUNDTRIP_CASES.map((c) => ({ ...c, pendingIssue: c.pending?.main }))
@@ -52,6 +63,19 @@ describe('round-trip conformance corpus, main pipeline', () => {
       }
     )
   }
+})
+
+describe('source-preserving round-trip, main pipeline (#1915)', () => {
+  // The pair the app runs: an untouched document comes back as the author
+  // wrote it, `canonical` or not, and a second pass changes nothing.
+  const cases = ROUNDTRIP_CASES.filter((c) => !c.pending?.main)
+  it.each(cases)('$name comes back byte-identical', async ({ markdown }) => {
+    const once = await roundTripPreservingSource(markdown)
+    expect(once, 'the author’s bytes come back').toBe(markdown)
+    expect(await roundTripPreservingSource(once), 'second round-trip changes nothing').toBe(
+      markdown
+    )
+  })
 })
 
 describe('round-trip fuzz, main pipeline', () => {

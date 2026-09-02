@@ -22,7 +22,8 @@
     "./markdown-fences": "./src/markdown-fences.ts",
     "./wiki-target": "./src/wiki-target.ts",
     "./rewrite-wiki-links": "./src/rewrite-wiki-links.ts",
-    "./markdown-headings": "./src/markdown-headings.ts"
+    "./markdown-headings": "./src/markdown-headings.ts",
+    "./markdown-source": "./src/markdown-source.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

@@ -32,6 +32,15 @@ import { createWikiLinkInlineContent, wikiLinkToText } from '@memry/editor-schem
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import { serializeDateMentionToken } from '@memry/shared/date-mention'
 import { serializeBlockColorsMarker } from '@memry/shared/block-colors'
+// Every serialization here asserts HOUSE STYLE: what the document alone
+// re-derives into markdown. A doc seeded from markdown also carries the
+// author's bytes beside it (#1915) and `yDocToMarkdown` gives those back for
+// whatever the document has not changed, which would make most inputs below
+// trivially identity and hide exactly the model faults this file exists to
+// catch. Clearing the record first keeps these assertions about the model.
+// Identity for foreign spellings is asserted in `foreign-markdown-roundtrip`
+// and the conformance corpus.
+import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import { fileBlockCommentData, parseFileBlockMarker } from '@memry/editor-schema/blocks'
 
 describe('blocknote-converter code block language', () => {
@@ -40,6 +49,7 @@ describe('blocknote-converter code block language', () => {
     const doc = new Y.Doc()
 
     // #when
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then
@@ -74,6 +84,7 @@ describe('blocknote-converter code block language', () => {
     const ok = blocksToYFragment(blocks!, fragment)
     expect(ok).toBe(true)
 
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then
@@ -94,6 +105,7 @@ describe('blocknote-converter code block language', () => {
     const { blocksToYFragment } = await import('./blocknote-converter')
     blocksToYFragment(blocks!, fragment)
 
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then
@@ -125,6 +137,7 @@ describe('blocknote-converter code block language', () => {
     // #when
     const ok = await markdownToYFragment(markdown, fragment)
     const blocks = await yFragmentToBlocks(fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then
@@ -191,6 +204,7 @@ describe('blocknote-converter code block language', () => {
 
     // #when
     const ok = await markdownToYFragment(markdown, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then
@@ -210,6 +224,7 @@ describe('blocknote-converter code block language', () => {
 
     // #when
     const ok = await markdownToYFragment(markdown, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then
@@ -229,6 +244,7 @@ describe('blocknote-converter code block language', () => {
 
     // #when
     const ok = await markdownToYFragment(markdown, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
     const marks = doc.getArray('criticMarkupMarks').toArray()
 
@@ -272,6 +288,7 @@ describe('blocknote-converter code block language', () => {
 
     // #when
     await markdownToYFragment('- [x] Ship it {task:t-9}', fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then
@@ -287,6 +304,7 @@ describe('blocknote-converter code block language', () => {
 
     // #when
     await markdownToYFragment(md, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then
@@ -305,6 +323,7 @@ describe('blocknote-converter code block language', () => {
       const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
       const { markdownToYFragment } = await import('./blocknote-converter')
       await markdownToYFragment(md, fragment)
+      writeMarkdownSourceToYDoc(doc, null)
       return (await yDocToMarkdown(doc)) ?? ''
     }
 
@@ -342,6 +361,7 @@ describe('blocknote-converter code block language', () => {
     )
 
     expect(ok).toBe(true)
+    writeMarkdownSourceToYDoc(doc, null)
     const markdown = await yDocToMarkdown(doc)
     expect(markdown).toContain('<!-- memry:block-nesting-level=1 -->')
 
@@ -448,6 +468,7 @@ describe('blocknote-converter list fidelity', () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     await markdownToYFragment(md, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
@@ -484,6 +505,7 @@ describe('blocknote-converter heading levels', () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     await markdownToYFragment(md, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
@@ -516,6 +538,7 @@ describe('blocknote-converter color fidelity', () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     await markdownToYFragment(md, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
@@ -523,6 +546,7 @@ describe('blocknote-converter color fidelity', () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     blocksToYFragment(blocks, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
@@ -638,6 +662,7 @@ describe('blocknote-converter soft-break fidelity', () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     await markdownToYFragment(md, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     const out = await yDocToMarkdown(doc)
 
     // #then it stays a single soft-broken paragraph (no `\n\n`, no `\`)
@@ -650,6 +675,7 @@ describe('inline underline persistence through the real markdown pipeline', () =
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     blocksToYFragment(blocks as never, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
@@ -733,6 +759,7 @@ describe('blocknote-converter export path never mutates the live doc', () => {
     fragment.insert(0, [block])
 
     const before = Y.encodeStateAsUpdate(doc)
+    writeMarkdownSourceToYDoc(doc, null)
     await yDocToMarkdown(doc)
 
     expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
@@ -864,6 +891,7 @@ describe('a document that converts to nothing', () => {
     // #when — the constructibility guard is silent here: `tableRow` IS a
     // registered name, so nothing upstream stops this write
     expect(findUnrepresentableNodes(doc)).toEqual([])
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then the caller is told the conversion produced nothing usable, rather
@@ -891,6 +919,7 @@ describe('a document that converts to nothing', () => {
       doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     )
     emptyTableRows(doc)
+    writeMarkdownSourceToYDoc(doc, null)
     const before = Y.encodeStateAsUpdate(doc)
 
     // #when
@@ -944,6 +973,7 @@ describe('a spec registered under a key that is not its config.type', () => {
   it('drops the node while every constructibility check stays green', async () => {
     // #given the shipped schema writes the note, and reads it back whole
     const doc = wikiLinkDoc()
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe('See [[Wiki Link]] for details.')
     expect(findUnrepresentableNodes(doc)).toEqual([])
 
@@ -1121,6 +1151,7 @@ describe('custom inline nodes survive the CRDT write path', () => {
     const before = Y.encodeStateAsUpdate(doc)
 
     // #when write-back serializes it
+    writeMarkdownSourceToYDoc(doc, null)
     const markdown = await yDocToMarkdown(doc)
 
     // #then the link reaches the vault file…
@@ -1139,6 +1170,7 @@ describe('custom inline nodes survive the CRDT write path', () => {
       const before = Y.encodeStateAsUpdate(doc)
 
       // #when
+      writeMarkdownSourceToYDoc(doc, null)
       const markdown = await yDocToMarkdown(doc)
 
       // #then
@@ -1173,6 +1205,7 @@ describe('a wiki link carries its marks to disk', () => {
       ] as unknown as Parameters<typeof blocksToYFragment>[0],
       doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     )
+    writeMarkdownSourceToYDoc(doc, null)
     return await yDocToMarkdown(doc)
   }
 
@@ -1320,6 +1353,7 @@ describe('a wiki link carries its marks to disk', () => {
     )
 
     // #when
+    writeMarkdownSourceToYDoc(doc, null)
     const markdown = await yDocToMarkdown(doc)
 
     // #then the conversion succeeds at all (a throwing render returns null)…
@@ -1353,6 +1387,7 @@ describe('a wiki link carries its marks to disk', () => {
     const before = Y.encodeStateAsUpdate(doc)
 
     // #when
+    writeMarkdownSourceToYDoc(doc, null)
     const markdown = await yDocToMarkdown(doc)
 
     // #then it converts to exactly the bytes it did before the props existed…
@@ -1580,6 +1615,7 @@ describe('a custom spec must not claim the block its text sits in', () => {
     // #when the converter reads and writes it back
     // #then byte-identical — write-back byte-compares, so anything else rewrites
     // the note in every vault on next open
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 
@@ -1593,6 +1629,7 @@ describe('a custom spec must not claim the block its text sits in', () => {
 
     // #when / #then unchanged by this spec: the image is dropped, the heading
     // survives. `inlineImage` claims `<img>` only inside a `td`/`th`.
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe('#')
   })
 
@@ -1605,6 +1642,7 @@ describe('a custom spec must not claim the block its text sits in', () => {
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
     // #when
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then the table is still a table (the separator row's padding is
@@ -1663,6 +1701,7 @@ describe('registering the custom specs does not rewrite existing markdown', () =
 
     // #when write-back serializes it again
     // #then the bytes are the same, so nothing is written
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 })
@@ -1842,6 +1881,7 @@ describe('custom blocks survive the CRDT write path', () => {
 
       // #when write-back serializes it again
       // #then the bytes are identical, so nothing is written
+      writeMarkdownSourceToYDoc(doc, null)
       expect(await yDocToMarkdown(doc)).toBe(markdown)
     }
   )
@@ -1854,6 +1894,7 @@ describe('custom blocks survive the CRDT write path', () => {
       const before = Y.encodeStateAsUpdate(doc)
 
       // #when write-back serializes it
+      writeMarkdownSourceToYDoc(doc, null)
       const result = await yDocToMarkdown(doc)
 
       // #then the vault file gets the exact marker it holds today…
@@ -1890,6 +1931,7 @@ describe('custom blocks survive the CRDT write path', () => {
       })
 
       // #when
+      writeMarkdownSourceToYDoc(doc, null)
       const result = await yDocToMarkdown(doc)
 
       // #then the conversion succeeds at all (a throwing render returns null)…
@@ -1936,6 +1978,7 @@ describe('custom blocks survive the CRDT write path', () => {
     })
 
     // #when
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then exactly the bytes the default spec produced before this one
@@ -2014,6 +2057,7 @@ describe('custom blocks and table cells', () => {
       )
 
       // #when / #then
+      writeMarkdownSourceToYDoc(doc, null)
       const result = await yDocToMarkdown(doc)
       expect(result).not.toBeNull()
       expect(result).toContain(markdown)
@@ -2066,6 +2110,7 @@ describe('table header rows', () => {
     const doc = fragmentWithTable(1)
 
     // #when
+    writeMarkdownSourceToYDoc(doc, null)
     const markdown = await yDocToMarkdown(doc)
 
     // #then the header row is the row above the separator, and no phantom row
@@ -2164,6 +2209,7 @@ describe('custom inline content inside a table', () => {
       ] as unknown as Parameters<typeof blocksToYFragment>[0],
       doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     )
+    writeMarkdownSourceToYDoc(doc, null)
     return await yDocToMarkdown(doc)
   }
 
@@ -2247,6 +2293,7 @@ describe('custom block markers are not claimed out of context', () => {
   async function roundTrip(markdown: string): Promise<string | null> {
     const doc = new Y.Doc()
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    writeMarkdownSourceToYDoc(doc, null)
     return await yDocToMarkdown(doc)
   }
 
@@ -2365,6 +2412,7 @@ describe('toggle blocks survive the markdown round-trip (#1643)', () => {
   async function serialize(blocks: unknown[]): Promise<string> {
     const doc = new Y.Doc()
     expect(blocksToYFragment(blocks as never, doc.getXmlFragment(CRDT_FRAGMENT_NAME))).toBe(true)
+    writeMarkdownSourceToYDoc(doc, null)
     const markdown = await yDocToMarkdown(doc)
     expect(markdown).not.toBeNull()
     return markdown!
@@ -2374,6 +2422,7 @@ describe('toggle blocks survive the markdown round-trip (#1643)', () => {
   async function rewrite(markdown: string): Promise<string> {
     const doc = new Y.Doc()
     expect(await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))).toBe(true)
+    writeMarkdownSourceToYDoc(doc, null)
     const next = await yDocToMarkdown(doc)
     expect(next).not.toBeNull()
     return next!
@@ -2651,6 +2700,7 @@ describe('table cell colours survive the markdown round trip (#1639)', () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     await markdownToYFragment(md, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
@@ -2658,6 +2708,7 @@ describe('table cell colours survive the markdown round trip (#1639)', () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     blocksToYFragment(blocks, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
@@ -2778,6 +2829,7 @@ describe('blocknote-converter table cell images', () => {
   async function roundTrip(markdown: string): Promise<string | null> {
     const doc = new Y.Doc()
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
@@ -2947,12 +2999,14 @@ describe('blocknote-converter table cell checkboxes', () => {
       ] as unknown as Parameters<typeof blocksToYFragment>[0],
       doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     )
+    writeMarkdownSourceToYDoc(doc, null)
     return await yDocToMarkdown(doc)
   }
 
   async function roundTrip(markdown: string): Promise<string | null> {
     const doc = new Y.Doc()
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
@@ -3002,6 +3056,7 @@ describe('blocknote-converter table cell checkboxes', () => {
     doc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [group])
 
     // #when / #then
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toContain('[ ]')
   })
 
@@ -3090,6 +3145,7 @@ describe('blocknote-converter table cell checkboxes', () => {
     // #then
     expect(blocks!.some((b) => b.type === 'checkListItem')).toBe(true)
     expect(JSON.stringify(blocks)).not.toContain('inlineCheckbox')
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe('- [x] a task')
   })
 })
@@ -3124,6 +3180,7 @@ describe('a date pill keeps its exact bytes on the main path', () => {
   async function roundTrip(markdown: string): Promise<string | null> {
     const doc = new Y.Doc()
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    writeMarkdownSourceToYDoc(doc, null)
     return await yDocToMarkdown(doc)
   }
 
@@ -3142,6 +3199,7 @@ describe('a date pill keeps its exact bytes on the main path', () => {
       doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     )
 
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(serializeDateMentionToken(props))
   })
 
@@ -3162,6 +3220,7 @@ describe('a date pill keeps its exact bytes on the main path', () => {
       doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     )
 
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toMatch(/^\(\(date:[A-Za-z0-9,;]+\)\)$/)
   })
 
@@ -3207,6 +3266,7 @@ describe('callouts on the CRDT path (#1846)', () => {
       expect(blocks?.[0]?.type).toBe('callout')
       expect((blocks?.[0]?.props as { type: string }).type).toBe(type)
       // …and write-back reproduces the file byte-for-byte
+      writeMarkdownSourceToYDoc(doc, null)
       expect(await yDocToMarkdown(doc)).toBe(markdown)
     }
   )
@@ -3218,6 +3278,7 @@ describe('callouts on the CRDT path (#1846)', () => {
 
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     expect(blocks?.[0]?.type).toBe('callout')
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 
@@ -3233,6 +3294,7 @@ describe('callouts on the CRDT path (#1846)', () => {
     // #when / #then not claimed, not rewritten
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     expect(blocks?.[0]?.type).toBe('quote')
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 
@@ -3262,6 +3324,7 @@ describe('callouts on the CRDT path (#1846)', () => {
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     expect(blocks?.[0]?.type).toBe('callout')
     expect((blocks?.[0]?.props as { textColor: string }).textColor).toBe('red')
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 
@@ -3272,6 +3335,7 @@ describe('callouts on the CRDT path (#1846)', () => {
 
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     expect(blocks?.some((b) => (b.type as string) === 'callout')).toBe(false)
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 })
@@ -3289,6 +3353,7 @@ describe('healing callouts already torn bare (#1846)', () => {
 
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     expect(blocks?.[0]?.type).toBe('callout')
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(
       serializeCalloutBlock('info', 'Her text line\nand a second line')
     )
@@ -3305,6 +3370,7 @@ describe('healing callouts already torn bare (#1846)', () => {
 
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     expect(blocks?.some((b) => (b.type as string) === 'callout')).toBe(false)
+    writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 
@@ -3361,6 +3427,7 @@ describe('a link mention through the main serializer', () => {
     blocksToYFragment([mentionBlock(url) as never], doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
     // #when
+    writeMarkdownSourceToYDoc(doc, null)
     const markdown = await yDocToMarkdown(doc)
 
     // #then the exact bytes, and nothing outside the token's closed alphabet
@@ -3378,6 +3445,7 @@ describe('a link mention through the main serializer', () => {
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
     // #when
+    writeMarkdownSourceToYDoc(doc, null)
     const result = await yDocToMarkdown(doc)
 
     // #then
@@ -3390,12 +3458,14 @@ describe('text alignment survives the markdown round trip (#1937)', () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     blocksToYFragment(blocks, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
   const crdtRoundTrip = async (md: string): Promise<string | null> => {
     const doc = new Y.Doc()
     await markdownToYFragment(md, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
@@ -3480,6 +3550,7 @@ describe('table column widths survive the markdown round trip (#1936)', () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     await markdownToYFragment(md, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 
@@ -3487,6 +3558,7 @@ describe('table column widths survive the markdown round trip (#1936)', () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     blocksToYFragment(blocks, fragment)
+    writeMarkdownSourceToYDoc(doc, null)
     return yDocToMarkdown(doc)
   }
 

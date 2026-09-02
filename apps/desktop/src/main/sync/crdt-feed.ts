@@ -6,7 +6,11 @@
  */
 
 import { getCrdtProvider, ORIGIN_LOCAL } from './crdt-provider'
-import { markdownToBlocks, blocksToYFragment } from './blocknote-converter'
+import {
+  markdownToBlocks,
+  blocksToYFragment,
+  recordMarkdownSourceInYDoc
+} from './blocknote-converter'
 import { normalizeTaskBlocks } from '@memry/shared/task-block'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { getIndexDatabase } from '../database'
@@ -70,6 +74,10 @@ export async function replaceNoteBodyInCrdt(noteId: string, markdown: string): P
     fragment.delete(0, fragment.length)
     blocksToYFragment(normalized, fragment)
   }, ORIGIN_LOCAL)
+
+  // The file's new bytes are the source from here on: whatever the write-back
+  // does not change comes back spelled the way this edit spelled it (#1915).
+  await recordMarkdownSourceInYDoc(doc, markdown, 'prosemirror')
 
   return true
 }

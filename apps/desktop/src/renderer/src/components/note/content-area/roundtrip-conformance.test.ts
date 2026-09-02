@@ -26,16 +26,30 @@ vi.mock('react-pdf', () => ({
 
 import { editorSchema } from './editor-schema'
 import { parseMarkdownPreservingBlanks, serializeBlocksPreservingBlanks } from './markdown-utils'
+import { serializeMarkdownPreservingSource } from './markdown-source'
 import { normalizeNoteBlocks } from './normalize-note-blocks'
 
 const editor = BlockNoteEditor.create({ schema: editorSchema, _headless: true } as never)
 
 // The real open→save cycle: parse, promote tokens to inline nodes exactly as
-// every note surface does, serialize back.
+// every note surface does, serialize back. This is HOUSE STYLE, what an edited
+// region writes; `roundTripPreservingSource` below is what the note hook
+// actually saves, with the author's bytes recorded at load (#1915).
 async function roundTrip(markdown: string): Promise<string> {
   const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
   const normalized = normalizeNoteBlocks(parsed as Block[])
   return await serializeBlocksPreservingBlanks(editor, normalized as Block[])
+}
+
+async function roundTripPreservingSource(markdown: string): Promise<string> {
+  const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
+  const normalized = normalizeNoteBlocks(parsed as Block[]) as Block[]
+  const canonical = await serializeBlocksPreservingBlanks(editor, normalized)
+  return serializeMarkdownPreservingSource(
+    editor,
+    normalized,
+    canonical === markdown ? null : markdown
+  )
 }
 
 describe('round-trip conformance corpus, renderer pipeline', () => {
@@ -61,6 +75,17 @@ describe('round-trip conformance corpus, renderer pipeline', () => {
       }
     )
   }
+})
+
+describe('source-preserving round-trip, renderer pipeline (#1915)', () => {
+  const cases = ROUNDTRIP_CASES.filter((c) => !c.pending?.renderer)
+  it.each(cases)('$name comes back byte-identical', async ({ markdown }) => {
+    const once = await roundTripPreservingSource(markdown)
+    expect(once, 'the author’s bytes come back').toBe(markdown)
+    expect(await roundTripPreservingSource(once), 'second round-trip changes nothing').toBe(
+      markdown
+    )
+  })
 })
 
 describe('round-trip fuzz, renderer pipeline', () => {
