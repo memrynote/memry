@@ -16,13 +16,19 @@ const permissionLog = createLogger('SessionPermissions')
  *   subsequent `handle.getFile()` read, surfacing as "Couldn't load library".
  *   Every access is still driven by a picker the user opens themselves, and
  *   `isTrustedAppOrigin` keeps it away from embedded web content.
+ * - `local-fonts`: the appearance settings font picker enumerates the fonts
+ *   installed on this machine with `queryLocalFonts()` so every row can preview
+ *   its own typeface. Chromium answers it through the check handler without a
+ *   user prompt, and `isTrustedAppOrigin` keeps this fingerprinting surface away
+ *   from embedded web content.
  */
 const ALLOWED_PERMISSIONS: ReadonlySet<string> = new Set([
   'media',
   'clipboard-read',
   'clipboard-sanitized-write',
   'notifications',
-  'fileSystem'
+  'fileSystem',
+  'local-fonts'
 ])
 
 export interface PermissionPolicyOptions {

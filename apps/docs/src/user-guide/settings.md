@@ -274,8 +274,13 @@ Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — pl
 ### Typography
 
 - **Font Size** — A slider from 12px to 24px, default 16px. Sets the base interface size; the whole app and note editor text scale with it, live as you drag. The reset button next to the slider puts it back to 16px. Older versions of the app offered Small / Medium / Large only; those land on 14px, 16px and 20px respectively, and a device still on an older version follows your slider to the nearest of the three.
-- **Font Family** — System, Sans-Serif, Serif, Monospace, Gelasio, Geist, Inter
-- **Custom Font** — Type the name of any font installed on your computer to use it for the interface. It takes precedence over the font family above, which stays as the fallback: if the font is not installed on a given computer, that computer keeps rendering the chosen family instead, and the settings row says so. Leave the field empty to turn the custom font off. Like the rest of Appearance, this setting syncs to your other devices — a font that only one of them has installed still falls back gracefully on the others.
+- **Font Family** — One searchable picker with two sections. **Built-in** holds the fonts memrynote ships with: System, Sans-Serif, Serif, Monospace, Gelasio, Geist and Inter. **Installed on this computer** lists every font family found on your machine, on macOS, Windows and Linux alike. Every row is drawn in the font it names, so you can see a typeface before you pick it, and the closed row previews your current choice the same way.
+
+  The list is capped to a readable height and scrolls, so a machine with hundreds of families stays navigable. Type in the search box to narrow it. Picking a font applies it to the interface immediately.
+
+  Like the rest of Appearance, this setting syncs to your other devices. A font that only one device has installed still falls back gracefully on the others: that device keeps rendering its own family instead, and the picker marks the row as not installed. If memrynote cannot read your installed fonts at all, the built-in presets stay available and the picker says so.
+
+  Custom Font used to be a separate text field where you typed a font name. It is gone; the name you had saved is preserved and appears as your selection in the picker.
 
 ---
 

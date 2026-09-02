@@ -8,6 +8,15 @@ interface PickerRootProps {
   defaultOpen?: boolean
   mode?: PickerMode
   closeOnSelect?: boolean
+  /**
+   * Give the popover its own scroll lock. Radix portals popover content to
+   * `body`, which sits outside the scroll lock a modal Dialog installs, so
+   * `react-remove-scroll` cancels every wheel event inside a picker opened from
+   * a dialog. Its own lock registers the content as the active one and the
+   * wheel reaches the list again. Only pickers with a scrollable list opened
+   * from a dialog need this.
+   */
+  modal?: boolean
   value?: string | string[] | null
   onValueChange?: (value: string) => void
   children: React.ReactNode
@@ -19,6 +28,7 @@ export function PickerRoot({
   defaultOpen = false,
   mode = 'single',
   closeOnSelect,
+  modal = false,
   value = null,
   onValueChange,
   children
@@ -71,7 +81,7 @@ export function PickerRoot({
 
   return (
     <PickerContext.Provider value={ctx}>
-      <Popover open={open} onOpenChange={handleOpenChange}>
+      <Popover open={open} onOpenChange={handleOpenChange} modal={modal}>
         {children}
       </Popover>
     </PickerContext.Provider>
