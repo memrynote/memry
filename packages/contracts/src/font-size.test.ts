@@ -44,6 +44,31 @@ describe('resolveFontSizePx', () => {
     expect(resolveFontSizePx(undefined, undefined)).toBe(FONT_SIZE_PX_DEFAULT)
     expect(resolveFontSizePx(undefined, 'gigantic')).toBe(FONT_SIZE_PX_DEFAULT)
   })
+
+  it('keeps a pixel value whose bucket agrees with it', () => {
+    expect(resolveFontSizePx(22, 'large')).toBe(22)
+    expect(resolveFontSizePx(13, 'small')).toBe(13)
+  })
+
+  it('lets a disagreeing bucket win, because only an older build can write one', () => {
+    expect(resolveFontSizePx(22, 'small')).toBe(14)
+    expect(resolveFontSizePx(13, 'large')).toBe(20)
+  })
+
+  it('keeps a pixel value the bucket cannot contradict', () => {
+    expect(resolveFontSizePx(22, undefined)).toBe(22)
+    expect(resolveFontSizePx(22, 'nonsense')).toBe(22)
+  })
+
+  it('rounds before checking the bucket, so a fraction can satisfy its own invariant', () => {
+    expect(resolveFontSizePx(16.4, 'medium')).toBe(16)
+  })
+
+  it('maps every pixel value in range to a bucket that agrees with it', () => {
+    for (let px = FONT_SIZE_PX_MIN; px <= FONT_SIZE_PX_MAX; px++) {
+      expect(resolveFontSizePx(px, toLegacyFontSize(px))).toBe(px)
+    }
+  })
 })
 
 describe('toLegacyFontSize', () => {
