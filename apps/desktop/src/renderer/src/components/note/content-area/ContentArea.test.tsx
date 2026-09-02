@@ -10,6 +10,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   blockNoteOptions: null as any,
   blocks: new Map<string, any>(),
   suggestionControllers: [] as any[],
+  sideMenuControllers: [] as any[],
   pasteSelect: null as
     null | ((option: 'url' | 'mention' | 'embed' | 'bookmark', url: string) => void),
   handleChange: vi.fn(),
@@ -99,6 +100,10 @@ vi.mock('@blocknote/react', () => ({
     }
   })),
   useEditorState: vi.fn(() => ({ hasSelection: false, isMultiBlock: false })),
+  SideMenuController: (props: Record<string, unknown>) => {
+    contentAreaMocks.sideMenuControllers.push(props)
+    return <div data-testid="side-menu-controller" />
+  },
   SuggestionMenuController: (props: Record<string, unknown>) => {
     contentAreaMocks.suggestionControllers.push(props)
     return <div data-testid={`suggestion-${props.triggerCharacter}`} />
@@ -472,6 +477,7 @@ describe('ContentArea', () => {
     vi.clearAllMocks()
     vi.useRealTimers()
     contentAreaMocks.suggestionControllers = []
+    contentAreaMocks.sideMenuControllers = []
     contentAreaMocks.pasteSelect = null
     contentAreaMocks.blockNoteOptions = null
     contentAreaMocks.useSyncState = { status: 'error' }

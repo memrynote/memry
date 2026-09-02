@@ -3,6 +3,7 @@
 import { createPortal } from 'react-dom'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
+  SideMenuController,
   SuggestionMenuController,
   GridSuggestionMenuController,
   useCreateBlockNote,
@@ -82,6 +83,7 @@ import {
 import { createCriticMarkupDecorationPlugin } from './critic-markup-decorations'
 import { registerEditorPlugin } from './register-editor-plugin'
 import { createMultiBlockIndentPlugin } from './multi-block-indent-plugin'
+import { createBulletCollapsePlugin, BULLET_FOLD_GUTTER } from './bullet-collapse-plugin'
 
 import {
   useBlockNoteSetup,
@@ -129,6 +131,21 @@ const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, h
 // whole create, so the task never arrives at all. Dropping it here costs
 // nothing on disk: tags stay inline in the title, and the description keeps the
 // line verbatim.
+/**
+ * Moves BlockNote's side menu out of the bullet-fold gutter.
+ *
+ * The menu is placed `left-start` with no offset, so its drag handle lands on
+ * the exact pixels the fold chevron uses — and both surface on the same hover.
+ * Only in LTR: RTL puts the chevron on the block's other side, where the menu
+ * was never in the way.
+ */
+const BULLET_FOLD_HANDLE_OFFSET = {
+  name: 'bulletFoldGutter',
+  fn: ({ x, elements }: { x: number; elements: { floating: HTMLElement } }) => ({
+    x: elements.floating.ownerDocument.documentElement.dir === 'rtl' ? x : x - BULLET_FOLD_GUTTER
+  })
+}
+
 const TAG_MAX_LENGTH = 50
 const TAG_MAX_COUNT = 20
 
@@ -939,6 +956,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor])
 
+  // A chevron beside every bullet that has nested blocks, folding them away.
+  // Appended, not prepended: it handles mousedown on its own button only, so
+  // no other plugin's key or pointer handling is in its way.
+  useEffect(() => {
+    return registerEditorPlugin(
+      editor,
+      createBulletCollapsePlugin({
+        expand: t('editor.bulletFold.expand'),
+        collapse: t('editor.bulletFold.collapse')
+      })
+    )
+  }, [editor, t])
+
   // `[ ] ` typed at the head of a table cell becomes an inline checkbox.
   // BlockNote's own input rules own that gesture everywhere else and cannot
   // fire inside a cell, so this never competes with them — see the plugin.
@@ -1729,7 +1759,21 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             // buttons and row/column drag-to-reorder, which the bars do not
             // carry yet.
             tableHandles={false}
+            // Rendered below instead, shifted clear of the bullet-fold chevron.
+            sideMenu={false}
           >
+            {/* BlockNote pins the drag/plus handle flush against the block's
+              inline start (`placement: 'left-start'`, no offset), which is
+              exactly where the bullet-fold chevron sits. Both appear on the
+              same hover, so the handle moves over by the width of the gutter
+              the chevron claims. Written out rather than imported from
+              `@floating-ui/react`: floating-ui is BlockNote's dependency, not
+              this app's, and a middleware is just a named `fn`. */}
+            <SideMenuController
+              floatingUIOptions={{
+                useFloatingOptions: { middleware: [BULLET_FOLD_HANDLE_OFFSET] }
+              }}
+            />
             {/* Memry's toolbar on every surface, review or not: BlockNote's stock
               one has no list toggles, so the template editor used to be the odd
               one out with no visible way to turn selected lines into a list. */}

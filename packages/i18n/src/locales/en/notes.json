@@ -153,6 +153,10 @@
       "numbered": "Numbered list",
       "checklist": "Check list"
     },
+    "bulletFold": {
+      "collapse": "Collapse nested items",
+      "expand": "Expand nested items"
+    },
     "toolbar": {
       "linkToNote": "Link to note",
       "reminderSet": "Reminder set",
