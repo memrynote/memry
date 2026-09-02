@@ -105,7 +105,14 @@ describe('Appearance font size slider', () => {
   })
 
   it('#given the reset button #then the size returns to the default', async () => {
-    mocks.generalSettings.settings = { ...mocks.generalSettings.settings, fontSizePx: 22 }
+    // Both fields, because that is how every save writes them. A 22 sitting
+    // next to 'medium' is a pair no build produces, and resolveFontSizePx reads
+    // it as an older device having moved the bucket on its own.
+    mocks.generalSettings.settings = {
+      ...mocks.generalSettings.settings,
+      fontSizePx: 22,
+      fontSize: 'large'
+    }
     render(<AppearanceSettings />)
 
     fireEvent.click(screen.getByLabelText('Reset font size to default'))
@@ -149,7 +156,11 @@ describe('Appearance font size slider', () => {
     // Radix reports no commit here, so the draft has to retire on its own.
     await waitFor(() => expect(mocks.generalSettings.updateSettings).not.toHaveBeenCalled())
 
-    mocks.generalSettings.settings = { ...mocks.generalSettings.settings, fontSizePx: 22 }
+    mocks.generalSettings.settings = {
+      ...mocks.generalSettings.settings,
+      fontSizePx: 22,
+      fontSize: 'large'
+    }
     rerender(<AppearanceSettings />)
 
     await waitFor(() => expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '22'))

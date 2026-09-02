@@ -58,8 +58,7 @@ import { settingsHandler } from './settings-handler'
 describe('font size across two devices', () => {
   const ctx: ApplyContext = {
     db: {} as DrizzleDb,
-    deviceId: 'device-B',
-    vaultId: 'vault-1'
+    emit: vi.fn()
   }
   const clock: VectorClock = { 'device-B': 1 }
 

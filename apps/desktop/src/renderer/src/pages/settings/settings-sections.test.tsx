@@ -620,8 +620,11 @@ describe('settings section coverage', () => {
 
   it('updates appearance controls and reports failed saves', async () => {
     mocks.generalSettings.updateSettings.mockResolvedValueOnce(false).mockResolvedValue(true)
-    // Off the default, or the reset button has nothing to write.
+    // Off the default, or the reset button has nothing to write. Both fields,
+    // because every save writes the pair together and resolveFontSizePx reads a
+    // pair that disagrees as an older device having moved the bucket alone.
     mocks.generalSettings.settings.fontSizePx = 22
+    mocks.generalSettings.settings.fontSize = 'large'
     render(<AppearanceSettings />)
 
     fireEvent.click(screen.getByText('appearance.theme.options.dark'))
