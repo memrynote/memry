@@ -69,13 +69,11 @@ export function SettingRow({
   return (
     <div
       data-testid={testId}
-      className={cn('flex items-center justify-between h-11 py-3 px-4 shrink-0', className)}
+      className={cn('flex items-center justify-between min-h-11 py-3 px-4 shrink-0', className)}
     >
       <div className="flex flex-col gap-px min-w-0">
         <span className="font-medium text-[13px]/4 text-foreground">{label}</span>
-        {description && (
-          <span className="text-xs/4 text-muted-foreground truncate">{description}</span>
-        )}
+        {description && <span className="text-xs/4 text-muted-foreground">{description}</span>}
       </div>
       <div className="shrink-0 ms-4">{children}</div>
     </div>
@@ -97,9 +95,7 @@ export function SettingRowTall({
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-px min-w-0">
           <span className="font-medium text-[13px]/4 text-foreground">{label}</span>
-          {description && (
-            <span className="text-xs/4 text-muted-foreground truncate">{description}</span>
-          )}
+          {description && <span className="text-xs/4 text-muted-foreground">{description}</span>}
         </div>
       </div>
       {children}
