@@ -369,6 +369,20 @@ const blockMarkerCases: RoundtripCase[] = [
   {
     name: 'coloured callout',
     markdown: `<!-- colors:{"textColor":"red"} -->\n${serializeCalloutBlock('warning', 'Careful')}`
+  },
+  {
+    name: 'table with a dragged column width',
+    markdown: `<!-- table-layout:{"columnWidths":[120,null]} -->\n${tableOf(['Name', 'Status'], ['Ship', 'Done'])}`
+  },
+  {
+    // The two table markers in on-disk order; a table can carry both and the
+    // second pass has to reproduce that order exactly.
+    name: 'table with cell colours and a dragged column width',
+    markdown: [
+      '<!-- table-colors:{"0:0":{"textColor":"red"}} -->',
+      '<!-- table-layout:{"columnWidths":[120,null]} -->',
+      tableOf(['Name', 'Status'], ['Ship', 'Done'])
+    ].join('\n')
   }
 ]
 
