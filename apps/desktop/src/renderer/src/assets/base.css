@@ -298,38 +298,60 @@
 }
 
 /* ===== HEADING TYPOGRAPHY ===== */
+/* Heading spacing lives on `.bn-block-outer`, not on `.bn-block-content`.
+   The side menu is anchored (floating-ui `left-start`) to `.bn-block`, and
+   `.bn-block` is a flex column, so a margin on the content would sit *inside*
+   the anchor rect and push the +/drag handles above the heading text.
+   Spacing on the outer wrapper keeps the anchor equal to the text box, so the
+   handles line up with every block type. */
 :root .bn-block-content[data-content-type='heading'] {
   font-weight: 600 !important;
   line-height: 1.3 !important;
-  margin-top: 24px;
   padding: 1px 0 !important;
 }
 
-:root .bn-block-content[data-content-type='heading'][data-level='2'] {
+:root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='heading']) {
+  margin-top: 24px;
+}
+
+:root
+  .bn-block-outer:has(
+    > .bn-block > .bn-block-content[data-content-type='heading'][data-level='2']
+  ) {
   margin-top: 18px;
 }
 
-:root .bn-block-content[data-content-type='heading'][data-level='3'] {
+:root
+  .bn-block-outer:has(
+    > .bn-block > .bn-block-content[data-content-type='heading'][data-level='3']
+  ) {
   margin-top: 14px;
 }
 
-:root .bn-block-content[data-content-type='heading'][data-level='4'] {
+:root
+  .bn-block-outer:has(
+    > .bn-block > .bn-block-content[data-content-type='heading'][data-level='4']
+  ) {
   margin-top: 12px;
 }
 
-:root .bn-block-content[data-content-type='heading'][data-level='5'] {
+:root
+  .bn-block-outer:has(
+    > .bn-block > .bn-block-content[data-content-type='heading'][data-level='5']
+  ) {
   margin-top: 10px;
 }
 
-:root .bn-block-content[data-content-type='heading'][data-level='6'] {
+:root
+  .bn-block-outer:has(
+    > .bn-block > .bn-block-content[data-content-type='heading'][data-level='6']
+  ) {
   margin-top: 8px;
 }
 
 :root
   .bn-block-group
-  > .bn-block-outer:first-child
-  > .bn-block
-  > .bn-block-content[data-content-type='heading'] {
+  > .bn-block-outer:first-child:has(> .bn-block > .bn-block-content[data-content-type='heading']) {
   margin-top: 0;
 }
 
@@ -417,6 +439,47 @@
 :root .bn-side-menu svg {
   width: 16px !important;
   height: 16px !important;
+}
+
+/* Base height = one body line box (1.5rem line-height + 1px block padding top
+   and bottom). shadcn hardcodes 30px, which sat 2px below the text and drifted
+   further at the S/L font sizes. Deliberately not `!important`: shadcn's more
+   specific file/audio/url heights still win, since those blocks are taller than
+   a line of text. */
+:root .bn-side-menu {
+  height: calc(1.5rem + 2px);
+}
+
+/* @blocknote/shadcn hardcodes the side-menu height per block type (30px text,
+   78/54/37px for h1-h3) and centers the buttons in it. Those numbers assume
+   BlockNote's own 3em/2em/1.3em headings; ours are 1.875/1.5/1.25rem at
+   line-height 1.3 with 1px block padding, and h4-h6 get no rule at all, so the
+   handles drifted off the text as soon as a block became a heading. Restate the
+   height as the real first-line box (font-size * 1.3 + 2px padding) for every
+   level, in rem so it follows the Appearance -> Font Size setting.
+   Loaded before shadcn's style.css, hence `!important`. */
+:root .bn-side-menu[data-block-type='heading'] {
+  height: calc(1.875rem * 1.3 + 2px) !important;
+}
+
+:root .bn-side-menu[data-block-type='heading'][data-level='2'] {
+  height: calc(1.5rem * 1.3 + 2px) !important;
+}
+
+:root .bn-side-menu[data-block-type='heading'][data-level='3'] {
+  height: calc(1.25rem * 1.3 + 2px) !important;
+}
+
+:root .bn-side-menu[data-block-type='heading'][data-level='4'] {
+  height: calc(1.125rem * 1.3 + 2px) !important;
+}
+
+:root .bn-side-menu[data-block-type='heading'][data-level='5'] {
+  height: calc(1rem * 1.3 + 2px) !important;
+}
+
+:root .bn-side-menu[data-block-type='heading'][data-level='6'] {
+  height: calc(0.875rem * 1.3 + 2px) !important;
 }
 
 /* Floating page chrome — translucent material over scrolling content.
