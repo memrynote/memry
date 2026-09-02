@@ -279,9 +279,8 @@ The pipeline is wired into both duplicated serializers: the renderer save path (
 
 A block's text alignment has no markdown syntax either, so it travels the same way the block colour marker does: a comment line immediately above the block it describes.
 
-```markdown
+```text
 <!-- align:center -->
-
 Centred paragraph
 ```
 
@@ -289,7 +288,7 @@ Centred paragraph
 
 Colour and alignment markers share one registry (`packages/shared/src/block-markers.ts`), which fixes their on-disk order (colours, table colours, alignment) so a block carrying more than one always writes the same bytes. Both serializers read and write through the registry, the renderer save path and the main/CRDT path alike. `textAlignment` is one of BlockNote's `defaultProps`, so ProseMirror's `computeAttrs` keeps it across the CRDT hop with no schema change on either side.
 
-An older app version reading a marked file drops the comment line on its next save and shows the block left-aligned. A toggle's own alignment is not written: toggle regions are split off before the marker-line scanner runs, and the splitter lifts only the colours line.
+An older app version reading a marked file drops the comment line on its next save and shows the block left-aligned. A toggle's own alignment is not written: toggle regions are split off before the marker-line scanner runs, and the splitter lifts only the colours line. A callout under a marker is claimed as a callout on both paths: the renderer's blockquote splitter treats the marker lines above a `> [!type]` run as part of that block, lifts them onto the claimed run, and applies them to the callout, which is also what makes a coloured callout read back on the renderer path.
 
 ### Toggle blocks in markdown
 
