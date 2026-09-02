@@ -59,7 +59,11 @@ A chord indicator briefly flashes when the prefix is active.
 | Underline        | <kbd>⌘</kbd>+<kbd>U</kbd>              |
 | Insert wiki link | Type `[[`                              |
 | Open block menu  | Type `/`                               |
+| Indent block     | <kbd>Tab</kbd>                         |
+| Outdent block    | <kbd>⇧</kbd>+<kbd>Tab</kbd>            |
 | Find in page     | <kbd>⌘</kbd>+<kbd>F</kbd>              |
+
+<kbd>Tab</kbd> and <kbd>⇧</kbd>+<kbd>Tab</kbd> act on every block in the selection, not only the one holding the cursor.
 
 With the cursor inside a table cell:
 

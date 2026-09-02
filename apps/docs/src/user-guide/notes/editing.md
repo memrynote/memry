@@ -251,6 +251,8 @@ Inside a table, dragging selects **cells**, not blocks — a drag from one cell 
 
 With blocks selected, <kbd>Backspace</kbd> deletes them, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent them, and <kbd>Esc</kbd> clears the selection.
 
+Text selected across several blocks works the same way: <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent every block the selection touches, and a single undo reverts the whole step. A block that is already as far left as it can go is left where it is; the rest still move.
+
 One consequence worth knowing: the empty space to the right of a short line still counts as that line's text, so the right-hand margin outside the column is the place to begin a right-side block selection.
 
 ## Saving
