@@ -4,12 +4,24 @@ import { Container } from './Container'
 import { AskAi } from '@/components/site/AskAi'
 import { FOOTER_LINKS, TWITTER_DEV_URL } from '@/lib/constants'
 import { trackLandingEvent } from '@/lib/analytics'
+import { ALTERNATIVES } from '@/lib/alternatives'
+import { PAGE_META } from '@/lib/seo'
 
 const FOOTER_COLUMNS = [
   { title: 'Product', links: FOOTER_LINKS.product },
   { title: 'Compare', links: FOOTER_LINKS.compare },
   { title: 'Resources', links: FOOTER_LINKS.resources },
   { title: 'Connect', links: FOOTER_LINKS.social }
+] as const
+
+// Every comparison page plus /use-cases, so each one gets a sitewide inbound link
+// instead of relying solely on the /compare hub grid. See issue #1928.
+const ALL_ALTERNATIVES_LINKS = [
+  ...ALTERNATIVES.map((alt) => ({
+    label: `vs ${alt.competitor}`,
+    href: PAGE_META[alt.pageKey].path
+  })),
+  { label: 'Use cases', href: PAGE_META.useCases.path }
 ] as const
 
 const TRUST_LINE = ['End-to-end encrypted', 'Open source', 'Local-first'] as const
@@ -106,6 +118,19 @@ export function Footer() {
               </ul>
             </div>
           ))}
+        </div>
+
+        <div className="mb-16 border-t border-white/10 pt-10">
+          <h4 className="mb-5 font-mono-accent text-[11px] uppercase tracking-[0.18em] text-ink-inverted/60">
+            All alternatives
+          </h4>
+          <ul className="flex flex-wrap gap-x-6 gap-y-3">
+            {ALL_ALTERNATIVES_LINKS.map((link) => (
+              <li key={link.href}>
+                <FooterLink href={footerHref(link.href, pathname)}>{link.label}</FooterLink>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 md:flex-row">
