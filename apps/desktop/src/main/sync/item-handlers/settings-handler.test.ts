@@ -332,6 +332,92 @@ describe('settingsHandler.applyUpsert', () => {
     expect(JSON.parse(getSetting(testDb.db, 'sidebar.sectionOrder') as string)).toEqual(['tags'])
   })
 
+  it('#given a remote collapsed nav #then persists it and tells the renderer', () => {
+    mockGetSettings.mockReturnValue({ sidebar: { navCollapsed: true } })
+
+    const data: SettingsSyncPayload = {
+      settings: { sidebar: { navCollapsed: true } },
+      fieldClocks: { 'sidebar.navCollapsed': { 'device-B': 3 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    expect(getSetting(testDb.db, 'sidebar.navCollapsed')).toBe('true')
+    const broadcast = mockSend.mock.calls.find(
+      (call: unknown[]) =>
+        call[0] === SettingsChannels.events.CHANGED &&
+        (call[1] as { key?: string })?.key === 'sidebar.navCollapsed'
+    )
+    expect(broadcast?.[1]).toEqual({ key: 'sidebar.navCollapsed', value: true })
+  })
+
+  // The merge that hands the nav back, starting from a device that has it
+  // hidden — a truthy guard here strands that device with no nav at all.
+  it('#given a remote expanded nav #then persists the false and tells the renderer', () => {
+    setSetting(testDb.db, 'sidebar.navCollapsed', 'true')
+    mockGetSettings.mockReturnValue({ sidebar: { navCollapsed: false } })
+
+    const data: SettingsSyncPayload = {
+      settings: { sidebar: { navCollapsed: false } },
+      fieldClocks: { 'sidebar.navCollapsed': { 'device-B': 4 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    expect(getSetting(testDb.db, 'sidebar.navCollapsed')).toBe('false')
+    const broadcast = mockSend.mock.calls.find(
+      (call: unknown[]) =>
+        call[0] === SettingsChannels.events.CHANGED &&
+        (call[1] as { key?: string })?.key === 'sidebar.navCollapsed'
+    )
+    expect(broadcast?.[1]).toEqual({ key: 'sidebar.navCollapsed', value: false })
+  })
+
+  // A merge can land while no vault is open, which is exactly what the catch in
+  // the propagate block is for: the settings item still has to apply, because
+  // one unwritable local key must not fail the whole synced payload.
+  it('#given the nav flag cannot be written #then swallows it and still applies', () => {
+    mockGetSettings.mockReturnValue({ sidebar: { navCollapsed: true } })
+    vi.mocked(getDatabase).mockImplementation(() => {
+      throw new Error('vault closed')
+    })
+
+    const data: SettingsSyncPayload = {
+      settings: { sidebar: { navCollapsed: true } },
+      fieldClocks: { 'sidebar.navCollapsed': { 'device-B': 9 } }
+    }
+
+    try {
+      const result = settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+      expect(result).toBe('applied')
+      expect(
+        mockSend.mock.calls.some(
+          (call: unknown[]) => (call[1] as { key?: string })?.key === 'sidebar.navCollapsed'
+        )
+      ).toBe(false)
+    } finally {
+      // `vi.clearAllMocks()` in beforeEach clears calls, not implementations, so
+      // a throwing `getDatabase` left in place here follows the suite into every
+      // later describe.
+      vi.mocked(getDatabase).mockReturnValue(asClientDb(testDb.db))
+    }
+  })
+
+  it('#given a remote merge with no nav flag #then leaves the stored flag alone', () => {
+    setSetting(testDb.db, 'sidebar.navCollapsed', 'true')
+    mockGetSettings.mockReturnValue({ general: { theme: 'light' } })
+
+    const data: SettingsSyncPayload = {
+      settings: { general: { theme: 'light' } },
+      fieldClocks: { 'general.theme': { 'device-B': 3 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    expect(getSetting(testDb.db, 'sidebar.navCollapsed')).toBe('true')
+  })
+
   it('#given remote inbox reminder time change #then clears the local last-notified guard', () => {
     setSetting(
       testDb.db,

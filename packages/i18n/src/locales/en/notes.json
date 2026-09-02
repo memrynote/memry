@@ -111,6 +111,12 @@
       "removeFromBookmarks": "Remove from Bookmarks",
       "journalSettings": "Journal Settings…"
     },
+    "nav": {
+      "label": "Navigation",
+      "ariaExpanded": "Navigation section, expanded",
+      "ariaCollapsed": "Navigation section, collapsed",
+      "saveFailed": "Could not save the navigation section state"
+    },
     "deleteDialog": {
       "noteTitle": "Delete Note",
       "folderTitle": "Delete Folder",

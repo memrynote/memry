@@ -24,6 +24,23 @@ Sections from top to bottom:
 
 Drag any section item to reorder, or right-click for a context menu.
 
+### Folding the navigation rows away
+
+The rows at the top — Home, Inbox, Journal and the rest — sit under a
+**Navigation** header. Click that header to fold them away. The tree below
+grows into the space they leave, so Collections, Projects, Bookmarks and
+Canvases get the whole sidebar, which makes long lists easier to read and to
+reorder. Click the header again to bring the rows back; on the keyboard,
+<kbd>←</kbd> folds and <kbd>→</kbd> unfolds.
+
+Folding the rows away does not take the destinations away. The numbered
+shortcuts (<kbd>⌘</kbd>+<kbd>1</kbd> through <kbd>⌘</kbd>+<kbd>9</kbd>, in the
+order the rows are listed) still open each one, and so does the tab bar's
+**+**.
+
+Like sort modes, this is saved per vault and syncs, so another device that
+opens the same vault folds its rows away too.
+
 Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a row decides what happens: the top and bottom edges reorder around that row, while the middle of a folder row drops the item **into** that folder. An empty folder takes a drop the same as a full one, so a folder you just created is ready to receive notes immediately. Notes hold no children, so dropping on a note always reorders. Reordering applies while the section is in **Manual** sort — see below; dropping _into_ a folder works whatever the sort.
 
 ### Sorting a section

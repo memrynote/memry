@@ -392,6 +392,10 @@ export const SettingsChannels = {
     GET_SIDEBAR_SECTION_ORDER: 'settings:getSidebarSectionOrder',
     /** Set the order the sidebar sections render in */
     SET_SIDEBAR_SECTION_ORDER: 'settings:setSidebarSectionOrder',
+    /** Get whether the sidebar's top nav block is collapsed */
+    GET_SIDEBAR_NAV_COLLAPSED: 'settings:getSidebarNavCollapsed',
+    /** Set whether the sidebar's top nav block is collapsed */
+    SET_SIDEBAR_NAV_COLLAPSED: 'settings:setSidebarNavCollapsed',
     /** Get AI settings (enabled flag) */
     GET_AI_SETTINGS: 'settings:getAISettings',
     /** Set AI settings */

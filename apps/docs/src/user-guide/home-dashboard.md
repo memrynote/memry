@@ -36,17 +36,17 @@ If two devices reorder boards at the same time, the last write wins for position
 
 Widgets are the cards on a board. Available types:
 
-| Widget          | Shows                                                  |
-| --------------- | ------------------------------------------------------ |
-| Recently Edited | Notes ordered by last-modified, most recent first      |
+| Widget          | Shows                                                   |
+| --------------- | ------------------------------------------------------- |
+| Recently Edited | Notes ordered by last-modified, most recent first       |
 | Recently Opened | Notes and canvases ordered by when you last opened them |
-| Bookmarks       | Your bookmarked notes                                  |
-| Tasks           | Tasks, with an inline filter and count                 |
-| Inbox           | Unfiled inbox items, with a triage row                 |
-| Folder          | The contents of a chosen folder                        |
-| Calendar        | An at-a-glance calendar of upcoming entries            |
-| Journal         | Today's journal entry and your current streak          |
-| Project         | One project's overview, tasks, notes, files and events |
+| Bookmarks       | Your bookmarked notes                                   |
+| Tasks           | Tasks, with an inline filter and count                  |
+| Inbox           | Unfiled inbox items, with a triage row                  |
+| Folder          | The contents of a chosen folder                         |
+| Calendar        | An at-a-glance calendar of upcoming entries             |
+| Journal         | Today's journal entry and your current streak           |
+| Project         | One project's overview, tasks, notes, files and events  |
 
 **Recently Edited and Recently Opened are siblings, not duplicates.** The first answers "what did I change?", the second "what did I read?" — and a note you open without typing in it appears only in the second. Recently Opened also lists canvases: a canvas row carries its own icon and reopens the canvas when you click it. A note you open _and_ edit shows up in both; the row subtitle is what tells them apart, reading "opened 12m ago" on one and "edited 3m ago" on the other.
 

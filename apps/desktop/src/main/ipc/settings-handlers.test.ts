@@ -399,6 +399,71 @@ describe('settings-handlers', () => {
     expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'journal.showStatsFooter', 'true')
   })
 
+  it('gets and sets the sidebar nav collapsed flag', async () => {
+    registerSettingsHandlers()
+    ;(settingsQueries.getSetting as Mock).mockReturnValue('true')
+
+    await expect(invokeHandler(SettingsChannels.invoke.GET_SIDEBAR_NAV_COLLAPSED)).resolves.toBe(
+      true
+    )
+
+    const write = await invokeHandler(SettingsChannels.invoke.SET_SIDEBAR_NAV_COLLAPSED, false)
+
+    expect(write).toEqual({ success: true })
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'sidebar.navCollapsed', 'false')
+    expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, {
+      key: 'sidebar.navCollapsed',
+      value: false
+    })
+  })
+
+  it('refuses a non-boolean sidebar nav collapsed flag', async () => {
+    registerSettingsHandlers()
+
+    const write = await invokeHandler(SettingsChannels.invoke.SET_SIDEBAR_NAV_COLLAPSED, 'yes')
+
+    expect(write).toEqual({ success: false, error: 'Invalid sidebar nav collapsed flag' })
+    expect(settingsQueries.setSetting).not.toHaveBeenCalledWith(
+      {},
+      'sidebar.navCollapsed',
+      expect.anything()
+    )
+  })
+
+  // With no vault there is no nav state to have an opinion about, and the
+  // sidebar already draws the rows, so "expanded" is the honest read. The write
+  // still has to fail rather than pretend it landed.
+  it('reads the nav as expanded and refuses to write it with no vault open', async () => {
+    registerSettingsHandlers()
+    ;(getDatabase as Mock).mockImplementationOnce(() => {
+      throw new Error('no db')
+    })
+
+    await expect(invokeHandler(SettingsChannels.invoke.GET_SIDEBAR_NAV_COLLAPSED)).resolves.toBe(
+      false
+    )
+    ;(getDatabase as Mock).mockImplementationOnce(() => {
+      throw new Error('no db')
+    })
+
+    const write = await invokeHandler(SettingsChannels.invoke.SET_SIDEBAR_NAV_COLLAPSED, true)
+
+    expect(write).toEqual({ success: false, error: expect.any(String) })
+  })
+
+  it('answers with an error envelope when the nav flag cannot be written', async () => {
+    registerSettingsHandlers()
+    ;(settingsQueries.setSetting as Mock).mockImplementationOnce(() => {
+      throw new Error('database is locked')
+    })
+
+    // The renderer rolls its optimistic toggle back off this envelope, so the
+    // handler has to answer rather than reject.
+    const write = await invokeHandler(SettingsChannels.invoke.SET_SIDEBAR_NAV_COLLAPSED, true)
+
+    expect(write).toEqual({ success: false, error: 'database is locked' })
+  })
+
   it('gets and sets AI settings', async () => {
     registerSettingsHandlers()
     ;(settingsQueries.getSetting as Mock).mockReturnValue('false')
