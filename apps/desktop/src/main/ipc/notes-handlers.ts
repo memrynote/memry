@@ -5,8 +5,10 @@
  * @module ipc/notes-handlers
  */
 
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog, BrowserWindow, app } from 'electron'
 import * as fs from 'fs/promises'
+import * as path from 'path'
+import { randomUUID } from 'crypto'
 import { z } from 'zod'
 import {
   NotesChannels,
@@ -46,6 +48,7 @@ import {
   withErrorHandler
 } from './validate'
 import { registerCommand } from './lib/register-command'
+import type { Note } from '../vault/notes'
 import {
   getNoteById,
   getNoteByPath,
@@ -78,6 +81,8 @@ import {
 import { applyTemplateToNote } from '../notes/apply-template'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
+import { getStatus as getVaultStatus } from '../vault/index'
+import { inlineExportImages } from '../lib/export-image-inliner'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
 import {
   syncFolderConfigSet,
@@ -192,6 +197,29 @@ const ExportNoteSchema = z.object({
   // Headless export target — when provided, skip the save dialog (Agent MCP).
   outputPath: z.string().min(1).optional()
 })
+
+/**
+ * Render a note for export with its images carried inside the document.
+ *
+ * Both export paths go through here so the two stay in step. The PDF path has
+ * no base URL to resolve a relative `<img src>` against, and an exported
+ * `.html` only kept its images while it sat next to the attachments (#1935).
+ */
+async function renderNoteForExport(note: Note, includeMetadata: boolean): Promise<string> {
+  const html = renderNoteAsHtml(
+    {
+      id: note.id,
+      title: note.title,
+      content: note.content,
+      emoji: note.emoji,
+      tags: note.tags,
+      created: note.created,
+      modified: note.modified
+    },
+    { includeMetadata }
+  )
+  return inlineExportImages(html, { notePath: note.path, vaultPath: getVaultStatus().path })
+}
 
 /**
  * Register all note-related IPC handlers.
@@ -696,20 +724,11 @@ export function registerNotesHandlers(): void {
         option: z.object({ value: z.string().min(1), color: z.string().min(1) })
       }),
       async (input) => {
-        const { PropertyDefinitionsService, DEFAULT_STATUS_DEFINITION } =
-          await import('../vault/property-definitions')
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
         const service = PropertyDefinitionsService.get()
-        const existing = service.get(input.propertyName)
-        if (!existing) {
-          const def = {
-            ...DEFAULT_STATUS_DEFINITION,
-            name: input.propertyName
-          }
-          await service.upsert(def)
-          await service.addStatusOption(input.propertyName, input.categoryKey, input.option)
-        } else {
-          await service.addStatusOption(input.propertyName, input.categoryKey, input.option)
-        }
+        // The service materializes a missing status definition itself, so the
+        // pre-upsert this used to do only cost a second write of the same file.
+        await service.addStatusOption(input.propertyName, input.categoryKey, input.option)
         return { success: true }
       }
     )
@@ -902,18 +921,7 @@ export function registerNotesHandlers(): void {
         targetPath = result.filePath
       }
 
-      const html = renderNoteAsHtml(
-        {
-          id: note.id,
-          title: note.title,
-          content: note.content,
-          emoji: note.emoji,
-          tags: note.tags,
-          created: note.created,
-          modified: note.modified
-        },
-        { includeMetadata: input.includeMetadata }
-      )
+      const html = await renderNoteForExport(note, input.includeMetadata)
 
       const win = new BrowserWindow({
         show: false,
@@ -924,9 +932,16 @@ export function registerNotesHandlers(): void {
         }
       })
 
+      // A `data:` URL would be simpler, but Chromium rejects one past its URL
+      // length ceiling with ERR_INVALID_URL, and a note holding one phone
+      // photograph clears that ceiling once its images are inlined. A real file
+      // has no such limit.
+      const stagedHtmlPath = path.join(app.getPath('temp'), `memry-export-${randomUUID()}.html`)
+
       let pdfData: Buffer
       try {
-        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+        await fs.writeFile(stagedHtmlPath, html, 'utf-8')
+        await win.loadFile(stagedHtmlPath)
         await new Promise((resolve) => setTimeout(resolve, 100))
 
         const pageSizeMap: Record<string, Electron.PrintToPDFOptions['pageSize']> = {
@@ -947,6 +962,9 @@ export function registerNotesHandlers(): void {
         })
       } finally {
         if (!win.isDestroyed()) win.destroy()
+        await fs.rm(stagedHtmlPath, { force: true }).catch((error) => {
+          logger.warn('Failed to remove the staged export HTML', { stagedHtmlPath, error })
+        })
       }
 
       await fs.writeFile(targetPath, pdfData)
@@ -991,18 +1009,7 @@ export function registerNotesHandlers(): void {
         targetPath = result.filePath
       }
 
-      const html = renderNoteAsHtml(
-        {
-          id: note.id,
-          title: note.title,
-          content: note.content,
-          emoji: note.emoji,
-          tags: note.tags,
-          created: note.created,
-          modified: note.modified
-        },
-        { includeMetadata: input.includeMetadata }
-      )
+      const html = await renderNoteForExport(note, input.includeMetadata)
 
       await fs.writeFile(targetPath, html, 'utf-8')
 

@@ -49,7 +49,8 @@ Memry already carries long-form architecture and design docs. They are context, 
 
 - `docs/ARCHITECTURE.md` — system overview
 - `CLAUDE.md` (root, `AGENTS.md` is a symlink to it) — build/verify commands, hard rules, known gotchas
-- `PRODUCT.md` + `docs/DESIGN_TOKENS.md` — design brief and visual system
+- `PRODUCT.md` + `DESIGN.md` — product brief and global product design authority; desktop is the current reference implementation
+- `docs/DESIGN_TOKENS.md` — desktop implementation token catalog
 - `docs/superpowers/specs/` — feature specs (e.g. Agent Chat design)
 
 ## Use the glossary's vocabulary

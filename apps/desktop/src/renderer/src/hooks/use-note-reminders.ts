@@ -12,11 +12,12 @@ import { useMemo, useCallback } from 'react'
 import { createLogger } from '@/lib/logger'
 import {
   useRemindersForTarget,
-  useCreateReminder,
+  useUpdateReminder,
   useDeleteReminder,
   useDismissReminder,
   useSnoozeReminder
 } from './use-reminders'
+import { useSetOrReplaceReminder } from './use-set-or-replace-reminder'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
@@ -28,8 +29,10 @@ const log = createLogger('Hook:NoteReminders')
 // ============================================================================
 
 export interface NoteReminderActions {
-  /** Create a reminder for the note */
+  /** Set the note's reminder, moving the active one when it already has it */
   setReminder: (remindAt: Date, note?: string) => Promise<boolean>
+  /** Edit an existing reminder's time and/or note */
+  editReminder: (reminderId: string, remindAt: Date, note?: string) => Promise<boolean>
   /** Delete a reminder */
   deleteReminder: (reminderId: string) => Promise<boolean>
   /** Dismiss a reminder */
@@ -41,6 +44,8 @@ export interface NoteReminderActions {
 export interface UseNoteRemindersResult {
   /** All reminders for this note (including highlight reminders) */
   reminders: ReturnType<typeof useRemindersForTarget>['reminders']
+  /** Active (pending/snoozed) reminders, sorted by remindAt */
+  activeReminders: ReturnType<typeof useRemindersForTarget>['reminders']
   /** Whether there are any active (pending/snoozed) reminders */
   hasActiveReminder: boolean
   /** The next upcoming reminder (if any) */
@@ -87,8 +92,23 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
     return activeReminders[0] // Already sorted by remindAt
   }, [activeReminders])
 
+  /**
+   * The bell sets a reminder on the note itself, so only a reminder on the note
+   * is replaced by a new time. A highlight reminder is anchored to a passage:
+   * it is listed and removable here, but moving it from the note toolbar would
+   * silently reschedule something the user never opened.
+   */
+  const replaceableReminder = useMemo(() => {
+    const active = noteReminders.filter((r) => r.status === 'pending' || r.status === 'snoozed')
+    const sorted = [...active].sort(
+      (a, b) => new Date(a.remindAt).getTime() - new Date(b.remindAt).getTime()
+    )
+    return sorted[0] ?? null
+  }, [noteReminders])
+
   // Mutations
-  const createReminderMutation = useCreateReminder()
+  const setOrReplaceReminder = useSetOrReplaceReminder()
+  const updateReminderMutation = useUpdateReminder()
   const deleteReminderMutation = useDeleteReminder()
   const dismissReminderMutation = useDismissReminder()
   const snoozeReminderMutation = useSnoozeReminder()
@@ -98,28 +118,62 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
     async (remindAt: Date, note?: string): Promise<boolean> => {
       if (!noteId) return false
 
+      const replacingId = replaceableReminder?.id ?? null
+      const success = replacingId ? t('reminders.toast.updated') : t('reminders.toast.set')
+      const failure = replacingId
+        ? t('reminders.toast.updateFailed')
+        : t('reminders.toast.setFailed')
+
       try {
-        const result = await createReminderMutation.mutateAsync({
-          targetType: 'note',
-          targetId: noteId,
+        const result = await setOrReplaceReminder(
+          {
+            targetType: 'note',
+            targetId: noteId,
+            remindAt: remindAt.toISOString(),
+            note
+          },
+          replacingId
+        )
+
+        if (result.success) {
+          toast.success(success)
+          return true
+        } else {
+          toast.error(extractErrorMessage(result.error, failure))
+          return false
+        }
+      } catch (err) {
+        log.error('Failed to set reminder:', err)
+        toast.error(failure)
+        return false
+      }
+    },
+    [noteId, replaceableReminder, setOrReplaceReminder, t]
+  )
+
+  const editReminderAction = useCallback(
+    async (reminderId: string, remindAt: Date, note?: string): Promise<boolean> => {
+      try {
+        const result = await updateReminderMutation.mutateAsync({
+          id: reminderId,
           remindAt: remindAt.toISOString(),
           note
         })
 
         if (result.success) {
-          toast.success(t('reminders.toast.set'))
+          toast.success(t('reminders.toast.updated'))
           return true
         } else {
-          toast.error(extractErrorMessage(result.error, t('reminders.toast.setFailed')))
+          toast.error(extractErrorMessage(result.error, t('reminders.toast.updateFailed')))
           return false
         }
       } catch (err) {
-        log.error('Failed to set reminder:', err)
-        toast.error(t('reminders.toast.setFailed'))
+        log.error('Failed to edit reminder:', err)
+        toast.error(t('reminders.toast.updateFailed'))
         return false
       }
     },
-    [noteId, createReminderMutation, t]
+    [updateReminderMutation, t]
   )
 
   const deleteReminderAction = useCallback(
@@ -196,15 +250,23 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
   const actions: NoteReminderActions = useMemo(
     () => ({
       setReminder,
+      editReminder: editReminderAction,
       deleteReminder: deleteReminderAction,
       dismissReminder: dismissReminderAction,
       snoozeReminder: snoozeReminderAction
     }),
-    [setReminder, deleteReminderAction, dismissReminderAction, snoozeReminderAction]
+    [
+      setReminder,
+      editReminderAction,
+      deleteReminderAction,
+      dismissReminderAction,
+      snoozeReminderAction
+    ]
   )
 
   return {
     reminders: allReminders,
+    activeReminders,
     hasActiveReminder: activeReminders.length > 0,
     nextReminder,
     activeReminderCount: activeReminders.length,

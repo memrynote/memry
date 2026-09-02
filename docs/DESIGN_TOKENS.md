@@ -1,6 +1,8 @@
-# Memry Design Tokens
+# Memry desktop implementation tokens
 
-Single source of truth: [`apps/desktop/src/renderer/src/assets/base.css`](../apps/desktop/src/renderer/src/assets/base.css)
+Global product design policy: [`DESIGN.md`](../DESIGN.md)
+
+Implementation source of truth: [`apps/desktop/src/renderer/src/assets/base.css`](../apps/desktop/src/renderer/src/assets/base.css)
 
 Tailwind v4 `@theme inline` maps every CSS variable to a Tailwind utility class. Density config lives in [`hooks/use-display-density.ts`](../apps/desktop/src/renderer/src/hooks/use-display-density.ts).
 
@@ -8,11 +10,11 @@ Tailwind v4 `@theme inline` maps every CSS variable to a Tailwind utility class.
 
 **"Warm Utility"** — paper-inspired surfaces, serif editorial typography, flat-first shadows, purposeful motion.
 
-| Theme          | Selector | Character                                |
-| -------------- | -------- | ---------------------------------------- |
-| Warm (default) | `:root`  | Beige paper, warm greys, near-black text |
-| White          | `.white` | Clean white, cooler neutrals             |
-| Dark           | `.dark`  | Neutral charcoal, muted warm text        |
+| Theme           | Selector | Character                                |
+| --------------- | -------- | ---------------------------------------- |
+| Light paper     | `:root`  | Beige paper, warm greys, near-black text |
+| White (default) | `.white` | Clean white, cooler neutrals             |
+| Dark            | `.dark`  | Neutral charcoal, muted warm text        |
 
 User-customizable accent via `--tint` derived from `--user-accent-color` with `color-mix()`.
 
@@ -38,7 +40,7 @@ background-color: var(--background);
 - White: `class="white"`
 - Dark: `class="dark"`
 
-**User accent** — injected at runtime as `--user-accent-color` on `:root`. Falls back to indigo `#6366f1`.
+**User accent** — injected at runtime as `--user-accent-color` on `:root`. Falls back to orange `#f97316`.
 
 ---
 
@@ -108,11 +110,11 @@ Semantic background tints for knowledge cards.
 
 ## User Tint System
 
-Declared once across all themes. `--user-accent-color` is injected at runtime; defaults to indigo `#6366f1`.
+Declared once across all themes. `--user-accent-color` is injected at runtime; defaults to orange `#f97316`.
 
 | Token               | Formula                                            | Usage                  |
 | ------------------- | -------------------------------------------------- | ---------------------- |
-| `--tint`            | `var(--user-accent-color, #6366f1)`                | Base accent color      |
+| `--tint`            | `var(--user-accent-color, #f97316)`                | Base accent color      |
 | `--tint-foreground` | `#ffffff`                                          | Text on tint bg        |
 | `--tint-hover`      | `color-mix(in srgb, var(--tint) 85%, black)`       | Darkened hover state   |
 | `--tint-light`      | `color-mix(in srgb, var(--tint) 15%, transparent)` | Subtle background tint |
@@ -179,7 +181,7 @@ Dark mode uses lighter, more legible variants.
 
 | Token                          | Warm                        | White                       | Dark                     | Tailwind                          |
 | ------------------------------ | --------------------------- | --------------------------- | ------------------------ | --------------------------------- |
-| `--sidebar`                    | `#efefe9`                   | `#f9f8f7`                   | `#202020`                | `bg-sidebar`                      |
+| `--sidebar`                    | `#efefe9`                   | `#f9f8f7`                   | `#1a1a1a`                | `bg-sidebar`                      |
 | `--sidebar-foreground`         | `#8a857a`                   | `#5f5e59`                   | `#b5b3ae`                | `text-sidebar-foreground`         |
 | `--sidebar-primary`            | `#1a1917`                   | `#37352f`                   | `#e8e5df`                | `text-sidebar-primary`            |
 | `--sidebar-primary-foreground` | `#edeae4`                   | `#ffffff`                   | `#202020`                | `text-sidebar-primary-foreground` |
@@ -305,7 +307,7 @@ Not tokenized — used as Tailwind/inline values:
 ```css
 h1–h6 {
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.3;
   letter-spacing: -0.01em;
 }
 ```
@@ -352,11 +354,11 @@ Tailwind: `shadow-card`, `shadow-card-hover`, `shadow-dropdown`.
 
 8pt grid system. Most spacing uses Tailwind's built-in scale (multiples of 4px).
 
-| Token             | Value   | Usage                      |
-| ----------------- | ------- | -------------------------- |
-| `--sidebar-width` | `240px` | Sidebar width (all themes) |
-| `--card-width`    | `280px` | Inbox/knowledge card width |
-| `--card-height`   | `200px` | Card height                |
+| Token             | Value   | Usage                                                                                                                      |
+| ----------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `--sidebar-width` | `240px` | Legacy CSS fallback. `SidebarProvider` sets the live width to `256px` by default and allows `171px` to `min(480px, 50vw)`. |
+| `--card-width`    | `280px` | Inbox/knowledge card width                                                                                                 |
+| `--card-height`   | `200px` | Card height                                                                                                                |
 
 Tailwind mapping: `--spacing-sidebar: var(--sidebar-width)` enables `w-sidebar`.
 

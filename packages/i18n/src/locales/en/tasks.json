@@ -826,7 +826,9 @@
     }
   },
   "itemProjects": {
-    "openProject": "Open project {name}"
+    "openProject": "Open project {name}",
+    "removeFromProject": "Remove from {name}",
+    "removeFailed": "Could not remove this item from the project"
   },
   "projectHub": {
     "header": {

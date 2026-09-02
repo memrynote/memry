@@ -10,6 +10,7 @@ import {
   type PropertyDefinitionsFileData,
   type SelectOption,
   type StatusCategories,
+  DEFAULT_STATUS_CATEGORIES,
   DEFAULT_STATUS_DEFINITION
 } from '@memry/contracts/property-types'
 import { propertyDefinitions as propertyDefinitionsTable } from '@memry/db-schema/schema/notes-cache'
@@ -83,8 +84,9 @@ export class PropertyDefinitionsService {
   }
 
   async upsert(definition: PropertyDefinition): Promise<void> {
+    const normalized = normalizeDefinition(definition)
     await this.enqueueWrite(async () => {
-      this.cache.set(definition.name, definition)
+      this.cache.set(normalized.name, normalized)
       await this.persistToFile()
       this.rebuildDbCache()
     })
@@ -121,24 +123,21 @@ export class PropertyDefinitionsService {
   }
 
   async renameOption(propertyName: string, oldValue: string, newValue: string): Promise<void> {
-    const def = this.cache.get(propertyName)
-    if (!def) return
+    const def = this.requireDefinition(propertyName)
 
     const updated = renameOptionInDefinition(def, oldValue, newValue)
     await this.upsert(updated)
   }
 
   async addOption(propertyName: string, option: SelectOption): Promise<void> {
-    const def = this.cache.get(propertyName)
-    if (!def) return
+    const def = this.requireDefinition(propertyName)
 
     const updated = addOptionToDefinition(def, option)
     await this.upsert(updated)
   }
 
   async removeOption(propertyName: string, optionValue: string): Promise<void> {
-    const def = this.cache.get(propertyName)
-    if (!def) return
+    const def = this.requireDefinition(propertyName)
 
     if (def.type === 'status' && def.categories) {
       const categories = { ...def.categories }
@@ -162,8 +161,7 @@ export class PropertyDefinitionsService {
     optionValue: string,
     newColor: string
   ): Promise<void> {
-    const def = this.cache.get(propertyName)
-    if (!def) return
+    const def = this.requireDefinition(propertyName)
 
     const updateColor = (o: SelectOption) =>
       o.value === optionValue ? { ...o, color: newColor } : o
@@ -191,15 +189,30 @@ export class PropertyDefinitionsService {
     option: SelectOption
   ): Promise<void> {
     const def = this.cache.get(propertyName)
-    if (!def || def.type !== 'status' || !def.categories) return
+    if (def && def.type !== 'status') {
+      throw new Error(`Property "${propertyName}" is not a status property`)
+    }
 
-    const category = def.categories[categoryKey as keyof StatusCategories]
-    if (!category) return
+    // The picker shows the default categories for a status property that has
+    // none persisted, so materialize what the user is looking at instead of
+    // dropping the write.
+    const categories = def?.categories ?? DEFAULT_STATUS_CATEGORIES
+    const category = categories[categoryKey as keyof StatusCategories]
+    if (!category) {
+      throw new Error(`Unknown status category "${categoryKey}"`)
+    }
+
+    if (category.options.some((o) => o.value === option.value)) {
+      logger.debug('Status option already exists, skipping', propertyName, option.value)
+      return
+    }
 
     const updated: PropertyDefinition = {
+      name: propertyName,
+      type: 'status',
       ...def,
       categories: {
-        ...def.categories,
+        ...categories,
         [categoryKey]: {
           ...category,
           options: [...category.options, option]
@@ -207,6 +220,14 @@ export class PropertyDefinitionsService {
       }
     }
     await this.upsert(updated)
+  }
+
+  private requireDefinition(propertyName: string): PropertyDefinition {
+    const def = this.cache.get(propertyName)
+    if (!def) {
+      throw new Error(`No property definition named "${propertyName}"`)
+    }
+    return def
   }
 
   private applyParsedData(data: PropertyDefinitionsFileData): void {
@@ -228,14 +249,19 @@ export class PropertyDefinitionsService {
     const properties: Record<string, unknown> = {}
 
     for (const [name, def] of this.cache) {
+      // js-yaml refuses to dump `undefined`, and one such value fails the write
+      // for every property in the file, not just its own.
       if (def.type === 'status') {
-        properties[name] = { type: 'status', categories: def.categories }
+        properties[name] = {
+          type: 'status',
+          categories: def.categories ?? DEFAULT_STATUS_CATEGORIES
+        }
       } else if (def.type === 'date') {
-        properties[name] = { type: 'date', showOnCalendar: def.showOnCalendar }
+        properties[name] = { type: 'date', showOnCalendar: def.showOnCalendar ?? false }
       } else if (def.type === 'project') {
         properties[name] = { type: 'project' }
       } else {
-        properties[name] = { type: def.type, options: def.options }
+        properties[name] = { type: def.type, options: def.options ?? [] }
       }
     }
 
@@ -329,10 +355,24 @@ function renameOptionInDefinition(
 }
 
 function addOptionToDefinition(def: PropertyDefinition, option: SelectOption): PropertyDefinition {
+  const options = def.options ?? []
+  if (options.some((o) => o.value === option.value)) return def
+
   return {
     ...def,
-    options: [...(def.options ?? []), option]
+    options: [...options, option]
   }
+}
+
+/**
+ * A `status` definition with no categories cannot be serialized, so a write
+ * carrying one threw and left the cache holding a definition that every later
+ * status write skipped. The cache never holds one.
+ */
+function normalizeDefinition(definition: PropertyDefinition): PropertyDefinition {
+  if (definition.type !== 'status' || definition.categories) return definition
+
+  return { ...definition, categories: DEFAULT_STATUS_CATEGORIES }
 }
 
 export { DEFAULT_STATUS_DEFINITION }

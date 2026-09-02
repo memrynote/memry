@@ -65,6 +65,9 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
       if (general.openPagesInNewTab !== undefined) {
         seedPrefs.openPagesInNewTab = general.openPagesInNewTab
       }
+      if (general.minimizeToTray !== undefined) {
+        seedPrefs.minimizeToTray = general.minimizeToTray
+      }
     } catch {
       log.warn('Failed to parse existing general settings for migration')
     }
@@ -107,7 +110,8 @@ export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): 
     accentColor: prefs.accentColor,
     language: language.success ? language.data : GENERAL_SETTINGS_DEFAULTS.language,
     createInSelectedFolder: prefs.createInSelectedFolder,
-    openPagesInNewTab: prefs.openPagesInNewTab
+    openPagesInNewTab: prefs.openPagesInNewTab,
+    minimizeToTray: prefs.minimizeToTray
   }
 
   const editorCache: EditorSettings = {

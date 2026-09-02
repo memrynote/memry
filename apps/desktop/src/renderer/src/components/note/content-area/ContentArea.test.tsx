@@ -20,6 +20,7 @@ const contentAreaMocks = vi.hoisted(() => ({
     listProjects: vi.fn(),
     get: vi.fn(),
     create: vi.fn(),
+    complete: vi.fn(),
     update: vi.fn(),
     delete: vi.fn()
   },
@@ -151,6 +152,15 @@ vi.mock('@blocknote/shadcn', () => ({
       </button>
       <div data-content-type="checkListItem" data-id="standalone">
         checklist target
+      </div>
+      <div data-content-type="checkListItem" data-id="obsidian-check">
+        obsidian checklist target
+      </div>
+      <div data-content-type="checkListItem" data-id="blocked-check">
+        blocked checklist target
+      </div>
+      <div data-content-type="checkListItem" data-id="long-tag-check">
+        long tag checklist target
       </div>
       <div data-id="task-prev">
         <button type="button" role="button" tabIndex={0}>
@@ -365,11 +375,33 @@ function setDocument(blocks: any[]): void {
   })
 }
 
+const OBSIDIAN_LINE = 'Buy milk #Errand 📅 2026-01-01 ⏫ ✅ 2026-01-07 ❌ 2026-01-08'
+const OBSIDIAN_SUB_LINE = 'Book flight 📅 2026-01-01 ⏫'
+const BLOCKED_LINE = 'Buy milk 🆔 dcf64c 📅 2026-01-01'
+const LONG_TAG = '#' + 'a'.repeat(75)
+const LONG_TAG_LINE = `Buy milk ${LONG_TAG} 📅 2026-01-01`
+
 function resetEditor(): void {
   contentAreaMocks.blocks = new Map()
   const standalone = createBlock('standalone', {
     type: 'checkListItem',
     content: [{ type: 'text', text: 'Standalone #urgent', styles: {} }]
+  })
+  createBlock('obsidian-check', {
+    type: 'checkListItem',
+    content: [{ type: 'text', text: OBSIDIAN_LINE, styles: {} }]
+  })
+  createBlock('obsidian-sub', {
+    type: 'checkListItem',
+    content: [{ type: 'text', text: OBSIDIAN_SUB_LINE, styles: {} }]
+  })
+  createBlock('blocked-check', {
+    type: 'checkListItem',
+    content: [{ type: 'text', text: BLOCKED_LINE, styles: {} }]
+  })
+  createBlock('long-tag-check', {
+    type: 'checkListItem',
+    content: [{ type: 'text', text: LONG_TAG_LINE, styles: {} }]
   })
   const subCheck = createBlock('sub-check', {
     type: 'checkListItem',
@@ -476,6 +508,7 @@ describe('ContentArea', () => {
       success: true,
       task: { id: 'created-task', title: 'Created task', projectId: 'project-1' }
     })
+    contentAreaMocks.tasksService.complete.mockResolvedValue({ success: true })
     contentAreaMocks.tasksService.update.mockResolvedValue({ success: true })
     contentAreaMocks.tasksService.delete.mockResolvedValue({ success: true })
     contentAreaMocks.notesService.uploadAttachment.mockResolvedValue({
@@ -1194,6 +1227,455 @@ describe('ContentArea', () => {
     })
 
     expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+  })
+
+  it('imports an Obsidian Tasks checkbox into the task it describes', async () => {
+    vi.useFakeTimers()
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-check' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-check' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-check' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.click(screen.getByText('change'))
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Buy milk',
+        priority: 3,
+        dueDate: '2026-01-01',
+        // The cancelled date has no column, so the whole line is kept.
+        description: OBSIDIAN_LINE,
+        tags: ['Errand']
+      })
+    )
+    expect(contentAreaMocks.tasksService.complete).toHaveBeenCalledWith({
+      id: 'created-task',
+      // The plugin wrote a calendar date, so the instant is local midnight on it.
+      completedAt: new Date(2026, 0, 7).toISOString()
+    })
+    // The plugin fields left the block, so the markdown line the `{task:<id>}`
+    // suffix lands on is the description alone.
+    expect(contentAreaMocks.blocks.get('obsidian-check').props.title).toBe('Buy milk #Errand')
+  })
+
+  it('refuses a line the plugin needs intact, however the conversion is asked for', async () => {
+    // The analyzer refuses this line, but the context menu reaches the
+    // converter directly. Converting it drops the id another note's ⛔ names.
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.contextMenu(screen.getByText('blocked checklist target'))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    expect(contentAreaMocks.blocks.get('blocked-check').type).toBe('checkListItem')
+    expect(contentAreaMocks.blocks.get('blocked-check').content).toEqual([
+      { type: 'text', text: BLOCKED_LINE, styles: {} }
+    ])
+    expect(contentAreaMocks.toastError).toHaveBeenCalled()
+  })
+
+  it('ticks the box for a line the plugin had already marked done', async () => {
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.contextMenu(screen.getByText('obsidian checklist target'))
+    await waitFor(() => expect(contentAreaMocks.tasksService.complete).toHaveBeenCalled())
+
+    // `- [ ] Buy milk {task:id}` against a non-null completedAt is exactly what
+    // the markdown reconciler undoes on the next save of the note.
+    await waitFor(() =>
+      expect(contentAreaMocks.blocks.get('obsidian-check').props.checked).toBe(true)
+    )
+  })
+
+  it('keeps the block wired to its task when the completion call is rejected', async () => {
+    contentAreaMocks.tasksService.complete.mockRejectedValue(new Error('rejected'))
+
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.contextMenu(screen.getByText('obsidian checklist target'))
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
+
+    // The row exists. A block left on `taskId: ''` renders a task nothing on
+    // disk or in the database can ever find again.
+    await waitFor(() =>
+      expect(contentAreaMocks.blocks.get('obsidian-check').props.taskId).toBe('created-task')
+    )
+  })
+
+  it('drops a tag longer than the task contract takes', async () => {
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.contextMenu(screen.getByText('long tag checklist target'))
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
+
+    const { tags } = contentAreaMocks.tasksService.create.mock.calls[0][0]
+    // `TaskCreateSchema` caps a tag at 50 characters and the list at 20. An
+    // over-long tag rejects the whole create, so the task never arrives.
+    expect(tags).toEqual([])
+  })
+
+  it('lifts the plugin fields off a nested line as well as a top-level one', async () => {
+    contentAreaMocks.analyzeTaskIntents.mockReturnValue({
+      ...emptyIntents(new Set()),
+      subtaskCandidate: { blockId: 'obsidian-sub', parentTaskId: 'parent-task' }
+    })
+
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.click(screen.getByText('change'))
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
+
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parentId: 'parent-task',
+        title: 'Book flight',
+        priority: 3,
+        dueDate: '2026-01-01',
+        description: OBSIDIAN_SUB_LINE
+      })
+    )
+    // Left on the block, the due date would be serialized behind Memry's
+    // suffix, where the plugin's end-anchored regex can no longer see it.
+    expect(contentAreaMocks.blocks.get('obsidian-sub').props.title).toBe('Book flight')
+  })
+
+  // #1907 — `convertCheckboxToTask` rewrites the checkbox to a `taskBlock`
+  // with `taskId: ''` before the row exists. If the create never lands, the
+  // block used to keep that shape forever: a task-looking row whose every
+  // control early-returns on the empty id. A checkbox Memry has no row for
+  // must stay a checkbox.
+  it('reverts a checkbox to a checklist item when the task create fails', async () => {
+    vi.useFakeTimers()
+    const obsidian = createBlock('obsidian-line', {
+      type: 'checkListItem',
+      content: [{ type: 'text', text: 'Buy milk 2026-09-01', styles: {} }]
+    })
+    contentAreaMocks.tasksService.create.mockResolvedValue({
+      success: false,
+      error: 'Task not found'
+    })
+    // Twice: once for the onChange that schedules, once for the re-scan the
+    // debounce timer runs before it converts.
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalled()
+    expect(obsidian.type).toBe('checkListItem')
+    expect(obsidian.content).toEqual([{ type: 'text', text: 'Buy milk 2026-09-01', styles: {} }])
+  })
+
+  it('reverts a checkbox to a checklist item when there is no project to create into', async () => {
+    vi.useFakeTimers()
+    const obsidian = createBlock('obsidian-line', {
+      type: 'checkListItem',
+      content: [{ type: 'text', text: 'Buy milk', styles: {} }]
+    })
+    contentAreaMocks.tasksService.listProjects.mockResolvedValue({ projects: [] })
+    // Twice: once for the onChange that schedules, once for the re-scan the
+    // debounce timer runs before it converts.
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.listProjects).toHaveBeenCalled()
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    expect(obsidian.type).toBe('checkListItem')
+    expect(obsidian.content).toEqual([{ type: 'text', text: 'Buy milk', styles: {} }])
+  })
+
+  it('reverts a checkbox to a checklist item when the project lookup rejects', async () => {
+    vi.useFakeTimers()
+    const obsidian = createBlock('obsidian-line', {
+      type: 'checkListItem',
+      content: [{ type: 'text', text: 'Buy milk', styles: {} }]
+    })
+    contentAreaMocks.tasksService.listProjects.mockRejectedValue(new Error('no vault open'))
+    // Twice: once for the onChange that schedules, once for the re-scan the
+    // debounce timer runs before it converts.
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.listProjects).toHaveBeenCalled()
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    expect(obsidian.type).toBe('checkListItem')
+    expect(obsidian.content).toEqual([{ type: 'text', text: 'Buy milk', styles: {} }])
+  })
+
+  // The nested path carries the same #1907 rule. `convertCheckboxToSubtask`
+  // also writes `taskId: ''` up front, so each of its three failure exits has
+  // to put the checkbox back. Unlike the standalone path it is not debounced,
+  // so these run on real timers.
+  it('reverts a nested checkbox to a checklist item when the parent task is gone', async () => {
+    const nested = createBlock('nested-line', {
+      type: 'checkListItem',
+      content: [{ type: 'text', text: 'Buy milk', styles: {} }]
+    })
+    contentAreaMocks.tasksService.get.mockResolvedValue(null)
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        subtaskCandidate: { blockId: 'nested-line', parentTaskId: 'parent-task' }
+      })
+      .mockReturnValue(emptyIntents(new Set()))
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await waitFor(() =>
+      expect(contentAreaMocks.tasksService.get).toHaveBeenCalledWith('parent-task')
+    )
+    expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'nested-line' }),
+      expect.objectContaining({ type: 'taskBlock' })
+    )
+    await waitFor(() => expect(nested.type).toBe('checkListItem'))
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    expect(nested.content).toEqual([{ type: 'text', text: 'Buy milk', styles: {} }])
+  })
+
+  it('reverts a nested checkbox to a checklist item when the subtask create fails', async () => {
+    const nested = createBlock('nested-line', {
+      type: 'checkListItem',
+      content: [{ type: 'text', text: 'Buy milk', styles: {} }]
+    })
+    contentAreaMocks.tasksService.create.mockResolvedValue({
+      success: false,
+      error: 'Task not found'
+    })
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        subtaskCandidate: { blockId: 'nested-line', parentTaskId: 'parent-task' }
+      })
+      .mockReturnValue(emptyIntents(new Set()))
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
+    expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'nested-line' }),
+      expect.objectContaining({ type: 'taskBlock' })
+    )
+    await waitFor(() => expect(nested.type).toBe('checkListItem'))
+    expect(nested.content).toEqual([{ type: 'text', text: 'Buy milk', styles: {} }])
+  })
+
+  it('reverts a nested checkbox to a checklist item when the parent lookup rejects', async () => {
+    const nested = createBlock('nested-line', {
+      type: 'checkListItem',
+      content: [{ type: 'text', text: 'Buy milk', styles: {} }]
+    })
+    contentAreaMocks.tasksService.get.mockRejectedValue(new Error('no vault open'))
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        subtaskCandidate: { blockId: 'nested-line', parentTaskId: 'parent-task' }
+      })
+      .mockReturnValue(emptyIntents(new Set()))
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await waitFor(() =>
+      expect(contentAreaMocks.tasksService.get).toHaveBeenCalledWith('parent-task')
+    )
+    await waitFor(() => expect(nested.type).toBe('checkListItem'))
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    expect(nested.content).toEqual([{ type: 'text', text: 'Buy milk', styles: {} }])
+  })
+
+  it('does not resurrect a checkbox the user deleted while the conversion was in flight', async () => {
+    createBlock('nested-line', {
+      type: 'checkListItem',
+      content: [{ type: 'text', text: 'Buy milk', styles: {} }]
+    })
+    contentAreaMocks.tasksService.get.mockImplementation(async () => {
+      contentAreaMocks.blocks.delete('nested-line')
+      throw new Error('no vault open')
+    })
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        subtaskCandidate: { blockId: 'nested-line', parentTaskId: 'parent-task' }
+      })
+      .mockReturnValue(emptyIntents(new Set()))
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await waitFor(() =>
+      expect(contentAreaMocks.tasksService.get).toHaveBeenCalledWith('parent-task')
+    )
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.editor.updateBlock).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ type: 'checkListItem' })
+    )
+  })
+
+  // Defense in depth for the Tab race: the block picked up a `parentTaskId`
+  // between the onChange that scheduled the conversion and the debounce
+  // firing, so the row has to land in the parent's project, not the default.
+  it('creates a raced standalone checkbox into its live parent task project', async () => {
+    vi.useFakeTimers()
+    createBlock('raced-line', {
+      type: 'checkListItem',
+      props: { checked: false, parentTaskId: 'parent-task' },
+      content: [{ type: 'text', text: 'Buy milk', styles: {} }]
+    })
+    contentAreaMocks.tasksService.listProjects.mockResolvedValue({
+      projects: [{ id: 'project-default', name: 'Inbox', isDefault: true }]
+    })
+    contentAreaMocks.tasksService.get.mockResolvedValue({
+      id: 'parent-task',
+      projectId: 'project-parent'
+    })
+    // Twice: once for the onChange that schedules, once for the re-scan the
+    // debounce timer runs before it converts.
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'raced-line' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'raced-line' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.get).toHaveBeenCalledWith('parent-task')
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'project-parent', parentId: 'parent-task' })
+    )
+  })
+
+  // A failed parent lookup on the raced path is swallowed, not fatal: the row
+  // still gets created, it just falls back to the default project. Losing the
+  // project is better than leaving a `taskId: ''` block behind.
+  it('still creates a raced standalone checkbox when the parent lookup rejects', async () => {
+    vi.useFakeTimers()
+    createBlock('raced-line', {
+      type: 'checkListItem',
+      props: { checked: false, parentTaskId: 'parent-task' },
+      content: [{ type: 'text', text: 'Buy milk', styles: {} }]
+    })
+    contentAreaMocks.tasksService.listProjects.mockResolvedValue({
+      projects: [{ id: 'project-default', name: 'Inbox', isDefault: true }]
+    })
+    contentAreaMocks.tasksService.get.mockRejectedValue(new Error('no vault open'))
+    // Twice: once for the onChange that schedules, once for the re-scan the
+    // debounce timer runs before it converts.
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'raced-line' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'raced-line' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'project-default', parentId: 'parent-task' })
+    )
   })
 
   it('focuses the previous task title instead of letting Backspace delete task blocks', () => {

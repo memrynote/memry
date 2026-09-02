@@ -59,6 +59,55 @@ describe('editor spellCheck preference', () => {
   })
 })
 
+describe('minimizeToTray preference', () => {
+  let vaultPath: string
+
+  afterEach(() => {
+    if (vaultPath) fs.rmSync(vaultPath, { recursive: true, force: true })
+  })
+
+  it('#given no stored preference #then minimizeToTray defaults to off', () => {
+    vaultPath = createTempVault()
+
+    expect(readPreferences(vaultPath).minimizeToTray).toBe(false)
+  })
+
+  it('#given config.json written by an older version #then minimizeToTray reads as off', () => {
+    vaultPath = createTempVault()
+    fs.writeFileSync(
+      path.join(vaultPath, MEMRY_DIR, 'config.json'),
+      JSON.stringify({ preferences: { theme: 'dark', editor: { width: 'full' } } })
+    )
+
+    expect(readPreferences(vaultPath).minimizeToTray).toBe(false)
+  })
+
+  // The whole point: `false` is a value the user chose, not an absence. A `||`
+  // or a truthiness check anywhere on this path makes the setting impossible to
+  // turn back off.
+  it('#given minimizeToTray turned on then off again #then config.json reports off', () => {
+    vaultPath = createTempVault()
+
+    writePreferences(vaultPath, { minimizeToTray: true })
+    expect(readPreferences(vaultPath).minimizeToTray).toBe(true)
+
+    writePreferences(vaultPath, { minimizeToTray: false })
+
+    expect(readPreferences(vaultPath).minimizeToTray).toBe(false)
+    const raw = JSON.parse(fs.readFileSync(path.join(vaultPath, MEMRY_DIR, 'config.json'), 'utf-8'))
+    expect(raw.preferences.minimizeToTray).toBe(false)
+  })
+
+  it('#given minimizeToTray enabled #when an unrelated preference changes #then it survives', () => {
+    vaultPath = createTempVault()
+    writePreferences(vaultPath, { minimizeToTray: true })
+
+    writePreferences(vaultPath, { theme: 'dark' })
+
+    expect(readPreferences(vaultPath).minimizeToTray).toBe(true)
+  })
+})
+
 describe('VaultPreferencesSchema', () => {
   it('#given valid preferences #then parses successfully', () => {
     const input = {
@@ -70,6 +119,7 @@ describe('VaultPreferencesSchema', () => {
       language: 'tr',
       createInSelectedFolder: false,
       openPagesInNewTab: false,
+      minimizeToTray: false,
       editor: {
         width: 'full' as const,
         toolbarMode: 'sticky' as const,

@@ -36,23 +36,23 @@ If two devices reorder boards at the same time, the last write wins for position
 
 Widgets are the cards on a board. Available types:
 
-| Widget          | Shows                                                  |
-| --------------- | ------------------------------------------------------ |
-| Recently Edited | Notes ordered by last-modified, most recent first      |
+| Widget          | Shows                                                   |
+| --------------- | ------------------------------------------------------- |
+| Recently Edited | Notes ordered by last-modified, most recent first       |
 | Recently Opened | Notes and canvases ordered by when you last opened them |
-| Bookmarks       | Your bookmarked notes                                  |
-| Tasks           | Tasks, with an inline filter and count                 |
-| Inbox           | Unfiled inbox items, with a triage row                 |
-| Folder          | The contents of a chosen folder                        |
-| Calendar        | An at-a-glance calendar of upcoming entries            |
-| Journal         | Today's journal entry and your current streak          |
-| Project         | One project's overview, tasks, notes, files and events |
+| Bookmarks       | Your bookmarked notes                                   |
+| Tasks           | Tasks, with an inline filter and count                  |
+| Inbox           | Unfiled inbox items, with a triage row                  |
+| Folder          | The contents of a chosen folder                         |
+| Calendar        | An at-a-glance calendar of upcoming entries             |
+| Journal         | Today's journal entry and your current streak           |
+| Project         | One project's overview, tasks, notes, files and events  |
 
 **Recently Edited and Recently Opened are siblings, not duplicates.** The first answers "what did I change?", the second "what did I read?" — and a note you open without typing in it appears only in the second. Recently Opened also lists canvases: a canvas row carries its own icon and reopens the canvas when you click it. A note you open _and_ edit shows up in both; the row subtitle is what tells them apart, reading "opened 12m ago" on one and "edited 3m ago" on the other.
 
 Unlike everything else on a board, the Recently Opened **list** is per-device: it shows what you opened on this machine. The widget's position and size still sync like any other widget — only the history behind it stays local, so your reading trail is not shipped between devices. Adding the widget on an existing vault starts it off with the notes you had opened from search; from there it fills in as you read. It keeps your 50 most recent items, one entry per note or canvas, and an item only counts once it has been in front of you for a couple of seconds — flipping past a tab does not put it in the list.
 
-The Calendar widget shows today's events. If you leave Memry open overnight it rolls over on its own at local midnight — the widget, its event count, and the "Next:" line all switch to the new day without a restart. The same applies after the machine wakes from sleep or the system clock changes.
+The Calendar widget shows today's events. New events reach it on their own: create one on the Calendar tab, or in the day panel, or let a connected calendar sync one in while you are working somewhere else, and the widget has it the next time the board is in front of you. There is nothing to refresh and no need to restart, and that holds whether or not the board was the tab you were looking at when the event appeared. If you leave Memry open overnight it rolls over on its own at local midnight — the widget, its event count, and the "Next:" line all switch to the new day without a restart. The same applies after the machine wakes from sleep or the system clock changes.
 
 The Project widget is a chosen project in miniature. Its body has the same five tabs as the project page: **Overview**, **Tasks**, **Notes**, **Files** and **Events**. Rows behave as they do on the page — open a note, tick a task off, change a status or a priority. Pick the project from the pill in the widget's header, the way the Folder widget picks its folder; the pill carries the project's colour and name, so several project widgets side by side stay tellable apart.
 

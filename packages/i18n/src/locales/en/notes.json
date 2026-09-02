@@ -239,6 +239,11 @@
     },
     "upload": {
       "failed": "Could not attach that file"
+    },
+    "obsidianTask": {
+      "refused": "This line carries an id, a dependency or a block link that Obsidian needs at the end of the line. Remove it in Obsidian first, then convert.",
+      "createFailed": "Could not create the task for this line.",
+      "completeFailed": "The task was created, but its done date could not be applied."
     }
   },
   "dateMention": {
@@ -539,7 +544,9 @@
       "deleted": "Reminder deleted",
       "deleteFailed": "Failed to delete reminder",
       "dismissed": "Reminder dismissed",
-      "dismissFailed": "Failed to dismiss reminder"
+      "dismissFailed": "Failed to dismiss reminder",
+      "updated": "Reminder updated",
+      "updateFailed": "Failed to update reminder"
     }
   },
   "linkedTasks": {

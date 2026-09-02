@@ -29,7 +29,18 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { LocaleSchema, FALLBACK_LOCALE, type Locale } from '@memry/contracts/locale-api'
 import { createMainI18n, type I18nInstance } from '@memry/i18n/main'
 import { registerAllHandlers } from './ipc'
-import { applyGlobalCaptureShortcut, setGlobalCaptureAppliedHandler } from './ipc/settings-handlers'
+import {
+  applyGlobalCaptureShortcut,
+  getMinimizeToTraySetting,
+  setGlobalCaptureAppliedHandler
+} from './ipc/settings-handlers'
+import {
+  applyTraySetting,
+  handleMainWindowClose,
+  initTray,
+  isTrayActive,
+  showMainWindow
+} from './tray'
 import {
   autoOpenLastVault,
   beginVaultShutdown,
@@ -732,9 +743,18 @@ function createWindow(): void {
   mainWindow.on('unmaximize', () => boundsPersister.schedule())
   mainWindow.on('close', () => boundsPersister.flush())
 
+  // Registered after the bounds flush so geometry is still persisted on a close
+  // that the tray intercepts.
+  initTray({ getMainWindow: () => mainWindow })
+  mainWindow.on('close', (event) => handleMainWindowClose(event, mainWindow))
+
   const unsubscribeVaultStatus = onVaultStatusChanged((status) => {
     if (mainWindow.isDestroyed()) return
     if (status.isOpen) {
+      // Settings live in the vault's database, so this is the first point the
+      // tray preference can be read. applyTraySetting converges, so the repeat
+      // calls a vault switch produces are no-ops.
+      applyTraySetting(getMinimizeToTraySetting())
       // Grow from the compact picker to the app window, but never fight a window
       // the user has already sized/moved/maximized (or that we just restored):
       // only act on the genuine picker → main transition.
@@ -1183,11 +1203,17 @@ if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
       // already running) must surface the existing window, not silently no-op.
       // On Windows there is no Dock/'activate' fallback, so without this a hidden
       // or minimized instance stays invisible and the app looks like it "won't open".
-      const existing = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
-      if (existing) {
-        if (!existing.isVisible()) existing.show()
-        if (existing.isMinimized()) existing.restore()
-        existing.focus()
+      if (isTrayActive()) {
+        // Hidden to the tray rather than closed, so it needs the same restore
+        // the tray icon performs, including leaving skipTaskbar behind.
+        showMainWindow()
+      } else {
+        const existing = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
+        if (existing) {
+          if (!existing.isVisible()) existing.show()
+          if (existing.isMinimized()) existing.restore()
+          existing.focus()
+        }
       }
       const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
       if (deepLinkUrl) {
@@ -1765,7 +1791,13 @@ const appReady = app.whenReady().then(async () => {
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+      return
+    }
+    // The Dock icon deliberately stays while the app is in the tray, so a Dock
+    // click has to reach a window that was hidden rather than closed.
+    if (isTrayActive()) showMainWindow()
   })
 })
 

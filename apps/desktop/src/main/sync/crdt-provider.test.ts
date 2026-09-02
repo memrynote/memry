@@ -218,7 +218,8 @@ vi.mock('../vault/file-ops', () => ({
 vi.mock('../vault/frontmatter', () => ({
   parseNote: (...args: unknown[]) => mocks.parseNote(...args),
   serializeNote: vi.fn(),
-  serializeParsedNote: vi.fn()
+  serializeParsedNote: vi.fn(),
+  generateContentHash: (content: unknown) => `hash:${String(content)}`
 }))
 
 vi.mock('./blocknote-converter', () => ({
@@ -1296,6 +1297,12 @@ describe('CrdtProvider', () => {
     mocks.safeRead.mockResolvedValueOnce('')
     await provider.seedFromMarkdownPublic('empty-note')
     expect(mocks.markdownToYFragment).not.toHaveBeenCalledWith('', expect.anything())
+    // Nothing to seed, but the bytes WERE read: the hash is recorded so the
+    // write-back's never-read guard lets the first keystroke into this empty
+    // file reach the disk (#1909).
+    expect(mocks.updateNoteCache).toHaveBeenCalledWith(expect.anything(), 'empty-note', {
+      contentHash: 'hash:'
+    })
 
     await provider.open('blank-note', undefined, { skipSeed: true })
     mocks.getNoteCacheById.mockReturnValueOnce({
@@ -1320,6 +1327,65 @@ describe('CrdtProvider', () => {
     mocks.persistenceInstances[0].storeUpdate.mockClear()
     await provider.seedFromMarkdownPublic('failed-convert')
     expect(mocks.persistenceInstances[0].storeUpdate).not.toHaveBeenCalled()
+  })
+
+  it('records the hash of the bytes a seed was built from, so the first edit can save (#1909)', async () => {
+    await provider.open('foreign-note', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'foreign-note',
+      path: 'notes/Foreign.md',
+      fileType: 'markdown',
+      contentHash: null
+    })
+    mocks.safeRead.mockResolvedValueOnce('Line one  \nLine two')
+    mocks.parseNote.mockReturnValueOnce({ content: 'Line one  \nLine two' })
+
+    await provider.seedFromMarkdownPublic('foreign-note')
+
+    expect(mocks.updateNoteCache).toHaveBeenCalledWith(expect.anything(), 'foreign-note', {
+      contentHash: 'hash:Line one  \nLine two'
+    })
+  })
+
+  it('leaves a hash the indexer already measured alone', async () => {
+    await provider.open('indexed-note', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'indexed-note',
+      path: 'notes/Indexed.md',
+      fileType: 'markdown',
+      contentHash: 'hash:what the indexer read'
+    })
+    mocks.safeRead.mockResolvedValueOnce('what the indexer read')
+    mocks.parseNote.mockReturnValueOnce({ content: 'what the indexer read' })
+
+    await provider.seedFromMarkdownPublic('indexed-note')
+
+    expect(mocks.updateNoteCache).not.toHaveBeenCalledWith(
+      expect.anything(),
+      'indexed-note',
+      expect.objectContaining({ contentHash: expect.anything() })
+    )
+  })
+
+  it('records no hash when the conversion fails, since the doc does not hold the bytes', async () => {
+    await provider.open('seed-failed', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'seed-failed',
+      path: 'notes/Failed.md',
+      fileType: 'markdown',
+      contentHash: null
+    })
+    mocks.safeRead.mockResolvedValueOnce('Body')
+    mocks.parseNote.mockReturnValueOnce({ content: 'Body' })
+    mocks.markdownToYFragment.mockResolvedValueOnce(false)
+
+    await provider.seedFromMarkdownPublic('seed-failed')
+
+    expect(mocks.updateNoteCache).not.toHaveBeenCalledWith(
+      expect.anything(),
+      'seed-failed',
+      expect.objectContaining({ contentHash: expect.anything() })
+    )
   })
 
   it('refuses to seed a log dump that is under the byte ceiling but one giant block', async () => {

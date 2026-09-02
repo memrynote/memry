@@ -8,6 +8,24 @@ import { getAllTaskTags } from './tasks'
 type IndexDb = Parameters<typeof getAllTags>[0]
 type DataDb = Parameters<typeof getAllTaskTags>[0]
 
+/**
+ * Whether a definition row records a decision someone made about the tag, as
+ * opposed to one `getOrCreateTag` minted on the way past.
+ *
+ * Only three surfaces set `colorAuthored` — the two colour pickers and the tag
+ * hub's create affordance (`tags:update-color`) — so it, an icon, and a
+ * category assignment are between them every deliberate mark a user can leave
+ * on a tag. A tag created in the hub carries an authored colour from the
+ * moment it exists, which is what keeps it alive before any note uses it.
+ */
+function isAuthored(definition: {
+  colorAuthored: boolean
+  icon: string | null
+  categoryId: string | null
+}): boolean {
+  return definition.colorAuthored || definition.icon !== null || definition.categoryId !== null
+}
+
 export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithCount[] {
   const noteCounts = getAllTags(indexDb)
   const taskCounts = getAllTaskTags(dataDb)
@@ -64,13 +82,32 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
     }
   }
 
+  // A definition with no usage behind it is either a tag someone made and has
+  // not filed anywhere yet — the tag hub's "New tag" — or the leftovers of one
+  // whose last note dropped it, in which case collecting it is what stops
+  // renaming `#foo` to `#bar` inside a note leaving `foo` behind forever. The
+  // authored ones are listed at zero; the rest are still collected.
+  const registered: TagWithCount[] = []
   for (const def of definitions) {
-    if (!merged.has(def.name.toLowerCase())) {
+    if (merged.has(def.name.toLowerCase())) continue
+    if (!isAuthored(def)) {
       deleteTagDefinition(dataDb, def.name)
+      continue
     }
+    registered.push({
+      name: def.name,
+      count: 0,
+      color: def.color,
+      icon: def.icon,
+      categoryId: def.categoryId,
+      sortOrder: def.sortOrder
+    })
   }
 
-  return [...merged.values()].filter((tag) => tag.count > 0).sort((a, b) => b.count - a.count)
+  return [
+    ...[...merged.values()].filter((tag) => tag.count > 0).sort((a, b) => b.count - a.count),
+    ...registered.sort((a, b) => a.name.localeCompare(b.name))
+  ]
 }
 
 export function mergeTagInNotes(

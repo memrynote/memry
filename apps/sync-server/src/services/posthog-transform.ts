@@ -1,6 +1,7 @@
 import type { TelemetryBatch, TelemetryEvent } from '@memry/contracts/telemetry-api'
 import { redactText } from '@memry/contracts/redact'
 
+import type { SyncEntitlementStatus, SyncPlan } from './entitlements'
 import type { PostHogEvent } from './posthog'
 
 // Pure transform: today's anonymous-by-design TelemetryBatch → PostHog-native
@@ -17,6 +18,20 @@ export interface TransformContext {
    */
   accountHash?: string
   environment: string
+  /**
+   * Billing plan of the signed-in account, resolved ONCE PER SESSION by the
+   * route (same claim that gates `$identify`) rather than per batch — the
+   * desktop flushes every ~30s and a plan changes maybe twice a year, so a
+   * per-batch D1 read would buy nothing. Undefined for anonymous batches and
+   * for every batch after the first of a session; PostHog keeps the person
+   * property from the batch that did carry it.
+   *
+   * A category, never an identifier: `free | plus | pro | believer` plus the
+   * entitlement status, so "canceled pro" cannot be miscounted as a paying
+   * user. Nothing account-identifying is added by this pair.
+   */
+  plan?: SyncPlan
+  planStatus?: SyncEntitlementStatus
 }
 
 // THE ONE-WAY DOOR. `hashTelemetryId` returns exactly 64 lowercase hex chars.
@@ -37,16 +52,21 @@ export const resolveDistinctId = (ctx: TransformContext): string =>
 
 export const personProperties = (
   batch: TelemetryBatch,
-  environment: string
+  ctx: TransformContext
 ): Record<string, unknown> => ({
   platform: batch.platform,
   arch: batch.arch,
   locale: batch.locale,
   app_version: batch.appVersion,
   build_channel: batch.buildChannel,
+  auth_state: batch.authState,
   sync_state: batch.syncState,
   timezone_offset_minutes: batch.timezoneOffsetMinutes,
-  environment
+  environment: ctx.environment,
+  // Spread, not an unconditional key: writing `plan: undefined` on the ~119 of
+  // every 120 batches that do not resolve it would send `$set: {plan: null}`
+  // and wipe the person property set by the session's first batch.
+  ...(ctx.plan ? { plan: ctx.plan, plan_status: ctx.planStatus } : {})
 })
 
 // Emitted once per session by the caller (see claimIdentifySession in the
@@ -65,7 +85,7 @@ export const identifyEvent = (
     distinct_id: ctx.accountHash,
     properties: {
       $anon_distinct_id: ctx.installHash,
-      $set: personProperties(batch, ctx.environment),
+      $set: personProperties(batch, ctx),
       environment: ctx.environment
     }
   }
@@ -112,7 +132,7 @@ export const productEvent = (
   properties.action = event.action
   properties.environment = ctx.environment
   properties.session_id = batch.sessionId
-  properties.$set = personProperties(batch, ctx.environment)
+  properties.$set = personProperties(batch, ctx)
 
   // platform / app_version / build_channel are ALSO event properties, not only
   // person properties via $set. Two reasons, both load-bearing:
@@ -125,6 +145,14 @@ export const productEvent = (
   properties.platform = batch.platform
   properties.app_version = batch.appVersion
   properties.build_channel = batch.buildChannel
+
+  // `anonymous | signed_in | signed_out`. An EVENT property as well as a person
+  // one for the same reason as platform above: the person property answers
+  // "is this install signed in now", which is the wrong question for "how many
+  // of yesterday's active users had never signed up". Its counterpart `plan`
+  // stays person-only — it is resolved once per session, so as an event
+  // property it would be null on almost every row.
+  properties.auth_state = batch.authState
 
   if (event.objectType) properties.object_type = event.objectType
   if (event.source) properties.source = event.source

@@ -48,6 +48,14 @@ import {
   HeptabaseAlternativePage
 } from '@/pages/AlternativePage'
 import { ComparePage } from '@/pages/ComparePage'
+import { BlogIndexPage } from '@/pages/BlogIndex'
+import {
+  JournalLongevityPostPage,
+  E2EEncryptionPostPage,
+  LocalFirstOfflinePostPage,
+  TerminalPkmPostPage,
+  MarkdownMigrationPostPage
+} from '@/pages/BlogPost'
 import { NotFound } from '@/pages/NotFound'
 
 // Account routes are gated by RequireAuth, which renders null until the client is
@@ -97,6 +105,14 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/terms': () => <TermsPage />,
   '/privacy': () => <PrivacyPage />,
   '/refund': () => <RefundPage />,
+  '/blog': () => <BlogIndexPage />,
+  '/blog/how-to-keep-a-plain-text-daily-journal-that-outlives-any-app': () => (
+    <JournalLongevityPostPage />
+  ),
+  '/blog/what-end-to-end-encrypted-notes-actually-means': () => <E2EEncryptionPostPage />,
+  '/blog/local-first-vs-cloud-first-note-taking-apps': () => <LocalFirstOfflinePostPage />,
+  '/blog/running-a-pkm-from-the-terminal': () => <TerminalPkmPostPage />,
+  '/blog/migrating-from-evernote-notion-to-markdown': () => <MarkdownMigrationPostPage />,
   // Client-only app routes: no SEO value, but they must be prerendered as static
   // shells so direct loads (e.g. the desktop "Upgrade" deep link to /checkout#token,
   // the Google OAuth redirect to /auth/oauth/callback) resolve instead of 404ing.

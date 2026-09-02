@@ -7,6 +7,7 @@ import {
   type QuoteRun
 } from '@memry/editor-schema/blocks'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { parseSidecarMarkerLine } from '@memry/shared/block-markers'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -191,13 +192,13 @@ export function getCalloutSlashMenuItem(
 // as on the CRDT one.
 export { serializeCalloutBlock } from '@memry/editor-schema/blocks'
 
-export type CalloutSegment = { kind: 'callout'; run: CalloutRun }
+export type CalloutSegment = { kind: 'callout'; run: CalloutRun; markers: string[] }
 /**
  * A blockquote run whose inner structure BlockNote's flat quote block loses —
  * claimed under the same byte-round-trip proof as a callout, and for the same
  * reason: the bytes belong to whoever wrote the file (#1881).
  */
-export type QuoteSegment = { kind: 'quote'; run: QuoteRun }
+export type QuoteSegment = { kind: 'quote'; run: QuoteRun; markers: string[] }
 export type MarkdownSegment = { kind: 'markdown'; text: string }
 export type ContentSegment = CalloutSegment | QuoteSegment | MarkdownSegment
 
@@ -215,27 +216,43 @@ export function splitMarkdownByBlockquoteRuns(markdown: string): ContentSegment[
     mdLines = []
   }
 
+  const isMarkerLine = (line: string): boolean => parseSidecarMarkerLine(line.trim()) !== null
+
+  // Sidecar marker lines belong to the block below them, so a run that sits
+  // under one still starts its paragraph: main's `afterSidecarMarker` twin.
+  const startsParagraph = (index: number): boolean => {
+    let above = index - 1
+    while (above >= 0 && isMarkerLine(lines[above])) above--
+    return above < 0 || lines[above].trim() === ''
+  }
+
+  const popTrailingMarkers = (): string[] => {
+    const markers: string[] = []
+    while (mdLines.length > 0 && isMarkerLine(mdLines[mdLines.length - 1])) {
+      markers.unshift((mdLines.pop() as string).trim())
+    }
+    return markers
+  }
+
   while (i < lines.length) {
     const insideFence = fence.consume(lines[i])
-    const atParagraphStart = i === 0 || lines[i - 1].trim() === ''
+    const atParagraphStart = startsParagraph(i)
     const run = insideFence ? null : readCalloutRun(lines, i, atParagraphStart)
 
     const quoteRun =
       run || insideFence || !atParagraphStart ? null : readStructuredQuoteRun(lines, i)
 
-    const segment: CalloutSegment | QuoteSegment | null = run
-      ? { kind: 'callout', run }
-      : quoteRun
-        ? { kind: 'quote', run: quoteRun }
-        : null
+    const claimed: { kind: 'callout'; run: CalloutRun } | { kind: 'quote'; run: QuoteRun } | null =
+      run ? { kind: 'callout', run } : quoteRun ? { kind: 'quote', run: quoteRun } : null
 
-    if (segment) {
+    if (claimed) {
+      const markers = popTrailingMarkers()
       flushMarkdown()
-      segments.push(segment)
-      for (let consumed = i + 1; consumed < segment.run.end; consumed++) {
+      segments.push({ ...claimed, markers })
+      for (let consumed = i + 1; consumed < claimed.run.end; consumed++) {
         fence.consume(lines[consumed])
       }
-      i = segment.run.end
+      i = claimed.run.end
     } else {
       mdLines.push(lines[i])
       i++

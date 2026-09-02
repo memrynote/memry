@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
 import { __setShortcutOverridesForTests } from '@/lib/shortcut-bindings'
@@ -29,6 +29,14 @@ import {
   useSidebar
 } from './sidebar'
 
+const mocks = vi.hoisted(() => ({
+  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }
+}))
+
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => mocks.logger
+}))
+
 function SidebarStateProbe(): React.JSX.Element {
   const { state } = useSidebar()
   return <div data-testid="sidebar-state">{state}</div>
@@ -52,7 +60,6 @@ function setWindowWidth(width: number): void {
 
 describe('SidebarProvider shortcuts', () => {
   beforeEach(() => {
-    document.cookie = 'sidebar_state=; path=/; max-age=0'
     localStorage.clear()
     setWindowWidth(1024)
   })
@@ -217,6 +224,119 @@ describe('SidebarProvider shortcuts', () => {
   it('throws when useSidebar is read outside a provider', () => {
     expect(() => render(<SidebarStateProbe />)).toThrow(
       'useSidebar must be used within a SidebarProvider.'
+    )
+  })
+})
+
+describe('SidebarProvider open-state persistence', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setWindowWidth(1024)
+    mocks.logger.error.mockClear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('restores a collapsed sidebar from localStorage on mount', () => {
+    localStorage.setItem('sidebar_open', 'false')
+
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+  })
+
+  it('falls back to defaultOpen when the key was never written', () => {
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
+    expect(localStorage.getItem('sidebar_open')).toBeNull()
+  })
+
+  it('writes the open state to localStorage on toggle', () => {
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+    expect(localStorage.getItem('sidebar_open')).toBe('false')
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(localStorage.getItem('sidebar_open')).toBe('true')
+  })
+
+  it('stays collapsed across a remount, which is what a vault switch does', () => {
+    // App.tsx keys SidebarProvider by vaultPath, so switching vaults remounts it.
+    const first = render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+
+    first.unmount()
+
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+  })
+
+  it('logs and falls back to defaultOpen when the read throws', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key: string) => {
+      if (key === 'sidebar_open') throw new Error('storage blocked')
+      return null
+    })
+
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('sidebar open state'),
+      expect.any(Error)
+    )
+  })
+
+  it('logs and keeps toggling when the write throws', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key: string) => {
+      if (key === 'sidebar_open') throw new Error('storage blocked')
+    })
+
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('sidebar open state'),
+      expect.any(Error)
     )
   })
 })

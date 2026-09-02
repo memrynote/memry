@@ -275,6 +275,36 @@ Editor colors persist in two Obsidian-compatible forms:
 
 The pipeline is wired into both duplicated serializers: the renderer save path (`markdown-utils.ts`) and the main/CRDT path (`blocknote-converter.ts`).
 
+### Layout markers in markdown
+
+A block's text alignment has no markdown syntax either, so it travels the same way the block colour marker does: a comment line immediately above the block it describes.
+
+```text
+<!-- align:center -->
+Centred paragraph
+```
+
+`center`, `right` and `justify` are the only values written. `left` is BlockNote's default and is never written, so every note already in a vault keeps exactly the bytes it has, and a block that has never been aligned adds nothing on its next save. The three values are also the only ones the parser matches, so a hand-written `<!-- align:left -->` or any other HTML comment is not claimed as a marker and takes whatever path the markdown pipeline already gives an unrecognised comment. The marker attaches to the block on the next line only; a following block is unaffected.
+
+Colour, alignment and table layout markers share one registry (`packages/shared/src/block-markers.ts`), which fixes their on-disk order (colours, table colours, alignment, table layout) so a block carrying more than one always writes the same bytes. Both serializers read and write through the registry, the renderer save path and the main/CRDT path alike. `textAlignment` is one of BlockNote's `defaultProps`, so ProseMirror's `computeAttrs` keeps it across the CRDT hop with no schema change on either side.
+
+An older app version reading a marked file drops the comment line on its next save and shows the block left-aligned. A toggle's own alignment is not written: toggle regions are split off before the marker-line scanner runs, and the splitter lifts only the colours line. A callout under a marker is claimed as a callout on both paths: the renderer's blockquote splitter treats the marker lines above a `> [!type]` run as part of that block, lifts them onto the claimed run, and applies them to the callout, which is also what makes a coloured callout read back on the renderer path.
+
+A table's column widths travel the same way. GFM has no column width, so a table somebody has dragged wider carries a marker of its own:
+
+```text
+<!-- table-layout:{"columnWidths":[120,null]} -->
+| Name | Status |
+| ---- | ------ |
+| Ship | Done   |
+```
+
+One slot per column, in column order. A column nobody has resized is `null`, and a table whose slots are all null writes no marker at all, so every table already in a vault keeps its bytes. When a table carries cell colours too, the layout marker sits after the `table-colors` line, which is the registry order.
+
+The column count that wins on read is the parsed table's own, not the marker's. A marker naming fewer columns than the table has is padded with the widths BlockNote chose, and one naming more is truncated, so a column added or removed in another markdown editor degrades to a width that moved rather than to a rejected note. A malformed marker (a `columnWidths` that is not an array of positive finite numbers or nulls) is not claimed at all and stays a foreign comment.
+
+There is no row height half to this. BlockNote's table content holds `columnWidths`, `headerRows` and `headerCols` and nothing about row sizes, so there is no row height in the block model to persist.
+
 ### Toggle blocks in markdown
 
 BlockNote's HTML export writes a `toggleListItem` as a plain `<li>`, so a toggle used to reach the vault file as an ordinary bullet — the fold gone and every block nested under it flattened out beside it. Toggles therefore have an on-disk form of their own (`packages/editor-schema/src/blocks/markdown.ts`):

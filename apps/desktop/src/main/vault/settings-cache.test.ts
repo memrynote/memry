@@ -79,6 +79,25 @@ describe('populateSettingsCacheFromConfig', () => {
     expect(editor.toolbarMode).toBe('sticky')
   })
 
+  it('#given minimizeToTray turned off in config.json #then the SQLite cache says off, not absent', () => {
+    vaultPath = createTempVault({
+      preferences: { minimizeToTray: false }
+    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSetting(
+      testDb.db as any,
+      'general',
+      JSON.stringify({ ...GENERAL_SETTINGS_DEFAULTS, minimizeToTray: true })
+    )
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    populateSettingsCacheFromConfig(testDb.db as any, vaultPath)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const general = JSON.parse(getSetting(testDb.db as any, 'general')!)
+    expect(general.minimizeToTray).toBe(false)
+  })
+
   it('#given no preferences in config #then writes defaults to SQLite', () => {
     vaultPath = createTempVault({ excludePatterns: ['.git'] })
 

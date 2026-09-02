@@ -10,6 +10,7 @@
     "dev:landing": "pnpm --filter @memry/landing dev",
     "dev:sync-server": "node scripts/run-turbo.js run dev --filter=@memry/sync-server",
     "dev:emails": "pnpm --filter @memry/marketing-emails dev",
+    "dev:mobile": "pnpm --filter @memry/mobile ios:staging",
     "staging": "MEMRY_ENV=staging pnpm --filter @memry/desktop dev:staging",
     "deploy:sync:staging": "pnpm --filter @memry/sync-server deploy:staging",
     "deploy:sync:production": "pnpm --filter @memry/sync-server deploy:production",

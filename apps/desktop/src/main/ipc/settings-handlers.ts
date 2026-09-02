@@ -106,6 +106,7 @@ import {
   type TerminalCommandStatus as BaseTerminalCommandStatus
 } from '../cli/terminal-command'
 import { getMainI18n } from '../lib/main-i18n'
+import { applyTraySetting } from '../tray'
 
 // ============================================================================
 // Settings Keys
@@ -121,7 +122,8 @@ const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
   'accentColor',
   'language',
   'createInSelectedFolder',
-  'openPagesInNewTab'
+  'openPagesInNewTab',
+  'minimizeToTray'
 ]
 
 const INBOX_SYNCABLE_FIELDS: (keyof InboxSettings)[] = [
@@ -320,6 +322,10 @@ export function writeInboxReviewSettings(updates: Partial<InboxSettings>): {
     }
   }
   return result
+}
+
+export function getMinimizeToTraySetting(): boolean {
+  return readGroupSettings('general', GENERAL_SETTINGS_DEFAULTS).minimizeToTray
 }
 
 function getStartupTheme(): { theme: GeneralSettings['theme']; accentColor?: string } {
@@ -1045,6 +1051,10 @@ export function registerSettingsHandlers(): void {
           } catch (err) {
             logger.warn('Failed to set login item:', err)
           }
+        }
+
+        if (updates.minimizeToTray !== undefined) {
+          applyTraySetting(updates.minimizeToTray)
         }
 
         syncSettingsUpdates('general', updates, GENERAL_SYNCABLE_FIELDS)

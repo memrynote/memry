@@ -27,17 +27,16 @@ import {
 } from '@memry/shared/task-block'
 import {
   type BlockColors,
-  type TableCellColors,
-  applyTableCellColors,
-  extractTableCellColors,
-  BLOCK_COLORS_LINE_REGEX,
-  TABLE_CELL_COLORS_LINE_REGEX,
   hasNonDefaultColors,
   parseBlockColorsMarker,
-  parseTableCellColorsMarker,
-  serializeBlockColorsMarker,
-  serializeTableCellColorsMarker
+  serializeBlockColorsMarker
 } from '@memry/shared/block-colors'
+import {
+  type MarkedBlock,
+  type SidecarPatch,
+  parseSidecarMarkerLine,
+  sidecarMarkerLines
+} from '@memry/shared/block-markers'
 import {
   applyInlineColorTokens,
   extractInlineColorRuns,
@@ -58,7 +57,13 @@ import {
   restoreBlockNesting,
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
-import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { createFenceTracker, listCodeFenceInfoStrings } from '@memry/shared/markdown-fences'
+import {
+  readLinkReferencesFromYDoc,
+  restoreLinkReferences,
+  stripLinkReferenceDefinitions,
+  writeLinkReferencesToYDoc
+} from '@memry/shared/link-references'
 import { createLogger } from '../lib/logger'
 import { resolveVaultEmbeds } from '../vault/resolve-embed'
 
@@ -119,7 +124,9 @@ export async function yDocToMarkdown(
       }
       return ''
     }
-    return await blocksToMarkdownPreserving(editor, blocks as Block[])
+    const body = await blocksToMarkdownPreserving(editor, blocks as Block[])
+    const references = readLinkReferencesFromYDoc(doc)
+    return restoreLinkReferences(body, references.definitions, references.usages)
   } catch (err) {
     log.error('Yjs-to-markdown conversion failed', err)
     return null
@@ -203,10 +210,43 @@ export async function markdownToBlocks(
 ): Promise<Block[] | null> {
   try {
     const editor = getEditor()
-    return await markdownToBlocksPreserving(editor, markdown, notePath)
+    const blocks = await markdownToBlocksPreserving(editor, markdown, notePath)
+    restoreUntaggedFenceLanguages(markdown, blocks)
+    return blocks
   } catch (err) {
     log.error('Markdown-to-blocks conversion failed', err)
     return null
+  }
+}
+
+/**
+ * Un-invent the language BlockNote stamps on a fence that carried none.
+ *
+ * A bare ``` ``` ``` parses to a `codeBlock` whose `language` is the schema
+ * default, `javascript`, and the source is the only place that still knows the
+ * author left it bare. So the fences are counted off the markdown and matched
+ * against the code blocks in document order — the same order both are written
+ * in — and only the invented language is cleared. A count mismatch means some
+ * fence did not become a code block (a declined toggle body, an unclosed
+ * fence), and the whole pass is abandoned rather than guessed at: today's
+ * wrong language is better than a language moved onto the wrong block.
+ */
+function restoreUntaggedFenceLanguages(markdown: string, blocks: Block[]): void {
+  const infoStrings = listCodeFenceInfoStrings(markdown)
+  if (!infoStrings.includes('')) return
+
+  const codeBlocks: Block[] = []
+  const visit = (list: Block[]): void => {
+    for (const block of list) {
+      if (block.type === 'codeBlock') codeBlocks.push(block)
+      visit((block.children ?? []) as Block[])
+    }
+  }
+  visit(blocks)
+
+  if (codeBlocks.length !== infoStrings.length) return
+  for (const [index, info] of infoStrings.entries()) {
+    if (info === '') (codeBlocks[index].props as { language: string }).language = ''
   }
 }
 
@@ -263,6 +303,13 @@ export async function markdownToYFragment(
   notePath?: string
 ): Promise<boolean> {
   const parsed = parseCriticMarkup(markdown)
+  // Reference definitions ride beside the document in two Y.Arrays: the editor
+  // has no block for one, so the definition is dropped and the destination
+  // inlined at every use site, and the arrays are what puts both back (#1909).
+  // The parse still sees the definitions — without them `[docs][d]` is literal
+  // bracket text to CommonMark, not a link, and the note would open with every
+  // reference link dead on screen.
+  const references = stripLinkReferenceDefinitions(parsed.plainText)
   const blocks = await markdownToBlocks(parsed.plainText, notePath)
   if (!blocks) return false
   // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes so the renderer
@@ -271,6 +318,7 @@ export async function markdownToYFragment(
   const ok = blocksToYFragment(normalized, fragment)
   if (ok && fragment.doc) {
     writeCriticMarkupMarksToYDoc(fragment.doc, parsed.marks)
+    writeLinkReferencesToYDoc(fragment.doc, references.definitions, references.usages)
   }
   return ok
 }
@@ -497,6 +545,13 @@ async function parseMaskedMarkdown(
   for (const segment of splitMarkdownByToggles(markdown)) {
     if (segment.kind === 'toggle') {
       blocks.push(await parseToggleSegment(editor, segment))
+    } else if (segment.kind === 'gap') {
+      // Blank lines the user left at a toggle's edge. Same currency, and the
+      // same empty paragraphs, as a gap the blank-line scanner finds inside a
+      // markdown segment (#1877).
+      for (let i = 0; i < segment.extraLines; i++) {
+        blocks.push(createEmptyParagraph())
+      }
     } else {
       blocks.push(...(await parseMarkdownWithoutToggles(editor, segment.text)))
     }
@@ -530,7 +585,7 @@ async function parseMarkdownWithoutToggles(
 
   for (const seg of segments) {
     if (seg.type === 'content') {
-      blocks.push(...(await parseContentWithColorMarkers(editor, seg.text)))
+      blocks.push(...(await parseContentWithMarkers(editor, seg.text)))
     } else {
       for (let i = 0; i < seg.extraLines; i++) {
         blocks.push(createEmptyParagraph())
@@ -541,26 +596,23 @@ async function parseMarkdownWithoutToggles(
   return blocks
 }
 
-async function parseContentWithColorMarkers(
+async function parseContentWithMarkers(
   editor: ServerBlockNoteEditor,
   text: string
 ): Promise<Block[]> {
   const blocks: Block[] = []
   let buffer: string[] = []
-  let pendingColors: BlockColors | null = null
-  let pendingTableColors: TableCellColors | null = null
+  let pending: SidecarPatch[] = []
+
+  const applyPending = (block: Block | undefined): void => {
+    if (block) for (const apply of pending) apply(block as unknown as MarkedBlock)
+    pending = []
+  }
 
   const flushBuffer = async (): Promise<void> => {
     if (buffer.length === 0) return
     const parsed = await parseMarkdownChunkPreservingNesting(editor, buffer.join('\n'))
-    if (pendingColors && parsed[0]) {
-      parsed[0].props = { ...parsed[0].props, ...pendingColors }
-    }
-    if (pendingTableColors && parsed[0]) {
-      applyTableCellColors(parsed[0].content, pendingTableColors)
-    }
-    pendingColors = null
-    pendingTableColors = null
+    applyPending(parsed[0])
     blocks.push(...parsed)
     buffer = []
   }
@@ -579,19 +631,18 @@ async function parseContentWithColorMarkers(
     // and its bytes stay untouched, which is what keeps `> [!note]` in an
     // Obsidian vault byte-identical through Memry.
     if (!insideFence) {
-      // A colors marker sits directly above the block it colors, so a claim
-      // right after one is still a paragraph start.
-      const atParagraphStart =
-        i === 0 ||
-        lines[i - 1].trim() === '' ||
-        (buffer.length === 0 && (pendingColors !== null || pendingTableColors !== null))
+      const afterSidecarMarker = buffer.length === 0 && pending.length > 0
+      const atParagraphStart = i === 0 || lines[i - 1].trim() === '' || afterSidecarMarker
       const claimed = await parseCalloutRunAt(editor, lines, i, atParagraphStart)
       if (claimed) {
         await flushBuffer()
-        const props = { type: claimed.type, ...(pendingColors ?? {}) }
-        pendingColors = null
-        pendingTableColors = null
-        blocks.push({ type: 'callout', props, content: claimed.content } as unknown as Block)
+        const callout = {
+          type: 'callout',
+          props: { type: claimed.type },
+          content: claimed.content
+        } as unknown as Block
+        applyPending(callout)
+        blocks.push(callout)
         for (let consumed = i + 1; consumed < claimed.end; consumed++) {
           fence.consume(lines[consumed])
         }
@@ -602,15 +653,14 @@ async function parseContentWithColorMarkers(
       const quoted = atParagraphStart ? await parseQuoteRunAt(editor, lines, i) : null
       if (quoted) {
         await flushBuffer()
-        const props = { ...(pendingColors ?? {}) }
-        pendingColors = null
-        pendingTableColors = null
-        blocks.push({
+        const quote = {
           type: 'quote',
-          props,
+          props: {},
           content: quoted.content,
           children: quoted.children
-        } as unknown as Block)
+        } as unknown as Block
+        applyPending(quote)
+        blocks.push(quote)
         for (let consumed = i + 1; consumed < quoted.end; consumed++) {
           fence.consume(lines[consumed])
         }
@@ -620,35 +670,20 @@ async function parseContentWithColorMarkers(
     }
 
     // Deliberately NOT fence-guarded: this branch predates custom-block parsing
-    // and guarding it would drop a colour marker that follows a fence this
+    // and guarding it would drop a sidecar marker that follows a fence this
     // tracker read differently, which is data loss on a path #1432 never
     // touched. The renderer's twin (markdown-utils.ts) is unguarded too.
-    if (BLOCK_COLORS_LINE_REGEX.test(trimmed)) {
-      const colors = parseBlockColorsMarker(trimmed)
-      if (colors) {
-        await flushBuffer()
-        pendingColors = colors
-        continue
-      }
-    }
-
-    // Same rule, one level down: the colors of the individual cells of the
-    // table that follows. `flushBuffer` returns early on an empty buffer, so
-    // the two markers can sit on consecutive lines without clearing each other.
-    if (TABLE_CELL_COLORS_LINE_REGEX.test(trimmed)) {
-      const cellColors = parseTableCellColorsMarker(trimmed)
-      if (cellColors) {
-        await flushBuffer()
-        pendingTableColors = cellColors
-        continue
-      }
+    const patch = parseSidecarMarkerLine(trimmed)
+    if (patch) {
+      await flushBuffer()
+      pending.push(patch)
+      continue
     }
 
     const marker = insideFence ? null : parseCustomBlockMarkerLine(line)
     if (marker) {
       await flushBuffer()
-      pendingColors = null
-      pendingTableColors = null
+      pending = []
       blocks.push(marker)
       continue
     }
@@ -793,22 +828,6 @@ function parseHttpUrl(url: string): URL | null {
   }
 }
 
-/**
- * The marker lines a block needs in front of it to keep the colors markdown
- * cannot carry: its own text/background color, and — for a table — the colors
- * of its individual cells. Empty for everything else, which is what keeps the
- * bytes of every note without a colored block exactly as they were.
- */
-function colorMarkerLines(block: Block): string[] {
-  const lines: string[] = []
-  if (hasNonDefaultColors(block.props as BlockColors)) {
-    lines.push(serializeBlockColorsMarker(block.props as BlockColors))
-  }
-  const cellColors = extractTableCellColors(block.content)
-  if (cellColors) lines.push(serializeTableCellColorsMarker(cellColors))
-  return lines
-}
-
 async function blocksToMarkdownPreserving(
   editor: ServerBlockNoteEditor,
   blocks: Block[]
@@ -833,7 +852,7 @@ async function blocksToMarkdownPreserving(
   }
 
   for (const block of blocks) {
-    const colorMarkers = colorMarkerLines(block)
+    const markers = sidecarMarkerLines(block as unknown as MarkedBlock)
 
     if ((block.type as string) === 'taskBlock') {
       // BlockNote can't serialize a taskBlock (it's content:'none'), so emit the
@@ -858,7 +877,7 @@ async function blocksToMarkdownPreserving(
       const quoted = await serializeQuote(editor, block)
       segments.push({
         type: 'content',
-        text: colorMarkers.length > 0 ? `${colorMarkers.join('\n')}\n${quoted}` : quoted
+        text: markers.length > 0 ? `${markers.join('\n')}\n${quoted}` : quoted
       })
     } else if (isEmptyParagraph(block)) {
       if (contentGroup.length > 0) {
@@ -867,7 +886,7 @@ async function blocksToMarkdownPreserving(
         contentGroup = []
       }
       emptyCount++
-    } else if (colorMarkers.length > 0) {
+    } else if (markers.length > 0) {
       if (contentGroup.length > 0) {
         const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
         segments.push({ type: 'content', text: md.trim() })
@@ -880,7 +899,7 @@ async function blocksToMarkdownPreserving(
       const blockMd = await serializeBlocks(editor, [block] as PartialBlock[])
       segments.push({
         type: 'content',
-        text: `${colorMarkers.join('\n')}\n${blockMd.trim()}`
+        text: `${markers.join('\n')}\n${blockMd.trim()}`
       })
     } else if (hasMarkerSerializedChildren(block)) {
       if (contentGroup.length > 0) {

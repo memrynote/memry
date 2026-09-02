@@ -32,6 +32,13 @@ interface TaskRowProps {
   onProjectChange?: (projectId: string) => void
   actions?: React.ReactNode
   renderTitle?: () => React.ReactNode
+  /**
+   * False while the row stands in for a task that has not resolved to a
+   * `tasks` row. The status, priority and project controls then render as
+   * static displays: a control that cannot reach a row must not look
+   * clickable (#1907).
+   */
+  interactive?: boolean
 }
 
 // ============================================================================
@@ -70,7 +77,8 @@ export const TaskRow = ({
   onShiftSelect,
   onProjectChange,
   actions,
-  renderTitle
+  renderTitle,
+  interactive = true
 }: TaskRowProps): React.JSX.Element => {
   const {
     settings: { clockFormat }
@@ -122,9 +130,9 @@ export const TaskRow = ({
   return (
     <div
       role="button"
-      tabIndex={onClick ? 0 : -1}
-      onClick={handleRowClick}
-      onKeyDown={onClick ? handleRowKeyDown : undefined}
+      tabIndex={onClick && interactive ? 0 : -1}
+      onClick={interactive ? handleRowClick : undefined}
+      onKeyDown={onClick && interactive ? handleRowKeyDown : undefined}
       className={cn(
         'group flex items-center py-[7px] px-6 gap-3 transition-colors',
         'rounded-md hover:bg-muted',
@@ -134,6 +142,7 @@ export const TaskRow = ({
         className
       )}
       aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}`}
+      aria-busy={!interactive || undefined}
     >
       {isSelectionMode && showSelection && (
         <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -152,11 +161,13 @@ export const TaskRow = ({
         isCompleted={isCompleted}
         onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
         onToggleComplete={() => onToggleComplete(task.id)}
+        disabled={!interactive}
       />
 
       <InlinePriorityPopover
         priority={task.priority}
         onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
+        disabled={!interactive}
       />
 
       {renderTitle ? (
@@ -180,7 +191,7 @@ export const TaskRow = ({
 
       {task.tags.length > 0 && <TaskTagsBadge tags={task.tags} className="shrink-0" />}
 
-      {showProjectBadge && onProjectChange ? (
+      {showProjectBadge && onProjectChange && interactive ? (
         <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <InteractiveProjectBadge
             projectId={task.projectId}

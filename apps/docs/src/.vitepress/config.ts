@@ -91,7 +91,8 @@ function unifiedSidebar() {
             { text: 'Activity Log', link: '/user-guide/tasks/activity-log' },
             { text: 'Drag & Drop', link: '/user-guide/tasks/drag-and-drop' },
             { text: 'Import from Todoist', link: '/user-guide/tasks/import-todoist' },
-            { text: 'Import from TickTick', link: '/user-guide/tasks/import-ticktick' }
+            { text: 'Import from TickTick', link: '/user-guide/tasks/import-ticktick' },
+            { text: 'Import from Obsidian Tasks', link: '/user-guide/tasks/import-obsidian' }
           ]
         },
         {

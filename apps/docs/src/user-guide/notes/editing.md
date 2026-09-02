@@ -51,6 +51,11 @@ Use the row and column handles on the edge of a table to toggle a header row or
 a header column on and off. The same table controls are available in task
 descriptions and in inbox items.
 
+A column width you drag is kept when you leave the note and when you restart the
+app. Like cell colours, it is stored as a comment line above the table that
+other markdown editors ignore. Row heights are not stored, because the editor
+has no row height to store.
+
 ### The handles on the border lines
 
 Put the pointer in a cell and three small grey marks appear, on the table's own
@@ -164,9 +169,27 @@ Both survive a save, byte for byte. A note written in Obsidian with multi-paragr
 nested quotes opens here and is written back exactly as its author wrote it, so the two
 apps can edit the same vault without either one reflowing the other's quotes.
 
-One shape is still flattened: a nested quote written without the blank line between the
-levels (`> Outer` directly above `> > Inner`) is read as a single quote and saved that
-way.
+A nested quote written without the blank line between the levels (`> Outer` directly
+above `> > Inner`) keeps its nesting too, but not its exact bytes: the blank quote line
+is added on the first save, and the file stops changing after that. Markdown reads both
+spellings as the same nested quote, and a note can only be saved in one of them.
+
+## Toggle lists
+
+A toggle is written to disk as a `<details>` section, so GitHub and Obsidian render it as
+a real collapsible block. The blank lines around it belong to whoever wrote the file: an
+extra blank line above a toggle, below it, or between two of them is still there the next
+time the note is opened.
+
+Two shapes are deliberately left alone rather than adopted:
+
+- A `<details>` written by hand, without Memry's own marker attribute, does not become a
+  toggle. It stays exactly as its author wrote it, tags and all, so a vault shared with
+  Obsidian keeps its hand-written collapsible sections.
+- A toggle whose closing `</details>` is missing — half-typed, or cut short in transit —
+  is not closed for you. Its `<details>` and `<summary>` lines stay in the note as
+  literal text, so nothing is lost; close the block by hand and it becomes a real toggle
+  on the next open.
 
 ## Title
 
@@ -187,7 +210,7 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 - **Local graph** — show or hide the note's local link graph
 - **Find…** — open in-note search (also <kbd>⌘</kbd>+<kbd>F</kbd>)
 - **Version history** — browse and restore past versions
-- **Export** — export the note to PDF or HTML
+- **Export** — export the note to PDF or HTML. Both formats embed the note's images in the exported file itself, so the PDF prints them and an exported `.html` keeps them after you move or send it
 - **Apply template** — insert a template into the note
 - **Full width** — toggle the wide editor layout
 
@@ -232,6 +255,8 @@ A bookmark card is the one exception: its whole surface is a link, so clicking i
 Inside a table, dragging selects **cells**, not blocks — a drag from one cell to another selects the range between them, and <kbd>Backspace</kbd> then clears those cells and leaves the table standing. To select the table itself as a block, begin the drag in the margin beside it, the same as for any other block.
 
 With blocks selected, <kbd>Backspace</kbd> deletes them, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent them, and <kbd>Esc</kbd> clears the selection.
+
+Text selected across several blocks works the same way: <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent every block the selection touches, and a single undo reverts the whole step. A block that is already as far left as it can go is left where it is; the rest still move.
 
 One consequence worth knowing: the empty space to the right of a short line still counts as that line's text, so the right-hand margin outside the column is the place to begin a right-side block selection.
 
@@ -286,6 +311,10 @@ Markdown has no syntax for underline, text color or highlight, so those are writ
 Color and underline are kept on separate nested spans, so an older version of MemryNote opening the same vault still reads the color.
 
 Formatting applied in MemryNote round-trips. Underline written any other way — Obsidian's `<u>` tags, for example — is not read back, and is dropped the next time MemryNote saves the note.
+
+### Text alignment
+
+Centring a paragraph, or aligning it right or justified, is kept when you leave the note and when you restart MemryNote. Markdown has no syntax for alignment, so it is stored as a comment line above the paragraph (`<!-- align:center -->`) that other markdown editors ignore. Left alignment is the default and writes nothing.
 
 ### Text colours
 
@@ -493,3 +522,26 @@ are making at the same time is not thrown away.
 memrynote will not write over bytes it has not read. If a note's file has changed since
 memrynote last looked at it, the app leaves the file alone until it has taken that change in,
 rather than saving an older version of the note over it.
+
+memrynote will not write over a file it has never read at all. Pointing memrynote at an
+existing vault lists every note straight away, from the filename and timestamps alone. Until a
+note is opened, its file is left exactly as its author wrote it — a background sync round that
+touches that note skips the save rather than replacing bytes nobody here has looked at.
+
+## Opening a Note Written Somewhere Else
+
+Opening a note that another app wrote reads its markdown into memrynote's editor, and saving it
+afterwards writes memrynote's markdown back. The two are not always byte-for-byte the same. What
+is guaranteed is that nothing is _lost_ on the way through:
+
+- **A hard line break stays a hard line break.** A line ending in two spaces keeps them, so the
+  break stays a break rather than becoming a paragraph gap.
+- **A reference-style link keeps both halves.** `[the docs][d]` and its `[d]: https://…`
+  definition both survive, including a definition several links share. The link stays a working,
+  clickable link while the note is open. Definitions are gathered at the end of the file.
+- **A code fence with no language keeps no language.** A bare ` ` ``` fence is not given one,
+  which is what an Obsidian Kanban board's settings block needs to keep working.
+
+Some cosmetic details are normalized to one house style: `*` and `+` bullets become `-`, `_em_`
+becomes `*em*`, an underlined `Title` heading becomes `# Title`, and a `~~~` fence becomes a
+` ``` ` one. These change how the file is spelled, never what it says.

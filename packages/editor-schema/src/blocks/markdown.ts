@@ -176,6 +176,13 @@ export interface QuoteRun {
   raw: string
   /** Index of the first line after the run. */
   end: number
+  /**
+   * The run carries a second `>` level. Declining such a run is not free: the
+   * flat fallback deletes the level outright, so `> Outer\n> > Inner` comes
+   * back `> Outer\n> Inner` and a nested `> > [!warning]` callout comes back as
+   * literal text (#1881).
+   */
+  nested: boolean
 }
 
 /**
@@ -198,35 +205,49 @@ export function readStructuredQuoteRun(lines: readonly string[], start: number):
 
   const inner: string[] = []
   let end = start
-  let structured = false
+  let separated = false
+  let nested = false
 
   while (end < lines.length && lines[end].startsWith('>')) {
     const line = lines[end]
     if (line === '>') {
       inner.push('')
-      structured = true
+      separated = true
     } else if (line.startsWith('> ')) {
       const stripped = line.slice(2)
       inner.push(stripped)
-      if (stripped.startsWith('>')) structured = true
+      if (stripped.startsWith('>')) nested = true
     } else {
       return null
     }
     end++
   }
 
-  if (!structured) return null
-  return { innerMarkdown: inner.join('\n'), raw: lines.slice(start, end).join('\n'), end }
+  if (!separated && !nested) return null
+  return { innerMarkdown: inner.join('\n'), raw: lines.slice(start, end).join('\n'), end, nested }
 }
 
 /**
  * Decide whether a run may become a quote block that owns children, by proof
  * rather than by pattern — the same rule `resolveCalloutRun` applies: parse the
- * stripped inner markdown, and claim only if re-serializing and re-quoting it
- * reproduces the run byte-for-byte. Anything the schema would normalize
- * declines and the caller leaves the bytes exactly as they were. A lazily
- * continued `> A\n> > B` is one such run: its inner blocks only come back
- * through a blank separator the author never wrote.
+ * stripped inner markdown, then check what re-serializing and re-quoting it
+ * gives back.
+ *
+ * Reproducing the run byte-for-byte claims it, and that is the only outcome a
+ * run with just a blank `>` separator accepts. Anything else declines and the
+ * caller leaves the bytes exactly as they were.
+ *
+ * A run carrying a `> >` level gets a second chance, because declining it is
+ * not free. Lazy continuation (`> Outer\n> > Inner`, no blank line between the
+ * levels) is AST-identical to the separator form `> Outer\n>\n> > Inner`, and a
+ * block tree has nowhere to record which of the two spellings it was read from,
+ * so exactly one of them can round-trip and the separator form is the one that
+ * does. The cost of declining is not the missing separator, it is that the flat
+ * fallback deletes the `>` level: `> Outer\n> Inner`, and a foreign
+ * `> > [!warning]` callout demoted to literal text (#1881). So a nested run is
+ * claimed when its canonical form settles — when re-reading and re-parsing
+ * those bytes reproduces them — which trades an unreachable byte identity for a
+ * one-step normalization that keeps the nesting.
  *
  * The first inner block becomes the quote's own content and the rest its
  * children, which is the list `serializeQuoteBlock` is handed on the way out.
@@ -243,10 +264,36 @@ export async function resolveQuoteRun(
   // correctly — claiming it would only route identical bytes through more code.
   if (children.length === 0) return null
 
-  const roundTripped = (await serializeBlocks(parsed)).trim()
-  if (serializeQuoteBlock(roundTripped) !== run.raw) return null
+  const canonical = serializeQuoteBlock((await serializeBlocks(parsed)).trim())
+  if (canonical !== run.raw) {
+    if (!run.nested) return null
+    if (!(await settles(canonical, parseMarkdown, serializeBlocks))) return null
+  }
 
   return { content: first.content ?? [], children }
+}
+
+/**
+ * Whether `canonical` is a fixed point of this same seam: it reads back as one
+ * whole quote run, and re-parsing and re-quoting that run returns it unchanged.
+ * A run that settles is written once and then left alone on every later save,
+ * so the vault file stops moving after the first write.
+ */
+async function settles(
+  canonical: string,
+  parseMarkdown: (markdown: string) => Promise<ParsedBlockShape[]>,
+  serializeBlocks: (blocks: ParsedBlockShape[]) => Promise<string>
+): Promise<boolean> {
+  const lines = canonical.split('\n')
+  const reread = readStructuredQuoteRun(lines, 0)
+  if (!reread || reread.end !== lines.length) return false
+
+  const reparsed = await parseMarkdown(reread.innerMarkdown)
+  const [first, ...children] = reparsed
+  if (!first || first.type !== 'paragraph' || first.children?.length) return false
+  if (children.length === 0) return false
+
+  return serializeQuoteBlock((await serializeBlocks(reparsed)).trim()) === canonical
 }
 
 // ---------------------------------------------------------------------------
@@ -423,7 +470,19 @@ export interface ToggleMarkdownSegment {
   text: string
 }
 
-export type ToggleContentSegment = ToggleBlockSegment | ToggleMarkdownSegment
+/**
+ * Blank lines at the seam between two segments, in the same `extraLines`
+ * currency `splitMarkdownPreservingBlanks` uses inside one: the count BEYOND
+ * the single blank line that separates any two blocks. Callers turn it into
+ * that many empty paragraphs, exactly as they already do for a gap the
+ * blank-line scanner finds mid-segment.
+ */
+export interface ToggleGapSegment {
+  kind: 'gap'
+  extraLines: number
+}
+
+export type ToggleContentSegment = ToggleBlockSegment | ToggleMarkdownSegment | ToggleGapSegment
 
 export function serializeToggleBlock(
   summaryMarkdown: string,
@@ -460,23 +519,80 @@ export function serializeToggleBlock(
 }
 
 /**
+ * The three whole-line shapes `<details>` markup takes on disk. Matched against
+ * the raw line, never a trimmed one: an indented `<details>` is inside a code
+ * block or a list item, and those bytes are not this function's to touch.
+ */
+const DETAILS_MARKUP_LINE_REGEX = /^(?:<details(?:\s[^>]*)?>|<summary>.*<\/summary>|<\/details>)$/
+
+/**
+ * Escape a `<details>` markup line that no toggle claimed, so CommonMark reads
+ * it as text rather than as a raw HTML block.
+ *
+ * BlockNote's markdown parser has no block for raw HTML and drops it, which is
+ * how an unterminated toggle lost its open and summary lines on the next
+ * write-back (#1883) — and how a hand-written Obsidian `<details>` lost all
+ * three, despite the promise above that it is left as its author wrote it.
+ * Escaped, the line parses as an ordinary paragraph and remark writes the
+ * backslash back out as nothing, so the author's bytes survive every save.
+ *
+ * Every `<` on the line is escaped, not just the leading one: a
+ * `<summary>x</summary>` whose closing tag stays raw loses that tag to the same
+ * parser and comes back as `<summary>x`.
+ *
+ * The author's own backslashes are doubled FIRST, because a `\` already sitting
+ * in front of a `<` would otherwise pair with the escape being added:
+ * `<summary>C:\<path></summary>` became `...C:\\<path>...`, CommonMark read the
+ * `\\` as one literal backslash, and `<path>` was left raw for the parser to
+ * drop — the exact loss this function exists to prevent. Doubling costs nothing
+ * on the way out: CommonMark reads `\\` back as one backslash and remark writes
+ * a literal backslash bare, so a line with a backslash anywhere else is
+ * byte-identical either way. Measured both directions, `<summary>a\b</summary>`
+ * and `<summary>C:\Users\me</summary>` included.
+ */
+function escapeDetailsMarkup(line: string): string {
+  if (!DETAILS_MARKUP_LINE_REGEX.test(line)) return line
+  return line.replace(/\\/g, '\\\\').replace(/</g, '\\<')
+}
+
+/**
  * Split markdown into toggle regions and everything between them.
  *
- * Callers parse the `markdown` segments however they normally would and rebuild
- * a `toggleListItem` from each toggle segment, recursing into `body` with the
- * same parser. Splitting has to happen BEFORE the blank-line and marker-line
- * scanners: those work line by line and would shred a toggle body apart at its
- * own paragraph gaps.
+ * Callers parse the `markdown` segments however they normally would, rebuild a
+ * `toggleListItem` from each toggle segment (recursing into `body` with the
+ * same parser), and emit `extraLines` empty paragraphs for each gap segment.
+ * Splitting has to happen BEFORE the blank-line and marker-line scanners: those
+ * work line by line and would shred a toggle body apart at its own paragraph
+ * gaps. Which is also why the gaps at a toggle's own edges are this function's
+ * to carry — nothing downstream ever sees them (#1877).
  *
  * An unterminated `<details data-memry-toggle>` stays markdown. Swallowing the
  * rest of the note into a block the author never closed loses more than it
- * saves.
+ * saves. Its lines are escaped on the way into that markdown, which is what
+ * makes the decline actually preserve them (see `escapeDetailsMarkup`).
  */
 export function splitMarkdownByToggles(markdown: string): ToggleContentSegment[] {
   const lines = markdown.split('\n')
   const segments: ToggleContentSegment[] = []
   const fence = createFenceTracker()
   let buffer: string[] = []
+
+  /**
+   * One blank line is the standard paragraph break `assembleMarkdownWithBlanks`
+   * writes back on its own, so only the lines beyond it need carrying.
+   *
+   * A gap before the FIRST segment is dropped rather than carried. Assembly
+   * writes a gap as `\n\n` plus its extra lines whether or not a segment
+   * precedes it, so with nothing in front that `\n\n` is not a separator being
+   * extended — it is two more blank lines. Measured: three leading blank lines
+   * come back as four, and four as five, growing on every save. Leading blank
+   * lines therefore stay trimmed, exactly as they were before gaps existed.
+   */
+  const pushGap = (blankLines: number): void => {
+    if (segments.length > 0 && blankLines > 1) {
+      segments.push({ kind: 'gap', extraLines: blankLines - 1 })
+    }
+  }
 
   /**
    * Flush the pending markdown. Before a toggle, a trailing `<!-- colors:{…} -->`
@@ -487,16 +603,36 @@ export function splitMarkdownByToggles(markdown: string): ToggleContentSegment[]
     let marker: string | null = null
 
     if (popColorsMarker) {
-      while (buffer.length > 0 && !buffer[buffer.length - 1].trim()) buffer.pop()
-      const last = buffer[buffer.length - 1]?.trim()
+      // Scan back over the trailing blanks instead of popping them: they are
+      // the user's gap against the toggle that follows, and discarding them
+      // here was half of what collapsed it (#1877). Only the marker leaves.
+      let candidate = buffer.length - 1
+      while (candidate >= 0 && !buffer[candidate].trim()) candidate--
+      const last = buffer[candidate]?.trim()
       if (last && BLOCK_COLORS_LINE_REGEX.test(last)) {
         marker = last
-        buffer.pop()
+        buffer.splice(candidate, 1)
       }
     }
 
-    const text = buffer.join('\n').trim()
-    if (text) segments.push({ kind: 'markdown', text })
+    // The blank lines at each end of the buffer are the user's spacing against
+    // whatever segment sits on that side, and `.trim()` used to eat them
+    // (#1877). Split off as gaps instead; a buffer that is nothing BUT blanks
+    // is a single seam between two toggles, counted once.
+    let first = 0
+    while (first < buffer.length && buffer[first].trim() === '') first++
+    let afterLast = buffer.length
+    while (afterLast > first && buffer[afterLast - 1].trim() === '') afterLast--
+
+    const text = buffer.slice(first, afterLast).join('\n').trim()
+    if (text) {
+      pushGap(first)
+      segments.push({ kind: 'markdown', text })
+      pushGap(buffer.length - afterLast)
+    } else {
+      pushGap(buffer.length)
+    }
+
     buffer = []
     return marker
   }
@@ -507,7 +643,7 @@ export function splitMarkdownByToggles(markdown: string): ToggleContentSegment[]
     const region = openMatch ? readToggleRegion(lines, i, Boolean(openMatch[1])) : null
 
     if (!region) {
-      buffer.push(lines[i])
+      buffer.push(insideFence ? lines[i] : escapeDetailsMarkup(lines[i]))
       continue
     }
 

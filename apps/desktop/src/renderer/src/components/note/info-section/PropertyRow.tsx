@@ -39,6 +39,8 @@ import {
   type StatusCategories,
   type StatusCategoryKey
 } from '@memry/contracts/property-types'
+import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
 import { useCalendarProperties } from '@/hooks/use-calendar-properties'
 import { getEventBaseColor } from '@/lib/event-type-colors'
@@ -160,6 +162,7 @@ function SelectPropertyRenderer({
   onValueChange: (value: unknown) => void
 }) {
   const { getDefinition, refresh } = usePropertyDefinitions()
+  const { t } = useT('settings')
   const definition = getDefinition(property.name)
 
   const options: SelectOption[] = useMemo(() => {
@@ -188,28 +191,40 @@ function SelectPropertyRenderer({
   const handleAddOption = useCallback(
     async (option: SelectOption) => {
       const { notesService } = await import('@/services/notes-service')
-      await notesService.addPropertyOption(property.name, option)
+      try {
+        await notesService.addPropertyOption(property.name, option)
+      } catch (err) {
+        toast.error(extractErrorMessage(err, t('properties.toasts.addFailed')))
+      }
       await refresh()
     },
-    [property.name, refresh]
+    [property.name, refresh, t]
   )
 
   const handleAddStatusOption = useCallback(
     async (categoryKey: StatusCategoryKey, option: SelectOption) => {
       const { notesService } = await import('@/services/notes-service')
-      await notesService.addStatusOption(property.name, categoryKey, option)
+      try {
+        await notesService.addStatusOption(property.name, categoryKey, option)
+      } catch (err) {
+        toast.error(extractErrorMessage(err, t('properties.toasts.addFailed')))
+      }
       await refresh()
     },
-    [property.name, refresh]
+    [property.name, refresh, t]
   )
 
   const handleRemoveOption = useCallback(
     async (optionValue: string) => {
       const { notesService } = await import('@/services/notes-service')
-      await notesService.removePropertyOption(property.name, optionValue)
+      try {
+        await notesService.removePropertyOption(property.name, optionValue)
+      } catch (err) {
+        toast.error(extractErrorMessage(err, t('properties.toasts.removeFailed')))
+      }
       await refresh()
     },
-    [property.name, refresh]
+    [property.name, refresh, t]
   )
 
   if (property.type === 'status' && categories) {
@@ -511,7 +526,13 @@ export function PropertyRow({
         role="button"
         tabIndex={0}
         onClick={handleStartEdit}
+        // Only this wrapper's own keystrokes activate it. React routes synthetic
+        // events up the component tree, including out of the Radix portal the
+        // select/status pickers render into, so every editor below feeds its
+        // keydowns through here. Without the target check, `preventDefault()`
+        // deleted the space bar in every property field.
         onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
             handleStartEdit()

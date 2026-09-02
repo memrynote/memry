@@ -81,16 +81,43 @@ describe('resolveDistinctId', () => {
 
 describe('personProperties', () => {
   it('carries the batch metadata and environment', () => {
-    expect(personProperties(batchFixture(), 'production')).toEqual({
+    expect(
+      personProperties(batchFixture(), { installHash: 'hash', environment: 'production' })
+    ).toEqual({
       platform: 'darwin',
       arch: 'arm64',
       locale: 'tr-TR',
       app_version: '2026.7.1',
       build_channel: 'production',
+      auth_state: 'anonymous',
       sync_state: 'enabled',
       timezone_offset_minutes: 180,
       environment: 'production'
     })
+  })
+
+  it('adds the plan pair only when the context resolved one', () => {
+    expect(
+      personProperties(batchFixture({ authState: 'signed_in' }), {
+        installHash: 'hash',
+        accountHash: ACCOUNT_HASH,
+        environment: 'production',
+        plan: 'pro',
+        planStatus: 'active'
+      })
+    ).toMatchObject({ auth_state: 'signed_in', plan: 'pro', plan_status: 'active' })
+  })
+
+  // The plan is resolved once per session, so ~119 of every 120 batches carry no
+  // plan. Emitting `plan: undefined` on those would serialize as `$set: {plan:
+  // null}` and wipe the value the session's first batch set.
+  it('omits the plan keys entirely rather than nulling them', () => {
+    const properties = personProperties(batchFixture(), {
+      installHash: 'hash',
+      environment: 'production'
+    })
+    expect(properties).not.toHaveProperty('plan')
+    expect(properties).not.toHaveProperty('plan_status')
   })
 })
 
@@ -349,6 +376,7 @@ describe('productEvent trusted-key collisions', () => {
         'platform',
         'app_version',
         'build_channel',
+        'auth_state',
         'object_type',
         'source',
         'result',

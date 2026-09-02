@@ -40,3 +40,23 @@ const x = 1
 Visible body
 
 </details>
+
+
+<details data-memry-toggle>
+<summary>Two blank lines above me, one below</summary>
+
+Body line
+
+</details>
+
+<details>
+<summary>A hand-written details block</summary>
+
+Left exactly as its author wrote it
+
+</details>
+
+<details data-memry-toggle>
+<summary>Never closed</summary>
+
+The open and summary lines above stay in the file.

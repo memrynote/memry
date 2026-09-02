@@ -78,6 +78,8 @@ When memrynote finds an update it opens an in-app **update prompt** showing the 
 - **Skip This Version** — never prompt automatically for this version again. A manual check clears the skip so the version can surface again.
 - **Automatically download & install updates** — when enabled, future updates download in the background and install on the next quit without prompting.
 
+When a version surfaces, memrynote also opens its **release notes** as a read-only tab. That tab always opens in the background. It never takes focus from the note, template, or canvas you are working in, so an update arriving mid-edit cannot interrupt or discard what you are typing. Click it when you want to read the notes, or close it and reopen it with `Cmd/Ctrl+Shift+T`.
+
 You can also run the same check from the menu bar without opening Settings: **memrynote → Check for Updates…** on macOS, **Help → Check for Updates…** on Windows and Linux. The result is always reported as a toast — up to date, an available or ready-to-install version, or the error — and an available update still opens the update prompt unless automatic downloads are on. In a development build the toast says updates are packaged-release only.
 
 ### Language & Region
@@ -109,6 +111,18 @@ locale has finished loading.
 - **Open Pages in a New Tab** — off by default. Opening a page reuses the current tab instead of adding one, so browsing (or creating) a run of pages leaves a single tab behind; turn it on and every page you open gets its own tab. It was on by default in earlier versions: upgrading moves you to the new default once, unless you had turned the setting on or off yourself, in which case your choice is kept. It covers every sidebar row — notes, folders, projects, canvases, tags, bookmarks, and the top-level sections — plus new-note/new-canvas creation and following wiki links or backlinks inside a note. A pinned tab is never replaced — the page opens beside it — and explicit gestures always open a new tab whatever this is set to: **Open in New Tab** / **Open to the Side** from a row's context menu, middle-click (opens in the background), and ⌘/Ctrl-click on a section. Since the same release, **Open in New Tab** also works on the singleton sections (Home, Inbox, Journal, Calendar, Tasks, Graph): it opens a genuine second copy. The setting syncs across your devices.
 - **Restore Session** — reopen the previous session's tabs on launch
 - **Tab Close Button** — always visible, hover only, or active tab only
+
+### Window Behavior
+
+**Minimize to Tray** is off by default. Turn it on and closing the main window hides it to the system tray instead of closing it; memrynote keeps running and syncing. Click the tray icon to bring the window back, or use **Show memrynote** in the tray menu. The same menu has **Quit**, which exits for real.
+
+Platform differences:
+
+- On **Windows** the window leaves the taskbar while it is hidden. Left-click the tray icon to restore it, right-click for the menu.
+- On **macOS** the icon appears in the menu bar. The app also stays in the Dock, so ⌘-Tab and the Dock icon still reach it. Left-click the menu bar icon to restore the window, right-click for the menu.
+- On **Linux** the icon appears in the system tray if your desktop provides one. Use its menu, since click handling varies between desktops. A session with no system tray leaves the setting without effect and the window closes as usual, so the app can never end up hidden with no way to bring it back.
+
+The setting syncs across your devices.
 
 ### File Creation
 

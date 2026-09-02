@@ -59,7 +59,11 @@ A chord indicator briefly flashes when the prefix is active.
 | Underline        | <kbd>⌘</kbd>+<kbd>U</kbd>              |
 | Insert wiki link | Type `[[`                              |
 | Open block menu  | Type `/`                               |
+| Indent block     | <kbd>Tab</kbd>                         |
+| Outdent block    | <kbd>⇧</kbd>+<kbd>Tab</kbd>            |
 | Find in page     | <kbd>⌘</kbd>+<kbd>F</kbd>              |
+
+<kbd>Tab</kbd> and <kbd>⇧</kbd>+<kbd>Tab</kbd> act on every block in the selection, not only the one holding the cursor.
 
 With the cursor inside a table cell:
 
@@ -83,6 +87,9 @@ cell on <kbd>Esc</kbd>. See
 > <kbd>⌘</kbd>+<kbd>B</kbd> is shared on purpose: with the caret in a note it bolds
 > the selection and nothing else, and everywhere else it toggles the sidebar. Rebind
 > **Toggle Sidebar** if you would rather keep the two apart.
+
+Memry remembers whether the sidebar is open. Close it and it stays closed when you
+switch vaults and when you next start the app, until you open it again.
 
 The same shortcut reference opens from the question-mark button in the sidebar footer.
 It groups shortcuts into General, Tabs & Splits, Inbox, Journal, Notes / Editor, Tasks,

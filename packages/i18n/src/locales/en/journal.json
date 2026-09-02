@@ -196,13 +196,15 @@
       "set": "Reminder set for this journal entry",
       "deleted": "Reminder deleted",
       "dismissed": "Reminder dismissed",
-      "snoozed": "Reminder snoozed"
+      "snoozed": "Reminder snoozed",
+      "updated": "Reminder updated"
     },
     "error": {
       "set": "Failed to set reminder",
       "delete": "Failed to delete reminder",
       "dismiss": "Failed to dismiss reminder",
-      "snooze": "Failed to snooze reminder"
+      "snooze": "Failed to snooze reminder",
+      "update": "Failed to update reminder"
     }
   },
   "toast": {

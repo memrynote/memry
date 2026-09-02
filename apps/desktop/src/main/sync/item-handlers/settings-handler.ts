@@ -25,6 +25,7 @@ import { SIDEBAR_SECTION_ORDER_SETTINGS_KEY } from '../../settings/sidebar-secti
 import { SIDEBAR_NAV_COLLAPSED_SETTINGS_KEY } from '../../settings/sidebar-nav-store'
 import { createLogger } from '../../lib/logger'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
+import { applyTraySetting } from '../../tray'
 import type {
   SyncItemHandler,
   ApplyContext,
@@ -201,6 +202,9 @@ function propagateMergedSettings(merged: SyncedSettings): void {
         if (g.openPagesInNewTab !== undefined) {
           prefsUpdate.openPagesInNewTab = g.openPagesInNewTab
         }
+        if (g.minimizeToTray !== undefined) {
+          prefsUpdate.minimizeToTray = g.minimizeToTray
+        }
       }
 
       if (merged.editor) {
@@ -222,6 +226,12 @@ function propagateMergedSettings(merged: SyncedSettings): void {
     } catch (err) {
       log.warn('Failed to propagate merged settings to config.json:', err)
     }
+  }
+
+  // Outside the vaultPath guard: the tray is a process-level effect, and an
+  // inbound change has to take hold now rather than at the next restart.
+  if (merged.general?.minimizeToTray !== undefined) {
+    applyTraySetting(merged.general.minimizeToTray)
   }
 
   broadcastSettingsChanged(merged, journalBroadcast)

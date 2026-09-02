@@ -23,6 +23,15 @@ export interface RoundtripCase {
   name: string
   /** Canonical on-disk bytes: round-tripping them must be identity. */
   markdown: string
+  /**
+   * Set only when `markdown` is a spelling the block tree cannot tell apart
+   * from another case's, so identity is unreachable for one of the two. The
+   * round-trip must produce exactly these bytes and they must then round-trip
+   * to themselves, which pins both the rewrite and the fact that it happens
+   * once. Anything reachable by identity states no `canonical` — this is not an
+   * escape hatch for a serializer that merely reflows.
+   */
+  canonical?: string
   /** Sibling issue that must land before the marked pipeline can pass. */
   pending?: { renderer?: number; main?: number }
 }
@@ -151,12 +160,32 @@ const calloutCases: RoundtripCase[] = [
     markdown: '> Intro\n>\n> - one\n> - two'
   },
   {
-    // Lazy continuation: the inner blocks only come back through a blank
-    // separator the author never wrote, so the claim declines by proof and the
-    // run stays on BlockNote's flat quote path.
-    name: 'lazily continued nested quote keeps its flat bytes',
+    // #1877's defect one splitter over: the renderer reads callout and quote
+    // runs BEFORE the blank-line scanner, so a gap at their edge is trimmed
+    // away. Main reads them after, and keeps it.
+    name: 'extra blank line next to a callout survives',
+    markdown: `Before\n\n\n${serializeCalloutBlock('info', 'Body')}\n\n\nAfter`,
+    pending: { renderer: 1892 }
+  },
+  {
+    // Lazy continuation, the one shape in this group that cannot be identity:
+    // it parses to the same block tree as `plain quote with a blank separator
+    // line` nested, and the tree has nowhere to record which of the two
+    // spellings it was read from, so only one of them can round-trip. It
+    // normalizes onto the separator form in one write and stops moving. What
+    // was actually at stake is the `>` level: before this, the flat fallback
+    // deleted it and the run came back `> Outer\n> Inner`.
+    name: 'lazily continued nested quote normalizes onto the separator form',
     markdown: '> Outer\n> > Inner',
-    pending: { renderer: 1881, main: 1881 }
+    canonical: '> Outer\n>\n> > Inner'
+  },
+  {
+    // The same normalization on the shape #1881 was filed over: an Obsidian
+    // callout nested lazily. The flat fallback used to demote it to literal
+    // `[!warning]` text in the outer quote.
+    name: 'lazily continued nested callout keeps its nesting',
+    markdown: '> Outer\n> > [!warning] Inner\n> > Inner body',
+    canonical: '> Outer\n>\n> > [!warning] Inner\n> > Inner body'
   }
 ]
 
@@ -186,8 +215,7 @@ const toggleCases: RoundtripCase[] = [
     // splitMarkdownByToggles declines the region, but the leftover raw-HTML
     // lines then hit BlockNote's parser, which drops them (#1883).
     name: 'unterminated toggle stays literal markdown',
-    markdown: '<details data-memry-toggle>\n<summary>Unterminated</summary>\n\nBody',
-    pending: { renderer: 1883, main: 1883 }
+    markdown: '<details data-memry-toggle>\n<summary>Unterminated</summary>\n\nBody'
   },
   {
     name: 'expanded toggle keeps its open attribute',
@@ -201,8 +229,63 @@ const toggleCases: RoundtripCase[] = [
     // splitMarkdownByToggles trims the gap out of its markdown segments before
     // the blank-line scanner runs, so the user's spacing collapses on save.
     name: 'extra blank line next to a toggle survives',
-    markdown: `Before\n\n\n${serializeToggleBlock('Summary', 'Body line')}\n\n\nAfter`,
-    pending: { renderer: 1877, main: 1877 }
+    markdown: `Before\n\n\n${serializeToggleBlock('Summary', 'Body line')}\n\n\nAfter`
+  },
+  {
+    // A gap with a toggle on BOTH sides: the whole run is one seam, so a
+    // splitter that counted it twice would double the user's spacing.
+    name: 'extra blank line between two toggles survives',
+    markdown: `${serializeToggleBlock('A', 'a')}\n\n\n${serializeToggleBlock('B', 'b')}`
+  },
+  {
+    name: 'two extra blank lines before a toggle survive',
+    markdown: `Before\n\n\n\n${serializeToggleBlock('Summary', 'Body line')}`
+  },
+  {
+    // The colors marker sits between the gap and the toggle, and finding it
+    // must not eat the gap on the way past.
+    name: 'extra blank line before a colored toggle survives',
+    markdown: `Before\n\n\n${serializeToggleBlock('Summary', 'Body line', '<!-- colors:{"backgroundColor":"blue"} -->')}`
+  },
+  {
+    // No `<summary>` at all is the other way readToggleRegion declines, and
+    // the open line is dropped by the same parser (#1883).
+    name: 'unterminated toggle with no summary keeps its open line',
+    markdown: '<details data-memry-toggle>\n\nBody'
+  },
+  {
+    name: 'unterminated expanded toggle keeps its open and summary lines',
+    markdown: '<details data-memry-toggle open>\n<summary>Unterminated</summary>\n\nBody'
+  },
+  {
+    // A `<details>` without our attribute is somebody else's bytes — Obsidian's
+    // usually. It was never claimed as a toggle, and it was never preserved
+    // either: all three markup lines went to the same parser that drops raw
+    // HTML, so a hand-written collapsible section came back as its body alone.
+    name: 'foreign details block stays the bytes its author wrote',
+    markdown: '<details>\n<summary>Foreign</summary>\n\nBody\n\n</details>'
+  },
+  {
+    name: 'orphan closing details tag stays literal markdown',
+    markdown: 'Body\n\n</details>'
+  },
+  {
+    // A backslash already in front of a bracket pairs with the escape the
+    // splitter adds, so `\<` became `\\<`: one literal backslash, and `<path>`
+    // raw again for the parser to drop.
+    name: 'declined details markup keeps a backslash next to its bracket',
+    markdown: '<details data-memry-toggle>\n<summary>C:\\<path></summary>\n\nBody'
+  },
+  {
+    name: 'declined details markup keeps a backslash that ends the line',
+    markdown: '<details data-memry-toggle>\n<summary>ends\\</summary>\n\nBody'
+  },
+  {
+    // The other side of that fix: doubling every backslash must not change a
+    // line whose backslashes are nowhere near a bracket. This case passes
+    // before and after, and fails if the escaping ever over-reaches.
+    name: 'declined details markup keeps a backslash away from its bracket',
+    markdown: '<details>\n<summary>C:\\Users\\me</summary>\n\nBody\n\n</details>'
   }
 ]
 
@@ -222,19 +305,26 @@ function tableOf(header: [string, string], row: [string, string]): string {
 
 const containerCases: RoundtripCase[] = [
   {
-    // The rich linkMention render is what a renderer-side cell serializes
-    // through, rewriting the token as a markdown link — #1865's class, second
-    // instance (the wiki-link case below is the first).
+    // A cell serializes its inline content through ProseMirror's `toDOM`, which
+    // BlockNote builds from `render` — so before #1865 the renderer's rich
+    // linkMention chip was the serializer here, and this row came back as
+    // `[example.com](https://example.com/plain)`: the token, and the domain,
+    // title, favicon and siteName riding on it, gone from disk. The date
+    // mention shares the row because it always survived — its renderer render
+    // emits the token — which is what makes the mention half the measurement
+    // rather than a guess about tables in general.
     name: 'mention and date tokens in table cells',
-    markdown: tableOf(['a', 'b'], [mention('https://example.com/plain'), date(dateMentionData())]),
-    pending: { renderer: 1865 }
+    markdown: tableOf(['a', 'b'], [mention('https://example.com/plain'), date(dateMentionData())])
   },
   {
-    // The renderer's rich wikiLink render is what a table cell serializes
-    // through, and it emits display text — the marker never comes back (#1865).
+    // Same hole, first instance: the rich wikiLink render emits the ALIAS, so
+    // `[[Roadmap]]` was written back as bare `Roadmap` and the link never came
+    // back. `#work` is here for the same reason the date mention is above — an
+    // unstyled hash tag's render is already its own text, so it survived, and a
+    // row where one cell breaks and the other does not is what pins the cause
+    // to the spec's render rather than to the table serializer.
     name: 'wiki link and hash tag in table cells',
-    markdown: tableOf(['a', 'b'], ['[[Roadmap]]', '#work']),
-    pending: { renderer: 1865 }
+    markdown: tableOf(['a', 'b'], ['[[Roadmap]]', '#work'])
   },
   {
     name: 'mention and date tokens in list items',
@@ -268,7 +358,32 @@ const blockMarkerCases: RoundtripCase[] = [
     markdown:
       '<!-- file:{"url":"memry-file://local/v/a/x.pdf","name":"x.pdf","size":1234,"mimeType":"application/pdf"} -->'
   },
-  { name: 'task block line', markdown: '- [ ] a task {task:t1}' }
+  { name: 'task block line', markdown: '- [ ] a task {task:t1}' },
+  { name: 'centred paragraph', markdown: '<!-- align:center -->\nCentred' },
+  { name: 'right-aligned heading', markdown: '<!-- align:right -->\n## Title' },
+  { name: 'justified paragraph', markdown: '<!-- align:justify -->\nJustified' },
+  {
+    name: 'centred callout',
+    markdown: `<!-- align:center -->\n${serializeCalloutBlock('info', 'Heads up')}`
+  },
+  {
+    name: 'coloured callout',
+    markdown: `<!-- colors:{"textColor":"red"} -->\n${serializeCalloutBlock('warning', 'Careful')}`
+  },
+  {
+    name: 'table with a dragged column width',
+    markdown: `<!-- table-layout:{"columnWidths":[120,null]} -->\n${tableOf(['Name', 'Status'], ['Ship', 'Done'])}`
+  },
+  {
+    // The two table markers in on-disk order; a table can carry both and the
+    // second pass has to reproduce that order exactly.
+    name: 'table with cell colours and a dragged column width',
+    markdown: [
+      '<!-- table-colors:{"0:0":{"textColor":"red"}} -->',
+      '<!-- table-layout:{"columnWidths":[120,null]} -->',
+      tableOf(['Name', 'Status'], ['Ship', 'Done'])
+    ].join('\n')
+  }
 ]
 
 export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
@@ -422,10 +537,10 @@ function fuzzMixedDocumentMarkdown(random: () => number): string {
     return inertLine(random)
   }
   const parts = Array.from({ length: 2 + Math.floor(random() * 4) }, nextPart)
-  // A '\n\n\n' join would trip #1877 (gaps adjacent to toggles collapse);
-  // the static corpus case pins that bug, so this family stays green to keep
-  // catching everything else.
-  return parts.join('\n\n')
+  // Joined on a gap, not a plain paragraph break: an extra blank line next to
+  // a toggle or a callout is exactly what #1877 collapsed, so the generator
+  // now puts one at every seam and the family fails if it ever collapses again.
+  return parts.join('\n\n\n')
 }
 
 export interface FuzzFamily {
@@ -439,5 +554,11 @@ export const FUZZ_FAMILIES: readonly FuzzFamily[] = [
   { name: 'date pill payloads', generate: fuzzDateMarkdown },
   { name: 'callout bodies', generate: fuzzCalloutMarkdown },
   { name: 'toggle summaries and bodies', generate: (random) => fuzzToggleMarkdown(random) },
-  { name: 'mixed documents', generate: fuzzMixedDocumentMarkdown }
+  {
+    name: 'mixed documents',
+    generate: fuzzMixedDocumentMarkdown,
+    // The gap join reaches a callout's edge too, and the renderer's
+    // blockquote splitter still trims those (#1892). Main is already green.
+    pending: { renderer: 1892 }
+  }
 ]

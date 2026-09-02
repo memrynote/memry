@@ -403,8 +403,8 @@ sync server transforms each accepted desktop event into a PostHog event
 (`services/posthog.ts`, `capturePostHogEvents`). Event names are preserved from the existing
 50-event contract, with one rename: `page_viewed` → `$pageview`, which unlocks PostHog's native
 path-analysis and web-analytics views. Batch metadata (platform, arch, locale, app version, build
-channel, sync state, timezone offset) becomes person properties (`$set`); the event's own
-`dimensions` are flattened onto event properties first, then overwritten by server-derived keys
+channel, auth state, sync state, timezone offset) becomes person properties (`$set`); the event's
+own `dimensions` are flattened onto event properties first, then overwritten by server-derived keys
 (`surface`, `action`, `environment`, `session_id`) so a client can never spoof a trusted key by
 naming a dimension after it. Server-side business and error events (`services/analytics.ts`) post
 to the same capture API, tagged `surface: 'server'`, so one PostHog project holds every event from
@@ -501,6 +501,33 @@ install unlinked.
 
 Diagnostic reports resolve identity through the same `resolveDistinctId` path as events and logs,
 so a report lands on the same person profile as the events around it.
+
+### Usage segmentation
+
+Two dimensions exist so "how many people use MemryNote" can be split without identifying anyone.
+
+`auth_state` (`anonymous` | `signed_in` | `signed_out`) comes straight from the batch and is
+written as **both** an event property and a person property. The event property is the one to
+break down on: a person property holds the latest value, which answers "is this install signed in
+now" rather than "had yesterday's active users ever signed up".
+
+`plan` and `plan_status` are person properties only, read from `sync_entitlements` by
+`resolveTelemetryPlan` — never sent by the client, which must not be trusted with a dimension like
+`free` vs `pro`. They resolve **once per app session**, behind the same `claimIdentifySession`
+claim that gates `$identify`, so the lookup costs one D1 row per session rather than one per ~30s
+batch. Every other batch omits both keys entirely rather than sending them as `null`, which would
+wipe what the session's first batch wrote. The status travels with the plan so a canceled `pro`
+cannot be counted as a paying user. `resolveTelemetryPlan` fails closed to `undefined`: a token
+whose account row is gone costs one person property, never the whole batch.
+
+`resolveTelemetryAccount` returns the raw `userId` alongside `accountHash` purely so this lookup
+can read the account's own rows. It stays inside the worker — `accountHash` remains the only
+identity that reaches PostHog.
+
+Note that an install which merely runs in the background still produces telemetry, so counting
+unique persons over "all events" measures _installs that were running_, not _people who used the
+app_. `app_active_heartbeat` (emitted only while a window is focused) or a real product event is
+the honest signal for the latter.
 
 **Known limitation:** telemetry identity is verified but **not revocation-checked**. A revoked
 device's still-unexpired access token (≤15 min) can attribute telemetry until it lapses. Telemetry

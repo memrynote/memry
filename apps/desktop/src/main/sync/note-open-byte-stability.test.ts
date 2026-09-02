@@ -103,8 +103,13 @@ vi.mock('@main/database/queries/notes', () => ({
 
 vi.mock('@memry/storage-data', () => ({ getNoteMetadataById: () => null }))
 
+// The real one re-measures the bytes it just wrote, and the write-back's guard
+// reads that hash on the next pass. Stubbing it to nothing would make a second
+// open look like an external edit and stop writing.
 vi.mock('../vault/note-sync', () => ({
-  syncNoteToCache: vi.fn(),
+  syncNoteToCache: vi.fn((_db: unknown, note: { fileContent: string }) => {
+    mocks.noteRow = { ...mocks.noteRow, contentHash: generateContentHash(note.fileContent) }
+  }),
   deleteNoteFromCache: vi.fn()
 }))
 
@@ -154,7 +159,7 @@ import {
   yDocToMarkdown,
   yFragmentToBlocks
 } from './blocknote-converter'
-import { parseNote } from '../vault/frontmatter'
+import { generateContentHash, parseNote } from '../vault/frontmatter'
 import {
   cancelPendingWritebacks,
   flushPendingWritebacks,
@@ -272,6 +277,11 @@ async function openNote(absolutePath: string): Promise<Y.Doc> {
   const parsed = parseNote(raw, absolutePath)
   const ok = await markdownToYFragment(parsed.content, fragmentOf(doc), REL_PATH)
   expect(ok).toBe(true)
+  // The seed records the hash of the bytes it built the doc from, so the
+  // write-back knows this file has been read. Without it the write-back
+  // correctly refuses to touch a file nothing here has looked at (#1909), and
+  // every case in this file would pass by never saving at all.
+  if (mocks.noteRow) mocks.noteRow = { ...mocks.noteRow, contentHash: generateContentHash(raw) }
   return doc
 }
 

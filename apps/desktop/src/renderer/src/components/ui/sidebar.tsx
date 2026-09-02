@@ -21,15 +21,17 @@ import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/use-keyboar
 import { isRichTextFocused } from '@/hooks/use-keyboard-shortcuts'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { useT } from '@memry/i18n/renderer'
+import { createLogger } from '@/lib/logger'
 
-const SIDEBAR_COOKIE_NAME = 'sidebar_state'
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH_MOBILE = '18rem'
 const SIDEBAR_WIDTH_ICON = '3rem'
 const SIDEBAR_WIDTH_DEFAULT_PX = 256
 const SIDEBAR_WIDTH_MIN_PX = 171
 const SIDEBAR_WIDTH_MAX_PX = 480
 const SIDEBAR_STORAGE_KEY = 'sidebar_width'
+const SIDEBAR_OPEN_STORAGE_KEY = 'sidebar_open'
+
+const log = createLogger('Sidebar')
 
 type SidebarContextProps = {
   state: 'expanded' | 'collapsed'
@@ -74,10 +76,10 @@ function SidebarProvider({
 
   const [_open, _setOpen] = React.useState(() => {
     try {
-      const match = document.cookie.match(new RegExp(`${SIDEBAR_COOKIE_NAME}=([^;]+)`))
-      if (match) return match[1] === 'true'
-    } catch {
-      /* cookie unavailable */
+      const stored = localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY)
+      if (stored !== null) return stored === 'true'
+    } catch (error) {
+      log.error('Failed to read the sidebar open state', error)
     }
     return defaultOpen
   })
@@ -90,7 +92,11 @@ function SidebarProvider({
       } else {
         _setOpen(openState)
       }
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+      try {
+        localStorage.setItem(SIDEBAR_OPEN_STORAGE_KEY, String(openState))
+      } catch (error) {
+        log.error('Failed to persist the sidebar open state', error)
+      }
     },
     [setOpenProp, open]
   )

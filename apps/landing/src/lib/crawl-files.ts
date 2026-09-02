@@ -1,4 +1,5 @@
 import { ALTERNATIVES } from './alternatives'
+import { BLOG_POSTS } from './blog'
 import { BASE_URL, PAGE_META } from './seo'
 
 export function toAbsoluteUrl(path: string) {
@@ -85,6 +86,11 @@ export function buildLlmsTxt(): string {
     page('/features/calendar'),
     page('/features/ai-agent'),
     page('/features/web-clipper'),
+    '',
+    '## Blog & Editorial Guides',
+    '',
+    page('/blog', PAGE_META.blog.description),
+    ...BLOG_POSTS.map((post) => page(`/blog/${post.slug}`, post.description)),
     '',
     '## About',
     '',

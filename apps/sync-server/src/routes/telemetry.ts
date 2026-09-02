@@ -17,7 +17,11 @@ import {
   productEvent,
   resolveDistinctId
 } from '../services/posthog-transform'
-import { hashTelemetryId, resolveTelemetryAccountHash } from '../services/telemetry'
+import {
+  hashTelemetryId,
+  resolveTelemetryAccount,
+  resolveTelemetryPlan
+} from '../services/telemetry'
 import { claimIdentifySession } from '../services/telemetry-identify'
 import type { AppContext } from '../types'
 
@@ -46,22 +50,41 @@ telemetry.post('/batch', async (c) => {
   }
 
   const batch = parsed.data
-  const [installHash, accountHash] = await Promise.all([
+  const [installHash, account] = await Promise.all([
     hashTelemetryId(c.env.TELEMETRY_HMAC_KEY, batch.installId),
     // /telemetry/* still bypasses the auth middleware — a bad or absent bearer
-    // must never reject telemetry. resolveTelemetryAccountHash returns undefined
-    // in that case and the batch reports anonymously against installHash.
-    // It returns the HMAC of the account id, never the raw id.
-    resolveTelemetryAccountHash(
+    // must never reject telemetry. resolveTelemetryAccount returns undefined in
+    // that case and the batch reports anonymously against installHash. Its
+    // accountHash is the HMAC of the account id, never the raw id.
+    resolveTelemetryAccount(
       c.req.header('Authorization'),
       c.env.JWT_PUBLIC_KEY,
       c.env.TELEMETRY_HMAC_KEY
     )
   ])
+  const accountHash = account?.accountHash
+
+  // $identify merges the anonymous install person into the account person
+  // PERMANENTLY, and the desktop flushes roughly every 30s. claimIdentifySession
+  // is the once-per-session guard that keeps this to one merge per app session
+  // instead of ~120/hour. It doubles as the guard for the billing-plan lookup
+  // below: both are per-session facts, so one claim pays for both and the plan
+  // read costs one D1 row per session rather than one per batch.
+  const identifyClaimed = accountHash
+    ? await claimIdentifySession(c.env.DB, batch.sessionId, accountHash)
+    : false
+  // Server-resolved, never client-supplied: the desktop does not send a plan and
+  // must not be trusted to, since `free`/`pro` is exactly the kind of dimension a
+  // tampered client would inflate.
+  const plan =
+    identifyClaimed && account ? await resolveTelemetryPlan(c.env.DB, account.userId) : undefined
+
   const ctx = {
     installHash,
     accountHash,
-    environment: c.env.ENVIRONMENT ?? 'unknown'
+    environment: c.env.ENVIRONMENT ?? 'unknown',
+    plan: plan?.plan,
+    planStatus: plan?.planStatus
   }
   const distinctId = resolveDistinctId(ctx)
 
@@ -83,16 +106,9 @@ telemetry.post('/batch', async (c) => {
     if (granted < exceptions.length) exceptions = exceptions.slice(0, granted)
   }
 
-  // $identify merges the anonymous install person into the account person
-  // PERMANENTLY, and the desktop flushes roughly every 30s. claimIdentifySession
-  // is the once-per-session guard that keeps this to one merge per app session
-  // instead of ~120/hour. identifyEvent still returns null for an anonymous
-  // batch, so the claim is only attempted when there is an account to merge to.
-  const identify = accountHash
-    ? (await claimIdentifySession(c.env.DB, batch.sessionId, accountHash))
-      ? identifyEvent(batch, ctx)
-      : null
-    : null
+  // identifyEvent still returns null for an anonymous batch, which is why the
+  // claim above is only attempted when there is an account to merge to.
+  const identify = identifyClaimed ? identifyEvent(batch, ctx) : null
 
   safeWaitUntil(
     c,

@@ -1,6 +1,5 @@
 export type MarkdownSegment =
-  | { type: 'content'; text: string }
-  | { type: 'gap'; extraLines: number }
+  { type: 'content'; text: string } | { type: 'gap'; extraLines: number }
 
 /**
  * Split markdown into content segments and gap descriptors.
@@ -219,7 +218,8 @@ const LIST_ITEM_LINE = /^[ \t]*(?:[-*+]|\d+[.)])\s/
  *
  * - `*` bullets            → `-`
  * - blank line per item    → tight list (dropped only between two list items)
- * - `\` hard line breaks   → plain `\n` soft breaks
+ * - one `\` break          → plain `\n` soft break
+ * - two `\` breaks in a row → a two-space hard break
  *
  * Without this, editing one line of a note rewrites every unrelated list line
  * and sprays blank lines / backslashes through the file. Code fences are left
@@ -236,10 +236,22 @@ export function normalizeSerializedMarkdown(markdown: string): string {
   return out
 }
 
+// Every break inside a paragraph reaches the serializer as remark's backslash
+// form, and how many of them sit in a row is the only thing that tells the two
+// apart: the editor holds a soft break as one newline inside a text node and a
+// hard break as two, so it writes one `\` for a soft break and two for a hard
+// one. Collapsing both to a plain newline turned an author's `<br>` into a
+// paragraph gap (#1909). Three or more in a row have no spelling inside a
+// paragraph — a second blank-ish line ends it — so those keep the old collapse.
+const BACKSLASH_BREAK_RUN = /(?:\\\n)+/g
+const HARD_BREAK = '  \n'
+
 function normalizeProseMarkdown(text: string): string {
-  // Backslash hard break (remark's default) → soft newline, so typed/imported
-  // single-newline lines round-trip clean instead of gaining `\`.
-  const lines = text.replace(/\\\n/g, '\n').split('\n')
+  const lines = text
+    .replace(BACKSLASH_BREAK_RUN, (run) =>
+      run.length === 4 ? HARD_BREAK : '\n'.repeat(run.length / 2)
+    )
+    .split('\n')
   const out: string[] = []
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]

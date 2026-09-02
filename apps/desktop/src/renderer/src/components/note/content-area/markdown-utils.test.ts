@@ -878,3 +878,230 @@ describe('table cell colours (#1639)', () => {
     expect((blocks[0] as any).content.rows[0].cells[0].props).not.toHaveProperty('backgroundColor')
   })
 })
+
+/**
+ * #1936 — the non-collaborative save path's half of the table column width
+ * marker. `blocksToMarkdownLossy` drops `columnWidths` entirely, so the width a
+ * user drags only survives as a marker line in front of the table.
+ */
+describe('table column widths (#1936)', () => {
+  const TABLE_MD = ['| Name | Status |', '| --- | --- |', '| Ship | Done |'].join('\n')
+
+  const cell = (text: string) => ({
+    type: 'tableCell',
+    content: [{ type: 'text', text, styles: {} }],
+    props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+  })
+
+  const table = (columnWidths: unknown[]) => ({
+    type: 'table',
+    props: {},
+    content: {
+      type: 'tableContent',
+      columnWidths,
+      headerRows: 1,
+      rows: [{ cells: [cell('Name'), cell('Status')] }, { cells: [cell('Ship'), cell('Done')] }]
+    },
+    children: []
+  })
+
+  const tableEditor = {
+    tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
+      markdown.includes('|') ? [table([null, null])] : []
+    ),
+    blocksToMarkdownLossy: vi.fn(async () => TABLE_MD)
+  }
+
+  const widthsOf = (block: unknown) => (block as any).content.columnWidths
+
+  it('writes the marker in front of the table whose column was dragged', async () => {
+    const markdown = await serializeBlocksPreservingBlanks(tableEditor, [
+      table([120, null])
+    ] as any[])
+
+    expect(markdown).toBe(`<!-- table-layout:{"columnWidths":[120,null]} -->\n${TABLE_MD}`)
+  })
+
+  it('writes nothing extra for a table nobody has resized', async () => {
+    const markdown = await serializeBlocksPreservingBlanks(tableEditor, [
+      table([null, null])
+    ] as any[])
+
+    expect(markdown).toBe(TABLE_MD)
+  })
+
+  it('reads the marker back onto the parsed table', async () => {
+    const markdown = `<!-- table-layout:{"columnWidths":[120,80]} -->\n${TABLE_MD}`
+
+    const blocks = await parseMarkdownPreservingBlanks(tableEditor, markdown)
+
+    expect(blocks).toHaveLength(1)
+    expect(widthsOf(blocks[0])).toEqual([120, 80])
+  })
+
+  it('truncates a marker that names more columns than the table has', async () => {
+    const markdown = `<!-- table-layout:{"columnWidths":[120,80,60]} -->\n${TABLE_MD}`
+
+    const blocks = await parseMarkdownPreservingBlanks(tableEditor, markdown)
+
+    expect(widthsOf(blocks[0])).toEqual([120, 80])
+  })
+
+  it('pads a marker that names fewer columns than the table has', async () => {
+    const markdown = `<!-- table-layout:{"columnWidths":[120]} -->\n${TABLE_MD}`
+
+    const blocks = await parseMarkdownPreservingBlanks(tableEditor, markdown)
+
+    expect(widthsOf(blocks[0])).toEqual([120, null])
+  })
+})
+
+describe('text alignment markers (#1937)', () => {
+  const serializeEditor = () => ({
+    blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+      blocks.map((block) => block.content?.[0]?.text ?? '').join('\n')
+    )
+  })
+
+  const parseEditor = () => ({
+    tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
+      markdown
+        .split('\n')
+        .filter((line) => line.trim())
+        .map((line) => ({
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: line.trim(), styles: {} }],
+          children: []
+        }))
+    )
+  })
+
+  const paragraph = (text: string, props: Record<string, unknown> = {}) => ({
+    type: 'paragraph',
+    props,
+    content: [{ type: 'text', text, styles: {} }],
+    children: []
+  })
+
+  it('writes the marker in front of a centred and a right-aligned block', async () => {
+    const editor = serializeEditor()
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, [
+      paragraph('Intro'),
+      paragraph('Centred', { textAlignment: 'center' }),
+      paragraph('Ranged', { textAlignment: 'right' })
+    ] as any[])
+
+    expect(markdown).toContain('<!-- align:center -->\nCentred')
+    expect(markdown).toContain('<!-- align:right -->\nRanged')
+    expect(editor.blocksToMarkdownLossy).toHaveBeenCalledWith([
+      expect.objectContaining({ props: { textAlignment: 'center' } })
+    ])
+  })
+
+  it('writes the marker in front of a centred heading', async () => {
+    const editor = serializeEditor()
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, [
+      { ...paragraph('Title', { level: 2, textAlignment: 'center' }), type: 'heading' }
+    ] as any[])
+
+    expect(markdown).toBe('<!-- align:center -->\nTitle')
+  })
+
+  it('writes the marker in front of a centred callout', async () => {
+    const editor = serializeEditor()
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, [
+      {
+        type: 'callout',
+        props: { type: 'info', textAlignment: 'center' },
+        content: [{ type: 'text', text: 'Heads up', styles: {} }],
+        children: []
+      }
+    ] as any[])
+
+    expect(markdown).toBe('<!-- align:center -->\n> [!info]\n> Heads up')
+  })
+
+  it('reads the marker back onto the callout under it', async () => {
+    const editor = {
+      ...parseEditor(),
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks.map((block) => block.content?.[0]?.text ?? '').join('\n')
+      )
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      '<!-- align:center -->\n> [!info]\n> Heads up'
+    )
+
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        type: 'callout',
+        props: { type: 'info', textAlignment: 'center' },
+        content: [{ type: 'text', text: 'Heads up', styles: {} }]
+      })
+    ])
+  })
+
+  it('writes no marker for the default alignment', async () => {
+    const editor = serializeEditor()
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, [
+      paragraph('Left', { textAlignment: 'left' }),
+      paragraph('Unset')
+    ] as any[])
+
+    expect(markdown).not.toContain('align:')
+  })
+
+  it('applies the marker to the next block only', async () => {
+    const blocks = await parseMarkdownPreservingBlanks(
+      parseEditor(),
+      ['Intro', '<!-- align:center -->', 'Centred', 'Plain'].join('\n')
+    )
+
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        props: {},
+        content: [{ type: 'text', text: 'Intro', styles: {} }]
+      }),
+      expect.objectContaining({
+        props: { textAlignment: 'center' },
+        content: [{ type: 'text', text: 'Centred', styles: {} }]
+      }),
+      expect.objectContaining({ props: {}, content: [{ type: 'text', text: 'Plain', styles: {} }] })
+    ])
+  })
+
+  it('stacks a colours marker and an alignment marker onto the same block', async () => {
+    const blocks = await parseMarkdownPreservingBlanks(
+      parseEditor(),
+      ['<!-- colors:{"textColor":"red"} -->', '<!-- align:right -->', 'Both'].join('\n')
+    )
+
+    expect(blocks).toEqual([
+      expect.objectContaining({ props: { textColor: 'red', textAlignment: 'right' } })
+    ])
+  })
+
+  it('leaves a body with no marker without an alignment prop', async () => {
+    const blocks = await parseMarkdownPreservingBlanks(parseEditor(), 'An old note')
+
+    expect(blocks[0].props).not.toHaveProperty('textAlignment')
+  })
+
+  it.each(['<!-- align:left -->', '<!-- todo -->'])(
+    'hands %j to the markdown parser untouched',
+    async (comment) => {
+      const editor = parseEditor()
+
+      await parseMarkdownPreservingBlanks(editor, `${comment}\nText`)
+
+      expect(editor.tryParseMarkdownToBlocks).toHaveBeenCalledWith(`${comment}\nText`)
+    }
+  )
+})
