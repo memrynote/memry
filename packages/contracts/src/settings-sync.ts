@@ -7,6 +7,10 @@ export const SyncedSettingsSchema = z.object({
     .object({
       theme: z.enum(['light', 'dark', 'white', 'system']).optional(),
       fontSize: z.enum(['small', 'medium', 'large']).optional(),
+      // Unconstrained number, not the bounded integer the UI enforces: a value
+      // written by another device must ride along rather than fail the whole
+      // settings payload and stall every other synced setting.
+      fontSizePx: z.number().optional(),
       fontFamily: z
         .enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter'])
         .optional(),

@@ -19,8 +19,9 @@
  * - Registered as type `calendar`, defaultLayout 4x4, so its size tier is M.
  * - Rows render as <li data-testid="calendar-event"> containing the title.
  * - The body filters out `visualType === 'task'`, so a seeded task never shows.
- * - The range is the local calendar date pinned to UTC hours, so events must
- *   be seeded inside it.
+ * - The range is the local day, `[local midnight, next local midnight)` from
+ *   `localDayRange`, so events must be seeded inside it (#1920). The header's
+ *   event count reads the same window through the same query key.
  */
 
 import { test, expect } from './fixtures'
@@ -73,18 +74,16 @@ function calendarRows(page) {
 }
 
 /**
- * An ISO instant inside the widget's range, which is the LOCAL calendar date
- * pinned to UTC hours (`todayCalendarRange`). Building the day from UTC
- * components instead would seed the wrong day whenever the local date and the
- * UTC date disagree, e.g. any evening east of UTC. Clamped away from both
+ * An ISO instant at a local wall-clock hour today, which is what the widget's
+ * range is now built from (`localDayRange`, #1920). A UTC hour on the local
+ * date was the old seed, and it only landed inside the window because the
+ * window was pinned to UTC too; at offsets past +/-12 it would have missed.
+ * A local hour is inside the local day at every offset. Clamped away from both
  * edges so the event cannot land on the neighbouring day.
  */
-function todayUtcAt(hour: number): string {
+function todayLocalAt(hour: number): string {
   const now = new Date()
-  const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
-    now.getDate()
-  ).padStart(2, '0')}`
-  return `${day}T${String(hour).padStart(2, '0')}:00:00.000Z`
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0, 0).toISOString()
 }
 
 /** Create a Memry event through the same IPC the calendar UI calls. */
@@ -98,7 +97,7 @@ async function createEvent(page, title: string, hour: number): Promise<void> {
         timezone: 'UTC',
         isAllDay: false
       }),
-    { title, startAt: todayUtcAt(hour), endAt: todayUtcAt(hour + 1) }
+    { title, startAt: todayLocalAt(hour), endAt: todayLocalAt(hour + 1) }
   )
   expect(result.success).toBe(true)
 }

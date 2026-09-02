@@ -9,6 +9,7 @@ import {
   MAX_DRAW_ELEMENTS,
   MAX_EDIT_ELEMENTS
 } from '@memry/contracts/canvas-draw'
+import { CalendarDateSchema } from '@memry/contracts/calendar-date'
 import { NoteFileTypeEnum } from '@memry/contracts/search-api'
 
 const idSchema = z.string().min(1)
@@ -39,10 +40,14 @@ const taskPatchSchema = z.object({
   status_id: idSchema.nullish(),
   project_id: idSchema.nullish(),
   parent_id: idSchema.nullish(),
-  due: isoDateSchema.nullish(),
-  due_date: isoDateSchema.nullish(),
+  // `handles.tasks.create` and `handles.tasks.update` call the tasks domain
+  // straight, so this schema is the only gate on the agent's write path — the
+  // IPC handler's TaskCreateSchema never sees it. The shape regex the other
+  // date arguments carry would let 2026-02-30 through to the row.
+  due: CalendarDateSchema.nullish(),
+  due_date: CalendarDateSchema.nullish(),
   due_time: isoTimeSchema.nullish(),
-  start_date: isoDateSchema.nullish(),
+  start_date: CalendarDateSchema.nullish(),
   priority: z.number().int().min(0).max(4).optional(),
   notes: z.string().max(10000).nullish(),
   description: z.string().max(10000).nullish(),

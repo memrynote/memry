@@ -19,7 +19,11 @@ import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-s
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { parseCriticMarkup, writeCriticMarkupMarksToYDoc } from '@memry/shared'
+import {
+  parseCriticMarkup,
+  readCriticMarkupMarksFromYDoc,
+  writeCriticMarkupMarksToYDoc
+} from '@memry/shared'
 import {
   normalizeTaskBlocks,
   serializeTaskBlock,
@@ -64,6 +68,12 @@ import {
   stripLinkReferenceDefinitions,
   writeLinkReferencesToYDoc
 } from '@memry/shared/link-references'
+import {
+  readMarkdownSourceFromYDoc,
+  restoreMarkdownSource,
+  writeMarkdownSourceToYDoc
+} from '@memry/shared/markdown-source'
+import { NOTE_SYNC_MAX_BYTES } from '@memry/sync-client/note-size'
 import { createLogger } from '../lib/logger'
 import { resolveVaultEmbeds } from '../vault/resolve-embed'
 
@@ -93,10 +103,104 @@ function getEditor(): ServerBlockNoteEditor {
   return serverEditor
 }
 
+/**
+ * What became of the author's bytes on one serialization. `no-record` is by
+ * design: the file was already in house style, or predates the record. The
+ * `house-style` outcomes with a record present are the degraded cases and
+ * are logged as such, so a lookup that silently misses can be told apart
+ * from a note that never had a record.
+ */
+export type SourceRestoreOutcome =
+  'no-record' | 'critic-marks' | 'source' | 'merged' | 'house-style-fallback' | 'house-style-threw'
+
+export interface YDocToMarkdownOptions {
+  /**
+   * The note's vault-relative path, so the proof parse resolves embeds the way
+   * the seed did. Without it a `![[photo.png]]` line resolves differently,
+   * the proof fails, and the note keeps house style — degraded, not wrong.
+   */
+  notePath?: string
+  /** Reported once per call, after the outcome is known. */
+  onSourceRestore?: (outcome: SourceRestoreOutcome) => void
+}
+
+/**
+ * The bytes the vault file should hold for this document.
+ *
+ * The document alone serializes to house style (`serializeCanonical`). When
+ * it was seeded from a file spelled differently, the author's bytes ride
+ * beside it (#1915) and come back for every region the document has not
+ * changed since — proven by re-parsing the merged text and demanding it
+ * canonicalize to exactly what the document says now. A document carrying
+ * CriticMarkup marks keeps house style: those marks are byte offsets into the
+ * serialized text, and restoring the author's spelling would move them.
+ */
 export async function yDocToMarkdown(
   doc: Y.Doc,
-  fragmentName = CRDT_FRAGMENT_NAME
+  fragmentName: string = CRDT_FRAGMENT_NAME,
+  options: YDocToMarkdownOptions = {}
 ): Promise<string | null> {
+  const canonical = await serializeCanonical(doc, fragmentName)
+  if (canonical === null) return null
+
+  const report = (outcome: SourceRestoreOutcome): string => {
+    options.onSourceRestore?.(outcome)
+    return canonical
+  }
+
+  const source = readMarkdownSourceFromYDoc(doc)
+  if (source === null) return report('no-record')
+  if (readCriticMarkupMarksFromYDoc(doc).length > 0) return report('critic-marks')
+
+  try {
+    const restored = await restoreMarkdownSource(canonical, source, (markdown) =>
+      canonicalMarkdown(markdown, options.notePath)
+    )
+    if (restored === source) {
+      options.onSourceRestore?.('source')
+      return restored
+    }
+    if (restored !== canonical) {
+      options.onSourceRestore?.('merged')
+      return restored
+    }
+    // A record was there and the merge could not be proven, or was not
+    // available: the file gets house style. Expected now and then, but never
+    // silently — this is the line that tells a lookup miss from a design choice.
+    log.warn('Source record present but not restorable, writing house style', {
+      notePath: options.notePath,
+      sourceBytes: source.length,
+      canonicalBytes: canonical.length
+    })
+    return report('house-style-fallback')
+  } catch (err) {
+    log.error('Restoring the source spelling failed, writing house style', err)
+    return report('house-style-threw')
+  }
+}
+
+/**
+ * The markdown a body canonicalizes to: what a document seeded from it would
+ * serialize to with no source record. The proof oracle for the merge above.
+ */
+async function canonicalMarkdown(markdown: string, notePath?: string): Promise<string | null> {
+  const scratch = new Y.Doc()
+  const ok = await seedFragment(markdown, scratch.getXmlFragment(CRDT_FRAGMENT_NAME), notePath, {
+    recordSource: false
+  })
+  if (!ok) return null
+  return serializeCanonical(scratch, CRDT_FRAGMENT_NAME)
+}
+
+/** House style: the document re-derived into markdown, nothing of the source kept. */
+export async function yDocToCanonicalMarkdown(
+  doc: Y.Doc,
+  fragmentName: string = CRDT_FRAGMENT_NAME
+): Promise<string | null> {
+  return serializeCanonical(doc, fragmentName)
+}
+
+async function serializeCanonical(doc: Y.Doc, fragmentName: string): Promise<string | null> {
   try {
     // y-prosemirror's `createNodeFromYElement` DELETES any element it cannot
     // build (dist/y-prosemirror.cjs:878-885) — a repair heuristic that, run on
@@ -302,6 +406,15 @@ export async function markdownToYFragment(
   fragment: Y.XmlFragment,
   notePath?: string
 ): Promise<boolean> {
+  return seedFragment(markdown, fragment, notePath, { recordSource: true })
+}
+
+async function seedFragment(
+  markdown: string,
+  fragment: Y.XmlFragment,
+  notePath: string | undefined,
+  options: { recordSource: boolean }
+): Promise<boolean> {
   const parsed = parseCriticMarkup(markdown)
   // Reference definitions ride beside the document in two Y.Arrays: the editor
   // has no block for one, so the definition is dropped and the destination
@@ -319,8 +432,69 @@ export async function markdownToYFragment(
   if (ok && fragment.doc) {
     writeCriticMarkupMarksToYDoc(fragment.doc, parsed.marks)
     writeLinkReferencesToYDoc(fragment.doc, references.definitions, references.usages)
+    if (options.recordSource) {
+      // The source at the layer `yDocToMarkdown` returns: CriticMarkup already
+      // stripped, definitions still where the author put them.
+      await recordMarkdownSourceInYDoc(fragment.doc, parsed.plainText, fragmentNameOf(fragment))
+    }
   }
   return ok
+}
+
+/**
+ * How much of the pushable snapshot (`NOTE_SYNC_MAX_BYTES`, the encrypt-time
+ * cap net of base64 growth) a freshly seeded doc plus its source record may
+ * occupy. Past that cap the push throws before any request, dead-letters the
+ * queue row, and no toast reaches the user (#1465), so a note that crosses it
+ * stops syncing silently; any byte this record adds moves a note toward it.
+ * Half, because the rest is headroom for the update history a doc in use
+ * accumulates between compactions. Measured on a foreign note whose fragment
+ * holds inline marks (`* One`, `_em_`, four-space nesting): the bare fragment
+ * is ~2.9x the markdown bytes and the source adds ~1.0x, so the record is
+ * kept for files up to ~480 KB and larger ones stay in house style, as before.
+ */
+export const MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES = Math.floor(NOTE_SYNC_MAX_BYTES / 2)
+
+/**
+ * Remember what the document was just built from (#1915), so the write-back
+ * can give the author's spelling back for whatever it does not change. Stores
+ * nothing when the source already is house style, which is every file this
+ * app wrote itself, and nothing when the doc plus the source would not fit
+ * the snapshot budget above. Every markdown → fragment door calls this; the
+ * seed above does, and `replaceNoteBodyInCrdt` does after an external edit,
+ * since a stale record can only cost style, never meaning, but costs it
+ * every save.
+ */
+export async function recordMarkdownSourceInYDoc(
+  doc: Y.Doc,
+  source: string,
+  fragmentName: string = CRDT_FRAGMENT_NAME
+): Promise<void> {
+  const canonical = await serializeCanonical(doc, fragmentName)
+  if (canonical === null || canonical === source) {
+    writeMarkdownSourceToYDoc(doc, null)
+    return
+  }
+  const docBytes = Y.encodeStateAsUpdate(doc).byteLength
+  const sourceBytes = Buffer.byteLength(source, 'utf8')
+  if (docBytes + sourceBytes > MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES) {
+    writeMarkdownSourceToYDoc(doc, null)
+    log.info('Source record skipped: doc plus source would exceed the snapshot budget', {
+      fragmentName,
+      docBytes,
+      sourceBytes,
+      budgetBytes: MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES
+    })
+    return
+  }
+  writeMarkdownSourceToYDoc(doc, source)
+}
+
+function fragmentNameOf(fragment: Y.XmlFragment): string {
+  for (const [name, type] of fragment.doc?.share ?? []) {
+    if (Object.is(type, fragment)) return name
+  }
+  return CRDT_FRAGMENT_NAME
 }
 
 export async function yFragmentToBlocks(fragment: Y.XmlFragment): Promise<Block[] | null> {

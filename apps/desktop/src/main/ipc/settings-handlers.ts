@@ -117,6 +117,7 @@ const logger = createLogger('IPC:Settings')
 const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
   'theme',
   'fontSize',
+  'fontSizePx',
   'fontFamily',
   'customFontFamily',
   'accentColor',

@@ -36,7 +36,7 @@ const SOURCE_TYPE_BY_VISUAL_TYPE = {
  *
  * `use-today` snapshots the local date into module scope at import and re-reads the wall clock
  * for its first subscriber. A clock faked onto any other date therefore arrives as a midnight
- * rollover, which moves `todayCalendarRange`, moves the query key with it, and makes the widget
+ * rollover, which moves `localDayRange`, moves the query key with it, and makes the widget
  * fetch a second day on mount. Only the time of day is pinned, and from local fields rather than
  * a UTC instant, which far enough from UTC would name a different day.
  */

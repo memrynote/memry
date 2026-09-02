@@ -173,7 +173,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   onNoteClick,
   onCanvasClick,
   onDeleteTask
-}: TaskDetailDrawerProps): React.JSX.Element {
+}: TaskDetailDrawerProps): React.JSX.Element | null {
   const { t, i18n } = useT('tasks')
   const { t: tCommon } = useT('common')
   const prefersReducedMotion = useReducedMotion()
@@ -426,27 +426,29 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   // every open and task switch: a subtle materialize from the end edge.
   const entranceX = i18n.dir() === 'rtl' ? -16 : 16
 
+  // Closed, the drawer leaves the DOM. It used to stay mounted behind `inert`,
+  // `aria-hidden` and `width: 0`, but a 1px border still gave it a box, so
+  // Playwright reported it visible in both states and every `state: 'visible'`
+  // or `state: 'hidden'` wait on it passed without proving anything. Nothing is
+  // lost by unmounting: `task` is null while closed, the `key` in tasks.tsx
+  // already forced a remount on every open, and the width lives in
+  // localStorage. `data-state="open"` is the selector specs address it by, so
+  // the open drawer is named positively and closed means "no such element".
+  if (!isOpen) return null
+
   return (
     <motion.aside
       aria-label={t('task.details')}
-      aria-hidden={!isOpen}
-      inert={!isOpen || undefined}
-      initial={
-        isOpen ? (prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: entranceX }) : false
-      }
-      animate={{ opacity: isOpen ? 1 : 0, x: 0 }}
+      data-state="open"
+      initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: entranceX }}
+      animate={{ opacity: 1, x: 0 }}
       transition={
         prefersReducedMotion ? { duration: 0.2 } : { type: 'spring', bounce: 0, duration: 0.3 }
       }
-      className={cn(
-        // ponytail: absolute (not fixed) so the drawer stays inside its own pane in split view
-        // top-[38px] clears the toolbar chrome so the drawer header stays visible
-        'absolute top-[38px] bottom-0 end-0 z-10 border-s bg-surface overflow-hidden',
-        isOpen ? 'border-border' : 'border-transparent pointer-events-none'
-      )}
-      style={{
-        width: isOpen ? `${width}px` : 0
-      }}
+      // ponytail: absolute (not fixed) so the drawer stays inside its own pane in split view
+      // top-[38px] clears the toolbar chrome so the drawer header stays visible
+      className="absolute top-[38px] bottom-0 end-0 z-10 border-s border-border bg-surface overflow-hidden"
+      style={{ width: `${width}px` }}
     >
       <div
         style={{ width: `${width}px` }}
@@ -844,17 +846,15 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
           </>
         )}
       </div>
-      {isOpen && (
-        <PanelResizeRail
-          width={width}
-          setWidth={setWidth}
-          setIsResizing={setIsResizing}
-          minPx={TASK_DETAIL_WIDTH_MIN_PX}
-          maxPx={TASK_DETAIL_WIDTH_MAX_PX}
-          defaultPx={TASK_DETAIL_WIDTH_DEFAULT_PX}
-          ariaLabel={t('drawer.resize')}
-        />
-      )}
+      <PanelResizeRail
+        width={width}
+        setWidth={setWidth}
+        setIsResizing={setIsResizing}
+        minPx={TASK_DETAIL_WIDTH_MIN_PX}
+        maxPx={TASK_DETAIL_WIDTH_MAX_PX}
+        defaultPx={TASK_DETAIL_WIDTH_DEFAULT_PX}
+        ariaLabel={t('drawer.resize')}
+      />
     </motion.aside>
   )
 })

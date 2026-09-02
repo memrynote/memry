@@ -3,13 +3,20 @@
  *
  * The embed rewrite happens on the markdown string before it is parsed, so
  * whatever it produces is what `blocksToMarkdownLossy` writes back to the vault
- * file. Before this was fixed the round trip replaced `![[photo.png]]` with an
- * absolute `memry-file://` URL carrying this machine's home directory — into a
- * file that syncs to other devices and is supposed to stay readable in Obsidian.
+ * file for any region the user edits. Before this was fixed the round trip
+ * replaced `![[photo.png]]` with an absolute `memry-file://` URL carrying this
+ * machine's home directory — into a file that syncs to other devices and is
+ * supposed to stay readable in Obsidian.
+ *
+ * Since #1915 the rewrite reaches the file only where the document changed:
+ * an embed line the user never touched comes back exactly as the author wrote
+ * it. The house-style cases below clear that record so they keep asserting
+ * what the rewrite writes; the last case asserts the untouched path.
  */
 
 import { describe, it, expect, vi } from 'vitest'
 import * as Y from 'yjs'
+import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 
 const NOTE = 'People/Person.md'
 
@@ -25,11 +32,19 @@ vi.mock('../vault/resolve-embed', () => ({
     )
 }))
 
-async function roundTrip(markdown: string, notePath?: string): Promise<string | null> {
-  const { markdownToYFragment, yDocToMarkdown } = await import('./blocknote-converter')
+async function seed(markdown: string, notePath?: string): Promise<Y.Doc> {
+  const { markdownToYFragment } = await import('./blocknote-converter')
   const doc = new Y.Doc()
   const ok = await markdownToYFragment(markdown, doc.getXmlFragment('blocknote'), notePath)
   expect(ok).toBe(true)
+  return doc
+}
+
+/** House style: what an edited region writes. */
+async function roundTrip(markdown: string, notePath?: string): Promise<string | null> {
+  const { yDocToMarkdown } = await import('./blocknote-converter')
+  const doc = await seed(markdown, notePath)
+  writeMarkdownSourceToYDoc(doc, null)
   return yDocToMarkdown(doc, 'blocknote')
 }
 
@@ -69,5 +84,13 @@ describe('obsidian image embed round trip', () => {
     const back = await roundTrip('![[photo.png]]\n')
 
     expect(back).toContain('memry-file://')
+  })
+
+  it('keeps an embed the user never touched exactly as the author wrote it', async () => {
+    const { yDocToMarkdown } = await import('./blocknote-converter')
+    const markdown = 'Before\n\n![[photo.png|300x200]]\n\nAfter'
+    const doc = await seed(markdown, NOTE)
+
+    expect(await yDocToMarkdown(doc, 'blocknote', { notePath: NOTE })).toBe(markdown)
   })
 })

@@ -400,6 +400,68 @@ describe('useEditorSync', () => {
     expect(result.current.prevInlineTagsRef.current).toEqual(['Build', 'Focus'])
   })
 
+  it('saves the author’s spelling back when the document has not changed, house style once it has (#1915)', async () => {
+    vi.useFakeTimers()
+    const onMarkdownChange = vi.fn()
+    const editor = createEditor([
+      {
+        id: 'p1',
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'One', styles: {} }],
+        children: []
+      }
+    ])
+    // What the editor serializes the loaded `* One` to: house style.
+    editor.blocksToMarkdownLossy.mockResolvedValue('- One')
+
+    const { result } = renderHook(() =>
+      useEditorSync({
+        editor,
+        initialContent: '* One',
+        contentType: 'markdown',
+        onMarkdownChange
+      })
+    )
+    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+
+    act(() => {
+      result.current.handleChange()
+      vi.advanceTimersByTime(150)
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(onMarkdownChange).toHaveBeenLastCalledWith('* One')
+
+    // The save derives its base by re-parsing the source, so the serializer
+    // must answer by content: the document now says Two, the source still One.
+    // A fresh block, because the parse mock hands back the very objects the
+    // load put into the document and mutating them would move the base too.
+    editor.replaceBlocks(editor.document, [
+      {
+        id: 'p1',
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'Two', styles: {} }],
+        children: []
+      }
+    ])
+    editor.blocksToMarkdownLossy.mockImplementation(async (blocks: unknown) =>
+      JSON.stringify(blocks).includes('Two') ? '- Two' : '- One'
+    )
+    act(() => {
+      result.current.handleChange()
+      vi.advanceTimersByTime(150)
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(onMarkdownChange).toHaveBeenLastCalledWith('- Two')
+  })
+
   it('reports the loaded tags as a baseline, and only a real edit as an edit', async () => {
     // #given a note whose body already carries a hash tag
     const onInlineTagsChange = vi.fn()

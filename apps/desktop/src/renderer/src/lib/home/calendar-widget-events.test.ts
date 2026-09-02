@@ -3,8 +3,7 @@ import type { CalendarProjectionItem } from '@/services/calendar-service'
 import {
   toCalendarWidgetEvents,
   findNextEventIndex,
-  nowLinePosition,
-  todayCalendarRange
+  nowLinePosition
 } from './calendar-widget-events'
 
 function item(over: Partial<CalendarProjectionItem>): CalendarProjectionItem {
@@ -92,14 +91,5 @@ describe('findNextEventIndex / nowLinePosition', () => {
     expect(nowLinePosition(events, now)).toBe(1)
     expect(nowLinePosition(events, new Date('2026-06-24T08:00:00.000Z').getTime())).toBe(0)
     expect(nowLinePosition(events, new Date('2026-06-24T23:00:00.000Z').getTime())).toBe(2)
-  })
-})
-
-describe('todayCalendarRange', () => {
-  it('spans the local day as a UTC-midnight window', () => {
-    // Local-component constructor so the asserted date is tz-independent.
-    const { startAt, endAt } = todayCalendarRange(new Date(2026, 5, 24, 15, 0, 0))
-    expect(startAt).toBe('2026-06-24T00:00:00.000Z')
-    expect(endAt).toBe('2026-06-25T00:00:00.000Z')
   })
 })

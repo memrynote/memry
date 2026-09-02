@@ -51,6 +51,9 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
       const general = JSON.parse(rawGeneral) as Partial<GeneralSettings>
       if (general.theme) seedPrefs.theme = general.theme
       if (general.fontSize) seedPrefs.fontSize = general.fontSize
+      if (general.fontSizePx !== undefined) {
+        seedPrefs.fontSizePx = general.fontSizePx
+      }
       if (general.fontFamily) seedPrefs.fontFamily = general.fontFamily
       // Empty string is a real value here ("no custom font"), so this checks for
       // undefined rather than truthiness like the enum fields above.
@@ -105,6 +108,7 @@ export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): 
   const portableFields: Partial<GeneralSettings> = {
     theme: prefs.theme,
     fontSize: prefs.fontSize,
+    fontSizePx: prefs.fontSizePx,
     fontFamily: prefs.fontFamily,
     customFontFamily: prefs.customFontFamily,
     accentColor: prefs.accentColor,

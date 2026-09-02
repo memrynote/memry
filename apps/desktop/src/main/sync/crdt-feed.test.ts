@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const getDoc = vi.fn()
 const markdownToBlocks = vi.fn()
 const blocksToYFragment = vi.fn()
+const recordMarkdownSourceInYDoc = vi.fn()
 
 vi.mock('../sync/crdt-provider', () => ({
   getCrdtProvider: () => ({ getDoc }),
@@ -10,7 +11,8 @@ vi.mock('../sync/crdt-provider', () => ({
 }))
 vi.mock('../sync/blocknote-converter', () => ({
   markdownToBlocks: (...a: unknown[]) => markdownToBlocks(...a),
-  blocksToYFragment: (...a: unknown[]) => blocksToYFragment(...a)
+  blocksToYFragment: (...a: unknown[]) => blocksToYFragment(...a),
+  recordMarkdownSourceInYDoc: (...a: unknown[]) => recordMarkdownSourceInYDoc(...a)
 }))
 
 import { replaceNoteBodyInCrdt, replaceNoteTagsInCrdt } from './crdt-feed'
@@ -41,6 +43,7 @@ beforeEach(() => {
   getDoc.mockReset()
   markdownToBlocks.mockReset()
   blocksToYFragment.mockReset()
+  recordMarkdownSourceInYDoc.mockReset()
 })
 
 describe('replaceNoteBodyInCrdt', () => {
@@ -82,6 +85,8 @@ describe('replaceNoteBodyInCrdt', () => {
     expect(doc._fragment.delete).toHaveBeenCalledWith(0, 3)
     expect(blocksToYFragment).toHaveBeenCalledTimes(1)
     expect(doc.transact).toHaveBeenCalledTimes(1)
+    // The file's new bytes become the source the write-back preserves (#1915).
+    expect(recordMarkdownSourceInYDoc).toHaveBeenCalledWith(doc, '# hi', 'prosemirror')
   })
 })
 

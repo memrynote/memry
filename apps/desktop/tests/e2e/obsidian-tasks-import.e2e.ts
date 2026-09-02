@@ -31,9 +31,10 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
-import type { Locator, Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { getNoteHandleByTitle, openNoteByTitle } from './utils/note-sync-helpers'
+import { closeTaskDrawer, openTaskDrawer, taskRow } from './utils/task-drawer-helpers'
 import {
   navigateTo,
   showAllTasksScope,
@@ -46,13 +47,6 @@ import {
 const DATAVIEW_LINE = '- [ ] Pay rent  [due:: 2026-09-15]  [priority:: high]'
 const DECLINED_LINE = '- [ ] Do first 🆔 dcf64c'
 const BODY = ['- [ ] Buy milk 📅 2026-09-01 ⏫ #errand', DATAVIEW_LINE, DECLINED_LINE].join('\n')
-
-/**
- * `task-detail-drawer.tsx` never unmounts. Closed, it keeps a 1px transparent
- * border, so Playwright calls it visible either way and `state: 'visible'` /
- * `state: 'hidden'` prove nothing. `aria-hidden` is the state the app publishes.
- */
-const TASK_DRAWER = '[aria-label="Task details"]'
 
 type DateParts = { year: number; month: number; day: number }
 
@@ -123,25 +117,6 @@ async function goToTasksPage(page: Page): Promise<void> {
   // only proof the click landed on Tasks and not wherever the app already was.
   await expect(page.getByRole('combobox', { name: 'Task views' })).toBeVisible({ timeout: 20_000 })
   await showAllTasksScope(page)
-}
-
-/** By substring: a past-due row carries extra text after the title. */
-function taskRow(page: Page, titleFragment: string): Locator {
-  return page
-    .locator(`[role="button"][aria-label*="Task:"][aria-label*="${titleFragment}"]`)
-    .first()
-}
-
-/**
- * The drawer, which every property edit is scoped to. `today-task-row.tsx`
- * renders the same interactive due-date and project badges inside list rows, so
- * an unscoped `Due: …` or `Project: …` locator can match several buttons.
- */
-async function openTaskDrawer(page: Page, titleFragment: string): Promise<Locator> {
-  await taskRow(page, titleFragment).click()
-  const drawer = page.locator(TASK_DRAWER).first()
-  await expect(drawer).toHaveAttribute('aria-hidden', 'false', { timeout: 15_000 })
-  return drawer
 }
 
 async function listTasks(page: Page): Promise<Array<{ id: string; title: string }>> {
@@ -330,8 +305,7 @@ test.describe('Obsidian Tasks import', () => {
       .poll(async () => (await readTask(page, buyMilkId))?.due, { timeout: 20_000 })
       .toEqual(today)
 
-    await page.getByRole('button', { name: 'Close task details' }).click()
-    await expect(drawer).toHaveAttribute('aria-hidden', 'true', { timeout: 10_000 })
+    await closeTaskDrawer(page)
 
     // #when the other imported task is deleted from its drawer
     const rentDrawer = await openTaskDrawer(page, 'Pay rent')
