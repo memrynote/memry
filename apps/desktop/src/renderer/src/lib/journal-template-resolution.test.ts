@@ -1,9 +1,12 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { dirname, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { describe, it, expect } from 'vitest'
 import {
   resolveJournalTemplateId,
   orderedWeekdays,
   weekdayLabel
 } from './journal-template-resolution'
+import { runInTz } from './test-support/run-in-tz'
 
 describe('resolveJournalTemplateId', () => {
   it('prefers the weekday override over the default', () => {
@@ -47,27 +50,32 @@ describe('resolveJournalTemplateId', () => {
   })
 
   describe('timezone', () => {
-    const originalTZ = process.env.TZ
+    // resolveJournalTemplateId's only timezone-sensitive step is parseISODate, which builds the
+    // Date from the string's Y/M/D parts rather than parsing it as UTC — so the weekday it reads
+    // back is the same in every zone by construction. Assigning `process.env.TZ` and calling
+    // resolveJournalTemplateId in-process (the previous version of this test) could not have
+    // caught a regression to `new Date(isoDate)` even with a working TZ knob, because the
+    // renderer project runs on vitest's `threads` pool, where `process.env` is a per-worker copy
+    // and assigning `TZ` never reaches the C++ `tzset` that would move the clock. So this proves
+    // the invariant for real, in a child `node` with a real `TZ`, on the exact date where a UTC
+    // parse would disagree with a local one (2026-08-17 00:00 UTC is 2026-08-16 in any
+    // negative-offset zone).
+    const MODULE_URL = pathToFileURL(
+      resolve(dirname(expect.getState().testPath!), 'journal-utils.ts')
+    ).href
 
-    afterEach(() => {
-      process.env.TZ = originalTZ
-    })
+    function localWeekdayIn(tz: string, isoDate: string): number {
+      const source = `
+        const { parseISODate } = await import(${JSON.stringify(MODULE_URL)})
+        process.stdout.write(JSON.stringify(parseISODate(${JSON.stringify(isoDate)}).getDay()))
+      `
+      return runInTz(tz, source)
+    }
 
-    // `new Date('2026-08-17')` is UTC midnight, which in any negative-offset zone
-    // reads back as Sunday the 16th — Monday would open with Sunday's template.
     it.each(['UTC', 'America/Los_Angeles', 'Pacific/Kiritimati'])(
-      'resolves the local weekday in %s',
+      'reads 2026-08-17 as Monday in %s',
       (tz) => {
-        process.env.TZ = tz
-        expect(
-          resolveJournalTemplateId(
-            {
-              defaultTemplate: null,
-              weekdayTemplates: { '0': 'sunday-tpl', '1': 'monday-tpl' }
-            },
-            '2026-08-17'
-          )
-        ).toBe('monday-tpl')
+        expect(localWeekdayIn(tz, '2026-08-17')).toBe(1)
       }
     )
   })

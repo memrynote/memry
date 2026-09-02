@@ -4,13 +4,14 @@ import { dirname, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { localDayRange } from './local-day-range'
+import { runInTz } from './test-support/run-in-tz'
 
 /**
  * The renderer project runs on vitest's `threads` pool, where `process.env` is a worker copy and
  * assigning `TZ` never reaches the C++ `tzset` that would move the clock. `use-today.test.tsx`
  * documents the same wall. So the zone matrix runs `localDayRange` in a child `node` with a real
- * `TZ`, which is the only way to prove the fix on a CI runner that sits at UTC, where the two
- * old implementations happened to agree.
+ * `TZ` via `runInTz`, which is the only way to prove the fix on a CI runner that sits at UTC,
+ * where the two old implementations happened to agree.
  *
  * Node strips the types off the module on import, which works because it has no imports of its
  * own. Keep it that way, or this file loses its teeth. Vite rewrites `import.meta.url` to an http
@@ -24,11 +25,7 @@ function rangeIn(tz: string, date: string): { startAt: string; endAt: string } {
     const { localDayRange } = await import(${JSON.stringify(MODULE_URL)})
     process.stdout.write(JSON.stringify(localDayRange(${JSON.stringify(date)})))
   `
-  const out = execFileSync(process.execPath, ['--input-type=module', '--eval', source], {
-    env: { ...process.env, TZ: tz },
-    encoding: 'utf8'
-  })
-  return JSON.parse(out)
+  return runInTz(tz, source)
 }
 
 describe('localDayRange spans exactly one local day', () => {
