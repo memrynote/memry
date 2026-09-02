@@ -96,13 +96,21 @@ describe('isPermissionAllowed', () => {
     expect(isPermissionAllowed('fileSystem', DEV_ORIGIN, {}, dev)).toBe(true)
   })
 
+  it('allows local-fonts from the app origin so the settings font picker can list families', () => {
+    // The appearance font picker previews every installed family in its own
+    // typeface; denying this leaves it with the built-in presets only.
+    expect(isPermissionAllowed('local-fonts', FILE_ORIGIN, {}, prod)).toBe(true)
+    expect(isPermissionAllowed('local-fonts', DEV_ORIGIN, {}, dev)).toBe(true)
+  })
+
   it('denies allowlisted permissions from untrusted origins', () => {
     for (const permission of [
       'media',
       'clipboard-sanitized-write',
       'clipboard-read',
       'notifications',
-      'fileSystem'
+      'fileSystem',
+      'local-fonts'
     ]) {
       expect(
         isPermissionAllowed(
@@ -243,6 +251,8 @@ describe('configureSessionPermissions', () => {
       { permission: 'notifications', origin: 'https://evil.example' },
       { permission: 'clipboard-read', origin: FILE_ORIGIN },
       { permission: 'clipboard-sanitized-write', origin: FILE_ORIGIN },
+      { permission: 'local-fonts', origin: FILE_ORIGIN },
+      { permission: 'local-fonts', origin: 'https://evil.example' },
       { permission: 'geolocation', origin: FILE_ORIGIN },
       { permission: 'fullscreen', origin: FILE_ORIGIN },
       { permission: 'openExternal', origin: FILE_ORIGIN }
