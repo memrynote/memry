@@ -87,6 +87,90 @@ test.describe('Drag handle menu E2E', () => {
     await expect(page.locator('.bn-block-content[data-text-color="red"]').first()).toBeVisible()
   })
 
+  test('turns a paragraph into a heading via the menu', async ({ page }) => {
+    await createNote(page, uniqueLabel('Drag Menu Turn Into'))
+    await focusEditor(page)
+    await page.keyboard.type('Promote me to a heading')
+
+    await openDragHandleMenu(page)
+    await page.getByRole('menuitem', { name: 'Turn into' }).first().click()
+    await page.getByRole('menuitem', { name: 'Heading 1' }).first().click()
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => (window as any).__memryEditor?.document?.[0]?.type as string)
+      )
+      .toBe('heading')
+  })
+
+  test('duplicates a block via the menu, directly below the original', async ({ page }) => {
+    await createNote(page, uniqueLabel('Drag Menu Duplicate'))
+    await focusEditor(page)
+    await page.keyboard.type('Copy me')
+
+    await openDragHandleMenu(page)
+    await page.getByRole('menuitem', { name: 'Duplicate' }).first().click()
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const editor = (window as any).__memryEditor
+          const text = (block: any) =>
+            (block?.content ?? []).map((n: any) => n?.text ?? '').join('')
+          return editor.document.filter((b: any) => text(b) === 'Copy me').length
+        })
+      )
+      .toBe(2)
+  })
+
+  test('moves a block into another note and removes it from the source', async ({ page }) => {
+    const targetTitle = uniqueLabel('Move Target')
+    await createNote(page, targetTitle)
+    await focusEditor(page)
+    await page.keyboard.type('Target note body')
+    // Let the target note's autosave land before it is written to from main.
+    await page.waitForTimeout(1_500)
+
+    const sourceTitle = uniqueLabel('Move Source')
+    await createNote(page, sourceTitle)
+    await focusEditor(page)
+    await page.keyboard.type('Relocate this line')
+    const { id: movedId } = await firstBlock(page)
+
+    await openDragHandleMenu(page)
+    await page.getByRole('menuitem', { name: 'Move to' }).first().click()
+
+    const search = page.locator('[data-test="move-block-search"]')
+    await search.waitFor({ state: 'visible', timeout: 5_000 })
+    await search.fill(targetTitle)
+    await page.locator('[data-test="move-block-option"]').first().click()
+
+    // Source: the block is gone only after the append resolved.
+    await expect
+      .poll(async () =>
+        page.evaluate(
+          (blockId) => (window as any).__memryEditor.document.some((b: any) => b.id === blockId),
+          movedId
+        )
+      )
+      .toBe(false)
+
+    // Target: the line landed at the end of the target note's body on disk.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(async (noteTitle) => {
+            const list = await (window as any).api.notes.list({})
+            const note = list.notes.find((n: { title: string }) => n.title === noteTitle)
+            if (!note) return null
+            const full = await (window as any).api.notes.get(note.id)
+            return full?.content ?? null
+          }, targetTitle),
+        { timeout: 10_000 }
+      )
+      .toContain('Relocate this line')
+  })
+
   test('deletes a block via real menu clicks', async ({ page }) => {
     await createNote(page, uniqueLabel('Drag Menu Delete'))
     await focusEditor(page)

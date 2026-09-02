@@ -28,6 +28,7 @@
     "renameFailed": "Failed to rename note",
     "moveFailed": "Failed to move note",
     "applyTemplateFailed": "Failed to apply template",
+    "appendBlocksFailed": "Failed to move the block to that note",
     "exportPdfFailed": "Failed to export PDF",
     "exportHtmlFailed": "Failed to export HTML",
     "restoreVersionFailed": "Failed to restore version",

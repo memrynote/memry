@@ -196,6 +196,7 @@ export interface MainIpcInvokeHandlers {
   "locale:set": (...args: [unknown]) => Awaited<Promise<void>>
   "notes:add-property-option": (...args: [{ propertyName: string; option: { value: string; color: string; }; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:add-status-option": (...args: [{ propertyName: string; categoryKey: "todo" | "in_progress" | "done"; option: { value: string; color: string; }; }]) => Awaited<Promise<{ success: boolean; }>>
+  "notes:append-blocks": (...args: [{ sourceNoteId: string; targetNoteId: string; markdown: string; }]) => Awaited<Promise<{ targetPath: string; success: true; }> | { success: false; error: string }>
   "notes:apply-template": (...args: [{ noteId: string; templateId: string; mode: "full" | "body"; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
   "notes:attachment-open-external": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<void>>
   "notes:attachment-rename": (...args: [{ noteId: string; url: string; newName: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").AttachmentRenameResult>>
