@@ -21,6 +21,7 @@ import {
   NoteGetPositionsSchema,
   SetLocalOnlySchema,
   ApplyTemplateSchema,
+  NoteAppendBlocksSchema,
   LargeFileReadLinesSchema,
   LargeFileSearchSchema,
   AttachmentActionSchema,
@@ -79,6 +80,7 @@ import {
   setNoteLocalOnlyCommand
 } from '../notes/domain'
 import { applyTemplateToNote } from '../notes/apply-template'
+import { appendBlocksToNote } from '../vault/append-blocks'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
 import { getStatus as getVaultStatus } from '../vault/index'
@@ -386,6 +388,25 @@ export function registerNotesHandlers(): void {
       return { success: true as const, note }
     },
     'errors:note.applyTemplateFailed'
+  )
+
+  // notes:append-blocks - Append markdown to the end of another note's body.
+  // The target half of the block side menu's "Move to"; the renderer removes
+  // the block from the source editor only after this resolves.
+  registerCommand(
+    NotesChannels.invoke.APPEND_BLOCKS,
+    NoteAppendBlocksSchema,
+    async (input) => {
+      const result = await appendBlocksToNote(input)
+      trackMainEvent('note_updated', {
+        surface: 'notes',
+        action: 'blocks_appended',
+        objectType: 'note',
+        result: 'success'
+      })
+      return { success: true as const, ...result }
+    },
+    'errors:note.appendBlocksFailed'
   )
 
   // notes:rename - Rename a note

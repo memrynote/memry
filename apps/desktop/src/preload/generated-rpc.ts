@@ -82,6 +82,7 @@ export function createGeneratedRpcApi({
       "move": ((id, newFolder) => invoke("notes:move", { id, newFolder })) as GeneratedRpcApi["notes"]["move"],
       "delete": ((id) => invoke("notes:delete", id)) as GeneratedRpcApi["notes"]["delete"],
       "applyTemplate": ((input) => invoke("notes:apply-template", input)) as GeneratedRpcApi["notes"]["applyTemplate"],
+      "appendBlocks": ((input) => invoke("notes:append-blocks", input)) as GeneratedRpcApi["notes"]["appendBlocks"],
       "list": ((options) => invoke("notes:list", options ?? {})) as GeneratedRpcApi["notes"]["list"],
       "getTags": (() => invoke("notes:get-tags")) as GeneratedRpcApi["notes"]["getTags"],
       "getLinks": ((id) => invoke("notes:get-links", id)) as GeneratedRpcApi["notes"]["getLinks"],

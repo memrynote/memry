@@ -429,7 +429,10 @@ function getEditorSelection(editor: BlockNoteEditor): ReviewSelection {
   return getEditorSelectionFromState(editor, state)
 }
 
-function getEditorSelectionFromState(editor: BlockNoteEditor, state: EditorState): ReviewSelection {
+export function getEditorSelectionFromState(
+  editor: BlockNoteEditor,
+  state: EditorState
+): ReviewSelection {
   const selection = state.selection
   if (selection.empty) return { text: '', isEmpty: true }
 
@@ -448,7 +451,7 @@ type TiptapHost = {
   prosemirrorView?: EditorView
 }
 
-function getProseMirrorState(editor: BlockNoteEditor): EditorState {
+export function getProseMirrorState(editor: BlockNoteEditor): EditorState {
   const host = editor as unknown as TiptapHost
   return (host._tiptapEditor?.state ?? host.prosemirrorState) as EditorState
 }

@@ -276,6 +276,23 @@ export interface ApplyTemplateInput {
 }
 
 /**
+ * Append a slice of markdown to the end of another note's body — the target
+ * half of the block side menu's "Move to". The source note is named only so
+ * note-relative attachment refs can be rewritten into the target's folder.
+ */
+export interface AppendBlocksInput {
+  sourceNoteId: string
+  targetNoteId: string
+  markdown: string
+}
+
+export interface AppendBlocksResponse {
+  success: boolean
+  targetPath?: string
+  error?: string
+}
+
+/**
  * Which per-note fields `notes.list` should build. Omit for the full shape —
  * `'tree'` drops the sidebar-irrelevant heavy fields (`snippet`, `mimeType`,
  * `fileSize`) from every row.
@@ -491,6 +508,10 @@ export const notesRpc = defineDomain({
     }),
     applyTemplate: defineMethod<(input: ApplyTemplateInput) => Promise<NoteUpdateResponse>>({
       channel: NotesChannels.invoke.APPLY_TEMPLATE,
+      params: ['input']
+    }),
+    appendBlocks: defineMethod<(input: AppendBlocksInput) => Promise<AppendBlocksResponse>>({
+      channel: NotesChannels.invoke.APPEND_BLOCKS,
       params: ['input']
     }),
     list: defineMethod<(options?: NoteListOptions) => Promise<NoteListResponse>>({
