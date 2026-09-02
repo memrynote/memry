@@ -25,11 +25,14 @@ export interface RoundtripCase {
   markdown: string
   /**
    * Set only when `markdown` is a spelling the block tree cannot tell apart
-   * from another case's, so identity is unreachable for one of the two. The
-   * round-trip must produce exactly these bytes and they must then round-trip
-   * to themselves, which pins both the rewrite and the fact that it happens
-   * once. Anything reachable by identity states no `canonical` — this is not an
-   * escape hatch for a serializer that merely reflows.
+   * from another case's, so identity is unreachable for one of the two on the
+   * house-style path. That path must produce exactly these bytes and they must
+   * then round-trip to themselves, which pins both the rewrite and the fact
+   * that it happens once. Anything reachable by identity states no `canonical`
+   * — this is not an escape hatch for a serializer that merely reflows.
+   *
+   * The source-preserving path (#1915) ignores this field: an untouched
+   * document comes back as `markdown`, always.
    */
   canonical?: string
   /** Sibling issue that must land before the marked pipeline can pass. */
@@ -386,13 +389,50 @@ const blockMarkerCases: RoundtripCase[] = [
   }
 ]
 
+/**
+ * Spellings Memry never writes, from files it did not author (#1915). The
+ * block tree cannot tell `* One` from `- One`, so `canonical` here records
+ * the house style an EDITED region comes back in. What an untouched document
+ * comes back as is the author's bytes, asserted by the source-preserving layer
+ * both suites run over every case in this corpus.
+ */
+const foreignSpellingCases: RoundtripCase[] = [
+  { name: 'asterisk bullets', markdown: '* One\n* Two', canonical: '- One\n- Two' },
+  { name: 'plus bullets', markdown: '+ One\n+ Two', canonical: '- One\n- Two' },
+  {
+    name: 'underscore emphasis and strong',
+    markdown: 'This is _em_ and __strong__.',
+    canonical: 'This is *em* and **strong**.'
+  },
+  {
+    name: 'setext heading',
+    markdown: 'My Title\n========\n\nBody.',
+    canonical: '# My Title\n\nBody.'
+  },
+  { name: 'setext level-two heading', markdown: 'Sub\n---\n\nBody.', canonical: '## Sub\n\nBody.' },
+  {
+    name: 'dash thematic break',
+    markdown: 'Above\n\n---\n\nBelow',
+    canonical: 'Above\n\n***\n\nBelow'
+  },
+  { name: 'list glued to its paragraph', markdown: 'Text:\n- Item', canonical: 'Text:\n\n- Item' },
+  { name: 'four-space nested list indent', markdown: '- a\n    - b', canonical: '- a\n  - b' },
+  { name: 'trailing space after a heading', markdown: '# Title ', canonical: '# Title' },
+  {
+    name: 'list glued to a bold line',
+    markdown: '**Bold**\n- Item',
+    canonical: '**Bold**\n\n- Item'
+  }
+]
+
 export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...mentionCases,
   ...dateCases,
   ...calloutCases,
   ...toggleCases,
   ...containerCases,
-  ...blockMarkerCases
+  ...blockMarkerCases,
+  ...foreignSpellingCases
 ]
 
 // ---------------------------------------------------------------------------

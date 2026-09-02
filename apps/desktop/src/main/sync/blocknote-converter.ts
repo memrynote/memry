@@ -19,7 +19,11 @@ import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-s
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { parseCriticMarkup, writeCriticMarkupMarksToYDoc } from '@memry/shared'
+import {
+  parseCriticMarkup,
+  readCriticMarkupMarksFromYDoc,
+  writeCriticMarkupMarksToYDoc
+} from '@memry/shared'
 import {
   normalizeTaskBlocks,
   serializeTaskBlock,
@@ -64,6 +68,12 @@ import {
   stripLinkReferenceDefinitions,
   writeLinkReferencesToYDoc
 } from '@memry/shared/link-references'
+import {
+  readMarkdownSourceFromYDoc,
+  recordMarkdownSource,
+  restoreMarkdownSource,
+  writeMarkdownSourceToYDoc
+} from '@memry/shared/markdown-source'
 import { createLogger } from '../lib/logger'
 import { resolveVaultEmbeds } from '../vault/resolve-embed'
 
@@ -93,10 +103,62 @@ function getEditor(): ServerBlockNoteEditor {
   return serverEditor
 }
 
+export interface YDocToMarkdownOptions {
+  /**
+   * The note's vault-relative path, so the proof parse resolves embeds the way
+   * the seed did. Without it a `![[photo.png]]` line resolves differently,
+   * the proof fails, and the note keeps house style — degraded, not wrong.
+   */
+  notePath?: string
+}
+
+/**
+ * The bytes the vault file should hold for this document.
+ *
+ * The document alone serializes to house style (`serializeCanonical`). When
+ * it was seeded from a file spelled differently, the author's bytes ride
+ * beside it (#1915) and come back for every region the document has not
+ * changed since — proven by re-parsing the merged text and demanding it
+ * canonicalize to exactly what the document says now. A document carrying
+ * CriticMarkup marks keeps house style: those marks are byte offsets into the
+ * serialized text, and restoring the author's spelling would move them.
+ */
 export async function yDocToMarkdown(
   doc: Y.Doc,
-  fragmentName = CRDT_FRAGMENT_NAME
+  fragmentName: string = CRDT_FRAGMENT_NAME,
+  options: YDocToMarkdownOptions = {}
 ): Promise<string | null> {
+  const canonical = await serializeCanonical(doc, fragmentName)
+  if (canonical === null) return null
+
+  const record = readMarkdownSourceFromYDoc(doc)
+  if (!record || readCriticMarkupMarksFromYDoc(doc).length > 0) return canonical
+
+  try {
+    return await restoreMarkdownSource(canonical, record, (markdown) =>
+      canonicalMarkdown(markdown, options.notePath)
+    )
+  } catch (err) {
+    log.error('Restoring the source spelling failed, writing house style', err)
+    return canonical
+  }
+}
+
+/**
+ * The markdown a body canonicalizes to: what a document seeded from it would
+ * serialize to with no source record. The proof oracle for the merge above.
+ */
+async function canonicalMarkdown(markdown: string, notePath?: string): Promise<string | null> {
+  const scratch = new Y.Doc()
+  const ok = await seedFragment(markdown, scratch.getXmlFragment(CRDT_FRAGMENT_NAME), notePath, {
+    recordSource: false
+  })
+  if (!ok) return null
+  return serializeCanonical(scratch, CRDT_FRAGMENT_NAME)
+}
+
+/** House style: the document re-derived into markdown, nothing of the source kept. */
+async function serializeCanonical(doc: Y.Doc, fragmentName: string): Promise<string | null> {
   try {
     // y-prosemirror's `createNodeFromYElement` DELETES any element it cannot
     // build (dist/y-prosemirror.cjs:878-885) — a repair heuristic that, run on
@@ -302,6 +364,15 @@ export async function markdownToYFragment(
   fragment: Y.XmlFragment,
   notePath?: string
 ): Promise<boolean> {
+  return seedFragment(markdown, fragment, notePath, { recordSource: true })
+}
+
+async function seedFragment(
+  markdown: string,
+  fragment: Y.XmlFragment,
+  notePath: string | undefined,
+  options: { recordSource: boolean }
+): Promise<boolean> {
   const parsed = parseCriticMarkup(markdown)
   // Reference definitions ride beside the document in two Y.Arrays: the editor
   // has no block for one, so the definition is dropped and the destination
@@ -319,8 +390,40 @@ export async function markdownToYFragment(
   if (ok && fragment.doc) {
     writeCriticMarkupMarksToYDoc(fragment.doc, parsed.marks)
     writeLinkReferencesToYDoc(fragment.doc, references.definitions, references.usages)
+    if (options.recordSource) {
+      // The source at the layer `yDocToMarkdown` returns: CriticMarkup already
+      // stripped, definitions still where the author put them.
+      await recordMarkdownSourceInYDoc(fragment.doc, parsed.plainText, fragmentNameOf(fragment))
+    }
   }
   return ok
+}
+
+/**
+ * Remember what the document was just built from (#1915), so the write-back
+ * can give the author's spelling back for whatever it does not change. Stores
+ * nothing when the source already is house style, which is every file this
+ * app wrote itself. Every markdown → fragment door calls this; the seed above
+ * does, and `replaceNoteBodyInCrdt` does after an external edit, since a
+ * stale record can only cost style, never meaning, but costs it every save.
+ */
+export async function recordMarkdownSourceInYDoc(
+  doc: Y.Doc,
+  source: string,
+  fragmentName: string = CRDT_FRAGMENT_NAME
+): Promise<void> {
+  const canonical = await serializeCanonical(doc, fragmentName)
+  writeMarkdownSourceToYDoc(
+    doc,
+    canonical === null ? null : recordMarkdownSource(source, canonical)
+  )
+}
+
+function fragmentNameOf(fragment: Y.XmlFragment): string {
+  for (const [name, type] of fragment.doc?.share ?? []) {
+    if (Object.is(type, fragment)) return name
+  }
+  return CRDT_FRAGMENT_NAME
 }
 
 export async function yFragmentToBlocks(fragment: Y.XmlFragment): Promise<Block[] | null> {

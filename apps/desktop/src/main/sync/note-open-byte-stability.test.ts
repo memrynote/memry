@@ -55,6 +55,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import type { Block } from '@blocknote/core'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 
 // The renderer's promotion rule. Imported from source on purpose: a copy of it
 // here would converge with itself and prove nothing.
@@ -652,10 +653,12 @@ describe('known non-convergence, pinned not endorsed', () => {
    * predates this node: BlockNote's markdown PARSER drops every other mark off
    * a run that also carries inline code, so `` `[[A]]` `` parses back as a run
    * of `{ code: true }` and the outer emphasis is gone before promotion ever
-   * runs. `` `[[A]]` `` alone is stable; combined with emphasis it is not.
-   * Pinned as a limitation, not endorsed as correct.
+   * runs. `` `[[A]]` `` alone is stable; combined with emphasis the DOC loses
+   * the bold. Since #1915 the file the user never edited keeps its bytes
+   * regardless; the loss is what an edit to that region would write. Pinned
+   * as a limitation, not endorsed as correct.
    */
-  it('inline code around a link is stable; code combined with bold is not', async () => {
+  it('inline code around a link is stable; code combined with bold is flattened in the doc, not the file', async () => {
     // #given
     const stable = seedVaultNote('`[[A]]`')
     const stableDoc = await openNote(stable)
@@ -673,11 +676,14 @@ describe('known non-convergence, pinned not endorsed', () => {
     await applyRendererPromotion(doc)
     await runWriteback(doc)
 
-    // #then one rewrite that drops the bold, then a fixed point
-    expect(fs.readFileSync(flattened, 'utf8')).toBe('`[[A]]`')
-    const second = await openNote(flattened)
-    await applyRendererPromotion(second)
-    await runWriteback(second)
-    expect(fs.readFileSync(flattened, 'utf8')).toBe('`[[A]]`')
+    // #then the untouched file keeps the author's bytes and nothing is written
+    expect(fs.readFileSync(flattened, 'utf8')).toBe('**`[[A]]`**')
+    expect(mocks.atomicWrites).toEqual([])
+
+    // #and the document alone, what an edit there would write, has lost the bold
+    const houseStyle = new Y.Doc()
+    Y.applyUpdate(houseStyle, Y.encodeStateAsUpdate(doc))
+    writeMarkdownSourceToYDoc(houseStyle, null)
+    expect(await yDocToMarkdown(houseStyle)).toBe('`[[A]]`')
   })
 })

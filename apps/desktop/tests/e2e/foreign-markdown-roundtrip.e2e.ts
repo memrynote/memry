@@ -82,6 +82,28 @@ const KANBAN_BODY = [
   '%%'
 ].join('\n')
 
+/**
+ * Every spelling #1915 is about, in one body: a setext heading, `*` bullets, a
+ * four-space nested indent, a list glued to its paragraph, underscore emphasis
+ * and a dash rule. The document re-derives all of it in house style; the file
+ * must not.
+ */
+const FOREIGN_SPELLING_BODY = [
+  'Title',
+  '=====',
+  '',
+  'Text:',
+  '* One',
+  '* Two',
+  '    * Nested',
+  '',
+  '_em_ and __strong__ here.',
+  '',
+  '---',
+  '',
+  'Below'
+].join('\n')
+
 const FENCE_LINE = /^ {0,3}(?:`{3,}|~{3,})(.*)$/
 
 /** The info string on the first opening fence, `''` when it carries none. */
@@ -407,5 +429,42 @@ test.describe('Foreign markdown round-trip', () => {
     const afterClose = fs.readFileSync(absPath, 'utf8')
     expect(afterClose, 'closing the note wrote nothing further').toBe(settled)
     expect(openingFenceInfo(afterClose), 'the closed file still opens a bare fence').toBe('')
+  })
+
+  test('a file spelled the way Memry never spells comes back byte-identical after a save (#1915)', async ({
+    pageA,
+    electronAppA,
+    vaultPathA,
+    bootstrappedSyncPair
+  }) => {
+    void bootstrappedSyncPair
+    await waitForSyncOnline(pageA)
+
+    const title = `Foreign Spelling ${Date.now()}`
+    const absPath = seedVaultFile(vaultPathA, title, FOREIGN_SPELLING_BODY)
+    const baseline = await indexedBaseline(pageA, title, absPath)
+    expect(baseline.bytes, 'the indexer left the spelling alone').toContain(FOREIGN_SPELLING_BODY)
+
+    await openInEditor(pageA, title)
+    // Insert-then-remove: the document ends where it started, which is the
+    // case the record exists for — a note opened, touched, and not changed.
+    await nudgeDocument(pageA)
+    await waitForWritebackToSettle(electronAppA, baseline.id)
+
+    // Read with `fs`: the debug state's `lastMarkdown` runs through
+    // `normalizeBodyText`, and these bytes are exactly what it would smooth.
+    await expect
+      .poll(() => fs.readFileSync(absPath, 'utf8'), { timeout: 30_000 })
+      .toBe(baseline.bytes)
+    expect((await getWritebackDebugById(electronAppA, baseline.id))?.lastError).toBeNull()
+    expect(
+      (await visibleBlocks(pageA)).map((block) => block.type).slice(0, 2),
+      'the editor read a heading and a list, not literal underline and bullets'
+    ).toEqual(['heading', 'bulletListItem'])
+
+    await closeNote(pageA, electronAppA, title, baseline.id)
+    expect(fs.readFileSync(absPath, 'utf8'), 'closing the note wrote nothing further').toBe(
+      baseline.bytes
+    )
   })
 })

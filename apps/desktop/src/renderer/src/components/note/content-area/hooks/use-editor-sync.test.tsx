@@ -400,6 +400,53 @@ describe('useEditorSync', () => {
     expect(result.current.prevInlineTagsRef.current).toEqual(['Build', 'Focus'])
   })
 
+  it('saves the author’s spelling back when the document has not changed, house style once it has (#1915)', async () => {
+    vi.useFakeTimers()
+    const onMarkdownChange = vi.fn()
+    const editor = createEditor([
+      {
+        id: 'p1',
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'One', styles: {} }],
+        children: []
+      }
+    ])
+    // What the editor serializes the loaded `* One` to: house style.
+    editor.blocksToMarkdownLossy.mockResolvedValue('- One')
+
+    const { result } = renderHook(() =>
+      useEditorSync({
+        editor,
+        initialContent: '* One',
+        contentType: 'markdown',
+        onMarkdownChange
+      })
+    )
+    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+
+    act(() => {
+      result.current.handleChange()
+      vi.advanceTimersByTime(150)
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(onMarkdownChange).toHaveBeenLastCalledWith('* One')
+
+    editor.blocksToMarkdownLossy.mockResolvedValue('- Two')
+    act(() => {
+      result.current.handleChange()
+      vi.advanceTimersByTime(150)
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(onMarkdownChange).toHaveBeenLastCalledWith('- Two')
+  })
+
   it('reports the loaded tags as a baseline, and only a real edit as an edit', async () => {
     // #given a note whose body already carries a hash tag
     const onInlineTagsChange = vi.fn()

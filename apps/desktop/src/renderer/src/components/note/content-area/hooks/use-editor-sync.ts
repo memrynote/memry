@@ -18,6 +18,8 @@ import {
   sanitizeBlockIds,
   serializeBlocksPreservingBlanks
 } from '../markdown-utils'
+import { recordLoadedMarkdownSource, serializeMarkdownPreservingSource } from '../markdown-source'
+import type { MarkdownSourceRecord } from '@memry/shared/markdown-source'
 import { createLinkMentionContent } from '../link-mention'
 import { normalizeLinkMentions } from '../link-mention-utils'
 import { fetchLinkPreview } from '@/lib/url-metadata'
@@ -327,6 +329,10 @@ export function useEditorSync({
   const inlineTagsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The debounced markdown save, kept callable so teardown can run it early.
   const pendingMarkdownSaveRef = useRef<(() => Promise<void>) | null>(null)
+  // What the loaded markdown said and what the editor serialized it to, so a
+  // save gives the author's spelling back wherever the document did not change
+  // (#1915). Null for anything that did not load from markdown.
+  const markdownSourceRef = useRef<MarkdownSourceRecord | null>(null)
 
   // Cleanup debounce timers on unmount
   useEffect(() => {
@@ -409,6 +415,7 @@ export function useEditorSync({
 
     async function loadContent(): Promise<void> {
       let loadedSuccessfully = false
+      markdownSourceRef.current = null
       try {
         if (typeof initialContent === 'string' && initialContent.trim()) {
           try {
@@ -442,6 +449,9 @@ export function useEditorSync({
             normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
             replaceInitialBlocksWithoutHistory(editor, normalizedBlocks)
             hydrateLinkMentionFavicons(editor)
+            if (contentType === 'markdown') {
+              markdownSourceRef.current = await recordLoadedMarkdownSource(editor, content)
+            }
             loadedSuccessfully = true
           } catch (error) {
             // The user sees a blank/stale editor and thinks the note is gone.
@@ -519,7 +529,12 @@ export function useEditorSync({
       const save = async (): Promise<void> => {
         pendingMarkdownSaveRef.current = null
         try {
-          const markdown = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
+          const markdown = await serializeMarkdownPreservingSource(
+            editor,
+            editor.document as Block[],
+            markdownSourceRef.current,
+            notePath
+          )
 
           onMarkdownChange(markdown)
         } catch (error) {
@@ -564,6 +579,7 @@ export function useEditorSync({
     isRemoteUpdateRef,
     yjsFragment,
     onMarkdownChange,
+    notePath,
     onHeadingsChange,
     onInlineTagsChange
   ])

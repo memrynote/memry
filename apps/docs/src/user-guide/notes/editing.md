@@ -531,8 +531,15 @@ touches that note skips the save rather than replacing bytes nobody here has loo
 ## Opening a Note Written Somewhere Else
 
 Opening a note that another app wrote reads its markdown into memrynote's editor, and saving it
-afterwards writes memrynote's markdown back. The two are not always byte-for-byte the same. What
-is guaranteed is that nothing is _lost_ on the way through:
+afterwards writes the file back. Whatever you did not change comes back exactly as its author
+wrote it: `*` bullets stay `*`, `_emphasis_` stays underscored, an underlined `Title` heading
+stays underlined, a `---` rule stays dashes, a list glued to the line above stays glued, and a
+nested list keeps its indent. Only the parts you edited are written in memrynote's own style, and
+only when the result still says exactly what the editor shows. Opening a note and closing it
+again writes nothing at all.
+
+Inside an edited region the two are not always byte-for-byte the same. What is guaranteed there
+is that nothing is _lost_ on the way through:
 
 - **A hard line break stays a hard line break.** A line ending in two spaces keeps them, so the
   break stays a break rather than becoming a paragraph gap.
@@ -542,6 +549,7 @@ is guaranteed is that nothing is _lost_ on the way through:
 - **A code fence with no language keeps no language.** A bare ` ` ``` fence is not given one,
   which is what an Obsidian Kanban board's settings block needs to keep working.
 
-Some cosmetic details are normalized to one house style: `*` and `+` bullets become `-`, `_em_`
-becomes `*em*`, an underlined `Title` heading becomes `# Title`, and a `~~~` fence becomes a
-` ``` ` one. These change how the file is spelled, never what it says.
+Within an edited region some cosmetic details are normalized to one house style: `*` and `+`
+bullets become `-`, `_em_` becomes `*em*`, an underlined `Title` heading becomes `# Title`, and a
+`~~~` fence becomes a ` ``` ` one. These change how that region is spelled, never what it says.
+A note carrying review comments or tracked changes is written in house style throughout.

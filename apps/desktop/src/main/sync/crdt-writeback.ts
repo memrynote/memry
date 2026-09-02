@@ -4,6 +4,7 @@ import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
 import { findUnrepresentableNodes, yDocToMarkdown } from './blocknote-converter'
+import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { readCriticMarkupMarksFromYDoc, serializeCriticMarkup } from '@memry/shared'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
@@ -428,7 +429,9 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
     return
   }
 
-  const plainMarkdown = await yDocToMarkdown(doc)
+  const indexDb = getIndexDatabase()
+  const cached = getNoteCacheById(indexDb, noteId) ?? resolveFromCanonicalMetadata(noteId)
+  const plainMarkdown = await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: cached?.path })
   const markdown =
     plainMarkdown === null
       ? null
@@ -464,9 +467,6 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
       largestBlockBytes: bodyClass.largestBlockBytes
     })
   }
-
-  const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, noteId) ?? resolveFromCanonicalMetadata(noteId)
 
   if (isJournalId(noteId)) {
     await writebackJournal(noteId, doc, markdown, cached, indexDb)

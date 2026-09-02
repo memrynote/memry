@@ -16,18 +16,27 @@
  * `pass1`/`pass2` record CURRENT behavior, not desired behavior. This file is
  * an instrument: it goes red when the behavior moves, which is the point. A
  * `null` means "byte-identical to the input".
+ *
+ * Since #1915 the pair above also keeps the author's bytes beside the doc and
+ * gives them back for every region the document has not changed, so a note
+ * that is merely opened comes back whole — every probe here, HTML-only bodies
+ * included. `onePass` clears that record so the probes keep measuring the
+ * hole itself, which is what an EDITED region still falls into; the last
+ * describe asserts the untouched path over the same corpus.
  */
 
 import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { serializeToggleBlock } from '@memry/editor-schema/blocks'
+import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 
-async function onePass(markdown: string): Promise<string> {
+async function onePass(markdown: string, { preserveSource = false } = {}): Promise<string> {
   const doc = new Y.Doc()
   const ok = await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
   expect(ok, 'markdown reached the doc').toBe(true)
+  if (!preserveSource) writeMarkdownSourceToYDoc(doc, null)
   const out = await yDocToMarkdown(doc)
   expect(out, 'the doc serialized back at all').not.toBeNull()
   return out as string
@@ -201,4 +210,13 @@ describe('raw HTML through the write-back round-trip', () => {
   run('a block-level tag is dropped, its inner text kept', BLOCK_LEVEL_IN_CONTEXT)
   run('an inline tag is dropped, its text kept', INLINE_LEVEL)
   run('what survives', SURVIVORS)
+})
+
+describe('raw HTML through the round-trip, with the author’s bytes beside the doc (#1915)', () => {
+  const every = [...HTML_ONLY_BODY, ...BLOCK_LEVEL_IN_CONTEXT, ...INLINE_LEVEL, ...SURVIVORS]
+  it.each(every)('$name survives untouched', async ({ markdown }) => {
+    const once = await onePass(markdown, { preserveSource: true })
+    expect(once, 'first round-trip').toBe(markdown)
+    expect(await onePass(once, { preserveSource: true }), 'second round-trip').toBe(markdown)
+  })
 })
