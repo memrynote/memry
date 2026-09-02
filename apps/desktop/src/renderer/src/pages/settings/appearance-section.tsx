@@ -9,7 +9,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Sun, Moon, Monitor, FileText } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
-import { isFontInstalled, sanitizeCustomFontName, MAX_FONT_NAME_LENGTH } from '@/lib/custom-font'
+import { isFontInstalled, sanitizeFontFamilyName, MAX_FONT_NAME_LENGTH } from '@/lib/interface-font'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -150,13 +150,7 @@ export function AppearanceSettings() {
   const handleFontFamilyChange = useCallback(
     async (value: string) => {
       const fontFamily = value as
-        | 'system'
-        | 'serif'
-        | 'sans-serif'
-        | 'monospace'
-        | 'gelasio'
-        | 'geist'
-        | 'inter'
+        'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
       const success = await updateSettings({ fontFamily })
       if (!success) toast.error(t('appearance.typography.fontFamilyError'))
     },
@@ -164,11 +158,11 @@ export function AppearanceSettings() {
   )
 
   const customFontValue = customFontDraft ?? settings.customFontFamily ?? ''
-  const customFontName = sanitizeCustomFontName(customFontValue)
+  const customFontName = sanitizeFontFamilyName(customFontValue)
   const customFontMissing = customFontName.length > 0 && !isFontInstalled(customFontName)
 
   const commitCustomFont = useCallback(async () => {
-    const next = sanitizeCustomFontName(customFontDraft ?? '')
+    const next = sanitizeFontFamilyName(customFontDraft ?? '')
     setCustomFontDraft(null)
     if (customFontDraft === null || next === (settings.customFontFamily ?? '')) return
     const success = await updateSettings({ customFontFamily: next })
