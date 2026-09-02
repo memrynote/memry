@@ -28,6 +28,12 @@ vi.mock('sonner', () => ({
 
 const FONT_SIZE_ARIA = 'Font size'
 
+// Radix's pointer path lives on the Root, which is the only one of the two
+// elements carrying `dir`. Pressing the Thumb — the element that owns
+// role="slider" and the accessible name — is read as grabbing the existing
+// thumb and moves nothing.
+const sliderTrack = (): HTMLElement => screen.getByRole('slider').closest('[dir]') as HTMLElement
+
 beforeAll(() => {
   // Radix's slider drives its pointer path through capture APIs jsdom omits.
   Element.prototype.setPointerCapture = vi.fn()
@@ -50,11 +56,19 @@ describe('Appearance font size slider', () => {
     document.documentElement.removeAttribute('style')
   })
 
+  it('#given a screen reader #then the name is on the element that carries role="slider"', () => {
+    render(<AppearanceSettings />)
+
+    // Radix names the Thumb, not the Root, so an aria-label the Root swallows
+    // leaves the control anonymous however it looks in the markup.
+    expect(screen.getByRole('slider', { name: FONT_SIZE_ARIA })).toBeInTheDocument()
+  })
+
   it('#given a drag in progress #then the interface resizes live without saving', () => {
     render(<AppearanceSettings />)
 
     // jsdom measures the track as zero-width, which Radix maps to the minimum.
-    fireEvent.pointerDown(screen.getByLabelText(FONT_SIZE_ARIA), { clientX: 0, pointerId: 1 })
+    fireEvent.pointerDown(sliderTrack(), { clientX: 0, pointerId: 1 })
 
     expect(document.documentElement.style.fontSize).toBe('12px')
     expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '12')
@@ -64,9 +78,9 @@ describe('Appearance font size slider', () => {
   it('#given the drag is released #then both the pixel size and the legacy bucket are saved', async () => {
     render(<AppearanceSettings />)
 
-    const slider = screen.getByLabelText(FONT_SIZE_ARIA)
-    fireEvent.pointerDown(slider, { clientX: 0, pointerId: 1 })
-    fireEvent.pointerUp(slider, { clientX: 0, pointerId: 1 })
+    const track = sliderTrack()
+    fireEvent.pointerDown(track, { clientX: 0, pointerId: 1 })
+    fireEvent.pointerUp(track, { clientX: 0, pointerId: 1 })
 
     await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
@@ -79,7 +93,7 @@ describe('Appearance font size slider', () => {
   it('#given an arrow key on the slider #then the step is saved without a pointer release', async () => {
     render(<AppearanceSettings />)
 
-    fireEvent.keyDown(screen.getByLabelText(FONT_SIZE_ARIA), { key: 'ArrowRight' })
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' })
 
     await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
@@ -109,9 +123,9 @@ describe('Appearance font size slider', () => {
     mocks.generalSettings.updateSettings.mockResolvedValue(false)
     render(<AppearanceSettings />)
 
-    const slider = screen.getByLabelText(FONT_SIZE_ARIA)
-    fireEvent.pointerDown(slider, { clientX: 0, pointerId: 1 })
-    fireEvent.pointerUp(slider, { clientX: 0, pointerId: 1 })
+    const track = sliderTrack()
+    fireEvent.pointerDown(track, { clientX: 0, pointerId: 1 })
+    fireEvent.pointerUp(track, { clientX: 0, pointerId: 1 })
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to update font size'))
     expect(document.documentElement.style.fontSize).toBe('16px')

@@ -283,7 +283,7 @@ export function AppearanceSettings() {
               type="button"
               aria-label={t('appearance.typography.fontSize.reset')}
               onClick={() => void commitFontSizePx(FONT_SIZE_PX_DEFAULT)}
-              className="flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground"
+              className="flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <RotateCcw className="size-3" />
             </button>
