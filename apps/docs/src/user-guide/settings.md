@@ -276,7 +276,7 @@ Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — pl
 - **Font Size** — Small (14px) / Medium (16px) / Large (20px). Sets the base interface size; the whole app and note editor text scale with it.
 - **Font Family** — One searchable picker with two sections. **Built-in** holds the fonts memrynote ships with: System, Sans-Serif, Serif, Monospace, Gelasio, Geist and Inter. **Installed on this computer** lists every font family found on your machine, on macOS, Windows and Linux alike. Every row is drawn in the font it names, so you can see a typeface before you pick it, and the closed row previews your current choice the same way.
 
-  Type in the search box to narrow a long list. Picking a font applies it to the interface immediately.
+  The list is capped to a readable height and scrolls, so a machine with hundreds of families stays navigable. Type in the search box to narrow it. Picking a font applies it to the interface immediately.
 
   Like the rest of Appearance, this setting syncs to your other devices. A font that only one device has installed still falls back gracefully on the others: that device keeps rendering its own family instead, and the picker marks the row as not installed. If memrynote cannot read your installed fonts at all, the built-in presets stay available and the picker says so.
 
