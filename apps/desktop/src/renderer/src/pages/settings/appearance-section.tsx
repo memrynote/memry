@@ -176,9 +176,9 @@ function FontFamilyPickerList({
   }
 
   return (
-    // The popover's own max-height is not enough to make a 200-row list
-    // scrollable, so the list carries its own bound. It also stops the picker
-    // from stretching to fill a tall window.
+    // Radix bounds the popover to the room it measured, which is several
+    // hundred pixels and grows with the window. Cap the list instead so the
+    // picker is the same readable height everywhere.
     <Picker.List className="max-h-72 overflow-y-auto">
       {filteredBuiltIn.length > 0 && (
         <Picker.Section label={t('appearance.typography.fontFamily.sections.builtin')}>
@@ -239,7 +239,7 @@ function FontFamilyPicker({
     choice.kind === 'builtin' ? FONT_FAMILY_MAP[choice.family] : systemFontStack(choice.family)
 
   return (
-    <Picker value={fontChoiceKey(choice)} onValueChange={onSelect}>
+    <Picker modal value={fontChoiceKey(choice)} onValueChange={onSelect}>
       <Picker.Trigger
         variant="button"
         chevron

@@ -142,16 +142,22 @@ vi.mock('@/components/ui/picker', () => {
     children,
     onOpenChange,
     onValueChange,
-    value
+    value,
+    modal
   }: {
     children: React.ReactNode
     onOpenChange?: (open: boolean) => void
     onValueChange?: (value: string) => void
     value?: string | string[] | null
+    modal?: boolean
   }) => {
     mocks.pickerOpenChange = onOpenChange ?? null
     mocks.pickerValueChange = onValueChange ?? null
-    return <div data-picker-value={value}>{children}</div>
+    return (
+      <div data-picker-value={value} data-picker-modal={modal ? 'true' : 'false'}>
+        {children}
+      </div>
+    )
   }
 
   return {
@@ -723,11 +729,22 @@ describe('settings section coverage', () => {
     expect(screen.getByText('appearance.typography.fontFamily.options.gelasio')).toBeInTheDocument()
   })
 
-  it('bounds the font list so a few hundred families stay scrollable', async () => {
+  it('gives the font picker its own scroll lock so the wheel reaches the list', () => {
+    // Settings is a modal dialog, and Radix portals popover content to `body`,
+    // outside the scroll lock that dialog installs. Without the popover's own
+    // lock, react-remove-scroll cancels every wheel event over the font list
+    // and a 200-row list cannot be scrolled with a mouse at all.
     render(<AppearanceSettings />)
 
-    // The popover's own max-height leaves the list at its full content height,
-    // which on a real machine is thousands of pixels with nothing to scroll.
+    expect(screen.getByTestId('picker-list').closest('[data-picker-modal]')).toHaveAttribute(
+      'data-picker-modal',
+      'true'
+    )
+  })
+
+  it('bounds the font list to a readable height', () => {
+    render(<AppearanceSettings />)
+
     const list = screen.getByTestId('picker-list')
     expect(list.className).toContain('max-h-72')
     expect(list.className).toContain('overflow-y-auto')
