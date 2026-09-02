@@ -5,7 +5,9 @@ import { ItemProjectChips } from './item-project-chips'
 const { mockListForItem, mockOnProjectUpdated, mockUnlinkProjectItem, mockToastError } = vi.hoisted(
   () => ({
     mockListForItem: vi.fn(),
-    mockOnProjectUpdated: vi.fn(() => () => {}),
+    // Declares the subscriber parameter the component actually passes, so
+    // the mockImplementation below that captures it still typechecks.
+    mockOnProjectUpdated: vi.fn((_callback: () => void) => () => {}),
     mockUnlinkProjectItem: vi.fn(),
     mockToastError: vi.fn()
   })

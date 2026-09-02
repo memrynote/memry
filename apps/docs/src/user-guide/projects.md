@@ -108,6 +108,8 @@ Files and calendar events, which have no frontmatter, show small **project chips
 
 Nothing has to be deleted to undo a link. A note or journal entry leaves a project from the same `project` property row that put it there: every project is a chip with an **×**. A file leaves the same way, from the project chips under its title, which carry that **×** too. Removing the last one leaves the item in your vault with no project at all, exactly as it was before you linked it. A note's membership lives in its frontmatter, so the removal travels to your other devices with the file itself.
 
+A calendar event leaves from the **Project** field in its own form, either by choosing **No project** or with the **×** on any extra project chip beside it.
+
 ## Deleting a Project
 
 Open the project in the edit modal and use **Delete Project** in the footer. A confirmation dialog names the project, tells you how many tasks go with it, and states that the action cannot be undone. Cancel leaves everything untouched; confirming deletes the project and closes the modal.

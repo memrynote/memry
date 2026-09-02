@@ -83,7 +83,6 @@
     "src/renderer/src/components/tasks/kanban/kanban-column-extra.test.tsx",
     "src/renderer/src/components/tasks/kanban/kanban-columns.test.ts",
     "src/renderer/src/components/tasks/project/virtualized-project-task-list.test.tsx",
-    "src/renderer/src/components/tasks/projects/item-project-chips.test.tsx",
     "src/renderer/src/components/tasks/task-detail-drawer.test.tsx",
     "src/renderer/src/components/tasks/task-row-extra.test.tsx",
     "src/renderer/src/components/tasks/task-section.test.tsx",
