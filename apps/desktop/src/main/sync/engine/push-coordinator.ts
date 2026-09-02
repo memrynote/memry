@@ -7,9 +7,9 @@ import { secureCleanup } from '../../crypto/index'
 import { encryptPushBatch } from '../sync-crypto-batch'
 import { getHandler, getRemoteSyncAdapter } from '../item-handlers'
 import { coalesceSyncOperations } from '@memry/sync-client/queue'
-import { withRetry } from '@memry/sync-client/retry'
+import { withRetry, type RetryResult } from '@memry/sync-client/retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
-import { postToServer, RateLimitError } from '../http-client'
+import { postToServer, RateLimitError, SyncServerError } from '../http-client'
 import { classifyError } from '../sync-errors'
 import { syncErrorTelemetry } from '../sync-error-telemetry'
 import { isBinaryFileType } from '@memry/shared/file-types'
@@ -20,6 +20,7 @@ import type { SyncStateManager } from './sync-state-manager'
 import {
   SYNC_STATE_KEYS,
   MAX_PUSH_ITERATIONS,
+  MIN_PUSH_BATCH_SIZE,
   YIELD_EVERY_N_ITEMS,
   CRDT_SNAPSHOT_CONCURRENCY,
   PUSH_DEBOUNCE_MS,
@@ -35,6 +36,16 @@ export class PushCoordinator {
   private stateManager: SyncStateManager
   private pushDebounceTimer: ReturnType<typeof setTimeout> | null = null
   private pendingPushRequested = false
+  /**
+   * Batch size the server was last able to take, or null while the configured
+   * size is still believed good.
+   *
+   * Kept on the instance, not per run: a vault big enough to be refused at 100
+   * is refused at 100 on every cycle too, so re-discovering the ceiling each
+   * time would spend the same handful of doomed requests forever. It only ever
+   * shrinks, and a restart re-optimistically clears it.
+   */
+  private pushBatchCeiling: number | null = null
   suppressPushDuringPull = false
 
   constructor(ctx: SyncContext, stateManager: SyncStateManager) {
@@ -113,6 +124,11 @@ export class PushCoordinator {
       const rejectedThisCycle = new Set<string>()
 
       try {
+        let batchSize = Math.min(
+          this.ctx.options.pushBatchSize,
+          this.pushBatchCeiling ?? this.ctx.options.pushBatchSize
+        )
+
         for (let iteration = 0; iteration < MAX_PUSH_ITERATIONS; iteration++) {
           if (abortSignal.aborted) break
 
@@ -124,10 +140,7 @@ export class PushCoordinator {
               raw: rawCount
             })
           }
-          const items = this.ctx.deps.queue.dequeue(
-            this.ctx.options.pushBatchSize,
-            rejectedThisCycle
-          )
+          const items = this.ctx.deps.queue.dequeue(batchSize, rejectedThisCycle)
           if (items.length === 0) {
             log.debug('Push complete: nothing left to push this cycle', {
               preDequeueCount,
@@ -207,26 +220,56 @@ export class PushCoordinator {
           timer.endPhase(dedupedItems.length)
 
           timer.startPhase('network')
-          const response = await withRetry(
-            () =>
-              withAuthRetry(
-                (authToken) =>
-                  postToServer<PushResponse>(
-                    '/sync/push',
-                    { items: pushItems.map((p) => p.pushItem) },
-                    authToken
-                  ),
-                token!,
-                engineAuthRetryDeps(this.ctx.deps),
-                (fresh) => {
-                  token = fresh
-                }
-              ),
-            {
-              signal: abortSignal,
-              isOnline: () => this.ctx.deps.network.online
+          let response: RetryResult<PushResponse>
+          try {
+            response = await withRetry(
+              () =>
+                withAuthRetry(
+                  (authToken) =>
+                    postToServer<PushResponse>(
+                      '/sync/push',
+                      { items: pushItems.map((p) => p.pushItem) },
+                      authToken
+                    ),
+                  token!,
+                  engineAuthRetryDeps(this.ctx.deps),
+                  (fresh) => {
+                    token = fresh
+                  }
+                ),
+              {
+                signal: abortSignal,
+                isOnline: () => this.ctx.deps.network.online,
+                // A 5xx here is answered by shrinking the batch below, not by
+                // sending the same one again — see retryOn5xx.
+                retryOn5xx: false
+              }
+            )
+          } catch (error) {
+            timer.endPhase()
+            // A batch the server cannot take is refused identically however
+            // often it is resent: Cloudflare terminates an oversized
+            // /sync/push at the edge (outcome `exceededCpu`, empty 503 body)
+            // before any of our code runs, so there is no per-item verdict to
+            // act on and nothing gets marked. Halving is the only move that
+            // makes progress; without it the whole run ends here and the same
+            // rows come back next cycle forever (2026-08-27 → 09-01, one vault
+            // stuck at 2914 pending).
+            if (
+              error instanceof SyncServerError &&
+              error.statusCode >= 500 &&
+              batchSize > MIN_PUSH_BATCH_SIZE
+            ) {
+              batchSize = Math.max(MIN_PUSH_BATCH_SIZE, Math.floor(batchSize / 2))
+              this.pushBatchCeiling = batchSize
+              log.warn('Push: server refused the batch, halving it', {
+                statusCode: error.statusCode,
+                batchSize
+              })
+              continue
             }
-          )
+            throw error
+          }
           timer.endPhase()
 
           log.info('Push: server response', {
