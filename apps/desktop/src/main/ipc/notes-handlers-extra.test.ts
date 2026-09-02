@@ -665,6 +665,29 @@ describe('notes-handlers extra coverage', () => {
     )
   })
 
+  it('still exports when the staged HTML cannot be removed', async () => {
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-a',
+      path: 'Note.md',
+      title: 'Daily note',
+      content: '# Today',
+      emoji: null,
+      tags: [],
+      created: new Date('2026-05-10T00:00:00.000Z'),
+      modified: new Date('2026-05-10T00:00:00.000Z')
+    })
+    mocks.fsRm.mockRejectedValueOnce(new Error('EBUSY'))
+
+    await expect(
+      invoke(NotesChannels.invoke.EXPORT_PDF, {
+        noteId: 'note-a',
+        outputPath: '/tmp/Daily_note.pdf',
+        includeMetadata: false,
+        pageSize: 'A4'
+      })
+    ).resolves.toEqual({ success: true, path: '/tmp/Daily_note.pdf' })
+  })
+
   it('destroys the hidden PDF window when rendering fails', async () => {
     const note = {
       id: 'note-a',

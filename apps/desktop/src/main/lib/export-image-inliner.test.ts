@@ -180,6 +180,25 @@ describe('inlineExportImages', () => {
     }
   })
 
+  it('falls back to the raw ref when the percent-encoding is malformed', async () => {
+    writeFileSync(path.join(vaultPath, 'attachments', 'note-a', '%E0%A4%A.png'), PNG_BYTES)
+
+    const html = await inlineExportImages('<img src="attachments/note-a/%E0%A4%A.png">', {
+      notePath: 'Note.md',
+      vaultPath
+    })
+
+    expect(html).toBe(`<img src="data:image/png;base64,${PNG_BASE64}">`)
+  })
+
+  it('leaves a malformed file: or memry-file: URL untouched instead of throwing', async () => {
+    for (const src of ['file://host/photo.png', 'memry-file://local/%E0%A4%A.png']) {
+      const source = `<img src="${src}">`
+
+      expect(await inlineExportImages(source, { notePath: 'Note.md', vaultPath })).toBe(source)
+    }
+  })
+
   it('rewrites every occurrence of a repeated image and keeps the original quoting', async () => {
     const html = await inlineExportImages(
       '<img src="attachments/note-a/photo.png"><img src=\'attachments/note-a/photo.png\'>',
