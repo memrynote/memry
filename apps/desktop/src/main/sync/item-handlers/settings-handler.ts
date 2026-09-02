@@ -188,6 +188,7 @@ function propagateMergedSettings(merged: SyncedSettings): void {
         const g = merged.general
         if (g.theme) prefsUpdate.theme = g.theme
         if (g.fontSize) prefsUpdate.fontSize = g.fontSize
+        if (g.fontSizePx !== undefined) prefsUpdate.fontSizePx = g.fontSizePx
         if (g.fontFamily) prefsUpdate.fontFamily = g.fontFamily
         // Not a truthiness check: '' is how a device says "custom font cleared",
         // and dropping it would leave the other device's font stuck on.

@@ -61,6 +61,7 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
   general: {
     theme: 'white',
     fontSize: 'medium',
+    fontSizePx: 16,
     fontFamily: 'system',
     accentColor: '#6366f1',
     startOnBoot: false,

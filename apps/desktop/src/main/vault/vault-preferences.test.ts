@@ -113,6 +113,7 @@ describe('VaultPreferencesSchema', () => {
     const input = {
       theme: 'dark' as const,
       fontSize: 'large' as const,
+      fontSizePx: 20,
       fontFamily: 'gelasio' as const,
       customFontFamily: 'Iosevka Term',
       accentColor: '#ff0000',
@@ -249,6 +250,39 @@ describe('readPreferences', () => {
     expect(prefs.theme).toBe('dark')
     expect(prefs.fontSize).toBe(VAULT_PREFERENCES_DEFAULTS.fontSize)
     expect(prefs.editor).toEqual(VAULT_PREFERENCES_DEFAULTS.editor)
+  })
+
+  it('#given a config.json written before the slider shipped #then the legacy bucket sets the pixel size', () => {
+    for (const [fontSize, expected] of [
+      ['large', 20],
+      ['small', 14],
+      ['medium', 16]
+    ] as const) {
+      fs.writeFileSync(
+        path.join(vaultPath, MEMRY_DIR, 'config.json'),
+        JSON.stringify({ preferences: { theme: 'dark', fontSize } })
+      )
+
+      expect(readPreferences(vaultPath).fontSizePx).toBe(expected)
+    }
+  })
+
+  it('#given a config.json with no font settings at all #then the pixel size is the default', () => {
+    fs.writeFileSync(
+      path.join(vaultPath, MEMRY_DIR, 'config.json'),
+      JSON.stringify({ preferences: { theme: 'dark' } })
+    )
+
+    expect(readPreferences(vaultPath).fontSizePx).toBe(16)
+  })
+
+  it('#given an out-of-range pixel size from another device #then it is clamped on read', () => {
+    fs.writeFileSync(
+      path.join(vaultPath, MEMRY_DIR, 'config.json'),
+      JSON.stringify({ preferences: { fontSizePx: 400 } })
+    )
+
+    expect(readPreferences(vaultPath).fontSizePx).toBe(24)
   })
 
   it('#given partial editor prefs #then merges editor with defaults', () => {

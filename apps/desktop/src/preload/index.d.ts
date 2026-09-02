@@ -1263,6 +1263,7 @@ export interface NoteEditorSettings {
 export interface GeneralSettingsDTO {
   theme: 'light' | 'dark' | 'white' | 'system'
   fontSize: 'small' | 'medium' | 'large'
+  fontSizePx: number
   fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
   customFontFamily: string
   accentColor: string
