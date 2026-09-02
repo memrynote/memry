@@ -38,6 +38,8 @@ Click a task to open its detail drawer; right-click for the context menu (status
 
 Calendar events for the focused date plus a preview of that day's journal entry (when applicable).
 
+The day runs midnight to midnight on your own clock, the same boundary the [Home board](/user-guide/home-dashboard) uses. A late-evening event and one just after midnight land on the days you would put them on, and the panel and the board never disagree about which day an event belongs to.
+
 If the [Google Calendar integration](/user-guide/settings#google-calendar) is linked, external events appear here too.
 
 ## Resizing
