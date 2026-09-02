@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import {
   AA_SMALL_TEXT,
@@ -9,9 +10,7 @@ import {
   type ThemeSelector
 } from '@tests/utils/contrast'
 
-// The renderer suite runs in jsdom, where `import.meta.url` is not a file: URL.
-// Vitest's cwd is apps/desktop.
-const BASE_CSS = join(process.cwd(), 'src/renderer/src/assets/base.css')
+const BASE_CSS = join(dirname(fileURLToPath(import.meta.url)), 'base.css')
 
 const SWATCHES = ['gray', 'brown', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink']
 

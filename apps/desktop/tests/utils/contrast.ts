@@ -6,7 +6,8 @@
  * blocks straight from source and do the arithmetic themselves.
  */
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 /** WCAG AA floor for small text (under 18.66px, or 14px bold). */
 export const AA_SMALL_TEXT = 4.5
@@ -15,8 +16,10 @@ export const AA_SMALL_TEXT = 4.5
 export const THEMES = [':root', '.white', '.dark'] as const
 export type ThemeSelector = (typeof THEMES)[number]
 
-// Vitest's cwd is apps/desktop.
-const BASE_CSS = join(process.cwd(), 'src/renderer/src/assets/base.css')
+const BASE_CSS = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../src/renderer/src/assets/base.css'
+)
 
 /**
  * One custom-property map per theme. base.css declares each theme across
