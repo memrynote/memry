@@ -1,12 +1,6 @@
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { SettingsSyncPayloadSchema } from '@memry/contracts/settings-sync'
-import type {
-  FieldClockMap,
-  SettingsSyncPayload,
-  SyncedSettings
-} from '@memry/contracts/settings-sync'
-import { LEGACY_FONT_SIZE_PX, type LegacyFontSize } from '@memry/contracts/font-size'
-import { compare } from '@memry/sync-client/vector-clock'
+import type { SettingsSyncPayload, SyncedSettings } from '@memry/contracts/settings-sync'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { LocaleSchema } from '@memry/contracts/locale-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
@@ -63,8 +57,7 @@ class SettingsHandler implements SyncItemHandler<SettingsSyncPayload> {
 
     manager.mergeRemote(data)
 
-    const merged = manager.getPayload()
-    propagateMergedSettings(merged.settings, merged.fieldClocks)
+    propagateMergedSettings(manager.getSettings())
 
     return 'applied'
   }
@@ -84,44 +77,7 @@ class SettingsHandler implements SyncItemHandler<SettingsSyncPayload> {
 
 export const settingsHandler = new SettingsHandler()
 
-/**
- * Decide which of the two font size fields carries the more recent intent.
- *
- * `general.fontSize` and `general.fontSizePx` are clocked independently, and
- * mergeRemote only writes a field the inbound payload actually carries. A
- * device on a build from before the slider knows nothing about `fontSizePx`, so
- * its "make it Small" push moves the bucket and leaves the pixel value wherever
- * this device last put it. resolveFontSizePx then prefers the pixel value
- * unconditionally, so without this the older device's change is ignored forever
- * and config.json is left permanently self-contradictory.
- *
- * The bucket only wins when its clock is strictly newer. Concurrent keeps the
- * pixel value, as does a missing bucket clock; a missing pixel clock means the
- * pixel value has no provenance at all, so the bucket carries it.
- *
- * Derived locally on purpose. This deliberately does not call updateField and
- * bumps no clock, so the synced payload is untouched and every device that
- * receives the same merge derives the same value. That makes it deterministic
- * and idempotent and keeps it clear of the echo-dedupe path. Bumping a clock
- * here would turn an inbound apply into an outbound write and echo between
- * devices — do not "fix" it that way.
- */
-export function reconcileFontSizePx(
-  fontSize: string | undefined,
-  fontSizePx: number | undefined,
-  fieldClocks: FieldClockMap
-): number | undefined {
-  const legacyPx = fontSize
-    ? (LEGACY_FONT_SIZE_PX[fontSize as LegacyFontSize] as number | undefined)
-    : undefined
-  if (legacyPx === undefined) return fontSizePx
-
-  const sizeClock = fieldClocks['general.fontSize'] ?? {}
-  const pxClock = fieldClocks['general.fontSizePx'] ?? {}
-  return compare(pxClock, sizeClock) === 'before' ? legacyPx : fontSizePx
-}
-
-function propagateMergedSettings(merged: SyncedSettings, fieldClocks: FieldClockMap): void {
+function propagateMergedSettings(merged: SyncedSettings): void {
   // Inbox settings live only in the local data DB (not portable config.json
   // prefs), so persist them regardless of whether a vault path is resolvable.
   // Otherwise a merge that lands while getCurrentVaultPath() is transiently null
@@ -232,8 +188,7 @@ function propagateMergedSettings(merged: SyncedSettings, fieldClocks: FieldClock
         const g = merged.general
         if (g.theme) prefsUpdate.theme = g.theme
         if (g.fontSize) prefsUpdate.fontSize = g.fontSize
-        const fontSizePx = reconcileFontSizePx(g.fontSize, g.fontSizePx, fieldClocks)
-        if (fontSizePx !== undefined) prefsUpdate.fontSizePx = fontSizePx
+        if (g.fontSizePx !== undefined) prefsUpdate.fontSizePx = g.fontSizePx
         if (g.fontFamily) prefsUpdate.fontFamily = g.fontFamily
         // Not a truthiness check: '' is how a device says "custom font cleared",
         // and dropping it would leave the other device's font stuck on.
