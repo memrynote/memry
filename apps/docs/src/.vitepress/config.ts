@@ -6,6 +6,13 @@ export default defineConfig({
   description: 'Documentation for memrynote, a private offline-first workspace.',
   cleanUrls: true,
   lastUpdated: true,
+  sitemap: {
+    hostname: 'https://docs.memrynote.com'
+  },
+  transformHead: ({ page }) => {
+    const path = page.replace(/index\.md$/, '').replace(/\.md$/, '')
+    return [['link', { rel: 'canonical', href: `https://docs.memrynote.com/${path}` }]]
+  },
   head: [
     ['meta', { name: 'theme-color', content: '#111827' }],
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]

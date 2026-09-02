@@ -1,0 +1,9 @@
+# memrynote
+
+memrynote is a private, offline-first workspace for notes, journal, tasks, and projects,
+with end-to-end encrypted sync across devices.
+
+- Website: https://memrynote.com
+- Documentation: https://docs.memrynote.com
+- Documentation sitemap: https://docs.memrynote.com/sitemap.xml
+- Source: https://github.com/memrynote/memry

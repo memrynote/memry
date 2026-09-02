@@ -1,3 +1,7 @@
+---
+description: A 60-second lap through the parts of memrynote you'll use most — sidebar, tabs, editor, and day panel.
+---
+
 # A Tour of memrynote
 
 A 60-second lap through the parts of the app you'll use most.

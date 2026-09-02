@@ -1,3 +1,7 @@
+---
+description: What memrynote is stabilizing on the way to a first public release.
+---
+
 # Roadmap
 
 memrynote is moving toward a first public release. This page tracks direction, not a release
