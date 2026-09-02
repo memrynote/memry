@@ -417,6 +417,28 @@ describe('foreign markdown round-trip, main pipeline', () => {
       expect(await roundTrip(once), 'the merged file is its own fixed point').toBe(once)
     })
 
+    it('an empty trailing paragraph the open editor adds does not cost the author’s bytes', async () => {
+      // BlockNote keeps an empty paragraph after the last block while a note
+      // is open. It serializes as a trailing gap no file keeps, and it is the
+      // shape that made the first E2E of this feature write house style.
+      const markdown = 'Title\n=====\n\n* One\n* Two'
+      const doc = await seed(markdown)
+      const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+      const blocks = (await yFragmentToBlocks(fragment)) as Block[]
+      blocks.push({
+        type: 'paragraph',
+        id: 'trailing',
+        props: {},
+        content: [],
+        children: []
+      } as unknown as Block)
+      doc.transact(() => {
+        fragment.delete(0, fragment.length)
+        blocksToYFragment(blocks, fragment)
+      })
+      expect(await serialize(doc)).toBe(markdown)
+    })
+
     it('writes house style when the merge would not parse back to the document', async () => {
       // Emptying the only item of a list glued to its paragraph: the merge
       // would splice `Text:` straight onto `-`, one paragraph, and the proof

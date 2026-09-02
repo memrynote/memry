@@ -3,7 +3,11 @@ import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
-import { findUnrepresentableNodes, yDocToMarkdown } from './blocknote-converter'
+import {
+  findUnrepresentableNodes,
+  yDocToMarkdown,
+  type SourceRestoreOutcome
+} from './blocknote-converter'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { readCriticMarkupMarksFromYDoc, serializeCriticMarkup } from '@memry/shared'
@@ -119,6 +123,8 @@ interface WritebackDebugState {
   performedCount: number
   lastMarkdown: string | null
   lastError: string | null
+  /** What the last pass did with the author's bytes (#1915), null before any pass. */
+  sourceRestore: SourceRestoreOutcome | null
 }
 
 /**
@@ -137,7 +143,8 @@ function updateDebugState(noteId: string, patch: Partial<WritebackDebugState>): 
     scheduledCount: 0,
     performedCount: 0,
     lastMarkdown: null,
-    lastError: null
+    lastError: null,
+    sourceRestore: null
   }
   debugState.set(noteId, { ...current, ...patch })
 }
@@ -431,7 +438,10 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
 
   const indexDb = getIndexDatabase()
   const cached = getNoteCacheById(indexDb, noteId) ?? resolveFromCanonicalMetadata(noteId)
-  const plainMarkdown = await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: cached?.path })
+  const plainMarkdown = await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, {
+    notePath: cached?.path,
+    onSourceRestore: (sourceRestore) => updateDebugState(noteId, { sourceRestore })
+  })
   const markdown =
     plainMarkdown === null
       ? null

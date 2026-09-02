@@ -1,6 +1,9 @@
 import { expect, type ElectronApplication, type Page } from '@playwright/test'
 import { SELECTORS } from './electron-helpers'
 
+export type SourceRestoreOutcome =
+  'no-record' | 'critic-marks' | 'source' | 'merged' | 'house-style-fallback' | 'house-style-threw'
+
 interface MemryNoteTestHooks {
   getCrdtDocMarkdown(noteId: string): Promise<string | null>
   getWritebackDebugState(noteId: string): Promise<{
@@ -9,7 +12,11 @@ interface MemryNoteTestHooks {
     performedCount: number
     lastMarkdown: string | null
     lastError: string | null
+    sourceRestore: SourceRestoreOutcome | null
   } | null>
+  getCrdtMarkdownSourceState(
+    noteId: string
+  ): Promise<{ source: string; canonical: string; current: string | null } | null>
 }
 
 export interface NoteHandle {
@@ -280,6 +287,25 @@ export async function getWritebackDebugByTitle(
   return getWritebackDebugById(electronApp, note.id)
 }
 
+/**
+ * The author's bytes kept beside the open doc (#1915) with the house style
+ * recorded at seed and the house style now, or null when no record exists.
+ */
+export async function getCrdtMarkdownSourceById(
+  electronApp: ElectronApplication,
+  noteId: string
+): Promise<{ source: string; canonical: string; current: string | null } | null> {
+  return electronApp.evaluate(async (_context, noteId) => {
+    const hooks = (
+      globalThis as typeof globalThis & {
+        __memryTestHooks?: MemryNoteTestHooks
+      }
+    ).__memryTestHooks
+    if (!hooks) throw new Error('Memry test hooks are not registered')
+    return hooks.getCrdtMarkdownSourceState(noteId)
+  }, noteId)
+}
+
 export async function getWritebackDebugById(
   electronApp: ElectronApplication,
   noteId: string
@@ -289,6 +315,7 @@ export async function getWritebackDebugById(
   performedCount: number
   lastMarkdown: string | null
   lastError: string | null
+  sourceRestore: SourceRestoreOutcome | null
 } | null> {
   const state = await electronApp.evaluate(async (_context, noteId) => {
     const hooks = (

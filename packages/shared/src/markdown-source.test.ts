@@ -186,6 +186,22 @@ describe('restoreMarkdownSource', () => {
     expect(canonicalize).not.toHaveBeenCalled()
   })
 
+  it('ignores a trailing gap the open editor adds after the last block', async () => {
+    // BlockNote keeps an empty trailing paragraph while a note is open; it
+    // serializes as `\n\n\n` after the body and no file ever holds it.
+    const r = record('* One\n\nPara', '- One\n\nPara')
+    const canonicalize = vi.fn(async (md: string) =>
+      md === '* One\n\nPara, edited.' ? '- One\n\nPara, edited.' : 'something else'
+    )
+    expect(await restoreMarkdownSource('- One\n\nPara\n\n\n', r, canonicalize)).toBe(
+      '* One\n\nPara'
+    )
+    expect(canonicalize).not.toHaveBeenCalled()
+    expect(await restoreMarkdownSource('- One\n\nPara, edited.\n\n\n', r, canonicalize)).toBe(
+      '* One\n\nPara, edited.'
+    )
+  })
+
   it('falls back to house style when the merge means something else', async () => {
     // The author's list is glued to its paragraph. Emptying the only item
     // leaves `Text:\n-`, which is one paragraph, not a list — the reviewer's

@@ -63,11 +63,23 @@ export async function restoreMarkdownSource(
   canonicalize: Canonicalize
 ): Promise<string> {
   if (!record) return canonicalNow
-  if (canonicalNow === record.canonical) return record.source
-  const merged = mergeMarkdownSource(record, canonicalNow)
-  if (merged === null || merged === canonicalNow) return canonicalNow
+  // The body the file can hold. An open editor keeps an empty trailing
+  // paragraph after the last block, which serializes as a trailing gap no
+  // parse gives back and no vault file keeps, so it would read as an edit
+  // against the seed and fail every proof.
+  const ours = trimTrailingNewlines(canonicalNow)
+  const base = trimTrailingNewlines(record.canonical)
+  if (ours === base) return record.source
+  const merged = mergeMarkdownSource({ source: record.source, canonical: base }, ours)
+  if (merged === null || merged === ours) return canonicalNow
   const proof = await canonicalize(merged)
-  return proof === canonicalNow ? merged : canonicalNow
+  return proof !== null && trimTrailingNewlines(proof) === ours ? merged : canonicalNow
+}
+
+function trimTrailingNewlines(text: string): string {
+  let end = text.length
+  while (end > 0 && text[end - 1] === '\n') end--
+  return text.slice(0, end)
 }
 
 /**

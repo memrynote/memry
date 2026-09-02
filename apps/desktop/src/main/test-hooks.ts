@@ -3,7 +3,12 @@ import { broadcastToAllWindows } from './lib/window-broadcast'
 import { join } from 'node:path'
 import { store } from './store'
 import { persistKeysAndRegisterDevice } from './sync/device-registration'
-import { yDocToMarkdown } from './sync/blocknote-converter'
+import {
+  yDocToCanonicalMarkdown,
+  yDocToMarkdown,
+  type SourceRestoreOutcome
+} from './sync/blocknote-converter'
+import { readMarkdownSourceFromYDoc } from '@memry/shared/markdown-source'
 import { getCrdtProvider, resetCrdtProvider } from './sync/crdt-provider'
 import { getWritebackDebugState } from './sync/crdt-writeback'
 import { getCrdtQueue, getNetworkMonitor, startSyncRuntime } from './sync/runtime'
@@ -136,6 +141,15 @@ interface MemryTestHooks {
     performedCount: number
     lastMarkdown: string | null
     lastError: string | null
+    sourceRestore: SourceRestoreOutcome | null
+  } | null>
+  /** The author's bytes kept beside an open doc (#1915), or null when none. */
+  getCrdtMarkdownSourceState(noteId: string): Promise<{
+    source: string
+    /** House style at seed time, as recorded. */
+    canonical: string
+    /** House style now, from the live doc. Differs from `canonical` when the doc changed. */
+    current: string | null
   } | null>
   simulateCrdtTeardownForTests(): Promise<void>
   seedGoogleCalendarTokens(input: SeedGoogleCalendarTokensInput): Promise<void>
@@ -566,6 +580,13 @@ export function registerTestHooks(): void {
 
     async getWritebackDebugState(noteId: string) {
       return getWritebackDebugState(noteId)
+    },
+
+    async getCrdtMarkdownSourceState(noteId: string) {
+      const doc = getCrdtProvider().getDoc(noteId)
+      const record = doc ? readMarkdownSourceFromYDoc(doc) : null
+      if (!doc || !record) return null
+      return { ...record, current: await yDocToCanonicalMarkdown(doc) }
     },
 
     async simulateCrdtTeardownForTests(): Promise<void> {

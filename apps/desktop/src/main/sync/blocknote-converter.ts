@@ -103,6 +103,16 @@ function getEditor(): ServerBlockNoteEditor {
   return serverEditor
 }
 
+/**
+ * What became of the author's bytes on one serialization. `no-record` is by
+ * design: the file was already in house style, or predates the record. The
+ * `house-style` outcomes with a record present are the degraded cases and
+ * are logged as such, so a lookup that silently misses can be told apart
+ * from a note that never had a record.
+ */
+export type SourceRestoreOutcome =
+  'no-record' | 'critic-marks' | 'source' | 'merged' | 'house-style-fallback' | 'house-style-threw'
+
 export interface YDocToMarkdownOptions {
   /**
    * The note's vault-relative path, so the proof parse resolves embeds the way
@@ -110,6 +120,8 @@ export interface YDocToMarkdownOptions {
    * the proof fails, and the note keeps house style — degraded, not wrong.
    */
   notePath?: string
+  /** Reported once per call, after the outcome is known. */
+  onSourceRestore?: (outcome: SourceRestoreOutcome) => void
 }
 
 /**
@@ -131,16 +143,41 @@ export async function yDocToMarkdown(
   const canonical = await serializeCanonical(doc, fragmentName)
   if (canonical === null) return null
 
+  const report = (outcome: SourceRestoreOutcome): string => {
+    options.onSourceRestore?.(outcome)
+    return canonical
+  }
+
   const record = readMarkdownSourceFromYDoc(doc)
-  if (!record || readCriticMarkupMarksFromYDoc(doc).length > 0) return canonical
+  if (!record) return report('no-record')
+  if (readCriticMarkupMarksFromYDoc(doc).length > 0) return report('critic-marks')
 
   try {
-    return await restoreMarkdownSource(canonical, record, (markdown) =>
+    const restored = await restoreMarkdownSource(canonical, record, (markdown) =>
       canonicalMarkdown(markdown, options.notePath)
     )
+    if (restored === record.source) {
+      options.onSourceRestore?.('source')
+      return restored
+    }
+    if (restored !== canonical) {
+      options.onSourceRestore?.('merged')
+      return restored
+    }
+    // A record was there and the merge could not be proven, or was not
+    // available: the file gets house style. Expected now and then, but never
+    // silently — this is the line that tells a lookup miss from a design choice.
+    log.warn('Source record present but not restorable, writing house style', {
+      notePath: options.notePath,
+      unchangedSinceSeed: canonical === record.canonical,
+      sourceBytes: record.source.length,
+      seedCanonicalBytes: record.canonical.length,
+      canonicalBytes: canonical.length
+    })
+    return report('house-style-fallback')
   } catch (err) {
     log.error('Restoring the source spelling failed, writing house style', err)
-    return canonical
+    return report('house-style-threw')
   }
 }
 
@@ -158,6 +195,13 @@ async function canonicalMarkdown(markdown: string, notePath?: string): Promise<s
 }
 
 /** House style: the document re-derived into markdown, nothing of the source kept. */
+export async function yDocToCanonicalMarkdown(
+  doc: Y.Doc,
+  fragmentName: string = CRDT_FRAGMENT_NAME
+): Promise<string | null> {
+  return serializeCanonical(doc, fragmentName)
+}
+
 async function serializeCanonical(doc: Y.Doc, fragmentName: string): Promise<string | null> {
   try {
     // y-prosemirror's `createNodeFromYElement` DELETES any element it cannot
@@ -413,10 +457,14 @@ export async function recordMarkdownSourceInYDoc(
   fragmentName: string = CRDT_FRAGMENT_NAME
 ): Promise<void> {
   const canonical = await serializeCanonical(doc, fragmentName)
-  writeMarkdownSourceToYDoc(
-    doc,
-    canonical === null ? null : recordMarkdownSource(source, canonical)
-  )
+  const record = canonical === null ? null : recordMarkdownSource(source, canonical)
+  writeMarkdownSourceToYDoc(doc, record)
+  log.debug('Source record', {
+    fragmentName,
+    recorded: record !== null,
+    sourceBytes: source.length,
+    canonicalBytes: canonical?.length ?? null
+  })
 }
 
 function fragmentNameOf(fragment: Y.XmlFragment): string {

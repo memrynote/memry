@@ -50,6 +50,7 @@ import { test, expect } from './fixtures/sync-auth-fixtures'
 import {
   getCrdtDocBodyById,
   getNoteHandleByTitle,
+  getCrdtMarkdownSourceById,
   getWritebackDebugById,
   openNoteByTitle
 } from './utils/note-sync-helpers'
@@ -453,14 +454,41 @@ test.describe('Foreign markdown round-trip', () => {
 
     // Read with `fs`: the debug state's `lastMarkdown` runs through
     // `normalizeBodyText`, and these bytes are exactly what it would smooth.
+    // The record and the restore outcome ride along so a failure names the
+    // layer: no record after seed, a write-back that never read it, or a
+    // merge the proof refused.
     await expect
-      .poll(() => fs.readFileSync(absPath, 'utf8'), { timeout: 30_000 })
-      .toBe(baseline.bytes)
-    expect((await getWritebackDebugById(electronAppA, baseline.id))?.lastError).toBeNull()
+      .poll(
+        async () => {
+          const record = await getCrdtMarkdownSourceById(electronAppA, baseline.id)
+          const debug = await getWritebackDebugById(electronAppA, baseline.id)
+          return {
+            file: fs.readFileSync(absPath, 'utf8'),
+            recordPresent: record !== null,
+            // The open editor keeps an empty trailing paragraph, so the live
+            // doc serializes to the seed's house style plus a trailing gap and
+            // nothing else; anything more is the renderer reshaping the doc.
+            canonicalDrift:
+              record && record.current?.replace(/\n+$/, '') !== record.canonical
+                ? { seed: record.canonical, now: record.current }
+                : null,
+            sourceRestore: debug?.sourceRestore,
+            lastError: debug?.lastError
+          }
+        },
+        { timeout: 30_000 }
+      )
+      .toEqual({
+        file: baseline.bytes,
+        recordPresent: true,
+        canonicalDrift: null,
+        sourceRestore: 'source',
+        lastError: null
+      })
     expect(
-      (await visibleBlocks(pageA)).map((block) => block.type).slice(0, 2),
-      'the editor read a heading and a list, not literal underline and bullets'
-    ).toEqual(['heading', 'bulletListItem'])
+      (await visibleBlocks(pageA)).map((block) => block.type).slice(0, 3),
+      'the editor read a heading, a paragraph and a list, not literal underline and bullets'
+    ).toEqual(['heading', 'paragraph', 'bulletListItem'])
 
     await closeNote(pageA, electronAppA, title, baseline.id)
     expect(fs.readFileSync(absPath, 'utf8'), 'closing the note wrote nothing further').toBe(
