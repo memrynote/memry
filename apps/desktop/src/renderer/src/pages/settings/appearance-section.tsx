@@ -1,7 +1,16 @@
-import { type ComponentType, Fragment, useCallback, useMemo, useState } from 'react'
+import {
+  type ComponentType,
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 import { Input } from '@/components/ui/input'
 import { Picker, usePickerContext, usePickerSearch } from '@/components/ui/picker'
-import { Sun, Moon, Monitor, FileText } from '@/lib/icons'
+import { Slider } from '@/components/ui/slider'
+import { Sun, Moon, Monitor, FileText, RotateCcw } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSystemFonts, type SystemFontsState } from '@/hooks/use-system-fonts'
 import {
@@ -17,7 +26,14 @@ import {
 } from '@/lib/interface-font'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { useT } from '@memry/i18n/renderer'
+import { useT, useDirection } from '@memry/i18n/renderer'
+import {
+  resolveFontSizePx,
+  toLegacyFontSize,
+  FONT_SIZE_PX_MIN,
+  FONT_SIZE_PX_MAX,
+  FONT_SIZE_PX_DEFAULT
+} from '@memry/contracts/font-size'
 import {
   SettingsHeader,
   SettingsGroup,
@@ -37,6 +53,21 @@ const ACCENT_PRESETS = [
 ] as const
 
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/
+
+function setRootFontSize(px: number): void {
+  document.documentElement.style.fontSize = `${px}px`
+}
+
+/**
+ * How long the font size settles before it is written.
+ *
+ * Radix reports a value on every pointer move and commits on every *keydown*,
+ * so an unthrottled row turns one held ArrowRight into a dozen IPC round trips,
+ * a dozen config.json rewrites and a dozen encrypted settings uploads. Long
+ * enough to coalesce a drag or a key repeat into one write, short enough that
+ * letting go feels like it saved instantly.
+ */
+const FONT_SIZE_COMMIT_DELAY_MS = 150
 
 interface SegmentOption {
   value: string
@@ -258,16 +289,16 @@ function FontFamilyPicker({
   )
 }
 
-const FONT_SIZE_OPTIONS: SegmentOption[] = [
-  { value: 'small', label: 'S' },
-  { value: 'medium', label: 'M' },
-  { value: 'large', label: 'L' }
-]
-
 export function AppearanceSettings() {
   const { t } = useT('settings')
+  const direction = useDirection()
   const { settings, isLoading, updateSettings } = useGeneralSettings()
   const [customHex, setCustomHex] = useState('')
+  const [fontSizePxDraft, setFontSizePxDraft] = useState<number | null>(null)
+  const pendingFontSizeRef = useRef<{
+    commit: () => void
+    timer: ReturnType<typeof setTimeout>
+  } | null>(null)
   // Enumeration takes seconds on a cold OS font cache but never blocks the main
   // thread, so it starts with the page rather than with the picker: by the time
   // the row is clicked the list is already there.
@@ -304,16 +335,6 @@ export function AppearanceSettings() {
     }
   }, [customHex, handleAccentChange])
 
-  const handleFontSizeChange = useCallback(
-    async (value: string) => {
-      if (!value) return
-      const fontSize = value as 'small' | 'medium' | 'large'
-      const success = await updateSettings({ fontSize })
-      if (!success) toast.error(t('appearance.typography.fontSizeError'))
-    },
-    [t, updateSettings]
-  )
-
   const handleFontChoiceChange = useCallback(
     async (key: string) => {
       const choice = parseFontChoiceKey(key)
@@ -322,6 +343,63 @@ export function AppearanceSettings() {
       if (!success) toast.error(t('appearance.typography.fontFamilyError'))
     },
     [t, updateSettings]
+  )
+
+  const savedFontSizePx = resolveFontSizePx(settings.fontSizePx, settings.fontSize)
+  const fontSizePx = fontSizePxDraft ?? savedFontSizePx
+
+  const commitFontSizePx = useCallback(
+    async (px: number) => {
+      // Only ever release a draft that is still the one this call owns. A held
+      // arrow key otherwise makes the displayed size jump backwards whenever a
+      // slow write lands after a newer preview.
+      const releaseDraft = (): void => setFontSizePxDraft((cur) => (cur === px ? null : cur))
+
+      // A drag that wanders and comes back writes nothing. Radix will not tell
+      // us either way: it skips onValueCommit when pointer-up lands on the
+      // value pointer-down started from, which is why the row settles itself.
+      if (px === savedFontSizePx) {
+        releaseDraft()
+        return
+      }
+
+      const success = await updateSettings({ fontSizePx: px, fontSize: toLegacyFontSize(px) })
+      releaseDraft()
+      if (!success) {
+        toast.error(t('appearance.typography.fontSizeError'))
+        // useThemeSync will not re-run: its effect deps never changed, so the
+        // size previewed during the drag has to be undone here.
+        setRootFontSize(savedFontSizePx)
+      }
+    },
+    [savedFontSizePx, t, updateSettings]
+  )
+
+  const previewFontSizePx = useCallback(
+    (px: number) => {
+      setFontSizePxDraft(px)
+      setRootFontSize(px)
+      if (pendingFontSizeRef.current) clearTimeout(pendingFontSizeRef.current.timer)
+      const commit = (): void => {
+        pendingFontSizeRef.current = null
+        void commitFontSizePx(px)
+      }
+      pendingFontSizeRef.current = { commit, timer: setTimeout(commit, FONT_SIZE_COMMIT_DELAY_MS) }
+    },
+    [commitFontSizePx]
+  )
+
+  // Flushed, not dropped: the preview writes the root font size directly, so an
+  // unmount that discarded the pending write would leave the whole interface at
+  // a size nothing on disk agrees with, until the next restart.
+  useEffect(
+    () => () => {
+      const pending = pendingFontSizeRef.current
+      if (!pending) return
+      clearTimeout(pending.timer)
+      pending.commit()
+    },
+    []
   )
 
   const fontChoice = fontChoiceFromSettings(settings.fontFamily, settings.customFontFamily)
@@ -418,12 +496,29 @@ export function AppearanceSettings() {
           label={t('appearance.typography.fontSize.label')}
           description={t('appearance.typography.fontSize.description')}
         >
-          <SegmentedControl
-            options={FONT_SIZE_OPTIONS}
-            value={settings.fontSize}
-            onValueChange={(...args) => void handleFontSizeChange(...args)}
-            ariaLabel={t('appearance.typography.fontSize.aria')}
-          />
+          <div className="flex items-center shrink-0 gap-2">
+            <button
+              type="button"
+              aria-label={t('appearance.typography.fontSize.reset')}
+              onClick={() => previewFontSizePx(FONT_SIZE_PX_DEFAULT)}
+              className="flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <RotateCcw className="size-3" />
+            </button>
+            <span className="w-6 shrink-0 text-xs tabular-nums text-end text-muted-foreground">
+              {fontSizePx}
+            </span>
+            <Slider
+              dir={direction}
+              min={FONT_SIZE_PX_MIN}
+              max={FONT_SIZE_PX_MAX}
+              step={1}
+              value={[fontSizePx]}
+              onValueChange={([px]) => previewFontSizePx(px)}
+              aria-label={t('appearance.typography.fontSize.aria')}
+              className="w-36"
+            />
+          </div>
         </SettingRow>
 
         <SettingRow

@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
       theme: 'system',
       accentColor: '#6366f1',
       fontSize: 'medium',
+      fontSizePx: 16,
       fontFamily: 'system',
       customFontFamily: ''
     },
@@ -79,7 +80,8 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, values?: Record<string, unknown>) =>
       values ? `${key} ${JSON.stringify(values)}` : key
-  })
+  }),
+  useDirection: () => 'ltr'
 }))
 
 vi.mock('sonner', () => ({
@@ -229,8 +231,8 @@ vi.mock('@/components/ui/switch', () => ({
 }))
 
 vi.mock('@/components/ui/slider', () => ({
-  Slider: ({ onValueCommit }: { onValueCommit?: (value: number[]) => void }) => (
-    <button type="button" onClick={() => onValueCommit?.([12000])}>
+  Slider: ({ onValueChange }: { onValueChange?: (value: number[]) => void }) => (
+    <button type="button" onClick={() => onValueChange?.([12000])}>
       slider
     </button>
   )
@@ -564,6 +566,7 @@ describe('settings section coverage', () => {
     mocks.syncContext.linkingRequest = null
     mocks.syncContext.triggerSync.mockResolvedValue(undefined)
     mocks.generalSettings.isLoading = false
+    mocks.generalSettings.settings.fontSizePx = 16
     Reflect.deleteProperty(document, 'fonts')
     mocks.generalSettings.settings.fontFamily = 'system'
     mocks.generalSettings.settings.customFontFamily = ''
@@ -690,6 +693,11 @@ describe('settings section coverage', () => {
 
   it('updates appearance controls and reports failed saves', async () => {
     mocks.generalSettings.updateSettings.mockResolvedValueOnce(false).mockResolvedValue(true)
+    // Off the default, or the reset button has nothing to write. Both fields,
+    // because every save writes the pair together and resolveFontSizePx reads a
+    // pair that disagrees as an older device having moved the bucket alone.
+    mocks.generalSettings.settings.fontSizePx = 22
+    mocks.generalSettings.settings.fontSize = 'large'
     render(<AppearanceSettings />)
 
     fireEvent.click(screen.getByText('appearance.theme.options.dark'))
@@ -702,9 +710,12 @@ describe('settings section coverage', () => {
       })
     )
 
-    fireEvent.click(screen.getByText('L'))
+    fireEvent.click(screen.getByLabelText('appearance.typography.fontSize.reset'))
     await waitFor(() =>
-      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ fontSize: 'large' })
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        fontSizePx: 16,
+        fontSize: 'medium'
+      })
     )
 
     // Picking a built-in preset also clears any custom family behind it, so the

@@ -9,6 +9,7 @@
 
 import { z } from 'zod'
 import { LocaleSchema } from './locale-api'
+import { FONT_SIZE_PX_DEFAULT, FONT_SIZE_PX_MAX, FONT_SIZE_PX_MIN } from './font-size'
 
 // ============================================================================
 // General Settings
@@ -17,6 +18,13 @@ import { LocaleSchema } from './locale-api'
 export const GeneralSettingsSchema = z.object({
   theme: z.enum(['light', 'dark', 'white', 'system']),
   fontSize: z.enum(['small', 'medium', 'large']),
+  /**
+   * The interface root font size in pixels, and the authoritative one. The
+   * legacy `fontSize` bucket is kept written in step with it so an older app
+   * version, or a device that has not updated yet, still lands approximately
+   * where the user put the slider instead of snapping back to medium.
+   */
+  fontSizePx: z.number().int().min(FONT_SIZE_PX_MIN).max(FONT_SIZE_PX_MAX),
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter']),
   /**
    * The name of a font installed on this machine, applied ahead of `fontFamily`
@@ -61,6 +69,7 @@ export const DEFAULT_ACCENT_COLOR = '#f97316'
 export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   theme: 'white',
   fontSize: 'medium',
+  fontSizePx: FONT_SIZE_PX_DEFAULT,
   fontFamily: 'system',
   customFontFamily: '',
   accentColor: DEFAULT_ACCENT_COLOR,

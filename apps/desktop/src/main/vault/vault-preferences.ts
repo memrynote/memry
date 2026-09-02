@@ -7,6 +7,7 @@ import {
   EDITOR_SETTINGS_DEFAULTS
 } from '@memry/contracts/settings-schemas'
 import { LocaleSchema } from '@memry/contracts/locale-api'
+import { resolveFontSizePx, FONT_SIZE_PX_MIN, FONT_SIZE_PX_MAX } from '@memry/contracts/font-size'
 
 const EditorPreferencesSchema = z.object({
   // Legacy widths (narrow/medium/wide) from older config.json coerce to 'normal'.
@@ -19,6 +20,7 @@ const EditorPreferencesSchema = z.object({
 export const VaultPreferencesSchema = z.object({
   theme: z.enum(['light', 'dark', 'white', 'system']),
   fontSize: z.enum(['small', 'medium', 'large']),
+  fontSizePx: z.number().int().min(FONT_SIZE_PX_MIN).max(FONT_SIZE_PX_MAX),
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter']),
   customFontFamily: z.string().max(64),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
@@ -47,6 +49,7 @@ export const EDITOR_PREFERENCES_DEFAULTS: EditorPreferences = {
 export const VAULT_PREFERENCES_DEFAULTS: VaultPreferences = {
   theme: GENERAL_SETTINGS_DEFAULTS.theme,
   fontSize: GENERAL_SETTINGS_DEFAULTS.fontSize,
+  fontSizePx: GENERAL_SETTINGS_DEFAULTS.fontSizePx,
   fontFamily: GENERAL_SETTINGS_DEFAULTS.fontFamily,
   customFontFamily: GENERAL_SETTINGS_DEFAULTS.customFontFamily,
   accentColor: GENERAL_SETTINGS_DEFAULTS.accentColor,
@@ -60,6 +63,7 @@ export const VAULT_PREFERENCES_DEFAULTS: VaultPreferences = {
 export const PORTABLE_GENERAL_FIELDS = [
   'theme',
   'fontSize',
+  'fontSizePx',
   'fontFamily',
   'customFontFamily',
   'accentColor',
@@ -92,6 +96,10 @@ export function readPreferences(vaultPath: string): VaultPreferences {
     return {
       theme: prefs.theme ?? VAULT_PREFERENCES_DEFAULTS.theme,
       fontSize: prefs.fontSize ?? VAULT_PREFERENCES_DEFAULTS.fontSize,
+      // The migration for existing installs: a config.json written before the
+      // slider shipped has no fontSizePx, so the legacy bucket supplies it on
+      // the very first read and the user keeps the size they had.
+      fontSizePx: resolveFontSizePx(prefs.fontSizePx, prefs.fontSize),
       fontFamily: prefs.fontFamily ?? VAULT_PREFERENCES_DEFAULTS.fontFamily,
       customFontFamily: prefs.customFontFamily ?? VAULT_PREFERENCES_DEFAULTS.customFontFamily,
       accentColor: prefs.accentColor ?? VAULT_PREFERENCES_DEFAULTS.accentColor,

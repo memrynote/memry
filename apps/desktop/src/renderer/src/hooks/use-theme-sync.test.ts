@@ -15,6 +15,7 @@ vi.mock('./use-general-settings', () => ({
 const defaultSettings = {
   theme: 'system' as const,
   fontSize: 'medium' as const,
+  fontSizePx: 16 as number | undefined,
   fontFamily: 'system' as const,
   customFontFamily: '',
   accentColor: '#6366f1',
@@ -53,6 +54,7 @@ describe('useThemeSync', () => {
         ...defaultSettings,
         theme: 'light',
         fontSize: 'large',
+        fontSizePx: 20,
         fontFamily: 'serif',
         accentColor: '#123456'
       },
@@ -69,6 +71,19 @@ describe('useThemeSync', () => {
     expect(document.documentElement.style.getPropertyValue('--font-sans')).toContain(
       'Crimson Pro Variable'
     )
+  })
+
+  it('#given settings written before the slider shipped #then the legacy bucket sets the root size', () => {
+    vi.mocked(useGeneralSettings).mockReturnValue({
+      settings: { ...defaultSettings, fontSize: 'small', fontSizePx: undefined },
+      isLoading: false,
+      error: null,
+      updateSettings: vi.fn()
+    })
+
+    renderHook(() => useThemeSync())
+
+    expect(document.documentElement.style.fontSize).toBe('14px')
   })
 
   it('#given a custom font #when synced #then it leads the stack and the chosen family follows', () => {
