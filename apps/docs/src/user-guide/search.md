@@ -49,6 +49,10 @@ Examples:
 - `#research neural networks` — items tagged `research` containing "neural networks"
 - `#daily 1 review` — notes only, tagged `daily`, containing "review"
 
+## Date Filters
+
+The filter bar's **Today**, **This Week**, and **This Month** presets narrow results to items modified in that stretch. They read your local calendar, so "Today" is your own midnight-to-midnight day rather than UTC's — a note edited late in the evening still counts as today's.
+
 ## Recents
 
 When the palette is empty it shows your recent trail: the items you last opened from search, each with the query that led you to them. It is a way back to a note you found yesterday without remembering how you phrased it.

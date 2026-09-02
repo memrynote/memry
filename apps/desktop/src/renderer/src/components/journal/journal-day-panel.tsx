@@ -24,6 +24,7 @@ import type { Status, Project } from '@/data/tasks-data'
 import { ChevronDown } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { getEventBaseColor } from '@/lib/event-type-colors'
+import { localDayRange } from '@/lib/local-day-range'
 import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
@@ -58,17 +59,6 @@ interface ScheduleEvent {
   title: string
   kind: ScheduleRowKind
   label: string | null
-}
-
-function getDayRange(date: string): { startAt: string; endAt: string } {
-  const start = new Date(`${date}T00:00:00.000Z`)
-  const end = new Date(start)
-  end.setUTCDate(end.getUTCDate() + 1)
-
-  return {
-    startAt: start.toISOString(),
-    endAt: end.toISOString()
-  }
 }
 
 function formatScheduleTimeLabel(
@@ -256,7 +246,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
   const queryClient = useQueryClient()
   const { settings } = useGeneralSettings()
   const clockFormat = settings.clockFormat
-  const scheduleRange = useMemo(() => getDayRange(date), [date])
+  const scheduleRange = useMemo(() => localDayRange(date), [date])
   const scheduleQuery = useCalendarRange(scheduleRange)
 
   const projectMap = useMemo(() => {
