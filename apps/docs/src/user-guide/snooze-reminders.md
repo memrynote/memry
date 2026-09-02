@@ -48,12 +48,15 @@ Reminders fire as **in-app toasts** at a specified date and time.
 
 ### Setting a Reminder
 
-| Where     | How                            |
-| --------- | ------------------------------ |
-| On a note | Note toolbar → reminder picker |
-| On a task | Task detail → reminder picker  |
+| Where              | How                               |
+| ------------------ | --------------------------------- |
+| On a note          | Note toolbar → reminder picker    |
+| On a task          | Task detail → reminder picker     |
+| On a journal entry | Journal toolbar → reminder picker |
 
 The picker offers relative options ("in 1 hour", "tomorrow morning") plus a full date/time picker.
+On a note or a journal entry it also lists the reminder already set, with buttons to change its time
+or remove it. Picking a new time there replaces that reminder instead of adding a second one.
 
 ### When the Reminder Fires
 

@@ -28,8 +28,13 @@ vi.mock('@/hooks/use-general-settings', () => ({
 
 vi.mock('@/hooks/use-journal-reminders', () => ({
   useJournalReminders: () => ({
+    activeReminders: [],
     ...mocks.reminderState,
-    actions: { setReminder: mocks.setReminder }
+    actions: {
+      setReminder: mocks.setReminder,
+      editReminder: vi.fn(),
+      deleteReminder: vi.fn()
+    }
   })
 }))
 

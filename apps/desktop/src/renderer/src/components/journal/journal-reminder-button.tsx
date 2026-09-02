@@ -43,7 +43,7 @@ export function JournalReminderButton({
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
-  const { hasActiveReminder, nextReminder, activeReminderCount, actions } =
+  const { activeReminders, hasActiveReminder, nextReminder, activeReminderCount, actions } =
     useJournalReminders(journalDate)
 
   const handleSetReminder = async (date: Date, note?: string): Promise<void> => {
@@ -74,6 +74,9 @@ export function JournalReminderButton({
             telemetrySurface="journal"
             showNote
             disabled={disabled}
+            reminders={activeReminders}
+            onEdit={(id, date, note) => void actions.editReminder(id, date, note)}
+            onDelete={(id) => void actions.deleteReminder(id)}
             trigger={
               <Button
                 variant="ghost"

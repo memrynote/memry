@@ -345,7 +345,11 @@ export function NotePage({ noteId }: NotePageProps) {
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
 
   // Reminder state
-  const { hasActiveReminder, actions: reminderActions } = useNoteReminders(noteId ?? null)
+  const {
+    activeReminders,
+    hasActiveReminder,
+    actions: reminderActions
+  } = useNoteReminders(noteId ?? null)
   const handleSetReminder = useCallback(
     async (date: Date, reminderNote?: string): Promise<void> => {
       await reminderActions.setReminder(date, reminderNote)
@@ -1343,6 +1347,11 @@ export function NotePage({ noteId }: NotePageProps) {
         telemetrySurface="notes"
         showNote
         disabled={isDeleted}
+        reminders={activeReminders}
+        onEdit={(id, date, reminderNote) =>
+          void reminderActions.editReminder(id, date, reminderNote)
+        }
+        onDelete={(id) => void reminderActions.deleteReminder(id)}
         trigger={
           <Button
             variant="ghost"

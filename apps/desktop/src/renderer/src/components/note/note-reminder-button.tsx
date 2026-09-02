@@ -41,7 +41,8 @@ export function NoteReminderButton({
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
-  const { hasActiveReminder, nextReminder, activeReminderCount, actions } = useNoteReminders(noteId)
+  const { activeReminders, hasActiveReminder, nextReminder, activeReminderCount, actions } =
+    useNoteReminders(noteId)
 
   const handleSetReminder = async (date: Date, note?: string): Promise<void> => {
     await actions.setReminder(date, note)
@@ -71,6 +72,9 @@ export function NoteReminderButton({
             telemetrySurface="notes"
             showNote
             disabled={disabled}
+            reminders={activeReminders}
+            onEdit={(id, date, note) => void actions.editReminder(id, date, note)}
+            onDelete={(id) => void actions.deleteReminder(id)}
             trigger={
               <Button
                 variant="ghost"

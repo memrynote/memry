@@ -538,7 +538,9 @@
       "deleted": "Reminder deleted",
       "deleteFailed": "Failed to delete reminder",
       "dismissed": "Reminder dismissed",
-      "dismissFailed": "Failed to dismiss reminder"
+      "dismissFailed": "Failed to dismiss reminder",
+      "updated": "Reminder updated",
+      "updateFailed": "Failed to update reminder"
     }
   },
   "linkedTasks": {

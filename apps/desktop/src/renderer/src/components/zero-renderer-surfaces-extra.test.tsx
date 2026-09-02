@@ -72,10 +72,15 @@ vi.mock('@/hooks/use-general-settings', () => ({
 
 vi.mock('@/hooks/use-note-reminders', () => ({
   useNoteReminders: () => ({
+    activeReminders: [],
     hasActiveReminder: true,
     nextReminder: { remindAt: '2026-05-10T10:00:00.000Z' },
     activeReminderCount: 12,
-    actions: { setReminder: mocks.setReminder }
+    actions: {
+      setReminder: mocks.setReminder,
+      editReminder: vi.fn(),
+      deleteReminder: vi.fn()
+    }
   })
 }))
 
