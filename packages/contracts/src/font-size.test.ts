@@ -15,6 +15,13 @@ describe('resolveFontSizePx', () => {
     expect(resolveFontSizePx(FONT_SIZE_PX_MAX, undefined)).toBe(FONT_SIZE_PX_MAX)
   })
 
+  it('rounds a fractional pixel value to the integer both schemas declare', () => {
+    expect(resolveFontSizePx(16.4, undefined)).toBe(16)
+    expect(resolveFontSizePx(16.5, undefined)).toBe(17)
+    expect(resolveFontSizePx(11.6, undefined)).toBe(FONT_SIZE_PX_MIN)
+    expect(resolveFontSizePx(24.4, undefined)).toBe(FONT_SIZE_PX_MAX)
+  })
+
   it('clamps a pixel value at both ends', () => {
     expect(resolveFontSizePx(4, undefined)).toBe(FONT_SIZE_PX_MIN)
     expect(resolveFontSizePx(-100, undefined)).toBe(FONT_SIZE_PX_MIN)

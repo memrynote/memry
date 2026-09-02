@@ -23,7 +23,11 @@ export function resolveFontSizePx(
   fontSize: string | undefined
 ): number {
   if (typeof fontSizePx === 'number' && Number.isFinite(fontSizePx)) {
-    return Math.min(FONT_SIZE_PX_MAX, Math.max(FONT_SIZE_PX_MIN, fontSizePx))
+    // Rounded, not just clamped: both schemas declare this field `.int()`, and
+    // readPreferences never parses through them, so a hand-edited 16.4 in
+    // config.json would otherwise reach the root element and make every
+    // step-1 arrow generate another fraction that never lands on a bucket.
+    return Math.round(Math.min(FONT_SIZE_PX_MAX, Math.max(FONT_SIZE_PX_MIN, fontSizePx)))
   }
   const legacy = LEGACY_ENTRIES.find(([name]) => name === fontSize)
   return legacy ? legacy[1] : FONT_SIZE_PX_DEFAULT
