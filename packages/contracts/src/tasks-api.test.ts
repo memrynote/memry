@@ -319,6 +319,38 @@ describe('TaskCreateSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it.each(['2026-02-30', '2025-02-29', '2026-13-01', '2026-04-31', '2026-00-10'])(
+    'should reject dueDate %s, which the calendar does not have',
+    (dueDate) => {
+      const result = TaskCreateSchema.safeParse({ projectId: 'proj-1', title: 'Test', dueDate })
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues[0].path).toContain('dueDate')
+      }
+    }
+  )
+
+  it.each(['2026-02-30', '2025-02-29', '2026-13-01'])(
+    'should reject startDate %s, which the calendar does not have',
+    (startDate) => {
+      const result = TaskCreateSchema.safeParse({ projectId: 'proj-1', title: 'Test', startDate })
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues[0].path).toContain('startDate')
+      }
+    }
+  )
+
+  it('should accept 2024-02-29, which a leap year does have', () => {
+    const result = TaskCreateSchema.safeParse({
+      projectId: 'proj-1',
+      title: 'Test',
+      dueDate: '2024-02-29',
+      startDate: '2024-02-29'
+    })
+    expect(result.success).toBe(true)
+  })
+
   it('should reject invalid dueTime format', () => {
     const result = TaskCreateSchema.safeParse({
       projectId: 'proj-1',
@@ -447,6 +479,37 @@ describe('TaskUpdateSchema', () => {
       parentId: null,
       dueDate: null,
       dueTime: null
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it.each(['2026-02-30', '2025-02-29', '2026-13-01'])(
+    'should reject dueDate %s, which the calendar does not have',
+    (dueDate) => {
+      const result = TaskUpdateSchema.safeParse({ id: 'task-1', dueDate })
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues[0].path).toContain('dueDate')
+      }
+    }
+  )
+
+  it.each(['2026-02-30', '2025-02-29', '2026-13-01'])(
+    'should reject startDate %s, which the calendar does not have',
+    (startDate) => {
+      const result = TaskUpdateSchema.safeParse({ id: 'task-1', startDate })
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues[0].path).toContain('startDate')
+      }
+    }
+  )
+
+  it('should accept 2024-02-29, which a leap year does have', () => {
+    const result = TaskUpdateSchema.safeParse({
+      id: 'task-1',
+      dueDate: '2024-02-29',
+      startDate: '2024-02-29'
     })
     expect(result.success).toBe(true)
   })
