@@ -5,6 +5,7 @@ import { getTaskCounts } from '@/lib/task-utils/task-view-helpers'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import { useToday } from '@/hooks/use-today'
 import { localDayRange } from '@/lib/local-day-range'
+import { filterCalendarWidgetItems } from '@/lib/home/calendar-widget-events'
 import { getGreetingKey, buildHeaderMetrics } from '@/lib/home/header-helpers'
 import type { HomePage, WidgetType } from '@/lib/home/types'
 import {
@@ -62,6 +63,9 @@ export function HomeHeader({
   const today = useToday()
   const range = useMemo(() => localDayRange(today), [today])
   const { items } = useCalendarRange(range)
+  // Same filter the calendar widget renders with, so the header count and the widget's rows are
+  // derived from one collection and cannot disagree by construction (see #1956).
+  const events = useMemo(() => filterCalendarWidgetItems(items), [items])
 
   const activeName = boards.find((b) => b.id === activeBoardId)?.name ?? t('home.board.label')
 
@@ -74,7 +78,7 @@ export function HomeHeader({
     month: 'long',
     day: 'numeric'
   })
-  const metrics = buildHeaderMetrics({ tasksDue, events: items.length })
+  const metrics = buildHeaderMetrics({ tasksDue, events: events.length })
 
   return (
     <div className="flex items-end justify-between px-6 pt-7 pb-5.5 [font-synthesis:none] antialiased">
