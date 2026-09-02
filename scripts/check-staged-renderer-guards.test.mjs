@@ -69,6 +69,24 @@ describe('physical Tailwind classes in class lists', () => {
     )
   })
 
+  // A lone apostrophe in JSX text or a regex reads as an opening quote. Closing an
+  // unterminated literal at the newline keeps that from swallowing the rest of the file.
+  it('still reports later lines after an apostrophe that is not a string', () => {
+    const source = [
+      "const warning = <p>don't do that</p>",
+      "const contraction = /isn't/",
+      'const g = <div className="ml-2" />'
+    ].join('\n')
+
+    assert.deepEqual(
+      physical(scanRendererText(rendererPath, source)).map((finding) => [
+        finding.line,
+        finding.message
+      ]),
+      [[3, 'ml-2']]
+    )
+  })
+
   it('leaves logical direction classes alone', () => {
     const source = 'const g = <div className="ms-2 pe-4 start-0 text-end border-s rounded-e-md" />'
 
