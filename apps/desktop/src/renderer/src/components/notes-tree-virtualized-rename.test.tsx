@@ -159,13 +159,20 @@ const renderTree = () =>
     </I18nextProvider>
   )
 
+// The sidebar's default sort is `manual`, which falls back to newest-first, so
+// the row a note lands on is decided by its timestamp. `new Date()` per note
+// ties on a fast machine (insertion order survives) and spreads across
+// milliseconds on a slow one (the last note created sorts first), which put
+// 'Note 0' at row 1 locally and row 150 in CI. Stamp each note one millisecond
+// older than the one before it so newest-first is insertion order everywhere.
+let stamp = Date.UTC(2026, 0, 1)
 const createNote = (id: string, path: string): NoteListItem => ({
   id,
   path,
   title: path.split('/').pop()?.replace('.md', '') || 'Untitled',
   emoji: null,
-  created: new Date(),
-  modified: new Date(),
+  created: new Date(stamp),
+  modified: new Date(stamp--),
   wordCount: 100,
   tags: []
 })
