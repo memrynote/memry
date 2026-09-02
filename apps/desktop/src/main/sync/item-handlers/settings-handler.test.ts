@@ -5,6 +5,7 @@ import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/t
 
 const mockMergeRemote = vi.fn()
 const mockGetSettings = vi.fn(() => ({}))
+const mockGetFieldClocks = vi.fn((): Record<string, VectorClock> => ({}))
 // The outbound half of SettingsSyncManager. Applying an inbound settings item
 // must never touch these — updateField()/enqueue*() are the only things that
 // push a settings item, so a call here is an echo back to the sending device.
@@ -16,6 +17,7 @@ vi.mock('@memry/sync-client/settings-sync', () => ({
   getSettingsSyncManager: vi.fn(() => ({
     mergeRemote: mockMergeRemote,
     getSettings: mockGetSettings,
+    getPayload: () => ({ settings: mockGetSettings(), fieldClocks: mockGetFieldClocks() }),
     updateField: mockUpdateField,
     enqueueCreate: mockEnqueueCreate,
     enqueueUpdate: mockEnqueueUpdate,
@@ -89,7 +91,60 @@ import {
 // that a synced language never reached this runtime path, so stubbing
 // applyLocale() would assert nothing about the thing that was broken.
 import { getActiveLocale, registerLocaleHandlers } from '../../ipc/locale-handler'
-import { settingsHandler } from './settings-handler'
+import { settingsHandler, reconcileFontSizePx } from './settings-handler'
+
+describe('reconcileFontSizePx', () => {
+  const older = { 'device-A': 1 }
+  const newer = { 'device-A': 2 }
+
+  it('#given the pixel clock is newer #then the pixel value stands', () => {
+    expect(
+      reconcileFontSizePx('small', 22, {
+        'general.fontSize': older,
+        'general.fontSizePx': newer
+      })
+    ).toBe(22)
+  })
+
+  it('#given the bucket clock is newer #then the pixel value is derived from the bucket', () => {
+    expect(
+      reconcileFontSizePx('small', 22, {
+        'general.fontSize': newer,
+        'general.fontSizePx': older
+      })
+    ).toBe(14)
+  })
+
+  it('#given concurrent clocks #then the pixel value stands', () => {
+    expect(
+      reconcileFontSizePx('small', 22, {
+        'general.fontSize': { 'device-A': 2, 'device-B': 1 },
+        'general.fontSizePx': { 'device-A': 1, 'device-B': 2 }
+      })
+    ).toBe(22)
+  })
+
+  it('#given no pixel clock #then the bucket carries the value it has no provenance for', () => {
+    expect(reconcileFontSizePx('large', 22, { 'general.fontSize': newer })).toBe(20)
+  })
+
+  it('#given no bucket clock #then the pixel value stands', () => {
+    expect(reconcileFontSizePx('small', 22, { 'general.fontSizePx': newer })).toBe(22)
+  })
+
+  it('#given no clocks at all #then the pixel value stands', () => {
+    expect(reconcileFontSizePx('small', 22, {})).toBe(22)
+  })
+
+  it('#given no legacy bucket #then the pixel value passes through untouched', () => {
+    expect(reconcileFontSizePx(undefined, 22, { 'general.fontSize': newer })).toBe(22)
+    expect(reconcileFontSizePx('gigantic', 22, { 'general.fontSize': newer })).toBe(22)
+  })
+
+  it('#given neither value #then nothing is derived', () => {
+    expect(reconcileFontSizePx(undefined, undefined, {})).toBeUndefined()
+  })
+})
 
 describe('settingsHandler.applyUpsert', () => {
   const ctx: ApplyContext = {
@@ -124,6 +179,56 @@ describe('settingsHandler.applyUpsert', () => {
 
     expect(result).toBe('applied')
     expect(mockMergeRemote).toHaveBeenCalledWith(data)
+  })
+
+  it('#given an older device pushes only the legacy bucket #then its change beats the stale pixel size', () => {
+    // Device A dragged the slider to 22, pushing both fields. Device B runs a
+    // build from before the slider, so its "Small" push carries no fontSizePx
+    // at all and mergeRemote leaves 22 in place. Without reconciliation
+    // resolveFontSizePx prefers 22 forever and B's change is never seen.
+    mockGetSettings.mockReturnValue({
+      general: { theme: 'dark', fontSize: 'small', fontSizePx: 22 }
+    })
+    mockGetFieldClocks.mockReturnValue({
+      'general.fontSize': { 'device-A': 1, 'device-B': 1 },
+      'general.fontSizePx': { 'device-A': 1 }
+    })
+    const data: SettingsSyncPayload = {
+      settings: { general: { fontSize: 'small' } },
+      fieldClocks: { 'general.fontSize': { 'device-A': 1, 'device-B': 1 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    expect(mockWritePreferences).toHaveBeenCalledWith(
+      '/test/vault',
+      expect.objectContaining({ fontSize: 'small', fontSizePx: 14 })
+    )
+    // Derived locally: the synced payload keeps 22 and no clock moves, so every
+    // device reaches 14 on its own and nothing echoes back to the sender.
+    expect(mockUpdateField).not.toHaveBeenCalled()
+    expect(mockEnqueueUpdate).not.toHaveBeenCalled()
+  })
+
+  it('#given the slider is the newer of the two #then the pixel size survives the merge', () => {
+    mockGetSettings.mockReturnValue({
+      general: { theme: 'dark', fontSize: 'large', fontSizePx: 22 }
+    })
+    mockGetFieldClocks.mockReturnValue({
+      'general.fontSize': { 'device-A': 1 },
+      'general.fontSizePx': { 'device-A': 2 }
+    })
+    const data: SettingsSyncPayload = {
+      settings: { general: { fontSize: 'large', fontSizePx: 22 } },
+      fieldClocks: { 'general.fontSizePx': { 'device-A': 2 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    expect(mockWritePreferences).toHaveBeenCalledWith(
+      '/test/vault',
+      expect.objectContaining({ fontSizePx: 22 })
+    )
   })
 
   it('#given vault path available #when applyUpsert called #then writes to config.json', () => {

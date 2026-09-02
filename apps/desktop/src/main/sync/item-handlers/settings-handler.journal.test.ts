@@ -5,6 +5,7 @@ import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/t
 
 const mockMergeRemote = vi.fn()
 const mockGetSettings = vi.fn(() => ({}))
+const mockGetFieldClocks = vi.fn((): Record<string, VectorClock> => ({}))
 // The outbound half of SettingsSyncManager. Applying an inbound settings item
 // must never touch these — updateField()/enqueue*() are the only things that
 // push a settings item, so a call here is an echo back to the sending device.
@@ -16,6 +17,7 @@ vi.mock('@memry/sync-client/settings-sync', () => ({
   getSettingsSyncManager: vi.fn(() => ({
     mergeRemote: mockMergeRemote,
     getSettings: mockGetSettings,
+    getPayload: () => ({ settings: mockGetSettings(), fieldClocks: mockGetFieldClocks() }),
     updateField: mockUpdateField,
     enqueueCreate: mockEnqueueCreate,
     enqueueUpdate: mockEnqueueUpdate,
