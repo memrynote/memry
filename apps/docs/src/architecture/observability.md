@@ -314,6 +314,16 @@ at most one dimension and that slot already carries `prior_app_version`. The `SH
 prefix is preserved so a query written against the old code still matches. Only a bounded
 kebab-case token is accepted from the marker; anything else degrades to the plain code.
 
+`app_crashed` also carries an assembled **message** naming the shutdown failure, the overrunning
+step, the prior version, the observed uptime and whether the marker parsed — without it the Error
+Tracking issue was titled `UNCLEAN_SHUTDOWN` and held nothing else. The marker is a file on disk, so
+every string field is **rejected outright** unless it matches an enum-ish token (a
+character-substituted path still leaks its structure), and the assembled message is capped at 512
+characters. That cap is not cosmetic: an over-length message fails `TelemetryErrorDetailSchema` at
+the sync-server, which rejects the **whole batch** with a 400, and the desktop client treats a 4xx
+as permanent — one corrupt marker field would otherwise discard up to 100 unrelated events on every
+launch until the marker cleared.
+
 ### Shutdown Budget
 
 `before-quit` runs its cleanup as an ordered list of named steps under **one shared deadline**
