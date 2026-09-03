@@ -67,19 +67,14 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
   // accelerator is given it is display-only (registerAccelerator: false) — the
   // renderer/editor owns the shortcut, so registering it here would swallow the
   // keydown in the main process on Windows/Linux before the editor sees it.
-  // `registerAccelerator: true` is the opt-in for the few commands nothing in
-  // the renderer binds, which therefore need the menu to own the keystroke.
   const cmd = (
     command: string,
     label: string,
-    accelerator?: string,
-    options?: { registerAccelerator?: boolean }
+    accelerator?: string
   ): MenuItemConstructorOptions => ({
     id: command,
     label,
-    ...(accelerator
-      ? { accelerator, registerAccelerator: options?.registerAccelerator ?? false }
-      : {}),
+    ...(accelerator ? { accelerator, registerAccelerator: false } : {}),
     click: () => sendMenuCommand(command)
   })
 
@@ -248,26 +243,11 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         { type: 'separator' },
         // Not the resetZoom/zoomIn/zoomOut roles: those drive Chromium's own
         // zoom, which nothing persists, so the level was lost on every restart.
-        // These three are the only cmd() items that register their accelerator.
-        // The renderer binds nothing on ⌘0/⌘+/⌘-, and neither does the editor,
-        // so no keydown is stolen — and without registering them the shortcut
-        // would do nothing at all.
-        cmd('view.actualSize', t('view.actualSize'), 'CmdOrCtrl+0', {
-          registerAccelerator: true
-        }),
-        cmd('view.zoomIn', t('view.zoomIn'), 'CmdOrCtrl+Plus', { registerAccelerator: true }),
-        // Electron's accelerator table treats `Plus` as its own key code,
-        // distinct from `=`, so `CmdOrCtrl+Plus` only matches the shifted key
-        // while users press ⌘ with an unshifted `=`. Not redundant.
-        {
-          id: 'view.zoomInEquals',
-          label: t('view.zoomIn'),
-          accelerator: 'CmdOrCtrl+=',
-          visible: false,
-          acceleratorWorksWhenHidden: true,
-          click: () => sendMenuCommand('view.zoomIn')
-        },
-        cmd('view.zoomOut', t('view.zoomOut'), 'CmdOrCtrl+-', { registerAccelerator: true }),
+        // The renderer owns these keystrokes (see use-app-zoom), so the
+        // accelerators here are labels only, like every other cmd() item.
+        cmd('view.actualSize', t('view.actualSize'), 'CmdOrCtrl+0'),
+        cmd('view.zoomIn', t('view.zoomIn'), 'CmdOrCtrl+Plus'),
+        cmd('view.zoomOut', t('view.zoomOut'), 'CmdOrCtrl+-'),
         { type: 'separator' },
         { label: t('view.toggleFullscreen'), role: 'togglefullscreen' },
         { type: 'separator' },
