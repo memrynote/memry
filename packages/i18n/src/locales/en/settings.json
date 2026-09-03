@@ -273,7 +273,8 @@
       "fontSize": {
         "label": "Font Size",
         "description": "Base interface text size in pixels",
-        "aria": "Font size",
+        "decrease": "Decrease font size",
+        "increase": "Increase font size",
         "reset": "Reset font size to default"
       },
       "fontFamily": {
