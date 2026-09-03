@@ -5,6 +5,7 @@ import {
   FONT_SIZE_PX_DEFAULT,
   LEGACY_FONT_SIZE_PX,
   resolveFontSizePx,
+  stepFontSizePx,
   toLegacyFontSize
 } from './font-size'
 
@@ -101,6 +102,32 @@ describe('toLegacyFontSize', () => {
     }
     for (let px = FONT_SIZE_PX_MIN; px <= FONT_SIZE_PX_MAX; px++) {
       expect(toLegacyFontSize(px)).toBe(expected[px])
+    }
+  })
+})
+
+describe('stepFontSizePx', () => {
+  it('moves one pixel in each direction', () => {
+    expect(stepFontSizePx(16, 1)).toBe(17)
+    expect(stepFontSizePx(16, -1)).toBe(15)
+  })
+
+  it('stops at both rails', () => {
+    expect(stepFontSizePx(FONT_SIZE_PX_MIN, -1)).toBe(FONT_SIZE_PX_MIN)
+    expect(stepFontSizePx(FONT_SIZE_PX_MAX, 1)).toBe(FONT_SIZE_PX_MAX)
+  })
+
+  it('never carries a fraction forward', () => {
+    expect(stepFontSizePx(16.4, 1)).toBe(17)
+    expect(stepFontSizePx(16.4, -1)).toBe(15)
+    expect(stepFontSizePx(16.6, 1)).toBe(18)
+    expect(stepFontSizePx(16.6, -1)).toBe(16)
+  })
+
+  it('returns an integer from every value in range', () => {
+    for (let px = FONT_SIZE_PX_MIN; px <= FONT_SIZE_PX_MAX; px += 0.5) {
+      expect(Number.isInteger(stepFontSizePx(px, 1))).toBe(true)
+      expect(Number.isInteger(stepFontSizePx(px, -1))).toBe(true)
     }
   })
 })

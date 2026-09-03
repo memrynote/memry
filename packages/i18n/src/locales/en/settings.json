@@ -225,7 +225,8 @@
     "groups": {
       "theme": "Theme",
       "accentColor": "Accent Color",
-      "typography": "Typography"
+      "typography": "Typography",
+      "zoom": "Zoom"
     },
     "theme": {
       "colorMode": {
@@ -260,11 +261,20 @@
       },
       "error": "Failed to update accent color"
     },
+    "zoom": {
+      "label": "Zoom Level",
+      "description": "Scale the entire interface",
+      "decrease": "Decrease zoom",
+      "increase": "Increase zoom",
+      "reset": "Reset zoom to default",
+      "error": "Failed to update zoom level"
+    },
     "typography": {
       "fontSize": {
         "label": "Font Size",
         "description": "Base interface text size in pixels",
-        "aria": "Font size",
+        "decrease": "Decrease font size",
+        "increase": "Increase font size",
         "reset": "Reset font size to default"
       },
       "fontFamily": {

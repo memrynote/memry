@@ -10,6 +10,7 @@
 import { z } from 'zod'
 import { LocaleSchema } from './locale-api'
 import { FONT_SIZE_PX_DEFAULT, FONT_SIZE_PX_MAX, FONT_SIZE_PX_MIN } from './font-size'
+import { ZOOM_FACTOR_DEFAULT, ZOOM_FACTOR_MAX, ZOOM_FACTOR_MIN } from './app-zoom'
 
 // ============================================================================
 // General Settings
@@ -59,7 +60,14 @@ export const GeneralSettingsSchema = z.object({
    */
   minimizeToTray: z.boolean(),
   clockFormat: z.enum(['12h', '24h']),
-  dateFormat: z.enum(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD.MM.YYYY'])
+  dateFormat: z.enum(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD.MM.YYYY']),
+  /**
+   * The factor the whole interface renders at. Deliberately per-install: it
+   * compensates for the physical display in front of the user, so a 27" desktop
+   * and a 13" laptop each keep their own value. It is neither synced nor
+   * carried when a vault moves to another machine.
+   */
+  zoomFactor: z.number().min(ZOOM_FACTOR_MIN).max(ZOOM_FACTOR_MAX)
 })
 
 export type GeneralSettings = z.infer<typeof GeneralSettingsSchema>
@@ -80,7 +88,8 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   openPagesInNewTab: false,
   minimizeToTray: false,
   clockFormat: '12h',
-  dateFormat: 'DD.MM.YYYY'
+  dateFormat: 'DD.MM.YYYY',
+  zoomFactor: ZOOM_FACTOR_DEFAULT
 }
 
 // ============================================================================

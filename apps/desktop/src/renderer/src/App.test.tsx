@@ -281,7 +281,12 @@ vi.mock('@/contexts/selected-folder-context', () => ({
 }))
 
 vi.mock('@/contexts/hint-mode', () => ({
-  HintModeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
+  HintModeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  // Every keydown this suite dispatches now reaches the app-wide shortcut
+  // listener, which reads this ref before matching. Omitting it made the mock
+  // throw out of an event handler, where it surfaced as an unhandled error
+  // rather than a failing test.
+  hintModeActiveRef: { current: false }
 }))
 
 vi.mock('@/contexts/settings-modal-context', () => ({

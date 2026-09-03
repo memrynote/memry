@@ -5,6 +5,7 @@ import { isLastHomeTab } from '@/contexts/tabs/helpers'
 import { useSidebar } from '@/components/ui/sidebar'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { useAppZoom } from '@/hooks/use-app-zoom'
 import {
   isEditorMenuCommand,
   runEditorMenuCommand,
@@ -29,6 +30,7 @@ export function useMenuCommands({ onNewNote, onOpenSearch }: MenuCommandHandlers
   const { toggle: toggleDayPanel } = useDayPanel()
   const { open: openSettings } = useSettingsModal()
   const { setTheme } = useTheme()
+  const { zoomIn, zoomOut, resetZoom } = useAppZoom()
 
   const handlers: Record<string, () => void> = {
     'file.newNote': onNewNote,
@@ -46,6 +48,9 @@ export function useMenuCommands({ onNewNote, onOpenSearch }: MenuCommandHandlers
     'edit.find': () => window.dispatchEvent(new CustomEvent('memry:menu-find')),
     'app.preferences': () => openSettings(),
     'app.checkForUpdates': () => void runMenuUpdateCheck(),
+    'view.zoomIn': zoomIn,
+    'view.zoomOut': zoomOut,
+    'view.actualSize': resetZoom,
     'view.toggleSidebar': toggleSidebar,
     'view.toggleDayPanel': toggleDayPanel,
     'view.shortcuts': () => window.dispatchEvent(new CustomEvent('memry:open-shortcuts')),

@@ -243,7 +243,11 @@ vi.mock('@/contexts/selected-folder-context', () => ({
 }))
 
 vi.mock('@/contexts/hint-mode', () => ({
-  HintModeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
+  HintModeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  // Read by the app-wide shortcut listener on every keydown. This suite
+  // dispatches none today, so omitting it would only bite whoever adds the
+  // first one, as an unhandled error rather than a failing assertion.
+  hintModeActiveRef: { current: false }
 }))
 
 vi.mock('@/contexts/settings-modal-context', () => ({

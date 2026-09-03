@@ -5,6 +5,7 @@ import { setDateFormatPref } from '@/lib/format-date'
 import { FONT_FAMILY_MAP, sanitizeFontFamilyName } from '@/lib/interface-font'
 import { createLogger } from '@/lib/logger'
 import { resolveFontSizePx } from '@memry/contracts/font-size'
+import { clampZoomFactor } from '@memry/contracts/app-zoom'
 
 const log = createLogger('ThemeSync')
 
@@ -27,6 +28,11 @@ export function useThemeSync(): void {
     if (isLoading) return
     document.documentElement.style.fontSize = `${resolveFontSizePx(settings.fontSizePx, settings.fontSize)}px`
   }, [isLoading, settings.fontSizePx, settings.fontSize])
+
+  useEffect(() => {
+    if (isLoading) return
+    window.api.setZoomFactor(clampZoomFactor(settings.zoomFactor))
+  }, [isLoading, settings.zoomFactor])
 
   useEffect(() => {
     if (isLoading) return

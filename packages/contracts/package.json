@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./app-zoom": "./src/app-zoom.ts",
     "./auth-api": "./src/auth-api.ts",
     "./bootstrap-api": "./src/bootstrap-api.ts",
     "./blob-api": "./src/blob-api.ts",

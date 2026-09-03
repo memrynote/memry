@@ -227,6 +227,63 @@ describe('buildAppMenu', () => {
     })
   })
 
+  it('routes the zoom items through the renderer with display-only accelerators', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue({
+      webContents: { isDestroyed: () => false, send }
+    } as unknown as Electron.BrowserWindow)
+
+    buildAppMenu(i18n)
+
+    // Regression: role 'resetZoom'/'zoomIn'/'zoomOut' drive Chromium's own zoom,
+    // which nothing persists, so the level was lost on every restart. The
+    // accelerators stay as labels — use-app-zoom binds the keystrokes in the
+    // renderer, so registering them here would be a second owner.
+    expect(findMenuItem('Actual Size')).toMatchObject({
+      id: 'view.actualSize',
+      accelerator: 'CmdOrCtrl+0',
+      registerAccelerator: false
+    })
+    expect(findMenuItem('Actual Size')?.role).toBeUndefined()
+    expect(findMenuItem('Zoom In')).toMatchObject({
+      id: 'view.zoomIn',
+      accelerator: 'CmdOrCtrl+Plus',
+      registerAccelerator: false
+    })
+    expect(findMenuItem('Zoom Out')).toMatchObject({
+      id: 'view.zoomOut',
+      accelerator: 'CmdOrCtrl+-',
+      registerAccelerator: false
+    })
+
+    findMenuItem('Actual Size')?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, {
+      command: 'view.actualSize'
+    })
+    findMenuItem('Zoom Out')?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'view.zoomOut' })
+    findMenuItem('Zoom In')?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'view.zoomIn' })
+  })
+
+  it('gives Zoom In no hidden sibling: the renderer handles the unshifted ⌘=', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    buildAppMenu(i18n)
+
+    const template = buildFromTemplate.mock.calls.at(-1)?.[0] as TemplateItem[]
+    const zoomItems = template
+      .flatMap((item) => item.submenu ?? [])
+      .filter((item) => item.id?.startsWith('view.zoom') || item.id === 'view.actualSize')
+
+    expect(zoomItems.map((item) => item.id)).toEqual([
+      'view.actualSize',
+      'view.zoomIn',
+      'view.zoomOut'
+    ])
+  })
+
   it('falls back to the sole visible window when no window reports focus', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
     const send = vi.fn()
@@ -304,9 +361,6 @@ describe('buildAppMenu', () => {
     // stays — it provides the behaviour — and the label only names it.
     expect(findMenuItem('Paste and Match Style')).toMatchObject({ role: 'pasteAndMatchStyle' })
     expect(findMenuItem('Delete')).toMatchObject({ role: 'delete' })
-    expect(findMenuItem('Actual Size')).toMatchObject({ role: 'resetZoom' })
-    expect(findMenuItem('Zoom In')).toMatchObject({ role: 'zoomIn' })
-    expect(findMenuItem('Zoom Out')).toMatchObject({ role: 'zoomOut' })
 
     // macOS app menu only. Same app.name trap as About: the hide role's default
     // label is `Hide ${app.name}`, which reads "Hide @memry/desktop" in production.

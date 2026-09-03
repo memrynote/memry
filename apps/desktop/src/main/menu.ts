@@ -241,9 +241,13 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         { label: t('view.reload'), role: 'reload' },
         { label: t('view.toggleDevTools'), role: 'toggleDevTools' },
         { type: 'separator' },
-        { label: t('view.actualSize'), role: 'resetZoom' },
-        { label: t('view.zoomIn'), role: 'zoomIn' },
-        { label: t('view.zoomOut'), role: 'zoomOut' },
+        // Not the resetZoom/zoomIn/zoomOut roles: those drive Chromium's own
+        // zoom, which nothing persists, so the level was lost on every restart.
+        // The renderer owns these keystrokes (see use-app-zoom), so the
+        // accelerators here are labels only, like every other cmd() item.
+        cmd('view.actualSize', t('view.actualSize'), 'CmdOrCtrl+0'),
+        cmd('view.zoomIn', t('view.zoomIn'), 'CmdOrCtrl+Plus'),
+        cmd('view.zoomOut', t('view.zoomOut'), 'CmdOrCtrl+-'),
         { type: 'separator' },
         { label: t('view.toggleFullscreen'), role: 'togglefullscreen' },
         { type: 'separator' },

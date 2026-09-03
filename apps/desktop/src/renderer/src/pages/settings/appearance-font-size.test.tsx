@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 import { AppearanceSettings } from './appearance-section'
 
@@ -26,22 +26,11 @@ vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() }
 }))
 
-const FONT_SIZE_ARIA = 'Font size'
+const decreaseButton = (): HTMLElement => screen.getByLabelText('Decrease font size')
+const increaseButton = (): HTMLElement => screen.getByLabelText('Increase font size')
+const resetButton = (): HTMLElement => screen.getByLabelText('Reset font size to default')
 
-// Radix's pointer path lives on the Root, which is the only one of the two
-// elements carrying `dir`. Pressing the Thumb — the element that owns
-// role="slider" and the accessible name — is read as grabbing the existing
-// thumb and moves nothing.
-const sliderTrack = (): HTMLElement => screen.getByRole('slider').closest('[dir]') as HTMLElement
-
-beforeAll(() => {
-  // Radix's slider drives its pointer path through capture APIs jsdom omits.
-  Element.prototype.setPointerCapture = vi.fn()
-  Element.prototype.releasePointerCapture = vi.fn()
-  Element.prototype.hasPointerCapture = vi.fn(() => true)
-})
-
-describe('Appearance font size slider', () => {
+describe('Appearance font size stepper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.generalSettings.settings = {
@@ -56,44 +45,28 @@ describe('Appearance font size slider', () => {
     document.documentElement.removeAttribute('style')
   })
 
-  it('#given a screen reader #then the name is on the element that carries role="slider"', () => {
+  it('#given a screen reader #then every control in the row has a name', () => {
     render(<AppearanceSettings />)
 
-    // Radix names the Thumb, not the Root, so an aria-label the Root swallows
-    // leaves the control anonymous however it looks in the markup.
-    expect(screen.getByRole('slider', { name: FONT_SIZE_ARIA })).toBeInTheDocument()
+    expect(decreaseButton()).toBeInTheDocument()
+    expect(increaseButton()).toBeInTheDocument()
+    expect(resetButton()).toBeInTheDocument()
   })
 
-  it('#given a drag in progress #then the interface resizes live without saving', () => {
+  it('#given a step #then the interface resizes live before anything is written', () => {
     render(<AppearanceSettings />)
 
-    // jsdom measures the track as zero-width, which Radix maps to the minimum.
-    fireEvent.pointerDown(sliderTrack(), { clientX: 0, pointerId: 1 })
+    fireEvent.click(increaseButton())
 
-    expect(document.documentElement.style.fontSize).toBe('12px')
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '12')
+    expect(document.documentElement.style.fontSize).toBe('17px')
+    expect(screen.getByText('17')).toBeInTheDocument()
     expect(mocks.generalSettings.updateSettings).not.toHaveBeenCalled()
   })
 
-  it('#given the drag is released #then both the pixel size and the legacy bucket are saved', async () => {
+  it('#given the increase button #then both the pixel size and the legacy bucket are saved', async () => {
     render(<AppearanceSettings />)
 
-    const track = sliderTrack()
-    fireEvent.pointerDown(track, { clientX: 0, pointerId: 1 })
-    fireEvent.pointerUp(track, { clientX: 0, pointerId: 1 })
-
-    await waitFor(() =>
-      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
-        fontSizePx: 12,
-        fontSize: 'small'
-      })
-    )
-  })
-
-  it('#given an arrow key on the slider #then the step is saved without a pointer release', async () => {
-    render(<AppearanceSettings />)
-
-    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' })
+    fireEvent.click(increaseButton())
 
     await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
@@ -101,7 +74,21 @@ describe('Appearance font size slider', () => {
         fontSize: 'medium'
       })
     )
-    expect(document.documentElement.style.fontSize).toBe('17px')
+  })
+
+  it('#given the decrease button #then the interface shrinks one pixel and the step is saved', async () => {
+    render(<AppearanceSettings />)
+
+    fireEvent.click(decreaseButton())
+
+    expect(document.documentElement.style.fontSize).toBe('15px')
+    expect(screen.getByText('15')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        fontSizePx: 15,
+        fontSize: 'small'
+      })
+    )
   })
 
   it('#given the reset button #then the size returns to the default', async () => {
@@ -115,7 +102,9 @@ describe('Appearance font size slider', () => {
     }
     render(<AppearanceSettings />)
 
-    fireEvent.click(screen.getByLabelText('Reset font size to default'))
+    expect(screen.getByText('22')).toBeInTheDocument()
+
+    fireEvent.click(resetButton())
 
     await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
@@ -130,31 +119,28 @@ describe('Appearance font size slider', () => {
     mocks.generalSettings.updateSettings.mockResolvedValue(false)
     render(<AppearanceSettings />)
 
-    const track = sliderTrack()
-    fireEvent.pointerDown(track, { clientX: 0, pointerId: 1 })
-    fireEvent.pointerUp(track, { clientX: 0, pointerId: 1 })
+    fireEvent.click(increaseButton())
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to update font size'))
+    // The settings hook never re-runs for a value that never changed, so the
+    // row has to hand the previous size back to the root element itself.
     expect(document.documentElement.style.fontSize).toBe('16px')
   })
 
-  it('#given a drag that wanders and returns to where it started #then nothing is written and the row still follows a later remote change', async () => {
+  it('#given a step out and back to the saved size #then nothing is written and the row still follows a later remote change', async () => {
     const { rerender } = render(<AppearanceSettings />)
 
-    const track = sliderTrack()
-    // A real width, so the drag can travel and come back. Left at jsdom's zero
-    // width every position maps to the minimum and the round trip is impossible.
-    track.getBoundingClientRect = () => new DOMRect(0, 0, 120, 8)
+    fireEvent.click(increaseButton())
+    expect(screen.getByText('17')).toBeInTheDocument()
+    fireEvent.click(decreaseButton())
+    expect(screen.getByText('16')).toBeInTheDocument()
 
-    fireEvent.pointerDown(track, { clientX: 40, pointerId: 1 })
-    fireEvent.pointerMove(track, { clientX: 80, pointerId: 1 })
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '20')
-
-    fireEvent.pointerMove(track, { clientX: 40, pointerId: 1 })
-    fireEvent.pointerUp(track, { clientX: 40, pointerId: 1 })
-
-    // Radix reports no commit here, so the draft has to retire on its own.
-    await waitFor(() => expect(mocks.generalSettings.updateSettings).not.toHaveBeenCalled())
+    // Past the commit delay, so the pending write has run and declined rather
+    // than merely being still queued.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    })
+    expect(mocks.generalSettings.updateSettings).not.toHaveBeenCalled()
 
     mocks.generalSettings.settings = {
       ...mocks.generalSettings.settings,
@@ -163,43 +149,43 @@ describe('Appearance font size slider', () => {
     }
     rerender(<AppearanceSettings />)
 
-    await waitFor(() => expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '22'))
+    expect(screen.getByText('22')).toBeInTheDocument()
   })
 
-  it('#given a held arrow key #then the whole run is written once, not once per keydown', async () => {
+  it('#given a burst of clicks #then only the size the user landed on is written', async () => {
     render(<AppearanceSettings />)
 
-    for (let i = 0; i < 6; i++) {
-      fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' })
-    }
+    fireEvent.click(increaseButton())
+    fireEvent.click(increaseButton())
+    fireEvent.click(increaseButton())
 
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '22')
-
-    await waitFor(() => expect(mocks.generalSettings.updateSettings).toHaveBeenCalled())
+    expect(screen.getByText('19')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        fontSizePx: 19,
+        fontSize: 'large'
+      })
+    )
     expect(mocks.generalSettings.updateSettings).toHaveBeenCalledTimes(1)
-    expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
-      fontSizePx: 22,
-      fontSize: 'large'
-    })
   })
 
-  it('#given settings closed straight after a drag #then the pending size is saved rather than dropped', async () => {
+  it('#given settings closed straight after a click #then the pending size is saved rather than dropped', async () => {
     const { unmount } = render(<AppearanceSettings />)
 
-    fireEvent.pointerDown(sliderTrack(), { clientX: 0, pointerId: 1 })
-    expect(document.documentElement.style.fontSize).toBe('12px')
+    fireEvent.click(decreaseButton())
+    expect(document.documentElement.style.fontSize).toBe('15px')
 
     unmount()
 
     await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
-        fontSizePx: 12,
+        fontSizePx: 15,
         fontSize: 'small'
       })
     )
   })
 
-  it('#given only the legacy bucket is stored #then the slider starts at that pixel size', () => {
+  it('#given only the legacy bucket is stored #then the row starts at that pixel size', () => {
     mocks.generalSettings.settings = {
       ...mocks.generalSettings.settings,
       fontSize: 'large',
@@ -207,6 +193,32 @@ describe('Appearance font size slider', () => {
     }
     render(<AppearanceSettings />)
 
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '20')
+    expect(screen.getByText('20')).toBeInTheDocument()
+  })
+
+  it('#given the smallest size #then decrease is disabled and increase is not', () => {
+    mocks.generalSettings.settings = {
+      ...mocks.generalSettings.settings,
+      fontSizePx: 12,
+      fontSize: 'small'
+    }
+    render(<AppearanceSettings />)
+
+    expect(screen.getByText('12')).toBeInTheDocument()
+    expect(decreaseButton()).toBeDisabled()
+    expect(increaseButton()).toBeEnabled()
+  })
+
+  it('#given the largest size #then increase is disabled and decrease is not', () => {
+    mocks.generalSettings.settings = {
+      ...mocks.generalSettings.settings,
+      fontSizePx: 24,
+      fontSize: 'large'
+    }
+    render(<AppearanceSettings />)
+
+    expect(screen.getByText('24')).toBeInTheDocument()
+    expect(increaseButton()).toBeDisabled()
+    expect(decreaseButton()).toBeEnabled()
   })
 })

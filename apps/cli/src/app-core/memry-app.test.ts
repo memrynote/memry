@@ -679,7 +679,8 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     openPagesInNewTab: false,
     minimizeToTray: false,
     clockFormat: '12h',
-    dateFormat: 'DD.MM.YYYY'
+    dateFormat: 'DD.MM.YYYY',
+    zoomFactor: 1
   })
   assert.deepEqual(await app.settings.setGroup('general', { theme: 'dark', language: 'tr' }), {
     theme: 'dark',
@@ -694,7 +695,8 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     openPagesInNewTab: false,
     minimizeToTray: false,
     clockFormat: '12h',
-    dateFormat: 'DD.MM.YYYY'
+    dateFormat: 'DD.MM.YYYY',
+    zoomFactor: 1
   })
   assert.equal(await app.locale.get(), 'tr')
   assert.equal((await app.locale.list()).includes('de'), true)

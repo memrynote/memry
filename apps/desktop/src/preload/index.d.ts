@@ -1275,6 +1275,8 @@ export interface GeneralSettingsDTO {
   minimizeToTray: boolean
   clockFormat: '12h' | '24h'
   dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'DD.MM.YYYY'
+  /** Per-install interface zoom; never synced, never carried between machines. */
+  zoomFactor: number
 }
 
 export interface EditorSettingsDTO {
@@ -1718,6 +1720,7 @@ interface WindowAPI {
   windowMinimize: () => void
   windowMaximize: () => void
   windowClose: () => void
+  setZoomFactor: (factor: number) => void
 }
 
 interface AgentMcpClientAPI {

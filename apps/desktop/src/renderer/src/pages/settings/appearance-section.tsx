@@ -9,8 +9,7 @@ import {
 } from 'react'
 import { Input } from '@/components/ui/input'
 import { Picker, usePickerContext, usePickerSearch } from '@/components/ui/picker'
-import { Slider } from '@/components/ui/slider'
-import { Sun, Moon, Monitor, FileText, RotateCcw } from '@/lib/icons'
+import { Sun, Moon, Monitor, FileText, Minus, Plus, RotateCcw } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSystemFonts, type SystemFontsState } from '@/hooks/use-system-fonts'
 import {
@@ -26,20 +25,32 @@ import {
 } from '@/lib/interface-font'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { useT, useDirection } from '@memry/i18n/renderer'
+import { useT } from '@memry/i18n/renderer'
 import {
   resolveFontSizePx,
+  stepFontSizePx,
   toLegacyFontSize,
   FONT_SIZE_PX_MIN,
   FONT_SIZE_PX_MAX,
   FONT_SIZE_PX_DEFAULT
 } from '@memry/contracts/font-size'
 import {
+  clampZoomFactor,
+  stepZoomFactor,
+  zoomPercent,
+  ZOOM_FACTOR_MIN,
+  ZOOM_FACTOR_MAX,
+  ZOOM_FACTOR_DEFAULT
+} from '@memry/contracts/app-zoom'
+import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
   COMPACT_SELECT
 } from '@/components/settings/settings-primitives'
+
+const STEP_BUTTON =
+  'flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground disabled:cursor-default disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 
 const ACCENT_PRESETS = [
   { value: '#6366f1', labelKey: 'appearance.accent.presets.indigo' },
@@ -58,16 +69,163 @@ function setRootFontSize(px: number): void {
   document.documentElement.style.fontSize = `${px}px`
 }
 
+function setAppZoomFactor(factor: number): void {
+  window.api.setZoomFactor(factor)
+}
+
 /**
- * How long the font size settles before it is written.
+ * How long a settings row settles before its value is written.
  *
- * Radix reports a value on every pointer move and commits on every *keydown*,
- * so an unthrottled row turns one held ArrowRight into a dozen IPC round trips,
- * a dozen config.json rewrites and a dozen encrypted settings uploads. Long
- * enough to coalesce a drag or a key repeat into one write, short enough that
- * letting go feels like it saved instantly.
+ * A burst of stepper clicks, or one button held until it repeats, turns an
+ * unthrottled row into a dozen IPC round trips, a dozen config.json rewrites
+ * and a dozen encrypted settings uploads. Long enough to coalesce a burst or a
+ * key repeat into one write, short enough that letting go feels like it saved
+ * instantly.
  */
-const FONT_SIZE_COMMIT_DELAY_MS = 150
+const COMMIT_DELAY_MS = 150
+
+interface SteppedDraft {
+  value: number
+  preview: (value: number) => void
+}
+
+/**
+ * A settings row whose value is applied to the live interface immediately and
+ * written to disk once the user stops changing it.
+ *
+ * `apply` changes what the user sees, `save` persists it, and `onSaveFailed`
+ * reports a rejected write. Because `apply` has already taken effect, a failed
+ * save has to put the interface back itself: the settings hook that normally
+ * drives it never re-runs, its effect deps never having changed.
+ */
+function useSteppedDraft(
+  saved: number,
+  apply: (value: number) => void,
+  save: (value: number) => Promise<boolean>,
+  onSaveFailed: () => void
+): SteppedDraft {
+  const [draft, setDraft] = useState<number | null>(null)
+  const pendingRef = useRef<{
+    commit: () => void
+    timer: ReturnType<typeof setTimeout>
+  } | null>(null)
+
+  // The pending write outlives any number of re-renders, so what it will do is
+  // read from a ref at commit time rather than captured when it was scheduled.
+  // Capturing would make every render cancel and reschedule the timer, and
+  // would pin the unmount flush to a stale `saved`.
+  const latestRef = useRef({ saved, apply, save, onSaveFailed })
+  useEffect(() => {
+    latestRef.current = { saved, apply, save, onSaveFailed }
+  })
+
+  const preview = useCallback((value: number) => {
+    setDraft(value)
+    latestRef.current.apply(value)
+    if (pendingRef.current) clearTimeout(pendingRef.current.timer)
+
+    const commit = (): void => {
+      pendingRef.current = null
+      const latest = latestRef.current
+
+      // Only ever release a draft that is still the one this call owns. A held
+      // arrow key otherwise makes the displayed value jump backwards whenever a
+      // slow write lands after a newer preview.
+      const releaseDraft = (): void => setDraft((cur) => (cur === value ? null : cur))
+
+      // A step out and back onto the saved value writes nothing. Re-saving it
+      // would cost an IPC round trip, a config.json rewrite and an encrypted
+      // settings upload for a change that is not one.
+      if (value === latest.saved) {
+        releaseDraft()
+        return
+      }
+
+      void latest.save(value).then((success) => {
+        releaseDraft()
+        if (success) return
+        latest.apply(latest.saved)
+        latest.onSaveFailed()
+      })
+    }
+
+    pendingRef.current = { commit, timer: setTimeout(commit, COMMIT_DELAY_MS) }
+  }, [])
+
+  // Flushed, not dropped: the preview already changed the live interface, so an
+  // unmount that discarded the pending write would leave the app looking one
+  // way and the file on disk saying another, until the next restart.
+  useEffect(
+    () => () => {
+      const pending = pendingRef.current
+      if (!pending) return
+      clearTimeout(pending.timer)
+      pending.commit()
+    },
+    []
+  )
+
+  return { value: draft ?? saved, preview }
+}
+
+interface StepperProps {
+  value: number
+  min: number
+  max: number
+  onStep: (direction: 1 | -1) => void
+  onReset: () => void
+  format: (value: number) => string
+  labels: { decrease: string; increase: string; reset: string }
+}
+
+function Stepper({
+  value,
+  min,
+  max,
+  onStep,
+  onReset,
+  format,
+  labels
+}: StepperProps): React.JSX.Element {
+  return (
+    <div className="flex items-center shrink-0 gap-2">
+      <button
+        type="button"
+        aria-label={labels.reset}
+        onClick={onReset}
+        className="flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <RotateCcw className="size-3" />
+      </button>
+      <div className="flex items-center rounded-md border border-input">
+        <button
+          type="button"
+          aria-label={labels.decrease}
+          disabled={value <= min}
+          onClick={() => onStep(-1)}
+          className={STEP_BUTTON}
+        >
+          <Minus className="size-3" />
+        </button>
+        <span
+          aria-live="polite"
+          className="w-10 text-center text-xs tabular-nums text-muted-foreground"
+        >
+          {format(value)}
+        </span>
+        <button
+          type="button"
+          aria-label={labels.increase}
+          disabled={value >= max}
+          onClick={() => onStep(1)}
+          className={STEP_BUTTON}
+        >
+          <Plus className="size-3" />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 interface SegmentOption {
   value: string
@@ -291,14 +449,8 @@ function FontFamilyPicker({
 
 export function AppearanceSettings() {
   const { t } = useT('settings')
-  const direction = useDirection()
   const { settings, isLoading, updateSettings } = useGeneralSettings()
   const [customHex, setCustomHex] = useState('')
-  const [fontSizePxDraft, setFontSizePxDraft] = useState<number | null>(null)
-  const pendingFontSizeRef = useRef<{
-    commit: () => void
-    timer: ReturnType<typeof setTimeout>
-  } | null>(null)
   // Enumeration takes seconds on a cold OS font cache but never blocks the main
   // thread, so it starts with the page rather than with the picker: by the time
   // the row is clicked the list is already there.
@@ -345,61 +497,18 @@ export function AppearanceSettings() {
     [t, updateSettings]
   )
 
-  const savedFontSizePx = resolveFontSizePx(settings.fontSizePx, settings.fontSize)
-  const fontSizePx = fontSizePxDraft ?? savedFontSizePx
-
-  const commitFontSizePx = useCallback(
-    async (px: number) => {
-      // Only ever release a draft that is still the one this call owns. A held
-      // arrow key otherwise makes the displayed size jump backwards whenever a
-      // slow write lands after a newer preview.
-      const releaseDraft = (): void => setFontSizePxDraft((cur) => (cur === px ? null : cur))
-
-      // A drag that wanders and comes back writes nothing. Radix will not tell
-      // us either way: it skips onValueCommit when pointer-up lands on the
-      // value pointer-down started from, which is why the row settles itself.
-      if (px === savedFontSizePx) {
-        releaseDraft()
-        return
-      }
-
-      const success = await updateSettings({ fontSizePx: px, fontSize: toLegacyFontSize(px) })
-      releaseDraft()
-      if (!success) {
-        toast.error(t('appearance.typography.fontSizeError'))
-        // useThemeSync will not re-run: its effect deps never changed, so the
-        // size previewed during the drag has to be undone here.
-        setRootFontSize(savedFontSizePx)
-      }
-    },
-    [savedFontSizePx, t, updateSettings]
+  const { value: fontSizePx, preview: previewFontSizePx } = useSteppedDraft(
+    resolveFontSizePx(settings.fontSizePx, settings.fontSize),
+    setRootFontSize,
+    (px) => updateSettings({ fontSizePx: px, fontSize: toLegacyFontSize(px) }),
+    () => toast.error(t('appearance.typography.fontSizeError'))
   )
 
-  const previewFontSizePx = useCallback(
-    (px: number) => {
-      setFontSizePxDraft(px)
-      setRootFontSize(px)
-      if (pendingFontSizeRef.current) clearTimeout(pendingFontSizeRef.current.timer)
-      const commit = (): void => {
-        pendingFontSizeRef.current = null
-        void commitFontSizePx(px)
-      }
-      pendingFontSizeRef.current = { commit, timer: setTimeout(commit, FONT_SIZE_COMMIT_DELAY_MS) }
-    },
-    [commitFontSizePx]
-  )
-
-  // Flushed, not dropped: the preview writes the root font size directly, so an
-  // unmount that discarded the pending write would leave the whole interface at
-  // a size nothing on disk agrees with, until the next restart.
-  useEffect(
-    () => () => {
-      const pending = pendingFontSizeRef.current
-      if (!pending) return
-      clearTimeout(pending.timer)
-      pending.commit()
-    },
-    []
+  const { value: zoomFactor, preview: previewZoomFactor } = useSteppedDraft(
+    clampZoomFactor(settings.zoomFactor),
+    setAppZoomFactor,
+    (factor) => updateSettings({ zoomFactor: factor }),
+    () => toast.error(t('appearance.zoom.error'))
   )
 
   const fontChoice = fontChoiceFromSettings(settings.fontFamily, settings.customFontFamily)
@@ -496,29 +605,19 @@ export function AppearanceSettings() {
           label={t('appearance.typography.fontSize.label')}
           description={t('appearance.typography.fontSize.description')}
         >
-          <div className="flex items-center shrink-0 gap-2">
-            <button
-              type="button"
-              aria-label={t('appearance.typography.fontSize.reset')}
-              onClick={() => previewFontSizePx(FONT_SIZE_PX_DEFAULT)}
-              className="flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <RotateCcw className="size-3" />
-            </button>
-            <span className="w-6 shrink-0 text-xs tabular-nums text-end text-muted-foreground">
-              {fontSizePx}
-            </span>
-            <Slider
-              dir={direction}
-              min={FONT_SIZE_PX_MIN}
-              max={FONT_SIZE_PX_MAX}
-              step={1}
-              value={[fontSizePx]}
-              onValueChange={([px]) => previewFontSizePx(px)}
-              aria-label={t('appearance.typography.fontSize.aria')}
-              className="w-36"
-            />
-          </div>
+          <Stepper
+            value={fontSizePx}
+            min={FONT_SIZE_PX_MIN}
+            max={FONT_SIZE_PX_MAX}
+            onStep={(direction) => previewFontSizePx(stepFontSizePx(fontSizePx, direction))}
+            onReset={() => previewFontSizePx(FONT_SIZE_PX_DEFAULT)}
+            format={(px) => String(px)}
+            labels={{
+              decrease: t('appearance.typography.fontSize.decrease'),
+              increase: t('appearance.typography.fontSize.increase'),
+              reset: t('appearance.typography.fontSize.reset')
+            }}
+          />
         </SettingRow>
 
         <SettingRow
@@ -529,6 +628,27 @@ export function AppearanceSettings() {
             choice={fontChoice}
             systemFonts={systemFonts}
             onSelect={(...args) => void handleFontChoiceChange(...args)}
+          />
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('appearance.groups.zoom')}>
+        <SettingRow
+          label={t('appearance.zoom.label')}
+          description={t('appearance.zoom.description')}
+        >
+          <Stepper
+            value={zoomFactor}
+            min={ZOOM_FACTOR_MIN}
+            max={ZOOM_FACTOR_MAX}
+            onStep={(direction) => previewZoomFactor(stepZoomFactor(zoomFactor, direction))}
+            onReset={() => previewZoomFactor(ZOOM_FACTOR_DEFAULT)}
+            format={(factor) => `${zoomPercent(factor)}%`}
+            labels={{
+              decrease: t('appearance.zoom.decrease'),
+              increase: t('appearance.zoom.increase'),
+              reset: t('appearance.zoom.reset')
+            }}
           />
         </SettingRow>
       </SettingsGroup>
