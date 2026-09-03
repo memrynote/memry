@@ -71,7 +71,8 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
     openPagesInNewTab: false,
     minimizeToTray: false,
     clockFormat: '12h',
-    dateFormat: 'DD.MM.YYYY'
+    dateFormat: 'DD.MM.YYYY',
+    zoomFactor: 1
   },
   editor: {
     width: 'normal',
