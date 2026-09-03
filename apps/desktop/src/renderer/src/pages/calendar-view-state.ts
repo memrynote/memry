@@ -121,19 +121,65 @@ export const parseVisualTypes = (raw: unknown): CalendarProjectionVisualType[] |
     : undefined
 
 /**
- * The sources actually shown: every available source until the user picks a
- * subset, then their pick, minus anything that has since disappeared.
+ * The sources actually shown: every synced source until the user picks a
+ * subset, then their pick, minus anything that has since disappeared or been
+ * switched off.
  *
  * Derived rather than stored so there is no first-load seeding effect to fight,
  * and so a newly connected calendar cannot be quietly added to a selection the
  * user made by hand.
+ *
+ * A source with `isSelected: false` is never polled, so it has no events to
+ * show and no tick may claim otherwise. Discovery only pre-selects the primary
+ * calendar, so on a multi-calendar account most rows arrive in that state; this
+ * used to hand back every id regardless and draw them all ticked.
  */
 export function resolveSelectedSourceIds(
   stored: string[] | null,
-  availableIds: string[]
+  sources: readonly { id: string; isSelected: boolean }[]
 ): string[] {
-  if (stored === null) return availableIds
-  return stored.filter((id) => availableIds.includes(id))
+  const syncedIds = sources.filter((source) => source.isSelected).map((source) => source.id)
+  if (stored === null) return syncedIds
+  return stored.filter((id) => syncedIds.includes(id))
+}
+
+export interface SourceToggleDecision {
+  /** The tab's new explicit selection. */
+  nextSelectedIds: string[]
+  /**
+   * The source to subscribe through `calendar:update-source-selection`, or
+   * `null` when the toggle is purely a view filter.
+   */
+  subscribeSourceId: string | null
+}
+
+/**
+ * What a tick on the calendar page's source list means.
+ *
+ * Ticking a source the sweep never polls has to subscribe it — filtering a set
+ * of events that were never fetched is what made this checkbox look dead.
+ * Unticking only hides it here: the source keeps syncing, so turning it back on
+ * is instant and nothing already mirrored is thrown away. That asymmetry is
+ * deliberate. The Settings picker owns the destructive half, where unticking
+ * purges the mirrored events.
+ */
+export function resolveSourceToggle(
+  sourceId: string,
+  selectedIds: readonly string[],
+  sources: readonly { id: string; isSelected: boolean }[]
+): SourceToggleDecision {
+  if (selectedIds.includes(sourceId)) {
+    return {
+      nextSelectedIds: selectedIds.filter((id) => id !== sourceId),
+      subscribeSourceId: null
+    }
+  }
+
+  const source = sources.find((candidate) => candidate.id === sourceId)
+  return {
+    nextSelectedIds: [...selectedIds, sourceId],
+    subscribeSourceId: source && !source.isSelected ? sourceId : null
+  }
 }
 
 export interface AnchorSyncInput {

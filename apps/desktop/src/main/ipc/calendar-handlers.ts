@@ -646,6 +646,17 @@ export function registerCalendarHandlers(): void {
               calendarId: updated.remoteId
             })
           }
+
+          // The mirror image of the purge above. Turning a calendar on used to
+          // change nothing the user could see until the next runner pass, so
+          // the toggle read as broken in exactly the way turning one off does
+          // not. Fire and forget: the toggle must not wait on the network, and
+          // the sync emits its own change events when the events land.
+          if (input.isSelected && !existing.isSelected) {
+            void syncGoogleCalendarSource(db, updated.id).catch((err) => {
+              log.warn('Immediate sync after enabling a Google calendar failed', err)
+            })
+          }
         }
 
         return { success: true, source: updated }

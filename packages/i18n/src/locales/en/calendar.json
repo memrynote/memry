@@ -30,7 +30,9 @@
     "imported-calendars": "Imported calendars",
     "event-types": "Event types",
     "google-calendars": "Google calendars",
-    "refresh-google-calendars": "Refresh Google calendars"
+    "refresh-google-calendars": "Refresh Google calendars",
+    "not-syncing": "Not syncing · tick to turn on",
+    "enable-source-failed": "Could not turn that calendar on."
   },
   "visual-type": {
     "event": "Event",

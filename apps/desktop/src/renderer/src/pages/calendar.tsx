@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   CalendarShell,
@@ -31,6 +31,7 @@ import { useUndoTracker } from '@/hooks/use-undo'
 import {
   calendarService,
   promoteExternalCalendarEvent,
+  updateGoogleCalendarSourceSelection,
   type CalendarProjectionItem,
   type CalendarProjectionVisualType
 } from '@/services/calendar-service'
@@ -53,6 +54,7 @@ import {
   readGlobalCalendarView,
   resolveAnchorSync,
   resolveSelectedSourceIds,
+  resolveSourceToggle,
   writeGlobalCalendarView
 } from './calendar-view-state'
 import { DeleteCalendarEventDialog } from '@/components/calendar/delete-calendar-event-dialog'
@@ -366,26 +368,46 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   )
 
   const selectedImportedSourceIds = useMemo(
-    () =>
-      resolveSelectedSourceIds(
-        chosenImportedSourceIds,
-        importedSources.map((source) => source.id)
-      ),
+    () => resolveSelectedSourceIds(chosenImportedSourceIds, importedSources),
     [chosenImportedSourceIds, importedSources]
   )
 
+  // Ticking a calendar the sweep never polls has to subscribe it. Filtering a
+  // set of events that were never fetched is what made this checkbox look dead.
+  const enableSourceMutation = useMutation({
+    mutationFn: (sourceId: string) =>
+      updateGoogleCalendarSourceSelection({ id: sourceId, isSelected: true }),
+    onSuccess: async (result) => {
+      const tCalendar = getI18n().getFixedT(null, 'calendar')
+      if (!result.success) {
+        toast.error(result.error ?? tCalendar('filter.enable-source-failed'))
+        return
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['calendar', 'sources'] }),
+        queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
+      ])
+    },
+    onError: (err) => {
+      log.error('Failed to enable calendar source', err)
+      const tCalendar = getI18n().getFixedT(null, 'calendar')
+      toast.error(extractErrorMessage(err, tCalendar('filter.enable-source-failed')))
+    }
+  })
+
   // Toggling records an EXPLICIT selection: the first toggle turns the derived
-  // "all sources" into a real list minus the one just switched off.
+  // "every synced source" into a real list minus the one just switched off.
   const handleToggleImportedSource = useCallback(
     (sourceId: string) => {
-      const current = selectedImportedSourceIds
-      setChosenImportedSourceIds(
-        current.includes(sourceId)
-          ? current.filter((id) => id !== sourceId)
-          : [...current, sourceId]
+      const { nextSelectedIds, subscribeSourceId } = resolveSourceToggle(
+        sourceId,
+        selectedImportedSourceIds,
+        importedSources
       )
+      if (subscribeSourceId) enableSourceMutation.mutate(subscribeSourceId)
+      setChosenImportedSourceIds(nextSelectedIds)
     },
-    [selectedImportedSourceIds, setChosenImportedSourceIds]
+    [selectedImportedSourceIds, setChosenImportedSourceIds, importedSources, enableSourceMutation]
   )
 
   const filteredItems = useMemo(

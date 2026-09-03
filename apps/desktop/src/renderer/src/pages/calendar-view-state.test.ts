@@ -9,7 +9,8 @@ import {
   parseImportedSourceIds,
   parseVisualTypes,
   resolveAnchorSync,
-  resolveSelectedSourceIds
+  resolveSelectedSourceIds,
+  resolveSourceToggle
 } from './calendar-view-state'
 
 describe('calendar view-state keys', () => {
@@ -92,22 +93,75 @@ describe('parseImportedSourceIds', () => {
 })
 
 describe('resolveSelectedSourceIds', () => {
-  it('shows every source until the user picks a subset', () => {
-    expect(resolveSelectedSourceIds(null, ['a', 'b'])).toEqual(['a', 'b'])
+  const synced = (id: string) => ({ id, isSelected: true })
+  const unsynced = (id: string) => ({ id, isSelected: false })
+
+  it('shows every synced source until the user picks a subset', () => {
+    expect(resolveSelectedSourceIds(null, [synced('a'), synced('b')])).toEqual(['a', 'b'])
   })
 
   it('honours "chose nothing" rather than falling back to everything', () => {
-    expect(resolveSelectedSourceIds([], ['a', 'b'])).toEqual([])
+    expect(resolveSelectedSourceIds([], [synced('a'), synced('b')])).toEqual([])
   })
 
   it('drops a source that has since disappeared', () => {
-    expect(resolveSelectedSourceIds(['a', 'gone'], ['a', 'b'])).toEqual(['a'])
+    expect(resolveSelectedSourceIds(['a', 'gone'], [synced('a'), synced('b')])).toEqual(['a'])
   })
 
   it('does not add a source connected after the user chose', () => {
     // Deriving "all" only applies to a tab that never chose. Once there is a
     // choice, a newly connected calendar stays off until it is switched on.
-    expect(resolveSelectedSourceIds(['a'], ['a', 'b'])).toEqual(['a'])
+    expect(resolveSelectedSourceIds(['a'], [synced('a'), synced('b')])).toEqual(['a'])
+  })
+
+  it('never pre-selects a source nothing polls', () => {
+    // Discovery only pre-selects the primary calendar. Every other calendar on
+    // the account arrives unselected, and used to be handed back here as if it
+    // were on — the tick the user saw next to a calendar that never produced a
+    // single event.
+    expect(resolveSelectedSourceIds(null, [synced('a'), unsynced('b')])).toEqual(['a'])
+  })
+
+  it('drops a stored source that has since been switched off', () => {
+    expect(resolveSelectedSourceIds(['a', 'b'], [synced('a'), unsynced('b')])).toEqual(['a'])
+  })
+})
+
+describe('resolveSourceToggle', () => {
+  const synced = { id: 'primary', isSelected: true }
+  const unsynced = { id: 'personal', isSelected: false }
+  const sources = [synced, unsynced]
+
+  it('subscribes a source the sweep never polls', () => {
+    // The reported bug: ticking here only filtered events that were never
+    // fetched, so the calendar stayed empty and the tick looked broken.
+    expect(resolveSourceToggle('personal', ['primary'], sources)).toEqual({
+      nextSelectedIds: ['primary', 'personal'],
+      subscribeSourceId: 'personal'
+    })
+  })
+
+  it('does not re-subscribe a source that is already syncing', () => {
+    expect(resolveSourceToggle('primary', [], sources)).toEqual({
+      nextSelectedIds: ['primary'],
+      subscribeSourceId: null
+    })
+  })
+
+  it('switching one off is a view filter, never an unsubscribe', () => {
+    // Unsubscribing purges the mirrored events. That belongs to the Settings
+    // picker, not to a checkbox that reads as "show this on the calendar".
+    expect(resolveSourceToggle('primary', ['primary', 'personal'], sources)).toEqual({
+      nextSelectedIds: ['personal'],
+      subscribeSourceId: null
+    })
+  })
+
+  it('does not subscribe a source that is no longer listed', () => {
+    expect(resolveSourceToggle('gone', ['primary'], sources)).toEqual({
+      nextSelectedIds: ['primary', 'gone'],
+      subscribeSourceId: null
+    })
   })
 })
 

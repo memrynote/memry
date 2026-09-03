@@ -657,6 +657,62 @@ describe('calendar-handlers', () => {
     })
   })
 
+  it('fetches a calendar as soon as it is switched on', async () => {
+    registerCalendarHandlers()
+
+    db.run(sql`
+      INSERT INTO calendar_sources (
+        id, provider, kind, account_id, remote_id, title, timezone,
+        is_selected, sync_status, created_at, modified_at
+      )
+      VALUES (
+        ${'google-calendar-secondary'}, ${'google'}, ${'calendar'}, ${'google-account-1'},
+        ${'remote-calendar-secondary'}, ${'Personal'}, ${'Europe/Istanbul'}, ${0}, ${'idle'},
+        ${'2026-04-12T08:01:00.000Z'}, ${'2026-04-12T08:01:00.000Z'}
+      )
+    `)
+
+    await invokeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION, {
+      id: 'google-calendar-secondary',
+      isSelected: true
+    })
+
+    // Switching one OFF purges its events immediately. Switching one on used to
+    // change nothing until the next runner pass, so the toggle read as dead in
+    // exactly the direction the user notices.
+    expect(mockSyncGoogleCalendarSource).toHaveBeenCalledWith(
+      expect.anything(),
+      'google-calendar-secondary'
+    )
+  })
+
+  it('does not re-fetch a calendar that was already on, nor one switched off', async () => {
+    registerCalendarHandlers()
+
+    db.run(sql`
+      INSERT INTO calendar_sources (
+        id, provider, kind, account_id, remote_id, title, timezone,
+        is_selected, sync_status, created_at, modified_at
+      )
+      VALUES (
+        ${'google-calendar-on'}, ${'google'}, ${'calendar'}, ${'google-account-1'},
+        ${'remote-calendar-on'}, ${'Work'}, ${'Europe/Istanbul'}, ${1}, ${'ok'},
+        ${'2026-04-12T08:01:00.000Z'}, ${'2026-04-12T08:01:00.000Z'}
+      )
+    `)
+
+    await invokeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION, {
+      id: 'google-calendar-on',
+      isSelected: true
+    })
+    await invokeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION, {
+      id: 'google-calendar-on',
+      isSelected: false
+    })
+
+    expect(mockSyncGoogleCalendarSource).not.toHaveBeenCalled()
+  })
+
   it('brings every calendar on the account into the picker when connecting', async () => {
     registerCalendarHandlers()
     mockConnectGoogleCalendar.mockResolvedValue({

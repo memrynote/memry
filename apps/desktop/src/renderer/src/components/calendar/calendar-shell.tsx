@@ -269,10 +269,19 @@ export function CalendarShell({
               {importedSources.map((source) => (
                 <label
                   key={source.id}
+                  data-testid={`calendar-filter-source-${source.id}`}
                   className="flex items-center justify-between gap-3 text-sm text-foreground"
                 >
-                  <span>{source.title}</span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate">{source.title}</span>
+                    {!source.isSelected && (
+                      <span className="text-xs text-muted-foreground">
+                        {t('filter.not-syncing')}
+                      </span>
+                    )}
+                  </span>
                   <Checkbox
+                    className="shrink-0"
                     aria-label={source.title}
                     checked={selectedImportedSourceIds.includes(source.id)}
                     disabled={!showImportedCalendars}
