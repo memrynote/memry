@@ -62,24 +62,23 @@ export function NoteTags({
             key={tag}
             hitSlop={10}
             disabled={readOnly}
-            onPress={() => onEditingChange(true)}
+            // The badge is an affordance, not the target. It sits 4pt outside
+            // the chip's bounds, and RN hit-tests a child only within its
+            // parent's frame on iOS as well as Android, so half of a 14pt
+            // badge would be dead. The armed chip carries the removal instead,
+            // which also makes it a two-tap gesture rather than a 14pt one.
+            onPress={() => (armed ? void commit(removeTag(tags, tag)) : onEditingChange(true))}
             accessibilityRole="button"
-            accessibilityLabel={`Tag ${tag}`}
+            accessibilityLabel={armed ? `Remove tag ${tag}` : `Tag ${tag}`}
             style={[styles.chip, { backgroundColor: hue.fill }]}
           >
             <AppText variant="captionEmphasis" color={hue.text}>
               {tag}
             </AppText>
             {armed ? (
-              <Pressable
-                hitSlop={10}
-                onPress={() => void commit(removeTag(tags, tag))}
-                accessibilityRole="button"
-                accessibilityLabel={`Remove tag ${tag}`}
-                style={[styles.badge, { backgroundColor: c.text.secondary }]}
-              >
+              <View style={[styles.badge, { backgroundColor: c.text.secondary }]}>
                 <Icon name="close" size={8} strokeWidth={3} color={c.canvas.background} />
-              </Pressable>
+              </View>
             ) : null}
           </Pressable>
         )
