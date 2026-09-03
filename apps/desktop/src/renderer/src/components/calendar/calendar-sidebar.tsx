@@ -24,7 +24,7 @@ export function CalendarSidebar({
   const { t } = useT('calendar')
 
   return (
-    <aside className="w-full shrink-0 border-b border-border/70 bg-muted/20 px-6 py-5 xl:w-72 xl:border-b-0 xl:border-r">
+    <aside className="w-full shrink-0 border-b border-border/70 bg-muted/20 px-6 py-5 xl:w-72 xl:border-b-0 xl:border-e">
       <div className="space-y-6">
         <div className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -61,10 +61,20 @@ export function CalendarSidebar({
             importedSources.map((source) => (
               <label
                 key={source.id}
+                data-testid={`calendar-filter-source-${source.id}`}
                 className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/70 px-3 py-2 text-sm text-foreground"
               >
-                <span>{source.title}</span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate">{source.title}</span>
+                  {/* Discovery only pre-selects the primary calendar, so this
+                      row is normal, not an error. Without the caption an empty
+                      calendar is indistinguishable from one with no events. */}
+                  {!source.isSelected && (
+                    <span className="text-xs text-muted-foreground">{t('filter.not-syncing')}</span>
+                  )}
+                </span>
                 <Checkbox
+                  className="shrink-0"
                   aria-label={source.title}
                   checked={selectedImportedSourceIds.includes(source.id)}
                   disabled={!showImportedCalendars}

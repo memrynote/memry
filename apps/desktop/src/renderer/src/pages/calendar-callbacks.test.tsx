@@ -87,13 +87,15 @@ const mocks = vi.hoisted(() => ({
   }),
   closeForDayView: vi.fn(),
   snooze: vi.fn(),
+  sourceMutate: vi.fn(),
   unsnooze: vi.fn(),
   updateEvent: vi.fn()
 }))
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: { sources: mocks.calendarSources }, isLoading: false }),
-  useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries })
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
+  useMutation: () => ({ mutate: mocks.sourceMutate })
 }))
 
 vi.mock('@/components/calendar', () => ({
@@ -517,6 +519,35 @@ describe('CalendarPage callback coverage', () => {
     await waitFor(() =>
       expect(mocks.lastShellProps?.selectedImportedSourceIds).toEqual(['google-work'])
     )
+  })
+
+  it('leaves a calendar nothing polls unticked, and subscribes it when ticked', async () => {
+    // Discovery only pre-selects the primary calendar. Every other one used to
+    // be handed to the shell as selected, so the calendar page showed a tick
+    // beside a calendar that never produced a single event.
+    mocks.calendarSources = [
+      source('google-work', 'Work'),
+      { ...source('google-home', 'Home'), isSelected: false }
+    ]
+    renderPage()
+
+    await waitFor(() =>
+      expect(mocks.lastShellProps?.selectedImportedSourceIds).toEqual(['google-work'])
+    )
+
+    mocks.lastShellProps?.onToggleImportedSource('google-home')
+
+    expect(mocks.sourceMutate).toHaveBeenCalledWith('google-home')
+  })
+
+  it('does not re-subscribe a calendar that is already syncing', async () => {
+    renderPage()
+
+    await waitFor(() => expect(mocks.lastShellProps).not.toBeNull())
+    mocks.lastShellProps?.onToggleImportedSource('google-home')
+    mocks.lastShellProps?.onToggleImportedSource('google-home')
+
+    expect(mocks.sourceMutate).not.toHaveBeenCalled()
   })
 
   it('creates, updates, quick-saves, promotes, and dismisses popovers', async () => {

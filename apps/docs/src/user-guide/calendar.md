@@ -155,7 +155,13 @@ You can link more than one Google account. In [Settings → Calendar](/user-guid
 
 Each linked account gets its own group listing every calendar on that account — shared calendars, team calendars, holiday calendars, all of them — with a checkbox each. Tick a calendar to bring its events into memrynote; untick it to take them out. Only your primary calendar is ticked when an account is first linked, so nothing else arrives until you ask for it.
 
-**Unticking a calendar deletes its events from memrynote.** Nothing refreshes a calendar you have turned off, so its events are removed rather than left behind to go stale, and the removal reaches your other devices. Tick it again and the events are fetched fresh. Events you [promoted to your vault](#promote-external-events) are your own copy and are not affected.
+**Unticking a calendar deletes its events from memrynote.** Nothing refreshes a calendar you have turned off, so its events are removed rather than left behind to go stale, and the removal reaches your other devices. Tick it again and the events are fetched fresh — straight away, not on the next sync. Events you [promoted to your vault](#promote-external-events) are your own copy and are not affected.
+
+### Turning a Calendar On from the Calendar Page
+
+The calendar page lists the same calendars under **GOOGLE CALENDARS** — in the sidebar on a wide window, in the filter popover on a narrow one. That list shows which calendars are actually being fetched: a calendar you have not turned on is shown unticked and marked **Not syncing**, rather than looking like an empty calendar.
+
+Tick one there and memrynote turns it on for you and fetches its events immediately, exactly as ticking it in Settings does. Unticking it here only hides it from this calendar tab — the calendar keeps syncing and nothing is deleted, so ticking it back on is instant. To stop syncing a calendar and remove its events, untick it in [Settings → Calendar](/user-guide/settings#google-calendar).
 
 The calendar list refreshes on every sync, so a calendar you create in Google later shows up on its own. If you linked an account before this existed, your other calendars appear after the next sync — no need to reconnect.
 
