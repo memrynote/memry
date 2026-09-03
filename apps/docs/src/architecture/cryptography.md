@@ -30,12 +30,33 @@ passphrase ──Argon2id(salt)──▶ wrapping key
 
 Local-only development vaults can create a device master key without sign-in. memrynote stores a
 non-secret verifier in the local settings table so the SQLite vault stays bound to the keychain
-master key that produced it. If that verifier exists and the keychain key is missing or produces a
-different vault key, encrypted surfaces fail closed instead of silently creating a replacement key.
-First-device setup and recovery relinking rebind this local verifier immediately after the new
-master key is saved, before sync activation. If the verifier cannot be checked at startup, the sync
+master key that produced it. If that verifier exists and the keychain key is missing, encrypted
+surfaces fail closed instead of silently creating a replacement key. First-device setup and recovery
+relinking rebind this local verifier immediately after the new master key is saved, before sync
+activation. If the verifier cannot be checked at startup, the sync
 runtime stays offline instead of starting queues, CRDT seeding, or snapshot uploads with missing
 vault-key credentials.
+
+### A verifier that arrived from another machine
+
+A vault folder is portable: people move it between machines with git, iCloud Drive or Dropbox. The
+verifier travels inside `<vault>/.memry/data.db`, but the keychain master key that produced it does
+not — so a moved vault routinely opens against a key that never wrote it. Failing closed there would
+disable every key-bound surface on a vault whose notes, journals, tasks and canvases all open fine.
+
+A verifier mismatch is therefore resolved rather than always refused:
+
+| Device state                               | Outcome                                                                                                                                        |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| No account on this device                  | Rebind. There is no recovery phrase to re-derive the key that sealed the existing rows, so they are unrecoverable by definition.               |
+| Account confirms the local key (`match`)   | Rebind. The vault's verifier is the stale one — it arrived from another machine, or a re-link rebound only the vault that happened to be open. |
+| Account says the key is wrong (`mismatch`) | Fail, and raise the vault recovery prompt so the recovery phrase can restore the correct key — which also restores the encrypted rows.         |
+| `transition` or `unknown`                  | Fail. Never rebind on an uncertain read.                                                                                                       |
+
+The account check lives behind a port that the sync layer injects at startup, keeping `crypto/` free
+of `sync/` imports; its default verdict is `unknown`, so an unwired caller can only be conservative.
+A rebind does not count as passing the verifier check, so it never completes the master key's
+safeStorage migration — the OS keychain copy survives.
 
 The keychain account is suffixed per device: production installs use the bare account, while
 explicit dev profiles (`A`/`B`/`C`) and e2e runs keep their own suffix. Plain `pnpm dev` scopes its
