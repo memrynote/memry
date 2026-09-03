@@ -2,7 +2,7 @@
  * Application Zoom
  *
  * The factor the whole interface renders at, and the arithmetic that keeps
- * every reachable value on one of the slider's stops.
+ * every reachable value on the 10% grid the stepper moves in.
  *
  * @module contracts/app-zoom
  */
@@ -22,7 +22,7 @@ export function clampZoomFactor(value: unknown): number {
   //
   // Snapped before it is clamped, and by rounding the tenths as an integer:
   // 0.1 is not exact in binary, so repeated stepping would otherwise drift off
-  // the slider's stops and store values like 0.7000000000000001.
+  // the 10% grid and store values like 0.7000000000000001.
   const snapped = Math.round(value * 10) / 10
   return Math.min(ZOOM_FACTOR_MAX, Math.max(ZOOM_FACTOR_MIN, snapped))
 }
