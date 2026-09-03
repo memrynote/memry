@@ -248,6 +248,34 @@
       "refused": "This line carries an id, a dependency or a block link that Obsidian needs at the end of the line. Remove it in Obsidian first, then convert.",
       "createFailed": "Could not create the task for this line.",
       "completeFailed": "The task was created, but its done date could not be applied."
+    },
+    "blockMenu": {
+      "turnInto": "Turn into",
+      "turnIntoTypes": {
+        "paragraph": "Text",
+        "heading1": "Heading 1",
+        "heading2": "Heading 2",
+        "heading3": "Heading 3",
+        "bulletList": "Bulleted list",
+        "numberedList": "Numbered list",
+        "checkList": "To-do list",
+        "toggleList": "Toggle list",
+        "quote": "Quote",
+        "codeBlock": "Code",
+        "callout": "Callout"
+      },
+      "colors": "Colors",
+      "duplicate": "Duplicate",
+      "moveTo": "Move to…",
+      "delete": "Delete",
+      "comment": "Comment",
+      "moveDialog": {
+        "title": "Move block to note",
+        "searchPlaceholder": "Search notes…",
+        "noResults": "No matching notes",
+        "moved": "Block moved to “{title}”",
+        "failed": "Could not move the block"
+      }
     }
   },
   "dateMention": {

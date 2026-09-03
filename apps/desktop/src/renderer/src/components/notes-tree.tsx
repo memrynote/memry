@@ -247,6 +247,28 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
 
   const [pendingRevealNoteId, setPendingRevealNoteId] = useState<string | null>(null)
   const [applyTemplateNote, setApplyTemplateNote] = useState<NoteListItem | null>(null)
+  // Mirrors `pendingRevealNoteId` for the virtualized-tree effect below, which
+  // needs a non-state read of the pending id so it isn't itself reactive state
+  // driving an effect (see the effect's comment).
+  const pendingRevealNoteIdRef = useRef<string | null>(null)
+
+  const handleRevealComplete = useCallback(
+    (noteId: string) => {
+      setSelectedIds([noteId])
+      notifyTargetFolderChange([noteId])
+      setTimeout(() => {
+        const element = document.querySelector(`[data-tree-node-id="${noteId}"]`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          element.classList.add('bg-accent')
+          setTimeout(() => element.classList.remove('bg-accent'), 2000)
+        }
+      }, 100)
+      pendingRevealNoteIdRef.current = null
+      setPendingRevealNoteId(null)
+    },
+    [notifyTargetFolderChange]
+  )
 
   useEffect(() => {
     const handleRevealInSidebar = (event: CustomEvent<{ path: string; entityId?: string }>) => {
@@ -268,43 +290,36 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         // Ignore localStorage errors
       }
 
+      pendingRevealNoteIdRef.current = entityId
       setPendingRevealNoteId(entityId)
+
+      // The virtualized tree has no RevealHandler (see below) — if the note is
+      // already in the tree, reveal it now instead of waiting on a later
+      // data change to trigger the effect.
+      if (shouldVirtualize(data.tree) && data.noteMap.has(entityId)) {
+        virtualTreeActionsRef.current?.revealNote(entityId)
+        handleRevealComplete(entityId)
+      }
     }
 
     window.addEventListener('reveal-in-sidebar', handleRevealInSidebar as EventListener)
     return () => {
       window.removeEventListener('reveal-in-sidebar', handleRevealInSidebar as EventListener)
     }
-  }, [])
-
-  const handleRevealComplete = useCallback(
-    (noteId: string) => {
-      setSelectedIds([noteId])
-      notifyTargetFolderChange([noteId])
-      setTimeout(() => {
-        const element = document.querySelector(`[data-tree-node-id="${noteId}"]`)
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          element.classList.add('bg-accent')
-          setTimeout(() => element.classList.remove('bg-accent'), 2000)
-        }
-      }, 100)
-      setPendingRevealNoteId(null)
-    },
-    [notifyTargetFolderChange]
-  )
+  }, [data.tree, data.noteMap, handleRevealComplete])
 
   // The virtualized tree has no RevealHandler — that lives inside TreeProvider,
   // which only the plain tree renders — so drive it through its imperative
   // handle instead. Waits for the note to reach the tree, the same way
   // RevealHandler does, because a just-created note is not there yet.
   useEffect(() => {
-    if (!pendingRevealNoteId || !shouldVirtualize(data.tree)) return
-    if (!data.noteMap.has(pendingRevealNoteId)) return
+    const target = pendingRevealNoteIdRef.current
+    if (!target || !shouldVirtualize(data.tree)) return
+    if (!data.noteMap.has(target)) return
 
-    virtualTreeActionsRef.current?.revealNote(pendingRevealNoteId)
-    handleRevealComplete(pendingRevealNoteId)
-  }, [pendingRevealNoteId, data.tree, data.noteMap, handleRevealComplete])
+    virtualTreeActionsRef.current?.revealNote(target)
+    handleRevealComplete(target)
+  }, [data.tree, data.noteMap, handleRevealComplete])
 
   if (data.isLoading) return <NotesTreeSkeleton />
 

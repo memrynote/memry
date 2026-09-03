@@ -370,13 +370,7 @@ export interface TaskFilters {
 // ============================================================================
 
 export type SortField =
-  | 'dueDate'
-  | 'priority'
-  | 'status'
-  | 'createdAt'
-  | 'title'
-  | 'project'
-  | 'completedAt'
+  'dueDate' | 'priority' | 'status' | 'createdAt' | 'title' | 'project' | 'completedAt'
 
 export type SortDirection = 'asc' | 'desc'
 

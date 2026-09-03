@@ -16,8 +16,7 @@ export interface AgentToolCallInput {
 }
 
 export type AgentToolCallResult =
-  | { ok: true; data: unknown }
-  | { ok: false; error: { code: string; message: string } }
+  { ok: true; data: unknown } | { ok: false; error: { code: string; message: string } }
 
 export type AgentMcpCallTool = (input: AgentToolCallInput) => Promise<AgentToolCallResult>
 

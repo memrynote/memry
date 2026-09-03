@@ -13,7 +13,6 @@ import { getTaskSyncService } from '@memry/sync-client/task-sync'
 import { flushPendingLocalDeletes } from './local-mutations'
 import { createLogger } from '../lib/logger'
 
-
 const log = createLogger('DirtyRecovery')
 
 export interface RecoveryResult {

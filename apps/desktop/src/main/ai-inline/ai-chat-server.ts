@@ -212,7 +212,7 @@ async function handleChatRequest(
       abortSignal: abortController.signal
     })
 
-    result.pipeUIMessageStreamToResponse(res)
+    await result.pipeUIMessageStreamToResponse(res)
   } catch (error) {
     if (error instanceof PayloadTooLargeError) {
       logger.warn('Rejected oversized chat request body')

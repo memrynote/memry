@@ -89,7 +89,7 @@ test.describe('bullet fold', () => {
     // And shares their baseline exactly: the four things on this row — plus,
     // drag handle, chevron, bullet — read as one line only while the boxes
     // they centre in agree. The chevron's is deliberately the side menu's
-    // 30px box rather than the text's line box, so this is the check that
+    // box rather than the text's own line box, so this is the check that
     // keeps the two numbers in step.
     const handleBox = await sideMenu.locator('button').last().boundingBox()
     if (!handleBox) throw new Error('no drag handle box')

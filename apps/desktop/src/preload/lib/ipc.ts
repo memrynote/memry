@@ -18,8 +18,7 @@ import type {
 export function logListenerError(channel: string, error: unknown): void {
   const message = `[PreloadIpc] Listener for "${channel}" threw`
   const sink = (globalThis as typeof globalThis & { __electronLog?: unknown }).__electronLog as
-    | { error?: (...data: unknown[]) => void }
-    | undefined
+    { error?: (...data: unknown[]) => void } | undefined
   if (typeof sink?.error === 'function') {
     sink.error(message, error)
     return

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,13 +54,12 @@ export function InlineCreateRow({
   const [mode, setMode] = useState<Mode>('idle')
   const [name, setName] = useState('')
   const [color, setColor] = useState(randomColorName)
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (mode !== 'idle') {
-      inputRef.current?.focus()
-    }
-  }, [mode])
+  // Focuses the name input as soon as it mounts, instead of reacting to
+  // `mode` in an effect (same pattern as notes-tree.tsx's `renameCallbackRef`).
+  const focusNameInput = useCallback((el: HTMLInputElement | null) => {
+    if (el) el.focus()
+  }, [])
 
   const reset = (): void => {
     setMode('idle')
@@ -160,7 +159,7 @@ export function InlineCreateRow({
           </Popover>
         )}
         <Input
-          ref={inputRef}
+          ref={focusNameInput}
           value={name}
           onChange={(event) => setName(event.target.value)}
           onKeyDown={handleKeyDown}

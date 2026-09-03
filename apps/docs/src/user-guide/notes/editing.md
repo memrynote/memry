@@ -248,6 +248,30 @@ Hover the gutter on the left to reveal the block handle. Drag a block to:
 - Reorder within the note
 - Move out into a different note (drop on a sidebar item or another open tab)
 
+## Block Menu
+
+Click the block handle in the left gutter to open the block menu. Everything in it
+applies to that one block, no matter what else is selected:
+
+| Action                          | What it does                                                                                                                                                    |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Turn into**                   | Converts the block to another text type — text, heading 1–3, bulleted, numbered or to-do list, toggle list, quote, code, callout. Indented children come along. |
+| **Colors**                      | Sets the block's text and background colour.                                                                                                                    |
+| **Duplicate** (`⌘D` / `Ctrl+D`) | Copies the block and its indented children directly below.                                                                                                      |
+| **Move to…**                    | Search for another note and move the block to the end of it.                                                                                                    |
+| **Delete**                      | Removes the block.                                                                                                                                              |
+| **Comment**                     | Opens a comment on the block, in the same review sidebar as a comment on selected text.                                                                         |
+
+Some entries are hidden when they do not apply. **Turn into** and **Comment** do not
+appear on blocks with no text of their own — files, images, embeds, bookmarks, tasks
+and tables. **Move to…** is hidden on blocks that hold an attachment, because the
+file stays with the note that owns it and the embed would break on your other
+devices.
+
+**Move to…** writes to the target note first and only removes the block here once
+that succeeds, so a failed move leaves the block where it was. Undo restores the
+block in this note; it does not remove the copy in the target note.
+
 ## Selecting Text and Blocks
 
 Dragging that **starts inside a line** always selects text, however far it travels and in whatever direction. Dragging straight down across several paragraphs selects the text between the two points, exactly as dragging diagonally does.

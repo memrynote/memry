@@ -228,6 +228,19 @@ export const ApplyTemplateSchema = z.object({
 })
 
 /**
+ * Append a slice of markdown to the end of another note's body.
+ *
+ * The renderer half of "Move to" removes the block from the source editor only
+ * AFTER this resolves, so the source note is named here purely to rewrite
+ * note-relative refs into the target note's folder — never to edit it.
+ */
+export const NoteAppendBlocksSchema = z.object({
+  sourceNoteId: z.string(),
+  targetNoteId: z.string(),
+  markdown: z.string()
+})
+
+/**
  * One window of lines from an open large-file session.
  *
  * `count` is capped because the response is an IPC payload: the viewer only

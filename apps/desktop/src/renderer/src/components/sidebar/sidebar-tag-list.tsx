@@ -1,15 +1,5 @@
 import * as React from 'react'
-import {
-  Search,
-  ArrowUpDown,
-  ArrowDownAZ,
-  ArrowUpAZ,
-  GripVertical,
-  X,
-  ChevronRight,
-  ChevronDown,
-  Tags
-} from '@/lib/icons'
+import { Search, X, ChevronRight, ChevronDown, Tags } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
@@ -19,7 +9,6 @@ import { getTagColors } from '@/components/note/tags-row/tag-colors'
 import { buildTagTree, type TagTreeNode } from '@/lib/tag-tree'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { Button } from '@/components/ui/button'
-import { Picker } from '@/components/ui/picker'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -53,14 +42,6 @@ const SORT_OPTIONS: ReadonlyArray<{ value: TagSortOption; label: string }> = [
   { value: 'alpha-asc', label: 'A → Z' },
   { value: 'alpha-desc', label: 'Z → A' }
 ] as const
-
-const SORT_ICONS: Record<TagSortOption, React.ReactNode> = {
-  manual: <GripVertical className="h-3.5 w-3.5" />,
-  'count-desc': <ArrowUpDown className="h-3.5 w-3.5" />,
-  'count-asc': <ArrowUpDown className="h-3.5 w-3.5" />,
-  'alpha-asc': <ArrowDownAZ className="h-3.5 w-3.5" />,
-  'alpha-desc': <ArrowUpAZ className="h-3.5 w-3.5" />
-}
 
 /**
  * The per-device localStorage preference this section used before sort modes
@@ -381,9 +362,12 @@ export function SidebarTagList({
   const [expanded, setExpanded] = React.useState<Set<string>>(loadExpandedState)
   const searchInputRef = React.useRef<HTMLInputElement>(null)
 
-  const handleSortChange = (value: string): void => {
-    void setSortMode(value as SidebarSortMode)
-  }
+  const handleSortChange = React.useCallback(
+    (value: string): void => {
+      void setSortMode(value as SidebarSortMode)
+    },
+    [setSortMode]
+  )
 
   const toggleSearch = React.useCallback((): void => {
     setSearchOpen((prev) => {
@@ -453,7 +437,18 @@ export function SidebarTagList({
     return () => {
       cancelled = true
     }
-  }, [searchOpen, sortBy, currentSortLabel, toggleSearch, onActionsReady, openSidebarItem, tPhaseF])
+  }, [
+    searchOpen,
+    sortBy,
+    currentSortLabel,
+    toggleSearch,
+    onActionsReady,
+    openSidebarItem,
+    tPhaseF,
+    handleSortChange,
+    sortLabels,
+    t
+  ])
 
   const handleToggle = React.useCallback((fullPath: string) => {
     setExpanded((prev) => {

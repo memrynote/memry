@@ -133,8 +133,7 @@ class InboxHandler extends BaseItemHandler<InboxSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
   }
 
   buildPushPayload(

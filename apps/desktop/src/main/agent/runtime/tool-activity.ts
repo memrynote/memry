@@ -14,8 +14,7 @@ const MAX_ARG_CHARS = 200
 const MAX_ERROR_CHARS = 500
 
 export type ToolActivityOutcome =
-  | { ok: true }
-  | { ok: false; error: { code: string; message: string } | undefined }
+  { ok: true } | { ok: false; error: { code: string; message: string } | undefined }
 
 /**
  * Reduces raw tool args to the small, bounded shape the transcript row renders:

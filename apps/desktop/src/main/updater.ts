@@ -39,6 +39,8 @@ const updaterLibraryLogger = {
 }
 
 function logMessage(level: 'info' | 'warn' | 'error' | 'debug', message?: unknown): void {
+  // electron-updater passes arbitrary values here; best-effort stringify for the log line.
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
   libraryLogger[level](typeof message === 'string' ? message : String(message ?? ''))
 }
 

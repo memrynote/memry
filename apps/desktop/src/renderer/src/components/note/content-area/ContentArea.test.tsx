@@ -100,10 +100,18 @@ vi.mock('@blocknote/react', () => ({
     }
   })),
   useEditorState: vi.fn(() => ({ hasSelection: false, isMultiBlock: false })),
+  // ContentArea pulls the canonical markdown serializer in for the block side
+  // menu's "Move to", and that module reaches the custom block specs — so the
+  // spec factory has to exist even though no block is rendered here.
+  createReactBlockSpec: vi.fn((config: unknown) => ({ config, implementation: {} })),
+  useExtensionState: vi.fn(() => undefined),
+  SideMenu: () => <div data-testid="side-menu" />,
   SideMenuController: (props: Record<string, unknown>) => {
     contentAreaMocks.sideMenuControllers.push(props)
     return <div data-testid="side-menu-controller" />
   },
+  BlockColorsItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  RemoveBlockItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SuggestionMenuController: (props: Record<string, unknown>) => {
     contentAreaMocks.suggestionControllers.push(props)
     return <div data-testid={`suggestion-${props.triggerCharacter}`} />

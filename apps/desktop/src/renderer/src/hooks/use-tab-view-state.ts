@@ -10,7 +10,7 @@
  * the inactive pane of a split view.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useTabActionsOptional } from '@/contexts/tabs'
 import { useTabIdentity } from '@/contexts/tabs/tab-identity'
 import { createLogger } from '@/lib/logger'
@@ -57,13 +57,14 @@ export function useTabViewState<T>({
   const dispatch = actions?.dispatch
   const getTab = actions?.getTab
 
-  const parseRef = useRef(parse)
-  const defaultValueRef = useRef(defaultValue)
+  // `read()` is only ever called synchronously during render (the initial
+  // `useState` seed below, and the re-seed-on-identity-change check further
+  // down), so it can close over `identity`/`parse`/`defaultValue` directly —
+  // no "latest ref" indirection needed, unlike `identityRef` below, which
+  // `setTabViewState` reads from an event handler that can run long after the
+  // render that created its closure.
   const identityRef = useRef(identity)
-
   useLayoutEffect(() => {
-    parseRef.current = parse
-    defaultValueRef.current = defaultValue
     identityRef.current = identity
   })
 
@@ -72,17 +73,16 @@ export function useTabViewState<T>({
   const aliasToken = aliasKeys?.join(ALIAS_SEPARATOR) ?? ''
 
   const read = useCallback((): T => {
-    const current = identityRef.current
-    if (!current) return defaultValueRef.current
+    if (!identity) return defaultValue
 
-    const viewState = getTab?.(current.tabId, current.groupId)?.viewState
+    const viewState = getTab?.(identity.tabId, identity.groupId)?.viewState
     const names = aliasToken === '' ? [key] : [key, ...aliasToken.split(ALIAS_SEPARATOR)]
 
     for (const name of names) {
       const raw = viewState?.[name]
       if (raw === undefined) continue
       try {
-        const parsed = parseRef.current(raw)
+        const parsed = parse(raw)
         if (parsed !== undefined) return parsed
       } catch (err) {
         // Diagnostic only — a rejected view-state value is never surfaced to the
@@ -90,24 +90,25 @@ export function useTabViewState<T>({
         log.warn('discarding unparseable tab view state', { key: name, error: String(err) })
       }
     }
-    return defaultValueRef.current
-  }, [getTab, key, aliasToken])
+    return defaultValue
+  }, [identity, getTab, key, aliasToken, parse, defaultValue])
 
   const [value, setValue] = useState<T>(read)
   const valueRef = useRef(value)
 
   // Re-seed when the tab this component is rendered for changes. `TabContent`
   // reuses its page instance across a tab switch, so without this the new tab
-  // would inherit the previous tab's state.
+  // would inherit the previous tab's state. Adjusted directly during render
+  // (not in an effect), per
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
   const identityKey = identity ? `${identity.groupId}:${identity.tabId}` : ''
-  const seededForRef = useRef(identityKey)
-  useEffect(() => {
-    if (seededForRef.current === identityKey) return
-    seededForRef.current = identityKey
+  const [seededFor, setSeededFor] = useState(identityKey)
+  if (seededFor !== identityKey) {
+    setSeededFor(identityKey)
     const seeded = read()
     valueRef.current = seeded
     setValue(seeded)
-  }, [identityKey, read])
+  }
 
   const setTabViewState = useCallback<TabViewStateSetter<T>>(
     (next) => {

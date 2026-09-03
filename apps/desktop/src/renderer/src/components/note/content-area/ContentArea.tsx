@@ -3,7 +3,6 @@
 import { createPortal } from 'react-dom'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
-  SideMenuController,
   SuggestionMenuController,
   GridSuggestionMenuController,
   useCreateBlockNote,
@@ -81,7 +80,12 @@ import {
   ReviewFormattingToolbarController
 } from './review-formatting-toolbar'
 import { createCriticMarkupDecorationPlugin } from './critic-markup-decorations'
+import { Plugin } from 'prosemirror-state'
+import { isMac } from '@/lib/shortcut-registry'
+import { serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
+import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
+import { MoveBlockDialog } from './move-block-dialog'
 import { createMultiBlockIndentPlugin } from './multi-block-indent-plugin'
 import { createBulletCollapsePlugin, BULLET_FOLD_GUTTER } from './bullet-collapse-plugin'
 
@@ -1441,6 +1445,71 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor, noteId, tasksCtx]
   )
 
+  // "Move to" from the block side menu: the picker names a target note, then
+  // the block's markdown is appended there BEFORE it is removed here. Ordering
+  // matters — a failed append must leave the block where it is rather than lose
+  // it, so the removal only runs once the IPC resolves.
+  const [moveBlockId, setMoveBlockId] = useState<string | null>(null)
+
+  const requestBlockMove = useCallback((blockId: string) => {
+    setMoveBlockId(blockId)
+  }, [])
+
+  const moveBlockToNote = useCallback(
+    async (targetNoteId: string): Promise<void> => {
+      const blockId = moveBlockId
+      if (!blockId || !noteId) return
+      const block = editor.getBlock(blockId)
+      if (!block) return
+
+      try {
+        // The canonical renderer serializer, so Memry's block markers (callout,
+        // bookmark, colors) survive the trip instead of being flattened.
+        // `serializeBlocksPreservingBlanks` is typed against BlockNote's default
+        // schema; the note editor's schema is a superset, so widen at the call.
+        const markdown = await serializeBlocksPreservingBlanks(editor, [block] as never)
+        if (!markdown.trim()) return
+
+        const result = await window.api.notes.appendBlocks({
+          sourceNoteId: noteId,
+          targetNoteId,
+          markdown
+        })
+        if (!result?.success) {
+          throw new Error(result?.error ?? 'append failed')
+        }
+
+        editor.removeBlocks([block])
+      } catch (err) {
+        toast.error(extractErrorMessage(err, tRef.current('editor.blockMenu.moveDialog.failed')))
+      } finally {
+        setMoveBlockId(null)
+      }
+    },
+    [editor, moveBlockId, noteId]
+  )
+
+  // ⌘D duplicates the block under the caret, matching the side menu's item.
+  // Registered as a ProseMirror keymap plugin so it only fires inside the
+  // editor and never steals the chord from the rest of the app.
+  useEffect(() => {
+    const plugin = new Plugin({
+      props: {
+        handleKeyDown: (_view, event) => {
+          const mod = isMac ? event.metaKey : event.ctrlKey
+          if (!mod || event.shiftKey || event.altKey || event.key.toLowerCase() !== 'd') {
+            return false
+          }
+          const blockId = editor.getTextCursorPosition?.()?.block?.id
+          if (!blockId) return false
+          event.preventDefault()
+          return duplicateBlock(editor, blockId)
+        }
+      }
+    })
+    return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
+  }, [editor])
+
   // A context-menu click on an image block opens the attachment menu (reveal /
   // open / copy path — issue #1709). The built-in image block has no custom
   // render to mount a trigger in, so the menu is a controlled dropdown anchored
@@ -1655,6 +1724,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               }}
             />
           )}
+          {moveBlockId && noteId && (
+            <MoveBlockDialog
+              open
+              onOpenChange={(open) => !open && setMoveBlockId(null)}
+              currentNoteId={noteId}
+              onSelect={(targetNoteId) => void moveBlockToNote(targetNoteId)}
+            />
+          )}
           {imageRenameTarget && (
             <AttachmentRenameFlow
               url={imageRenameTarget.url}
@@ -1752,6 +1829,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             slashMenu={false}
             emojiPicker={false}
             filePanel={false}
+            // `BlockSideMenuController` below replaces the stock side menu.
+            // Left on, BlockNote renders its own on top and the default
+            // AddBlockButton's icon intercepts clicks meant for our drag handle.
+            sideMenu={false}
             // BlockNote anchors its row/column handles with floating-ui beside
             // the table, never on it. `TableBorderHandles` below draws ours on
             // the cell borders instead and opens the same menus from them.
@@ -1759,21 +1840,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             // buttons and row/column drag-to-reorder, which the bars do not
             // carry yet.
             tableHandles={false}
-            // Rendered below instead, shifted clear of the bullet-fold chevron.
-            sideMenu={false}
           >
-            {/* BlockNote pins the drag/plus handle flush against the block's
-              inline start (`placement: 'left-start'`, no offset), which is
-              exactly where the bullet-fold chevron sits. Both appear on the
-              same hover, so the handle moves over by the width of the gutter
-              the chevron claims. Written out rather than imported from
-              `@floating-ui/react`: floating-ui is BlockNote's dependency, not
-              this app's, and a middleware is just a named `fn`. */}
-            <SideMenuController
-              floatingUIOptions={{
-                useFloatingOptions: { middleware: [BULLET_FOLD_HANDLE_OFFSET] }
-              }}
-            />
             {/* Memry's toolbar on every surface, review or not: BlockNote's stock
               one has no list toggles, so the template editor used to be the odd
               one out with no visible way to turn selected lines into a list. */}
@@ -1782,6 +1849,23 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             ) : (
               <ReviewFormattingToolbarController onAddComment={review?.onAddComment} />
             )}
+            {/* Memry's block menu: BlockNote's stock drag-handle menu carries
+              only Delete + Colors. This one keeps both and adds Turn into,
+              Duplicate, Move to and Comment. */}
+            {/* BlockNote pins the drag/plus handle flush against the block's
+              inline start (`placement: 'left-start'`, no offset), which is
+              exactly where the bullet-fold chevron sits. Both appear on the
+              same hover, so the handle moves over by the width of the gutter
+              the chevron claims. Written out rather than imported from
+              `@floating-ui/react`: floating-ui is BlockNote's dependency, not
+              this app's, and a middleware is just a named `fn`. */}
+            <BlockSideMenuController
+              onAddComment={review?.onAddComment}
+              onRequestMove={requestBlockMove}
+              floatingUIOptions={{
+                useFloatingOptions: { middleware: [BULLET_FOLD_HANDLE_OFFSET] }
+              }}
+            />
             {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
             <FilePanelController filePanel={UploadOnlyFilePanel} />
             <SuggestionMenuController

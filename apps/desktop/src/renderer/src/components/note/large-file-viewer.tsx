@@ -91,6 +91,9 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   const search = useLargeFileSearch(sessionId)
 
   const lineCount = state.status === 'ready' ? state.lineCount : 0
+  // TanStack Virtual's `useVirtualizer()` returns unstable function refs, a
+  // known library limitation the React Compiler can't memoize around.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: lineCount,
     getScrollElement: () => scrollRef.current,

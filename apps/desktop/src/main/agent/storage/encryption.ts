@@ -5,9 +5,7 @@ import { decrypt, encrypt } from '../../crypto/encryption'
 export const AGENT_AT_REST_VERSION = 1 as const
 
 export type AgentAtRestPurpose =
-  | 'agent_conversation_title'
-  | 'agent_message_content'
-  | 'agent_attachments'
+  'agent_conversation_title' | 'agent_message_content' | 'agent_attachments'
 
 export interface AgentEnvelope {
   version: typeof AGENT_AT_REST_VERSION

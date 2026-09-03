@@ -1,6 +1,10 @@
 import type { SyncItemType } from '@memry/contracts/sync-api'
 import type { RemoteSyncAdapter } from '@memry/sync-core'
-import type { SyncItemHandler, DrizzleDb, EmitToWindows } from '@memry/sync-client/item-handlers/types'
+import type {
+  SyncItemHandler,
+  DrizzleDb,
+  EmitToWindows
+} from '@memry/sync-client/item-handlers/types'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { taskHandler } from './task-handler'
 import { taskActivityHandler } from '@memry/sync-client/item-handlers/task-activity-handler'
@@ -27,7 +31,13 @@ import { agentMessageHandler } from './agent-message-handler'
 import { canvasHandler } from './canvas-handler'
 import { canvasFolderHandler } from './canvas-folder-handler'
 
-export type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb, EmitToWindows } from '@memry/sync-client/item-handlers/types'
+export type {
+  SyncItemHandler,
+  ApplyContext,
+  ApplyResult,
+  DrizzleDb,
+  EmitToWindows
+} from '@memry/sync-client/item-handlers/types'
 export { resolveClockConflict } from '@memry/sync-client/item-handlers/types'
 
 const handlers = new Map<SyncItemType, SyncItemHandler>([
