@@ -225,7 +225,8 @@
     "groups": {
       "theme": "Theme",
       "accentColor": "Accent Color",
-      "typography": "Typography"
+      "typography": "Typography",
+      "zoom": "Zoom"
     },
     "theme": {
       "colorMode": {
@@ -259,6 +260,13 @@
         "orange": "Orange"
       },
       "error": "Failed to update accent color"
+    },
+    "zoom": {
+      "label": "Zoom Level",
+      "description": "Scale the entire interface",
+      "aria": "Zoom level",
+      "reset": "Reset zoom to default",
+      "error": "Failed to update zoom level"
     },
     "typography": {
       "fontSize": {

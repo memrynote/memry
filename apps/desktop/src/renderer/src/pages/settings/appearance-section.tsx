@@ -35,6 +35,14 @@ import {
   FONT_SIZE_PX_DEFAULT
 } from '@memry/contracts/font-size'
 import {
+  clampZoomFactor,
+  zoomPercent,
+  ZOOM_FACTOR_MIN,
+  ZOOM_FACTOR_MAX,
+  ZOOM_FACTOR_STEP,
+  ZOOM_FACTOR_DEFAULT
+} from '@memry/contracts/app-zoom'
+import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
@@ -58,8 +66,12 @@ function setRootFontSize(px: number): void {
   document.documentElement.style.fontSize = `${px}px`
 }
 
+function setAppZoomFactor(factor: number): void {
+  window.api.setZoomFactor(factor)
+}
+
 /**
- * How long the font size settles before it is written.
+ * How long a slider row settles before its value is written.
  *
  * Radix reports a value on every pointer move and commits on every *keydown*,
  * so an unthrottled row turns one held ArrowRight into a dozen IPC round trips,
@@ -67,7 +79,91 @@ function setRootFontSize(px: number): void {
  * enough to coalesce a drag or a key repeat into one write, short enough that
  * letting go feels like it saved instantly.
  */
-const FONT_SIZE_COMMIT_DELAY_MS = 150
+const SLIDER_COMMIT_DELAY_MS = 150
+
+interface SliderDraft {
+  value: number
+  preview: (value: number) => void
+}
+
+/**
+ * A settings slider whose value is applied to the live interface immediately
+ * and written to disk once the user stops moving it.
+ *
+ * `apply` changes what the user sees, `save` persists it, and `onSaveFailed`
+ * reports a rejected write. Because `apply` has already taken effect, a failed
+ * save has to put the interface back itself: the settings hook that normally
+ * drives it never re-runs, its effect deps never having changed.
+ */
+function useSliderDraft(
+  saved: number,
+  apply: (value: number) => void,
+  save: (value: number) => Promise<boolean>,
+  onSaveFailed: () => void
+): SliderDraft {
+  const [draft, setDraft] = useState<number | null>(null)
+  const pendingRef = useRef<{
+    commit: () => void
+    timer: ReturnType<typeof setTimeout>
+  } | null>(null)
+
+  // The pending write outlives any number of re-renders, so what it will do is
+  // read from a ref at commit time rather than captured when it was scheduled.
+  // Capturing would make every render cancel and reschedule the timer, and
+  // would pin the unmount flush to a stale `saved`.
+  const latestRef = useRef({ saved, apply, save, onSaveFailed })
+  useEffect(() => {
+    latestRef.current = { saved, apply, save, onSaveFailed }
+  })
+
+  const preview = useCallback((value: number) => {
+    setDraft(value)
+    latestRef.current.apply(value)
+    if (pendingRef.current) clearTimeout(pendingRef.current.timer)
+
+    const commit = (): void => {
+      pendingRef.current = null
+      const latest = latestRef.current
+
+      // Only ever release a draft that is still the one this call owns. A held
+      // arrow key otherwise makes the displayed value jump backwards whenever a
+      // slow write lands after a newer preview.
+      const releaseDraft = (): void => setDraft((cur) => (cur === value ? null : cur))
+
+      // A drag that wanders and comes back writes nothing. Radix will not tell
+      // us either way: it skips onValueCommit when pointer-up lands on the
+      // value pointer-down started from, which is why the row settles itself.
+      if (value === latest.saved) {
+        releaseDraft()
+        return
+      }
+
+      void latest.save(value).then((success) => {
+        releaseDraft()
+        if (success) return
+        latest.apply(latest.saved)
+        latest.onSaveFailed()
+      })
+    }
+
+    pendingRef.current = { commit, timer: setTimeout(commit, SLIDER_COMMIT_DELAY_MS) }
+  }, [])
+
+  // Flushed, not dropped: the preview already changed the live interface, so an
+  // unmount that discarded the pending write would leave the app looking one
+  // way and the file on disk saying another, until the next restart.
+  useEffect(
+    () => () => {
+      const pending = pendingRef.current
+      if (!pending) return
+      clearTimeout(pending.timer)
+      pending.commit()
+    },
+    []
+  )
+
+  return { value: draft ?? saved, preview }
+}
 
 interface SegmentOption {
   value: string
@@ -294,11 +390,6 @@ export function AppearanceSettings() {
   const direction = useDirection()
   const { settings, isLoading, updateSettings } = useGeneralSettings()
   const [customHex, setCustomHex] = useState('')
-  const [fontSizePxDraft, setFontSizePxDraft] = useState<number | null>(null)
-  const pendingFontSizeRef = useRef<{
-    commit: () => void
-    timer: ReturnType<typeof setTimeout>
-  } | null>(null)
   // Enumeration takes seconds on a cold OS font cache but never blocks the main
   // thread, so it starts with the page rather than with the picker: by the time
   // the row is clicked the list is already there.
@@ -345,61 +436,18 @@ export function AppearanceSettings() {
     [t, updateSettings]
   )
 
-  const savedFontSizePx = resolveFontSizePx(settings.fontSizePx, settings.fontSize)
-  const fontSizePx = fontSizePxDraft ?? savedFontSizePx
-
-  const commitFontSizePx = useCallback(
-    async (px: number) => {
-      // Only ever release a draft that is still the one this call owns. A held
-      // arrow key otherwise makes the displayed size jump backwards whenever a
-      // slow write lands after a newer preview.
-      const releaseDraft = (): void => setFontSizePxDraft((cur) => (cur === px ? null : cur))
-
-      // A drag that wanders and comes back writes nothing. Radix will not tell
-      // us either way: it skips onValueCommit when pointer-up lands on the
-      // value pointer-down started from, which is why the row settles itself.
-      if (px === savedFontSizePx) {
-        releaseDraft()
-        return
-      }
-
-      const success = await updateSettings({ fontSizePx: px, fontSize: toLegacyFontSize(px) })
-      releaseDraft()
-      if (!success) {
-        toast.error(t('appearance.typography.fontSizeError'))
-        // useThemeSync will not re-run: its effect deps never changed, so the
-        // size previewed during the drag has to be undone here.
-        setRootFontSize(savedFontSizePx)
-      }
-    },
-    [savedFontSizePx, t, updateSettings]
+  const { value: fontSizePx, preview: previewFontSizePx } = useSliderDraft(
+    resolveFontSizePx(settings.fontSizePx, settings.fontSize),
+    setRootFontSize,
+    (px) => updateSettings({ fontSizePx: px, fontSize: toLegacyFontSize(px) }),
+    () => toast.error(t('appearance.typography.fontSizeError'))
   )
 
-  const previewFontSizePx = useCallback(
-    (px: number) => {
-      setFontSizePxDraft(px)
-      setRootFontSize(px)
-      if (pendingFontSizeRef.current) clearTimeout(pendingFontSizeRef.current.timer)
-      const commit = (): void => {
-        pendingFontSizeRef.current = null
-        void commitFontSizePx(px)
-      }
-      pendingFontSizeRef.current = { commit, timer: setTimeout(commit, FONT_SIZE_COMMIT_DELAY_MS) }
-    },
-    [commitFontSizePx]
-  )
-
-  // Flushed, not dropped: the preview writes the root font size directly, so an
-  // unmount that discarded the pending write would leave the whole interface at
-  // a size nothing on disk agrees with, until the next restart.
-  useEffect(
-    () => () => {
-      const pending = pendingFontSizeRef.current
-      if (!pending) return
-      clearTimeout(pending.timer)
-      pending.commit()
-    },
-    []
+  const { value: zoomFactor, preview: previewZoomFactor } = useSliderDraft(
+    clampZoomFactor(settings.zoomFactor),
+    setAppZoomFactor,
+    (factor) => updateSettings({ zoomFactor: factor }),
+    () => toast.error(t('appearance.zoom.error'))
   )
 
   const fontChoice = fontChoiceFromSettings(settings.fontFamily, settings.customFontFamily)
@@ -530,6 +578,37 @@ export function AppearanceSettings() {
             systemFonts={systemFonts}
             onSelect={(...args) => void handleFontChoiceChange(...args)}
           />
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('appearance.groups.zoom')}>
+        <SettingRow
+          label={t('appearance.zoom.label')}
+          description={t('appearance.zoom.description')}
+        >
+          <div className="flex items-center shrink-0 gap-2">
+            <button
+              type="button"
+              aria-label={t('appearance.zoom.reset')}
+              onClick={() => previewZoomFactor(ZOOM_FACTOR_DEFAULT)}
+              className="flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <RotateCcw className="size-3" />
+            </button>
+            <span className="w-10 shrink-0 text-xs tabular-nums text-end text-muted-foreground">
+              {zoomPercent(zoomFactor)}%
+            </span>
+            <Slider
+              dir={direction}
+              min={ZOOM_FACTOR_MIN}
+              max={ZOOM_FACTOR_MAX}
+              step={ZOOM_FACTOR_STEP}
+              value={[zoomFactor]}
+              onValueChange={([factor]) => previewZoomFactor(factor)}
+              aria-label={t('appearance.zoom.aria')}
+              className="w-36"
+            />
+          </div>
         </SettingRow>
       </SettingsGroup>
     </div>

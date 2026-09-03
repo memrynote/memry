@@ -28,11 +28,14 @@ vi.mock('sonner', () => ({
 
 const FONT_SIZE_ARIA = 'Font size'
 
+// The page carries a second slider (zoom), so every lookup is scoped by name.
+const fontSizeSlider = (): HTMLElement => screen.getByRole('slider', { name: FONT_SIZE_ARIA })
+
 // Radix's pointer path lives on the Root, which is the only one of the two
 // elements carrying `dir`. Pressing the Thumb — the element that owns
 // role="slider" and the accessible name — is read as grabbing the existing
 // thumb and moves nothing.
-const sliderTrack = (): HTMLElement => screen.getByRole('slider').closest('[dir]') as HTMLElement
+const sliderTrack = (): HTMLElement => fontSizeSlider().closest('[dir]') as HTMLElement
 
 beforeAll(() => {
   // Radix's slider drives its pointer path through capture APIs jsdom omits.
@@ -71,7 +74,7 @@ describe('Appearance font size slider', () => {
     fireEvent.pointerDown(sliderTrack(), { clientX: 0, pointerId: 1 })
 
     expect(document.documentElement.style.fontSize).toBe('12px')
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '12')
+    expect(fontSizeSlider()).toHaveAttribute('aria-valuenow', '12')
     expect(mocks.generalSettings.updateSettings).not.toHaveBeenCalled()
   })
 
@@ -93,7 +96,7 @@ describe('Appearance font size slider', () => {
   it('#given an arrow key on the slider #then the step is saved without a pointer release', async () => {
     render(<AppearanceSettings />)
 
-    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' })
+    fireEvent.keyDown(fontSizeSlider(), { key: 'ArrowRight' })
 
     await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
@@ -148,7 +151,7 @@ describe('Appearance font size slider', () => {
 
     fireEvent.pointerDown(track, { clientX: 40, pointerId: 1 })
     fireEvent.pointerMove(track, { clientX: 80, pointerId: 1 })
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '20')
+    expect(fontSizeSlider()).toHaveAttribute('aria-valuenow', '20')
 
     fireEvent.pointerMove(track, { clientX: 40, pointerId: 1 })
     fireEvent.pointerUp(track, { clientX: 40, pointerId: 1 })
@@ -163,17 +166,17 @@ describe('Appearance font size slider', () => {
     }
     rerender(<AppearanceSettings />)
 
-    await waitFor(() => expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '22'))
+    await waitFor(() => expect(fontSizeSlider()).toHaveAttribute('aria-valuenow', '22'))
   })
 
   it('#given a held arrow key #then the whole run is written once, not once per keydown', async () => {
     render(<AppearanceSettings />)
 
     for (let i = 0; i < 6; i++) {
-      fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' })
+      fireEvent.keyDown(fontSizeSlider(), { key: 'ArrowRight' })
     }
 
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '22')
+    expect(fontSizeSlider()).toHaveAttribute('aria-valuenow', '22')
 
     await waitFor(() => expect(mocks.generalSettings.updateSettings).toHaveBeenCalled())
     expect(mocks.generalSettings.updateSettings).toHaveBeenCalledTimes(1)
@@ -207,6 +210,6 @@ describe('Appearance font size slider', () => {
     }
     render(<AppearanceSettings />)
 
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '20')
+    expect(fontSizeSlider()).toHaveAttribute('aria-valuenow', '20')
   })
 })
