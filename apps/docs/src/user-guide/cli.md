@@ -36,6 +36,22 @@ settings switch can replace them with the current launcher. It only replaces lau
 memrynote; if another `memrynote` command already exists in that location, setup stops instead of
 overwriting it.
 
+## Linux servers without a display
+
+On Linux the generated launcher runs memrynote with `--ozone-platform=headless --disable-gpu`, so
+it works on a host that has neither `DISPLAY` nor `WAYLAND_DISPLAY`. You do not need Xvfb.
+
+If you call the packaged binary directly instead of using the launcher, pass those switches
+yourself, before `--cli`:
+
+```bash
+/opt/MemryNote/memrynote --ozone-platform=headless --disable-gpu --cli --json vault status
+```
+
+Without them the binary tries to initialize a display and never reaches the CLI. Launchers
+installed by an older app version lack the switches — reinstall the command from
+**Settings → Command Line** to pick them up.
+
 ## Vault
 
 ```bash

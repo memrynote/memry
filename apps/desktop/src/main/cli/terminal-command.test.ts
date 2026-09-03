@@ -38,6 +38,74 @@ describe('terminal command setup', () => {
       inPath: true
     })
     expect(readFileSync(status.shimPath, 'utf8')).toContain(`exec "${executablePath}" --cli "$@"`)
+    expect(readFileSync(status.shimPath, 'utf8')).not.toContain('--ozone-platform')
+  })
+
+  it('installs a Linux shim that runs headless so a displayless host still works', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const executablePath = join(root, 'opt', 'MemryNote', 'memrynote')
+
+    const status = await installTerminalCommand({
+      platform: 'linux',
+      homeDir: join(root, 'home'),
+      executablePath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+
+    expect(status.installed).toBe(true)
+    expect(readFileSync(status.shimPath, 'utf8')).toContain(
+      `exec "${executablePath}" --ozone-platform=headless --disable-gpu --cli "$@"`
+    )
+  })
+
+  it('keeps the app path before the headless switches on Linux', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const executablePath = join(root, 'node_modules', 'electron', 'dist', 'electron')
+    const appPath = join(root, 'memry', 'apps', 'desktop')
+
+    const status = await installTerminalCommand({
+      platform: 'linux',
+      homeDir: join(root, 'home'),
+      executablePath,
+      appPath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+
+    expect(readFileSync(status.shimPath, 'utf8')).toContain(
+      `exec "${executablePath}" "${appPath}" --ozone-platform=headless --disable-gpu --cli "$@"`
+    )
+  })
+
+  it('treats a pre-headless Linux shim as stale and replaces it', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const executablePath = join(root, 'opt', 'MemryNote', 'memrynote')
+    const options = {
+      platform: 'linux' as const,
+      homeDir: join(root, 'home'),
+      executablePath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    }
+
+    const initial = await installTerminalCommand(options)
+    writeFileSync(
+      initial.shimPath,
+      `#!/bin/sh\n# Memry terminal command shim\nexec "${executablePath}" --cli "$@"\n`
+    )
+
+    expect((await getTerminalCommandStatus(options)).installed).toBe(false)
+
+    const reinstalled = await installTerminalCommand(options)
+
+    expect(reinstalled.installed).toBe(true)
+    expect(readFileSync(reinstalled.shimPath, 'utf8')).toContain(
+      `exec "${executablePath}" --ozone-platform=headless --disable-gpu --cli "$@"`
+    )
   })
 
   it('installs a Unix shim with the app path when running from unpackaged Electron', async () => {
@@ -108,6 +176,7 @@ describe('terminal command setup', () => {
       inPath: true
     })
     expect(readFileSync(status.shimPath, 'utf8')).toContain(`"${executablePath}" --cli %*`)
+    expect(readFileSync(status.shimPath, 'utf8')).not.toContain('--ozone-platform')
   })
 
   it('installs a Windows cmd shim with the app path when running from unpackaged Electron', async () => {

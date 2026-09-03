@@ -44,6 +44,17 @@ const COMMAND_NAME = 'memrynote'
 const SHIM_MARKER = 'Memry terminal command shim'
 const SHIM_MODE = 0o755
 
+// Ozone initializes before the `--cli` route gets to run, so on a Linux host
+// with neither X11 nor Wayland the launcher dies on display init
+// ("Missing X server or $DISPLAY") even though the CLI never opens a window.
+// Selecting Ozone's headless backend skips that initialization, which is what
+// makes the generated launcher usable on a displayless server without
+// installing Xvfb. Chromium's `--headless` is a chrome/-layer switch that
+// Electron does not implement, so it would be silently ignored here. The
+// switches must precede `--cli`, since everything after it is forwarded to the
+// CLI parser. macOS and Windows have no equivalent failure and stay untouched.
+const LINUX_HEADLESS_SWITCHES = '--ozone-platform=headless --disable-gpu'
+
 function resolvePlatform(platform: NodeJS.Platform = process.platform): TerminalCommandPlatform {
   if (platform === 'darwin' || platform === 'linux' || platform === 'win32') return platform
   return 'linux'
@@ -158,10 +169,11 @@ function renderShim(
   }
 
   const appPathArg = appPath ? ` "${escapeDoubleQuoted(appPath)}"` : ''
+  const headlessArgs = platform === 'linux' ? ` ${LINUX_HEADLESS_SWITCHES}` : ''
   return [
     '#!/bin/sh',
     `# ${SHIM_MARKER}`,
-    `exec "${escapeDoubleQuoted(executablePath)}"${appPathArg} --cli "$@"`,
+    `exec "${escapeDoubleQuoted(executablePath)}"${appPathArg}${headlessArgs} --cli "$@"`,
     ''
   ].join('\n')
 }
