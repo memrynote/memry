@@ -204,8 +204,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(calendarEvents).where(eq(calendarEvents.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
   }
 
   buildPushPayload(db: DrizzleDb, itemId: string): string | null {

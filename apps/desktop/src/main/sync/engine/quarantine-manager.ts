@@ -85,8 +85,7 @@ export class QuarantineManager {
       const val = rows[0]?.value
       if (!val) return
       const parsed = JSON.parse(val) as
-        | QuarantineEntry[]
-        | { v: number; entries: QuarantineEntry[] }
+        QuarantineEntry[] | { v: number; entries: QuarantineEntry[] }
       // v1 (bare array) was written by the id-keyed era: colliding item types
       // shared one entry whose attemptCount and itemType were jointly mangled,
       // so a legacy entry can brand the WRONG type permanent. Discard v1

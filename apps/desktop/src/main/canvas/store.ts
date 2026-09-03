@@ -82,8 +82,7 @@ export interface CanvasUpdateInput {
 }
 
 export type CanvasUpdateResult =
-  | { ok: true; summary: CanvasSummary }
-  | { ok: false; reason: CanvasUpdateFailure }
+  { ok: true; summary: CanvasSummary } | { ok: false; reason: CanvasUpdateFailure }
 
 function toSummary(
   row: Pick<CanvasRow, 'id' | 'title' | 'folder' | 'icon' | 'createdAt' | 'updatedAt'>

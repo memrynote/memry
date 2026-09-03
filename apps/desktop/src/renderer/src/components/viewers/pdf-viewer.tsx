@@ -155,6 +155,9 @@ function PdfThumbnailRail({
   const scrollRef = useRef<HTMLDivElement>(null)
   const leadPage = activePages[0] ?? 1
 
+  // TanStack Virtual's `useVirtualizer()` returns unstable function refs, a
+  // known library limitation the React Compiler can't memoize around.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: numPages,
     getScrollElement: () => scrollRef.current,
@@ -163,9 +166,14 @@ function PdfThumbnailRail({
   })
 
   // The active page's thumbnail is not necessarily inside the window when the
-  // page changes from the toolbar, so pull it back into view.
+  // page changes from the toolbar, so pull it back into view. False positive
+  // below: `virtualizer`'s config closes over the local `scrollRef` and the
+  // `numPages` prop, and this plugin's taint tracking reads calling a method
+  // on the returned object as forwarding a ref to/from a parent. `scrollRef`
+  // never leaves this component.
   useEffect(() => {
     if (numPages > 0) {
+      // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent
       virtualizer.scrollToIndex(leadPage - 1, { align: 'auto' })
     }
   }, [leadPage, numPages, virtualizer])

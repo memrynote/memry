@@ -6,15 +6,7 @@
 
 // Types are defined in src/preload/index.d.ts and exposed via window.api
 type TemplatePropertyType =
-  | 'text'
-  | 'number'
-  | 'checkbox'
-  | 'date'
-  | 'select'
-  | 'multiselect'
-  | 'url'
-  | 'rating'
-  | 'project'
+  'text' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect' | 'url' | 'rating' | 'project'
 
 interface TemplateProperty {
   name: string

@@ -7,7 +7,7 @@
  * @module components/note/note-attachments-dialog
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -88,13 +88,24 @@ export function NoteAttachmentsDialog({
   const { t } = useT('notes')
   const fileActions = useFileActionLabels()
   const [rows, setRows] = useState<AttachmentRow[]>([])
-  const [names, setNames] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(false)
+  // Tracks which (open, noteId) pair the current `rows`/`loading` belong to,
+  // so a reopen — even for the same note — flips `loading` back on directly
+  // during render ("adjust state when a prop changes") instead of via an
+  // effect.
+  const openKey = open ? noteId : null
+  const [loadedKey, setLoadedKey] = useState(openKey)
+  if (openKey !== loadedKey) {
+    setLoadedKey(openKey)
+    if (openKey !== null) setLoading(true)
+  }
+  const names = useMemo(
+    () => (open ? getOriginalNames() : new Map<string, string>()),
+    [open, getOriginalNames]
+  )
 
   useEffect(() => {
     if (!open) return
-    setLoading(true)
-    setNames(getOriginalNames())
     window.api.notes
       .listAttachments(noteId)
       .then((attachments: AttachmentRow[]) => {

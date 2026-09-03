@@ -36,13 +36,7 @@ interface FilterDropdownProps {
 }
 
 type ActivePanel =
-  | null
-  | 'priority'
-  | 'status'
-  | 'dueDate'
-  | 'project'
-  | 'tags'
-  | 'status-project-picker'
+  null | 'priority' | 'status' | 'dueDate' | 'project' | 'tags' | 'status-project-picker'
 
 const FILTER_CATEGORIES: { key: NonNullable<ActivePanel>; label: string }[] = [
   { key: 'priority', label: 'Priority' },

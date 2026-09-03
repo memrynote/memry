@@ -5,7 +5,11 @@
  * dependencies are injected, with the production factories in `wiring.ts`.
  * The CRDT pair (persistence/provider) lands with T019.
  */
-export { DesktopVaultFileSystem, directoryVaultRoots, type VaultRootSource } from './vault-file-system'
+export {
+  DesktopVaultFileSystem,
+  directoryVaultRoots,
+  type VaultRootSource
+} from './vault-file-system'
 export { DesktopAttachmentStore } from './attachment-store'
 export { DesktopCrdtStorePath } from './crdt-store-path'
 export { DesktopCrdtPreflight, accessProbe, type CrdtPreflightProbe } from './crdt-preflight'

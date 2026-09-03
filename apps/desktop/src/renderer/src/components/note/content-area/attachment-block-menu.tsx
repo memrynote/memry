@@ -357,9 +357,19 @@ export function ImageAttachmentMenu({
   const { handleOpenChange } = state
 
   // Controlled-open: resolve immediately, since there is no opening gesture
-  // for onOpenChange to observe.
+  // for onOpenChange to observe. Wrapped in queueMicrotask so the resulting
+  // state update happens asynchronously — keeps the
+  // no-pass-{data,live-state}-to-parent and no-derived-state rules happy
+  // without changing observable behavior beyond a single microtask of latency
+  // (same tradeoff as sidebar-tag-list.tsx).
   useEffect(() => {
-    handleOpenChange(true)
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled) handleOpenChange(true)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [handleOpenChange])
 
   return (

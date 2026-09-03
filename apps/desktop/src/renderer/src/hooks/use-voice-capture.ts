@@ -11,11 +11,7 @@ export type VoiceCaptureState = 'idle' | 'requesting-permission' | 'recording' |
  * with its own namespace/tone (inline recorder panel vs. composer toast).
  */
 export type VoiceCaptureErrorKind =
-  | 'permission-denied'
-  | 'no-microphone'
-  | 'access-failed'
-  | 'start-failed'
-  | 'recorder-failed'
+  'permission-denied' | 'no-microphone' | 'access-failed' | 'start-failed' | 'recorder-failed'
 
 export interface VoiceCaptureError {
   kind: VoiceCaptureErrorKind

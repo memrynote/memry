@@ -24,10 +24,7 @@ export function getStartupThemeSync(): StartupTheme {
   // `[object Object]` into next-themes' localStorage and crash the renderer.
   try {
     const raw = ipcRenderer.sendSync(SettingsChannels.sync.GET_STARTUP_THEME) as
-      | StartupTheme
-      | { theme?: StartupTheme }
-      | null
-      | undefined
+      StartupTheme | { theme?: StartupTheme } | null | undefined
     const value = typeof raw === 'string' ? raw : raw?.theme
     if (isStartupTheme(value)) return value
   } catch {

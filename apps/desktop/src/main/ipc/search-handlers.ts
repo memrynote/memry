@@ -141,17 +141,15 @@ export function registerSearchHandlers(): void {
           .limit(20)
           .all()
 
-        return rows.map(
-          (row): SearchReason => ({
-            id: row.id,
-            itemId: row.itemId,
-            itemType: row.itemType as SearchReason['itemType'],
-            itemTitle: row.itemTitle,
-            itemIcon: row.itemIcon ?? null,
-            searchQuery: row.searchQuery,
-            visitedAt: row.visitedAt
-          })
-        )
+        return rows.map((row): SearchReason => ({
+          id: row.id,
+          itemId: row.itemId,
+          itemType: row.itemType as SearchReason['itemType'],
+          itemTitle: row.itemTitle,
+          itemIcon: row.itemIcon ?? null,
+          searchQuery: row.searchQuery,
+          visitedAt: row.visitedAt
+        }))
       } catch (error) {
         logger.error('search:get-reasons failed:', error)
         return []

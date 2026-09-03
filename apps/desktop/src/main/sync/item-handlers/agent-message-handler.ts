@@ -219,8 +219,7 @@ export class AgentMessageHandler extends BaseItemHandler<AgentMessageSyncPayload
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(agentMessages).where(eq(agentMessages.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
   }
 
   seedUnclocked(_db: DrizzleDb, _deviceId: string, _queue: SyncQueueManager): number {

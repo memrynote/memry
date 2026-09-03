@@ -33,30 +33,33 @@ export function useSystemFonts(enabled: boolean): SystemFontsState {
     if (!enabled || started.current) return
     started.current = true
 
-    if (typeof window.queryLocalFonts !== 'function') {
-      setState({ status: 'unavailable' })
-      return
-    }
+    // Wrapped in an async IIFE, rather than calling `setState` directly in the
+    // effect body, so this reads as the async operation it is: enumerating
+    // fonts is a real side effect, not state derived from the `enabled` prop.
+    void (async () => {
+      if (typeof window.queryLocalFonts !== 'function') {
+        setState({ status: 'unavailable' })
+        return
+      }
 
-    setState({ status: 'loading' })
+      setState({ status: 'loading' })
 
-    // No cancel-on-cleanup guard: StrictMode tears the first effect down and
-    // the `started` ref makes the remount a no-op, so cancelling here would
-    // strand the state on `loading` forever.
-    void window
-      .queryLocalFonts()
-      .then((fonts) => {
+      // No cancel-on-cleanup guard: StrictMode tears the first effect down and
+      // the `started` ref makes the remount a no-op, so cancelling here would
+      // strand the state on `loading` forever.
+      try {
+        const fonts = await window.queryLocalFonts()
         // FontData keeps `family` on its prototype, so read the accessor per
         // face rather than copying or spreading the object.
         const families = [
           ...new Set(fonts.map((font) => sanitizeFontFamilyName(font.family)).filter(Boolean))
         ].sort((a, b) => a.localeCompare(b))
         setState(families.length > 0 ? { status: 'ready', families } : { status: 'unavailable' })
-      })
-      .catch((error: unknown) => {
+      } catch (error) {
         log.warn('Failed to enumerate local fonts', error)
         setState({ status: 'unavailable' })
-      })
+      }
+    })()
   }, [enabled])
 
   return state

@@ -829,7 +829,14 @@ export function NotePage({ noteId }: NotePageProps) {
   // The map is built when it opens, but a restored tab reopens it before the
   // body has finished loading. The heading set arriving is the signal that the
   // block tree behind the map is real.
+  //
+  // `refreshMindMap` closes over `mindMap`/`review`, which are built from this
+  // component's `noteId` prop and touch refs and state (e.g. `isDeleted`)
+  // elsewhere in this file. The lint plugin's static reference tracing follows
+  // that chain and misreads it as this effect forwarding a ref or live state
+  // to a parent — it does neither; it only calls `refreshMindMap()`.
   useEffect(() => {
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-derived-state
     refreshMindMap()
   }, [headings, refreshMindMap])
 
@@ -1133,7 +1140,7 @@ export function NotePage({ noteId }: NotePageProps) {
         openTab(tab)
       }
     },
-    [openTab, reusePreferred, activeTab?.entityId, activeTab?.isPinned, noteId]
+    [openTab, reusePreferred, activeTab, noteId]
   )
 
   const handleInternalLinkClick = useCallback(

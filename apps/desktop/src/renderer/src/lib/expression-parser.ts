@@ -12,13 +12,7 @@
 // ============================================================================
 
 export type ASTNode =
-  | LiteralNode
-  | IdentifierNode
-  | MemberNode
-  | BinaryNode
-  | UnaryNode
-  | CallNode
-  | ConditionalNode
+  LiteralNode | IdentifierNode | MemberNode | BinaryNode | UnaryNode | CallNode | ConditionalNode
 
 export interface LiteralNode {
   type: 'literal'

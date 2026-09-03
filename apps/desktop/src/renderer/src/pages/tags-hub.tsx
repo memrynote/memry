@@ -427,8 +427,8 @@ export function TagsHubPage(): React.JSX.Element {
                         tags={category.tags}
                         isFirst={index === 0}
                         onTagOpen={handleTagOpen}
-                        onRename={(newName) => renameCategory(category.id, newName)}
-                        onDelete={() => deleteCategory(category.id)}
+                        onRename={(newName) => void renameCategory(category.id, newName)}
+                        onDelete={() => void deleteCategory(category.id)}
                       />
                     ))}
                   </SortableContext>

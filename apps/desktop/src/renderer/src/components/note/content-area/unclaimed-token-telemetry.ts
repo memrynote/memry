@@ -79,7 +79,7 @@ function visitBlocks(
     // normalize passes treat it.
     if (block.type === 'codeBlock') continue
 
-    const content = block.content as { type?: string; rows?: Array<{ cells: unknown[] }> } | unknown
+    const content = block.content
     if (
       content &&
       typeof content === 'object' &&
@@ -89,7 +89,7 @@ function visitBlocks(
       for (const row of (content as { rows?: Array<{ cells: unknown[] }> }).rows ?? []) {
         for (const cell of row.cells ?? []) {
           const cellContent =
-            cell && typeof cell === 'object' && 'content' in (cell as object)
+            cell && typeof cell === 'object' && 'content' in cell
               ? (cell as { content: unknown }).content
               : cell
           visitInlineContent(cellContent, counts, false)

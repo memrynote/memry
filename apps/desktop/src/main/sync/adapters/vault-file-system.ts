@@ -1,11 +1,7 @@
 import { promises as fsp } from 'node:fs'
 import * as path from 'node:path'
 import { randomBytes, createHash } from 'node:crypto'
-import type {
-  LocalVault,
-  VaultDirEntry,
-  VaultFileSystemAdapter
-} from '@memry/sync-client/adapters'
+import type { LocalVault, VaultDirEntry, VaultFileSystemAdapter } from '@memry/sync-client/adapters'
 
 /**
  * Desktop implementation of seam 6 over `node:fs`.

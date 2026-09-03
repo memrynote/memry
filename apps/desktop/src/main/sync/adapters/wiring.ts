@@ -36,10 +36,7 @@ export interface DesktopAdapterWiringDeps {
   attachmentsDirFor(vaultId: string): Promise<string>
 }
 
-export type DesktopNonCrdtAdapters = Omit<
-  SyncPlatformAdapters,
-  'crdtPersistence' | 'crdtProvider'
->
+export type DesktopNonCrdtAdapters = Omit<SyncPlatformAdapters, 'crdtPersistence' | 'crdtProvider'>
 
 export function createDesktopSyncAdapters(deps: DesktopAdapterWiringDeps): DesktopNonCrdtAdapters {
   const certificatePinning = new DesktopCertificatePinning(isPinningDisabled)
@@ -92,7 +89,7 @@ export function createDesktopSyncAdapters(deps: DesktopAdapterWiringDeps): Deskt
     http,
     certificatePinning,
     crdtStorePath: new DesktopCrdtStorePath((vaultId) => vaultCrdtStorePath(vaultId)),
-    attachmentStore: new DesktopAttachmentStore(deps.attachmentsDirFor),
+    attachmentStore: new DesktopAttachmentStore((vaultId) => deps.attachmentsDirFor(vaultId)),
     vaultFileSystem: new DesktopVaultFileSystem(deps.vaultRoots),
     deviceRegistration,
     crdtPreflight: new DesktopCrdtPreflight(

@@ -52,7 +52,7 @@ export interface TagChipItemProps {
   tag: HubTag
   /** The category this chip currently belongs to (null = uncategorized). */
   categoryId: string | null
-  onOpen(): void
+  onOpen: () => void
 }
 
 /**

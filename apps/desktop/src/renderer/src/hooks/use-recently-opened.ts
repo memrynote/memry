@@ -35,7 +35,7 @@ export function useRecentlyOpened(limit: number): {
 } {
   const query = useQuery({
     queryKey: recentlyOpenedKeys.list(limit),
-    queryFn: () => window.api.recents.list(limit) as Promise<RecentlyOpenedItem[]>,
+    queryFn: () => window.api.recents.list(limit),
     staleTime: 30_000
   })
 
