@@ -1,10 +1,12 @@
 import { ipcRenderer, webUtils } from 'electron'
 import { invoke, subscribe } from '../lib/ipc'
+import { applyZoomFactor } from '../lib/startup-zoom'
 
 export const windowApi = {
   windowMinimize: (): void => ipcRenderer.send('window-minimize'),
   windowMaximize: (): void => ipcRenderer.send('window-maximize'),
-  windowClose: (): void => ipcRenderer.send('window-close')
+  windowClose: (): void => ipcRenderer.send('window-close'),
+  setZoomFactor: (factor: number): void => applyZoomFactor(factor)
 }
 
 // File drop utility — resolves real filesystem paths from dropped File objects

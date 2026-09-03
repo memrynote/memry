@@ -10,6 +10,7 @@ import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import { createLogger } from './lib/logger'
 import { invoke, invokeSync, send, subscribe } from './lib/ipc'
 import { applyStartupTheme, getStartupThemeSync, THEME_STORAGE_KEY } from './lib/startup-theme'
+import { applyZoomFactor, getStartupZoomFactor } from './lib/startup-zoom'
 import { createGeneratedRpcApi } from './generated-rpc'
 import { windowApi, getFileDropPaths, contextMenuApi, quickCaptureApi, flushApi } from './api/core'
 import { vaultApi, vaultEvents } from './api/vault'
@@ -58,6 +59,12 @@ if (typeof globalThis.window !== 'undefined') {
     // localStorage may be unavailable in some test or restricted environments
   }
   applyStartupTheme(startupTheme)
+
+  // Applied here rather than from the renderer's settings load: without it
+  // every launch paints at 100% and then visibly jumps to the user's zoom.
+  // There is deliberately no synchronous-IPC fallback like the theme's — a
+  // first launch with nothing cached is 100%, which is the right answer.
+  applyZoomFactor(getStartupZoomFactor())
 }
 
 const generatedRpcApi = createGeneratedRpcApi({
