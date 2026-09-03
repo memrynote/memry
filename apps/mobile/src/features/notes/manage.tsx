@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 import { AppText } from '@/components/ui/app-text'
 import type { VaultDb } from '@/db/index'
+import { fontFamilies } from '@/theme/fonts'
 import { radius, sizes, space } from '@/theme/primitives'
 import { textStyles } from '@/theme/text-styles'
 import { useColors } from '@/theme/use-colors'
@@ -27,12 +28,21 @@ export interface NoteManageSheetProps {
   /** Called after a delete, so the screen can navigate away. */
   onDeleted: () => void
   /**
-   * Opens the note's tags, properties, attachments and editor tools.
+   * Undo, redo, attachment insertion and the dev bridge counters.
    *
-   * They have no home on board 28 — boards 32, 33 and 38 own them and none is
-   * built — so this sheet is where they stay reachable in the meantime.
+   * Board 30's editor toolbar is unbuilt, so this sheet is their home. Omitted
+   * wherever the sheet is opened without a live editor behind it.
    */
-  onOpenDetails?: () => void
+  editor?: EditorTools
+}
+
+export interface EditorTools {
+  undo: () => void
+  redo: () => void
+  insert: (kind: 'image' | 'file') => void
+  /** Dev builds only: the bridge counters, formatted. */
+  measure: () => string
+  resetMeasurement: () => void
 }
 
 export function NoteManageSheet(props: NoteManageSheetProps) {
@@ -59,7 +69,7 @@ function NoteManageBody({
   onClose,
   onChanged,
   onDeleted,
-  onOpenDetails
+  editor
 }: NoteManageSheetProps) {
   const c = useColors()
   const [draftTitle, setDraftTitle] = useState(title)
@@ -155,19 +165,7 @@ function NoteManageBody({
         ))}
       </ScrollView>
 
-      {onOpenDetails ? (
-        <Pressable
-          onPress={() => {
-            onClose()
-            onOpenDetails()
-          }}
-          style={styles.folderRow}
-          accessibilityRole="button"
-          accessibilityLabel="Note details"
-        >
-          <AppText>Note details</AppText>
-        </Pressable>
-      ) : null}
+      {editor ? <EditorToolRows editor={editor} /> : null}
 
       {confirmingDelete ? (
         <View style={styles.confirmRow}>
@@ -202,6 +200,62 @@ function NoteManageBody({
         </Pressable>
       )}
     </View>
+  )
+}
+
+function EditorToolRows({ editor }: { editor: EditorTools }) {
+  const c = useColors()
+  const [metrics, setMetrics] = useState<string | null>(null)
+
+  return (
+    <>
+      <View style={styles.toolRow}>
+        <ToolButton label="Undo" onPress={editor.undo} />
+        <ToolButton label="Redo" onPress={editor.redo} />
+      </View>
+      <View style={styles.toolRow}>
+        <ToolButton label="Insert image" onPress={() => editor.insert('image')} />
+        <ToolButton label="Insert file" onPress={() => editor.insert('file')} />
+      </View>
+      {__DEV__ ? (
+        <View style={styles.toolRow}>
+          <ToolButton label="Bridge metrics" onPress={() => setMetrics(editor.measure())} />
+          <ToolButton
+            label="Reset metrics"
+            onPress={() => {
+              editor.resetMeasurement()
+              setMetrics(null)
+            }}
+          />
+        </View>
+      ) : null}
+      {metrics ? (
+        <AppText
+          variant="caption"
+          color={c.text.secondary}
+          style={styles.metrics}
+          accessibilityLabel="Bridge metrics"
+        >
+          {metrics}
+        </AppText>
+      ) : null}
+    </>
+  )
+}
+
+function ToolButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const c = useColors()
+  return (
+    <Pressable
+      onPress={onPress}
+      style={styles.toolButton}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <AppText variant="subhead" color={c.tint.text}>
+        {label}
+      </AppText>
+    </Pressable>
   )
 }
 
@@ -272,6 +326,9 @@ const styles = StyleSheet.create({
   },
   folders: { maxHeight: 220 },
   folderRow: { minHeight: sizes.tapTarget, justifyContent: 'center' },
+  toolRow: { flexDirection: 'row', gap: space.s16 },
+  toolButton: { minHeight: sizes.tapTarget, justifyContent: 'center' },
+  metrics: { fontFamily: fontFamilies.mono },
   confirmRow: { gap: space.s8 },
   destructive: { minHeight: sizes.tapTarget, justifyContent: 'center' }
 })
