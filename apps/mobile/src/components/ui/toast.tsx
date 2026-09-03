@@ -1,17 +1,41 @@
-import { StyleSheet, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native'
+import {
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type StyleProp,
+  type ViewStyle
+} from 'react-native'
 
 import { AppText } from '@/components/ui/app-text'
-import { Icon } from '@/components/ui/icon'
-import { sizes } from '@/theme/primitives'
+import { Icon, type IconName } from '@/components/ui/icon'
+import { fontFamilies } from '@/theme/fonts'
+import { sizes, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
+
+export interface ToastAction {
+  label: string
+  onPress: () => void
+}
 
 export interface ToastProps {
   message: string
+  /**
+   * The trailing verb (boards 26F / 26I / 26M): `Undo`, `Open`, `View`.
+   *
+   * Reserved for work this device can genuinely take back or take you to. A
+   * delete does NOT get one — undoing a tombstone that has already been pushed
+   * means resurrecting an id the peers have retired, and an `Undo` that
+   * sometimes silently fails is worse than no `Undo`.
+   */
+  action?: ToastAction
+  /** `null` drops the leading glyph, which is what a toast with an action draws. */
+  icon?: IconName | null
   accessibilityLabel?: string
   style?: StyleProp<ViewStyle>
 }
 
-export function Toast({ message, accessibilityLabel, style }: ToastProps) {
+export function Toast({ message, action, icon = 'check', accessibilityLabel, style }: ToastProps) {
   const c = useColors()
   const { width } = useWindowDimensions()
 
@@ -25,7 +49,7 @@ export function Toast({ message, accessibilityLabel, style }: ToastProps) {
         style
       ]}
     >
-      <Icon name="check" size={18} color={c.ui.primaryForeground} />
+      {icon === null ? null : <Icon name={icon} size={18} color={c.ui.primaryForeground} />}
       <AppText
         variant="subhead"
         color={c.ui.primaryForeground}
@@ -34,13 +58,28 @@ export function Toast({ message, accessibilityLabel, style }: ToastProps) {
       >
         {message}
       </AppText>
+      {action ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={action.label}
+          hitSlop={10}
+          onPress={action.onPress}
+        >
+          {/* The one place the marketing terracotta is allowed inside the app:
+              it sits on the dark pill, never on a canvas surface, and it is the
+              single interactive element in a component that is otherwise mute. */}
+          <AppText variant="subhead" color={c.brand.base} style={styles.action}>
+            {action.label}
+          </AppText>
+        </Pressable>
+      ) : null}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
-    height: 44,
+    height: 48,
     borderRadius: 14,
     paddingHorizontal: 14,
     gap: 10,
@@ -51,5 +90,6 @@ const styles = StyleSheet.create({
     minWidth: 240,
     boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 8, color: 'rgba(0, 0, 0, 0.14)' }]
   },
-  message: { flexShrink: 1 }
+  message: { flexShrink: 1, flexGrow: 1 },
+  action: { fontFamily: fontFamilies.sansSemiBold, marginStart: space.s4 }
 })

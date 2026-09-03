@@ -25,6 +25,13 @@ export interface NoteManageSheetProps {
   onChanged: () => void
   /** Called after a delete, so the screen can navigate away. */
   onDeleted: () => void
+  /**
+   * Opens the note's tags, properties, attachments and editor tools.
+   *
+   * They have no home on board 28 — boards 32, 33 and 38 own them and none is
+   * built — so this sheet is where they stay reachable in the meantime.
+   */
+  onOpenDetails?: () => void
 }
 
 export function NoteManageSheet(props: NoteManageSheetProps) {
@@ -50,7 +57,8 @@ function NoteManageBody({
   folderPath,
   onClose,
   onChanged,
-  onDeleted
+  onDeleted,
+  onOpenDetails
 }: NoteManageSheetProps) {
   const [draftTitle, setDraftTitle] = useState(title)
   const [folders, setFolders] = useState<string[]>([])
@@ -136,6 +144,20 @@ function NoteManageBody({
         ))}
       </ScrollView>
 
+      {onOpenDetails ? (
+        <Pressable
+          onPress={() => {
+            onClose()
+            onOpenDetails()
+          }}
+          style={styles.folderRow}
+          accessibilityRole="button"
+          accessibilityLabel="Note details"
+        >
+          <ThemedText>Note details</ThemedText>
+        </Pressable>
+      ) : null}
+
       {confirmingDelete ? (
         <View style={styles.confirmRow}>
           <ThemedText type="small">Delete this note on every device?</ThemedText>
@@ -191,9 +213,12 @@ function FolderRow({
 }
 
 /**
- * Folders are a projection of the notes' `folderPath`, not a table of record —
- * which is exactly why an empty folder cannot exist on mobile yet, and why a
- * rename is a batch of moves (see `renameFolder`).
+ * The folders that hold at least one note.
+ *
+ * NOT every folder: an empty one exists only as a `folder_config` row, which
+ * `readFolderPaths` in `folder-ops.ts` reads. This list is the older, narrower
+ * question — "where can a note go that something already lives" — and is all
+ * this sheet's picker needs.
  */
 export async function listFolders(db: VaultDb): Promise<string[]> {
   const rows = await db.getAllAsync<{ payload: string | null }>(

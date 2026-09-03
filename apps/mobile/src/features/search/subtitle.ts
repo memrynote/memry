@@ -35,16 +35,78 @@ const LONG_MONTHS = [
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 
-export function formatEditedAt(updatedAt: number, now: number): string {
+const DAY_MS = 86_400_000
+// Past a week a count of days has stopped being easier to read than the date.
+const RELATIVE_DAY_LIMIT = 7
+
+/**
+ * Which bucket an edit's age falls in, decided in ONE place.
+ *
+ * Two surfaces word it differently — a search row says `edited 5 m ago`, the
+ * note screen draws its own `Edited` label and needs the bare `5 days ago` —
+ * so the wording lives in the two formatters below and the arithmetic lives
+ * here. A second copy of the arithmetic is a second place to forget the no-ICU
+ * rule above.
+ */
+type EditedAge =
+  | { unit: 'now' }
+  | { unit: 'minutes'; value: number }
+  | { unit: 'hours'; value: number }
+  | { unit: 'days'; value: number; date: string }
+  | { unit: 'date'; date: string }
+
+function editedAge(updatedAt: number, now: number): EditedAge {
   const elapsed = now - updatedAt
-  if (elapsed < 60_000) return 'just now'
-  if (elapsed < 3_600_000) return `edited ${Math.floor(elapsed / 60_000)} m ago`
-  if (elapsed < 86_400_000) return `edited ${Math.floor(elapsed / 3_600_000)} h ago`
+  if (elapsed < 60_000) return { unit: 'now' }
+  if (elapsed < 3_600_000) return { unit: 'minutes', value: Math.floor(elapsed / 60_000) }
+  if (elapsed < DAY_MS) return { unit: 'hours', value: Math.floor(elapsed / 3_600_000) }
 
   const edited = new Date(updatedAt)
   const dayMonth = formatDayMonth(edited.getDate(), edited.getMonth())
   const year = edited.getFullYear()
-  return year === new Date(now).getFullYear() ? dayMonth : `${dayMonth} ${year}`
+  const date = year === new Date(now).getFullYear() ? dayMonth : `${dayMonth} ${year}`
+
+  const days = Math.floor(elapsed / DAY_MS)
+  return days < RELATIVE_DAY_LIMIT ? { unit: 'days', value: days, date } : { unit: 'date', date }
+}
+
+export function formatEditedAt(updatedAt: number, now: number): string {
+  const age = editedAge(updatedAt, now)
+  switch (age.unit) {
+    case 'now':
+      return 'just now'
+    case 'minutes':
+      return `edited ${age.value} m ago`
+    case 'hours':
+      return `edited ${age.value} h ago`
+    // A search row's neighbours are dates, so anything past a day reads as one
+    // here. Counting days is the note screen's wording, not this one's.
+    case 'days':
+    case 'date':
+      return age.date
+  }
+}
+
+/**
+ * The same age with no verb, for a caller that draws its own `Edited` label.
+ *
+ * `formatEditedAt` embeds the verb, so prefixing its output produces
+ * `Edited edited 5 m ago`.
+ */
+export function editedRelative(updatedAt: number, now: number): string {
+  const age = editedAge(updatedAt, now)
+  switch (age.unit) {
+    case 'now':
+      return 'just now'
+    case 'minutes':
+      return `${age.value} m ago`
+    case 'hours':
+      return `${age.value} h ago`
+    case 'days':
+      return age.value === 1 ? '1 day ago' : `${age.value} days ago`
+    case 'date':
+      return age.date
+  }
 }
 
 // The LOCAL calendar day, not `toISOString`'s UTC day, so a task due tonight

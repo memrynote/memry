@@ -28,9 +28,29 @@ export interface NotePayload {
   tags?: string[]
   properties?: Record<string, unknown>
   clock?: Record<string, number>
-  createdAt?: number
-  modifiedAt?: number
+  /**
+   * Epoch ms from this app, an ISO string from desktop.
+   *
+   * `NoteSyncPayloadSchema` declares both of these `z.string()` and desktop's
+   * `buildSnapshotPayload` pushes the ISO form, while `createNote` below writes
+   * `Date.now()`. Both shapes are live in the same table on the same device, so
+   * the union is the truth and narrowing it to `number` only moved the failure
+   * to whoever compared one against a number and got `false` forever. Read them
+   * through `toEpochMs`.
+   */
+  createdAt?: number | string
+  modifiedAt?: number | string
   [unknownFieldsFromNewerClients: string]: unknown
+}
+
+/** A note timestamp in either stored shape, as epoch ms. */
+export function toEpochMs(value: unknown, fallback: number): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : fallback
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value)
+    return Number.isFinite(parsed) ? parsed : fallback
+  }
+  return fallback
 }
 
 /** Item types the note editor can open. */
@@ -39,6 +59,17 @@ export type EditableItemType = 'note' | 'journal'
 interface StoredNote {
   type: EditableItemType
   payload: NotePayload
+  updatedAt: number
+}
+
+export interface NoteRecord {
+  payload: NotePayload
+  /**
+   * The row's own timestamp. A payload written by a client older than
+   * `modifiedAt` carries no edit time of its own, and then the row is the only
+   * thing that knows when the note last changed.
+   */
+  updatedAt: number
 }
 
 /**
@@ -55,15 +86,16 @@ async function readStoredNote(db: VaultDb, noteId: string): Promise<StoredNote |
   // queues an `update`, and an update is newer than the tombstone — the note
   // comes back on every other device. Editing a deleted note is not an error
   // worth surfacing, it is simply not a thing that can happen.
-  const row = await db.getFirstAsync<{ type: string; payload: string | null }>(
-    'SELECT type, payload FROM sync_items WHERE id = ? AND type IN (?, ?) AND deleted_at IS NULL',
+  const row = await db.getFirstAsync<{ type: string; payload: string | null; updated_at: number }>(
+    'SELECT type, payload, updated_at FROM sync_items WHERE id = ? AND type IN (?, ?) AND deleted_at IS NULL',
     [noteId, 'note', 'journal']
   )
   if (!row?.payload) return null
   try {
     return {
       type: row.type === 'journal' ? 'journal' : 'note',
-      payload: JSON.parse(row.payload) as NotePayload
+      payload: JSON.parse(row.payload) as NotePayload,
+      updatedAt: row.updated_at
     }
   } catch {
     log.warn('Note payload is not JSON; refusing to edit it', { noteId })
@@ -71,8 +103,14 @@ async function readStoredNote(db: VaultDb, noteId: string): Promise<StoredNote |
   }
 }
 
-export async function readNotePayload(db: VaultDb, noteId: string): Promise<NotePayload | null> {
+async function readNotePayload(db: VaultDb, noteId: string): Promise<NotePayload | null> {
   return (await readStoredNote(db, noteId))?.payload ?? null
+}
+
+/** The payload plus the row timestamp, in one read. */
+export async function readNoteRecord(db: VaultDb, noteId: string): Promise<NoteRecord | null> {
+  const stored = await readStoredNote(db, noteId)
+  return stored ? { payload: stored.payload, updatedAt: stored.updatedAt } : null
 }
 
 async function writeNotePayload(
@@ -273,38 +311,86 @@ export async function deleteNote(ctx: NoteOpsContext, noteId: string): Promise<v
   })
 }
 
-// --- folders ---------------------------------------------------------------
+/**
+ * Copy a note beside itself.
+ *
+ * The stored payload is the template — including whatever a newer desktop
+ * wrote — with only identity and timing replaced, so a duplicate carries the
+ * original's tags, properties and icon without this module having to know what
+ * those fields are.
+ *
+ * The body comes from `note_bodies`, which is the only markdown mobile holds
+ * for a note whose text lives in CRDT. Duplicating through `createNote` means
+ * the copy travels as an ordinary create (record payload carries the body once,
+ * every later edit goes the CRDT path), which is the same shape desktop's own
+ * duplicate produces.
+ */
+export async function duplicateNote(
+  ctx: NoteOpsContext,
+  noteId: string,
+  opts: { folderPath?: string | null; keepTitle?: boolean } = {}
+): Promise<string | null> {
+  const stored = await readStoredNote(ctx.db, noteId)
+  if (!stored) return null
+
+  const body = await ctx.db.getFirstAsync<{ markdown: string }>(
+    'SELECT markdown FROM note_bodies WHERE item_id = ?',
+    [noteId]
+  )
+  const source = stored.payload
+  const title = source.title ?? 'Untitled'
+  const now = Date.now()
+
+  const payload: NotePayload = {
+    ...source,
+    title: opts.keepTitle ? title : duplicateTitle(title),
+    folderPath:
+      opts.folderPath === undefined ? (source.folderPath ?? null) : opts.folderPath || null,
+    content: body?.markdown ?? source.content ?? '',
+    createdAt: now,
+    modifiedAt: now
+  }
+  // The copy is a NEW item: the source's vector clock describes a different
+  // id's history, and carrying it over would make the first real edit look
+  // older than edits no device ever made to this note.
+  delete payload.clock
+
+  const newId = generateId()
+  bumpClock(payload as Record<string, unknown>, ctx.deviceId)
+  const serialized = JSON.stringify(payload)
+
+  await withVaultTransaction(ctx.db, async () => {
+    await ctx.db.runAsync(
+      `INSERT INTO sync_items (id, type, vault_id, updated_at, payload_state, payload)
+       VALUES (?, 'note', ?, ?, 'full', ?)`,
+      [newId, ctx.vaultId, now, serialized]
+    )
+    await ctx.db.runAsync(
+      `INSERT INTO note_bodies (item_id, path, markdown, fetched_at) VALUES (?, ?, ?, ?)`,
+      [newId, derivePath(payload), payload.content ?? '', now]
+    )
+    if ((payload.content ?? '').length > 0) {
+      await ctx.db.runAsync(
+        `INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+        [seedKey(newId), payload.content ?? '']
+      )
+    }
+    await ctx.outbox.enqueueRecord('note', newId, 'create', serialized)
+  })
+  return newId
+}
 
 /**
- * Folders on mobile are the projection the notes list reads; the SERVER-side
- * truth is each note's `folderPath`. So a folder rename is a batch of note
- * moves, which is also what makes it converge with desktop without a
- * folder-specific merge rule.
+ * `Roadmap 2026.pdf` → `Roadmap 2026 copy.pdf`, `Weeknotes` → `Weeknotes copy`.
+ *
+ * The suffix goes before the extension or the copy reads as a file of type
+ * `copy` in every list that classifies by extension — including this app's own
+ * `fileTypeFromTitle`.
  */
-export async function renameFolder(
-  ctx: NoteOpsContext,
-  fromPath: string,
-  toPath: string
-): Promise<number> {
-  const rows = await ctx.db.getAllAsync<{ id: string; payload: string }>(
-    `SELECT id, payload FROM sync_items
-     WHERE type = 'note' AND deleted_at IS NULL AND payload IS NOT NULL`
-  )
-  let moved = 0
-  for (const row of rows) {
-    let payload: NotePayload
-    try {
-      payload = JSON.parse(row.payload) as NotePayload
-    } catch {
-      continue
-    }
-    const current = payload.folderPath ?? ''
-    if (current !== fromPath && !current.startsWith(`${fromPath}/`)) continue
-    const next = toPath + current.slice(fromPath.length)
-    await moveNote(ctx, row.id, next === '' ? null : next)
-    moved += 1
-  }
-  return moved
+export function duplicateTitle(title: string): string {
+  const dot = title.lastIndexOf('.')
+  if (dot <= 0) return `${title} copy`
+  return `${title.slice(0, dot)} copy${title.slice(dot)}`
 }
 
 // --- helpers ---------------------------------------------------------------

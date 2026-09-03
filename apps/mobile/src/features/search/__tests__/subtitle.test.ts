@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NoteHit, TaskHit } from '../repo'
 import {
+  editedRelative,
   formatEditedAt,
   formatJournalDate,
   localIsoDay,
@@ -57,6 +58,27 @@ describe('formatEditedAt', () => {
   it('adds the year only when it is not the year we are in', () => {
     expect(formatEditedAt(new Date(2026, 7, 12, 12, 0, 0).getTime(), NOW)).toBe('12 Aug')
     expect(formatEditedAt(new Date(2025, 7, 12, 12, 0, 0).getTime(), NOW)).toBe('12 Aug 2025')
+  })
+})
+
+describe('editedRelative', () => {
+  it('drops the verb, so a caller with its own label does not say it twice', () => {
+    // `Edited ${formatEditedAt(...)}` reads `Edited edited 5 m ago`; this is
+    // the same arithmetic with the wording left to the caller.
+    expect(editedRelative(NOW - 300_000, NOW)).toBe('5 m ago')
+    expect(editedRelative(NOW - 7_200_000, NOW)).toBe('2 h ago')
+    expect(editedRelative(NOW, NOW)).toBe('just now')
+  })
+
+  it('counts days where the search row would already have shown a date', () => {
+    expect(formatEditedAt(NOW - 5 * 86_400_000, NOW)).toBe('22 Aug')
+    expect(editedRelative(NOW - 5 * 86_400_000, NOW)).toBe('5 days ago')
+    expect(editedRelative(NOW - 86_400_000, NOW)).toBe('1 day ago')
+  })
+
+  it('gives up on counting days after a week and names the date', () => {
+    expect(editedRelative(NOW - 7 * 86_400_000, NOW)).toBe('20 Aug')
+    expect(editedRelative(new Date(2025, 7, 12, 12, 0, 0).getTime(), NOW)).toBe('12 Aug 2025')
   })
 })
 

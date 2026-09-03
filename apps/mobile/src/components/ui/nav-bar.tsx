@@ -10,11 +10,30 @@ import { useColors } from '@/theme/use-colors'
 // local constant rather than growing the scale for one component.
 const ACTION_GAP = 18
 
-export interface NavBarAction {
-  icon: IconName
+interface NavBarActionBase {
+  /** The accessible name, and the row's React key. */
   label: string
   onPress: () => void
 }
+
+export interface NavBarIconAction extends NavBarActionBase {
+  icon: IconName
+}
+
+/**
+ * A word action (`Edit`, `Done`), drawn in tint beside the glyphs.
+ *
+ * It lives here rather than at the call site because a bar's trailing group
+ * has to be MEASURED for the title centring below, and a Pressable smuggled in
+ * next to `NavBarInline` would centre the title against a zero-width group.
+ * Icon or word is the only thing that varies, so it is a variant of the action
+ * rather than a second component.
+ */
+export interface NavBarTextAction extends NavBarActionBase {
+  text: string
+}
+
+export type NavBarAction = NavBarIconAction | NavBarTextAction
 
 export interface NavBarLargeTitleProps {
   title: string
@@ -23,7 +42,7 @@ export interface NavBarLargeTitleProps {
 
 export interface NavBarInlineProps {
   title: string
-  back?: { label: string; onPress: () => void }
+  back?: { label: string; onPress: () => void; showLabel?: boolean }
   actions?: NavBarAction[]
 }
 
@@ -45,7 +64,13 @@ function ActionRow({ actions, onLayout }: ActionRowProps) {
           onPress={action.onPress}
           style={({ pressed }) => pressed && styles.pressed}
         >
-          <Icon name={action.icon} size={24} color={c.text.primary} />
+          {'text' in action ? (
+            <AppText variant="headline" color={c.tint.base}>
+              {action.text}
+            </AppText>
+          ) : (
+            <Icon name={action.icon} size={24} color={c.text.primary} />
+          )}
         </Pressable>
       ))}
     </View>
@@ -85,6 +110,11 @@ export function NavBarInline({ title, back, actions = [] }: NavBarInlineProps) {
     <View style={[styles.inlineRoot, { backgroundColor: c.canvas.background }]}>
       {back ? (
         <Pressable
+          // The accessible NAME is `Back to <folder>` and moves with the
+          // destination, so it cannot be a selector. `testID` is what becomes
+          // an accessibility identifier on iOS, and the offline matrix leaves
+          // the note screen through this control on every pass.
+          testID="nav-back"
           accessibilityRole="button"
           accessibilityLabel={`Back to ${back.label}`}
           hitSlop={{ top: 10, bottom: 10 }}
@@ -93,9 +123,13 @@ export function NavBarInline({ title, back, actions = [] }: NavBarInlineProps) {
           style={({ pressed }) => [styles.backGroup, pressed && styles.pressed]}
         >
           <Icon name="chevron-left" size={24} color={c.tint.base} />
-          <AppText variant="body" color={c.tint.base}>
-            {back.label}
-          </AppText>
+          {/* The label can be hidden, the accessible name above cannot: a bare
+              chevron with no name is unusable. */}
+          {back.showLabel === false ? null : (
+            <AppText variant="body" color={c.tint.base}>
+              {back.label}
+            </AppText>
+          )}
         </Pressable>
       ) : (
         <View />

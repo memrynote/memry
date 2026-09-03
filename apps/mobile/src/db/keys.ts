@@ -11,3 +11,9 @@ export const seedKey = (noteId: string) => `seed.${noteId}`
 
 /** The queries the search entry screen offers back, most recent first. */
 export const RECENT_SEARCHES_KEY = 'search.recent'
+
+/** The notes list's sort mode; absent means `MOBILE_SORT_DEFAULT`. */
+export const NOTES_SORT_KEY = 'notes.sort'
+
+/** The notes tree's open folder paths as a JSON array; absent means all closed. */
+export const NOTES_EXPANDED_KEY = 'notes.expanded'

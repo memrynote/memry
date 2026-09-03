@@ -7,7 +7,10 @@ import { useColors } from '@/theme/use-colors'
 export default function HomeScreen() {
   const c = useColors()
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: c.canvas.background }]}>
+    <SafeAreaView
+      edges={['left', 'right']}
+      style={[styles.root, { backgroundColor: c.canvas.background }]}
+    >
       <View style={styles.center}>
         <EmptyState icon="home" title="Home" body="This tab arrives in a later pass." />
       </View>

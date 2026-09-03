@@ -10,7 +10,10 @@ import { useColors } from '@/theme/use-colors'
 export default function MoreScreen() {
   const c = useColors()
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: c.canvas.background }]}>
+    <SafeAreaView
+      edges={['left', 'right']}
+      style={[styles.root, { backgroundColor: c.canvas.background }]}
+    >
       <View style={styles.center}>
         <EmptyState icon="more" title="More" body="This tab arrives in a later pass." />
       </View>
