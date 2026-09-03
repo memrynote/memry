@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 import { AppearanceSettings } from './appearance-section'
 
@@ -28,25 +28,10 @@ vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() }
 }))
 
-const ZOOM_ARIA = 'Zoom level'
+const decreaseButton = (): HTMLElement => screen.getByLabelText('Decrease zoom')
+const increaseButton = (): HTMLElement => screen.getByLabelText('Increase zoom')
 
-// The page carries a second slider (font size), so every lookup is scoped by name.
-const zoomSlider = (): HTMLElement => screen.getByRole('slider', { name: ZOOM_ARIA })
-
-// Radix's pointer path lives on the Root, which is the only one of the two
-// elements carrying `dir`. Pressing the Thumb — the element that owns
-// role="slider" and the accessible name — is read as grabbing the existing
-// thumb and moves nothing.
-const sliderTrack = (): HTMLElement => zoomSlider().closest('[dir]') as HTMLElement
-
-beforeAll(() => {
-  // Radix's slider drives its pointer path through capture APIs jsdom omits.
-  Element.prototype.setPointerCapture = vi.fn()
-  Element.prototype.releasePointerCapture = vi.fn()
-  Element.prototype.hasPointerCapture = vi.fn(() => true)
-})
-
-describe('Appearance zoom slider', () => {
+describe('Appearance zoom stepper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.generalSettings.settings = {
@@ -62,44 +47,60 @@ describe('Appearance zoom slider', () => {
     window.api = { setZoomFactor: mocks.setZoomFactor } as unknown as typeof window.api
   })
 
-  it('#given a screen reader #then the name is on the element that carries role="slider"', () => {
+  it('#given the increase button #then the interface grows one stop and the stop is saved', async () => {
     render(<AppearanceSettings />)
 
-    expect(zoomSlider()).toBeInTheDocument()
-  })
+    fireEvent.click(increaseButton())
 
-  it('#given a drag in progress #then the interface rescales live without saving', () => {
-    render(<AppearanceSettings />)
-
-    // jsdom measures the track as zero-width, which Radix maps to the minimum.
-    fireEvent.pointerDown(sliderTrack(), { clientX: 0, pointerId: 1 })
-
-    expect(mocks.setZoomFactor).toHaveBeenCalledWith(0.5)
-    expect(zoomSlider()).toHaveAttribute('aria-valuenow', '0.5')
-    expect(mocks.generalSettings.updateSettings).not.toHaveBeenCalled()
-  })
-
-  it('#given the drag is released #then the factor is saved once the row settles', async () => {
-    render(<AppearanceSettings />)
-
-    const track = sliderTrack()
-    fireEvent.pointerDown(track, { clientX: 0, pointerId: 1 })
-    fireEvent.pointerUp(track, { clientX: 0, pointerId: 1 })
-
-    await waitFor(() =>
-      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ zoomFactor: 0.5 })
-    )
-  })
-
-  it('#given an arrow key on the slider #then one stop is saved without a pointer release', async () => {
-    render(<AppearanceSettings />)
-
-    fireEvent.keyDown(zoomSlider(), { key: 'ArrowRight' })
-
+    expect(mocks.setZoomFactor).toHaveBeenCalledWith(1.1)
+    expect(screen.getByText('110%')).toBeInTheDocument()
     await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ zoomFactor: 1.1 })
     )
-    expect(mocks.setZoomFactor).toHaveBeenCalledWith(1.1)
+  })
+
+  it('#given the decrease button #then the interface shrinks one stop and the stop is saved', async () => {
+    render(<AppearanceSettings />)
+
+    fireEvent.click(decreaseButton())
+
+    expect(mocks.setZoomFactor).toHaveBeenCalledWith(0.9)
+    expect(screen.getByText('90%')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ zoomFactor: 0.9 })
+    )
+  })
+
+  it('#given a burst of clicks #then only the value the user landed on is written', async () => {
+    render(<AppearanceSettings />)
+
+    fireEvent.click(increaseButton())
+    fireEvent.click(increaseButton())
+    fireEvent.click(increaseButton())
+
+    expect(screen.getByText('130%')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ zoomFactor: 1.3 })
+    )
+    expect(mocks.generalSettings.updateSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it('#given the smallest zoom #then decrease is disabled and increase is not', () => {
+    mocks.generalSettings.settings = { ...mocks.generalSettings.settings, zoomFactor: 0.5 }
+    render(<AppearanceSettings />)
+
+    expect(screen.getByText('50%')).toBeInTheDocument()
+    expect(decreaseButton()).toBeDisabled()
+    expect(increaseButton()).toBeEnabled()
+  })
+
+  it('#given the largest zoom #then increase is disabled and decrease is not', () => {
+    mocks.generalSettings.settings = { ...mocks.generalSettings.settings, zoomFactor: 2 }
+    render(<AppearanceSettings />)
+
+    expect(screen.getByText('200%')).toBeInTheDocument()
+    expect(increaseButton()).toBeDisabled()
+    expect(decreaseButton()).toBeEnabled()
   })
 
   it('#given the reset button #then the interface returns to 100%', async () => {
@@ -121,9 +122,7 @@ describe('Appearance zoom slider', () => {
     mocks.generalSettings.updateSettings.mockResolvedValue(false)
     render(<AppearanceSettings />)
 
-    const track = sliderTrack()
-    fireEvent.pointerDown(track, { clientX: 0, pointerId: 1 })
-    fireEvent.pointerUp(track, { clientX: 0, pointerId: 1 })
+    fireEvent.click(increaseButton())
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to update zoom level'))
     // useThemeSync never re-runs for a value that never changed, so the row has
@@ -131,24 +130,23 @@ describe('Appearance zoom slider', () => {
     expect(mocks.setZoomFactor).toHaveBeenLastCalledWith(1)
   })
 
-  it('#given settings closed straight after a drag #then the pending factor is saved rather than dropped', async () => {
+  it('#given settings closed straight after a click #then the pending factor is saved rather than dropped', async () => {
     const { unmount } = render(<AppearanceSettings />)
 
-    fireEvent.pointerDown(sliderTrack(), { clientX: 0, pointerId: 1 })
-    expect(mocks.setZoomFactor).toHaveBeenCalledWith(0.5)
+    fireEvent.click(decreaseButton())
+    expect(mocks.setZoomFactor).toHaveBeenCalledWith(0.9)
 
     unmount()
 
     await waitFor(() =>
-      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ zoomFactor: 0.5 })
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ zoomFactor: 0.9 })
     )
   })
 
-  it('#given a stored factor off the slider grid #then the row shows the nearest stop', () => {
+  it('#given a stored factor off the zoom grid #then the row shows the nearest stop', () => {
     mocks.generalSettings.settings = { ...mocks.generalSettings.settings, zoomFactor: 0.7000000001 }
     render(<AppearanceSettings />)
 
-    expect(zoomSlider()).toHaveAttribute('aria-valuenow', '0.7')
     expect(screen.getByText('70%')).toBeInTheDocument()
   })
 })

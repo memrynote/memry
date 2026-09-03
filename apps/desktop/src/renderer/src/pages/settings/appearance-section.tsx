@@ -10,7 +10,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Picker, usePickerContext, usePickerSearch } from '@/components/ui/picker'
 import { Slider } from '@/components/ui/slider'
-import { Sun, Moon, Monitor, FileText, RotateCcw } from '@/lib/icons'
+import { Sun, Moon, Monitor, FileText, Minus, Plus, RotateCcw } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSystemFonts, type SystemFontsState } from '@/hooks/use-system-fonts'
 import {
@@ -36,10 +36,10 @@ import {
 } from '@memry/contracts/font-size'
 import {
   clampZoomFactor,
+  stepZoomFactor,
   zoomPercent,
   ZOOM_FACTOR_MIN,
   ZOOM_FACTOR_MAX,
-  ZOOM_FACTOR_STEP,
   ZOOM_FACTOR_DEFAULT
 } from '@memry/contracts/app-zoom'
 import {
@@ -48,6 +48,9 @@ import {
   SettingRow,
   COMPACT_SELECT
 } from '@/components/settings/settings-primitives'
+
+const ZOOM_STEP_BUTTON =
+  'flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground disabled:cursor-default disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 
 const ACCENT_PRESETS = [
   { value: '#6366f1', labelKey: 'appearance.accent.presets.indigo' },
@@ -595,19 +598,32 @@ export function AppearanceSettings() {
             >
               <RotateCcw className="size-3" />
             </button>
-            <span className="w-10 shrink-0 text-xs tabular-nums text-end text-muted-foreground">
-              {zoomPercent(zoomFactor)}%
-            </span>
-            <Slider
-              dir={direction}
-              min={ZOOM_FACTOR_MIN}
-              max={ZOOM_FACTOR_MAX}
-              step={ZOOM_FACTOR_STEP}
-              value={[zoomFactor]}
-              onValueChange={([factor]) => previewZoomFactor(factor)}
-              aria-label={t('appearance.zoom.aria')}
-              className="w-36"
-            />
+            <div className="flex items-center rounded-md border border-input">
+              <button
+                type="button"
+                aria-label={t('appearance.zoom.decrease')}
+                disabled={zoomFactor <= ZOOM_FACTOR_MIN}
+                onClick={() => previewZoomFactor(stepZoomFactor(zoomFactor, -1))}
+                className={ZOOM_STEP_BUTTON}
+              >
+                <Minus className="size-3" />
+              </button>
+              <span
+                aria-live="polite"
+                className="w-10 text-center text-xs tabular-nums text-muted-foreground"
+              >
+                {zoomPercent(zoomFactor)}%
+              </span>
+              <button
+                type="button"
+                aria-label={t('appearance.zoom.increase')}
+                disabled={zoomFactor >= ZOOM_FACTOR_MAX}
+                onClick={() => previewZoomFactor(stepZoomFactor(zoomFactor, 1))}
+                className={ZOOM_STEP_BUTTON}
+              >
+                <Plus className="size-3" />
+              </button>
+            </div>
           </div>
         </SettingRow>
       </SettingsGroup>

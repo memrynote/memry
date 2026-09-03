@@ -264,7 +264,8 @@
     "zoom": {
       "label": "Zoom Level",
       "description": "Scale the entire interface",
-      "aria": "Zoom level",
+      "decrease": "Decrease zoom",
+      "increase": "Increase zoom",
       "reset": "Reset zoom to default",
       "error": "Failed to update zoom level"
     },
