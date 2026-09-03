@@ -509,6 +509,19 @@ const enumishName = (value: unknown): string | undefined => {
   return typeof name === 'string' && TYPED_ERROR_CODE.test(name) ? name : undefined
 }
 
+// The reason's own text, read defensively: a rejection can be a hostile Proxy,
+// and `readProp` swallows a throwing getter. Capped here so a megabyte-long
+// reason cannot reach `redactText`; buildErrorDetail caps again at 512 after
+// redaction.
+const MAX_RAW_MESSAGE = 2048
+
+const reasonMessage = (reason: unknown): string | undefined => {
+  const message = readProp(reason, 'message')
+  if (typeof message === 'string' && message) return message.slice(0, MAX_RAW_MESSAGE)
+  if (typeof reason === 'string' && reason) return reason.slice(0, MAX_RAW_MESSAGE)
+  return undefined
+}
+
 const rejectionTypeName = (reason: unknown): string => {
   if (reason === null) return 'Rejection_null'
   if (reason === undefined) return 'Rejection_undefined'
@@ -530,14 +543,19 @@ const rejectionTypeName = (reason: unknown): string => {
  *
  * Real Errors pass through; a cross-realm error's own frames are adopted;
  * anything else gets a stack synthesized at the handler plus a name describing
- * the reason's type/constructor. Privacy: the reason's message/value is NEVER
- * copied — only its shape. buildErrorDetail still strips the stack header.
+ * the reason's type/constructor.
+ *
+ * Privacy: the reason's message is carried, then redacted by `buildErrorDetail`
+ * on the device — redaction is the control, not omission (#1989). Dropping it
+ * made `Rejection_Error` an Error Tracking issue whose title was its own code
+ * and whose body held nothing an engineer could act on. `buildErrorDetail`
+ * still strips the stack header, so the message only ships once, redacted.
  */
 export const normalizeRejectionReason = (reason: unknown): Error => {
   const frames = ownStackFrames(reason)
   if (isError(reason) && frames) return reason
 
-  const normalized = new Error()
+  const normalized = new Error(reasonMessage(reason))
   normalized.name = toSafeToken(rejectionTypeName(reason), 'Rejection_unknown')
   if (frames) {
     normalized.stack = frames
@@ -584,15 +602,22 @@ const sourceFrame = (report: WindowErrorReport): string | undefined => {
  * Chromium failure paths, and passing the bare `event.message` string on landed
  * in telemetry as `StringError` with no stack — nothing to triage at all.
  *
- * Privacy: the message is only pattern-matched for its leading error class; its
- * text is never copied. The filename rides along as a stack frame, so it goes
- * through the same redaction as any other frame.
+ * Privacy: the message is carried and redacted by `buildErrorDetail` on the
+ * device (#1989) — without it every cross-origin failure landed as a
+ * `WindowError` issue titled `WindowError`. Only its leading error class is
+ * pattern-matched for the code, which stays a bounded token. The filename rides
+ * along as a stack frame, so it goes through the same redaction as any frame.
  */
 export const normalizeWindowError = (report: WindowErrorReport): Error => {
   const frames = ownStackFrames(report.error)
   if (isError(report.error) && frames) return report.error
 
-  const normalized = new Error()
+  const normalized = new Error(
+    reasonMessage(report.error) ??
+      (typeof report.message === 'string' && report.message
+        ? report.message.slice(0, MAX_RAW_MESSAGE)
+        : undefined)
+  )
   const messageClass =
     typeof report.message === 'string' ? MESSAGE_ERROR_CLASS.exec(report.message)?.[1] : undefined
   normalized.name = toSafeToken(enumishName(report.error) ?? messageClass, 'WindowError')

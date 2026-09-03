@@ -10,6 +10,8 @@ import path from 'node:path'
 import { app } from 'electron'
 
 import { createLogger } from '../lib/logger'
+import { toSafeToken } from '@memry/contracts/telemetry-api'
+
 import { trackMainEvent } from './track'
 
 const logger = createLogger('CrashMarker')
@@ -98,12 +100,25 @@ export const detectUncleanShutdown = (): void => {
       : marker?.shutdownFailure === 'cleanup_error'
         ? 'SHUTDOWN_CLEANUP_FAILED'
         : 'UNCLEAN_SHUTDOWN'
+  // The errorCode alone is the whole Error Tracking issue title, so an
+  // UNCLEAN_SHUTDOWN row said nothing about which session died or where (#1989).
+  // Every field here is already bounded — an enum, a step token, a version, a
+  // duration — so the message is assembled rather than redacted.
+  const message = [
+    `Unclean shutdown [failure=${marker?.shutdownFailure ?? 'none'}]`,
+    `[step=${toSafeToken(marker?.shutdownStep, 'unknown')}]`,
+    `[prior_version=${toSafeToken(marker?.appVersion, 'unknown')}]`,
+    `[uptime_ms=${durationMs ?? 'unknown'}]`,
+    `[marker=${marker ? 'parsed' : 'unreadable'}]`
+  ].join(' ')
+
   trackMainEvent('app_crashed', {
     surface: 'app',
     action: 'unclean_shutdown',
     source: 'main_process',
     result: 'failed',
     errorCode,
+    error: { message },
     metrics: durationMs === undefined ? undefined : { durationMs },
     dimensions: marker?.appVersion ? { prior_app_version: marker.appVersion } : undefined
   })

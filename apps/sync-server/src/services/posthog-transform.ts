@@ -378,6 +378,12 @@ export const exceptionEvent = (
         }
       ],
       $exception_level: 'error',
+      // The `value || type` fallback above is silent by design, which made a
+      // reporting site that ships no message look identical to a failure that
+      // genuinely has none — four of the top ten issues were titled after their
+      // own error code and nobody could tell why (#1989). This flag is what a
+      // dashboard counts to catch the next instrumentation hole.
+      ...(message ? {} : { exception_message_missing: true }),
       // Kept raw alongside the frames: for a React error the component tree is
       // the fastest read during triage, and flattening it into frames would lose
       // the nesting.
