@@ -227,6 +227,72 @@ describe('buildAppMenu', () => {
     })
   })
 
+  it('routes the zoom items through the renderer with accelerators it registers', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue({
+      webContents: { isDestroyed: () => false, send }
+    } as unknown as Electron.BrowserWindow)
+
+    buildAppMenu(i18n)
+
+    // Regression: role 'resetZoom'/'zoomIn'/'zoomOut' drive Chromium's own zoom,
+    // which nothing persists, so the level was lost on every restart. These are
+    // also the only bridge items that register their accelerator — nothing in
+    // the renderer binds ⌘0/⌘+/⌘-, so the menu has to, or the keys do nothing.
+    expect(findMenuItem('Actual Size')).toMatchObject({
+      id: 'view.actualSize',
+      accelerator: 'CmdOrCtrl+0',
+      registerAccelerator: true
+    })
+    expect(findMenuItem('Actual Size')?.role).toBeUndefined()
+    // findMenuItem returns the first match, and the visible item comes first in
+    // the template, ahead of the hidden ⌘= sibling.
+    expect(findMenuItem('Zoom In')).toMatchObject({
+      id: 'view.zoomIn',
+      accelerator: 'CmdOrCtrl+Plus',
+      registerAccelerator: true
+    })
+    expect(findMenuItem('Zoom Out')).toMatchObject({
+      id: 'view.zoomOut',
+      accelerator: 'CmdOrCtrl+-',
+      registerAccelerator: true
+    })
+
+    findMenuItem('Actual Size')?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, {
+      command: 'view.actualSize'
+    })
+    findMenuItem('Zoom Out')?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'view.zoomOut' })
+  })
+
+  it('gives Zoom In a hidden ⌘= sibling, because Electron reads Plus as its own key', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue({
+      webContents: { isDestroyed: () => false, send }
+    } as unknown as Electron.BrowserWindow)
+
+    buildAppMenu(i18n)
+
+    const template = buildFromTemplate.mock.calls.at(-1)?.[0] as TemplateItem[]
+    const equals = template
+      .flatMap((item) => item.submenu ?? [])
+      .find((item) => item.id === 'view.zoomInEquals')
+
+    // `CmdOrCtrl+Plus` only matches the shifted key, while users press ⌘ with an
+    // unshifted `=`. Its own id keeps id lookups from matching two items.
+    expect(equals).toMatchObject({
+      label: 'Zoom In',
+      accelerator: 'CmdOrCtrl+=',
+      visible: false
+    })
+
+    equals?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'view.zoomIn' })
+  })
+
   it('falls back to the sole visible window when no window reports focus', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
     const send = vi.fn()
@@ -304,9 +370,6 @@ describe('buildAppMenu', () => {
     // stays — it provides the behaviour — and the label only names it.
     expect(findMenuItem('Paste and Match Style')).toMatchObject({ role: 'pasteAndMatchStyle' })
     expect(findMenuItem('Delete')).toMatchObject({ role: 'delete' })
-    expect(findMenuItem('Actual Size')).toMatchObject({ role: 'resetZoom' })
-    expect(findMenuItem('Zoom In')).toMatchObject({ role: 'zoomIn' })
-    expect(findMenuItem('Zoom Out')).toMatchObject({ role: 'zoomOut' })
 
     // macOS app menu only. Same app.name trap as About: the hide role's default
     // label is `Hide ${app.name}`, which reads "Hide @memry/desktop" in production.
