@@ -5,14 +5,13 @@ import { isLastHomeTab } from '@/contexts/tabs/helpers'
 import { useSidebar } from '@/components/ui/sidebar'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
-import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { useAppZoom } from '@/hooks/use-app-zoom'
 import {
   isEditorMenuCommand,
   runEditorMenuCommand,
   runHistoryMenuCommand
 } from '@/lib/menu-commands'
 import { runMenuUpdateCheck } from '@/lib/menu-update-check'
-import { clampZoomFactor, stepZoomFactor, ZOOM_FACTOR_DEFAULT } from '@memry/contracts/app-zoom'
 
 interface MenuCommandHandlers {
   onNewNote: () => void
@@ -31,19 +30,7 @@ export function useMenuCommands({ onNewNote, onOpenSearch }: MenuCommandHandlers
   const { toggle: toggleDayPanel } = useDayPanel()
   const { open: openSettings } = useSettingsModal()
   const { setTheme } = useTheme()
-  const { settings, isLoading: settingsLoading, updateSettings } = useGeneralSettings()
-
-  const zoomFactor = clampZoomFactor(settings.zoomFactor)
-  // Applied before the write is awaited so the keystroke lands instantly; the
-  // settings round trip only has to catch up before the next launch.
-  const applyZoom = async (factor: number): Promise<void> => {
-    // `settings` holds the defaults until the first read resolves, so a ⌘+ in
-    // that window would step from 100% and persist it over whatever the user
-    // actually saved. Dropping the keystroke is the only harmless option.
-    if (settingsLoading) return
-    window.api.setZoomFactor(factor)
-    await updateSettings({ zoomFactor: factor })
-  }
+  const { zoomIn, zoomOut, resetZoom } = useAppZoom()
 
   const handlers: Record<string, () => void> = {
     'file.newNote': onNewNote,
@@ -61,9 +48,9 @@ export function useMenuCommands({ onNewNote, onOpenSearch }: MenuCommandHandlers
     'edit.find': () => window.dispatchEvent(new CustomEvent('memry:menu-find')),
     'app.preferences': () => openSettings(),
     'app.checkForUpdates': () => void runMenuUpdateCheck(),
-    'view.zoomIn': () => void applyZoom(stepZoomFactor(zoomFactor, 1)),
-    'view.zoomOut': () => void applyZoom(stepZoomFactor(zoomFactor, -1)),
-    'view.actualSize': () => void applyZoom(ZOOM_FACTOR_DEFAULT),
+    'view.zoomIn': zoomIn,
+    'view.zoomOut': zoomOut,
+    'view.actualSize': resetZoom,
     'view.toggleSidebar': toggleSidebar,
     'view.toggleDayPanel': toggleDayPanel,
     'view.shortcuts': () => window.dispatchEvent(new CustomEvent('memry:open-shortcuts')),

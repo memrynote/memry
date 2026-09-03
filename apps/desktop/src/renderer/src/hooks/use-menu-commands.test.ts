@@ -23,9 +23,13 @@ vi.mock('@/contexts/settings-modal-context', () => ({
   useSettingsModal: () => ({ open: vi.fn() })
 }))
 vi.mock('next-themes', () => ({ useTheme: () => ({ setTheme: vi.fn() }) }))
+// The zoom commands are delegated to useAppZoom, which reads the same settings
+// hook and binds the ⌘0/⌘+/⌘- keystrokes through the shared shortcut base.
+vi.mock('@/contexts/hint-mode', () => ({ hintModeActiveRef: { current: false } }))
 vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({
     settings: mocks.generalSettings,
+    isLoading: false,
     updateSettings: mocks.updateSettings
   })
 }))
