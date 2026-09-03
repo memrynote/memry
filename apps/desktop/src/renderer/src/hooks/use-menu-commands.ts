@@ -31,12 +31,16 @@ export function useMenuCommands({ onNewNote, onOpenSearch }: MenuCommandHandlers
   const { toggle: toggleDayPanel } = useDayPanel()
   const { open: openSettings } = useSettingsModal()
   const { setTheme } = useTheme()
-  const { settings, updateSettings } = useGeneralSettings()
+  const { settings, isLoading: settingsLoading, updateSettings } = useGeneralSettings()
 
   const zoomFactor = clampZoomFactor(settings.zoomFactor)
   // Applied before the write is awaited so the keystroke lands instantly; the
   // settings round trip only has to catch up before the next launch.
   const applyZoom = async (factor: number): Promise<void> => {
+    // `settings` holds the defaults until the first read resolves, so a ⌘+ in
+    // that window would step from 100% and persist it over whatever the user
+    // actually saved. Dropping the keystroke is the only harmless option.
+    if (settingsLoading) return
     window.api.setZoomFactor(factor)
     await updateSettings({ zoomFactor: factor })
   }
