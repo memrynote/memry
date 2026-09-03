@@ -75,6 +75,36 @@ describe('crash marker', () => {
     )
   })
 
+  // #1989: UNCLEAN_SHUTDOWN was an Error Tracking issue titled after its own
+  // error code, with nothing in it. The message is what #1993 has to read.
+  it('names the shutdown phase, prior version and uptime in the message', () => {
+    const startedAt = new Date('2026-08-06T10:00:00.000Z').toISOString()
+    const lastAliveAt = new Date('2026-08-06T10:01:30.000Z').toISOString()
+    fs.writeFileSync(
+      markerFile(),
+      JSON.stringify({
+        sessionId: 'prior',
+        startedAt,
+        lastAliveAt,
+        appVersion: '1.2.3',
+        shutdownFailure: 'timeout',
+        shutdownStep: 'crdt-flush'
+      })
+    )
+
+    detectUncleanShutdown()
+
+    expect(trackMainEvent).toHaveBeenCalledWith(
+      'app_crashed',
+      expect.objectContaining({
+        error: {
+          message:
+            'Unclean shutdown [failure=timeout] [step=crdt-flush] [prior_version=1.2.3] [uptime_ms=90000] [marker=parsed]'
+        }
+      })
+    )
+  })
+
   it('still emits app_crashed when the marker is unparseable — presence IS the signal', () => {
     // #given a corrupt marker
     fs.writeFileSync(markerFile(), 'not json at all')

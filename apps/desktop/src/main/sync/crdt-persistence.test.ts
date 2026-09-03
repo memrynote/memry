@@ -24,6 +24,13 @@ vi.mock('fs', () => ({
   rmSync: (...args: unknown[]) => mockRmSync(...args)
 }))
 
+// The real module reaches into the electron store for the vault root. Mask mode
+// is what an install with no vault open gets anyway, and it is what makes the
+// redacted message assertion below deterministic.
+vi.mock('../telemetry/redact-options', () => ({
+  getMainRedactOptions: () => ({})
+}))
+
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({
     debug: vi.fn(),
@@ -101,16 +108,23 @@ describe('openCrdtPersistence telemetry', () => {
     })
   })
 
-  it('never ships the reason string, which can carry the store path', async () => {
-    mockPreflight.mockResolvedValue(failed('store', 'node'))
+  // The reason ships now (#1989) but only through redactText, and never in a
+  // dimension: SafeDimensionValueSchema is a blocklist, not a guarantee.
+  it('redacts the store path out of the reason it ships', async () => {
+    mockPreflight.mockResolvedValue({
+      ok: false,
+      stage: 'store',
+      transport: 'node',
+      reason: 'LevelDB lock held at /Users/kaan/Library/Application Support/Memry/crdt-store'
+    })
 
     expect(await openCrdtPersistence(STORE)).toBeNull()
 
-    // One dimension is the hard schema limit, and a path would be dropped by
-    // the sanitizer anyway — but the assertion that matters is that no field
-    // carries the reason at all.
-    expect(JSON.stringify(reportedEvent())).not.toContain(STORE)
-    expect(JSON.stringify(reportedEvent())).not.toContain('0xC0000005')
+    const event = reportedEvent()
+    const { message } = event.error as { message: string }
+    expect(message).toContain('~/Library/Application Support/Memry/crdt-store')
+    expect(JSON.stringify(event)).not.toContain('/Users/kaan')
+    expect(event.dimensions).toEqual({ transport: 'node' })
   })
 
   it('attributes a post-preflight failure to the probe, not to the preflight', async () => {
@@ -182,6 +196,24 @@ describe('openCrdtPersistence telemetry', () => {
       errorCode: 'CRDT_PERSISTENCE_UNAVAILABLE:binding-in-use',
       dimensions: { transport: 'node' }
     })
+  })
+
+  // #1989: this event used to ship a stage and a transport and nothing else, so
+  // its Error Tracking issue was titled `CRDT_PERSISTENCE_UNAVAILABLE:binding-in-use`
+  // and held no reason, no exit code and no OS. It was the top win32 issue.
+  it('ships the redacted preflight reason so the issue is debuggable', async () => {
+    mockExistsSync.mockReturnValue(true)
+    mockPreflight
+      .mockResolvedValueOnce(failed('store', 'utility'))
+      .mockResolvedValueOnce(failed('store', 'node'))
+
+    expect(await openCrdtPersistence(STORE)).toBeNull()
+
+    const { message } = reportedEvent().error as { message: string }
+    expect(message).toContain('CRDT persistence unavailable at binding-in-use')
+    expect(message).toContain('transport=node')
+    expect(message).toContain('0xC0000005')
+    expect(message.length).toBeLessThanOrEqual(512)
   })
 
   it('leaves the store alone when the control directory cannot be cleared', async () => {
