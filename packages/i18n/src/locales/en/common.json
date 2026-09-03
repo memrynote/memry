@@ -222,7 +222,8 @@
         "useCustom": "Use \"{query}\"",
         "localEmpty": "No models found — check Settings",
         "localSetup": "Set up in Settings…",
-        "cliSetup": "Not detected — set up in Settings…"
+        "cliSetup": "Not detected — set up in Settings…",
+        "runtimeUnavailable": "Agent unavailable — this vault needs to be unlocked"
       },
       "settings": {
         "reasoning": "Reasoning",

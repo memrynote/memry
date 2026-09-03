@@ -6,6 +6,7 @@ import { KEYCHAIN_ENTRIES, KEY_DERIVATION_CONTEXTS } from '@memry/contracts/cryp
 
 import type { DataDb } from '../database/types'
 import { confirmMasterKeyMigrated, retrieveKey, storeKey } from './keychain'
+import { checkAccountKey } from './vault-key-policy'
 import { deriveKey } from './keys'
 import { lockKeyMaterial } from './memory-lock'
 import { secureCleanup } from './primitives'
@@ -105,11 +106,15 @@ export async function getOrInitializeLocalVaultKey(
     lockKeyMaterial(vaultKey)
     let keepVaultKey = false
     try {
-      bindOrVerifyVaultKey(db, vaultId, vaultKey, expectedVerifier)
+      const outcome = await bindOrVerifyVaultKey(db, vaultId, vaultKey, expectedVerifier)
       keepVaultKey = true
       // The master key just passed the vault verifier check — safe to finish
-      // its safeStorage migration by dropping the OS keychain copy.
-      await confirmMasterKeyMigrated()
+      // its safeStorage migration by dropping the OS keychain copy. A rebind is
+      // not a pass: the key only "opens" the vault because we just rewrote the
+      // verifier to match it, so the OS keychain copy has to survive.
+      if (outcome !== 'rebound') {
+        await confirmMasterKeyMigrated()
+      }
       return vaultKey
     } finally {
       if (!keepVaultKey) secureCleanup(vaultKey)
@@ -119,23 +124,51 @@ export async function getOrInitializeLocalVaultKey(
   }
 }
 
-function bindOrVerifyVaultKey(
+type BindOutcome = 'verified' | 'bound' | 'rebound'
+
+async function bindOrVerifyVaultKey(
   db: DataDb,
   vaultId: string,
   vaultKey: Uint8Array,
   expected: string | null
-): void {
+): Promise<BindOutcome> {
   const actual = computeVaultKeyVerifier(vaultKey, vaultId)
 
   if (!expected) {
-    resetLegacyUnboundAgentData(db, vaultId)
-    setVaultKeyVerifier(db, actual)
-    return
+    bindVaultKey(db, vaultId, actual)
+    return 'bound'
   }
 
-  if (expected !== actual) {
+  if (expected === actual) return 'verified'
+
+  if (await mismatchIsRecoverable()) {
     throw new Error('Current master key does not match this vault')
   }
+
+  // Unrecoverable by definition: either the device has no account (so no
+  // recovery phrase exists to re-derive the key that sealed these rows), or the
+  // account already confirmed this key is the right one and it is the vault's
+  // verifier that travelled in stale from another machine. Rebinding costs the
+  // key-scoped agent rows; refusing costs the user the whole feature plus every
+  // other vault they moved. See vault-key-policy.ts.
+  bindVaultKey(db, vaultId, actual)
+  return 'rebound'
+}
+
+/**
+ * Can the user get the original key back? Only then is failing loudly the kind
+ * thing to do — it routes them to the recovery dialog instead of dropping data
+ * they could have restored. `transition` and `unknown` count as recoverable:
+ * never rebind on an uncertain read.
+ */
+async function mismatchIsRecoverable(): Promise<boolean> {
+  if (!(await hasSyncCredentials())) return false
+  return (await checkAccountKey()) !== 'match'
+}
+
+function bindVaultKey(db: DataDb, vaultId: string, verifier: string): void {
+  resetLegacyUnboundAgentData(db, vaultId)
+  setVaultKeyVerifier(db, verifier)
 }
 
 function resetLegacyUnboundAgentData(db: DataDb, vaultId: string): void {

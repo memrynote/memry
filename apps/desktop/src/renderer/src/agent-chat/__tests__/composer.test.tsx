@@ -532,6 +532,40 @@ describe('Composer', () => {
     expect(screen.queryByRole('menuitem', { name: 'GPT-5.5' })).not.toBeInTheDocument()
   })
 
+  it('names the real cause when the agent runtime, not the CLI, is unavailable', async () => {
+    const agentUnavailable = {
+      available: false,
+      reason: 'agent_unavailable',
+      detail: 'Agent runtime unavailable: Current master key does not match this vault'
+    }
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        inFlight: {},
+        conversations: {},
+        backendStatuses: {
+          ...readyBackendStatuses,
+          claude_cli: { backend: 'claude_cli', ...agentUnavailable },
+          codex_cli: { backend: 'codex_cli', ...agentUnavailable }
+        }
+      },
+      createConversation: mockCreateConversation,
+      sendTurn: mockSendTurn,
+      cancelTurn: mockCancelTurn
+    })
+    renderComposer('conversation-1')
+
+    await openModelSubmenu()
+
+    expect(
+      await screen.findAllByRole('menuitem', {
+        name: 'Agent unavailable — this vault needs to be unlocked'
+      })
+    ).toHaveLength(2)
+    expect(
+      screen.queryByRole('menuitem', { name: 'Not detected — set up in Settings…' })
+    ).not.toBeInTheDocument()
+  })
+
   it('passes Codex backend options when a Codex model is picked', async () => {
     renderComposer('conversation-1')
 

@@ -159,6 +159,8 @@ import { openPairingWindow } from './capture/pairing'
 import { startCaptureServer, stopCaptureServer } from './capture/server'
 import { stopChatServer } from './ai-inline/ai-chat-server'
 import { applyLoginShellPath } from './agent/cli/login-shell-path'
+import { setAccountKeyChecker } from './crypto'
+import { checkLocalKeyAgainstAccount } from './sync/key-verification'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -352,6 +354,13 @@ app.on('web-contents-created', (_event, contents) => {
 if (applyLoginShellPath({ packaged: app.isPackaged })) {
   mainLog.info('Augmented PATH from login shell for packaged launch')
 }
+
+// A vault folder moved between machines (git, iCloud Drive, Dropbox) arrives
+// carrying the verifier of whichever machine wrote it, while the master key that
+// produced it stays behind in that machine's keychain. Let crypto/ ask the sync
+// layer whether this device's key is the account's, so it can tell a stale
+// verifier (rebind) from a wrong key (route the user to recovery).
+setAccountKeyChecker(checkLocalKeyAgainstAccount)
 
 const headlessCliArgs = getHeadlessCliArgs(process.argv)
 

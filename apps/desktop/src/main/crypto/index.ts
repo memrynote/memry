@@ -53,6 +53,9 @@ export {
   storeVaultKeyVerifier
 } from './vault-key-state'
 
+export { setAccountKeyChecker } from './vault-key-policy'
+export type { AccountKeyCheck, AccountKeyChecker } from './vault-key-policy'
+
 export { secureCleanup } from './primitives'
 export { lockKeyMaterial, unlockKeyMaterial } from './memory-lock'
 

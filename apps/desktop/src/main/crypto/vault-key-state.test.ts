@@ -15,6 +15,7 @@ import {
   computeVaultKeyVerifier,
   getOrInitializeLocalVaultKey
 } from './vault-key-state'
+import { resetAccountKeyCheckerForTests, setAccountKeyChecker } from './vault-key-policy'
 
 vi.mock('keytar', () => ({
   default: {
@@ -83,7 +84,16 @@ describe('vault key state', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    resetAccountKeyCheckerForTests()
   })
+
+  function readVerifier(db: ReturnType<typeof freshDb>): string | undefined {
+    return db
+      .select({ value: schema.settings.value })
+      .from(schema.settings)
+      .where(eq(schema.settings.key, VAULT_KEY_VERIFIER_SETTING))
+      .get()?.value
+  }
 
   it('creates and binds a local master key when the vault has no encrypted agent data', async () => {
     const db = freshDb()
@@ -171,13 +181,104 @@ describe('vault key state', () => {
 
     vi.mocked(keytar.getPassword).mockImplementation(async (_service, account) => {
       if (account === KEYCHAIN_ENTRIES.MASTER_KEY.account) return keychainPassword(masterB)
+      if (account === KEYCHAIN_ENTRIES.REFRESH_TOKEN.account)
+        return keychainPassword(new Uint8Array(32).fill(0x33))
       return null
     })
+    setAccountKeyChecker(async () => 'mismatch')
 
     await expect(getOrInitializeLocalVaultKey(db, 'vault-1')).rejects.toThrow(
       'Current master key does not match this vault'
     )
   })
+
+  // A vault folder moved between machines with git / iCloud / Dropbox brings the
+  // other machine's verifier with it. On a device with no account there is no
+  // recovery phrase to re-derive the key that sealed the agent rows, so failing
+  // would disable Agent Chat forever on a vault whose notes open fine.
+  it('rebinds a mismatched vault on a device that has no account to recover from', async () => {
+    const db = freshDb()
+    const otherMachineMaster = new Uint8Array(32).fill(0x11)
+    const localMaster = new Uint8Array(32).fill(0x22)
+    const otherMachineVaultKey = await deriveKey(
+      otherMachineMaster,
+      KEY_DERIVATION_CONTEXTS.VAULT_KEY,
+      32
+    )
+
+    db.insert(schema.settings)
+      .values({
+        key: VAULT_KEY_VERIFIER_SETTING,
+        value: computeVaultKeyVerifier(otherMachineVaultKey, 'vault-1')
+      })
+      .run()
+
+    // Master key present, but no refresh token and no signing key: local-only.
+    vi.mocked(keytar.getPassword).mockImplementation(async (_service, account) => {
+      if (account === KEYCHAIN_ENTRIES.MASTER_KEY.account) return keychainPassword(localMaster)
+      return null
+    })
+
+    const vaultKey = await getOrInitializeLocalVaultKey(db, 'vault-1')
+
+    expect(readVerifier(db)).toBe(computeVaultKeyVerifier(vaultKey, 'vault-1'))
+  })
+
+  // The account already confirmed this device holds the right key, so the row
+  // that disagrees is the vault's — it travelled in from a machine that was
+  // linked before this one, or was left behind by a re-link that only rebound
+  // whichever vault happened to be open.
+  it('rebinds a stale vault verifier when the account confirms the local key', async () => {
+    const db = freshDb()
+    const staleMaster = new Uint8Array(32).fill(0x11)
+    const accountMaster = new Uint8Array(32).fill(0x22)
+    const staleVaultKey = await deriveKey(staleMaster, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
+
+    db.insert(schema.settings)
+      .values({
+        key: VAULT_KEY_VERIFIER_SETTING,
+        value: computeVaultKeyVerifier(staleVaultKey, 'vault-1')
+      })
+      .run()
+
+    vi.mocked(keytar.getPassword).mockImplementation(async (_service, account) => {
+      if (account === KEYCHAIN_ENTRIES.MASTER_KEY.account) return keychainPassword(accountMaster)
+      if (account === KEYCHAIN_ENTRIES.REFRESH_TOKEN.account)
+        return keychainPassword(new Uint8Array(32).fill(0x33))
+      return null
+    })
+    setAccountKeyChecker(async () => 'match')
+
+    const vaultKey = await getOrInitializeLocalVaultKey(db, 'vault-1')
+
+    expect(readVerifier(db)).toBe(computeVaultKeyVerifier(vaultKey, 'vault-1'))
+  })
+
+  it.each(['transition', 'unknown'] as const)(
+    'still refuses to rebind while the account key check is %s',
+    async (verdict) => {
+      const db = freshDb()
+      const masterA = new Uint8Array(32).fill(0x11)
+      const masterB = new Uint8Array(32).fill(0x22)
+      const vaultKeyA = await deriveKey(masterA, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
+      const expected = computeVaultKeyVerifier(vaultKeyA, 'vault-1')
+
+      db.insert(schema.settings).values({ key: VAULT_KEY_VERIFIER_SETTING, value: expected }).run()
+
+      vi.mocked(keytar.getPassword).mockImplementation(async (_service, account) => {
+        if (account === KEYCHAIN_ENTRIES.MASTER_KEY.account) return keychainPassword(masterB)
+        if (account === KEYCHAIN_ENTRIES.REFRESH_TOKEN.account)
+          return keychainPassword(new Uint8Array(32).fill(0x33))
+        return null
+      })
+      setAccountKeyChecker(async () => verdict)
+
+      await expect(getOrInitializeLocalVaultKey(db, 'vault-1')).rejects.toThrow(
+        'Current master key does not match this vault'
+      )
+      expect(readVerifier(db)).toBe(expected)
+    }
+  )
 
   it('rebinds the verifier to a new account master key and clears old encrypted agent data', async () => {
     const db = freshDb()

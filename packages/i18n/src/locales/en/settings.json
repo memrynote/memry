@@ -1618,7 +1618,8 @@
         "detected": "Detected · v{version}",
         "detectedNoVersion": "Detected",
         "belowMinimum": "v{version} installed — needs {minimum} or newer",
-        "notDetected": "Not detected"
+        "notDetected": "Not detected",
+        "runtimeUnavailable": "Unavailable — this vault needs to be unlocked"
       }
     },
     "permissions": {

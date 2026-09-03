@@ -238,7 +238,7 @@ describe('secret-storage call sites — account string preservation and migratio
       expect(harness.keytarGet).not.toHaveBeenCalled()
     })
 
-    it('keeps the keytar master key when the vault verifier rejects it', async () => {
+    it('keeps the keytar master key when the vault verifier does not accept it', async () => {
       const db = freshDb()
       const boundKey = sodium.randombytes_buf(32)
       const otherKey = sodium.randombytes_buf(32)
@@ -252,11 +252,12 @@ describe('secret-storage call sites — account string preservation and migratio
       fs.rmSync(path.join(harness.userDataDir, SECRET_STORE_FILENAME), { force: true })
       harness.keytarDelete.mockClear()
 
-      await expect(getOrInitializeLocalVaultKey(db, 'vault-1')).rejects.toThrow(
-        'Current master key does not match this vault'
-      )
+      // No account on this device, so the vault rebinds to the presented key
+      // rather than disabling itself (crypto/vault-key-policy.ts).
+      await getOrInitializeLocalVaultKey(db, 'vault-1')
 
-      // Verification failed — the OS keychain copy must survive.
+      // Verification never passed — a rebind does not count — so the OS keychain
+      // copy must survive.
       expect(harness.keytarDelete).not.toHaveBeenCalled()
       expect(harness.keytarStore.get(`${MASTER.service}:${MASTER.account}`)).toBe(toB64(otherKey))
     })

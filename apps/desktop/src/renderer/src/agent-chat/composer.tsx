@@ -230,6 +230,9 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const backendStatuses = agent?.state.backendStatuses
   const claudeAvailable = backendStatuses?.claude_cli.available !== false
   const codexAvailable = backendStatuses?.codex_cli.available !== false
+  const agentRuntimeUnavailable =
+    backendStatuses?.claude_cli.reason === 'agent_unavailable' ||
+    backendStatuses?.codex_cli.reason === 'agent_unavailable'
   const turnInFlight = conversationId ? agent?.state.inFlight?.[conversationId] === true : false
   const busy = turnInFlight || submitting
   const providerReady =
@@ -573,6 +576,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 currentModelValueLabel={currentModelValueLabel}
                 claudeAvailable={claudeAvailable}
                 codexAvailable={codexAvailable}
+                agentRuntimeUnavailable={agentRuntimeUnavailable}
                 claudeCatalog={claudeCatalog}
                 codexCatalog={codexCatalog}
                 localSettingsLoaded={localSettings !== null}

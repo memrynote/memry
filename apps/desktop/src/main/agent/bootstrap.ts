@@ -1,4 +1,7 @@
+import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
+
 import { getOrInitializeLocalVaultKey, secureCleanup } from '../crypto'
+import { classifyVaultKeyError, vaultRecoveryReason } from '../crypto/vault-key-error'
 import { getDatabase, getIndexDatabase } from '../database'
 import {
   registerAgentHandlers,
@@ -6,6 +9,7 @@ import {
   unregisterAgentHandlers
 } from '../ipc/agent-handlers'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { ClaudeCliBackend } from './backends/claude-cli-backend'
 import { CodexCliBackend } from './backends/codex-cli-backend'
@@ -66,6 +70,16 @@ export async function startAgent(): Promise<AgentHandle> {
     // The whole Agent Chat feature is disabled for this session — a fully
     // user-facing failure (every agent invoke errors), so it must be countable.
     trackMainError('agent', 'bootstrap_vault_key', error)
+    // Agent Chat can be the only subsystem that touches the vault key in a
+    // session (sync paused, or never started), and until now it swallowed a
+    // recoverable key mismatch into a log line — the UI then blamed the CLIs
+    // ("not detected") and the user never saw the recovery prompt. Raise the
+    // same event the sync runtime raises so the recovery dialog opens.
+    if (classifyVaultKeyError(error) === 'recovery-needed') {
+      broadcastToAllWindows(EVENT_CHANNELS.VAULT_RECOVERY_NEEDED, {
+        reason: vaultRecoveryReason(error)
+      })
+    }
     registerUnavailableAgentHandlers(reason)
     return {
       shutdown: async () => {

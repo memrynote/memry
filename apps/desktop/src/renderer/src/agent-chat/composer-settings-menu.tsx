@@ -99,6 +99,13 @@ interface ComposerSettingsMenuProps {
   currentModelValueLabel: string
   claudeAvailable: boolean
   codexAvailable: boolean
+  /**
+   * The agent runtime itself failed to start (vault key unavailable), so every
+   * backend reports unavailable. Distinct from a missing CLI: telling the user
+   * to install Claude Code when the CLI is already installed sends them down
+   * the wrong path entirely.
+   */
+  agentRuntimeUnavailable: boolean
   claudeCatalog: AgentBackendModelOption[]
   codexCatalog: AgentBackendModelOption[]
   localSettingsLoaded: boolean
@@ -330,7 +337,11 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
                   onSelect={props.onOpenProviderSettings}
                   className="text-muted-foreground/70"
                 >
-                  <span>{t('agentChat.composer.models.cliSetup')}</span>
+                  <span>
+                    {props.agentRuntimeUnavailable
+                      ? t('agentChat.composer.models.runtimeUnavailable')
+                      : t('agentChat.composer.models.cliSetup')}
+                  </span>
                 </DropdownMenuItem>
               </>
             )}
@@ -361,7 +372,11 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
                   onSelect={props.onOpenProviderSettings}
                   className="text-muted-foreground/70"
                 >
-                  <span>{t('agentChat.composer.models.cliSetup')}</span>
+                  <span>
+                    {props.agentRuntimeUnavailable
+                      ? t('agentChat.composer.models.runtimeUnavailable')
+                      : t('agentChat.composer.models.cliSetup')}
+                  </span>
                 </DropdownMenuItem>
               </>
             )}
