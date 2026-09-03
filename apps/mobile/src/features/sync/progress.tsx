@@ -1,13 +1,15 @@
 import { StyleSheet, View } from 'react-native'
-import { ThemedText } from '@/components/themed-text'
-import { Spacing } from '@/constants/theme'
+import { AppText } from '@/components/ui/app-text'
 import type { FirstSyncProgress } from '@/sync/first-sync'
+import { radius, space } from '@/theme/primitives'
+import { useColors } from '@/theme/use-colors'
 
 /**
  * Determinate first-sync progress (T047 / FR-008). The app stays usable
  * behind it — this renders as a slim strip, not a blocking screen.
  */
 export function FirstSyncProgressBar({ progress }: { progress: FirstSyncProgress | null }) {
+  const c = useColors()
   if (!progress || progress.phase === 'done') return null
 
   const label =
@@ -26,9 +28,11 @@ export function FirstSyncProgressBar({ progress }: { progress: FirstSyncProgress
       accessibilityLabel={label}
       accessibilityValue={{ min: 0, max: 100, now: percent }}
     >
-      <ThemedText type="small">{label}</ThemedText>
-      <View style={styles.track}>
-        <View style={[styles.fill, { width: `${percent}%` }]} />
+      <AppText variant="caption" color={c.text.secondary}>
+        {label}
+      </AppText>
+      <View style={[styles.track, { backgroundColor: c.canvas.surfaceActive }]}>
+        <View style={[styles.fill, { width: `${percent}%`, backgroundColor: c.tint.base }]} />
       </View>
     </View>
   )
@@ -36,19 +40,10 @@ export function FirstSyncProgressBar({ progress }: { progress: FirstSyncProgress
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    gap: 4
+    paddingHorizontal: space.s16,
+    paddingVertical: space.s8,
+    gap: space.s4
   },
-  track: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(127,127,127,0.25)',
-    overflow: 'hidden'
-  },
-  fill: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#ff671a'
-  }
+  track: { height: 4, borderRadius: radius.full, overflow: 'hidden' },
+  fill: { height: 4, borderRadius: radius.full }
 })

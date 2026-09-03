@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 
 import { AppText } from '@/components/ui/app-text'
-import { space } from '@/theme/primitives'
+import { radius, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
 export interface SegmentedControlProps<T extends string> {
@@ -54,14 +54,14 @@ export function SegmentedControl<T extends string>({
 const styles = StyleSheet.create({
   track: {
     height: 34,
-    borderRadius: 9,
+    borderRadius: radius.md,
     padding: space.s2,
     gap: space.s2,
     flexDirection: 'row'
   },
   segment: {
     flex: 1,
-    borderRadius: 7,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center'
   },

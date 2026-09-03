@@ -10,7 +10,7 @@ import {
 
 import { AppText } from '@/components/ui/app-text'
 import type { Color } from '@/theme/colors'
-import { space } from '@/theme/primitives'
+import { radius, sizes, space } from '@/theme/primitives'
 import { textStyles } from '@/theme/text-styles'
 import { useColors } from '@/theme/use-colors'
 
@@ -82,9 +82,9 @@ export function TextField({ error, style, value, onFocus, onBlur, ...rest }: Tex
 
 const styles = StyleSheet.create({
   box: {
-    height: 50,
-    borderRadius: 10,
-    paddingHorizontal: 14,
+    height: sizes.control,
+    borderRadius: radius.lg,
+    paddingHorizontal: space.s16,
     justifyContent: 'center'
   },
   // padding 0 because Android gives TextInput its own default padding

@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react'
 import { Pressable, StyleSheet, TextInput, View } from 'react-native'
-import { ThemedText } from '@/components/themed-text'
-import { Spacing } from '@/constants/theme'
+import { AppText } from '@/components/ui/app-text'
+import { radius, sizes, space } from '@/theme/primitives'
+import { textStyles } from '@/theme/text-styles'
+import { useColors } from '@/theme/use-colors'
 import { addTag, removeTag, setNoteTags, type NoteOpsContext } from './note-ops'
 
 /**
@@ -21,6 +23,7 @@ export interface NoteTagsProps {
 }
 
 export function NoteTags({ ctx, noteId, tags, readOnly, onChanged }: NoteTagsProps) {
+  const c = useColors()
   const [draft, setDraft] = useState('')
 
   const commit = useCallback(
@@ -45,11 +48,13 @@ export function NoteTags({ ctx, noteId, tags, readOnly, onChanged }: NoteTagsPro
             key={tag}
             disabled={readOnly}
             onPress={() => void commit(removeTag(tags, tag))}
-            style={styles.chip}
+            style={[styles.chip, { backgroundColor: c.canvas.surface }]}
             accessibilityRole="button"
             accessibilityLabel={`Remove tag ${tag}`}
           >
-            <ThemedText type="small">#{tag}</ThemedText>
+            <AppText variant="caption" color={c.text.secondary}>
+              #{tag}
+            </AppText>
           </Pressable>
         ))}
       </View>
@@ -63,7 +68,12 @@ export function NoteTags({ ctx, noteId, tags, readOnly, onChanged }: NoteTagsPro
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="done"
-          style={styles.input}
+          placeholderTextColor={c.text.tertiary}
+          style={[
+            styles.input,
+            textStyles.subhead,
+            { borderColor: c.line.input, color: c.text.primary }
+          ]}
           accessibilityLabel="Add a tag"
         />
       )}
@@ -72,21 +82,18 @@ export function NoteTags({ ctx, noteId, tags, readOnly, onChanged }: NoteTagsPro
 }
 
 const styles = StyleSheet.create({
-  container: { gap: Spacing.one },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
+  container: { gap: space.s4 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s4 },
   chip: {
     minHeight: 32,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.two,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,103,26,0.12)'
+    paddingHorizontal: space.s8,
+    borderRadius: radius.full
   },
   input: {
-    minHeight: 44,
-    fontSize: 15,
-    paddingHorizontal: Spacing.two,
+    minHeight: sizes.tapTarget,
+    paddingHorizontal: space.s8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(120,113,108,0.4)',
-    borderRadius: 8
+    borderRadius: radius.md
   }
 })

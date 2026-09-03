@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react'
 import { Pressable, StyleSheet, Switch, TextInput, View } from 'react-native'
-import { ThemedText } from '@/components/themed-text'
-import { Spacing } from '@/constants/theme'
+import { AppText } from '@/components/ui/app-text'
+import { radius, sizes, space } from '@/theme/primitives'
+import { textStyles } from '@/theme/text-styles'
+import { useColors } from '@/theme/use-colors'
 import {
   coercePropertyValue,
   formatPropertyValue,
@@ -35,6 +37,7 @@ export function NoteProperties({
   readOnly,
   onChanged
 }: NotePropertiesProps) {
+  const c = useColors()
   const [newKey, setNewKey] = useState('')
 
   const commit = useCallback(
@@ -88,7 +91,12 @@ export function NoteProperties({
           placeholder="Add a property"
           autoCapitalize="none"
           returnKeyType="done"
-          style={styles.input}
+          placeholderTextColor={c.text.tertiary}
+          style={[
+            styles.input,
+            textStyles.subhead,
+            { borderColor: c.line.input, color: c.text.primary }
+          ]}
           accessibilityLabel="Add a property"
         />
       )}
@@ -111,6 +119,7 @@ function PropertyRow({
   onCommit: (value: unknown) => void
   onRemove: () => void
 }) {
+  const c = useColors()
   const initial = formatPropertyValue(value)
   const [draft, setDraft] = useState(initial)
 
@@ -123,9 +132,9 @@ function PropertyRow({
 
   return (
     <View style={styles.row}>
-      <ThemedText type="small" style={styles.name}>
+      <AppText variant="caption" color={c.text.secondary} style={styles.name}>
         {name}
-      </ThemedText>
+      </AppText>
       {type === 'checkbox' ? (
         <Switch
           value={value === true}
@@ -142,7 +151,7 @@ function PropertyRow({
           onSubmitEditing={commitIfChanged}
           keyboardType={type === 'number' ? 'decimal-pad' : 'default'}
           autoCapitalize={type === 'url' ? 'none' : 'sentences'}
-          style={styles.value}
+          style={[styles.value, textStyles.subhead, { color: c.text.primary }]}
           accessibilityLabel={name}
         />
       )}
@@ -152,7 +161,9 @@ function PropertyRow({
           accessibilityRole="button"
           accessibilityLabel={`Remove ${name}`}
         >
-          <ThemedText type="small">✕</ThemedText>
+          <AppText variant="caption" color={c.text.secondary}>
+            ✕
+          </AppText>
         </Pressable>
       )}
     </View>
@@ -160,16 +171,14 @@ function PropertyRow({
 }
 
 const styles = StyleSheet.create({
-  container: { gap: Spacing.one },
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minHeight: 44 },
+  container: { gap: space.s4 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.s8, minHeight: sizes.tapTarget },
   name: { flexBasis: 110, flexGrow: 0 },
-  value: { flex: 1, fontSize: 15, minHeight: 44 },
+  value: { flex: 1, minHeight: sizes.tapTarget },
   input: {
-    minHeight: 44,
-    fontSize: 15,
-    paddingHorizontal: Spacing.two,
+    minHeight: sizes.tapTarget,
+    paddingHorizontal: space.s8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(120,113,108,0.4)',
-    borderRadius: 8
+    borderRadius: radius.md
   }
 })

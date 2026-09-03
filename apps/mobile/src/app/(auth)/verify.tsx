@@ -118,7 +118,7 @@ export default function VerifyScreen() {
             onPress={resend}
             style={styles.resendAction}
           >
-            <AppText variant="bodyEmphasis" color={secondsLeft > 0 ? c.text.tertiary : c.tint.base}>
+            <AppText variant="bodyEmphasis" color={secondsLeft > 0 ? c.text.tertiary : c.tint.text}>
               {secondsLeft > 0 ? `Resend in ${countdown(secondsLeft)}` : 'Resend code'}
             </AppText>
           </Pressable>
@@ -130,7 +130,7 @@ export default function VerifyScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  body: { flex: 1, paddingHorizontal: AUTH_GUTTER, paddingTop: space.s24, gap: 28 },
+  body: { flex: 1, paddingHorizontal: AUTH_GUTTER, paddingTop: space.s24, gap: space.s24 },
   heading: { gap: space.s8 },
   resend: { alignItems: 'center', gap: space.s4 },
   resendAction: { height: sizes.tapTarget, justifyContent: 'center' }

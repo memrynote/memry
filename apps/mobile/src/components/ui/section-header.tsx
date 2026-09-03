@@ -27,7 +27,7 @@ export function SectionHeader({ label, count, action, style }: SectionHeaderProp
       )}
       {action ? (
         <Pressable accessibilityRole="button" hitSlop={10} onPress={action.onPress}>
-          <AppText variant="caption" color={c.tint.base}>
+          <AppText variant="caption" color={c.tint.text}>
             {action.label}
           </AppText>
         </Pressable>

@@ -409,7 +409,7 @@ export default function NoteScreen() {
               hitSlop={10}
               onPress={finishEditing}
             >
-              <AppText variant="body" color={c.tint.base} style={styles.doneLabel}>
+              <AppText variant="body" color={c.tint.text} style={styles.doneLabel}>
                 Done
               </AppText>
             </Pressable>

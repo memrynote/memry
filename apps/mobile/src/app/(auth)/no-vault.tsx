@@ -44,8 +44,7 @@ export default function NoVaultScreen() {
       <View style={styles.footer}>
         <Button
           label="How to set up on desktop"
-          variant="secondary"
-          style={{ backgroundColor: c.canvas.background }}
+          variant="outline"
           onPress={() => void WebBrowser.openBrowserAsync(SETUP_GUIDE_URL)}
         />
         <Pressable
@@ -54,7 +53,7 @@ export default function NoVaultScreen() {
           onPress={leave}
           style={styles.signOut}
         >
-          <AppText variant="body" color={c.tint.base}>
+          <AppText variant="body" color={c.tint.text}>
             Sign out
           </AppText>
         </Pressable>

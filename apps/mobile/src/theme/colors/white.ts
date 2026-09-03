@@ -30,8 +30,14 @@ export const white = {
     destructiveText: '#d63333'
   },
   tint: {
-    base: '#6366f1',
-    foreground: '#ffffff'
+    // DESIGN.md's global product accent. #6366f1 was Figma drift, not a second
+    // approved accent.
+    base: '#f97316',
+    foreground: '#ffffff',
+    // The accent at fill strength is 2.8:1 on the canvas, so it cannot carry
+    // text or a small glyph. The darker step of the same hue clears AA, the
+    // same split ui.destructive / ui.destructiveText already makes.
+    text: '#c2410c'
   },
   // Terracotta is the marketing mark, not an in-app accent. It is allowed on
   // brand surfaces only (splash, paywall); anything interactive uses tint.
@@ -40,6 +46,7 @@ export const white = {
     foreground: '#ffffff'
   },
   dot: {
+    blue: '#2563eb',
     cyan: '#0891b2',
     purple: '#7c3aed',
     green: '#16a34a',

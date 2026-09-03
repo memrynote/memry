@@ -15,13 +15,8 @@ import {
 } from '@/features/auth/google-sign-in'
 import { extractErrorMessage } from '@/lib/errors'
 import { requestOtp } from '@/sync/auth-client'
-import { radius, space } from '@/theme/primitives'
+import { radius, sizes, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
-
-// The board authors this label at 0.06em on 12px. captionEmphasis carries a
-// different tracking, so the resolved px value overrides it here.
-const fieldLabel = { letterSpacing: 0.72 }
-const SOCIAL_HEIGHT = 50
 
 /** Sign in, step one (Paper `03 · Auth — Sign in, email`). */
 export default function SignInScreen() {
@@ -77,7 +72,7 @@ export default function SignInScreen() {
           </View>
 
           <View style={styles.field}>
-            <AppText variant="captionEmphasis" color={c.text.secondary} style={fieldLabel}>
+            <AppText variant="captionEmphasis" color={c.text.secondary}>
               EMAIL
             </AppText>
             <TextField
@@ -151,7 +146,7 @@ const styles = StyleSheet.create({
   divider: { flexDirection: 'row', alignItems: 'center', gap: space.s12, paddingTop: space.s8 },
   rule: { flex: 1, height: 1 },
   social: {
-    height: SOCIAL_HEIGHT,
+    height: sizes.control,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

@@ -4,7 +4,7 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } fr
 import { AppText } from '@/components/ui/app-text'
 import { TextField } from '@/components/ui/text-field'
 import { fontFamilies } from '@/theme/fonts'
-import { sizes, space } from '@/theme/primitives'
+import { radius, sizes, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
 /**
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   card: {
     width: 270,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     overflow: 'hidden',
     boxShadow: [{ offsetX: 0, offsetY: 16, blurRadius: 40, color: 'rgba(31, 29, 26, 0.28)' }]
   },
@@ -139,7 +139,11 @@ const styles = StyleSheet.create({
   title: { textAlign: 'center', fontFamily: fontFamilies.sansSemiBold, letterSpacing: -0.16 },
   message: { textAlign: 'center', marginTop: space.s6 },
   field: { marginTop: space.s12 },
-  buttons: { height: 44, flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth },
+  buttons: {
+    height: sizes.tapTarget,
+    flexDirection: 'row',
+    borderTopWidth: StyleSheet.hairlineWidth
+  },
   button: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   buttonDivider: { width: StyleSheet.hairlineWidth },
   confirm: { fontFamily: fontFamilies.sansSemiBold }

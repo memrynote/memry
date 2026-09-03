@@ -76,8 +76,8 @@ export default function NotesFolderSearchScreen() {
           value={query}
           onChangeText={setQuery}
         />
-        <Pressable accessibilityRole="button" onPress={() => router.back()}>
-          <AppText color={c.tint.base}>Cancel</AppText>
+        <Pressable accessibilityRole="button" hitSlop={space.s12} onPress={() => router.back()}>
+          <AppText color={c.tint.text}>Cancel</AppText>
         </Pressable>
       </View>
 
@@ -85,6 +85,9 @@ export default function NotesFolderSearchScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Remove the ${name} scope`}
+          // The chip draws at 28pt, so the slop is what carries it to the 44pt
+          // minimum without changing the row's geometry.
+          hitSlop={{ top: space.s8, bottom: space.s8 }}
           onPress={widen}
           style={[styles.chip, { backgroundColor: c.ui.primary }]}
         >
@@ -93,9 +96,11 @@ export default function NotesFolderSearchScreen() {
           </AppText>
           <Icon name="close" size={12} color={c.ui.primaryForeground} />
         </Pressable>
-        <AppText variant="caption" color={c.text.tertiary} style={styles.count}>
-          {typed ? `${hits.length} of ${total} notes` : `${total} notes`}
-        </AppText>
+        <View style={styles.countLane}>
+          <AppText variant="caption" color={c.text.tertiary}>
+            {typed ? `${hits.length} of ${total} notes` : `${total} notes`}
+          </AppText>
+        </View>
       </View>
 
       <FlatList
@@ -163,7 +168,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.s6
   },
-  count: { flex: 1, textAlign: 'right' },
+  countLane: { flex: 1, alignItems: 'flex-end' },
   hit: {
     minHeight: 72,
     justifyContent: 'center',

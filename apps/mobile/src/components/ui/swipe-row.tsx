@@ -9,6 +9,7 @@ import { AppText } from '@/components/ui/app-text'
 import { Icon, type IconName } from '@/components/ui/icon'
 import type { Color } from '@/theme/colors'
 import { fontFamilies } from '@/theme/fonts'
+import { space } from '@/theme/primitives'
 
 /**
  * A row with trailing swipe actions.
@@ -115,6 +116,6 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row' },
   // Board 27 sets the glyph beside the label, not above it: at 72pt the row
   // fits, and stacking makes the strip read as a tile rather than a button.
-  action: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  action: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.s6 },
   actionLabel: { fontFamily: fontFamilies.sansMedium }
 })

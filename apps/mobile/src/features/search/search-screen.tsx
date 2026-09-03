@@ -369,7 +369,7 @@ export function SearchScreen({
           onPress={onCancel}
           style={styles.cancel}
         >
-          <AppText variant="body" color={c.tint.base}>
+          <AppText variant="body" color={c.tint.text}>
             Cancel
           </AppText>
         </Pressable>
@@ -467,5 +467,5 @@ const styles = StyleSheet.create({
   emptyArea: { flex: 1, paddingTop: EMPTY_TOP, gap: space.s16 },
   ghost: { marginHorizontal: sizes.gutter },
   // 10 above plus two 18pt footnote lines plus 12 below is the 58 tall footer.
-  footer: { paddingHorizontal: sizes.gutter, paddingTop: 10, paddingBottom: space.s12 }
+  footer: { paddingHorizontal: sizes.gutter, paddingTop: space.s12, paddingBottom: space.s12 }
 })

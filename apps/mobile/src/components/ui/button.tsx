@@ -8,10 +8,10 @@ import {
 
 import { AppText } from '@/components/ui/app-text'
 import type { Color } from '@/theme/colors'
-import { radius } from '@/theme/primitives'
+import { radius, sizes } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
-export type ButtonVariant = 'primary' | 'tint' | 'secondary' | 'destructive' | 'ghost'
+export type ButtonVariant = 'primary' | 'tint' | 'secondary' | 'outline' | 'destructive' | 'ghost'
 
 export interface ButtonProps {
   label: string
@@ -42,10 +42,13 @@ export function Button({
   const c = useColors()
   const surfaces: Record<ButtonVariant, ButtonSurface> = {
     primary: { background: c.ui.primary, label: c.ui.primaryForeground },
-    tint: { background: c.tint.base, label: c.tint.foreground },
+    // tint.text rather than tint.base: white on the accent at fill strength is
+    // 2.8:1, and a filled action's label is not large text.
+    tint: { background: c.tint.text, label: c.tint.foreground },
     secondary: { background: c.canvas.surface, border: c.line.border, label: c.text.primary },
+    outline: { background: c.canvas.background, border: c.line.border, label: c.text.primary },
     destructive: { background: c.ui.destructive, label: c.ui.destructiveForeground },
-    ghost: { label: c.tint.base }
+    ghost: { label: c.tint.text }
   }
   // Disabled is its own surface in the design system, not the variant's
   // surface dimmed: a filled button at reduced opacity still reads as pressable.
@@ -85,7 +88,7 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    height: 50,
+    height: sizes.control,
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center'

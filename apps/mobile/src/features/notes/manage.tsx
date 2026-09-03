@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
-import { ThemedText } from '@/components/themed-text'
-import { ThemedView } from '@/components/themed-view'
-import { Spacing } from '@/constants/theme'
+import { AppText } from '@/components/ui/app-text'
 import type { VaultDb } from '@/db/index'
+import { radius, sizes, space } from '@/theme/primitives'
+import { textStyles } from '@/theme/text-styles'
+import { useColors } from '@/theme/use-colors'
 import { deleteNote, moveNote, renameNote, type NoteOpsContext } from './note-ops'
 
 /**
@@ -60,6 +61,7 @@ function NoteManageBody({
   onDeleted,
   onOpenDetails
 }: NoteManageSheetProps) {
+  const c = useColors()
   const [draftTitle, setDraftTitle] = useState(title)
   const [folders, setFolders] = useState<string[]>([])
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -117,21 +119,30 @@ function NoteManageBody({
   }, [ctx, noteId, onClose, onDeleted])
 
   return (
-    <ThemedView style={styles.sheet}>
-      <ThemedText type="subtitle">Note</ThemedText>
+    <View style={[styles.sheet, { backgroundColor: c.canvas.popover }]}>
+      <AppText variant="headline">Note</AppText>
 
-      <ThemedText type="small">Title</ThemedText>
+      <AppText variant="caption" color={c.text.secondary}>
+        Title
+      </AppText>
       <TextInput
         value={draftTitle}
         onChangeText={setDraftTitle}
         onBlur={commitRename}
         onSubmitEditing={commitRename}
         returnKeyType="done"
-        style={styles.input}
+        placeholderTextColor={c.text.tertiary}
+        style={[
+          styles.input,
+          textStyles.body,
+          { borderColor: c.line.input, color: c.text.primary }
+        ]}
         accessibilityLabel="Note title"
       />
 
-      <ThemedText type="small">Folder</ThemedText>
+      <AppText variant="caption" color={c.text.secondary}>
+        Folder
+      </AppText>
       <ScrollView style={styles.folders}>
         <FolderRow label="No folder" selected={folderPath === ''} onPress={() => commitMove('')} />
         {folders.map((folder) => (
@@ -154,13 +165,15 @@ function NoteManageBody({
           accessibilityRole="button"
           accessibilityLabel="Note details"
         >
-          <ThemedText>Note details</ThemedText>
+          <AppText>Note details</AppText>
         </Pressable>
       ) : null}
 
       {confirmingDelete ? (
         <View style={styles.confirmRow}>
-          <ThemedText type="small">Delete this note on every device?</ThemedText>
+          <AppText variant="footnote" color={c.text.secondary}>
+            Delete this note on every device?
+          </AppText>
           <Pressable
             // `onPressIn`: the row disables itself as soon as the delete
             // starts, and a press that disables its own target between down
@@ -170,10 +183,12 @@ function NoteManageBody({
             accessibilityRole="button"
             accessibilityLabel="Confirm delete"
           >
-            <ThemedText style={styles.destructiveText}>Delete</ThemedText>
+            <AppText color={c.ui.destructiveText}>Delete</AppText>
           </Pressable>
           <Pressable onPress={() => setConfirmingDelete(false)} accessibilityRole="button">
-            <ThemedText type="small">Cancel</ThemedText>
+            <AppText variant="footnote" color={c.text.secondary}>
+              Cancel
+            </AppText>
           </Pressable>
         </View>
       ) : (
@@ -183,10 +198,10 @@ function NoteManageBody({
           accessibilityRole="button"
           accessibilityLabel="Delete note"
         >
-          <ThemedText style={styles.destructiveText}>Delete note</ThemedText>
+          <AppText color={c.ui.destructiveText}>Delete note</AppText>
         </Pressable>
       )}
-    </ThemedView>
+    </View>
   )
 }
 
@@ -207,7 +222,7 @@ function FolderRow({
       accessibilityState={{ selected }}
       accessibilityLabel={`Move to ${label}`}
     >
-      <ThemedText>{selected ? `✓ ${label}` : label}</ThemedText>
+      <AppText>{selected ? `✓ ${label}` : label}</AppText>
     </Pressable>
   )
 }
@@ -241,25 +256,22 @@ export async function listFolders(db: VaultDb): Promise<string[]> {
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
   sheet: {
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.four,
-    gap: Spacing.two,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    paddingHorizontal: space.s16,
+    paddingTop: space.s16,
+    paddingBottom: space.s24,
+    gap: space.s8,
+    borderTopStartRadius: radius.xl,
+    borderTopEndRadius: radius.xl,
     maxHeight: '70%'
   },
   input: {
-    minHeight: 44,
+    minHeight: sizes.tapTarget,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(120,113,108,0.4)',
-    borderRadius: 8,
-    paddingHorizontal: Spacing.two,
-    fontSize: 17
+    borderRadius: radius.md,
+    paddingHorizontal: space.s8
   },
   folders: { maxHeight: 220 },
-  folderRow: { minHeight: 44, justifyContent: 'center' },
-  confirmRow: { gap: Spacing.two },
-  destructive: { minHeight: 44, justifyContent: 'center' },
-  destructiveText: { color: '#c2410c' }
+  folderRow: { minHeight: sizes.tapTarget, justifyContent: 'center' },
+  confirmRow: { gap: space.s8 },
+  destructive: { minHeight: sizes.tapTarget, justifyContent: 'center' }
 })

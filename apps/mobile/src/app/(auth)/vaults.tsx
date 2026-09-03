@@ -94,7 +94,10 @@ export default function VaultsScreen() {
           return
         }
         setError(
-          extractErrorMessage(err, 'Could not load your vaults. Check your connection and try again.')
+          extractErrorMessage(
+            err,
+            'Could not load your vaults. Check your connection and try again.'
+          )
         )
       }
     })()
@@ -116,8 +119,13 @@ export default function VaultsScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.canvas.background }]}>
       <View style={styles.nav}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Sign out" onPress={leave}>
-          <AppText variant="body" color={c.tint.base}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
+          hitSlop={space.s12}
+          onPress={leave}
+        >
+          <AppText variant="body" color={c.tint.text}>
             Sign out
           </AppText>
         </Pressable>

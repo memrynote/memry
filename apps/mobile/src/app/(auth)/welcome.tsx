@@ -5,11 +5,10 @@ import { router } from 'expo-router'
 import { AppText } from '@/components/ui/app-text'
 import { Button } from '@/components/ui/button'
 import { Icon, type IconName } from '@/components/ui/icon'
+import { AUTH_GUTTER } from '@/features/auth/chrome'
 import { space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
-// Auth screens inset 24 rather than the 16 gutter the vault shell uses.
-const GUTTER = 24
 // Icon slot is wider than the 22px glyph so the three titles share one lane.
 const ICON_SLOT = 28
 
@@ -80,12 +79,12 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  body: { flex: 1, paddingHorizontal: GUTTER, paddingTop: space.s48 },
+  body: { flex: 1, paddingHorizontal: AUTH_GUTTER, paddingTop: space.s48 },
   lede: { paddingTop: space.s12 },
   promises: { paddingTop: space.s40, gap: space.s20 },
-  promise: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  promise: { flexDirection: 'row', alignItems: 'flex-start', gap: space.s16 },
   iconSlot: { width: ICON_SLOT, flexShrink: 0, paddingTop: 1 },
   promiseText: { flex: 1, gap: space.s2 },
-  footer: { paddingHorizontal: GUTTER, paddingBottom: space.s8, gap: space.s8 },
+  footer: { paddingHorizontal: AUTH_GUTTER, paddingBottom: space.s8, gap: space.s8 },
   footnote: { textAlign: 'center', paddingHorizontal: space.s8 }
 })

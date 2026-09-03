@@ -1,7 +1,7 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 
 import { AppText } from '@/components/ui/app-text'
-import { space } from '@/theme/primitives'
+import { radius, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
 export interface SyncProgressProps {
@@ -54,6 +54,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between'
   },
-  track: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 3 }
+  track: { height: 6, borderRadius: radius.full, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: radius.full }
 })

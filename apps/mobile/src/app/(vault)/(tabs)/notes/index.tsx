@@ -231,12 +231,13 @@ export default function NotesScreen() {
           />
           <Pressable
             accessibilityRole="button"
+            hitSlop={space.s12}
             onPress={() => {
               setQuery('')
               setSearching(false)
             }}
           >
-            <AppText color={c.tint.base}>Cancel</AppText>
+            <AppText color={c.tint.text}>Cancel</AppText>
           </Pressable>
         </View>
       ) : (

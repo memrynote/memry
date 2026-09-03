@@ -24,6 +24,8 @@ export const radius = {
 
 export const sizes = {
   tapTarget: 44,
+  /** Full-width button and single-line field. */
+  control: 50,
   navBar: 44,
   navBarLarge: 100,
   tabBar: 49,

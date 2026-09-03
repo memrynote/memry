@@ -50,9 +50,9 @@ export function Banner({ variant, title, body, style }: BannerProps) {
 const styles = StyleSheet.create({
   container: {
     borderRadius: radius.lg,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    gap: 10,
+    paddingVertical: space.s12,
+    paddingHorizontal: space.s16,
+    gap: space.s12,
     flexDirection: 'row',
     alignItems: 'flex-start'
   },

@@ -72,8 +72,7 @@ export default function DeviceUnlockScreen() {
         <Button label="Try Face ID again" onPress={retry} disabled={phase === 'prompting'} />
         <Button
           label="Use recovery phrase instead"
-          variant="secondary"
-          style={{ backgroundColor: c.canvas.background }}
+          variant="outline"
           onPress={() => router.replace('/unlock')}
         />
       </View>

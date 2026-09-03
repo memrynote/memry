@@ -29,7 +29,7 @@ export function BackBar({ onPress, label = 'Back' }: BackBarProps) {
         onPress={onPress ?? (() => router.back())}
         style={({ pressed }) => pressed && styles.pressed}
       >
-        <Icon name="chevron-left" size={24} color={c.tint.base} />
+        <Icon name="chevron-left" size={24} color={c.tint.text} />
       </Pressable>
     </View>
   )

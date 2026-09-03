@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   body: { flex: 1, paddingHorizontal: AUTH_GUTTER, paddingTop: BODY_TOP, gap: space.s32 },
   heading: { gap: space.s8 },
-  progress: { gap: 10 },
+  progress: { gap: space.s12 },
   track: { height: TRACK_HEIGHT, borderRadius: radius.full, overflow: 'hidden' },
   fill: { height: TRACK_HEIGHT, borderRadius: radius.full },
   counter: { flexDirection: 'row', justifyContent: 'space-between' },

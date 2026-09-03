@@ -34,11 +34,6 @@ const TOGGLE_HIT_SLOP = {
   right: (sizes.tapTarget - CHEVRON_SLOT) / 2
 } as const
 
-// The board's image-note blue. `white.ts` has no token for it and this unit
-// cannot touch the theme, so it is branded once here the way `brandTheme`
-// brands the palette: one cast at the boundary, never at the use site.
-const IMAGE_BLUE = '#2563EB' as Color
-
 export interface TreeSectionHeaderProps {
   label: string
   style?: StyleProp<ViewStyle>
@@ -109,7 +104,7 @@ export function TreeRow({
   const c = useColors()
   const toneColors: Record<NoteToneName, Color> = {
     destructive: c.ui.destructive,
-    blue: IMAGE_BLUE,
+    blue: c.dot.blue,
     green: c.dot.green,
     purple: c.dot.purple,
     tertiary: c.text.tertiary
@@ -196,7 +191,7 @@ export function TreeRow({
       <AppText
         variant="subhead"
         numberOfLines={1}
-        color={selected ? c.tint.base : c.text.primary}
+        color={selected ? c.tint.text : c.text.primary}
         style={styles.label}
       >
         {label}
@@ -204,7 +199,7 @@ export function TreeRow({
 
       {bookmarked ? (
         <View style={styles.bookmark}>
-          <Icon name="bookmark" size={13} color={c.brand.base} />
+          <Icon name="bookmark" size={13} color={c.tint.text} />
         </View>
       ) : null}
       {count === undefined ? null : (
@@ -222,7 +217,7 @@ export function TreeRow({
           <Icon name="chevron-right" size={14} color={c.text.tertiary} />
         </View>
       ) : null}
-      {selected ? <Icon name="check" size={16} color={c.tint.base} /> : null}
+      {selected ? <Icon name="check" size={16} color={c.tint.text} /> : null}
     </Pressable>
   )
 }

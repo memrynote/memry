@@ -25,7 +25,7 @@ export function SkeletonRow({ style }: SkeletonRowProps) {
 const styles = StyleSheet.create({
   container: {
     height: 64,
-    paddingVertical: 14,
+    paddingVertical: space.s16,
     paddingHorizontal: sizes.gutter,
     gap: space.s8,
     justifyContent: 'center'

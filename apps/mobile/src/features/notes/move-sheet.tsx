@@ -245,7 +245,7 @@ function MoveSheetBody({ ctx, target, snapshot, onClose, onMoved }: MoveSheetPro
     <SafeAreaView style={[styles.safe, { backgroundColor: c.canvas.background }]}>
       <View style={[styles.nav, { borderBottomColor: c.line.border }]}>
         <Pressable accessibilityRole="button" onPress={onClose} style={styles.navSlot}>
-          <AppText color={c.tint.base}>Cancel</AppText>
+          <AppText color={c.tint.text}>Cancel</AppText>
         </Pressable>
         <AppText variant="headline" style={styles.navTitle}>
           {target.kind === 'folder' ? 'Move folder' : 'Move to'}
@@ -257,7 +257,7 @@ function MoveSheetBody({ ctx, target, snapshot, onClose, onMoved }: MoveSheetPro
           onPress={() => void commitMove()}
           style={[styles.navSlot, styles.navSlotEnd]}
         >
-          <AppText color={canMove ? c.tint.base : c.text.tertiary} style={styles.navAction}>
+          <AppText color={canMove ? c.tint.text : c.text.tertiary} style={styles.navAction}>
             Move
           </AppText>
         </Pressable>
@@ -332,8 +332,8 @@ function MoveSheetBody({ ctx, target, snapshot, onClose, onMoved }: MoveSheetPro
               onPress={promptNewFolder}
               style={styles.newFolder}
             >
-              <Icon name="plus" size={16} color={c.tint.base} />
-              <AppText variant="subhead" color={c.tint.base}>
+              <Icon name="plus" size={16} color={c.tint.text} />
+              <AppText variant="subhead" color={c.tint.text}>
                 New folder here
               </AppText>
             </Pressable>

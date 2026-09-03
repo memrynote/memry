@@ -65,7 +65,7 @@ function ActionRow({ actions, onLayout }: ActionRowProps) {
           style={({ pressed }) => pressed && styles.pressed}
         >
           {'text' in action ? (
-            <AppText variant="headline" color={c.tint.base}>
+            <AppText variant="headline" color={c.tint.text}>
               {action.text}
             </AppText>
           ) : (
@@ -122,11 +122,11 @@ export function NavBarInline({ title, back, actions = [] }: NavBarInlineProps) {
           onLayout={(e) => setLeadingWidth(e.nativeEvent.layout.width)}
           style={({ pressed }) => [styles.backGroup, pressed && styles.pressed]}
         >
-          <Icon name="chevron-left" size={24} color={c.tint.base} />
+          <Icon name="chevron-left" size={24} color={c.tint.text} />
           {/* The label can be hidden, the accessible name above cannot: a bare
               chevron with no name is unusable. */}
           {back.showLabel === false ? null : (
-            <AppText variant="body" color={c.tint.base}>
+            <AppText variant="body" color={c.tint.text}>
               {back.label}
             </AppText>
           )}

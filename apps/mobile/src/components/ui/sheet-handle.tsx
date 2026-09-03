@@ -1,5 +1,6 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 
+import { radius } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
 export interface SheetHandleProps {
@@ -22,5 +23,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  bar: { width: 36, height: 5, borderRadius: 3 }
+  bar: { width: 36, height: 5, borderRadius: radius.full }
 })

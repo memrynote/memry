@@ -8,7 +8,7 @@ import {
 } from 'react-native'
 
 import { Icon } from '@/components/ui/icon'
-import { space } from '@/theme/primitives'
+import { radius, space } from '@/theme/primitives'
 import { textStyles } from '@/theme/text-styles'
 import { useColors } from '@/theme/use-colors'
 
@@ -37,8 +37,8 @@ export function SearchField({ style, ...rest }: SearchFieldProps) {
 const styles = StyleSheet.create({
   container: {
     height: 36,
-    borderRadius: 10,
-    paddingHorizontal: 10,
+    borderRadius: radius.md,
+    paddingHorizontal: space.s8,
     gap: space.s6,
     flexDirection: 'row',
     alignItems: 'center'

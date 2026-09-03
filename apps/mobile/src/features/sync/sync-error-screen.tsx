@@ -107,7 +107,7 @@ export function SyncErrorScreen({ state, progress, onRetry, onContinue }: SyncEr
           onPress={onContinue}
           style={styles.continue}
         >
-          <AppText variant="body" color={c.tint.base}>
+          <AppText variant="body" color={c.tint.text}>
             Continue with what’s here
           </AppText>
         </Pressable>
@@ -118,9 +118,9 @@ export function SyncErrorScreen({ state, progress, onRetry, onContinue }: SyncEr
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  body: { flex: 1, paddingHorizontal: AUTH_GUTTER, paddingTop: BODY_TOP, gap: 28 },
+  body: { flex: 1, paddingHorizontal: AUTH_GUTTER, paddingTop: BODY_TOP, gap: space.s24 },
   heading: { gap: space.s8 },
-  detail: { padding: space.s16, borderRadius: radius.lg, gap: 10 },
+  detail: { padding: space.s16, borderRadius: radius.lg, gap: space.s12 },
   detailRow: { flexDirection: 'row', gap: space.s12 },
   // A fixed label lane keeps the three values on one left edge.
   labelLane: { width: LABEL_LANE, flexShrink: 0 },

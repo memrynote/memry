@@ -12,10 +12,8 @@ import { PhraseGrid } from '@/features/auth/phrase-grid'
 import { extractErrorMessage } from '@/lib/errors'
 import { InvalidPhraseError, WrongPhraseError, unlockVaultWithPhrase } from '@/lib/vault-unlock'
 import { loadCurrentVaultId, loadSession } from '@/sync/auth-client'
-import { radius, space } from '@/theme/primitives'
+import { radius, sizes, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
-
-const SUGGESTION_HEIGHT = 34
 
 /**
  * Vault unlock (Paper `08 · Auth — Unlock, recovery phrase`).
@@ -140,8 +138,8 @@ const styles = StyleSheet.create({
   heading: { gap: space.s8 },
   suggestions: { flexDirection: 'row', gap: space.s8 },
   suggestion: {
-    height: SUGGESTION_HEIGHT,
-    paddingHorizontal: 14,
+    height: sizes.tapTarget,
+    paddingHorizontal: space.s16,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center'

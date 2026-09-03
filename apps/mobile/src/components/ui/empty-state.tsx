@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.s40,
-    gap: 10
+    gap: space.s12
   },
   // 56 square, because Figma's 24 x 56 pill is a hug-width authoring slip
   iconContainer: {

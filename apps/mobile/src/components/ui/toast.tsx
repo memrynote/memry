@@ -10,7 +10,7 @@ import {
 import { AppText } from '@/components/ui/app-text'
 import { Icon, type IconName } from '@/components/ui/icon'
 import { fontFamilies } from '@/theme/fonts'
-import { sizes, space } from '@/theme/primitives'
+import { radius, sizes, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
 export interface ToastAction {
@@ -65,10 +65,7 @@ export function Toast({ message, action, icon = 'check', accessibilityLabel, sty
           hitSlop={10}
           onPress={action.onPress}
         >
-          {/* The one place the marketing terracotta is allowed inside the app:
-              it sits on the dark pill, never on a canvas surface, and it is the
-              single interactive element in a component that is otherwise mute. */}
-          <AppText variant="subhead" color={c.brand.base} style={styles.action}>
+          <AppText variant="subhead" color={c.tint.base} style={styles.action}>
             {action.label}
           </AppText>
         </Pressable>
@@ -80,9 +77,9 @@ export function Toast({ message, action, icon = 'check', accessibilityLabel, sty
 const styles = StyleSheet.create({
   container: {
     height: 48,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    gap: 10,
+    borderRadius: radius.lg,
+    paddingHorizontal: space.s16,
+    gap: space.s12,
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'center',

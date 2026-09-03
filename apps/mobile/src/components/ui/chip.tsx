@@ -2,7 +2,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 
 import { AppText } from '@/components/ui/app-text'
 import type { Color } from '@/theme/colors'
-import { radius } from '@/theme/primitives'
+import { radius, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
 export type ChipVariant = 'tag' | 'active' | 'tint'
@@ -23,7 +23,7 @@ export function Chip({ label, variant = 'tag', style }: ChipProps) {
   const surfaces: Record<ChipVariant, ChipSurface> = {
     tag: { background: c.canvas.surface, label: c.text.secondary },
     active: { background: c.pastel.rose, label: c.text.primary },
-    tint: { background: c.canvas.surface, label: c.tint.base }
+    tint: { background: c.canvas.surface, label: c.tint.text }
   }
   const surface = surfaces[variant]
 
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   container: {
     height: 26,
     borderRadius: radius.full,
-    paddingHorizontal: 10,
+    paddingHorizontal: space.s8,
     alignSelf: 'flex-start',
     alignItems: 'center',
     justifyContent: 'center'

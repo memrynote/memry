@@ -6,12 +6,12 @@ import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Icon } from '@/components/ui/icon'
 import { MOBILE_SORT_LABELS, MOBILE_SORT_MODES, type MobileSortMode } from '@/features/notes/tree'
 import { fontFamilies } from '@/theme/fonts'
+import { sizes, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
-// 52 and 14 are not on the `sizes` / `space` scales, and one sheet does not
-// earn a step on either — `tree-row.tsx` keeps its own 40 for the same reason.
+// 52 is not on the `sizes` scale and one sheet does not earn a step on it —
+// `tree-row.tsx` keeps its own 40 for the same reason.
 const ROW_HEIGHT = 52
-const ROW_GAP = 14
 const CHECK_SLOT = 24
 
 export interface SheetRowProps {
@@ -36,9 +36,9 @@ export function SheetRow({ label, selected, onPress }: SheetRowProps) {
       style={[styles.row, { borderTopColor: c.line.border }]}
     >
       <View style={styles.checkSlot}>
-        {selected ? <Icon name="check" size={18} color={c.tint.base} /> : null}
+        {selected ? <Icon name="check" size={18} color={c.tint.text} /> : null}
       </View>
-      <AppText color={selected ? c.tint.base : c.text.primary}>{label}</AppText>
+      <AppText color={selected ? c.tint.text : c.text.primary}>{label}</AppText>
     </Pressable>
   )
 }
@@ -80,7 +80,7 @@ export function SortSheet({ visible, sort, onSelect, onClose }: SortSheetProps) 
       <View
         style={[
           styles.footnote,
-          { borderTopColor: c.line.border, paddingBottom: 16 + insets.bottom }
+          { borderTopColor: c.line.border, paddingBottom: sizes.gutter + insets.bottom }
         ]}
       >
         <AppText variant="footnote" color={c.text.secondary}>
@@ -94,8 +94,8 @@ export function SortSheet({ visible, sort, onSelect, onClose }: SortSheetProps) 
 const styles = StyleSheet.create({
   row: {
     height: ROW_HEIGHT,
-    paddingHorizontal: 16,
-    gap: ROW_GAP,
+    paddingHorizontal: sizes.gutter,
+    gap: space.s16,
     borderTopWidth: 1,
     flexDirection: 'row',
     alignItems: 'center'
@@ -103,10 +103,10 @@ const styles = StyleSheet.create({
   checkSlot: { width: CHECK_SLOT, alignItems: 'center', justifyContent: 'center' },
   header: {
     height: ROW_HEIGHT,
-    paddingHorizontal: 16,
+    paddingHorizontal: sizes.gutter,
     flexDirection: 'row',
     alignItems: 'center'
   },
   headerTitle: { flex: 1, fontFamily: fontFamilies.sansSemiBold, letterSpacing: -0.17 },
-  footnote: { paddingTop: 12, paddingHorizontal: 16, borderTopWidth: 1 }
+  footnote: { paddingTop: space.s12, paddingHorizontal: sizes.gutter, borderTopWidth: 1 }
 })

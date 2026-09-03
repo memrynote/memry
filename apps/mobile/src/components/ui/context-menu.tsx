@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   menu: {
     marginTop: PREVIEW_GAP,
     width: MENU_WIDTH,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     overflow: 'hidden',
     boxShadow: [{ offsetX: 0, offsetY: 16, blurRadius: 40, color: 'rgba(31, 29, 26, 0.28)' }]
   },

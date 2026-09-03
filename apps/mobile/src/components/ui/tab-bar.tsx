@@ -43,8 +43,8 @@ export function TabBar({ items, background }: TabBarProps) {
             onLongPress={item.onLongPress}
             style={styles.item}
           >
-            <Icon name={item.icon} size={24} color={item.focused ? c.tint.base : c.text.tertiary} />
-            <AppText variant="tabLabel" color={item.focused ? c.tint.base : c.text.secondary}>
+            <Icon name={item.icon} size={24} color={item.focused ? c.tint.text : c.text.tertiary} />
+            <AppText variant="tabLabel" color={item.focused ? c.tint.text : c.text.secondary}>
               {item.label}
             </AppText>
           </Pressable>

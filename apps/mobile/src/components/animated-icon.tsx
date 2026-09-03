@@ -6,6 +6,7 @@ import Animated, { Easing, Keyframe } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 
 import { BrandWordmark } from '@/features/auth/brand-splash'
+import { themes } from '@/theme/colors'
 
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90
 const DURATION = 600
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
   },
   splashOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#ff671a',
+    backgroundColor: themes.white.brand.base,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000

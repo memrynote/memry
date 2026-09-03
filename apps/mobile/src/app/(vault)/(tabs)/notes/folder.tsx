@@ -28,7 +28,7 @@ import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
 import { getSyncEngine } from '@/sync/engine'
 import { subscribeReadOnly } from '@/sync/read-only-mode'
-import { sizes } from '@/theme/primitives'
+import { sizes, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
 const log = createLogger('NoteFolderScreen')
@@ -258,7 +258,7 @@ export default function NoteFolderScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   navBorder: { borderBottomWidth: 1 },
-  notesHeader: { marginTop: 4 },
+  notesHeader: { marginTop: space.s4 },
   empty: { paddingHorizontal: sizes.gutter, paddingTop: sizes.gutter },
   fab: { position: 'absolute', end: sizes.gutter, bottom: sizes.gutter }
 })
