@@ -53,6 +53,13 @@ A verifier mismatch is therefore resolved rather than always refused:
 | Account says the key is wrong (`mismatch`) | Fail, and raise the vault recovery prompt so the recovery phrase can restore the correct key — which also restores the encrypted rows.         |
 | `transition` or `unknown`                  | Fail. Never rebind on an uncertain read.                                                                                                       |
 
+A missing master key follows the same rule rather than a separate one. With an account present the
+key is restorable from the recovery phrase, so creating a replacement would strand everything the
+account already encrypted — that still fails, and now classifies as `recovery-needed` so the prompt
+actually appears. Without an account, nobody can reconstruct what the verifier was bound to, so the
+vault mints a key and rebinds instead of dead-ending. That is the same vault folder arriving on a
+machine which never had a key.
+
 The account check lives behind a port that the sync layer injects at startup, keeping `crypto/` free
 of `sync/` imports; its default verdict is `unknown`, so an unwired caller can only be conservative.
 A rebind does not count as passing the verifier check, so it never completes the master key's

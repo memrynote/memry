@@ -28,7 +28,11 @@ export function classifyVaultKeyError(error: unknown): VaultKeyErrorKind {
 
   if (
     message.includes('does not match this vault') ||
-    message.includes('verifier exists but master key is missing')
+    message.includes('verifier exists but master key is missing') ||
+    // The account holds the real key and the recovery phrase re-derives it —
+    // the most recoverable state there is, and it used to classify as `other`,
+    // so no prompt ever appeared.
+    message.includes('cannot create a local vault key while sync credentials exist')
   ) {
     return 'recovery-needed'
   }
@@ -38,5 +42,7 @@ export function classifyVaultKeyError(error: unknown): VaultKeyErrorKind {
 
 export function vaultRecoveryReason(error: unknown): VaultRecoveryNeededEvent['reason'] {
   const message = error instanceof Error ? error.message : String(error)
-  return message.includes('master key is missing') ? 'master-key-missing' : 'vault-key-mismatch'
+  return message.includes('master key is missing') || message.includes('Master key not found')
+    ? 'master-key-missing'
+    : 'vault-key-mismatch'
 }

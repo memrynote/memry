@@ -153,17 +153,41 @@ describe('vault key state', () => {
     )
   })
 
-  it('does not create a replacement master key when the vault already has a verifier', async () => {
+  // An account owns the key, so the recovery phrase can re-derive it. Minting a
+  // replacement would strand everything the account encrypted under the real one.
+  it('does not create a replacement master key while sync credentials exist', async () => {
     const db = freshDb()
     db.insert(schema.settings)
       .values({ key: VAULT_KEY_VERIFIER_SETTING, value: 'existing-verifier' })
       .run()
-    vi.mocked(keytar.getPassword).mockResolvedValue(null)
+    vi.mocked(keytar.getPassword).mockImplementation(async (_service, account) => {
+      if (account === KEYCHAIN_ENTRIES.REFRESH_TOKEN.account) {
+        return keychainPassword(new Uint8Array(32).fill(0x33))
+      }
+      return null
+    })
 
     await expect(getOrInitializeLocalVaultKey(db, 'vault-1')).rejects.toThrow(
-      'Vault key verifier exists but master key is missing'
+      'cannot create a local vault key while sync credentials exist'
     )
     expect(keytar.setPassword).not.toHaveBeenCalled()
+  })
+
+  // The missing-key twin of the mismatch case: a vault folder that lands on a
+  // machine which never had a key, with no account to restore one from. Nobody
+  // can reconstruct what the verifier was bound to, so dead-ending the vault
+  // buys nothing.
+  it('mints a key and rebinds when the vault has a verifier but no account', async () => {
+    const db = freshDb()
+    db.insert(schema.settings)
+      .values({ key: VAULT_KEY_VERIFIER_SETTING, value: 'from-another-machine' })
+      .run()
+    vi.mocked(keytar.getPassword).mockResolvedValue(null)
+
+    const vaultKey = await getOrInitializeLocalVaultKey(db, 'vault-1')
+
+    expect(keytar.setPassword).toHaveBeenCalled()
+    expect(readVerifier(db)).toBe(computeVaultKeyVerifier(vaultKey, 'vault-1'))
   })
 
   it('rejects a keychain master key that does not match the vault verifier', async () => {

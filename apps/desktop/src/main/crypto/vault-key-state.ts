@@ -82,13 +82,17 @@ export async function getOrInitializeLocalVaultKey(
   let masterKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
   if (!masterKey) {
     if (await hasSyncCredentials()) {
+      // An account owns this key, so it is restorable from the recovery phrase.
+      // Minting a replacement here would strand every item the account already
+      // encrypted under the real one.
       throw new Error(
         'Master key not found in keychain — cannot create a local vault key while sync credentials exist'
       )
     }
-    if (expectedVerifier) {
-      throw new Error('Vault key verifier exists but master key is missing')
-    }
+    // No account and no key: whatever the verifier was bound to cannot be
+    // reconstructed by anyone. This is the same vault folder that arrives on a
+    // machine which never had a key — the missing-key twin of the mismatch case
+    // below — so mint one and rebind rather than dead-ending the vault.
     resetLegacyUnboundAgentData(db, vaultId)
 
     masterKey = sodium.randombytes_buf(32)
