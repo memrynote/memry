@@ -282,6 +282,14 @@ Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — pl
 
   Custom Font used to be a separate text field where you typed a font name. It is gone; the name you had saved is preserved and appears as your selection in the picker.
 
+### Zoom
+
+**Zoom Level** — A slider from 50% to 200% in 10% steps, default 100%. It scales the entire interface, not just text: icons, spacing, images and note content all grow and shrink together, live as you drag. The reset button next to the slider puts it back to 100%.
+
+`Cmd/Ctrl` `+` and `Cmd/Ctrl` `-` step the zoom, and `Cmd/Ctrl` `0` returns to 100%. The View menu carries the same three commands. All of them move the slider in Settings, because they change the same saved value.
+
+Zoom is the one Appearance setting that does **not** sync to your other devices, and that is deliberate: it compensates for the physical screen you are looking at, so a 27-inch desktop and a 13-inch laptop each keep their own level. It persists across restarts on the device where you set it.
+
 ---
 
 ## Keyboard Shortcuts
