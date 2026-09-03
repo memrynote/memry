@@ -14,8 +14,19 @@
  * whole time, and a single call is what keeps the outline panel's smooth jump
  * exactly as smooth as it was before this existed.
  *
- * The same `navigateToBlock` is what the outline panel is handed, so a heading
- * click has one behaviour whether or not the map is open.
+ * The outline panel gets its OWN entry point rather than this one, and the split
+ * is the point. A box on the map is a place in the note — clicking it means "take
+ * me there", so it closes the map. An entry in the outline, while the map is
+ * open, is a place on the MAP — the panel sits above the picture on purpose, and
+ * on a map too big to see at once it is the only way to reach a far branch. So
+ * that click moves the camera and leaves the map open. Same destination, two
+ * different intents, and widening one function to serve both would have made
+ * clicking a node stop navigating.
+ *
+ * The outline falls back to this one whenever the map cannot answer: closed, not
+ * yet mounted, or asked for a block it did not draw (folded behind a "+N more",
+ * or dropped at the node cap). That fallback IS the old behaviour, so a heading
+ * click never does nothing.
  *
  * Two node kinds do not land in this note at all — a wiki link opens the note
  * it names, a task opens its task — and neither closes the map. They are handed
@@ -52,14 +63,25 @@ interface UseMindMapNavigationOptions {
   openNote: (wikiTarget: string) => void
   /** The note page's own task handler. */
   openTask: (taskId: string) => void
+  /**
+   * Moves the open map's camera onto a block, and answers whether it could.
+   * False for a closed map, a surface that has not mounted yet, and a block the
+   * map did not draw.
+   */
+  focusBlock: (blockId: string) => boolean
 }
 
 export interface UseMindMapNavigationResult {
   /**
    * Close the map and land at this block. `null` is the top of the note.
-   * Handed to the outline panel as-is — one function, one behaviour.
+   * What a map node's activation ends in.
    */
   navigateToBlock: (blockId: string | null) => void
+  /**
+   * A heading click in the outline panel. Moves the camera when the map is
+   * showing that block, and otherwise behaves exactly like `navigateToBlock`.
+   */
+  navigateFromOutline: (blockId: string) => void
   /** What a node activation on either projection ends in. */
   activateNode: MindMapNodeActivation
 }
@@ -71,7 +93,8 @@ export function useMindMapNavigation({
   getTopElement,
   smooth,
   openNote,
-  openTask
+  openTask,
+  focusBlock
 }: UseMindMapNavigationOptions): UseMindMapNavigationResult {
   // A wait outlives the click that started it, so a second click — or leaving
   // the note — has to call the first one off, or two of them fight over the
@@ -111,10 +134,24 @@ export function useMindMapNavigation({
     [cancelPending, close, getContainer, getTopElement, smooth]
   )
 
+  const navigateFromOutline = useCallback(
+    (blockId: string) => {
+      // Nothing to call off and nothing to close on this path: the camera move
+      // is instantaneous and leaves the note exactly where it was, so a pending
+      // scroll from an earlier click is not something this one invalidates.
+      if (focusBlock(blockId)) return
+      navigateToBlock(blockId)
+    },
+    [focusBlock, navigateToBlock]
+  )
+
   const activateNode = useCallback<MindMapNodeActivation>(
     (node) => activateMindMapNode(node, { navigateToBlock, openNote, openTask, expandBranch }),
     [navigateToBlock, openNote, openTask, expandBranch]
   )
 
-  return useMemo(() => ({ navigateToBlock, activateNode }), [navigateToBlock, activateNode])
+  return useMemo(
+    () => ({ navigateToBlock, navigateFromOutline, activateNode }),
+    [navigateToBlock, navigateFromOutline, activateNode]
+  )
 }

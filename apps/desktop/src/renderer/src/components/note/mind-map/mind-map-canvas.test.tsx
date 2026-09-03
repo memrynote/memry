@@ -57,7 +57,8 @@ const HOVER_LABELS: ReadonlyMap<string, MindMapHoverLabel> = new Map([
 const mocks = vi.hoisted(() => ({
   scrollToContent: vi.fn(),
   updateScene: vi.fn(),
-  onChange: vi.fn(() => () => {}),
+  /** Takes the handler, so a test can drive a camera change by calling it. */
+  onChange: vi.fn((_handler: () => void) => () => {}),
   /** The camera, as a test can move it. */
   appState: { scrollX: 0, scrollY: 0, zoom: { value: 1 }, offsetLeft: 0, offsetTop: 0 }
 }))
@@ -104,13 +105,16 @@ const BUILT_ELEMENTS = [
   { type: 'rectangle', id: 'built-1' }
 ] as unknown as readonly MindMapElement[]
 
-function mountSurface(): { controls: () => MindMapControls; unmount: () => void } {
+function mountSurface(
+  initialFocusHref: string | null = null
+): { controls: () => MindMapControls; unmount: () => void } {
   let latest: MindMapControls | null = null
   const view = render(
     <MindMapCanvas
       elements={BUILT_ELEMENTS}
       hoverLabels={HOVER_LABELS}
       onOpenLink={openLink}
+      initialFocusHref={initialFocusHref}
       onControlsChange={(next) => {
         latest = next
       }}
@@ -174,12 +178,157 @@ describe('MindMapCanvas controls', () => {
     )
     expect(latest).toEqual({
       fit: expect.any(Function),
+      focus: expect.any(Function),
       copyImage: expect.any(Function),
       copyVector: expect.any(Function)
     })
 
     view.unmount()
     expect(latest).toBeNull()
+  })
+
+  it('opens framed whole when the reader had nowhere in particular to be', () => {
+    mountSurface(null)
+
+    expect(mocks.scrollToContent).toHaveBeenCalledTimes(1)
+    expect(mocks.scrollToContent).toHaveBeenCalledWith(undefined, {
+      fitToContent: true,
+      animate: false
+    })
+  })
+
+  it('opens on the section the reader was in, in the same frame as the fit', () => {
+    mountSurface(ITEM_HREF)
+
+    // The fit is what decides the ZOOM — there is no other source for a
+    // sensible one — and the centring lands on top of it before anything is
+    // painted, so the whole-map view is never something the user sees go past.
+    expect(mocks.scrollToContent.mock.calls).toEqual([
+      [undefined, { fitToContent: true, animate: false }],
+      [LIVE_ELEMENTS[1], { animate: false }]
+    ])
+  })
+
+  it('falls back to the whole drawing when the block it was aimed at was not drawn', () => {
+    // A heading folded behind a "+N more", or dropped at the node cap: the map
+    // is still worth showing, just not from there.
+    mountSurface('memry://note/n1#^b-never-drawn')
+
+    expect(mocks.scrollToContent).toHaveBeenCalledTimes(1)
+    expect(mocks.scrollToContent).toHaveBeenCalledWith(undefined, {
+      fitToContent: true,
+      animate: false
+    })
+  })
+
+  it('centres on one box on focus, and leaves the zoom exactly where it was', () => {
+    const surface = mountSurface()
+    mocks.scrollToContent.mockClear()
+
+    expect(surface.controls().focus(WIKI_HREF)).toBe(true)
+
+    // NEITHER fit option is passed, and that is the whole point: with one, the
+    // library would rescale the picture and take away the reading distance the
+    // user chose from the outline panel they clicked in.
+    // The flight is pinned rather than left to the library's default, because
+    // the ring that marks the arrival has to outlast it.
+    expect(mocks.scrollToContent).toHaveBeenCalledWith(LIVE_ELEMENTS[2], {
+      animate: true,
+      duration: 250
+    })
+  })
+
+  it('rings the box it focused, so the reader can see what the click landed on', () => {
+    const surface = mountSurface()
+
+    act(() => {
+      surface.controls().focus(WIKI_HREF)
+    })
+
+    // The box's own rectangle, through the camera: `(scene + scroll) * zoom`,
+    // which at rest is the scene rectangle itself.
+    const ring = screen.getByTestId('mind-map-focus-ring')
+    expect(ring).toHaveStyle({ left: '200px', top: '100px', width: '160px', height: '40px' })
+    // Decoration on the picture: the outline entry the reader pressed already
+    // named this node in words.
+    expect(ring.parentElement).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('keeps the ring glued to its box while the camera is still flying', async () => {
+    // The camera reports every committed change, a pan tick included, which is
+    // what the ring rides: measured once at the click it would sit where the
+    // box used to be for the whole flight.
+    let notify: (() => void) | undefined
+    mocks.onChange.mockImplementation((handler: () => void) => {
+      notify = handler
+      return () => {}
+    })
+    const surface = mountSurface()
+
+    act(() => {
+      surface.controls().focus(WIKI_HREF)
+    })
+    expect(screen.getByTestId('mind-map-focus-ring')).toHaveStyle({ left: '200px' })
+
+    mocks.appState = { scrollX: -100, scrollY: 0, zoom: { value: 2 }, offsetLeft: 0, offsetTop: 0 }
+    await act(async () => {
+      notify?.()
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    })
+
+    // `(200 - 100) * 2`, the same transform the affordance anchor uses.
+    expect(screen.getByTestId('mind-map-focus-ring')).toHaveStyle({
+      left: '200px',
+      top: '200px',
+      width: '320px',
+      height: '80px'
+    })
+  })
+
+  it('drops the ring once the flash is over', async () => {
+    vi.useFakeTimers()
+    try {
+      const surface = mountSurface()
+      act(() => {
+        surface.controls().focus(WIKI_HREF)
+      })
+      expect(screen.getByTestId('mind-map-focus-ring')).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(600)
+      })
+
+      // Unmounted rather than left at zero opacity, so the next focus animates
+      // from the start instead of showing a ring that never fades.
+      expect(screen.queryByTestId('mind-map-focus-ring')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('moves the ring to the second box when a second heading is clicked', () => {
+    const surface = mountSurface()
+
+    act(() => {
+      surface.controls().focus(WIKI_HREF)
+    })
+    act(() => {
+      surface.controls().focus(ITEM_HREF)
+    })
+
+    // One ring, on the box the reader asked for last.
+    expect(screen.getAllByTestId('mind-map-focus-ring')).toHaveLength(1)
+    expect(screen.getByTestId('mind-map-focus-ring')).toHaveStyle({ top: '0px' })
+  })
+
+  it('answers false for a box that is not on the live scene, and moves nothing', () => {
+    const surface = mountSurface()
+    mocks.scrollToContent.mockClear()
+
+    // False is what lets the outline panel fall back to opening the note at
+    // that heading rather than swallowing the click.
+    expect(surface.controls().focus('memry://note/n1#^b-never-drawn')).toBe(false)
+    expect(mocks.scrollToContent).not.toHaveBeenCalled()
   })
 
   it('frames the whole drawing on fit, wherever the user panned to', () => {

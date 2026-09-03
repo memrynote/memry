@@ -15,3 +15,46 @@
 .mind-map-surface[data-node-hover='true'] canvas {
   cursor: pointer !important;
 }
+
+/**
+ * The ring that marks the box an outline click sent the camera to.
+ *
+ * Hold, then fade. The hold covers the camera's flight (`FOCUS_CAMERA_MS`) plus
+ * a beat after it lands, so the mark is still there when the map settles —
+ * a ring that faded on the way would answer "where did I just go?" with nothing.
+ * The element is unmounted when the flash ends, so the animation never repeats.
+ *
+ * No transform and no scale: the ring is positioned in viewport pixels that are
+ * recomputed against the live camera every frame, and animating its geometry
+ * here would fight that arithmetic.
+ *
+ * The DURATION is set inline from `FOCUS_FLASH_MS`, which is also what unmounts
+ * the ring — one number, so the fade can neither outlive the element nor finish
+ * while it is still on screen.
+ */
+@keyframes mind-map-focus-flash {
+  0%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.mind-map-focus-ring {
+  animation-name: mind-map-focus-flash;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+/**
+ * A reader who asked for less motion still gets the mark — it is what tells
+ * them where the click went — just without the fade.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .mind-map-focus-ring {
+    animation-name: none;
+    opacity: 1;
+  }
+}

@@ -13,6 +13,11 @@ actions. The title, properties, tags and body are replaced by the map. The
 header, the breadcrumb, the note's overflow menu and the outline panel all stay
 where they were.
 
+The map **opens on the section you were reading**. Scroll to a heading halfway
+down a long note, press the icon, and the map is already looking at that part of
+the tree rather than at the whole picture from a distance. If you were at the
+top, or the note has no headings, it frames the whole map instead.
+
 Press the same icon again to return to the note.
 
 The map is a **view of the note, not a document**. Nothing is saved, nothing is
@@ -133,8 +138,13 @@ The map is navigation, not just a picture.
   so the tab you came from is still on the map when you return to it.
 - Click a **`+N more`** node to open that branch in place. This is the other
   node that does not take you back into the note: a fold is undone where it is.
-- The **outline panel** stays available while the map shows, and clicking a
-  heading there does exactly the same thing. One control, one behaviour.
+- The **outline panel** stays available while the map shows, and while the map
+  is open it steers the map rather than leaving it. Click a heading there and
+  the map slides to that heading's node, at whatever zoom you are on, with a
+  brief ring around the node it landed on so you can see where you arrived. On
+  a map too big to see at once, this is how you reach a far branch. If the
+  heading is not drawn — it is behind a `+N more`, or past the 200-node limit —
+  the click opens the note at it, the way it does when the map is closed.
 
 Nodes work from the keyboard too. Tab into the map, move between nodes with the
 up and down arrows (Home and End jump to the ends), and press Enter or Space to
@@ -172,8 +182,9 @@ background and always in the map's light colours, so the same note copies the
 same way whichever app theme you are in. If a copy cannot be made, memrynote
 tells you rather than failing quietly.
 
-The map's camera is not remembered. Close the map and open it again and it
-frames the whole thing afresh — the same place **Fit to view** takes you.
+The map's camera is not remembered. Close the map and open it again and it is
+back on the section you are reading, and **Fit to view** frames the whole thing
+from there.
 
 ## Saving the Map as a Canvas
 

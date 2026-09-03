@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -231,6 +231,30 @@ describe('note and sidebar cold surfaces', () => {
     expect(screen.getByText('Top bar')).toBeInTheDocument()
     expect(screen.getByText('Note body')).toBeInTheDocument()
     expect(marqueeRef).toHaveBeenCalled()
+  })
+
+  it('reports the heading the reader is on, so the mind map knows where to open', async () => {
+    const onActiveHeadingChange = vi.fn()
+    const headings = [
+      { id: 'intro', level: 2, text: 'Intro', position: 0 },
+      { id: 'details', level: 3, text: 'Details', position: 40 }
+    ]
+
+    render(
+      <NoteLayout headings={headings} onActiveHeadingChange={onActiveHeadingChange}>
+        <article>
+          <h2 data-id="intro">Intro</h2>
+          <h3 data-id="details">Details</h3>
+        </article>
+      </NoteLayout>
+    )
+
+    // Reported rather than lifted: nothing above this layout re-renders when
+    // the reader scrolls past a heading, but the note page still has to know
+    // which one they were on when they ask for the map.
+    await waitFor(() => expect(onActiveHeadingChange).toHaveBeenCalled())
+    const reported = onActiveHeadingChange.mock.calls.at(-1)?.[0]
+    expect(headings.map((heading) => heading.id)).toContain(reported)
   })
 
   it('hangs the comment rail off the centered content column', () => {

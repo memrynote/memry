@@ -30,7 +30,7 @@
  * clicking anywhere on a node has always worked.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Excalidraw,
   convertToExcalidrawElements,
@@ -38,10 +38,17 @@ import {
 } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 import '@excalidraw/excalidraw/index.css'
+import { useReducedMotion } from 'motion/react'
 import { useTheme } from 'next-themes'
 import { ExternalLink, Link } from '@/lib/icons'
 import { copySceneAsImage, copySceneAsVector, toSkeleton } from './mind-map-export'
-import { hitMindMapBox, mindMapHoverAnchor, type MindMapHitElement } from './mind-map-hover'
+import {
+  hitMindMapBox,
+  mindMapBoxRect,
+  mindMapHoverAnchor,
+  mindMapHrefOf,
+  type MindMapHitElement
+} from './mind-map-hover'
 import type { MindMapElement } from './mind-map-types'
 import './mind-map-canvas.css'
 
@@ -54,6 +61,17 @@ import './mind-map-canvas.css'
 export interface MindMapControls {
   /** Frame the whole drawing again, whatever the user panned or zoomed to. */
   fit: () => void
+  /**
+   * Centre the camera on one box, named by the href it carries, and leave the
+   * zoom alone.
+   *
+   * The zoom is deliberately untouched: this is how the outline panel navigates
+   * a map that is already open, and a jump that also rescaled the picture would
+   * take away the reading distance the user chose. False when no box on the
+   * live scene carries that href, which is the caller's signal to do something
+   * else entirely rather than to leave the click doing nothing.
+   */
+  focus: (href: string) => boolean
   copyImage: () => Promise<void>
   copyVector: () => Promise<void>
 }
@@ -77,6 +95,25 @@ export interface MindMapHoverLabel {
 
 /** How far the pointer may travel between press and release and still be a click. */
 const CLICK_SLOP = 4
+
+/**
+ * How long the camera takes to fly to a focused box.
+ *
+ * Pinned rather than left to the library's own default, because the flash below
+ * has to outlast the flight: a ring that finished while the map was still
+ * moving would mark the arrival of nothing. An upgrade that changed the default
+ * would silently break that relationship.
+ */
+const FOCUS_CAMERA_MS = 250
+
+/**
+ * How long the ring stays on the box, flight included.
+ *
+ * The `mind-map-focus-flash` keyframes hold it solid over the flight and the
+ * beat after it, then fade — so the eye is led to the box rather than shown a
+ * marker that was already gone by the time the map settled.
+ */
+const FOCUS_FLASH_MS = 600
 
 interface MindMapHoverState {
   /**
@@ -104,6 +141,16 @@ interface MindMapCanvasProps {
   /** The deep link of the box that was clicked. See `handleMindMapLinkOpen`. */
   onOpenLink: (href: string) => void
   /**
+   * The box to open on, rather than the whole drawing — the section the user was
+   * reading when they asked for the map.
+   *
+   * Read at the moment the scene is fed, never watched: a value that moved the
+   * camera every time it changed would fight the user for it. Null, or an href
+   * no box carries, leaves the map framed whole, which is the only honest answer
+   * for a note with nothing above the fold to focus on.
+   */
+  initialFocusHref?: string | null
+  /**
    * Called with the controls once the surface is live, and with `null` when it
    * goes away, so the toolbar is never wired to a surface that is not there.
    */
@@ -117,14 +164,25 @@ export function MindMapCanvas({
   elements,
   hoverLabels,
   onOpenLink,
+  initialFocusHref = null,
   onControlsChange
 }: MindMapCanvasProps): React.JSX.Element {
   const { resolvedTheme } = useTheme()
+  const prefersReducedMotion = useReducedMotion()
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   // The same instance as a piece of state, purely so an effect can subscribe to
   // it once it exists: a ref assignment does not re-run one.
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null)
   const [hovered, setHovered] = useState<MindMapHoverState | null>(null)
+  /** The box the outline panel last sent the camera to, while its ring lasts. */
+  const [focusedHref, setFocusedHref] = useState<string | null>(null)
+  const [focusRect, setFocusRect] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
+  const flashRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   /** Last seen pointer, so a pan or a zoom can re-answer without a mouse move. */
   const pointerRef = useRef<PointerPosition | null>(null)
   /** Where the press started, so a drag to pan is not read as a click. */
@@ -142,14 +200,53 @@ export function MindMapCanvas({
     setApi(instance)
   }, [])
 
+  /**
+   * Latest focus target, kept where the scene effect can read it without
+   * depending on it. A layout effect rather than an assignment during render,
+   * and it runs before the passive effect below on the very first commit too.
+   */
+  const focusRef = useRef(initialFocusHref)
+  useLayoutEffect(() => {
+    focusRef.current = initialFocusHref
+  }, [initialFocusHref])
+
+  /**
+   * The live element carrying this href, or null.
+   *
+   * The LIVE scene, for the same reason the hit test reads it: the library
+   * regenerates every id on import, so the elements this was built from cannot
+   * be handed to the camera. `customData` is what survives.
+   */
+  const elementForHref = useCallback((href: string) => {
+    const api = apiRef.current
+    if (!api) return null
+    return (
+      api
+        .getSceneElements()
+        .find(
+          (element) =>
+            !element.isDeleted && mindMapHrefOf(element as unknown as MindMapHitElement) === href
+        ) ?? null
+    )
+  }, [])
+
   // Re-feeding the scene rather than remounting keeps the camera and the
   // library's own warm-up across a rebuild of the same note.
+  //
+  // Framed whole first, then centred on the focus target. The fit is what
+  // decides the ZOOM — there is no other source for a sensible one, and the
+  // centring step deliberately does not change it — and both land in the same
+  // frame, so the whole-map view is never a thing the user sees on the way past.
   useEffect(() => {
     const api = apiRef.current
     if (!api) return
     api.updateScene({ elements: convertToExcalidrawElements(toSkeleton(elements)) })
     api.scrollToContent(undefined, { fitToContent: true, animate: false })
-  }, [elements])
+
+    const href = focusRef.current
+    const target = href === null ? null : elementForHref(href)
+    if (target) api.scrollToContent(target, { animate: false })
+  }, [elements, elementForHref])
 
   /**
    * The box under a viewport point, read from the LIVE scene.
@@ -195,6 +292,41 @@ export function MindMapCanvas({
   }, [elements, hitAt, hoverLabels])
 
   /**
+   * Where the ring goes, against the camera as it is right now.
+   *
+   * Recomputed on every committed change for the same reason the affordance is,
+   * and then some: the camera is still flying when the ring appears, so a
+   * rectangle measured once at the click would sit where the box USED to be for
+   * the whole flight.
+   */
+  const syncFocus = useCallback((): void => {
+    const api = apiRef.current
+    if (!api || focusedHref === null) {
+      setFocusRect(null)
+      return
+    }
+
+    const target = elementForHref(focusedHref)
+    if (!target) {
+      setFocusRect(null)
+      return
+    }
+
+    const rect = mindMapBoxRect(target, api.getAppState())
+    // Same box, same place: hand back the very same object so a pan that does
+    // not move this node does not re-render the ring.
+    setFocusRect((current) =>
+      current &&
+      current.left === rect.left &&
+      current.top === rect.top &&
+      current.width === rect.width &&
+      current.height === rect.height
+        ? current
+        : rect
+    )
+  }, [elementForHref, focusedHref])
+
+  /**
    * A pan or a zoom moves the drawing under a pointer that never moved, so the
    * answer has to be recomputed from a change rather than from a mouse event.
    * Coalesced onto a frame because the library reports every committed state
@@ -207,6 +339,7 @@ export function MindMapCanvas({
       frameRef.current = requestAnimationFrame(() => {
         frameRef.current = null
         syncHover()
+        syncFocus()
       })
     })
     return () => {
@@ -214,7 +347,7 @@ export function MindMapCanvas({
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current)
       frameRef.current = null
     }
-  }, [api, syncHover])
+  }, [api, syncHover, syncFocus])
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent): void => {
@@ -262,6 +395,49 @@ export function MindMapCanvas({
     apiRef.current?.scrollToContent(undefined, { fitToContent: true, animate: true })
   }, [])
 
+  /**
+   * Neither `fitToContent` nor `fitToViewport` is passed, and that is the whole
+   * point: with no fit option the library only moves the camera, so the box
+   * arrives in the middle of the view at exactly the scale the user left it at.
+   */
+  const focus = useCallback(
+    (href: string): boolean => {
+      const api = apiRef.current
+      const target = api ? elementForHref(href) : null
+      if (!api || !target) return false
+
+      api.scrollToContent(target, {
+        animate: !prefersReducedMotion,
+        duration: FOCUS_CAMERA_MS
+      })
+
+      // Restarted rather than queued: clicking a second heading while the first
+      // ring is still up marks the second box, not both.
+      if (flashRef.current !== null) clearTimeout(flashRef.current)
+      setFocusedHref(href)
+      flashRef.current = setTimeout(() => {
+        flashRef.current = null
+        setFocusedHref(null)
+      }, FOCUS_FLASH_MS)
+      return true
+    },
+    [elementForHref, prefersReducedMotion]
+  )
+
+  // The ring appears at the click rather than on the next committed change: the
+  // camera reports its flight, but a focus that did not move it at all — the
+  // box was already centred — reports nothing to hang the first frame off.
+  useLayoutEffect(() => {
+    syncFocus()
+  }, [syncFocus])
+
+  useEffect(
+    () => () => {
+      if (flashRef.current !== null) clearTimeout(flashRef.current)
+    },
+    []
+  )
+
   // Read through the ref at call time, never captured at build time: the point
   // of exporting from the live surface is that it holds whatever the map shows
   // right now, expanded branches included.
@@ -278,8 +454,8 @@ export function MindMapCanvas({
   }, [])
 
   const controls = useMemo<MindMapControls>(
-    () => ({ fit, copyImage, copyVector }),
-    [fit, copyImage, copyVector]
+    () => ({ fit, focus, copyImage, copyVector }),
+    [fit, focus, copyImage, copyVector]
   )
 
   useEffect(() => {
@@ -330,6 +506,32 @@ export function MindMapCanvas({
         // Excalidraw's light theme.
         theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
       />
+
+      {focusRect && (
+        /* What the click landed on, said in the one language a bitmap surface
+           has. Decoration, like the hover card: the outline entry the user just
+           pressed already named this node in words, so repeating it to assistive
+           technology would announce the same thing twice. Never a pointer
+           target, and clipped to the map so a ring on a node at the edge cannot
+           spill over the toolbar. */
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <div
+            data-testid="mind-map-focus-ring"
+            className="mind-map-focus-ring absolute rounded-md ring-2 ring-accent-orange"
+            // Geometry on the drawing surface's own axes, not layout: a logical
+            // inset here would put the ring on the wrong side of an RTL map.
+            style={{
+              left: focusRect.left,
+              top: focusRect.top,
+              width: focusRect.width,
+              height: focusRect.height,
+              // Driven from the constant that also decides when the ring is
+              // unmounted, so the fade cannot outlive the element or end early.
+              animationDuration: `${FOCUS_FLASH_MS}ms`
+            }}
+          />
+        </div>
+      )}
 
       {label && hover && (
         /* Decoration on the picture, and deliberately so: it is a mouse-only

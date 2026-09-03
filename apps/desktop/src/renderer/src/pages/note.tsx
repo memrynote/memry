@@ -1310,6 +1310,29 @@ export function NotePage({ noteId }: NotePageProps) {
     (wikiTarget: string) => void handleInternalLinkClick(wikiTarget),
     [handleInternalLinkClick]
   )
+  // Both of these are refs rather than state, and for the same reason: they are
+  // read at the instant of a click or a mount and never rendered, so putting
+  // either in state would re-render this page on every scroll tick or every
+  // remount of the drawing surface for nothing.
+  //
+  // `activeHeadingRef` is where the map's camera lands when it opens;
+  // `mindMapFocusRef` is how an outline click moves it while it is open, and it
+  // is null exactly when there is no live map to move.
+  const activeHeadingRef = useRef<string | null>(null)
+  const handleActiveHeadingChange = useCallback((headingId: string | null) => {
+    activeHeadingRef.current = headingId
+  }, [])
+  const mindMapFocusRef = useRef<((blockId: string) => boolean) | null>(null)
+  const handleMindMapFocusChange = useCallback(
+    (focusBlock: ((blockId: string) => boolean) | null) => {
+      mindMapFocusRef.current = focusBlock
+    },
+    []
+  )
+  const focusMindMapBlock = useCallback(
+    (blockId: string) => mindMapFocusRef.current?.(blockId) === true,
+    []
+  )
   const mindMapNavigation = useMindMapNavigation({
     close: mindMap.close,
     expandBranch: mindMap.expandBranch,
@@ -1317,7 +1340,8 @@ export function NotePage({ noteId }: NotePageProps) {
     getTopElement: getNoteBody,
     smooth: !prefersReducedMotion,
     openNote: openLinkedNote,
-    openTask: handleLinkedTaskClick
+    openTask: handleLinkedTaskClick,
+    focusBlock: focusMindMapBlock
   })
 
   // ============================================================================
@@ -1568,7 +1592,8 @@ export function NotePage({ noteId }: NotePageProps) {
     <NoteLayout
       suppressScrollRestore={Boolean(initialHeadingText)}
       headings={headings}
-      onHeadingClick={mindMapNavigation.navigateToBlock}
+      onHeadingClick={mindMapNavigation.navigateFromOutline}
+      onActiveHeadingChange={handleActiveHeadingChange}
       actions={actionIcons}
       fullWidth={isFullWidth}
       contentWidth={noteContentWidth ?? undefined}
@@ -1580,6 +1605,8 @@ export function NotePage({ noteId }: NotePageProps) {
             noteId={noteId ?? ''}
             noteTitle={note.title}
             onActivateNode={mindMapNavigation.activateNode}
+            initialFocusBlockId={activeHeadingRef.current}
+            onFocusChange={handleMindMapFocusChange}
           />
         ) : undefined
       }

@@ -44,11 +44,16 @@ let top: HTMLElement
 /** Every scroll the run asked for, in order, with what it was aimed at. */
 let scrolled: Array<{ target: Element; options: boolean | ScrollIntoViewOptions | undefined }>
 
-function setup(options: { smooth?: boolean } = {}) {
+function setup(options: { smooth?: boolean; canFocus?: boolean } = {}) {
   const close = vi.fn()
   const openNote = vi.fn()
   const openTask = vi.fn()
   const expandBranch = vi.fn()
+  // What a live map answers: true once it has moved its camera onto the block.
+  // False is every other state — closed, not mounted, or asked for a block it
+  // never drew — and is the default here because most of this file is about
+  // the path taken when the map cannot answer.
+  const focusBlock = vi.fn(() => options.canFocus ?? false)
   const view = renderHook(() =>
     useMindMapNavigation({
       close,
@@ -57,10 +62,11 @@ function setup(options: { smooth?: boolean } = {}) {
       getTopElement: () => top,
       smooth: options.smooth ?? true,
       openNote,
-      openTask
+      openTask,
+      focusBlock
     })
   )
-  return { close, openNote, openTask, expandBranch, view }
+  return { close, openNote, openTask, expandBranch, focusBlock, view }
 }
 
 /** The block, once whatever gates the editor's render has let it through. */
@@ -155,7 +161,7 @@ describe('useMindMapNavigation', () => {
     expect(scrolled[0].target).toBe(top)
   })
 
-  it('sends a heading node to its own block, through the same call the outline makes', () => {
+  it('sends a heading node to its own block, and the outline lands in the same place', () => {
     const { view } = setup()
     const block = renderBlock('b-alpha')
 
@@ -163,11 +169,53 @@ describe('useMindMapNavigation', () => {
     const fromMap = [...scrolled]
     scrolled = []
 
-    // What the outline panel is handed, called with the same heading.
-    act(() => view.result.current.navigateToBlock('b-alpha'))
+    // The outline's own entry point, called with the same heading. It only
+    // diverges while a map is showing that block; with none, the two agree.
+    act(() => view.result.current.navigateFromOutline('b-alpha'))
 
     expect(fromMap).toEqual([{ target: block, options: { behavior: 'smooth', block: 'start' } }])
     expect(scrolled).toEqual(fromMap)
+  })
+
+  it('moves the open map\'s camera on an outline click, and leaves the map open', () => {
+    const { close, focusBlock, view } = setup({ canFocus: true })
+    renderBlock('b-alpha')
+
+    act(() => view.result.current.navigateFromOutline('b-alpha'))
+
+    expect(focusBlock).toHaveBeenCalledWith('b-alpha')
+    // The panel sits over the picture on purpose: on a map too big to see at
+    // once it is the only way to reach a far branch, so the click has to be a
+    // move rather than an exit.
+    expect(close).not.toHaveBeenCalled()
+    expect(scrolled).toEqual([])
+  })
+
+  it('falls back to opening the note when the map did not draw that block', () => {
+    const { close, focusBlock, view } = setup({ canFocus: false })
+    const block = renderBlock('b-alpha')
+
+    act(() => view.result.current.navigateFromOutline('b-alpha'))
+
+    // A heading folded behind a "+N more", or dropped at the node cap, has no
+    // box to move to. The click still has to go somewhere.
+    expect(focusBlock).toHaveBeenCalledWith('b-alpha')
+    expect(close).toHaveBeenCalledTimes(1)
+    expect(scrolled).toEqual([{ target: block, options: { behavior: 'smooth', block: 'start' } }])
+  })
+
+  it('still closes the map when a node on it is clicked, even though the map can focus', () => {
+    const { close, focusBlock, view } = setup({ canFocus: true })
+    const block = renderBlock('b-alpha')
+
+    act(() => view.result.current.activateNode(alpha))
+
+    // The regression this split exists to prevent: a box on the map is a place
+    // in the NOTE, so clicking it has to leave the map rather than re-centre on
+    // the thing the user just clicked.
+    expect(focusBlock).not.toHaveBeenCalled()
+    expect(close).toHaveBeenCalledTimes(1)
+    expect(scrolled).toEqual([{ target: block, options: { behavior: 'smooth', block: 'start' } }])
   })
 
   it('hands a wiki-link node to the page, leaving the map where it was', () => {
