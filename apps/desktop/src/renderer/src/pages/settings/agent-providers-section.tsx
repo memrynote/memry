@@ -172,6 +172,12 @@ export function AgentProvidersSection({
 
   const cliStatusText = (cli: AgentBackendStatus | undefined): string => {
     if (!cli) return t('agentProviders.cliAgents.status.notDetected')
+    // The agent runtime is down for the whole session (vault key unavailable);
+    // the CLI was never probed, so "Not detected" would be a guess — and a wrong
+    // one whenever the CLI is in fact installed.
+    if (cli.reason === 'agent_unavailable') {
+      return t('agentProviders.cliAgents.status.runtimeUnavailable')
+    }
     if (cli.available) {
       return cli.version
         ? t('agentProviders.cliAgents.status.detected', { version: cli.version })

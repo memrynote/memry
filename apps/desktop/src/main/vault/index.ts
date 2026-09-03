@@ -936,6 +936,14 @@ async function startVaultAgentServicesOnce(): Promise<void> {
   } catch (error) {
     logger.warn('Agent runtime failed to start:', error)
     agentHandle = null
+    // Without this the channels stay unregistered and every agent IPC call
+    // rejects with a bare "no handler" from Electron. startAgent() itself no
+    // longer bails on an unreadable vault key — it downgrades the transcript to
+    // memory — so reaching here means the runtime genuinely could not be built.
+    const { registerUnavailableAgentHandlers } = await import('../ipc/agent-handlers')
+    registerUnavailableAgentHandlers(
+      error instanceof Error && error.message ? error.message : 'Agent runtime failed to start'
+    )
   }
 }
 

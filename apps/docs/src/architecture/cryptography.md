@@ -30,12 +30,58 @@ passphrase ──Argon2id(salt)──▶ wrapping key
 
 Local-only development vaults can create a device master key without sign-in. memrynote stores a
 non-secret verifier in the local settings table so the SQLite vault stays bound to the keychain
-master key that produced it. If that verifier exists and the keychain key is missing or produces a
-different vault key, encrypted surfaces fail closed instead of silently creating a replacement key.
-First-device setup and recovery relinking rebind this local verifier immediately after the new
-master key is saved, before sync activation. If the verifier cannot be checked at startup, the sync
+master key that produced it. If that verifier exists and the keychain key is missing, encrypted
+surfaces fail closed instead of silently creating a replacement key. First-device setup and recovery
+relinking rebind this local verifier immediately after the new master key is saved, before sync
+activation. If the verifier cannot be checked at startup, the sync
 runtime stays offline instead of starting queues, CRDT seeding, or snapshot uploads with missing
 vault-key credentials.
+
+### A verifier that arrived from another machine
+
+A vault folder is portable: people move it between machines with git, iCloud Drive or Dropbox. The
+verifier travels inside `<vault>/.memry/data.db`, but the keychain master key that produced it does
+not — so a moved vault routinely opens against a key that never wrote it. Failing closed there would
+disable every key-bound surface on a vault whose notes, journals, tasks and canvases all open fine.
+
+A verifier mismatch is therefore resolved rather than always refused:
+
+| Device state                               | Outcome                                                                                                                                        |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| No account on this device                  | Rebind. There is no recovery phrase to re-derive the key that sealed the existing rows, so they are unrecoverable by definition.               |
+| Account confirms the local key (`match`)   | Rebind. The vault's verifier is the stale one — it arrived from another machine, or a re-link rebound only the vault that happened to be open. |
+| Account says the key is wrong (`mismatch`) | Fail, and raise the vault recovery prompt so the recovery phrase can restore the correct key — which also restores the encrypted rows.         |
+| `transition` or `unknown`                  | Fail. Never rebind on an uncertain read.                                                                                                       |
+
+A missing master key follows the same rule rather than a separate one. With an account present the
+key is restorable from the recovery phrase, so creating a replacement would strand everything the
+account already encrypted — that still fails, and now classifies as `recovery-needed` so the prompt
+actually appears. Without an account, nobody can reconstruct what the verifier was bound to, so the
+vault mints a key and rebinds instead of dead-ending. That is the same vault folder arriving on a
+machine which never had a key.
+
+The account check lives behind a port that the sync layer injects at startup, keeping `crypto/` free
+of `sync/` imports; its default verdict is `unknown`, so an unwired caller can only be conservative.
+A rebind does not count as passing the verifier check, so it never completes the master key's
+safeStorage migration — the OS keychain copy survives.
+
+### Agent Chat does not depend on the key it does not need
+
+The vault key reaches exactly one part of the agent runtime: at-rest encryption of the conversation
+and message rows. CLI detection, the model catalogue, the MCP server and every tool run touch no key
+material. Bootstrap used to refuse to build any of it when the key was unresolvable, so a keychain
+that rejected a read — or a vault opened on a second machine — disabled the whole feature, and the
+model picker reported the CLIs as missing.
+
+The runtime now starts either way. Without a key it runs against in-memory conversation and message
+stores (`agent/storage/ephemeral-stores.ts`): the session works end to end and the transcript is
+discarded when the process exits. Writing it under a throwaway key instead would leave rows in a
+production database that nothing can ever decrypt. `GET_BACKEND_STATUSES` reports
+`historyPersisted: false` so the conversation view can say the transcript will not be kept.
+
+`registerUnavailableAgentHandlers` still exists for the case where the runtime genuinely cannot be
+built; `startVaultAgentServices` calls it so the agent channels answer with a reason instead of
+Electron's bare "no handler".
 
 The keychain account is suffixed per device: production installs use the bare account, while
 explicit dev profiles (`A`/`B`/`C`) and e2e runs keep their own suffix. Plain `pnpm dev` scopes its

@@ -79,6 +79,8 @@ interface AgentHandlerDeps {
   conversations: ConversationStore
   messages: MessageStore
   backends: AgentBackendRegistry
+  /** False when the transcript is in-memory only — see agent/storage/ephemeral-stores.ts. */
+  historyPersisted: boolean
   previewNoteUpdate: (input: {
     id: string
     mode: 'append' | 'prepend' | 'replace'
@@ -362,7 +364,9 @@ export function registerUnavailableAgentHandlers(reason: string): void {
       available: false,
       reason: 'agent_unavailable',
       detail: message
-    }
+    },
+    // Nothing runs at all on this path, so there is no transcript to warn about.
+    historyPersisted: true
   }))
   registerUnavailableHandler(AgentChannels.invoke.LIST_BACKEND_MODELS, (_event, payload) => {
     const request = AgentBackendModelListRequestSchema.parse(payload)
@@ -447,7 +451,8 @@ async function getBackendStatuses(deps: AgentHandlerDeps): Promise<BackendStatus
   return {
     claude_cli: claude,
     codex_cli: codex,
-    local_openai_compatible: local
+    local_openai_compatible: local,
+    historyPersisted: deps.historyPersisted
   }
 }
 

@@ -76,6 +76,12 @@ vi.mock('electron', () => ({
   dialog: {
     showOpenDialog: vi.fn(async () => mocks.dialogResult)
   },
+  // A failed agent start now registers fallback IPC handlers so agent channels
+  // answer with a reason instead of Electron's bare "no handler".
+  ipcMain: {
+    handle: vi.fn(),
+    removeHandler: vi.fn()
+  },
   BrowserWindow: {
     getAllWindows: () => [
       {

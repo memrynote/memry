@@ -40,4 +40,12 @@ describe('classifyVaultKeyError', () => {
       vaultRecoveryReason(new Error('Vault key verifier exists but master key is missing'))
     ).toBe('master-key-missing')
   })
+
+  it('routes a key an account can restore to recovery, not to a generic failure', () => {
+    const error = new Error(
+      'Master key not found in keychain — cannot create a local vault key while sync credentials exist'
+    )
+    expect(classifyVaultKeyError(error)).toBe('recovery-needed')
+    expect(vaultRecoveryReason(error)).toBe('master-key-missing')
+  })
 })
