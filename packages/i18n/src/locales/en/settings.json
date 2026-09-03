@@ -1619,7 +1619,7 @@
         "detectedNoVersion": "Detected",
         "belowMinimum": "v{version} installed — needs {minimum} or newer",
         "notDetected": "Not detected",
-        "runtimeUnavailable": "Unavailable — this vault needs to be unlocked"
+        "runtimeUnavailable": "Unavailable — the agent runtime did not start"
       }
     },
     "permissions": {

@@ -139,6 +139,7 @@
     "title": "Agent chat",
     "loading": "Loading agent chat...",
     "conversationLoading": "Conversation loading...",
+    "historyNotSaved": "This device can't unlock the vault, so this conversation won't be saved when you close the app.",
     "newConversation": "New conversation",
     "history": "Conversation history",
     "openInTab": "Open conversation in tab",
@@ -223,7 +224,7 @@
         "localEmpty": "No models found — check Settings",
         "localSetup": "Set up in Settings…",
         "cliSetup": "Not detected — set up in Settings…",
-        "runtimeUnavailable": "Agent unavailable — this vault needs to be unlocked"
+        "runtimeUnavailable": "Agent unavailable — open Settings…"
       },
       "settings": {
         "reasoning": "Reasoning",

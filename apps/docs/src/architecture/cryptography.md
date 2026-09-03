@@ -58,6 +58,24 @@ of `sync/` imports; its default verdict is `unknown`, so an unwired caller can o
 A rebind does not count as passing the verifier check, so it never completes the master key's
 safeStorage migration — the OS keychain copy survives.
 
+### Agent Chat does not depend on the key it does not need
+
+The vault key reaches exactly one part of the agent runtime: at-rest encryption of the conversation
+and message rows. CLI detection, the model catalogue, the MCP server and every tool run touch no key
+material. Bootstrap used to refuse to build any of it when the key was unresolvable, so a keychain
+that rejected a read — or a vault opened on a second machine — disabled the whole feature, and the
+model picker reported the CLIs as missing.
+
+The runtime now starts either way. Without a key it runs against in-memory conversation and message
+stores (`agent/storage/ephemeral-stores.ts`): the session works end to end and the transcript is
+discarded when the process exits. Writing it under a throwaway key instead would leave rows in a
+production database that nothing can ever decrypt. `GET_BACKEND_STATUSES` reports
+`historyPersisted: false` so the conversation view can say the transcript will not be kept.
+
+`registerUnavailableAgentHandlers` still exists for the case where the runtime genuinely cannot be
+built; `startVaultAgentServices` calls it so the agent channels answer with a reason instead of
+Electron's bare "no handler".
+
 The keychain account is suffixed per device: production installs use the bare account, while
 explicit dev profiles (`A`/`B`/`C`) and e2e runs keep their own suffix. Plain `pnpm dev` scopes its
 profile by checkout-path hash, but all such worktrees share a single stable `dev` keychain suffix so

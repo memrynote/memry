@@ -148,19 +148,37 @@ describe('startAgent', () => {
     vi.clearAllMocks()
   })
 
-  it('registers unavailable IPC handlers when the local vault key cannot be created', async () => {
+  // The transcript is the only thing that needs the vault key. A vault folder
+  // opened on a second machine, or a keychain that refuses the read, used to
+  // take the CLIs, the model catalogue and every tool down with it.
+  it('still starts the runtime when the local vault key cannot be resolved', async () => {
     mocks.getOrInitializeLocalVaultKey.mockRejectedValueOnce(new Error('keychain locked'))
 
     const agent = await startAgent()
 
-    expect(mocks.registerUnavailableAgentHandlers).toHaveBeenCalledWith('keychain locked')
+    expect(mocks.registerUnavailableAgentHandlers).not.toHaveBeenCalled()
     expect(mocks.getOrCreateVaultUuid).toHaveBeenCalledWith({ db: true })
+    expect(mocks.runtimeInstall).toHaveBeenCalled()
+    // The database-backed stores are the ones that would write rows nothing can
+    // decrypt, so those specifically must stay out of it.
     expect(mocks.createConversationStore).not.toHaveBeenCalled()
-    expect(mocks.runtimeInstall).not.toHaveBeenCalled()
+    expect(mocks.createMessageStore).not.toHaveBeenCalled()
+    expect(mocks.registerAgentHandlers).toHaveBeenCalledWith(
+      expect.objectContaining({ historyPersisted: false })
+    )
 
     await agent.shutdown()
 
     expect(mocks.unregisterAgentHandlers).toHaveBeenCalled()
+  })
+
+  it('persists the transcript when the vault key is available', async () => {
+    await startAgent()
+
+    expect(mocks.createConversationStore).toHaveBeenCalled()
+    expect(mocks.registerAgentHandlers).toHaveBeenCalledWith(
+      expect.objectContaining({ historyPersisted: true })
+    )
   })
 
   it('creates stores, installs runtime, and registers IPC handlers', async () => {

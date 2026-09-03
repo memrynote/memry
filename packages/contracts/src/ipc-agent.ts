@@ -225,7 +225,13 @@ export type AgentBackendStatus = z.infer<typeof AgentBackendStatusSchema>
 export const BackendStatusesResponseSchema = z.object({
   claude_cli: AgentBackendStatusSchema,
   codex_cli: AgentBackendStatusSchema,
-  local_openai_compatible: AgentBackendStatusSchema
+  local_openai_compatible: AgentBackendStatusSchema,
+  /**
+   * False when this device cannot produce the vault key, so the session runs
+   * against in-memory stores and the transcript dies with the process. The
+   * backends themselves are unaffected — only the history is.
+   */
+  historyPersisted: z.boolean().optional()
 })
 export type BackendStatusesResponse = z.infer<typeof BackendStatusesResponseSchema>
 

@@ -214,7 +214,9 @@ describe('agent IPC handlers', () => {
       local_openai_compatible: expect.objectContaining({
         backend: 'local_openai_compatible',
         available: false
-      })
+      }),
+      // Nothing runs on this path, so there is no transcript to warn about.
+      historyPersisted: true
     })
     expect(findHandler(AgentChannels.invoke.GET_PREFERENCES)(null)).toEqual({
       accessMode: 'vault_only',

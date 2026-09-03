@@ -558,7 +558,7 @@ describe('Composer', () => {
 
     expect(
       await screen.findAllByRole('menuitem', {
-        name: 'Agent unavailable — this vault needs to be unlocked'
+        name: 'Agent unavailable — open Settings…'
       })
     ).toHaveLength(2)
     expect(

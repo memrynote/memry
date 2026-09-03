@@ -64,6 +64,14 @@ export function ConversationView({
       }}
     >
       {conversation && !isWorkspace && <ConversationHeader conversation={conversation} />}
+      {state.backendStatuses?.historyPersisted === false && (
+        <p
+          role="status"
+          className="shrink-0 border-b border-border/60 bg-muted/40 px-4 py-2 text-xs text-muted-foreground"
+        >
+          {t('agentChat.historyNotSaved')}
+        </p>
+      )}
       <MessageStream
         messages={messages}
         inFlight={inFlight}

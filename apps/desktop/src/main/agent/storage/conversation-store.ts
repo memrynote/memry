@@ -85,11 +85,11 @@ function parseJsonColumn<T>(value: T | string | null, fallback: T): T {
   return JSON.parse(value) as T
 }
 
-function tickClock(clock: VectorClock, deviceId: string): VectorClock {
+export function tickClock(clock: VectorClock, deviceId: string): VectorClock {
   return { ...clock, [deviceId]: (clock[deviceId] ?? 0) + 1 }
 }
 
-function tickFieldClocks(
+export function tickFieldClocks(
   fieldClocks: FieldClocks,
   deviceId: string,
   fields: readonly AgentConversationField[]
