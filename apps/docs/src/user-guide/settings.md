@@ -284,9 +284,11 @@ Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — pl
 
 ### Zoom
 
-**Zoom Level** — A slider from 50% to 200% in 10% steps, default 100%. It scales the entire interface, not just text: icons, spacing, images and note content all grow and shrink together, live as you drag. The reset button next to the slider puts it back to 100%.
+**Zoom Level** — A `−` / `+` stepper running from 50% to 200% in 10% steps, default 100%, with the current level shown between the two buttons. It scales the entire interface, not just text: icons, spacing, images and note content all grow and shrink together. The reset button next to the stepper puts it back to 100%.
 
-`Cmd/Ctrl` `+` and `Cmd/Ctrl` `-` step the zoom, and `Cmd/Ctrl` `0` returns to 100%. The View menu carries the same three commands. All of them move the slider in Settings, because they change the same saved value.
+It is a stepper rather than a slider on purpose. Zooming rescales the settings page itself, so a slider track would shift out from under the pointer mid-drag and the value would be almost impossible to land on.
+
+`Cmd/Ctrl` `+` and `Cmd/Ctrl` `-` step the zoom, and `Cmd/Ctrl` `0` returns to 100%, including while you are typing in a note. The View menu carries the same three commands. All of them update the reading in Settings, because they change the same saved value.
 
 Zoom is the one Appearance setting that does **not** sync to your other devices, and that is deliberate: it compensates for the physical screen you are looking at, so a 27-inch desktop and a 13-inch laptop each keep their own level. It persists across restarts on the device where you set it.
 
