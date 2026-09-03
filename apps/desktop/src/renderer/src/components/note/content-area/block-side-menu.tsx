@@ -17,7 +17,7 @@
    drag-handle items type the editor as `<any, any, any>`; narrowing here would
    make Memry's heterogeneous block schema unassignable at every call site. */
 
-import { useCallback, useMemo, type FC, type ReactNode } from 'react'
+import { useCallback, useMemo, type ComponentProps, type FC, type ReactNode } from 'react'
 import {
   BlockColorsItem,
   RemoveBlockItem,
@@ -308,13 +308,22 @@ export interface BlockSideMenuProps {
   onRequestMove?: (blockId: string) => void
 }
 
+interface BlockSideMenuControllerProps extends BlockSideMenuProps {
+  /** Passed straight to BlockNote so the caller can reposition the menu. */
+  floatingUIOptions?: ComponentProps<typeof SideMenuController>['floatingUIOptions']
+}
+
 /**
  * Mount inside `<BlockNoteView>` to replace the stock side menu.
  *
  * `SideMenuController` renders its `sideMenu` component with no props, so the
  * handlers are closed over here rather than threaded through BlockNote.
  */
-export function BlockSideMenuController({ onAddComment, onRequestMove }: BlockSideMenuProps) {
+export function BlockSideMenuController({
+  onAddComment,
+  onRequestMove,
+  floatingUIOptions
+}: BlockSideMenuControllerProps) {
   const { t } = useT('notes')
 
   const dragHandleMenu = useMemo<FC>(
@@ -331,7 +340,7 @@ export function BlockSideMenuController({ onAddComment, onRequestMove }: BlockSi
   // labels themselves are resolved inside each item.
   void t
 
-  return <SideMenuController sideMenu={sideMenu} />
+  return <SideMenuController sideMenu={sideMenu} floatingUIOptions={floatingUIOptions} />
 }
 
 function MemryDragHandleMenu({ onAddComment, onRequestMove }: BlockSideMenuProps) {

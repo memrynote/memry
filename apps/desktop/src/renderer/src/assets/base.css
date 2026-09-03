@@ -367,6 +367,18 @@
   padding: 2px 0;
 }
 
+/* ===== BULLET MARKER ALIGNMENT =====
+   BlockNote gives the bullet's ::before `height: 0; overflow: visible`, so the
+   glyph is drawn out of a zero-height box pinned to the top of the content and
+   lands ~1px above the row's other markers — the drag handle, the plus and the
+   fold chevron, which all centre on the same 30px box. Measured, not guessed:
+   at the default size the dot's ink spans 219..222 where the handles' spans
+   centre on 221.5. */
+:root .bn-block-content[data-content-type='bulletListItem']::before {
+  position: relative;
+  top: 1px;
+}
+
 /* ===== NESTED INDENT GUIDE ALIGNMENT =====
    BlockNote's default vertical guide line for nested blocks sits at left:-20px
    on the child .bn-block-outer, which lands ~6px left of where every block
@@ -383,6 +395,110 @@
    specificity loses on cascade order. */
 :root .bn-block-group .bn-block-group > .bn-block-outer::before {
   left: -14px !important;
+}
+
+/* ===== TOGGLE ARROW SIZE =====
+   BlockNote draws the toggle block's chevron at 18px, a size larger than the
+   text and the bullet/number markers beside it (user feedback). At 14px the
+   button (14px + 2 x 3px padding = 20px) centres its glyph 10px from the
+   content's inline start — where every other block marker's centre already
+   sits, per the alignment note above. `!important` for the same cascade
+   reason: @blocknote/shadcn/style.css is JS-imported and lands after this
+   file. */
+:root .bn-toggle-button > svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* ===== BULLET FOLD =====
+   A bullet with nested blocks folds from a chevron in the gutter beside it —
+   the outliner gesture that used to need the separate toggle block type. The
+   markup is a widget decoration from `bullet-collapse-plugin.ts`, and the fold
+   is view state only: nothing here reaches the vault file.
+
+   `.bn-block` is the containing block, not `.bn-block-outer`: only NESTED
+   outers are `position: relative` by default, so a top-level bullet would
+   otherwise anchor its chevron against the whole editor. `:has()` without a
+   child combinator on purpose — review mode wraps block content in extra
+   `[data-type='modification']` divs, and matching ancestors too is harmless
+   when only the nearest positioned one is used. */
+:root .bn-block:has(.memry-bullet-toggle) {
+  position: relative;
+}
+
+:root .memry-bullet-toggle {
+  position: absolute;
+  /* 20px = BULLET_FOLD_GUTTER, the same width ContentArea shifts BlockNote's
+     drag handle by so the two never overlap. */
+  inset-inline-start: -20px;
+  /* Aligned on BlockNote's side menu, not on the text: the drag handle and the
+     plus sit in a fixed box anchored at the block's top edge (`.bn-side-menu`),
+     so the same height from the same edge puts all three glyph centres on one
+     line at every font size — and keeps the chevron on the FIRST line of a
+     block that wraps, which is where the handle stays too. The height is the
+     `.bn-side-menu` rule below, restated: one body line box. */
+  inset-block-start: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 18px;
+  block-size: calc(1.5rem + 2px);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  /* Opaque, not transparent: at depth two and beyond the nested-indent guide
+     line runs through these pixels, and a chevron with the line drawn across
+     it reads as a glyph with a bar through it. */
+  background-color: var(--background);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  opacity: 0;
+  user-select: none;
+  transition: opacity 120ms var(--ease-out);
+}
+
+/* Revealed by hovering the bullet's own row — `~` from the content, so
+   hovering a CHILD row (which lives in the sibling .bn-block-group) never
+   surfaces the parent's chevron. Its own :hover keeps it up while the pointer
+   crosses into the gutter, and a folded bullet shows it permanently: with the
+   children gone it is the only sign anything is hidden. */
+:root .bn-block-content:hover ~ .memry-bullet-toggle,
+:root .memry-bullet-toggle:hover,
+:root .memry-bullet-toggle:focus-visible,
+:root .memry-bullet-toggle[data-collapsed='true'] {
+  opacity: 1;
+}
+
+:root .memry-bullet-toggle:hover {
+  background-color: var(--bn-colors-hovered-background);
+  color: var(--foreground);
+}
+
+:root .memry-bullet-toggle svg {
+  inline-size: 14px;
+  block-size: 14px;
+  transition: transform 120ms var(--ease-out);
+}
+
+/* The glyph points along the reading direction when folded and down when
+   open, so the rotation is the same 90deg in both directions. */
+:root .memry-bullet-toggle[data-collapsed='false'] svg {
+  transform: rotate(90deg);
+}
+
+[dir='rtl'] .memry-bullet-toggle[data-collapsed='true'] svg {
+  transform: rotate(180deg);
+}
+
+:root .memry-collapsed-children {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root .memry-bullet-toggle,
+  :root .memry-bullet-toggle svg {
+    transition: none;
+  }
 }
 
 /* ===== TABLE CELLS ===== */

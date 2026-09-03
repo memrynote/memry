@@ -10,6 +10,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   blockNoteOptions: null as any,
   blocks: new Map<string, any>(),
   suggestionControllers: [] as any[],
+  sideMenuControllers: [] as any[],
   pasteSelect: null as
     null | ((option: 'url' | 'mention' | 'embed' | 'bookmark', url: string) => void),
   handleChange: vi.fn(),
@@ -105,7 +106,10 @@ vi.mock('@blocknote/react', () => ({
   createReactBlockSpec: vi.fn((config: unknown) => ({ config, implementation: {} })),
   useExtensionState: vi.fn(() => undefined),
   SideMenu: () => <div data-testid="side-menu" />,
-  SideMenuController: () => <div data-testid="side-menu-controller" />,
+  SideMenuController: (props: Record<string, unknown>) => {
+    contentAreaMocks.sideMenuControllers.push(props)
+    return <div data-testid="side-menu-controller" />
+  },
   BlockColorsItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   RemoveBlockItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SuggestionMenuController: (props: Record<string, unknown>) => {
@@ -481,6 +485,7 @@ describe('ContentArea', () => {
     vi.clearAllMocks()
     vi.useRealTimers()
     contentAreaMocks.suggestionControllers = []
+    contentAreaMocks.sideMenuControllers = []
     contentAreaMocks.pasteSelect = null
     contentAreaMocks.blockNoteOptions = null
     contentAreaMocks.useSyncState = { status: 'error' }
