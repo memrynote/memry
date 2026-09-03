@@ -15,7 +15,8 @@ export const WAITLIST_CAMPAIGNS = {
   syncConversion: 'waitlist_sync_conversion',
   tasksDeepDive: 'waitlist_tasks_deep_dive',
   openBeta: 'open_beta_launch',
-  betaUpdateAugust: 'beta_update_2026_08'
+  betaUpdateAugust: 'beta_update_2026_08',
+  betaUpdateSeptember: 'beta_update_2026_09'
 } as const
 
 export type WaitlistCampaignId = (typeof WAITLIST_CAMPAIGNS)[keyof typeof WAITLIST_CAMPAIGNS]
