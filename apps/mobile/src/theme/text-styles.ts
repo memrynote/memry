@@ -66,11 +66,13 @@ export const textStyles = {
     letterSpacing: 0.1
   },
   serifBody: { fontFamily: fontFamilies.serif, fontSize: 18, lineHeight: 28, letterSpacing: 0 },
-  serifTitle: {
-    fontFamily: fontFamilies.serifSemiBold,
-    fontSize: 26,
-    lineHeight: 32,
-    letterSpacing: -0.26
+  // DESIGN.md maps note titles to the structural display role, not the
+  // editorial serif.
+  noteTitle: {
+    fontFamily: fontFamilies.display,
+    fontSize: 28,
+    lineHeight: 28,
+    letterSpacing: -0.56
   },
   mono: { fontFamily: fontFamilies.mono, fontSize: 13, lineHeight: 20, letterSpacing: 0 }
 } as const satisfies Record<string, TextVariantStyle>

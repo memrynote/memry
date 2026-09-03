@@ -25,11 +25,13 @@ import {
   FolderOpen,
   FolderPlus,
   Frame,
+  Hash,
   House,
   Image,
   Inbox,
   Key,
   Link,
+  List,
   Lock,
   Mail,
   Mic,
@@ -42,9 +44,11 @@ import {
   Share2,
   SlidersHorizontal,
   SquareCheck,
+  SquareCheckBig,
   Tag,
   Trash2,
   TriangleAlert,
+  Type,
   User,
   X
 } from 'lucide-react-native'
@@ -105,7 +109,13 @@ const glyphs = {
   canvas: Frame,
   user: User,
   billing: CreditCard,
-  project: FolderKanban
+  project: FolderKanban,
+  list: List,
+  text: Type,
+  hash: Hash,
+  // `task` is already SquareCheck; the properties registry needs the filled
+  // variant for the checkbox type.
+  'square-check-big': SquareCheckBig
 } as const
 
 export type IconName = keyof typeof glyphs
