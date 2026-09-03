@@ -10,8 +10,6 @@ import path from 'node:path'
 import { app } from 'electron'
 
 import { createLogger } from '../lib/logger'
-import { toSafeToken } from '@memry/contracts/telemetry-api'
-
 import { trackMainEvent } from './track'
 
 const logger = createLogger('CrashMarker')
@@ -42,6 +40,15 @@ interface SessionMarker {
 // but the marker is a file on disk: anything that survived a hand edit or a torn
 // write must degrade to the plain code rather than ship as a dimension value.
 const SHUTDOWN_STEP_TOKEN = /^[a-z][a-z0-9-]{0,39}$/
+
+// The marker's string fields, as they may appear in a shipped message. This
+// REJECTS rather than substitutes: `toSafeToken` would turn a stray
+// /Users/kaan/secret.md into _Users_kaan_secret_md, which still leaks its
+// structure — the same reasoning TYPED_ERROR_CODE is built on.
+const MARKER_FIELD_TOKEN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/
+
+const markerField = (value: string | undefined, fallback: string): string =>
+  value && MARKER_FIELD_TOKEN.test(value) ? value : fallback
 
 const shutdownTimeoutCode = (step: string | undefined): string =>
   step && SHUTDOWN_STEP_TOKEN.test(step)
@@ -102,15 +109,23 @@ export const detectUncleanShutdown = (): void => {
         : 'UNCLEAN_SHUTDOWN'
   // The errorCode alone is the whole Error Tracking issue title, so an
   // UNCLEAN_SHUTDOWN row said nothing about which session died or where (#1989).
-  // Every field here is already bounded — an enum, a step token, a version, a
-  // duration — so the message is assembled rather than redacted.
+  //
+  // Every interpolated field is bounded before it lands here, and the join is
+  // capped, for the same reason SHUTDOWN_STEP_TOKEN exists: the marker is a file
+  // on disk, and a hand edit or a torn write can put anything in these fields.
+  // An over-512 message fails TelemetryErrorDetailSchema at the sync-server,
+  // which 400s the WHOLE batch — and the client classifies 4xx as permanently
+  // rejected, so up to 100 unrelated events would be dropped every launch until
+  // the marker cleared.
   const message = [
-    `Unclean shutdown [failure=${marker?.shutdownFailure ?? 'none'}]`,
-    `[step=${toSafeToken(marker?.shutdownStep, 'unknown')}]`,
-    `[prior_version=${toSafeToken(marker?.appVersion, 'unknown')}]`,
+    `Unclean shutdown [failure=${markerField(marker?.shutdownFailure, 'none')}]`,
+    `[step=${markerField(marker?.shutdownStep, 'unknown')}]`,
+    `[prior_version=${markerField(marker?.appVersion, 'unknown')}]`,
     `[uptime_ms=${durationMs ?? 'unknown'}]`,
     `[marker=${marker ? 'parsed' : 'unreadable'}]`
-  ].join(' ')
+  ]
+    .join(' ')
+    .slice(0, 512)
 
   trackMainEvent('app_crashed', {
     surface: 'app',

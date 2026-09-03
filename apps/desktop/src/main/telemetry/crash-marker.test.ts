@@ -105,6 +105,28 @@ describe('crash marker', () => {
     )
   })
 
+  // The marker is a file on disk. An over-512 message fails the schema at the
+  // sync-server, which 400s the whole batch and the client then drops it for
+  // good — so a torn write must not cost 100 unrelated events.
+  it('bounds a corrupt marker field instead of shipping it', () => {
+    fs.writeFileSync(
+      markerFile(),
+      JSON.stringify({
+        sessionId: 'prior',
+        startedAt: new Date('2026-08-06T10:00:00.000Z').toISOString(),
+        lastAliveAt: new Date('2026-08-06T10:00:01.000Z').toISOString(),
+        shutdownFailure: `/Users/kaan/${'x'.repeat(600)}.md`
+      })
+    )
+
+    detectUncleanShutdown()
+
+    const [, options] = vi.mocked(trackMainEvent).mock.calls[0]
+    expect(options.error?.message).toBe(
+      'Unclean shutdown [failure=none] [step=unknown] [prior_version=unknown] [uptime_ms=1000] [marker=parsed]'
+    )
+  })
+
   it('still emits app_crashed when the marker is unparseable — presence IS the signal', () => {
     // #given a corrupt marker
     fs.writeFileSync(markerFile(), 'not json at all')

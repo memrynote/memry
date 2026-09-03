@@ -245,10 +245,10 @@ describe('telemetry diagnostics', () => {
           error: expect.objectContaining({ stack: expect.stringContaining('at ') })
         })
       )
-      // #and the reason's value never ships
-      const serialized = JSON.stringify(trackMainEventMock.mock.calls[0])
-      expect(serialized).not.toContain('blew up')
-      expect(serialized).not.toContain('@memrynote.com')
+      // #and the reason's text ships redacted rather than dropped (#1989): the
+      // e-mail is masked, the rest is what makes the issue readable
+      const [, options] = trackMainEventMock.mock.calls[0]
+      expect(options.error.message).toBe('vault sync for <email> blew up')
     })
 
     it('adopts the frames of a cross-realm error that fails instanceof Error', () => {
@@ -269,6 +269,10 @@ describe('telemetry diagnostics', () => {
           error: expect.objectContaining({ stack: expect.stringContaining('at loadVault') })
         })
       )
+      // The message rides along, with the home path collapsed and the note
+      // basename hashed away.
+      const [, options] = trackMainEventMock.mock.calls[0]
+      expect(options.error.message).toBe('opening ~/[name].md failed')
       expect(JSON.stringify(trackMainEventMock.mock.calls[0])).not.toContain('private.md')
     })
 

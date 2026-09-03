@@ -213,7 +213,39 @@ describe('openCrdtPersistence telemetry', () => {
     expect(message).toContain('CRDT persistence unavailable at binding-in-use')
     expect(message).toContain('transport=node')
     expect(message).toContain('0xC0000005')
-    expect(message.length).toBeLessThanOrEqual(512)
+  })
+
+  // This event is ~100% win32, where the store path is C:\\Users\\<name>\\... and
+  // is masked by a DIFFERENT regex than the darwin case above. Pinning only the
+  // darwin branch would leave the branch that always fires unguarded.
+  it('redacts a Windows store path out of the reason', async () => {
+    mockPreflight.mockResolvedValue({
+      ok: false,
+      stage: 'binding-in-use',
+      transport: 'node',
+      reason: 'access violation at C:\\Users\\Kaan\\AppData\\Roaming\\Memry\\crdt-store'
+    })
+
+    expect(await openCrdtPersistence(STORE)).toBeNull()
+
+    const event = reportedEvent()
+    expect(JSON.stringify(event)).not.toContain('Kaan')
+  })
+
+  // A reason is a native error string and has no length contract. Over 512 chars
+  // the sync-server 400s the whole batch and the client drops it permanently.
+  it('caps the message so an oversized reason cannot 400 the batch', async () => {
+    mockPreflight.mockResolvedValue({
+      ok: false,
+      stage: 'binding-in-use',
+      transport: 'node',
+      reason: 'access violation reading location '.repeat(120)
+    })
+
+    expect(await openCrdtPersistence(STORE)).toBeNull()
+
+    const { message } = reportedEvent().error as { message: string }
+    expect(message).toHaveLength(512)
   })
 
   it('leaves the store alone when the control directory cannot be cleared', async () => {
