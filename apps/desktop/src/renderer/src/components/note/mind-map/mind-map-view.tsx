@@ -14,16 +14,22 @@
  *
  * Mount lifetime, decided here because this is where viewport state arrives:
  * the drawing surface is mounted on toggle and unmounted on close, and the
- * camera is NOT persisted. Every open frames the whole map. The map is a
- * derived view rebuilt from the note each time it opens, so a restored camera
- * could point at coordinates the new drawing no longer uses — the same reason
- * the map's expansion state is not persisted either. And the loss costs
- * nothing: reopening the map puts the camera exactly where "Fit to view" puts
- * it, so the state is one click from recovery rather than something to store,
- * parse and keep compatible across versions.
+ * camera is NOT persisted. The map is a derived view rebuilt from the note each
+ * time it opens, so a restored camera could point at coordinates the new drawing
+ * no longer uses — the same reason the map's expansion state is not persisted
+ * either. And the loss costs nothing: reopening the map puts the camera on the
+ * section the reader was in, and "Fit to view" is one click away.
+ *
+ * Where a fresh camera POINTS is decided here too. Framing the whole map is the
+ * right answer only for a reader who has nowhere in particular to be; anyone who
+ * scrolled to a section and then asked for the picture asked for the picture OF
+ * THAT SECTION, so the block they were reading is resolved to a box and handed
+ * down as the opening target. It is resolved here rather than below because this
+ * is the layer holding the map, and only the map knows whether a given block was
+ * drawn at all.
  */
 
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { Focus, Image, PenTool, Save } from '@/lib/icons'
@@ -33,6 +39,7 @@ import { buildMemryHref } from '@/lib/memry-links'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { canvasService } from '@/services/canvas-service'
 import { mindMapDestinations } from './mind-map-destination'
+import { mindMapHrefForBlock } from './mind-map-focus'
 import { mindMapHrefOf } from './mind-map-hover'
 import { nodeFromMindMapLink, type MindMapNodeActivation } from './mind-map-navigation'
 import { mintSnapshotElements, uniqueCanvasTitle } from './mind-map-snapshot'
@@ -128,13 +135,32 @@ interface MindMapViewProps {
   noteTitle: string
   /** One handler for both projections — the picture and the tree agree. */
   onActivateNode: MindMapNodeActivation
+  /**
+   * The block the reader was on when they opened the map, so it opens on that
+   * section instead of on the whole picture. Null when there is nothing to aim
+   * at — an untitled top-of-note, or a note with no headings.
+   */
+  initialFocusBlockId?: string | null
+  /**
+   * Handed a way to move the open map's camera to a block, and `null` the moment
+   * there is no live surface to move.
+   *
+   * A block id rather than an href, because that is what the outline panel has,
+   * and resolving one to the other is this layer's job. `false` back means the
+   * block was not drawn — folded behind a "+N more", or dropped at the node cap
+   * — which is what lets the caller fall back to opening the note at it rather
+   * than swallowing the click.
+   */
+  onFocusChange?: (focusBlock: ((blockId: string) => boolean) | null) => void
 }
 
 export function MindMapView({
   map,
   noteId,
   noteTitle,
-  onActivateNode
+  onActivateNode,
+  initialFocusBlockId = null,
+  onFocusChange
 }: MindMapViewProps): React.JSX.Element {
   const { t } = useT('notes')
   const [controls, setControls] = useState<MindMapControls | null>(null)
@@ -298,6 +324,33 @@ export function MindMapView({
     [map.nodes, noteId, onActivateNode]
   )
 
+  const initialFocusHref = useMemo(
+    () => (initialFocusBlockId === null ? null : mindMapHrefForBlock(map, initialFocusBlockId)),
+    [initialFocusBlockId, map]
+  )
+
+  const focusBlock = useMemo(() => {
+    if (controls === null) return null
+    return (blockId: string): boolean => {
+      const href = mindMapHrefForBlock(map, blockId)
+      return href === null ? false : controls.focus(href)
+    }
+  }, [controls, map])
+
+  // The same handshake `onControlsChange` makes one layer down, one layer up:
+  // the surface announces itself when it is live and takes the announcement
+  // back when it is not, so nothing is ever wired to a camera that is gone.
+  //
+  // The rule's advice — lift the state to the parent — is the wrong shape here.
+  // What the parent is being handed is a way to CALL the drawing surface, and
+  // the surface is mounted below this component precisely so that Excalidraw
+  // stays out of the main bundle. Lifting it would move the lazy boundary.
+  useEffect(() => {
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent
+    onFocusChange?.(focusBlock)
+    return () => onFocusChange?.(null)
+  }, [focusBlock, onFocusChange])
+
   return (
     <div className="relative flex h-full w-full flex-col bg-background" data-testid="note-mind-map">
       <MindMapToolbar actions={actions} label={t('mindMap.toolbar.label')} />
@@ -329,6 +382,7 @@ export function MindMapView({
             elements={map.elements}
             hoverLabels={hoverLabels}
             onOpenLink={handleOpenLink}
+            initialFocusHref={initialFocusHref}
             onControlsChange={setControls}
           />
         </Suspense>

@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -40,6 +41,15 @@ interface NoteLayoutProps {
   marqueeZoneRef?: (el: HTMLDivElement | null) => void
   onRailHiddenChange?: (hidden: boolean) => void
   /**
+   * The heading the reader is currently on, as scroll tracking sees it.
+   *
+   * Reported rather than lifted because the outline panel is this layout's own
+   * furniture and nothing above it needs to re-render when the reader scrolls
+   * past a heading. The note page keeps the value in a ref and reads it once,
+   * when the mind map opens, to decide where the map's camera should land.
+   */
+  onActiveHeadingChange?: (headingId: string | null) => void
+  /**
    * Set while the page has a heading to jump to (`[[Note#Heading]]`). Scroll
    * restore keeps saving, but does not re-apply the saved offset on this mount:
    * the user named a destination, which is the fresher intent.
@@ -64,6 +74,7 @@ export function NoteLayout({
   contentWidth,
   marqueeZoneRef,
   onRailHiddenChange,
+  onActiveHeadingChange,
   suppressScrollRestore = false
 }: NoteLayoutProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -81,6 +92,15 @@ export function NoteLayout({
     offset: 120,
     scrollContainerRef: scrollRef
   })
+
+  // Lifting this, as the rule suggests, would re-render the whole note page on
+  // every scroll tick to serve one read that happens when the mind map opens.
+  // The plugin also traces `activeHeadingId` back to `scrollRef` and calls it a
+  // ref handed to a parent; it is not — what leaves here is a heading id.
+  useEffect(() => {
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent
+    onActiveHeadingChange?.(activeHeadingId)
+  }, [activeHeadingId, onActiveHeadingChange])
 
   const handleHeadingClick = useCallback(
     (headingId: string) => {

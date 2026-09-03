@@ -110,6 +110,28 @@ export function hitMindMapBox(
  * transform the drawing applies to the scene (`(scene + scroll) * zoom`), which
  * is the same arithmetic `CanvasCardLayer` uses to lay its cards over a scene.
  */
+/**
+ * A box's rectangle in pixels on the drawing surface's own axes.
+ *
+ * The same transform the affordance anchor uses — `(scene + scroll) * zoom` —
+ * applied to the whole box rather than to one point on it, because a ring drawn
+ * around a node has to sit exactly on it at any zoom. Recomputed against the
+ * live camera on every committed change, so it stays glued to the box while the
+ * camera is still flying towards it.
+ */
+export function mindMapBoxRect(
+  box: { x: number; y: number; width: number; height: number },
+  camera: MindMapCamera
+): { left: number; top: number; width: number; height: number } {
+  const zoom = camera.zoom.value || 1
+  return {
+    left: (box.x + camera.scrollX) * zoom,
+    top: (box.y + camera.scrollY) * zoom,
+    width: box.width * zoom,
+    height: box.height * zoom
+  }
+}
+
 export function mindMapHoverAnchor(
   hit: MindMapHit,
   camera: MindMapCamera

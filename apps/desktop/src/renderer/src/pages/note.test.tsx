@@ -64,6 +64,11 @@ const mocks = vi.hoisted(() => ({
   editorInstances: [] as unknown[],
   /** The controls the map surface hands up to its toolbar. */
   mindMapFit: vi.fn(),
+  /**
+   * The live map's camera. True by default — a map that is showing the block is
+   * the interesting case, and the fallback path sets it false explicitly.
+   */
+  mindMapFocus: vi.fn(() => true),
   mindMapCopyImage: vi.fn(),
   mindMapCopyVector: vi.fn(),
   onDeleted: vi.fn(),
@@ -291,6 +296,7 @@ vi.mock('@/components/note/mind-map/mind-map-canvas', () => ({
     useEffect(() => {
       onControlsChange?.({
         fit: mocks.mindMapFit,
+        focus: mocks.mindMapFocus,
         copyImage: mocks.mindMapCopyImage,
         copyVector: mocks.mindMapCopyVector
       })
@@ -817,6 +823,9 @@ describe('NotePage', () => {
     mocks.noteState.note = note
     mocks.noteState.isLoading = false
     mocks.noteState.error = null
+    // `clearAllMocks` keeps a return value set by a test, so the default that
+    // stands for a live map is re-asserted here rather than assumed.
+    mocks.mindMapFocus.mockReturnValue(true)
     mocks.updateNote.mockResolvedValue({ success: true })
     mocks.renameNote.mockResolvedValue({ success: true })
     mocks.deleteNote.mockResolvedValue({ success: true })
@@ -1813,7 +1822,25 @@ describe('NotePage', () => {
       expect(scrolls).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
     })
 
-    it('takes the identical path from the outline panel while the map is showing', async () => {
+    it('moves the map camera from the outline panel rather than leaving the map', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      await openMap()
+      const scrolls = vi.spyOn(blockElement('b-h1'), 'scrollIntoView')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Jump Alpha' }))
+
+      // The panel sits over the picture on purpose, and on a map too big to see
+      // at once it is the only way to reach a far branch. So this click is a
+      // camera move: the map stays, and the note underneath is not scrolled.
+      expect(mocks.mindMapFocus).toHaveBeenCalledWith('memry://note/note-1#^b-h1')
+      expect(screen.getByTestId('note-mind-map')).toBeInTheDocument()
+      expect(scrolls).not.toHaveBeenCalled()
+    })
+
+    it('falls back to the note when the map is not showing that block', async () => {
+      // A heading folded behind a "+N more", or dropped at the node cap.
+      mocks.mindMapFocus.mockReturnValue(false)
       renderWithProviders(<NotePage noteId="note-1" />)
 
       await openMap()
@@ -1829,8 +1856,8 @@ describe('NotePage', () => {
       await screen.findByTestId('note-mind-map')
       fireEvent.click(screen.getByRole('button', { name: 'Jump Alpha' }))
 
-      // One control, one behaviour: the outline panel is handed the very
-      // function the map's nodes end in, so this cannot drift from the above.
+      // The fallback IS the old behaviour, unchanged, so a heading click never
+      // does nothing.
       await expectLandedOnAlpha(scrolls)
       expect(scrolls.mock.calls).toEqual(mapCalls)
     })
