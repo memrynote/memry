@@ -14,8 +14,11 @@ const workspaceRoot = path.resolve(projectRoot, '../..')
 
 const config = getDefaultConfig(projectRoot)
 
-// Watch the whole workspace so edits to packages/* hot-reload.
-config.watchFolders = [workspaceRoot]
+// Do NOT set `config.watchFolders = [workspaceRoot]`. Expo's default already
+// watches every pnpm workspace package individually, which is what makes
+// edits to packages/* hot-reload. Watching the repo root instead pulls in
+// `.worktrees/` -- 50+ full checkouts, millions of files -- and Metro's file
+// crawl OOMs the Node heap before the bundler ever starts.
 
 // Resolve from the app first, then the hoisted root node_modules.
 config.resolver.nodeModulesPaths = [
