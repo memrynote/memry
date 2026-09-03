@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pressable, StyleSheet, TextInput, View } from 'react-native'
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  useWindowDimensions,
+  View
+} from 'react-native'
 
 import { AppText } from '@/components/ui/app-text'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
@@ -28,8 +35,20 @@ export interface AddTagSheetProps {
  * the note screen — it is a full pass over the note payloads.
  */
 export function AddTagSheet(props: AddTagSheetProps) {
+  const { height } = useWindowDimensions()
+
   return (
-    <BottomSheet visible={props.visible} onClose={props.onClose} accessibilityLabel="Add tag">
+    <BottomSheet
+      visible={props.visible}
+      onClose={props.onClose}
+      accessibilityLabel="Add tag"
+      // A real vault carries hundreds of tags. Without a ceiling the wrapped
+      // chip list grows past the screen, taking the header and its Cancel with
+      // it, and the sheet has no way back. The cap plus the shrinking scroller
+      // below keeps the header, the field and the footer pinned however many
+      // tags match.
+      style={{ maxHeight: height * 0.7 }}
+    >
       {/* Mounted only while open, so the query starts empty by construction and
           the vault scan runs once per opening rather than once per render. */}
       {props.visible ? <AddTagBody {...props} /> : null}
@@ -74,7 +93,11 @@ function AddTagBody({ db, existing, onClose, onPick }: AddTagSheetProps) {
         >
           <Icon name="search" size={16} color={c.text.secondary} />
           <TextInput
-            autoFocus
+            // Deliberately NOT autofocused. The keyboard covers the lower half
+            // of the sheet, which is the tag list itself, and browsing is the
+            // common action in a vault with hundreds of tags. Typing is one tap
+            // away. The add-property sheet keeps its autofocus because its name
+            // field is the only way forward there.
             value={query}
             onChangeText={setQuery}
             placeholder="Search or create"
@@ -93,11 +116,20 @@ function AddTagBody({ db, existing, onClose, onPick }: AddTagSheetProps) {
 
       <View style={styles.sectionLabel}>
         <AppText variant="caption" color={c.text.secondary} style={styles.sectionText}>
-          MATCHING
+          {/* Board 33 only ever draws this with a query typed. With an empty
+              one the list is the whole vault, and calling that MATCHING would
+              be false. */}
+          {query.trim().length > 0 ? 'MATCHING' : 'ALL TAGS'}
         </AppText>
       </View>
 
-      <View style={styles.chips}>
+      <ScrollView
+        style={styles.chipsScroll}
+        contentContainerStyle={styles.chips}
+        // Without this the first tap on a chip is spent dismissing the keyboard
+        // the autofocused field raised, and the tag is never added.
+        keyboardShouldPersistTaps="handled"
+      >
         {matching.map((tag) => {
           const hue = tagColor(tag)
           return (
@@ -129,7 +161,7 @@ function AddTagBody({ db, existing, onClose, onPick }: AddTagSheetProps) {
             </AppText>
           </Pressable>
         ) : null}
-      </View>
+      </ScrollView>
 
       <View style={styles.footer}>
         <AppText variant="caption" color={c.text.secondary}>
@@ -141,14 +173,17 @@ function AddTagBody({ db, existing, onClose, onPick }: AddTagSheetProps) {
 }
 
 const styles = StyleSheet.create({
+  // The scroller is the only part that gives, so everything around it is
+  // pinned. Without these the header and the footer shrink instead.
   header: {
     height: sizes.navBar,
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: sizes.gutter
   },
-  fieldRow: { paddingHorizontal: sizes.gutter, paddingBottom: space.s12 },
+  fieldRow: { flexShrink: 0, paddingHorizontal: sizes.gutter, paddingBottom: space.s12 },
   field: {
     height: 40,
     flexDirection: 'row',
@@ -159,7 +194,12 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   input: { flex: 1 },
-  sectionLabel: { height: 28, justifyContent: 'center', paddingHorizontal: sizes.gutter },
+  sectionLabel: {
+    height: 28,
+    flexShrink: 0,
+    justifyContent: 'center',
+    paddingHorizontal: sizes.gutter
+  },
   // 11/16 with 0.09em tracking resolved to px, which `caption` does not carry.
   sectionText: {
     fontFamily: fontFamilies.sansMedium,
@@ -167,6 +207,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     letterSpacing: 0.99
   },
+  chipsScroll: { flexShrink: 1 },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -185,5 +226,5 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderStyle: 'dashed'
   },
-  footer: { paddingHorizontal: sizes.gutter, paddingBottom: space.s20 }
+  footer: { flexShrink: 0, paddingHorizontal: sizes.gutter, paddingBottom: space.s20 }
 })
