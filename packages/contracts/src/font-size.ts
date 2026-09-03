@@ -46,6 +46,13 @@ export function resolveFontSizePx(
   return legacy ? legacy[1] : FONT_SIZE_PX_DEFAULT
 }
 
+export function stepFontSizePx(px: number, direction: 1 | -1): number {
+  // Rounded last, for the reason resolveFontSizePx spells out. A hand-edited
+  // fractional config.json value would otherwise carry its fraction through
+  // every step and never land on a legacy bucket.
+  return Math.round(Math.min(FONT_SIZE_PX_MAX, Math.max(FONT_SIZE_PX_MIN, px + direction)))
+}
+
 export function toLegacyFontSize(px: number): LegacyFontSize {
   // Strict `<` keeps the first of two equally near buckets, and the table is
   // ascending, so a midpoint resolves to the smaller size.
