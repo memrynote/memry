@@ -55,6 +55,16 @@ export const trackRendererReady = (durationMs: number): void => {
   })
 }
 
+export const trackNoteReadable = (durationMs: number): void => {
+  void trackTelemetry('app_launch_phase_completed', {
+    surface: 'app',
+    action: 'note_readable',
+    source: 'renderer',
+    result: 'success',
+    metrics: { durationMs: Math.max(0, Math.round(durationMs)) }
+  })
+}
+
 export const registerRendererDiagnostics = (): void => {
   window.addEventListener('error', (event) => {
     // `event.error` is absent for cross-origin scripts and some Chromium failure

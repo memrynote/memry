@@ -35,6 +35,7 @@ import { SyncProvider } from './contexts/sync-context'
 import { AISettingsProvider } from './contexts/ai-settings-context'
 import { getStartupTheme, THEME_STORAGE_KEY } from './lib/startup-theme'
 import { getStartupLocale } from './lib/startup-locale'
+import { prefetchRestoredTabPage } from './lib/launch-restore'
 import { APP_QUERY_DEFAULT_OPTIONS } from './lib/query-client-options'
 import { createLogger } from './lib/logger'
 import {
@@ -76,6 +77,15 @@ const isQuickCaptureWindow =
   window.location.hash === '#/quick-capture' || window.location.hash === '#quick-capture'
 const startupTheme = getStartupTheme()
 const startupLocale = getStartupLocale()
+
+// Kicked off at module scope, before `boot()` even starts, so the restored
+// tab's chunk download overlaps everything boot() awaits (i18n, vault open,
+// tab restore) instead of queueing behind them. `prefetchRestoredTabPage`
+// already reads localStorage synchronously and no-ops when there is nothing
+// to restore, so a wrong guess costs one speculative chunk fetch. Skipped for
+// the quick-capture window, which never renders a note tab and would just be
+// paying for a chunk it never uses.
+if (!isQuickCaptureWindow) prefetchRestoredTabPage()
 
 // Started at module scope rather than inside boot(): the locale is already
 // known, so there is nothing left for the 11 locale namespace chunks to wait
