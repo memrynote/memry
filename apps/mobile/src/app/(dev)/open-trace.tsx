@@ -7,7 +7,6 @@ import { ThemedView } from '@/components/themed-view'
 import { Spacing } from '@/constants/theme'
 import {
   getTraces,
-  OPEN_PHASES,
   resetTraces,
   summarizeOpenTraces,
   type OpenTraceSummary
