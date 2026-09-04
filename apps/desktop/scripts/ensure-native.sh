@@ -98,6 +98,29 @@ if [ "$TARGET" = "electron" ]; then
     process.stdout.write(path.join(main.slice(0, i + marker.length), 'lib', 'cli.js'))
   ")"
   node "$ELECTRON_REBUILD_CLI" -f -o "$MODULES"
+
+  # That call leaves classic-level as the upstream Node prebuild, for two
+  # independent reasons. v2026.903.2 shipped to Windows that way: better-sqlite3
+  # and keytar had build/Release binaries in the package, classic-level had none,
+  # so the CRDT store ran on prebuilds/win32-x64/node.napi.node.
+  #
+  # 1. @electron/rebuild's module walker only descends into `<module>/node_modules`.
+  #    Under pnpm, y-leveldb's level -> classic-level@1.4.x sits in a sibling
+  #    directory inside .pnpm, so the copy the CRDT store actually loads is never
+  #    visited. The only walkable classic-level is the dev-only 3.x, which
+  #    electron-builder then prunes out of the package.
+  # 2. Even when visited, Prebuildify.findPrebuiltModule accepts an existing
+  #    node.napi.node and short-circuits the compile. `-f` does not override that;
+  #    only --build-from-source does.
+  #
+  # So drive each copy in the store directly: --module-dir is always a rebuild
+  # candidate regardless of the walk, and --build-from-source skips the prebuild
+  # short-circuit. Same reasoning as the node branch below.
+  for classic_dir in "$REPO_ROOT"/node_modules/.pnpm/classic-level@*/node_modules/classic-level; do
+    [ -d "$classic_dir" ] || continue
+    echo "[native] force-building ${classic_dir#"$REPO_ROOT/"} for Electron"
+    node "$ELECTRON_REBUILD_CLI" -f --build-from-source --only classic-level --module-dir "$classic_dir"
+  done
 else
   echo "[native] rebuilding $MODULES for Node $(node -v)..."
   for mod in ${MODULES//,/ }; do
