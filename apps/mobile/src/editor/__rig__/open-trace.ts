@@ -1,3 +1,4 @@
+import { GUEST_PAINT_MARKS, type GuestPaintMark } from '@memry/contracts/webview-bridge'
 import { summarize, type LatencySummary } from './latency'
 
 /**
@@ -28,13 +29,20 @@ import { summarize, type LatencySummary } from './latency'
  *     `doc-load`.
  *   * `painted` — the guest's frame callback after the document is laid out.
  *
+ * Between `webviewMounted` and `painted` sit the GUEST's own sub-marks (#2043),
+ * which carry the same names the contract declares in `GUEST_PAINT_MARKS`. They
+ * are ordinary phases here on purpose. The #2026 baseline left 3390 ms of a
+ * 3876 ms open inside one interval, and a reviewer asked to align a host table
+ * against a separate guest table reads neither; a phase is a phase, whichever
+ * side of the bridge took it.
+ *
  * Always on, never dev-gated, for the reason the keystroke recorder gives for
  * itself: a measurement path that only exists in a dev build measures a
  * different app than the one being gated. A mark costs one `Date.now()` and one
  * property write.
  */
 
-export type OpenPhase =
+export type OpenHostPhase =
   | 'navigate'
   | 'sessionReady'
   | 'docOpen'
@@ -44,15 +52,40 @@ export type OpenPhase =
   | 'guestReady'
   | 'painted'
 
-/** Ordered, so the reporter renders phases in sequence instead of each call site restating the order. */
+export type OpenPhase = OpenHostPhase | GuestPaintMark
+
+/**
+ * Ordered, so the reporter renders phases in sequence instead of each call site
+ * restating the order.
+ *
+ * DECLARED order, not sorted by measurement: a guest mark that lands out of
+ * sequence is a finding — a clock the two sides disagree about, or a `doc-load`
+ * replayed after the paint — and sorting the table by its own numbers is
+ * exactly what would hide it.
+ */
 export const OPEN_PHASES: readonly OpenPhase[] = [
   'navigate',
   'sessionReady',
   'docOpen',
   'recordRead',
   'seedResolved',
+  'docStart',
+  'importsStart',
+  'scriptEval',
+  'schemaBuilt',
+  'readySent',
   'webviewMounted',
   'guestReady',
+  'docLoadRecv',
+  'yApplied',
+  'createStart',
+  'createEnd',
+  'mountEnd',
+  'shikiStart',
+  'shikiSync',
+  'shikiEnd',
+  'seedEnd',
+  'guestPainted',
   'painted'
 ]
 
@@ -90,6 +123,31 @@ export function mark(noteId: string, phase: OpenPhase): void {
   const trace = live.get(noteId)
   if (!trace) return
   trace.phases[phase] = Date.now() - trace.startedAt
+}
+
+/**
+ * Fold the guest's sub-marks into this note's trace (#2043).
+ *
+ * The guest reports ABSOLUTE epoch stamps and they are rebased here, because
+ * the guest has no idea when the host's trace started — the WebView is created
+ * well after `navigate`. Both ends read the same device wall clock, which is
+ * the same assumption the envelope's `sentAt` already rests on.
+ *
+ * A mark the guest never took is absent, and stays absent. Substituting a zero
+ * would enter a phase that never happened as the FASTEST sample in its own
+ * percentile, which is the one lie a latency table must not tell.
+ */
+export function markGuestPhases(
+  noteId: string,
+  marks: Partial<Record<GuestPaintMark, number>> | undefined
+): void {
+  if (!marks) return
+  const trace = live.get(noteId)
+  if (!trace) return
+  for (const phase of GUEST_PAINT_MARKS) {
+    const epoch = marks[phase]
+    if (epoch !== undefined) trace.phases[phase] = epoch - trace.startedAt
+  }
 }
 
 export function getTraces(): OpenTrace[] {

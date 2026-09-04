@@ -13,7 +13,7 @@ import { EDITOR_WEB_CONTRACT_HASH, loadEditorWebHtml } from './editor-web-asset'
 import { createInjectionTransport, EditorBridgeProvider } from './bridge-provider'
 import type { OpenDoc } from './doc-manager'
 import { LatencyRecorder, type G3Measurement } from './__rig__/latency'
-import { mark } from './__rig__/open-trace'
+import { mark, markGuestPhases } from './__rig__/open-trace'
 
 const log = createLogger('EditorView')
 
@@ -288,6 +288,10 @@ export function EditorView({
         }
 
         case 'painted':
+          // Guest marks BEFORE the host's own: `mark` stamps `Date.now()`,
+          // which is later than every stamp the message carries, and the rig
+          // renders one ordered table out of both.
+          markGuestPhases(msg.docId, msg.marks)
           mark(msg.docId, 'painted')
           break
 

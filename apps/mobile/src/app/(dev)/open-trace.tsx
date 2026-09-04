@@ -14,6 +14,7 @@ import {
   type OpenTraceSummary
 } from '@/editor/__rig__/open-trace'
 import { getEditorSession } from '@/editor/session'
+import type { VaultDb } from '@/db'
 import { readNotesSnapshot } from '@/features/notes/notes-repo'
 import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
@@ -42,6 +43,38 @@ const log = createLogger('OpenTraceRig')
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** How many notes either end of the length ordering contributes. */
+const SIZE_POOL = 20
+
+/**
+ * Notes at one end of the body-length ordering, longest or shortest first
+ * (#2043).
+ *
+ * The breakdown has to say which of the guest's costs scale with content and
+ * which are flat, and the default pool cannot answer that: it is ordered by
+ * `updated_at`, so a run over it mixes every length together and averages the
+ * signal away. Two runs over the two ends give the pair of numbers the question
+ * actually asks for.
+ *
+ * `note_bodies.markdown` is the length that matters here rather than the Y.Doc
+ * snapshot: it is the content the guest lays out. The snapshot's size tracks
+ * edit HISTORY, so a heavily-revised one-line note would sort as long.
+ */
+async function readNotesBySize(
+  db: VaultDb,
+  longest: boolean
+): Promise<{ id: string; len: number }[]> {
+  return db.getAllAsync<{ id: string; len: number }>(
+    `SELECT s.id AS id, length(b.markdown) AS len
+       FROM sync_items s
+       JOIN note_bodies b ON b.item_id = s.id
+      WHERE s.type = 'note' AND s.deleted_at IS NULL AND s.payload_state = 'full'
+        AND length(b.markdown) > 0
+      ORDER BY len ${longest ? 'DESC' : 'ASC'}
+      LIMIT ${SIZE_POOL}`
+  )
+}
+
 /**
  * The `painted` offset for this iteration's open, or `null` if it never landed.
  *
@@ -63,7 +96,8 @@ async function waitForPaint(noteId: string, since: number): Promise<number | nul
 }
 
 export default function OpenTraceScreen() {
-  const params = useLocalSearchParams<{ autorun?: string; n?: string }>()
+  const params = useLocalSearchParams<{ autorun?: string; n?: string; size?: string }>()
+  const size = params.size === 'long' || params.size === 'short' ? params.size : null
   const requested = Number.parseInt(params.n ?? '', 10)
   const iterations = Number.isInteger(requested) && requested > 0 ? requested : DEFAULT_ITERATIONS
   const autorun = params.autorun === '1'
@@ -77,7 +111,7 @@ export default function OpenTraceScreen() {
   // run reads the same ring and shows the numbers.
   const [traces, setTraces] = useState<OpenTrace[]>(() => getTraces())
 
-  const run = useCallback(async (total: number) => {
+  const run = useCallback(async (total: number, sizeEnd: 'short' | 'long' | null) => {
     setRunning(true)
     setStatus(null)
     setTraces([])
@@ -88,15 +122,31 @@ export default function OpenTraceScreen() {
         return
       }
       const session = await getEditorSession(vaultId)
-      const snapshot = await readNotesSnapshot(session.db)
-      // Notes with a body first: an empty note skips the seed probe and most of
-      // the guest's parse work, so timing those would flatter the baseline.
-      const withBody = snapshot.entries.filter((entry) => entry.hasBody)
-      const ids = (withBody.length > 0 ? withBody : snapshot.entries).map((entry) => entry.id)
+
+      let ids: string[]
+      let pool: string
+      if (sizeEnd) {
+        const rows = await readNotesBySize(session.db, sizeEnd === 'long')
+        ids = rows.map((row) => row.id)
+        pool =
+          rows.length > 0
+            ? `${sizeEnd} pool: ${rows.length} notes, ${Math.min(...rows.map((r) => r.len))}–${Math.max(...rows.map((r) => r.len))} chars`
+            : `${sizeEnd} pool is empty`
+      } else {
+        const snapshot = await readNotesSnapshot(session.db)
+        // Notes with a body first: an empty note skips the seed probe and most
+        // of the guest's parse work, so timing those would flatter the
+        // baseline.
+        const withBody = snapshot.entries.filter((entry) => entry.hasBody)
+        ids = (withBody.length > 0 ? withBody : snapshot.entries).map((entry) => entry.id)
+        pool = `default pool: ${ids.length} notes, unordered by length`
+      }
       if (ids.length === 0) {
         setStatus('This vault has no notes.')
         return
       }
+      log.warn(pool)
+      setStatus(pool)
 
       resetTraces()
       for (let i = 0; i < total; i++) {
@@ -115,7 +165,7 @@ export default function OpenTraceScreen() {
       setProgress({ done: total, total })
       const measured = summarizeOpenTraces(getTraces())
       setTraces(getTraces())
-      log.warn(formatOpenTraceReport(measured))
+      log.warn(`${pool}\n${formatOpenTraceReport(measured)}`)
     } catch (err) {
       setStatus(err instanceof Error ? `${err.name}: ${err.message}` : String(err))
     } finally {
@@ -129,8 +179,8 @@ export default function OpenTraceScreen() {
   useEffect(() => {
     if (!autorun || autostarted.current) return
     autostarted.current = true
-    void run(iterations)
-  }, [autorun, iterations, run])
+    void run(iterations, size)
+  }, [autorun, iterations, run, size])
 
   const summary: OpenTraceSummary | null = traces.length > 0 ? summarizeOpenTraces(traces) : null
   const timedOut = traces.length - (summary?.endToEnd.samples ?? 0)
@@ -142,6 +192,11 @@ export default function OpenTraceScreen() {
           <ThemedText type="title">Note-open trace</ThemedText>
           <ThemedText type="small">
             Opens {iterations} notes through the real router and reports where the time goes.
+            {size ? ` Restricted to the ${size}est ${SIZE_POOL} notes by body length.` : ''}
+          </ThemedText>
+          <ThemedText type="small">
+            docStart…guestPainted are the guest&apos;s own marks, rebased onto this clock. An empty
+            row is a mark the guest never reached, not a zero.
           </ThemedText>
           <ThemedText type="small">
             sessionReady reads near zero here: this screen warmed getEditorSession before the run,
@@ -154,7 +209,7 @@ export default function OpenTraceScreen() {
 
           <Pressable
             style={styles.button}
-            onPress={() => void run(iterations)}
+            onPress={() => void run(iterations, size)}
             disabled={running}
             accessibilityRole="button"
             accessibilityLabel="Reset and re-run the open trace"
