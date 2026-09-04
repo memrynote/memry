@@ -16,6 +16,10 @@ const mocks = vi.hoisted(() => ({
     setSetting: vi.fn(),
     // The live simulation refreshes only the instance that owns the graph it is
     // stepping, so the mock has to model getGraph like the real Sigma does.
+    // jsdom does no layout, so a real element measures 0 and the refresh guard
+    // would skip every repaint. Hand it one that measures.
+    getContainer: (): HTMLElement =>
+      Object.defineProperty(document.createElement('div'), 'offsetWidth', { value: 800 }),
     getGraph: (): unknown => mocks.sigmaContainerProps?.graph
   },
   sigmaContainerProps: null as null | Record<string, any>

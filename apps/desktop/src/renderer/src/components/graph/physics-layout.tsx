@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useSigma } from '@react-sigma/core'
 import type Graph from 'graphology'
 import { GraphPhysics, type GraphPhysicsOptions } from '@/lib/graph-physics'
+import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
 
 /** Upper bound on the synchronous pre-settle, so a huge vault cannot lock the frame forever. */
 const SETTLE_TICK_LIMIT = 400
@@ -58,7 +59,7 @@ export function LivePhysics({
       // SigmaContainer recreates Sigma when `graph` changes and React may hand us
       // the old, killed instance; refreshing that one throws. Same guard as
       // SigmaSettingsSync.
-      if (sigma.getGraph() === graph) sigma.refresh(REPAINT_MOVEMENT_ONLY)
+      if (sigma.getGraph() === graph) refreshSigmaIfMeasurable(sigma, REPAINT_MOVEMENT_ONLY)
       frame = physics.isSettled ? null : requestAnimationFrame(step)
     }
 
@@ -127,7 +128,7 @@ export function SettledPhysics({
     const physics = new GraphPhysics(graph, options)
     physicsRef.current = physics
     settle(physics)
-    if (sigma.getGraph() === graph) sigma.refresh()
+    if (sigma.getGraph() === graph) refreshSigmaIfMeasurable(sigma)
 
     return () => {
       physicsRef.current = null
@@ -143,7 +144,7 @@ export function SettledPhysics({
     if (!physics?.sync()) return
     physics.reheat()
     settle(physics)
-    if (sigma.getGraph() === graph) sigma.refresh()
+    if (sigma.getGraph() === graph) refreshSigmaIfMeasurable(sigma)
   }, [revision, graph, sigma])
 
   return null

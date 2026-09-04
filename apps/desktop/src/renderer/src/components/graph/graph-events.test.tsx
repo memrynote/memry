@@ -25,6 +25,10 @@ vi.mock('@react-sigma/core', () => ({
   },
   useSigma: () => ({
     getGraph: () => mocks.liveGraph ?? mocks.graph,
+    // jsdom does no layout, so a real element measures 0 and the refresh guard
+    // would skip every repaint. Hand it one that measures.
+    getContainer: (): HTMLElement =>
+      Object.defineProperty(document.createElement('div'), 'offsetWidth', { value: 800 }),
     viewportToGraph: mocks.viewportToGraph,
     refresh: mocks.refresh
   })
