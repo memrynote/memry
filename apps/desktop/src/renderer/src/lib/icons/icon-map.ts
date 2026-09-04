@@ -276,7 +276,7 @@ import {
   ArrowTurnBackwardIcon,
   ChartRelationshipIcon,
   HierarchyIcon
-} from '@hugeicons/core-free-icons'
+} from './hugeicons-subset'
 import { createIcon } from './create-icon'
 
 // ── Files & Documents ───────────────────────────────

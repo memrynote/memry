@@ -82,6 +82,7 @@ import {
   stopActiveHeartbeat
 } from './telemetry/diagnostics'
 import { recordLaunchPhase, reportLaunchTimeline } from './launch-timeline'
+import { onceWindowShown, schedulePostRevealTasks } from './post-reveal'
 import { toErrorCode } from '@memry/contracts/telemetry-api'
 import { drainEarlyMainEvents, trackMainEvent } from './telemetry/track'
 import {
@@ -158,7 +159,10 @@ import { reconcileBillingAndSync, startBillingCheckout } from './billing/paddle-
 import { openPairingWindow } from './capture/pairing'
 import { startCaptureServer, stopCaptureServer } from './capture/server'
 import { stopChatServer } from './ai-inline/ai-chat-server'
-import { applyLoginShellPath } from './agent/cli/login-shell-path'
+import {
+  startLoginShellPathAugmentation,
+  whenLoginShellPathApplied
+} from './agent/cli/login-shell-path'
 import { setAccountKeyChecker } from './crypto'
 import { checkLocalKeyAgainstAccount } from './sync/key-verification'
 
@@ -349,11 +353,14 @@ app.on('web-contents-created', (_event, contents) => {
 
 // A Finder/Dock-launched packaged app inherits only the minimal system PATH, so
 // user-installed CLIs (claude/codex) are invisible to `which` and Agent Chat
-// greys out those providers. Recover the login-shell PATH before anything spawns
-// a probe or the CLIs themselves. No-op in dev (terminal already has full PATH).
-if (applyLoginShellPath({ packaged: app.isPackaged })) {
-  mainLog.info('Augmented PATH from login shell for packaged launch')
-}
+// greys out those providers. Sourcing the user's rc chain to recover the real
+// PATH costs ~180 ms and nothing on the way to the first frame needs it, so the
+// probe runs alongside boot and the CLI probes await it. No-op in dev.
+void startLoginShellPathAugmentation({ packaged: app.isPackaged }).then((applied) => {
+  if (applied) {
+    mainLog.info('Augmented PATH from login shell for packaged launch')
+  }
+})
 
 // A vault folder moved between machines (git, iCloud Drive, Dropbox) arrives
 // carrying the verifier of whichever machine wrote it, while the master key that
@@ -368,10 +375,14 @@ let mainI18n: I18nInstance
 
 if (headlessCliArgs) {
   disableConsoleTransport()
-  void runHeadlessCli(headlessCliArgs).catch((error) => {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
-    app.exit(1)
-  })
+  // Headless has no first frame to protect and shells out to the agent CLIs
+  // immediately, so unlike the GUI path it waits for the augmented PATH.
+  void whenLoginShellPathApplied()
+    .then(() => runHeadlessCli(headlessCliArgs))
+    .catch((error: unknown) => {
+      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
+      app.exit(1)
+    })
 }
 
 /**
@@ -800,6 +811,7 @@ function createWindow(): void {
     // Reveal is the moment the user stops staring at nothing, so it is where
     // the launch timeline is complete enough to attribute a slow start (#843).
     reportLaunchTimeline(reason)
+    schedulePostRevealTasks()
   }
 
   const fallbackShowTimer = setTimeout(() => {
@@ -1708,7 +1720,10 @@ const appReady = app.whenReady().then(async () => {
   }
 
   createWindow()
-  initializeUpdater()
+  // The updater touches disk (install-health reconcile, prefs, app-update.yml)
+  // and fires its first GitHub check straight away. None of that is on the way
+  // to the first frame, and all of it landed between window creation and reveal.
+  onceWindowShown('updater', initializeUpdater)
 
   // Open the last vault and start schedulers concurrently with renderer load.
   // The renderer subscribes to vault status events and updates automatically.

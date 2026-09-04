@@ -55,6 +55,11 @@ vi.mock('@hugeicons/core-free-icons', () => ({
   lowercaseIcon: 'ignored-icon'
 }))
 
+vi.mock('@/lib/icons/hugeicons-subset', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  CircleIcon: 'circle-icon'
+}))
+
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: () => ({
     scrollToIndex: mocks.scrollToIndex,

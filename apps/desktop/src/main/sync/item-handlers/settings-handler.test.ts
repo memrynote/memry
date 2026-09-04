@@ -68,7 +68,7 @@ vi.mock('electron', () => ({
   },
   // locale-handler registers its IPC channels on import-time registration; the
   // real apply path is exercised through it, so ipcMain has to exist.
-  ipcMain: { handle: vi.fn() }
+  ipcMain: { handle: vi.fn(), on: vi.fn() }
 }))
 
 vi.mock('../../database', () => ({

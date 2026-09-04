@@ -49,4 +49,10 @@ export interface LocaleApi {
   get: () => Promise<Locale>
   set: (locale: Locale) => Promise<void>
   list: () => Promise<readonly Locale[]>
+  /**
+   * The locale to boot with, resolved without awaiting anything. Reads the
+   * preload's localStorage cache first and only falls back to synchronous IPC
+   * when there is no usable cached value. `get()` stays the authority.
+   */
+  getStartupSync: () => Locale
 }

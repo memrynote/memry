@@ -105,6 +105,7 @@ import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { markLaunchNoteReadable } from '@/lib/launch-restore'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
 import { graphKeys } from '@/hooks/use-graph-data'
 import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
@@ -817,8 +818,14 @@ export function NotePage({ noteId }: NotePageProps) {
     (editor: unknown) => {
       attachmentsEditorRef.current = editor
       mindMapEditorReady(editor)
+      // `useCreateBlockNote` renders the editor's blocks synchronously, and
+      // this effect runs after that render commits — the same "block tree is
+      // real" signal the mind map and attachments dialog above already trust.
+      // `editor` is null on teardown, so only a genuine mount counts as the
+      // note becoming readable, never a remount tick.
+      if (editor && noteId) markLaunchNoteReadable(noteId)
     },
-    [mindMapEditorReady]
+    [mindMapEditorReady, noteId]
   )
   const getAttachmentOriginalNames = useCallback(
     () => collectOriginalNames(attachmentsEditorRef.current),

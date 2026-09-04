@@ -14,57 +14,66 @@ import type { Tab } from '@/contexts/tabs/types'
 import { TabIdentityProvider } from '@/contexts/tabs/tab-identity'
 import { useTasksOptional } from '@/contexts/tasks'
 import { cn } from '@/lib/utils'
-import { InboxPage } from '@/pages/inbox'
 import { useT } from '@memry/i18n/renderer'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
 import type { ViewScope } from '@memry/contracts/folder-view-api'
 
 // =============================================================================
-// MEMOIZED PAGE COMPONENTS
-// Prevents recreation on every render - crucial for performance
+// LAZY PAGE COMPONENTS
+// Module-level so each type keeps one stable component identity, and so no
+// page's dependency tree lands in the entry chunk.
 // =============================================================================
 
-const MemoizedInboxPage = React.memo(InboxPage)
-const LazyCalendarPage = React.lazy(async () => ({
-  default: (await import('@/pages/calendar')).CalendarPage
-}))
-const LazyJournalPage = React.lazy(async () => ({
-  default: (await import('@/pages/journal')).JournalPage
-}))
-const LazyTasksPage = React.lazy(async () => ({
-  default: (await import('@/pages/tasks')).TasksPage
-}))
-const LazyNotePage = React.lazy(async () => ({
-  default: (await import('@/pages/note')).NotePage
-}))
-const LazyFilePage = React.lazy(async () => ({
-  default: (await import('@/pages/file')).FilePage
-}))
-const LazyFolderViewPage = React.lazy(async () => ({
-  default: (await import('@/pages/folder-view')).FolderViewPage
-}))
+const pageLoaders = {
+  home: async () => (await import('@/pages/home')).default,
+  inbox: async () => (await import('@/pages/inbox')).InboxPage,
+  calendar: async () => (await import('@/pages/calendar')).CalendarPage,
+  journal: async () => (await import('@/pages/journal')).JournalPage,
+  tasks: async () => (await import('@/pages/tasks')).TasksPage,
+  note: async () => (await import('@/pages/note')).NotePage,
+  file: async () => (await import('@/pages/file')).FilePage,
+  folderView: async () => (await import('@/pages/folder-view')).FolderViewPage,
+  templateEditor: async () => (await import('@/pages/template-editor')).TemplateEditorPage,
+  graph: async () => (await import('@/components/graph/graph-page')).GraphPage,
+  tagsHub: async () => (await import('@/pages/tags-hub')).TagsHubPage,
+  agentConversation: async () =>
+    (await import('@/agent-chat/agent-conversation-tab')).AgentConversationTab,
+  canvas: async () => (await import('@/pages/canvas')).CanvasPage,
+  virtualNote: async () => (await import('@/pages/virtual-note')).VirtualNotePage,
+  project: async () => (await import('@/pages/project')).ProjectPage
+} satisfies Record<string, () => Promise<unknown>>
+
+/**
+ * Start a page's chunk fetch before React reaches its lazy boundary, so a
+ * restored tab's download overlaps vault open and tab restore instead of
+ * queueing behind them. It resolves through the same module registry
+ * `React.lazy` reads, so the render-time import is a cache hit, not a
+ * second request.
+ */
+export const prefetchPageModule = (key: string): void => {
+  const loader = pageLoaders[key as keyof typeof pageLoaders]
+  if (loader) void loader().catch(() => {})
+}
+
+const LazyInboxPage = React.lazy(async () => ({ default: await pageLoaders.inbox() }))
+const LazyCalendarPage = React.lazy(async () => ({ default: await pageLoaders.calendar() }))
+const LazyJournalPage = React.lazy(async () => ({ default: await pageLoaders.journal() }))
+const LazyTasksPage = React.lazy(async () => ({ default: await pageLoaders.tasks() }))
+const LazyNotePage = React.lazy(async () => ({ default: await pageLoaders.note() }))
+const LazyFilePage = React.lazy(async () => ({ default: await pageLoaders.file() }))
+const LazyFolderViewPage = React.lazy(async () => ({ default: await pageLoaders.folderView() }))
 const LazyTemplateEditorPage = React.lazy(async () => ({
-  default: (await import('@/pages/template-editor')).TemplateEditorPage
+  default: await pageLoaders.templateEditor()
 }))
-const LazyGraphPage = React.lazy(async () => ({
-  default: (await import('@/components/graph/graph-page')).GraphPage
-}))
-const LazyTagsHubPage = React.lazy(async () => ({
-  default: (await import('@/pages/tags-hub')).TagsHubPage
-}))
+const LazyGraphPage = React.lazy(async () => ({ default: await pageLoaders.graph() }))
+const LazyTagsHubPage = React.lazy(async () => ({ default: await pageLoaders.tagsHub() }))
 const LazyAgentConversationTab = React.lazy(async () => ({
-  default: (await import('@/agent-chat/agent-conversation-tab')).AgentConversationTab
+  default: await pageLoaders.agentConversation()
 }))
-const LazyCanvasPage = React.lazy(async () => ({
-  default: (await import('@/pages/canvas')).CanvasPage
-}))
-const LazyVirtualNotePage = React.lazy(async () => ({
-  default: (await import('@/pages/virtual-note')).VirtualNotePage
-}))
-const LazyHomePage = React.lazy(() => import('@/pages/home'))
-const LazyProjectPage = React.lazy(async () => ({
-  default: (await import('@/pages/project')).ProjectPage
-}))
+const LazyCanvasPage = React.lazy(async () => ({ default: await pageLoaders.canvas() }))
+const LazyVirtualNotePage = React.lazy(async () => ({ default: await pageLoaders.virtualNote() }))
+const LazyHomePage = React.lazy(async () => ({ default: await pageLoaders.home() }))
+const LazyProjectPage = React.lazy(async () => ({ default: await pageLoaders.project() }))
 
 interface TabContentProps {
   /** Tab data */
@@ -106,7 +115,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         return <LazyHomePage />
 
       case 'inbox':
-        return <MemoizedInboxPage />
+        return <LazyInboxPage />
 
       case 'calendar':
         return <LazyCalendarPage />
