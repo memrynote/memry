@@ -284,7 +284,8 @@
     "completeManyFailed": "Failed to complete tasks",
     "deleteManyFailed": "Failed to delete tasks",
     "moveManyFailed": "Failed to move tasks",
-    "archiveManyFailed": "Failed to archive tasks"
+    "archiveManyFailed": "Failed to archive tasks",
+    "projectMissing": "That project no longer exists"
   },
   "taskStatus": {
     "createFailed": "Failed to create status",

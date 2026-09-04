@@ -17,6 +17,79 @@ function buildDeps(overrides: Parameters<typeof createCommandRepository>[0] = {}
 }
 
 describe('createTasksCommands — update/delete/complete/archive task', () => {
+  // `tasks` carries two FKs and PRAGMA foreign_keys is ON, so a write naming a
+  // parent row that is gone fails as `FOREIGN KEY constraint failed` with no
+  // indication of which column. The sync path guarded this in #837; the local
+  // path did not, which is what production was hitting.
+  describe('updateTask — foreign key integrity', () => {
+    it('clears a statusId whose status row is gone instead of failing the write', async () => {
+      const existing = createTask({ statusId: 'status-live' })
+      const updated = createTask({ statusId: null })
+      const deps = buildDeps({
+        getTask: vi.fn(() => existing),
+        getStatus: vi.fn(() => undefined),
+        updateTask: vi.fn(() => updated)
+      })
+      const commands = createTasksCommands(deps)
+
+      const result = await commands.updateTask({ id: 'task-1', statusId: 'status-reconciled-away' })
+
+      expect(result.success).toBe(true)
+      expect(deps.repository.updateTask).toHaveBeenCalledWith(
+        'task-1',
+        expect.objectContaining({ statusId: null })
+      )
+    })
+
+    it('keeps a statusId whose status row still exists', async () => {
+      const deps = buildDeps({
+        getTask: vi.fn(() => createTask()),
+        getStatus: vi.fn(() => createStatus({ id: 'status-live' })),
+        updateTask: vi.fn(() => createTask({ statusId: 'status-live' }))
+      })
+      const commands = createTasksCommands(deps)
+
+      await commands.updateTask({ id: 'task-1', statusId: 'status-live' })
+
+      expect(deps.repository.updateTask).toHaveBeenCalledWith(
+        'task-1',
+        expect.objectContaining({ statusId: 'status-live' })
+      )
+    })
+
+    it('does not invent a statusId key on an edit that never touched status', async () => {
+      const deps = buildDeps({
+        getTask: vi.fn(() => createTask()),
+        updateTask: vi.fn(() => createTask({ title: 'New' }))
+      })
+      const commands = createTasksCommands(deps)
+
+      await commands.updateTask({ id: 'task-1', title: 'New' })
+
+      const writtenUpdates = vi.mocked(deps.repository.updateTask).mock.calls[0][1]
+      expect(Object.keys(writtenUpdates)).not.toContain('statusId')
+    })
+
+    it('rejects a move to a project that no longer exists', async () => {
+      const deps = buildDeps({
+        getTask: vi.fn(() => createTask()),
+        getProject: vi.fn(() => undefined),
+        updateTask: vi.fn(() => createTask())
+      })
+      const commands = createTasksCommands(deps)
+
+      const result = await commands.updateTask({ id: 'task-1', projectId: 'deleted-project' })
+
+      expect(result).toEqual({
+        success: false,
+        task: null,
+        error: 'errors:task.projectMissing'
+      })
+      expect(deps.repository.updateTask).not.toHaveBeenCalled()
+      expect(deps.publisher.taskUpdated).not.toHaveBeenCalled()
+    })
+  })
+
   describe('updateTask', () => {
     it('returns error when task not found', async () => {
       const deps = buildDeps({ updateTask: vi.fn(() => undefined) })
@@ -673,7 +746,7 @@ describe('createTasksCommands — update/delete/complete/archive task', () => {
     })
 
     it('deleteStatus skips publish when status not found', async () => {
-      const deps = buildDeps()
+      const deps = buildDeps({ getStatus: vi.fn(() => undefined) })
       const commands = createTasksCommands(deps)
 
       await commands.deleteStatus('missing')
