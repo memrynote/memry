@@ -117,6 +117,26 @@ The updater is the first tenant: `initializeUpdater()` reconciles install health
 resolves `app-update.yml` and fires the `startup-check` update check, none of which is on the way to
 the first frame.
 
+### Login-Shell PATH Gate
+
+A packaged app launched from Finder or the Dock inherits only the minimal system PATH, so
+`which claude` and `which codex` fail and Agent Chat greys out providers the user has installed.
+`src/main/agent/cli/login-shell-path.ts` recovers the real PATH by running the login shell, which
+sources the user's whole rc chain and costs anywhere from 180 ms to over a second.
+
+That probe is not on the boot path. `startLoginShellPathAugmentation()` fires it at module scope
+and returns immediately; `whenLoginShellPathApplied()` settles once `process.env.PATH` has been
+merged. Anything that resolves an executable by name must await that gate rather than read PATH and
+hope. `runBinaryCommand()` in `src/main/agent/cli/binary-detection.ts` is where the agent CLIs do
+it, which covers `which`, the `--version` reads and, transitively, the per-turn spawns that run
+after detection. Headless `--cli` awaits it too, because it shells out before any window exists.
+
+The probe still logs `Augmented PATH from login shell for packaged launch` when it changed PATH, and
+still reports `login_shell_path_probe_failed` with a failure class per breakage: `status_<n>` for a
+shell that exited non-zero, `spawn_error` for one that never started, `marker_missing` for output
+the parser could not read. A silent failure here is indistinguishable from an uninstalled CLI, so
+the breadcrumb is the only way to tell the two apart from a user's logs.
+
 ## Telemetry
 
 Telemetry is enabled by default in production builds and off by default in development builds.
