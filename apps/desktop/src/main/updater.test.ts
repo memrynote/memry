@@ -68,6 +68,10 @@ const mocks = vi.hoisted(() => {
     dialog: {
       showMessageBox: vi.fn()
     },
+    installHealth: {
+      recordUpdateInstallFailure: vi.fn(),
+      reconcileUpdateInstallHealth: vi.fn()
+    },
     // Stable across createLogger() calls so tests can assert on the enriched
     // updater-failure payloads (issue #842).
     logger: {
@@ -136,6 +140,12 @@ vi.mock('./telemetry/track', () => ({
 vi.mock('./telemetry/update-install-marker', () => ({
   markUpdateInstallStarted: vi.fn()
 }))
+// Reads and writes a JSON file under userData; the streak logic itself is
+// covered in updater-install-health.test.ts.
+vi.mock('./updater-install-health', () => ({
+  recordUpdateInstallFailure: mocks.installHealth.recordUpdateInstallFailure,
+  reconcileUpdateInstallHealth: mocks.installHealth.reconcileUpdateInstallHealth
+}))
 
 import { markUpdateInstallStarted } from './telemetry/update-install-marker'
 import { trackMainError, trackMainWarning } from './telemetry/diagnostics'
@@ -166,6 +176,11 @@ describe('updater', () => {
     mocks.app.getVersion.mockReturnValue('1.2.3')
     mocks.app.quit.mockClear()
     mocks.windows[0].webContents.send.mockClear()
+    mocks.installHealth.recordUpdateInstallFailure.mockReturnValue({
+      consecutiveFailures: 1,
+      stuck: false
+    })
+    mocks.installHealth.reconcileUpdateInstallHealth.mockReturnValue(null)
   })
 
   it('keeps updater unavailable outside packaged builds', async () => {
@@ -820,6 +835,61 @@ describe('updater', () => {
       expect(trackMainWarning).toHaveBeenLastCalledWith('updater', 'check', expect.any(Error), {
         retryCount: 1
       })
+    })
+  })
+
+  // macOS Squirrel.Mac fails to stage the update AFTER electron-updater has
+  // dispatched update-downloaded, so the error lands in the 'downloaded' phase
+  // and the next launch repeats it forever unless the streak is persisted.
+  describe('repeated background install failures (#1999)', () => {
+    it('counts a failure that arrives once the update is downloaded', async () => {
+      const updater = await loadUpdater()
+      updater.initializeUpdater()
+
+      mocks.autoUpdater.emit('update-downloaded', { version: '1.2.7' })
+      mocks.autoUpdater.emit('error', new Error('ditto: Could not lstat'))
+
+      expect(mocks.installHealth.recordUpdateInstallFailure).toHaveBeenCalledWith(
+        'v1.2.3',
+        'v1.2.7'
+      )
+      expect(updater.getUpdateState().installFailed).toBeNull()
+    })
+
+    it('offers the manual installer once the streak escalates', async () => {
+      mocks.installHealth.recordUpdateInstallFailure.mockReturnValue({
+        consecutiveFailures: 3,
+        stuck: true
+      })
+      const updater = await loadUpdater()
+      updater.initializeUpdater()
+
+      mocks.autoUpdater.emit('update-downloaded', { version: '1.2.7' })
+      mocks.autoUpdater.emit('error', new Error('ditto: Could not lstat'))
+
+      expect(updater.getUpdateState().installFailed).toEqual({ version: 'v1.2.7' })
+    })
+
+    it('leaves check and download failures to their own streak', async () => {
+      const updater = await loadUpdater()
+      updater.initializeUpdater()
+
+      mocks.autoUpdater.emit('checking-for-update')
+      mocks.autoUpdater.emit('error', new Error('net::ERR_NAME_NOT_RESOLVED'))
+      void updater.downloadUpdate()
+      mocks.autoUpdater.emit('error', new Error('disk full'))
+
+      expect(mocks.installHealth.recordUpdateInstallFailure).not.toHaveBeenCalled()
+    })
+
+    it('re-surfaces a streak that escalated in an earlier launch', async () => {
+      mocks.installHealth.reconcileUpdateInstallHealth.mockReturnValue('v2026-09-03.2')
+      const updater = await loadUpdater()
+
+      updater.initializeUpdater()
+
+      expect(mocks.installHealth.reconcileUpdateInstallHealth).toHaveBeenCalledWith('v1.2.3')
+      expect(updater.getUpdateState().installFailed).toEqual({ version: 'v2026-09-03.2' })
     })
   })
 
