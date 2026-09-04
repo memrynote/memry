@@ -1,6 +1,5 @@
 import type { BlockNoteEditor } from '@blocknote/core'
 import type { EditorState } from '@tiptap/pm/state'
-import type { EditorView } from '@tiptap/pm/view'
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
 import {
   BasicTextStyleButton,
@@ -20,6 +19,7 @@ import {
 } from '@blocknote/react'
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { Link2, MessageCircle } from '@/lib/icons'
+import { getLiveProseMirrorView } from './live-prosemirror-view'
 import type { ReviewSelection } from './types'
 import { ListTypeButtons } from './list-type-buttons'
 import { openWikiLinkForSelection } from './wiki-link-edit-plugin'
@@ -446,9 +446,8 @@ export function getEditorSelectionFromState(
 }
 
 type TiptapHost = {
-  _tiptapEditor?: { state?: EditorState; view?: EditorView; editorView?: EditorView }
+  _tiptapEditor?: { state?: EditorState }
   prosemirrorState?: EditorState
-  prosemirrorView?: EditorView
 }
 
 export function getProseMirrorState(editor: BlockNoteEditor): EditorState {
@@ -457,7 +456,7 @@ export function getProseMirrorState(editor: BlockNoteEditor): EditorState {
 }
 
 function getSelectionTop(editor: BlockNoteEditor, from: number): number | undefined {
-  const view = getProseMirrorView(editor)
+  const view = getLiveProseMirrorView(editor)
   const viewDom = getProseMirrorViewDom(editor)
   if (!viewDom || typeof view?.coordsAtPos !== 'function') return undefined
 
@@ -499,20 +498,8 @@ function getDomEditorSelection(editor: BlockNoteEditor): ReviewSelection | null 
   }
 }
 
-function getProseMirrorView(editor: BlockNoteEditor): EditorView | undefined {
-  const host = editor as unknown as TiptapHost
-  const tiptap = host._tiptapEditor
-  // TipTap 3.x `editor.view` returns a Proxy that THROWS on any property access
-  // (e.g. `.dom`) until the ProseMirror view is mounted, so `view?.dom` can't
-  // short-circuit — the Proxy is non-null. `editorView` is the real view and is
-  // only set once mounted; guard on it so reads during the pre-mount render
-  // window get `undefined` instead of crashing the editor (issue #541).
-  if (tiptap && !tiptap.editorView) return undefined
-  return tiptap?.view ?? host.prosemirrorView
-}
-
 function getProseMirrorViewDom(editor: BlockNoteEditor): HTMLElement | undefined {
-  return getProseMirrorView(editor)?.dom
+  return getLiveProseMirrorView(editor)?.dom
 }
 
 function hasMultiBlockDomSelection(editor: BlockNoteEditor): boolean {

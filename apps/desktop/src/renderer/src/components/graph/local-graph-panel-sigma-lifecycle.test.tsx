@@ -52,6 +52,12 @@ vi.mock('sigma', () => {
       return this.graph
     }
 
+    // jsdom does no layout, so the real container measures 0 and the refresh
+    // guard would skip every repaint. Hand it one that measures.
+    getContainer(): HTMLElement {
+      return Object.defineProperty(document.createElement('div'), 'offsetWidth', { value: 800 })
+    }
+
     getCamera(): FakeSigma['camera'] {
       return this.camera
     }

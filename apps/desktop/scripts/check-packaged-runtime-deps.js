@@ -151,28 +151,39 @@ const database = new Database(':memory:')
 database.close()
 require(packagedRequire.resolve('keytar'))
 
-// classic-level backs the CRDT store (y-leveldb). A binary built for the
-// wrong ABI does not fail at require() — it fails at open() with
-// napi_create_reference errors thrown out-of-band, or hangs its callbacks
-// (shipped broken in 2026.705.1: first keystroke crashed the editor). Probe a
-// real open/put/get/close so a bad binary fails the build, not the user.
-const { ClassicLevel } = require(packagedRequire.resolve('classic-level'))
-const levelDbPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-classic-level-smoke-'))
+// classic-level backs the CRDT store. A binary built for the wrong ABI does
+// not fail at require() — it fails at open() with napi_create_reference errors
+// thrown out-of-band, hangs its callbacks (shipped broken in 2026.705.1: first
+// keystroke crashed the editor), or access-violates on the first write (#1988,
+// win32). Probe through y-leveldb, not classic-level directly: the CRDT store
+// loads its own copy through level, which is a different resolution than a bare
+// require('classic-level') and was the copy left unrebuilt in #1988.
+const Y = require(packagedRequire.resolve('yjs'))
+const { LeveldbPersistence } = require(packagedRequire.resolve('y-leveldb'))
+const levelDbPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-store-smoke-'))
+const PROBE_DOC = '__memry_packaged_smoke__'
 
 const timer = setTimeout(() => {
-  console.error('classic-level smoke timed out — native binding hangs under packaged Electron')
+  console.error('CRDT store smoke timed out — native binding hangs under packaged Electron')
   process.exit(1)
 }, 30000)
 
 ;(async () => {
-  const db = new ClassicLevel(levelDbPath)
-  await db.open()
-  await db.put('probe', 'ok')
-  const value = await db.get('probe')
-  if (value !== 'ok') {
-    throw new Error(\`classic-level probe read mismatch: \${value}\`)
+  const persistence = new LeveldbPersistence(levelDbPath)
+  const doc = new Y.Doc()
+  doc.getMap('probe').set('ok', true)
+  await persistence.storeUpdate(PROBE_DOC, Y.encodeStateAsUpdate(doc))
+  doc.destroy()
+
+  const loaded = await persistence.getYDoc(PROBE_DOC)
+  const value = loaded.getMap('probe').get('ok')
+  loaded.destroy()
+  if (value !== true) {
+    throw new Error(\`CRDT store probe read mismatch: \${value}\`)
   }
-  await db.close()
+
+  await persistence.clearDocument(PROBE_DOC)
+  await persistence.destroy()
   clearTimeout(timer)
   fs.rmSync(levelDbPath, { force: true, recursive: true })
   console.log(\`Electron native runtime ABI \${process.versions.modules}\`)
@@ -240,6 +251,49 @@ function assertNativeModuleArch(moduleName, resolvedPath, expectedArch) {
   }
 }
 
+/**
+ * The CRDT store's classic-level must be compiled for Electron, not the upstream
+ * Node prebuild.
+ *
+ * @electron/rebuild silently leaves it as a prebuild under pnpm: its walker never
+ * descends into y-leveldb's sibling `level` -> `classic-level` copy, and
+ * `Prebuildify.findPrebuiltModule` short-circuits the compile whenever a
+ * `node.napi.node` is present. v2026.903.2 shipped to Windows that way and every
+ * install access-violated on the first store write (#1988). A `build/Release`
+ * binary is the only observable proof the rebuild actually ran, so assert it here
+ * rather than trusting the rebuild step's exit code.
+ *
+ * Resolved through y-leveldb, because that is the chain the main process uses; a
+ * bare require('classic-level') can land on a different copy.
+ */
+function assertCrdtClassicLevelBuiltFromSource(yLeveldbEntry) {
+  let classicLevelRoot
+  try {
+    const yLeveldbRoot = findPackageRoot(yLeveldbEntry, 'y-leveldb')
+    const levelEntry = createRequire(path.join(yLeveldbRoot, 'package.json')).resolve('level')
+    const levelRoot = findPackageRoot(levelEntry, 'level')
+    const classicLevelEntry = createRequire(path.join(levelRoot, 'package.json')).resolve(
+      'classic-level'
+    )
+    classicLevelRoot = findPackageRoot(classicLevelEntry, 'classic-level')
+  } catch (error) {
+    fail(`Cannot resolve the CRDT store's classic-level from y-leveldb: ${error.message}`)
+    return
+  }
+
+  const releaseDir = path.join(classicLevelRoot, 'build', 'Release')
+  const builtBinaries = fs.existsSync(releaseDir)
+    ? fs.readdirSync(releaseDir).filter((entry) => entry.endsWith('.node'))
+    : []
+
+  if (builtBinaries.length === 0) {
+    fail(
+      `Packaged classic-level was never rebuilt for Electron: no build/Release binary in ${classicLevelRoot}. ` +
+        'Run apps/desktop/scripts/ensure-native.sh electron before packaging.'
+    )
+  }
+}
+
 function checkResources(resourcesPath, expectedArch) {
   const appAsarPath = path.join(resourcesPath, 'app.asar')
   const externalNodeModulesPath = path.join(resourcesPath, 'node_modules')
@@ -286,6 +340,8 @@ function checkResources(resourcesPath, expectedArch) {
   if (!fs.existsSync(betterSqliteBinary)) {
     fail(`Missing packaged better-sqlite3 binary: ${betterSqliteBinary}`)
   }
+
+  assertCrdtClassicLevelBuiltFromSource(resolvedModules.get('y-leveldb'))
 
   const directElectronPath = path.join(externalNodeModulesPath, 'electron')
   if (fs.existsSync(directElectronPath)) {

@@ -19,6 +19,12 @@ export type UpdaterErrorSeverity = 'warn' | 'error'
  * An allowlist, never a `net::ERR_` prefix test: a prefix match would also
  * swallow `net::ERR_CERT_*` / `net::ERR_SSL_*` (a certificate failure is a
  * security signal) and any future code we have not reasoned about.
+ *
+ * The second block was added from issue #1994's re-validation. Only builds that
+ * already carry the #1587 classification (2026.822.1 and newer) can show an
+ * allowlist gap — an older build reported every code as an error regardless, so
+ * it carries no signal about this set. Cut that way, the check phase still
+ * produced these four at error severity between 2026-08-22 and 2026-09-04.
  */
 const TRANSIENT_NETWORK_ERRORS: ReadonlySet<string> = new Set([
   'net::ERR_NAME_NOT_RESOLVED',
@@ -29,6 +35,17 @@ const TRANSIENT_NETWORK_ERRORS: ReadonlySet<string> = new Set([
   'net::ERR_CONNECTION_RESET',
   'net::ERR_CONNECTION_CLOSED',
   'net::ERR_CONNECTION_REFUSED',
+  // The peer vanished before answering. Same class as the RESET/CLOSED pair
+  // above, and the check never got a response to judge. 3 events / 1 user.
+  'net::ERR_CONNECTION_ABORTED',
+  // No route to the destination, or an address the stack refuses to route at
+  // all — a downed interface or a captive portal handing back a bogus DNS
+  // answer. Both are the device's own network, not our feed. 7 events / 3 users.
+  'net::ERR_ADDRESS_UNREACHABLE',
+  'net::ERR_ADDRESS_INVALID',
+  // A local firewall or MDM policy blocked the socket before it left the
+  // machine. Nothing the app did and nothing a user can act on. 1 event.
+  'net::ERR_NETWORK_ACCESS_DENIED',
   // Laptop sleep: the network stack is suspended mid-request.
   'net::ERR_NETWORK_IO_SUSPENDED',
   'net::ERR_HTTP2_PROTOCOL_ERROR',
@@ -79,15 +96,45 @@ const collectNetErrorTokens = (error: unknown, depth = 0): string[] => {
 }
 
 /**
- * `warn` only for a check that failed to reach the network. Fails closed:
- * anything with no recognised transport code, an unknown `net::ERR_*`, an HTTP
- * status (a 404 feed, a 618 `jwt:expired` asset URL), a signature failure or an
- * install-phase errno stays `error`.
+ * Squirrel.Mac's refusal to stage an update from a read-only mount, matched on
+ * the distinctive half of its hardcoded English copy (Squirrel/Squirrel.Mac#182):
+ *
+ *   "Cannot update while running on a read-only volume. The application is on a
+ *    read-only volume. Please move the application and try again. ..."
+ *
+ * The phrase, not `EROFS` or a bare "read-only": the app being on a read-only
+ * *volume* is the whole condition, and it is what tells the two failures apart.
+ * A read-only file inside a writable install is a permissions defect and keeps
+ * error severity.
+ */
+const READ_ONLY_VOLUME = 'read-only volume'
+
+/**
+ * True when the update failed because the app is running from the mounted DMG or
+ * a Gatekeeper-translocated copy in ~/Downloads. A location the user chose, not
+ * a defect: nothing in the app can repair it, only moving the app can.
+ */
+export const isReadOnlyVolumeError = (error: unknown, depth = 0): boolean => {
+  if (!error || depth > MAX_CAUSE_DEPTH) return false
+  if (errorText(error).includes(READ_ONLY_VOLUME)) return true
+  const cause = typeof error === 'object' ? (error as { cause?: unknown }).cause : undefined
+  return isReadOnlyVolumeError(cause, depth + 1)
+}
+
+/**
+ * `warn` for a check that failed to reach the network, and for an app running
+ * from a read-only volume. Fails closed: anything with no recognised transport
+ * code, an unknown `net::ERR_*`, an HTTP status (a 404 feed, a 618 `jwt:expired`
+ * asset URL), a signature failure or an install-phase errno stays `error`.
  */
 export const classifyUpdaterError = (
   error: unknown,
   phase: UpdaterErrorPhase
 ): UpdaterErrorSeverity => {
+  // Phase-independent: this one fires while staging the download, outside every
+  // check phase, and it is an environment state in all of them. The user is told
+  // about it in the UI instead (issue #1995).
+  if (isReadOnlyVolumeError(error)) return 'warn'
   if (!isUpdaterCheckPhase(phase)) return 'error'
   // A response arrived, so this is not a connectivity drop: the server said no.
   const status =

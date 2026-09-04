@@ -162,6 +162,16 @@ describe('tasks-handlers', () => {
     ;(taskQueries.getTaskNoteIds as Mock).mockReturnValue([])
     ;(taskQueries.getTaskCanvasIds as Mock).mockReturnValue([])
     ;(taskQueries.countSubtasks as Mock).mockReturnValue({ total: 0, completed: 0 })
+    // `tasks.project_id` is a real FK, so the domain refuses to write a task
+    // against a project that does not exist. Resolving every id by default is
+    // what a populated database looks like; leaving this unstubbed modelled one
+    // where a task writes successfully against a missing project. A test that
+    // wants the dangling-parent case overrides this explicitly.
+    ;(projectQueries.getProjectWithStatuses as Mock).mockImplementation((_db, id: string) => ({
+      id,
+      name: 'Project',
+      statuses: []
+    }))
   })
 
   afterEach(() => {

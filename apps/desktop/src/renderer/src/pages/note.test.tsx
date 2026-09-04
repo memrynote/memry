@@ -530,9 +530,14 @@ vi.mock('@/components/note/note-title', () => ({
     title: string
     onTitleChange: (title: string) => void
   }) => (
-    <button type="button" onClick={() => onTitleChange('Renamed Note')}>
-      {title}
-    </button>
+    <>
+      <button type="button" onClick={() => onTitleChange('Renamed Note')}>
+        {title}
+      </button>
+      <button type="button" onClick={() => onTitleChange('   ')}>
+        Blank the title
+      </button>
+    </>
   )
 }))
 
@@ -887,6 +892,15 @@ describe('NotePage', () => {
     expect(await screen.findByText('load failed')).toBeInTheDocument()
     fireEvent.click(screen.getByText('button.retry'))
     expect(mocks.refetchNote).toHaveBeenCalled()
+  })
+
+  it('refuses a blank title instead of letting the rename contract reject it', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Blank the title' }))
+
+    expect(mocks.renameNote).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('page.toast.titleRequired')
   })
 
   it('saves title, tags, properties, backlinks, and linked task navigation', async () => {

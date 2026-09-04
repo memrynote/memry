@@ -739,9 +739,38 @@ describe('normalizeRejectionReason', () => {
     expect(normalized).toBeInstanceOf(Error)
     expect(normalized.name).toBe('Rejection_string')
     expect(buildErrorDetail(normalized)?.stack).toContain('at ')
-    // #and the reason's value is never shipped
-    expect(normalized.message).toBe('')
-    expect(JSON.stringify(buildErrorDetail(normalized))).not.toContain('on fire')
+    // #and the reason's own text rides along, which is the only thing that makes
+    // the Rejection_string issue readable at all (#1989)
+    expect(buildErrorDetail(normalized)?.message).toBe('everything is on fire')
+  })
+
+  // #1989: the reason's message used to be dropped outright, so every
+  // Rejection_* issue in Error Tracking was titled after its own error code.
+  // Redaction, not omission, is the privacy control.
+  it.each([
+    ['a home path', 'could not open /Users/kaan/Vault/notes', '/Users/kaan'],
+    ['an e-mail', 'sync rejected for kaan@example.com', 'kaan@example.com'],
+    ['a note title', 'failed to parse Quarterly Review.md', 'Quarterly Review'],
+    ['a bearer token', 'Authorization: Bearer abc.def.ghi expired', 'abc.def.ghi']
+  ])('redacts %s carried in a rejection message', (_label, raw, secret) => {
+    const detail = buildErrorDetail(normalizeRejectionReason(raw))
+
+    expect(detail?.message).toBeTruthy()
+    expect(detail?.message).not.toContain(secret)
+  })
+
+  it('carries the message of a cross-realm error, redacted', () => {
+    // #given an error from another realm whose message names a vault note
+    const crossRealm = {
+      name: 'Error',
+      message: 'private note /Users/kaan/secret.md failed',
+      stack: 'Error: boom\n    at doThing (/app/out/main.js:1:1)'
+    }
+
+    const detail = buildErrorDetail(normalizeRejectionReason(crossRealm))
+
+    // #then the message survives with the path and the title both masked
+    expect(detail?.message).toBe('private note ~/[name].md failed')
   })
 
   it('ships the error message, redacted, so the issue title says what broke', () => {
@@ -915,8 +944,9 @@ describe('normalizeWindowError', () => {
     const detail = buildErrorDetail(normalized)
     expect(detail?.stack).toContain('at ')
     expect(detail?.stack).toContain('index-VP6Jd1Vs.js:121718:22')
-    // #and neither the message text nor the username rides along
-    expect(JSON.stringify(detail)).not.toContain('focus')
+    // #and the message rides along so the issue is readable (#1989), while the
+    // username in the filename is still masked
+    expect(detail?.message).toBe('Uncaught TypeError: n.focus is not a function')
     expect(JSON.stringify(detail)).not.toContain('/Users/kaan')
   })
 
@@ -924,9 +954,21 @@ describe('normalizeWindowError', () => {
     // #given the opaque cross-origin case: "Script error." and no location
     const normalized = normalizeWindowError({ error: null, message: 'Script error.' })
 
-    // #then a stable, non-leaking code is reported
+    // #then a stable, non-leaking code is reported, and the message says which
+    // of the several message-less window failures this one was
     expect(toErrorCode(normalized)).toBe('WindowError')
-    expect(normalized.message).toBe('')
+    expect(buildErrorDetail(normalized)?.message).toBe('Script error.')
+  })
+
+  it('redacts a path carried in a window error message', () => {
+    const normalized = normalizeWindowError({
+      error: null,
+      message: '/Users/kaan/secret.md: failed to load'
+    })
+
+    // #then the code stays a bounded token and the message ships masked
+    expect(normalized.name).toBe('WindowError')
+    expect(buildErrorDetail(normalized)?.message).toBe('~/[name].md: failed to load')
   })
 
   it('does not adopt a message-derived name that is not an enum-ish token', () => {

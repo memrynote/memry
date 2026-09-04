@@ -134,6 +134,11 @@ task links use the same visual language as the main app surfaces.
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
 
+When a CLI backend is selected, send stays disabled until that CLI has actually been detected —
+including the brief check that runs as a conversation opens. A send button that is greyed out for a
+moment on open, or that stays greyed out, means the CLI has not been found; the CLI agents group in
+settings shows the detection status and the install hint.
+
 Type `@` in the prompt to open the mention picker. Notes, tasks, journals, inbox items, and calendar
 events appear with their item icons, and calendar events are read from the local calendar with
 archived events hidden. Choosing a result replaces the active `@` query with one inline tag, so a

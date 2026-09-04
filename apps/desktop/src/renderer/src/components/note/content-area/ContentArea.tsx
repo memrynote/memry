@@ -1186,6 +1186,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           const parsed = title
             ? parseQuickAdd(title, projects)
             : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
+          // A checklist line of nothing but quick-add tokens ("- [ ] #errand")
+          // parses to an empty title, which `tasks:create` rejects. Leave it as
+          // a checkbox rather than surfacing a contract error (#1991).
+          if (!parsed.title.trim()) return
 
           const result = await tasksService.create({
             projectId: projectIdForCreate ?? parsed.projectId ?? defaultProject.id,
@@ -1407,6 +1411,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         const parsed = title
           ? parseQuickAdd(title, projects)
           : { title: '', priority: 'none', projectId: null, dueDate: null }
+        // The draft scan only checks the raw block title, so a token-only draft
+        // reaches here with nothing left to name the task.
+        if (!parsed.title.trim()) return
 
         try {
           const result = await tasksService.create({

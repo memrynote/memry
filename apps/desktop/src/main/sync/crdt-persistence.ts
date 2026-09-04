@@ -6,6 +6,8 @@ import { createLogger } from '../lib/logger'
 import { runCrdtPreflight, type CrdtPreflightResult } from './crdt-preflight'
 import { moveStoreDir } from './crdt-store-move'
 import { trackMainEvent } from '../telemetry/track'
+import { getMainRedactOptions } from '../telemetry/redact-options'
+import { redactText } from '@memry/contracts/redact'
 
 // Same scope as crdt-provider on purpose: every line below was emitted under
 // 'CrdtProvider' before this module was split out of it, and production log
@@ -49,12 +51,22 @@ type FailurePoint = CrdtPreflightResult['stage'] | 'probe'
  * were therefore indistinguishable, and "how many users are running in-memory"
  * had no answer. This event is the answer; the preflight crash is not.
  *
- * Everything shipped is a bounded token: the stage and transport enums and the
- * event name. The reason string is deliberately NOT sent — it can carry a
- * store path, and `SafeDimensionValueSchema` is a blocklist, not a guarantee.
+ * The stage and transport ride as bounded tokens. The reason string ships too,
+ * but only through `redactText` with the main-process vault root and salted
+ * hasher — the same path every other error message takes. It stays out of
+ * `dimensions`, where `SafeDimensionValueSchema` is a blocklist rather than a
+ * guarantee; the redacted `error.message` field is the one built for free text.
+ * Without it this event's Error Tracking issue was titled after its own error
+ * code and carried nothing else at all (#1989).
  */
 function reportPersistenceUnavailable(preflight: CrdtPreflightResult | null): void {
   const at: FailurePoint = preflight && !preflight.ok ? (preflight.stage ?? 'bootstrap') : 'probe'
+  const message = [
+    `CRDT persistence unavailable at ${at}`,
+    `transport=${preflight?.transport ?? 'none'}`,
+    `os=${os.platform()} ${os.release()}`,
+    `reason=${preflight?.reason ?? 'unknown'}`
+  ].join(' ')
   trackMainEvent('app_error_seen', {
     surface: 'app',
     action: 'init',
@@ -64,6 +76,7 @@ function reportPersistenceUnavailable(preflight: CrdtPreflightResult | null): vo
     // Same `CODE:detail` shape as the other main-process error codes, so the
     // stage is groupable in error tracking without spending the one dimension.
     errorCode: `CRDT_PERSISTENCE_UNAVAILABLE:${at}`,
+    error: { message: redactText(message, getMainRedactOptions()).slice(0, 512) },
     // At most one dimension is allowed to leave the device, and this is the
     // one worth having: a 'node' verdict means the Chromium-free fallback
     // failed too, i.e. the binding is broken on this machine rather than the

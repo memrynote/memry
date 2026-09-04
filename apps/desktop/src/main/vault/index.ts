@@ -33,6 +33,7 @@ import {
 import { getJournalConfig, setJournalConfig } from './journal-config'
 import {
   initDatabase,
+  isDataDatabaseCorrupt,
   initIndexDatabase,
   closeAllDatabases,
   runMigrations,
@@ -343,8 +344,14 @@ async function repairCorruptFtsIndexes(vaultPath: string): Promise<void> {
       duration: Date.now() - startedAt
     })
   } catch (error) {
-    logger.error('FTS index repair failed:', error)
-    trackMainError('vault', 'fts_index_repair', error)
+    // rebuildProjections reads the real `tasks` and `inbox_items` tables in
+    // data.db to repopulate the index. A corruption error from that read is
+    // data.db being malformed, not a damaged search index — filing it as
+    // `fts_index_repair` sent the last sweep looking at fts5 for a fault that
+    // was never there.
+    const action = isDataDatabaseCorrupt() ? 'data_db_corrupt' : 'fts_index_repair'
+    logger.error(`FTS index repair failed (${action}):`, error)
+    trackMainError('vault', action, error)
   }
 }
 
@@ -510,6 +517,14 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Initialize data database
   initDatabase(dataDbPath)
+
+  // Take the verdict on data.db here, once, while it is still attributable.
+  // Left unchecked, a malformed data.db is reported a dozen times over by
+  // whichever handlers happen to read it first, and never names the file.
+  if (isDataDatabaseCorrupt()) {
+    logger.error('data.db failed its integrity check — reads against it will fail')
+    trackMainError('vault', 'data_db_corrupt', new Error('data.db failed PRAGMA quick_check'))
+  }
 
   // The CRDT store is scoped to this vault's uuid, which lives in the data DB
   // just opened — main's bootstrap call runs before any vault exists and

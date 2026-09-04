@@ -15,6 +15,17 @@ Two fix paths depending on the target:
 
 > Using the Node fix for Electron leaves `autoOpenLastVault` silently failing with `ERR_DLOPEN_FAILED`. The app never opens the test vault, and E2E waits for workspace surfaces time out.
 
+## `electron-rebuild -o classic-level` is a silent no-op
+
+Symptom: no `ERR_DLOPEN_FAILED`. The native binding loads, the LevelDB store opens, and the **first write** access-violates (`0xC0000005` on win32) or hangs its callbacks. Windows shipped this way from v2026.705.1 through v2026.903.2 (#1583, #1988): every packaged build carried `build/Release/better_sqlite3.node` and `build/Release/keytar.node`, and no `build/Release` for classic-level at all.
+
+`@electron/rebuild` skips classic-level for two independent reasons:
+
+- Its module walker only descends into `<module>/node_modules`. Under pnpm, y-leveldb's `level` -> `classic-level@1.4.x` sits in a sibling directory inside `.pnpm`, so the copy the CRDT store actually loads is never visited. The only walkable `classic-level` is the dev-only 3.x, which electron-builder then prunes out of the package.
+- Even when visited, `Prebuildify.findPrebuiltModule` accepts an existing `prebuilds/<platform>/node.napi.node` and short-circuits the compile. `--force` does not override that; only `--build-from-source` does.
+
+`apps/desktop/scripts/ensure-native.sh` handles both targets by driving each `.pnpm/classic-level@*` copy directly. Never treat the plain `-o ...,classic-level` flag as proof the rebuild happened. The only proof is a `build/Release/*.node` inside the classic-level package, which `check-packaged-runtime-deps.js` asserts on every packaged build.
+
 ## Electron binary re-downloads on every worktree
 
 `bash apps/desktop/scripts/ensure-native.sh electron` (and the E2E fixtures, when

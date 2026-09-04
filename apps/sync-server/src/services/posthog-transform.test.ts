@@ -500,6 +500,22 @@ describe('exceptionEvent', () => {
     expect(list[0].value).toBe('NO_DETAIL')
   })
 
+  // #1989: an issue titled after its own error code is indistinguishable from a
+  // healthy one until you open it. The flag is what a dashboard counts.
+  it('flags the fallback so message-less reports are countable', () => {
+    const result = exceptionEvent(batchFixture(), eventFixture({ errorCode: 'NO_DETAIL' }), ctx)
+    expect(result?.properties.exception_message_missing).toBe(true)
+  })
+
+  it('does not flag an exception that carries a message', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({ errorCode: 'DB_LOCKED', error: { message: 'database is locked' } }),
+      ctx
+    )
+    expect(result?.properties).not.toHaveProperty('exception_message_missing')
+  })
+
   it('omits $exception_fingerprint entirely when there is no errorCode', () => {
     const result = exceptionEvent(
       batchFixture(),

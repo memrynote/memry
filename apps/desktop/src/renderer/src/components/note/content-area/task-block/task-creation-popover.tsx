@@ -86,14 +86,18 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
   const [error, setError] = useState<string | null>(null)
   const createBtnRef = useRef<HTMLButtonElement>(null)
 
+  // The block's text is the title, and a task block can be empty. Creating from
+  // it would fail the `min(1)` contract with a message the user cannot act on.
+  const trimmedTitle = title.trim()
+
   const handleCreate = useCallback((): void => {
-    if (!projectId || isSubmitting) return
+    if (!projectId || !trimmedTitle || isSubmitting) return
     setIsSubmitting(true)
     setError(null)
 
     const input: TaskCreateInput = {
       projectId,
-      title,
+      title: trimmedTitle,
       priority,
       dueDate: dueDate || null,
       linkedNoteIds: noteId ? [noteId] : []
@@ -118,7 +122,7 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
         setIsSubmitting(false)
       }
     })()
-  }, [projectId, title, priority, dueDate, noteId, isSubmitting, onCreated])
+  }, [projectId, trimmedTitle, priority, dueDate, noteId, isSubmitting, onCreated])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -210,7 +214,7 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
           ref={createBtnRef}
           size="sm"
           onClick={handleCreate}
-          disabled={!projectId || isSubmitting}
+          disabled={!projectId || !trimmedTitle || isSubmitting}
           autoFocus
         >
           {isSubmitting ? 'Creating...' : 'Create'}

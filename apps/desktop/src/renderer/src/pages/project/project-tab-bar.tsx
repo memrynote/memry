@@ -20,6 +20,12 @@ interface ProjectTabBarProps {
   onToggleRail: () => void
   onEdit: () => void
   onArchive: () => void
+  /**
+   * False for the inbox, which the data layer refuses to archive. Offering the
+   * action and then throwing `Cannot archive the inbox project` is an error
+   * standing in for an affordance that should never have been live.
+   */
+  canArchive: boolean
 }
 
 export const ProjectTabBar = ({
@@ -29,7 +35,8 @@ export const ProjectTabBar = ({
   railOpen,
   onToggleRail,
   onEdit,
-  onArchive
+  onArchive,
+  canArchive
 }: ProjectTabBarProps): React.JSX.Element => {
   const { t } = useT('tasks')
   const listRef = useRef<HTMLDivElement>(null)
@@ -140,7 +147,7 @@ export const ProjectTabBar = ({
             <DropdownMenuItem onSelect={onEdit}>
               {t('projectHub.header.editProject')}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={onArchive}>
+            <DropdownMenuItem disabled={!canArchive} onSelect={onArchive}>
               {t('projectHub.header.archiveProject')}
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -45,6 +45,9 @@ describe('createTasksDomain', () => {
 
     const repository = {
       getTask: vi.fn().mockReturnValue(existingTask),
+      // `tasks.project_id` is a real FK: the move is refused outright if the
+      // target project does not exist, so a status remap could never be reached.
+      getProject: vi.fn((id: string) => ({ id, name: 'Project', statuses: [] })),
       getStatus: vi.fn().mockReturnValue({
         id: 'status-a',
         projectId: 'project-a',

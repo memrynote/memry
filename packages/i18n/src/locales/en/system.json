@@ -56,7 +56,8 @@
     "reminderTimeMustBeFuture": "Reminder time must be in the future",
     "definitionNotFound": "Definition not found",
     "noteNotFound": "Note not found",
-    "updateFailed": "Update failed"
+    "updateFailed": "Update failed",
+    "updateReadOnlyVolume": "Updates can't be installed while memrynote runs from this location. Move memrynote to your Applications folder and open it again."
   },
   "startup": {
     "installingUpdate": {

@@ -14,11 +14,13 @@ import { markUpdateInstallStarted } from './telemetry/update-install-marker'
 import {
   classifyUpdaterError,
   isExpiredSignedAssetError,
+  isReadOnlyVolumeError,
   isUpdaterCheckPhase,
   recordUpdaterCheckFailure,
   recordUpdaterCheckSuccess,
   resetUpdaterCheckHealth
 } from './updater-error-severity'
+import { recordUpdateInstallFailure, reconcileUpdateInstallHealth } from './updater-install-health'
 
 const logger = createLogger('Updater')
 
@@ -151,12 +153,17 @@ export function describeUpdaterError(
 /**
  * Route a failure to the telemetry severity it deserves. A background check that
  * could not reach the network is the user being offline, not a defect, so it
- * ships as a `warn` log line — queryable, but out of Error Tracking. Everything
- * else, plus an install whose checks have been failing for a day straight, stays
- * an exception: those users cannot receive a fix. See updater-error-severity.ts.
+ * ships as a `warn` log line — queryable, but out of Error Tracking. So does an
+ * app running from a read-only volume, in any phase. Everything else, plus an
+ * install whose checks have been failing for a day straight, stays an exception:
+ * those users cannot receive a fix. See updater-error-severity.ts.
  */
 function reportUpdaterFailure(error: unknown, phase: UpdaterErrorPhase): void {
   if (!isUpdaterCheckPhase(phase)) {
+    if (classifyUpdaterError(error, phase) === 'warn') {
+      trackMainWarning('updater', phase, error)
+      return
+    }
     trackMainError('updater', phase, error)
     return
   }
@@ -184,6 +191,42 @@ function currentErrorPhase(): UpdaterErrorPhase {
       return 'install'
     default:
       return 'idle'
+  }
+}
+
+/**
+ * Count a failure that belongs to the install half of the pipeline, and surface
+ * the manual-installer path once the same update has failed to install enough
+ * times in a row (#1999).
+ *
+ * The phase is the whole gate, deliberately. `downloaded` is set only by the
+ * update-downloaded handler, and electron-updater's MacUpdater hands the file to
+ * Squirrel.Mac for staging in the same tick it dispatches that event — so an
+ * error arriving in this state is a failed install attempt for
+ * `state.availableVersion`, which is what the macOS ShipIt `ditto` failures are.
+ * `install` is the explicit Restart-to-install path.
+ *
+ * `idle` is NOT counted even though the same failure can land there once the
+ * status has moved on: it is also the phase for every error that arrives while
+ * no operation is running, and padding the streak with unrelated failures would
+ * hand a user the "download it manually" dialog for an update that is fine.
+ * Under-counting only delays the escalation by a launch.
+ */
+function noteInstallAttemptFailure(phase: UpdaterErrorPhase): void {
+  if (phase !== 'downloaded' && phase !== 'install') {
+    return
+  }
+  const targetVersion = state.availableVersion
+  if (!targetVersion) {
+    return
+  }
+  const { consecutiveFailures, stuck } = recordUpdateInstallFailure(
+    getCurrentDisplayVersion(),
+    targetVersion
+  )
+  logger.warn('update install attempt failed', { targetVersion, consecutiveFailures })
+  if (stuck) {
+    noteFailedUpdateInstall(targetVersion)
   }
 }
 
@@ -290,6 +333,13 @@ export function initializeUpdater(): void {
 
   initialized = true
   resetUpdaterCheckHealth()
+  // A streak that already escalated is re-surfaced on every launch it is still
+  // live: the user stays stuck on the old build until they install manually, and
+  // the escalation latch only stops repeat failures from re-firing the dialog.
+  const strandedInstallVersion = reconcileUpdateInstallHealth(getCurrentDisplayVersion())
+  if (strandedInstallVersion) {
+    noteFailedUpdateInstall(strandedInstallVersion)
+  }
   autoUpdater.logger = updaterLibraryLogger
   const prefs = getUpdaterPrefs()
   const autoDownloadEnabled = prefs.autoDownload ?? false
@@ -411,10 +461,18 @@ export function initializeUpdater(): void {
     // Update-pipeline breakage (feed 404s, signature failures, disk-full
     // downloads) must reach error tracking: affected users cannot update to a fix.
     reportUpdaterFailure(error, phase)
+    // The app is on the mounted DMG or a translocated ~/Downloads copy, so
+    // Squirrel cannot stage anything and never will from here. Its own message
+    // explains that without naming the fix, so say what to do instead. The
+    // `isInApplicationsFolder()` guard is what keeps this from telling a
+    // correctly installed user to move an app that is already in place; it is
+    // macOS-only, so `?.()` leaves every other platform on the raw message.
+    const readOnlyVolume = isReadOnlyVolumeError(error) && app.isInApplicationsFolder?.() === false
     setState({
       status: 'error',
-      error: message
+      error: readOnlyVolume ? getMainI18n().t('system:error.updateReadOnlyVolume') : message
     })
+    noteInstallAttemptFailure(phase)
   })
 
   if (autoCheckEnabled) {

@@ -88,10 +88,10 @@ describe('renderer telemetry diagnostics', () => {
         error: expect.objectContaining({ stack: expect.stringContaining('at ') })
       })
     )
-    // #and the reason's value never ships
-    const serialized = JSON.stringify(trackTelemetryMock.mock.calls[0])
-    expect(serialized).not.toContain('secret.md')
-    expect(serialized).not.toContain('boom')
+    // #and the reason's text ships redacted rather than dropped (#1989): the
+    // home path collapses and the note basename is masked
+    const [, options] = trackTelemetryMock.mock.calls[0]
+    expect(options.error.message).toBe('boom at ~/[name].md')
   })
 
   it('captures the error class and source location of a window error with no error object', () => {
@@ -121,10 +121,11 @@ describe('renderer telemetry diagnostics', () => {
         })
       })
     )
-    // #and neither the message text nor the username ships
-    const serialized = JSON.stringify(trackTelemetryMock.mock.calls[0])
-    expect(serialized).not.toContain('focus')
-    expect(serialized).not.toContain('/Users/kaan')
+    // #and the message ships so the issue has a title (#1989), while the
+    // username in the filename stays masked
+    const [, options] = trackTelemetryMock.mock.calls[0]
+    expect(options.error.message).toBe('Uncaught TypeError: n.focus is not a function')
+    expect(JSON.stringify(trackTelemetryMock.mock.calls[0])).not.toContain('/Users/kaan')
   })
 
   it('emits structured renderer logs', () => {
