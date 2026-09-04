@@ -148,6 +148,20 @@ export default defineConfig({
         '@': resolve(appRoot, 'src/renderer/src')
       }
     },
-    plugins: [devCsp(), react(), tailwindcss()]
+    plugins: [devCsp(), react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        // Every per-icon module in @hugeicons/core-free-icons tags its array literal
+        // with /*#__PURE__*/, which rollup only reads on calls. Left alone it emits one
+        // notice per icon and buries the warnings worth acting on.
+        onwarn(warning, defaultHandler) {
+          const fromHugeicons =
+            warning.id?.includes('@hugeicons/core-free-icons') ||
+            warning.message.includes('@hugeicons/core-free-icons')
+          if (warning.code === 'INVALID_ANNOTATION' && fromHugeicons) return
+          defaultHandler(warning)
+        }
+      }
+    }
   }
 })
