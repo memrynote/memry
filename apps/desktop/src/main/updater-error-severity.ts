@@ -19,6 +19,12 @@ export type UpdaterErrorSeverity = 'warn' | 'error'
  * An allowlist, never a `net::ERR_` prefix test: a prefix match would also
  * swallow `net::ERR_CERT_*` / `net::ERR_SSL_*` (a certificate failure is a
  * security signal) and any future code we have not reasoned about.
+ *
+ * The second block was added from issue #1994's re-validation. Only builds that
+ * already carry the #1587 classification (2026.822.1 and newer) can show an
+ * allowlist gap — an older build reported every code as an error regardless, so
+ * it carries no signal about this set. Cut that way, the check phase still
+ * produced these four at error severity between 2026-08-22 and 2026-09-04.
  */
 const TRANSIENT_NETWORK_ERRORS: ReadonlySet<string> = new Set([
   'net::ERR_NAME_NOT_RESOLVED',
@@ -29,6 +35,17 @@ const TRANSIENT_NETWORK_ERRORS: ReadonlySet<string> = new Set([
   'net::ERR_CONNECTION_RESET',
   'net::ERR_CONNECTION_CLOSED',
   'net::ERR_CONNECTION_REFUSED',
+  // The peer vanished before answering. Same class as the RESET/CLOSED pair
+  // above, and the check never got a response to judge. 3 events / 1 user.
+  'net::ERR_CONNECTION_ABORTED',
+  // No route to the destination, or an address the stack refuses to route at
+  // all — a downed interface or a captive portal handing back a bogus DNS
+  // answer. Both are the device's own network, not our feed. 7 events / 3 users.
+  'net::ERR_ADDRESS_UNREACHABLE',
+  'net::ERR_ADDRESS_INVALID',
+  // A local firewall or MDM policy blocked the socket before it left the
+  // machine. Nothing the app did and nothing a user can act on. 1 event.
+  'net::ERR_NETWORK_ACCESS_DENIED',
   // Laptop sleep: the network stack is suspended mid-request.
   'net::ERR_NETWORK_IO_SUSPENDED',
   'net::ERR_HTTP2_PROTOCOL_ERROR',
