@@ -15,6 +15,7 @@ import {
   type OpenTrace,
   type OpenTraceSummary
 } from '@/editor/__rig__/open-trace'
+import { EDITOR_WEB_CONTRACT_HASH } from '@/editor/editor-web-asset'
 import { getEditorSession } from '@/editor/session'
 import type { VaultDb } from '@/db'
 import { readNotesSnapshot } from '@/features/notes/notes-repo'
@@ -215,7 +216,10 @@ export default function OpenTraceScreen() {
       setProgress({ done: total, total })
       const measured = summarizeOpenTraces(getTraces())
       setTraces(getTraces())
-      const report = `${pool}\n${formatOpenTraceReport(measured)}`
+      // The asset stamp is in the report because an absent guest mark reads
+      // identically to a stale prebuilt bundle, and one of those is a finding
+      // while the other is a rebuild the runner forgot.
+      const report = `${pool}\neditor-web asset ${EDITOR_WEB_CONTRACT_HASH}\n${formatOpenTraceReport(measured)}`
       log.warn(report)
       const written = writeReport(report)
       setStatus(written ? `${pool}\nreport → ${written}` : pool)
