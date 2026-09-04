@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native'
 
 import { AppText } from '@/components/ui/app-text'
@@ -44,6 +44,11 @@ export interface NavBarInlineProps {
   title: string
   back?: { label: string; onPress: () => void; showLabel?: boolean }
   actions?: NavBarAction[]
+  /**
+   * Replaces the centred title text. The layer stays `pointerEvents="none"`,
+   * so whatever goes here is a readout, not a control.
+   */
+  center?: ReactNode
 }
 
 interface ActionRowProps {
@@ -96,7 +101,7 @@ export function NavBarLargeTitle({ title, actions = [] }: NavBarLargeTitleProps)
   )
 }
 
-export function NavBarInline({ title, back, actions = [] }: NavBarInlineProps) {
+export function NavBarInline({ title, back, actions = [], center }: NavBarInlineProps) {
   const c = useColors()
   const [leadingWidth, setLeadingWidth] = useState(0)
   const [trailingWidth, setTrailingWidth] = useState(0)
@@ -139,9 +144,11 @@ export function NavBarInline({ title, back, actions = [] }: NavBarInlineProps) {
         pointerEvents="none"
         style={[styles.titleLayer, { paddingStart: inset, paddingEnd: inset }]}
       >
-        <AppText variant="headline" color={c.text.primary} numberOfLines={1}>
-          {title}
-        </AppText>
+        {center ?? (
+          <AppText variant="headline" color={c.text.primary} numberOfLines={1}>
+            {title}
+          </AppText>
+        )}
       </View>
 
       <ActionRow actions={actions} onLayout={(e) => setTrailingWidth(e.nativeEvent.layout.width)} />

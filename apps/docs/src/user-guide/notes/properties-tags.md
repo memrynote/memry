@@ -106,6 +106,11 @@ Option names are unique within a property. Adding an option whose name already e
 
 A status property you have not customized yet shows the built-in `Todo` / `In progress` / `Done` set. The first option you add to it saves that set alongside your new option, so what the picker shows and what the vault stores stay the same.
 
+Property definitions sync across your devices. A `select` you define on the desktop reaches your
+other desktop and your phone with its type and its option colors intact, so the same value shows
+the same colored chip everywhere. A value that no longer matches any option — an option renamed on
+another device before this note synced — still renders, in gray, rather than disappearing.
+
 ### Adding a Property to a Note
 
 In the property panel, click **Add property** and pick from the list. Set the value inline.

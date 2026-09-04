@@ -14,6 +14,12 @@ import {
   DEFAULT_STATUS_DEFINITION
 } from '@memry/contracts/property-types'
 import { propertyDefinitions as propertyDefinitionsTable } from '@memry/db-schema/schema/notes-cache'
+import {
+  enqueuePropertyDefinitionDelete,
+  enqueuePropertyDefinitionUpsert,
+  readPropertyDefinitionRow
+} from './property-definition-sync-effects'
+import { isNotNull } from 'drizzle-orm'
 
 const logger = createLogger('PropertyDefinitions')
 
@@ -54,8 +60,13 @@ export class PropertyDefinitionsService {
   async reload(): Promise<void> {
     const raw = await safeRead(this.filePath)
     if (!raw) {
+      // No file yet is the normal state of a device that has just been linked,
+      // and its first pull can land definitions before anything writes one.
+      // Clearing the cache without the union would delete them again.
       this.cache.clear()
+      const gained = this.mergeSyncedDefinitions()
       this.rebuildDbCache()
+      if (gained) await this.persistToFile()
       return
     }
 
@@ -69,10 +80,59 @@ export class PropertyDefinitionsService {
       }
 
       this.applyParsedData(parsed.data)
+      const gained = this.mergeSyncedDefinitions()
       this.rebuildDbCache()
+      // A definition that arrived over sync exists only as a data DB row until
+      // this write. `applyParsedData` above clears the cache from the file, so
+      // without the union plus this persist the very next pull would rebuild
+      // the DB from the file alone and delete the row that just landed.
+      if (gained) await this.persistToFile()
     } catch (err) {
       logger.warn('Failed to parse properties.md, keeping last-known-good cache:', err)
     }
+  }
+
+  /**
+   * Fold the clocked data DB rows into the cache, and report whether the file
+   * is now out of date.
+   *
+   * Union only. The file wins for any name it already covers — it is what a
+   * human edits, and the pull path has already resolved that name's clock.
+   */
+  private mergeSyncedDefinitions(): boolean {
+    let gained = false
+    try {
+      const rows = getDatabase()
+        .select()
+        .from(propertyDefinitionsTable)
+        .where(isNotNull(propertyDefinitionsTable.clock))
+        .all()
+      for (const row of rows) {
+        if (this.cache.has(row.name)) continue
+        const definition = definitionFromRow(row)
+        if (!definition) continue
+        this.cache.set(row.name, definition)
+        gained = true
+      }
+    } catch (err) {
+      logger.warn('Failed to merge synced property definitions:', err)
+    }
+    return gained
+  }
+
+  /**
+   * Drop a definition a peer deleted.
+   *
+   * The handler has already removed the DB row, so the union above will not
+   * bring it back — but `.memry/properties.md` still names it, and the next
+   * reload would read it straight back in.
+   */
+  async applyRemoteDelete(name: string): Promise<void> {
+    if (!this.cache.has(name)) return
+    await this.enqueueWrite(async () => {
+      this.cache.delete(name)
+      await this.persistToFile()
+    })
   }
 
   getAll(): PropertyDefinition[] {
@@ -89,14 +149,20 @@ export class PropertyDefinitionsService {
       this.cache.set(normalized.name, normalized)
       await this.persistToFile()
       this.rebuildDbCache()
+      enqueuePropertyDefinitionUpsert(normalized.name)
     })
   }
 
   async remove(name: string): Promise<void> {
+    const snapshot = readPropertyDefinitionRow(name)
     await this.enqueueWrite(async () => {
       this.cache.delete(name)
       await this.persistToFile()
       this.rebuildDbCache()
+      // The row is gone by now, so the tombstone has to carry the copy taken
+      // before the rebuild — a delete with no payload has no clock, and peers
+      // treat a clockless tombstone as older than what they hold and skip it.
+      enqueuePropertyDefinitionDelete(name, snapshot)
     })
   }
 
@@ -113,6 +179,8 @@ export class PropertyDefinitionsService {
       }
       await this.persistToFile()
       this.rebuildDbCache()
+      if (this.cache.has(name)) enqueuePropertyDefinitionUpsert(name)
+      else enqueuePropertyDefinitionDelete(name, null)
     })
   }
 
@@ -281,6 +349,18 @@ export class PropertyDefinitionsService {
   }
 
   private rebuildSingleDbCache(db: DataDb | IndexDb): void {
+    // The data DB's copy of this table is a SYNCED row, so its clock has to
+    // survive a rebuild the file triggers. Losing it makes every definition
+    // look unclocked, and `seedUnclocked` then re-pushes the whole set as
+    // creates on the next sync.
+    const carried = new Map(
+      db
+        .select()
+        .from(propertyDefinitionsTable)
+        .all()
+        .map((row) => [row.name, { clock: row.clock, syncedAt: row.syncedAt }])
+    )
+
     db.delete(propertyDefinitionsTable).run()
 
     for (const def of this.cache.values()) {
@@ -297,7 +377,9 @@ export class PropertyDefinitionsService {
           type: def.type,
           options,
           defaultValue: def.defaultValue ?? null,
-          color: null
+          color: null,
+          clock: carried.get(def.name)?.clock ?? null,
+          syncedAt: carried.get(def.name)?.syncedAt ?? null
         })
         .run()
     }
@@ -327,6 +409,45 @@ export class PropertyDefinitionsService {
     }
 
     this.writing = false
+  }
+}
+
+/**
+ * A synced row, back as a definition.
+ *
+ * The inverse of what `rebuildSingleDbCache` writes: `status` keeps its
+ * categories under an `options` wrapper, everything else stores a bare option
+ * array. A row whose JSON no longer parses is dropped rather than allowed to
+ * fail the whole reload — one bad definition must not cost the vault the rest.
+ */
+function definitionFromRow(row: {
+  name: string
+  type: string
+  options: string | null
+  defaultValue: string | null
+}): PropertyDefinition | null {
+  const type = row.type as PropertyDefinition['type']
+  let parsed: unknown = null
+  if (row.options) {
+    try {
+      parsed = JSON.parse(row.options)
+    } catch {
+      logger.warn('Synced property definition has unparseable options; ignoring them', row.name)
+    }
+  }
+
+  if (type === 'status') {
+    const categories = (parsed as { categories?: StatusCategories } | null)?.categories
+    return { name: row.name, type, categories: categories ?? DEFAULT_STATUS_CATEGORIES }
+  }
+  if (type === 'date') return { name: row.name, type, showOnCalendar: false }
+  if (type === 'project') return { name: row.name, type }
+
+  return {
+    name: row.name,
+    type,
+    options: Array.isArray(parsed) ? (parsed as SelectOption[]) : [],
+    ...(row.defaultValue ? { defaultValue: row.defaultValue } : {})
   }
 }
 

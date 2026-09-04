@@ -148,6 +148,13 @@
       "when": 1785779846984,
       "tag": "0020_freezing_triathlon",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1787399559433,
+      "tag": "0021_property_definition_sync",
+      "breakpoints": true
     }
   ]
 }

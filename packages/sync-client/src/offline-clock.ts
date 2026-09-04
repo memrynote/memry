@@ -4,6 +4,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
+import { propertyDefinitions } from '@memry/db-schema/schema/notes-cache'
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
 import { canvases } from '@memry/db-schema/schema/canvas'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
@@ -19,7 +20,11 @@ import {
 } from '@memry/contracts/sync-api'
 import { increment } from '@memry/sync-client/vector-clock'
 import { getCurrentDeviceId } from './current-device-id'
-import { initAllFieldClocks, TASK_SYNCABLE_FIELDS, PROJECT_SYNCABLE_FIELDS } from '@memry/sync-client/field-merge'
+import {
+  initAllFieldClocks,
+  TASK_SYNCABLE_FIELDS,
+  PROJECT_SYNCABLE_FIELDS
+} from '@memry/sync-client/field-merge'
 import { createLogger } from './logging'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 
@@ -169,6 +174,29 @@ export function incrementInboxClockOffline(db: DrizzleDb, itemId: string): void 
     log.debug('Incremented offline inbox clock', { itemId })
   } catch (err) {
     log.warn('Failed to increment offline inbox clock', { itemId, error: err })
+  }
+}
+
+export function incrementPropertyDefinitionClockOffline(db: DrizzleDb, name: string): void {
+  try {
+    const definition = db
+      .select()
+      .from(propertyDefinitions)
+      .where(eq(propertyDefinitions.name, name))
+      .get()
+    if (!definition) return
+
+    const existingClock = (definition.clock as VectorClock) ?? {}
+    const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
+
+    db.update(propertyDefinitions)
+      .set({ clock: newClock })
+      .where(eq(propertyDefinitions.name, name))
+      .run()
+
+    log.debug('Incremented offline property definition clock', { name })
+  } catch (err) {
+    log.warn('Failed to increment offline property definition clock', { name, error: err })
   }
 }
 

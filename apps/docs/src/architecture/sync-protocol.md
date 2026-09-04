@@ -393,6 +393,27 @@ See `apps/desktop/src/main/sync/field-merge.ts` for the merge implementation.
 `TASK_SYNCABLE_FIELDS` is 15 fields; `PROJECT_SYNCABLE_FIELDS` is 8; agent conversations merge
 `title`, `backend`, `backendModel`, `trustList`, and `pinned`.
 
+## Property Definitions
+
+`property_definition` is an encrypted record sync item type whose id is the property name. It
+carries the property's type plus its `options` column verbatim, as the opaque JSON string the row
+stores — a bare option array, or `{ categories }` for a `status` property. It is deliberately
+opaque so a newer client's per-option field survives a round trip through an older one.
+
+`.memry/properties.md` stays the human-readable file, and it is local to one machine. The data DB
+row is what replicates. Two consequences worth knowing before touching either:
+
+- `PropertyDefinitionsService.reload()` rebuilds the table from that file, and the pull coordinator
+  calls it after every pull. The rebuild carries each row's clock across, or every definition would
+  look unclocked and `seedUnclocked` would re-push the whole set on the next sync.
+- A pulled definition exists only as a row until the file is written, so `reload()` unions the
+  clocked rows into the cache and persists when the union gained something — including on a device
+  that has no file yet. A remote delete reconciles the file too, or the next reload reads the
+  definition straight back in.
+
+`property_definition` is not in `LEGACY_RECORD_SYNC_ITEM_TYPES`; clients that predate it negotiate
+it away via `X-Memry-Sync-Types` and never see it.
+
 ## Agent Chat Items
 
 Agent chat adds two encrypted record sync item types:

@@ -52,6 +52,7 @@ const FIXTURE_OVERRIDES: Partial<Record<SyncItemType, Record<string, unknown>>> 
   journal: { date: '2026-08-05' },
   tag_definition: { name: 'registry-probe', color: '#00ff00' },
   tag_category: { name: 'Registry Probe', sortOrder: 0 },
+  property_definition: { name: 'registry-probe', type: 'select', options: '[]' },
   folder_config: { icon: null },
   // The `{}` fixture hits home-page-handler's ghost guard, which returns
   // 'skipped' — the emit probe would short-circuit green while proving nothing.

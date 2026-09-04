@@ -117,6 +117,7 @@ const runtimeMocks = vi.hoisted(() => {
     noteSync: service('note'),
     journalSync: service('journal'),
     tagDefinitionSync: service('tag_definition'),
+    propertyDefinitionSync: service('property_definition'),
     tagCategorySync: service('tag_category'),
     folderConfigSync: service('folder_config'),
     calendarEventSync: service('calendar_event'),
@@ -370,6 +371,10 @@ vi.mock('./journal-sync', () => ({
 vi.mock('@memry/sync-client/tag-definition-sync', () => ({
   initTagDefinitionSyncService: runtimeMocks.tagDefinitionSync.init,
   resetTagDefinitionSyncService: runtimeMocks.tagDefinitionSync.reset
+}))
+vi.mock('@memry/sync-client/property-definition-sync', () => ({
+  initPropertyDefinitionSyncService: runtimeMocks.propertyDefinitionSync.init,
+  resetPropertyDefinitionSyncService: runtimeMocks.propertyDefinitionSync.reset
 }))
 vi.mock('@memry/sync-client/tag-category-sync', () => ({
   initTagCategorySyncService: runtimeMocks.tagCategorySync.init,

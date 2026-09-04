@@ -1,3 +1,4 @@
+import { DEFAULT_STATUS_CATEGORIES } from '@memry/contracts/property-types'
 import type { VaultDb } from '@/db/index'
 import { seedKey } from '@/db/keys'
 import type { BodyFetchOutcome } from '@/sync/body-fetch'
@@ -537,6 +538,35 @@ export function removeTag(tags: string[], tag: string): string[] {
   return tags.filter((existing) => normalizeTagKey(existing) !== key)
 }
 
+/**
+ * Every tag anywhere in the vault, first-seen casing wins.
+ *
+ * Read when the Add tag sheet opens rather than on render: it is a full scan
+ * of the note payloads, and the sheet is the only thing that needs it.
+ */
+export async function readVaultTags(db: VaultDb): Promise<string[]> {
+  const rows = await db.getAllAsync<{ payload: string | null }>(
+    `SELECT payload FROM sync_items
+     WHERE type IN ('note', 'journal') AND deleted_at IS NULL`
+  )
+  const seen = new Map<string, string>()
+  for (const row of rows) {
+    if (!row.payload) continue
+    try {
+      const tags = (JSON.parse(row.payload) as { tags?: unknown }).tags
+      if (!Array.isArray(tags)) continue
+      for (const tag of tags) {
+        if (typeof tag !== 'string') continue
+        const key = normalizeTagKey(tag)
+        if (key.length > 0 && !seen.has(key)) seen.set(key, tag)
+      }
+    } catch {
+      // Unparseable payloads are already reported by the projection layer.
+    }
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b))
+}
+
 export async function setNoteTags(
   ctx: NoteOpsContext,
   noteId: string,
@@ -550,29 +580,68 @@ export async function setNoteTags(
 // --- properties ------------------------------------------------------------
 
 /**
- * Desktop's property TYPE semantics without its definition files.
+ * Desktop's property TYPE semantics, with its definitions.
  *
- * On desktop a property's type comes from the vault's definition files
- * ([[property-defs-and-project-links-live-in-files]]); mobile has no reader for
- * those yet, so the type is inferred from the stored value using the same rules
- * the desktop inference uses when a definition is missing. Editing a value
- * never changes its inferred type — writing `"3"` where a number lived would
- * silently retype the column for every other device.
+ * The vault's `property_definition` rows now replicate, so a property's REAL
+ * type — and its select options with their colours — reach this device. The
+ * value-shape rules below are the fallback for a property no definition
+ * covers, which is the same fallback the desktop uses in that case.
+ *
+ * Editing a value never changes the type: writing `"3"` where a number lived
+ * would silently retype the column for every other device.
  */
 export type MobilePropertyType =
-  'text' | 'number' | 'checkbox' | 'date' | 'url' | 'multiselect' | 'project'
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'date'
+  | 'url'
+  | 'status'
+  | 'select'
+  | 'multiselect'
+  | 'relation'
+  | 'project'
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T|$)/
 const URL_LIKE = /^https?:\/\//i
 
-export function inferPropertyType(name: string, value: unknown): MobilePropertyType {
+/**
+ * The default status vocabulary, in category order. Values are used verbatim —
+ * contracts spells the middle one `In Progress`, capital P.
+ */
+export const STATUS_OPTIONS = Object.values(DEFAULT_STATUS_CATEGORIES).flatMap(
+  (category) => category.options
+)
+
+const RELATION_URI = /^memry:\/\//i
+
+/**
+ * The type to render a property with.
+ *
+ * The definition wins whenever the vault has one — that is the whole point of
+ * replicating them. Everything below it is the desktop's own no-definition
+ * fallback, kept so a vault that never defined `deadline` still gets a date row.
+ */
+export function inferPropertyType(
+  name: string,
+  value: unknown,
+  definedType?: MobilePropertyType
+): MobilePropertyType {
   // Reserved: `project` carries membership and is always the project type, or a
   // note written in another app renders the wrong editor.
   if (name === 'project') return 'project'
+  if (definedType) return definedType
   if (typeof value === 'boolean') return 'checkbox'
   if (typeof value === 'number') return 'number'
   if (Array.isArray(value)) return 'multiselect'
   if (typeof value === 'string') {
+    // A relation's URIs are self-describing, which is why the desktop types one
+    // from its value every time rather than persisting a definition for it.
+    if (RELATION_URI.test(value)) return 'relation'
+    // A text property whose value happens to read `Done` renders as a pill.
+    // Cosmetic only: the stored string is untouched, and every other string
+    // still falls through to the date and url rules below.
+    if (STATUS_OPTIONS.some((option) => option.value === value)) return 'status'
     if (ISO_DATE.test(value)) return 'date'
     if (URL_LIKE.test(value)) return 'url'
   }
@@ -590,7 +659,11 @@ export function coercePropertyValue(type: MobilePropertyType, raw: string): unkn
       // which JSON serializes to `null` and would erase the value.
       return Number.isFinite(parsed) ? parsed : raw
     }
+    case 'status':
+    case 'select':
+      return raw
     case 'multiselect':
+    case 'relation':
     case 'project':
       return raw
         .split(',')

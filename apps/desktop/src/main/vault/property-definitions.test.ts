@@ -1,14 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SelectOption, StatusCategories } from '@memry/contracts/property-types'
+import {
+  DEFAULT_STATUS_CATEGORIES,
+  type SelectOption,
+  type StatusCategories
+} from '@memry/contracts/property-types'
 
-const { atomicWriteMock, safeReadMock, getMemryDirMock, getDatabaseMock, getIndexDatabaseMock } =
-  vi.hoisted(() => ({
-    atomicWriteMock: vi.fn(),
-    safeReadMock: vi.fn(),
-    getMemryDirMock: vi.fn(),
-    getDatabaseMock: vi.fn(),
-    getIndexDatabaseMock: vi.fn()
-  }))
+const {
+  atomicWriteMock,
+  safeReadMock,
+  getMemryDirMock,
+  getDatabaseMock,
+  getIndexDatabaseMock,
+  enqueueUpsertMock,
+  enqueueDeleteMock
+} = vi.hoisted(() => ({
+  atomicWriteMock: vi.fn(),
+  safeReadMock: vi.fn(),
+  getMemryDirMock: vi.fn(),
+  getDatabaseMock: vi.fn(),
+  getIndexDatabaseMock: vi.fn(),
+  enqueueUpsertMock: vi.fn(),
+  enqueueDeleteMock: vi.fn()
+}))
 
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({
@@ -31,6 +44,12 @@ vi.mock('../database', () => ({
   getIndexDatabase: getIndexDatabaseMock
 }))
 
+vi.mock('./property-definition-sync-effects', () => ({
+  enqueuePropertyDefinitionUpsert: enqueueUpsertMock,
+  enqueuePropertyDefinitionDelete: enqueueDeleteMock,
+  readPropertyDefinitionRow: vi.fn(() => null)
+}))
+
 import { PropertyDefinitionsService, DEFAULT_STATUS_DEFINITION } from './property-definitions'
 
 type DbRow = {
@@ -39,6 +58,8 @@ type DbRow = {
   options: string | null
   defaultValue: string | null
   color: string | null
+  clock?: Record<string, number> | null
+  syncedAt?: string | null
 }
 
 function createDbMock() {
@@ -51,13 +72,21 @@ function createDbMock() {
       rows.push(row)
     })
   }))
+  // `rebuildSingleDbCache` reads the table before it clears it, so it can carry
+  // each row's clock across. A fake without `select` sent that read into the
+  // rebuild's catch and the delete never ran.
+  const all = vi.fn(() => rows.map((row) => ({ ...row })))
+  const clocked = vi.fn(() => rows.filter((row) => row.clock != null).map((row) => ({ ...row })))
   return {
     rows,
     deleteRun,
     values,
     db: {
       delete: vi.fn(() => ({ run: deleteRun })),
-      insert: vi.fn(() => ({ values }))
+      insert: vi.fn(() => ({ values })),
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({ all, where: vi.fn(() => ({ all: clocked })) }))
+      }))
     }
   }
 }
@@ -162,17 +191,336 @@ describe('PropertyDefinitionsService', () => {
         type: 'select',
         options: JSON.stringify([{ value: 'Idea', color: 'sky' }]),
         defaultValue: null,
-        color: null
+        color: null,
+        clock: null,
+        syncedAt: null
       },
       {
         name: 'Status',
         type: 'status',
         options: JSON.stringify({ categories: statusCategories() }),
         defaultValue: null,
-        color: null
+        color: null,
+        clock: null,
+        syncedAt: null
       }
     ])
     expect(indexDb.rows).toHaveLength(2)
+  })
+
+  it('carries a definition clock across the rebuild a reload triggers', async () => {
+    safeReadMock.mockResolvedValue(
+      propertiesFile(`  Stage:
+    type: select
+    options:
+      - value: Idea
+        color: sky
+`)
+    )
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    // The clock the sync handler would have stamped on the row.
+    dataDb.rows[0].clock = { deviceA: 3 }
+    dataDb.rows[0].syncedAt = '2026-09-01T00:00:00.000Z'
+
+    await service.reload()
+
+    // Dropping it here makes every definition look unclocked, and the next sync
+    // re-pushes the whole set through `seedUnclocked` as creates.
+    expect(dataDb.rows[0].clock).toEqual({ deviceA: 3 })
+    expect(dataDb.rows[0].syncedAt).toBe('2026-09-01T00:00:00.000Z')
+    // The index DB is a rebuildable cache and has no clock to keep.
+    expect(indexDb.rows[0].clock).toBeNull()
+  })
+
+  it('unions a synced definition the file does not know about, and writes it back', async () => {
+    // The file a freshly linked device has: none at all. Its first pull can
+    // land definitions before anything on this device writes one.
+    safeReadMock.mockResolvedValue(null)
+    dataDb.rows.push({
+      name: 'Area',
+      type: 'select',
+      options: JSON.stringify([{ value: 'Work', color: 'indigo' }]),
+      defaultValue: null,
+      color: null,
+      clock: { deviceB: 1 },
+      syncedAt: '2026-09-01T00:00:00.000Z'
+    })
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    // Without the union, the reload the pull triggers rebuilds the table from
+    // the file alone and deletes the definition that just arrived.
+    expect(service.get('Area')).toEqual({
+      name: 'Area',
+      type: 'select',
+      options: [{ value: 'Work', color: 'indigo' }]
+    })
+    expect(atomicWriteMock).toHaveBeenCalledWith(
+      '/vault/.memry/properties.md',
+      expect.stringContaining('Area')
+    )
+    expect(dataDb.rows.find((row) => row.name === 'Area')?.clock).toEqual({ deviceB: 1 })
+  })
+
+  it('unions a pulled definition into a file that already names another one', async () => {
+    // The file this device already has, plus a definition its first pull landed
+    // as a DB row before anything here wrote one.
+    safeReadMock.mockResolvedValue(
+      propertiesFile(`  Stage:
+    type: select
+    options:
+      - value: Idea
+        color: sky
+`)
+    )
+    dataDb.rows.push({
+      name: 'Area',
+      type: 'select',
+      options: JSON.stringify([{ value: 'Work', color: 'indigo' }]),
+      defaultValue: null,
+      color: null,
+      clock: { deviceB: 1 },
+      syncedAt: '2026-09-01T00:00:00.000Z'
+    })
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    // `applyParsedData` clears the cache from the file, so without the union
+    // plus the write-back the very next reload rebuilds the table from the file
+    // alone and deletes the definition the pull just landed.
+    expect(service.get('Area')).toEqual({
+      name: 'Area',
+      type: 'select',
+      options: [{ value: 'Work', color: 'indigo' }]
+    })
+    const written = atomicWriteMock.mock.calls.at(-1)![1] as string
+    expect(written).toContain('Stage')
+    expect(written).toContain('Area')
+    // Re-seeding the clock makes the row look unclocked, and the next sync
+    // re-pushes the whole table as creates.
+    expect(dataDb.rows.find((r) => r.name === 'Area')?.clock).toEqual({ deviceB: 1 })
+  })
+
+  it('does not rewrite properties.md for a tombstone naming a definition it never had', async () => {
+    safeReadMock.mockResolvedValue(
+      propertiesFile(`  Stage:
+    type: select
+    options:
+      - value: Idea
+        color: sky
+`)
+    )
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+    const writesBefore = atomicWriteMock.mock.calls.length
+
+    await service.applyRemoteDelete('SomethingElse')
+
+    // A re-delivered tombstone, or a definition that only ever existed as a DB
+    // row on this device. Rewriting a file the user edits by hand on every
+    // duplicate tombstone is write amplification that buys nothing.
+    expect(atomicWriteMock.mock.calls.length).toBe(writesBefore)
+    expect(service.get('Stage')).toBeDefined()
+  })
+
+  it('lands every synced definition when one row has unparseable options', async () => {
+    safeReadMock.mockResolvedValue(null)
+    dataDb.rows.push(
+      {
+        name: 'Area',
+        type: 'select',
+        options: JSON.stringify([{ value: 'Work', color: 'indigo' }]),
+        defaultValue: null,
+        color: null,
+        clock: { deviceB: 1 },
+        syncedAt: null
+      },
+      {
+        name: 'Broken',
+        type: 'select',
+        options: '[{"value":',
+        defaultValue: null,
+        color: null,
+        clock: { deviceB: 2 },
+        syncedAt: null
+      }
+    )
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    // One bad definition from a buggy or older client must not take the whole
+    // reload down and strand every other property on this device.
+    expect(service.get('Area')).toEqual({
+      name: 'Area',
+      type: 'select',
+      options: [{ value: 'Work', color: 'indigo' }]
+    })
+    expect(service.get('Broken')).toEqual({ name: 'Broken', type: 'select', options: [] })
+  })
+
+  it('unions a synced status definition with the workflow columns it was pushed with', async () => {
+    safeReadMock.mockResolvedValue(null)
+    dataDb.rows.push({
+      name: 'Workflow',
+      type: 'status',
+      options: JSON.stringify({ categories: statusCategories() }),
+      defaultValue: null,
+      color: null,
+      clock: { deviceB: 1 },
+      syncedAt: null
+    })
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    // A status property created on another device otherwise arrives with no
+    // Todo/Doing/Done columns at all.
+    expect(service.get('Workflow')).toEqual({
+      name: 'Workflow',
+      type: 'status',
+      categories: statusCategories()
+    })
+  })
+
+  it('gives a synced status row with no categories the default workflow columns', async () => {
+    safeReadMock.mockResolvedValue(null)
+    dataDb.rows.push({
+      name: 'Workflow',
+      type: 'status',
+      options: JSON.stringify({}),
+      defaultValue: null,
+      color: null,
+      clock: { deviceB: 1 },
+      syncedAt: null
+    })
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    // Same user-visible loss as above, reached from an older client that pushed
+    // a status definition without its categories.
+    expect(service.get('Workflow')).toEqual({
+      name: 'Workflow',
+      type: 'status',
+      categories: DEFAULT_STATUS_CATEGORIES
+    })
+  })
+
+  it('keeps the shape of synced date and project definitions', async () => {
+    safeReadMock.mockResolvedValue(null)
+    dataDb.rows.push(
+      {
+        name: 'Deadline',
+        type: 'date',
+        options: null,
+        defaultValue: null,
+        color: null,
+        clock: { deviceB: 1 },
+        syncedAt: null
+      },
+      {
+        name: 'project',
+        type: 'project',
+        options: null,
+        defaultValue: null,
+        color: null,
+        clock: { deviceB: 2 },
+        syncedAt: null
+      }
+    )
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    // The calendar toggle and the property editor branch on `type` and on the
+    // presence of `options`, so a date that arrives shaped like a select
+    // renders as a dropdown instead of a date field.
+    expect(service.get('Deadline')).toEqual({
+      name: 'Deadline',
+      type: 'date',
+      showOnCalendar: false
+    })
+    expect(service.get('project')).toEqual({ name: 'project', type: 'project' })
+  })
+
+  it('carries a synced default value across the union and invents none without one', async () => {
+    safeReadMock.mockResolvedValue(null)
+    dataDb.rows.push(
+      {
+        name: 'Stage',
+        type: 'select',
+        options: JSON.stringify([{ value: 'Idea', color: 'sky' }]),
+        defaultValue: 'Idea',
+        color: null,
+        clock: { deviceB: 1 },
+        syncedAt: null
+      },
+      {
+        name: 'Area',
+        type: 'select',
+        options: JSON.stringify([{ value: 'Work', color: 'indigo' }]),
+        defaultValue: null,
+        color: null,
+        clock: { deviceB: 2 },
+        syncedAt: null
+      }
+    )
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    // The default is what a new note's property starts on. Dropping it on the
+    // pulled copy makes the same property behave differently per device.
+    expect(service.get('Stage')).toEqual({
+      name: 'Stage',
+      type: 'select',
+      options: [{ value: 'Idea', color: 'sky' }],
+      defaultValue: 'Idea'
+    })
+    expect(service.get('Area')).toEqual({
+      name: 'Area',
+      type: 'select',
+      options: [{ value: 'Work', color: 'indigo' }]
+    })
+  })
+
+  it('drops a definition a peer deleted so the file cannot read it back in', async () => {
+    safeReadMock.mockResolvedValue(
+      propertiesFile(`  Stage:
+    type: select
+    options:
+      - value: Idea
+        color: sky
+`)
+    )
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    await service.applyRemoteDelete('Stage')
+
+    expect(service.get('Stage')).toBeUndefined()
+    expect(atomicWriteMock).toHaveBeenLastCalledWith(
+      '/vault/.memry/properties.md',
+      expect.not.stringContaining('Stage')
+    )
+  })
+
+  it('queues a push for a local definition edit but never for a pulled one', async () => {
+    safeReadMock.mockResolvedValue(null)
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+    expect(enqueueUpsertMock).not.toHaveBeenCalled()
+
+    await service.upsert({ name: 'Stage', type: 'select', options: [] })
+    expect(enqueueUpsertMock).toHaveBeenCalledWith('Stage')
+
+    await service.remove('Stage')
+    expect(enqueueDeleteMock).toHaveBeenCalledWith('Stage', null)
   })
 
   it('keeps the last-known-good cache when reload sees invalid frontmatter or parse errors', async () => {

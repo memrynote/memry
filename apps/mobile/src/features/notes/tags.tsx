@@ -1,30 +1,48 @@
-import { useCallback, useState } from 'react'
-import { Pressable, StyleSheet, TextInput, View } from 'react-native'
+import { useCallback } from 'react'
+import { Pressable, StyleSheet, View } from 'react-native'
+
 import { AppText } from '@/components/ui/app-text'
-import { radius, sizes, space } from '@/theme/primitives'
-import { textStyles } from '@/theme/text-styles'
+import { Icon } from '@/components/ui/icon'
+import { radius, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
-import { addTag, removeTag, setNoteTags, type NoteOpsContext } from './note-ops'
+import { removeTag, setNoteTags, type NoteOpsContext } from './note-ops'
+import { useTagColors } from './use-tag-colors'
 
 /**
- * Note tags (T068 / FR-015).
+ * The inline tag row (board 33).
  *
  * Case-PRESERVING, case-insensitive: what the user typed is what is stored,
  * and `Roadmap` cannot be added twice as `roadmap`. Matching desktop here is
  * not cosmetic — a mobile edit that lower-cased tags would rewrite them for
  * every device on the next sync.
+ *
+ * The row has two states. At rest it is plain chips. Tapping any chip arms the
+ * editing state, which adds a remove badge to every chip and a dashed add
+ * button after them; the screen disarms it when a tap lands anywhere else.
  */
 export interface NoteTagsProps {
   ctx: NoteOpsContext | null
   noteId: string
   tags: string[]
   readOnly: boolean
+  editing: boolean
+  onEditingChange: (editing: boolean) => void
+  onAdd: () => void
   onChanged: (tags: string[]) => void
 }
 
-export function NoteTags({ ctx, noteId, tags, readOnly, onChanged }: NoteTagsProps) {
+export function NoteTags({
+  ctx,
+  noteId,
+  tags,
+  readOnly,
+  editing,
+  onEditingChange,
+  onAdd,
+  onChanged
+}: NoteTagsProps) {
   const c = useColors()
-  const [draft, setDraft] = useState('')
+  const resolveColor = useTagColors(ctx?.db ?? null)
 
   const commit = useCallback(
     async (next: string[]) => {
@@ -34,66 +52,82 @@ export function NoteTags({ ctx, noteId, tags, readOnly, onChanged }: NoteTagsPro
     [ctx, noteId, onChanged]
   )
 
-  const submit = useCallback(async () => {
-    const next = addTag(tags, draft)
-    setDraft('')
-    if (next !== tags) await commit(next)
-  }, [commit, draft, tags])
+  const armed = editing && !readOnly
 
   return (
-    <View style={styles.container}>
-      <View style={styles.row}>
-        {tags.map((tag) => (
+    <View style={styles.row}>
+      {tags.map((tag) => {
+        const hue = resolveColor(tag)
+        return (
           <Pressable
             key={tag}
+            hitSlop={10}
             disabled={readOnly}
-            onPress={() => void commit(removeTag(tags, tag))}
-            style={[styles.chip, { backgroundColor: c.canvas.surface }]}
+            // The badge is an affordance, not the target. It sits 4pt outside
+            // the chip's bounds, and RN hit-tests a child only within its
+            // parent's frame on iOS as well as Android, so half of a 14pt
+            // badge would be dead. The armed chip carries the removal instead,
+            // which also makes it a two-tap gesture rather than a 14pt one.
+            onPress={() => (armed ? void commit(removeTag(tags, tag)) : onEditingChange(true))}
             accessibilityRole="button"
-            accessibilityLabel={`Remove tag ${tag}`}
+            accessibilityLabel={armed ? `Remove tag ${tag}` : `Tag ${tag}`}
+            style={[styles.chip, { backgroundColor: hue.fill }]}
           >
-            <AppText variant="caption" color={c.text.secondary}>
-              #{tag}
+            <AppText variant="captionEmphasis" color={hue.text}>
+              {tag}
             </AppText>
+            {armed ? (
+              <View style={[styles.badge, { backgroundColor: c.text.secondary }]}>
+                <Icon name="close" size={8} strokeWidth={3} color={c.canvas.background} />
+              </View>
+            ) : null}
           </Pressable>
-        ))}
-      </View>
-      {readOnly ? null : (
-        <TextInput
-          value={draft}
-          onChangeText={setDraft}
-          onSubmitEditing={submit}
-          onBlur={submit}
-          placeholder="Add a tag"
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="done"
-          placeholderTextColor={c.text.tertiary}
-          style={[
-            styles.input,
-            textStyles.subhead,
-            { borderColor: c.line.input, color: c.text.primary }
-          ]}
-          accessibilityLabel="Add a tag"
-        />
-      )}
+        )
+      })}
+      {!readOnly && (armed || tags.length === 0) ? (
+        <Pressable
+          hitSlop={10}
+          onPress={onAdd}
+          accessibilityRole="button"
+          accessibilityLabel="Add tag"
+          style={[styles.add, { borderColor: c.line.border }]}
+        >
+          {/* `text.tertiary` is 2.81:1 on the canvas and fails the 3:1 glyph
+              floor DESIGN.md sets, so every tertiary mark on boards 32 and 33
+              is drawn in `text.secondary` instead. */}
+          <Icon name="plus" size={12} color={c.text.secondary} />
+        </Pressable>
+      ) : null}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { gap: space.s4 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s4 },
-  chip: {
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     minHeight: 32,
-    justifyContent: 'center',
-    paddingHorizontal: space.s8,
-    borderRadius: radius.full
+    gap: space.s8
   },
-  input: {
-    minHeight: sizes.tapTarget,
-    paddingHorizontal: space.s8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.md
+  chip: { paddingVertical: space.s4, paddingHorizontal: 10, borderRadius: radius.full },
+  badge: {
+    position: 'absolute',
+    top: -space.s4,
+    end: -space.s4,
+    width: 14,
+    height: 14,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  add: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.full,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 })

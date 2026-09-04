@@ -7,6 +7,7 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
+import { propertyDefinitions } from '@memry/db-schema/schema/notes-cache'
 import { canvases } from '@memry/db-schema/schema/canvas'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
@@ -352,6 +353,15 @@ function getLocalSyncableRefs(db: DrizzleDb): LocalSyncableRef[] {
     addLocalRef({ id: td.name, type: 'tag_definition' })
   }
 
+  const syncedPropertyDefs = db
+    .select({ name: propertyDefinitions.name })
+    .from(propertyDefinitions)
+    .where(isNotNull(propertyDefinitions.clock))
+    .all()
+  for (const pd of syncedPropertyDefs) {
+    addLocalRef({ id: pd.name, type: 'property_definition' })
+  }
+
   const syncedSettings = db
     .select({ key: settings.key })
     .from(settings)
@@ -465,6 +475,14 @@ function buildRefPayload(db: DrizzleDb, ref: LocalSyncableRef): string | null {
     }
     case 'tag_definition': {
       const row = db.select().from(tagDefinitions).where(eq(tagDefinitions.name, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'property_definition': {
+      const row = db
+        .select()
+        .from(propertyDefinitions)
+        .where(eq(propertyDefinitions.name, ref.id))
+        .get()
       return row ? JSON.stringify(row) : null
     }
     case 'settings': {

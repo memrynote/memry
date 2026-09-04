@@ -196,6 +196,30 @@ export const GuestMetricsSchema = z.object({
   selAnchor: z.number()
 })
 
+/**
+ * The mounted document is on screen. Sent once per `doc-load`, from a frame
+ * callback, and it is the end of the note-open latency trace
+ * (`apps/mobile/src/editor/__rig__/open-trace.ts`).
+ *
+ * Its own message rather than a reuse of `metrics`, because `metrics` is a
+ * 200 ms TRAILING-edge throttle reporting the SETTLED height: reading a paint
+ * time off it would overstate note-open latency by up to 200 ms.
+ *
+ * Additive within v1, and deliberately NOT a version bump — the same argument
+ * `insert-attachment` makes for the other direction. The guest is a PREBUILT
+ * asset that ships inside the app that speaks to it, so there is no older peer
+ * on this boundary, only a stale asset, which `editor:check` and the
+ * `contractHash` in the `ready` handshake already catch. The point that
+ * argument does not make: a stale asset simply never sends `painted`, which
+ * costs one missing mark in a trace, whereas a bump would make the host reject
+ * the `ready` handshake outright (the `protocolV` mismatch branch in
+ * `editor-view.tsx`) and turn a measurement gap into a dead editor.
+ */
+export const GuestPaintedSchema = z.object({
+  type: z.literal('painted'),
+  docId: z.string().min(1)
+})
+
 export const GuestErrSchema = z.object({
   type: z.literal('err'),
   code: z.string(),
@@ -209,6 +233,7 @@ export const GuestMsgSchema = z.discriminatedUnion('type', [
   GuestAssetReqSchema,
   GuestNavSchema,
   GuestMetricsSchema,
+  GuestPaintedSchema,
   GuestErrSchema
 ])
 
