@@ -595,8 +595,12 @@ export class EditorHostController {
       // could not slide with it, which meant the reader watched a blank body
       // for 475 ms after the app had finished drawing one; it now slides along
       // the transition instead, so being mid-push is a POSITION and not a
-      // reason to stay hidden. Popping is the same answer read backwards: the
-      // body rides the screen out rather than blanking for the length of it.
+      // reason to stay hidden.
+      //
+      // A POP is not the same answer read backwards, and this rule is not why.
+      // The note screen leaves the React tree the moment `back()` is
+      // dispatched, so its attachment goes with it and there is no mounted note
+      // left to draw whatever these conditions say.
       visible: layout.frame !== null && mountedDocId !== null && this.shownDocId === mountedDocId,
       containerReady: this.containerView !== null,
       instance: this.instance

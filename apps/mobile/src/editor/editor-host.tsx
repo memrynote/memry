@@ -43,10 +43,16 @@ import { EditorHostController } from './editor-host-controller'
  * transition (#2053) — the same animation, read as a position rather than
  * waited on as an event. It used to wait: hidden until something said the push
  * had ended, which cost 475 ms of blank body per open because every signal that
- * could say so needs the JS thread at the moment the open is busiest. Riding
- * the animation is also what stops the body blanking for the length of a pop,
- * since an outgoing note now leaves with its screen instead of vanishing from
- * under it.
+ * could say so needs the JS thread at the moment the open is busiest.
+ *
+ * It rides a POP only as far as the route survives one, which on device is not
+ * far. `router.back()` takes the note screen out of the React tree while
+ * `react-native-screens` keeps its native views on screen for the animation, so
+ * the attachment is already gone and this host has no mounted note to draw: the
+ * body still blanks for the length of a pop. Closing that means holding the
+ * departing note here until the pop ends, which is a separate change with a
+ * release problem of its own — the doc has to stop being in use at the right
+ * moment, or the doc manager's eviction cap quietly stops bounding anything.
  *
  * The keyboard behaviour lives here rather than in the route, so the frame the
  * route reports is a stable rectangle that the keyboard animation never moves.

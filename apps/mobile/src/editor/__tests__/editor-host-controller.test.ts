@@ -423,8 +423,10 @@ describe('EditorHostController visibility', () => {
     expect(host.getState().transition).toBe(transition)
     expect(host.getState().visible).toBe(true)
 
-    // Losing focus is a pop beginning. The body used to blank here for the
-    // whole length of it, because a pinned host could be hidden and never slid.
+    // Losing focus is a pop beginning, and the controller holds the note it was
+    // already showing rather than tearing it down a frame early. That is all
+    // this proves: on device the screen unmounts a moment later and takes the
+    // attachment with it, which is a separate hole (#2053).
     host.setFocused(a, false)
     expect(host.getState().visible).toBe(true)
   })
