@@ -47,7 +47,8 @@ vi.mock('./file-ops', () => ({
   listDirectories: vi.fn(() => []),
   generateNotePath: (dir: string, title: string, folder?: string) =>
     folder ? `${dir}/${folder}/${title}.md` : `${dir}/${title}.md`,
-  generateUniquePath: (candidate: string) => candidate
+  generateUniquePath: (candidate: string) => candidate,
+  withTransientFsRetry: <T>(operation: () => Promise<T>) => operation()
 }))
 
 vi.mock('./notes-io', () => ({

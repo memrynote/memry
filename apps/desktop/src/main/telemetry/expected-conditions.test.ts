@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isConnectionRefusedError,
   isExpectedConditionError,
+  isWatchEnvironmentError,
   markExpectedCondition
 } from './expected-conditions'
 
@@ -106,5 +107,33 @@ describe('isConnectionRefusedError', () => {
 
     // #then the walk is depth-bounded rather than hanging
     expect(isConnectionRefusedError(error)).toBe(false)
+  })
+})
+
+describe('isWatchEnvironmentError', () => {
+  const watchError = (code: string): Error =>
+    Object.assign(new Error(`${code}: operation not permitted, watch`), { code })
+
+  it('accepts the per-file conditions another process imposes on a watch', () => {
+    // #given a vault file held by antivirus, a cloud-sync client, or deleted mid-scan
+    // #then the watcher is still running and there is nothing to report
+    expect(isWatchEnvironmentError(watchError('EPERM'))).toBe(true)
+    expect(isWatchEnvironmentError(watchError('EACCES'))).toBe(true)
+    expect(isWatchEnvironmentError(watchError('EBUSY'))).toBe(true)
+    expect(isWatchEnvironmentError(watchError('ENOENT'))).toBe(true)
+  })
+
+  it('still reports a watcher that has actually stopped seeing changes', () => {
+    // #given the watch descriptor limit is exhausted, so changes are being missed
+    // #then this is a real defect and must not be suppressed
+    expect(isWatchEnvironmentError(watchError('EMFILE'))).toBe(false)
+    expect(isWatchEnvironmentError(watchError('ENOSPC'))).toBe(false)
+  })
+
+  it('does not match on message text or a missing code', () => {
+    // #given an error that only looks like one
+    expect(isWatchEnvironmentError(new Error('EPERM: operation not permitted, watch'))).toBe(false)
+    expect(isWatchEnvironmentError('EPERM')).toBe(false)
+    expect(isWatchEnvironmentError(null)).toBe(false)
   })
 })
