@@ -9,9 +9,18 @@ import {
   useSyncExternalStore,
   type ReactNode
 } from 'react'
-import { Dimensions, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native'
+import {
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  View,
+  type LayoutChangeEvent
+} from 'react-native'
+import type { EditorHostContainer } from './editor-host-controller'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import { loadEditorWebHtml } from './editor-web-asset'
+import { mark } from './__rig__/open-trace'
 import { EditorHostController } from './editor-host-controller'
 
 /**
@@ -57,22 +66,24 @@ export function EditorHost({ children }: { children: ReactNode }) {
 
 function HostWebView({ controller }: { controller: EditorHostController }) {
   const webViewRef = useRef<WebView>(null)
-  const containerRef = useRef<View>(null)
   // Seeded from the window rather than zero. The guest starts loading the
   // moment it is created, and this is the prewarm: a first frame at height 0
   // is the one case where WebKit could reasonably defer the work this host
   // exists to do early. `onLayout` corrects it a frame later either way.
-  const [container, setContainer] = useState(() => ({
-    top: 0,
-    height: Dimensions.get('window').height
-  }))
+  const [parkedHeight, setParkedHeight] = useState(() => Dimensions.get('window').height)
   const html = useMemo(() => loadEditorWebHtml(), [])
   const state = useSyncExternalStore(controller.subscribe, controller.getState)
 
-  const onContainerLayout = useCallback(() => {
-    containerRef.current?.measureInWindow((_x, y, _width, height) => {
-      setContainer((prev) => (prev.top === y && prev.height === height ? prev : { top: y, height }))
-    })
+  // Handed to the controller so a note can measure its editor's place against
+  // this exact view, rather than against the window and a second measurement
+  // that can go stale independently.
+  const onContainerRef = useCallback(
+    (node: EditorHostContainer | null) => controller.setContainerView(node),
+    [controller]
+  )
+
+  const onContainerLayout = useCallback((event: LayoutChangeEvent) => {
+    setParkedHeight(event.nativeEvent.layout.height)
   }, [])
 
   const onMessage = useCallback(
@@ -86,25 +97,37 @@ function HostWebView({ controller }: { controller: EditorHostController }) {
 
   const onTerminated = useCallback(() => controller.guestCrashed(), [controller])
 
-  // Placed as soon as a note reports a frame, VISIBLE only once that note's
-  // route has settled. The two are separate on purpose: laying the guest out
-  // at its final size while it is still transparent is what lets it paint
-  // there, so revealing it is an opacity change and never a reflow.
-  const placed = state.mountedDocId !== null && state.frame !== null
-  const geometry = placed
-    ? { top: state.frame!.top - container.top, height: state.frame!.height }
-    : { top: 0, height: container.height }
+  // Placed as soon as a note reports a frame, VISIBLE on the controller's own
+  // terms. The two are separate on purpose: laying the guest out at its final
+  // size while it is still transparent is what lets it paint there, so
+  // revealing it is an opacity change and never a reflow.
+  const geometry = state.frame ?? { top: 0, height: parkedHeight }
+
+  // The end of the open a READER experiences. `painted` is the guest's frame
+  // callback, which can land while the editor is still transparent behind the
+  // push animation, so a report that stopped there would claim an open the
+  // reader had not seen yet.
+  const revealedFor = useRef<string | null>(null)
+  useEffect(() => {
+    if (!state.visible || !state.mountedDocId) {
+      if (!state.visible) revealedFor.current = null
+      return
+    }
+    if (revealedFor.current === state.mountedDocId) return
+    revealedFor.current = state.mountedDocId
+    mark(state.mountedDocId, 'revealed')
+  }, [state.mountedDocId, state.visible])
 
   return (
     <View
-      ref={containerRef}
+      ref={onContainerRef}
       style={styles.container}
       onLayout={onContainerLayout}
       pointerEvents="box-none"
     >
       <View
-        style={[styles.host, geometry, placed && state.visible ? styles.shown : styles.hidden]}
-        pointerEvents={placed && state.visible ? 'auto' : 'none'}
+        style={[styles.host, geometry, state.visible ? styles.shown : styles.hidden]}
+        pointerEvents={state.visible ? 'auto' : 'none'}
       >
         <KeyboardAvoidingView
           style={styles.fill}

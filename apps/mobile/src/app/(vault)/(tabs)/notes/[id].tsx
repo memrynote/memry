@@ -6,7 +6,7 @@ import type { BridgeCfg } from '@memry/contracts/webview-bridge'
 import { AppText } from '@/components/ui/app-text'
 import { Icon } from '@/components/ui/icon'
 import { NavBarInline } from '@/components/ui/nav-bar'
-import { EditorView, type EditorControls } from '@/editor/editor-view'
+import { EditorView, useRouteSettled, type EditorControls } from '@/editor/editor-view'
 import { formatG3Report } from '@/editor/__rig__/latency'
 import { beginTrace, mark } from '@/editor/__rig__/open-trace'
 import type { OpenDoc } from '@/editor/doc-manager'
@@ -71,6 +71,12 @@ export default function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const scheme = useColorScheme()
   const c = useColors()
+
+  // Watched from the moment the SCREEN mounts, which is the point of asking
+  // here rather than inside `EditorView`. The editor appears only once the open
+  // chain below has resolved, and a note slower than the push animation would
+  // start listening after `transitionEnd` had already fired.
+  const routeSettled = useRouteSettled()
 
   const [session, setSession] = useState<EditorSession | null>(null)
   const [doc, setDoc] = useState<OpenDoc | null>(null)
@@ -442,6 +448,7 @@ export default function NoteScreen() {
       <EditorView
         doc={doc}
         cfg={cfg}
+        routeSettled={routeSettled}
         onNavigate={onNavigate}
         onWikiQuery={onWikiQuery}
         onAssetRequest={onAssetRequest}
