@@ -98,6 +98,25 @@ The line is logged at `warn` when the reveal came from the fallback or took ≥5
 `error` records reach the diagnostic log sink — and at `info` otherwise, so healthy launches stay
 local instead of flooding the sink.
 
+### Post-Reveal Startup Queue
+
+`src/main/post-reveal.ts` holds startup work the first frame does not depend on, so it cannot sit
+between window creation and the reveal and inflate `shownMs`. Register with
+`onceWindowShown(name, task)`; the reveal calls `schedulePostRevealTasks()`, which drains the queue
+one second later. The delay is deliberate: `ready-to-show` means the renderer can paint, not that it
+has finished booting, and draining on the next tick would move main-thread contention rather than
+remove it.
+
+`name` is the at-most-once key. A macOS dock reopen re-creates and re-reveals the main window, so a
+caller on that path registering again must not start a second copy. Work registered after the drain
+runs immediately. A task that throws or rejects is logged under the `Startup` scope and never stops
+the others. If the app begins quitting inside the delay the queue is left undrained, so a deferred
+task cannot re-arm a service the shutdown sequence has already torn down.
+
+The updater is the first tenant: `initializeUpdater()` reconciles install health, reads its prefs,
+resolves `app-update.yml` and fires the `startup-check` update check, none of which is on the way to
+the first frame.
+
 ## Telemetry
 
 Telemetry is enabled by default in production builds and off by default in development builds.
