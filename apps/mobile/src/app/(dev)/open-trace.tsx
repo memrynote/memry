@@ -45,6 +45,22 @@ const OPEN_TIMEOUT_MS = 8_000
 /** The back-navigation and the unmount it triggers must finish before the next push. */
 const SETTLE_MS = 350
 
+/**
+ * How long each note is left on screen before the loop pops it, from the PUSH.
+ *
+ * Measured from `pushedAt` rather than from the reveal, so the navigation the
+ * loop performs is the same one whatever the reveal costs. Popping on the
+ * reveal was fine while the reveal waited out the push animation, and stops
+ * being fine the moment it does not: a `back()` fired into a running push
+ * measures a pop interrupting a push, which is not the open a reader performs
+ * and not the open the previous runs measured.
+ *
+ * 700 ms is the iOS push (~350 ms) with room for the slowest reveal the
+ * pre-#2053 gate produced (p95 526 ms), so both sides of that change pop from a
+ * screen that has finished arriving.
+ */
+const PUSH_DWELL_MS = 700
+
 const log = createLogger('OpenTraceRig')
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
@@ -255,6 +271,7 @@ export default function OpenTraceScreen() {
         const revealed = await waitForReveal(noteId, pushedAt)
         log.warn(`open ${i + 1}/${total}`, { noteId, ms: revealed })
         setTraces(getTraces())
+        await delay(Math.max(0, pushedAt + PUSH_DWELL_MS - Date.now()))
         router.back()
         await delay(SETTLE_MS)
       }
