@@ -20,7 +20,7 @@ const SETTLE_MS = 2_000
 const QUIT_DEADLINE_MS = 20_000
 const CDP_DEADLINE_MS = 30_000
 const LOG_DEADLINE_MS = 45_000
-const READY_STATE_DEADLINE_MS = 30_000
+const FCP_DEADLINE_MS = 30_000
 const CDP_POLL_MS = 250
 const LOG_POLL_MS = 100
 
@@ -451,6 +451,10 @@ function connectCdp(webSocketDebuggerUrl) {
   })
 }
 
+const FCP_PRESENT_EXPRESSION = `performance
+  .getEntriesByType('paint')
+  .some((entry) => entry.name === 'first-contentful-paint')`
+
 const RENDERER_METRICS_EXPRESSION = `(() => {
   const round = (value) => (typeof value === 'number' ? Math.round(value * 1000) / 1000 : undefined)
   const navigation = performance.getEntriesByType('navigation')[0]
@@ -469,24 +473,19 @@ async function readRendererMetrics(webSocketDebuggerUrl) {
   const client = await connectCdp(webSocketDebuggerUrl)
 
   try {
-    const deadline = Date.now() + READY_STATE_DEADLINE_MS
-    let ready = false
+    // This app paints its first contentful frame after the load event, so waiting on
+    // document.readyState samples only the runs whose FCP happened to land early and
+    // silently drops the slow ones. Wait for the entry itself.
+    const deadline = Date.now() + FCP_DEADLINE_MS
     while (Date.now() < deadline) {
-      const state = await client.send('Runtime.evaluate', {
-        expression: 'document.readyState',
+      const seen = await client.send('Runtime.evaluate', {
+        expression: FCP_PRESENT_EXPRESSION,
         returnByValue: true
       })
-      if (state.result?.value === 'complete') {
-        ready = true
+      if (seen.result?.value === true) {
         break
       }
       await delay(CDP_POLL_MS)
-    }
-
-    if (!ready) {
-      throw new Error(
-        `renderer never reached document.readyState "complete" within ${READY_STATE_DEADLINE_MS} ms`
-      )
     }
 
     // Screencast frame timing is not a metric here: attaching CDP perturbs the renderer,
