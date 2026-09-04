@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { ActivityIndicator, Keyboard, StyleSheet, View } from 'react-native'
 import { useIsFocused, useNavigation } from 'expo-router'
+import { useTransitionProgress } from 'react-native-screens'
 import { type BridgeCfg, type GuestMsg, type WikiCandidate } from '@memry/contracts/webview-bridge'
 import { bytesToBase64 } from '../lib/base64'
 import { createLogger } from '../lib/logger'
@@ -27,14 +28,39 @@ const log = createLogger('EditorView')
  */
 
 /**
- * How long to wait for the push animation when the navigator reports no
- * `transitionEnd`.
+ * How long to wait for the push animation when nothing reports its end.
  *
- * The stack's initial route and a push with animation off never emit one, and
- * an editor that waits for it forever is an invisible editor. Longer than the
- * iOS push, so the normal path is always the event and never this.
+ * The stack's initial route and a push with animation off never animate at
+ * all, and an editor that waits forever for an animation that is not running
+ * is an invisible editor. A BACKSTOP, not a schedule: every open it settles is
+ * an open the reader spent staring at a blank body the app had already drawn,
+ * so `settledByFallback` in the trace is the row that says whether the real
+ * signals are working.
  */
 const REVEAL_FALLBACK_MS = 500
+
+/**
+ * How far into the push counts as arrived.
+ *
+ * `react-native-screens` pumps transition progress from a display link running
+ * alongside the UIKit transition, and sends the exact `1.0` from
+ * `viewDidAppear` — the same call site that emits the `onAppear` the
+ * navigator's `transitionEnd` is built on. Reading the RAMP rather than its
+ * endpoint is what makes this independent of that call site. The curve is an
+ * ease-out, so the last frames cluster hard against 1 and this threshold is
+ * reached with room to spare; at 0.99 the screen is under five points from
+ * home, for at most one frame.
+ */
+const SETTLED_PROGRESS = 0.99
+
+/**
+ * Which signal opened the gate.
+ *
+ * Recorded per open because the three are indistinguishable from the outside
+ * and a backstop that fires near the animation's own duration reads exactly
+ * like a working event path.
+ */
+type SettleSource = 'settledByEvent' | 'settledByProgress' | 'settledByFallback'
 
 export interface EditorViewProps {
   doc: OpenDoc
@@ -45,8 +71,8 @@ export interface EditorViewProps {
    * A prop rather than a hook here because the answer has to be watched from
    * the moment the ROUTE mounts. This component appears only once the note's
    * open chain has resolved, and a note slower than the push animation would
-   * miss the event entirely and wait out the fallback. `useRouteSettled` is the
-   * hook the screen calls.
+   * miss the arrival entirely and wait out the backstop. `useRouteSettled` is
+   * the hook the screen calls.
    */
   routeSettled: boolean
   /** Wiki-link tap. Targets may be `Title` or `Title#Heading`. */
@@ -101,7 +127,7 @@ export interface EditorControls {
 type DocScopedCommand = 'undo' | 'redo' | 'focus'
 
 /**
- * The one navigator event a note screen needs.
+ * The navigator events a note screen needs.
  *
  * Declared here rather than pulled from `@react-navigation/native-stack`,
  * which the app does not depend on directly: `useNavigation` is generic
@@ -118,18 +144,53 @@ interface StackTransitions {
 /**
  * Whether this route has animated into its place on screen.
  *
- * Call it from the SCREEN, above any early return, so the listener is
+ * Call it from the SCREEN, above any early return, so the listeners are
  * registered while the note is still loading. The host does not slide with the
  * stack, so it stays hidden until this is true — and a screen that only starts
- * watching once its note has opened would miss the event on every note slower
+ * watching once its note has opened would miss the signal on every note slower
  * than the animation and eat the fallback instead.
  *
- * It goes false again when the route's CLOSING transition ends, which is the
- * last moment the outgoing note is still worth drawing.
+ * TWO independent readings of one physical event, because the navigator's
+ * `transitionEnd` was measured settling 0 of 24 opens (#2030): every one of
+ * them fell through to the backstop, and the fallback constant sitting 150 ms
+ * past the animation is why half a second of each open was a timer. The
+ * navigator event is `onAppear`, which is `viewDidAppear`. Transition PROGRESS
+ * is a display link running alongside the UIKit transition, delivered to this
+ * screen through `react-native-screens`' own context rather than through the
+ * navigator's emitter — so it cannot be lost to a listener on the wrong
+ * navigator, and it reports the animation's end without waiting on the
+ * `viewDidAppear` that the event path depends on. Whichever arrives first
+ * settles the route, and the trace names it. Once a device run says which one
+ * delivers, the other goes.
+ *
+ * Only the ARRIVING edge is read from progress. The closing edge is left to
+ * the navigator exactly as it was: an outgoing note that blanked the moment it
+ * started leaving was a whole screen going empty as it animated away, and this
+ * change is not the place to relitigate that.
+ *
+ * `traceId` is the note the open trace is keyed on. Absent, the gate still
+ * works and simply records nothing.
  */
-export function useRouteSettled(): boolean {
+export function useRouteSettled(traceId?: string): boolean {
   const navigation = useNavigation<StackTransitions>()
+  // Provided by the `Screen` this route is rendered into. It throws outside a
+  // native stack, which is the same contract `useEditorHost` already holds the
+  // caller to: this hook belongs to a note screen in the notes stack.
+  const transition = useTransitionProgress()
   const [settled, setSettled] = useState(false)
+
+  /** Latched, so the mark names the signal that ACTUALLY opened the gate. */
+  const settledBy = useRef<SettleSource | null>(null)
+  const arrive = useCallback(
+    (source: SettleSource) => {
+      if (!settledBy.current) {
+        settledBy.current = source
+        if (traceId) mark(traceId, source)
+      }
+      setSettled(true)
+    },
+    [traceId]
+  )
 
   useEffect(() => {
     // A CLOSING transition unsettles the route the moment it starts, which is
@@ -141,19 +202,48 @@ export function useRouteSettled(): boolean {
       if (event.data.closing) setSettled(false)
     })
     const onEnd = navigation.addListener('transitionEnd', (event) => {
-      setSettled(!event.data.closing)
+      if (event.data.closing) setSettled(false)
+      else arrive('settledByEvent')
     })
     // The reader let go and the screen came back, so this route is on screen
     // again and no `transitionEnd` will say so.
     const onCancel = navigation.addListener('gestureCancel', () => setSettled(true))
-    const fallback = setTimeout(() => setSettled(true), REVEAL_FALLBACK_MS)
+    const fallback = setTimeout(() => arrive('settledByFallback'), REVEAL_FALLBACK_MS)
     return () => {
       onStart()
       onEnd()
       onCancel()
       clearTimeout(fallback)
     }
-  }, [navigation])
+  }, [arrive, navigation])
+
+  const { closing, progress } = transition
+  useEffect(() => {
+    // Both numbers ride ONE native event and their two listeners fire in no
+    // defined order, so the decision is taken from the pair rather than from
+    // whichever callback ran last.
+    let closed = false
+    let ratio = 0
+
+    const onProgress = progress.addListener(({ value }) => {
+      ratio = value
+      if (!closed && ratio >= SETTLED_PROGRESS) arrive('settledByProgress')
+    })
+    const onClosing = closing.addListener(({ value }) => {
+      const next = value === 1
+      // Turning from closing to opening starts a NEW transition, and the ratio
+      // still standing belongs to the one that just finished. Left alone, a
+      // screen coming back would read as fully arrived on its first event and
+      // reveal the editor over an animation that had not started.
+      if (closed && !next) ratio = 0
+      closed = next
+    })
+
+    return () => {
+      progress.removeListener(onProgress)
+      closing.removeListener(onClosing)
+    }
+  }, [arrive, closing, progress])
 
   return settled
 }

@@ -73,8 +73,8 @@ export default function NoteScreen() {
   // Watched from the moment the SCREEN mounts, which is the point of asking
   // here rather than inside `EditorView`. The editor appears only once the open
   // chain below has resolved, and a note slower than the push animation would
-  // start listening after `transitionEnd` had already fired.
-  const routeSettled = useRouteSettled()
+  // start listening after the transition had already ended.
+  const routeSettled = useRouteSettled(id)
 
   const [session, setSession] = useState<EditorSession | null>(null)
   const [doc, setDoc] = useState<OpenDoc | null>(null)
