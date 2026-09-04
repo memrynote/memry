@@ -15,6 +15,13 @@ const logger = createLogger('Embeddings:Worker')
 
 const MAX_CONTENT_LENGTH = 2000
 
+/**
+ * Ceiling on the orderly teardown below. Comfortably under the main process's
+ * SHUTDOWN_TIMEOUT_MS (3s, embeddings.ts), so a wedged disposal still exits on
+ * its own terms rather than being force-killed and reported as a teardown death.
+ */
+const SHUTDOWN_TIMEOUT_MS = 1_500
+
 interface ModelProgress {
   status: string
   progress?: number
@@ -153,7 +160,50 @@ async function handleEmbed(
   }
 }
 
-parentPort.on('message', (event) => {
+let shuttingDown = false
+
+/**
+ * Free the onnxruntime sessions BEFORE this process unwinds.
+ *
+ * A bare `process.exit(0)` here skipped JS cleanup and ran onnxruntime's native
+ * static destructors with sessions still live, which aborts (SIGABRT, exit 6).
+ * The worker's own exit was clean, so the bridge recorded `graceful_stop` and
+ * Electron then reported a SEPARATE `child-process-gone` for the abort — the
+ * shape behind 70% of macOS installs on #1990.
+ *
+ * Dropping the last 'message' listener is what lets this process end on its own:
+ * Electron's ParentPort pauses itself on `removeListener`, releasing the handle
+ * that keeps the loop alive. The timer bounds that — unref'd so it cannot itself
+ * hold the loop open, and left armed after disposal because a native runtime
+ * with lingering threads is exactly the case it exists for.
+ */
+async function handleShutdown(): Promise<void> {
+  if (shuttingDown) return
+  shuttingDown = true
+
+  const fallback = setTimeout(() => {
+    logger.warn('Embedding worker did not drain after disposal; exiting')
+    process.exit(0)
+  }, SHUTDOWN_TIMEOUT_MS)
+  if (typeof fallback.unref === 'function') {
+    fallback.unref()
+  }
+
+  parentPort.off('message', onMessage)
+
+  const disposable = extractor
+  extractor = null
+
+  try {
+    await disposable?.dispose?.()
+  } catch (error) {
+    logger.error('Failed to dispose embedding pipeline', {
+      message: error instanceof Error ? error.message : String(error)
+    })
+  }
+}
+
+function onMessage(event: { data: unknown }): void {
   const message = event.data as EmbeddingMainToWorkerMessage
 
   switch (message.type) {
@@ -164,9 +214,11 @@ parentPort.on('message', (event) => {
       void handleEmbed(message)
       break
     case 'shutdown':
-      process.exit(0)
+      void handleShutdown()
   }
-})
+}
+
+parentPort.on('message', onMessage)
 
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught embedding worker error', {

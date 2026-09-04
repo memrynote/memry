@@ -105,4 +105,74 @@ describe('embedding worker', () => {
       normalize: true
     })
   })
+
+  describe('shutdown', () => {
+    const loadWorker = async (
+      port: MockParentPort,
+      dispose: () => Promise<unknown>
+    ): Promise<void> => {
+      Object.defineProperty(process, 'parentPort', {
+        configurable: true,
+        writable: true,
+        value: port
+      })
+      const extractor = Object.assign(
+        vi.fn().mockResolvedValue({ data: new Float32Array(EMBEDDING_DIMENSION) }),
+        { dispose }
+      )
+      mockPipeline.mockResolvedValue(extractor)
+
+      await import('./embedding-worker')
+      port.emit('message', { data: { type: 'load-model', requestId: 'load-1' } })
+      await vi.waitFor(() => {
+        expect(port.postMessage).toHaveBeenCalledWith({
+          type: 'load-model-result',
+          requestId: 'load-1'
+        })
+      })
+    }
+
+    // `process.exit()` under a loaded onnxruntime skips JS cleanup and runs the
+    // native static destructors with sessions still live, which aborts with
+    // SIGABRT after the worker's own clean exit 0 (#1990).
+    it('disposes the pipeline and lets the loop drain instead of exiting hard', async () => {
+      const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never)
+      const dispose = vi.fn().mockResolvedValue(undefined)
+      const port = new MockParentPort()
+      await loadWorker(port, dispose)
+
+      port.emit('message', { data: { type: 'shutdown' } })
+
+      await vi.waitFor(() => {
+        expect(dispose).toHaveBeenCalledTimes(1)
+      })
+      expect(exit).not.toHaveBeenCalled()
+      // Electron's ParentPort pauses itself once the last 'message' listener is
+      // gone, releasing the handle that keeps this process alive.
+      expect(port.listenerCount('message')).toBe(0)
+      exit.mockRestore()
+    })
+
+    // The main process force-kills at 3s, and a kill mid-teardown is exactly the
+    // death this fix exists to avoid, so the worker has to give up first.
+    it('falls back to exiting when disposal never settles', async () => {
+      const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never)
+      const dispose = vi.fn().mockReturnValue(new Promise<void>(() => {}))
+      const port = new MockParentPort()
+      await loadWorker(port, dispose)
+
+      vi.useFakeTimers()
+      try {
+        port.emit('message', { data: { type: 'shutdown' } })
+        await vi.advanceTimersByTimeAsync(1_499)
+        expect(exit).not.toHaveBeenCalled()
+
+        await vi.advanceTimersByTimeAsync(1)
+        expect(exit).toHaveBeenCalledWith(0)
+      } finally {
+        vi.useRealTimers()
+        exit.mockRestore()
+      }
+    })
+  })
 })
