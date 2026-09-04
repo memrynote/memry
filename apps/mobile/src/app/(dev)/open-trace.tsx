@@ -11,6 +11,7 @@ import {
   cell,
   formatOpenTraceReport,
   getTraces,
+  getWebViewBoot,
   resetTraces,
   setProbeEnabled,
   summarizeOpenTraces,
@@ -257,7 +258,17 @@ export default function OpenTraceScreen() {
       // The asset stamp is in the report because an absent guest mark reads
       // identically to a stale prebuilt bundle, and one of those is a finding
       // while the other is a rebuild the runner forgot.
-      const report = `${pool}\neditor-web asset ${EDITOR_WEB_CONTRACT_HASH}\n${formatOpenTraceReport(measured)}`
+      // The WebView line is not decoration. One guest now serves every note, so
+      // the 489 ms a per-note WKWebView cost has MOVED to the notes list's
+      // first render rather than disappeared, and the phase table cannot show
+      // a cost no open is charged for.
+      const boot = getWebViewBoot()
+      const report = [
+        pool,
+        `editor-web asset ${EDITOR_WEB_CONTRACT_HASH}`,
+        `editor-web webviews built since launch: ${boot.creations}, last load ${boot.lastLoadMs ?? '-'} ms`,
+        formatOpenTraceReport(measured)
+      ].join('\n')
       log.warn(report)
       const written = writeReport(report)
       setStatus(written ? `${pool}\nreport → ${written}` : pool)
@@ -303,8 +314,14 @@ export default function OpenTraceScreen() {
             time.
           </ThemedText>
           <ThemedText type="small">
-            The editor WebView is created once for the whole notes stack, so docStart…readySent are
-            its boot and belong to the first open only. A dash on those rows is that, not a miss.
+            The editor WebView is built once for the whole notes stack, alongside the notes list. So
+            docStart…readySent, webviewMounted and guestReady are its boot, not an open&apos;s: a
+            dash there means the cost moved to launch, not that it went away. The report prints how
+            many were built.
+          </ThemedText>
+          <ThemedText type="small">
+            navigate→revealed is the number to read. painted is the guest&apos;s frame callback,
+            which can land while the editor is still transparent behind the push animation.
           </ThemedText>
 
           <Pressable

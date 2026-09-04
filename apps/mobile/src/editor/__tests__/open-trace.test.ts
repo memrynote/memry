@@ -48,6 +48,28 @@ describe('open trace report', () => {
     expect(row('schemaBuilt')).not.toContain('0ms')
   })
 
+  it('reports the reveal separately from the guest paint', () => {
+    // The guest paints into a transparent view behind the push animation, so a
+    // report that stopped at `painted` would claim an open the reader had not
+    // seen yet.
+    beginTrace('note-1')
+    mark('note-1', 'painted')
+    mark('note-1', 'revealed')
+
+    // Painted but never revealed: the trace ended before the editor was on
+    // screen, which is a finding rather than a fast open.
+    beginTrace('note-2')
+    mark('note-2', 'painted')
+
+    const summary = summarizeOpenTraces(getTraces())
+    expect(summary.endToEnd.samples).toBe(2)
+    expect(summary.endToEndRevealed.samples).toBe(1)
+
+    const report = formatOpenTraceReport(summary)
+    expect(report).toMatch(/navigate→revealed\s+n=\s*1/)
+    expect(report).toMatch(/painted→revealed\s+n=\s*1/)
+  })
+
   it('still prints payload sizes without a unit', () => {
     beginTrace('note-1')
     mark('note-1', 'painted')

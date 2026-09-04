@@ -38,6 +38,12 @@ import { summarize, type LatencySummary } from './latency'
  *     measurement that adds traffic to the channel it is measuring has no
  *     business running in an app nobody is measuring.
  *   * `painted` — the guest's frame callback after the document is laid out.
+ *   * `revealed` — the host flipped the WebView to opaque, which is the first
+ *     moment the body is on the reader's screen. Since #2030 the paint and the
+ *     reveal are separate events: one WebView serves every note, it does not
+ *     slide with the stack, and so it paints behind a transparent view until
+ *     the route it belongs to has settled. A report stopping at `painted`
+ *     would claim an open the reader had not seen yet.
  *
  * Between `webviewMounted` and `painted` sit the GUEST's own sub-marks (#2043),
  * which carry the same names the contract declares in `GUEST_PAINT_MARKS`. They
@@ -64,6 +70,7 @@ export type OpenHostPhase =
   | 'docLoadSent'
   | 'probeLateSent'
   | 'painted'
+  | 'revealed'
 
 export type OpenPhase = OpenHostPhase | GuestPaintMark
 
@@ -106,7 +113,8 @@ export const OPEN_PHASES: readonly OpenPhase[] = [
   'shikiEnd',
   'seedEnd',
   'guestPainted',
-  'painted'
+  'painted',
+  'revealed'
 ]
 
 /**
@@ -219,6 +227,38 @@ export function markDocLoadPayload(noteId: string, payload: DocLoadPayload): voi
   trace.payload = payload
 }
 
+/**
+ * What the shared editor WebView cost, and how many were built (#2030).
+ *
+ * The 489 ms a per-note WKWebView cost did not vanish, it MOVED: Notes is the
+ * initial tab, so the WebView is now created alongside the list's first render.
+ * A phase table keyed on note opens cannot show that, because after a prewarm
+ * there is no open to attribute it to. Recording it here is what keeps the
+ * report from implying a cost was removed when it was relocated.
+ */
+export interface WebViewBoot {
+  /** Since launch, so a re-created content process shows up as a second one. */
+  creations: number
+  /** Host construction to the guest document's load, for the latest creation. */
+  lastLoadMs: number | null
+}
+
+const webViewBoot: WebViewBoot = { creations: 0, lastLoadMs: null }
+
+export function markWebViewLoad(ms: number): void {
+  webViewBoot.creations += 1
+  webViewBoot.lastLoadMs = ms
+}
+
+/**
+ * Deliberately NOT cleared by `resetTraces`: the WebView the run measures
+ * against was built before the run started, and zeroing it would report the
+ * relocated cost as absent.
+ */
+export function getWebViewBoot(): WebViewBoot {
+  return { ...webViewBoot }
+}
+
 export function getTraces(): OpenTrace[] {
   return [...recent]
 }
@@ -231,8 +271,16 @@ export function resetTraces(): void {
 export interface OpenTraceSummary {
   traces: number
   phases: { phase: OpenPhase; samples: LatencySummary }[]
-  /** `navigate` -> `painted`, the number the epic is judged by. */
+  /** `navigate` -> `painted`, the guest's own end of the open. */
   endToEnd: LatencySummary
+  /**
+   * `navigate` -> `revealed`, the number the epic is judged by.
+   *
+   * The one a reader would recognise. `endToEnd` stops at the guest's frame
+   * callback, and the host can still be holding that frame transparent behind
+   * a route transition.
+   */
+  endToEndRevealed: LatencySummary
   /** Sizes of the `doc-load` payloads this run sent (#2044). */
   payload: { field: keyof DocLoadPayload; samples: LatencySummary }[]
   /**
@@ -258,7 +306,8 @@ const INTERVALS: readonly (readonly [OpenPhase, OpenPhase])[] = [
   ['idleTickLast', 'docLoadRecv'],
   ['docLoadSent', 'docLoadRecv'],
   ['probeLateSent', 'probeLateRecv'],
-  ['guestReady', 'painted']
+  ['guestReady', 'painted'],
+  ['painted', 'revealed']
 ]
 
 const PAYLOAD_FIELDS: readonly (keyof DocLoadPayload)[] = [
@@ -301,6 +350,7 @@ export function formatOpenTraceReport(summary: OpenTraceSummary): string {
     `note-open latency — ${summary.traces} traces`,
     ...summary.phases.map((entry) => line(entry.phase, entry.samples, 'ms')),
     line('navigate→painted', summary.endToEnd, 'ms'),
+    line('navigate→revealed', summary.endToEndRevealed, 'ms'),
     'intervals, differenced per trace',
     ...summary.intervals.map((entry) => line(entry.label, entry.samples, 'ms')),
     'doc-load payload size — stateBytes in bytes, the other two in characters',
@@ -325,6 +375,7 @@ export function summarizeOpenTraces(traces: OpenTrace[]): OpenTraceSummary {
     // outcome there is, and letting it through as an absent sample would enter
     // it in the percentiles as the fastest one.
     endToEnd: summarize(offsets('painted')),
+    endToEndRevealed: summarize(offsets('revealed')),
     payload: PAYLOAD_FIELDS.map((field) => ({
       field,
       samples: summarize(traces.flatMap((trace) => (trace.payload ? [trace.payload[field]] : [])))
