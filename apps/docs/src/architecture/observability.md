@@ -314,6 +314,16 @@ at most one dimension and that slot already carries `prior_app_version`. The `SH
 prefix is preserved so a query written against the old code still matches. Only a bounded
 kebab-case token is accepted from the marker; anything else degrades to the plain code.
 
+`app_crashed` also carries an assembled **message** naming the shutdown failure, the overrunning
+step, the prior version, the observed uptime and whether the marker parsed — without it the Error
+Tracking issue was titled `UNCLEAN_SHUTDOWN` and held nothing else. The marker is a file on disk, so
+every string field is **rejected outright** unless it matches an enum-ish token (a
+character-substituted path still leaks its structure), and the assembled message is capped at 512
+characters. That cap is not cosmetic: an over-length message fails `TelemetryErrorDetailSchema` at
+the sync-server, which rejects the **whole batch** with a 400, and the desktop client treats a 4xx
+as permanent — one corrupt marker field would otherwise discard up to 100 unrelated events on every
+launch until the marker cleared.
+
 ### Shutdown Budget
 
 `before-quit` runs its cleanup as an ordered list of named steps under **one shared deadline**
@@ -465,6 +475,19 @@ Four rules that are load-bearing:
 `value` holds the redacted message alone — it is the issue title, and the stack belongs in frames.
 A React component stack is promoted to frames when there is no JS stack, and always ships intact as
 `$exception_component_stack`.
+
+When there is no message the transform falls back to the error code, which makes the issue title
+identical to the code and tells an engineer nothing new. That fallback sets
+**`exception_message_missing: true`** on the event, so a message-less reporting site is countable
+on a dashboard instead of looking healthy:
+
+```sql
+SELECT properties.$exception_fingerprint AS fp, count() c, uniq(distinct_id) u
+FROM events
+WHERE event = '$exception' AND properties.exception_message_missing
+  AND timestamp > now() - INTERVAL 7 DAY
+GROUP BY fp ORDER BY u DESC
+```
 
 Errors that carry no JS stack by construction — `child-process-gone` for a crashed utility worker,
 where the process that died is not the one reporting — instead carry a synthesized message naming
@@ -686,8 +709,11 @@ cross-realm `Error` that fails `instanceof Error` — and those carry no stack, 
 landed in Loki as an unactionable bare `Error` with an empty stack. Reasons are normalized before
 reporting: a real `Error` passes through, a cross-realm error's own frames are adopted, and
 anything else gets a stack synthesized at the handler plus a code naming the reason's type
-(`Rejection_string`, `Rejection_Object`, `Rejection_undefined`). The reason's message or value is
-never copied — only its shape. A reason that crossed a structured-clone or IPC boundary keeps its
+(`Rejection_string`, `Rejection_Object`, `Rejection_undefined`). The reason's message rides along
+**redacted**, not dropped: it goes through the same `redactText` pass as any other error message
+before it leaves the device. Omitting it made every `Rejection_*` row in Error Tracking an issue
+titled after its own error code, with nothing inside to triage. A reason that crossed a
+structured-clone or IPC boundary keeps its
 `.name` but loses both its stack and its constructor; that name is preferred over the constructor
 name, so it reports `Rejection_TypeError` rather than collapsing to `Rejection_Error`. When the
 code is a `Rejection_*` name the stack is the handler's own frames, not the fault's — the code is
@@ -698,7 +724,8 @@ failure paths report only a message and a source location, which previously land
 with an empty stack and nothing to triage. The error class is recovered from the message's leading
 token (`Uncaught TypeError: …` → `TypeError`, subject to the same enum-token rule) and the
 `filename`/`lineno`/`colno` are rebuilt into a stack frame, so the code location survives the same
-frame filter and redaction as a real stack. The message text itself is still never shipped.
+frame filter and redaction as a real stack. The message text ships too, redacted on the device by
+the same pass — without it a cross-origin failure was a `WindowError` issue titled `WindowError`.
 
 Because a rejection reason or `event.error` can be **any** value — including a `Proxy` whose traps
 throw or an object with throwing getters — every property read in this path (including `instanceof`,
