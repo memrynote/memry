@@ -30,7 +30,7 @@ import {
   type MemryInlineSpecs
 } from './inline'
 
-export { createServerBlockSpecs } from './blocks/server-specs'
+export { blockExternalHTML, createServerBlockSpecs } from './blocks/server-specs'
 
 export function createServerInlineSpecs(): MemryInlineSpecs {
   return {
