@@ -31,6 +31,30 @@ local disk. A page added to that switch with a static import silently returns th
 whole tree to the entry chunk, so new pages follow the same lazy shape as their
 siblings.
 
+## Renderer Chunking
+
+The renderer build sets no `manualChunks`. The main process build sets one, and the two
+are not comparable. Main is CJS over a small fixed graph, where package-per-chunk stops
+rollup splitting a circular package across chunks that then load in the wrong order. The
+renderer is ESM over a large graph whose lazy boundaries rollup already derives from the
+`import()` calls in the page switch.
+
+A production renderer build emits 908 chunks, and exactly one is reachable from the entry
+without an `import()`. Launch parses that single 4,485,640 byte file. `manualChunks`
+cannot shrink it, because it moves modules between chunks rather than off the startup
+path, and V8 compiles function bodies lazily either way.
+
+It can grow it. `manualChunks` assigns a module to its named chunk whether or not the
+module was reachable only through `import()`, so one eagerly imported module in a bucket
+drags the whole bucket onto the startup path. A vendor split over react, Radix, motion,
+and the rest of `node_modules` was measured at 5 eager chunks totalling 45,050,500 bytes,
+against 4,789,586 today. It pulled Shiki's grammars, Excalidraw, Mermaid, and hls.js into
+launch. The narrowest rule that could help, react and react-dom and scheduler alone,
+leaves the eager total byte-identical and only spreads it over two files.
+
+Reducing launch parse work therefore means cutting a lazy boundary so bytes stop being
+reachable from the entry, the shape used for pages above and for icons below.
+
 ## Icon Loading
 
 `@hugeicons/core-free-icons` ships ~5,000 glyphs in one module. The icon picker lets a

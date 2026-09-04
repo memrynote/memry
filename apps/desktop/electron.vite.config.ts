@@ -151,6 +151,15 @@ export default defineConfig({
     plugins: [devCsp(), react(), tailwindcss()],
     build: {
       rollupOptions: {
+        // No `manualChunks` here, unlike main above. The renderer emits 908 chunks and
+        // exactly one is reachable from the entry without an `import()`, so chunking can
+        // only move startup bytes around, never off the startup path. It can add to it:
+        // `manualChunks` claims a module even when the module was reachable only lazily,
+        // so a vendor rule matching one eager module drags its whole bucket into launch.
+        // A measured react/Radix/motion/rest-of-node_modules split took the eager total
+        // from 4,789,586 to 45,050,500 bytes by pulling in Shiki, Excalidraw, and Mermaid.
+        // See apps/docs/src/architecture.md, "Renderer Chunking".
+
         // Every per-icon module in @hugeicons/core-free-icons tags its array literal
         // with /*#__PURE__*/, which rollup only reads on calls. Left alone it emits one
         // notice per icon and buries the warnings worth acting on.
