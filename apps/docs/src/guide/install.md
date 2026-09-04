@@ -41,6 +41,13 @@ file along with the report:
 - **macOS** — `~/Library/Logs/memrynote/main.log`
 - **Linux** — `~/.config/memrynote/logs/main.log`
 
+On macOS, updates cannot install at all while the app runs from a read-only location —
+the mounted `.dmg` you downloaded, or a copy still sitting in `~/Downloads`, which macOS
+runs from a temporary read-only mount of its own. There is nothing to report here: drag
+memrynote into your **Applications** folder and open it from there, and updates start
+working. **Settings → General → App Updates** says so directly when this is what is
+blocking you.
+
 On Windows, an update can also be blocked by a file in the install folder being held
 open — antivirus and leftover memrynote processes are the usual causes. The installer
 works around this on its own now, and it writes an `install.log` next to the app
