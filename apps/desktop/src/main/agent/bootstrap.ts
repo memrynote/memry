@@ -6,6 +6,7 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { registerAgentHandlers, unregisterAgentHandlers } from '../ipc/agent-handlers'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
+import { markExpectedCondition } from '../telemetry/expected-conditions'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { ClaudeCliBackend } from './backends/claude-cli-backend'
 import { CodexCliBackend } from './backends/codex-cli-backend'
@@ -121,7 +122,7 @@ export async function startAgent(): Promise<AgentHandle> {
   }: ClaudeCliSpawnInput) => {
     const binary = await detectClaudeBinary()
     if (!binary.detected || !binary.meetsMinimum) {
-      throw new Error(binary.installHint ?? 'Claude CLI unavailable')
+      throw markExpectedCondition(new Error(binary.installHint ?? 'Claude CLI unavailable'))
     }
 
     const status = purpose === 'turn' ? getPublicStatus() : null
@@ -178,7 +179,7 @@ export async function startAgent(): Promise<AgentHandle> {
   }: CodexCliSpawnInput) => {
     const binary = await detectCodexBinary()
     if (!binary.detected || !binary.meetsMinimum) {
-      throw new Error(binary.installHint ?? 'Codex CLI unavailable')
+      throw markExpectedCondition(new Error(binary.installHint ?? 'Codex CLI unavailable'))
     }
 
     const status = purpose === 'turn' ? getPublicStatus() : null

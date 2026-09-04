@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
   runMigrations: vi.fn(),
   runIndexMigrations: vi.fn(),
   initDatabase: vi.fn(),
+  isDataDatabaseCorrupt: vi.fn(() => false),
   initIndexDatabase: vi.fn(),
   initializeFts: vi.fn(),
   initializeFtsTasks: vi.fn(),
@@ -128,6 +129,7 @@ vi.mock('./init', () => ({
 
 vi.mock('../database', () => ({
   initDatabase: (...args: unknown[]) => mocks.initDatabase(...args),
+  isDataDatabaseCorrupt: (...args: unknown[]) => mocks.isDataDatabaseCorrupt(...args),
   initIndexDatabase: (...args: unknown[]) => mocks.initIndexDatabase(...args),
   closeAllDatabases: (...args: unknown[]) => mocks.closeAllDatabases(...args),
   runMigrations: (...args: unknown[]) => mocks.runMigrations(...args),

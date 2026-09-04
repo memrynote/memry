@@ -126,6 +126,37 @@ export function requireDatabase(): DataDb {
   }
 }
 
+/**
+ * True when data.db's own B-tree structure is damaged.
+ *
+ * Unlike index.db, data.db is not rebuildable: tasks, projects, bookmarks,
+ * reminders, calendar rows and the whole sync state live only here. When it is
+ * malformed the app does not fail once, it fails a dozen times — every handler
+ * that reads it reports its own SQLITE_CORRUPT under its own action, and the
+ * search-index repair path reports the read failure as `fts_index_repair`.
+ * Twelve misleading signals, none of them naming the actual file.
+ *
+ * `quick_check` rather than `integrity_check`: it skips the index-vs-table
+ * cross-checks, which is the expensive half, and still reads every page. It is
+ * bounded here because an unbounded check on a large damaged file can run for
+ * minutes on the open path.
+ *
+ * Detection only. Recovering a malformed data.db is a separate problem, and
+ * this deliberately does not block the open — the databases stay reachable so
+ * a partially readable vault is still partially usable.
+ */
+export function isDataDatabaseCorrupt(): boolean {
+  if (!sqliteDataDb) return false
+  try {
+    const rows = sqliteDataDb.pragma('quick_check(1)') as Array<{ quick_check?: string }>
+    const verdict = rows[0]?.quick_check
+    return typeof verdict === 'string' && verdict !== 'ok'
+  } catch (error) {
+    // The pragma itself throwing is the strongest corruption signal there is.
+    return isSqliteCorruptError(error)
+  }
+}
+
 export function isDatabaseInitialized(): boolean {
   return dataDb !== null
 }

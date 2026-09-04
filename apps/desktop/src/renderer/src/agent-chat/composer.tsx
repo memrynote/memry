@@ -235,9 +235,20 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     backendStatuses?.codex_cli.reason === 'agent_unavailable'
   const turnInFlight = conversationId ? agent?.state.inFlight?.[conversationId] === true : false
   const busy = turnInFlight || submitting
+  // A CLI backend needs a positive detection, not merely the absence of a
+  // negative one. `!== false` also passed while backendStatuses was still
+  // undefined, so send stayed live through the bootstrap window and the turn
+  // died on `Install Claude Code CLI …` — a configuration state reported as an
+  // error because the button was offered before anything had been checked.
+  //
+  // The picker keeps the permissive `!== false` above: muting a row mid-load
+  // would flicker, and picking an unavailable provider is recoverable.
   const providerReady =
-    selectedProvider === 'local_openai_compatible' ||
-    backendStatuses?.[selectedProvider]?.available !== false
+    selectedProvider === 'claude_cli'
+      ? backendStatuses?.claude_cli.available === true
+      : selectedProvider === 'codex_cli'
+        ? backendStatuses?.codex_cli.available === true
+        : true
   const hasText = promptValue.text.trim().length > 0
   const canSend = Boolean(agent) && Boolean(sourceWindowId) && hasText && !busy && providerReady
   const pickerQuery = pickerOpen ? (mentionQuery ?? '') : ''

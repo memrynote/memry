@@ -51,6 +51,7 @@ import {
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
+import { isWatchEnvironmentError, markExpectedCondition } from '../telemetry/expected-conditions'
 import { isWritebackIgnored } from '../sync/crdt-writeback'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { flushProjectionEvents } from '../projections'
@@ -830,6 +831,17 @@ export async function startWatcher(vaultPath: string, excludePatterns?: string[]
     vaultPath,
     excludePatterns: patterns,
     onError: (error) => {
+      // A locked or vanished single file is the machine's doing, not ours: the
+      // watcher carries on watching everything else, so there is nothing to
+      // report and nothing the user can act on. Marked rather than skipped
+      // here so it also stays out of the throttle window below and cannot
+      // crowd out a genuine watcher failure for a minute.
+      if (isWatchEnvironmentError(error)) {
+        markExpectedCondition(error)
+        logger.warn('Watch failed for a locked or missing path:', error)
+        return
+      }
+
       logger.error('Error:', error)
       const now = Date.now()
       if (now - lastWatcherErrorTrackedAt >= WATCHER_ERROR_TRACK_INTERVAL_MS) {

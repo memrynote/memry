@@ -327,6 +327,7 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
           onToggleRail={toggleRail}
           onEdit={() => setIsEditing(true)}
           onArchive={() => void handleArchiveProject()}
+          canArchive={!project?.isDefault}
         />
       </div>
 
