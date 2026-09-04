@@ -340,7 +340,21 @@ export class OutboxDrain {
     const signingSecretKey = this.deps.signingSecretKey()
     if (!vaultKey || !signingSecretKey) {
       // Locked vault: not an error, just nothing we are allowed to encrypt with.
-      return { ...idle, remaining: await store.pendingCount() }
+      //
+      // It has to SAY so. This was the one branch in this method that returned
+      // without a word, and the two secrets fail differently: a pull only needs
+      // the vault key, so a device missing just the signing key pulls forever,
+      // looks healthy, and silently never pushes a single row. That state cost
+      // an afternoon to find from the server side.
+      const remaining = await store.pendingCount()
+      if (remaining > 0) {
+        log.warn('Outbox cannot drain: a push secret is missing', {
+          remaining,
+          hasVaultKey: vaultKey !== null,
+          hasSigningKey: signingSecretKey !== null
+        })
+      }
+      return { ...idle, remaining }
     }
 
     const rows = await store.claimBatch(CLAIM_LIMIT)
