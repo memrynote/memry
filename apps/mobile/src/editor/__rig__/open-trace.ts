@@ -268,6 +268,19 @@ const PAYLOAD_FIELDS: readonly (keyof DocLoadPayload)[] = [
 ]
 
 /**
+ * One cell of a latency table, or a dash when the phase has no samples.
+ *
+ * `summarize([])` answers zero for every percentile, which reads as "this
+ * phase took 0 ms" — the one lie a latency table must not tell. It matters
+ * from #2030 on, where a warm open legitimately reaches none of the guest's
+ * BOOT marks: the WebView booted long before, so `docStart` and its neighbours
+ * are absent from the trace rather than instantaneous in it.
+ */
+export function cell(summary: LatencySummary, value: number, unit: string): string {
+  return summary.samples === 0 ? '-' : `${value}${unit}`
+}
+
+/**
  * Plain-text baseline report, the counterpart of `formatG3Report`.
  *
  * The harness drives real navigation, so it does not survive its own run: the
@@ -282,7 +295,7 @@ export function formatOpenTraceReport(summary: OpenTraceSummary): string {
   // own table, and a reader who trusts the caption reads a payload size as a
   // latency.
   const line = (label: string, s: LatencySummary, unit: string): string =>
-    `${label.padEnd(28)} n=${String(s.samples).padStart(3)}  p50=${s.p50}${unit}  p95=${s.p95}${unit}  max=${s.max}${unit}`
+    `${label.padEnd(28)} n=${String(s.samples).padStart(3)}  p50=${cell(s, s.p50, unit)}  p95=${cell(s, s.p95, unit)}  max=${cell(s, s.max, unit)}`
 
   return [
     `note-open latency — ${summary.traces} traces`,
