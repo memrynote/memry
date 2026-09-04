@@ -24,6 +24,7 @@ import type { EditorView } from '@tiptap/pm/view'
 import { splitWikiTarget } from '@memry/shared/wiki-target'
 import { notesService, onNoteCreated, onNoteDeleted, onNoteRenamed } from '@/services/notes-service'
 import { registerEditorPlugin } from '../register-editor-plugin'
+import { getLiveTiptapView } from '../live-prosemirror-view'
 import {
   collectWikiLinkTargets,
   createWikiLinkBrokenPlugin,
@@ -34,6 +35,7 @@ const REFRESH_DEBOUNCE_MS = 400
 
 interface TiptapLike {
   view?: EditorView
+  editorView?: EditorView
   on?: (event: string, handler: () => void) => void
   off?: (event: string, handler: () => void) => void
 }
@@ -98,7 +100,7 @@ export function useWikiLinkBroken(editor: unknown): void {
         return
       }
       lastBroken = broken
-      const liveView = tiptap.view
+      const liveView = getLiveTiptapView(tiptap)
       if (liveView) setBrokenWikiTargets(liveView, broken)
     }
 
