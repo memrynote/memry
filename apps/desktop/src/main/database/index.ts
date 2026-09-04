@@ -6,6 +6,7 @@ export {
   getRawIndexDatabase,
   requireDatabase,
   isDatabaseInitialized,
+  isDataDatabaseCorrupt,
   isIndexDatabaseInitialized,
   closeDatabase,
   closeIndexDatabase,

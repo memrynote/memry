@@ -330,6 +330,17 @@ describe('TaskDetailDrawer — editable properties', () => {
         expect.objectContaining({ title: expect.any(String) })
       )
     })
+
+    it('drops a blank title edit rather than sending it to tasks:update', async () => {
+      const user = userEvent.setup()
+      const onUpdateTask = vi.fn()
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} onUpdateTask={onUpdateTask} />)
+
+      const titleInput = screen.getByPlaceholderText('Task name')
+      await user.clear(titleInput)
+
+      expect(onUpdateTask).not.toHaveBeenCalled()
+    })
   })
 
   describe('description editing', () => {

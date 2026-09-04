@@ -189,6 +189,90 @@ describe('telemetry diagnostics', () => {
       )
     })
 
+    // The worker exited 0 on its own; `graceful_stop` is only recorded on an
+    // observed clean exit. The abort Electron reports afterwards is the native
+    // runtime unwinding after the process was already gone, so it must stay
+    // queryable without filing an exception per idle shutdown (#1990).
+    it('demotes a post-exit teardown abort to warn without losing any payload', () => {
+      trackChildProcessGone({
+        type: 'Utility',
+        reason: 'crashed',
+        name: 'Embeddings',
+        exitCode: 6,
+        phase: 'idle_shutdown',
+        context: {
+          pid: 771,
+          uptimeMs: 30_540,
+          release: 'graceful_stop',
+          modelCache: 'present',
+          modelCacheBytes: 90_387_606,
+          load: 'first',
+          crashCount: 1
+        }
+      })
+
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_log_recorded',
+        expect.objectContaining({
+          // `warn` keeps it out of Error Tracking; everything else is unchanged,
+          // including the fingerprint, so the existing issue's history stands.
+          action: 'warn',
+          result: 'failed',
+          errorCode: 'Utility:crashed:Embeddings',
+          dimensions: { log_action: 'child_process_gone_idle_shutdown' },
+          error: {
+            message:
+              'Embeddings utility process crashed (exit 6, idle_shutdown) ' +
+              '[reason=crashed pid=771 uptime=30540ms release=graceful_stop ' +
+              'cache=present cache_bytes=90387606 load=first crashes=1]'
+          },
+          metrics: { value: 6, durationMs: 30_540, retryCount: 1, byteCount: 90_387_606 }
+        })
+      )
+    })
+
+    // The demotion is justified by the observed exit 0 behind `graceful_stop`
+    // and nothing else. A worker abandoned while still running never produced
+    // one, so its abort is a real fault and has to keep filing an exception.
+    it.each(['live', 'teardown', 'start_timeout', 'fatal_error', 'exit'])(
+      'still reports an exception when the worker was released as %s',
+      (release) => {
+        trackChildProcessGone({
+          type: 'Utility',
+          reason: 'crashed',
+          name: 'Embeddings',
+          exitCode: 6,
+          phase: 'idle_shutdown',
+          context: { release, uptimeMs: 30_540, modelCache: 'present', load: 'first' }
+        })
+
+        expect(trackMainEventMock).toHaveBeenCalledWith(
+          'app_log_recorded',
+          expect.objectContaining({ action: 'error' })
+        )
+      }
+    )
+
+    // The `graceful_stop` release only exists on the embeddings bridge, but the
+    // guard must not widen by accident: another worker's crash with no context
+    // resolved is still an exception.
+    it('keeps a crash from another worker family at error', () => {
+      trackChildProcessGone({
+        type: 'Utility',
+        reason: 'crashed',
+        name: 'VoiceTranscription',
+        exitCode: 6
+      })
+
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_log_recorded',
+        expect.objectContaining({
+          action: 'error',
+          errorCode: 'Utility:crashed:VoiceTranscription'
+        })
+      )
+    })
+
     it('reports exactly as before when no phase is available', () => {
       trackChildProcessGone({
         type: 'Utility',
@@ -245,10 +329,10 @@ describe('telemetry diagnostics', () => {
           error: expect.objectContaining({ stack: expect.stringContaining('at ') })
         })
       )
-      // #and the reason's value never ships
-      const serialized = JSON.stringify(trackMainEventMock.mock.calls[0])
-      expect(serialized).not.toContain('blew up')
-      expect(serialized).not.toContain('@memrynote.com')
+      // #and the reason's text ships redacted rather than dropped (#1989): the
+      // e-mail is masked, the rest is what makes the issue readable
+      const [, options] = trackMainEventMock.mock.calls[0]
+      expect(options.error.message).toBe('vault sync for <email> blew up')
     })
 
     it('adopts the frames of a cross-realm error that fails instanceof Error', () => {
@@ -269,6 +353,10 @@ describe('telemetry diagnostics', () => {
           error: expect.objectContaining({ stack: expect.stringContaining('at loadVault') })
         })
       )
+      // The message rides along, with the home path collapsed and the note
+      // basename hashed away.
+      const [, options] = trackMainEventMock.mock.calls[0]
+      expect(options.error.message).toBe('opening ~/[name].md failed')
       expect(JSON.stringify(trackMainEventMock.mock.calls[0])).not.toContain('private.md')
     })
 

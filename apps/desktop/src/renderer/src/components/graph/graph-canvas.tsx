@@ -11,6 +11,7 @@ import {
   syncGraphologyGraph,
   type BuildGraphOptions
 } from '@/lib/graph-builder'
+import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
 import { LivePhysics, SettledPhysics, type PhysicsHandle } from './physics-layout'
 import type { GraphFilterState } from '@/hooks/use-graph-filters'
 import type { GraphSettings } from '@memry/contracts/graph-api'
@@ -447,7 +448,7 @@ function HoverFadeAnimator({
     const startFade = fadeRef.current
 
     if (startFade === goal) {
-      sigma.refresh()
+      refreshSigmaIfMeasurable(sigma)
       return
     }
 
@@ -457,7 +458,7 @@ function HoverFadeAnimator({
     const tick = (now: number): void => {
       const t = Math.min((now - startTime) / duration, 1)
       fadeRef.current = startFade + (goal - startFade) * easeOutQuad(t)
-      sigma.refresh()
+      refreshSigmaIfMeasurable(sigma)
 
       if (t < 1) {
         animRef.current = requestAnimationFrame(tick)
@@ -465,7 +466,7 @@ function HoverFadeAnimator({
         animRef.current = null
         if (!hoveredNode) {
           hoverTargetRef.current = null
-          sigma.refresh()
+          refreshSigmaIfMeasurable(sigma)
         }
       }
     }

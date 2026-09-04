@@ -168,6 +168,16 @@ export const CaptureBar = ({
   const disabled = isBusy
   const trimmed = value.trim()
 
+  // What actually becomes the task title. Quick-add strips its own tokens, so
+  // token-only text ("!!high", "@today") is non-empty here but parses to an
+  // empty title — which the `tasks:create` contract rejects with a ZodError the
+  // user can do nothing about (#1991). Gate the affordance on this, not on
+  // `trimmed`.
+  const submittableTitle = useMemo(
+    () => (quickAdd ? parseQuickAdd(trimmed, quickAdd.projects).title.trim() : trimmed),
+    [quickAdd, trimmed]
+  )
+
   // Registered for the lifetime of the bar, so `ownsFocusShortcut` can pick a
   // single winner when split view has more than one bar mounted.
   useEffect(() => registerCaptureField(() => fieldRef.current), [])
@@ -339,7 +349,7 @@ export const CaptureBar = ({
   // --------------------------------------------------------------------------
 
   const submit = useCallback(async (): Promise<void> => {
-    if (!trimmed || disabled) return
+    if (!submittableTitle || disabled) return
 
     const result = quickAdd
       ? await (async () => {
@@ -362,7 +372,7 @@ export const CaptureBar = ({
     }
     // Keep focus for rapid entry.
     fieldRef.current?.focus()
-  }, [trimmed, disabled, quickAdd, onSubmit, resolveNoteIds])
+  }, [submittableTitle, trimmed, disabled, quickAdd, onSubmit, resolveNoteIds])
 
   const openDetail = useCallback((): void => {
     if (!onOpenDetail) return
@@ -628,16 +638,16 @@ export const CaptureBar = ({
             <button
               type="button"
               onClick={() => void submit()}
-              disabled={!trimmed || disabled}
+              disabled={!submittableTitle || disabled}
               aria-label={submitLabel?.(value) ?? t('capture.submit')}
               className={cn(
                 'flex size-5 items-center justify-center rounded-md transition-colors duration-200',
                 'disabled:cursor-not-allowed',
-                !trimmed || disabled
+                !submittableTitle || disabled
                   ? 'text-muted-foreground/30'
                   : 'text-background dark:text-black'
               )}
-              style={trimmed && !disabled ? { backgroundColor: accentColor } : undefined}
+              style={submittableTitle && !disabled ? { backgroundColor: accentColor } : undefined}
             >
               {disabled ? (
                 <Loader2 className="size-3 animate-spin" aria-hidden="true" />

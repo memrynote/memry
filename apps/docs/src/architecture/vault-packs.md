@@ -82,6 +82,12 @@ Compaction is triggered two ways, both of which converge on the same idempotent 
   request (not per item) onto `PACK_QUEUE` after their own commit has settled, through
   `waitUntil`. A failed enqueue can therefore never fail an already-committed push. The consumer
   runs one message per invocation (`max_batch_size = 1`, `max_concurrency = 1`, `max_retries = 3`).
+- **Queue backpressure.** Queues answers a burst with `Too Many Requests`. The producer retries the
+  send twice with full jitter (`ENQUEUE_RETRY_DELAYS_MS`, 200 ms upper bound), then gives up with a
+  typed `PACK_ENQUEUE_RATE_LIMITED` 429. That is an expected condition, not a defect: the vault's
+  rows still sit above its watermark, so the cron backfill re-drives it. Telemetry records it as a
+  handled warning rather than an unhandled 500, so it stays visible without reading as an outage.
+  Any enqueue failure that is not backpressure still surfaces as a genuine unhandled error.
 - **Cron backfill.** The 6-hourly sweep drains historical backlog at `PACKS_PER_BACKFILL_TICK` = 3
   packs per tick across all vaults, oldest backlog first, with no sleeps inside the invocation —
   Worker CPU is billed wall-CPU, so pacing is expressed as bounded work per tick plus a resumable

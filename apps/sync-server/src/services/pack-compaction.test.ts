@@ -1,14 +1,61 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
-import { PACKED_KINDS,
+import { AppError } from '../lib/errors'
+import {
+  ENQUEUE_RETRY_DELAYS_MS,
+  PACKED_KINDS,
   PACK_TARGET_BYTES,
   compactOneRange,
+  enqueuePackCompaction,
   insertPackIndexRow,
   packObjectKey,
   selectCandidates
 } from './pack-compaction'
 import { extractEntry, parsePack } from './pack-format'
+
+/**
+ * Producer-side backpressure (#1997). Queues answers a burst with "Too Many
+ * Requests"; that used to drop the nudge on the first try and surface as an
+ * unhandled 500.
+ */
+describe('enqueuePackCompaction under queue backpressure', () => {
+  const scope = { userId: 'user-enqueue', vaultId: 'default' }
+  const tooManyRequests = (): Error => new Error('Queue send failed: Too Many Requests')
+
+  it('retries a rate-limited send instead of dropping the nudge', async () => {
+    const send = vi.fn().mockRejectedValueOnce(tooManyRequests()).mockResolvedValueOnce(undefined)
+
+    await enqueuePackCompaction({ PACK_QUEUE: { send } as unknown as Queue }, scope)
+
+    expect(send).toHaveBeenCalledTimes(2)
+    expect(send).toHaveBeenLastCalledWith(scope)
+  })
+
+  it('gives up as a typed 429 so telemetry reads it as expected, not unhandled', async () => {
+    const send = vi.fn().mockRejectedValue(tooManyRequests())
+
+    const thrown = await enqueuePackCompaction(
+      { PACK_QUEUE: { send } as unknown as Queue },
+      scope
+    ).catch((error: unknown) => error)
+
+    expect(send).toHaveBeenCalledTimes(ENQUEUE_RETRY_DELAYS_MS.length + 1)
+    expect(thrown).toBeInstanceOf(AppError)
+    expect((thrown as AppError).code).toBe('PACK_ENQUEUE_RATE_LIMITED')
+    expect((thrown as AppError).statusCode).toBe(429)
+  })
+
+  it('rethrows a non-backpressure failure unchanged and without retrying', async () => {
+    const boom = new Error('binding exploded')
+    const send = vi.fn().mockRejectedValue(boom)
+
+    await expect(
+      enqueuePackCompaction({ PACK_QUEUE: { send } as unknown as Queue }, scope)
+    ).rejects.toBe(boom)
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+})
 
 /**
  * Compaction core against the REAL migration ledger (0001..0007): selection

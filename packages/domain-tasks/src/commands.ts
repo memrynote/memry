@@ -352,6 +352,41 @@ function mergeTaskRelations(
   }
 }
 
+/**
+ * `tasks.status_id` is FK-bound with ON DELETE SET NULL, so null IS the
+ * schema's own answer for a status that no longer exists. A project sync
+ * reconciles statuses away underneath renderer caches that still hold the old
+ * id, and the next edit echoes that dead id back into the write. Drop the
+ * dangling reference rather than failing the edit on a raw constraint.
+ *
+ * `undefined` means "not part of this edit" and must survive as `undefined`,
+ * because definedUpdates() strips it and drizzle omits it from `.set()`.
+ *
+ * The sync path already does this in main/sync/item-handlers/task-handler.ts;
+ * only the local write was unguarded, which is why the constraint fired here.
+ */
+function resolveStatusId<T extends string | null | undefined>(
+  repository: TasksCommandRepository,
+  statusId: T
+): T | null {
+  if (statusId === undefined || statusId === null) return statusId
+  return repository.getStatus(statusId) ? statusId : null
+}
+
+/**
+ * `tasks.project_id` is NOT NULL and FK-bound, so an absent project makes the
+ * row unwritable. Report it as a real message instead of SQLite's anonymous
+ * `FOREIGN KEY constraint failed`.
+ */
+function projectIsMissing(
+  repository: TasksCommandRepository,
+  projectId: string | undefined
+): boolean {
+  return projectId !== undefined && !repository.getProject(projectId)
+}
+
+const PROJECT_MISSING_ERROR = 'errors:task.projectMissing'
+
 export function createTasksCommands({
   repository,
   publisher,
@@ -359,6 +394,10 @@ export function createTasksCommands({
 }: CreateTasksCommandsDeps) {
   return {
     async createTask(input: TaskCreateInput) {
+      if (projectIsMissing(repository, input.projectId)) {
+        return { success: false as const, task: null, error: PROJECT_MISSING_ERROR }
+      }
+
       const id = generateId()
       const position =
         input.position ?? repository.getNextTaskPosition(input.projectId, input.parentId)
@@ -366,7 +405,7 @@ export function createTasksCommands({
       const createdTask = repository.createTask({
         id,
         projectId: input.projectId,
-        statusId: input.statusId ?? null,
+        statusId: resolveStatusId(repository, input.statusId ?? null),
         parentId: input.parentId ?? null,
         title: input.title,
         description: input.description ?? null,
@@ -415,6 +454,10 @@ export function createTasksCommands({
         ...(priority !== undefined ? { priority: priority as Task['priority'] } : {})
       })
 
+      if (projectIsMissing(repository, updates.projectId)) {
+        return { success: false as const, task: null, error: PROJECT_MISSING_ERROR }
+      }
+
       if (updates.projectId && existingTask && existingTask.projectId !== updates.projectId) {
         const currentStatus = existingTask.statusId
           ? repository.getStatus(existingTask.statusId)
@@ -423,6 +466,13 @@ export function createTasksCommands({
         if (equivalentStatus) {
           updates.statusId = equivalentStatus.id
         }
+      }
+
+      // Guarded: a bare assignment would re-add a `statusId: undefined` key that
+      // definedUpdates() just stripped, and computeChangedFields() would then
+      // report a cleared status on every edit that never touched it.
+      if (updates.statusId !== undefined) {
+        updates.statusId = resolveStatusId(repository, updates.statusId)
       }
 
       const oldTags = tags !== undefined ? repository.getTaskTags(id) : undefined
@@ -571,6 +621,10 @@ export function createTasksCommands({
     },
 
     async moveTask(input: TaskMoveInput) {
+      if (projectIsMissing(repository, input.targetProjectId)) {
+        return { success: false as const, task: null, error: PROJECT_MISSING_ERROR }
+      }
+
       const before = repository.getTask(input.taskId)
       let targetStatusId = input.targetStatusId
       if (input.targetProjectId && !targetStatusId) {
@@ -591,7 +645,7 @@ export function createTasksCommands({
 
       const task = repository.moveTask(input.taskId, {
         projectId: input.targetProjectId,
-        statusId: targetStatusId,
+        statusId: resolveStatusId(repository, targetStatusId),
         parentId: input.targetParentId,
         position: input.position
       })

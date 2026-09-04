@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { captureBusinessEvent, captureServerError, captureServerLog } from './analytics'
+import { AppError, ErrorCodes } from '../lib/errors'
+import {
+  captureBusinessEvent,
+  captureServerError,
+  captureServerLog,
+  waitUntilCaptured
+} from './analytics'
 import { hashTelemetryId } from './telemetry'
 
 afterEach(() => {
@@ -275,5 +281,74 @@ describe('captureServerLog → PostHog', () => {
     expect(body.batch[0].properties.environment).toBe('staging')
     expect(body.batch[0].properties.level).toBe('info')
     expect(body.batch[0].properties.status_code).toBe(200)
+  })
+})
+
+/**
+ * Background-task classification (#1997). A rejected waitUntil promise used to
+ * be stamped 500/WAIT_UNTIL_REJECTED/handled:false unconditionally, which
+ * buried expected backpressure in the unhandled-error stream.
+ */
+describe('waitUntilCaptured classification', () => {
+  const contextFor = () => {
+    const scheduled: Promise<unknown>[] = []
+    return {
+      ctx: {
+        env: posthogEnv,
+        req: { method: 'POST', path: '/sync/push' },
+        executionCtx: {
+          waitUntil: (promise: Promise<unknown>) => {
+            scheduled.push(promise)
+          }
+        }
+      },
+      settle: () => Promise.all(scheduled)
+    }
+  }
+
+  const logLineFrom = (fetchSpy: ReturnType<typeof stubFetch>) => {
+    const logCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/v1/logs'))
+    const body = JSON.parse((logCall![1] as RequestInit).body as string)
+    const record = body.resourceLogs[0].scopeLogs[0].logRecords[0]
+    return { severity: record.severityText, line: JSON.parse(record.body.stringValue) }
+  }
+
+  it('records a typed error as expected backpressure, not an unhandled 500', async () => {
+    const fetchSpy = stubFetch()
+    const { ctx, settle } = contextFor()
+    const rateLimited = new AppError(
+      ErrorCodes.PACK_ENQUEUE_RATE_LIMITED,
+      'Pack compaction enqueue rate-limited; deferred to the backfill cron',
+      429
+    )
+
+    waitUntilCaptured(ctx, Promise.reject(rateLimited), {
+      source: 'PackQueue',
+      action: 'pack_enqueue_failed'
+    })
+    await settle()
+
+    const { severity, line } = logLineFrom(fetchSpy)
+    expect(severity).toBe('warn')
+    expect(line.handled).toBe(true)
+    expect(line.status_code).toBe(429)
+    expect(line.error_code).toBe('PACK_ENQUEUE_RATE_LIMITED')
+  })
+
+  it('still records an untyped rejection as an unhandled 500', async () => {
+    const fetchSpy = stubFetch()
+    const { ctx, settle } = contextFor()
+
+    waitUntilCaptured(ctx, Promise.reject(new Error('queue exploded')), {
+      source: 'PackQueue',
+      action: 'pack_enqueue_failed'
+    })
+    await settle()
+
+    const { severity, line } = logLineFrom(fetchSpy)
+    expect(severity).toBe('error')
+    expect(line.handled).toBe(false)
+    expect(line.status_code).toBe(500)
+    expect(line.error_code).toBe('WAIT_UNTIL_REJECTED')
   })
 })

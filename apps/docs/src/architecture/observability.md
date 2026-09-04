@@ -314,6 +314,16 @@ at most one dimension and that slot already carries `prior_app_version`. The `SH
 prefix is preserved so a query written against the old code still matches. Only a bounded
 kebab-case token is accepted from the marker; anything else degrades to the plain code.
 
+`app_crashed` also carries an assembled **message** naming the shutdown failure, the overrunning
+step, the prior version, the observed uptime and whether the marker parsed — without it the Error
+Tracking issue was titled `UNCLEAN_SHUTDOWN` and held nothing else. The marker is a file on disk, so
+every string field is **rejected outright** unless it matches an enum-ish token (a
+character-substituted path still leaks its structure), and the assembled message is capped at 512
+characters. That cap is not cosmetic: an over-length message fails `TelemetryErrorDetailSchema` at
+the sync-server, which rejects the **whole batch** with a 400, and the desktop client treats a 4xx
+as permanent — one corrupt marker field would otherwise discard up to 100 unrelated events on every
+launch until the marker cleared.
+
 ### Shutdown Budget
 
 `before-quit` runs its cleanup as an ordered list of named steps under **one shared deadline**
@@ -465,6 +475,19 @@ Four rules that are load-bearing:
 `value` holds the redacted message alone — it is the issue title, and the stack belongs in frames.
 A React component stack is promoted to frames when there is no JS stack, and always ships intact as
 `$exception_component_stack`.
+
+When there is no message the transform falls back to the error code, which makes the issue title
+identical to the code and tells an engineer nothing new. That fallback sets
+**`exception_message_missing: true`** on the event, so a message-less reporting site is countable
+on a dashboard instead of looking healthy:
+
+```sql
+SELECT properties.$exception_fingerprint AS fp, count() c, uniq(distinct_id) u
+FROM events
+WHERE event = '$exception' AND properties.exception_message_missing
+  AND timestamp > now() - INTERVAL 7 DAY
+GROUP BY fp ORDER BY u DESC
+```
 
 Errors that carry no JS stack by construction — `child-process-gone` for a crashed utility worker,
 where the process that died is not the one reporting — instead carry a synthesized message naming
@@ -686,8 +709,11 @@ cross-realm `Error` that fails `instanceof Error` — and those carry no stack, 
 landed in Loki as an unactionable bare `Error` with an empty stack. Reasons are normalized before
 reporting: a real `Error` passes through, a cross-realm error's own frames are adopted, and
 anything else gets a stack synthesized at the handler plus a code naming the reason's type
-(`Rejection_string`, `Rejection_Object`, `Rejection_undefined`). The reason's message or value is
-never copied — only its shape. A reason that crossed a structured-clone or IPC boundary keeps its
+(`Rejection_string`, `Rejection_Object`, `Rejection_undefined`). The reason's message rides along
+**redacted**, not dropped: it goes through the same `redactText` pass as any other error message
+before it leaves the device. Omitting it made every `Rejection_*` row in Error Tracking an issue
+titled after its own error code, with nothing inside to triage. A reason that crossed a
+structured-clone or IPC boundary keeps its
 `.name` but loses both its stack and its constructor; that name is preferred over the constructor
 name, so it reports `Rejection_TypeError` rather than collapsing to `Rejection_Error`. When the
 code is a `Rejection_*` name the stack is the handler's own frames, not the fault's — the code is
@@ -698,7 +724,8 @@ failure paths report only a message and a source location, which previously land
 with an empty stack and nothing to triage. The error class is recovered from the message's leading
 token (`Uncaught TypeError: …` → `TypeError`, subject to the same enum-token rule) and the
 `filename`/`lineno`/`colno` are rebuilt into a stack frame, so the code location survives the same
-frame filter and redaction as a real stack. The message text itself is still never shipped.
+frame filter and redaction as a real stack. The message text ships too, redacted on the device by
+the same pass — without it a cross-origin failure was a `WindowError` issue titled `WindowError`.
 
 Because a rejection reason or `event.error` can be **any** value — including a `Proxy` whose traps
 throw or an object with throwing getters — every property read in this path (including `instanceof`,
@@ -864,14 +891,22 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   chain** carries only allowlisted Chromium transport codes — `net::ERR_NAME_NOT_RESOLVED`,
   `ERR_INTERNET_DISCONNECTED`, `ERR_NETWORK_CHANGED`, `ERR_TIMED_OUT`, `ERR_CONNECTION_TIMED_OUT`,
   `ERR_CONNECTION_RESET`, `ERR_CONNECTION_CLOSED`, `ERR_CONNECTION_REFUSED`,
-  `ERR_NETWORK_IO_SUSPENDED`, `ERR_HTTP2_PROTOCOL_ERROR`, `ERR_HTTP2_SERVER_REFUSED_STREAM` — ships
+  `ERR_CONNECTION_ABORTED`, `ERR_ADDRESS_UNREACHABLE`, `ERR_ADDRESS_INVALID`,
+  `ERR_NETWORK_ACCESS_DENIED`, `ERR_NETWORK_IO_SUSPENDED`, `ERR_HTTP2_PROTOCOL_ERROR`,
+  `ERR_HTTP2_SERVER_REFUSED_STREAM` — ships
   as an `app_log_recorded` `warn` instead of an `app_error_seen` exception. Being offline is a
   normal state for an offline-first app, and those events were 33.2 % of every exception in the
   product. The cause chain matters because electron-updater's `GitHubProvider` wraps a transport
   failure in a parse-shaped `ERR_UPDATER_INVALID_RELEASE_FEED`; a feed that is genuinely malformed
   has no network cause and stays an exception. The set is an **allowlist, never a `net::ERR_`
   prefix test**: `net::ERR_CERT_*` / `net::ERR_SSL_*` are security signals, and anything
-  unrecognised fails closed to `error`. Everything else is untouched — HTTP 4xx/5xx (including the
+  unrecognised fails closed to `error`. `ERR_CONNECTION_ABORTED`, `ERR_ADDRESS_UNREACHABLE`,
+  `ERR_ADDRESS_INVALID` and `ERR_NETWORK_ACCESS_DENIED` were added by #1994, measured on the only
+  population that can evidence a gap in this set — builds already carrying this classification
+  (`2026.822.1` and newer), since an older build reported every code as an error regardless. An
+  upstream **5xx stays an exception** deliberately: a 504 on the releases feed is GitHub failing for
+  everyone at once, the one check-phase shape meaning the whole fleet has stopped receiving updates,
+  unlike the per-device transport codes above that scale with the number of flaky networks. Everything else is untouched — HTTP 4xx/5xx (including the
   `HTTP_ERROR_618` `jwt:expired` on GitHub's pre-signed asset URLs), signature failures,
   install-phase errnos, `ENOENT … app-update.yml`, and **any** failure in the `download` /
   `downloaded` / `install` phases, where a network drop can leave a half-applied update.
@@ -880,6 +915,36 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   separate one laptop on a train from many installs failing in a row. An install that has not
   completed a single check in 24 hours _and_ has failed at least 6 checks in that time raises one
   exception (latched until the next successful check), so a genuinely stuck updater is still loud.
+- **Post-exit teardown aborts**: a `child-process-gone` report for a worker the owning module
+  released as `graceful_stop` is demoted to `warn`. That release is only ever recorded on an
+  observed `code === 0`, so the pairing is proof the worker already exited cleanly and the report is
+  the native runtime aborting while unwinding afterwards — not a failure the user felt. This was 70%
+  of macOS installs (#1990): the embeddings worker handled its shutdown message with a bare
+  `process.exit(0)`, which skips JS cleanup and runs onnxruntime's static destructors with sessions
+  still live, aborting with SIGABRT. Node reported 0 and Electron reported 6 for the same process,
+  which is why both codes appear. The worker now disposes the pipeline and drops its last `message`
+  listener — Electron's `ParentPort` pauses itself on `removeListener`, releasing the handle that
+  holds the loop open, and there is no `close()` to call — with an unref'd fallback that must stay
+  below `SHUTDOWN_TIMEOUT_MS` in `embeddings.ts` so a wedged disposal is never force-killed into the
+  very teardown death this removes. The demotion keys on the recorded release **alone**, never the
+  phase: `idle_shutdown` is also reachable from a force-kill, where no exit code was ever observed.
+  Demoted reports keep their error code, message, stderr tail and metrics and stay queryable as
+  `app_log_recorded`; they only leave Error Tracking.
+- **Repeated install failures**: a failed _check_ is loud in telemetry, but a failed _install_ was
+  silent to the user. On macOS, Squirrel.Mac stages a downloaded update into its own ShipIt copy,
+  and when that copy fails (`ditto: Could not lstat …`, `No space left on device`) the error lands
+  in a session that then quits normally. Nothing survived the quit, so the next launch re-served the
+  same cached zip and failed the same way — two production installs sat on `2026.817.1` through four
+  releases with no signal of any kind (#1999). `apps/desktop/src/main/updater-install-health.ts`
+  persists the streak in `update-install-health.json` under `userData`, keyed on the pair
+  (running version, target version), and after three consecutive failed attempts sets
+  `installFailed` so the existing manual-download dialog appears. It counts _attempts_, not
+  launches: electron-updater re-serves an already-validated cached zip on every auto-check, so a
+  genuinely stuck install surfaces within ~30 minutes. The streak clears the moment the app boots as
+  a different build, which is the only honest evidence an install applied — display versions cannot
+  be ordered, so "newer than the failing one" is not a test that can be written. Every field is
+  re-validated on read and a corrupt file degrades to "no streak"; an install that has never failed
+  has no file and behaves exactly as before.
 - **Expired GitHub signed asset URLs**: GitHub serves a release asset by redirecting to a
   short-lived signed `release-assets.githubusercontent.com` URL. When the follow-up GET lands after
   that token expires, GitHub answers with the non-standard status **618 `jwt:expired`**, and

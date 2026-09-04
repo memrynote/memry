@@ -78,6 +78,15 @@ export function createProjectWithStatuses(
   }
 }
 
+/**
+ * `getProject` and `getStatus` resolve every id by default because the commands
+ * now enforce the two FK constraints that `tasks` actually carries: `project_id`
+ * NOT NULL REFERENCES projects, and `status_id` REFERENCES statuses ON DELETE
+ * SET NULL. Returning `undefined` by default modelled a database that no real
+ * install can be in — one where a task writes successfully against a project
+ * that does not exist. A test that wants the dangling-parent case overrides
+ * these explicitly.
+ */
 export function createCommandRepository(
   overrides: Partial<TasksCommandRepository> = {}
 ): TasksCommandRepository {
@@ -87,7 +96,7 @@ export function createCommandRepository(
     countTasks: vi.fn(() => 0),
     getSubtasks: vi.fn(() => []),
     listProjects: vi.fn(() => []),
-    getProject: vi.fn(() => undefined),
+    getProject: vi.fn((id: string) => createProjectWithStatuses({ id })),
     listStatuses: vi.fn(() => []),
     listProjectLinks: vi.fn(() => []),
     listProjectContents: vi.fn(() => ({
@@ -126,7 +135,7 @@ export function createCommandRepository(
     getTaskCanvasIds: vi.fn(() => []),
     setTaskCanvases: vi.fn(),
     getNextTaskPosition: vi.fn(() => 0),
-    getStatus: vi.fn(() => undefined),
+    getStatus: vi.fn((id: string) => createStatus({ id })),
     getEquivalentStatus: vi.fn(() => undefined),
     createProject: vi.fn((p) => ({ ...p, createdAt: 'n', modifiedAt: 'n', archivedAt: null })),
     updateProject: vi.fn(() => undefined),
