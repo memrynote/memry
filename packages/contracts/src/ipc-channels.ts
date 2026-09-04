@@ -961,6 +961,13 @@ export type GraphInvokeChannel = (typeof GraphChannels.invoke)[keyof typeof Grap
 
 export const LocaleChannels = {
   Get: 'locale:get',
+  /**
+   * Synchronous startup read, for first-paint bootstrap in the preload. Same
+   * shape as SettingsChannels.sync.GET_STARTUP_THEME: a `sendSync` the preload
+   * only reaches on a launch with no cached locale, so the renderer never has
+   * to await an IPC round-trip before it knows which language to load.
+   */
+  GetStartupSync: 'locale:getStartupSync',
   Set: 'locale:set',
   List: 'locale:list',
   Changed: 'locale:changed'

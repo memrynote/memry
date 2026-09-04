@@ -14,7 +14,7 @@ const hoisted = vi.hoisted(() => ({
 }))
 
 vi.mock('electron', () => ({
-  ipcMain: { handle: vi.fn() },
+  ipcMain: { handle: vi.fn(), on: vi.fn() },
   BrowserWindow: { getAllWindows: vi.fn(() => hoisted.windows) }
 }))
 
@@ -60,6 +60,19 @@ describe('locale handler', () => {
     expect(ipcMain.handle).toHaveBeenCalledWith('locale:get', expect.any(Function))
     expect(ipcMain.handle).toHaveBeenCalledWith('locale:set', expect.any(Function))
     expect(ipcMain.handle).toHaveBeenCalledWith('locale:list', expect.any(Function))
+  })
+
+  it('answers the startup sync channel with the active locale', () => {
+    const mockI18n = { changeLanguage: vi.fn(), language: 'tr' } as any
+    registerLocaleHandlers(mockI18n, () => {})
+
+    const listener = (ipcMain.on as any).mock.calls.find(
+      ([channel]: [string]) => channel === 'locale:getStartupSync'
+    )[1]
+    const event = { returnValue: undefined as unknown }
+    listener(event)
+
+    expect(event.returnValue).toBe('tr')
   })
 
   it('rejects an invalid locale string', async () => {
