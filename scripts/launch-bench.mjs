@@ -21,6 +21,13 @@ const QUIT_DEADLINE_MS = 20_000
 const CDP_DEADLINE_MS = 30_000
 const LOG_DEADLINE_MS = 45_000
 const FCP_DEADLINE_MS = 30_000
+// The note-readable mark lands well after FCP (vault open, note query, editor
+// mount all sit between them) and is absent entirely on a launch that restored
+// no note (home tab, no prior session). It gets its own bounded wait rather
+// than reusing FCP_DEADLINE_MS: 8s is already 5x the epic's 1.5s target, so
+// waiting longer would only delay the harness, never turn a real hit into
+// more truth. Timing out reports the metric absent, not zero.
+const NOTE_READABLE_DEADLINE_MS = 8_000
 const CDP_POLL_MS = 250
 const LOG_POLL_MS = 100
 
@@ -55,7 +62,12 @@ export const METRICS = [
     read: (run) => run.renderer?.domContentLoadedMs,
     tier3Only: false
   },
-  { key: 'cdp_attach_offset_ms', read: (run) => run.cdpAttachOffsetMs, tier3Only: false }
+  { key: 'cdp_attach_offset_ms', read: (run) => run.cdpAttachOffsetMs, tier3Only: false },
+  {
+    key: 'renderer_note_readable_ms',
+    read: (run) => run.renderer?.noteReadableMs,
+    tier3Only: false
+  }
 ]
 
 const REFUSAL_NOTE = 'refused: not tier 3 (packaged)'
@@ -461,6 +473,22 @@ const FCP_PRESENT_EXPRESSION = `performance
   .getEntriesByType('paint')
   .some((entry) => entry.name === 'first-contentful-paint')`
 
+// Mirrors NOTE_READABLE_MARK in
+// apps/desktop/src/renderer/src/lib/launch-restore.ts. Not importable here —
+// that module resolves through the renderer's `@/` alias and is TypeScript —
+// so the literal is pinned in both places; keep them in sync.
+const NOTE_READABLE_MARK = 'memry:note-readable'
+
+const NOTE_READABLE_PRESENT_EXPRESSION = `performance
+  .getEntriesByName(${JSON.stringify(NOTE_READABLE_MARK)})
+  .length > 0`
+
+const NOTE_READABLE_METRIC_EXPRESSION = `(() => {
+  const round = (value) => (typeof value === 'number' ? Math.round(value * 1000) / 1000 : undefined)
+  const entry = performance.getEntriesByName(${JSON.stringify(NOTE_READABLE_MARK)})[0]
+  return round(entry?.startTime)
+})()`
+
 const RENDERER_METRICS_EXPRESSION = `(() => {
   const round = (value) => (typeof value === 'number' ? Math.round(value * 1000) / 1000 : undefined)
   const navigation = performance.getEntriesByType('navigation')[0]
@@ -474,6 +502,30 @@ const RENDERER_METRICS_EXPRESSION = `(() => {
     loadEventMs: round(navigation?.loadEventEnd)
   }
 })()`
+
+// Bounded poll for a mark that may legitimately never land (no note was
+// restored) or land well after FCP. Times out to `undefined` rather than 0 or
+// hanging — an absent mark must read as absent, not as a fast note.
+async function readNoteReadableMs(client) {
+  const deadline = Date.now() + NOTE_READABLE_DEADLINE_MS
+  while (Date.now() < deadline) {
+    const seen = await client.send('Runtime.evaluate', {
+      expression: NOTE_READABLE_PRESENT_EXPRESSION,
+      returnByValue: true
+    })
+    if (seen.result?.value === true) {
+      break
+    }
+    await delay(CDP_POLL_MS)
+  }
+
+  const evaluated = await client.send('Runtime.evaluate', {
+    expression: NOTE_READABLE_METRIC_EXPRESSION,
+    returnByValue: true
+  })
+
+  return evaluated.result?.value
+}
 
 async function readRendererMetrics(webSocketDebuggerUrl) {
   const client = await connectCdp(webSocketDebuggerUrl)
@@ -502,7 +554,9 @@ async function readRendererMetrics(webSocketDebuggerUrl) {
       returnByValue: true
     })
 
-    return evaluated.result?.value ?? {}
+    const noteReadableMs = await readNoteReadableMs(client)
+
+    return { ...(evaluated.result?.value ?? {}), noteReadableMs }
   } finally {
     client.close()
   }

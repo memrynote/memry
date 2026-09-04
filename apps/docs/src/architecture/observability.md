@@ -1240,3 +1240,23 @@ identity comes only from the verified bearer. `/telemetry/batch` is unchanged by
 until after the vault is open so they never delay first paint. On the sync server, PostHog event
 capture and PostHog Logs pushes both run in `waitUntil` so neither can block the
 `/telemetry/batch` response.
+
+## Launch: note-readable mark
+
+`renderer/src/lib/launch-restore.ts` stamps a `performance.mark('memry:note-readable')`
+when the note a launch restored has actually rendered its block tree, hooked to
+BlockNote's `onEditorReady` rather than to component mount, because mount only proves the
+CRDT binding started. `scripts/launch-bench.mjs` reads it over CDP and reports it as
+`renderer_note_readable_ms`.
+
+The mark is deliberately narrow. It fires only for the note the launch restored, only
+once, and never for a note opened later in the session, so the metric cannot be inflated
+by ordinary navigation.
+
+It is absent, rather than zero, whenever the launch restored something that is not a
+note. The restored tab is read from `localStorage` because the vault path is not available
+synchronously in the renderer, and the key with the newest `savedAt` wins. A machine with
+several vaults can therefore name a note from a vault the app is not opening: the
+speculative chunk prefetch is then wasted, and the mark never fires. Absent is the correct
+reading in that case, not a failure, but it does mean a median over launches must state
+how many runs carried the mark.

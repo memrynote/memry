@@ -153,9 +153,27 @@ describe('summarize', () => {
         'renderer_fcp_ms',
         'renderer_dom_interactive_ms',
         'renderer_dom_content_loaded_ms',
-        'cdp_attach_offset_ms'
+        'cdp_attach_offset_ms',
+        'renderer_note_readable_ms'
       ]
     )
+  })
+
+  it('reports renderer_note_readable_ms absent, not zero, when no note was restored', () => {
+    const summary = summarize([makeRun(1, 'packaged', 0), makeRun(2, 'packaged', 100)])
+    const noteReadable = summary.find((row) => row.key === 'renderer_note_readable_ms')
+
+    assert.equal(noteReadable.median, null)
+  })
+
+  it('reports renderer_note_readable_ms when the mark landed', () => {
+    const runs = [makeRun(1, 'packaged', 0), makeRun(2, 'packaged', 100)]
+    runs[0].renderer.noteReadableMs = 900
+    runs[1].renderer.noteReadableMs = 1000
+    const summary = summarize(runs)
+    const noteReadable = summary.find((row) => row.key === 'renderer_note_readable_ms')
+
+    assert.equal(noteReadable.median, 950)
   })
 })
 
