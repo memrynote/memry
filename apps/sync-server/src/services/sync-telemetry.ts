@@ -15,6 +15,7 @@ type SyncDomain =
   | 'attachments'
   | 'tags'
   | 'folders'
+  | 'properties'
   | 'calendar'
   | 'agent_chat'
   | 'canvas'
@@ -54,6 +55,8 @@ const toSyncDomain = (itemType: SyncItemType): SyncDomain => {
     case 'tag_definition':
     case 'tag_category':
       return 'tags'
+    case 'property_definition':
+      return 'properties'
     case 'folder_config':
       return 'folders'
     case 'calendar_event':

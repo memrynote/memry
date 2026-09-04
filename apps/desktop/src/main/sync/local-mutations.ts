@@ -41,6 +41,7 @@ import { getProjectSyncService } from '@memry/sync-client/project-sync'
 import { getReminderSyncService } from '@memry/sync-client/reminder-sync'
 import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import { getTagDefinitionSyncService } from '@memry/sync-client/tag-definition-sync'
+import { getPropertyDefinitionSyncService } from '@memry/sync-client/property-definition-sync'
 import { getTagCategorySyncService } from '@memry/sync-client/tag-category-sync'
 import { getTaskSyncService } from '@memry/sync-client/task-sync'
 import { getTaskActivitySyncService } from '@memry/sync-client/task-activity-sync'
@@ -653,6 +654,30 @@ const localSyncRegistry = createSyncAdapterRegistry([
         enqueueDeleteOrDefer(
           'tag_definition',
           getTagDefinitionSyncService(),
+          itemId,
+          snapshotPayload
+        )
+      }
+    }
+  },
+  {
+    type: 'property_definition',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        svcOrTrackDrop('property_definition', getPropertyDefinitionSyncService())?.enqueueCreate(
+          itemId
+        )
+      },
+      enqueueUpdate(itemId: string): void {
+        svcOrTrackDrop('property_definition', getPropertyDefinitionSyncService())?.enqueueUpdate(
+          itemId
+        )
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        enqueueDeleteOrDefer(
+          'property_definition',
+          getPropertyDefinitionSyncService(),
           itemId,
           snapshotPayload
         )

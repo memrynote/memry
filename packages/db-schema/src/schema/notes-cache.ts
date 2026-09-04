@@ -115,7 +115,11 @@ export const propertyDefinitions = sqliteTable('property_definitions', {
   color: text('color'),
   createdAt: text('created_at')
     .notNull()
-    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  // Sync columns. The data DB's copy of this table is a synced row; the index
+  // DB's copy is a rebuildable cache and leaves both null.
+  clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
+  syncedAt: text('synced_at')
 })
 
 // ============================================================================

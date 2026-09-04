@@ -60,6 +60,10 @@ import {
   resetTagDefinitionSyncService
 } from '@memry/sync-client/tag-definition-sync'
 import {
+  initPropertyDefinitionSyncService,
+  resetPropertyDefinitionSyncService
+} from '@memry/sync-client/property-definition-sync'
+import {
   initTagCategorySyncService,
   resetTagCategorySyncService
 } from '@memry/sync-client/tag-category-sync'
@@ -248,6 +252,7 @@ function resetSyncServiceSingletons(): void {
   resetNoteSyncService()
   resetJournalSyncService()
   resetTagDefinitionSyncService()
+  resetPropertyDefinitionSyncService()
   resetTagCategorySyncService()
   resetFolderConfigSyncService()
   resetCalendarEventSyncService()
@@ -445,6 +450,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const journalSync = initJournalSyncService({ queue, getDeviceId })
       const tagDefinitionSync = initTagDefinitionSyncService(recordSyncDeps)
       const tagCategorySync = initTagCategorySyncService(recordSyncDeps)
+      const propertyDefinitionSync = initPropertyDefinitionSyncService(recordSyncDeps)
       const folderConfigSync = initFolderConfigSyncService(recordSyncDeps)
       const calendarEventSync = initCalendarEventSyncService(recordSyncDeps)
       const calendarSourceSync = initCalendarSourceSyncService(recordSyncDeps)
@@ -486,6 +492,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         recordAdapter('journal', journalSync),
         recordAdapter('tag_definition', tagDefinitionSync),
         recordAdapter('tag_category', tagCategorySync),
+        recordAdapter('property_definition', propertyDefinitionSync),
         recordAdapter('folder_config', folderConfigSync),
         recordAdapter('calendar_event', calendarEventSync),
         recordAdapter('calendar_source', calendarSourceSync),

@@ -1,14 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SelectOption, StatusCategories } from '@memry/contracts/property-types'
 
-const { atomicWriteMock, safeReadMock, getMemryDirMock, getDatabaseMock, getIndexDatabaseMock } =
-  vi.hoisted(() => ({
-    atomicWriteMock: vi.fn(),
-    safeReadMock: vi.fn(),
-    getMemryDirMock: vi.fn(),
-    getDatabaseMock: vi.fn(),
-    getIndexDatabaseMock: vi.fn()
-  }))
+const {
+  atomicWriteMock,
+  safeReadMock,
+  getMemryDirMock,
+  getDatabaseMock,
+  getIndexDatabaseMock,
+  enqueueUpsertMock,
+  enqueueDeleteMock
+} = vi.hoisted(() => ({
+  atomicWriteMock: vi.fn(),
+  safeReadMock: vi.fn(),
+  getMemryDirMock: vi.fn(),
+  getDatabaseMock: vi.fn(),
+  getIndexDatabaseMock: vi.fn(),
+  enqueueUpsertMock: vi.fn(),
+  enqueueDeleteMock: vi.fn()
+}))
 
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({
@@ -31,6 +40,12 @@ vi.mock('../database', () => ({
   getIndexDatabase: getIndexDatabaseMock
 }))
 
+vi.mock('./property-definition-sync-effects', () => ({
+  enqueuePropertyDefinitionUpsert: enqueueUpsertMock,
+  enqueuePropertyDefinitionDelete: enqueueDeleteMock,
+  readPropertyDefinitionRow: vi.fn(() => null)
+}))
+
 import { PropertyDefinitionsService, DEFAULT_STATUS_DEFINITION } from './property-definitions'
 
 type DbRow = {
@@ -39,6 +54,8 @@ type DbRow = {
   options: string | null
   defaultValue: string | null
   color: string | null
+  clock?: Record<string, number> | null
+  syncedAt?: string | null
 }
 
 function createDbMock() {
@@ -51,13 +68,21 @@ function createDbMock() {
       rows.push(row)
     })
   }))
+  // `rebuildSingleDbCache` reads the table before it clears it, so it can carry
+  // each row's clock across. A fake without `select` sent that read into the
+  // rebuild's catch and the delete never ran.
+  const all = vi.fn(() => rows.map((row) => ({ ...row })))
+  const clocked = vi.fn(() => rows.filter((row) => row.clock != null).map((row) => ({ ...row })))
   return {
     rows,
     deleteRun,
     values,
     db: {
       delete: vi.fn(() => ({ run: deleteRun })),
-      insert: vi.fn(() => ({ values }))
+      insert: vi.fn(() => ({ values })),
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({ all, where: vi.fn(() => ({ all: clocked })) }))
+      }))
     }
   }
 }
@@ -162,17 +187,112 @@ describe('PropertyDefinitionsService', () => {
         type: 'select',
         options: JSON.stringify([{ value: 'Idea', color: 'sky' }]),
         defaultValue: null,
-        color: null
+        color: null,
+        clock: null,
+        syncedAt: null
       },
       {
         name: 'Status',
         type: 'status',
         options: JSON.stringify({ categories: statusCategories() }),
         defaultValue: null,
-        color: null
+        color: null,
+        clock: null,
+        syncedAt: null
       }
     ])
     expect(indexDb.rows).toHaveLength(2)
+  })
+
+  it('carries a definition clock across the rebuild a reload triggers', async () => {
+    safeReadMock.mockResolvedValue(
+      propertiesFile(`  Stage:
+    type: select
+    options:
+      - value: Idea
+        color: sky
+`)
+    )
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    // The clock the sync handler would have stamped on the row.
+    dataDb.rows[0].clock = { deviceA: 3 }
+    dataDb.rows[0].syncedAt = '2026-09-01T00:00:00.000Z'
+
+    await service.reload()
+
+    // Dropping it here makes every definition look unclocked, and the next sync
+    // re-pushes the whole set through `seedUnclocked` as creates.
+    expect(dataDb.rows[0].clock).toEqual({ deviceA: 3 })
+    expect(dataDb.rows[0].syncedAt).toBe('2026-09-01T00:00:00.000Z')
+    // The index DB is a rebuildable cache and has no clock to keep.
+    expect(indexDb.rows[0].clock).toBeNull()
+  })
+
+  it('unions a synced definition the file does not know about, and writes it back', async () => {
+    // The file a freshly linked device has: none at all. Its first pull can
+    // land definitions before anything on this device writes one.
+    safeReadMock.mockResolvedValue(null)
+    dataDb.rows.push({
+      name: 'Area',
+      type: 'select',
+      options: JSON.stringify([{ value: 'Work', color: 'indigo' }]),
+      defaultValue: null,
+      color: null,
+      clock: { deviceB: 1 },
+      syncedAt: '2026-09-01T00:00:00.000Z'
+    })
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    // Without the union, the reload the pull triggers rebuilds the table from
+    // the file alone and deletes the definition that just arrived.
+    expect(service.get('Area')).toEqual({
+      name: 'Area',
+      type: 'select',
+      options: [{ value: 'Work', color: 'indigo' }]
+    })
+    expect(atomicWriteMock).toHaveBeenCalledWith(
+      '/vault/.memry/properties.md',
+      expect.stringContaining('Area')
+    )
+    expect(dataDb.rows.find((row) => row.name === 'Area')?.clock).toEqual({ deviceB: 1 })
+  })
+
+  it('drops a definition a peer deleted so the file cannot read it back in', async () => {
+    safeReadMock.mockResolvedValue(
+      propertiesFile(`  Stage:
+    type: select
+    options:
+      - value: Idea
+        color: sky
+`)
+    )
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    await service.applyRemoteDelete('Stage')
+
+    expect(service.get('Stage')).toBeUndefined()
+    expect(atomicWriteMock).toHaveBeenLastCalledWith(
+      '/vault/.memry/properties.md',
+      expect.not.stringContaining('Stage')
+    )
+  })
+
+  it('queues a push for a local definition edit but never for a pulled one', async () => {
+    safeReadMock.mockResolvedValue(null)
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+    expect(enqueueUpsertMock).not.toHaveBeenCalled()
+
+    await service.upsert({ name: 'Stage', type: 'select', options: [] })
+    expect(enqueueUpsertMock).toHaveBeenCalledWith('Stage')
+
+    await service.remove('Stage')
+    expect(enqueueDeleteMock).toHaveBeenCalledWith('Stage', null)
   })
 
   it('keeps the last-known-good cache when reload sees invalid frontmatter or parse errors', async () => {

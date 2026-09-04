@@ -285,6 +285,31 @@ export const TagDefinitionSyncPayloadSchema = z.object({
   createdAt: z.string().optional()
 })
 
+/**
+ * A vault-wide property definition: what type `status` is, and which options
+ * `area` offers with which colours.
+ *
+ * Until this type existed the definitions lived only in `.memry/properties.md`
+ * and were never sent anywhere, so a second desktop — and every phone — showed
+ * a select property as bare text and lost its option colours entirely. The note
+ * payload carries only the VALUE (`area: Work`); nothing in it says `Work` is
+ * indigo.
+ *
+ * `options` stays opaque JSON TEXT, exactly as the row stores it. Re-declaring
+ * the option shape here would make a newer client's per-option field (an icon,
+ * say) get parsed away on a round-trip through an older one, and the option
+ * shape already has a schema of its own in `property-types.ts`.
+ */
+export const PropertyDefinitionSyncPayloadSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  options: z.string().nullable().optional(),
+  defaultValue: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional()
+})
+
 export const TagCategorySyncPayloadSchema = z.object({
   name: z.string(),
   sortOrder: z.number().int(),
@@ -567,6 +592,7 @@ export type ProjectLinkSync = z.infer<typeof ProjectLinkSyncSchema>
 export type NoteSyncPayload = z.infer<typeof NoteSyncPayloadSchema>
 export type JournalSyncPayload = z.infer<typeof JournalSyncPayloadSchema>
 export type TagDefinitionSyncPayload = z.infer<typeof TagDefinitionSyncPayloadSchema>
+export type PropertyDefinitionSyncPayload = z.infer<typeof PropertyDefinitionSyncPayloadSchema>
 export type TagCategorySyncPayload = z.infer<typeof TagCategorySyncPayloadSchema>
 export type AgentConversationSyncPayload = z.infer<typeof AgentConversationSyncPayloadSchema>
 export type AgentMessageSyncPayload = z.infer<typeof AgentMessageSyncPayloadSchema>

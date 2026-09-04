@@ -9,6 +9,11 @@ import {
   upsertPropertyDefinition
 } from '@memry/storage-data'
 import { getDatabase, getIndexDatabase } from '../database'
+import {
+  enqueuePropertyDefinitionDelete,
+  enqueuePropertyDefinitionUpsert,
+  readPropertyDefinitionRow
+} from './property-definition-sync-effects'
 
 type PropertyDefinitionRecord = Parameters<typeof upsertPropertyDefinition>[1]
 type PropertyDefinitionResult = ReturnType<typeof upsertPropertyDefinition>
@@ -31,6 +36,7 @@ function upsertPropertyDefinitionCache(definition: PropertyDefinitionRecord): vo
 export function createPropertyDefinitionRecord(definition: PropertyDefinitionRecord) {
   const created = upsertPropertyDefinition(getDatabase(), definition)
   upsertPropertyDefinitionCache(definition)
+  enqueuePropertyDefinitionUpsert(definition.name)
   return created
 }
 
@@ -55,10 +61,15 @@ export function updatePropertyDefinitionRecord(name: string, updates: PropertyDe
     color: definition.color
   })
 
+  enqueuePropertyDefinitionUpsert(definition.name)
   return definition
 }
 
 export function deletePropertyDefinitionRecord(name: string): void {
+  // Read before the delete: the tombstone carries the row's clock, and a
+  // clockless one is skipped by every peer as older than what they hold.
+  const snapshot = readPropertyDefinitionRow(name)
   deleteCanonicalPropertyDefinition(getDatabase(), name)
   deletePropertyDefinitionCache(getIndexDatabase(), name)
+  enqueuePropertyDefinitionDelete(name, snapshot)
 }

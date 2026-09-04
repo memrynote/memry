@@ -18,6 +18,7 @@ import { projectHandler } from './project-handler'
 import { settingsHandler } from './settings-handler'
 import { noteHandler } from './note-handler'
 import { journalHandler } from './journal-handler'
+import { propertyDefinitionHandler } from './property-definition-handler'
 import { tagDefinitionHandler } from './tag-definition-handler'
 import { tagCategoryHandler } from '@memry/sync-client/item-handlers/tag-category-handler'
 import { folderConfigHandler } from './folder-config-handler'
@@ -52,6 +53,7 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['note', noteHandler],
   ['journal', journalHandler],
   ['tag_definition', tagDefinitionHandler],
+  ['property_definition', propertyDefinitionHandler],
   ['tag_category', tagCategoryHandler],
   ['folder_config', folderConfigHandler],
   ['custom_icon', customIconHandler],
