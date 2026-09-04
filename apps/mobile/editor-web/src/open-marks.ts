@@ -25,6 +25,38 @@ export function markGuest(mark: GuestPaintMark): void {
   marks[mark] = Date.now()
 }
 
+/**
+ * Marks taken before `doc-load` names the open they belong to.
+ *
+ * Only the early probe: the host queues it immediately AHEAD of `doc-load`
+ * precisely so it is timed before the open begins (`HostProbeSchema`), so
+ * clearing it here would erase the one mark the probe experiment exists for.
+ */
+const PRE_OPEN_MARKS: readonly GuestPaintMark[] = ['probeEarlyRecv']
+
+let opens = 0
+
+/**
+ * Start a new open's marks (#2030).
+ *
+ * This document now outlives the note it is showing, so the mark record has to
+ * be told where one open ends and the next begins. Without it the second and
+ * every later open would report the FIRST open's boot stamps, and the report
+ * would print a fabricated open that took almost no time at all.
+ *
+ * The first open keeps everything: the WebView booted for it, so `docStart`
+ * through `readySent` are honestly part of it. From the second on the record
+ * starts empty, which leaves the boot marks ABSENT rather than stale — and an
+ * absent phase is a phase with no samples, not a phase that took 0 ms.
+ */
+export function beginOpenMarks(): void {
+  if (opens++ === 0) return
+  for (const key of Object.keys(marks) as GuestPaintMark[]) {
+    if (PRE_OPEN_MARKS.includes(key)) continue
+    delete marks[key]
+  }
+}
+
 /** A copy, so a mark taken after the send cannot mutate a message in flight. */
 export function guestMarks(): Partial<Record<GuestPaintMark, number>> {
   return { ...marks }

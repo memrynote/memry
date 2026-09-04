@@ -118,8 +118,24 @@ export const HostAssetSchema = z.object({
  * back through the ordinary `asset-req` path so there is exactly one
  * resolution route.
  */
+/**
+ * Which document a host command is meant for.
+ *
+ * Optional and additive, for the same reason `insert-attachment` itself is:
+ * the guest ships inside the app that speaks to it, so an older asset that
+ * does not know the field ignores it and behaves exactly as it does today.
+ *
+ * It exists because the guest is now a LONG-LIVED WebView shared by every note
+ * (#2030). `y-update` has carried a `docId` since v1 and these two never did,
+ * so a command queued by a note that has left the screen would land on
+ * whichever note is on it. Absent still means "whatever is mounted", which is
+ * what an unaddressed command has always meant.
+ */
+const AddressedDocId = z.string().min(1).optional()
+
 export const HostInsertAttachmentSchema = z.object({
   type: z.literal('insert-attachment'),
+  docId: AddressedDocId,
   ref: z.string().min(1),
   name: z.string().default(''),
   /**
@@ -137,7 +153,13 @@ export type BridgeExecCommand = (typeof BRIDGE_EXEC_COMMANDS)[number]
 
 export const HostExecSchema = z.object({
   type: z.literal('exec'),
-  cmd: z.enum(BRIDGE_EXEC_COMMANDS)
+  cmd: z.enum(BRIDGE_EXEC_COMMANDS),
+  /**
+   * Left unset for `flush` and `blur`, which are transport-level and belong to
+   * no document: addressing them would make a background flush from a note
+   * that is still mounted but off screen silently do nothing.
+   */
+  docId: AddressedDocId
 })
 
 /**

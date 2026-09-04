@@ -1,7 +1,7 @@
 // FIRST, deliberately: this module's body takes the `importsStart` mark, and ES
 // modules evaluate in source order, so anything above it is bundle-eval time
 // the trace can no longer see.
-import { guestMarks, markGuest } from './open-marks.ts'
+import { beginOpenMarks, guestMarks, markGuest } from './open-marks.ts'
 import * as Y from 'yjs'
 import { BlockNoteEditor } from '@blocknote/core'
 import { codeBlockOptions } from '@blocknote/code-block'
@@ -10,6 +10,7 @@ import { BRIDGE_FRAGMENT_NAME } from '@memry/contracts/webview-bridge'
 import { assertNoWebStorage, createGuestBridge, type GuestBridge } from './bridge.ts'
 import { bindAssetBridge } from './assets.ts'
 import { installImageResolver } from './images.ts'
+import { isForMountedDoc } from './routing.ts'
 import { createMobileEditorSchema } from './schema.ts'
 import { installWikiLinkAutocomplete, installWikiLinkNavigation } from './wiki-links.ts'
 import './styles.css'
@@ -97,12 +98,15 @@ bridge.onHostMsg((msg) => {
       break
 
     case 'doc-load':
+      // Before the first mark of the open, so the record it starts is this
+      // open's and not the previous note's (#2030).
+      beginOpenMarks()
       markGuest('docLoadRecv')
       mountDoc(msg.docId, msg.stateB64, msg.seedMarkdown)
       break
 
     case 'y-update': {
-      if (!mounted || mounted.docId !== msg.docId) return
+      if (!mounted || !isForMountedDoc(msg, mounted.docId)) return
       // One transact for the whole batch: applying updates one at a time
       // fires one ProseMirror re-render each, which is what makes a remote
       // paste feel like a stutter instead of an edit.
@@ -119,12 +123,13 @@ bridge.onHostMsg((msg) => {
       break
 
     case 'insert-attachment': {
-      if (!mounted) return
+      if (!mounted || !isForMountedDoc(msg, mounted.docId)) return
       insertAttachmentBlock(mounted.editor, msg.ref, msg.name, msg.mime)
       break
     }
 
     case 'exec':
+      if (!isForMountedDoc(msg, mounted?.docId ?? null)) return
       runExec(msg.cmd)
       break
   }
@@ -147,6 +152,10 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
 
   root.replaceChildren()
   editor.mount(root)
+  // This document outlives the note it shows, and nothing else puts the
+  // scroller back: without it the next note opens at the offset the reader
+  // left the previous one at, part-way down a document it has never seen.
+  window.scrollTo(0, 0)
   markGuest('mountEnd')
   editor.isEditable = !readOnly
 
