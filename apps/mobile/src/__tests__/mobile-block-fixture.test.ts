@@ -95,7 +95,14 @@ describe('mobile block coverage fixture', () => {
     // silently stops exercising the `hashTag` renderer at all.
     expect(markdown.startsWith('---\n')).toBe(true)
     const frontmatter = markdown.slice(4, markdown.indexOf('\n---\n', 4))
-    expect(frontmatter).toMatch(/^tags:\n(?:\s+-\s+\S+\n?)+$/)
+    // Line by line rather than one regex over the whole block. `\s` matches a
+    // newline, so a `(?:\s+-\s+\S+\n?)+` spanning lines overlaps itself and
+    // backtracks exponentially on a near-miss — CodeQL flags it, and it is the
+    // fixture's own bytes that would hang the suite.
+    const [header, ...tagLines] = frontmatter.split('\n')
+    expect(header).toBe('tags:')
+    expect(tagLines).not.toHaveLength(0)
+    for (const line of tagLines) expect(line).toMatch(/^ +- \S+$/)
     for (const line of tagged) {
       const tag = HASH_TAG_IN_TEXT.exec(line)?.[0].trim().slice(1)
       expect(frontmatter).toContain(`- ${tag}`)
