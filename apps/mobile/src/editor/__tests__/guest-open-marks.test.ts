@@ -15,28 +15,29 @@ import { isForMountedDoc } from '../../../editor-web/src/routing'
  */
 
 describe('guest open marks', () => {
-  it('keeps the boot marks for the first open and drops them for the next', () => {
-    // Open 1. `docStart` and `importsStart` were taken at module eval, which
-    // for the first open IS its startup cost.
+  it('drops the boot marks, which belong to a prewarm and not to any open', () => {
+    // `docStart` and `importsStart` were taken at module eval. The host
+    // prewarms this document off the notes list, so that eval happened before
+    // the tap being timed — and the host rebases guest stamps onto the trace's
+    // own start, which would render the boot as a negative offset.
+    expect(guestMarks().docStart).toBeDefined()
+
     beginOpenMarks()
     markGuest('docLoadRecv')
     markGuest('guestPainted')
 
     const first = guestMarks()
-    expect(first.docStart).toBeDefined()
-    expect(first.importsStart).toBeDefined()
+    expect(first.docStart).toBeUndefined()
+    expect(first.importsStart).toBeUndefined()
+    expect(first.docLoadRecv).toBeDefined()
     const firstPainted = first.guestPainted
 
-    // Open 2 on the same WebView. Reporting the boot marks again would print a
-    // startup that happened before the user tapped anything, and reusing the
-    // first paint stamp would report an open that finished before it began.
+    // A second open on the same WebView. Reusing the first paint stamp would
+    // report an open that finished before it began.
     beginOpenMarks()
     markGuest('docLoadRecv')
 
     const second = guestMarks()
-    expect(second.docStart).toBeUndefined()
-    expect(second.importsStart).toBeUndefined()
-    expect(second.readySent).toBeUndefined()
     expect(second.guestPainted).toBeUndefined()
     expect(second.guestPainted).not.toBe(firstPainted)
     expect(second.docLoadRecv).toBeDefined()

@@ -34,23 +34,22 @@ export function markGuest(mark: GuestPaintMark): void {
  */
 const PRE_OPEN_MARKS: readonly GuestPaintMark[] = ['probeEarlyRecv']
 
-let opens = 0
-
 /**
  * Start a new open's marks (#2030).
  *
- * This document now outlives the note it is showing, so the mark record has to
- * be told where one open ends and the next begins. Without it the second and
- * every later open would report the FIRST open's boot stamps, and the report
- * would print a fabricated open that took almost no time at all.
+ * This document now outlives every note it shows, so the record has to be told
+ * where one open ends and the next begins. Without it the second and every
+ * later open would report the timestamps taken at module eval, and the trace
+ * would print an open that finished before it began.
  *
- * The first open keeps everything: the WebView booted for it, so `docStart`
- * through `readySent` are honestly part of it. From the second on the record
- * starts empty, which leaves the boot marks ABSENT rather than stale — and an
- * absent phase is a phase with no samples, not a phase that took 0 ms.
+ * The boot marks go with them, INCLUDING on the first open. The host prewarms
+ * this document off the notes list, so the boot always precedes the tap — and
+ * the host rebases guest stamps onto the trace's own start, which would render
+ * that boot as a negative offset. Absent is the honest answer: the WebView's
+ * startup is no longer part of any open, which is the whole point of hoisting
+ * it. An absent phase is a phase with no samples, not one that took 0 ms.
  */
 export function beginOpenMarks(): void {
-  if (opens++ === 0) return
   for (const key of Object.keys(marks) as GuestPaintMark[]) {
     if (PRE_OPEN_MARKS.includes(key)) continue
     delete marks[key]
