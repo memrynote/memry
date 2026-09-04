@@ -1,6 +1,7 @@
 import { ServerBlockNoteEditor } from '@blocknote/server-util'
 import { type Block, type PartialBlock } from '@blocknote/core'
 import { createMemrySchema } from '@memry/editor-schema'
+import { codeBlockOptions } from '@blocknote/code-block'
 import {
   BOOKMARK_LINE_REGEX,
   EMBED_LINE_REGEX,
@@ -85,6 +86,10 @@ const log = createLogger('BlockNoteConverter')
 // shared Y.Doc, so a spec registered on one side only replicates as data loss.
 // Main supplies serialization-only implementations — nothing here ever renders.
 const serverSchema = createMemrySchema({
+  // Kept on the highlighting options main has always built with, so this
+  // process's markdown output is provably unchanged by #2032. Main runs in
+  // Node, where the bytes cost nothing.
+  codeBlock: codeBlockOptions,
   blocks: createServerBlockSpecs(),
   inline: createServerInlineSpecs()
 })

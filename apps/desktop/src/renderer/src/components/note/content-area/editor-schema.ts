@@ -1,4 +1,5 @@
 import { createMemrySchema, WikiLink } from '@memry/editor-schema'
+import { codeBlockOptions } from '@blocknote/code-block'
 import { createFileBlock } from './file-block'
 import { createCalloutBlock } from './callout-block'
 import { createYoutubeEmbedBlock } from './youtube-embed-block'
@@ -18,6 +19,9 @@ import { InlineCheckbox } from './inline-checkbox'
 // from the factory; only the two whose presentation needs renderer state
 // (tag palette, clock/week-start settings) are passed in.
 export const editorSchema = createMemrySchema({
+  // Shiki, explicitly. The factory no longer imports it, so the bytes are a
+  // per-surface choice; mobile's WebView cannot afford them (#2032).
+  codeBlock: codeBlockOptions,
   // No `...defaultBlockSpecs` here: the factory already spreads them, and
   // respreading them after it would put BlockNote's plain `codeBlock` back over
   // the syntax-highlighting one the factory installs. Pass overrides only.
