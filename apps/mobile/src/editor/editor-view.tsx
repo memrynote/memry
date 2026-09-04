@@ -170,6 +170,12 @@ export function EditorView({
       ...(doc.isEmpty() && seedMarkdown ? { seedMarkdown } : {})
     })
     bridge.flush()
+    // After the flush, so the mark covers the state encode AND the injection
+    // rather than only the enqueue. Taken on every `doc-load`, including the
+    // resync and late-seed replays, because the guest's `docLoadRecv` is
+    // likewise the last one it received — marking only the first would pair a
+    // replayed receipt against the original send and invent a delay.
+    mark(doc.docId, 'docLoadSent')
   }, [bridge, doc, seedMarkdown])
 
   // A `seq` gap means an envelope was lost; the only correct response is a

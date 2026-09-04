@@ -27,6 +27,10 @@ import { summarize, type LatencySummary } from './latency'
  *     bundle's own parse and execute cost lands between here and `guestReady`.
  *   * `guestReady` — the `ready` handshake, which is when the host sends
  *     `doc-load`.
+ *   * `docLoadSent` — the host's `doc-load` is on the wire. Paired with the
+ *     guest's `docLoadRecv`, it splits the interval that turned out to hold
+ *     almost the entire open (#2043) into the host's own work and the crossing,
+ *     which are different defects with different fixes.
  *   * `painted` — the guest's frame callback after the document is laid out.
  *
  * Between `webviewMounted` and `painted` sit the GUEST's own sub-marks (#2043),
@@ -50,6 +54,7 @@ export type OpenHostPhase =
   | 'seedResolved'
   | 'webviewMounted'
   | 'guestReady'
+  | 'docLoadSent'
   | 'painted'
 
 export type OpenPhase = OpenHostPhase | GuestPaintMark
@@ -76,6 +81,7 @@ export const OPEN_PHASES: readonly OpenPhase[] = [
   'readySent',
   'webviewMounted',
   'guestReady',
+  'docLoadSent',
   'docLoadRecv',
   'yApplied',
   'createStart',
