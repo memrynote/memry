@@ -3,6 +3,25 @@ import { FieldClocksSchema, VectorClockSchema } from './sync-api'
 import { ViewConfigSchema } from './folder-view-api'
 import { TemplatePropertySchema } from './templates-api'
 
+/**
+ * A sync timestamp, accepted in either shape a shipped client has ever sent.
+ *
+ * Mobile writes `Date.now()` — a NUMBER — while this schema declared
+ * `z.string()`. Every note a phone edited therefore failed `safeParse` on the
+ * desktop, and `ItemApplier` skips a failed item and advances the cursor
+ * without ever retrying it: the edit was accepted by the server, counted as
+ * synced by the phone, and silently never applied anywhere else. Six notes in
+ * one staging vault were in that state before it was noticed.
+ *
+ * Fixing the phone alone is not enough. Those payloads are already on the
+ * server, so a client that only accepts strings keeps rejecting them forever,
+ * on every device that ever syncs the vault. Widening here is what heals them,
+ * and it is strictly a widening — a string still parses to itself.
+ */
+const SyncTimestampSchema = z
+  .union([z.string(), z.number()])
+  .transform((value) => (typeof value === 'string' ? value : new Date(value).toISOString()))
+
 export const TaskSyncPayloadSchema = z.object({
   title: z.string().optional(),
   description: z.string().nullable().optional(),
@@ -247,8 +266,8 @@ export const NoteSyncPayloadSchema = z.object({
   attachmentReferences: z.array(z.string()).nullable().optional(),
   folderPath: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
-  createdAt: z.string().optional(),
-  modifiedAt: z.string().optional()
+  createdAt: SyncTimestampSchema.optional(),
+  modifiedAt: SyncTimestampSchema.optional()
 })
 
 export const JournalSyncPayloadSchema = z.object({
@@ -264,8 +283,8 @@ export const JournalSyncPayloadSchema = z.object({
   tags: z.array(z.string()).optional(),
   properties: z.record(z.string(), z.unknown()).nullable().optional(),
   clock: VectorClockSchema.optional(),
-  createdAt: z.string().optional(),
-  modifiedAt: z.string().optional()
+  createdAt: SyncTimestampSchema.optional(),
+  modifiedAt: SyncTimestampSchema.optional()
 })
 
 export const TagDefinitionSyncPayloadSchema = z.object({

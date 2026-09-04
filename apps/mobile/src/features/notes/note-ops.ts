@@ -30,14 +30,16 @@ export interface NotePayload {
   properties?: Record<string, unknown>
   clock?: Record<string, number>
   /**
-   * Epoch ms from this app, an ISO string from desktop.
+   * An ISO string on the wire; epoch ms still turns up in rows written by
+   * older builds of this app.
    *
-   * `NoteSyncPayloadSchema` declares both of these `z.string()` and desktop's
-   * `buildSnapshotPayload` pushes the ISO form, while `createNote` below writes
-   * `Date.now()`. Both shapes are live in the same table on the same device, so
-   * the union is the truth and narrowing it to `number` only moved the failure
-   * to whoever compared one against a number and got `false` forever. Read them
-   * through `toEpochMs`.
+   * This app used to WRITE `Date.now()` here, which `NoteSyncPayloadSchema`
+   * declared `z.string()`. Every note edited on a phone therefore failed
+   * `safeParse` on the desktop and was skipped without retry — the edit looked
+   * synced here and reached no other device. New writes use the ISO form; the
+   * union stays because the old rows are still on disk and on the server, and
+   * narrowing it would only move the failure to whoever compared one against a
+   * number and got `false` forever. Read them through `toEpochMs`.
    */
   createdAt?: number | string
   modifiedAt?: number | string
@@ -168,7 +170,7 @@ export async function updateNote(
 
   mutate(payload)
   const now = Date.now()
-  payload.modifiedAt = now
+  payload.modifiedAt = new Date(now).toISOString()
   bumpClock(payload as Record<string, unknown>, ctx.deviceId)
   const serialized = JSON.stringify(payload)
 
@@ -222,8 +224,8 @@ export async function createNote(
     tags: [],
     properties: {},
     folderPath: input.folderPath ?? null,
-    createdAt: now,
-    modifiedAt: now
+    createdAt: new Date(now).toISOString(),
+    modifiedAt: new Date(now).toISOString()
   }
   bumpClock(payload as Record<string, unknown>, ctx.deviceId)
 
@@ -348,8 +350,8 @@ export async function duplicateNote(
     folderPath:
       opts.folderPath === undefined ? (source.folderPath ?? null) : opts.folderPath || null,
     content: body?.markdown ?? source.content ?? '',
-    createdAt: now,
-    modifiedAt: now
+    createdAt: new Date(now).toISOString(),
+    modifiedAt: new Date(now).toISOString()
   }
   // The copy is a NEW item: the source's vector clock describes a different
   // id's history, and carrying it over would make the first real edit look
