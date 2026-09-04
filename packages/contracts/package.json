@@ -58,6 +58,7 @@
     "./settings-sync": "./src/settings-sync.ts",
     "./sidebar-sort": "./src/sidebar-sort.ts",
     "./sync-api": "./src/sync-api.ts",
+    "./sync-socket": "./src/sync-socket.ts",
     "./sync-payloads": "./src/sync-payloads.ts",
     "./tag-colors": "./src/tag-colors.ts",
     "./tags-api": "./src/tags-api.ts",
