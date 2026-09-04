@@ -45,7 +45,10 @@ const mocks = vi.hoisted(() => {
     app: Object.assign(new MockEmitter(), {
       isPackaged: true,
       getVersion: vi.fn(() => '1.2.3'),
-      quit: vi.fn()
+      quit: vi.fn(),
+      // macOS-only in Electron. Defaults to a correctly installed app so no
+      // existing test can accidentally take the "move me" path.
+      isInApplicationsFolder: vi.fn(() => true)
     }),
     // Session-end guard listens on BrowserWindow instances, so windows are emitters.
     createWindow: () =>
@@ -158,6 +161,7 @@ describe('updater', () => {
     mocks.windows[0].removeAllListeners()
     mocks.autoUpdater.autoDownload = true
     mocks.autoUpdater.autoInstallOnAppQuit = false
+    mocks.app.isInApplicationsFolder.mockReturnValue(true)
     mocks.autoUpdater.checkForUpdates.mockResolvedValue(undefined)
     mocks.autoUpdater.downloadUpdate.mockResolvedValue(undefined)
     mocks.autoUpdater.quitAndInstall.mockImplementation(() => undefined)
@@ -786,6 +790,58 @@ describe('updater', () => {
 
         expect(trackMainError).toHaveBeenCalledWith('updater', 'download', expired)
         expect(updater.getUpdateState()).toMatchObject({ status: 'error' })
+      })
+    })
+
+    describe('a macOS read-only volume', () => {
+      // Verbatim Squirrel.Mac copy, as it reaches production telemetry.
+      const readOnlyVolume = (): Error =>
+        new Error(
+          'Cannot update while running on a read-only volume. The application is on a ' +
+            "read-only volume. Please move the application and try again. If you're on " +
+            "macOS Sierra or later, you'll need to move the application out of the " +
+            'Downloads directory. See https://github.com/Squirrel/Squirrel.Mac/issues/182 ' +
+            'for more information.'
+        )
+
+      async function failToInstallOnReadOnlyVolume(): Promise<{
+        updater: typeof import('./updater')
+        error: Error
+      }> {
+        const updater = await loadUpdater()
+        updater.initializeUpdater()
+        mocks.autoUpdater.emit('update-downloaded', { version: '1.2.4' })
+        const error = readOnlyVolume()
+        mocks.autoUpdater.emit('error', error)
+        return { updater, error }
+      }
+
+      it('tells the user to move the app instead of relaying the Squirrel copy', async () => {
+        mocks.app.isInApplicationsFolder.mockReturnValue(false)
+
+        const { updater } = await failToInstallOnReadOnlyVolume()
+
+        expect(updater.getUpdateState()).toMatchObject({
+          status: 'error',
+          error: 'system:error.updateReadOnlyVolume'
+        })
+      })
+
+      it('keeps the raw failure when the app already runs from Applications', async () => {
+        mocks.app.isInApplicationsFolder.mockReturnValue(true)
+
+        const { updater } = await failToInstallOnReadOnlyVolume()
+
+        expect(updater.getUpdateState().error).toContain('read-only volume')
+      })
+
+      it('reports the environment state as a warning, not an exception', async () => {
+        mocks.app.isInApplicationsFolder.mockReturnValue(false)
+
+        const { error } = await failToInstallOnReadOnlyVolume()
+
+        expect(trackMainWarning).toHaveBeenCalledWith('updater', 'downloaded', error)
+        expect(trackMainError).not.toHaveBeenCalled()
       })
     })
 

@@ -79,15 +79,45 @@ const collectNetErrorTokens = (error: unknown, depth = 0): string[] => {
 }
 
 /**
- * `warn` only for a check that failed to reach the network. Fails closed:
- * anything with no recognised transport code, an unknown `net::ERR_*`, an HTTP
- * status (a 404 feed, a 618 `jwt:expired` asset URL), a signature failure or an
- * install-phase errno stays `error`.
+ * Squirrel.Mac's refusal to stage an update from a read-only mount, matched on
+ * the distinctive half of its hardcoded English copy (Squirrel/Squirrel.Mac#182):
+ *
+ *   "Cannot update while running on a read-only volume. The application is on a
+ *    read-only volume. Please move the application and try again. ..."
+ *
+ * The phrase, not `EROFS` or a bare "read-only": the app being on a read-only
+ * *volume* is the whole condition, and it is what tells the two failures apart.
+ * A read-only file inside a writable install is a permissions defect and keeps
+ * error severity.
+ */
+const READ_ONLY_VOLUME = 'read-only volume'
+
+/**
+ * True when the update failed because the app is running from the mounted DMG or
+ * a Gatekeeper-translocated copy in ~/Downloads. A location the user chose, not
+ * a defect: nothing in the app can repair it, only moving the app can.
+ */
+export const isReadOnlyVolumeError = (error: unknown, depth = 0): boolean => {
+  if (!error || depth > MAX_CAUSE_DEPTH) return false
+  if (errorText(error).includes(READ_ONLY_VOLUME)) return true
+  const cause = typeof error === 'object' ? (error as { cause?: unknown }).cause : undefined
+  return isReadOnlyVolumeError(cause, depth + 1)
+}
+
+/**
+ * `warn` for a check that failed to reach the network, and for an app running
+ * from a read-only volume. Fails closed: anything with no recognised transport
+ * code, an unknown `net::ERR_*`, an HTTP status (a 404 feed, a 618 `jwt:expired`
+ * asset URL), a signature failure or an install-phase errno stays `error`.
  */
 export const classifyUpdaterError = (
   error: unknown,
   phase: UpdaterErrorPhase
 ): UpdaterErrorSeverity => {
+  // Phase-independent: this one fires while staging the download, outside every
+  // check phase, and it is an environment state in all of them. The user is told
+  // about it in the UI instead (issue #1995).
+  if (isReadOnlyVolumeError(error)) return 'warn'
   if (!isUpdaterCheckPhase(phase)) return 'error'
   // A response arrived, so this is not a connectivity drop: the server said no.
   const status =

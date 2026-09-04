@@ -14,6 +14,7 @@ import { markUpdateInstallStarted } from './telemetry/update-install-marker'
 import {
   classifyUpdaterError,
   isExpiredSignedAssetError,
+  isReadOnlyVolumeError,
   isUpdaterCheckPhase,
   recordUpdaterCheckFailure,
   recordUpdaterCheckSuccess,
@@ -151,12 +152,17 @@ export function describeUpdaterError(
 /**
  * Route a failure to the telemetry severity it deserves. A background check that
  * could not reach the network is the user being offline, not a defect, so it
- * ships as a `warn` log line — queryable, but out of Error Tracking. Everything
- * else, plus an install whose checks have been failing for a day straight, stays
- * an exception: those users cannot receive a fix. See updater-error-severity.ts.
+ * ships as a `warn` log line — queryable, but out of Error Tracking. So does an
+ * app running from a read-only volume, in any phase. Everything else, plus an
+ * install whose checks have been failing for a day straight, stays an exception:
+ * those users cannot receive a fix. See updater-error-severity.ts.
  */
 function reportUpdaterFailure(error: unknown, phase: UpdaterErrorPhase): void {
   if (!isUpdaterCheckPhase(phase)) {
+    if (classifyUpdaterError(error, phase) === 'warn') {
+      trackMainWarning('updater', phase, error)
+      return
+    }
     trackMainError('updater', phase, error)
     return
   }
@@ -408,12 +414,20 @@ export function initializeUpdater(): void {
     // The local main.log line and the user-facing state stay at error severity:
     // only the telemetry severity is classified.
     logger.error('updater error', error, describeUpdaterError(error, phase))
+    // The app is on the mounted DMG or a translocated ~/Downloads copy, so
+    // Squirrel cannot stage anything and never will from here. Squirrel's own
+    // copy is the only thing the user would otherwise see, in Settings and in
+    // the menu-bar check, and it explains the failure without naming the fix.
+    // The `isInApplicationsFolder()` guard is what keeps this from telling a
+    // correctly installed user to move an app that is already in place; it is
+    // macOS-only, so `?.()` leaves every other platform on the raw message.
+    const readOnlyVolume = isReadOnlyVolumeError(error) && app.isInApplicationsFolder?.() === false
     // Update-pipeline breakage (feed 404s, signature failures, disk-full
     // downloads) must reach error tracking: affected users cannot update to a fix.
     reportUpdaterFailure(error, phase)
     setState({
       status: 'error',
-      error: message
+      error: readOnlyVolume ? getMainI18n().t('system:error.updateReadOnlyVolume') : message
     })
   })
 
