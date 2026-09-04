@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import type { IconSvgElement } from '@hugeicons/react'
-import { CircleIcon } from '@hugeicons/core-free-icons'
+import { CircleIcon } from './icons/hugeicons-subset'
 
 let allIconsPromise: Promise<Record<string, unknown>> | null = null
 const iconCache = new Map<string, IconSvgElement>()
