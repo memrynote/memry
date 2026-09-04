@@ -1,10 +1,16 @@
+// FIRST, deliberately: this module's body takes the `importsStart` mark, and ES
+// modules evaluate in source order, so anything above it is bundle-eval time
+// the trace can no longer see.
+import { beginOpenMarks, guestMarks, markGuest } from './open-marks.ts'
 import * as Y from 'yjs'
 import { BlockNoteEditor } from '@blocknote/core'
+import { codeBlockOptions } from '@blocknote/code-block'
 import { createWikiLinkInlineContent, wikiLinkConfig } from '@memry/editor-schema/inline'
 import { BRIDGE_FRAGMENT_NAME } from '@memry/contracts/webview-bridge'
 import { assertNoWebStorage, createGuestBridge, type GuestBridge } from './bridge.ts'
 import { bindAssetBridge } from './assets.ts'
 import { installImageResolver } from './images.ts'
+import { isForMountedDoc } from './routing.ts'
 import { createMobileEditorSchema } from './schema.ts'
 import { installWikiLinkAutocomplete, installWikiLinkNavigation } from './wiki-links.ts'
 import './styles.css'
@@ -24,13 +30,18 @@ const METRICS_THROTTLE_MS = 200
 /** Origin tag on locally-applied remote updates; stops the echo loop. */
 const REMOTE_ORIGIN = Symbol('memry-remote')
 
+markGuest('scriptEval')
+
 const bridge = createGuestBridge()
 const root = document.getElementById('root')!
 
 assertNoWebStorage()
 bindAssetBridge(bridge)
 
+traceHighlighter()
+
 const schema = createMobileEditorSchema()
+markGuest('schemaBuilt')
 const schemaV = fingerprintSchema(schema)
 
 /**
@@ -79,12 +90,23 @@ let readOnly = false
 
 bridge.onHostMsg((msg) => {
   switch (msg.type) {
+    // Timing only. It must stay the cheapest possible handler, because the
+    // number it produces is the time to GET here and any work under it would
+    // be counted as part of the crossing (#2044).
+    case 'probe':
+      markGuest(msg.slot === 'early' ? 'probeEarlyRecv' : 'probeLateRecv')
+      break
+
     case 'doc-load':
+      // Before the first mark of the open, so the record it starts is this
+      // open's and not the previous note's (#2030).
+      beginOpenMarks()
+      markGuest('docLoadRecv')
       mountDoc(msg.docId, msg.stateB64, msg.seedMarkdown)
       break
 
     case 'y-update': {
-      if (!mounted || mounted.docId !== msg.docId) return
+      if (!mounted || !isForMountedDoc(msg, mounted.docId)) return
       // One transact for the whole batch: applying updates one at a time
       // fires one ProseMirror re-render each, which is what makes a remote
       // paste feel like a stutter instead of an edit.
@@ -101,12 +123,13 @@ bridge.onHostMsg((msg) => {
       break
 
     case 'insert-attachment': {
-      if (!mounted) return
+      if (!mounted || !isForMountedDoc(msg, mounted.docId)) return
       insertAttachmentBlock(mounted.editor, msg.ref, msg.name, msg.mime)
       break
     }
 
     case 'exec':
+      if (!isForMountedDoc(msg, mounted?.docId ?? null)) return
       runExec(msg.cmd)
       break
   }
@@ -121,10 +144,19 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   }
 
   const fragment = doc.getXmlFragment(BRIDGE_FRAGMENT_NAME)
+  markGuest('yApplied')
+
+  markGuest('createStart')
   const editor = createEditor(fragment)
+  markGuest('createEnd')
 
   root.replaceChildren()
   editor.mount(root)
+  // This document outlives the note it shows, and nothing else puts the
+  // scroller back: without it the next note opens at the offset the reader
+  // left the previous one at, part-way down a document it has never seen.
+  window.scrollTo(0, 0)
+  markGuest('mountEnd')
   editor.isEditable = !readOnly
 
   const onUpdate = (update: Uint8Array, origin: unknown): void => {
@@ -156,6 +188,10 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
       bridge.flush()
     }
   }
+  // Taken unconditionally, including on the far commoner path where there is
+  // nothing to seed: a mark that only exists on the expensive branch reports an
+  // empty column instead of a zero, and an empty column reads as "not measured".
+  markGuest('seedEnd')
 
   mounted = {
     docId,
@@ -180,7 +216,8 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   // over-reports. Flushed immediately rather than batched: a 24 ms delay on the
   // one message whose whole job is timing would be measuring the instrument.
   requestAnimationFrame(() => {
-    bridge.send({ type: 'painted', docId })
+    markGuest('guestPainted')
+    bridge.send({ type: 'painted', docId, marks: guestMarks() })
     bridge.flush()
   })
 }
@@ -329,8 +366,72 @@ window.addEventListener('unhandledrejection', (event) => {
 ;(globalThis as Record<string, unknown>).__memryBridgeCounters = () => bridge.getCounters()
 
 bridge.sendReady(schemaV, __EDITOR_WEB_CONTRACT_HASH__)
+markGuest('readySent')
+traceIdleTicks()
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Is this document's JS thread alive while it waits for `doc-load`? (#2044)
+ *
+ * The wait is 3-5 s and the tiny probe envelope crosses no faster than the real
+ * one, so the payload is not what is being waited on. Two very different faults
+ * produce that: a web content process WebKit has suspended or starved, in which
+ * case nothing here runs either; or a delivery that simply never arrives, in
+ * which case this document is idle and perfectly healthy the whole time. A
+ * timer separates them, and nothing observable from the host can.
+ *
+ * It stops the moment `doc-load` lands. Past that point the ticks measure
+ * nothing and a 100 ms timer under a live editor is pure noise — so the cost in
+ * an app nobody is measuring is bounded by the very interval the epic exists to
+ * remove.
+ */
+function traceIdleTicks(): void {
+  let first = true
+  const timer = setInterval(() => {
+    if (first) {
+      markGuest('idleTickFirst')
+      first = false
+    }
+    markGuest('idleTickLast')
+  }, 100)
+
+  // Registered after the main handler, so this runs once that has finished
+  // mounting; the last tick is therefore the last one BEFORE the document
+  // arrived, which is the number the fork above turns on.
+  bridge.onHostMsg((msg) => {
+    if (msg.type === 'doc-load') clearInterval(timer)
+  })
+}
+
+/**
+ * Time shiki's highlighter without moving it (#2043).
+ *
+ * `createCodeBlockSpec(codeBlockOptions)` runs at schema construction, but the
+ * factory it captures is only CALLED from the highlight plugin's parser, on the
+ * first code block the editor sees — so the grammar cost lands inside editor
+ * construction, in the interval this issue is breaking down. The wrapper reads
+ * the property off the same options object the spec holds, calls straight
+ * through and returns the same promise, so the only difference on the wire is
+ * three `Date.now()` calls.
+ *
+ * Split into three because they answer different questions: `shikiStart` to
+ * `shikiSync` is what BLOCKS the thread, and `shikiSync` to `shikiEnd` is the
+ * asynchronous tail that a paint can and does overtake.
+ */
+function traceHighlighter(): void {
+  const create = codeBlockOptions.createHighlighter
+  codeBlockOptions.createHighlighter = () => {
+    markGuest('shikiStart')
+    const highlighter = create()
+    markGuest('shikiSync')
+    void highlighter.then(
+      () => markGuest('shikiEnd'),
+      () => markGuest('shikiEnd')
+    )
+    return highlighter
+  }
+}
 
 function fingerprintSchema(built: {
   blockSchema: Record<string, unknown>

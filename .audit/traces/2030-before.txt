@@ -1,0 +1,45 @@
+### baseline  n=20 size=long  2026-09-04T11:17:25Z
+long pool: 20 notes, 624–6777 chars
+editor-web asset 34b6a683c943bea7
+note-open latency — 20 traces
+navigate                     n= 20  p50=0ms  p95=0ms  max=0ms
+sessionReady                 n= 20  p50=2ms  p95=111ms  max=111ms
+docOpen                      n= 20  p50=6ms  p95=222ms  max=222ms
+recordRead                   n= 20  p50=6ms  p95=228ms  max=228ms
+seedResolved                 n= 20  p50=6ms  p95=229ms  max=229ms
+docStart                     n= 20  p50=495ms  p95=1292ms  max=1292ms
+importsStart                 n= 20  p50=518ms  p95=1317ms  max=1317ms
+scriptEval                   n= 20  p50=526ms  p95=1326ms  max=1326ms
+schemaBuilt                  n= 20  p50=527ms  p95=1327ms  max=1327ms
+readySent                    n= 20  p50=527ms  p95=1327ms  max=1327ms
+idleTickFirst                n=  0  p50=0ms  p95=0ms  max=0ms
+idleTickLast                 n=  0  p50=0ms  p95=0ms  max=0ms
+webviewMounted               n= 20  p50=511ms  p95=1326ms  max=1326ms
+guestReady                   n= 20  p50=528ms  p95=1346ms  max=1346ms
+probeEarlySent               n=  0  p50=0ms  p95=0ms  max=0ms
+probeEarlyRecv               n=  0  p50=0ms  p95=0ms  max=0ms
+docLoadSent                  n= 20  p50=530ms  p95=1388ms  max=1388ms
+docLoadRecv                  n= 20  p50=535ms  p95=1394ms  max=1394ms
+probeLateSent                n=  0  p50=0ms  p95=0ms  max=0ms
+probeLateRecv                n=  0  p50=0ms  p95=0ms  max=0ms
+yApplied                     n= 20  p50=539ms  p95=1399ms  max=1399ms
+createStart                  n= 20  p50=539ms  p95=1399ms  max=1399ms
+createEnd                    n= 20  p50=546ms  p95=1406ms  max=1406ms
+mountEnd                     n= 20  p50=563ms  p95=1436ms  max=1436ms
+shikiStart                   n=  0  p50=0ms  p95=0ms  max=0ms
+shikiSync                    n=  0  p50=0ms  p95=0ms  max=0ms
+shikiEnd                     n=  0  p50=0ms  p95=0ms  max=0ms
+seedEnd                      n= 20  p50=563ms  p95=1437ms  max=1437ms
+guestPainted                 n= 20  p50=567ms  p95=1447ms  max=1447ms
+painted                      n= 20  p50=567ms  p95=1462ms  max=1462ms
+navigate→painted             n= 20  p50=567ms  p95=1462ms  max=1462ms
+intervals, differenced per trace
+probeEarlySent→probeEarlyRecv n=  0  p50=0ms  p95=0ms  max=0ms
+idleTickLast→docLoadRecv     n=  0  p50=0ms  p95=0ms  max=0ms
+docLoadSent→docLoadRecv      n= 20  p50=5ms  p95=6ms  max=6ms
+probeLateSent→probeLateRecv  n=  0  p50=0ms  p95=0ms  max=0ms
+guestReady→painted           n= 20  p50=40ms  p95=116ms  max=116ms
+doc-load payload size — stateBytes in bytes, the other two in characters
+stateBytes                   n= 20  p50=6781  p95=56663  max=56663
+wireChars                    n= 20  p50=9044  p95=75552  max=75552
+injectedChars                n= 20  p50=9380  p95=75888  max=75888

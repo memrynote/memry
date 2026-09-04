@@ -160,8 +160,11 @@ export class GuestBridge {
     for (const msg of msgs) {
       // Everything except the doc load itself is dropped until the doc exists;
       // applying a y-update to a doc that has no state is how a replica ends up
-      // silently diverged from the owner.
-      if (!this.loaded && msg.type !== 'doc-load' && msg.type !== 'cfg') continue
+      // silently diverged from the owner. `probe` is exempt because its whole
+      // job is to be timed BEFORE the doc exists — dropping it here would make
+      // it unmeasurable at the one moment it is asked about (#2044).
+      if (!this.loaded && msg.type !== 'doc-load' && msg.type !== 'cfg' && msg.type !== 'probe')
+        continue
       for (const listener of this.listeners) {
         try {
           listener(msg)

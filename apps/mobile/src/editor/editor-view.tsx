@@ -1,34 +1,80 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native'
-import { WebView, type WebViewMessageEvent } from 'react-native-webview'
-import {
-  BRIDGE_PROTOCOL_VERSION,
-  type BridgeCfg,
-  type GuestMsg,
-  type WikiCandidate
-} from '@memry/contracts/webview-bridge'
-import { base64ToBytes, bytesToBase64 } from '../lib/base64'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { ActivityIndicator, Keyboard, StyleSheet, View } from 'react-native'
+import { useIsFocused, useNavigation } from 'expo-router'
+import { useTransitionProgress } from 'react-native-screens'
+import { type BridgeCfg, type GuestMsg, type WikiCandidate } from '@memry/contracts/webview-bridge'
+import { bytesToBase64 } from '../lib/base64'
 import { createLogger } from '../lib/logger'
-import { EDITOR_WEB_CONTRACT_HASH, loadEditorWebHtml } from './editor-web-asset'
-import { createInjectionTransport, EditorBridgeProvider } from './bridge-provider'
+import { useEditorHost } from './editor-host'
+import { editorFrameFrom, type EditorFrame, type HostDoc } from './editor-host-controller'
 import type { OpenDoc } from './doc-manager'
-import { LatencyRecorder, type G3Measurement } from './__rig__/latency'
-import { mark } from './__rig__/open-trace'
+import type { G3Measurement } from './__rig__/latency'
+import { isProbeEnabled, mark, markDocLoadPayload } from './__rig__/open-trace'
 
 const log = createLogger('EditorView')
 
 /**
- * The WebView host for the note body (T064).
+ * One note's side of the shared editor WebView (T064, #2030).
  *
- * Owns the bridge, not the document: the Y.Doc arrives already open from the
- * doc manager, and everything this component does is translate between it and
- * the guest. That split is what makes WebView process death cheap — the view
- * can be destroyed and re-created, and the doc it was showing is untouched.
+ * The guest belongs to `EditorHost`, one instance for the whole notes stack, so
+ * this component renders a PLACEHOLDER and reports its window frame — the host
+ * positions the WebView onto it. It owns what belongs to the note screen: the
+ * `doc-load` for this note, the seed replay, the live config, and the wiki-link
+ * and asset answers the guest asks for while this note is the one on screen.
+ *
+ * It deliberately does NOT own the write path back from the guest. A keystroke
+ * can reach the host after this screen is gone, and the controller settles it
+ * against the document it names.
  */
+
+/**
+ * How long to wait for the push animation when nothing reports its end.
+ *
+ * The stack's initial route and a push with animation off never animate at
+ * all, and an editor that waits forever for an animation that is not running
+ * is an invisible editor. A BACKSTOP, not a schedule: every open it settles is
+ * an open the reader spent staring at a blank body the app had already drawn,
+ * so `settledByFallback` in the trace is the row that says whether the real
+ * signals are working.
+ */
+const REVEAL_FALLBACK_MS = 500
+
+/**
+ * How far into the push counts as arrived.
+ *
+ * `react-native-screens` pumps transition progress from a display link running
+ * alongside the UIKit transition, and sends the exact `1.0` from
+ * `viewDidAppear` — the same call site that emits the `onAppear` the
+ * navigator's `transitionEnd` is built on. Reading the RAMP rather than its
+ * endpoint is what makes this independent of that call site. The curve is an
+ * ease-out, so the last frames cluster hard against 1 and this threshold is
+ * reached with room to spare; at 0.99 the screen is under five points from
+ * home, for at most one frame.
+ */
+const SETTLED_PROGRESS = 0.99
+
+/**
+ * Which signal opened the gate.
+ *
+ * Recorded per open because the three are indistinguishable from the outside
+ * and a backstop that fires near the animation's own duration reads exactly
+ * like a working event path.
+ */
+type SettleSource = 'settledByEvent' | 'settledByProgress' | 'settledByFallback'
 
 export interface EditorViewProps {
   doc: OpenDoc
   cfg: BridgeCfg
+  /**
+   * Whether this route has finished animating into place.
+   *
+   * A prop rather than a hook here because the answer has to be watched from
+   * the moment the ROUTE mounts. This component appears only once the note's
+   * open chain has resolved, and a note slower than the push animation would
+   * miss the arrival entirely and wait out the backstop. `useRouteSettled` is
+   * the hook the screen calls.
+   */
+  routeSettled: boolean
   /** Wiki-link tap. Targets may be `Title` or `Title#Heading`. */
   onNavigate: (target: string) => void
   /** Autocomplete backing store; returns at most a handful of candidates. */
@@ -71,226 +117,251 @@ export interface EditorControls {
   resetMeasurement(): void
 }
 
+/**
+ * Only the commands that act on a document are addressed.
+ *
+ * `flush` and `blur` are transport-level: a note that is still mounted but off
+ * screen has to be able to flush the bridge on a background transition, and
+ * addressing that would silently drop it.
+ */
+type DocScopedCommand = 'undo' | 'redo' | 'focus'
+
+/**
+ * The navigator events a note screen needs.
+ *
+ * Declared here rather than pulled from `@react-navigation/native-stack`,
+ * which the app does not depend on directly: `useNavigation` is generic
+ * exactly so a screen can name the surface it uses.
+ */
+interface StackTransitions {
+  addListener(
+    type: 'transitionStart' | 'transitionEnd',
+    listener: (event: { data: { closing: boolean } }) => void
+  ): () => void
+  addListener(type: 'gestureCancel', listener: () => void): () => void
+}
+
+/**
+ * Whether this route has animated into its place on screen.
+ *
+ * Call it from the SCREEN, above any early return, so the listeners are
+ * registered while the note is still loading. The host does not slide with the
+ * stack, so it stays hidden until this is true — and a screen that only starts
+ * watching once its note has opened would miss the signal on every note slower
+ * than the animation and eat the fallback instead.
+ *
+ * TWO independent readings of one physical event, because the navigator's
+ * `transitionEnd` was measured settling 0 of 24 opens (#2030): every one of
+ * them fell through to the backstop, and the fallback constant sitting 150 ms
+ * past the animation is why half a second of each open was a timer. The
+ * navigator event is `onAppear`, which is `viewDidAppear`. Transition PROGRESS
+ * is a display link running alongside the UIKit transition, delivered to this
+ * screen through `react-native-screens`' own context rather than through the
+ * navigator's emitter — so it cannot be lost to a listener on the wrong
+ * navigator, and it reports the animation's end without waiting on the
+ * `viewDidAppear` that the event path depends on. Whichever arrives first
+ * settles the route, and the trace names it. Once a device run says which one
+ * delivers, the other goes.
+ *
+ * Only the ARRIVING edge is read from progress. The closing edge is left to
+ * the navigator exactly as it was: an outgoing note that blanked the moment it
+ * started leaving was a whole screen going empty as it animated away, and this
+ * change is not the place to relitigate that.
+ *
+ * `traceId` is the note the open trace is keyed on. Absent, the gate still
+ * works and simply records nothing.
+ */
+export function useRouteSettled(traceId?: string): boolean {
+  const navigation = useNavigation<StackTransitions>()
+  // Provided by the `Screen` this route is rendered into. It throws outside a
+  // native stack, which is the same contract `useEditorHost` already holds the
+  // caller to: this hook belongs to a note screen in the notes stack.
+  const transition = useTransitionProgress()
+  const [settled, setSettled] = useState(false)
+
+  /** Latched, so the mark names the signal that ACTUALLY opened the gate. */
+  const settledBy = useRef<SettleSource | null>(null)
+  const arrive = useCallback(
+    (source: SettleSource) => {
+      if (!settledBy.current) {
+        settledBy.current = source
+        if (traceId) mark(traceId, source)
+      }
+      setSettled(true)
+    },
+    [traceId]
+  )
+
+  useEffect(() => {
+    // A CLOSING transition unsettles the route the moment it starts, which is
+    // what covers the interactive swipe back: the screen tracks the reader's
+    // finger while the host stays pinned to the window, so a body left visible
+    // would visibly detach from the note it belongs to. `transitionEnd` alone
+    // is far too late, since the drag is the whole event.
+    const onStart = navigation.addListener('transitionStart', (event) => {
+      if (event.data.closing) setSettled(false)
+    })
+    const onEnd = navigation.addListener('transitionEnd', (event) => {
+      if (event.data.closing) setSettled(false)
+      else arrive('settledByEvent')
+    })
+    // The reader let go and the screen came back, so this route is on screen
+    // again and no `transitionEnd` will say so.
+    const onCancel = navigation.addListener('gestureCancel', () => setSettled(true))
+    const fallback = setTimeout(() => arrive('settledByFallback'), REVEAL_FALLBACK_MS)
+    return () => {
+      onStart()
+      onEnd()
+      onCancel()
+      clearTimeout(fallback)
+    }
+  }, [arrive, navigation])
+
+  const { closing, progress } = transition
+  useEffect(() => {
+    // Both numbers ride ONE native event and their two listeners fire in no
+    // defined order, so the decision is taken from the pair rather than from
+    // whichever callback ran last.
+    let closed = false
+    let ratio = 0
+
+    const onProgress = progress.addListener(({ value }) => {
+      ratio = value
+      if (!closed && ratio >= SETTLED_PROGRESS) arrive('settledByProgress')
+    })
+    const onClosing = closing.addListener(({ value }) => {
+      const next = value === 1
+      // Turning from closing to opening starts a NEW transition, and the ratio
+      // still standing belongs to the one that just finished. Left alone, a
+      // screen coming back would read as fully arrived on its first event and
+      // reveal the editor over an animation that had not started.
+      if (closed && !next) ratio = 0
+      closed = next
+    })
+
+    return () => {
+      progress.removeListener(onProgress)
+      closing.removeListener(onClosing)
+    }
+  }, [arrive, closing, progress])
+
+  return settled
+}
+
 export function EditorView({
   doc,
   cfg,
+  routeSettled,
   onNavigate,
   onWikiQuery,
   onAssetRequest,
   seedMarkdown,
   onReady
 }: EditorViewProps) {
-  const webViewRef = useRef<WebView>(null)
-  const [loaded, setLoaded] = useState(false)
+  const host = useEditorHost()
+  const bridge = host.bridge
+  const hostState = useSyncExternalStore(host.subscribe, host.getState)
+
+  const docId = doc.docId
+  /** Whether the shared guest is currently holding THIS note. */
+  const mounted = hostState.guest === 'ready' && hostState.mountedDocId === docId
   /**
-   * Bumped to remount the WebView after iOS reclaims its content process.
+   * Whether the guest has CONFIRMED painting this note.
    *
-   * `reload()` re-fetches the current URL, and the source here is an inline
-   * HTML string served against `about:blank` — there is nothing to re-fetch,
-   * so the editor came back blank behind a permanent spinner with the bridge
-   * never re-attached. A new `key` rebuilds the view from the same source.
+   * `mounted` flips the instant the host hands the note over, which is before
+   * the guest has processed `doc-load` — so anything keyed on it uncovers the
+   * previous note's body sitting in this note's frame.
    */
-  const [instance, setInstance] = useState(0)
-  const html = useMemo(() => loadEditorWebHtml(), [])
-
-  // One provider per mounted view. `sid` carries the doc id so a stray envelope
-  // from a previous note is identifiable in a log rather than merely wrong.
-  const bridge = useMemo(() => new EditorBridgeProvider(`rn-${doc.docId}`), [doc.docId])
-
-  /**
-   * Guest updates are persisted STRICTLY IN ORDER, one at a time.
-   *
-   * A single 24 ms envelope can carry several `y-update` messages, and running
-   * their persists concurrently races `SELECT MAX(seq)` against the local
-   * table's `PRIMARY KEY (doc_id, seq)` — and opens overlapping
-   * `withTransactionAsync` blocks on one expo-sqlite connection, which throws.
-   * The losers were caught and logged, so those keystrokes lived in memory and
-   * were never persisted or enqueued: silent loss on exactly the fast typing
-   * the batching exists to handle.
-   */
-  const persistChain = useRef<Promise<void>>(Promise.resolve())
-
-  // Tracks the tail of that chain so a flush can wait for it. The WebView round
-  // trip is several async hops; a drain fired immediately after `exec:flush`
-  // reads the outbox before the last keystroke has reached it.
-  const inFlight = useRef(new Set<Promise<void>>())
-
-  // Always instrumented: the recorder costs two Date.now() calls per update,
-  // and a measurement path that only exists in a dev build is a measurement of
-  // a different app than the one G3 gates.
-  const recorder = useMemo(() => new LatencyRecorder(bridge), [bridge])
+  const shown = hostState.shownDocId === docId
 
   /**
-   * Ask the guest to flush, then wait for the resulting persists.
+   * The seed value this note's `doc-load` has already carried.
    *
-   * The wait is bounded rather than open-ended: iOS gives a backgrounding app a
-   * few seconds, and an unbounded await here would spend them all if the
-   * WebView had already been suspended.
+   * Without it the late-seed replay fires again on every switch back to this
+   * note, rebuilding the guest's editor a second time under the caret.
    */
-  const flushAndSettle = useCallback(async (): Promise<void> => {
-    // What the guest had sent us BEFORE the flush. An empty in-flight set right
-    // after `exec:flush` is the normal state — the reply has not crossed the
-    // bridge yet — so breaking on it means waiting for nothing, and the last
-    // keystrokes exist only in the WebView's non-durable replica if iOS
-    // suspends us a moment later.
-    const before = bridge.getCounters().msgsReceived
-
-    bridge.send({ type: 'exec', cmd: 'flush' })
-    bridge.flush()
-
-    // Two deadlines, because they answer different questions. The first is
-    // "did the guest have anything to send?" — an idle editor never replies,
-    // and waiting the full window for that reply would spend the entire
-    // backgrounding budget before the outbox drain even starts. The second is
-    // "has everything it sent been persisted?".
-    const replyDeadline = Date.now() + 250
-    const settleDeadline = Date.now() + 2_000
-    let sawReply = false
-
-    while (Date.now() < settleDeadline) {
-      await new Promise((resolve) => setTimeout(resolve, 20))
-      if (!sawReply && bridge.getCounters().msgsReceived > before) sawReply = true
-
-      if (inFlight.current.size > 0) {
-        await Promise.allSettled([...inFlight.current])
-        continue
-      }
-      if (sawReply) return
-      if (Date.now() >= replyDeadline) return
-    }
-  }, [bridge])
+  const seedSent = useRef<string | undefined>(undefined)
 
   const sendDocLoad = useCallback(() => {
-    bridge.send({
-      type: 'doc-load',
-      docId: doc.docId,
-      stateB64: bytesToBase64(doc.encodeState()),
-      // Only when the doc is genuinely empty, so a seed can never overwrite
-      // content that already exists.
-      ...(doc.isEmpty() && seedMarkdown ? { seedMarkdown } : {})
-    })
+    const probing = isProbeEnabled()
+    // Queued AHEAD of `doc-load` on purpose. A probe behind it would be timed
+    // from the back of the same queue and would be slow whatever the answer is,
+    // which discriminates nothing (#2044).
+    if (probing) {
+      bridge.send({ type: 'probe', slot: 'early' })
+      bridge.flush()
+      mark(docId, 'probeEarlySent')
+    }
+
+    const state = doc.encodeState()
+    const stateB64 = bytesToBase64(state)
+    // Only when the doc is genuinely empty, so a seed can never overwrite
+    // content that already exists. Read at send time, from THIS note's own doc,
+    // so a doc switch can never carry the previous note's seed.
+    const seed = doc.isEmpty() && seedMarkdown ? seedMarkdown : undefined
+    if (seed) seedSent.current = seed
+
+    bridge.send({ type: 'doc-load', docId, stateB64, ...(seed ? { seedMarkdown: seed } : {}) })
     bridge.flush()
-  }, [bridge, doc, seedMarkdown])
+    // After the flush, so the mark covers the state encode AND the injection
+    // rather than only the enqueue. Taken on every `doc-load`, including the
+    // resync and late-seed replays, because the guest's `docLoadRecv` is
+    // likewise the last one it received — marking only the first would pair a
+    // replayed receipt against the original send and invent a delay.
+    mark(docId, 'docLoadSent')
+    // Read straight after the flush, while the injection the transport just
+    // made is still the last one.
+    markDocLoadPayload(docId, {
+      stateBytes: state.byteLength,
+      wireChars: stateB64.length,
+      injectedChars: host.getLastInjectedChars()
+    })
 
-  // A `seq` gap means an envelope was lost; the only correct response is a
-  // full `doc-load`, because a dropped update leaves the two replicas diverged
-  // with no symptom until a later edit lands on the wrong state.
-  useEffect(
-    () =>
-      bridge.onResyncNeeded((reason) => {
-        log.warn('Bridge resync', { docId: doc.docId, reason })
-        sendDocLoad()
-      }),
-    [bridge, doc.docId, sendDocLoad]
-  )
+    if (probing) {
+      bridge.send({ type: 'probe', slot: 'late' })
+      bridge.flush()
+      mark(docId, 'probeLateSent')
+    }
+  }, [bridge, doc, docId, host, seedMarkdown])
 
-  // Remote updates (sync, or another surface) are forwarded to the guest.
+  /** Hand this note to the guest. Called by the host every time it becomes the mounted one. */
+  const mountOnGuest = useCallback(() => {
+    bridge.send({ type: 'cfg', ...cfg })
+    sendDocLoad()
+  }, [bridge, cfg, sendDocLoad])
+
+  // Remote updates (sync, or another surface) are forwarded to the guest, and
+  // ONLY while this note is the one it is holding.
   useEffect(() => {
     return doc.onRemoteUpdate((update) => {
-      bridge.send({ type: 'y-update', docId: doc.docId, updatesB64: [bytesToBase64(update)] })
+      if (host.getState().mountedDocId !== docId) return
+      bridge.send({ type: 'y-update', docId, updatesB64: [bytesToBase64(update)] })
     })
-  }, [bridge, doc])
+  }, [bridge, doc, docId, host])
 
-  // A seed resolved by the background probe arrives AFTER the guest has
-  // already been handed its (empty) doc, so it needs a fresh `doc-load` to be
-  // applied at all. Guarded on emptiness, so a late seed can never land on a
-  // document that has since acquired content.
+  // A seed resolved by the background probe arrives AFTER the guest has already
+  // been handed its (empty) doc, so it needs a fresh `doc-load` to be applied at
+  // all. Guarded on emptiness so a late seed can never land on a document that
+  // has since acquired content, and on the seed already sent so a switch back to
+  // this note does not replay it.
   useEffect(() => {
-    if (!loaded || !seedMarkdown || !doc.isEmpty()) return
+    if (!mounted || !seedMarkdown || !doc.isEmpty()) return
+    if (seedSent.current === seedMarkdown) return
     sendDocLoad()
-  }, [doc, loaded, seedMarkdown, sendDocLoad])
+  }, [doc, mounted, seedMarkdown, sendDocLoad])
 
-  // Config changes (theme, read-only from the kill switch) are pushed live.
+  // Config changes (theme, read-only from the kill switch) are pushed live, by
+  // the note the guest is holding only — an off-screen note pushing its own
+  // would recolour the one the reader is looking at.
   useEffect(() => {
-    if (!loaded) return
+    if (!mounted) return
     bridge.send({ type: 'cfg', ...cfg })
     bridge.flush()
-  }, [bridge, cfg, loaded])
-
-  useEffect(() => {
-    return () => bridge.detach()
-  }, [bridge])
+  }, [bridge, cfg, mounted])
 
   const handleGuestMsg = useCallback(
     (msg: GuestMsg) => {
       switch (msg.type) {
-        case 'ready': {
-          mark(doc.docId, 'guestReady')
-          if (msg.protocolV !== BRIDGE_PROTOCOL_VERSION) {
-            // Only reachable from a stale prebuilt asset; the two halves
-            // compile against the same contract module.
-            log.error('Bridge protocol mismatch', {
-              expected: BRIDGE_PROTOCOL_VERSION,
-              got: msg.protocolV
-            })
-            return
-          }
-          if (msg.contractHash && msg.contractHash !== EDITOR_WEB_CONTRACT_HASH) {
-            log.warn('Editor asset hash differs from the RN-side stamp', {
-              guest: msg.contractHash,
-              host: EDITOR_WEB_CONTRACT_HASH
-            })
-          }
-          bridge.send({ type: 'cfg', ...cfg })
-          sendDocLoad()
-          setLoaded(true)
-          onReady?.({
-            undo: () => {
-              bridge.send({ type: 'exec', cmd: 'undo' })
-              bridge.flush()
-            },
-            redo: () => {
-              bridge.send({ type: 'exec', cmd: 'redo' })
-              bridge.flush()
-            },
-            focus: () => {
-              bridge.send({ type: 'exec', cmd: 'focus' })
-              bridge.flush()
-            },
-            flush: () => flushAndSettle(),
-            insertAttachment: (ref, name, mime) => {
-              bridge.send({ type: 'insert-attachment', ref, name, mime, width: 0 })
-              bridge.flush()
-            },
-            measure: () => recorder.summary(),
-            resetMeasurement: () => recorder.reset()
-          })
-          break
-        }
-
-        case 'y-update': {
-          if (msg.docId !== doc.docId) return
-          // Sequential, and awaited: `applyFromGuest` is what makes the update
-          // durable, and overlapping calls would race the local sequence.
-          const deliveryMs = bridge.getLastDeliveryMs()
-          const work = persistChain.current.then(async () => {
-            for (const b64 of msg.updatesB64) {
-              try {
-                await recorder.record(deliveryMs, () => doc.applyFromGuest(base64ToBytes(b64)))
-              } catch (err) {
-                log.error('Failed to persist an editor update; resyncing', {
-                  docId: doc.docId,
-                  error: err instanceof Error ? err.message : String(err)
-                })
-                // The doc did not move, so the WebView is now AHEAD of the
-                // authoritative state. Replaying `doc-load` puts them back in
-                // agreement — the failed edit is visibly gone rather than
-                // silently present-then-absent on the next open.
-                sendDocLoad()
-              }
-            }
-          })
-          // The chain must never reject, or every later update is skipped.
-          persistChain.current = work.catch(() => undefined)
-          inFlight.current.add(work)
-          void work.finally(() => inFlight.current.delete(work))
-          break
-        }
-
-        case 'painted':
-          mark(msg.docId, 'painted')
-          break
-
         case 'nav':
           onNavigate(msg.target)
           break
@@ -333,89 +404,168 @@ export function EditorView({
           log.warn('Editor reported an error', { code: msg.code, detail: msg.detail })
           break
 
-        case 'metrics':
-          // Height is informational for now: the WebView fills the screen and
-          // scrolls itself. Kept wired so the native chrome can use it without
-          // a contract change.
+        default:
+          // `y-update` and `painted` are settled by the controller against the
+          // note they name, and `metrics` is a chrome hint the native side does
+          // not use yet.
           break
       }
     },
-    [
-      bridge,
-      cfg,
-      doc,
-      flushAndSettle,
-      onAssetRequest,
-      onNavigate,
-      onReady,
-      onWikiQuery,
-      recorder,
-      sendDocLoad
-    ]
+    [bridge, onAssetRequest, onNavigate, onWikiQuery]
   )
-
-  useEffect(() => bridge.onGuestMsg(handleGuestMsg), [bridge, handleGuestMsg])
-
-  const onMessage = useCallback(
-    (event: WebViewMessageEvent) => bridge.receive(event.nativeEvent.data),
-    [bridge]
-  )
-
-  const onWebViewLoad = useCallback(() => {
-    mark(doc.docId, 'webviewMounted')
-    bridge.attach(
-      createInjectionTransport((js) => {
-        webViewRef.current?.injectJavaScript(js)
-      })
-    )
-  }, [bridge, doc.docId])
 
   /**
-   * iOS reclaims WKWebView content processes under memory pressure. The doc is
-   * on the RN side, so recovery is just a re-created view replaying `doc-load`
-   * — no edit is at risk, which is the whole point of RN-side ownership.
+   * The callbacks the host reaches this note through.
+   *
+   * Read through a ref so the registration itself is stable: re-attaching on
+   * every render would re-send `doc-load` and rebuild the guest's editor under
+   * the caret.
    */
-  const onContentProcessDidTerminate = useCallback(() => {
-    log.warn('WebView content process terminated; re-creating', { docId: doc.docId })
-    setLoaded(false)
-    bridge.detach()
-    setInstance((value) => value + 1)
-  }, [bridge, doc.docId])
+  const latest = useRef({ handleGuestMsg, mountOnGuest })
+  useEffect(() => {
+    latest.current = { handleGuestMsg, mountOnGuest }
+  }, [handleGuestMsg, mountOnGuest])
+
+  const hostDoc = useMemo<HostDoc>(
+    () => ({
+      doc,
+      onGuestMsg: (msg) => latest.current.handleGuestMsg(msg),
+      mount: () => latest.current.mountOnGuest()
+    }),
+    [doc]
+  )
+
+  // BEFORE the attach effect, so the host knows which route is focused by the
+  // time it has to choose one.
+  const focused = useIsFocused()
+  useEffect(() => host.setFocused(hostDoc, focused), [focused, host, hostDoc])
+
+  useEffect(() => host.attach(hostDoc), [host, hostDoc])
+
+  const controls = useMemo<EditorControls>(() => {
+    const exec = (cmd: DocScopedCommand): void => {
+      bridge.send({ type: 'exec', cmd, docId })
+      bridge.flush()
+    }
+    return {
+      undo: () => exec('undo'),
+      redo: () => exec('redo'),
+      focus: () => exec('focus'),
+      flush: () => host.flushAndSettle(),
+      insertAttachment: (ref, name, mime) => {
+        bridge.send({ type: 'insert-attachment', docId, ref, name, mime, width: 0 })
+        bridge.flush()
+      },
+      measure: () => host.recorder.summary(),
+      resetMeasurement: () => host.recorder.reset()
+    }
+  }, [bridge, docId, host])
+
+  // Per OPEN, not per WebView. The guest's `ready` now fires once for the whole
+  // notes stack, so a screen that waited for it would hold `null` controls for
+  // every note after the first — taking the save indicator and the background
+  // flush with them.
+  const onReadyRef = useRef(onReady)
+  useEffect(() => {
+    onReadyRef.current = onReady
+  }, [onReady])
+  useEffect(() => {
+    onReadyRef.current?.(controls)
+  }, [controls])
+
+  // ---------------------------------------------------------------------
+  // Geometry. The host draws the guest onto this placeholder's window frame.
+  // ---------------------------------------------------------------------
+
+  const placeholder = useRef<View>(null)
+  const frame = useRef<EditorFrame | null>(null)
+  /** So a measurement that never resolves is reported once, not every layout. */
+  const unplaced = useRef(false)
+
+  const pushLayout = useCallback(() => {
+    host.setLayout(hostDoc, { frame: frame.current, onScreen: routeSettled })
+  }, [host, hostDoc, routeSettled])
+
+  /**
+   * Both views measured in WINDOW coordinates, inside one round.
+   *
+   * The container is read from inside the placeholder's own callback rather
+   * than cached, so the subtraction cannot straddle a layout change the vault
+   * layout's sync banner makes without firing `onLayout` on either view.
+   *
+   * Not `measureLayout`, which needs its reference to be an ANCESTOR. The host
+   * is a sibling of the stack this note lives in, so the two are cousins and
+   * that measurement fails outright, leaving the editor unplaced and invisible.
+   */
+  const measure = useCallback(() => {
+    const node = placeholder.current
+    if (!node) return
+    node.measureInWindow((_x, top, _width, height) => {
+      host.measureContainerTop((containerTop) => {
+        const next = containerTop === null ? null : editorFrameFrom({ top, height }, containerTop)
+        if (!next) {
+          // Ordinarily the container's ref has simply not attached yet, and the
+          // `containerReady` re-measure below collects it. Logged ONCE because
+          // if it never resolves the note renders its title and metadata over a
+          // blank white body, which is a symptom nobody would trace back to a
+          // measurement without being told.
+          if (!unplaced.current) {
+            unplaced.current = true
+            log.error('Editor placeholder could not be placed; the body will not appear', {
+              docId,
+              placeholderTop: top,
+              placeholderHeight: height,
+              containerTop
+            })
+          }
+          return
+        }
+        unplaced.current = false
+        if (frame.current?.top === next.top && frame.current.height === next.height) return
+        frame.current = next
+        pushLayout()
+      })
+    })
+  }, [docId, host, pushLayout])
+
+  useEffect(() => {
+    pushLayout()
+    // Re-measured on settle, and once the container exists to measure against:
+    // refs attach children-first, so the first `onLayout` here can run a commit
+    // before the host's container is there to be measured against.
+    if (routeSettled || hostState.containerReady) measure()
+  }, [hostState.containerReady, measure, pushLayout, routeSettled])
+
+  /**
+   * Give the keyboard back when this screen goes.
+   *
+   * The WebView used to be unmounted with the route, which resigned first
+   * responder for free. It survives now, so a reader who taps back with the
+   * caret in the body would otherwise keep an iOS keyboard over the list.
+   */
+  useEffect(() => () => Keyboard.dismiss(), [])
+
+  /**
+   * The spinner means "this note has no body yet", and it LATCHES OFF.
+   *
+   * Without that it came back every time the guest was handed to another note,
+   * so popping back to a note the reader had already read showed a spinner over
+   * a document that was never in doubt.
+   */
+  const [everShown, setEverShown] = useState(false)
+  // Adjusted during render rather than in an effect: this is a latch, so React
+  // re-running the component just sets it true again, and an effect would show
+  // the spinner for one extra frame on every note.
+  if (shown && !everShown) setEverShown(true)
 
   return (
-    <KeyboardAvoidingView
-      style={styles.fill}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <WebView
-        key={instance}
-        ref={webViewRef}
-        source={{ html, baseUrl: 'about:blank' }}
-        onLoadEnd={onWebViewLoad}
-        onMessage={onMessage}
-        onContentProcessDidTerminate={onContentProcessDidTerminate}
-        onRenderProcessGone={onContentProcessDidTerminate}
-        style={styles.fill}
-        javaScriptEnabled
-        // The document is local and its CSP forbids every remote fetch; this
-        // stops a crafted note from turning a tap into a navigation anyway.
-        originWhitelist={['about:blank']}
-        allowFileAccess={false}
-        allowsInlineMediaPlayback
-        keyboardDisplayRequiresUserAction={false}
-        hideKeyboardAccessoryView
-        automaticallyAdjustContentInsets={false}
-        // The editor sizes its own document; a bouncing scroll view under it
-        // fights the caret on iOS.
-        bounces={false}
-        overScrollMode="never"
-      />
-      {loaded ? null : (
+    <View ref={placeholder} style={styles.fill} onLayout={measure}>
+      {everShown ? null : (
         <View style={styles.loading} pointerEvents="none">
           <ActivityIndicator />
         </View>
       )}
-    </KeyboardAvoidingView>
+    </View>
   )
 }
 

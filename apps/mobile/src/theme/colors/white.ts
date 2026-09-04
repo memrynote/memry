@@ -1,6 +1,12 @@
 export const white = {
   canvas: {
-    background: '#ffffff',
+    // The one paper (#2033). The editor WebView paints `--memry-paper` edge to
+    // edge under the RN chrome with no border between them, so any difference
+    // here is a hard seam across the note screen. Pure white was that seam;
+    // #fdfcfb is the warmer of the two and the one desktop's `--background`
+    // leans toward. It also buys `card` and `popover` a real step of elevation
+    // they did not have while the canvas was the same white they are.
+    background: '#fdfcfb',
     surface: '#f7f6f3',
     surfaceActive: '#efedea',
     card: '#ffffff',

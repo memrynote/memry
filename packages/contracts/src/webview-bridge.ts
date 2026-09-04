@@ -118,8 +118,24 @@ export const HostAssetSchema = z.object({
  * back through the ordinary `asset-req` path so there is exactly one
  * resolution route.
  */
+/**
+ * Which document a host command is meant for.
+ *
+ * Optional and additive, for the same reason `insert-attachment` itself is:
+ * the guest ships inside the app that speaks to it, so an older asset that
+ * does not know the field ignores it and behaves exactly as it does today.
+ *
+ * It exists because the guest is now a LONG-LIVED WebView shared by every note
+ * (#2030). `y-update` has carried a `docId` since v1 and these two never did,
+ * so a command queued by a note that has left the screen would land on
+ * whichever note is on it. Absent still means "whatever is mounted", which is
+ * what an unaddressed command has always meant.
+ */
+const AddressedDocId = z.string().min(1).optional()
+
 export const HostInsertAttachmentSchema = z.object({
   type: z.literal('insert-attachment'),
+  docId: AddressedDocId,
   ref: z.string().min(1),
   name: z.string().default(''),
   /**
@@ -137,7 +153,32 @@ export type BridgeExecCommand = (typeof BRIDGE_EXEC_COMMANDS)[number]
 
 export const HostExecSchema = z.object({
   type: z.literal('exec'),
-  cmd: z.enum(BRIDGE_EXEC_COMMANDS)
+  cmd: z.enum(BRIDGE_EXEC_COMMANDS),
+  /**
+   * Left unset for `flush` and `blur`, which are transport-level and belong to
+   * no document: addressing them would make a background flush from a note
+   * that is still mounted but off screen silently do nothing.
+   */
+  docId: AddressedDocId
+})
+
+/**
+ * A fixed, tiny envelope the host sends around `doc-load` to time the crossing
+ * itself (#2044).
+ *
+ * `doc-load` takes 3.26 s to reach the guest and the interval is FLAT across a
+ * 6-60x content range, which the payload cannot explain on its own. The probe
+ * separates the two candidates: sent immediately before `doc-load` it carries a
+ * few dozen bytes down the same channel, so a probe that is also slow indicts
+ * the channel and a probe that is fast indicts the payload.
+ *
+ * The guest does nothing with it but take a mark, so it can never change what
+ * the editor shows.
+ */
+export const HostProbeSchema = z.object({
+  type: z.literal('probe'),
+  /** Whether it was queued ahead of `doc-load` or behind it. */
+  slot: z.enum(['early', 'late'])
 })
 
 export const HostMsgSchema = z.discriminatedUnion('type', [
@@ -147,7 +188,8 @@ export const HostMsgSchema = z.discriminatedUnion('type', [
   HostWikiCandidatesSchema,
   HostAssetSchema,
   HostExecSchema,
-  HostInsertAttachmentSchema
+  HostInsertAttachmentSchema,
+  HostProbeSchema
 ])
 
 // ---------------------------------------------------------------------------
@@ -215,9 +257,83 @@ export const GuestMetricsSchema = z.object({
  * the `ready` handshake outright (the `protocolV` mismatch branch in
  * `editor-view.tsx`) and turn a measurement gap into a dead editor.
  */
+/**
+ * Guest-side sub-marks across the `doc-load` path, as absolute epoch
+ * milliseconds (#2043).
+ *
+ * Epoch, not offsets: the host's trace is already keyed on `Date.now()`
+ * (`apps/mobile/src/editor/__rig__/open-trace.ts`), so absolute stamps drop
+ * straight into the SAME phase table instead of forming a second timeline the
+ * reviewer has to align by hand. Both ends read the device wall clock, which
+ * is also what the envelope's `sentAt` already assumes.
+ *
+ * The order is the order the guest reaches them:
+ *   * `docStart` — the WebView document's navigation start, derived as
+ *     `Date.now() - performance.now()`. The zero the guest's own clock counts
+ *     from, and the only mark that is computed rather than taken.
+ *   * `importsStart` — the first guest module to evaluate. Everything between
+ *     here and `scriptEval` is the bundle's dependency graph evaluating,
+ *     shiki's included.
+ *   * `scriptEval` — the entry module's body, so every import has evaluated.
+ *   * `schemaBuilt` — `createMemrySchema` returned, which is where
+ *     `createCodeBlockSpec(codeBlockOptions)` is paid.
+ *   * `readySent` — the handshake is on the wire.
+ *   * `idleTickFirst` / `idleTickLast` — a 100 ms timer the guest runs from
+ *     `ready` until `doc-load` lands, and then stops. It answers whether the
+ *     guest's own JS thread is alive during the wait, which is the fork between
+ *     a suspended web content process and a delivery that never arrives.
+ *   * `probeEarlyRecv` / `probeLateRecv` — the tiny probe envelopes queued
+ *     immediately before and immediately after `doc-load`. Absent unless the
+ *     rig asked for them; see `HostProbeSchema`.
+ *   * `docLoadRecv` — `doc-load` reached the guest's handler.
+ *   * `yApplied` — the Y state is in the replica and the fragment is bound.
+ *   * `createStart` / `createEnd` — `BlockNoteEditor.create`.
+ *   * `mountEnd` — `editor.mount` returned; the DOM exists, unlaid-out.
+ *   * `shikiStart` / `shikiSync` / `shikiEnd` — the highlighter factory
+ *     entered, returned (its SYNCHRONOUS cost), and its promise settled. The
+ *     last one is absent whenever the highlighter outlives the paint, which is
+ *     itself the answer to "is the highlighter on the paint path".
+ *   * `seedEnd` — the markdown seed branch is done, taken whether or not a
+ *     seed was applied.
+ *   * `guestPainted` — inside the frame callback, before the send. The host's
+ *     own `painted` mark is this plus bridge delivery.
+ */
+export const GUEST_PAINT_MARKS = [
+  'docStart',
+  'importsStart',
+  'scriptEval',
+  'schemaBuilt',
+  'readySent',
+  'idleTickFirst',
+  'idleTickLast',
+  'probeEarlyRecv',
+  'docLoadRecv',
+  'probeLateRecv',
+  'yApplied',
+  'createStart',
+  'createEnd',
+  'mountEnd',
+  'shikiStart',
+  'shikiSync',
+  'shikiEnd',
+  'seedEnd',
+  'guestPainted'
+] as const
+
+export type GuestPaintMark = (typeof GUEST_PAINT_MARKS)[number]
+
 export const GuestPaintedSchema = z.object({
   type: z.literal('painted'),
-  docId: z.string().min(1)
+  docId: z.string().min(1),
+  /**
+   * Partial by construction: a mark the guest never reached is absent, and an
+   * absent mark is a finding rather than a gap to paper over with a zero.
+   *
+   * Optional as a whole so a STALE prebuilt asset — the only peer that can
+   * disagree here — still delivers a legal `painted` and keeps the end-to-end
+   * number, losing only the breakdown.
+   */
+  marks: z.partialRecord(z.enum(GUEST_PAINT_MARKS), z.number()).optional()
 })
 
 export const GuestErrSchema = z.object({

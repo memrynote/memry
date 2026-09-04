@@ -1,3 +1,4 @@
+import { GUEST_PAINT_MARKS, type GuestPaintMark } from '@memry/contracts/webview-bridge'
 import { summarize, type LatencySummary } from './latency'
 
 /**
@@ -26,7 +27,39 @@ import { summarize, type LatencySummary } from './latency'
  *     bundle's own parse and execute cost lands between here and `guestReady`.
  *   * `guestReady` — the `ready` handshake, which is when the host sends
  *     `doc-load`.
+ *   * `docLoadSent` — the host's `doc-load` is on the wire. Paired with the
+ *     guest's `docLoadRecv`, it splits the interval that turned out to hold
+ *     almost the entire open (#2043) into the host's own work and the crossing,
+ *     which are different defects with different fixes.
+ *   * `probeEarlySent` / `probeLateSent` — the tiny probe envelopes, queued
+ *     immediately before and immediately after `doc-load` (#2044). Present only
+ *     while `setProbeEnabled(true)`, because unlike every other mark here they
+ *     are not observations but two extra `injectJavaScript` calls, and a
+ *     measurement that adds traffic to the channel it is measuring has no
+ *     business running in an app nobody is measuring.
  *   * `painted` — the guest's frame callback after the document is laid out.
+ *   * `settledByEvent` / `settledByProgress` / `settledByFallback` — the route
+ *     finished animating into place, and WHICH of the three signals said so.
+ *     Exactly one is taken per open. They exist because the reveal is gated on
+ *     that answer and a report cannot otherwise tell an editor revealed by the
+ *     animation from one revealed by a backstop timer that happens to expire
+ *     around the same time: the first #2030 measurements read as a working
+ *     event path and were in fact 20 of 20 on the timer. `settledByFallback`
+ *     is the row to read — every sample in it is an open the reader spent
+ *     staring at a blank body the app had already finished drawing.
+ *   * `revealed` — the host flipped the WebView to opaque, which is the first
+ *     moment the body is on the reader's screen. Since #2030 the paint and the
+ *     reveal are separate events: one WebView serves every note, it does not
+ *     slide with the stack, and so it paints behind a transparent view until
+ *     the route it belongs to has settled. A report stopping at `painted`
+ *     would claim an open the reader had not seen yet.
+ *
+ * Between `webviewMounted` and `painted` sit the GUEST's own sub-marks (#2043),
+ * which carry the same names the contract declares in `GUEST_PAINT_MARKS`. They
+ * are ordinary phases here on purpose. The #2026 baseline left 3390 ms of a
+ * 3876 ms open inside one interval, and a reviewer asked to align a host table
+ * against a separate guest table reads neither; a phase is a phase, whichever
+ * side of the bridge took it.
  *
  * Always on, never dev-gated, for the reason the keystroke recorder gives for
  * itself: a measurement path that only exists in a dev build measures a
@@ -34,7 +67,7 @@ import { summarize, type LatencySummary } from './latency'
  * property write.
  */
 
-export type OpenPhase =
+export type OpenHostPhase =
   | 'navigate'
   | 'sessionReady'
   | 'docOpen'
@@ -42,25 +75,104 @@ export type OpenPhase =
   | 'seedResolved'
   | 'webviewMounted'
   | 'guestReady'
+  | 'probeEarlySent'
+  | 'docLoadSent'
+  | 'probeLateSent'
   | 'painted'
+  | 'settledByEvent'
+  | 'settledByProgress'
+  | 'settledByFallback'
+  | 'revealed'
 
-/** Ordered, so the reporter renders phases in sequence instead of each call site restating the order. */
+export type OpenPhase = OpenHostPhase | GuestPaintMark
+
+/**
+ * Ordered, so the reporter renders phases in sequence instead of each call site
+ * restating the order.
+ *
+ * DECLARED order, not sorted by measurement: a guest mark that lands out of
+ * sequence is a finding — a clock the two sides disagree about, or a `doc-load`
+ * replayed after the paint — and sorting the table by its own numbers is
+ * exactly what would hide it.
+ */
 export const OPEN_PHASES: readonly OpenPhase[] = [
   'navigate',
   'sessionReady',
   'docOpen',
   'recordRead',
   'seedResolved',
+  'docStart',
+  'importsStart',
+  'scriptEval',
+  'schemaBuilt',
+  'readySent',
+  'idleTickFirst',
+  'idleTickLast',
   'webviewMounted',
   'guestReady',
-  'painted'
+  'probeEarlySent',
+  'probeEarlyRecv',
+  'docLoadSent',
+  'docLoadRecv',
+  'probeLateSent',
+  'probeLateRecv',
+  'yApplied',
+  'createStart',
+  'createEnd',
+  'mountEnd',
+  'shikiStart',
+  'shikiSync',
+  'shikiEnd',
+  'seedEnd',
+  'guestPainted',
+  'painted',
+  'settledByEvent',
+  'settledByProgress',
+  'settledByFallback',
+  'revealed'
 ]
+
+/**
+ * What the `doc-load` for this open actually weighed (#2044).
+ *
+ * The three sizes are deliberately all kept rather than the first alone,
+ * because the argument they settle is about which of them the crossing tracks.
+ * `stateBytes` is the Y.Doc state, `wireChars` is its base64 form, and
+ * `injectedChars` is the JavaScript source string WKWebView is finally asked to
+ * evaluate — roughly twice the wire form, since the envelope is JSON-encoded
+ * once and then escaped into a string literal a second time.
+ */
+export interface DocLoadPayload {
+  stateBytes: number
+  wireChars: number
+  injectedChars: number
+}
 
 export interface OpenTrace {
   noteId: string
   startedAt: number
   /** Millisecond offsets from `startedAt`. */
   phases: Partial<Record<OpenPhase, number>>
+  /** Absent until the host has sent a `doc-load` for this note. */
+  payload?: DocLoadPayload
+}
+
+/**
+ * Whether the host adds the #2044 probe envelopes to each open.
+ *
+ * Off by default and set by the harness for the length of a run. Every other
+ * mark in this module is a `Date.now()` on work the app was doing anyway; these
+ * two are extra crossings, and leaving them on would mean shipping a
+ * measurement that changes the thing it measures.
+ */
+let probeEnabled = false
+
+export function setProbeEnabled(enabled: boolean): void {
+  probeEnabled = enabled
+}
+
+export function isProbeEnabled(): boolean {
+  return probeEnabled
 }
 
 /** Recent traces kept for the reporter; the buffer is the whole storage budget. */
@@ -92,6 +204,76 @@ export function mark(noteId: string, phase: OpenPhase): void {
   trace.phases[phase] = Date.now() - trace.startedAt
 }
 
+/**
+ * Fold the guest's sub-marks into this note's trace (#2043).
+ *
+ * The guest reports ABSOLUTE epoch stamps and they are rebased here, because
+ * the guest has no idea when the host's trace started — the WebView is created
+ * well after `navigate`. Both ends read the same device wall clock, which is
+ * the same assumption the envelope's `sentAt` already rests on.
+ *
+ * A mark the guest never took is absent, and stays absent. Substituting a zero
+ * would enter a phase that never happened as the FASTEST sample in its own
+ * percentile, which is the one lie a latency table must not tell.
+ */
+export function markGuestPhases(
+  noteId: string,
+  marks: Partial<Record<GuestPaintMark, number>> | undefined
+): void {
+  if (!marks) return
+  const trace = live.get(noteId)
+  if (!trace) return
+  for (const phase of GUEST_PAINT_MARKS) {
+    const epoch = marks[phase]
+    if (epoch !== undefined) trace.phases[phase] = epoch - trace.startedAt
+  }
+}
+
+/**
+ * Record what this note's `doc-load` weighed.
+ *
+ * Overwrites on a replay rather than accumulating: a resync sends the same
+ * document again, and a second sample of one note's size would weight the
+ * percentile by how often an open went wrong.
+ */
+export function markDocLoadPayload(noteId: string, payload: DocLoadPayload): void {
+  const trace = live.get(noteId)
+  if (!trace) return
+  trace.payload = payload
+}
+
+/**
+ * What the shared editor WebView cost, and how many were built (#2030).
+ *
+ * The 489 ms a per-note WKWebView cost did not vanish, it MOVED: Notes is the
+ * initial tab, so the WebView is now created alongside the list's first render.
+ * A phase table keyed on note opens cannot show that, because after a prewarm
+ * there is no open to attribute it to. Recording it here is what keeps the
+ * report from implying a cost was removed when it was relocated.
+ */
+export interface WebViewBoot {
+  /** Since launch, so a re-created content process shows up as a second one. */
+  creations: number
+  /** Host construction to the guest document's load, for the latest creation. */
+  lastLoadMs: number | null
+}
+
+const webViewBoot: WebViewBoot = { creations: 0, lastLoadMs: null }
+
+export function markWebViewLoad(ms: number): void {
+  webViewBoot.creations += 1
+  webViewBoot.lastLoadMs = ms
+}
+
+/**
+ * Deliberately NOT cleared by `resetTraces`: the WebView the run measures
+ * against was built before the run started, and zeroing it would report the
+ * relocated cost as absent.
+ */
+export function getWebViewBoot(): WebViewBoot {
+  return { ...webViewBoot }
+}
+
 export function getTraces(): OpenTrace[] {
   return [...recent]
 }
@@ -104,8 +286,91 @@ export function resetTraces(): void {
 export interface OpenTraceSummary {
   traces: number
   phases: { phase: OpenPhase; samples: LatencySummary }[]
-  /** `navigate` -> `painted`, the number the epic is judged by. */
+  /** `navigate` -> `painted`, the guest's own end of the open. */
   endToEnd: LatencySummary
+  /**
+   * `navigate` -> `revealed`, the number the epic is judged by.
+   *
+   * The one a reader would recognise. `endToEnd` stops at the guest's frame
+   * callback, and the host can still be holding that frame transparent behind
+   * a route transition.
+   */
+  endToEndRevealed: LatencySummary
+  /** Sizes of the `doc-load` payloads this run sent (#2044). */
+  payload: { field: keyof DocLoadPayload; samples: LatencySummary }[]
+  /**
+   * Named intervals, differenced PER TRACE.
+   *
+   * Not derivable from the phase table above it. Every phase there is
+   * summarised over the traces that reached it, so two phases with different
+   * sample counts have percentiles drawn from different opens, and subtracting
+   * one p50 from the other is an arithmetic operation on two unrelated
+   * populations. The crossing this issue is about is exactly such a pair —
+   * `docLoadSent` is taken on every open and `docLoadRecv` only on the ones
+   * that got there — so it has to be differenced before it is summarised.
+   */
+  intervals: { label: string; samples: LatencySummary }[]
+}
+
+/**
+ * The pairs worth naming: the three crossings the probe experiment compares,
+ * and the span they sit inside.
+ */
+const INTERVALS: readonly (readonly [OpenPhase, OpenPhase])[] = [
+  ['probeEarlySent', 'probeEarlyRecv'],
+  ['idleTickLast', 'docLoadRecv'],
+  ['docLoadSent', 'docLoadRecv'],
+  ['probeLateSent', 'probeLateRecv'],
+  ['guestReady', 'painted'],
+  ['painted', 'revealed']
+]
+
+const PAYLOAD_FIELDS: readonly (keyof DocLoadPayload)[] = [
+  'stateBytes',
+  'wireChars',
+  'injectedChars'
+]
+
+/**
+ * One cell of a latency table, or a dash when the phase has no samples.
+ *
+ * `summarize([])` answers zero for every percentile, which reads as "this
+ * phase took 0 ms" — the one lie a latency table must not tell. It matters
+ * from #2030 on, where a warm open legitimately reaches none of the guest's
+ * BOOT marks: the WebView booted long before, so `docStart` and its neighbours
+ * are absent from the trace rather than instantaneous in it.
+ */
+export function cell(summary: LatencySummary, value: number, unit: string): string {
+  return summary.samples === 0 ? '-' : `${value}${unit}`
+}
+
+/**
+ * Plain-text baseline report, the counterpart of `formatG3Report`.
+ *
+ * The harness drives real navigation, so it does not survive its own run: the
+ * push into the vault's tab tree takes the dev screen out of the stack and the
+ * table it renders is unreachable by the time the numbers exist. Logging the
+ * report is what makes the baseline readable at all — from `xcrun simctl spawn
+ * booted log stream` on a simulator, and from the device log on hardware.
+ */
+export function formatOpenTraceReport(summary: OpenTraceSummary): string {
+  // The unit is a parameter because this report now carries two kinds of
+  // number. Printing a byte count as `1184ms` is a caption that contradicts its
+  // own table, and a reader who trusts the caption reads a payload size as a
+  // latency.
+  const line = (label: string, s: LatencySummary, unit: string): string =>
+    `${label.padEnd(28)} n=${String(s.samples).padStart(3)}  p50=${cell(s, s.p50, unit)}  p95=${cell(s, s.p95, unit)}  max=${cell(s, s.max, unit)}`
+
+  return [
+    `note-open latency — ${summary.traces} traces`,
+    ...summary.phases.map((entry) => line(entry.phase, entry.samples, 'ms')),
+    line('navigate→painted', summary.endToEnd, 'ms'),
+    line('navigate→revealed', summary.endToEndRevealed, 'ms'),
+    'intervals, differenced per trace',
+    ...summary.intervals.map((entry) => line(entry.label, entry.samples, 'ms')),
+    'doc-load payload size — stateBytes in bytes, the other two in characters',
+    ...summary.payload.map((entry) => line(entry.field, entry.samples, ''))
+  ].join('\n')
 }
 
 export function summarizeOpenTraces(traces: OpenTrace[]): OpenTraceSummary {
@@ -124,6 +389,23 @@ export function summarizeOpenTraces(traces: OpenTrace[]): OpenTraceSummary {
     // Painted traces only. An open that never reached the body is the worst
     // outcome there is, and letting it through as an absent sample would enter
     // it in the percentiles as the fastest one.
-    endToEnd: summarize(offsets('painted'))
+    endToEnd: summarize(offsets('painted')),
+    endToEndRevealed: summarize(offsets('revealed')),
+    payload: PAYLOAD_FIELDS.map((field) => ({
+      field,
+      samples: summarize(traces.flatMap((trace) => (trace.payload ? [trace.payload[field]] : [])))
+    })),
+    intervals: INTERVALS.map(([from, to]) => ({
+      label: `${from}→${to}`,
+      samples: summarize(
+        traces.flatMap((trace) => {
+          const a = trace.phases[from]
+          const b = trace.phases[to]
+          // Both ends or neither. A trace that took only one of them contributes
+          // nothing rather than a difference against a mark it never reached.
+          return a !== undefined && b !== undefined ? [b - a] : []
+        })
+      )
+    }))
   }
 }
