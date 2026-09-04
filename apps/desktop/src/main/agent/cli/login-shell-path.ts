@@ -1,10 +1,12 @@
-import { spawnSync } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import { basename, delimiter } from 'node:path'
+import { promisify } from 'node:util'
 
 import { createLogger } from '../../lib/logger'
 import { trackMainLog } from '../../telemetry/diagnostics'
 
 const logger = createLogger('AgentCli:LoginShellPath')
+const execFileAsync = promisify(execFile)
 
 /**
  * Resolve the user's real login-shell PATH so packaged builds can find CLIs.
@@ -17,12 +19,20 @@ const logger = createLogger('AgentCli:LoginShellPath')
  * the user sees in their terminal, so spawned probes and the CLIs' own `env node`
  * shebangs resolve correctly. `pnpm dev` is launched from a terminal and already
  * has the full PATH, so this is a packaged-only concern.
+ *
+ * The probe sources the user's whole rc chain, which measured 182 ms on the
+ * owner's machine and over a second on a heavier one (#2003). It therefore runs
+ * concurrently with boot rather than in front of it: `startLoginShellPathAugmentation`
+ * fires it and returns, and every consumer that resolves a binary through PATH
+ * awaits `whenLoginShellPathApplied` first so none of them can race the window
+ * where PATH is still the minimal one.
  */
 
 /** Unique token prefixed to the printed PATH so we can extract it past rc noise. */
 export const PATH_MARKER = '__MEMRY_LOGIN_PATH__'
 
-type SpawnSync = typeof spawnSync
+/** Run the shell probe and hand back its stdout; rejects like `execFile` does. */
+export type RunShellProbe = (shell: string, args: string[]) => Promise<string>
 
 /** Pull the PATH out of the shell probe's stdout. */
 export function parseShellPath(stdout: string, marker: string = PATH_MARKER): string | null {
@@ -54,8 +64,15 @@ export function mergePaths(
   return merged.join(separator)
 }
 
-/** Probe the login shell for its PATH; returns null on any failure. */
-export function readLoginShellPath(spawn: SpawnSync = spawnSync): string | null {
+const runShellProbe: RunShellProbe = async (shell, args) => {
+  const { stdout } = await execFileAsync(shell, args, { encoding: 'utf8', timeout: 3000 })
+  return stdout
+}
+
+/** Probe the login shell for its PATH; resolves to null on any failure. */
+export async function readLoginShellPath(
+  run: RunShellProbe = runShellProbe
+): Promise<string | null> {
   const shell = process.env.SHELL || '/bin/bash'
   // A silent null here is precisely the failure that greys out Claude/Codex
   // providers in packaged builds — leave a breadcrumb per failure class.
@@ -72,25 +89,23 @@ export function readLoginShellPath(spawn: SpawnSync = spawnSync): string | null 
   try {
     // `-i` (interactive) so zsh's ~/.zshrc / bash's ~/.bashrc run — that's where
     // PATH is usually set; `-l` (login) so profile files run too.
-    const result = spawn(shell, ['-ilc', `printf '%s\\n' "${PATH_MARKER}$PATH"`], {
-      encoding: 'utf8',
-      timeout: 3000
-    })
-    if (!result || result.status !== 0 || typeof result.stdout !== 'string') {
-      return probeFailed(`status_${result?.status ?? 'none'}`)
-    }
-    const parsed = parseShellPath(result.stdout)
+    const stdout = await run(shell, ['-ilc', `printf '%s\\n' "${PATH_MARKER}$PATH"`])
+    const parsed = parseShellPath(stdout)
     if (parsed === null) {
       return probeFailed('marker_missing')
     }
     return parsed
-  } catch {
-    return probeFailed('spawn_error')
+  } catch (error) {
+    // execFile rejects with a numeric `code` when the shell exited non-zero and
+    // with a string errno when it never started, so the two stay apart the way
+    // the synchronous `result.status` check kept them apart.
+    const code = (error as { code?: unknown } | null)?.code
+    return probeFailed(typeof code === 'number' ? `status_${code}` : 'spawn_error')
   }
 }
 
 interface ApplyOptions {
-  resolve?: () => string | null
+  resolve?: () => Promise<string | null>
   platform?: NodeJS.Platform
   packaged?: boolean
   env?: NodeJS.ProcessEnv
@@ -98,20 +113,20 @@ interface ApplyOptions {
 
 /**
  * Augment `env.PATH` with the login-shell PATH. No-op unless the app is packaged
- * on a non-Windows platform and the probe succeeds. Returns whether PATH changed.
+ * on a non-Windows platform and the probe succeeds. Resolves to whether PATH changed.
  */
-export function applyLoginShellPath({
+export async function applyLoginShellPath({
   resolve = readLoginShellPath,
   platform = process.platform,
   packaged = false,
   env = process.env
-}: ApplyOptions = {}): boolean {
+}: ApplyOptions = {}): Promise<boolean> {
   // Windows GUI apps already inherit the system PATH; dev is launched from a
   // terminal with the full PATH, so only packaged macOS/Linux builds need this.
   if (platform === 'win32' || !packaged) {
     return false
   }
-  const resolved = resolve()
+  const resolved = await resolve()
   if (!resolved) {
     return false
   }
@@ -122,4 +137,29 @@ export function applyLoginShellPath({
   }
   env.PATH = merged
   return true
+}
+
+let augmentation: Promise<boolean> | null = null
+
+/**
+ * Start the probe and leave it running. Boot calls this and moves on; repeat
+ * calls join the first one rather than spawning a second shell.
+ */
+export function startLoginShellPathAugmentation(options: ApplyOptions = {}): Promise<boolean> {
+  augmentation ??= applyLoginShellPath(options).catch((error: unknown) => {
+    logger.warn('Login shell PATH augmentation failed', error)
+    return false
+  })
+  return augmentation
+}
+
+/**
+ * Settle the augmentation before resolving anything through PATH. A probe that
+ * lands inside the window where PATH is still the minimal Finder one reports an
+ * installed CLI as missing, which is the greyed-out-provider bug this file exists
+ * to prevent. Resolves immediately once the augmentation has finished, and on a
+ * build that never started one.
+ */
+export async function whenLoginShellPathApplied(): Promise<void> {
+  await augmentation
 }
