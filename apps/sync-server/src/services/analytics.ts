@@ -359,6 +359,15 @@ export const safeWaitUntil = (
   }
 }
 
+// An AppError-shaped rejection carries its own code AND status, which means the
+// throwing code already classified itself. Duck-typed rather than
+// `instanceof AppError` because lib/errors.ts imports this module.
+const isClassifiedError = (error: unknown): boolean =>
+  error !== null &&
+  typeof error === 'object' &&
+  typeof (error as { code?: unknown }).code === 'string' &&
+  typeof (error as { statusCode?: unknown }).statusCode === 'number'
+
 export const waitUntilCaptured = (
   c: WaitUntilContext,
   promise: Promise<unknown>,
@@ -372,9 +381,12 @@ export const waitUntilCaptured = (
         path: getRequestPath(c.req),
         source: metadata.source,
         action: metadata.action,
-        errorCode: 'WAIT_UNTIL_REJECTED',
-        statusCode: 500,
-        handled: false
+        // Mirror errorHandler: a typed error is an expected condition, so let
+        // its own code/status through and mark it handled. Only an untyped
+        // rejection is a genuine unhandled defect worth a 500 (#1997).
+        ...(isClassifiedError(error)
+          ? { handled: true }
+          : { errorCode: 'WAIT_UNTIL_REJECTED', statusCode: 500, handled: false })
       })
     )
   )
