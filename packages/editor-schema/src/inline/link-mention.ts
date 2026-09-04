@@ -5,6 +5,7 @@
  */
 
 import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core'
+import type { CustomInlineContentImplementation } from '@blocknote/core'
 
 /**
  * Markdown persistence token for link mentions. A mention is serialized to
@@ -152,53 +153,75 @@ const linkMentionToExternalHTML = (inlineContent: {
   return { dom }
 }
 
-export const LinkMention = createInlineContentSpec(linkMentionConfig, {
-  render: (inlineContent) => {
-    const { url, domain, title, favicon, siteName } = inlineContent.props
-    const siteLabel = siteName || domain || url
-
-    const dom = document.createElement('a')
-    dom.className = 'link-mention'
-    dom.href = url
-    dom.target = '_blank'
-    dom.rel = 'noopener noreferrer'
-    dom.setAttribute('data-link-mention', '')
-    dom.setAttribute('data-url', url)
-    dom.setAttribute('data-domain', domain)
-    dom.setAttribute('data-title', title)
-    dom.setAttribute('data-favicon', favicon)
-    dom.setAttribute('data-site-name', siteName)
-    dom.setAttribute('contenteditable', 'false')
-
-    if (favicon) {
-      const img = document.createElement('img')
-      img.className = 'link-mention-favicon'
-      img.src = favicon
-      img.alt = ''
-      img.onerror = () => {
-        img.style.display = 'none'
-      }
-      dom.appendChild(img)
-    }
-
-    const siteSpan = document.createElement('span')
-    siteSpan.className = 'link-mention-site'
-    siteSpan.textContent = siteLabel
-    dom.appendChild(siteSpan)
-
-    if (title) {
-      const titleSpan = document.createElement('span')
-      titleSpan.className = 'link-mention-title'
-      titleSpan.textContent = title
-      dom.appendChild(titleSpan)
-    }
-
-    return { dom }
-  },
-
+/** Everything that decides the node's on-disk form. Shared by every surface. */
+export const linkMentionSerialization = {
   parse: linkMentionParse,
-
   toExternalHTML: linkMentionToExternalHTML
+}
+
+type LinkMentionRender = CustomInlineContentImplementation<
+  typeof linkMentionConfig,
+  never
+>['render']
+
+/**
+ * The node with a caller's presentation, like every other spec in this folder.
+ *
+ * Three surfaces now want three different chips — desktop's favicon card,
+ * main's bare token, and the WebView's card without the favicon, which its CSP
+ * (`img-src data: blob:`) cannot load — and none of them may restate `parse` or
+ * `toExternalHTML`, because those are what reaches the vault file.
+ */
+export function createLinkMentionSpec(
+  render: LinkMentionRender
+): InlineContentSpec<typeof linkMentionConfig> {
+  return createInlineContentSpec(linkMentionConfig, {
+    render,
+    ...linkMentionSerialization
+  })
+}
+
+export const LinkMention = createLinkMentionSpec((inlineContent) => {
+  const { url, domain, title, favicon, siteName } = inlineContent.props
+  const siteLabel = siteName || domain || url
+
+  const dom = document.createElement('a')
+  dom.className = 'link-mention'
+  dom.href = url
+  dom.target = '_blank'
+  dom.rel = 'noopener noreferrer'
+  dom.setAttribute('data-link-mention', '')
+  dom.setAttribute('data-url', url)
+  dom.setAttribute('data-domain', domain)
+  dom.setAttribute('data-title', title)
+  dom.setAttribute('data-favicon', favicon)
+  dom.setAttribute('data-site-name', siteName)
+  dom.setAttribute('contenteditable', 'false')
+
+  if (favicon) {
+    const img = document.createElement('img')
+    img.className = 'link-mention-favicon'
+    img.src = favicon
+    img.alt = ''
+    img.onerror = () => {
+      img.style.display = 'none'
+    }
+    dom.appendChild(img)
+  }
+
+  const siteSpan = document.createElement('span')
+  siteSpan.className = 'link-mention-site'
+  siteSpan.textContent = siteLabel
+  dom.appendChild(siteSpan)
+
+  if (title) {
+    const titleSpan = document.createElement('span')
+    titleSpan.className = 'link-mention-title'
+    titleSpan.textContent = title
+    dom.appendChild(titleSpan)
+  }
+
+  return { dom }
 })
 
 /**
@@ -214,8 +237,4 @@ export const LinkMention = createInlineContentSpec(linkMentionConfig, {
  * never throw.
  */
 export const LinkMentionSerializationOnly: InlineContentSpec<typeof linkMentionConfig> =
-  createInlineContentSpec(linkMentionConfig, {
-    render: linkMentionToExternalHTML,
-    parse: linkMentionParse,
-    toExternalHTML: linkMentionToExternalHTML
-  })
+  createLinkMentionSpec(linkMentionToExternalHTML)

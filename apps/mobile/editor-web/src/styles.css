@@ -16,6 +16,11 @@
   --memry-paper: #fdfcfb;
   --memry-muted: #78716c;
   --memry-accent: #ff671a;
+  /* The accent at fill strength is about 2.8:1 on paper, which fails WCAG AA,
+     and DESIGN.md requires AA. So `--memry-accent` paints fills and borders and
+     `--memry-accent-text` paints text and glyphs — the same split
+     `ui.destructive` / `ui.destructiveText` already makes in the RN theme. */
+  --memry-accent-text: color-mix(in srgb, var(--memry-accent) 78%, #000);
   --memry-hairline: rgba(28, 25, 23, 0.1);
   color-scheme: light;
 }
@@ -24,6 +29,7 @@
   --memry-ink: #f5f5f4;
   --memry-paper: #1c1917;
   --memry-muted: #a8a29e;
+  --memry-accent-text: color-mix(in srgb, var(--memry-accent) 82%, #fff);
   --memry-hairline: rgba(245, 245, 244, 0.14);
   color-scheme: dark;
 }
@@ -136,4 +142,321 @@ img.asset-missing {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Touch renderers (blocks.ts, inline.ts)
+
+   Type sizes are the mobile ramp from `src/theme/text-styles.ts` — body 17,
+   subhead 15, footnote 13, caption 12 — and spacing is 4/8/12/16 from
+   `src/theme/primitives.ts`, so the WebView and the RN chrome around it are on
+   one scale.
+   --------------------------------------------------------------------------- */
+
+/* Callout. One hue per type, driven through a custom property so the fill, the
+   rule and the glyph cannot drift apart. The hexes are the RN theme's own
+   `dot` and `destructive` tokens, not new colours. */
+.callout {
+  --callout-hue: #2563eb;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  inline-size: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border-radius: 8px;
+  border-inline-start: 4px solid var(--callout-hue);
+  background: color-mix(in srgb, var(--callout-hue) 10%, transparent);
+}
+
+:root[data-theme='dark'] .callout {
+  background: color-mix(in srgb, var(--callout-hue) 20%, transparent);
+}
+
+.callout[data-callout-type='warning'] {
+  --callout-hue: #ea580c;
+}
+
+.callout[data-callout-type='error'] {
+  --callout-hue: #d63333;
+}
+
+.callout[data-callout-type='success'] {
+  --callout-hue: #16a34a;
+}
+
+.callout-icon {
+  flex: 0 0 auto;
+  display: flex;
+  font-size: 17px;
+  /* The hue carries the glyph and nothing else; body text stays on --memry-ink
+     so a coloured callout never drops a paragraph below AA. */
+  color: var(--callout-hue);
+  padding-block-start: 3px;
+}
+
+.callout-content {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Task block. 44px is the tap-target floor from `theme/primitives.ts`. */
+.task-block {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  inline-size: 100%;
+  box-sizing: border-box;
+  min-block-size: 44px;
+}
+
+.task-block[data-nested='true'] {
+  margin-inline-start: 28px;
+}
+
+.task-check {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 20px;
+  color: var(--memry-muted);
+  cursor: pointer;
+}
+
+.task-block[data-checked='true'] .task-check {
+  color: var(--memry-accent-text);
+}
+
+.task-title {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.task-block[data-checked='true'] .task-title {
+  text-decoration: line-through;
+  color: var(--memry-muted);
+}
+
+.task-title[data-empty='true'] {
+  font-style: italic;
+  color: var(--memry-muted);
+}
+
+/* Attachment, embed and bookmark cards. */
+.file-block,
+.embed-block,
+.bookmark-block {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  inline-size: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  margin-block: 8px;
+  border: 1px solid var(--memry-hairline);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--memry-ink) 3%, transparent);
+}
+
+.file-icon,
+.embed-icon,
+.bookmark-icon {
+  flex: 0 0 auto;
+  display: flex;
+  font-size: 20px;
+  color: var(--memry-muted);
+  padding-block-start: 2px;
+}
+
+.file-body,
+.embed-body,
+.bookmark-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.file-name,
+.embed-title,
+.bookmark-title {
+  font-size: 17px;
+  /* A raw URL is one unbreakable word; without this it forces the whole
+     document into horizontal scroll. */
+  overflow-wrap: anywhere;
+}
+
+.file-meta,
+.embed-url,
+.bookmark-description,
+.bookmark-site {
+  font-size: 13px;
+  color: var(--memry-muted);
+  overflow-wrap: anywhere;
+}
+
+.embed-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* Inline chips. Same trick as `.wiki-link`: the padding is on the inline box
+   and the 44px hit area is on a pseudo-element, so a tappable chip does not
+   have to be a 44px-tall block in the middle of a sentence. */
+.hash-tag,
+.date-mention,
+.link-mention {
+  position: relative;
+  cursor: pointer;
+}
+
+.hash-tag::after,
+.date-mention::after,
+.link-mention::after,
+.inline-checkbox::after,
+.bn-toggle-button::after {
+  content: '';
+  position: absolute;
+  inset-block: -12px;
+  inset-inline: -4px;
+}
+
+.hash-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--hash-tag-color);
+}
+
+.hash-tag-icon {
+  margin-inline-end: 2px;
+}
+
+.date-mention,
+.link-mention {
+  padding: 1px 4px;
+  border-radius: 5px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Muted by default and accented only when a reminder is armed, which is the
+   distinction desktop draws too. A plain date is a fact in a sentence; the
+   accent has to mean "this one will interrupt you" or it means nothing. */
+.date-mention {
+  color: var(--memry-muted);
+}
+
+.date-mention[data-remind]:not([data-remind='none']):not([data-remind='']) {
+  background: color-mix(in srgb, var(--memry-accent) 10%, transparent);
+  color: var(--memry-accent-text);
+}
+
+.date-mention-at {
+  opacity: 0.55;
+}
+
+.date-mention-icon {
+  display: inline-block;
+  inline-size: 0.95em;
+  block-size: 0.95em;
+  vertical-align: -0.15em;
+  margin-inline-start: 4px;
+}
+
+.link-mention-site {
+  color: var(--memry-muted);
+  margin-inline-end: 0.3em;
+}
+
+.link-mention-title {
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.inline-image {
+  display: inline-block;
+  max-inline-size: 100%;
+  max-block-size: 8em;
+  vertical-align: middle;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.inline-checkbox {
+  position: relative;
+}
+
+.inline-checkbox input[type='checkbox'] {
+  inline-size: 20px;
+  block-size: 20px;
+  accent-color: var(--memry-accent);
+  vertical-align: -0.25em;
+}
+
+/* Toggle. BlockNote's own stylesheet already hides the child block group off
+   `.bn-toggle-wrapper[data-show-children='false']`, so the fold is not
+   reimplemented here — only the control is grown to a thumb. The glyph stays at
+   BlockNote's 18px. */
+.bn-toggle-button {
+  position: relative;
+  min-inline-size: 32px;
+  min-block-size: 32px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tables (#2041).
+
+   The audited DOM is BlockNote's own node view:
+   `.bn-block-content[data-content-type='table'] > .tableWrapper >
+   .tableWrapper-inner > table`. The wrapper class is prosemirror-tables'
+   `.tableWrapper`, NOT `.bn-table-wrapper`, and BlockNote already gives it
+   `overflow-x: auto` via `.ProseMirror .tableWrapper`, so a wide table scrolls
+   rather than clipping. What is missing on a phone is momentum scrolling, a
+   clamp that stops the block itself widening past the column, and a floor under
+   columns a desktop user dragged narrower than a thumb.
+
+   Cell background and text colours are BlockNote's default table props and
+   already work; nothing here touches them. */
+.bn-block-content[data-content-type='table'] {
+  max-inline-size: 100%;
+}
+
+.bn-block-content[data-content-type='table'] .tableWrapper {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* `!important` because BlockNote sets `min-width: auto !important` on every
+   cell. This rule outranks that one and loses to BlockNote's own
+   `--default-cell-min-width` rule for cells with no dragged width — which is
+   the intended split: undragged columns keep BlockNote's default, and a column
+   dragged down to a few pixels on a desktop still shows something here. */
+.bn-block-content[data-content-type='table'] th,
+.bn-block-content[data-content-type='table'] td {
+  min-inline-size: 64px !important;
+  overflow-wrap: anywhere;
 }

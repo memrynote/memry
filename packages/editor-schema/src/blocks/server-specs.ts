@@ -142,6 +142,27 @@ function toggleListItemDom(block: { props: Parameters<typeof addDefaultPropsExte
 }
 
 /**
+ * The on-disk DOM of every custom block, by node name.
+ *
+ * Named separately from the specs below because it is not only main's. A
+ * surface that supplies its own presentation still owes the vault these exact
+ * bytes, and the mobile WebView is that surface: its touch renderers draw
+ * cards, and the same block must still serialize to the `> [!info]` /
+ * `- [ ] … {task:id}` / `<!-- file:{…} -->` line already sitting in the file.
+ * Two implementations that have to agree is the drift this package exists to
+ * prevent, so the second surface takes the first one's function rather than a
+ * copy of its markup.
+ */
+export const blockExternalHTML = {
+  taskBlock: taskBlockDom,
+  callout: calloutDom,
+  file: fileDom,
+  youtubeEmbed: youtubeEmbedDom,
+  bookmark: bookmarkDom,
+  toggleListItem: toggleListItemDom
+}
+
+/**
  * The keys below are what BlockNote keys its `blockSchema` by; each spec's
  * `config.type` is what ProseMirror builds. Asserted equal rather than assumed
  * — see spec-keys.ts (#1455).
@@ -149,28 +170,28 @@ function toggleListItemDom(block: { props: Parameters<typeof addDefaultPropsExte
 export function createServerBlockSpecs() {
   const registered = {
     taskBlock: createBlockSpec(taskBlockConfig, {
-      render: taskBlockDom,
-      toExternalHTML: taskBlockDom
+      render: blockExternalHTML.taskBlock,
+      toExternalHTML: blockExternalHTML.taskBlock
     })(),
     callout: createBlockSpec(calloutConfig, {
-      render: calloutDom,
-      toExternalHTML: calloutDom
+      render: blockExternalHTML.callout,
+      toExternalHTML: blockExternalHTML.callout
     })(),
     file: createBlockSpec(fileBlockConfig, {
-      render: fileDom,
-      toExternalHTML: fileDom
+      render: blockExternalHTML.file,
+      toExternalHTML: blockExternalHTML.file
     })(),
     youtubeEmbed: createBlockSpec(youtubeEmbedConfig, {
-      render: youtubeEmbedDom,
-      toExternalHTML: youtubeEmbedDom
+      render: blockExternalHTML.youtubeEmbed,
+      toExternalHTML: blockExternalHTML.youtubeEmbed
     })(),
     bookmark: createBlockSpec(bookmarkConfig, {
-      render: bookmarkDom,
-      toExternalHTML: bookmarkDom
+      render: blockExternalHTML.bookmark,
+      toExternalHTML: blockExternalHTML.bookmark
     })(),
     toggleListItem: createBlockSpec(toggleListItemConfig, {
-      render: toggleListItemDom,
-      toExternalHTML: toggleListItemDom
+      render: blockExternalHTML.toggleListItem,
+      toExternalHTML: blockExternalHTML.toggleListItem
     })()
   }
   assertSpecKeysMatchNodeTypes('blockSpecs (createServerBlockSpecs)', registered)
