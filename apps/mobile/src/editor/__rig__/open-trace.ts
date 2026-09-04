@@ -38,6 +38,15 @@ import { summarize, type LatencySummary } from './latency'
  *     measurement that adds traffic to the channel it is measuring has no
  *     business running in an app nobody is measuring.
  *   * `painted` — the guest's frame callback after the document is laid out.
+ *   * `settledByEvent` / `settledByProgress` / `settledByFallback` — the route
+ *     finished animating into place, and WHICH of the three signals said so.
+ *     Exactly one is taken per open. They exist because the reveal is gated on
+ *     that answer and a report cannot otherwise tell an editor revealed by the
+ *     animation from one revealed by a backstop timer that happens to expire
+ *     around the same time: the first #2030 measurements read as a working
+ *     event path and were in fact 20 of 20 on the timer. `settledByFallback`
+ *     is the row to read — every sample in it is an open the reader spent
+ *     staring at a blank body the app had already finished drawing.
  *   * `revealed` — the host flipped the WebView to opaque, which is the first
  *     moment the body is on the reader's screen. Since #2030 the paint and the
  *     reveal are separate events: one WebView serves every note, it does not
@@ -70,6 +79,9 @@ export type OpenHostPhase =
   | 'docLoadSent'
   | 'probeLateSent'
   | 'painted'
+  | 'settledByEvent'
+  | 'settledByProgress'
+  | 'settledByFallback'
   | 'revealed'
 
 export type OpenPhase = OpenHostPhase | GuestPaintMark
@@ -114,6 +126,9 @@ export const OPEN_PHASES: readonly OpenPhase[] = [
   'seedEnd',
   'guestPainted',
   'painted',
+  'settledByEvent',
+  'settledByProgress',
+  'settledByFallback',
   'revealed'
 ]
 
