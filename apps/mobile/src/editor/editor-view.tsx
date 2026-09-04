@@ -272,7 +272,14 @@ export function EditorView({
                 // authoritative state. Replaying `doc-load` puts them back in
                 // agreement — the failed edit is visibly gone rather than
                 // silently present-then-absent on the next open.
-                sendDocLoad()
+                //
+                // Only while this note is still the one on screen. The persist
+                // is several async hops, so it can reject after the reader has
+                // moved on, and a replay then would drag the shared guest back
+                // to a note nobody is looking at. Skipping it costs nothing:
+                // the guest tore this doc down when it mounted the next one,
+                // so the divergence went with it.
+                if (host.getState().mountedDocId === docId) sendDocLoad()
               }
             }
           })
@@ -340,7 +347,7 @@ export function EditorView({
           break
       }
     },
-    [bridge, doc, docId, onAssetRequest, onNavigate, onWikiQuery, recorder, sendDocLoad]
+    [bridge, doc, docId, host, onAssetRequest, onNavigate, onWikiQuery, recorder, sendDocLoad]
   )
 
   /**
