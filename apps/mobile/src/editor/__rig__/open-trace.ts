@@ -233,7 +233,30 @@ export interface OpenTraceSummary {
   endToEnd: LatencySummary
   /** Sizes of the `doc-load` payloads this run sent (#2044). */
   payload: { field: keyof DocLoadPayload; samples: LatencySummary }[]
+  /**
+   * Named intervals, differenced PER TRACE.
+   *
+   * Not derivable from the phase table above it. Every phase there is
+   * summarised over the traces that reached it, so two phases with different
+   * sample counts have percentiles drawn from different opens, and subtracting
+   * one p50 from the other is an arithmetic operation on two unrelated
+   * populations. The crossing this issue is about is exactly such a pair —
+   * `docLoadSent` is taken on every open and `docLoadRecv` only on the ones
+   * that got there — so it has to be differenced before it is summarised.
+   */
+  intervals: { label: string; samples: LatencySummary }[]
 }
+
+/**
+ * The pairs worth naming: the three crossings the probe experiment compares,
+ * and the span they sit inside.
+ */
+const INTERVALS: readonly (readonly [OpenPhase, OpenPhase])[] = [
+  ['probeEarlySent', 'probeEarlyRecv'],
+  ['docLoadSent', 'docLoadRecv'],
+  ['probeLateSent', 'probeLateRecv'],
+  ['guestReady', 'painted']
+]
 
 const PAYLOAD_FIELDS: readonly (keyof DocLoadPayload)[] = [
   'stateBytes',
@@ -251,15 +274,21 @@ const PAYLOAD_FIELDS: readonly (keyof DocLoadPayload)[] = [
  * booted log stream` on a simulator, and from the device log on hardware.
  */
 export function formatOpenTraceReport(summary: OpenTraceSummary): string {
-  const line = (label: string, s: LatencySummary): string =>
-    `${label.padEnd(16)} n=${String(s.samples).padStart(3)}  p50=${s.p50}ms  p95=${s.p95}ms  max=${s.max}ms`
+  // The unit is a parameter because this report now carries two kinds of
+  // number. Printing a byte count as `1184ms` is a caption that contradicts its
+  // own table, and a reader who trusts the caption reads a payload size as a
+  // latency.
+  const line = (label: string, s: LatencySummary, unit: string): string =>
+    `${label.padEnd(28)} n=${String(s.samples).padStart(3)}  p50=${s.p50}${unit}  p95=${s.p95}${unit}  max=${s.max}${unit}`
 
   return [
     `note-open latency — ${summary.traces} traces`,
-    ...summary.phases.map((entry) => line(entry.phase, entry.samples)),
-    line('navigate→painted', summary.endToEnd),
-    'doc-load payload size',
-    ...summary.payload.map((entry) => line(entry.field, entry.samples))
+    ...summary.phases.map((entry) => line(entry.phase, entry.samples, 'ms')),
+    line('navigate→painted', summary.endToEnd, 'ms'),
+    'intervals, differenced per trace',
+    ...summary.intervals.map((entry) => line(entry.label, entry.samples, 'ms')),
+    'doc-load payload size — stateBytes in bytes, the other two in characters',
+    ...summary.payload.map((entry) => line(entry.field, entry.samples, ''))
   ].join('\n')
 }
 
@@ -283,6 +312,18 @@ export function summarizeOpenTraces(traces: OpenTrace[]): OpenTraceSummary {
     payload: PAYLOAD_FIELDS.map((field) => ({
       field,
       samples: summarize(traces.flatMap((trace) => (trace.payload ? [trace.payload[field]] : [])))
+    })),
+    intervals: INTERVALS.map(([from, to]) => ({
+      label: `${from}→${to}`,
+      samples: summarize(
+        traces.flatMap((trace) => {
+          const a = trace.phases[from]
+          const b = trace.phases[to]
+          // Both ends or neither. A trace that took only one of them contributes
+          // nothing rather than a difference against a mark it never reached.
+          return a !== undefined && b !== undefined ? [b - a] : []
+        })
+      )
     }))
   }
 }

@@ -338,6 +338,27 @@ export default function OpenTraceScreen() {
                 {summary.traces} traces recorded, {timedOut} timed out without painting.
               </ThemedText>
 
+              <ThemedText type="title">Intervals</ThemedText>
+              {summary.intervals.map((entry) => (
+                <View key={entry.label} style={styles.row}>
+                  <ThemedText type="small" style={styles.phaseCell}>
+                    {entry.label}
+                  </ThemedText>
+                  <ThemedText type="small" style={styles.numberCell}>
+                    {entry.samples.samples}
+                  </ThemedText>
+                  <ThemedText type="small" style={styles.numberCell}>
+                    {entry.samples.p50}
+                  </ThemedText>
+                  <ThemedText type="small" style={styles.numberCell}>
+                    {entry.samples.p95}
+                  </ThemedText>
+                  <ThemedText type="small" style={styles.numberCell}>
+                    {entry.samples.max}
+                  </ThemedText>
+                </View>
+              ))}
+
               <ThemedText type="title">doc-load payload</ThemedText>
               {summary.payload.map((entry) => (
                 <View key={entry.field} style={styles.row}>
