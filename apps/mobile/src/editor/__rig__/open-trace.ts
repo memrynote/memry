@@ -38,21 +38,23 @@ import { summarize, type LatencySummary } from './latency'
  *     measurement that adds traffic to the channel it is measuring has no
  *     business running in an app nobody is measuring.
  *   * `painted` — the guest's frame callback after the document is laid out.
- *   * `settledByEvent` / `settledByProgress` / `settledByFallback` — the route
- *     finished animating into place, and WHICH of the three signals said so.
- *     Exactly one is taken per open. They exist because the reveal is gated on
- *     that answer and a report cannot otherwise tell an editor revealed by the
- *     animation from one revealed by a backstop timer that happens to expire
- *     around the same time: the first #2030 measurements read as a working
- *     event path and were in fact 20 of 20 on the timer. `settledByFallback`
- *     is the row to read — every sample in it is an open the reader spent
- *     staring at a blank body the app had already finished drawing.
- *   * `revealed` — the host flipped the WebView to opaque, which is the first
- *     moment the body is on the reader's screen. Since #2030 the paint and the
- *     reveal are separate events: one WebView serves every note, it does not
- *     slide with the stack, and so it paints behind a transparent view until
- *     the route it belongs to has settled. A report stopping at `painted`
- *     would claim an open the reader had not seen yet.
+ *   * `transitionBound` — the host has the route's own push animation and will
+ *     slide the guest along it (#2053). It replaced three phases that named
+ *     which SIGNAL had reported the push finishing, because the host no longer
+ *     waits for one: it reads the animation as a position instead. What can
+ *     still go wrong is having no animation to read, which draws the editor
+ *     straight at its resting place over a screen still sliding in — so this
+ *     row must have a sample per open, before `revealed`.
+ *   * `revealed` — the host flipped the WebView to opaque, which is the moment
+ *     the body joins the screen the reader is watching. Since #2030 the paint
+ *     and the reveal are separate events: one WebView serves every note and it
+ *     is a sibling of the stack, so it paints behind a transparent view until
+ *     the note it belongs to is the one the guest has confirmed. Note what this
+ *     is NOT: the end of the push. The body rides the last of the animation in
+ *     from here, the same as the note's title and nav bar do, and the ~350 ms
+ *     that animation takes is not this rig's to shorten. `painted→revealed` is
+ *     the interval that is — every millisecond of it is a body drawn and
+ *     withheld.
  *
  * Between `webviewMounted` and `painted` sit the GUEST's own sub-marks (#2043),
  * which carry the same names the contract declares in `GUEST_PAINT_MARKS`. They
@@ -79,9 +81,7 @@ export type OpenHostPhase =
   | 'docLoadSent'
   | 'probeLateSent'
   | 'painted'
-  | 'settledByEvent'
-  | 'settledByProgress'
-  | 'settledByFallback'
+  | 'transitionBound'
   | 'revealed'
 
 export type OpenPhase = OpenHostPhase | GuestPaintMark
@@ -126,9 +126,7 @@ export const OPEN_PHASES: readonly OpenPhase[] = [
   'seedEnd',
   'guestPainted',
   'painted',
-  'settledByEvent',
-  'settledByProgress',
-  'settledByFallback',
+  'transitionBound',
   'revealed'
 ]
 

@@ -3,7 +3,19 @@ import * as Y from 'yjs'
 import { BRIDGE_PROTOCOL_VERSION, type GuestMsg } from '@memry/contracts/webview-bridge'
 import { bytesToBase64 } from '../../lib/base64'
 import type { OpenDoc } from '../doc-manager'
-import { editorFrameFrom, EditorHostController, type HostDoc } from '../editor-host-controller'
+import {
+  editorFrameFrom,
+  EditorHostController,
+  type HostDoc,
+  type ScreenTransition
+} from '../editor-host-controller'
+
+/**
+ * The controller carries the route's animation to the host and never reads it,
+ * so a stand-in is the whole of what these tests need. The arithmetic that
+ * turns it into an offset lives in `editor-host.tsx`.
+ */
+const transition = { progress: {}, closing: {} } as unknown as ScreenTransition
 
 /**
  * The WebView now outlives every note it shows (#2030), so three things that
@@ -376,7 +388,7 @@ describe('EditorHostController visibility', () => {
     expect(host.getState().frame).toBeNull()
     expect(host.getState().visible).toBe(false)
 
-    host.setLayout(a, { frame: { top: 216, height: 500 }, onScreen: true })
+    host.setLayout(a, { frame: { top: 216, height: 500 }, transition })
     expect(host.getState().frame).toEqual({ top: 216, height: 500 })
     expect(host.getState().visible).toBe(true)
   })
@@ -386,7 +398,7 @@ describe('EditorHostController visibility', () => {
     const a = attachment(fakeOpenDoc('note-a'))
     host.setFocused(a, true)
     host.attach(a)
-    host.setLayout(a, { frame: { top: 200, height: 500 }, onScreen: true })
+    host.setLayout(a, { frame: { top: 200, height: 500 }, transition })
 
     // The host has handed the note over, but the guest is still showing
     // whatever it had. Revealing now uncovers the previous note's body sitting
@@ -397,19 +409,23 @@ describe('EditorHostController visibility', () => {
     expect(host.getState().visible).toBe(true)
   })
 
-  it('stays hidden while the route has not settled where it belongs', () => {
+  it("publishes the mounted note's transition and keeps drawing through a pop", () => {
     const { host } = warmHost()
     const a = attachment(fakeOpenDoc('note-a'))
     host.setFocused(a, true)
     host.attach(a)
     host.bridge.receive(guestEnvelope(2, [painted('note-a')]))
+    host.setLayout(a, { frame: { top: 200, height: 500 }, transition })
 
-    // Mid-push, or mid-swipe-back. The host does not slide with the stack, so
-    // a body drawn now floats over the screen moving under it.
-    host.setLayout(a, { frame: { top: 200, height: 500 }, onScreen: false })
-    expect(host.getState().visible).toBe(false)
+    // The host slides the guest ALONG this rather than waiting for it to end
+    // (#2053), so it has to reach the host at all — an editor drawn with no
+    // transition to ride sits at its resting place over a sliding screen.
+    expect(host.getState().transition).toBe(transition)
+    expect(host.getState().visible).toBe(true)
 
-    host.setLayout(a, { frame: { top: 200, height: 500 }, onScreen: true })
+    // Losing focus is a pop beginning. The body used to blank here for the
+    // whole length of it, because a pinned host could be hidden and never slid.
+    host.setFocused(a, false)
     expect(host.getState().visible).toBe(true)
   })
 
@@ -419,7 +435,7 @@ describe('EditorHostController visibility', () => {
     const b = attachment(fakeOpenDoc('note-b'))
     host.setFocused(a, true)
     host.attach(a)
-    host.setLayout(a, { frame: { top: 200, height: 500 }, onScreen: true })
+    host.setLayout(a, { frame: { top: 200, height: 500 }, transition })
     expect(host.getState().frame).toEqual({ top: 200, height: 500 })
 
     host.setFocused(a, false)

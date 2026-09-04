@@ -10,14 +10,16 @@ import {
   type ReactNode
 } from 'react'
 import {
+  Animated,
   Dimensions,
+  I18nManager,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   View,
   type LayoutChangeEvent
 } from 'react-native'
-import type { EditorHostContainer } from './editor-host-controller'
+import type { EditorHostContainer, ScreenTransition } from './editor-host-controller'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import { useColors } from '@/theme/use-colors'
 import { loadEditorWebHtml } from './editor-web-asset'
@@ -34,6 +36,17 @@ import { EditorHostController } from './editor-host-controller'
  * that placeholder's window frame here; this component positions itself onto
  * it. Reporting the frame rather than recomputing it is what keeps the two in
  * agreement when the metadata block above the editor changes height.
+ *
+ * The frame says where the editor belongs once the route has ARRIVED, and the
+ * route arrives by sliding. Being a sibling of the stack, this view is not
+ * carried by that slide, so it applies the offset itself from the route's own
+ * transition (#2053) — the same animation, read as a position rather than
+ * waited on as an event. It used to wait: hidden until something said the push
+ * had ended, which cost 475 ms of blank body per open because every signal that
+ * could say so needs the JS thread at the moment the open is busiest. Riding
+ * the animation is also what stops the body blanking for the length of a pop,
+ * since an outgoing note now leaves with its screen instead of vanishing from
+ * under it.
  *
  * The keyboard behaviour lives here rather than in the route, so the frame the
  * route reports is a stable rectangle that the keyboard animation never moves.
@@ -65,13 +78,41 @@ export function EditorHost({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * How far off screen a route sits at either end of its transition.
+ *
+ * `progress` runs 0 → 1 through both a push and a pop, and `closing` is which
+ * of the two: arriving, the screen starts a full width out and lands at 0;
+ * leaving, it starts at 0 and ends a full width out. Both terms are zero at
+ * rest and after a CANCELLED swipe back, which returns `progress` to 0 with
+ * `closing` still 1 — so the resting position needs no separate case.
+ *
+ * Built out of `Animated` arithmetic on the values `react-native-screens`
+ * drives through a native `Animated.event`, so the whole chain is a native
+ * animated graph and the offset is computed on the UI thread. Deriving it in JS
+ * would put this back on exactly the thread whose congestion the reveal gate
+ * was losing to.
+ */
+function slideOffset(transition: ScreenTransition, width: number): Animated.AnimatedNode {
+  const { progress, closing } = transition
+  const arriving = Animated.multiply(Animated.subtract(1, progress), Animated.subtract(1, closing))
+  const leaving = Animated.multiply(progress, closing)
+  // Negative in RTL, where UIKit pushes from the other edge.
+  return Animated.multiply(I18nManager.isRTL ? -width : width, Animated.add(arriving, leaving))
+}
+
 function HostWebView({ controller }: { controller: EditorHostController }) {
   const webViewRef = useRef<WebView>(null)
   // Seeded from the window rather than zero. The guest starts loading the
   // moment it is created, and this is the prewarm: a first frame at height 0
   // is the one case where WebKit could reasonably defer the work this host
   // exists to do early. `onLayout` corrects it a frame later either way.
-  const [parkedHeight, setParkedHeight] = useState(() => Dimensions.get('window').height)
+  // The width is the slide's own scale, and this container spans the window, so
+  // both come from the one measurement rather than from `Dimensions` at render.
+  const [parked, setParked] = useState(() => {
+    const window = Dimensions.get('window')
+    return { width: window.width, height: window.height }
+  })
   const colors = useColors()
   const html = useMemo(() => loadEditorWebHtml(), [])
   const state = useSyncExternalStore(controller.subscribe, controller.getState)
@@ -85,7 +126,10 @@ function HostWebView({ controller }: { controller: EditorHostController }) {
   )
 
   const onContainerLayout = useCallback((event: LayoutChangeEvent) => {
-    setParkedHeight(event.nativeEvent.layout.height)
+    const { width, height } = event.nativeEvent.layout
+    setParked((previous) =>
+      previous.width === width && previous.height === height ? previous : { width, height }
+    )
   }, [])
 
   const onMessage = useCallback(
@@ -113,11 +157,31 @@ function HostWebView({ controller }: { controller: EditorHostController }) {
   // terms. The two are separate on purpose: laying the guest out at its final
   // size while it is still transparent is what lets it paint there, so
   // revealing it is an opacity change and never a reflow.
-  const geometry = state.frame ?? { top: 0, height: parkedHeight }
+  const geometry = state.frame ?? { top: 0, height: parked.height }
 
-  // The end of the open a READER experiences. `painted` is the guest's frame
-  // callback, which can land while the editor is still transparent behind the
-  // push animation, so a report that stopped there would claim an open the
+  const { transition } = state
+  const slide = useMemo(
+    () => (transition ? slideOffset(transition, parked.width) : null),
+    [parked.width, transition]
+  )
+
+  // Whether the mounted note handed over an animation for the guest to ride.
+  // Without one the editor is drawn straight at its resting place, which over a
+  // screen still sliding in is the failure the reveal gate used to exist to
+  // prevent — so a trace with fewer of these than opens is the finding.
+  const boundFor = useRef<string | null>(null)
+  useEffect(() => {
+    if (!state.mountedDocId || !transition) return
+    if (boundFor.current === state.mountedDocId) return
+    boundFor.current = state.mountedDocId
+    mark(state.mountedDocId, 'transitionBound')
+  }, [state.mountedDocId, transition])
+
+  // The moment the body joins the screen the reader is watching. It rides the
+  // rest of the push in from there, exactly as the note's title and nav bar do,
+  // so this is the same event for the body as a first frame is for the chrome.
+  // `painted` is the guest's frame callback and can land while the host is
+  // still transparent, so a report that stopped there would claim an open the
   // reader had not seen yet.
   const revealedFor = useRef<string | null>(null)
   useEffect(() => {
@@ -137,8 +201,13 @@ function HostWebView({ controller }: { controller: EditorHostController }) {
       onLayout={onContainerLayout}
       pointerEvents="box-none"
     >
-      <View
-        style={[styles.host, geometry, state.visible ? styles.shown : styles.hidden]}
+      <Animated.View
+        style={[
+          styles.host,
+          geometry,
+          state.visible ? styles.shown : styles.hidden,
+          slide ? { transform: [{ translateX: slide }] } : null
+        ]}
         pointerEvents={state.visible ? 'auto' : 'none'}
       >
         <KeyboardAvoidingView
@@ -170,7 +239,7 @@ function HostWebView({ controller }: { controller: EditorHostController }) {
             overScrollMode="never"
           />
         </KeyboardAvoidingView>
-      </View>
+      </Animated.View>
     </View>
   )
 }
