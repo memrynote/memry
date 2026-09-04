@@ -19,6 +19,7 @@ import {
 } from 'react-native'
 import type { EditorHostContainer } from './editor-host-controller'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
+import { useColors } from '@/theme/use-colors'
 import { loadEditorWebHtml } from './editor-web-asset'
 import { mark } from './__rig__/open-trace'
 import { EditorHostController } from './editor-host-controller'
@@ -71,6 +72,7 @@ function HostWebView({ controller }: { controller: EditorHostController }) {
   // is the one case where WebKit could reasonably defer the work this host
   // exists to do early. `onLayout` corrects it a frame later either way.
   const [parkedHeight, setParkedHeight] = useState(() => Dimensions.get('window').height)
+  const colors = useColors()
   const html = useMemo(() => loadEditorWebHtml(), [])
   const state = useSyncExternalStore(controller.subscribe, controller.getState)
 
@@ -96,6 +98,16 @@ function HostWebView({ controller }: { controller: EditorHostController }) {
   }, [controller])
 
   const onTerminated = useCallback(() => controller.guestCrashed(), [controller])
+
+  // `react-native-webview` puts `backgroundColor: '#ffffff'` in its own style
+  // and derives the WKWebView's `opaque` flag from it, stamping the colour on
+  // the web view, its scroll view and the host view. The caller's `style`
+  // composes LAST, so handing it the paper here is what makes the opaque layer
+  // under the document the app's paper rather than white (#2033).
+  const webViewStyle = useMemo(
+    () => [styles.fill, { backgroundColor: colors.canvas.background }],
+    [colors]
+  )
 
   // Placed as soon as a note reports a frame, VISIBLE on the controller's own
   // terms. The two are separate on purpose: laying the guest out at its final
@@ -141,7 +153,7 @@ function HostWebView({ controller }: { controller: EditorHostController }) {
             onMessage={onMessage}
             onContentProcessDidTerminate={onTerminated}
             onRenderProcessGone={onTerminated}
-            style={styles.fill}
+            style={webViewStyle}
             javaScriptEnabled
             // The document is local and its CSP forbids every remote fetch;
             // this stops a crafted note from turning a tap into a navigation

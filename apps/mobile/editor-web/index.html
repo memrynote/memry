@@ -21,6 +21,27 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; connect-src 'none'"
     />
+    <!--
+      The paper, inline and FIRST. Vite injects the stylesheet AFTER the
+      inlined module script, and that script is ~1.1 MB, so `--memry-paper`
+      does not exist until the parser has read the whole bundle — the document
+      would paint white until then. This literal is the same one the RN token
+      `canvas.background` carries and the same one `--memry-paper` resolves to;
+      `src/theme/__tests__/one-paper.test.ts` is what keeps the three equal.
+
+      `color-scheme: light` for the same reason it is in `styles.css`: the app
+      ships one palette and it is a light one, so the form controls and the
+      caret the guest does not style must not be rendered dark.
+    -->
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      html,
+      body {
+        background: #fdfcfb;
+      }
+    </style>
     <title>Memry editor</title>
   </head>
   <body>
