@@ -118,6 +118,24 @@ export function readPreferences(vaultPath: string): VaultPreferences {
   }
 }
 
+/**
+ * Whether config.json already carries a preferences block.
+ *
+ * Deliberately not derived from `readPreferences`, which fills every field from
+ * the defaults and so cannot tell an absent block from one whose values happen
+ * to match. The predicate below is the same one `readPreferences` uses to decide
+ * it has nothing stored to read, so the two can never disagree about whether
+ * this vault's settings have been written to disk yet.
+ */
+export function hasStoredPreferences(vaultPath: string): boolean {
+  try {
+    const raw = JSON.parse(fs.readFileSync(getConfigPath(vaultPath), 'utf-8'))
+    return Boolean(raw.preferences)
+  } catch {
+    return false
+  }
+}
+
 export function writePreferences(
   vaultPath: string,
   updates: DeepPartial<VaultPreferences>
