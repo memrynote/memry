@@ -47,6 +47,27 @@ Adding an icon to `icon-map.ts` means rerunning the generator; `--check` mode gu
 in the test suite. A static import of the package barrel anywhere in the renderer
 silently pulls all ~5,000 glyphs back into the entry chunk.
 
+## Startup Bootstrap
+
+Theme, zoom factor and locale are resolved in the preload, before any renderer script
+evaluates. Each reads a `localStorage` cache first and falls back to a synchronous IPC
+channel (`settings:getStartupThemeSync`, `locale:getStartupSync`) only when there is no
+usable cached value, which in practice means first run, first launch after an upgrade
+that introduced the cache, or cleared storage. The synchronous channel is the authority,
+so a missing cache can never produce a wrong first frame; the cache only removes the IPC
+call from the common launch.
+
+The renderer must not re-apply any of them. Setting the theme class, the zoom factor or
+`<html dir>` a second time after the entry chunk has parsed is the visible flash this
+arrangement exists to prevent. The renderer's job is to consume the resolved value:
+`main.tsx` builds its i18n instance from `getStartupLocale()` at module scope, so the
+locale namespace chunks start loading with no `await` in front of them, and reconciles
+against `window.api.locale.get()` after the first render.
+
+Every locale change broadcasts on `locale:changed`, and the preload is the only writer of
+the locale cache, so a language switch from settings, onboarding, or a peer device keeps
+the next launch correct without the renderer participating.
+
 ## Trust Boundary
 
 The user's device is trusted. The server is not. Everything that leaves the device is encrypted; the server stores ciphertext and serves it back.

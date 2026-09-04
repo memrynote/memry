@@ -19,7 +19,12 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
-import { createRendererI18n, I18nProvider, applyLocaleToDocument } from '@memry/i18n/renderer'
+import {
+  createRendererI18n,
+  I18nProvider,
+  applyLocaleToDocument,
+  type I18nInstance
+} from '@memry/i18n/renderer'
 import { type Locale } from '@memry/i18n/shared'
 import App from './App'
 import { setActiveLocale } from './lib/active-locale'
@@ -29,6 +34,7 @@ import { AuthProvider } from './contexts/auth-context'
 import { SyncProvider } from './contexts/sync-context'
 import { AISettingsProvider } from './contexts/ai-settings-context'
 import { getStartupTheme, THEME_STORAGE_KEY } from './lib/startup-theme'
+import { getStartupLocale } from './lib/startup-locale'
 import { APP_QUERY_DEFAULT_OPTIONS } from './lib/query-client-options'
 import { createLogger } from './lib/logger'
 import {
@@ -69,16 +75,36 @@ try {
 const isQuickCaptureWindow =
   window.location.hash === '#/quick-capture' || window.location.hash === '#quick-capture'
 const startupTheme = getStartupTheme()
+const startupLocale = getStartupLocale()
+
+// Started at module scope rather than inside boot(): the locale is already
+// known, so there is nothing left for the 11 locale namespace chunks to wait
+// for. This used to sit behind `await window.api.locale.get()`, an IPC
+// round-trip that races vault open on the main process.
+const i18nReady = createRendererI18n({ locale: startupLocale })
+
+// `locale.get()` stays the authority. It is consulted after the first render,
+// and only ever disagrees when the preload's cache went stale, in which case
+// the session switches through the same path a settings change takes.
+async function reconcileStartupLocale(i18n: I18nInstance): Promise<void> {
+  const actual = await window.api.locale.get()
+  if (actual === startupLocale) return
+
+  log.warn('Startup locale disagreed with the main process', {
+    assumed: startupLocale,
+    actual
+  })
+  await i18n.changeLanguage(actual)
+  applyLocaleToDocument(actual)
+}
 
 async function boot(): Promise<void> {
-  const initialLocale = await window.api.locale.get()
-  const i18n = await createRendererI18n({ locale: initialLocale })
-  applyLocaleToDocument(initialLocale)
+  const i18n = await i18nReady
 
   // Keep the module-scoped locale that pure Intl helpers read in sync. Hooked to
   // i18next itself rather than to each caller, so every changeLanguage path
   // (settings, onboarding, sync from another device) is covered.
-  setActiveLocale(initialLocale)
+  setActiveLocale(startupLocale)
   i18n.on('languageChanged', (locale) => {
     setActiveLocale(locale as Locale)
   })
@@ -126,6 +152,10 @@ async function boot(): Promise<void> {
 
   createRoot(document.getElementById('root')!).render(rootComponent)
   trackRendererReady(performance.now() - rendererStartedAt)
+
+  void reconcileStartupLocale(i18n).catch((error) => {
+    log.error('Startup locale reconcile failed', error)
+  })
 }
 
 void boot().catch((error) => {

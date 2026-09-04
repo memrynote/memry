@@ -10,6 +10,12 @@ import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import { createLogger } from './lib/logger'
 import { invoke, invokeSync, send, subscribe } from './lib/ipc'
 import { applyStartupTheme, getStartupThemeSync, THEME_STORAGE_KEY } from './lib/startup-theme'
+import {
+  applyStartupLocale,
+  cacheStartupLocale,
+  getStartupLocaleSync,
+  refreshStartupLocaleCache
+} from './lib/startup-locale'
 import { applyZoomFactor, getStartupZoomFactor } from './lib/startup-zoom'
 import { createGeneratedRpcApi } from './generated-rpc'
 import { windowApi, getFileDropPaths, contextMenuApi, quickCaptureApi, flushApi } from './api/core'
@@ -65,6 +71,16 @@ if (typeof globalThis.window !== 'undefined') {
   // There is deliberately no synchronous-IPC fallback like the theme's — a
   // first launch with nothing cached is 100%, which is the right answer.
   applyZoomFactor(getStartupZoomFactor())
+
+  // Owned here, not in the renderer: `dir`/`lang` set after the entry chunk has
+  // parsed would let an RTL user's document sit LTR for the whole parse.
+  applyStartupLocale(getStartupLocaleSync())
+
+  // The cache is written only here, so the renderer never has to remember to
+  // keep it in step. Every locale change reaches every window through this
+  // broadcast, whether it came from settings, onboarding, or a peer device.
+  subscribe<Locale>(LocaleChannels.Changed, cacheStartupLocale)
+  refreshStartupLocaleCache()
 }
 
 const generatedRpcApi = createGeneratedRpcApi({
@@ -76,7 +92,8 @@ const generatedRpcApi = createGeneratedRpcApi({
 const localeApi: LocaleApi = {
   get: () => invoke(LocaleChannels.Get),
   set: (locale: Locale) => invoke(LocaleChannels.Set, locale),
-  list: () => invoke(LocaleChannels.List)
+  list: () => invoke(LocaleChannels.List),
+  getStartupSync: getStartupLocaleSync
 }
 
 export const api = {
