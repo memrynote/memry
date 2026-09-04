@@ -40,7 +40,7 @@ const DEFAULT_ITERATIONS = 20
 const POLL_INTERVAL_MS = 25
 
 /** A cold open on a slow device is seconds, not milliseconds; this only bounds a hang. */
-const PAINT_TIMEOUT_MS = 8_000
+const OPEN_TIMEOUT_MS = 8_000
 
 /** The back-navigation and the unmount it triggers must finish before the next push. */
 const SETTLE_MS = 350
@@ -110,19 +110,25 @@ async function readNotesBySize(
 }
 
 /**
- * The `painted` offset for this iteration's open, or `null` if it never landed.
+ * The `revealed` offset for this iteration's open, or `null` if it never landed.
+ *
+ * Waits for the REVEAL, not the paint. `painted` is the guest's frame callback
+ * and lands about 11 ms before the host makes the WebView opaque, so a loop
+ * that popped on it took the screen away before the reveal effect had a frame
+ * to run in: `revealed` came back with 4 samples out of 20 and the row a
+ * reviewer most needs was the emptiest in the table.
  *
  * `startedAt >= since` matters: the ring still holds this note's earlier opens,
  * so matching on the id alone would return a previous iteration's finished
  * trace immediately and report a run of zeroes.
  */
-async function waitForPaint(noteId: string, since: number): Promise<number | null> {
-  const deadline = Date.now() + PAINT_TIMEOUT_MS
+async function waitForReveal(noteId: string, since: number): Promise<number | null> {
+  const deadline = Date.now() + OPEN_TIMEOUT_MS
   while (Date.now() < deadline) {
     for (const trace of getTraces()) {
       if (trace.noteId !== noteId || trace.startedAt < since) continue
-      const painted = trace.phases.painted
-      if (painted !== undefined) return painted
+      const revealed = trace.phases.revealed
+      if (revealed !== undefined) return revealed
     }
     await delay(POLL_INTERVAL_MS)
   }
@@ -246,8 +252,8 @@ export default function OpenTraceScreen() {
         const noteId = ids[i % ids.length]
         const pushedAt = Date.now()
         router.push(`/notes/${noteId}`)
-        const painted = await waitForPaint(noteId, pushedAt)
-        log.warn(`open ${i + 1}/${total}`, { noteId, ms: painted })
+        const revealed = await waitForReveal(noteId, pushedAt)
+        log.warn(`open ${i + 1}/${total}`, { noteId, ms: revealed })
         setTraces(getTraces())
         router.back()
         await delay(SETTLE_MS)
@@ -298,7 +304,9 @@ export default function OpenTraceScreen() {
   }, [autorun, iterations, probe, run, size])
 
   const summary: OpenTraceSummary | null = traces.length > 0 ? summarizeOpenTraces(traces) : null
-  const timedOut = traces.length - (summary?.endToEnd.samples ?? 0)
+  // Against the reveal, which is what the loop waits for. A trace that painted
+  // and never reached the reader's screen is a failed open, not a fast one.
+  const timedOut = traces.length - (summary?.endToEndRevealed.samples ?? 0)
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -383,8 +391,14 @@ export default function OpenTraceScreen() {
                 </ThemedText>
                 <Cells samples={summary.endToEnd} bold />
               </View>
+              <View style={styles.row}>
+                <ThemedText type="smallBold" style={styles.phaseCell}>
+                  navigate → revealed
+                </ThemedText>
+                <Cells samples={summary.endToEndRevealed} bold />
+              </View>
               <ThemedText type="small">
-                {summary.traces} traces recorded, {timedOut} timed out without painting.
+                {summary.traces} traces recorded, {timedOut} never reached the screen.
               </ThemedText>
 
               <ThemedText type="title">Intervals</ThemedText>
@@ -417,9 +431,9 @@ export default function OpenTraceScreen() {
               {traces.map((trace, index) => (
                 <ThemedText key={`${trace.noteId}-${trace.startedAt}`} type="small">
                   {index + 1}.{' '}
-                  {trace.phases.painted === undefined
-                    ? 'never painted'
-                    : `${trace.phases.painted} ms`}
+                  {trace.phases.revealed === undefined
+                    ? 'never revealed'
+                    : `${trace.phases.revealed} ms`}
                   {index === 0 ? '  ← cold' : ''}
                 </ThemedText>
               ))}
