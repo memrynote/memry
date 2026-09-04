@@ -68,6 +68,10 @@ function editorWith(targets: string[]) {
   return {
     _tiptapEditor: {
       view,
+      // Real tiptap sets `editorView` to the same view while mounted and nulls
+      // it on unmount; `view` alone is a Proxy that lies. The hook reads
+      // `editorView` to tell a live view from a torn-down one.
+      editorView: view,
       on: vi.fn(),
       off: vi.fn(),
       // The hook's plugin-registration effect no-ops through these; the plugin

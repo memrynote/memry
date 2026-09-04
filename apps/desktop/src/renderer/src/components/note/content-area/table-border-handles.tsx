@@ -24,6 +24,7 @@ import {
 } from '@blocknote/react'
 import { useT } from '@memry/i18n/renderer'
 
+import { getLiveProseMirrorView } from './live-prosemirror-view'
 import { isTableMenuShortcut } from './table-keyboard-menu'
 
 /**
@@ -437,8 +438,8 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
    * collapsed caret. The selection is the only thing that knows.
    */
   const resolveFocus = useCallback((): void => {
-    const view = editor.prosemirrorView
-    if (!view || view.isDestroyed) {
+    const view = getLiveProseMirrorView(editor)
+    if (!view) {
       focusCellRef.current = null
       setFocusRing(null)
       return
