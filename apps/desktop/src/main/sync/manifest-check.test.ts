@@ -15,7 +15,7 @@ import { homePages } from '@memry/db-schema/schema/home-pages'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
-import { noteCache } from '@memry/db-schema/schema/notes-cache'
+import { noteCache, propertyDefinitions } from '@memry/db-schema/schema/notes-cache'
 import { canvases } from '@memry/db-schema/schema/canvas'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
@@ -827,6 +827,15 @@ describe('checkManifestIntegrity', () => {
       .run()
     insertCanvas('canvas-1', null)
     testDb.db.insert(tagDefinitions).values({ name: 'important', color: '#ff0000', clock }).run()
+    testDb.db
+      .insert(propertyDefinitions)
+      .values({
+        name: 'Stage',
+        type: 'select',
+        options: JSON.stringify([{ value: 'Idea', color: 'sky' }]),
+        clock
+      })
+      .run()
     testDb.db.insert(settings).values({ key: 'synced_settings', value: '{}' }).run()
     testIndexDb.db
       .insert(noteCache)
@@ -862,6 +871,7 @@ describe('checkManifestIntegrity', () => {
       { id: 'rem-1', type: 'reminder' },
       { id: 'canvas-1', type: 'canvas' },
       { id: 'important', type: 'tag_definition' },
+      { id: 'Stage', type: 'property_definition' },
       { id: 'synced_settings', type: 'settings' },
       { id: 'note-1', type: 'note' },
       { id: 'journal-1', type: 'journal' }
@@ -959,6 +969,11 @@ describe('checkManifestIntegrity', () => {
         .from(tagDefinitions)
         .where(isNotNull(tagDefinitions.clock))
         .all()
+      const [propertyRow] = testDb.db
+        .select()
+        .from(propertyDefinitions)
+        .where(isNotNull(propertyDefinitions.clock))
+        .all()
       const [settingsRow] = testDb.db.select().from(settings).all()
 
       expect(queued.get('task:task-1')).toBe(JSON.stringify(taskRow))
@@ -980,6 +995,10 @@ describe('checkManifestIntegrity', () => {
         })
       )
       expect(queued.get('tag_definition:important')).toBe(JSON.stringify(tagRow))
+      // When the server manifest has lost a definition this path is what
+      // re-uploads it, so a different key order here reads to the server as a
+      // changed item and churns the whole set on the next pass.
+      expect(queued.get('property_definition:Stage')).toBe(JSON.stringify(propertyRow))
       expect(queued.get('settings:synced_settings')).toBe(JSON.stringify(settingsRow))
       expect(queued.get('note:note-1')).toBe('')
       expect(queued.get('journal:journal-1')).toBe('')

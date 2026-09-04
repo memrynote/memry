@@ -52,6 +52,10 @@ vi.mock('@memry/sync-client/tag-category-sync', () => ({
   getTagCategorySyncService: vi.fn()
 }))
 
+vi.mock('@memry/sync-client/property-definition-sync', () => ({
+  getPropertyDefinitionSyncService: vi.fn()
+}))
+
 vi.mock('@memry/sync-client/settings-sync', () => ({
   getSettingsSyncManager: vi.fn()
 }))
@@ -117,6 +121,7 @@ import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import { getJournalSyncService } from './journal-sync'
 import { getTagDefinitionSyncService } from '@memry/sync-client/tag-definition-sync'
 import { getTagCategorySyncService } from '@memry/sync-client/tag-category-sync'
+import { getPropertyDefinitionSyncService } from '@memry/sync-client/property-definition-sync'
 import { getTaskSyncService } from '@memry/sync-client/task-sync'
 import {
   enqueueLocalSyncCreate,
@@ -138,6 +143,7 @@ describe('local-mutations', () => {
       getJournalSyncService,
       getTagDefinitionSyncService,
       getTagCategorySyncService,
+      getPropertyDefinitionSyncService,
       getSettingsSyncManager,
       getFolderConfigSyncService,
       getCalendarEventSyncService,
@@ -276,6 +282,9 @@ describe('local-mutations', () => {
     expect(incrementFilterClockOffline).toHaveBeenCalledWith('db', 'filter-1')
   })
 
+  // A property definition edit that does not route through this registry writes
+  // the DB and syncs nothing, with no error to notice. The property silently
+  // stays local to the one machine it was made on.
   it('routes record adapter creates, updates, and snapshot deletes through initialized services', () => {
     const services = [
       ['project', getProjectSyncService],
@@ -283,6 +292,7 @@ describe('local-mutations', () => {
       ['filter', getFilterSyncService],
       ['tag_definition', getTagDefinitionSyncService],
       ['tag_category', getTagCategorySyncService],
+      ['property_definition', getPropertyDefinitionSyncService],
       ['folder_config', getFolderConfigSyncService],
       ['calendar_source', getCalendarSourceSyncService],
       ['calendar_binding', getCalendarBindingSyncService],
