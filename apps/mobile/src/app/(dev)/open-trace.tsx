@@ -6,13 +6,16 @@ import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
 import { Spacing } from '@/constants/theme'
 import {
+  formatOpenTraceReport,
   getTraces,
   resetTraces,
   summarizeOpenTraces,
+  type OpenTrace,
   type OpenTraceSummary
 } from '@/editor/__rig__/open-trace'
 import { getEditorSession } from '@/editor/session'
 import { readNotesSnapshot } from '@/features/notes/notes-repo'
+import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
 
 /**
@@ -34,6 +37,8 @@ const PAINT_TIMEOUT_MS = 8_000
 
 /** The back-navigation and the unmount it triggers must finish before the next push. */
 const SETTLE_MS = 350
+
+const log = createLogger('OpenTraceRig')
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -66,14 +71,16 @@ export default function OpenTraceScreen() {
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [status, setStatus] = useState<string | null>(null)
-  const [samples, setSamples] = useState<(number | null)[]>([])
-  const [summary, setSummary] = useState<OpenTraceSummary | null>(null)
+  // Rendered from the trace ring, not from run-local state: pushing into the
+  // vault's tab tree takes this screen out of the stack, so the run finishes
+  // with nothing mounted to hold its results. Re-entering the screen after a
+  // run reads the same ring and shows the numbers.
+  const [traces, setTraces] = useState<OpenTrace[]>(() => getTraces())
 
   const run = useCallback(async (total: number) => {
     setRunning(true)
     setStatus(null)
-    setSummary(null)
-    setSamples([])
+    setTraces([])
     try {
       const vaultId = await loadCurrentVaultId()
       if (!vaultId) {
@@ -92,7 +99,6 @@ export default function OpenTraceScreen() {
       }
 
       resetTraces()
-      const results: (number | null)[] = []
       for (let i = 0; i < total; i++) {
         setProgress({ done: i, total })
         // Consecutive iterations open DIFFERENT notes, so the doc manager's
@@ -100,13 +106,16 @@ export default function OpenTraceScreen() {
         const noteId = ids[i % ids.length]
         const pushedAt = Date.now()
         router.push(`/notes/${noteId}`)
-        results.push(await waitForPaint(noteId, pushedAt))
-        setSamples([...results])
+        const painted = await waitForPaint(noteId, pushedAt)
+        log.warn(`open ${i + 1}/${total}`, { noteId, ms: painted })
+        setTraces(getTraces())
         router.back()
         await delay(SETTLE_MS)
       }
       setProgress({ done: total, total })
-      setSummary(summarizeOpenTraces(getTraces()))
+      const measured = summarizeOpenTraces(getTraces())
+      setTraces(getTraces())
+      log.warn(formatOpenTraceReport(measured))
     } catch (err) {
       setStatus(err instanceof Error ? `${err.name}: ${err.message}` : String(err))
     } finally {
@@ -123,7 +132,8 @@ export default function OpenTraceScreen() {
     void run(iterations)
   }, [autorun, iterations, run])
 
-  const timedOut = samples.filter((value) => value === null).length
+  const summary: OpenTraceSummary | null = traces.length > 0 ? summarizeOpenTraces(traces) : null
+  const timedOut = traces.length - (summary?.endToEnd.samples ?? 0)
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -221,14 +231,17 @@ export default function OpenTraceScreen() {
             </>
           ) : null}
 
-          {samples.length > 0 ? (
+          {traces.length > 0 ? (
             <>
               <ThemedText type="title">Per iteration</ThemedText>
               {/* In run order, and unaveraged: an outlier is the finding, and a
                   percentile table is exactly where it disappears. */}
-              {samples.map((value, index) => (
-                <ThemedText key={index} type="small">
-                  {index + 1}. {value === null ? 'timed out' : `${value} ms`}
+              {traces.map((trace, index) => (
+                <ThemedText key={`${trace.noteId}-${trace.startedAt}`} type="small">
+                  {index + 1}.{' '}
+                  {trace.phases.painted === undefined
+                    ? 'never painted'
+                    : `${trace.phases.painted} ms`}
                   {index === 0 ? '  ← cold' : ''}
                 </ThemedText>
               ))}

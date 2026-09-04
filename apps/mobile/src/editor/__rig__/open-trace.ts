@@ -108,6 +108,26 @@ export interface OpenTraceSummary {
   endToEnd: LatencySummary
 }
 
+/**
+ * Plain-text baseline report, the counterpart of `formatG3Report`.
+ *
+ * The harness drives real navigation, so it does not survive its own run: the
+ * push into the vault's tab tree takes the dev screen out of the stack and the
+ * table it renders is unreachable by the time the numbers exist. Logging the
+ * report is what makes the baseline readable at all — from `xcrun simctl spawn
+ * booted log stream` on a simulator, and from the device log on hardware.
+ */
+export function formatOpenTraceReport(summary: OpenTraceSummary): string {
+  const line = (label: string, s: LatencySummary): string =>
+    `${label.padEnd(16)} n=${String(s.samples).padStart(3)}  p50=${s.p50}ms  p95=${s.p95}ms  max=${s.max}ms`
+
+  return [
+    `note-open latency — ${summary.traces} traces`,
+    ...summary.phases.map((entry) => line(entry.phase, entry.samples)),
+    line('navigate→painted', summary.endToEnd)
+  ].join('\n')
+}
+
 export function summarizeOpenTraces(traces: OpenTrace[]): OpenTraceSummary {
   const offsets = (phase: OpenPhase): number[] => {
     const out: number[] = []
