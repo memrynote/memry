@@ -880,6 +880,21 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   separate one laptop on a train from many installs failing in a row. An install that has not
   completed a single check in 24 hours _and_ has failed at least 6 checks in that time raises one
   exception (latched until the next successful check), so a genuinely stuck updater is still loud.
+- **Repeated install failures**: a failed _check_ is loud in telemetry, but a failed _install_ was
+  silent to the user. On macOS, Squirrel.Mac stages a downloaded update into its own ShipIt copy,
+  and when that copy fails (`ditto: Could not lstat …`, `No space left on device`) the error lands
+  in a session that then quits normally. Nothing survived the quit, so the next launch re-served the
+  same cached zip and failed the same way — two production installs sat on `2026.817.1` through four
+  releases with no signal of any kind (#1999). `apps/desktop/src/main/updater-install-health.ts`
+  persists the streak in `update-install-health.json` under `userData`, keyed on the pair
+  (running version, target version), and after three consecutive failed attempts sets
+  `installFailed` so the existing manual-download dialog appears. It counts _attempts_, not
+  launches: electron-updater re-serves an already-validated cached zip on every auto-check, so a
+  genuinely stuck install surfaces within ~30 minutes. The streak clears the moment the app boots as
+  a different build, which is the only honest evidence an install applied — display versions cannot
+  be ordered, so "newer than the failing one" is not a test that can be written. Every field is
+  re-validated on read and a corrupt file degrades to "no streak"; an install that has never failed
+  has no file and behaves exactly as before.
 - **Expired GitHub signed asset URLs**: GitHub serves a release asset by redirecting to a
   short-lived signed `release-assets.githubusercontent.com` URL. When the follow-up GET lands after
   that token expires, GitHub answers with the non-standard status **618 `jwt:expired`**, and

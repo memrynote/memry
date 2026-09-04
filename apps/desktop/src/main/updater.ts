@@ -19,6 +19,7 @@ import {
   recordUpdaterCheckSuccess,
   resetUpdaterCheckHealth
 } from './updater-error-severity'
+import { recordUpdateInstallFailure, reconcileUpdateInstallHealth } from './updater-install-health'
 
 const logger = createLogger('Updater')
 
@@ -188,6 +189,42 @@ function currentErrorPhase(): UpdaterErrorPhase {
 }
 
 /**
+ * Count a failure that belongs to the install half of the pipeline, and surface
+ * the manual-installer path once the same update has failed to install enough
+ * times in a row (#1999).
+ *
+ * The phase is the whole gate, deliberately. `downloaded` is set only by the
+ * update-downloaded handler, and electron-updater's MacUpdater hands the file to
+ * Squirrel.Mac for staging in the same tick it dispatches that event — so an
+ * error arriving in this state is a failed install attempt for
+ * `state.availableVersion`, which is what the macOS ShipIt `ditto` failures are.
+ * `install` is the explicit Restart-to-install path.
+ *
+ * `idle` is NOT counted even though the same failure can land there once the
+ * status has moved on: it is also the phase for every error that arrives while
+ * no operation is running, and padding the streak with unrelated failures would
+ * hand a user the "download it manually" dialog for an update that is fine.
+ * Under-counting only delays the escalation by a launch.
+ */
+function noteInstallAttemptFailure(phase: UpdaterErrorPhase): void {
+  if (phase !== 'downloaded' && phase !== 'install') {
+    return
+  }
+  const targetVersion = state.availableVersion
+  if (!targetVersion) {
+    return
+  }
+  const { consecutiveFailures, stuck } = recordUpdateInstallFailure(
+    getCurrentDisplayVersion(),
+    targetVersion
+  )
+  logger.warn('update install attempt failed', { targetVersion, consecutiveFailures })
+  if (stuck) {
+    noteFailedUpdateInstall(targetVersion)
+  }
+}
+
+/**
  * Extra attempts for a check that died on an expired GitHub signed-asset URL,
  * and the pause before each. A check is three small GETs, so asking again is
  * cheap; the delay is there because the expiry is a timing race, not a state we
@@ -290,6 +327,13 @@ export function initializeUpdater(): void {
 
   initialized = true
   resetUpdaterCheckHealth()
+  // A streak that already escalated is re-surfaced on every launch it is still
+  // live: the user stays stuck on the old build until they install manually, and
+  // the escalation latch only stops repeat failures from re-firing the dialog.
+  const strandedInstallVersion = reconcileUpdateInstallHealth(getCurrentDisplayVersion())
+  if (strandedInstallVersion) {
+    noteFailedUpdateInstall(strandedInstallVersion)
+  }
   autoUpdater.logger = updaterLibraryLogger
   const prefs = getUpdaterPrefs()
   const autoDownloadEnabled = prefs.autoDownload ?? false
@@ -415,6 +459,7 @@ export function initializeUpdater(): void {
       status: 'error',
       error: message
     })
+    noteInstallAttemptFailure(phase)
   })
 
   if (autoCheckEnabled) {
