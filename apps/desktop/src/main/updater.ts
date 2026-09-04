@@ -414,17 +414,16 @@ export function initializeUpdater(): void {
     // The local main.log line and the user-facing state stay at error severity:
     // only the telemetry severity is classified.
     logger.error('updater error', error, describeUpdaterError(error, phase))
-    // The app is on the mounted DMG or a translocated ~/Downloads copy, so
-    // Squirrel cannot stage anything and never will from here. Squirrel's own
-    // copy is the only thing the user would otherwise see, in Settings and in
-    // the menu-bar check, and it explains the failure without naming the fix.
-    // The `isInApplicationsFolder()` guard is what keeps this from telling a
-    // correctly installed user to move an app that is already in place; it is
-    // macOS-only, so `?.()` leaves every other platform on the raw message.
-    const readOnlyVolume = isReadOnlyVolumeError(error) && app.isInApplicationsFolder?.() === false
     // Update-pipeline breakage (feed 404s, signature failures, disk-full
     // downloads) must reach error tracking: affected users cannot update to a fix.
     reportUpdaterFailure(error, phase)
+    // The app is on the mounted DMG or a translocated ~/Downloads copy, so
+    // Squirrel cannot stage anything and never will from here. Its own message
+    // explains that without naming the fix, so say what to do instead. The
+    // `isInApplicationsFolder()` guard is what keeps this from telling a
+    // correctly installed user to move an app that is already in place; it is
+    // macOS-only, so `?.()` leaves every other platform on the raw message.
+    const readOnlyVolume = isReadOnlyVolumeError(error) && app.isInApplicationsFolder?.() === false
     setState({
       status: 'error',
       error: readOnlyVolume ? getMainI18n().t('system:error.updateReadOnlyVolume') : message
