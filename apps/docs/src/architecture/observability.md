@@ -1260,3 +1260,23 @@ several vaults can therefore name a note from a vault the app is not opening: th
 speculative chunk prefetch is then wasted, and the mark never fires. Absent is the correct
 reading in that case, not a failure, but it does mean a median over launches must state
 how many runs carried the mark.
+
+## Login-shell PATH probe: failure classes
+
+The probe runs `$SHELL -ilc` once per packaged launch to recover the user's real PATH, and
+reports one of four outcomes through `login_shell_path_probe_failed`:
+
+- `marker_missing` — the shell ran and exited cleanly but printed no marker, usually an rc
+  chain that writes to stdout.
+- `status_<n>` — the shell ran and exited non-zero.
+- `status_none` — the probe hit its 3 s deadline and was killed.
+- `spawn_error` — the shell never started.
+
+Two details are load-bearing and easy to undo by accident. The child's **stdin is closed,
+not piped**: an rc chain that reads stdin blocks forever on an open pipe, and every
+consumer awaiting `whenLoginShellPathApplied()` blocks with it. The deadline kills with
+**SIGKILL**, because an interactive shell ignores SIGTERM, so the polite signal would leave
+the promise pending for the whole session.
+
+The unit suite injects a fake probe and therefore cannot catch either regression. A change
+to how the child process is spawned needs a real shell to verify.
