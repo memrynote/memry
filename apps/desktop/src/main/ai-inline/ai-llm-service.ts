@@ -4,6 +4,7 @@ import type { LanguageModel } from 'ai'
 
 import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 import { createLogger } from '../lib/logger'
+import { markExpectedCondition } from '../telemetry/expected-conditions'
 
 const logger = createLogger('AI:LLM')
 
@@ -18,11 +19,11 @@ export function createLanguageModel(settings: AIInlineSettings): LanguageModel {
       })(settings.model)
 
     case 'openai':
-      if (!settings.apiKey) throw new Error('OpenAI API key required')
+      if (!settings.apiKey) throw markExpectedCondition(new Error('OpenAI API key required'))
       return createOpenAI({ apiKey: settings.apiKey })(settings.model)
 
     case 'anthropic':
-      if (!settings.apiKey) throw new Error('Anthropic API key required')
+      if (!settings.apiKey) throw markExpectedCondition(new Error('Anthropic API key required'))
       return createAnthropic({ apiKey: settings.apiKey })(settings.model)
 
     default:

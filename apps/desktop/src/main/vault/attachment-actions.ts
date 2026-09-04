@@ -20,6 +20,7 @@ import { fromMemryFileUrl, isPathInVault } from '../lib/paths'
 import { remapCrossDeviceAttachmentPath } from '../lib/attachment-path-remap'
 import { healAttachmentPath } from './attachment-heal'
 import { getVaultRoot } from './notes-io'
+import { markExpectedCondition } from '../telemetry/expected-conditions'
 
 const MEMRY_FILE_PREFIX = 'memry-file://local/'
 const HAS_SCHEME = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
@@ -84,10 +85,17 @@ export function resolveAttachment(noteId: string, url: string): AttachmentResolv
     absolutePath = resolveLegacyAbsoluteUrl(url, vaultPath, noteId)
   } else if (HAS_SCHEME.test(url) || url.startsWith('/') || url.startsWith('\\')) {
     // http(s):, data:, an absolute filesystem path… — not a vault attachment.
-    throw new NoteError(
-      'Attachment url is not a vault-relative path',
-      NoteErrorCode.INVALID_PATH,
-      noteId
+    //
+    // The guard stays: this is the boundary that keeps a remote or absolute url
+    // from being resolved against the vault. But a note referencing a remote
+    // image is ordinary content, not a defect, so it is a condition rather than
+    // an error to report.
+    throw markExpectedCondition(
+      new NoteError(
+        'Attachment url is not a vault-relative path',
+        NoteErrorCode.INVALID_PATH,
+        noteId
+      )
     )
   } else {
     // Refs are commonly percent-encoded (`my%20file.pdf`).
