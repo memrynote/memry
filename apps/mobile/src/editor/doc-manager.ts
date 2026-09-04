@@ -251,6 +251,19 @@ export class EditorDocManager {
     return this.open.has(docId)
   }
 
+  /**
+   * The docs held in memory right now, most-recently-opened last.
+   *
+   * A pull pass needs these: a remote edit to a note the user has open writes
+   * no record row when only the body changed, so the change feed never names
+   * it and the only other way to hear about it is the socket. Reading the map
+   * through an accessor keeps `open` private and the LRU ordering an
+   * implementation detail.
+   */
+  openDocIds(): string[] {
+    return [...this.open.keys()]
+  }
+
   /** Feed newly-pulled server rows into whichever docs are open. */
   async refreshOpenDocs(docIds: string[]): Promise<void> {
     for (const docId of docIds) {

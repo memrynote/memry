@@ -9,6 +9,7 @@ import {
 import { DeviceKeysResponseSchema } from '@memry/contracts/sync-api'
 import type { SyncHttpClient } from '@memry/sync-client/adapters'
 import { createMobileHttpClient } from '../adapters/http-client'
+import { bodyPullTargets } from './body-pull-targets'
 import { mobileAppVersion } from '../adapters/runtime'
 import { openVaultDb } from '../db/index'
 import { MobilePullStore } from '../db/pull-store'
@@ -177,7 +178,7 @@ export class MobileSyncEngine {
       return { ok: false, reason: 'error', itemsApplied: 0, bodiesUpdated: 0, changedNoteIds: [] }
     }
 
-    const bodies = await this.pullBodiesForUnlocked(store, record.changedNoteIds)
+    const bodies = await this.pullBodiesForUnlocked(store, bodyPullTargets(record.changedNoteIds))
     await this.pollStatus(engine)
 
     const summary: SyncSummary = {
