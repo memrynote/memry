@@ -428,3 +428,35 @@ img.asset-missing {
   align-items: center;
   justify-content: center;
 }
+
+/* Tables (#2041).
+
+   The audited DOM is BlockNote's own node view:
+   `.bn-block-content[data-content-type='table'] > .tableWrapper >
+   .tableWrapper-inner > table`. The wrapper class is prosemirror-tables'
+   `.tableWrapper`, NOT `.bn-table-wrapper`, and BlockNote already gives it
+   `overflow-x: auto` via `.ProseMirror .tableWrapper`, so a wide table scrolls
+   rather than clipping. What is missing on a phone is momentum scrolling, a
+   clamp that stops the block itself widening past the column, and a floor under
+   columns a desktop user dragged narrower than a thumb.
+
+   Cell background and text colours are BlockNote's default table props and
+   already work; nothing here touches them. */
+.bn-block-content[data-content-type='table'] {
+  max-inline-size: 100%;
+}
+
+.bn-block-content[data-content-type='table'] .tableWrapper {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* `!important` because BlockNote sets `min-width: auto !important` on every
+   cell. This rule outranks that one and loses to BlockNote's own
+   `--default-cell-min-width` rule for cells with no dragged width — which is
+   the intended split: undragged columns keep BlockNote's default, and a column
+   dragged down to a few pixels on a desktop still shows something here. */
+.bn-block-content[data-content-type='table'] th,
+.bn-block-content[data-content-type='table'] td {
+  min-inline-size: 64px !important;
+  overflow-wrap: anywhere;
+}
