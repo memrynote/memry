@@ -580,17 +580,27 @@ export async function setNoteTags(
 // --- properties ------------------------------------------------------------
 
 /**
- * Desktop's property TYPE semantics without its definition files.
+ * Desktop's property TYPE semantics, with its definitions.
  *
- * On desktop a property's type comes from the vault's definition files
- * ([[property-defs-and-project-links-live-in-files]]); mobile has no reader for
- * those yet, so the type is inferred from the stored value using the same rules
- * the desktop inference uses when a definition is missing. Editing a value
- * never changes its inferred type — writing `"3"` where a number lived would
- * silently retype the column for every other device.
+ * The vault's `property_definition` rows now replicate, so a property's REAL
+ * type — and its select options with their colours — reach this device. The
+ * value-shape rules below are the fallback for a property no definition
+ * covers, which is the same fallback the desktop uses in that case.
+ *
+ * Editing a value never changes the type: writing `"3"` where a number lived
+ * would silently retype the column for every other device.
  */
 export type MobilePropertyType =
-  'text' | 'number' | 'checkbox' | 'date' | 'url' | 'status' | 'multiselect' | 'project'
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'date'
+  | 'url'
+  | 'status'
+  | 'select'
+  | 'multiselect'
+  | 'relation'
+  | 'project'
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T|$)/
 const URL_LIKE = /^https?:\/\//i
@@ -603,14 +613,31 @@ export const STATUS_OPTIONS = Object.values(DEFAULT_STATUS_CATEGORIES).flatMap(
   (category) => category.options
 )
 
-export function inferPropertyType(name: string, value: unknown): MobilePropertyType {
+const RELATION_URI = /^memry:\/\//i
+
+/**
+ * The type to render a property with.
+ *
+ * The definition wins whenever the vault has one — that is the whole point of
+ * replicating them. Everything below it is the desktop's own no-definition
+ * fallback, kept so a vault that never defined `deadline` still gets a date row.
+ */
+export function inferPropertyType(
+  name: string,
+  value: unknown,
+  definedType?: MobilePropertyType
+): MobilePropertyType {
   // Reserved: `project` carries membership and is always the project type, or a
   // note written in another app renders the wrong editor.
   if (name === 'project') return 'project'
+  if (definedType) return definedType
   if (typeof value === 'boolean') return 'checkbox'
   if (typeof value === 'number') return 'number'
   if (Array.isArray(value)) return 'multiselect'
   if (typeof value === 'string') {
+    // A relation's URIs are self-describing, which is why the desktop types one
+    // from its value every time rather than persisting a definition for it.
+    if (RELATION_URI.test(value)) return 'relation'
     // A text property whose value happens to read `Done` renders as a pill.
     // Cosmetic only: the stored string is untouched, and every other string
     // still falls through to the date and url rules below.
@@ -633,8 +660,10 @@ export function coercePropertyValue(type: MobilePropertyType, raw: string): unkn
       return Number.isFinite(parsed) ? parsed : raw
     }
     case 'status':
+    case 'select':
       return raw
     case 'multiselect':
+    case 'relation':
     case 'project':
       return raw
         .split(',')

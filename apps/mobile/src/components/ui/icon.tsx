@@ -31,6 +31,7 @@ import {
   Inbox,
   Key,
   Link,
+  Link2,
   List,
   Lock,
   Mail,
@@ -46,6 +47,7 @@ import {
   SquareCheck,
   SquareCheckBig,
   Tag,
+  Tags,
   Trash2,
   TriangleAlert,
   Type,
@@ -115,7 +117,11 @@ const glyphs = {
   hash: Hash,
   // `task` is already SquareCheck; the properties registry needs the filled
   // variant for the checkbox type.
-  'square-check-big': SquareCheckBig
+  'square-check-big': SquareCheckBig,
+  // `tag` is the single Tag glyph the chips use; multi-select needs the stacked
+  // pair, and relation needs the chain-link that is not the plain `link`.
+  tags: Tags,
+  'link-2': Link2
 } as const
 
 export type IconName = keyof typeof glyphs

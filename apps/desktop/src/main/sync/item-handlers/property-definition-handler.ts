@@ -46,7 +46,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock as VectorClock | null, remoteClock)
+        const resolution = this.resolveClock(existing.clock, remoteClock)
         if (resolution.action === 'skip') {
           log.info('Skipping remote property definition update, local is newer', { itemId })
           return 'skipped'
@@ -102,7 +102,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = this.resolveClock(existing.clock as VectorClock | null, clock)
+      const resolution = this.resolveClock(existing.clock, clock)
       if (resolution.action === 'skip' || resolution.action === 'merge') {
         log.info('Skipping remote property definition delete, local has unseen changes', { itemId })
         return 'skipped'
@@ -149,7 +149,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
       options: definition.options ?? null,
       defaultValue: definition.defaultValue ?? null,
       color: definition.color ?? null,
-      clock: (definition.clock as VectorClock) ?? undefined,
+      clock: definition.clock ?? undefined,
       createdAt: definition.createdAt
     }
     return JSON.stringify(payload)
