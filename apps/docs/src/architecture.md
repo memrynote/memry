@@ -17,6 +17,20 @@ memrynote is a pnpm + Turborepo monorepo with an Electron desktop app, a Cloudfl
 | `packages/db-schema` | Drizzle ORM schemas.                                      |
 | `packages/shared`    | Shared utilities.                                         |
 
+## Renderer Page Loading
+
+Every page in the tab content switch is loaded through `React.lazy`, so no page's
+dependency tree lands in the entry chunk. The editor stack (`@blocknote`, ProseMirror,
+Yjs) reaches the renderer only through pages that mount an editor, which means it is
+fetched when the user first opens a note or the Inbox rather than parsed on every
+launch.
+
+The trade is deliberate. Keeping those modules out of the entry chunk removes parse
+work from the launch path and moves it onto the first navigation that needs it, off
+local disk. A page added to that switch with a static import silently returns the
+whole tree to the entry chunk, so new pages follow the same lazy shape as their
+siblings.
+
 ## Trust Boundary
 
 The user's device is trusted. The server is not. Everything that leaves the device is encrypted; the server stores ciphertext and serves it back.
