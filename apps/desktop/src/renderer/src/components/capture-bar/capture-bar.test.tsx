@@ -198,6 +198,23 @@ describe('CaptureBar — text entry', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
+  it('does not submit quick-add input that leaves no title behind', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(
+      <CaptureBar {...baseProps} onSubmit={onSubmit} quickAdd={{ projects: mockProjects }} />
+    )
+
+    // Quick-add strips its own tokens, so this is non-empty text that parses to
+    // an empty title. Submitting it is a guaranteed `tasks:create` rejection.
+    await user.type(field(), '#launch')
+
+    expect(screen.getByRole('button', { name: /capture|submit|send/i })).toBeDisabled()
+
+    await user.keyboard('{Enter}')
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
   it('inserts a newline on Shift+Enter instead of submitting', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()

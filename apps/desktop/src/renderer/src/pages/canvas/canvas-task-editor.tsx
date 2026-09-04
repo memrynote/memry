@@ -107,7 +107,12 @@ export const CanvasTaskEditor = ({
         data-canvas-task-title
         value={task.title}
         readOnly={!interactive}
-        onChange={(e) => void updateTask(task.id, { title: e.target.value })}
+        onChange={(e) => {
+          // Same per-keystroke `tasks:update` as the task drawer: an empty title
+          // is a contract violation, not an edit worth sending (#1991).
+          if (!e.target.value.trim()) return
+          void updateTask(task.id, { title: e.target.value })
+        }}
         placeholder={t('task.namePlaceholder')}
         aria-label={t('task.namePlaceholder')}
         className="w-full min-w-0 bg-transparent text-[13px] font-medium text-text-primary outline-none"
