@@ -1,5 +1,5 @@
 import type { ComponentRef } from 'react'
-import type { View } from 'react-native'
+import type { Animated, View } from 'react-native'
 import { BRIDGE_PROTOCOL_VERSION, type GuestMsg } from '@memry/contracts/webview-bridge'
 import { base64ToBytes } from '../lib/base64'
 import { createLogger } from '../lib/logger'
@@ -49,6 +49,27 @@ export interface EditorFrame {
 
 /** The host's own container view, the frame a note's editor is positioned within. */
 export type EditorHostContainer = ComponentRef<typeof View>
+
+/**
+ * The mounted route's own push/pop animation, so the host can RIDE it (#2053).
+ *
+ * `react-native-screens` drives both values from a display link running
+ * alongside the UIKit transition, through an `Animated.event` declared with
+ * `useNativeDriver: true` — so the nodes live in the native animated graph and
+ * a transform derived from them is computed on the UI thread. That is the whole
+ * point of carrying the nodes here rather than a boolean: every JS-side reading
+ * of this same animation was measured losing to a 500 ms backstop on 15 opens
+ * out of 20, because each one needs the JS thread at the exact moment the open
+ * is busiest.
+ *
+ * `progress` runs 0 → 1 across the transition whichever way it goes, and
+ * `closing` says which way that is. A cancelled swipe-back is the pair
+ * returning to `progress: 0, closing: 1`, which is the resting position again.
+ */
+export interface ScreenTransition {
+  progress: Animated.Value
+  closing: Animated.Value
+}
 
 /**
  * The mounted note's frame, from two WINDOW measurements taken in one round.
@@ -106,6 +127,8 @@ export interface EditorHostState {
   shownDocId: string | null
   /** The mounted attachment's reported frame, or `null` if it has not reported one. */
   frame: EditorFrame | null
+  /** The mounted attachment's route animation. The host slides the guest along it. */
+  transition: ScreenTransition | null
   /** Whether to draw the guest at all. */
   visible: boolean
   /**
@@ -128,17 +151,15 @@ export interface EditorHostState {
 export interface DocLayout {
   frame: EditorFrame | null
   /**
-   * Whether this route has settled where it belongs on screen.
+   * The route's own transition, so the host tracks it instead of gating on it.
    *
-   * It LATCHES. The host does not slide with the stack, so it must stay hidden
-   * through a push and stay VISIBLE through a pop — an outgoing note whose body
-   * blanked the instant it lost focus was the whole screen going empty as it
-   * animated away.
+   * `null` only until the route has reported one, which is the same commit it
+   * reports its frame in — so a visible editor always has one.
    */
-  onScreen: boolean
+  transition: ScreenTransition | null
 }
 
-const NO_LAYOUT: DocLayout = { frame: null, onScreen: false }
+const NO_LAYOUT: DocLayout = { frame: null, transition: null }
 
 /**
  * The write path for one open document.
@@ -190,6 +211,7 @@ export class EditorHostController {
     mountedDocId: null,
     shownDocId: null,
     frame: null,
+    transition: null,
     visible: false,
     containerReady: false,
     instance: 0
@@ -563,16 +585,23 @@ export class EditorHostController {
       mountedDocId,
       shownDocId: this.shownDocId,
       frame: layout.frame,
-      // Three conditions, and each one names a way the guest would otherwise be
-      // drawn wrong: with no frame it has nowhere to go, before its route has
-      // settled it would be painted over the screen still sliding in front of
-      // it, and before the guest confirms the switch it is still showing the
-      // note the reader just left.
-      visible:
-        layout.frame !== null &&
-        layout.onScreen &&
-        mountedDocId !== null &&
-        this.shownDocId === mountedDocId,
+      transition: layout.transition,
+      // Two conditions, and each one names a way the guest would otherwise be
+      // drawn wrong: with no frame it has nowhere to go, and before the guest
+      // confirms the switch it is still showing the note the reader just left.
+      //
+      // There is deliberately no third condition for the route's animation any
+      // more (#2053). The host used to wait for the push to END because it
+      // could not slide with it, which meant the reader watched a blank body
+      // for 475 ms after the app had finished drawing one; it now slides along
+      // the transition instead, so being mid-push is a POSITION and not a
+      // reason to stay hidden.
+      //
+      // A POP is not the same answer read backwards, and this rule is not why.
+      // The note screen leaves the React tree the moment `back()` is
+      // dispatched, so its attachment goes with it and there is no mounted note
+      // left to draw whatever these conditions say.
+      visible: layout.frame !== null && mountedDocId !== null && this.shownDocId === mountedDocId,
       containerReady: this.containerView !== null,
       instance: this.instance
     }
