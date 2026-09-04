@@ -1,12 +1,10 @@
-import { execFile } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { basename, delimiter } from 'node:path'
-import { promisify } from 'node:util'
 
 import { createLogger } from '../../lib/logger'
 import { trackMainLog } from '../../telemetry/diagnostics'
 
 const logger = createLogger('AgentCli:LoginShellPath')
-const execFileAsync = promisify(execFile)
 
 /**
  * Resolve the user's real login-shell PATH so packaged builds can find CLIs.
@@ -64,10 +62,46 @@ export function mergePaths(
   return merged.join(separator)
 }
 
-const runShellProbe: RunShellProbe = async (shell, args) => {
-  const { stdout } = await execFileAsync(shell, args, { encoding: 'utf8', timeout: 3000 })
-  return stdout
-}
+export const PROBE_TIMEOUT_MS = 3_000
+
+const runShellProbe: RunShellProbe = (shell, args) =>
+  new Promise((resolve, reject) => {
+    // stdin is closed, not piped. An rc chain that reads stdin blocks forever on
+    // an open pipe, and the synchronous probe this replaced handed the shell EOF
+    // for free.
+    const child = spawn(shell, args, { stdio: ['ignore', 'pipe', 'pipe'] })
+
+    let stdout = ''
+    let settled = false
+    const settle = (action: () => void): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      action()
+    }
+
+    const timer = setTimeout(() => {
+      // SIGKILL, not the default SIGTERM: an interactive shell ignores SIGTERM,
+      // so the polite signal leaves this promise pending for the whole session
+      // and every consumer awaiting the PATH gate hangs with it.
+      child.kill('SIGKILL')
+      settle(() => reject(Object.assign(new Error('login shell probe timed out'), { code: null })))
+    }, PROBE_TIMEOUT_MS)
+    timer.unref?.()
+
+    child.stdout.setEncoding('utf8')
+    child.stdout.on('data', (chunk: string) => {
+      stdout += chunk
+    })
+    child.on('error', (error) => settle(() => reject(error)))
+    child.on('close', (code) => {
+      settle(() =>
+        code === 0
+          ? resolve(stdout)
+          : reject(Object.assign(new Error(`login shell exited ${code}`), { code }))
+      )
+    })
+  })
 
 /** Probe the login shell for its PATH; resolves to null on any failure. */
 export async function readLoginShellPath(
@@ -96,11 +130,12 @@ export async function readLoginShellPath(
     }
     return parsed
   } catch (error) {
-    // execFile rejects with a numeric `code` when the shell exited non-zero and
-    // with a string errno when it never started, so the two stay apart the way
-    // the synchronous `result.status` check kept them apart.
+    // A numeric `code` means the shell ran and exited non-zero; a string errno
+    // means it never started; `null` is the timeout kill. That keeps the three
+    // apart the way the synchronous `result.status` check did.
     const code = (error as { code?: unknown } | null)?.code
-    return probeFailed(typeof code === 'number' ? `status_${code}` : 'spawn_error')
+    if (typeof code === 'number') return probeFailed(`status_${code}`)
+    return probeFailed(code === null ? 'status_none' : 'spawn_error')
   }
 }
 
