@@ -5,6 +5,8 @@ import { promisify } from 'node:util'
 
 import type { BinaryStatus } from '@memry/contracts/ipc-agent'
 
+import { whenLoginShellPathApplied } from './login-shell-path'
+
 const execFileAsync = promisify(execFile)
 
 /**
@@ -27,6 +29,10 @@ export async function runBinaryCommand(
   command: string,
   args: string[]
 ): Promise<{ stdout: string; stderr: string } | null> {
+  // A packaged launch starts with the minimal Finder PATH and augments it from
+  // the login shell in the background (#2003). Probing inside that window would
+  // report an installed CLI as missing, so wait the augmentation out first.
+  await whenLoginShellPathApplied()
   try {
     const { stdout, stderr } = await execFileAsync(command, args, { encoding: 'utf8' })
     return { stdout, stderr }

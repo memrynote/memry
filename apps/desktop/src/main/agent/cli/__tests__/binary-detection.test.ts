@@ -166,3 +166,36 @@ describe('cacheBinaryDetection', () => {
     expect(probe).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('runBinaryCommand and the login-shell PATH', () => {
+  it('waits for the augmentation instead of racing it', async () => {
+    vi.resetModules()
+    const loginShellPath = await import('../login-shell-path')
+    const detection = await import('../binary-detection')
+
+    let release: (path: string) => void = () => {}
+    loginShellPath.startLoginShellPathAugmentation({
+      packaged: true,
+      platform: 'darwin',
+      env: { PATH: '/usr/bin' },
+      resolve: () =>
+        new Promise<string>((resolve) => {
+          release = resolve
+        })
+    })
+
+    let finished = false
+    const pending = detection
+      .runBinaryCommand(process.execPath, ['-e', 'process.stdout.write("ok")'])
+      .then((result) => {
+        finished = true
+        return result
+      })
+
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(finished).toBe(false)
+
+    release('/opt/homebrew/bin')
+    await expect(pending).resolves.toMatchObject({ stdout: 'ok' })
+  })
+})
