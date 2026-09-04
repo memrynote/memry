@@ -8,6 +8,7 @@ import {
   type SyncPushCryptoProvider
 } from '@memry/sync-client/push'
 import { EditorDocManager, type DocHalves, type DocStore } from '../../editor/doc-manager'
+import { bodyPullTargets } from '../body-pull-targets'
 import { bumpClock } from '../outbox'
 import { nodeCryptoProvider, Relay } from './relay'
 
@@ -345,5 +346,74 @@ describe('(c) unknown-field round-trip', () => {
     expect(backOnDesktop.title).toBe('Quarterly plan (edited on the phone)')
     // The clock advanced for the editing device without discarding the other's.
     expect(backOnDesktop.clock).toEqual({ [desktop.id]: 3, [mobile.id]: 1 })
+  })
+})
+
+describe('(d) a peer edits only the body of a note this device has open', () => {
+  it('fetches the body even though the change feed names no note', async () => {
+    const relay = new Relay()
+    const noteId = 'note-open-on-the-phone'
+
+    // Both devices already share the note. The phone has it OPEN, which is the
+    // case that matters: the user is looking at the screen the edit belongs to.
+    const base = seedParagraph('shared opening line')
+    const baseUpdate = Y.encodeStateAsUpdate(base)
+
+    const store = memoryStore()
+    store.server.push(baseUpdate)
+    const manager = new EditorDocManager(store, {
+      enqueueCrdtUpdate: async () => {}
+    })
+    const open = await manager.openDoc(noteId)
+
+    // The desktop types into the BODY and nothing else. No title, no folder,
+    // no tags — so it pushes a CRDT update and NO record row, which is exactly
+    // what the server stores and exactly what makes this invisible to the feed.
+    const desktopDoc = new Y.Doc()
+    Y.applyUpdate(desktopDoc, baseUpdate)
+    const beforeEdit = Y.encodeStateVector(desktopDoc)
+    appendParagraph(desktopDoc, 'typed on the desktop')
+    relay.pushCrdt(
+      noteId,
+      encryptCrdtUpdatePacked(
+        crypto,
+        Y.encodeStateAsUpdate(desktopDoc, beforeEdit),
+        vaultKey,
+        noteId,
+        desktop.keys.privateKey
+      ),
+      desktop.id
+    )
+
+    // --- the mobile pull pass ----------------------------------------------
+    // Phase one, the record feed. `collectChangedNoteIds` derives the changed
+    // notes from record rows, and there are none, so this is empty. Asserted
+    // rather than assumed: it is the precondition the whole bug rests on.
+    const changedNoteIds = relay
+      .changesSince(0)
+      .filter((row) => row.type === 'note')
+      .map((row) => row.id)
+    expect(changedNoteIds).toEqual([])
+
+    // Phase two, the bodies. This is the line under test.
+    const targets = bodyPullTargets(changedNoteIds, manager.openDocIds())
+
+    for (const target of targets) {
+      for (const row of relay.crdtSince(target, 0)) {
+        open.applyFromRemote(
+          await decryptCrdtUpdatePacked(
+            crypto,
+            row.packed,
+            vaultKey,
+            target,
+            desktop.keys.publicKey
+          )
+        )
+      }
+    }
+
+    expect(targets).toEqual([noteId])
+    expect(textOf(open.doc)).toContain('typed on the desktop')
+    expect(textOf(open.doc)).toContain('shared opening line')
   })
 })

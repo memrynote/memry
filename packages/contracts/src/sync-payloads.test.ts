@@ -768,3 +768,41 @@ describe('TemplateSyncPayloadSchema', () => {
     expect(result.success).toBe(true)
   })
 })
+
+describe('sync timestamps a phone wrote as epoch ms', () => {
+  /**
+   * The regression: mobile sent `modifiedAt` as a number, this schema demanded
+   * a string, and `ItemApplier` skips a failed parse and advances the cursor
+   * without retrying. The edit was accepted by the server, counted as synced by
+   * the phone, and applied nowhere. Six notes in one vault were stuck like that.
+   */
+  it('accepts epoch ms on a note and normalizes it to ISO', () => {
+    const parsed = NoteSyncPayloadSchema.safeParse({
+      title: 'memrynote Mobile',
+      modifiedAt: 1788535842000,
+      createdAt: 1788535842000
+    })
+
+    expect(parsed.success).toBe(true)
+    expect(parsed.success && parsed.data.modifiedAt).toBe('2026-09-04T15:30:42.000Z')
+    expect(parsed.success && parsed.data.createdAt).toBe('2026-09-04T15:30:42.000Z')
+  })
+
+  it('accepts epoch ms on a journal too, which the same screen edits', () => {
+    const parsed = JournalSyncPayloadSchema.safeParse({
+      date: '2026-09-04',
+      modifiedAt: 1788535842000
+    })
+
+    expect(parsed.success).toBe(true)
+    expect(parsed.success && parsed.data.modifiedAt).toBe('2026-09-04T15:30:42.000Z')
+  })
+
+  it('leaves an ISO string exactly as it was sent', () => {
+    const parsed = NoteSyncPayloadSchema.safeParse({
+      modifiedAt: '2026-09-04T15:30:42.000Z'
+    })
+
+    expect(parsed.success && parsed.data.modifiedAt).toBe('2026-09-04T15:30:42.000Z')
+  })
+})

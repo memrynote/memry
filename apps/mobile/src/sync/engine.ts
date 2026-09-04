@@ -9,8 +9,10 @@ import {
 import { DeviceKeysResponseSchema } from '@memry/contracts/sync-api'
 import type { SyncHttpClient } from '@memry/sync-client/adapters'
 import { createMobileHttpClient } from '../adapters/http-client'
+import { bodyPullTargets } from './body-pull-targets'
 import { mobileAppVersion } from '../adapters/runtime'
 import { openVaultDb } from '../db/index'
+import { openDocIdsFor } from '../editor/session'
 import { MobilePullStore } from '../db/pull-store'
 import { fromBase64 } from '../crypto/libsodium'
 import { recordSyncOutcome } from './sync-state'
@@ -177,7 +179,8 @@ export class MobileSyncEngine {
       return { ok: false, reason: 'error', itemsApplied: 0, bodiesUpdated: 0, changedNoteIds: [] }
     }
 
-    const bodies = await this.pullBodiesForUnlocked(store, record.changedNoteIds)
+    const targets = bodyPullTargets(record.changedNoteIds, await openDocIdsFor(this.vaultId))
+    const bodies = await this.pullBodiesForUnlocked(store, targets)
     await this.pollStatus(engine)
 
     const summary: SyncSummary = {
@@ -185,11 +188,29 @@ export class MobileSyncEngine {
       reason: record.ok ? null : 'refused',
       itemsApplied: record.itemsApplied,
       bodiesUpdated: bodies,
-      changedNoteIds: record.changedNoteIds
+      changedNoteIds: targets
     }
     await recordSyncOutcome(this.vaultId, { ok: summary.ok, reason: summary.reason })
     for (const listener of this.listeners) listener(summary)
     return summary
+  }
+
+  /**
+   * Pull specific note bodies, preparing inside the queue.
+   *
+   * The socket path must use this rather than `getStore()` then
+   * `pullBodiesFor`. `prepare()` assigns `vaultKeyCache` and `accessToken`,
+   * and both are handed to the pullers as LIVE getters, so calling it outside
+   * `exclusive()` can null the vault key under a pass that is already running
+   * -- which `pullBodiesForUnlocked` then reports as zero bodies rather than
+   * an error.
+   */
+  pullBodiesForNotes(noteIds: string[]): Promise<number> {
+    return this.exclusive(async () => {
+      const prepared = await this.prepare()
+      if (!prepared) return 0
+      return this.pullBodiesForUnlocked(prepared.store, noteIds)
+    })
   }
 
   pullBodiesFor(store: MobilePullStore, noteIds: string[]): Promise<number> {
@@ -258,11 +279,18 @@ export interface SyncSummary {
   itemsApplied: number
   bodiesUpdated: number
   /**
-   * Notes whose CRDT state this pass touched.
+   * Notes whose CRDT state this pass asked the server about.
    *
    * Carried out of the engine so an OPEN editor can be fed the new rows; the
    * doc manager caches docs for the process lifetime, so a pull that lands
    * server updates is otherwise invisible until the app restarts.
+   *
+   * This is the same union the pass pulled bodies for, not just the notes the
+   * record feed named. Halving it was the on-screen half of the body-only bug:
+   * the heal path would fetch a peer's edit into SQLite and the editor showing
+   * that very note would keep painting the old text until it was reopened.
+   * Refreshing a doc with no new server rows is a no-op, so the wider set costs
+   * nothing.
    */
   changedNoteIds: string[]
 }

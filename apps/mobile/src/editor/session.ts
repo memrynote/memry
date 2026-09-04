@@ -194,6 +194,38 @@ export interface EditorSession {
 
 const sessions = new Map<string, Promise<EditorSession>>()
 
+/**
+ * The docs held open right now, or none when this vault has no session yet.
+ *
+ * Deliberately does NOT build one. The caller is the pull pass, and building a
+ * session opens the DB, reads the keychain and constructs the outbox and the
+ * attachment transfer — work a pull has no reason to trigger, on a vault the
+ * user may not even have opened an editor in.
+ */
+export async function openDocIdsFor(vaultId: string): Promise<string[]> {
+  const pending = sessions.get(vaultId)
+  if (!pending) return []
+  try {
+    return (await pending).docs.openDocIds()
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Feed newly-pulled server rows to the open docs, if this vault has a session.
+ *
+ * Same no-build rule as `openDocIdsFor`. The caller is the socket handler, and
+ * a `crdt_updated` for a vault whose editor was never opened has nothing on
+ * screen to refresh.
+ */
+export async function refreshOpenDocsFor(vaultId: string, docIds: string[]): Promise<void> {
+  const pending = sessions.get(vaultId)
+  if (!pending) return
+  const session = await pending
+  await session.docs.refreshOpenDocs(docIds)
+}
+
 export function getEditorSession(vaultId: string): Promise<EditorSession> {
   let pending = sessions.get(vaultId)
   if (!pending) {
