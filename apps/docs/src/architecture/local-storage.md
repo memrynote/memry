@@ -113,6 +113,22 @@ The cache is validated against the file itself, not against a list of known writ
 
 The on-disk format is unchanged; the cache is purely a runtime concern.
 
+## Settings Storage
+
+Portable settings — theme, font size and family, accent colour, language, the tab and folder
+behaviours, and the editor preferences — live in the `preferences` block of
+`<vault>/.memry/config.json`. That file is the source of truth, which is what lets the settings
+travel with the vault folder. The `general` and `editor` rows in `data.db` are a cache of it,
+rewritten from `config.json` on every vault open, and are what the rest of the app reads.
+
+Settings predate `config.json`, so vault open also seeds that block from the SQLite rows once per
+vault. The guard is the presence of the `preferences` block itself: the seeding is the only thing
+that writes the first one and it runs before any other writer can reach the file, so a block on
+disk means the seeding is already done. Nothing derives settings from the SQLite rows after that
+point — by then those rows are the seeding's own output, and reading them back would overwrite
+whatever the user has changed since. The rows are left in place; they are the cache, not a
+legacy source.
+
 ## App Config File
 
 App-level state that must be readable before any vault opens lives in a single JSON file,
