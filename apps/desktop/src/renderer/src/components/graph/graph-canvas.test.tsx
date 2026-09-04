@@ -10,6 +10,10 @@ const graphCanvasMocks = vi.hoisted(() => ({
     // Sigma retains its graph reference even after kill(). The live instance is
     // the one holding the graph the container was rendered with; a stale
     // instance returns something else. Overridden per-test to model the race.
+    // jsdom does no layout, so a real element measures 0 and the refresh guard
+    // would skip every repaint. Hand it one that measures.
+    getContainer: (): HTMLElement =>
+      Object.defineProperty(document.createElement('div'), 'offsetWidth', { value: 800 }),
     getGraph: (): unknown => graphCanvasMocks.sigmaContainerProps?.graph
   },
   sigmaContainerProps: null as null | Record<string, any>,

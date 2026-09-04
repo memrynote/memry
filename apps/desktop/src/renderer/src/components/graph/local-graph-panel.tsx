@@ -9,6 +9,7 @@ import type { GraphDataResponse } from '@memry/contracts/graph-api'
 import { Button } from '@/components/ui/button'
 import { useLocalGraphData } from '@/hooks/use-graph-data'
 import { buildGraphologyGraph } from '@/lib/graph-builder'
+import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
 import type { GraphPhysicsOptions } from '@/lib/graph-physics'
 import { useT } from '@memry/i18n/renderer'
 import { GraphEvents } from './graph-events'
@@ -385,7 +386,7 @@ function LocalHoverFadeAnimator({
     const startFade = fadeRef.current
 
     if (startFade === goal) {
-      sigma.refresh()
+      refreshSigmaIfMeasurable(sigma)
       return
     }
 
@@ -395,7 +396,7 @@ function LocalHoverFadeAnimator({
     const tick = (now: number): void => {
       const t = Math.min((now - startTime) / duration, 1)
       fadeRef.current = startFade + (goal - startFade) * easeOutQuad(t)
-      sigma.refresh()
+      refreshSigmaIfMeasurable(sigma)
 
       if (t < 1) {
         animRef.current = requestAnimationFrame(tick)
@@ -403,7 +404,7 @@ function LocalHoverFadeAnimator({
         animRef.current = null
         if (!hoveredNode) {
           hoverTargetRef.current = null
-          sigma.refresh()
+          refreshSigmaIfMeasurable(sigma)
         }
       }
     }
