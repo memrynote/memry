@@ -1,7 +1,6 @@
 import { createMemrySchema } from '@memry/editor-schema'
 import { createTouchBlockSpecs } from './blocks.ts'
-import { WikiLink } from '@memry/editor-schema/inline'
-import { createServerInlineSpecs } from '@memry/editor-schema/server'
+import { createTouchInlineSpecs } from './inline.ts'
 
 /**
  * The mobile WebView's BlockNote schema.
@@ -13,9 +12,9 @@ import { createServerInlineSpecs } from '@memry/editor-schema/server'
  * rules and the `toExternalHTML` halves are the shared package's, and mobile
  * cannot carry a node type desktop and the main process lack.
  *
- * What it supplies is the presentation half. Every custom BLOCK now has a
- * touch `render` here (`blocks.ts`); the custom inline specs still fall
- * through to the main
+ * What it supplies is the presentation half, and it supplies all of it. Every
+ * custom block and every custom inline type has a touch `render` here
+ * (`blocks.ts`, `inline.ts`); before that, they fell through to the main
  * process's SERIALIZATION DOM, which is chosen for what BlockNote's
  * HTML-to-markdown step turns it into and is invisible or broken on a phone —
  * a file block was an HTML comment, a callout printed a literal `[!info]`, and
@@ -30,10 +29,7 @@ import { createServerInlineSpecs } from '@memry/editor-schema/server'
 export function createMobileEditorSchema() {
   return createMemrySchema({
     blocks: createTouchBlockSpecs(),
-    inline: {
-      ...createServerInlineSpecs(),
-      wikiLink: WikiLink
-    }
+    inline: createTouchInlineSpecs()
   })
 }
 

@@ -87,7 +87,16 @@ const TOUCH_RENDERED_BLOCKS = [
 ]
 
 /** Inline keys whose spec in the mobile schema actually presents something. */
-const TOUCH_RENDERED_INLINE = ['link', 'text', 'wikiLink']
+const TOUCH_RENDERED_INLINE = [
+  'dateMention',
+  'hashTag',
+  'inlineCheckbox',
+  'inlineImage',
+  'link',
+  'linkMention',
+  'text',
+  'wikiLink'
+]
 
 /**
  * Block keys still falling through to the main process's serialization DOM.
@@ -98,15 +107,9 @@ const KNOWN_UNRENDERED_BLOCKS: string[] = []
 
 /**
  * Inline keys still falling through to the main process's serialization DOM.
- * Renderers are tracked as #2040.
+ * Empty: #2040 landed all five.
  */
-const KNOWN_UNRENDERED_INLINE = [
-  'dateMention',
-  'hashTag',
-  'inlineCheckbox',
-  'inlineImage',
-  'linkMention'
-]
+const KNOWN_UNRENDERED_INLINE: string[] = []
 
 /**
  * The size of the backlog, pinned.
@@ -116,7 +119,7 @@ const KNOWN_UNRENDERED_INLINE = [
  * this number too, and adding a key has to raise it, so the backlog cannot
  * change without a second, deliberate edit that says which direction it moved.
  */
-const KNOWN_UNRENDERED_COUNT = 5
+const KNOWN_UNRENDERED_COUNT = 0
 
 const schema = createMobileEditorSchema()
 
@@ -204,7 +207,7 @@ describe('the mobile editor schema', () => {
    * the flag off rather than letting a passing assertion sit here disguised as a
    * failing one (#2041).
    */
-  it.fails('renders every block and inline type the schema can build', () => {
+  it('renders every block and inline type the schema can build', () => {
     expect(
       [...KNOWN_UNRENDERED_BLOCKS, ...KNOWN_UNRENDERED_INLINE],
       'these schema keys still render through the main process serialization DOM, so on mobile ' +

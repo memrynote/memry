@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { createTouchBlockSpecs, formatFileSize } from '../../editor-web/src/blocks'
+import { createTouchInlineSpecs, dateMentionLabel } from '../../editor-web/src/inline'
 
 /**
  * What a reader actually sees on a phone (epic #2025).
@@ -10,7 +11,8 @@ import { createTouchBlockSpecs, formatFileSize } from '../../editor-web/src/bloc
  * schema key HAS a touch renderer. It cannot tell a renderer that draws a card
  * from one that draws nothing, because it never calls one. This file calls
  * every `render` and asserts the visible result: the file name and its size,
- * the callout glyph, the task title without its `{task:id}` suffix.
+ * the callout glyph, the task title without its `{task:id}` suffix, the date
+ * pill without its `((date:…))` token.
  *
  * Two of the assertions are contracts rather than looks. No renderer may emit
  * an `<img>` (the WebView's CSP is `img-src data: blob:`, so a remote one is
@@ -26,8 +28,14 @@ import { createTouchBlockSpecs, formatFileSize } from '../../editor-web/src/bloc
 
 type Rendered = { dom: HTMLElement; contentDOM?: HTMLElement; destroy?: () => void }
 type BlockRender = (this: unknown, block: unknown, editor: unknown) => Rendered
+type InlineRender = (
+  inlineContent: unknown,
+  updateInlineContent: (update: unknown) => void,
+  editor: unknown
+) => Rendered
 
 const blockSpecs = createTouchBlockSpecs()
+const inlineSpecs = createTouchInlineSpecs()
 
 function stubEditor() {
   const updateBlock = vi.fn((block: unknown) => block)
@@ -67,6 +75,15 @@ function renderBlock(
   return { ...rendered, root: rendered.dom.firstElementChild as HTMLElement }
 }
 
+function renderInline(
+  key: keyof typeof inlineSpecs,
+  props: Record<string, unknown>,
+  update: (value: unknown) => void = () => undefined
+): Rendered {
+  const spec = inlineSpecs[key] as unknown as { implementation: { render: InlineRender } }
+  return spec.implementation.render({ type: key, props }, update, stubEditor())
+}
+
 /**
  * How many `tag` elements a rendered result contains, the element ITSELF
  * included. `querySelectorAll` only walks descendants, so it answers zero for a
@@ -82,6 +99,12 @@ function countTags(rendered: HTMLElement, tag: string): number {
 /** jsdom has no PointerEvent, and the handlers only ever call `preventDefault`. */
 function tap(element: Element, type: 'pointerup' | 'click' | 'mousedown'): void {
   element.dispatchEvent(new Event(type, { bubbles: true, cancelable: true }))
+}
+
+function isoOffsetByDays(days: number): string {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return date.toISOString()
 }
 
 describe('callout', () => {
@@ -304,10 +327,171 @@ describe('toggleListItem', () => {
   })
 })
 
-describe('every touch block spec', () => {
+describe('hashTag', () => {
+  it('shows the tag as a coloured chip', () => {
+    const { dom } = renderInline('hashTag', { tag: 'work', color: '', icon: '' })
+
+    expect(dom.textContent).toBe('#work')
+    expect(dom.getAttribute('data-hash-tag')).toBe('work')
+    expect(dom.style.backgroundColor).not.toBe('')
+    expect(dom.style.getPropertyValue('--hash-tag-color')).not.toBe('')
+  })
+
+  it('draws an emoji icon and skips an icon-registry name', () => {
+    const emoji = renderInline('hashTag', { tag: 'work', color: '', icon: '🔥' })
+    expect(emoji.dom.querySelector('.hash-tag-icon')?.textContent).toBe('🔥')
+
+    // An icon-name value addresses desktop's HugeIcon registry, which the
+    // WebView bundle does not carry.
+    const named = renderInline('hashTag', { tag: 'work', color: '', icon: 'briefcase-01' })
+    expect(named.dom.querySelector('.hash-tag-icon')).toBeNull()
+    expect(named.dom.textContent).toBe('#work')
+  })
+})
+
+/** A mention with no time and no explicit format, for the label cases. */
+const plain = { hasTime: false, dateFormat: 'relative', timeFormat: 'system' }
+
+describe('dateMention', () => {
+  function pill(props: Record<string, unknown>) {
+    return renderInline('dateMention', {
+      anchorId: 'a1',
+      dateISO: isoOffsetByDays(0),
+      hasTime: false,
+      dateFormat: 'relative',
+      remind: 'none',
+      timeFormat: 'system',
+      ...props
+    }).dom
+  }
+
+  it('shows a readable date, never the persistence token', () => {
+    const dom = pill({})
+    expect(dom.textContent).not.toContain('((date:')
+    expect(dom.querySelector('.date-mention-label')?.textContent).toBe('Today')
+  })
+
+  it('names the neighbouring days and falls back to the full form', () => {
+    expect(dateMentionLabel({ dateISO: isoOffsetByDays(1), ...plain })).toBe('Tomorrow')
+    expect(dateMentionLabel({ dateISO: isoOffsetByDays(-1), ...plain })).toBe('Yesterday')
+    expect(dateMentionLabel({ dateISO: isoOffsetByDays(9), ...plain })).toMatch(
+      /^\d{1,2} \S+, \d{4}$/
+    )
+    expect(
+      dateMentionLabel({
+        dateISO: new Date(2020, 8, 4).toISOString(),
+        hasTime: false,
+        dateFormat: 'full',
+        timeFormat: 'system'
+      })
+    ).toMatch(/^4 \S+, 2020$/)
+  })
+
+  it('reads an unparseable date as a placeholder', () => {
+    expect(dateMentionLabel({ dateISO: '', ...plain })).toBe('Date')
+    expect(dateMentionLabel({ dateISO: 'not-a-date', ...plain })).toBe('Date')
+  })
+
+  it('appends a clock time only when the mention carries one', () => {
+    const at = new Date()
+    at.setHours(14, 5, 0, 0)
+    expect(
+      dateMentionLabel({
+        dateISO: at.toISOString(),
+        hasTime: true,
+        dateFormat: 'relative',
+        timeFormat: '24h'
+      })
+    ).toBe('Today 14:05')
+    expect(dateMentionLabel({ dateISO: at.toISOString(), ...plain })).toBe('Today')
+  })
+
+  it('shows the alarm glyph only for a mention with a reminder', () => {
+    expect(pill({ remind: 'none' }).querySelector('.date-mention-icon')).toBeNull()
+    expect(pill({ remind: '' }).querySelector('.date-mention-icon')).toBeNull()
+    expect(pill({ remind: '15m' }).querySelector('.date-mention-icon svg')).not.toBeNull()
+  })
+})
+
+describe('inlineImage', () => {
+  it('keeps the vault-relative reference for the DOM-level resolver', () => {
+    const { dom } = renderInline('inlineImage', {
+      src: 'attachments/n1/chart.png',
+      alt: 'Chart',
+      width: 0
+    })
+
+    const img = dom.querySelector('img')!
+    // `getAttribute`, never `.src`: the property resolves the reference against
+    // the document base URL, which is not what the note holds.
+    expect(img.getAttribute('src')).toBe('attachments/n1/chart.png')
+    expect(img.getAttribute('alt')).toBe('Chart')
+    expect(img.style.inlineSize).toBe('')
+  })
+
+  it('applies a stored display width', () => {
+    const { dom } = renderInline('inlineImage', {
+      src: 'attachments/n1/chart.png',
+      alt: '',
+      width: 300
+    })
+    expect(dom.querySelector('img')!.style.inlineSize).toBe('300px')
+  })
+})
+
+describe('inlineCheckbox', () => {
+  it('reflects the document value and flips it on tap', () => {
+    const update = vi.fn()
+    const { dom } = renderInline('inlineCheckbox', { checked: true }, update)
+
+    const input = dom.querySelector('input')!
+    expect(input.checked).toBe(true)
+    expect(dom.getAttribute('contenteditable')).toBe('false')
+
+    tap(dom, 'pointerup')
+    expect(update).toHaveBeenCalledWith({ type: 'inlineCheckbox', props: { checked: false } })
+  })
+})
+
+describe('linkMention', () => {
+  it('shows site and title as text, with no link and no favicon', () => {
+    const { dom } = renderInline('linkMention', {
+      url: 'https://www.example.com/post',
+      domain: 'example.com',
+      title: 'A post',
+      favicon: 'https://www.example.com/favicon.ico',
+      siteName: 'Example'
+    })
+
+    expect(dom.textContent).not.toContain('((mention:')
+    expect(dom.querySelector('.link-mention-site')?.textContent).toBe('Example')
+    expect(dom.querySelector('.link-mention-title')?.textContent).toBe('A post')
+    expect(countTags(dom, 'a')).toBe(0)
+    expect(countTags(dom, 'img')).toBe(0)
+  })
+
+  it('omits the title line when there is none', () => {
+    const { dom } = renderInline('linkMention', {
+      url: 'https://example.com/post',
+      domain: '',
+      title: '',
+      favicon: '',
+      siteName: ''
+    })
+
+    expect(dom.querySelector('.link-mention-title')).toBeNull()
+    expect(dom.querySelector('.link-mention-site')?.textContent).toBe('example.com')
+  })
+})
+
+describe('every touch spec', () => {
   it('is registered under its own config.type (#1455)', () => {
     for (const [key, spec] of Object.entries(blockSpecs)) {
       expect(spec.config.type, `block spec registered as "${key}"`).toBe(key)
+    }
+    for (const [key, spec] of Object.entries(inlineSpecs)) {
+      const config = spec.config as { type: string }
+      expect(config.type, `inline spec registered as "${key}"`).toBe(key)
     }
   })
 })
