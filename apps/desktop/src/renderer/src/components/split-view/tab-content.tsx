@@ -14,17 +14,19 @@ import type { Tab } from '@/contexts/tabs/types'
 import { TabIdentityProvider } from '@/contexts/tabs/tab-identity'
 import { useTasksOptional } from '@/contexts/tasks'
 import { cn } from '@/lib/utils'
-import { InboxPage } from '@/pages/inbox'
 import { useT } from '@memry/i18n/renderer'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
 import type { ViewScope } from '@memry/contracts/folder-view-api'
 
 // =============================================================================
-// MEMOIZED PAGE COMPONENTS
-// Prevents recreation on every render - crucial for performance
+// LAZY PAGE COMPONENTS
+// Module-level so each type keeps one stable component identity, and so no
+// page's dependency tree lands in the entry chunk.
 // =============================================================================
 
-const MemoizedInboxPage = React.memo(InboxPage)
+const LazyInboxPage = React.lazy(async () => ({
+  default: (await import('@/pages/inbox')).InboxPage
+}))
 const LazyCalendarPage = React.lazy(async () => ({
   default: (await import('@/pages/calendar')).CalendarPage
 }))
@@ -106,7 +108,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         return <LazyHomePage />
 
       case 'inbox':
-        return <MemoizedInboxPage />
+        return <LazyInboxPage />
 
       case 'calendar':
         return <LazyCalendarPage />
