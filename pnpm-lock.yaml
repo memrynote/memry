@@ -1254,8 +1254,8 @@ importers:
   packages/article-extract:
     dependencies:
       defuddle:
-        specifier: ^0.19.0
-        version: 0.19.0
+        specifier: ^0.19.1
+        version: 0.19.1
       linkedom:
         specifier: ^0.18.12
         version: 0.18.12
@@ -8542,8 +8542,8 @@ packages:
   defu@6.1.7:
     resolution: {integrity: sha512-7z22QmUWiQ/2d0KkdYmANbRUVABpZ9SNYyH5vx6PZ+nE5bcC0l7uFvEfHlyld/HcGBFTL536ClDt3DEcSlEJAQ==}
 
-  defuddle@0.19.0:
-    resolution: {integrity: sha512-QBv9aQjIjV1xY++U2hdJu5ClY18XZTtaEuJD1K/JUq3CMONCJGTpvtyLPCMah/CWL0r2TtJYXU018tk/01VzGg==}
+  defuddle@0.19.1:
+    resolution: {integrity: sha512-7e2IVQYuNncMe9Ws8KkU/KHD8H1LFfFPmdTgRVuQNgJPOeQQSqZzAhacCyNAGwg44cM2vwuCW1cy9fmbdOZ+pA==}
     hasBin: true
 
   degenerator@5.0.1:
@@ -14246,8 +14246,8 @@ packages:
     resolution: {integrity: sha512-MFO/QzvtAOmJbkhOaCTvbGcFN9L9b+JunIsDwaKljSOdcLMea3NJ1k9Usz/rjdfSXTq4dfzfeS7W4p4YOAAHeA==}
     engines: {node: '>=18'}
 
-  temml@0.13.3:
-    resolution: {integrity: sha512-GLNEdf5qBWux3adbOxFus4jlds8nCdEIkkKq99m/4GGTfqnsjlVlK/i371Ux7yYSg/WNmOyAkNT/GJlZoJ0v+w==}
+  temml@0.13.4:
+    resolution: {integrity: sha512-k1yolMBswx34Jw9hZn5Xh2/GBlwqlW+wiN7QaUYUMhSa1ypfti6rlCfSmCxWyooxH1G32C/Z+qVvgAsBOELZBQ==}
     engines: {node: '>=18.13.0'}
 
   temp-file@3.4.0:
@@ -23672,13 +23672,13 @@ snapshots:
 
   defu@6.1.7: {}
 
-  defuddle@0.19.0:
+  defuddle@0.19.1:
     dependencies:
       commander: 12.1.0
     optionalDependencies:
       linkedom: 0.18.12
       mathml-to-latex: 1.8.0
-      temml: 0.13.3
+      temml: 0.13.4
       turndown: 7.2.4
     transitivePeerDependencies:
       - canvas
@@ -31142,7 +31142,7 @@ snapshots:
       minizlib: 3.1.0
       yallist: 5.0.0
 
-  temml@0.13.3:
+  temml@0.13.4:
     optional: true
 
   temp-file@3.4.0:
