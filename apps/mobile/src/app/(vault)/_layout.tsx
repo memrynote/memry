@@ -13,7 +13,7 @@ import {
   setBackgroundSyncVault,
   wireForegroundSync
 } from '@/sync/background'
-import { startSyncSocket, stopSyncSocket } from '@/sync/socket-controller'
+import { shutdownSyncSocket, startSyncSocket } from '@/sync/socket-controller'
 import { getEditorSession } from '@/editor/session'
 import { getSyncEngine } from '@/sync/engine'
 import { runFirstSyncIfNeeded, type FirstSyncProgress } from '@/sync/first-sync'
@@ -93,7 +93,7 @@ export default function VaultLayout() {
       // gets an explicit stop rather than becoming a fourth. Clearing the
       // background vault with it is what stops the 15-minute task syncing the
       // last vault forever after a sign-out.
-      stopSyncSocket()
+      shutdownSyncSocket()
       setBackgroundSyncVault(null)
     }
   }, [attempt])

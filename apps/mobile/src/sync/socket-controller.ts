@@ -34,8 +34,22 @@ const RNWebSocket = WebSocket as unknown as RNWebSocketConstructor
  * the manager stays testable without NetInfo or the keychain.
  */
 
+/**
+ * How long a burst of broadcasts is gathered before it is acted on.
+ *
+ * The server sends one `crdt_updated` per note per accepted push, so a desktop
+ * pushing fifty notes delivers fifty frames. Acting on each one directly meant
+ * fifty single-note HTTP round trips chained behind each other through the
+ * engine's FIFO queue, which is not a coalescer. Imperceptible as latency,
+ * and it turns a batch into one request.
+ */
+const COALESCE_MS = 250
+
 let socket: MobileSyncSocket | null = null
 let activeVaultId: string | null = null
+const pendingNoteIds = new Set<string>()
+let bodyTimer: ReturnType<typeof setTimeout> | null = null
+let passTimer: ReturnType<typeof setTimeout> | null = null
 
 async function currentAccessToken(): Promise<string | null> {
   const session = await loadSession()
@@ -59,12 +73,10 @@ function build(): MobileSyncSocket {
     log,
     createSocket: (url, headers) => new RNWebSocket(url, null, { headers }),
     onOpen: () => {
-      const vaultId = activeVaultId
-      if (!vaultId) return
       // Every reconnect brackets a window in which broadcasts were missed, and
       // a missed `crdt_updated` is gone for good — the server keeps no
       // vault-wide CRDT cursor to ask for it again.
-      void requestVaultSync(vaultId, 'socket')
+      schedulePass()
     },
     onEvent: (event) => {
       const vaultId = activeVaultId
@@ -75,10 +87,10 @@ function build(): MobileSyncSocket {
 
       switch (event.kind) {
         case 'changes_available':
-          void requestVaultSync(vaultId, 'socket')
+          schedulePass()
           return
         case 'crdt_updated':
-          void pullBody(vaultId, event.noteId)
+          scheduleBodyPull(event.noteId)
           return
         case 'error':
           log.warn('Sync socket server error', {
@@ -94,25 +106,50 @@ function build(): MobileSyncSocket {
 }
 
 /**
- * Fetch one note body, then feed it to the editor if that note is open.
+ * Run one full pass, at most one per window.
  *
- * Goes through the engine rather than `CrdtBodyPuller` directly: both engine
- * methods wrap themselves in `exclusive()`, and reaching past them reopens the
- * first-sync cursor wedge, because `runFirstSyncIfNeeded` shares the
- * `sync_cursors` row with `pullIncremental`.
+ * `sync()` and `OutboxDrain.drain()` each coalesce, but `EditorSession.flush`
+ * re-runs its own token refresh per caller, so N concurrent passes were N
+ * `/auth/refresh` posts. One trailing pass per burst removes that fan-out.
  */
-async function pullBody(vaultId: string, noteId: string): Promise<void> {
+function schedulePass(): void {
+  if (passTimer) return
+  passTimer = setTimeout(() => {
+    passTimer = null
+    const vaultId = activeVaultId
+    if (vaultId) void requestVaultSync(vaultId, 'socket')
+  }, COALESCE_MS)
+}
+
+function scheduleBodyPull(noteId: string): void {
+  pendingNoteIds.add(noteId)
+  if (bodyTimer) return
+  bodyTimer = setTimeout(() => {
+    bodyTimer = null
+    const noteIds = [...pendingNoteIds]
+    pendingNoteIds.clear()
+    const vaultId = activeVaultId
+    if (vaultId && noteIds.length > 0) void pullBodies(vaultId, noteIds)
+  }, COALESCE_MS)
+}
+
+/**
+ * Fetch the bodies, then feed them to the editor for whichever notes are open.
+ *
+ * Goes through `pullBodiesForNotes` rather than `getStore()` plus
+ * `pullBodiesFor`. Both wrap themselves in `exclusive()`, but `getStore()`
+ * calls `prepare()` outside it, and `prepare()` reassigns the vault key the
+ * running pass is still reading through a live getter.
+ */
+async function pullBodies(vaultId: string, noteIds: string[]): Promise<void> {
   try {
-    const engine = getSyncEngine(vaultId)
-    const store = await engine.getStore()
-    if (!store) return
-    await engine.pullBodiesFor(store, [noteId])
+    await getSyncEngine(vaultId).pullBodiesForNotes(noteIds)
     // The doc manager caches docs for the process lifetime, so a pull that
     // lands new server rows is invisible on screen until this runs.
-    await refreshOpenDocsFor(vaultId, [noteId])
+    await refreshOpenDocsFor(vaultId, noteIds)
   } catch (err) {
     log.warn('Socket-driven body pull failed', {
-      noteId,
+      notes: noteIds.length,
       error: err instanceof Error ? err.message : String(err)
     })
   }
@@ -136,5 +173,34 @@ export function startSyncSocket(vaultId: string): void {
  * reconnecting a socket the app is not foregrounded to use.
  */
 export function stopSyncSocket(): void {
+  clearTimers()
   socket?.stop()
+}
+
+/**
+ * Tear the socket down for good, dropping the manager itself.
+ *
+ * The distinction from `stopSyncSocket` is the LATCH. 4004 and 4009 are
+ * verdicts about an install and must survive a background/foreground cycle, so
+ * `stop()` keeps them. They must NOT survive a sign-out, or the next account on
+ * this phone inherits a socket that refuses to connect. The vault shell
+ * unmounting is the one event that means "different session", so it is the one
+ * event that discards the instance.
+ */
+export function shutdownSyncSocket(): void {
+  stopSyncSocket()
+  socket = null
+  activeVaultId = null
+}
+
+function clearTimers(): void {
+  if (bodyTimer) {
+    clearTimeout(bodyTimer)
+    bodyTimer = null
+  }
+  if (passTimer) {
+    clearTimeout(passTimer)
+    passTimer = null
+  }
+  pendingNoteIds.clear()
 }

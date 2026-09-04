@@ -195,6 +195,24 @@ export class MobileSyncEngine {
     return summary
   }
 
+  /**
+   * Pull specific note bodies, preparing inside the queue.
+   *
+   * The socket path must use this rather than `getStore()` then
+   * `pullBodiesFor`. `prepare()` assigns `vaultKeyCache` and `accessToken`,
+   * and both are handed to the pullers as LIVE getters, so calling it outside
+   * `exclusive()` can null the vault key under a pass that is already running
+   * -- which `pullBodiesForUnlocked` then reports as zero bodies rather than
+   * an error.
+   */
+  pullBodiesForNotes(noteIds: string[]): Promise<number> {
+    return this.exclusive(async () => {
+      const prepared = await this.prepare()
+      if (!prepared) return 0
+      return this.pullBodiesForUnlocked(prepared.store, noteIds)
+    })
+  }
+
   pullBodiesFor(store: MobilePullStore, noteIds: string[]): Promise<number> {
     return this.exclusive(() => this.pullBodiesForUnlocked(store, noteIds))
   }

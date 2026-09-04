@@ -57,13 +57,8 @@ export interface SocketLike {
   onclose: ((event: { code?: number; reason?: string }) => void) | null
 }
 
-export interface HandshakeProbeResult {
-  status: number
-  code?: string
-}
-
 export interface SyncSocketDeps {
-  /** The https sync base url. The ws url and the probe url derive from it. */
+  /** The https sync base url. The ws url derives from it. */
   baseUrl: string
   getAccessToken: () => Promise<string | null>
   refreshAccessToken: () => Promise<string | null>
@@ -76,10 +71,6 @@ export interface SyncSocketDeps {
   /** Every successful open brackets a window of broadcasts nobody heard. */
   onOpen: () => void
   createSocket: (url: string, headers: Record<string, string>) => SocketLike
-  probeHandshake?: (
-    url: string,
-    headers: Record<string, string>
-  ) => Promise<HandshakeProbeResult | null>
   random?: () => number
 }
 
@@ -136,7 +127,13 @@ export class MobileSyncSocket {
       return
     }
     if (this.state.kind === 'connecting' || this.state.kind === 'open') return
-    this.clearReconnectTimer()
+    // An armed backoff is deliberate and a foreground or online edge is not a
+    // reason to jump it. Cancelling it here is how a rate-limited client walks
+    // straight back into the 15-per-60-seconds ceiling it shares with every
+    // other device the same user owns. `stop()` clears the timer and resets
+    // the attempt count, so a genuine background/foreground cycle still
+    // reconnects immediately.
+    if (this.reconnectTimer) return
     void this.connect()
   }
 
@@ -195,13 +192,16 @@ export class MobileSyncSocket {
       return this.scheduleReconnect()
     }
     this.socket = socket
+    // Armed here rather than on open. React Native imposes no connect timeout
+    // of its own, and a handshake that neither opens nor closes would
+    // otherwise park the manager in 'connecting' with no timer and no socket,
+    // where `start()` declines to help and nothing ever recovers.
+    this.resetWatchdog()
 
-    let opened = false
     const mine = (): boolean => this.socket === socket && generation === this.generation
 
     socket.onopen = () => {
       if (!mine()) return
-      opened = true
       this.state = { kind: 'open' }
       this.attempt = 0
       this.resetWatchdog()
@@ -234,16 +234,11 @@ export class MobileSyncSocket {
 
     socket.onclose = (event) => {
       if (!mine()) return
-      this.handleClose(event?.code, event?.reason, opened, headers)
+      this.handleClose(event?.code, event?.reason)
     }
   }
 
-  private handleClose(
-    code: number | undefined,
-    reason: string | undefined,
-    opened: boolean,
-    headers: Record<string, string>
-  ): void {
+  private handleClose(code: number | undefined, reason: string | undefined): void {
     this.teardown()
     this.deps.log.info('Sync socket disconnected', { code, reason })
 
@@ -253,69 +248,31 @@ export class MobileSyncSocket {
       case SYNC_SOCKET_CLOSE.versionIncompatible:
         return this.latch('version-incompatible')
       case SYNC_SOCKET_CLOSE.tokenExpired:
-        void this.deps
-          .refreshAccessToken()
-          .catch(() => null)
-          .finally(() => this.scheduleReconnect())
+        // Armed BEFORE the refresh, not after it. Awaiting first leaves the
+        // manager with no socket and no timer, and `refreshSession` carries no
+        // abort signal, so that window is bounded only by the platform socket
+        // timeout. The refresh runs alongside and the reconnect reads whatever
+        // token has landed by the time it fires.
+        this.scheduleReconnect()
+        void this.deps.refreshAccessToken().catch(() => null)
         return
       case SYNC_SOCKET_CLOSE.rateLimited:
         this.attempt = Math.max(this.attempt, RATE_LIMITED_ATTEMPT)
         return this.scheduleReconnect()
-      case SYNC_SOCKET_CLOSE.replaced:
-        // Another connection for this device took over. That one is now the
-        // live socket, so reconnecting here just replaces it back and the two
-        // trade places forever. Back off like any other close and let the
-        // loser lose.
+      default:
+        // Everything else backs off, including the synthetic 1006 that React
+        // Native reports for a handshake the server refused.
+        //
+        // There is deliberately no HTTP probe here. `/sync/ws` answers any
+        // request without an `Upgrade: websocket` header with 426
+        // VALIDATION_ERROR before it reaches the Durable Object, so a plain GET
+        // learns nothing about why the handshake failed and cannot distinguish
+        // a version gate from a dropped connection. A probe that read that 426
+        // at face value would latch real-time sync off for the process on the
+        // first flaky network, which is worse than every problem it could
+        // solve. A raised version floor still reaches the user: `/sync/status`
+        // carries `clientPolicy` on every pass and drives read-only mode.
         return this.scheduleReconnect()
-      default:
-        break
-    }
-
-    if (opened) return this.scheduleReconnect()
-
-    // Never opened, so this is a rejected handshake wearing a 1006. The status
-    // is not structurally available and the message is not worth string
-    // matching, so ask the same URL over plain HTTP what it would have said.
-    void this.diagnoseHandshake(headers).finally(() => this.scheduleReconnect())
-  }
-
-  private async diagnoseHandshake(headers: Record<string, string>): Promise<void> {
-    const probe = this.deps.probeHandshake ?? defaultProbe
-    let result: HandshakeProbeResult | null = null
-    try {
-      result = await probe(this.probeUrl(), headers)
-    } catch (err) {
-      this.deps.log.debug?.('Handshake probe failed', { error: message(err) })
-      return
-    }
-    if (!result) return
-    this.deps.log.warn('Sync socket handshake rejected', {
-      status: result.status,
-      code: result.code ?? 'unknown'
-    })
-
-    switch (result.status) {
-      case 401:
-        // The token was stale by the time the handshake ran. Refresh now so
-        // the scheduled reconnect has something usable to present.
-        await this.deps.refreshAccessToken().catch(() => null)
-        return
-      case 403:
-        // The Durable Object answers 403 AUTH_DEVICE_REVOKED before the
-        // upgrade, so this device never reaches the 4004 close at all.
-        if (result.code === 'AUTH_DEVICE_REVOKED') this.latch('device-revoked')
-        return
-      case 426:
-        return this.latch('version-incompatible')
-      case 402:
-      case 429:
-        // Plan gate and rate limit are both "not now" rather than "not ever" —
-        // an upgrade or a cooled window heals within the 30 s ceiling without
-        // needing the app relaunched.
-        this.attempt = Math.max(this.attempt, RATE_LIMITED_ATTEMPT)
-        return
-      default:
-        return
     }
   }
 
@@ -410,10 +367,6 @@ export class MobileSyncSocket {
     return this.deps.baseUrl.replace(/^http/, 'ws') + '/sync/ws'
   }
 
-  private probeUrl(): string {
-    return this.deps.baseUrl + '/sync/ws'
-  }
-
   private stopPing(): void {
     if (this.pingTimer) {
       clearInterval(this.pingTimer)
@@ -434,21 +387,6 @@ export class MobileSyncSocket {
       this.reconnectTimer = null
     }
   }
-}
-
-async function defaultProbe(
-  url: string,
-  headers: Record<string, string>
-): Promise<HandshakeProbeResult | null> {
-  const response = await fetch(url, { method: 'GET', headers })
-  let code: string | undefined
-  try {
-    const body = (await response.json()) as { error?: { code?: string } }
-    code = body?.error?.code
-  } catch {
-    code = undefined
-  }
-  return { status: response.status, code }
 }
 
 function message(err: unknown): string {
