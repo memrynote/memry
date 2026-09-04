@@ -82,6 +82,7 @@ import {
   stopActiveHeartbeat
 } from './telemetry/diagnostics'
 import { recordLaunchPhase, reportLaunchTimeline } from './launch-timeline'
+import { onceWindowShown, schedulePostRevealTasks } from './post-reveal'
 import { toErrorCode } from '@memry/contracts/telemetry-api'
 import { drainEarlyMainEvents, trackMainEvent } from './telemetry/track'
 import {
@@ -800,6 +801,7 @@ function createWindow(): void {
     // Reveal is the moment the user stops staring at nothing, so it is where
     // the launch timeline is complete enough to attribute a slow start (#843).
     reportLaunchTimeline(reason)
+    schedulePostRevealTasks()
   }
 
   const fallbackShowTimer = setTimeout(() => {
@@ -1708,7 +1710,10 @@ const appReady = app.whenReady().then(async () => {
   }
 
   createWindow()
-  initializeUpdater()
+  // The updater touches disk (install-health reconcile, prefs, app-update.yml)
+  // and fires its first GitHub check straight away. None of that is on the way
+  // to the first frame, and all of it landed between window creation and reveal.
+  onceWindowShown('updater', initializeUpdater)
 
   // Open the last vault and start schedulers concurrently with renderer load.
   // The renderer subscribes to vault status events and updates automatically.
