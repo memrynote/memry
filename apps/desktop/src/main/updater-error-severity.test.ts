@@ -4,6 +4,7 @@ import type { UpdaterErrorPhase } from './updater'
 import {
   classifyUpdaterError,
   isExpiredSignedAssetError,
+  isReadOnlyVolumeError,
   isUpdaterCheckPhase,
   recordUpdaterCheckFailure,
   recordUpdaterCheckSuccess,
@@ -307,5 +308,39 @@ describe('isExpiredSignedAssetError', () => {
     const expired = signedAssetError(618, 'release-assets.githubusercontent.com', '618 jwt:expired')
     expect(classifyUpdaterError(expired, 'check')).toBe('error')
     expect(classifyUpdaterError(new Error('net::ERR_TIMED_OUT'), 'check')).toBe('warn')
+  })
+})
+
+describe('isReadOnlyVolumeError', () => {
+  // Verbatim Squirrel.Mac copy from the 2026-09-04 PostHog window (issue #1995).
+  const squirrelReadOnlyVolume =
+    'Cannot update while running on a read-only volume. The application is on a ' +
+    "read-only volume. Please move the application and try again. If you're on " +
+    "macOS Sierra or later, you'll need to move the application out of the " +
+    'Downloads directory. See https://github.com/Squirrel/Squirrel.Mac/issues/182 ' +
+    'for more information.'
+
+  it('recognises the Squirrel.Mac read-only volume failure', () => {
+    expect(isReadOnlyVolumeError(new Error(squirrelReadOnlyVolume))).toBe(true)
+  })
+
+  it('reads through a cause chain, the way electron-updater wraps failures', () => {
+    const wrapped = new Error('Cannot install update')
+    ;(wrapped as { cause?: unknown }).cause = new Error(squirrelReadOnlyVolume)
+    expect(isReadOnlyVolumeError(wrapped)).toBe(true)
+  })
+
+  it('leaves every other updater failure alone', () => {
+    expect(isReadOnlyVolumeError(new Error('net::ERR_INTERNET_DISCONNECTED'))).toBe(false)
+    expect(isReadOnlyVolumeError(new Error('ENOSPC: no space left on device'))).toBe(false)
+    // "read-only" without the volume is a file-permission problem, not this one.
+    expect(isReadOnlyVolumeError(new Error('EROFS: read-only file system'))).toBe(false)
+    expect(isReadOnlyVolumeError(undefined)).toBe(false)
+    expect(isReadOnlyVolumeError(squirrelReadOnlyVolume)).toBe(true)
+  })
+
+  it('demotes the failure below error severity in the install phase', () => {
+    expect(classifyUpdaterError(new Error(squirrelReadOnlyVolume), 'downloaded')).toBe('warn')
+    expect(classifyUpdaterError(new Error('ENOSPC: no space left'), 'downloaded')).toBe('error')
   })
 })
