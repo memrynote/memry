@@ -9,7 +9,7 @@ import {
   useSyncExternalStore,
   type ReactNode
 } from 'react'
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native'
+import { Dimensions, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import { loadEditorWebHtml } from './editor-web-asset'
 import { EditorHostController } from './editor-host-controller'
@@ -58,7 +58,14 @@ export function EditorHost({ children }: { children: ReactNode }) {
 function HostWebView({ controller }: { controller: EditorHostController }) {
   const webViewRef = useRef<WebView>(null)
   const containerRef = useRef<View>(null)
-  const [container, setContainer] = useState({ top: 0, height: 0 })
+  // Seeded from the window rather than zero. The guest starts loading the
+  // moment it is created, and this is the prewarm: a first frame at height 0
+  // is the one case where WebKit could reasonably defer the work this host
+  // exists to do early. `onLayout` corrects it a frame later either way.
+  const [container, setContainer] = useState(() => ({
+    top: 0,
+    height: Dimensions.get('window').height
+  }))
   const html = useMemo(() => loadEditorWebHtml(), [])
   const state = useSyncExternalStore(controller.subscribe, controller.getState)
 
