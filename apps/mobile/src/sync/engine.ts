@@ -179,10 +179,8 @@ export class MobileSyncEngine {
       return { ok: false, reason: 'error', itemsApplied: 0, bodiesUpdated: 0, changedNoteIds: [] }
     }
 
-    const bodies = await this.pullBodiesForUnlocked(
-      store,
-      bodyPullTargets(record.changedNoteIds, await openDocIdsFor(this.vaultId))
-    )
+    const targets = bodyPullTargets(record.changedNoteIds, await openDocIdsFor(this.vaultId))
+    const bodies = await this.pullBodiesForUnlocked(store, targets)
     await this.pollStatus(engine)
 
     const summary: SyncSummary = {
@@ -190,7 +188,7 @@ export class MobileSyncEngine {
       reason: record.ok ? null : 'refused',
       itemsApplied: record.itemsApplied,
       bodiesUpdated: bodies,
-      changedNoteIds: record.changedNoteIds
+      changedNoteIds: targets
     }
     await recordSyncOutcome(this.vaultId, { ok: summary.ok, reason: summary.reason })
     for (const listener of this.listeners) listener(summary)
@@ -263,11 +261,18 @@ export interface SyncSummary {
   itemsApplied: number
   bodiesUpdated: number
   /**
-   * Notes whose CRDT state this pass touched.
+   * Notes whose CRDT state this pass asked the server about.
    *
    * Carried out of the engine so an OPEN editor can be fed the new rows; the
    * doc manager caches docs for the process lifetime, so a pull that lands
    * server updates is otherwise invisible until the app restarts.
+   *
+   * This is the same union the pass pulled bodies for, not just the notes the
+   * record feed named. Halving it was the on-screen half of the body-only bug:
+   * the heal path would fetch a peer's edit into SQLite and the editor showing
+   * that very note would keep painting the old text until it was reopened.
+   * Refreshing a doc with no new server rows is a no-op, so the wider set costs
+   * nothing.
    */
   changedNoteIds: string[]
 }
