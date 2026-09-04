@@ -80,6 +80,15 @@ vi.mock('./graph-events', () => ({
       >
         hover note
       </button>
+      <button
+        type="button"
+        onClick={() => {
+          onHoverNode(null)
+          onTooltipMove(null)
+        }}
+      >
+        unhover note
+      </button>
       <button type="button" onClick={() => onFocusNode('note-b')}>
         focus note
       </button>
@@ -775,6 +784,61 @@ describe('GraphCanvas', () => {
       expect(afterFirstFrame).not.toBe(settledX)
       // Without the reheat the loop parks itself again after that single tick.
       expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(afterFirstFrame)
+    })
+
+    it('re-settles and repaints a static forceatlas2 layout when a node appears', () => {
+      const staticPhysics: GraphSettings = {
+        ...settings,
+        layout: 'forceatlas2',
+        animateLayout: false
+      }
+      const { rerender } = renderWith(data, staticPhysics)
+      const graph = liveGraph()
+      const settledX = graph.getNodeAttribute('note-a', 'x')
+      graphCanvasMocks.sigma.refresh.mockClear()
+
+      rerender({
+        nodes: [...data.nodes, noteC],
+        edges: [
+          ...data.edges,
+          { id: 'edge-a-c', source: 'note-a', target: 'note-c', type: 'wikilink', weight: 1 }
+        ]
+      })
+
+      expect(graph.hasNode('note-c')).toBe(true)
+      expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(settledX)
+      expect(graphCanvasMocks.sigma.refresh).toHaveBeenCalled()
+    })
+  })
+
+  describe('hover fade', () => {
+    function renderCanvas(): void {
+      render(
+        <GraphCanvas
+          data={data}
+          filterState={filters}
+          graphSettings={settings}
+          onFocusNode={vi.fn()}
+        />
+      )
+    }
+
+    it('repaints through the fade-out and then parks', () => {
+      renderCanvas()
+      fireEvent.click(screen.getByText('hover note'))
+      for (let i = 0; i < 40; i++) vi.advanceTimersToNextFrame()
+
+      fireEvent.click(screen.getByText('unhover note'))
+      graphCanvasMocks.sigma.refresh.mockClear()
+      for (let i = 0; i < 40; i++) vi.advanceTimersToNextFrame()
+
+      expect(graphCanvasMocks.sigma.refresh).toHaveBeenCalled()
+
+      // A finished fade schedules no further frame, so the graph stops repainting.
+      graphCanvasMocks.sigma.refresh.mockClear()
+      for (let i = 0; i < 5; i++) vi.advanceTimersToNextFrame()
+
+      expect(graphCanvasMocks.sigma.refresh).not.toHaveBeenCalled()
     })
   })
 })
