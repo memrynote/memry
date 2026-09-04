@@ -6,7 +6,9 @@ import { File, Paths } from 'expo-file-system'
 import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
 import { Spacing } from '@/constants/theme'
+import type { LatencySummary } from '@/editor/__rig__/latency'
 import {
+  cell,
   formatOpenTraceReport,
   getTraces,
   resetTraces,
@@ -126,6 +128,34 @@ async function waitForPaint(noteId: string, since: number): Promise<number | nul
   return null
 }
 
+/**
+ * The n / p50 / p95 / max cells of one table row.
+ *
+ * A phase with no samples prints a dash, not a zero. It matters from #2030 on:
+ * a warm open reaches none of the guest's BOOT marks, because the WebView
+ * booted long before the tap, and a table that renders those as `0` reports the
+ * fastest open that never happened.
+ */
+function Cells({ samples, bold }: { samples: LatencySummary; bold?: boolean }) {
+  const type = bold ? 'smallBold' : 'small'
+  return (
+    <>
+      <ThemedText type={type} style={styles.numberCell}>
+        {samples.samples}
+      </ThemedText>
+      <ThemedText type={type} style={styles.numberCell}>
+        {cell(samples, samples.p50, '')}
+      </ThemedText>
+      <ThemedText type={type} style={styles.numberCell}>
+        {cell(samples, samples.p95, '')}
+      </ThemedText>
+      <ThemedText type={type} style={styles.numberCell}>
+        {cell(samples, samples.max, '')}
+      </ThemedText>
+    </>
+  )
+}
+
 interface RunOptions {
   total: number
   /** Which end of the body-length ordering to open, or the default pool. */
@@ -200,6 +230,14 @@ export default function OpenTraceScreen() {
       setStatus(pool)
 
       resetTraces()
+      // Into the notes list FIRST, and stay there for the whole run. The
+      // editor WebView belongs to the notes stack (#2030), so pushing a note
+      // straight from this screen would mount that stack, open the note and
+      // unmount both again on the way back — every iteration would time a cold
+      // guest, which is the one thing a user only pays once.
+      router.push('/notes')
+      await delay(SETTLE_MS)
+
       for (let i = 0; i < total; i++) {
         setProgress({ done: i, total })
         // Consecutive iterations open DIFFERENT notes, so the doc manager's
@@ -264,6 +302,10 @@ export default function OpenTraceScreen() {
             The doc manager caches open docs, so a note opened twice in one run is warm the second
             time.
           </ThemedText>
+          <ThemedText type="small">
+            The editor WebView is created once for the whole notes stack, so docStart…readySent are
+            its boot and belong to the first open only. A dash on those rows is that, not a miss.
+          </ThemedText>
 
           <Pressable
             style={styles.button}
@@ -307,36 +349,14 @@ export default function OpenTraceScreen() {
                   <ThemedText type="small" style={styles.phaseCell}>
                     {entry.phase}
                   </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.samples}
-                  </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.p50}
-                  </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.p95}
-                  </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.max}
-                  </ThemedText>
+                  <Cells samples={entry.samples} />
                 </View>
               ))}
               <View style={styles.row}>
                 <ThemedText type="smallBold" style={styles.phaseCell}>
                   navigate → painted
                 </ThemedText>
-                <ThemedText type="smallBold" style={styles.numberCell}>
-                  {summary.endToEnd.samples}
-                </ThemedText>
-                <ThemedText type="smallBold" style={styles.numberCell}>
-                  {summary.endToEnd.p50}
-                </ThemedText>
-                <ThemedText type="smallBold" style={styles.numberCell}>
-                  {summary.endToEnd.p95}
-                </ThemedText>
-                <ThemedText type="smallBold" style={styles.numberCell}>
-                  {summary.endToEnd.max}
-                </ThemedText>
+                <Cells samples={summary.endToEnd} bold />
               </View>
               <ThemedText type="small">
                 {summary.traces} traces recorded, {timedOut} timed out without painting.
@@ -348,18 +368,7 @@ export default function OpenTraceScreen() {
                   <ThemedText type="small" style={styles.phaseCell}>
                     {entry.label}
                   </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.samples}
-                  </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.p50}
-                  </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.p95}
-                  </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.max}
-                  </ThemedText>
+                  <Cells samples={entry.samples} />
                 </View>
               ))}
 
@@ -369,18 +378,7 @@ export default function OpenTraceScreen() {
                   <ThemedText type="small" style={styles.phaseCell}>
                     {entry.field}
                   </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.samples}
-                  </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.p50}
-                  </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.p95}
-                  </ThemedText>
-                  <ThemedText type="small" style={styles.numberCell}>
-                    {entry.samples.max}
-                  </ThemedText>
+                  <Cells samples={entry.samples} />
                 </View>
               ))}
             </>

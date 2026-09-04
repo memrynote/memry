@@ -1,16 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native'
-import { WebView, type WebViewMessageEvent } from 'react-native-webview'
-import {
-  BRIDGE_PROTOCOL_VERSION,
-  type BridgeCfg,
-  type GuestMsg,
-  type WikiCandidate
-} from '@memry/contracts/webview-bridge'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { ActivityIndicator, StyleSheet, View } from 'react-native'
+import { useIsFocused, useNavigation } from 'expo-router'
+import { type BridgeCfg, type GuestMsg, type WikiCandidate } from '@memry/contracts/webview-bridge'
 import { base64ToBytes, bytesToBase64 } from '../lib/base64'
 import { createLogger } from '../lib/logger'
-import { EDITOR_WEB_CONTRACT_HASH, loadEditorWebHtml } from './editor-web-asset'
-import { createInjectionTransport, EditorBridgeProvider } from './bridge-provider'
+import { useEditorHost } from './editor-host'
+import type { EditorFrame, HostDoc } from './editor-host-controller'
 import type { OpenDoc } from './doc-manager'
 import { LatencyRecorder, type G3Measurement } from './__rig__/latency'
 import { isProbeEnabled, mark, markDocLoadPayload, markGuestPhases } from './__rig__/open-trace'
@@ -18,13 +13,28 @@ import { isProbeEnabled, mark, markDocLoadPayload, markGuestPhases } from './__r
 const log = createLogger('EditorView')
 
 /**
- * The WebView host for the note body (T064).
+ * One note's side of the shared editor WebView (T064, #2030).
  *
- * Owns the bridge, not the document: the Y.Doc arrives already open from the
- * doc manager, and everything this component does is translate between it and
- * the guest. That split is what makes WebView process death cheap — the view
- * can be destroyed and re-created, and the doc it was showing is untouched.
+ * Owns the document, not the view: the Y.Doc arrives already open from the doc
+ * manager, and everything here translates between it and the guest. The guest
+ * itself belongs to `EditorHost`, one instance for the whole notes stack, so
+ * this component renders a PLACEHOLDER and reports its window frame — the host
+ * positions the WebView onto it.
+ *
+ * That split is what makes both WebView process death and note switching
+ * cheap. The view can be destroyed, re-created, or handed to another note, and
+ * the document it was showing is untouched.
  */
+
+/**
+ * How long to wait for the push animation when the navigator reports no
+ * `transitionEnd`.
+ *
+ * The stack's initial route and a push with animation off never emit one, and
+ * an editor that waits for it forever is an invisible editor. Longer than the
+ * iOS push, so the normal path is always the event and never this.
+ */
+const REVEAL_FALLBACK_MS = 500
 
 export interface EditorViewProps {
   doc: OpenDoc
@@ -71,6 +81,15 @@ export interface EditorControls {
   resetMeasurement(): void
 }
 
+/**
+ * Only the commands that act on a document are addressed.
+ *
+ * `flush` and `blur` are transport-level: a note that is still mounted but off
+ * screen has to be able to flush the bridge on a background transition, and
+ * addressing that would silently drop it.
+ */
+type DocScopedCommand = 'undo' | 'redo' | 'focus'
+
 export function EditorView({
   doc,
   cfg,
@@ -80,25 +99,16 @@ export function EditorView({
   seedMarkdown,
   onReady
 }: EditorViewProps) {
-  const webViewRef = useRef<WebView>(null)
-  const [loaded, setLoaded] = useState(false)
-  /**
-   * Bumped to remount the WebView after iOS reclaims its content process.
-   *
-   * `reload()` re-fetches the current URL, and the source here is an inline
-   * HTML string served against `about:blank` — there is nothing to re-fetch,
-   * so the editor came back blank behind a permanent spinner with the bridge
-   * never re-attached. A new `key` rebuilds the view from the same source.
-   */
-  const [instance, setInstance] = useState(0)
-  const html = useMemo(() => loadEditorWebHtml(), [])
+  const host = useEditorHost()
+  const bridge = host.bridge
+  const hostState = useSyncExternalStore(host.subscribe, host.getState)
 
-  // One provider per mounted view. `sid` carries the doc id so a stray envelope
-  // from a previous note is identifiable in a log rather than merely wrong.
-  const bridge = useMemo(() => new EditorBridgeProvider(`rn-${doc.docId}`), [doc.docId])
+  const docId = doc.docId
+  /** Whether the shared guest is currently showing THIS note. */
+  const mounted = hostState.guest === 'ready' && hostState.mountedDocId === docId
 
   /**
-   * Guest updates are persisted STRICTLY IN ORDER, one at a time.
+   * Guest updates are persisted STRICTLY IN ORDER, one at a time, and per note.
    *
    * A single 24 ms envelope can carry several `y-update` messages, and running
    * their persists concurrently races `SELECT MAX(seq)` against the local
@@ -107,6 +117,10 @@ export function EditorView({
    * The losers were caught and logged, so those keystrokes lived in memory and
    * were never persisted or enqueued: silent loss on exactly the fast typing
    * the batching exists to handle.
+   *
+   * It stays here rather than moving up with the WebView because it is the
+   * note's chain, not the view's: merging two notes' persists would put them
+   * back in the race the chain removes.
    */
   const persistChain = useRef<Promise<void>>(Promise.resolve())
 
@@ -119,11 +133,6 @@ export function EditorView({
   // and a measurement path that only exists in a dev build is a measurement of
   // a different app than the one G3 gates.
   const recorder = useMemo(() => new LatencyRecorder(bridge), [bridge])
-
-  // Length of the JS source string of the last envelope handed to
-  // `injectJavaScript`. The transport owns that string and the trace needs its
-  // size, and this is the one place both are in scope (#2044).
-  const lastInjectedChars = useRef(0)
 
   /**
    * Ask the guest to flush, then wait for the resulting persists.
@@ -173,17 +182,18 @@ export function EditorView({
     if (probing) {
       bridge.send({ type: 'probe', slot: 'early' })
       bridge.flush()
-      mark(doc.docId, 'probeEarlySent')
+      mark(docId, 'probeEarlySent')
     }
 
     const state = doc.encodeState()
     const stateB64 = bytesToBase64(state)
     bridge.send({
       type: 'doc-load',
-      docId: doc.docId,
+      docId,
       stateB64,
       // Only when the doc is genuinely empty, so a seed can never overwrite
-      // content that already exists.
+      // content that already exists. Read at send time, from THIS note's own
+      // doc, so a doc switch can never carry the previous note's seed.
       ...(doc.isEmpty() && seedMarkdown ? { seedMarkdown } : {})
     })
     bridge.flush()
@@ -192,110 +202,60 @@ export function EditorView({
     // resync and late-seed replays, because the guest's `docLoadRecv` is
     // likewise the last one it received — marking only the first would pair a
     // replayed receipt against the original send and invent a delay.
-    mark(doc.docId, 'docLoadSent')
+    mark(docId, 'docLoadSent')
     // Read straight after the flush, while the injection the transport just
     // made is still the last one.
-    markDocLoadPayload(doc.docId, {
+    markDocLoadPayload(docId, {
       stateBytes: state.byteLength,
       wireChars: stateB64.length,
-      injectedChars: lastInjectedChars.current
+      injectedChars: host.getLastInjectedChars()
     })
 
     if (probing) {
       bridge.send({ type: 'probe', slot: 'late' })
       bridge.flush()
-      mark(doc.docId, 'probeLateSent')
+      mark(docId, 'probeLateSent')
     }
-  }, [bridge, doc, seedMarkdown])
+  }, [bridge, doc, docId, host, seedMarkdown])
 
-  // A `seq` gap means an envelope was lost; the only correct response is a
-  // full `doc-load`, because a dropped update leaves the two replicas diverged
-  // with no symptom until a later edit lands on the wrong state.
-  useEffect(
-    () =>
-      bridge.onResyncNeeded((reason) => {
-        log.warn('Bridge resync', { docId: doc.docId, reason })
-        sendDocLoad()
-      }),
-    [bridge, doc.docId, sendDocLoad]
-  )
+  /** Hand this note to the guest. Called by the host every time it becomes the mounted one. */
+  const mountOnGuest = useCallback(() => {
+    bridge.send({ type: 'cfg', ...cfg })
+    sendDocLoad()
+  }, [bridge, cfg, sendDocLoad])
 
-  // Remote updates (sync, or another surface) are forwarded to the guest.
+  // Remote updates (sync, or another surface) are forwarded to the guest, and
+  // ONLY while this note is the one it is showing.
   useEffect(() => {
     return doc.onRemoteUpdate((update) => {
-      bridge.send({ type: 'y-update', docId: doc.docId, updatesB64: [bytesToBase64(update)] })
+      if (host.getState().mountedDocId !== docId) return
+      bridge.send({ type: 'y-update', docId, updatesB64: [bytesToBase64(update)] })
     })
-  }, [bridge, doc])
+  }, [bridge, doc, docId, host])
 
   // A seed resolved by the background probe arrives AFTER the guest has
   // already been handed its (empty) doc, so it needs a fresh `doc-load` to be
   // applied at all. Guarded on emptiness, so a late seed can never land on a
   // document that has since acquired content.
   useEffect(() => {
-    if (!loaded || !seedMarkdown || !doc.isEmpty()) return
+    if (!mounted || !seedMarkdown || !doc.isEmpty()) return
     sendDocLoad()
-  }, [doc, loaded, seedMarkdown, sendDocLoad])
+  }, [doc, mounted, seedMarkdown, sendDocLoad])
 
-  // Config changes (theme, read-only from the kill switch) are pushed live.
+  // Config changes (theme, read-only from the kill switch) are pushed live, by
+  // the note on screen only — an off-screen note pushing its own would recolour
+  // the one the reader is looking at.
   useEffect(() => {
-    if (!loaded) return
+    if (!mounted) return
     bridge.send({ type: 'cfg', ...cfg })
     bridge.flush()
-  }, [bridge, cfg, loaded])
-
-  useEffect(() => {
-    return () => bridge.detach()
-  }, [bridge])
+  }, [bridge, cfg, mounted])
 
   const handleGuestMsg = useCallback(
     (msg: GuestMsg) => {
       switch (msg.type) {
-        case 'ready': {
-          mark(doc.docId, 'guestReady')
-          if (msg.protocolV !== BRIDGE_PROTOCOL_VERSION) {
-            // Only reachable from a stale prebuilt asset; the two halves
-            // compile against the same contract module.
-            log.error('Bridge protocol mismatch', {
-              expected: BRIDGE_PROTOCOL_VERSION,
-              got: msg.protocolV
-            })
-            return
-          }
-          if (msg.contractHash && msg.contractHash !== EDITOR_WEB_CONTRACT_HASH) {
-            log.warn('Editor asset hash differs from the RN-side stamp', {
-              guest: msg.contractHash,
-              host: EDITOR_WEB_CONTRACT_HASH
-            })
-          }
-          bridge.send({ type: 'cfg', ...cfg })
-          sendDocLoad()
-          setLoaded(true)
-          onReady?.({
-            undo: () => {
-              bridge.send({ type: 'exec', cmd: 'undo' })
-              bridge.flush()
-            },
-            redo: () => {
-              bridge.send({ type: 'exec', cmd: 'redo' })
-              bridge.flush()
-            },
-            focus: () => {
-              bridge.send({ type: 'exec', cmd: 'focus' })
-              bridge.flush()
-            },
-            flush: () => flushAndSettle(),
-            insertAttachment: (ref, name, mime) => {
-              bridge.send({ type: 'insert-attachment', ref, name, mime, width: 0 })
-              bridge.flush()
-            },
-            measure: () => recorder.summary(),
-            resetMeasurement: () => recorder.reset()
-          })
-          break
-        }
-
         case 'y-update': {
-          if (msg.docId !== doc.docId) return
+          if (msg.docId !== docId) return
           // Sequential, and awaited: `applyFromGuest` is what makes the update
           // durable, and overlapping calls would race the local sequence.
           const deliveryMs = bridge.getLastDeliveryMs()
@@ -305,7 +265,7 @@ export function EditorView({
                 await recorder.record(deliveryMs, () => doc.applyFromGuest(base64ToBytes(b64)))
               } catch (err) {
                 log.error('Failed to persist an editor update; resyncing', {
-                  docId: doc.docId,
+                  docId,
                   error: err instanceof Error ? err.message : String(err)
                 })
                 // The doc did not move, so the WebView is now AHEAD of the
@@ -380,84 +340,140 @@ export function EditorView({
           break
       }
     },
-    [
-      bridge,
-      cfg,
-      doc,
-      flushAndSettle,
-      onAssetRequest,
-      onNavigate,
-      onReady,
-      onWikiQuery,
-      recorder,
-      sendDocLoad
-    ]
+    [bridge, doc, docId, onAssetRequest, onNavigate, onWikiQuery, recorder, sendDocLoad]
   )
-
-  useEffect(() => bridge.onGuestMsg(handleGuestMsg), [bridge, handleGuestMsg])
-
-  const onMessage = useCallback(
-    (event: WebViewMessageEvent) => bridge.receive(event.nativeEvent.data),
-    [bridge]
-  )
-
-  const onWebViewLoad = useCallback(() => {
-    mark(doc.docId, 'webviewMounted')
-    bridge.attach(
-      createInjectionTransport((js) => {
-        lastInjectedChars.current = js.length
-        webViewRef.current?.injectJavaScript(js)
-      })
-    )
-  }, [bridge, doc.docId])
 
   /**
-   * iOS reclaims WKWebView content processes under memory pressure. The doc is
-   * on the RN side, so recovery is just a re-created view replaying `doc-load`
-   * — no edit is at risk, which is the whole point of RN-side ownership.
+   * The callbacks the host reaches this note through.
+   *
+   * Read through a ref so the registration itself is stable: re-attaching on
+   * every render would re-send `doc-load` and rebuild the guest's editor under
+   * the caret.
    */
-  const onContentProcessDidTerminate = useCallback(() => {
-    log.warn('WebView content process terminated; re-creating', { docId: doc.docId })
-    setLoaded(false)
-    bridge.detach()
-    setInstance((value) => value + 1)
-  }, [bridge, doc.docId])
+  const latest = useRef({ handleGuestMsg, mountOnGuest })
+  useEffect(() => {
+    latest.current = { handleGuestMsg, mountOnGuest }
+  }, [handleGuestMsg, mountOnGuest])
+
+  const hostDoc = useMemo<HostDoc>(
+    () => ({
+      docId,
+      onGuestMsg: (msg) => latest.current.handleGuestMsg(msg),
+      mount: () => latest.current.mountOnGuest()
+    }),
+    [docId]
+  )
+
+  useEffect(() => host.attach(hostDoc), [host, hostDoc])
+
+  const controls = useMemo<EditorControls>(() => {
+    const exec = (cmd: DocScopedCommand): void => {
+      bridge.send({ type: 'exec', cmd, docId })
+      bridge.flush()
+    }
+    return {
+      undo: () => exec('undo'),
+      redo: () => exec('redo'),
+      focus: () => exec('focus'),
+      flush: () => flushAndSettle(),
+      insertAttachment: (ref, name, mime) => {
+        bridge.send({ type: 'insert-attachment', docId, ref, name, mime, width: 0 })
+        bridge.flush()
+      },
+      measure: () => recorder.summary(),
+      resetMeasurement: () => recorder.reset()
+    }
+  }, [bridge, docId, flushAndSettle, recorder])
+
+  // Per OPEN, not per WebView. The guest's `ready` now fires once for the whole
+  // notes stack, so a screen that waited for it would hold `null` controls for
+  // every note after the first — taking the save indicator and the background
+  // flush with them.
+  const onReadyRef = useRef(onReady)
+  useEffect(() => {
+    onReadyRef.current = onReady
+  }, [onReady])
+  useEffect(() => {
+    onReadyRef.current?.(controls)
+  }, [controls])
+
+  // ---------------------------------------------------------------------
+  // Geometry. The host draws the guest onto this placeholder's window frame.
+  // ---------------------------------------------------------------------
+
+  const placeholder = useRef<View>(null)
+  const frame = useRef<EditorFrame | null>(null)
+  const onScreen = useRef(false)
+
+  const pushLayout = useCallback(() => {
+    host.setLayout(hostDoc, { frame: frame.current, visible: onScreen.current })
+  }, [host, hostDoc])
+
+  const measure = useCallback(() => {
+    placeholder.current?.measureInWindow((_x, y, _width, height) => {
+      if (height <= 0) return
+      if (frame.current?.top === y && frame.current.height === height) return
+      frame.current = { top: y, height }
+      pushLayout()
+    })
+  }, [pushLayout])
+
+  /**
+   * Revealed only once this route has settled where it belongs.
+   *
+   * The host is a sibling of the stack and does not slide with it, so an
+   * editor shown during a push would be drawn over the list the pushed screen
+   * is still sliding in front of. A pop needs no such wait — the screen
+   * underneath is already in place — which is why this latches rather than
+   * resetting on every blur.
+   */
+  const focused = useIsFocused()
+  const navigation = useNavigation<StackTransitions>()
+  const [opened, setOpened] = useState(false)
+
+  useEffect(() => {
+    const remove = navigation.addListener('transitionEnd', (event) => {
+      if (!event.data.closing) setOpened(true)
+    })
+    const fallback = setTimeout(() => setOpened(true), REVEAL_FALLBACK_MS)
+    return () => {
+      remove()
+      clearTimeout(fallback)
+    }
+  }, [navigation])
+
+  const visible = focused && opened
+  useEffect(() => {
+    onScreen.current = visible
+    pushLayout()
+    // Re-measured on reveal: the push animation can move this view under
+    // `measureInWindow`, so the frame taken during it is not where it lands.
+    if (visible) measure()
+  }, [measure, pushLayout, visible])
 
   return (
-    <KeyboardAvoidingView
-      style={styles.fill}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <WebView
-        key={instance}
-        ref={webViewRef}
-        source={{ html, baseUrl: 'about:blank' }}
-        onLoadEnd={onWebViewLoad}
-        onMessage={onMessage}
-        onContentProcessDidTerminate={onContentProcessDidTerminate}
-        onRenderProcessGone={onContentProcessDidTerminate}
-        style={styles.fill}
-        javaScriptEnabled
-        // The document is local and its CSP forbids every remote fetch; this
-        // stops a crafted note from turning a tap into a navigation anyway.
-        originWhitelist={['about:blank']}
-        allowFileAccess={false}
-        allowsInlineMediaPlayback
-        keyboardDisplayRequiresUserAction={false}
-        hideKeyboardAccessoryView
-        automaticallyAdjustContentInsets={false}
-        // The editor sizes its own document; a bouncing scroll view under it
-        // fights the caret on iOS.
-        bounces={false}
-        overScrollMode="never"
-      />
-      {loaded ? null : (
+    <View ref={placeholder} style={styles.fill} onLayout={measure}>
+      {mounted ? null : (
         <View style={styles.loading} pointerEvents="none">
           <ActivityIndicator />
         </View>
       )}
-    </KeyboardAvoidingView>
+    </View>
   )
+}
+
+/**
+ * The one navigator event this screen needs.
+ *
+ * Declared here rather than pulled from `@react-navigation/native-stack`,
+ * which the app does not depend on directly: `useNavigation` is generic
+ * exactly so a screen can name the surface it uses.
+ */
+interface StackTransitions {
+  addListener(
+    type: 'transitionEnd',
+    listener: (event: { data: { closing: boolean } }) => void
+  ): () => void
 }
 
 const styles = StyleSheet.create({
