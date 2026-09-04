@@ -81,7 +81,7 @@ The capture bar is the top of the page — there is no title header above it. On
 
 Five views, switched in place — none of them opens another tab:
 
-The **⋯** menu — which edits or archives the project — sits at the end of the tab row.
+The **⋯** menu — which edits or archives the project — sits at the end of the tab row. **Archive** is greyed out on the Inbox, which is permanent and cannot be archived.
 
 - **Overview** — the first five of each category, with a **View all** that jumps to that category's tab
 - **Tasks** — the full task list, with the list, quick-add, and subtasks you already know
