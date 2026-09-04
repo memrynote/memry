@@ -173,6 +173,16 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   }
 
   bridge.markLoaded()
+
+  // The frame callback runs once the mounted document has been styled and laid
+  // out, at the frame boundary just before the compositor presents it — so this
+  // UNDER-reports the on-screen moment by at most one frame and never
+  // over-reports. Flushed immediately rather than batched: a 24 ms delay on the
+  // one message whose whole job is timing would be measuring the instrument.
+  requestAnimationFrame(() => {
+    bridge.send({ type: 'painted', docId })
+    bridge.flush()
+  })
 }
 
 /**

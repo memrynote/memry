@@ -289,11 +289,19 @@ export const PropertiesChannels = {
     RENAME: 'properties:rename',
     /** Resolve relation property URIs to display data (title, existence) */
     RESOLVE_REFS: 'properties:resolveRefs'
+  },
+  events: {
+    /** A vault-wide property definition arrived over sync (payload: `{ name }`) */
+    DEFINITION_CHANGED: 'properties:definition-changed',
+    /** A vault-wide property definition was deleted on a peer (payload: `{ name }`) */
+    DEFINITION_DELETED: 'properties:definition-deleted'
   }
 } as const
 
 export type PropertiesInvokeChannel =
   (typeof PropertiesChannels.invoke)[keyof typeof PropertiesChannels.invoke]
+export type PropertiesEventChannel =
+  (typeof PropertiesChannels.events)[keyof typeof PropertiesChannels.events]
 
 // ============================================================================
 // Type Exports

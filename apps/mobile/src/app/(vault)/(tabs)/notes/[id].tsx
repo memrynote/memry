@@ -8,6 +8,7 @@ import { Icon } from '@/components/ui/icon'
 import { NavBarInline } from '@/components/ui/nav-bar'
 import { EditorView, type EditorControls } from '@/editor/editor-view'
 import { formatG3Report } from '@/editor/__rig__/latency'
+import { beginTrace, mark } from '@/editor/__rig__/open-trace'
 import type { OpenDoc } from '@/editor/doc-manager'
 import { getEditorSession, type EditorSession } from '@/editor/session'
 import { queryWikiCandidates, resolveWikiTarget } from '@/editor/wiki-links'
@@ -115,6 +116,7 @@ export default function NoteScreen() {
   }, [doc, id, seedMarkdown, session])
 
   useEffect(() => {
+    if (id) beginTrace(id)
     let cancelled = false
     void (async () => {
       if (!id) return
@@ -122,9 +124,13 @@ export default function NoteScreen() {
       if (!vaultId || cancelled) return
 
       const editorSession = await getEditorSession(vaultId)
+      mark(id, 'sessionReady')
       const openDoc = await editorSession.docs.openDoc(id)
+      mark(id, 'docOpen')
       const record = await readNoteRecord(editorSession.db, id)
+      mark(id, 'recordRead')
       const seed = openDoc.isEmpty() ? await resolveSeedMarkdown(editorSession.db, id) : undefined
+      mark(id, 'seedResolved')
 
       if (cancelled) return
       setSession(editorSession)

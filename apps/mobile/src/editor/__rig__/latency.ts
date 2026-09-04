@@ -47,7 +47,7 @@ export interface G3Measurement {
 /** The budget from the contract, on the reference mid-tier device. */
 export const G3_END_TO_END_P95_MS = 50
 
-function summarize(samples: number[]): LatencySummary {
+export function summarize(samples: number[]): LatencySummary {
   if (samples.length === 0) return { samples: 0, p50: 0, p95: 0, p99: 0, max: 0 }
   const sorted = [...samples].sort((a, b) => a - b)
   const at = (q: number): number =>

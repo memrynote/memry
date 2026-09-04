@@ -5,6 +5,7 @@ import {
   PropertyDefinitionSyncPayloadSchema,
   type PropertyDefinitionSyncPayload
 } from '@memry/contracts/sync-payloads'
+import { PropertiesChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { increment } from '@memry/sync-client/vector-clock'
@@ -71,7 +72,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
           .where(eq(propertyDefinitions.name, itemId))
           .run()
 
-        ctx.emit('notes:property-definitions-changed', { name: itemId })
+        ctx.emit(PropertiesChannels.events.DEFINITION_CHANGED, { name: itemId })
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
@@ -88,7 +89,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
         })
         .run()
 
-      ctx.emit('notes:property-definitions-changed', { name: itemId })
+      ctx.emit(PropertiesChannels.events.DEFINITION_CHANGED, { name: itemId })
       return 'applied'
     })
   }
@@ -119,7 +120,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
       .catch(() => {
         // No vault open, so no file to reconcile.
       })
-    ctx.emit('notes:property-definitions-deleted', { name: itemId })
+    ctx.emit(PropertiesChannels.events.DEFINITION_DELETED, { name: itemId })
     return 'applied'
   }
 

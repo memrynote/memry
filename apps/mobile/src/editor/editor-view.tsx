@@ -13,6 +13,7 @@ import { EDITOR_WEB_CONTRACT_HASH, loadEditorWebHtml } from './editor-web-asset'
 import { createInjectionTransport, EditorBridgeProvider } from './bridge-provider'
 import type { OpenDoc } from './doc-manager'
 import { LatencyRecorder, type G3Measurement } from './__rig__/latency'
+import { mark } from './__rig__/open-trace'
 
 const log = createLogger('EditorView')
 
@@ -214,6 +215,7 @@ export function EditorView({
     (msg: GuestMsg) => {
       switch (msg.type) {
         case 'ready': {
+          mark(doc.docId, 'guestReady')
           if (msg.protocolV !== BRIDGE_PROTOCOL_VERSION) {
             // Only reachable from a stale prebuilt asset; the two halves
             // compile against the same contract module.
@@ -284,6 +286,10 @@ export function EditorView({
           void work.finally(() => inFlight.current.delete(work))
           break
         }
+
+        case 'painted':
+          mark(msg.docId, 'painted')
+          break
 
         case 'nav':
           onNavigate(msg.target)
@@ -356,12 +362,13 @@ export function EditorView({
   )
 
   const onWebViewLoad = useCallback(() => {
+    mark(doc.docId, 'webviewMounted')
     bridge.attach(
       createInjectionTransport((js) => {
         webViewRef.current?.injectJavaScript(js)
       })
     )
-  }, [bridge])
+  }, [bridge, doc.docId])
 
   /**
    * iOS reclaims WKWebView content processes under memory pressure. The doc is
