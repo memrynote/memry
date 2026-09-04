@@ -5,7 +5,7 @@ import { type BridgeCfg, type GuestMsg, type WikiCandidate } from '@memry/contra
 import { bytesToBase64 } from '../lib/base64'
 import { createLogger } from '../lib/logger'
 import { useEditorHost } from './editor-host'
-import type { EditorFrame, HostDoc } from './editor-host-controller'
+import { editorFrameFrom, type EditorFrame, type HostDoc } from './editor-host-controller'
 import type { OpenDoc } from './doc-manager'
 import type { G3Measurement } from './__rig__/latency'
 import { isProbeEnabled, mark, markDocLoadPayload } from './__rig__/open-trace'
@@ -389,34 +389,53 @@ export function EditorView({
 
   const placeholder = useRef<View>(null)
   const frame = useRef<EditorFrame | null>(null)
+  /** So a measurement that never resolves is reported once, not every layout. */
+  const unplaced = useRef(false)
 
   const pushLayout = useCallback(() => {
     host.setLayout(hostDoc, { frame: frame.current, onScreen: routeSettled })
   }, [host, hostDoc, routeSettled])
 
   /**
-   * Measured against the host's own container, not the window.
+   * Both views measured in WINDOW coordinates, inside one round.
    *
-   * One measurement, no arithmetic. A window frame has to be differenced
-   * against the container's origin, and the vault layout's sync banner can
-   * change height without firing `onLayout` on either view — so the two halves
-   * of that subtraction go stale independently and the editor lands a banner's
-   * height off.
+   * The container is read from inside the placeholder's own callback rather
+   * than cached, so the subtraction cannot straddle a layout change the vault
+   * layout's sync banner makes without firing `onLayout` on either view.
+   *
+   * Not `measureLayout`, which needs its reference to be an ANCESTOR. The host
+   * is a sibling of the stack this note lives in, so the two are cousins and
+   * that measurement fails outright, leaving the editor unplaced and invisible.
    */
   const measure = useCallback(() => {
-    const container = host.getContainerView()
     const node = placeholder.current
-    if (!container || !node) return
-    node.measureLayout(
-      container,
-      (_left, top, _width, height) => {
-        if (height <= 0) return
-        if (frame.current?.top === top && frame.current.height === height) return
-        frame.current = { top, height }
+    if (!node) return
+    node.measureInWindow((_x, top, _width, height) => {
+      host.measureContainerTop((containerTop) => {
+        const next = containerTop === null ? null : editorFrameFrom({ top, height }, containerTop)
+        if (!next) {
+          // Ordinarily the container's ref has simply not attached yet, and the
+          // `containerReady` re-measure below collects it. Logged ONCE because
+          // if it never resolves the note renders its title and metadata over a
+          // blank white body, which is a symptom nobody would trace back to a
+          // measurement without being told.
+          if (!unplaced.current) {
+            unplaced.current = true
+            log.error('Editor placeholder could not be placed; the body will not appear', {
+              docId,
+              placeholderTop: top,
+              placeholderHeight: height,
+              containerTop
+            })
+          }
+          return
+        }
+        unplaced.current = false
+        if (frame.current?.top === next.top && frame.current.height === next.height) return
+        frame.current = next
         pushLayout()
-      },
-      () => log.warn('Could not measure the editor placeholder', { docId })
-    )
+      })
+    })
   }, [docId, host, pushLayout])
 
   useEffect(() => {

@@ -273,7 +273,15 @@ export default function OpenTraceScreen() {
       const written = writeReport(report)
       setStatus(written ? `${pool}\nreport → ${written}` : pool)
     } catch (err) {
-      setStatus(err instanceof Error ? `${err.name}: ${err.message}` : String(err))
+      const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+      setStatus(message)
+      // A run that dies wrote no report, and the driving script then sits out
+      // its whole 600 s deadline with nothing to show for it — which reads as a
+      // hang rather than as the failure it is. Write what there is: the error,
+      // and however many traces were taken before it.
+      writeReport(
+        `### run failed\n${message}\n${formatOpenTraceReport(summarizeOpenTraces(getTraces()))}`
+      )
     } finally {
       setProbeEnabled(false)
       setRunning(false)

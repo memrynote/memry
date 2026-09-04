@@ -3,7 +3,7 @@ import * as Y from 'yjs'
 import { BRIDGE_PROTOCOL_VERSION, type GuestMsg } from '@memry/contracts/webview-bridge'
 import { bytesToBase64 } from '../../lib/base64'
 import type { OpenDoc } from '../doc-manager'
-import { EditorHostController, type HostDoc } from '../editor-host-controller'
+import { editorFrameFrom, EditorHostController, type HostDoc } from '../editor-host-controller'
 
 /**
  * The WebView now outlives every note it shows (#2030), so three things that
@@ -338,7 +338,49 @@ describe('EditorHostController mounting', () => {
   })
 })
 
+describe('editorFrameFrom', () => {
+  it("places the editor at the placeholder's offset within the container", () => {
+    expect(editorFrameFrom({ top: 260, height: 500 }, 44)).toEqual({ top: 216, height: 500 })
+  })
+
+  it('is unchanged when a banner shifts both views by the same amount', () => {
+    // The vault layout's sync banner appears above this stack and fires
+    // `onLayout` on neither view. Both window origins move together, so a frame
+    // built from ONE measurement round is immune to it; the bug it replaces was
+    // a fresh placeholder read differenced against a cached container origin.
+    const before = editorFrameFrom({ top: 260, height: 500 }, 44)
+    const after = editorFrameFrom({ top: 260 + 38, height: 500 }, 44 + 38)
+    expect(after).toEqual(before)
+  })
+
+  it('refuses a placeholder that has not been laid out', () => {
+    // Zero height is a view React has not measured yet, and placing the editor
+    // on it would collapse the body to nothing.
+    expect(editorFrameFrom({ top: 0, height: 0 }, 0)).toBeNull()
+  })
+})
+
 describe('EditorHostController visibility', () => {
+  it('never reveals a mounted note that nothing has said where to draw', () => {
+    const { host } = warmHost()
+    const a = attachment(fakeOpenDoc('note-a'))
+    host.setFocused(a, true)
+    host.attach(a)
+    host.bridge.receive(guestEnvelope(2, [painted('note-a')]))
+
+    // What shipped in round two: the measurement failed, no frame ever
+    // arrived, and the editor area stayed blank white with the note fully
+    // loaded behind it. The frame is the gate, so its absence must read as
+    // "not placed" here rather than anywhere further downstream.
+    expect(host.getState().mountedDocId).toBe('note-a')
+    expect(host.getState().frame).toBeNull()
+    expect(host.getState().visible).toBe(false)
+
+    host.setLayout(a, { frame: { top: 216, height: 500 }, onScreen: true })
+    expect(host.getState().frame).toEqual({ top: 216, height: 500 })
+    expect(host.getState().visible).toBe(true)
+  })
+
   it('stays hidden until the guest confirms it has painted the mounted note', () => {
     const { host } = warmHost()
     const a = attachment(fakeOpenDoc('note-a'))

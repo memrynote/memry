@@ -41,22 +41,35 @@ const log = createLogger('EditorHost')
  */
 export type GuestState = 'cold' | 'loading' | 'ready'
 
-/**
- * Where the mounted note's editor belongs, in the HOST CONTAINER's coordinates.
- *
- * Measured against that container directly rather than in window coordinates
- * and differenced. The vault layout draws a sync banner above this stack whose
- * height changes at runtime, and a shift there fires no `onLayout` on either
- * view — so a window frame and a container origin captured at different moments
- * disagree by the banner's height, and the editor lands that far off.
- */
+/** Where the mounted note's editor belongs, in the HOST CONTAINER's coordinates. */
 export interface EditorFrame {
   top: number
   height: number
 }
 
-/** The host's own container view, the frame a note measures its editor against. */
+/** The host's own container view, the frame a note's editor is positioned within. */
 export type EditorHostContainer = ComponentRef<typeof View>
+
+/**
+ * The mounted note's frame, from two WINDOW measurements taken in one round.
+ *
+ * One round is the whole point. The vault layout draws a sync banner above this
+ * stack whose height changes at runtime and fires `onLayout` on neither view, so
+ * a placeholder read after that change and a container origin read from before
+ * it disagree by the banner's height and the editor lands that far off.
+ *
+ * Window coordinates rather than `measureLayout`, which requires its reference
+ * to be an ANCESTOR of what it measures. The host is a SIBLING of the stack the
+ * note lives in, so the two are cousins, the measurement fails outright, and the
+ * editor is never placed at all.
+ */
+export function editorFrameFrom(
+  placeholder: { top: number; height: number },
+  containerTop: number
+): EditorFrame | null {
+  if (placeholder.height <= 0) return null
+  return { top: placeholder.top - containerTop, height: placeholder.height }
+}
 
 /**
  * One mounted note screen's side of the host.
@@ -246,15 +259,32 @@ export class EditorHostController {
     if (doc === this.mountedDoc) this.publish()
   }
 
-  /** The container a note's placeholder measures its editor's position against. */
+  /** The view a note's editor is positioned within. */
   setContainerView(view: EditorHostContainer | null): void {
     if (this.containerView === view) return
     this.containerView = view
     this.publish()
   }
 
-  getContainerView(): EditorHostContainer | null {
-    return this.containerView
+  /**
+   * The container's own window origin, read on demand.
+   *
+   * Called from inside a note's placeholder measurement so both numbers come
+   * from the same round; see `editorFrameFrom` for what reading them apart
+   * costs.
+   *
+   * Answers `null` rather than staying silent when there is no container yet,
+   * so the caller has one shape to handle and a failure to place the editor
+   * cannot be mistaken for nothing having happened. Ordinarily transient, and
+   * the `containerReady` flag is what re-runs the measurement.
+   */
+  measureContainerTop(onMeasured: (top: number | null) => void): void {
+    const container = this.containerView
+    if (!container) {
+      onMeasured(null)
+      return
+    }
+    container.measureInWindow((_x, y) => onMeasured(y))
   }
 
   /** The transport the guest's `onLoadEnd` hands over. */
