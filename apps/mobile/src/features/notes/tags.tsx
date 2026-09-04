@@ -3,10 +3,10 @@ import { Pressable, StyleSheet, View } from 'react-native'
 
 import { AppText } from '@/components/ui/app-text'
 import { Icon } from '@/components/ui/icon'
-import { tagColor } from '@/theme/colors/tag-colors'
 import { radius, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 import { removeTag, setNoteTags, type NoteOpsContext } from './note-ops'
+import { useTagColors } from './use-tag-colors'
 
 /**
  * The inline tag row (board 33).
@@ -42,6 +42,7 @@ export function NoteTags({
   onChanged
 }: NoteTagsProps) {
   const c = useColors()
+  const resolveColor = useTagColors(ctx?.db ?? null)
 
   const commit = useCallback(
     async (next: string[]) => {
@@ -56,7 +57,7 @@ export function NoteTags({
   return (
     <View style={styles.row}>
       {tags.map((tag) => {
-        const hue = tagColor(tag)
+        const hue = resolveColor(tag)
         return (
           <Pressable
             key={tag}

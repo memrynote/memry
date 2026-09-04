@@ -1,61 +1,52 @@
+import {
+  TAG_CHIP_FILL_ALPHA,
+  getTagColors,
+  withAlpha,
+  type TagColorConfig
+} from '@memry/contracts/tag-colors'
 import type { Color } from '@/theme/colors'
 import { normalizeTagKey } from '@/features/notes/note-ops'
 
 /**
- * The tag chip palette.
+ * The tag chip palette, resolved from the SHARED table in contracts.
  *
- * Mobile has no `tag_definition` sync handler, so no server-side colour exists
- * to read and the hue has to be derived locally from the tag itself.
+ * This file used to hold six locally-invented hues and its own string fold, so
+ * a tag the desktop painted orange came out purple here. Both halves of that
+ * were wrong: the palette (20 named hues) and the fold (`| 0` truncation over
+ * `COLOR_NAMES` in insertion order) are wire contract, not styling, and now
+ * live in one module both platforms import.
  *
- * Each entry is a hue at 12 percent alpha (`1f`, which React Native accepts as
- * `#RRGGBBAA`) plus a darkened step of the SAME hue for the label. The label is
- * solved against the fill COMPOSITED OVER `#ffffff`, which is the pill's real
- * background and a stricter target than the raw canvas. Measured ratios, label
- * on composited fill then label on `#ffffff`:
- *
- *   slate  4.63 / 5.19    teal   4.62 / 5.08    blue   4.64 / 5.50
- *   cyan   4.61 / 5.31    purple 4.75 / 5.70    green  4.64 / 5.30
- *
- * Six hues, not eight. `dot.orange` is excluded because an orange tag reads as
- * the `tint` accent, and the destructive red because a red tag reads as danger.
- * slate and teal come off the board; blue, cyan, purple and green are darkened
- * steps of `dot.blue`, `dot.cyan`, `dot.purple` and `dot.green` in `white.ts`.
+ * The label is the hue itself rather than a darkened step. That is the desktop
+ * chip, exactly, and the fills are light enough that only the LABEL misses
+ * WCAG AA — the same miss desktop already ships. Darkening it here is what
+ * produced the mismatch Kaan reported, so parity wins and the contrast debt is
+ * one fix on the shared table rather than two divergent ones.
  */
 export interface TagColor {
   fill: Color
   text: Color
 }
 
-interface TagColorSource {
-  fill: string
-  text: string
+function toChip(config: TagColorConfig): TagColor {
+  return {
+    fill: withAlpha(config.text, TAG_CHIP_FILL_ALPHA) as Color,
+    text: config.text as Color
+  }
 }
 
-const sources: readonly TagColorSource[] = [
-  { fill: '#8494A81f', text: '#626e7d' },
-  { fill: '#4CC0AC1f', text: '#307a6e' },
-  { fill: '#2563eb1f', text: '#245fe3' },
-  { fill: '#0891b21f', text: '#067590' },
-  { fill: '#7c3aed1f', text: '#7c3aed' },
-  { fill: '#16a34a1f', text: '#117c38' }
-]
-
-// The one place raw hex becomes a branded `Color` here, the same single-step
-// boundary `brandTheme` is for the theme itself. A double assertion would let
-// any string through and the brand would stop meaning anything.
-export const tagColors = sources as readonly TagColor[]
-
 /**
- * The same tag gets the same colour on every screen and across launches, so
- * the hash is a plain deterministic string fold — no `Math.random`, no clock.
- * Keyed on the normalized tag, so `Commons` and `commons` are one colour just
- * as they are one tag.
+ * The chip colours for a tag.
+ *
+ * `authoredColor` is the `color` field off the tag's synced `tag_definition`
+ * row — a palette name, or a `#rrggbb` the user picked. Absent (no row pulled
+ * yet, or a vault that never named a colour) falls back to the shared hash,
+ * which is what desktop shows for exactly the same tag.
  */
-export function tagColor(tag: string): TagColor {
-  const key = normalizeTagKey(tag)
-  let hash = 0
-  for (let i = 0; i < key.length; i += 1) {
-    hash = (hash * 31 + key.charCodeAt(i)) % 0xffffffff
-  }
-  return tagColors[hash % tagColors.length]
+export function tagColor(tag: string, authoredColor?: string | null): TagColor {
+  return toChip(getTagColors(authoredColor ?? '', normalizeTagKey(tag)))
+}
+
+/** A select/status/multiselect option chip. Same table, same alpha. */
+export function optionColor(colorName: string): TagColor {
+  return toChip(getTagColors(colorName))
 }

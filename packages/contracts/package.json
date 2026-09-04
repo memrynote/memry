@@ -59,6 +59,7 @@
     "./sidebar-sort": "./src/sidebar-sort.ts",
     "./sync-api": "./src/sync-api.ts",
     "./sync-payloads": "./src/sync-payloads.ts",
+    "./tag-colors": "./src/tag-colors.ts",
     "./tags-api": "./src/tags-api.ts",
     "./tasks-api": "./src/tasks-api.ts",
     "./telemetry-api": "./src/telemetry-api.ts",

@@ -118,7 +118,7 @@ export function NoteProperties({
       </Pressable>
 
       {expanded ? (
-        <View style={[styles.list, { borderTopColor: c.line.border }]}>
+        <View style={styles.list}>
           {entries.map(([name, value]) => (
             <PropertyRow
               // Keyed by the VALUE as well as the name: a pull that changes this
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   // 11/16 with 0.09em tracking resolved to px, which no ramp variant carries.
   sectionText: { fontFamily: fontFamilies.sans, fontSize: 11, lineHeight: 16, letterSpacing: 0.99 },
   countText: { fontFamily: fontFamilies.sansMedium, fontSize: 11, lineHeight: 16 },
-  list: { paddingTop: 10, borderTopWidth: 1 },
+  list: { paddingTop: 10 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: space.s6 },
   iconLane: { width: 20, flexShrink: 0 },
   nameLane: { width: 112, flexShrink: 0 },

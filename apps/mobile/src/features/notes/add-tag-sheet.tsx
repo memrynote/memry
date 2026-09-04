@@ -12,12 +12,12 @@ import { AppText } from '@/components/ui/app-text'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Icon } from '@/components/ui/icon'
 import type { VaultDb } from '@/db/index'
-import { tagColor } from '@/theme/colors/tag-colors'
 import { fontFamilies } from '@/theme/fonts'
 import { radius, sizes, space } from '@/theme/primitives'
 import { textStyles } from '@/theme/text-styles'
 import { useColors } from '@/theme/use-colors'
 import { normalizeTagKey, readVaultTags } from './note-ops'
+import { useTagColors } from './use-tag-colors'
 
 export interface AddTagSheetProps {
   visible: boolean
@@ -58,6 +58,7 @@ export function AddTagSheet(props: AddTagSheetProps) {
 
 function AddTagBody({ db, existing, onClose, onPick }: AddTagSheetProps) {
   const c = useColors()
+  const resolveColor = useTagColors(db)
   const [query, setQuery] = useState('')
   const [vaultTags, setVaultTags] = useState<string[]>([])
 
@@ -131,7 +132,7 @@ function AddTagBody({ db, existing, onClose, onPick }: AddTagSheetProps) {
         keyboardShouldPersistTaps="handled"
       >
         {matching.map((tag) => {
-          const hue = tagColor(tag)
+          const hue = resolveColor(tag)
           return (
             <Pressable
               key={tag}
