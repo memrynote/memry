@@ -256,6 +256,10 @@ export const GuestMetricsSchema = z.object({
  *   * `schemaBuilt` — `createMemrySchema` returned, which is where
  *     `createCodeBlockSpec(codeBlockOptions)` is paid.
  *   * `readySent` — the handshake is on the wire.
+ *   * `idleTickFirst` / `idleTickLast` — a 100 ms timer the guest runs from
+ *     `ready` until `doc-load` lands, and then stops. It answers whether the
+ *     guest's own JS thread is alive during the wait, which is the fork between
+ *     a suspended web content process and a delivery that never arrives.
  *   * `probeEarlyRecv` / `probeLateRecv` — the tiny probe envelopes queued
  *     immediately before and immediately after `doc-load`. Absent unless the
  *     rig asked for them; see `HostProbeSchema`.
@@ -278,6 +282,8 @@ export const GUEST_PAINT_MARKS = [
   'scriptEval',
   'schemaBuilt',
   'readySent',
+  'idleTickFirst',
+  'idleTickLast',
   'probeEarlyRecv',
   'docLoadRecv',
   'probeLateRecv',

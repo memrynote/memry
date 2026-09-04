@@ -87,6 +87,8 @@ export const OPEN_PHASES: readonly OpenPhase[] = [
   'scriptEval',
   'schemaBuilt',
   'readySent',
+  'idleTickFirst',
+  'idleTickLast',
   'webviewMounted',
   'guestReady',
   'probeEarlySent',
@@ -253,6 +255,7 @@ export interface OpenTraceSummary {
  */
 const INTERVALS: readonly (readonly [OpenPhase, OpenPhase])[] = [
   ['probeEarlySent', 'probeEarlyRecv'],
+  ['idleTickLast', 'docLoadRecv'],
   ['docLoadSent', 'docLoadRecv'],
   ['probeLateSent', 'probeLateRecv'],
   ['guestReady', 'painted']

@@ -358,8 +358,42 @@ window.addEventListener('unhandledrejection', (event) => {
 
 bridge.sendReady(schemaV, __EDITOR_WEB_CONTRACT_HASH__)
 markGuest('readySent')
+traceIdleTicks()
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Is this document's JS thread alive while it waits for `doc-load`? (#2044)
+ *
+ * The wait is 3-5 s and the tiny probe envelope crosses no faster than the real
+ * one, so the payload is not what is being waited on. Two very different faults
+ * produce that: a web content process WebKit has suspended or starved, in which
+ * case nothing here runs either; or a delivery that simply never arrives, in
+ * which case this document is idle and perfectly healthy the whole time. A
+ * timer separates them, and nothing observable from the host can.
+ *
+ * It stops the moment `doc-load` lands. Past that point the ticks measure
+ * nothing and a 100 ms timer under a live editor is pure noise — so the cost in
+ * an app nobody is measuring is bounded by the very interval the epic exists to
+ * remove.
+ */
+function traceIdleTicks(): void {
+  let first = true
+  const timer = setInterval(() => {
+    if (first) {
+      markGuest('idleTickFirst')
+      first = false
+    }
+    markGuest('idleTickLast')
+  }, 100)
+
+  // Registered after the main handler, so this runs once that has finished
+  // mounting; the last tick is therefore the last one BEFORE the document
+  // arrived, which is the number the fork above turns on.
+  bridge.onHostMsg((msg) => {
+    if (msg.type === 'doc-load') clearInterval(timer)
+  })
+}
 
 /**
  * Time shiki's highlighter without moving it (#2043).
