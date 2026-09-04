@@ -85,6 +85,11 @@ export const ErrorCodes = {
   NOT_FOUND: 'NOT_FOUND',
   RATE_LIMITED: 'RATE_LIMITED',
 
+  // Queues answered the compaction nudge with backpressure (#1997). Never
+  // reaches a client: the nudge runs in waitUntil after the response is sent,
+  // so this code exists purely to classify the failure as expected telemetry.
+  PACK_ENQUEUE_RATE_LIMITED: 'PACK_ENQUEUE_RATE_LIMITED',
+
   WS_RATE_LIMITED: 'WS_RATE_LIMITED',
   WS_TOKEN_EXPIRED: 'WS_TOKEN_EXPIRED',
   WS_INVALID_CONNECTION: 'WS_INVALID_CONNECTION'
