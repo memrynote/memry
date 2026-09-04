@@ -45,6 +45,13 @@ describe('classifyUpdaterError', () => {
     'net::ERR_CONNECTION_RESET',
     'net::ERR_CONNECTION_CLOSED',
     'net::ERR_CONNECTION_REFUSED',
+    // Issue #1994, measured on builds that already carry the #1587 allowlist
+    // (2026.822.1+) — older builds reported everything as an error, so they
+    // cannot evidence a gap in this set.
+    'net::ERR_CONNECTION_ABORTED',
+    'net::ERR_ADDRESS_UNREACHABLE',
+    'net::ERR_ADDRESS_INVALID',
+    'net::ERR_NETWORK_ACCESS_DENIED',
     'net::ERR_NETWORK_IO_SUSPENDED',
     'net::ERR_HTTP2_PROTOCOL_ERROR',
     'net::ERR_HTTP2_SERVER_REFUSED_STREAM'
@@ -113,6 +120,22 @@ describe('classifyUpdaterError', () => {
         name: 'HttpError',
         statusCode: 503
       }),
+      expected: 'error'
+    },
+    {
+      // Issue #1994 proposed demoting an upstream 5xx during a check. Kept loud
+      // deliberately. A 504 on the releases feed is GitHub's edge failing for
+      // everyone at once, so it is the one check-phase shape that means the whole
+      // fleet has stopped receiving updates — the opposite of the per-device
+      // transport codes above, which scale with the number of flaky networks.
+      // Losing it from Error Tracking would hide a delivery outage.
+      name: 'a 504 on the releases feed during a check',
+      error: Object.assign(
+        new Error(
+          '504 \n"method: GET url: https://github.com/memrynote/memry/releases.atom\n\nData:\n<html><body>'
+        ),
+        { name: 'HttpError', code: 'HTTP_ERROR_504', statusCode: 504 }
+      ),
       expected: 'error'
     },
     {
@@ -193,6 +216,11 @@ describe('classifyUpdaterError', () => {
   it.each(otherPhases)('keeps the same failure at error in the %s phase', (phase) => {
     expect(isUpdaterCheckPhase(phase)).toBe(false)
     expect(classifyUpdaterError(netError('net::ERR_INTERNET_DISCONNECTED'), phase)).toBe('error')
+  })
+
+  // The codes added by #1994 inherit that narrowing rather than widening it.
+  it.each(otherPhases)('keeps a newly demoted code at error in the %s phase', (phase) => {
+    expect(classifyUpdaterError(netError('net::ERR_ADDRESS_UNREACHABLE'), phase)).toBe('error')
   })
 })
 

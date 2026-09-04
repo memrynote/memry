@@ -891,14 +891,22 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   chain** carries only allowlisted Chromium transport codes — `net::ERR_NAME_NOT_RESOLVED`,
   `ERR_INTERNET_DISCONNECTED`, `ERR_NETWORK_CHANGED`, `ERR_TIMED_OUT`, `ERR_CONNECTION_TIMED_OUT`,
   `ERR_CONNECTION_RESET`, `ERR_CONNECTION_CLOSED`, `ERR_CONNECTION_REFUSED`,
-  `ERR_NETWORK_IO_SUSPENDED`, `ERR_HTTP2_PROTOCOL_ERROR`, `ERR_HTTP2_SERVER_REFUSED_STREAM` — ships
+  `ERR_CONNECTION_ABORTED`, `ERR_ADDRESS_UNREACHABLE`, `ERR_ADDRESS_INVALID`,
+  `ERR_NETWORK_ACCESS_DENIED`, `ERR_NETWORK_IO_SUSPENDED`, `ERR_HTTP2_PROTOCOL_ERROR`,
+  `ERR_HTTP2_SERVER_REFUSED_STREAM` — ships
   as an `app_log_recorded` `warn` instead of an `app_error_seen` exception. Being offline is a
   normal state for an offline-first app, and those events were 33.2 % of every exception in the
   product. The cause chain matters because electron-updater's `GitHubProvider` wraps a transport
   failure in a parse-shaped `ERR_UPDATER_INVALID_RELEASE_FEED`; a feed that is genuinely malformed
   has no network cause and stays an exception. The set is an **allowlist, never a `net::ERR_`
   prefix test**: `net::ERR_CERT_*` / `net::ERR_SSL_*` are security signals, and anything
-  unrecognised fails closed to `error`. Everything else is untouched — HTTP 4xx/5xx (including the
+  unrecognised fails closed to `error`. `ERR_CONNECTION_ABORTED`, `ERR_ADDRESS_UNREACHABLE`,
+  `ERR_ADDRESS_INVALID` and `ERR_NETWORK_ACCESS_DENIED` were added by #1994, measured on the only
+  population that can evidence a gap in this set — builds already carrying this classification
+  (`2026.822.1` and newer), since an older build reported every code as an error regardless. An
+  upstream **5xx stays an exception** deliberately: a 504 on the releases feed is GitHub failing for
+  everyone at once, the one check-phase shape meaning the whole fleet has stopped receiving updates,
+  unlike the per-device transport codes above that scale with the number of flaky networks. Everything else is untouched — HTTP 4xx/5xx (including the
   `HTTP_ERROR_618` `jwt:expired` on GitHub's pre-signed asset URLs), signature failures,
   install-phase errnos, `ENOENT … app-update.yml`, and **any** failure in the `download` /
   `downloaded` / `install` phases, where a network drop can leave a half-applied update.
