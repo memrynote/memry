@@ -289,9 +289,15 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function readAppMtimeMs(appPath) {
-  const appName = path.basename(appPath, '.app')
-  return statSync(path.join(appPath, 'Contents/MacOS', appName)).mtimeMs
+// The bundle directory can be renamed (two builds kept side by side for an A/B), so
+// the executable name comes from Info.plist rather than from the directory name.
+function readBundleExecutable(appPath) {
+  const plist = readFileSync(path.join(appPath, 'Contents/Info.plist'), 'utf8')
+  return /<key>CFBundleExecutable<\/key>\s*<string>([^<]+)<\/string>/.exec(plist)?.[1] ?? null
+}
+
+function readAppMtimeMs(appPath, executableName) {
+  return statSync(path.join(appPath, 'Contents/MacOS', executableName)).mtimeMs
 }
 
 function readStoredAppMtimeMs() {
@@ -307,8 +313,8 @@ function isAppRunning(appPath) {
   return spawnSync('pgrep', ['-f', `${appPath}/Contents/MacOS/`]).status === 0
 }
 
-async function quitApp(appPath) {
-  spawnSync('osascript', ['-e', `quit app "${path.basename(appPath, '.app')}"`])
+async function quitApp(appPath, executableName) {
+  spawnSync('osascript', ['-e', `quit app "${executableName}"`])
 
   const deadline = Date.now() + QUIT_DEADLINE_MS
   while (Date.now() < deadline) {
@@ -516,8 +522,15 @@ function collectWarnings(record) {
   return warnings
 }
 
-async function measureRun({ run, appPath, port, appMtimeMs, firstRunAfterAppChange }) {
-  await quitApp(appPath)
+async function measureRun({
+  run,
+  appPath,
+  executableName,
+  port,
+  appMtimeMs,
+  firstRunAfterAppChange
+}) {
+  await quitApp(appPath, executableName)
   await delay(SETTLE_MS)
 
   const anchorOffset = logSizeOrZero()
@@ -563,7 +576,11 @@ async function measureRun({ run, appPath, port, appMtimeMs, firstRunAfterAppChan
 }
 
 async function runBench(options) {
-  const appMtimeMs = readAppMtimeMs(options.appPath)
+  const executableName = readBundleExecutable(options.appPath)
+  if (!executableName) {
+    throw new Error(`no CFBundleExecutable in ${options.appPath}/Contents/Info.plist`)
+  }
+  const appMtimeMs = readAppMtimeMs(options.appPath, executableName)
   let firstRunAfterAppChange = readStoredAppMtimeMs() !== appMtimeMs
 
   const startedAt = new Date().toISOString()
@@ -575,6 +592,7 @@ async function runBench(options) {
       const record = await measureRun({
         run,
         appPath: options.appPath,
+        executableName,
         port: options.port,
         appMtimeMs,
         firstRunAfterAppChange
