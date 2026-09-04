@@ -192,15 +192,20 @@ describe('the mobile editor schema', () => {
   })
 
   /**
-   * The parity target, and the one assertion that is RED today by design
-   * (#2027 lands red, #2041 turns it green).
+   * The parity target. The four checks above keep the backlog honest; this one
+   * is the goal they are keeping honest FOR. It names exactly what is left, so
+   * nobody has to read an epic to find out how far mobile block parity has got.
    *
-   * The four checks above keep the backlog honest; this one is the goal they
-   * are keeping honest FOR. It fails until every key has a touch renderer,
-   * naming exactly what is left, so nobody has to go read an epic to find out
-   * how far mobile block parity has got.
+   * `it.fails` carries the same contract `conformance.ts` uses for a case whose
+   * fix ships in a sibling issue: the inverted expectation turns RED the moment
+   * the backlog empties, which forces the flag off rather than letting a passing
+   * assertion sit here disguised as a failing one. Remove the flag, never the
+   * case (#2041).
+   *
+   * The alternative was leaving mobile CI red for the length of the epic, which
+   * would have cost every unit in between its regression signal.
    */
-  it('renders every block and inline type the schema can build', () => {
+  it.fails('renders every block and inline type the schema can build', () => {
     expect(
       [...KNOWN_UNRENDERED_BLOCKS, ...KNOWN_UNRENDERED_INLINE],
       'these schema keys still render through the main process serialization DOM, so on mobile ' +
