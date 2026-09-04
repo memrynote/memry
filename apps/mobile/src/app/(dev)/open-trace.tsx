@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
+import { File, Paths } from 'expo-file-system'
 import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
 import { Spacing } from '@/constants/theme'
@@ -42,6 +43,34 @@ const SETTLE_MS = 350
 const log = createLogger('OpenTraceRig')
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+const REPORT_FILE = 'open-trace-report.txt'
+
+/**
+ * Drop the finished report where it can be read off the device.
+ *
+ * The table on screen is twenty-odd phases and does not fit one viewport, and a
+ * simulator offers no way to scroll it — so the numbers this rig exists to
+ * produce were, in practice, unreadable. `console.warn` does not reach
+ * `simctl log stream` from Hermes either. A file in the document directory is
+ * the one sink the host can just `cat`.
+ *
+ * Best-effort by construction: a run that produced numbers and failed to write
+ * them down still has them on screen and in the ring.
+ */
+function writeReport(text: string): string | null {
+  try {
+    const file = new File(Paths.document, REPORT_FILE)
+    file.create({ overwrite: true })
+    file.write(text)
+    return file.uri
+  } catch (err) {
+    log.warn('Could not write the open-trace report', {
+      error: err instanceof Error ? err.message : String(err)
+    })
+    return null
+  }
+}
 
 /** How many notes either end of the length ordering contributes. */
 const SIZE_POOL = 20
@@ -165,7 +194,10 @@ export default function OpenTraceScreen() {
       setProgress({ done: total, total })
       const measured = summarizeOpenTraces(getTraces())
       setTraces(getTraces())
-      log.warn(`${pool}\n${formatOpenTraceReport(measured)}`)
+      const report = `${pool}\n${formatOpenTraceReport(measured)}`
+      log.warn(report)
+      const written = writeReport(report)
+      setStatus(written ? `${pool}\nreport → ${written}` : pool)
     } catch (err) {
       setStatus(err instanceof Error ? `${err.name}: ${err.message}` : String(err))
     } finally {
