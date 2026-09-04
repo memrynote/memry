@@ -292,6 +292,32 @@ describe('EditorDocManager durability', () => {
     expect(same).toBe(held)
   })
 
+  it('lets a doc be evicted once its screen has released it', async () => {
+    const rec = recorder()
+    const manager = new EditorDocManager(rec.store, rec.outbox)
+
+    // A mounted note screen holds both subscriptions: `EditorView` takes the
+    // remote one to forward pulled updates, the screen itself the local one
+    // behind the save indicator.
+    const held = await manager.openDoc('note-held')
+    const releaseRemote = held.onRemoteUpdate(() => {})
+    const releaseLocal = held.onLocalUpdate(() => {})
+
+    for (let i = 0; i < MAX_OPEN_DOCS + 4; i++) await manager.openDoc(`note-${i}`)
+    expect(manager.isOpen('note-held')).toBe(true)
+
+    // The route unmounts. The WebView does NOT — it belongs to the notes stack
+    // now and outlives every note (#2030) — so this release is the only thing
+    // that still makes the doc collectable. Without it `inUse()` would answer
+    // true forever and MAX_OPEN_DOCS would quietly stop being a bound.
+    releaseRemote()
+    releaseLocal()
+    expect(held.inUse()).toBe(false)
+
+    await manager.openDoc('note-after')
+    expect(manager.isOpen('note-held')).toBe(false)
+  })
+
   it('enforces the cap even during a burst inside the grace window', async () => {
     vi.useFakeTimers()
     try {
