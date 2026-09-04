@@ -215,9 +215,72 @@ export const GuestMetricsSchema = z.object({
  * the `ready` handshake outright (the `protocolV` mismatch branch in
  * `editor-view.tsx`) and turn a measurement gap into a dead editor.
  */
+/**
+ * Guest-side sub-marks across the `doc-load` path, as absolute epoch
+ * milliseconds (#2043).
+ *
+ * Epoch, not offsets: the host's trace is already keyed on `Date.now()`
+ * (`apps/mobile/src/editor/__rig__/open-trace.ts`), so absolute stamps drop
+ * straight into the SAME phase table instead of forming a second timeline the
+ * reviewer has to align by hand. Both ends read the device wall clock, which
+ * is also what the envelope's `sentAt` already assumes.
+ *
+ * The order is the order the guest reaches them:
+ *   * `docStart` — the WebView document's navigation start, derived as
+ *     `Date.now() - performance.now()`. The zero the guest's own clock counts
+ *     from, and the only mark that is computed rather than taken.
+ *   * `importsStart` — the first guest module to evaluate. Everything between
+ *     here and `scriptEval` is the bundle's dependency graph evaluating,
+ *     shiki's included.
+ *   * `scriptEval` — the entry module's body, so every import has evaluated.
+ *   * `schemaBuilt` — `createMemrySchema` returned, which is where
+ *     `createCodeBlockSpec(codeBlockOptions)` is paid.
+ *   * `readySent` — the handshake is on the wire.
+ *   * `docLoadRecv` — `doc-load` reached the guest's handler.
+ *   * `yApplied` — the Y state is in the replica and the fragment is bound.
+ *   * `createStart` / `createEnd` — `BlockNoteEditor.create`.
+ *   * `mountEnd` — `editor.mount` returned; the DOM exists, unlaid-out.
+ *   * `shikiStart` / `shikiSync` / `shikiEnd` — the highlighter factory
+ *     entered, returned (its SYNCHRONOUS cost), and its promise settled. The
+ *     last one is absent whenever the highlighter outlives the paint, which is
+ *     itself the answer to "is the highlighter on the paint path".
+ *   * `seedEnd` — the markdown seed branch is done, taken whether or not a
+ *     seed was applied.
+ *   * `guestPainted` — inside the frame callback, before the send. The host's
+ *     own `painted` mark is this plus bridge delivery.
+ */
+export const GUEST_PAINT_MARKS = [
+  'docStart',
+  'importsStart',
+  'scriptEval',
+  'schemaBuilt',
+  'readySent',
+  'docLoadRecv',
+  'yApplied',
+  'createStart',
+  'createEnd',
+  'mountEnd',
+  'shikiStart',
+  'shikiSync',
+  'shikiEnd',
+  'seedEnd',
+  'guestPainted'
+] as const
+
+export type GuestPaintMark = (typeof GUEST_PAINT_MARKS)[number]
+
 export const GuestPaintedSchema = z.object({
   type: z.literal('painted'),
-  docId: z.string().min(1)
+  docId: z.string().min(1),
+  /**
+   * Partial by construction: a mark the guest never reached is absent, and an
+   * absent mark is a finding rather than a gap to paper over with a zero.
+   *
+   * Optional as a whole so a STALE prebuilt asset — the only peer that can
+   * disagree here — still delivers a legal `painted` and keeps the end-to-end
+   * number, losing only the breakdown.
+   */
+  marks: z.partialRecord(z.enum(GUEST_PAINT_MARKS), z.number()).optional()
 })
 
 export const GuestErrSchema = z.object({

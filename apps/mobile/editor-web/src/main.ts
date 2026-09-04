@@ -1,5 +1,10 @@
+// FIRST, deliberately: this module's body takes the `importsStart` mark, and ES
+// modules evaluate in source order, so anything above it is bundle-eval time
+// the trace can no longer see.
+import { guestMarks, markGuest } from './open-marks.ts'
 import * as Y from 'yjs'
 import { BlockNoteEditor } from '@blocknote/core'
+import { codeBlockOptions } from '@blocknote/code-block'
 import { createWikiLinkInlineContent, wikiLinkConfig } from '@memry/editor-schema/inline'
 import { BRIDGE_FRAGMENT_NAME } from '@memry/contracts/webview-bridge'
 import { assertNoWebStorage, createGuestBridge, type GuestBridge } from './bridge.ts'
@@ -24,13 +29,18 @@ const METRICS_THROTTLE_MS = 200
 /** Origin tag on locally-applied remote updates; stops the echo loop. */
 const REMOTE_ORIGIN = Symbol('memry-remote')
 
+markGuest('scriptEval')
+
 const bridge = createGuestBridge()
 const root = document.getElementById('root')!
 
 assertNoWebStorage()
 bindAssetBridge(bridge)
 
+traceHighlighter()
+
 const schema = createMobileEditorSchema()
+markGuest('schemaBuilt')
 const schemaV = fingerprintSchema(schema)
 
 /**
@@ -80,6 +90,7 @@ let readOnly = false
 bridge.onHostMsg((msg) => {
   switch (msg.type) {
     case 'doc-load':
+      markGuest('docLoadRecv')
       mountDoc(msg.docId, msg.stateB64, msg.seedMarkdown)
       break
 
@@ -121,10 +132,15 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   }
 
   const fragment = doc.getXmlFragment(BRIDGE_FRAGMENT_NAME)
+  markGuest('yApplied')
+
+  markGuest('createStart')
   const editor = createEditor(fragment)
+  markGuest('createEnd')
 
   root.replaceChildren()
   editor.mount(root)
+  markGuest('mountEnd')
   editor.isEditable = !readOnly
 
   const onUpdate = (update: Uint8Array, origin: unknown): void => {
@@ -156,6 +172,10 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
       bridge.flush()
     }
   }
+  // Taken unconditionally, including on the far commoner path where there is
+  // nothing to seed: a mark that only exists on the expensive branch reports an
+  // empty column instead of a zero, and an empty column reads as "not measured".
+  markGuest('seedEnd')
 
   mounted = {
     docId,
@@ -180,7 +200,8 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   // over-reports. Flushed immediately rather than batched: a 24 ms delay on the
   // one message whose whole job is timing would be measuring the instrument.
   requestAnimationFrame(() => {
-    bridge.send({ type: 'painted', docId })
+    markGuest('guestPainted')
+    bridge.send({ type: 'painted', docId, marks: guestMarks() })
     bridge.flush()
   })
 }
@@ -329,8 +350,38 @@ window.addEventListener('unhandledrejection', (event) => {
 ;(globalThis as Record<string, unknown>).__memryBridgeCounters = () => bridge.getCounters()
 
 bridge.sendReady(schemaV, __EDITOR_WEB_CONTRACT_HASH__)
+markGuest('readySent')
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Time shiki's highlighter without moving it (#2043).
+ *
+ * `createCodeBlockSpec(codeBlockOptions)` runs at schema construction, but the
+ * factory it captures is only CALLED from the highlight plugin's parser, on the
+ * first code block the editor sees — so the grammar cost lands inside editor
+ * construction, in the interval this issue is breaking down. The wrapper reads
+ * the property off the same options object the spec holds, calls straight
+ * through and returns the same promise, so the only difference on the wire is
+ * three `Date.now()` calls.
+ *
+ * Split into three because they answer different questions: `shikiStart` to
+ * `shikiSync` is what BLOCKS the thread, and `shikiSync` to `shikiEnd` is the
+ * asynchronous tail that a paint can and does overtake.
+ */
+function traceHighlighter(): void {
+  const create = codeBlockOptions.createHighlighter
+  codeBlockOptions.createHighlighter = () => {
+    markGuest('shikiStart')
+    const highlighter = create()
+    markGuest('shikiSync')
+    void highlighter.then(
+      () => markGuest('shikiEnd'),
+      () => markGuest('shikiEnd')
+    )
+    return highlighter
+  }
+}
 
 function fingerprintSchema(built: {
   blockSchema: Record<string, unknown>
