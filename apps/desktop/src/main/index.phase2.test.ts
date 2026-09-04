@@ -833,7 +833,6 @@ describe('main index phase2 exports', () => {
         show: false
       })
     )
-    expect(initializeUpdaterMock).toHaveBeenCalled()
     expect(autoOpenLastVaultMock).toHaveBeenCalled()
 
     const createdWindow = browserWindows[0]
@@ -1379,6 +1378,24 @@ describe('main index phase2 exports', () => {
       info: ReturnType<typeof vi.fn>
     }
     expect(scoped.info).toHaveBeenCalledWith('MemryNote 1.0.0 starting (dev)')
+  })
+
+  it('starts the updater only once the window has been revealed', async () => {
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const { POST_REVEAL_DELAY_MS } = await import('./post-reveal')
+    expect(initializeUpdaterMock).not.toHaveBeenCalled()
+
+    const createdWindow = browserWindows[0]
+    createdWindow.emitTestEvent('ready-to-show')
+    expect(initializeUpdaterMock).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(POST_REVEAL_DELAY_MS)
+    expect(initializeUpdaterMock).toHaveBeenCalledTimes(1)
   })
 
   it('reveals the main window via fallback timeout when ready-to-show never fires', async () => {
