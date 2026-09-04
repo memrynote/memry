@@ -109,6 +109,25 @@ const contextSummary = (
   return `[${parts.join(' ')}]`
 }
 
+/**
+ * A report for a worker the owning module released as `graceful_stop` is, by
+ * construction, an abort AFTER that worker's own clean exit: the release is only
+ * recorded on an observed `code === 0` (see the 'exit' handler in embeddings.ts).
+ * The work had already drained and the process is already gone, so the report is
+ * post-exit residue from the native runtime unwinding, not a defect the user
+ * felt (#1990).
+ *
+ * It stays fully queryable as an `app_log_recorded` `warn` — same errorCode,
+ * message, stderr tail and metrics — and only leaves Error Tracking, the same
+ * demotion trackMainWarning performs for expected failures (#1587).
+ *
+ * Keyed on the recorded release alone, never the phase: `idle_shutdown` is also
+ * reachable from a force-kill, where the exit code was never observed. Any other
+ * release, and any report carrying no context at all, stays an exception.
+ */
+const isPostExitTeardownAbort = (details: ChildProcessGoneDetails): boolean =>
+  details.context?.release === 'graceful_stop'
+
 // Reports a `child-process-gone` fault as an error log event, or nothing at all
 // for a clean idle-worker exit. Kept here (not inline in index.ts) so the
 // skip decision is unit-tested rather than living in the untested bootstrap.
@@ -155,7 +174,7 @@ export const trackChildProcessGone = (details: ChildProcessGoneDetails): void =>
   if (details.context?.stderrTail) error.stack = details.context.stderrTail.slice(0, 4000)
   // errorCode stays stable (no exit code baked in) so the issue grouping counts
   // crashes per worker; the exit status rides along as a metric instead.
-  trackMainLog('error', {
+  trackMainLog(isPostExitTeardownAbort(details) ? 'warn' : 'error', {
     scope: 'Electron',
     action: details.phase ? `child_process_gone_${details.phase}` : 'child_process_gone',
     errorCode,

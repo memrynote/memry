@@ -880,6 +880,21 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   separate one laptop on a train from many installs failing in a row. An install that has not
   completed a single check in 24 hours _and_ has failed at least 6 checks in that time raises one
   exception (latched until the next successful check), so a genuinely stuck updater is still loud.
+- **Post-exit teardown aborts**: a `child-process-gone` report for a worker the owning module
+  released as `graceful_stop` is demoted to `warn`. That release is only ever recorded on an
+  observed `code === 0`, so the pairing is proof the worker already exited cleanly and the report is
+  the native runtime aborting while unwinding afterwards — not a failure the user felt. This was 70%
+  of macOS installs (#1990): the embeddings worker handled its shutdown message with a bare
+  `process.exit(0)`, which skips JS cleanup and runs onnxruntime's static destructors with sessions
+  still live, aborting with SIGABRT. Node reported 0 and Electron reported 6 for the same process,
+  which is why both codes appear. The worker now disposes the pipeline and drops its last `message`
+  listener — Electron's `ParentPort` pauses itself on `removeListener`, releasing the handle that
+  holds the loop open, and there is no `close()` to call — with an unref'd fallback that must stay
+  below `SHUTDOWN_TIMEOUT_MS` in `embeddings.ts` so a wedged disposal is never force-killed into the
+  very teardown death this removes. The demotion keys on the recorded release **alone**, never the
+  phase: `idle_shutdown` is also reachable from a force-kill, where no exit code was ever observed.
+  Demoted reports keep their error code, message, stderr tail and metrics and stay queryable as
+  `app_log_recorded`; they only leave Error Tracking.
 - **Repeated install failures**: a failed _check_ is loud in telemetry, but a failed _install_ was
   silent to the user. On macOS, Squirrel.Mac stages a downloaded update into its own ShipIt copy,
   and when that copy fails (`ditto: Could not lstat …`, `No space left on device`) the error lands
