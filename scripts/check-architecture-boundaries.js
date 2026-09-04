@@ -92,8 +92,15 @@ function isSourceFile(filePath) {
   return /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(filePath)
 }
 
+// Test-only code, by either convention this repo uses: a `.test.`/`.spec.` suffix
+// or any file under a `__tests__` / `__mocks__` directory. Both are excluded from
+// every boundary walk below, because the rules are about what SHIPS. A shared
+// test harness under `__tests__` is not shipped, and `apps/mobile`'s notes
+// harness reaches for `node:sqlite` on purpose — running the shipping SQL against
+// real SQLite is the entire point of it.
 function isTestFile(filePath) {
-  return /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/.test(filePath)
+  if (/\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/.test(filePath)) return true
+  return filePath.split(path.sep).some((segment) => segment === '__tests__' || segment === '__mocks__')
 }
 
 function stripSourceExtension(filePath) {
@@ -405,6 +412,21 @@ async function walkMobileSources(dir) {
   return files
 }
 
+// Test-only modules are skipped as walk SEEDS, so excluding them here would be a
+// hole rather than a skip: shipping code that imports one would escape the walk
+// entirely, and the node builtin it reaches would go unreported. Only shipping
+// files are ever walked, so anything resolving to a test file got there from
+// shipping code, which is itself the violation.
+function enqueueReachable(filePath, specifier, resolved, queue, blockingViolations) {
+  if (!isTestFile(resolved)) {
+    queue.push(resolved)
+    return
+  }
+  blockingViolations.add(
+    formatViolation(filePath, specifier, 'test-only module reachable from shipping code')
+  )
+}
+
 // Mobile reachability rule (spec 001-mobile-app T003 / Constitution I): nothing
 // reachable from apps/mobile — including transitively through workspace
 // packages — may import a node builtin or electron. Walks the real import
@@ -450,15 +472,15 @@ async function checkMobileReachability(blockingViolations) {
 
       if (specifier.startsWith('.')) {
         const resolved = resolveSourceFile(path.resolve(path.dirname(filePath), specifier))
-        if (resolved && isSourceFile(resolved) && !isTestFile(resolved)) {
-          queue.push(resolved)
+        if (resolved && isSourceFile(resolved)) {
+          enqueueReachable(filePath, specifier, resolved, queue, blockingViolations)
         }
         continue
       }
 
       const workspaceResolved = resolveWorkspaceImport(specifier, workspacePackages)
-      if (workspaceResolved && isSourceFile(workspaceResolved) && !isTestFile(workspaceResolved)) {
-        queue.push(workspaceResolved)
+      if (workspaceResolved && isSourceFile(workspaceResolved)) {
+        enqueueReachable(filePath, specifier, workspaceResolved, queue, blockingViolations)
       }
     }
   }
