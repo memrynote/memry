@@ -212,6 +212,20 @@ export async function openDocIdsFor(vaultId: string): Promise<string[]> {
   }
 }
 
+/**
+ * Feed newly-pulled server rows to the open docs, if this vault has a session.
+ *
+ * Same no-build rule as `openDocIdsFor`. The caller is the socket handler, and
+ * a `crdt_updated` for a vault whose editor was never opened has nothing on
+ * screen to refresh.
+ */
+export async function refreshOpenDocsFor(vaultId: string, docIds: string[]): Promise<void> {
+  const pending = sessions.get(vaultId)
+  if (!pending) return
+  const session = await pending
+  await session.docs.refreshOpenDocs(docIds)
+}
+
 export function getEditorSession(vaultId: string): Promise<EditorSession> {
   let pending = sessions.get(vaultId)
   if (!pending) {
