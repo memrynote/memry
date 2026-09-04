@@ -35,7 +35,6 @@ import {
 import { NoteProperties } from '@/features/notes/properties'
 import { propertyTypes } from '@/features/notes/property-types'
 import { NoteTags } from '@/features/notes/tags'
-import { useColorScheme } from '@/hooks/use-color-scheme'
 import { extractErrorMessage } from '@/lib/errors'
 import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
@@ -69,7 +68,6 @@ const SAVE_SETTLE_MS = 800
  */
 export default function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const scheme = useColorScheme()
   const c = useColors()
 
   // Watched from the moment the SCREEN mounts, which is the point of asking
@@ -272,7 +270,12 @@ export default function NoteScreen() {
 
   const cfg: BridgeCfg = useMemo(
     () => ({
-      theme: scheme === 'dark' ? 'dark' : 'light',
+      // Constant, not the device scheme (#2033). The guest HAS a dark
+      // palette; the app does not — `useColors()` returns the white theme on
+      // any device — so following the scheme here painted a near-black page
+      // inside white chrome. When a real RN dark palette lands, this is one of
+      // the two sites that re-wires (`app/_layout.tsx` is the other).
+      theme: 'light',
       locale: 'en',
       // RTL follows the app's own layout direction, which is what the shared
       // logical-property CSS is written against.
@@ -283,7 +286,7 @@ export default function NoteScreen() {
       // takes that away.
       readOnly: gate !== 'editing'
     }),
-    [gate, scheme]
+    [gate]
   )
 
   const onNavigate = useCallback(
