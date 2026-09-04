@@ -29,7 +29,7 @@ export interface ImportTasksDomain {
     dueDate: string | null
     dueTime: string | null
     position: number
-  }): Promise<{ task: { id: string } }>
+  }): Promise<{ task: { id: string } | null; error?: string }>
 }
 
 /** Build the real desktop tasks domain (lazy so importing this module stays light). */
@@ -130,7 +130,7 @@ export async function applyTodoistImport(
       for (const tk of entry.plan.tasks) {
         if (ctx.isCancelled()) return
         const parentId = tk.parentTempId ? (idMap.get(tk.parentTempId) ?? null) : null
-        const { task } = await domain.createTask({
+        const { task, error } = await domain.createTask({
           projectId: project.id,
           parentId,
           title: tk.title,
@@ -140,6 +140,10 @@ export async function applyTodoistImport(
           dueTime: tk.dueTime,
           position: tk.position
         })
+        // The project was created two lines up, so this is unreachable in
+        // practice; the file is still reported as failed rather than importing
+        // a silently truncated task list.
+        if (!task) throw new Error(error ?? 'Task creation failed')
         idMap.set(tk.tempId, task.id)
         done++
         ctx.reportImported()
