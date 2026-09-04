@@ -13,7 +13,7 @@ import { EDITOR_WEB_CONTRACT_HASH, loadEditorWebHtml } from './editor-web-asset'
 import { createInjectionTransport, EditorBridgeProvider } from './bridge-provider'
 import type { OpenDoc } from './doc-manager'
 import { LatencyRecorder, type G3Measurement } from './__rig__/latency'
-import { mark, markGuestPhases } from './__rig__/open-trace'
+import { isProbeEnabled, mark, markDocLoadPayload, markGuestPhases } from './__rig__/open-trace'
 
 const log = createLogger('EditorView')
 
@@ -120,6 +120,11 @@ export function EditorView({
   // a different app than the one G3 gates.
   const recorder = useMemo(() => new LatencyRecorder(bridge), [bridge])
 
+  // Length of the JS source string of the last envelope handed to
+  // `injectJavaScript`. The transport owns that string and the trace needs its
+  // size, and this is the one place both are in scope (#2044).
+  const lastInjectedChars = useRef(0)
+
   /**
    * Ask the guest to flush, then wait for the resulting persists.
    *
@@ -161,10 +166,22 @@ export function EditorView({
   }, [bridge])
 
   const sendDocLoad = useCallback(() => {
+    const probing = isProbeEnabled()
+    // Queued AHEAD of `doc-load` on purpose. A probe behind it would be timed
+    // from the back of the same queue and would be slow whatever the answer is,
+    // which discriminates nothing (#2044).
+    if (probing) {
+      bridge.send({ type: 'probe', slot: 'early' })
+      bridge.flush()
+      mark(doc.docId, 'probeEarlySent')
+    }
+
+    const state = doc.encodeState()
+    const stateB64 = bytesToBase64(state)
     bridge.send({
       type: 'doc-load',
       docId: doc.docId,
-      stateB64: bytesToBase64(doc.encodeState()),
+      stateB64,
       // Only when the doc is genuinely empty, so a seed can never overwrite
       // content that already exists.
       ...(doc.isEmpty() && seedMarkdown ? { seedMarkdown } : {})
@@ -176,6 +193,19 @@ export function EditorView({
     // likewise the last one it received — marking only the first would pair a
     // replayed receipt against the original send and invent a delay.
     mark(doc.docId, 'docLoadSent')
+    // Read straight after the flush, while the injection the transport just
+    // made is still the last one.
+    markDocLoadPayload(doc.docId, {
+      stateBytes: state.byteLength,
+      wireChars: stateB64.length,
+      injectedChars: lastInjectedChars.current
+    })
+
+    if (probing) {
+      bridge.send({ type: 'probe', slot: 'late' })
+      bridge.flush()
+      mark(doc.docId, 'probeLateSent')
+    }
   }, [bridge, doc, seedMarkdown])
 
   // A `seq` gap means an envelope was lost; the only correct response is a
@@ -375,6 +405,7 @@ export function EditorView({
     mark(doc.docId, 'webviewMounted')
     bridge.attach(
       createInjectionTransport((js) => {
+        lastInjectedChars.current = js.length
         webViewRef.current?.injectJavaScript(js)
       })
     )

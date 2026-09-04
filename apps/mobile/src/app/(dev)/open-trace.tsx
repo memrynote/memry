@@ -10,6 +10,7 @@ import {
   formatOpenTraceReport,
   getTraces,
   resetTraces,
+  setProbeEnabled,
   summarizeOpenTraces,
   type OpenTrace,
   type OpenTraceSummary
@@ -124,9 +125,27 @@ async function waitForPaint(noteId: string, since: number): Promise<number | nul
   return null
 }
 
+interface RunOptions {
+  total: number
+  /** Which end of the body-length ordering to open, or the default pool. */
+  sizeEnd: 'short' | 'long' | null
+  /**
+   * Add the #2044 probe envelopes. Off unless asked for: they are two extra
+   * crossings per open, so a run with them on is not comparable to the #2043
+   * baseline and must not be mistaken for one.
+   */
+  probe: boolean
+}
+
 export default function OpenTraceScreen() {
-  const params = useLocalSearchParams<{ autorun?: string; n?: string; size?: string }>()
+  const params = useLocalSearchParams<{
+    autorun?: string
+    n?: string
+    size?: string
+    probe?: string
+  }>()
   const size = params.size === 'long' || params.size === 'short' ? params.size : null
+  const probe = params.probe === '1'
   const requested = Number.parseInt(params.n ?? '', 10)
   const iterations = Number.isInteger(requested) && requested > 0 ? requested : DEFAULT_ITERATIONS
   const autorun = params.autorun === '1'
@@ -140,10 +159,12 @@ export default function OpenTraceScreen() {
   // run reads the same ring and shows the numbers.
   const [traces, setTraces] = useState<OpenTrace[]>(() => getTraces())
 
-  const run = useCallback(async (total: number, sizeEnd: 'short' | 'long' | null) => {
+  const run = useCallback(async (opts: RunOptions) => {
+    const { total, sizeEnd, probe } = opts
     setRunning(true)
     setStatus(null)
     setTraces([])
+    setProbeEnabled(probe)
     try {
       const vaultId = await loadCurrentVaultId()
       if (!vaultId) {
@@ -201,6 +222,7 @@ export default function OpenTraceScreen() {
     } catch (err) {
       setStatus(err instanceof Error ? `${err.name}: ${err.message}` : String(err))
     } finally {
+      setProbeEnabled(false)
       setRunning(false)
     }
   }, [])
@@ -211,8 +233,8 @@ export default function OpenTraceScreen() {
   useEffect(() => {
     if (!autorun || autostarted.current) return
     autostarted.current = true
-    void run(iterations, size)
-  }, [autorun, iterations, run, size])
+    void run({ total: iterations, sizeEnd: size, probe })
+  }, [autorun, iterations, probe, run, size])
 
   const summary: OpenTraceSummary | null = traces.length > 0 ? summarizeOpenTraces(traces) : null
   const timedOut = traces.length - (summary?.endToEnd.samples ?? 0)
@@ -241,7 +263,7 @@ export default function OpenTraceScreen() {
 
           <Pressable
             style={styles.button}
-            onPress={() => void run(iterations, size)}
+            onPress={() => void run({ total: iterations, sizeEnd: size, probe })}
             disabled={running}
             accessibilityRole="button"
             accessibilityLabel="Reset and re-run the open trace"
@@ -315,6 +337,27 @@ export default function OpenTraceScreen() {
               <ThemedText type="small">
                 {summary.traces} traces recorded, {timedOut} timed out without painting.
               </ThemedText>
+
+              <ThemedText type="title">doc-load payload</ThemedText>
+              {summary.payload.map((entry) => (
+                <View key={entry.field} style={styles.row}>
+                  <ThemedText type="small" style={styles.phaseCell}>
+                    {entry.field}
+                  </ThemedText>
+                  <ThemedText type="small" style={styles.numberCell}>
+                    {entry.samples.samples}
+                  </ThemedText>
+                  <ThemedText type="small" style={styles.numberCell}>
+                    {entry.samples.p50}
+                  </ThemedText>
+                  <ThemedText type="small" style={styles.numberCell}>
+                    {entry.samples.p95}
+                  </ThemedText>
+                  <ThemedText type="small" style={styles.numberCell}>
+                    {entry.samples.max}
+                  </ThemedText>
+                </View>
+              ))}
             </>
           ) : null}
 

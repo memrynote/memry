@@ -31,6 +31,12 @@ import { summarize, type LatencySummary } from './latency'
  *     guest's `docLoadRecv`, it splits the interval that turned out to hold
  *     almost the entire open (#2043) into the host's own work and the crossing,
  *     which are different defects with different fixes.
+ *   * `probeEarlySent` / `probeLateSent` — the tiny probe envelopes, queued
+ *     immediately before and immediately after `doc-load` (#2044). Present only
+ *     while `setProbeEnabled(true)`, because unlike every other mark here they
+ *     are not observations but two extra `injectJavaScript` calls, and a
+ *     measurement that adds traffic to the channel it is measuring has no
+ *     business running in an app nobody is measuring.
  *   * `painted` — the guest's frame callback after the document is laid out.
  *
  * Between `webviewMounted` and `painted` sit the GUEST's own sub-marks (#2043),
@@ -54,7 +60,9 @@ export type OpenHostPhase =
   | 'seedResolved'
   | 'webviewMounted'
   | 'guestReady'
+  | 'probeEarlySent'
   | 'docLoadSent'
+  | 'probeLateSent'
   | 'painted'
 
 export type OpenPhase = OpenHostPhase | GuestPaintMark
@@ -81,8 +89,12 @@ export const OPEN_PHASES: readonly OpenPhase[] = [
   'readySent',
   'webviewMounted',
   'guestReady',
+  'probeEarlySent',
+  'probeEarlyRecv',
   'docLoadSent',
   'docLoadRecv',
+  'probeLateSent',
+  'probeLateRecv',
   'yApplied',
   'createStart',
   'createEnd',
@@ -95,11 +107,47 @@ export const OPEN_PHASES: readonly OpenPhase[] = [
   'painted'
 ]
 
+/**
+ * What the `doc-load` for this open actually weighed (#2044).
+ *
+ * The three sizes are deliberately all kept rather than the first alone,
+ * because the argument they settle is about which of them the crossing tracks.
+ * `stateBytes` is the Y.Doc state, `wireChars` is its base64 form, and
+ * `injectedChars` is the JavaScript source string WKWebView is finally asked to
+ * evaluate — roughly twice the wire form, since the envelope is JSON-encoded
+ * once and then escaped into a string literal a second time.
+ */
+export interface DocLoadPayload {
+  stateBytes: number
+  wireChars: number
+  injectedChars: number
+}
+
 export interface OpenTrace {
   noteId: string
   startedAt: number
   /** Millisecond offsets from `startedAt`. */
   phases: Partial<Record<OpenPhase, number>>
+  /** Absent until the host has sent a `doc-load` for this note. */
+  payload?: DocLoadPayload
+}
+
+/**
+ * Whether the host adds the #2044 probe envelopes to each open.
+ *
+ * Off by default and set by the harness for the length of a run. Every other
+ * mark in this module is a `Date.now()` on work the app was doing anyway; these
+ * two are extra crossings, and leaving them on would mean shipping a
+ * measurement that changes the thing it measures.
+ */
+let probeEnabled = false
+
+export function setProbeEnabled(enabled: boolean): void {
+  probeEnabled = enabled
+}
+
+export function isProbeEnabled(): boolean {
+  return probeEnabled
 }
 
 /** Recent traces kept for the reporter; the buffer is the whole storage budget. */
@@ -156,6 +204,19 @@ export function markGuestPhases(
   }
 }
 
+/**
+ * Record what this note's `doc-load` weighed.
+ *
+ * Overwrites on a replay rather than accumulating: a resync sends the same
+ * document again, and a second sample of one note's size would weight the
+ * percentile by how often an open went wrong.
+ */
+export function markDocLoadPayload(noteId: string, payload: DocLoadPayload): void {
+  const trace = live.get(noteId)
+  if (!trace) return
+  trace.payload = payload
+}
+
 export function getTraces(): OpenTrace[] {
   return [...recent]
 }
@@ -170,7 +231,15 @@ export interface OpenTraceSummary {
   phases: { phase: OpenPhase; samples: LatencySummary }[]
   /** `navigate` -> `painted`, the number the epic is judged by. */
   endToEnd: LatencySummary
+  /** Sizes of the `doc-load` payloads this run sent (#2044). */
+  payload: { field: keyof DocLoadPayload; samples: LatencySummary }[]
 }
+
+const PAYLOAD_FIELDS: readonly (keyof DocLoadPayload)[] = [
+  'stateBytes',
+  'wireChars',
+  'injectedChars'
+]
 
 /**
  * Plain-text baseline report, the counterpart of `formatG3Report`.
@@ -188,7 +257,9 @@ export function formatOpenTraceReport(summary: OpenTraceSummary): string {
   return [
     `note-open latency — ${summary.traces} traces`,
     ...summary.phases.map((entry) => line(entry.phase, entry.samples)),
-    line('navigate→painted', summary.endToEnd)
+    line('navigate→painted', summary.endToEnd),
+    'doc-load payload size',
+    ...summary.payload.map((entry) => line(entry.field, entry.samples))
   ].join('\n')
 }
 
@@ -208,6 +279,10 @@ export function summarizeOpenTraces(traces: OpenTrace[]): OpenTraceSummary {
     // Painted traces only. An open that never reached the body is the worst
     // outcome there is, and letting it through as an absent sample would enter
     // it in the percentiles as the fastest one.
-    endToEnd: summarize(offsets('painted'))
+    endToEnd: summarize(offsets('painted')),
+    payload: PAYLOAD_FIELDS.map((field) => ({
+      field,
+      samples: summarize(traces.flatMap((trace) => (trace.payload ? [trace.payload[field]] : [])))
+    }))
   }
 }

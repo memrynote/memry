@@ -140,6 +140,25 @@ export const HostExecSchema = z.object({
   cmd: z.enum(BRIDGE_EXEC_COMMANDS)
 })
 
+/**
+ * A fixed, tiny envelope the host sends around `doc-load` to time the crossing
+ * itself (#2044).
+ *
+ * `doc-load` takes 3.26 s to reach the guest and the interval is FLAT across a
+ * 6-60x content range, which the payload cannot explain on its own. The probe
+ * separates the two candidates: sent immediately before `doc-load` it carries a
+ * few dozen bytes down the same channel, so a probe that is also slow indicts
+ * the channel and a probe that is fast indicts the payload.
+ *
+ * The guest does nothing with it but take a mark, so it can never change what
+ * the editor shows.
+ */
+export const HostProbeSchema = z.object({
+  type: z.literal('probe'),
+  /** Whether it was queued ahead of `doc-load` or behind it. */
+  slot: z.enum(['early', 'late'])
+})
+
 export const HostMsgSchema = z.discriminatedUnion('type', [
   HostDocLoadSchema,
   HostYUpdateSchema,
@@ -147,7 +166,8 @@ export const HostMsgSchema = z.discriminatedUnion('type', [
   HostWikiCandidatesSchema,
   HostAssetSchema,
   HostExecSchema,
-  HostInsertAttachmentSchema
+  HostInsertAttachmentSchema,
+  HostProbeSchema
 ])
 
 // ---------------------------------------------------------------------------
@@ -236,6 +256,9 @@ export const GuestMetricsSchema = z.object({
  *   * `schemaBuilt` — `createMemrySchema` returned, which is where
  *     `createCodeBlockSpec(codeBlockOptions)` is paid.
  *   * `readySent` — the handshake is on the wire.
+ *   * `probeEarlyRecv` / `probeLateRecv` — the tiny probe envelopes queued
+ *     immediately before and immediately after `doc-load`. Absent unless the
+ *     rig asked for them; see `HostProbeSchema`.
  *   * `docLoadRecv` — `doc-load` reached the guest's handler.
  *   * `yApplied` — the Y state is in the replica and the fragment is bound.
  *   * `createStart` / `createEnd` — `BlockNoteEditor.create`.
@@ -255,7 +278,9 @@ export const GUEST_PAINT_MARKS = [
   'scriptEval',
   'schemaBuilt',
   'readySent',
+  'probeEarlyRecv',
   'docLoadRecv',
+  'probeLateRecv',
   'yApplied',
   'createStart',
   'createEnd',

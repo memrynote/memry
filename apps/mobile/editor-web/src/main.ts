@@ -89,6 +89,13 @@ let readOnly = false
 
 bridge.onHostMsg((msg) => {
   switch (msg.type) {
+    // Timing only. It must stay the cheapest possible handler, because the
+    // number it produces is the time to GET here and any work under it would
+    // be counted as part of the crossing (#2044).
+    case 'probe':
+      markGuest(msg.slot === 'early' ? 'probeEarlyRecv' : 'probeLateRecv')
+      break
+
     case 'doc-load':
       markGuest('docLoadRecv')
       mountDoc(msg.docId, msg.stateB64, msg.seedMarkdown)
