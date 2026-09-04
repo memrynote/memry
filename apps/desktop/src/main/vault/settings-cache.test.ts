@@ -14,7 +14,7 @@ import {
   migrateSettingsToConfig,
   writeCacheFromPreferences
 } from './settings-cache'
-import { VAULT_PREFERENCES_DEFAULTS, readPreferences } from './vault-preferences'
+import { VAULT_PREFERENCES_DEFAULTS, readPreferences, writePreferences } from './vault-preferences'
 
 const MEMRY_DIR = '.memry'
 
@@ -238,6 +238,56 @@ describe('migrateSettingsToConfig', () => {
     const generalRaw = getSetting(testDb.db as any, 'general')
     const general = JSON.parse(generalRaw!)
     expect(general.theme).toBe(GENERAL_SETTINGS_DEFAULTS.theme)
+  })
+
+  it('#given the migration already ran #then a second launch does not rewrite config.json', () => {
+    vaultPath = createTempVault({ excludePatterns: ['.git'] })
+    const configPath = path.join(vaultPath, MEMRY_DIR, 'config.json')
+
+    // What writeCacheFromPreferences leaves behind on a fresh vault's first
+    // launch. Every value is a default, which is what let the migration read its
+    // own cache back and re-seed config.json on each subsequent launch.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSetting(testDb.db as any, 'general', JSON.stringify(GENERAL_SETTINGS_DEFAULTS))
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    migrateSettingsToConfig(testDb.db as any, vaultPath)
+    // writePreferences renames a fresh temp file over the config, so the inode
+    // changes on every write even when the bytes come out identical.
+    const inodeAfterFirst = fs.statSync(configPath).ino
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    migrateSettingsToConfig(testDb.db as any, vaultPath)
+
+    expect(fs.statSync(configPath).ino).toBe(inodeAfterFirst)
+  })
+
+  it('#given a preference the user changed after migrating #then a later launch keeps their value', () => {
+    vaultPath = createTempVault({ excludePatterns: ['.git'] })
+
+    // Pre-migration SQLite state. `minimizeToTray` is the case that bites: the
+    // old guard only compared theme/fontSize/fontFamily/accentColor/language,
+    // so a vault customised through any other field looked untouched.
+    setSetting(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      testDb.db as any,
+      'general',
+      JSON.stringify({ ...GENERAL_SETTINGS_DEFAULTS, minimizeToTray: true })
+    )
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    migrateSettingsToConfig(testDb.db as any, vaultPath)
+    expect(readPreferences(vaultPath).minimizeToTray).toBe(true)
+
+    writePreferences(vaultPath, { minimizeToTray: false })
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    migrateSettingsToConfig(testDb.db as any, vaultPath)
+
+    expect(readPreferences(vaultPath).minimizeToTray).toBe(false)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const general = JSON.parse(getSetting(testDb.db as any, 'general')!)
+    expect(general.minimizeToTray).toBe(false)
   })
 })
 

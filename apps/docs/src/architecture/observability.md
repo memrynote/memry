@@ -98,6 +98,45 @@ The line is logged at `warn` when the reveal came from the fallback or took ≥5
 `error` records reach the diagnostic log sink — and at `info` otherwise, so healthy launches stay
 local instead of flooding the sink.
 
+### Post-Reveal Startup Queue
+
+`src/main/post-reveal.ts` holds startup work the first frame does not depend on, so it cannot sit
+between window creation and the reveal and inflate `shownMs`. Register with
+`onceWindowShown(name, task)`; the reveal calls `schedulePostRevealTasks()`, which drains the queue
+one second later. The delay is deliberate: `ready-to-show` means the renderer can paint, not that it
+has finished booting, and draining on the next tick would move main-thread contention rather than
+remove it.
+
+`name` is the at-most-once key. A macOS dock reopen re-creates and re-reveals the main window, so a
+caller on that path registering again must not start a second copy. Work registered after the drain
+runs immediately. A task that throws or rejects is logged under the `Startup` scope and never stops
+the others. If the app begins quitting inside the delay the queue is left undrained, so a deferred
+task cannot re-arm a service the shutdown sequence has already torn down.
+
+The updater is the first tenant: `initializeUpdater()` reconciles install health, reads its prefs,
+resolves `app-update.yml` and fires the `startup-check` update check, none of which is on the way to
+the first frame.
+
+### Login-Shell PATH Gate
+
+A packaged app launched from Finder or the Dock inherits only the minimal system PATH, so
+`which claude` and `which codex` fail and Agent Chat greys out providers the user has installed.
+`src/main/agent/cli/login-shell-path.ts` recovers the real PATH by running the login shell, which
+sources the user's whole rc chain and costs anywhere from 180 ms to over a second.
+
+That probe is not on the boot path. `startLoginShellPathAugmentation()` fires it at module scope
+and returns immediately; `whenLoginShellPathApplied()` settles once `process.env.PATH` has been
+merged. Anything that resolves an executable by name must await that gate rather than read PATH and
+hope. `runBinaryCommand()` in `src/main/agent/cli/binary-detection.ts` is where the agent CLIs do
+it, which covers `which`, the `--version` reads and, transitively, the per-turn spawns that run
+after detection. Headless `--cli` awaits it too, because it shells out before any window exists.
+
+The probe still logs `Augmented PATH from login shell for packaged launch` when it changed PATH, and
+still reports `login_shell_path_probe_failed` with a failure class per breakage: `status_<n>` for a
+shell that exited non-zero, `spawn_error` for one that never started, `marker_missing` for output
+the parser could not read. A silent failure here is indistinguishable from an uninstalled CLI, so
+the breadcrumb is the only way to tell the two apart from a user's logs.
+
 ## Telemetry
 
 Telemetry is enabled by default in production builds and off by default in development builds.
@@ -1201,3 +1240,43 @@ identity comes only from the verified bearer. `/telemetry/batch` is unchanged by
 until after the vault is open so they never delay first paint. On the sync server, PostHog event
 capture and PostHog Logs pushes both run in `waitUntil` so neither can block the
 `/telemetry/batch` response.
+
+## Launch: note-readable mark
+
+`renderer/src/lib/launch-restore.ts` stamps a `performance.mark('memry:note-readable')`
+when the note a launch restored has actually rendered its block tree, hooked to
+BlockNote's `onEditorReady` rather than to component mount, because mount only proves the
+CRDT binding started. `scripts/launch-bench.mjs` reads it over CDP and reports it as
+`renderer_note_readable_ms`.
+
+The mark is deliberately narrow. It fires only for the note the launch restored, only
+once, and never for a note opened later in the session, so the metric cannot be inflated
+by ordinary navigation.
+
+It is absent, rather than zero, whenever the launch restored something that is not a
+note. The restored tab is read from `localStorage` because the vault path is not available
+synchronously in the renderer, and the key with the newest `savedAt` wins. A machine with
+several vaults can therefore name a note from a vault the app is not opening: the
+speculative chunk prefetch is then wasted, and the mark never fires. Absent is the correct
+reading in that case, not a failure, but it does mean a median over launches must state
+how many runs carried the mark.
+
+## Login-shell PATH probe: failure classes
+
+The probe runs `$SHELL -ilc` once per packaged launch to recover the user's real PATH, and
+reports one of four outcomes through `login_shell_path_probe_failed`:
+
+- `marker_missing` — the shell ran and exited cleanly but printed no marker, usually an rc
+  chain that writes to stdout.
+- `status_<n>` — the shell ran and exited non-zero.
+- `status_none` — the probe hit its 3 s deadline and was killed.
+- `spawn_error` — the shell never started.
+
+Two details are load-bearing and easy to undo by accident. The child's **stdin is closed,
+not piped**: an rc chain that reads stdin blocks forever on an open pipe, and every
+consumer awaiting `whenLoginShellPathApplied()` blocks with it. The deadline kills with
+**SIGKILL**, because an interactive shell ignores SIGTERM, so the polite signal would leave
+the promise pending for the whole session.
+
+The unit suite injects a fake probe and therefore cannot catch either regression. A change
+to how the child process is spawned needs a real shell to verify.

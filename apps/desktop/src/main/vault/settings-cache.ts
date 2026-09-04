@@ -8,6 +8,7 @@ import { LocaleSchema } from '@memry/contracts/locale-api'
 import {
   readPreferences,
   writePreferences,
+  hasStoredPreferences,
   VAULT_PREFERENCES_DEFAULTS,
   type VaultPreferences
 } from './vault-preferences'
@@ -21,18 +22,25 @@ export function populateSettingsCacheFromConfig(db: DataDb, vaultPath: string): 
   writeCacheFromPreferences(db, prefs)
 }
 
+/**
+ * Seed config.json from the pre-config.json SQLite settings, once per vault.
+ *
+ * The marker is config.json's own preferences block. Nothing but this function
+ * writes the first one — `writePreferences` and this migration shipped in the
+ * same commit, and vault open runs the migration before any other writer can
+ * reach the file — so its presence is an exact record that the seeding is done.
+ *
+ * That has to be the guard because `writeCacheFromPreferences` below refills the
+ * SQLite rows from config.json on every launch. Reading them back as a migration
+ * source is reading this function's own output, which is why the previous
+ * "is config.json still at its defaults" test re-fired on launch after launch.
+ * It also under-reported: it compared five of the eleven portable fields, so a
+ * vault customised only through, say, `minimizeToTray` looked untouched and the
+ * stale SQLite row overwrote a value the user had chosen.
+ */
 export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
-  const prefs = readPreferences(vaultPath)
-
-  const isDefault =
-    prefs.theme === VAULT_PREFERENCES_DEFAULTS.theme &&
-    prefs.fontSize === VAULT_PREFERENCES_DEFAULTS.fontSize &&
-    prefs.fontFamily === VAULT_PREFERENCES_DEFAULTS.fontFamily &&
-    prefs.accentColor === VAULT_PREFERENCES_DEFAULTS.accentColor &&
-    prefs.language === VAULT_PREFERENCES_DEFAULTS.language
-
-  if (!isDefault) {
-    writeCacheFromPreferences(db, prefs)
+  if (hasStoredPreferences(vaultPath)) {
+    writeCacheFromPreferences(db, readPreferences(vaultPath))
     return
   }
 
@@ -40,7 +48,7 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
   const rawEditor = getSetting(db, 'editor')
 
   if (!rawGeneral && !rawEditor) {
-    writeCacheFromPreferences(db, prefs)
+    writeCacheFromPreferences(db, readPreferences(vaultPath))
     return
   }
 

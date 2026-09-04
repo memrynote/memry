@@ -121,6 +121,13 @@ export function registerLocaleHandlers(i18n: I18nInstance, rebuildMenu: RebuildM
 
   ipcMain.handle(LocaleChannels.Get, () => activeLocale)
 
+  // Registered here rather than lazily: the preload calls this synchronously
+  // during window load, which happens after registerAllHandlers() but while the
+  // rest of the whenReady chain (vault open) is still running.
+  ipcMain.on(LocaleChannels.GetStartupSync, (event) => {
+    event.returnValue = activeLocale
+  })
+
   ipcMain.handle(LocaleChannels.List, () => SUPPORTED_LOCALES)
 
   ipcMain.handle(LocaleChannels.Set, async (_event, candidate: unknown): Promise<void> => {

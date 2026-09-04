@@ -8,6 +8,7 @@
     "./main": "./src/main/index.ts",
     "./renderer": "./src/renderer/index.ts",
     "./shared": "./src/shared/index.ts",
+    "./shared/direction": "./src/shared/direction.ts",
     "./locales": "./src/locales/index.ts",
     "./locales/en-errors": "./src/locales/en-errors.ts",
     "./locales/en-bundle": "./src/locales/en-bundle.ts"

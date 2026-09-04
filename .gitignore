@@ -46,6 +46,9 @@ Thumbs.db
 *.tmp
 .eslintcache
 
+# Launch perf harness output (scripts/launch-bench.mjs)
+.perf/
+
 # Cloudflare
 .wrangler
 
