@@ -16,6 +16,11 @@
   --memry-paper: #fdfcfb;
   --memry-muted: #78716c;
   --memry-accent: #ff671a;
+  /* The accent at fill strength is about 2.8:1 on paper, which fails WCAG AA,
+     and DESIGN.md requires AA. So `--memry-accent` paints fills and borders and
+     `--memry-accent-text` paints text and glyphs — the same split
+     `ui.destructive` / `ui.destructiveText` already makes in the RN theme. */
+  --memry-accent-text: color-mix(in srgb, var(--memry-accent) 78%, #000);
   --memry-hairline: rgba(28, 25, 23, 0.1);
   color-scheme: light;
 }
@@ -24,6 +29,7 @@
   --memry-ink: #f5f5f4;
   --memry-paper: #1c1917;
   --memry-muted: #a8a29e;
+  --memry-accent-text: color-mix(in srgb, var(--memry-accent) 82%, #fff);
   --memry-hairline: rgba(245, 245, 244, 0.14);
   color-scheme: dark;
 }
@@ -136,4 +142,198 @@ img.asset-missing {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Touch renderers (blocks.ts)
+
+   Type sizes are the mobile ramp from `src/theme/text-styles.ts` — body 17,
+   subhead 15, footnote 13, caption 12 — and spacing is 4/8/12/16 from
+   `src/theme/primitives.ts`, so the WebView and the RN chrome around it are on
+   one scale.
+   --------------------------------------------------------------------------- */
+
+/* Callout. One hue per type, driven through a custom property so the fill, the
+   rule and the glyph cannot drift apart. The hexes are the RN theme's own
+   `dot` and `destructive` tokens, not new colours. */
+.callout {
+  --callout-hue: #2563eb;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  inline-size: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border-radius: 8px;
+  border-inline-start: 4px solid var(--callout-hue);
+  background: color-mix(in srgb, var(--callout-hue) 10%, transparent);
+}
+
+:root[data-theme='dark'] .callout {
+  background: color-mix(in srgb, var(--callout-hue) 20%, transparent);
+}
+
+.callout[data-callout-type='warning'] {
+  --callout-hue: #ea580c;
+}
+
+.callout[data-callout-type='error'] {
+  --callout-hue: #d63333;
+}
+
+.callout[data-callout-type='success'] {
+  --callout-hue: #16a34a;
+}
+
+.callout-icon {
+  flex: 0 0 auto;
+  display: flex;
+  font-size: 17px;
+  /* The hue carries the glyph and nothing else; body text stays on --memry-ink
+     so a coloured callout never drops a paragraph below AA. */
+  color: var(--callout-hue);
+  padding-block-start: 3px;
+}
+
+.callout-content {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Task block. 44px is the tap-target floor from `theme/primitives.ts`. */
+.task-block {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  inline-size: 100%;
+  box-sizing: border-box;
+  min-block-size: 44px;
+}
+
+.task-block[data-nested='true'] {
+  margin-inline-start: 28px;
+}
+
+.task-check {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 20px;
+  color: var(--memry-muted);
+  cursor: pointer;
+}
+
+.task-block[data-checked='true'] .task-check {
+  color: var(--memry-accent-text);
+}
+
+.task-title {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.task-block[data-checked='true'] .task-title {
+  text-decoration: line-through;
+  color: var(--memry-muted);
+}
+
+.task-title[data-empty='true'] {
+  font-style: italic;
+  color: var(--memry-muted);
+}
+
+/* Attachment, embed and bookmark cards. */
+.file-block,
+.embed-block,
+.bookmark-block {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  inline-size: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  margin-block: 8px;
+  border: 1px solid var(--memry-hairline);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--memry-ink) 3%, transparent);
+}
+
+.file-icon,
+.embed-icon,
+.bookmark-icon {
+  flex: 0 0 auto;
+  display: flex;
+  font-size: 20px;
+  color: var(--memry-muted);
+  padding-block-start: 2px;
+}
+
+.file-body,
+.embed-body,
+.bookmark-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.file-name,
+.embed-title,
+.bookmark-title {
+  font-size: 17px;
+  /* A raw URL is one unbreakable word; without this it forces the whole
+     document into horizontal scroll. */
+  overflow-wrap: anywhere;
+}
+
+.file-meta,
+.embed-url,
+.bookmark-description,
+.bookmark-site {
+  font-size: 13px;
+  color: var(--memry-muted);
+  overflow-wrap: anywhere;
+}
+
+.embed-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* Toggle. BlockNote's own stylesheet already hides the child block group off
+   `.bn-toggle-wrapper[data-show-children='false']`, so the fold is not
+   reimplemented here — only the control is grown to a thumb. The glyph stays at
+   BlockNote's 18px. */
+.bn-toggle-button::after {
+  content: '';
+  position: absolute;
+  inset-block: -12px;
+  inset-inline: -4px;
+}
+
+.bn-toggle-button {
+  position: relative;
+  min-inline-size: 32px;
+  min-block-size: 32px;
+  align-items: center;
+  justify-content: center;
 }

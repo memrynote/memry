@@ -12,14 +12,15 @@ import { createMobileEditorSchema } from '../../editor-web/src/schema'
  * complete; the open question is only whether what gets registered PRESENTS
  * anything on a touch surface.
  *
- * It mostly does not. `createServerBlockSpecs()` and `createServerInlineSpecs()`
- * are the main process's SERIALIZATION DOM: the shapes chosen for what
- * BlockNote's HTML→markdown step turns them into, verified byte-for-byte
- * against the marker each block already has on disk. A file block is an HTML
- * comment, so it is invisible. A callout is a blockquote whose first line is a
- * literal `[!info]`. A task block is an inert checkbox trailing a raw
- * `{task:id}`. Bookmarks and YouTube embeds are `<img src=https://…>` that the
- * WebView's CSP blocks. Correct on disk, unusable on a phone.
+ * For a long time it mostly did not. `createServerBlockSpecs()` and
+ * `createServerInlineSpecs()` are the main process's SERIALIZATION DOM: the
+ * shapes chosen for what BlockNote's HTML→markdown step turns them into,
+ * verified byte-for-byte against the marker each block already has on disk. A
+ * file block is an HTML comment, so it is invisible. A callout is a blockquote
+ * whose first line is a literal `[!info]`. A task block is an inert checkbox
+ * trailing a raw `{task:id}`. Bookmarks and YouTube embeds are
+ * `<img src=https://…>` that the WebView's CSP blocks. Correct on disk,
+ * unusable on a phone.
  *
  * This file is the structural guard against that set ever growing silently. It
  * enumerates the built schema and partitions every key against the two lists
@@ -43,37 +44,46 @@ import { createMobileEditorSchema } from '../../editor-web/src/schema'
  * A key is TOUCH_RENDERED when its spec in the mobile schema is a presentation
  * implementation: BlockNote's own default block or inline spec, whose DOM is
  * what `editor-web/src/styles.css` is written against, or a Memry spec
- * deliberately re-flavoured for touch. Exactly one is re-flavoured today,
- * `wikiLink`, whose editor DOM carries the `data-target` the tap handler in
- * `wiki-links.ts` reads.
+ * re-flavoured for touch in `editor-web/src/blocks.ts` or
+ * `editor-web/src/inline.ts`. Every custom Memry spec is now in the second
+ * group; each supplies a touch `render` while taking its config, its `parse`
+ * and its `toExternalHTML` from `@memry/editor-schema` unchanged, so the vault
+ * bytes are untouched.
  *
- * A key is KNOWN_UNRENDERED when its spec comes from `createServerBlockSpecs()`
- * or `createServerInlineSpecs()`. That is a mechanical line, not a judgement
- * call, so it does not drift as people disagree about how bad a given block
- * looks.
+ * A key would be KNOWN_UNRENDERED if its spec came from
+ * `createServerBlockSpecs()` or `createServerInlineSpecs()` — the main
+ * process's serialization DOM. That is a mechanical line, not a judgement call,
+ * so it does not drift as people disagree about how bad a given block looks.
+ * The mobile schema no longer takes any spec from either factory.
  *
  * `image`, `video` and `audio` are called rendered on the strength of their
  * BlockNote DOM, and their vault-relative `src` is resolved separately by the
  * DOM-level resolver in `editor-web/src/images.ts`. `table` is rendered by the
- * same rule and is what #2041 audits; if that audit finds it broken on touch,
- * moving it here is exactly the deliberate, reviewed act the pinned count is
- * for.
+ * same rule; the #2041 audit found its DOM structurally correct on touch and
+ * fixed the width problem in CSS (a horizontally scrolling `.tableWrapper` and
+ * a floor under dragged column widths), so it stays here.
  */
 
 /** Block keys whose spec in the mobile schema actually presents something. */
 const TOUCH_RENDERED_BLOCKS = [
   'audio',
+  'bookmark',
   'bulletListItem',
+  'callout',
   'checkListItem',
   'codeBlock',
   'divider',
+  'file',
   'heading',
   'image',
   'numberedListItem',
   'paragraph',
   'quote',
   'table',
-  'video'
+  'taskBlock',
+  'toggleListItem',
+  'video',
+  'youtubeEmbed'
 ]
 
 /** Inline keys whose spec in the mobile schema actually presents something. */
@@ -81,18 +91,10 @@ const TOUCH_RENDERED_INLINE = ['link', 'text', 'wikiLink']
 
 /**
  * Block keys still falling through to the main process's serialization DOM.
- *
- * Renderers are tracked as #2035 (file), #2036 (callout), #2037 (taskBlock),
- * #2038 (toggleListItem) and #2039 (bookmark, youtubeEmbed).
+ * Empty: #2035 (file), #2036 (callout), #2037 (taskBlock), #2038
+ * (toggleListItem) and #2039 (bookmark, youtubeEmbed) all landed.
  */
-const KNOWN_UNRENDERED_BLOCKS = [
-  'bookmark',
-  'callout',
-  'file',
-  'taskBlock',
-  'toggleListItem',
-  'youtubeEmbed'
-]
+const KNOWN_UNRENDERED_BLOCKS: string[] = []
 
 /**
  * Inline keys still falling through to the main process's serialization DOM.
@@ -114,7 +116,7 @@ const KNOWN_UNRENDERED_INLINE = [
  * this number too, and adding a key has to raise it, so the backlog cannot
  * change without a second, deliberate edit that says which direction it moved.
  */
-const KNOWN_UNRENDERED_COUNT = 11
+const KNOWN_UNRENDERED_COUNT = 5
 
 const schema = createMobileEditorSchema()
 
@@ -192,18 +194,15 @@ describe('the mobile editor schema', () => {
   })
 
   /**
-   * The parity target. The four checks above keep the backlog honest; this one
-   * is the goal they are keeping honest FOR. It names exactly what is left, so
-   * nobody has to read an epic to find out how far mobile block parity has got.
+   * The parity target, now met. The four checks above keep the backlog honest;
+   * this one is the goal they are keeping honest FOR, and it is what stops the
+   * backlog ever being reopened quietly.
    *
-   * `it.fails` carries the same contract `conformance.ts` uses for a case whose
-   * fix ships in a sibling issue: the inverted expectation turns RED the moment
-   * the backlog empties, which forces the flag off rather than letting a passing
-   * assertion sit here disguised as a failing one. Remove the flag, never the
-   * case (#2041).
-   *
-   * The alternative was leaving mobile CI red for the length of the epic, which
-   * would have cost every unit in between its regression signal.
+   * It carried `it.fails` for the length of epic #2025, on the same contract
+   * `conformance.ts` uses for a case whose fix ships in a sibling issue: the
+   * inverted expectation turns RED the moment the backlog empties, which forced
+   * the flag off rather than letting a passing assertion sit here disguised as a
+   * failing one (#2041).
    */
   it.fails('renders every block and inline type the schema can build', () => {
     expect(
