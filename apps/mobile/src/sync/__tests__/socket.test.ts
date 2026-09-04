@@ -5,7 +5,6 @@ import {
   PING_INTERVAL_MS,
   SOCKET_OPEN,
   WATCHDOG_MS,
-  type HandshakeProbeResult,
   type SocketLike,
   type SyncSocketDeps
 } from '../socket'
@@ -60,14 +59,20 @@ interface Harness {
   events: SyncSocketEvent[]
   opens: number
   refreshes: number
-  probes: string[]
+  fetches: number
 }
 
-function harness(overrides: Partial<SyncSocketDeps> = {}, probe?: HandshakeProbeResult): Harness {
+function harness(overrides: Partial<SyncSocketDeps> = {}): Harness {
   const sockets: FakeSocket[] = []
   const events: SyncSocketEvent[] = []
-  const probes: string[] = []
-  const state = { opens: 0, refreshes: 0 }
+  const state = { opens: 0, refreshes: 0, fetches: 0 }
+  // A rejected handshake must not send anything over HTTP. `/sync/ws` answers
+  // a plain GET with 426 before it reaches the Durable Object, so a probe
+  // would read "version incompatible" off every dropped connection.
+  vi.stubGlobal('fetch', () => {
+    state.fetches++
+    return Promise.reject(new Error('no HTTP calls expected from the socket'))
+  })
 
   const deps: SyncSocketDeps = {
     baseUrl: 'https://sync-staging.memrynote.com',
@@ -89,10 +94,6 @@ function harness(overrides: Partial<SyncSocketDeps> = {}, probe?: HandshakeProbe
       sockets.push(created)
       return created
     },
-    probeHandshake: async (url) => {
-      probes.push(url)
-      return probe ?? null
-    },
     // Jitter out, so a backoff assertion is about the curve and not the dice.
     random: () => 0,
     ...overrides
@@ -103,12 +104,14 @@ function harness(overrides: Partial<SyncSocketDeps> = {}, probe?: HandshakeProbe
     socket,
     sockets,
     events,
-    probes,
     get opens() {
       return state.opens
     },
     get refreshes() {
       return state.refreshes
+    },
+    get fetches() {
+      return state.fetches
     }
   }
 }
@@ -125,7 +128,10 @@ async function connected(h: Harness): Promise<FakeSocket> {
 }
 
 beforeEach(() => vi.useFakeTimers())
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
 
 describe('handshake', () => {
   it('sends auth, a build-free version and the vault id as headers', async () => {
@@ -338,7 +344,7 @@ describe('close codes', () => {
     expect(h.sockets).toHaveLength(2)
   })
 
-  it('lets the replacement win after 4001 rather than trading places with it', async () => {
+  it('backs off after 4001 rather than immediately replacing the replacement', async () => {
     const h = harness()
     const live = await connected(h)
     live.serverClose(4001, 'Replaced by new connection')
@@ -350,48 +356,73 @@ describe('close codes', () => {
 })
 
 describe('rejected handshake', () => {
-  it('probes over plain HTTP, because RN surfaces no status', async () => {
-    const h = harness({}, { status: 426, code: 'SYNC_VERSION_INCOMPATIBLE' })
-    h.socket.start()
-    await settle()
-    // Never opened, so the 1006 is a rejected handshake wearing a network error.
-    h.sockets[0].serverClose(1006)
-    await settle()
-
-    expect(h.probes).toEqual(['https://sync-staging.memrynote.com/sync/ws'])
-    await vi.advanceTimersByTimeAsync(10 * 60_000)
-    expect(h.sockets).toHaveLength(1)
-  })
-
-  it('does not probe a socket that had opened', async () => {
+  it('backs off and NEVER latches, whatever the reason was', async () => {
     const h = harness()
-    const live = await connected(h)
-    live.serverClose(1006)
-    await settle()
-    expect(h.probes).toEqual([])
-  })
-
-  it('refreshes the token when the probe says 401', async () => {
-    const h = harness({}, { status: 401, code: 'AUTH_INVALID_TOKEN' })
     h.socket.start()
     await settle()
+    // React Native reports a refused handshake as a bare error and a synthetic
+    // 1006 with no HTTP status anywhere in reach.
     h.sockets[0].serverClose(1006)
     await settle()
-    expect(h.refreshes).toBe(1)
+
+    // No HTTP probe. `/sync/ws` answers any request without an
+    // `Upgrade: websocket` header with 426 VALIDATION_ERROR before the Durable
+    // Object ever sees it, so reading that status at face value would latch
+    // real-time sync off for the process on the first flaky network.
+    expect(h.fetches).toBe(0)
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(h.sockets).toHaveLength(2)
+    h.sockets[1].serverClose(1006)
+    await settle()
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(h.sockets).toHaveLength(3)
+  })
+
+  it('recovers from a handshake that neither opens nor closes', async () => {
+    const h = harness()
+    h.socket.start()
+    await settle()
+    expect(h.sockets).toHaveLength(1)
+
+    // RN imposes no connect timeout of its own, so without a watchdog armed at
+    // creation the manager parks in 'connecting' with no socket and no timer.
+    await vi.advanceTimersByTimeAsync(WATCHDOG_MS)
     await vi.advanceTimersByTimeAsync(1_000)
     expect(h.sockets).toHaveLength(2)
   })
+})
 
-  it('latches off when the probe says the device is revoked', async () => {
-    // The Durable Object answers 403 before the upgrade, so a revoked device
-    // never reaches the 4004 close at all.
-    const h = harness({}, { status: 403, code: 'AUTH_DEVICE_REVOKED' })
+describe('start while backing off', () => {
+  it('does not jump an armed backoff', async () => {
+    const h = harness()
+    const live = await connected(h)
+    live.serverClose(4008)
+    await settle()
+
+    // A foreground edge and an online transition both call start(). Cancelling
+    // the timer here is how a rate-limited client walks straight back into the
+    // 15-per-60-seconds ceiling it shares with the user's other devices.
+    h.socket.start()
     h.socket.start()
     await settle()
-    h.sockets[0].serverClose(1006)
-    await settle()
-    await vi.advanceTimersByTimeAsync(10 * 60_000)
+    await vi.advanceTimersByTimeAsync(29_999)
     expect(h.sockets).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(h.sockets).toHaveLength(2)
+  })
+
+  it('still connects immediately after a deliberate stop', async () => {
+    const h = harness()
+    const live = await connected(h)
+    live.serverClose(4008)
+    await settle()
+    // stop() clears the timer and the attempt count, so a background/foreground
+    // cycle is not punished for a backoff that belonged to the old socket.
+    h.socket.stop()
+    h.socket.start()
+    await settle()
+    expect(h.sockets).toHaveLength(2)
   })
 })
 

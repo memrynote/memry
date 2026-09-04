@@ -68,9 +68,23 @@ export async function requestSync(
   const readOnly = (deps.isReadOnly ?? (() => getReadOnlyState().readOnly))()
 
   if (plan.drain && !(plan.quietWhenParked && readOnly)) {
-    await deps.drain(vaultId).catch(() => undefined)
+    await settle(() => deps.drain(vaultId))
   }
   if (plan.pull) {
-    await deps.sync(vaultId).catch(() => undefined)
+    await settle(() => deps.sync(vaultId))
+  }
+}
+
+/**
+ * `.catch()` alone is not enough. `getSyncEngine(id).sync()` can throw
+ * SYNCHRONOUSLY out of the engine constructor, which subscribes to NetInfo,
+ * and every caller here uses `void requestSync(...)` -- so that throw becomes
+ * exactly the unhandled rejection this function promises not to produce.
+ */
+async function settle(task: () => Promise<unknown>): Promise<void> {
+  try {
+    await task()
+  } catch {
+    // Logged by the drain and the engine themselves; the work is still queued.
   }
 }
