@@ -849,11 +849,20 @@ export function NotePage({ noteId }: NotePageProps) {
         return
       }
 
+      // Clearing the field and blurring used to send `newTitle: ''` straight at
+      // the `min(1)` contract; the rejection was logged and nothing else, so the
+      // title silently snapped back (#1991).
+      if (!newTitle.trim()) {
+        toast.error(t('page.toast.titleRequired'))
+        return
+      }
+
       try {
         await renameNote.mutateAsync({ id: noteId, newTitle })
         // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
         log.error('Failed to rename note:', err)
+        toast.error(extractErrorMessage(err, t('page.toast.renameFailed')))
       }
     },
     [noteId, note, isDeleted, t, renameNote]

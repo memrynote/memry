@@ -461,7 +461,13 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               <input
                 type="text"
                 value={task.title}
-                onChange={(e) => onUpdateTask?.(task.id, { title: e.target.value })}
+                onChange={(e) => {
+                  // Every keystroke is a `tasks:update`, so select-all + delete
+                  // used to send `title: ''` at a `min(1)` contract. A task
+                  // cannot be untitled; drop the empty edit instead (#1991).
+                  if (!e.target.value.trim()) return
+                  onUpdateTask?.(task.id, { title: e.target.value })
+                }}
                 className="flex-1 min-w-0 text-[14px] font-medium text-text-primary bg-transparent outline-none truncate"
                 placeholder={t('task.namePlaceholder')}
                 aria-label={t('task.namePlaceholder')}

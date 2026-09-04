@@ -24,6 +24,7 @@
       "localOnly": "Note set to local only",
       "willSync": "Note will sync to cloud",
       "renameFailed": "Failed to rename note",
+      "titleRequired": "A note needs a title",
       "toggleLocalOnlyFailed": "Failed to toggle local only",
       "toggleFullWidthFailed": "Failed to toggle full width",
       "pathCopied": "Path copied",
