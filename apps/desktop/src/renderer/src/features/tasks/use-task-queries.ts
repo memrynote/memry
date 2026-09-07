@@ -104,6 +104,7 @@ export function dbTaskToUiTask(dbTask: Task): UiTask {
     projectId: dbTask.projectId,
     statusId: dbTask.statusId ?? '',
     priority: priorityMap[dbTask.priority as number] ?? 'none',
+    startDate: dbTask.startDate ? parseDueDate(dbTask.startDate) : null,
     dueDate: dbTask.dueDate ? parseDueDate(dbTask.dueDate) : null,
     dueTime: dbTask.dueTime,
     isRepeating: !!dbTask.repeatConfig,
@@ -347,6 +348,7 @@ export function useTaskWorkspaceMutations() {
           priority: priorityReverseMap[task.priority] ?? 0,
           statusId: task.statusId || null,
           parentId: task.parentId || null,
+          startDate: task.startDate ? formatDateKey(task.startDate) : null,
           dueDate: task.dueDate ? formatDateKey(task.dueDate) : null,
           dueTime: task.dueTime || null,
           isRepeating: task.isRepeating,
@@ -405,6 +407,12 @@ export function useTaskWorkspaceMutations() {
                     ? formatDateKey(otherUpdates.dueDate)
                     : null
                   : undefined,
+              startDate:
+                'startDate' in otherUpdates
+                  ? otherUpdates.startDate
+                    ? formatDateKey(otherUpdates.startDate)
+                    : null
+                  : undefined,
               dueTime: 'dueTime' in otherUpdates ? otherUpdates.dueTime : undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
@@ -447,6 +455,12 @@ export function useTaskWorkspaceMutations() {
                     ? formatDateKey(otherUpdates.dueDate)
                     : null
                   : undefined,
+              startDate:
+                'startDate' in otherUpdates
+                  ? otherUpdates.startDate
+                    ? formatDateKey(otherUpdates.startDate)
+                    : null
+                  : undefined,
               dueTime: 'dueTime' in otherUpdates ? otherUpdates.dueTime : undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
@@ -474,6 +488,12 @@ export function useTaskWorkspaceMutations() {
             'dueDate' in updates
               ? updates.dueDate
                 ? formatDateKey(updates.dueDate)
+                : null
+              : undefined,
+          startDate:
+            'startDate' in updates
+              ? updates.startDate
+                ? formatDateKey(updates.startDate)
                 : null
               : undefined,
           dueTime: 'dueTime' in updates ? updates.dueTime : undefined,

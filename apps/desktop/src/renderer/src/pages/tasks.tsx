@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useId } from 'react'
+import { useToday } from '@/hooks/use-today'
 import { LayoutGroup, motion, useReducedMotion } from 'motion/react'
 
 import { useT } from '@memry/i18n/renderer'
@@ -132,6 +133,8 @@ export const TasksPage = ({
   selectedTaskIds: externalSelectedIds,
   onSelectedTaskIdsChange
 }: TasksPageProps): React.JSX.Element => {
+  const todayKey = useToday()
+  const currentDay = useMemo(() => new Date(`${todayKey}T00:00:00`), [todayKey])
   const { t } = useT('tasks')
   const { t: tCommon } = useT('common')
 
@@ -400,9 +403,9 @@ export const TasksPage = ({
 
   // Derived: filtered tasks for current selection, scoped by dropdown project
   const baseFilteredTasks = useMemo(() => {
-    const base = getFilteredTasks(tasks, selectedId, selectedType, projects)
+    const base = getFilteredTasks(tasks, selectedId, selectedType, projects, false, currentDay)
     return scopeTasksByProject(base, selectedProjectId)
-  }, [tasks, selectedId, selectedType, projects, selectedProjectId])
+  }, [tasks, selectedId, selectedType, projects, selectedProjectId, currentDay])
 
   // Apply advanced filters and sort to base filtered tasks
   const { filteredTasks, totalCount, filteredCount } = useFilteredAndSortedTasks({
@@ -424,12 +427,12 @@ export const TasksPage = ({
   // Null on the "all" tab, which has no window.
   const windowFilteredTasks = useMemo(() => {
     if (activeInternalTab === 'all') return null
-    return getTasksInDueWindow(filteredTasks, projects, activeInternalTab)
-  }, [activeInternalTab, filteredTasks, projects])
+    return getTasksInDueWindow(filteredTasks, projects, activeInternalTab, currentDay)
+  }, [activeInternalTab, filteredTasks, projects, currentDay])
 
   // Counted off what is actually on screen, so a window empties for the same
   // reason the "all" list does. A filter and a window can contradict each other
-  // outright — "No due date" inside Today can never match — and without this the
+  // outright, and without this the
   // page just goes blank with nothing saying the filters did it.
   const visibleCount = windowFilteredTasks?.length ?? filteredCount
   const showFilterEmptyState = filtersActive && visibleCount === 0 && totalCount > 0
@@ -500,7 +503,9 @@ export const TasksPage = ({
   const tabCounts = useMemo((): TasksTabCounts => {
     const scopedTasks = scopeTasksByProject(tasks, selectedProjectId)
     const countWindow = (window: TaskDueWindow): number =>
-      getTasksInDueWindow(scopedTasks, projects, window).filter((t) => t.parentId === null).length
+      getTasksInDueWindow(scopedTasks, projects, window, currentDay).filter(
+        (t) => t.parentId === null
+      ).length
 
     return {
       all: getFilteredTasks(scopedTasks, 'all', 'view', projects).length,
@@ -508,7 +513,7 @@ export const TasksPage = ({
       tomorrow: countWindow('tomorrow'),
       next7: countWindow('next7')
     }
-  }, [tasks, projects, selectedProjectId])
+  }, [tasks, projects, selectedProjectId, currentDay])
 
   // Done section per scope. "Today" keeps its completed-today rule — that is the
   // day's progress, and it is what the celebration counts. The other windows

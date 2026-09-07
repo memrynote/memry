@@ -31,6 +31,8 @@
     "status": "Status",
     "priority": "Priority",
     "tags": "Tags",
+    "startDate": "Start date",
+    "changeStartDate": "Start: {date}. Click to change.",
     "dueDate": "Due Date",
     "reminder": "Reminder",
     "project": "Project",

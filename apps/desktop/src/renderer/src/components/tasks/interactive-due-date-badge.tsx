@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { Calendar, Repeat } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
@@ -8,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { DatePickerContent } from './date-picker-content'
 
 interface InteractiveDueDateBadgeProps {
+  dateKind?: 'due' | 'start'
   dueDate: Date | null
   dueTime: string | null
   onDateChange: (date: Date | null) => void
@@ -32,6 +34,7 @@ const badgeStyles: Record<string, string> = {
 }
 
 export const InteractiveDueDateBadge = ({
+  dateKind = 'due',
   dueDate,
   dueTime,
   onDateChange,
@@ -41,6 +44,7 @@ export const InteractiveDueDateBadge = ({
   fixedWidth = false,
   className
 }: InteractiveDueDateBadgeProps): React.JSX.Element => {
+  const { t } = useT('tasks')
   const [isOpen, setIsOpen] = React.useState(false)
   const {
     settings: { clockFormat }
@@ -63,7 +67,7 @@ export const InteractiveDueDateBadge = ({
     [onDateChange, onTimeChange]
   )
 
-  const dateStatus = status?.status ?? 'none'
+  const dateStatus = dateKind === 'start' ? 'none' : (status?.status ?? 'none')
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -77,7 +81,11 @@ export const InteractiveDueDateBadge = ({
             fixedWidth && 'w-[110px] flex justify-end',
             className
           )}
-          aria-label={`Due: ${dateLabel}. Click to change.`}
+          aria-label={
+            dateKind === 'start'
+              ? t('task.changeStartDate', { date: dateLabel })
+              : `Due: ${dateLabel}. Click to change.`
+          }
         >
           {isRepeating && <Repeat className="size-3 shrink-0" />}
           <Calendar size={12} className="shrink-0" />

@@ -28,6 +28,8 @@
     "details": "Görev ayrıntıları",
     "status": "Durum",
     "priority": "Öncelik",
+    "startDate": "Başlangıç tarihi",
+    "changeStartDate": "Başlangıç: {date}. Değiştirmek için tıklayın.",
     "dueDate": "Son Tarih",
     "project": "Proje",
     "repeat": "Tekrarla",

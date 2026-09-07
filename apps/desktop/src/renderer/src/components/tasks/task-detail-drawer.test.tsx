@@ -149,7 +149,12 @@ const project: Project = {
   name: 'Test Project',
   color: '#6366F1',
   statuses,
-  isArchived: false
+  isArchived: false,
+  description: '',
+  icon: 'folder',
+  isDefault: false,
+  createdAt: new Date(2026, 0, 1),
+  taskCount: 0
 }
 
 const createTask = (overrides: Partial<Task> = {}): Task => ({
@@ -182,7 +187,12 @@ const project2: Project = {
     { id: 'w-todo', name: 'Backlog', color: '#6B7280', type: 'todo', order: 0 },
     { id: 'w-done', name: 'Shipped', color: '#10B981', type: 'done', order: 1 }
   ],
-  isArchived: false
+  isArchived: false,
+  description: '',
+  icon: 'folder',
+  isDefault: false,
+  createdAt: new Date(2026, 0, 1),
+  taskCount: 0
 }
 
 const defaultProps: TaskDetailDrawerProps = {
@@ -290,6 +300,16 @@ describe('TaskDetailDrawer — editable properties', () => {
 
       expect(onUpdateTask).toHaveBeenCalledWith('task-1', { tags: ['work', 'new-tag'] })
     })
+  })
+
+  it('sets a start date through the date picker', async () => {
+    renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
+    await userEvent.click(screen.getByRole('button', { name: /start:.*click to change/i }))
+    await userEvent.click(screen.getByRole('button', { name: /^Tomorrow/ }))
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(0, 0, 0, 0)
+    expect(defaultProps.onUpdateTask).toHaveBeenCalledWith('task-1', { startDate: tomorrow })
   })
 
   describe('due date editing', () => {
@@ -511,12 +531,15 @@ describe('TaskDetailDrawer — editable properties', () => {
       title: 'My Note',
       emoji: '📝',
       content: '',
-      folderId: null,
-      createdAt: new Date(),
-      modifiedAt: new Date(),
-      isPinned: false,
-      isStarred: false
-    } as ReturnType<typeof notesService.get> extends Promise<infer T> ? T : never
+      path: 'note-1.md',
+      frontmatter: {},
+      created: new Date(),
+      modified: new Date(),
+      tags: [],
+      aliases: [],
+      wordCount: 0,
+      properties: {}
+    } satisfies NonNullable<Awaited<ReturnType<typeof notesService.get>>>
 
     it('shows emoji instead of NoteIcon when note has emoji', async () => {
       vi.mocked(notesService.get).mockResolvedValueOnce(mockNoteData)

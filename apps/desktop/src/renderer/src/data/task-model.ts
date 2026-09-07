@@ -53,6 +53,8 @@ export interface Task {
 
   priority: Priority
 
+  startDate?: Date | null
+
   // Due date
   dueDate: Date | null
   dueTime: string | null // "14:30" format, optional even if dueDate set
@@ -192,6 +194,7 @@ export const createDefaultTask = (
   statusId,
   priority: 'none',
   dueDate,
+  startDate: null,
   dueTime: null,
   isRepeating: false,
   repeatConfig: null,

@@ -355,6 +355,13 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     [task, onUpdateTask]
   )
 
+  const handleStartDateChange = useCallback(
+    (startDate: Date | null) => {
+      if (task) onUpdateTask?.(task.id, { startDate })
+    },
+    [task, onUpdateTask]
+  )
+
   const handleDueDateChange = useCallback(
     (dueDate: Date | null) => {
       if (task) onUpdateTask?.(task.id, { dueDate })
@@ -503,6 +510,18 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   priority={task.priority}
                   onPriorityChange={handlePriorityChange}
                   compact
+                />
+              </div>
+
+              <div className="flex items-center py-1.5">
+                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
+                  {t('task.startDate')}
+                </span>
+                <InteractiveDueDateBadge
+                  dateKind="start"
+                  dueDate={task.startDate ?? null}
+                  dueTime={null}
+                  onDateChange={handleStartDateChange}
                 />
               </div>
 
