@@ -57,7 +57,11 @@ export function backoffDelayMs(attemptCount: number): number {
 const encoder = new TextEncoder()
 
 export class OutboxStore {
-  constructor(private readonly db: VaultDb) {}
+  /** Called after a queued row is durable so the owning session can drain it. */
+  constructor(
+    private readonly db: VaultDb,
+    private readonly onEnqueued: () => void = () => {}
+  ) {}
 
   /**
    * Queue a record write. The payload is the FULL item JSON — mobile reads the
@@ -88,6 +92,7 @@ export class OutboxStore {
         Date.now()
       ]
     )
+    this.onEnqueued()
   }
 
   /**
@@ -100,6 +105,7 @@ export class OutboxStore {
       `INSERT INTO outbox (item_type, item_id, op, payload, enqueued_at) VALUES (?, ?, ?, ?, ?)`,
       ['note:crdt', docId, 'crdt-update', update, Date.now()]
     )
+    this.onEnqueued()
   }
 
   async claimBatch(limit: number): Promise<OutboxRow[]> {
@@ -340,7 +346,21 @@ export class OutboxDrain {
     const signingSecretKey = this.deps.signingSecretKey()
     if (!vaultKey || !signingSecretKey) {
       // Locked vault: not an error, just nothing we are allowed to encrypt with.
-      return { ...idle, remaining: await store.pendingCount() }
+      //
+      // It has to SAY so. This was the one branch in this method that returned
+      // without a word, and the two secrets fail differently: a pull only needs
+      // the vault key, so a device missing just the signing key pulls forever,
+      // looks healthy, and silently never pushes a single row. That state cost
+      // an afternoon to find from the server side.
+      const remaining = await store.pendingCount()
+      if (remaining > 0) {
+        log.warn('Outbox cannot drain: a push secret is missing', {
+          remaining,
+          hasVaultKey: vaultKey !== null,
+          hasSigningKey: signingSecretKey !== null
+        })
+      }
+      return { ...idle, remaining }
     }
 
     const rows = await store.claimBatch(CLAIM_LIMIT)

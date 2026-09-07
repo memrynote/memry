@@ -1,11 +1,11 @@
 import * as BackgroundTask from 'expo-background-task'
 import * as TaskManager from 'expo-task-manager'
 import { AppState } from 'react-native'
-import { getEditorSession } from '../editor/session'
 import { createLogger } from '../lib/logger'
 import { createMobileHttpClient } from '../adapters/http-client'
-import { getSyncEngine } from './engine'
 import { syncBaseUrl } from './server-config'
+import { startSyncSocket, stopSyncSocket } from './socket-controller'
+import { requestVaultSync } from './triggers'
 
 const log = createLogger('BackgroundSync')
 
@@ -17,6 +17,8 @@ export function setBackgroundSyncVault(vaultId: string | null): void {
   activeVaultId = vaultId
 }
 
+export { drainOutbox } from './triggers'
+
 /**
  * T052: foreground sync triggers + BGAppRefreshTask via expo-background-task.
  * The task is resumable and interruptible by construction: each pull page is
@@ -26,15 +28,8 @@ export function setBackgroundSyncVault(vaultId: string | null): void {
 TaskManager.defineTask(TASK_NAME, async () => {
   if (!activeVaultId) return BackgroundTask.BackgroundTaskResult.Success
   try {
-    // Push before pull: the queued edits are the only data that exists nowhere
-    // else, and a background window the OS cuts short should spend itself on
-    // those rather than on refreshing what is already safe on the server.
-    await drainOutbox(activeVaultId)
-    const summary = await getSyncEngine(activeVaultId).sync()
-    log.info('Background sync pass finished', {
-      ok: summary.ok,
-      itemsApplied: summary.itemsApplied
-    })
+    await requestVaultSync(activeVaultId, 'background-task')
+    log.info('Background sync pass finished')
     return BackgroundTask.BackgroundTaskResult.Success
   } catch (err) {
     log.warn('Background sync pass failed', {
@@ -57,31 +52,17 @@ export async function registerBackgroundSync(minIntervalMinutes = 15): Promise<v
   }
 }
 
-/**
- * Drain the write queue (T063/T076). Failures are logged, never thrown: a
- * drain that rejects into an AppState listener is an unhandled rejection, and
- * the rows it could not send are still queued for the next pass.
- */
-export async function drainOutbox(vaultId: string): Promise<void> {
-  try {
-    const session = await getEditorSession(vaultId)
-    await session.flush()
-  } catch (err) {
-    log.warn('Outbox drain failed', {
-      error: err instanceof Error ? err.message : String(err)
-    })
-  }
-}
-
 let foregroundWired = false
 
 /**
- * App-state transitions drive both directions of sync.
+ * App-state transitions drive both directions of sync, and the socket's
+ * lifetime with them.
  *
- * Foreground: drain first, then pull — an edit made offline should leave the
- * device before the pull has a chance to hand the user a stale-looking screen.
- * Background: drain only, and immediately, because iOS may suspend the process
- * at any point after the transition (contract rule 5).
+ * The socket is the live loop; these edges are what start and stop it. It is
+ * closed DELIBERATELY on the way out, because a close the OS delivers when it
+ * suspends the process is indistinguishable from a network failure, and the
+ * manager would arm its backoff and burn handshake attempts against a shared
+ * per-user budget on an app nobody is looking at.
  */
 export function wireForegroundSync(): void {
   if (foregroundWired) return
@@ -94,13 +75,11 @@ export function wireForegroundSync(): void {
       return
     }
     if (next === 'active' && previous !== 'active') {
-      void drainOutbox(vaultId).then(() =>
-        getSyncEngine(vaultId)
-          .sync()
-          .catch(() => {})
-      )
+      startSyncSocket(vaultId)
+      void requestVaultSync(vaultId, 'app-foreground')
     } else if (next !== 'active' && previous === 'active') {
-      void drainOutbox(vaultId)
+      stopSyncSocket()
+      void requestVaultSync(vaultId, 'app-background')
     }
     previous = next
   })
@@ -129,16 +108,14 @@ let onlineDrainWired = false
 function wireOnlineDrain(): void {
   if (onlineDrainWired) return
   onlineDrainWired = true
-  let draining = false
   createMobileHttpClient(syncBaseUrl()).onOnlineChanged((online) => {
     const vaultId = activeVaultId
-    // `draining` is not an optimisation: the switch and NetInfo can both emit
-    // for one transition, and two concurrent drains would send the same rows
-    // twice and race each other's deletes.
-    if (!online || !vaultId || draining) return
-    draining = true
-    void drainOutbox(vaultId).finally(() => {
-      draining = false
-    })
+    if (!online || !vaultId) return
+    // Two concurrent drains would send the same rows twice, and the switch and
+    // NetInfo can both emit for one transition. `OutboxDrain` coalesces them
+    // itself with a running pass plus at most one trailing pass, which is why
+    // the local `draining` flag this used to keep is gone.
+    startSyncSocket(vaultId)
+    void requestVaultSync(vaultId, 'online')
   })
 }

@@ -1443,6 +1443,28 @@ it at start and detaches it at stop. A refresh that lands after a vault switch o
 renews nothing instead of reaching into a torn-down socket and CRDT queue, and the runtime that
 replaces it installs its own hook.
 
+### The message contract, and the mobile client
+
+The socket's message names, the keepalive string, the close codes and a parser live in
+`packages/contracts/src/sync-socket.ts`. Desktop imports the name list; mobile parses against the
+same module. An unrecognised `type` parses successfully and is then ignored rather than failing the
+frame, so a server that starts sending a new message cannot break a client that shipped before it.
+
+Mobile is a second implementation rather than a port, because React Native's WebSocket is not the
+same object as `ws`. It has no `terminate()`, no ping/pong events and no `unexpected-response`, so a
+rejected handshake surfaces as a bare error and a synthetic 1006 close with the HTTP status nowhere
+in reach. The mobile client therefore probes the same URL over plain HTTP after a connect that never
+opened, and reads the real status and error code from there. Headers are the only auth channel; RN's
+third constructor argument carries them, and `X-App-Version` goes on the wire without its `+build`
+suffix, because the server's version comparison parses `2+318` as `NaN` and would pass the gate by
+accident. `X-Memry-Vault-Id` is equally required in practice: the Durable Object filters every
+broadcast by the socket's attached vault, so a socket without it connects and then hears nothing.
+
+Mobile does not pin certificates (see below) and relies on the OS trust store. It connects on the
+foreground and online edges and closes the socket **deliberately** when the app backgrounds, so a
+close the OS delivers while suspending the process cannot arm the reconnect backoff and spend the
+handshake budget, which is 15 per 60 seconds keyed by user and shared across all their devices.
+
 ### Certificate pinning on the socket
 
 A `wss://` socket connects through a pinned `https.Agent`. One agent is shared for the process

@@ -13,6 +13,7 @@ import {
   setBackgroundSyncVault,
   wireForegroundSync
 } from '@/sync/background'
+import { shutdownSyncSocket, startSyncSocket } from '@/sync/socket-controller'
 import { getEditorSession } from '@/editor/session'
 import { getSyncEngine } from '@/sync/engine'
 import { runFirstSyncIfNeeded, type FirstSyncProgress } from '@/sync/first-sync'
@@ -56,6 +57,7 @@ export default function VaultLayout() {
       setBackgroundSyncVault(vaultId)
       wireForegroundSync()
       void registerBackgroundSync()
+      startSyncSocket(vaultId)
 
       try {
         setSyncing(true)
@@ -86,6 +88,13 @@ export default function VaultLayout() {
     })()
     return () => {
       cancelled = true
+      // Three things already leak here (two NetInfo subscriptions and the
+      // engine registry, none of which have a removal path), so the socket
+      // gets an explicit stop rather than becoming a fourth. Clearing the
+      // background vault with it is what stops the 15-minute task syncing the
+      // last vault forever after a sign-out.
+      shutdownSyncSocket()
+      setBackgroundSyncVault(null)
     }
   }, [attempt])
 

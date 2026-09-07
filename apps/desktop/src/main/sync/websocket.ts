@@ -1,4 +1,5 @@
 import WebSocket from 'ws'
+import { SYNC_SOCKET_MESSAGE_TYPES } from '@memry/contracts/sync-socket'
 import { SyncEventEmitter } from '@memry/sync-client/emitter'
 import { z } from 'zod'
 import { createLogger } from '../lib/logger'
@@ -23,16 +24,7 @@ const HTTP_UPGRADE_REQUIRED = 426
 const MAX_WEBSOCKET_MANAGER_LISTENERS = 10
 
 const WebSocketMessageSchema = z.object({
-  type: z.enum([
-    'changes_available',
-    'crdt_updated',
-    'calendar_changes_available',
-    'heartbeat',
-    'auth_ok',
-    'error',
-    'linking_request',
-    'linking_approved'
-  ]),
+  type: z.enum(SYNC_SOCKET_MESSAGE_TYPES),
   payload: z.record(z.string(), z.unknown()).optional()
 })
 

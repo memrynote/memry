@@ -25,6 +25,8 @@ import { EditorDocManager, type DocHalves, type DocStore } from './doc-manager'
 const log = createLogger('EditorSession')
 
 const LOCAL_PREFIX = 'local.'
+/** Coalesce local outbox writes before a foreground push. */
+const LOCAL_SYNC_INTERVAL_MS = 300
 
 /**
  * The doc store over the two CRDT namespaces.
@@ -194,6 +196,38 @@ export interface EditorSession {
 
 const sessions = new Map<string, Promise<EditorSession>>()
 
+/**
+ * The docs held open right now, or none when this vault has no session yet.
+ *
+ * Deliberately does NOT build one. The caller is the pull pass, and building a
+ * session opens the DB, reads the keychain and constructs the outbox and the
+ * attachment transfer — work a pull has no reason to trigger, on a vault the
+ * user may not even have opened an editor in.
+ */
+export async function openDocIdsFor(vaultId: string): Promise<string[]> {
+  const pending = sessions.get(vaultId)
+  if (!pending) return []
+  try {
+    return (await pending).docs.openDocIds()
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Feed newly-pulled server rows to the open docs, if this vault has a session.
+ *
+ * Same no-build rule as `openDocIdsFor`. The caller is the socket handler, and
+ * a `crdt_updated` for a vault whose editor was never opened has nothing on
+ * screen to refresh.
+ */
+export async function refreshOpenDocsFor(vaultId: string, docIds: string[]): Promise<void> {
+  const pending = sessions.get(vaultId)
+  if (!pending) return
+  const session = await pending
+  await session.docs.refreshOpenDocs(docIds)
+}
+
 export function getEditorSession(vaultId: string): Promise<EditorSession> {
   let pending = sessions.get(vaultId)
   if (!pending) {
@@ -230,7 +264,25 @@ async function build(vaultId: string): Promise<EditorSession> {
     })
   }
 
-  const outbox = new OutboxStore(db)
+  let localSyncTimer: ReturnType<typeof setTimeout> | null = null
+  let flushSession: (() => Promise<void>) | null = null
+
+  const scheduleLocalSync = (): void => {
+    if (flushSession === null || localSyncTimer !== null) return
+    localSyncTimer = setTimeout(() => {
+      localSyncTimer = null
+      const run = flushSession?.()
+      if (run) {
+        void run.catch((err) => {
+          log.warn('Foreground outbox drain failed', {
+            error: err instanceof Error ? err.message : String(err)
+          })
+        })
+      }
+    }, LOCAL_SYNC_INTERVAL_MS)
+  }
+
+  const outbox = new OutboxStore(db, scheduleLocalSync)
   const docs = new EditorDocManager(createVaultDocStore(db), outbox)
 
   const http = createMobileHttpClient(syncBaseUrl())
@@ -306,6 +358,25 @@ async function build(vaultId: string): Promise<EditorSession> {
     isMetered: () => http.isMetered()
   })
 
+  const flush = async (): Promise<void> => {
+    await refreshSecrets()
+    const result = await drain.drain()
+    // One retry after a token refresh: an expired access token is the single
+    // most common reason a first drain of the day fails, and it is fixable
+    // without waiting out a backoff the user would experience as lost work.
+    if (result.failed > 0 && !result.parked) {
+      const fresh = await refreshSession()
+      if (fresh) {
+        accessToken = fresh
+        // Only the rows that just failed: the rest of the queue keeps the
+        // backoff it earned, or one refresh would disable it table-wide.
+        if (result.failedIds.length > 0) await outbox.clearBackoff(result.failedIds)
+        await drain.drain()
+      }
+    }
+  }
+  flushSession = flush
+
   return {
     vaultId,
     db,
@@ -336,25 +407,13 @@ async function build(vaultId: string): Promise<EditorSession> {
       keypair = null
       accessToken = ''
       locked = true
+      flushSession = null
+      if (localSyncTimer) {
+        clearTimeout(localSyncTimer)
+        localSyncTimer = null
+      }
       docs.closeAll()
     },
-
-    async flush() {
-      await refreshSecrets()
-      const result = await drain.drain()
-      // One retry after a token refresh: an expired access token is the single
-      // most common reason a first drain of the day fails, and it is fixable
-      // without waiting out a backoff the user would experience as lost work.
-      if (result.failed > 0 && !result.parked) {
-        const fresh = await refreshSession()
-        if (fresh) {
-          accessToken = fresh
-          // Only the rows that just failed: the rest of the queue keeps the
-          // backoff it earned, or one refresh would disable it table-wide.
-          if (result.failedIds.length > 0) await outbox.clearBackoff(result.failedIds)
-          await drain.drain()
-        }
-      }
-    }
+    flush
   }
 }

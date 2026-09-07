@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
 import type { SyncHttpClient } from '@memry/sync-client/adapters'
 import type { SeamHttpContext } from '@memry/sync-client/pull'
@@ -101,7 +101,12 @@ function transport(handler: (path: string, body: unknown) => unknown | FakeRespo
   return { http, seen }
 }
 
-function drain(store: OutboxQueue, http?: SyncHttpClient) {
+interface SecretOverrides {
+  vaultKey?: Uint8Array | null
+  signingSecretKey?: Uint8Array | null
+}
+
+function drain(store: OutboxQueue, http?: SyncHttpClient, secrets: SecretOverrides = {}) {
   const httpCtx = () =>
     ({
       // Cases that settle their rows BEFORE any request pass no transport at
@@ -116,8 +121,9 @@ function drain(store: OutboxQueue, http?: SyncHttpClient) {
     store,
     httpCtx,
     crypto,
-    vaultKey: () => vaultKey,
-    signingSecretKey: () => signingSecretKey,
+    vaultKey: () => (secrets.vaultKey === undefined ? vaultKey : secrets.vaultKey),
+    signingSecretKey: () =>
+      secrets.signingSecretKey === undefined ? signingSecretKey : secrets.signingSecretKey,
     deviceId: () => 'device-a',
     isOnline: () => true
   })
@@ -131,6 +137,45 @@ describe('backoffDelayMs', () => {
     // Capped: an item that has failed twenty times must not schedule itself
     // hours out, because the user is still looking at an unsynced note.
     expect(backoffDelayMs(50)).toBeLessThanOrEqual(5 * 60_000 + 5_000)
+  })
+})
+
+describe('OutboxDrain with a push secret missing', () => {
+  /**
+   * The state this pins is the expensive one: a device that holds the vault key
+   * but not the signing key PULLS perfectly and looks healthy, while never
+   * pushing a single row. The old code returned from here without logging, so
+   * the only way to see it was to query the server and notice the device had
+   * written nothing, ever.
+   */
+  it('says which secret is missing instead of returning silently', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { store, completed, failed } = queue([row()])
+
+    const result = await drain(store, undefined, { signingSecretKey: null }).drain()
+
+    expect(result.pushed).toBe(0)
+    // Queued, not dropped and not failed — the row is still owed a push.
+    expect(completed).toHaveLength(0)
+    expect(failed).toHaveLength(0)
+    expect(result.remaining).toBe(1)
+
+    const [message, context] = warn.mock.calls.at(-1)?.slice(1) ?? []
+    expect(message).toContain('push secret is missing')
+    expect(context).toMatchObject({ hasVaultKey: true, hasSigningKey: false, remaining: 1 })
+    warn.mockRestore()
+  })
+
+  it('stays quiet when there is nothing queued to push', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { store } = queue([])
+
+    await drain(store, undefined, { signingSecretKey: null }).drain()
+
+    // An unlinked device idles here on every tick; warning each time would bury
+    // the case that matters under noise.
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
   })
 })
 
