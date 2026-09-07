@@ -57,7 +57,11 @@ export function backoffDelayMs(attemptCount: number): number {
 const encoder = new TextEncoder()
 
 export class OutboxStore {
-  constructor(private readonly db: VaultDb) {}
+  /** Called after a queued row is durable so the owning session can drain it. */
+  constructor(
+    private readonly db: VaultDb,
+    private readonly onEnqueued: () => void = () => {}
+  ) {}
 
   /**
    * Queue a record write. The payload is the FULL item JSON — mobile reads the
@@ -88,6 +92,7 @@ export class OutboxStore {
         Date.now()
       ]
     )
+    this.onEnqueued()
   }
 
   /**
@@ -100,6 +105,7 @@ export class OutboxStore {
       `INSERT INTO outbox (item_type, item_id, op, payload, enqueued_at) VALUES (?, ?, ?, ?, ?)`,
       ['note:crdt', docId, 'crdt-update', update, Date.now()]
     )
+    this.onEnqueued()
   }
 
   async claimBatch(limit: number): Promise<OutboxRow[]> {
