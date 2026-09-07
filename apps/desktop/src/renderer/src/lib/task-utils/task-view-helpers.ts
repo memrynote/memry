@@ -13,6 +13,9 @@ import {
 } from './task-date-utils'
 import { isTaskCompleted } from './task-status-helpers'
 
+const hasStarted = (task: Task, today: Date): boolean =>
+  !!task.startDate && !isAfter(startOfDay(task.startDate), today)
+
 // ============================================================================
 // SUBTASK INCLUSION HELPER
 // ============================================================================
@@ -34,7 +37,8 @@ export const getFilteredTasks = (
   selectedId: string,
   selectedType: 'view' | 'project',
   projects: Project[],
-  _includeCompleted = false
+  _includeCompleted = false,
+  now = new Date()
 ): Task[] => {
   const nonArchivedTasks = tasks.filter((t) => !t.archivedAt)
 
@@ -51,7 +55,7 @@ export const getFilteredTasks = (
   const completedTopLevel = nonArchivedTasks.filter((t) => isComplete(t) && !isSubtask(t))
 
   if (selectedType === 'view') {
-    const today = startOfDay(new Date())
+    const today = startOfDay(now)
     const weekFromNow = addDays(today, 7)
 
     switch (selectedId) {
@@ -60,6 +64,7 @@ export const getFilteredTasks = (
 
       case 'today': {
         const matchingTopLevel = incompleteTopLevel.filter((task) => {
+          if (hasStarted(task, today)) return true
           if (!task.dueDate) return false
           const taskDate = startOfDay(task.dueDate)
           return isSameDay(taskDate, today) || isBefore(taskDate, today)
@@ -141,7 +146,8 @@ export interface TaskWorkspaceCounts {
 export const getTaskWorkspaceCounts = (
   tasks: Task[],
   projects: Project[],
-  viewIds: readonly string[]
+  viewIds: readonly string[],
+  now = new Date()
 ): TaskWorkspaceCounts => {
   const statusTypesByProject = new Map<string, Map<string, StatusType>>()
   for (const project of projects) {
@@ -152,7 +158,7 @@ export const getTaskWorkspaceCounts = (
     statusTypesByProject.set(project.id, statusTypes)
   }
 
-  const today = startOfDay(new Date())
+  const today = startOfDay(now)
   const tomorrow = addDays(today, 1)
   const weekFromNow = addDays(today, 7)
   const weekEnd = endOfWeek(today)
@@ -163,6 +169,7 @@ export const getTaskWorkspaceCounts = (
 
     switch (viewId) {
       case 'today': {
+        if (hasStarted(task, today)) return true
         if (!task.dueDate) return false
         const taskDate = startOfDay(task.dueDate)
         return isSameDay(taskDate, today) || isBefore(taskDate, today)
@@ -347,6 +354,14 @@ export const getTodayTasks = (tasks: Task[], projects: Project[]): TodayViewTask
   tasks.forEach((task) => {
     if (isTaskCompleted(task, projects)) return
     if (task.parentId !== null) return
+    if (task.archivedAt) return
+    if (
+      hasStarted(task, todayStart) &&
+      (!task.dueDate || !isBefore(startOfDay(task.dueDate), todayStart))
+    ) {
+      today.push(task)
+      return
+    }
     if (!task.dueDate) return
 
     const dueDate = startOfDay(task.dueDate)
@@ -390,9 +405,10 @@ const DUE_WINDOW_DAYS: Record<TaskDueWindow, [number, number]> = {
 export const getTasksInDueWindow = (
   tasks: Task[],
   projects: Project[],
-  window: TaskDueWindow
+  window: TaskDueWindow,
+  now = new Date()
 ): Task[] => {
-  const todayStart = startOfDay(new Date())
+  const todayStart = startOfDay(now)
   const [firstDay, lastDay] = DUE_WINDOW_DAYS[window]
   const windowStart = addDays(todayStart, firstDay)
   const windowEnd = endOfDay(addDays(todayStart, lastDay))
@@ -404,6 +420,15 @@ export const getTasksInDueWindow = (
   tasks.forEach((task) => {
     if (isTaskCompleted(task, projects)) return
     if (task.parentId !== null) return
+    if (task.archivedAt) return
+    if (
+      window === 'today' &&
+      hasStarted(task, todayStart) &&
+      (!task.dueDate || !isBefore(startOfDay(task.dueDate), todayStart))
+    ) {
+      inWindow.push(task)
+      return
+    }
     if (!task.dueDate) return
 
     const dueDate = startOfDay(task.dueDate)

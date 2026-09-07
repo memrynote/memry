@@ -7,10 +7,10 @@
  * real filter would show, the badge must show. The mutation matrix at the bottom
  * walks every input that has to invalidate the counts.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import type { Task } from '@/data/task-model'
 import type { Project, StatusType } from '@/data/tasks-data'
-import { getFilteredTasks, getTaskWorkspaceCounts } from '.'
+import { getFilteredTasks, getTaskWorkspaceCounts, getTodayTasks, getTasksInDueWindow } from '.'
 import { addDays, startOfDay } from './task-date-utils'
 
 const ALL_VIEW_IDS = [
@@ -373,5 +373,52 @@ describe('getTaskWorkspaceCounts invalidation matrix', () => {
     expect(
       getTaskWorkspaceCounts(baselineTasks(), remaining, ALL_VIEW_IDS).viewCounts
     ).toMatchObject({ all: 11, completed: 2 })
+  })
+})
+
+describe('tasks spanning several days', () => {
+  it('stays in Today from its start through its due date, then becomes overdue', () => {
+    vi.useFakeTimers()
+    try {
+      const task = createTask({
+        id: 'long-task',
+        statusId: 'doing',
+        startDate: new Date(2026, 8, 7),
+        dueDate: new Date(2026, 8, 11)
+      })
+      for (let day = 6; day <= 12; day++) {
+        vi.setSystemTime(new Date(2026, 8, day, 12))
+        const expected = day >= 7 ? [task] : []
+        expect(getFilteredTasks([task], 'today', 'view', projects)).toEqual(expected)
+        expect(getTasksInDueWindow([task], projects, 'today')).toEqual(expected)
+        expect(getTaskWorkspaceCounts([task], projects, ['today']).viewCounts.today).toBe(
+          expected.length
+        )
+        const grouped = getTodayTasks([task], projects)
+        expect(grouped.today).toEqual(day >= 7 && day <= 11 ? [task] : [])
+        expect(grouped.overdue).toEqual(day === 12 ? [task] : [])
+        expect(task.statusId).toBe('doing')
+      }
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('handles no deadline, completion, archives, cleared starts, and subtasks', () => {
+    const active = createTask({ id: 'active', startDate: addDays(TODAY, -2) })
+    const child = createTask({ id: 'child', parentId: active.id })
+    const tasks = [
+      active,
+      child,
+      createTask({ id: 'done', startDate: TODAY, statusId: 'done' }),
+      createTask({ id: 'archived', startDate: TODAY, archivedAt: TODAY }),
+      createTask({ id: 'future', startDate: addDays(TODAY, 1) }),
+      createTask({ id: 'cleared', startDate: null }),
+      createTask({ id: 'legacy' })
+    ]
+    expect(getFilteredTasks(tasks, 'today', 'view', projects)).toEqual([active, child])
+    expect(getTasksInDueWindow(tasks, projects, 'today')).toEqual([active, child])
+    expect(getTodayTasks(tasks, projects).today).toEqual([active, child])
+    expect(getTaskWorkspaceCounts(tasks, projects, ['today']).viewCounts.today).toBe(2)
   })
 })

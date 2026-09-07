@@ -186,3 +186,15 @@ A task's description is a rich text editor, the same style as notes. In the task
 - [List vs Kanban](/user-guide/tasks/list-vs-kanban) — view options
 - [Filters & Sorting](/user-guide/tasks/filters-sorting)
 - [Subtasks & Recurrence](/user-guide/tasks/subtasks-recurrence)
+
+## Start dates for longer tasks
+
+Open a task's details and select **Start date** to choose when work should begin.
+The **Due Date** remains its deadline. For example, a task starting Monday and due
+Friday appears in **Today** every day from Monday through Friday. Set its status
+to **In progress** when you begin; the start date does not change the status.
+
+An unfinished task stays in Today after its deadline as overdue. A task with a
+start date but no deadline stays in Today until completed. Clear the start date
+to remove this scheduling behavior. Tasks without a start date keep their existing
+due-date behavior.

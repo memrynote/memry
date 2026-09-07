@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useToday } from '@/hooks/use-today'
 import { resolveProjectReorderTarget } from '@/components/sidebar/sidebar-drag-types'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
@@ -442,9 +443,10 @@ function App(): React.JSX.Element {
   // Calculate view counts and project task counts in a single pass over the
   // tasks. Both recompute on every task mutation, so re-filtering the whole list
   // once per view and once per project is the wrong shape at this level.
+  const todayKey = useToday()
   const { viewCounts, projectTaskCounts } = useMemo(
-    () => getTaskWorkspaceCounts(tasks, projects, taskViewIds),
-    [tasks, projects]
+    () => getTaskWorkspaceCounts(tasks, projects, taskViewIds, new Date(`${todayKey}T00:00:00`)),
+    [tasks, projects, todayKey]
   )
 
   // Update project task counts

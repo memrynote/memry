@@ -33,3 +33,13 @@ describe('dbTaskToUiTask tags', () => {
     expect(result.tags).toEqual([])
   })
 })
+
+describe('dbTaskToUiTask start date', () => {
+  it('loads a calendar date at local midnight', () => {
+    const task = dbTaskToUiTask({ ...baseDbTask, startDate: '2026-09-07' })
+    expect(task.startDate).toEqual(new Date(2026, 8, 7))
+  })
+  it('keeps tasks without a start date unscheduled', () => {
+    expect(dbTaskToUiTask(baseDbTask).startDate).toBeNull()
+  })
+})

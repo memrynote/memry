@@ -512,6 +512,23 @@ describe('useTaskWorkspaceMutations', () => {
       })
     }
 
+    it('persists and clears start dates without changing the due date', async () => {
+      const { result } = renderMutations()
+      await act(async () => {
+        await result.current.updateTask('task-1', { startDate: new Date(2026, 8, 7) })
+      })
+      expect(lastUpdatePayload().startDate).toBe('2026-09-07')
+      expect(lastUpdatePayload().dueDate).toBeUndefined()
+      await act(async () => {
+        await result.current.updateTask('task-1', { startDate: null })
+      })
+      expect(lastUpdatePayload().startDate).toBeNull()
+      await act(async () => {
+        await result.current.updateTask('task-1', { description: 'unchanged dates' })
+      })
+      expect(lastUpdatePayload().startDate).toBeUndefined()
+    })
+
     it('omits dueDate (does not null it) when updating only the description', async () => {
       const { result } = renderMutations()
 
