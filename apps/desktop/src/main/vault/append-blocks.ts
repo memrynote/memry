@@ -73,10 +73,12 @@ export async function appendBlocksToNote(
   const original = await safeRead(absolutePath)
   if (original === null) throw new Error(`Target note is unreadable: ${target.path}`)
 
-  // Attachment/image refs in the moved slice are relative to the SOURCE note's
-  // folder. Same folder is a no-op (returns null); across folders this is the
-  // same surgical `../` arithmetic `moveNote` uses.
-  const rewritten = rewriteNoteRefsForMove(markdown, source.path, target.path) ?? markdown
+  // Attachment/image refs in the moved slice are resolved against the SOURCE
+  // note, whether they are note-relative or mobile's root-relative shape. Same
+  // folder is a no-op (returns null); across folders this is the same surgical
+  // `../` arithmetic `moveNote` uses.
+  const rewritten =
+    rewriteNoteRefsForMove(markdown, source.path, target.path, { sourceNoteId }) ?? markdown
 
   const parsedOriginal = parseNote(original, target.path)
   const head = parsedOriginal.content.replace(/\s+$/, '')

@@ -194,7 +194,10 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
     // Null means every ref still resolves from the new folder, which is the
     // common case (same depth, or a note with no relative refs at all): nothing
     // is written, so the file keeps its mtime and its sync state.
-    const rewritten = rewriteNoteRefsForMove(original, existing.path, newRelativePath)
+    const rewritten = rewriteNoteRefsForMove(original, existing.path, newRelativePath, {
+      sourceNoteId: id,
+      preserveRootRelativeAttachments: true
+    })
     if (rewritten !== null) {
       // The watcher's external-edit feed must not race the CRDT push below; the
       // sync note handler marks its own writes the same way before touching a
