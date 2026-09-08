@@ -76,6 +76,27 @@ describe('resolveAttachment', () => {
     })
   })
 
+  it('resolves a mobile root-relative ref for a nested note', () => {
+    const absolute = writeAttachment('attachments/n1/k3f9x2-mobile.pdf')
+
+    const result = resolveAttachment(NOTE_ID, 'attachments/n1/k3f9x2-mobile.pdf')
+
+    expect(result).toEqual({
+      absolutePath: absolute,
+      storedFilename: 'k3f9x2-mobile.pdf',
+      exists: true
+    })
+  })
+
+  it('keeps another note id relative to the current note', () => {
+    const absolute = writeAttachment('notes/attachments/other-note/k3f9x2-other.pdf')
+
+    const result = resolveAttachment(NOTE_ID, 'attachments/other-note/k3f9x2-other.pdf')
+
+    expect(result.absolutePath).toBe(absolute)
+    expect(result.exists).toBe(true)
+  })
+
   it('decodes percent-encoded refs', () => {
     const absolute = writeAttachment('attachments/n1/k3f9x2-my report.pdf')
 

@@ -3,6 +3,8 @@ import { noteRelativeRef, resolveNoteRelativeUrl } from './resolve-note-relative
 
 const VAULT = '/Users/me/vault'
 const NOTE = 'People (1)/Person.md'
+const MOBILE_NOTE_ID = '1ydx477h6jib'
+const MOBILE_NOTE = 'movies/Watchlist 2026.md'
 
 describe('resolveNoteRelativeUrl', () => {
   it('resolves a sibling-folder ref against the note directory', () => {
@@ -21,6 +23,28 @@ describe('resolveNoteRelativeUrl', () => {
     expect(resolveNoteRelativeUrl('Images/a.png', 'Root.md', VAULT)).toBe(
       'memry-file://local/Users/me/vault/Images/a.png'
     )
+  })
+
+  it('resolves a mobile attachment ref from the vault root for a nested note', () => {
+    expect(
+      resolveNoteRelativeUrl(
+        `attachments/${MOBILE_NOTE_ID}/IMG_0001.jpeg`,
+        MOBILE_NOTE,
+        VAULT,
+        MOBILE_NOTE_ID
+      )
+    ).toBe('memry-file://local/Users/me/vault/attachments/1ydx477h6jib/IMG_0001.jpeg')
+  })
+
+  it('keeps an attachments path for another id relative to the note', () => {
+    expect(
+      resolveNoteRelativeUrl(
+        'attachments/another-note/photo.png',
+        MOBILE_NOTE,
+        VAULT,
+        MOBILE_NOTE_ID
+      )
+    ).toBe('memry-file://local/Users/me/vault/movies/attachments/another-note/photo.png')
   })
 
   it('decodes percent-encoded refs before resolving', () => {
