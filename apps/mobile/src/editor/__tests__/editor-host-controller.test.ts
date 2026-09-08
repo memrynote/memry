@@ -42,6 +42,7 @@ function fakeOpenDoc(docId: string): FakeDoc {
       doc,
       encodeState: () => Y.encodeStateAsUpdate(doc),
       isEmpty: () => true,
+      setWritable: () => {},
       applyFromGuest: async (update) => {
         if (fake.failNext) {
           fake.failNext = false

@@ -112,6 +112,8 @@ export interface OpenDoc {
   isEmpty(): boolean
   /** A WebView-originated update: persist, then ack into the outbox. */
   applyFromGuest(update: Uint8Array): Promise<void>
+  /** Stop accepting new local updates before a destructive operation. */
+  setWritable(writable: boolean): void
   /** A sync-originated update: persisting it is the pull engine's job. */
   applyFromRemote(update: Uint8Array): void
   /** Pull in server rows written since this doc was loaded. */
@@ -318,6 +320,27 @@ export class EditorDocManager {
 
     let serverSeq = server.lastSeq
     let looseLocal = local.updates.length
+    let writable = true
+    let pausedGuestUpdates: Uint8Array[] = []
+    let replayPausedUpdates: Promise<void> = Promise.resolve()
+
+    const persistGuestUpdate = async (update: Uint8Array): Promise<void> => {
+      await run(async () => {
+        await store.appendLocalUpdate(docId, update)
+        await outbox.enqueueCrdtUpdate(docId, update)
+      })
+      Y.applyUpdate(doc, update, ORIGIN_GUEST)
+      looseLocal += 1
+      await maybeCompact()
+    }
+
+    const replayPausedGuestUpdates = async (): Promise<void> => {
+      while (writable && pausedGuestUpdates.length > 0) {
+        const updates = pausedGuestUpdates
+        pausedGuestUpdates = []
+        for (const update of updates) await persistGuestUpdate(update)
+      }
+    }
 
     const localListeners = new Set<(update: Uint8Array) => void>()
     const remoteListeners = new Set<(update: Uint8Array) => void>()
@@ -361,7 +384,23 @@ export class EditorDocManager {
       encodeState: () => Y.encodeStateAsUpdate(doc),
       isEmpty: () => doc.getXmlFragment('prosemirror').length === 0,
 
+      setWritable(next) {
+        writable = next
+        if (next && pausedGuestUpdates.length > 0) {
+          replayPausedUpdates = replayPausedUpdates.then(replayPausedGuestUpdates)
+        }
+      },
+
       async applyFromGuest(update) {
+        if (!writable) {
+          pausedGuestUpdates.push(update)
+          return
+        }
+        await replayPausedUpdates
+        if (!writable) {
+          pausedGuestUpdates.push(update)
+          return
+        }
         // ORDER IS THE CONTRACT: durable first, ack second — atomically in
         // production, so a kill between them cannot leave an update that is
         // saved locally and that nothing will ever push.
@@ -373,13 +412,7 @@ export class EditorDocManager {
         // no symptom until then. Failing before the doc moves keeps the doc
         // and the disk in agreement, and the caller resyncs the WebView from
         // that agreed state.
-        await run(async () => {
-          await store.appendLocalUpdate(docId, update)
-          await outbox.enqueueCrdtUpdate(docId, update)
-        })
-        Y.applyUpdate(doc, update, ORIGIN_GUEST)
-        looseLocal += 1
-        await maybeCompact()
+        await persistGuestUpdate(update)
       },
 
       applyFromRemote(update) {
@@ -423,6 +456,7 @@ export class EditorDocManager {
         doc.off('update', onUpdate)
         localListeners.clear()
         remoteListeners.clear()
+        pausedGuestUpdates = []
         doc.destroy()
       }
     }

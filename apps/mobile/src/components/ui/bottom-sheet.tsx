@@ -8,6 +8,7 @@ import { useColors } from '@/theme/use-colors'
 export interface BottomSheetProps {
   visible: boolean
   onClose: () => void
+  onDismiss?: () => void
   children: ReactNode
   accessibilityLabel?: string
   closeAccessibilityLabel?: string
@@ -17,6 +18,7 @@ export interface BottomSheetProps {
 export function BottomSheet({
   visible,
   onClose,
+  onDismiss,
   children,
   accessibilityLabel,
   closeAccessibilityLabel = 'Close',
@@ -25,7 +27,13 @@ export function BottomSheet({
   const c = useColors()
 
   return (
-    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="slide"
+      onRequestClose={onClose}
+      onDismiss={onDismiss}
+    >
       <View style={styles.root}>
         <Pressable
           accessibilityRole="button"

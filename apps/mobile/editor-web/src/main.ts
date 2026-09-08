@@ -6,13 +6,23 @@ import * as Y from 'yjs'
 import { BlockNoteEditor } from '@blocknote/core'
 import { codeBlockOptions } from '@blocknote/code-block'
 import { createWikiLinkInlineContent, wikiLinkConfig } from '@memry/editor-schema/inline'
-import { BRIDGE_FRAGMENT_NAME } from '@memry/contracts/webview-bridge'
+import { BRIDGE_FRAGMENT_NAME, type BridgeExecCommand } from '@memry/contracts/webview-bridge'
 import { assertNoWebStorage, createGuestBridge, type GuestBridge } from './bridge.ts'
 import { bindAssetBridge } from './assets.ts'
 import { installImageResolver } from './images.ts'
 import { isForMountedDoc } from './routing.ts'
 import { createMobileEditorSchema } from './schema.ts'
 import { installWikiLinkAutocomplete, installWikiLinkNavigation } from './wiki-links.ts'
+import { installVisibleViewportInset } from './visual-viewport.ts'
+import { installFindInNote, type FindInNoteController } from './find-in-note.ts'
+import {
+  installEditorToolbar,
+  type ConvertibleBlock,
+  type EditorToolbarController,
+  type EditorToolbarSelection,
+  type InlineStyle,
+  type InsertBlockAction
+} from './editor-toolbar.ts'
 import './styles.css'
 
 /**
@@ -34,6 +44,7 @@ markGuest('scriptEval')
 
 const bridge = createGuestBridge()
 const root = document.getElementById('root')!
+const chrome = document.getElementById('editor-chrome')!
 
 assertNoWebStorage()
 bindAssetBridge(bridge)
@@ -82,11 +93,20 @@ interface MountedDoc {
   docId: string
   doc: Y.Doc
   editor: MobileEditor
+  toolbar: EditorToolbarController
+  find: FindInNoteController
   teardown: () => void
 }
 
 let mounted: MountedDoc | null = null
 let readOnly = false
+
+const viewport = installVisibleViewportInset((visible) => {
+  if (!mounted) return
+  mounted.toolbar.setKeyboardVisible(visible)
+  bridge.send({ type: 'keyboard-visibility', docId: mounted.docId, visible })
+  bridge.flush()
+})
 
 bridge.onHostMsg((msg) => {
   switch (msg.type) {
@@ -124,7 +144,41 @@ bridge.onHostMsg((msg) => {
 
     case 'insert-attachment': {
       if (!mounted || !isForMountedDoc(msg, mounted.docId)) return
-      insertAttachmentBlock(mounted.editor, msg.ref, msg.name, msg.mime)
+      insertAttachmentBlock(
+        mounted.editor,
+        msg.ref,
+        msg.name,
+        msg.mime,
+        msg.blockType,
+        msg.referenceBlockId
+      )
+      mounted.toolbar.update(readToolbarSelection(mounted.editor))
+      break
+    }
+
+    case 'export-markdown': {
+      if (!mounted || !isForMountedDoc(msg, mounted.docId)) return
+      const editor = mounted.editor
+      try {
+        const markdown = editor.blocksToMarkdownLossy(editor.document)
+        bridge.send({
+          type: 'markdown-export',
+          reqId: msg.reqId,
+          docId: mounted.docId,
+          result: { status: 'ok', markdown }
+        })
+      } catch (error) {
+        bridge.send({
+          type: 'markdown-export',
+          reqId: msg.reqId,
+          docId: mounted.docId,
+          result: {
+            status: 'error',
+            detail: error instanceof Error ? error.message : String(error)
+          }
+        })
+      }
+      bridge.flush()
       break
     }
 
@@ -175,6 +229,39 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   )
   const detachAssets = installImageResolver(root)
   const detachMetrics = installMetrics(root, bridge)
+  chrome.replaceChildren()
+  const findHost = document.createElement('div')
+  const toolbarHost = document.createElement('div')
+  chrome.append(findHost, toolbarHost)
+  let toolbarPanelOpen = false
+  let findOpen = false
+  const reportPanelVisibility = (): void => {
+    bridge.send({
+      type: 'editor-panel-visibility',
+      docId,
+      open: toolbarPanelOpen || findOpen
+    })
+    bridge.flush()
+  }
+  const toolbar = installEditorToolbar(
+    toolbarHost,
+    toolbarActions(editor, docId, bridge),
+    (open) => {
+      toolbarPanelOpen = open
+      reportPanelVisibility()
+    }
+  )
+  const find = installFindInNote(findHost, root, (state) => {
+    toolbar.setSuppressed(state.open)
+    findOpen = state.open
+    reportPanelVisibility()
+  })
+  toolbar.setReadOnly(readOnly)
+  toolbar.setKeyboardVisible(viewport.getState().keyboardVisible)
+  const detachToolbarSelection = editor.onSelectionChange(() => {
+    toolbar.update(readToolbarSelection(editor))
+  })
+  toolbar.update(readToolbarSelection(editor))
 
   // Seeding is deliberately AFTER the doc is wired up: the parsed blocks then
   // travel the ordinary local-update path, so the seed is persisted and queued
@@ -197,18 +284,34 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     docId,
     doc,
     editor,
+    toolbar,
+    find,
     teardown: () => {
       doc.off('update', onUpdate)
       detachNav()
       detachAutocomplete()
       detachAssets()
       detachMetrics()
+      detachToolbarSelection()
+      find.destroy()
+      toolbar.destroy()
       editor.unmount()
       doc.destroy()
     }
   }
 
   bridge.markLoaded()
+  bridge.send({
+    type: 'keyboard-visibility',
+    docId,
+    visible: viewport.getState().keyboardVisible
+  })
+  bridge.send({
+    type: 'editor-panel-visibility',
+    docId,
+    open: toolbar.isPanelOpen()
+  })
+  bridge.flush()
 
   // The frame callback runs once the mounted document has been styled and laid
   // out, at the frame boundary just before the compositor presents it — so this
@@ -250,13 +353,263 @@ function insertAttachmentBlock(
   editor: MobileEditor,
   ref: string,
   name: string,
-  mime: string
+  mime: string,
+  requestedType?: 'image' | 'file',
+  referenceBlockId?: string
 ): void {
+  const at =
+    (referenceBlockId && editor.getBlock(referenceBlockId)) || editor.getTextCursorPosition().block
+  const blockType = requestedType ?? (mime.startsWith('image/') ? 'image' : 'file')
+  const block =
+    blockType === 'image'
+      ? { type: 'image' as const, props: { url: ref, caption: name } }
+      : { type: 'file' as const, props: { url: ref, name, mimeType: mime } }
+  const inserted = editor.insertBlocks([block], at, 'after')[0]
+  if (!inserted) return
+  const paragraph = editor.insertBlocks([{ type: 'paragraph' }], inserted, 'after')[0]
+  if (paragraph) editor.setTextCursorPosition(paragraph)
+}
+
+type PartialMobileBlock = Parameters<MobileEditor['insertBlocks']>[0][number]
+
+function partialBlock(block: ConvertibleBlock): PartialMobileBlock {
+  switch (block.kind) {
+    case 'paragraph':
+      return { type: 'paragraph' }
+    case 'heading':
+      return { type: 'heading', props: { level: block.level } }
+    case 'bulletListItem':
+      return { type: 'bulletListItem' }
+    case 'numberedListItem':
+      return { type: 'numberedListItem' }
+    case 'checkListItem':
+      return { type: 'checkListItem' }
+    case 'toggleListItem':
+      return { type: 'toggleListItem' }
+    case 'quote':
+      return { type: 'quote' }
+    case 'codeBlock':
+      return { type: 'codeBlock' }
+    case 'callout':
+      return { type: 'callout' }
+    default: {
+      const _exhaustive: never = block
+      return _exhaustive
+    }
+  }
+}
+
+function turnInto(editor: MobileEditor, target: ConvertibleBlock): void {
+  const selection = editor.getSelection()
+  const blocks = selection?.blocks ?? [editor.getTextCursorPosition().block]
+  editor.transact(() => {
+    for (const block of blocks) editor.updateBlock(block, partialBlock(target))
+  })
+}
+
+function insertBlock(editor: MobileEditor, action: InsertBlockAction): void {
   const at = editor.getTextCursorPosition().block
-  const block = mime.startsWith('image/')
-    ? { type: 'image' as const, props: { url: ref, caption: name } }
-    : { type: 'file' as const, props: { url: ref, name } }
-  editor.insertBlocks([block], at, 'after')
+  switch (action.kind) {
+    case 'convertible': {
+      const inserted = editor.insertBlocks([partialBlock(action.block)], at, 'after')[0]
+      if (inserted) editor.setTextCursorPosition(inserted)
+      return
+    }
+    case 'divider': {
+      const inserted = editor.insertBlocks([{ type: 'divider' }], at, 'after')[0]
+      if (!inserted) return
+      const paragraph = editor.insertBlocks([{ type: 'paragraph' }], inserted, 'after')[0]
+      if (paragraph) editor.setTextCursorPosition(paragraph)
+      return
+    }
+    case 'table': {
+      const inserted = editor.insertBlocks(
+        [
+          {
+            type: 'table',
+            content: {
+              type: 'tableContent',
+              // Desktop inserts one header plus two body rows because the GFM
+              // storage format cannot round-trip a header-less table.
+              headerRows: 1,
+              rows: [{ cells: ['', '', ''] }, { cells: ['', '', ''] }, { cells: ['', '', ''] }]
+            }
+          }
+        ],
+        at,
+        'after'
+      )[0]
+      if (!inserted) return
+      const paragraph = editor.insertBlocks([{ type: 'paragraph' }], inserted, 'after')[0]
+      if (paragraph) editor.setTextCursorPosition(paragraph)
+      return
+    }
+    case 'attachment':
+    case 'wikiLink':
+      return
+    default: {
+      const _exhaustive: never = action
+      void _exhaustive
+    }
+  }
+}
+
+function blockLabel(editor: MobileEditor): string {
+  const block = editor.getTextCursorPosition().block
+  switch (block.type) {
+    case 'paragraph':
+      return 'T'
+    case 'heading':
+      return `H${block.props.level}`
+    case 'bulletListItem':
+      return '•'
+    case 'numberedListItem':
+      return '1.'
+    case 'checkListItem':
+      return '✓'
+    case 'toggleListItem':
+      return '▸'
+    case 'quote':
+      return '“'
+    case 'codeBlock':
+      return '</>'
+    case 'callout':
+      return '!'
+    case 'divider':
+      return '—'
+    case 'table':
+      return '▦'
+    case 'image':
+      return '▧'
+    case 'file':
+      return '⌑'
+    case 'audio':
+      return '♪'
+    case 'video':
+    case 'youtubeEmbed':
+      return '▶'
+    case 'bookmark':
+      return '⌁'
+    case 'taskBlock':
+      return '✓'
+    default:
+      return 'T'
+  }
+}
+
+function readToolbarSelection(editor: MobileEditor): EditorToolbarSelection {
+  const styles = editor.getActiveStyles()
+  return {
+    blockLabel: blockLabel(editor),
+    activeStyles: {
+      bold: styles.bold === true,
+      italic: styles.italic === true,
+      underline: styles.underline === true,
+      strike: styles.strike === true,
+      code: styles.code === true
+    }
+  }
+}
+
+function toggleStyle(editor: MobileEditor, style: InlineStyle): void {
+  switch (style) {
+    case 'bold':
+      editor.toggleStyles({ bold: true })
+      return
+    case 'italic':
+      editor.toggleStyles({ italic: true })
+      return
+    case 'underline':
+      editor.toggleStyles({ underline: true })
+      return
+    case 'strike':
+      editor.toggleStyles({ strike: true })
+      return
+    case 'code':
+      editor.toggleStyles({ code: true })
+      return
+    default: {
+      const _exhaustive: never = style
+      void _exhaustive
+    }
+  }
+}
+
+function toolbarActions(editor: MobileEditor, docId: string, guest: GuestBridge) {
+  const refresh = (): void => mounted?.toolbar.update(readToolbarSelection(editor))
+  const refocus = (): void => {
+    editor.focus()
+    refresh()
+  }
+  const requestAttachment = (blockType: 'image' | 'file'): void => {
+    const referenceBlockId = editor.getTextCursorPosition().block.id
+    const active = document.activeElement
+    if (active instanceof HTMLElement) active.blur()
+    guest.send({ type: 'insert-request', docId, blockType, referenceBlockId })
+    guest.flush()
+  }
+
+  return {
+    insert(action: InsertBlockAction): void {
+      if (action.kind === 'attachment') {
+        requestAttachment(action.blockType)
+        return
+      }
+      if (action.kind === 'wikiLink') {
+        editor.focus()
+        document.execCommand('insertText', false, '[[')
+        refresh()
+        return
+      }
+      insertBlock(editor, action)
+      refocus()
+    },
+    turnInto(block: ConvertibleBlock): void {
+      turnInto(editor, block)
+      refocus()
+    },
+    toggleStyle(style: InlineStyle): void {
+      toggleStyle(editor, style)
+      refocus()
+    },
+    toggleBulletedList(): void {
+      const current = editor.getTextCursorPosition().block
+      turnInto(
+        editor,
+        current.type === 'bulletListItem' ? { kind: 'paragraph' } : { kind: 'bulletListItem' }
+      )
+      refocus()
+    },
+    createLink(url: string): void {
+      editor.focus()
+      editor.createLink(url)
+      refresh()
+    },
+    focusEditor(): void {
+      refocus()
+    },
+    insertWikiLink(): void {
+      editor.focus()
+      document.execCommand('insertText', false, '[[')
+      refresh()
+    },
+    insertImage(): void {
+      requestAttachment('image')
+    },
+    undo(): void {
+      editor.undo()
+      refocus()
+    },
+    redo(): void {
+      editor.redo()
+      refocus()
+    },
+    dismissKeyboard(): void {
+      const active = document.activeElement
+      if (active instanceof HTMLElement) active.blur()
+      guest.flush()
+    }
+  }
 }
 
 function applyCfg(cfg: {
@@ -274,10 +627,13 @@ function applyCfg(cfg: {
   html.setAttribute('dir', cfg.rtl ? 'rtl' : 'ltr')
   html.classList.toggle('reduced-motion', cfg.reducedMotion)
   readOnly = cfg.readOnly
-  if (mounted) mounted.editor.isEditable = !cfg.readOnly
+  if (mounted) {
+    mounted.editor.isEditable = !cfg.readOnly
+    mounted.toolbar.setReadOnly(cfg.readOnly)
+  }
 }
 
-function runExec(cmd: 'undo' | 'redo' | 'focus' | 'blur' | 'flush'): void {
+function runExec(cmd: BridgeExecCommand): void {
   switch (cmd) {
     case 'undo':
       mounted?.editor.undo()
@@ -295,6 +651,13 @@ function runExec(cmd: 'undo' | 'redo' | 'focus' | 'blur' | 'flush'): void {
     case 'flush':
       bridge.flush()
       break
+    case 'open-find':
+      mounted?.find.open()
+      break
+    default: {
+      const _exhaustive: never = cmd
+      void _exhaustive
+    }
   }
 }
 

@@ -2,10 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { ActivityIndicator, Keyboard, StyleSheet, View } from 'react-native'
 import { useIsFocused } from 'expo-router'
 import { useTransitionProgress } from 'react-native-screens'
-import { type BridgeCfg, type GuestMsg, type WikiCandidate } from '@memry/contracts/webview-bridge'
+import {
+  type BridgeCfg,
+  type EditorAttachmentBlockType,
+  type GuestMsg,
+  type WikiCandidate
+} from '@memry/contracts/webview-bridge'
 import { bytesToBase64 } from '../lib/base64'
 import { createLogger } from '../lib/logger'
 import { useEditorHost } from './editor-host'
+import { MarkdownExportRequests } from './markdown-export-requests'
 import {
   editorFrameFrom,
   type EditorFrame,
@@ -46,6 +52,15 @@ export interface EditorViewProps {
     mime?: string
     status: 'ready' | 'pending' | 'missing'
   }>
+  /** Native file picker requested by the WebView toolbar. */
+  onInsertRequest: (request: {
+    blockType: EditorAttachmentBlockType
+    referenceBlockId: string
+  }) => void
+  /** Software-keyboard state reported by the guest's visual viewport. */
+  onKeyboardVisibilityChange?: (visible: boolean) => void
+  /** Whether a block/turn-into/link panel is covering the native footer. */
+  onPanelVisibilityChange?: (open: boolean) => void
   /**
    * Markdown to seed the doc with when it has no CRDT state at all.
    *
@@ -63,6 +78,9 @@ export interface EditorControls {
   undo(): void
   redo(): void
   focus(): void
+  openFind(): void
+  /** Serialize the live mounted document, including edits not materialized to SQLite yet. */
+  exportMarkdown(): Promise<string>
   /**
    * Force a bridge flush and resolve once everything it shook loose is
    * DURABLE. Awaiting it is what makes a background transition safe: the
@@ -71,7 +89,13 @@ export interface EditorControls {
    */
   flush(): Promise<void>
   /** Insert an uploaded attachment at the cursor (T073). */
-  insertAttachment(ref: string, name: string, mime: string): void
+  insertAttachment(
+    ref: string,
+    name: string,
+    mime: string,
+    blockType?: EditorAttachmentBlockType,
+    referenceBlockId?: string
+  ): void
   /** G3 keystroke-latency + batching numbers, dev builds only (T074/T075). */
   measure(): G3Measurement
   resetMeasurement(): void
@@ -84,7 +108,7 @@ export interface EditorControls {
  * screen has to be able to flush the bridge on a background transition, and
  * addressing that would silently drop it.
  */
-type DocScopedCommand = 'undo' | 'redo' | 'focus'
+type DocScopedCommand = 'undo' | 'redo' | 'focus' | 'open-find'
 
 /**
  * This route's own push or pop animation, in a shape the host can hold on to.
@@ -113,12 +137,16 @@ export function EditorView({
   onNavigate,
   onWikiQuery,
   onAssetRequest,
+  onInsertRequest,
+  onKeyboardVisibilityChange,
+  onPanelVisibilityChange,
   seedMarkdown,
   onReady
 }: EditorViewProps) {
   const host = useEditorHost()
   const bridge = host.bridge
   const hostState = useSyncExternalStore(host.subscribe, host.getState)
+  const markdownExports = useMemo(() => new MarkdownExportRequests(), [])
 
   const docId = doc.docId
   /** Whether the shared guest is currently holding THIS note. */
@@ -258,6 +286,27 @@ export function EditorView({
             })
           break
 
+        case 'insert-request':
+          if (msg.docId === docId) {
+            onInsertRequest({
+              blockType: msg.blockType,
+              referenceBlockId: msg.referenceBlockId
+            })
+          }
+          break
+
+        case 'keyboard-visibility':
+          if (msg.docId === docId) onKeyboardVisibilityChange?.(msg.visible)
+          break
+
+        case 'editor-panel-visibility':
+          if (msg.docId === docId) onPanelVisibilityChange?.(msg.open)
+          break
+
+        case 'markdown-export':
+          markdownExports.settle(msg)
+          break
+
         case 'err':
           log.warn('Editor reported an error', { code: msg.code, detail: msg.detail })
           break
@@ -269,7 +318,17 @@ export function EditorView({
           break
       }
     },
-    [bridge, onAssetRequest, onNavigate, onWikiQuery]
+    [
+      bridge,
+      docId,
+      onAssetRequest,
+      onInsertRequest,
+      onKeyboardVisibilityChange,
+      onPanelVisibilityChange,
+      onNavigate,
+      onWikiQuery,
+      markdownExports
+    ]
   )
 
   /**
@@ -309,15 +368,32 @@ export function EditorView({
       undo: () => exec('undo'),
       redo: () => exec('redo'),
       focus: () => exec('focus'),
+      openFind: () => exec('open-find'),
+      exportMarkdown: () =>
+        markdownExports.request(docId, (reqId) => {
+          bridge.send({ type: 'export-markdown', reqId, docId })
+          bridge.flush()
+        }),
       flush: () => host.flushAndSettle(),
-      insertAttachment: (ref, name, mime) => {
-        bridge.send({ type: 'insert-attachment', docId, ref, name, mime, width: 0 })
+      insertAttachment: (ref, name, mime, blockType, referenceBlockId) => {
+        bridge.send({
+          type: 'insert-attachment',
+          docId,
+          ref,
+          name,
+          mime,
+          width: 0,
+          ...(blockType ? { blockType } : {}),
+          ...(referenceBlockId ? { referenceBlockId } : {})
+        })
         bridge.flush()
       },
       measure: () => host.recorder.summary(),
       resetMeasurement: () => host.recorder.reset()
     }
-  }, [bridge, docId, host])
+  }, [bridge, docId, host, markdownExports])
+
+  useEffect(() => () => markdownExports.cancelAll(), [docId, markdownExports])
 
   // Per OPEN, not per WebView. The guest's `ready` now fires once for the whole
   // notes stack, so a screen that waited for it would hold `null` controls for

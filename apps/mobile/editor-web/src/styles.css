@@ -57,6 +57,411 @@ body {
   box-sizing: border-box;
 }
 
+#editor-chrome {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+#editor-chrome[hidden] {
+  display: none;
+}
+
+.editor-toolbar-shell {
+  position: absolute;
+  inset-block-end: var(--memry-viewport-bottom-inset, 0px);
+  inset-inline: 0;
+  display: flex;
+  flex-direction: column;
+  max-block-size: 100dvh;
+  pointer-events: none;
+}
+
+.editor-toolbar-shell-blocks {
+  inset-block-end: 0;
+}
+
+.editor-toolbar-shell-blocks .editor-picker {
+  flex: 0 0 var(--memry-picker-height, auto);
+  block-size: var(--memry-picker-height, auto);
+  max-block-size: var(--memry-picker-height, min(546px, calc(100dvh - 56px)));
+}
+
+.editor-find-shell {
+  position: absolute;
+  inset-block-end: var(--memry-viewport-bottom-inset, 0px);
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  block-size: 56px;
+  box-sizing: border-box;
+  padding-block: 6px;
+  padding-inline: 8px;
+  pointer-events: auto;
+  background: var(--memry-paper);
+  border-block-start: 1px solid var(--memry-hairline);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+}
+
+.editor-find-input {
+  min-inline-size: 0;
+  flex: 1 1 auto;
+  block-size: 40px;
+  box-sizing: border-box;
+  padding-inline: 12px;
+  border: 1px solid var(--memry-hairline);
+  border-radius: 10px;
+  outline: none;
+  background: color-mix(in srgb, var(--memry-ink) 4%, var(--memry-paper));
+  color: var(--memry-ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.editor-find-input:focus {
+  border-color: var(--memry-accent);
+}
+
+.editor-find-count {
+  flex: 0 0 38px;
+  color: var(--memry-muted);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.editor-find-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  inline-size: 40px;
+  block-size: 44px;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--memry-ink);
+  font: inherit;
+  font-size: 14px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.editor-find-button:active {
+  background: color-mix(in srgb, var(--memry-ink) 7%, transparent);
+}
+
+.editor-find-button svg {
+  inline-size: 20px;
+  block-size: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.editor-find-done {
+  flex-basis: 48px;
+  inline-size: 48px;
+  color: var(--memry-accent-text);
+}
+
+::highlight(memry-find-matches) {
+  color: inherit;
+  background: color-mix(in srgb, var(--memry-accent) 25%, transparent);
+}
+
+::highlight(memry-find-current) {
+  color: inherit;
+  background: color-mix(in srgb, var(--memry-accent) 48%, transparent);
+}
+
+.editor-toolbar,
+.editor-picker {
+  pointer-events: auto;
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  flex: 0 0 56px;
+  block-size: 56px;
+  box-sizing: border-box;
+  padding-block: 6px;
+  padding-inline: 8px;
+  background: var(--memry-paper);
+  border-block-start: 1px solid var(--memry-hairline);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+}
+
+.editor-toolbar-main {
+  gap: 2px;
+}
+
+.editor-toolbar-formatting {
+  justify-content: space-between;
+  gap: 0;
+}
+
+.editor-toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  inline-size: 44px;
+  block-size: 44px;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--memry-ink);
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.editor-toolbar-button svg {
+  inline-size: 21px;
+  block-size: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.editor-toolbar-button:active,
+.editor-toolbar-button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--memry-ink) 7%, transparent);
+}
+
+.editor-toolbar-button[aria-pressed='true'] {
+  color: var(--memry-accent-text);
+}
+
+.editor-toolbar-aa-button {
+  flex-basis: 46px;
+  inline-size: 46px;
+}
+
+.editor-toolbar-aa {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 22px;
+  letter-spacing: -0.02em;
+}
+
+.editor-toolbar-wiki {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 15px;
+  line-height: 20px;
+  letter-spacing: -0.04em;
+}
+
+.editor-block-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 34px;
+  block-size: 34px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--memry-ink) 7%, transparent);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.editor-toolbar-spacer {
+  flex: 1 1 28px;
+  min-inline-size: 0;
+}
+
+.editor-toolbar-history {
+  flex-basis: 40px;
+  inline-size: 40px;
+}
+
+.editor-toolbar-format-item {
+  flex: 1 1 42px;
+  inline-size: auto;
+  min-inline-size: 0;
+}
+
+.editor-format-glyph {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.editor-format-italic {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+}
+
+.editor-format-underline {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.editor-format-strike {
+  text-decoration: line-through;
+}
+
+.editor-picker {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  max-block-size: min(546px, calc(100dvh - 56px));
+  background: var(--memry-paper);
+  border-block-start: 1px solid var(--memry-hairline);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+}
+
+.editor-picker-header {
+  display: flex;
+  align-items: center;
+  flex: 0 0 36px;
+  block-size: 36px;
+  padding-inline: 12px;
+  color: var(--memry-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.editor-picker-scroll {
+  min-block-size: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block-end: 12px;
+}
+
+.editor-picker-section-label {
+  display: flex;
+  align-items: center;
+  block-size: 24px;
+  padding-inline: 12px;
+  color: var(--memry-muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.editor-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding-inline: 12px;
+}
+
+.editor-picker-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  inline-size: 100%;
+  block-size: 64px;
+  padding-inline: 12px;
+  border: 1px solid var(--memry-hairline);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--memry-ink) 3%, var(--memry-paper));
+  color: var(--memry-ink);
+  text-align: start;
+}
+
+.editor-picker-card[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--memry-ink) 7%, var(--memry-paper));
+  color: var(--memry-ink);
+}
+
+.editor-picker-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 26px;
+  inline-size: 26px;
+  block-size: 36px;
+  color: var(--memry-muted);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.editor-picker-glyph[data-style='serif'] {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.editor-picker-glyph[data-style='mono'] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+}
+
+.editor-picker-label {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--memry-ink);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-picker-check {
+  margin-inline-start: auto;
+  color: var(--memry-accent-text);
+  font-size: 13px;
+}
+
+.editor-link-prompt {
+  max-block-size: 116px;
+}
+
+.editor-link-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  padding: 8px 12px 16px;
+}
+
+.editor-link-form input {
+  min-inline-size: 0;
+  block-size: 44px;
+  box-sizing: border-box;
+  padding-inline: 12px;
+  border: 1px solid var(--memry-hairline);
+  border-radius: 8px;
+  outline: none;
+  background: var(--memry-paper);
+  color: var(--memry-ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.editor-link-form input:focus {
+  border-color: var(--memry-accent);
+}
+
+.editor-link-action {
+  inline-size: auto;
+  padding-inline: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.editor-link-add {
+  background: var(--memry-ink);
+  color: var(--memry-paper);
+}
+
 .bn-editor {
   padding-inline: 0;
   background: transparent;
@@ -98,7 +503,7 @@ img.asset-missing {
 /* Wiki-link autocomplete. */
 .wiki-menu {
   position: fixed;
-  inset-block-end: 0;
+  inset-block-end: calc(var(--memry-viewport-bottom-inset, 0px) + 56px);
   inset-inline: 0;
   z-index: 20;
   max-block-size: 40vh;

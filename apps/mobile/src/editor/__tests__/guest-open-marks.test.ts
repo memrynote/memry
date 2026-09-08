@@ -91,4 +91,13 @@ describe('isForMountedDoc', () => {
       true
     )
   })
+
+  it('holds markdown export to the note it names', () => {
+    expect(
+      isForMountedDoc({ type: 'export-markdown', reqId: 'req-1', docId: 'note-a' }, 'note-b')
+    ).toBe(false)
+    expect(
+      isForMountedDoc({ type: 'export-markdown', reqId: 'req-1', docId: 'note-a' }, 'note-a')
+    ).toBe(true)
+  })
 })

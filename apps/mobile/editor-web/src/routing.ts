@@ -17,6 +17,7 @@ import type { HostMsg } from '@memry/contracts/webview-bridge'
 export function isForMountedDoc(msg: HostMsg, mountedDocId: string | null): boolean {
   switch (msg.type) {
     case 'y-update':
+    case 'export-markdown':
       return msg.docId === mountedDocId
     case 'exec':
     case 'insert-attachment':
