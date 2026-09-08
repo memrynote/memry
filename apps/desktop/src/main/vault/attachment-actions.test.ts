@@ -97,6 +97,12 @@ describe('resolveAttachment', () => {
     expect(result.exists).toBe(true)
   })
 
+  it('rejects a mobile root-relative ref that escapes the vault', () => {
+    expect(() => resolveAttachment(NOTE_ID, 'attachments/n1/../../../etc/passwd')).toThrowError(
+      expect.objectContaining({ code: NoteErrorCode.INVALID_PATH })
+    )
+  })
+
   it('decodes percent-encoded refs', () => {
     const absolute = writeAttachment('attachments/n1/k3f9x2-my report.pdf')
 

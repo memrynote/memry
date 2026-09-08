@@ -47,6 +47,12 @@ describe('resolveNoteRelativeUrl', () => {
     ).toBe('memry-file://local/Users/me/vault/movies/attachments/another-note/photo.png')
   })
 
+  it('leaves a mobile attachment ref untouched when it escapes the vault', () => {
+    const ref = `attachments/${MOBILE_NOTE_ID}/../../../etc/passwd`
+
+    expect(resolveNoteRelativeUrl(ref, MOBILE_NOTE, VAULT, MOBILE_NOTE_ID)).toBe(ref)
+  })
+
   it('decodes percent-encoded refs before resolving', () => {
     expect(resolveNoteRelativeUrl('../Images/my%20photo.png', NOTE, VAULT)).toBe(
       'memry-file://local/Users/me/vault/Images/my%20photo.png'
