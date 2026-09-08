@@ -12,6 +12,7 @@ import {
   type BuildGraphOptions
 } from '@/lib/graph-builder'
 import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
+import { hasWebGLSupport } from '@/lib/webgl-support'
 import { LivePhysics, SettledPhysics, type PhysicsHandle } from './physics-layout'
 import type { GraphFilterState } from '@/hooks/use-graph-filters'
 import type { GraphSettings } from '@memry/contracts/graph-api'
@@ -21,6 +22,7 @@ import { useT } from '@memry/i18n/renderer'
 import { GraphEvents } from './graph-events'
 import { GraphTooltip } from './graph-tooltip'
 import { GraphContextMenu, type ContextMenuState } from './graph-context-menu'
+import { GraphRenderUnavailable } from './graph-render-unavailable'
 
 const ENTITY_TYPE_VISIBILITY: Record<string, keyof GraphFilterState> = {
   note: 'showNotes',
@@ -65,15 +67,18 @@ interface GraphCanvasProps {
   filterState: GraphFilterState
   graphSettings: GraphSettings
   onFocusNode: (nodeId: string) => void
+  onClose?: () => void
 }
 
 export function GraphCanvas({
   data,
   filterState,
   graphSettings,
-  onFocusNode
+  onFocusNode,
+  onClose
 }: GraphCanvasProps): React.JSX.Element {
   const { resolvedTheme } = useTheme()
+  const [webglAvailable] = useState(() => hasWebGLSupport())
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
@@ -252,6 +257,8 @@ export function GraphCanvas({
   )
 
   const handleCloseContextMenu = useCallback(() => setContextMenu(null), [])
+
+  if (!webglAvailable) return <GraphRenderUnavailable onClose={onClose} />
 
   return (
     <div className="relative h-full w-full">

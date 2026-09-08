@@ -162,6 +162,12 @@ describe('LocalGraphPanel Sigma lifecycle', () => {
   beforeEach(() => {
     mocks.instances.length = 0
     mocks.localGraph = { data: baseData, isLoading: false }
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () =>
+        ({
+          getExtension: vi.fn()
+        }) as unknown as RenderingContext
+    )
     frames = new Map()
     nextFrameHandle = 0
     document.documentElement.style.setProperty('--graph-dimmed-node', '#dddddd')

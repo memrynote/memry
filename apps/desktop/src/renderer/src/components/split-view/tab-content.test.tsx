@@ -8,14 +8,15 @@
  * its persister saves that scene under the new canvas id.
  */
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TabContent } from './tab-content'
 import type { Tab } from '@/contexts/tabs/types'
 
 const mocks = vi.hoisted(() => ({
-  canvasMounts: [] as string[]
+  canvasMounts: [] as string[],
+  closeTab: vi.fn()
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -23,7 +24,11 @@ vi.mock('@memry/i18n/renderer', () => ({
 }))
 
 vi.mock('@/contexts/tabs', () => ({
-  useTabActions: () => ({ dispatch: vi.fn() })
+  useTabActions: () => ({ dispatch: vi.fn(), closeTab: mocks.closeTab })
+}))
+
+vi.mock('@/components/diagnostics/incident-report-provider', () => ({
+  useReportIncident: () => vi.fn()
 }))
 
 vi.mock('@/contexts/tasks', () => ({
@@ -49,6 +54,12 @@ vi.mock('@/pages/canvas', async () => {
   }
 })
 
+vi.mock('@/components/graph/graph-page', () => ({
+  GraphPage: () => {
+    throw new Error('graph renderer failed')
+  }
+}))
+
 const makeCanvasTab = (id: string, entityId: string): Tab => ({
   id,
   type: 'canvas',
@@ -64,9 +75,18 @@ const makeCanvasTab = (id: string, entityId: string): Tab => ({
   lastAccessedAt: 1
 })
 
+const makeGraphTab = (id: string): Tab => ({
+  ...makeCanvasTab(id, 'graph'),
+  type: 'graph',
+  title: 'Graph',
+  icon: 'network',
+  path: '/graph'
+})
+
 describe('TabContent canvas tabs', () => {
   beforeEach(() => {
     mocks.canvasMounts = []
+    mocks.closeTab.mockClear()
   })
 
   it('remounts the canvas page when the active canvas tab changes', async () => {
@@ -86,5 +106,20 @@ describe('TabContent canvas tabs', () => {
     // A second MOUNT proves the key swapped the component instance; prop-only
     // reuse would leave one mount and (in the real page) the old scene.
     expect(mocks.canvasMounts).toEqual(['istanbul', 'launch'])
+  })
+
+  it('closes a tab when its renderer fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const tab = makeGraphTab('broken-graph')
+
+    render(<TabContent tab={tab} groupId="main" />)
+
+    expect(
+      await screen.findByText('phaseF.componentsTabsTabErrorBoundary.somethingWentWrong')
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'button.close' }))
+
+    expect(mocks.closeTab).toHaveBeenCalledWith('broken-graph', 'main')
+    consoleError.mockRestore()
   })
 })

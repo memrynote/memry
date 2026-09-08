@@ -2,6 +2,8 @@
   "page": {
     "loading": "Loading graph...",
     "load-failed": "Failed to load graph data",
+    "render-failed": "Graph isn't available on this device",
+    "render-failed-description": "This device could not start the graphics renderer. Your notes are safe.",
     "try-again": "Try again",
     "aria-label": "Knowledge graph with {nodeCount, plural, one {# node} other {# nodes}} and {edgeCount, plural, one {# connection} other {# connections}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Graph nodes",

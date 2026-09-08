@@ -1,14 +1,16 @@
-import { useMemo, useCallback, useEffect } from 'react'
+import { useMemo, useCallback, useEffect, useState } from 'react'
 import { Loader2, AlertCircle, Network, Link2, Lightbulb } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { trackTelemetry } from '@/lib/telemetry'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { hasWebGLSupport } from '@/lib/webgl-support'
 import { useGraphData, useGraphReactivity } from '@/hooks/use-graph-data'
 import { useGraphFilters } from '@/hooks/use-graph-filters'
 import { useGraphSettings } from '@/hooks/use-graph-settings'
 import { useT } from '@memry/i18n/renderer'
 import { GraphCanvas } from './graph-canvas'
 import { GraphControlPanel } from './graph-control-panel'
+import { GraphRenderUnavailable } from './graph-render-unavailable'
 
 const ENTITY_LABEL_KEYS = {
   note: { one: 'entity.note', other: 'entity.notes' },
@@ -19,7 +21,15 @@ const ENTITY_LABEL_KEYS = {
   orphan: { one: 'entity.orphan', other: 'entity.orphans' }
 } as const
 
-export function GraphPage(): React.JSX.Element {
+export function GraphPage({ onClose }: { onClose?: () => void } = {}): React.JSX.Element {
+  const [webglAvailable] = useState(() => hasWebGLSupport())
+
+  if (!webglAvailable) return <GraphRenderUnavailable onClose={onClose} />
+
+  return <GraphPageContent onClose={onClose} />
+}
+
+function GraphPageContent({ onClose }: { onClose?: () => void }): React.JSX.Element {
   const { t } = useT('graph')
   useEffect(() => {
     void trackTelemetry('graph_opened', { surface: 'graph', action: 'opened' })
@@ -107,6 +117,7 @@ export function GraphPage(): React.JSX.Element {
           filterState={filterState}
           graphSettings={graphSettings}
           onFocusNode={handleFocusNode}
+          onClose={onClose}
         />
         {/* Visually-hidden node list for screen readers */}
         <ul className="sr-only" aria-label={t('page.nodes-list-label')}>

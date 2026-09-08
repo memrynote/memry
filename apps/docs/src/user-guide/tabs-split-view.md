@@ -18,6 +18,9 @@ Tabs share the width of the bar evenly. Widen the window and they grow, up to a 
 
 There is no limit on how many tabs you can have open: use the tab context menu (**Close others**, **Close to the right**) when the bar gets long.
 
+If a tab's content cannot render, its error state keeps the tab bar available and offers **Close**.
+Closing the broken tab removes it from the saved session. If it was the only tab, Memry opens Home.
+
 The one thing that closes a tab without being asked is deleting what it shows. Delete a canvas — from the sidebar, or on another device — and its tab closes everywhere it was open, in both panes of a split view. Deleted notes keep their tab and show the title struck through instead, because the text is still there to read.
 
 ### Tab Context Menu
