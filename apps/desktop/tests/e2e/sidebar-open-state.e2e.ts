@@ -25,7 +25,8 @@ import * as path from 'path'
 import { Page } from '@playwright/test'
 import { _electron as electron } from '@playwright/test'
 import { test, expect } from './fixtures'
-import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
+import { ready } from './utils/desktop-test-helpers'
+import { waitForVaultReady } from './utils/electron-helpers'
 import { destroyElectronApp, launchElectronWithWindow } from './utils/electron-lifecycle'
 
 function makeVault(prefix: string): string {
@@ -61,8 +62,7 @@ test('a collapsed sidebar is still collapsed after a restart', async () => {
   const userDataDirs = [first.userDataDir, first.resolvedUserDataDir]
 
   try {
-    await waitForAppReady(first.page)
-    await waitForVaultReady(first.page)
+    await ready(first.page)
     await collapseSidebar(first.page)
   } finally {
     // Empty dirs list: the user-data dir holds the localStorage the relaunch reads.
@@ -81,8 +81,7 @@ test('a collapsed sidebar is still collapsed after a restart', async () => {
   try {
     const page = await second.firstWindow({ timeout: 45_000 })
     await page.waitForLoadState('domcontentloaded')
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
 
     await expect(sidebar(page)).toHaveAttribute('data-state', 'collapsed')
   } finally {
@@ -92,8 +91,7 @@ test('a collapsed sidebar is still collapsed after a restart', async () => {
 })
 
 test('a collapsed sidebar is still collapsed after switching vaults', async ({ page }) => {
-  await waitForAppReady(page)
-  await waitForVaultReady(page)
+  await ready(page)
 
   await collapseSidebar(page)
 

@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
-import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
+import { ready } from './utils/desktop-test-helpers'
 import { getVisibleDayStart, waitForStable } from './utils/wait-helpers'
 
 const STABLE_FOR_MS = 500
@@ -35,8 +35,7 @@ async function settledVisibleDayStart(page: Page): Promise<number> {
 
 test.describe('Calendar week view infinite horizontal scroll', () => {
   test.beforeEach(async ({ page }) => {
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
   })
 
   test('scrolling right advances the visible week and does not snap back', async ({ page }) => {

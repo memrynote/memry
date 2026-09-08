@@ -24,7 +24,7 @@ import * as path from 'path'
 import { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
-import { SELECTORS, waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
+import { SELECTORS } from './utils/electron-helpers'
 import { destroyElectronApp, launchElectronWithWindow } from './utils/electron-lifecycle'
 
 const UNIQUE = Date.now().toString(36)
@@ -94,8 +94,7 @@ test('a category created in the hub persists across a restart', async () => {
 
   const first = await launchElectronWithWindow({ testVaultPath })
   try {
-    await waitForAppReady(first.page)
-    await waitForVaultReady(first.page)
+    await ready(first.page)
 
     await openTagHub(first.page)
     await first.page.getByRole('button', { name: /new category/i }).click()
@@ -113,8 +112,7 @@ test('a category created in the hub persists across a restart', async () => {
 
   const second = await launchElectronWithWindow({ testVaultPath })
   try {
-    await waitForAppReady(second.page)
-    await waitForVaultReady(second.page)
+    await ready(second.page)
 
     await openTagHub(second.page)
     await expect(second.page.getByText(restartCategory)).toBeVisible({ timeout: 15000 })

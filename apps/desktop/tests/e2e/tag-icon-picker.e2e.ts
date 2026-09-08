@@ -16,7 +16,8 @@
  */
 
 import { test, expect } from './fixtures'
-import { waitForAppReady, waitForVaultReady, SELECTORS } from './utils/electron-helpers'
+import { SELECTORS } from './utils/electron-helpers'
+import { ready } from './utils/desktop-test-helpers'
 
 const UNIQUE = Date.now().toString(36)
 const PICKER = 'Emoji and icon picker' // notes:menus.emoji.aria
@@ -88,8 +89,7 @@ async function openTagTab(page, tag: string): Promise<void> {
 
 test.describe('Tag icon picker', () => {
   test.beforeEach(async ({ page }) => {
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
   })
 
   test('settings: each tag row opens the icon/emoji picker', async ({ page }) => {

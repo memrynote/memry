@@ -10,7 +10,7 @@
  */
 
 import { test, expect } from './fixtures'
-import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
+import { ready } from './utils/desktop-test-helpers'
 
 const PIXEL_DRIFT_TOLERANCE = 1 // px — single overlay DOM node; allow sub-pixel rounding
 
@@ -24,8 +24,7 @@ test.describe('Sidebar & WindowControls', () => {
     // null and there is no "Close window" button to anchor. See traffic-lights.tsx.
     test.skip(process.platform !== 'darwin', 'traffic lights are macOS-only')
 
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
 
     const closeButton = page.getByLabel('Close window').first()
     await expect(closeButton).toBeVisible()
@@ -58,8 +57,7 @@ test.describe('Sidebar & WindowControls', () => {
   })
 
   test('history arrows are always visible and disabled', async ({ electronApp, page }) => {
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
 
     // Expanded state
     const backExpanded = page.getByLabel('Browser back').first()
@@ -82,8 +80,7 @@ test.describe('Sidebar & WindowControls', () => {
   })
 
   test('sidebar content reclaims full width when collapsed', async ({ electronApp, page }) => {
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
 
     const mainContent = page.locator('#main-content')
     const expandedWidth = (await mainContent.boundingBox())!.width
@@ -104,8 +101,7 @@ test.describe('Sidebar & WindowControls', () => {
     electronApp,
     page
   }) => {
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
 
     // Collapse the sidebar
     const toggle = page.getByRole('button', { name: /toggle sidebar/i }).first()

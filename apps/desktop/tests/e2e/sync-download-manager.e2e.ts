@@ -329,6 +329,7 @@ test.describe('Attachment download manager', () => {
     // re-queues rather than giving up and the fault must stay armed until the
     // test has seen what it came for. With the background fan-out suppressed in
     // stageDevices, the request that gets through IS chunk 0 of this transfer.
+    const downloadRecordsStart = syncProxy.records.length
     let firstChunkPath: string | null = null
     syncProxy.injectFault({
       match: (method, pathname) => {
@@ -419,7 +420,7 @@ test.describe('Attachment download manager', () => {
 
     // RESUMES, NEVER RESTARTS: the chunk that landed before the first cut is
     // never asked for again. A restart-from-zero would fetch it a second time.
-    const chunksAfter = countByPath(chunkGets(syncProxy.records))
+    const chunksAfter = countByPath(chunkGets(syncProxy.records.slice(downloadRecordsStart)))
     expect(
       chunksAfter.get(firstChunkPath!),
       'the chunk that landed before the cut was re-downloaded — the transfer restarted instead of resuming'

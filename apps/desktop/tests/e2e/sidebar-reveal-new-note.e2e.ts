@@ -16,7 +16,8 @@
 import type { Page } from '@playwright/test'
 
 import { test, expect } from './fixtures'
-import { waitForAppReady, waitForVaultReady, SHORTCUTS } from './utils/electron-helpers'
+import { SHORTCUTS } from './utils/electron-helpers'
+import { ready } from './utils/desktop-test-helpers'
 
 const DEFAULT_FOLDER = 'movies'
 const NESTED_DEFAULT_FOLDER = 'movies/2026'
@@ -116,8 +117,7 @@ async function collapseFolder(page: Page, folderPath: string, childRowId: string
 
 test.describe('New note reveals itself in the sidebar', () => {
   test.beforeEach(async ({ page }) => {
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
   })
 
   test('⌘N opens the default folder and shows the note it just put there', async ({ page }) => {

@@ -101,7 +101,7 @@ test.describe('Session, context menu, settings, shortcuts, and state E2E', () =>
 
     const secondPage = await createSecondaryWindow(electronApp)
     await expect(secondPage.locator(SELECTORS.tabBar).first()).toBeVisible()
-    await navigateTo(secondPage, 'inbox')
+    await secondPage.getByRole('button', { name: 'Inbox', exact: true }).click()
     await expect(secondPage.locator(SELECTORS.activeTab).first()).toContainText('Inbox')
   })
 

@@ -11,6 +11,7 @@ import {
 } from '@/contexts/tabs'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { SettingsModalProvider } from '@/contexts/settings-modal-context'
+import { IncidentReportProvider } from '@/components/diagnostics/incident-report-provider'
 import { SidebarNav } from '@/components/sidebar/sidebar-nav'
 import { NewTabMenu } from '@/components/tabs/new-tab-menu'
 import { TabContent } from '@/components/split-view/tab-content'
@@ -224,9 +225,11 @@ describe('Calendar workspace navigation', () => {
 
   it('routes a calendar tab through TabContent', async () => {
     renderWithProviders(
-      <TabProvider>
-        <TabContent tab={CALENDAR_TAB} groupId="calendar-group" />
-      </TabProvider>
+      <IncidentReportProvider>
+        <TabProvider>
+          <TabContent tab={CALENDAR_TAB} groupId="calendar-group" />
+        </TabProvider>
+      </IncidentReportProvider>
     )
 
     expect(await screen.findByTestId('calendar-page')).toBeInTheDocument()

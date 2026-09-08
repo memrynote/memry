@@ -16,7 +16,8 @@ import * as path from 'path'
 import type { Locator, Page } from '@playwright/test'
 
 import { test, expect } from './fixtures'
-import { seedNote, waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
+import { seedNote } from './utils/electron-helpers'
+import { ready } from './utils/desktop-test-helpers'
 import { openNoteByHandle } from './utils/note-sync-helpers'
 import { waitForStable } from './utils/wait-helpers'
 
@@ -84,8 +85,7 @@ function countOccurrences(text: string, value: string): number {
 
 test.describe('Status property options', () => {
   test.beforeEach(async ({ page }) => {
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
   })
 
   test('a status option added in the picker survives a reload exactly once', async ({
@@ -101,8 +101,7 @@ test.describe('Status property options', () => {
     await expect(optionsNamed(picker, NEW_OPTION)).toHaveCount(1)
 
     await page.reload()
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
     await openNoteByHandle(page, { id, title })
 
     const reopened = await reopenStatusPicker(page)

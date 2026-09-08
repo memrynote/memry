@@ -27,7 +27,8 @@
  */
 
 import { test, expect } from './fixtures'
-import { waitForAppReady, waitForVaultReady, SELECTORS } from './utils/electron-helpers'
+import { ready } from './utils/desktop-test-helpers'
+import { SELECTORS } from './utils/electron-helpers'
 
 const UNIQUE = Date.now().toString(36)
 
@@ -93,8 +94,7 @@ async function readTagColor(page, tag: string): Promise<string | undefined> {
 
 test.describe('Tag custom color', () => {
   test.beforeEach(async ({ page }) => {
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
   })
 
   test('selects a named palette color from the swatch grid', async ({ page }) => {

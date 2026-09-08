@@ -11,7 +11,8 @@
 
 import { test, expect } from './fixtures'
 import type { Page } from '@playwright/test'
-import { waitForAppReady, waitForVaultReady, seedNote } from './utils/electron-helpers'
+import { seedNote } from './utils/electron-helpers'
+import { ready } from './utils/desktop-test-helpers'
 import { openNoteByHandle } from './utils/note-sync-helpers'
 
 const TWO_WORDS = 'movie series'
@@ -38,8 +39,7 @@ async function addProperty(page: Page, type: 'Text' | 'Select'): Promise<void> {
 
 test.describe('Property fields accept spaces', () => {
   test.beforeEach(async ({ page }) => {
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
   })
 
   test('the add-property name field keeps the space in "movie series"', async ({ page }) => {

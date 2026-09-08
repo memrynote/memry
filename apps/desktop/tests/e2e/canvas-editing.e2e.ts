@@ -295,20 +295,41 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
   test('↗ redirect and double-click do not cross-fire (matrix #20)', async ({ page }) => {
     await openVault(page)
     await setSpatialCanvasFlag(page, true)
-    await createCanvasFromSidebar(page)
+    const canvasId = await createCanvasFromSidebar(page)
     const title = `Redirect ${Date.now()}`
     const noteId = await seedNote(page, title, 'body')
     await dropNote(page, noteId)
 
     const card = page.locator(`[data-canvas-card-entity="note:${noteId}"]`)
     await expect(card).toBeVisible({ timeout: 20000 })
+    await expect
+      .poll(
+        async () => {
+          const canvas = await page.evaluate(async (id) => window.api.canvas.get(id), canvasId)
+          const scene = canvas?.scene ? JSON.parse(canvas.scene) : { elements: [] }
+          return scene.elements?.some(
+            (element) =>
+              element.type === 'rectangle' &&
+              !element.isDeleted &&
+              element.customData?.entityId === noteId
+          )
+        },
+        { timeout: 20000 }
+      )
+      .toBe(true)
     // No .hover() on the card itself: it's pointer-events:none (the canvas
     // beneath owns hit-testing), so Playwright's hover actionability check on
     // its bounding-box center times out. The ↗ button is the interactive
     // region and click() on it works directly, matching canvas-cards.e2e.ts.
     await card.getByRole('button', { name: 'Open in tab' }).click()
     await expect(page.getByRole('tab', { name: title })).toBeVisible({ timeout: 20000 })
-    // The card did not enter active state from the ↗ click.
+    // Redirect activates the note tab, so the canvas card unmounts. Return to
+    // the canvas before checking that the redirect did not activate the card.
+    await page
+      .getByRole('tab', { name: /Canvas|Untitled canvas/ })
+      .first()
+      .click()
+    await expect(card).toBeVisible({ timeout: 20000 })
     await expect(card).not.toHaveAttribute('data-canvas-card-state', 'active')
   })
 
