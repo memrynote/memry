@@ -201,6 +201,11 @@ describe('notes operations', () => {
         status: 'draft',
         priority: 3
       })
+
+      const raw = fs.readFileSync(path.join(tempVault.path, result.path), 'utf8')
+      expect(raw).toMatch(/^status: draft$/m)
+      expect(raw).toMatch(/^priority: 3$/m)
+      expect(raw).not.toMatch(/^properties:/m)
     })
 
     it('preserves explicit created/modified timestamps', async () => {

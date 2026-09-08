@@ -13,6 +13,9 @@ import {
   calculateWordCount,
   generateContentHash,
   extractProperties,
+  normalizePropertiesToRoot,
+  replacePropertiesOnRoot,
+  writePropertiesToRoot,
   resolvePropertyType,
   inferPropertyType,
   serializePropertyValue,
@@ -140,6 +143,17 @@ describe('frontmatter serialization', () => {
     expect(serializeNote({}, 'Body text\n')).toBe('Body text\n')
     expect(serializeNote({ skipped: undefined }, 'Body text')).toBe('Body text\n')
   })
+
+  it('serializes legacy nested properties at the root', () => {
+    const output = serializeNote(
+      { status: 'active', properties: { status: 'idea', owner: 'Kaan' } },
+      'Body text'
+    )
+
+    expect(output).toMatch(/^status: active$/m)
+    expect(output).toMatch(/^owner: Kaan$/m)
+    expect(output).not.toMatch(/^properties:/m)
+  })
 })
 
 describe('frontmatter utilities', () => {
@@ -219,15 +233,65 @@ Another line with words.
 })
 
 describe('properties helpers', () => {
-  it('extractProperties prefers explicit properties object', () => {
+  it('merges nested properties with root properties, keeping root conflicts', () => {
     const frontmatter: NoteFrontmatter = {
-      id: 'abc123def456',
-      created: FIXED_ISO,
-      modified: FIXED_ISO,
-      properties: { rating: 5, owner: 'alex' }
+      status: 'active',
+      properties: { rating: 5, owner: 'alex', status: 'idea' }
     }
 
-    expect(extractProperties(frontmatter)).toEqual({ rating: 5, owner: 'alex' })
+    expect(extractProperties(frontmatter)).toEqual({
+      rating: 5,
+      owner: 'alex',
+      status: 'active'
+    })
+  })
+
+  it('normalizes nested properties into root keys without losing root values', () => {
+    const result = normalizePropertiesToRoot({
+      tags: ['mobile'],
+      status: 'active',
+      properties: { status: 'idea', owner: 'Kaan' }
+    })
+
+    expect(result).toEqual({
+      frontmatter: { tags: ['mobile'], status: 'active', owner: 'Kaan' },
+      changed: true,
+      conflicts: ['status']
+    })
+  })
+
+  it('does not promote reserved nested keys into user properties', () => {
+    const result = normalizePropertiesToRoot({
+      properties: { tags: ['legacy-tag'], aliases: ['legacy-alias'], owner: 'Kaan' }
+    })
+
+    expect(result.frontmatter).toEqual({ owner: 'Kaan' })
+    expect(extractProperties({ properties: { tags: ['legacy-tag'], owner: 'Kaan' } })).toEqual({
+      owner: 'Kaan'
+    })
+  })
+
+  it('writes a property record at the root and preserves metadata keys', () => {
+    expect(
+      writePropertiesToRoot(
+        { tags: ['mobile'], aliases: ['Launch'] },
+        { status: 'active', owner: 'Kaan' }
+      )
+    ).toEqual({
+      tags: ['mobile'],
+      aliases: ['Launch'],
+      status: 'active',
+      owner: 'Kaan'
+    })
+  })
+
+  it('replaces root properties without bringing back the nested envelope', () => {
+    expect(
+      replacePropertiesOnRoot(
+        { tags: ['mobile'], status: 'old', properties: { owner: 'old' } },
+        { status: 'active' }
+      )
+    ).toEqual({ tags: ['mobile'], status: 'active' })
   })
 
   it('extractProperties falls back to non-reserved keys', () => {

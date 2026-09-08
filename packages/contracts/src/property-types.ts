@@ -102,6 +102,26 @@ const MultiselectPropertySchema = z.object({
   options: z.array(SelectOptionSchema)
 })
 
+const TextPropertySchema = z.object({
+  type: z.literal('text'),
+  options: z.array(SelectOptionSchema).optional()
+})
+
+const NumberPropertySchema = z.object({
+  type: z.literal('number'),
+  options: z.array(SelectOptionSchema).optional()
+})
+
+const CheckboxPropertySchema = z.object({
+  type: z.literal('checkbox'),
+  options: z.array(SelectOptionSchema).optional()
+})
+
+const UrlPropertySchema = z.object({
+  type: z.literal('url'),
+  options: z.array(SelectOptionSchema).optional()
+})
+
 const DatePropertySchema = z.object({
   type: z.literal('date'),
   showOnCalendar: z.boolean().optional()
@@ -125,6 +145,10 @@ export const PropertyDefinitionSchema = z.discriminatedUnion('type', [
   StatusPropertySchema,
   SelectPropertySchema,
   MultiselectPropertySchema,
+  TextPropertySchema,
+  NumberPropertySchema,
+  CheckboxPropertySchema,
+  UrlPropertySchema,
   DatePropertySchema,
   ProjectPropertySchema
 ])

@@ -13,6 +13,7 @@ import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { getStatus, getConfig } from './index'
+import { normalizePropertiesToRoot, writePropertiesToRoot } from './frontmatter'
 import { ensureDirectory } from './file-ops'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import {
@@ -29,7 +30,7 @@ import {
 
 /**
  * Journal entry frontmatter fields. Every key is a plain user property;
- * Memry writes only `date` (and `tags`/`properties` on explicit edit).
+ * Memry writes only `date`, `tags`, and top-level user properties.
  * Legacy Memry keys (id, created, modified) are plain user properties.
  */
 export interface JournalFrontmatter {
@@ -146,7 +147,8 @@ export function parseJournalEntry(rawContent: string, date: string): ParsedJourn
  * @returns Complete markdown file content
  */
 export function serializeJournalEntry(frontmatter: JournalFrontmatter, content: string): string {
-  const clean = Object.fromEntries(Object.entries(frontmatter).filter(([, v]) => v !== undefined))
+  const normalized = normalizePropertiesToRoot(frontmatter).frontmatter
+  const clean = Object.fromEntries(Object.entries(normalized).filter(([, v]) => v !== undefined))
 
   if (Object.keys(clean).length === 0) {
     return content.trim()
@@ -185,10 +187,16 @@ const RESERVED_JOURNAL_KEYS = new Set([
   'emoji'
 ])
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
 /**
  * Extract custom properties from journal frontmatter.
- * Properties can be stored under the `properties` key or as top-level keys
- * (excluding reserved keys like id, date, created, modified, tags).
+ * Legacy entries may store properties under `properties`; top-level keys are
+ * canonical and win on conflicts.
  *
  * @param frontmatter - Parsed frontmatter object
  * @returns Record of property names to values, or undefined if no properties
@@ -196,14 +204,16 @@ const RESERVED_JOURNAL_KEYS = new Set([
 export function extractJournalProperties(
   frontmatter: JournalFrontmatter
 ): Record<string, unknown> | undefined {
-  // Check for explicit `properties` object first
-  if (frontmatter.properties && typeof frontmatter.properties === 'object') {
-    const props = frontmatter.properties as Record<string, unknown>
-    return Object.keys(props).length > 0 ? props : undefined
+  const properties: Record<string, unknown> = {}
+
+  // Nested properties are a legacy format. Read them for compatibility, then
+  // overlay top-level keys so a root edit wins a stale nested value.
+  if (isRecord(frontmatter.properties)) {
+    for (const [key, value] of Object.entries(frontmatter.properties)) {
+      if (key !== 'properties' && value !== undefined) properties[key] = value
+    }
   }
 
-  // Fall back to extracting non-reserved top-level keys
-  const properties: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(frontmatter)) {
     if (!RESERVED_JOURNAL_KEYS.has(key) && value !== undefined) {
       properties[key] = value
@@ -291,7 +301,7 @@ export async function writeJournalEntryWithContent(
     if (properties !== undefined) {
       // Explicitly provided properties (can be empty object to clear)
       if (Object.keys(properties).length > 0) {
-        frontmatter.properties = properties
+        frontmatter = writePropertiesToRoot(frontmatter, properties)
       }
       // If properties is empty object, don't add to frontmatter (effectively clearing)
     } else if (existing.properties && Object.keys(existing.properties).length > 0) {
@@ -304,7 +314,7 @@ export async function writeJournalEntryWithContent(
 
     // Add properties for new entry if provided
     if (properties && Object.keys(properties).length > 0) {
-      frontmatter.properties = properties
+      frontmatter = writePropertiesToRoot(frontmatter, properties)
     }
   }
 

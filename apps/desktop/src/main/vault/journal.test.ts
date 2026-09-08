@@ -254,6 +254,19 @@ describe('extractJournalProperties', () => {
     })
   })
 
+  it('merges nested and top-level properties, keeping the root value on conflict', () => {
+    const frontmatter = {
+      date: '2026-01-15',
+      status: 'active',
+      properties: { status: 'idea', mood: 'focused' }
+    }
+
+    expect(extractJournalProperties(frontmatter)).toEqual({
+      status: 'active',
+      mood: 'focused'
+    })
+  })
+
   it('ignores reserved frontmatter keys', () => {
     const frontmatter = {
       id: 'j2026-01-15',
@@ -438,6 +451,19 @@ Today I worked on tests.`
       // Verify file was written
       const filePath = path.join(tempVault.path, 'journal', '2026-01-15.md')
       expect(fs.existsSync(filePath)).toBe(true)
+    })
+
+    it('writes journal properties as top-level frontmatter keys', async () => {
+      await writeJournalEntry('2026-01-15', 'New journal entry', undefined, {
+        status: 'active',
+        owner: 'Kaan'
+      })
+
+      const filePath = path.join(tempVault.path, 'journal', '2026-01-15.md')
+      const raw = fs.readFileSync(filePath, 'utf8')
+      expect(raw).toMatch(/^status: active$/m)
+      expect(raw).toMatch(/^owner: Kaan$/m)
+      expect(raw).not.toMatch(/^properties:/m)
     })
 
     it('T381: updates existing journal entry', async () => {

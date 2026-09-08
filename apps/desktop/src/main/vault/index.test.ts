@@ -46,6 +46,9 @@ const mocks = vi.hoisted(() => ({
   flipOpenPagesInNewTabDefault: vi.fn(),
   reloadPropertyDefinitions: vi.fn(),
   destroyPropertyDefinitions: vi.fn(),
+  getSetting: vi.fn(),
+  setSetting: vi.fn(),
+  migrateNestedPropertiesToRoot: vi.fn(),
   migrateSettingsToConfig: vi.fn(),
   snapshotProjectFrontmatterBackfill: vi.fn(),
   applyProjectFrontmatterBackfill: vi.fn(),
@@ -154,6 +157,11 @@ vi.mock('../database/defaults', () => ({
   ensureDefaultTaskProject: (...args: unknown[]) => mocks.ensureDefaultTaskProject(...args)
 }))
 
+vi.mock('../database/queries/settings', () => ({
+  getSetting: (...args: unknown[]) => mocks.getSetting(...args),
+  setSetting: (...args: unknown[]) => mocks.setSetting(...args)
+}))
+
 vi.mock('./watcher', () => ({
   startWatcher: (...args: unknown[]) => mocks.startWatcher(...args),
   stopWatcher: (...args: unknown[]) => mocks.stopWatcher(...args)
@@ -258,6 +266,13 @@ vi.mock('./backfill-project-frontmatter', () => ({
     mocks.applyProjectFrontmatterBackfill(...args)
 }))
 
+vi.mock('./root-properties-migration', () => ({
+  migrateNestedPropertiesToRoot: (...args: unknown[]) =>
+    mocks.migrateNestedPropertiesToRoot(...args),
+  ROOT_PROPERTIES_MIGRATION_DONE: 'done',
+  ROOT_PROPERTIES_MIGRATION_KEY: 'frontmatterPropertiesRootV1'
+}))
+
 vi.mock('./templates-migration', () => ({
   migrateTemplateFilesToDb: (...args: unknown[]) => mocks.migrateTemplateFilesToDb(...args)
 }))
@@ -325,6 +340,16 @@ describe('vault lifecycle', () => {
     mocks.startWatcher.mockResolvedValue(undefined)
     mocks.stopWatcher.mockResolvedValue(undefined)
     mocks.reloadPropertyDefinitions.mockResolvedValue(undefined)
+    mocks.getSetting.mockReturnValue('done')
+    mocks.migrateNestedPropertiesToRoot.mockResolvedValue({
+      scanned: 0,
+      migrated: 0,
+      migratedPaths: [],
+      skipped: 0,
+      deferred: 0,
+      failed: 0,
+      conflicts: []
+    })
     mocks.startSyncRuntime.mockResolvedValue(undefined)
     mocks.stopSyncRuntime.mockResolvedValue(undefined)
     mocks.initCrdtPersistence.mockResolvedValue(undefined)
@@ -461,6 +486,39 @@ describe('vault lifecycle', () => {
     await vi.waitFor(() => expect(mocks.applyProjectFrontmatterBackfill).toHaveBeenCalled())
     expect(mocks.applyProjectFrontmatterBackfill.mock.invocationCallOrder[0]).toBeGreaterThan(
       mocks.indexVault.mock.invocationCallOrder[0]
+    )
+  })
+
+  it('migrates legacy nested properties before starting the watcher', async () => {
+    mocks.getSetting.mockReturnValue(null)
+    mocks.migrateNestedPropertiesToRoot.mockResolvedValue({
+      scanned: 4,
+      migrated: 2,
+      migratedPaths: ['notes/Mobile.md', 'notes/Other.md'],
+      skipped: 2,
+      deferred: 0,
+      failed: 0,
+      conflicts: ['status']
+    })
+
+    await selectVault({ path: '/vault/work' })
+
+    expect(mocks.migrateNestedPropertiesToRoot).toHaveBeenCalledWith('/vault/work', {
+      excludePatterns: ['.git']
+    })
+    expect(mocks.setSetting).toHaveBeenCalledWith(
+      { kind: 'data-db' },
+      'frontmatterPropertiesRootV1',
+      'done'
+    )
+    expect(mocks.migrateNestedPropertiesToRoot.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.startWatcher.mock.invocationCallOrder[0]
+    )
+    await vi.waitFor(() =>
+      expect(mocks.indexVault).toHaveBeenCalledWith('/vault/work', {
+        shouldStop: expect.any(Function),
+        forcePaths: ['notes/Mobile.md', 'notes/Other.md']
+      })
     )
   })
 
