@@ -19,6 +19,7 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 import type { VaultConfig } from '@memry/contracts/vault-api'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
+import { getNoteProperties } from '../database/queries/notes/property-queries'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 
@@ -258,6 +259,36 @@ describe('indexer', () => {
       expect(second.indexed).toBe(0)
       // ...and no file was read or parsed to decide that.
       expect(vi.mocked(readFile).mock.calls).toHaveLength(0)
+    })
+
+    it('reindexes cached files listed in forcePaths', async () => {
+      const notePath = createTestNote(tempVault, {
+        title: 'Migrated Note',
+        content: 'Content',
+        properties: { status: 'idea' }
+      })
+      const relativePath = path.relative(tempVault.path, notePath).replace(/\\/g, '/')
+
+      await indexer.indexVault(tempVault.path)
+      const cached = testDb.db.select().from(noteCache).get()
+      expect(cached).toBeDefined()
+      expect(getNoteProperties(testDb.db, cached!.id).find((p) => p.name === 'status')?.value).toBe(
+        'idea'
+      )
+
+      fs.writeFileSync(
+        notePath,
+        '---\nid: copied-id\ntitle: Migrated Note\nstatus: active\n---\n\nContent',
+        'utf8'
+      )
+
+      const result = await indexer.indexVault(tempVault.path, { forcePaths: [relativePath] })
+
+      expect(result.indexed).toBe(1)
+      expect(result.skipped).toBe(0)
+      expect(getNoteProperties(testDb.db, cached!.id).find((p) => p.name === 'status')?.value).toBe(
+        'active'
+      )
     })
 
     it('T374: emits progress events', async () => {

@@ -35,7 +35,12 @@ vi.mock('../../vault/frontmatter', () => ({
       definitionType: string | undefined,
       inferFn: (name: string, value: unknown) => string
     ) => (name === 'project' ? 'project' : (definitionType ?? inferFn(name, value)))
-  )
+  ),
+  replacePropertiesOnRoot: vi.fn((frontmatter, properties) => {
+    const next = { ...frontmatter }
+    delete next.properties
+    return { ...next, ...properties }
+  })
 }))
 
 vi.mock('../../vault/note-sync', () => ({

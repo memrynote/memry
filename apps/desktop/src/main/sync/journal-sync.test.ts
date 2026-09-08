@@ -38,6 +38,8 @@ vi.mock('../database/client', () => ({
 vi.mock('../vault/journal', async () => {
   const matter = (await import('gray-matter')).default
   return {
+    extractJournalProperties: (frontmatter: { properties?: Record<string, unknown> }) =>
+      frontmatter.properties,
     getJournalPath: (date: string) => path.join(h.journalDir, `${date}.md`),
     parseJournalEntry: (raw: string, date: string) => {
       const parsed = matter(raw)

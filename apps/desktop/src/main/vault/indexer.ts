@@ -60,6 +60,8 @@ export interface IndexVaultOptions {
    * cache and indexes the rest.
    */
   shouldStop?: () => boolean
+  /** Paths whose frontmatter changed before this pass and must be re-read. */
+  forcePaths?: readonly string[]
 }
 
 // ============================================================================
@@ -123,7 +125,8 @@ async function findVaultFiles(
  */
 async function indexFile(
   vaultPath: string,
-  relativePath: string
+  relativePath: string,
+  forcePaths: ReadonlySet<string>
 ): Promise<'indexed' | 'skipped' | 'error'> {
   const absolutePath = path.join(vaultPath, relativePath)
   const fileType = getFileType(getExtension(absolutePath))
@@ -138,7 +141,7 @@ async function indexFile(
 
     // Check if already in cache by path
     const existingByPath = getNoteCacheByPath(db, relativePath)
-    if (existingByPath) {
+    if (existingByPath && !forcePaths.has(relativePath)) {
       return 'skipped'
     }
 
@@ -335,6 +338,7 @@ export async function indexVault(
   logger.debug('Starting vault indexing:', vaultPath)
 
   const shouldStop = options.shouldStop ?? ((): boolean => false)
+  const forcePaths = new Set(options.forcePaths ?? [])
   const config = getConfig()
   const excludePatterns = config.excludePatterns ?? []
   const result: IndexResult = {
@@ -382,7 +386,7 @@ export async function indexVault(
       return { i, status: 'cancelled' as const }
     }
 
-    const status = await indexFile(vaultPath, file)
+    const status = await indexFile(vaultPath, file, forcePaths)
     completed++
 
     // Emit progress every 10 completions to reduce IPC overhead. Suppressed once

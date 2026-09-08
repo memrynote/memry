@@ -40,6 +40,7 @@ import {
   extractInlineTagsFromMarkdown,
   inferPropertyType,
   resolvePropertyType,
+  replacePropertiesOnRoot,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
 import { isPersistableDefinitionType, type PropertyType } from '@memry/contracts/property-types'
@@ -360,11 +361,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
               }
             }
             if (propertiesPresent) {
-              if (Object.keys(remoteProperties).length > 0) {
-                parsed.frontmatter.properties = remoteProperties
-              } else {
-                delete parsed.frontmatter.properties
-              }
+              parsed.frontmatter = replacePropertiesOnRoot(parsed.frontmatter, remoteProperties)
             }
             const updatedContent = serializeParsedNote(parsed, parsed.content, {
               frontmatterEdited: true
@@ -414,11 +411,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             }
           }
           if (propertiesPresent) {
-            if (Object.keys(remoteProperties).length > 0) {
-              parsed.frontmatter.properties = remoteProperties
-            } else {
-              delete parsed.frontmatter.properties
-            }
+            parsed.frontmatter = replacePropertiesOnRoot(parsed.frontmatter, remoteProperties)
           }
           const updatedContent = serializeParsedNote(parsed, parsed.content, {
             frontmatterEdited: true

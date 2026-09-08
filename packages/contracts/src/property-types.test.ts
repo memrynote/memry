@@ -98,8 +98,15 @@ describe('PropertyDefinitionSchema (discriminated union)', () => {
     expect(result.success).toBe(false)
   })
 
+  it('accepts primitive variants written to properties.md', () => {
+    for (const type of ['text', 'number', 'checkbox', 'url'] as const) {
+      const result = PropertyDefinitionSchema.safeParse({ type, options: [] })
+      expect(result.success).toBe(true)
+    }
+  })
+
   it('rejects unknown variant type', () => {
-    const result = PropertyDefinitionSchema.safeParse({ type: 'text', options: [] })
+    const result = PropertyDefinitionSchema.safeParse({ type: 'bogus', options: [] })
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error.issues[0].path).toContain('type')

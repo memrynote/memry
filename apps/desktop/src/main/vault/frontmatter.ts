@@ -174,7 +174,7 @@ export function extractTitleFromPath(filePath: string): string {
  * @returns Complete markdown file content
  */
 export function serializeNote(frontmatter: NoteFrontmatter, content: string): string {
-  return writeMarkdownNote(frontmatter, content)
+  return writeMarkdownNote(normalizePropertiesToRoot(frontmatter).frontmatter, content)
 }
 
 export interface SerializeParsedNoteOptions {
@@ -361,28 +361,98 @@ export function generateContentHash(content: string): string {
 import { PROJECT_PROPERTY_KEY, type PropertyType } from '@memry/contracts/property-types'
 
 /**
- * Reserved frontmatter keys that are NOT properties — only the two keys with
- * Obsidian-defined semantics that Memry reads. Legacy Memry keys (id, title,
- * created, modified, emoji, localOnly) are plain user properties.
+ * Reserved frontmatter keys that are not user properties. `properties` is kept
+ * here as the legacy nested-property envelope while it is migrated away.
+ * Legacy Memry keys (id, title, created, modified, emoji, localOnly) are plain
+ * user properties.
  */
-const RESERVED_FRONTMATTER_KEYS = new Set(['tags', 'aliases'])
+const RESERVED_FRONTMATTER_KEYS = new Set(['tags', 'aliases', 'properties'])
+
+export interface NormalizedPropertiesResult {
+  frontmatter: NoteFrontmatter
+  changed: boolean
+  /** Property names present in both locations. The root value wins. */
+  conflicts: string[]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+/**
+ * Move the legacy nested property envelope into top-level frontmatter keys.
+ * Existing root values win when both locations contain the same property.
+ */
+export function normalizePropertiesToRoot(
+  frontmatter: NoteFrontmatter
+): NormalizedPropertiesResult {
+  if (!isRecord(frontmatter.properties)) {
+    return { frontmatter, changed: false, conflicts: [] }
+  }
+
+  const normalized = { ...frontmatter }
+  delete normalized.properties
+
+  const conflicts: string[] = []
+  for (const [name, value] of Object.entries(frontmatter.properties)) {
+    if (RESERVED_FRONTMATTER_KEYS.has(name)) continue
+    if (Object.prototype.hasOwnProperty.call(normalized, name)) {
+      conflicts.push(name)
+      continue
+    }
+    normalized[name] = value
+  }
+
+  return { frontmatter: normalized, changed: true, conflicts }
+}
+
+/** Write a property record as top-level user frontmatter keys. */
+export function writePropertiesToRoot(
+  frontmatter: NoteFrontmatter,
+  properties: Record<string, unknown>
+): NoteFrontmatter {
+  const next = { ...frontmatter }
+  for (const [name, value] of Object.entries(properties)) {
+    if (RESERVED_FRONTMATTER_KEYS.has(name)) continue
+    if (value === undefined) delete next[name]
+    else next[name] = value
+  }
+  return next
+}
+
+/** Replace the current property record while keeping tags and aliases. */
+export function replacePropertiesOnRoot(
+  frontmatter: NoteFrontmatter,
+  properties: Record<string, unknown>
+): NoteFrontmatter {
+  const normalized = { ...normalizePropertiesToRoot(frontmatter).frontmatter }
+  for (const name of Object.keys(extractProperties(normalized))) {
+    delete normalized[name]
+  }
+  return writePropertiesToRoot(normalized, properties)
+}
 
 /**
  * Extract custom properties from frontmatter.
- * T007: Properties are stored under the `properties` key or as top-level keys
- * (excluding reserved keys like id, title, created, modified, tags, aliases).
+ * T007: Properties may still be read from the legacy `properties` key, but
+ * top-level keys are canonical and win on conflicts.
  *
  * @param frontmatter - Parsed frontmatter object
  * @returns Record of property names to values
  */
 export function extractProperties(frontmatter: NoteFrontmatter): Record<string, unknown> {
-  // Check for explicit `properties` object first
-  if (frontmatter.properties && typeof frontmatter.properties === 'object') {
-    return frontmatter.properties as Record<string, unknown>
+  const properties: Record<string, unknown> = {}
+
+  // Nested properties are a legacy format. Read them for compatibility, then
+  // overlay top-level keys so an Obsidian edit wins a stale nested value.
+  if (isRecord(frontmatter.properties)) {
+    for (const [key, value] of Object.entries(frontmatter.properties)) {
+      if (!RESERVED_FRONTMATTER_KEYS.has(key) && value !== undefined) properties[key] = value
+    }
   }
 
-  // Fall back to extracting non-reserved top-level keys
-  const properties: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(frontmatter)) {
     if (!RESERVED_FRONTMATTER_KEYS.has(key) && value !== undefined) {
       properties[key] = value

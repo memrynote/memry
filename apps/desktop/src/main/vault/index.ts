@@ -72,11 +72,17 @@ import { createEmbeddingProjector } from '../projections/projectors/embedding-pr
 import { createInboxStatsProjector } from '../projections/projectors/inbox-stats-projector'
 import { createNoteProjectLinksProjector } from '../projections/projectors/note-project-links-projector'
 import { PropertyDefinitionsService } from './property-definitions'
+import { getSetting, setSetting } from '../database/queries/settings'
 import { migrateSettingsToConfig } from './settings-cache'
 import {
   applyProjectFrontmatterBackfill,
   snapshotProjectFrontmatterBackfill
 } from './backfill-project-frontmatter'
+import {
+  migrateNestedPropertiesToRoot,
+  ROOT_PROPERTIES_MIGRATION_DONE,
+  ROOT_PROPERTIES_MIGRATION_KEY
+} from './root-properties-migration'
 import { promoteSpatialCanvas } from '../settings/promote-spatial-canvas'
 import { flipOpenPagesInNewTabDefault } from '../settings/flip-open-pages-in-new-tab'
 import { migrateTemplateFilesToDb } from './templates-migration'
@@ -414,6 +420,7 @@ interface BackgroundIndexBuildInput {
   vaultPath: string
   dataDb: ReturnType<typeof getDatabase>
   indexHealth: IndexHealth
+  forcePaths: string[]
   /** Non-null when openVault reset the index DB and a recovery event is owed. */
   recoveredReason: IndexHealth | 'migration_failed' | null
 }
@@ -435,7 +442,7 @@ interface BackgroundIndexBuildInput {
  * paths already cached.
  */
 async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promise<void> {
-  const { vaultPath, dataDb, indexHealth, recoveredReason } = input
+  const { vaultPath, dataDb, indexHealth, recoveredReason, forcePaths } = input
   const startedAt = Date.now()
   // currentStatus.path stays vaultPath for the whole build: closeVault() nulls
   // it only after awaiting this promise, and a vault switch closes first.
@@ -445,8 +452,15 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   try {
     // Indexes every new/missing note; skips files already in cache, so this is
     // fast for subsequent opens of an up-to-date vault.
-    const result = await indexVault(vaultPath, { shouldStop: isStale })
+    const result = await indexVault(vaultPath, {
+      shouldStop: isStale,
+      ...(forcePaths.length > 0 ? { forcePaths } : {})
+    })
     if (result.cancelled || isStale()) return
+
+    if (forcePaths.length > 0 && result.errors === 0) {
+      setSetting(dataDb, ROOT_PROPERTIES_MIGRATION_KEY, ROOT_PROPERTIES_MIGRATION_DONE)
+    }
 
     if (recoveredReason) {
       // Notify renderer about recovery
@@ -609,6 +623,7 @@ async function openVault(vaultPath: string): Promise<void> {
   // whatever index exists; runBackgroundIndexBuild() repopulates it after
   // isOpen, with progress on the existing index-progress plumbing.
   let recoveredReason: IndexHealth | 'migration_failed' | null = null
+  let migratedRootPropertyPaths: string[] = []
   try {
     if (needsFullIndexRebuild) {
       // Index is corrupt or missing — reset the DB file now so every consumer
@@ -634,6 +649,36 @@ async function openVault(vaultPath: string): Promise<void> {
     // Reload property definitions into DB cache before indexing
     // so getPropertyType() finds correct types during note sync
     await propDefService.reload()
+
+    const migrationState = getSetting(dataDb, ROOT_PROPERTIES_MIGRATION_KEY)
+    if (migrationState !== ROOT_PROPERTIES_MIGRATION_DONE) {
+      const pendingPaths = pendingRootPropertyPaths(migrationState)
+      const migration = await migrateNestedPropertiesToRoot(vaultPath, {
+        excludePatterns: readVaultConfig(vaultPath).excludePatterns
+      })
+      migratedRootPropertyPaths = [
+        ...new Set([...pendingPaths, ...(migration.migratedPaths ?? [])])
+      ]
+      if (migration.deferred === 0 && migration.failed === 0) {
+        setSetting(
+          dataDb,
+          ROOT_PROPERTIES_MIGRATION_KEY,
+          migratedRootPropertyPaths.length > 0
+            ? JSON.stringify({ paths: migratedRootPropertyPaths })
+            : ROOT_PROPERTIES_MIGRATION_DONE
+        )
+      } else if (migratedRootPropertyPaths.length > 0) {
+        // Preserve paths already written before a partial pass failed. The
+        // next open will retry both the write and the cache refresh.
+        setSetting(
+          dataDb,
+          ROOT_PROPERTIES_MIGRATION_KEY,
+          JSON.stringify({ paths: migratedRootPropertyPaths })
+        )
+      } else {
+        logger.warn('Root property migration will retry on the next vault open', migration)
+      }
+    }
   } catch (error) {
     logger.error('Index database init failed:', error)
     trackMainError('vault', 'index_on_open', error)
@@ -674,7 +719,8 @@ async function openVault(vaultPath: string): Promise<void> {
     vaultPath,
     dataDb,
     indexHealth,
-    recoveredReason
+    recoveredReason,
+    forcePaths: migratedRootPropertyPaths
   })
 
   // Register the agent IPC handlers before the sync runtime starts: agent chat
@@ -701,6 +747,18 @@ async function openVault(vaultPath: string): Promise<void> {
     logger.error('Sync runtime start failed after vault open:', error)
     trackMainError('vault', 'sync_runtime_start', error)
   })
+}
+
+function pendingRootPropertyPaths(value: string | null): string[] {
+  if (!value || value === ROOT_PROPERTIES_MIGRATION_DONE) return []
+  try {
+    const parsed = JSON.parse(value) as { paths?: unknown }
+    return Array.isArray(parsed.paths)
+      ? parsed.paths.filter((path): path is string => typeof path === 'string')
+      : []
+  } catch {
+    return []
+  }
 }
 
 /**

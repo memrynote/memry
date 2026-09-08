@@ -208,6 +208,54 @@ describe('PropertyDefinitionsService', () => {
     expect(indexDb.rows).toHaveLength(2)
   })
 
+  it('reloads primitive definitions without dropping status options', async () => {
+    safeReadMock.mockResolvedValue(
+      propertiesFile(`
+  Status:
+    type: status
+    categories:
+      todo:
+        label: To-do
+        options:
+          - value: Idea
+            color: violet
+      in_progress:
+        label: In progress
+        options:
+          - value: Active
+            color: amber
+      done:
+        label: Complete
+        options:
+          - value: Done
+            color: emerald
+  Author:
+    type: text
+    options: []
+  Rating:
+    type: number
+    options: []
+  Shared:
+    type: checkbox
+    options: []
+  Link:
+    type: url
+    options: []
+`)
+    )
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    expect(service.get('Status')?.categories?.in_progress.options).toEqual([
+      { value: 'Active', color: 'amber' }
+    ])
+    expect(service.get('Author')).toEqual({ name: 'Author', type: 'text', options: [] })
+    expect(service.get('Rating')).toEqual({ name: 'Rating', type: 'number', options: [] })
+    expect(service.get('Shared')).toEqual({ name: 'Shared', type: 'checkbox', options: [] })
+    expect(service.get('Link')).toEqual({ name: 'Link', type: 'url', options: [] })
+  })
+
   it('carries a definition clock across the rebuild a reload triggers', async () => {
     safeReadMock.mockResolvedValue(
       propertiesFile(`  Stage:

@@ -16,6 +16,10 @@ import {
   serializeNote,
   serializeParsedNote,
   extractInlineTagsFromMarkdown,
+  normalizePropertiesToRoot,
+  replacePropertiesOnRoot,
+  writePropertiesToRoot,
+  extractProperties,
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
@@ -291,8 +295,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
 
   const properties = { ...templateProperties, ...(input.properties ?? {}) }
   if (Object.keys(properties).length > 0) {
-    ;(frontmatter as NoteFrontmatter & { properties: Record<string, unknown> }).properties =
-      properties
+    Object.assign(frontmatter, writePropertiesToRoot(frontmatter, properties))
   }
 
   const content = input.content && input.content.trim() ? input.content : templateContent
@@ -626,7 +629,6 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
       }
     }
   }
-  const newProperties = input.properties ?? existing.properties
   const newEmoji = input.emoji !== undefined ? input.emoji : existing.emoji
 
   if (input.content !== undefined && input.content !== existing.content) {
@@ -654,9 +656,16 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   }
 
   // User keys only — Memry state (title, dates, emoji, localOnly) lives in the DBs
-  const newFrontmatter: NoteFrontmatter & { properties?: Record<string, unknown> } = {
+  const mergedFrontmatter: NoteFrontmatter = {
     ...existing.frontmatter,
     ...input.frontmatter
+  }
+  let newFrontmatter = normalizePropertiesToRoot(mergedFrontmatter).frontmatter
+
+  const newProperties = input.properties ?? extractProperties(newFrontmatter)
+
+  if (input.properties !== undefined) {
+    newFrontmatter = replacePropertiesOnRoot(newFrontmatter, newProperties)
   }
 
   if (newTags.length > 0) {
@@ -665,19 +674,13 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     delete newFrontmatter.tags
   }
 
-  if (Object.keys(newProperties).length > 0) {
-    newFrontmatter.properties = newProperties
-  } else {
-    delete newFrontmatter.properties
-  }
-
   const tagsChanged =
     newTags.length !== existing.tags.length || newTags.some((t) => !existing.tags.includes(t))
 
-  // Honest edit flag: the frontmatter block is re-stringified only when the
-  // caller actually changed something that lives in it; otherwise the raw
-  // block is re-emitted verbatim (byte preservation).
+  // Re-stringify when a caller changed frontmatter or when normalizing a
+  // legacy nested property block. Otherwise the raw block stays byte-identical.
   const frontmatterEdited =
+    !isDeepStrictEqual(newFrontmatter, existing.frontmatter) ||
     tagsChanged ||
     (input.properties !== undefined && !isDeepStrictEqual(input.properties, existing.properties)) ||
     (input.frontmatter !== undefined &&
