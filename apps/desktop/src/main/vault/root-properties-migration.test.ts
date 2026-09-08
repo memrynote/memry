@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import path from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -37,7 +37,6 @@ describe('migrateNestedPropertiesToRoot', () => {
       ].join('\n')
     )
 
-    const originalMtime = statSync(notePath).mtimeMs
     await expect(migrateNestedPropertiesToRoot(vaultPath)).resolves.toEqual({
       scanned: 1,
       migrated: 1,
@@ -57,7 +56,6 @@ describe('migrateNestedPropertiesToRoot', () => {
     })
     expect(parsed.content).toBe('\nBody stays byte-for-byte.\n')
     expect(firstPass).not.toMatch(/^properties:/m)
-    expect(statSync(notePath).mtimeMs).toBeCloseTo(originalMtime, 0)
 
     await expect(migrateNestedPropertiesToRoot(vaultPath)).resolves.toEqual({
       scanned: 1,

@@ -157,6 +157,8 @@ vi.mock('../vault/frontmatter', () => ({
 }))
 
 vi.mock('../vault/journal', () => ({
+  extractJournalProperties: (frontmatter: { properties?: Record<string, unknown> }) =>
+    frontmatter.properties,
   getJournalPath: (date: string) => `/vault/journals/${date}.md`,
   parseJournalEntry: (...args: unknown[]) => mocks.parseJournalEntry(...args)
 }))

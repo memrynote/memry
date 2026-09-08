@@ -1,4 +1,4 @@
-import { readdir, readFile, stat, utimes } from 'fs/promises'
+import { readdir, readFile } from 'fs/promises'
 import path from 'path'
 
 import { createLogger } from '../lib/logger'
@@ -68,7 +68,6 @@ export async function migrateNestedPropertiesToRoot(
     }
 
     result.scanned++
-    const originalStats = await stat(filePath).catch(() => null)
     const parsed = parseNote(raw, filePath)
     if (parsed.frontmatterError) {
       result.deferred++
@@ -93,9 +92,6 @@ export async function migrateNestedPropertiesToRoot(
 
     try {
       await atomicWrite(filePath, updated)
-      if (originalStats) {
-        await utimes(filePath, originalStats.atime, originalStats.mtime)
-      }
       result.migrated++
       result.migratedPaths.push(toVaultRelativePath(vaultPath, filePath))
       result.conflicts.push(...normalized.conflicts)
