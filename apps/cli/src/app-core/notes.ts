@@ -423,7 +423,10 @@ export function createNotesService({
         // folder; re-point them the way desktop `moveNote` does. Null means no
         // ref moved — skip the write so the file keeps its bytes and mtime.
         const raw = await fs.readFile(path.join(vaultPath, nextPath), 'utf-8')
-        const rewritten = rewriteNoteRefsForMove(raw, row.path, nextPath)
+        const rewritten = rewriteNoteRefsForMove(raw, row.path, nextPath, {
+          sourceNoteId: row.id,
+          preserveRootRelativeAttachments: true
+        })
         if (rewritten !== null) {
           await fs.writeFile(path.join(vaultPath, nextPath), rewritten, 'utf-8')
         }

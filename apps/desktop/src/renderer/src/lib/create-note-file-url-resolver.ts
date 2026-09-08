@@ -23,21 +23,24 @@ export function createNoteFileUrlResolver(
   /**
    * Where the note's path comes from on the surfaces that mount the editor
    * knowing only the note's id — the journal, a canvas card, a project's home
-   * note. Only `pages/note.tsx` passes the path as a prop, and attachments are
-   * now written relative to the note wherever they are saved, so without this
-   * the image a user just dropped into their journal would render against the
-   * renderer's own base URL and 404.
+   * note. Only `pages/note.tsx` passes the path as a prop. Desktop attachments
+   * are note-relative, while mobile attachments use a vault-root ref, so
+   * without this the image a user just dropped into their journal would render
+   * against the renderer's own base URL and 404.
    *
    * Caching is the caller's job: it knows which note the fallback belongs to.
    */
-  fetchNotePath?: () => Promise<string | undefined>
+  fetchNotePath?: () => Promise<string | undefined>,
+  /** The mounted note id, used to recognize mobile's root-relative attachment refs. */
+  getNoteId?: () => string | undefined
 ): (url: string) => Promise<string> {
   let vaultPath: Promise<string | null> | null = null
 
   return async (url: string) => {
     const notePath = getNotePath() ?? (await fetchNotePath?.().catch(() => undefined))
+    const noteId = getNoteId?.()
     if (!notePath) return url
     if (!vaultPath) vaultPath = fetchVaultPath().catch(() => null)
-    return resolveNoteRelativeUrl(url, notePath, await vaultPath)
+    return resolveNoteRelativeUrl(url, notePath, await vaultPath, noteId)
   }
 }

@@ -143,6 +143,20 @@ describe('appendBlocksToNote', () => {
     expect(target.content).not.toContain('](../attachments/src/shot.png)')
   })
 
+  it('rewrites mobile root-relative attachment refs when moving a block', async () => {
+    seedNote('src', 'a/source.md', 'Source body')
+    seedNote('dst', 'b/deep/target.md', 'Target body')
+
+    await appendBlocksToNote({
+      sourceNoteId: 'src',
+      targetNoteId: 'dst',
+      markdown: '![shot](attachments/src/shot.png)'
+    })
+
+    const target = written.find((w) => w.path === '/vault/b/deep/target.md')!
+    expect(target.content).toContain('![shot](../../attachments/src/shot.png)')
+  })
+
   it('writes nothing when the target note is missing', async () => {
     seedNote('src', 'notes/source.md', 'Source body')
 

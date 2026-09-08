@@ -1,5 +1,6 @@
 /**
- * Resolve a note-relative asset URL to a `memry-file://` URL the renderer can load.
+ * Resolve a note-relative or mobile root-relative asset URL to a `memry-file://`
+ * URL the renderer can load.
  *
  * Vaults written by other apps (Obsidian, Capacities, …) reference media with a
  * plain relative path — `![x](../Images/Media/photo.png)`. BlockNote hands that
@@ -46,13 +47,16 @@ function joinWithinVault(dir: string, ref: string): string | null {
  * @param url        Raw `props.url` from a BlockNote file/image block.
  * @param notePath   The note's path relative to the vault root (`Folder/Note.md`).
  * @param vaultPath  Absolute path of the open vault.
+ * @param noteId     Owning note id, used to recognize mobile's
+ *                   `attachments/<noteId>/…` shape.
  * @returns A `memry-file://` URL, or `url` unchanged when it is not a resolvable
  *          vault-relative path.
  */
 export function resolveNoteRelativeUrl(
   url: string,
   notePath: string | undefined,
-  vaultPath: string | null
+  vaultPath: string | null,
+  noteId?: string
 ): string {
   if (!url || !notePath || !vaultPath) return url
   if (HAS_SCHEME.test(url)) return url
@@ -71,8 +75,12 @@ export function resolveNoteRelativeUrl(
 
   const lastSlash = notePath.lastIndexOf('/')
   const noteDir = lastSlash === -1 ? '' : notePath.slice(0, lastSlash)
+  const normalized = decoded.replace(/\\/g, '/')
+  const isRootRelativeAttachmentRef =
+    noteId !== undefined &&
+    (normalized === `attachments/${noteId}` || normalized.startsWith(`attachments/${noteId}/`))
 
-  const resolved = joinWithinVault(noteDir, decoded)
+  const resolved = joinWithinVault(isRootRelativeAttachmentRef ? '' : noteDir, decoded)
   if (!resolved) return url
 
   return toMemryFileUrl(`${vaultPath.replace(/[/\\]+$/, '')}/${resolved}`)

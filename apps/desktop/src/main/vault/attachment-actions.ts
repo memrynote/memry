@@ -1,10 +1,11 @@
 /**
  * Reveal / open / resolve actions for attachment blocks (file, image).
  *
- * A block's `props.url` comes in two shapes: note-relative
- * (`../attachments/<noteId>/<file>`, written since attachments went relative)
- * and legacy absolute (`memry-file://local/<abs path>`, written before that —
- * possibly by another device, so the absolute path may not exist here).
+ * A block's `props.url` comes in three shapes: note-relative
+ * (`../attachments/<noteId>/<file>`, written by desktop), mobile root-relative
+ * (`attachments/<noteId>/<file>`), and legacy absolute
+ * (`memry-file://local/<abs path>`, written before relative refs — possibly by
+ * another device, so the absolute path may not exist here).
  * Both resolve to a path inside this device's vault or the call is rejected;
  * the caller can never hand an arbitrary filesystem path to the OS shell.
  */
@@ -108,7 +109,10 @@ export function resolveAttachment(noteId: string, url: string): AttachmentResolv
 
     const lastSlash = cached.path.lastIndexOf('/')
     const noteDir = lastSlash === -1 ? '' : cached.path.slice(0, lastSlash)
-    const resolved = joinWithinVault(noteDir, decoded)
+    const normalized = decoded.replace(/\\/g, '/')
+    const isRootRelativeAttachmentRef =
+      normalized === `attachments/${noteId}` || normalized.startsWith(`attachments/${noteId}/`)
+    const resolved = joinWithinVault(isRootRelativeAttachmentRef ? '' : noteDir, decoded)
     if (!resolved) {
       throw new NoteError('Attachment path escapes the vault', NoteErrorCode.INVALID_PATH, noteId)
     }

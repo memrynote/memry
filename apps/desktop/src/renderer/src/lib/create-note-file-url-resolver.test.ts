@@ -5,6 +5,8 @@ const NOTE = 'People (1)/Person.md'
 const VAULT = '/Users/me/vault'
 const REF = '../Images/Media/a.png'
 const RESOLVED = 'memry-file://local/Users/me/vault/Images/Media/a.png'
+const MOBILE_NOTE_ID = '1ydx477h6jib'
+const MOBILE_NOTE = 'movies/Watchlist 2026.md'
 
 /** A vault lookup that has not answered yet — the state every editor mounts in. */
 function deferred() {
@@ -113,5 +115,18 @@ describe('createNoteFileUrlResolver without a note path prop', () => {
     )
 
     expect(await resolve(REF)).toBe(REF)
+  })
+
+  it('resolves a mobile root-relative attachment for the mounted note', async () => {
+    const resolve = createNoteFileUrlResolver(
+      () => MOBILE_NOTE,
+      async () => VAULT,
+      undefined,
+      () => MOBILE_NOTE_ID
+    )
+
+    expect(await resolve(`attachments/${MOBILE_NOTE_ID}/IMG_0001.jpeg`)).toBe(
+      'memry-file://local/Users/me/vault/attachments/1ydx477h6jib/IMG_0001.jpeg'
+    )
   })
 })

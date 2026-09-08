@@ -817,10 +817,11 @@ function FileBlockRender({
   const isPdf = mimeType === 'application/pdf'
   const isAudio = mimeType.startsWith('audio/')
 
-  // Attachments are stored as a ref relative to the note (`../attachments/…`),
-  // which the browser would resolve against the renderer's own base URL. The
-  // result is for rendering only — writing it back to `block.props` would put
-  // this machine's vault path into the note's markdown.
+  // Attachments are stored as a note-relative ref (`../attachments/…`) or a
+  // mobile root-relative ref (`attachments/<noteId>/…`), both of which the
+  // browser would resolve against the renderer's own base URL. The result is
+  // for rendering only — writing it back to `block.props` would put this
+  // machine's vault path into the note's markdown.
   const resolvedUrl = useResolvedFileUrl(url)
   const presence = useAttachmentPresence(url)
 
