@@ -13,12 +13,13 @@
  *      have run online),
  *   3. restore the network,
  *   4. `us2-offline-reconnect.yaml` — wait for the Offline banner to clear,
- *      THEN for the outbox to drain.
+ *      then the driver checks that the SQLite outbox drains without relying on
+ *      a user-facing status indicator.
  *
  * One file would mean restoring the network only after the flow exited, so the
- * reconnect assertions would run offline and pass vacuously: the Offline
- * banner pre-empts the outbox banner, making `notVisible` trivially true while
- * nothing had synced. That is a false green on the gate the matrix exists for.
+ * reconnect assertions would run offline and pass vacuously. The driver keeps
+ * the network assertion in Maestro and the outbox assertion in SQLite, so the
+ * gate still proves a queued edit left the device.
  *
  *   node scripts/us2-offline-matrix.mjs --doctor                   # preflight
  *   node scripts/us2-offline-matrix.mjs --runs 20                 # simulator
@@ -48,7 +49,7 @@
  * `--device` prompts for a manual airplane-mode toggle — slower, and honest.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createInterface } from 'node:readline/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -88,9 +89,7 @@ async function setNetwork(online) {
   // The app's own switch, written straight into its document directory. No
   // scheme, no UI, no navigation — the app is left exactly where the flow left
   // it, and the marker survives the force-quit the scenario depends on.
-  const container = execFileSync('xcrun', ['simctl', 'get_app_container', UDID, APP_ID, 'data'])
-    .toString()
-    .trim()
+  const container = simulatorDataContainer()
   const markerPath = join(container, 'Documents', '.dev-offline')
   if (online) rmSync(markerPath, { force: true })
   else writeFileSync(markerPath, '1')
@@ -108,6 +107,68 @@ async function setNetwork(online) {
   } catch {
     // A status-bar override failing changes nothing about the run.
   }
+}
+
+function simulatorDataContainer() {
+  return execFileSync('xcrun', ['simctl', 'get_app_container', UDID, APP_ID, 'data'])
+    .toString()
+    .trim()
+}
+
+function outboxDatabasePaths() {
+  const vaultsRoot = join(simulatorDataContainer(), 'Documents', 'vaults')
+  if (!existsSync(vaultsRoot)) return []
+  return readdirSync(vaultsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => join(vaultsRoot, entry.name, 'vault.db'))
+    .filter((path) => existsSync(path))
+}
+
+function readOutboxDepth() {
+  const databases = outboxDatabasePaths()
+  if (databases.length === 0) throw new Error('no vault databases found')
+  return databases.reduce((total, database) => {
+    const count = execFileSync(
+      'sqlite3',
+      ['-readonly', '-batch', '-noheader', database, 'SELECT COUNT(*) FROM outbox;'],
+      { stdio: ['ignore', 'pipe', 'pipe'] }
+    )
+      .toString()
+      .trim()
+    const depth = Number(count)
+    if (!Number.isInteger(depth) || depth < 0) {
+      throw new Error(`invalid outbox depth from ${database}: ${count}`)
+    }
+    return total + depth
+  }, 0)
+}
+
+async function waitForOutboxDepth(predicate, timeoutMs, description) {
+  if (ON_DEVICE) {
+    console.log(`outbox ${description}: skipped on hardware`)
+    return true
+  }
+
+  const deadline = Date.now() + timeoutMs
+  let lastError = null
+  let lastDepth = null
+  while (Date.now() < deadline) {
+    try {
+      lastDepth = readOutboxDepth()
+      if (predicate(lastDepth)) {
+        console.log(`outbox ${description}: ${lastDepth}`)
+        return true
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error)
+    }
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 1000))
+  }
+
+  console.error(
+    `outbox ${description} timed out: depth=${lastDepth ?? 'unavailable'}${lastError ? ` (${lastError})` : ''}`
+  )
+  return false
 }
 
 /**
@@ -279,6 +340,7 @@ for (let run = 1; run <= RUNS; run++) {
 
   await setNetwork(false)
   const offlinePassed = runFlow(offlineFlow, run)
+  const queued = offlinePassed && (await waitForOutboxDepth((depth) => depth > 0, 10000, 'queued'))
 
   // Restored regardless of the offline half's outcome: a failed run must not
   // leave the next one starting from an unknown network state.
@@ -287,7 +349,10 @@ for (let run = 1; run <= RUNS; run++) {
   // The reconnect half only runs if the offline half actually produced the
   // edits it is meant to sync. Running it anyway would report a sync failure
   // for a run that never wrote anything.
-  const passed = offlinePassed && runFlow(reconnectFlow, run)
+  const reconnected = offlinePassed && queued && runFlow(reconnectFlow, run)
+  const drained =
+    reconnected && (await waitForOutboxDepth((depth) => depth === 0, 60000, 'drained'))
+  const passed = offlinePassed && queued && reconnected && drained
   if (!passed) failures.push(run)
 }
 

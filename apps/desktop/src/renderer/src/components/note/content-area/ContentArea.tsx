@@ -465,10 +465,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [onInternalLinkClick])
 
   // Only `pages/note.tsx` passes `notePath`; the journal, canvas cards and a
-  // project's home note mount this editor knowing only the note's id. Since
-  // attachments are now written relative to their note wherever they are saved,
-  // those surfaces need the path too — one lookup per note, reused by every
-  // block in it, and re-fetched when the mounted note changes.
+  // project's home note mount this editor knowing only the note's id. Desktop
+  // attachment refs are note-relative and mobile refs are rooted at
+  // `attachments/<noteId>/`, so those surfaces need both pieces. They are
+  // looked up once per note, reused by every block in it, and re-fetched when
+  // the mounted note changes.
   const notePathLookupRef = useRef<{ noteId: string; path: Promise<string | undefined> } | null>(
     null
   )
@@ -489,7 +490,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     createNoteFileUrlResolver(
       () => notePathRef.current,
       async () => (await vaultService.getStatus()).path ?? null,
-      fetchNotePath
+      fetchNotePath,
+      () => noteIdRef.current
     )
   ).current
 

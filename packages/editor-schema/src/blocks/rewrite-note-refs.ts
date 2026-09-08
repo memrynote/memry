@@ -1,13 +1,15 @@
 /**
  * Re-point a note's relative refs when the note itself moves.
  *
- * Attachments are written into a note as a path relative to *the note*
+ * Desktop writes attachment refs relative to the note
  * (`../attachments/<noteId>/x.pdf` — see desktop `noteRelativeRef` in
- * `main/lib/paths.ts` and `saveAttachment`), while the bytes live at
- * `attachments/<noteId>/` and stay there forever. So the ref is only correct
- * for the folder the note was in when it was written: move `notes/Foo.md` to
- * `notes/archive/2026/Foo.md` and every `../attachments/...` in its body is now
- * one level short, the embed goes blank, and the file is still sitting on disk.
+ * `main/lib/paths.ts` and `saveAttachment`), while mobile writes the same target
+ * from the vault root (`attachments/<noteId>/x.pdf`). The bytes live at
+ * `attachments/<noteId>/` and stay there forever. A note-relative ref is only
+ * correct for the folder the note was in when it was written: move
+ * `notes/Foo.md` to `notes/archive/2026/Foo.md` and every `../attachments/...`
+ * in its body is now one level short, the embed goes blank, and the file is
+ * still sitting on disk.
  * The same is true of any plain relative ref at another vault file — a sidebar
  * drop of `notes/images/photo.png`, or an Obsidian-authored
  * `../Images/photo.png` — which moves with neither side.
@@ -90,6 +92,19 @@ function dirOf(notePath: string): string {
   return dir === '.' ? '' : dir
 }
 
+export interface RewriteNoteRefsOptions {
+  /** The note id used by mobile's vault-root attachment refs. */
+  sourceNoteId?: string
+  /** Keep matching mobile refs vault-root-relative when the note itself moves. */
+  preserveRootRelativeAttachments?: boolean
+}
+
+function isRootRelativeAttachmentRef(ref: string, noteId: string | undefined): boolean {
+  if (!noteId) return false
+  const normalized = ref.replace(/\\/g, '/')
+  return normalized === `attachments/${noteId}` || normalized.startsWith(`attachments/${noteId}/`)
+}
+
 /**
  * The vault-relative file a ref names when read from `noteDir`, or null when the
  * ref is not a vault-internal relative path.
@@ -107,7 +122,12 @@ function resolveAgainstNoteDir(noteDir: string, ref: string): string | null {
  * the path math leaves it exactly as written — in both cases the caller keeps the
  * original bytes rather than a re-encoded equivalent.
  */
-function rewriteRef(ref: string, oldNoteDir: string, newNotePath: string): string | null {
+function rewriteRef(
+  ref: string,
+  oldNoteDir: string,
+  newNotePath: string,
+  options?: RewriteNoteRefsOptions
+): string | null {
   if (!ref) return null
   if (HAS_SCHEME.test(ref)) return null
   // A leading separator is ambiguous (vault root? filesystem root? a Windows UNC
@@ -122,8 +142,10 @@ function rewriteRef(ref: string, oldNoteDir: string, newNotePath: string): strin
     decoded = ref
   }
 
-  const target = resolveAgainstNoteDir(oldNoteDir, decoded)
+  const rootRelative = isRootRelativeAttachmentRef(decoded, options?.sourceNoteId)
+  const target = resolveAgainstNoteDir(rootRelative ? '' : oldNoteDir, decoded)
   if (!target) return null
+  if (rootRelative && options?.preserveRootRelativeAttachments) return null
 
   const next = noteRelativeRef(newNotePath, target)
   if (!next || next === decoded) return null
@@ -144,11 +166,13 @@ function rewriteRef(ref: string, oldNoteDir: string, newNotePath: string): strin
  * @param body        The note file's contents, frontmatter included.
  * @param oldNotePath Vault-relative path the note had before the move.
  * @param newNotePath Vault-relative path the note has after the move.
+ * @param options     Optional mobile-ref ownership and preservation rules.
  */
 export function rewriteNoteRefsForMove(
   body: string,
   oldNotePath: string,
-  newNotePath: string
+  newNotePath: string,
+  options?: RewriteNoteRefsOptions
 ): string | null {
   const oldNoteDir = dirOf(oldNotePath)
   // Same folder means every ref still resolves; a rename inside one folder, which
@@ -164,7 +188,7 @@ export function rewriteNoteRefsForMove(
       if (FILE_BLOCK_LINE_REGEX.test(line.trim())) {
         const props = parseFileBlockMarker(line.trim())
         if (!props) return line
-        const next = rewriteRef(props.url, oldNoteDir, newNotePath)
+        const next = rewriteRef(props.url, oldNoteDir, newNotePath, options)
         if (next === null) return line
         changed = true
         // Surgical: only the `url` member is replaced, so width/height/align and
@@ -176,7 +200,7 @@ export function rewriteNoteRefsForMove(
       }
 
       return line.replace(IMAGE_EMBED_REGEX, (match, open: string, ref: string, close: string) => {
-        const next = rewriteRef(ref, oldNoteDir, newNotePath)
+        const next = rewriteRef(ref, oldNoteDir, newNotePath, options)
         if (next === null) return match
         changed = true
         return `${open}${next}${close}`
