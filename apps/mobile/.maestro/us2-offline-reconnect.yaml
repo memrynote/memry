@@ -7,10 +7,8 @@
 #
 # The order of assertions below is the whole design:
 #   1. the Offline banner is GONE, so the app agrees it is back on the network;
-#   2. only then does the outbox banner have to clear, which is what actually
-#      says "your edits left this device".
-# Waiting on step 2 alone is meaningless offline — the Offline banner pre-empts
-# that element, so `notVisible` is trivially true while nothing has synced.
+#   2. the driver reads the persisted outbox after this flow and waits for it to
+#      reach zero, which says "your edits left this device" without a UI status.
 appId: com.memry.mobile
 ---
 - launchApp:
@@ -25,15 +23,11 @@ appId: com.memry.mobile
 # screen is identified by the one control only it carries.
 - assertVisible: 'New note'
 
-- extendedWaitUntil:
-    notVisible:
-      id: 'sync-banner-unsynced'
-    timeout: 60000
-
-# The note is still here after the drain, with its offline body intact. Scrolled
+# The note is still here after reconnect, with its offline body intact. Scrolled
 # to rather than asserted outright: the list is a tree and an unfoldered note is
 # emitted after every folder. Read mode keeps the body in the hierarchy, so
-# nothing here has to enter the editor.
+# nothing here has to enter the editor. The driver separately checks the outbox
+# depth because sync status is intentionally not rendered in the app.
 - scrollUntilVisible:
     element:
       text: '.*Open note offline note ${RUN_ID}.*'

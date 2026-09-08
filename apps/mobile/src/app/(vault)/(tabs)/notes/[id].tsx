@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import type { BridgeCfg } from '@memry/contracts/webview-bridge'
 import { AppText } from '@/components/ui/app-text'
-import { Icon } from '@/components/ui/icon'
 import { NavBarInline } from '@/components/ui/nav-bar'
 import { EditorView, type EditorControls } from '@/editor/editor-view'
 import { formatG3Report } from '@/editor/__rig__/latency'
@@ -51,14 +50,6 @@ const log = createLogger('NoteScreen')
 const BODY_GAP = 14
 
 /**
- * How long the editor must be quiet before `Saved` is claimed.
- *
- * Long enough that a flush is not fired between two keystrokes, short enough
- * that a pause reads as saved rather than as a stuck indicator.
- */
-const SAVE_SETTLE_MS = 800
-
-/**
  * The note editor (boards 28, 32 and 33). Journals open through the same
  * screen.
  *
@@ -77,14 +68,12 @@ export default function NoteScreen() {
   // a doc that has no CRDT state, so it cannot overwrite real content.
   const [seedMarkdown, setSeedMarkdown] = useState<string | undefined>(undefined)
   const [vaultReadOnly, setVaultReadOnly] = useState(false)
-  const [saveState, setSaveState] = useState<'saved' | 'saving'>('saved')
   const [managing, setManaging] = useState(false)
   const [tagsEditing, setTagsEditing] = useState(false)
   const [addingTag, setAddingTag] = useState(false)
   const [addingProperty, setAddingProperty] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const controls = useRef<EditorControls | null>(null)
-  const localUpdates = useRef(0)
 
   useEffect(() => subscribeReadOnly((state) => setVaultReadOnly(state.readOnly)), [])
 
@@ -214,40 +203,6 @@ export default function NoteScreen() {
     })
     return () => subscription.remove()
   }, [session])
-
-  /**
-   * What backs `Saved`, so it reports disk rather than decorating the bar.
-   *
-   * `applyFromGuest` persists the update and enqueues it BEFORE it advances the
-   * owned doc, so by the time `onLocalUpdate` fires everything the host has
-   * RECEIVED is already durable. What that says nothing about is the ~24 ms
-   * batch still inside the WebView, which is why the indicator only returns to
-   * `Saved` once a `flush()` that no later update overtook has resolved — the
-   * same round trip the background transition relies on.
-   */
-  useEffect(() => {
-    if (!doc || gate !== 'editing') return
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const unsubscribe = doc.onLocalUpdate(() => {
-      localUpdates.current += 1
-      setSaveState('saving')
-      if (timer) clearTimeout(timer)
-      timer = setTimeout(() => {
-        const seen = localUpdates.current
-        const settled = controls.current?.flush()
-        // No controls means no way to prove the WebView has handed everything
-        // over, and an unprovable `Saved` is worse than no indicator at all.
-        if (!settled) return
-        void settled.then(() => {
-          if (localUpdates.current === seen) setSaveState('saved')
-        })
-      }, SAVE_SETTLE_MS)
-    })
-    return () => {
-      if (timer) clearTimeout(timer)
-      unsubscribe()
-    }
-  }, [doc, gate])
 
   const ctx: NoteOpsContext | null = useMemo(
     () =>
@@ -386,18 +341,6 @@ export default function NoteScreen() {
         <NavBarInline
           title=""
           back={{ label: parentFolder, onPress: () => router.back() }}
-          center={
-            <View style={styles.saveSlot}>
-              <Icon
-                name={saveState === 'saved' ? 'check' : 'sync'}
-                size={18}
-                color={c.text.secondary}
-              />
-              <AppText variant="footnote" color={c.text.secondary}>
-                {saveState === 'saved' ? 'Saved' : 'Saving…'}
-              </AppText>
-            </View>
-          }
           actions={[{ icon: 'more', label: 'More', onPress: () => setManaging(true) }]}
         />
       </View>
@@ -497,7 +440,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   navBorder: { borderBottomWidth: 1 },
-  saveSlot: { flexDirection: 'row', alignItems: 'center', gap: space.s6 },
   banner: { paddingHorizontal: sizes.gutter, paddingVertical: space.s8 },
   body: { paddingTop: space.s16, paddingHorizontal: sizes.gutter, gap: BODY_GAP }
 })

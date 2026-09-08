@@ -14,7 +14,6 @@ import {
   wireForegroundSync
 } from '@/sync/background'
 import { shutdownSyncSocket, startSyncSocket } from '@/sync/socket-controller'
-import { getEditorSession } from '@/editor/session'
 import { getSyncEngine } from '@/sync/engine'
 import { runFirstSyncIfNeeded, type FirstSyncProgress } from '@/sync/first-sync'
 import { readSyncState, type VaultSyncState } from '@/sync/sync-state'
@@ -41,7 +40,6 @@ export default function VaultLayout() {
   const insets = useSafeAreaInsets()
   const [progress, setProgress] = useState<FirstSyncProgress | null>(null)
   const [syncing, setSyncing] = useState(false)
-  const [unsyncedCount, setUnsyncedCount] = useState(0)
   const [overlay, setOverlay] = useState<Overlay>({ kind: 'none' })
   const [attempt, setAttempt] = useState(0)
   // Once the user has asked for the app, a later phase event must not pull the
@@ -108,44 +106,6 @@ export default function VaultLayout() {
     setAttempt((n) => n + 1)
   }, [])
 
-  /**
-   * Outbox depth, polled rather than pushed.
-   *
-   * The queue is written from several places (editor persists, note ops, the
-   * drain worker), and a change notification from each of them would be four
-   * ways to forget one. A 2 s poll of a COUNT over a small table is cheap and
-   * cannot go stale.
-   */
-  useEffect(() => {
-    let cancelled = false
-    let timer: ReturnType<typeof setInterval> | null = null
-
-    // The poll re-tries its own setup instead of running once at mount. The
-    // vault id and the session are not necessarily ready on the first frame,
-    // and a setup that gave up there left the banner at zero for the whole
-    // session — including the one the offline matrix waits on to declare the
-    // outbox drained.
-    const tick = async (): Promise<void> => {
-      const vaultId = await loadCurrentVaultId()
-      if (!vaultId || cancelled) return
-      const session = await getEditorSession(vaultId)
-      const depth = await session.outbox.pendingCount()
-      if (!cancelled) setUnsyncedCount(depth)
-    }
-
-    void tick().catch((err: unknown) => {
-      log.debug('Outbox depth poll failed', {
-        error: err instanceof Error ? err.message : String(err)
-      })
-    })
-    timer = setInterval(() => void tick().catch(() => {}), 2_000)
-
-    return () => {
-      cancelled = true
-      if (timer) clearInterval(timer)
-    }
-  }, [])
-
   if (overlay.kind === 'first-sync' && progress) {
     return <FirstSyncScreen progress={progress} onDismiss={dismissOverlay} />
   }
@@ -172,7 +132,7 @@ export default function VaultLayout() {
         band's surface.
       */}
       <View style={{ paddingTop: insets.top, backgroundColor: c.canvas.background }}>
-        <SyncStatusBanner syncing={syncing} unsyncedCount={unsyncedCount} />
+        <SyncStatusBanner syncing={syncing} />
         <FirstSyncProgressBar progress={progress} />
       </View>
       <Stack screenOptions={{ headerShown: false }} />
