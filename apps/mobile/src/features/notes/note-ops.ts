@@ -331,15 +331,24 @@ export async function deleteNote(ctx: NoteOpsContext, noteId: string): Promise<v
 export async function duplicateNote(
   ctx: NoteOpsContext,
   noteId: string,
-  opts: { folderPath?: string | null; keepTitle?: boolean } = {}
+  opts: {
+    folderPath?: string | null
+    keepTitle?: boolean
+  } & ({ body: string; crdtState: Uint8Array } | { body?: string; crdtState?: never }) = {}
 ): Promise<string | null> {
   const stored = await readStoredNote(ctx.db, noteId)
   if (!stored) return null
+  if (opts.crdtState && opts.body === undefined) {
+    throw new Error('A live Markdown body is required with a CRDT snapshot')
+  }
 
-  const body = await ctx.db.getFirstAsync<{ markdown: string }>(
-    'SELECT markdown FROM note_bodies WHERE item_id = ?',
-    [noteId]
-  )
+  const storedBody =
+    opts.body === undefined
+      ? await ctx.db.getFirstAsync<{ markdown: string }>(
+          'SELECT markdown FROM note_bodies WHERE item_id = ?',
+          [noteId]
+        )
+      : null
   const source = stored.payload
   const title = source.title ?? 'Untitled'
   const now = Date.now()
@@ -349,7 +358,7 @@ export async function duplicateNote(
     title: opts.keepTitle ? title : duplicateTitle(title),
     folderPath:
       opts.folderPath === undefined ? (source.folderPath ?? null) : opts.folderPath || null,
-    content: body?.markdown ?? source.content ?? '',
+    content: opts.body ?? storedBody?.markdown ?? source.content ?? '',
     createdAt: new Date(now).toISOString(),
     modifiedAt: new Date(now).toISOString()
   }
@@ -372,11 +381,18 @@ export async function duplicateNote(
       `INSERT INTO note_bodies (item_id, path, markdown, fetched_at) VALUES (?, ?, ?, ?)`,
       [newId, derivePath(payload), payload.content ?? '', now]
     )
-    if ((payload.content ?? '').length > 0) {
+    if (!opts.crdtState && (payload.content ?? '').length > 0) {
       await ctx.db.runAsync(
         `INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
         [seedKey(newId), payload.content ?? '']
       )
+    }
+    if (opts.crdtState) {
+      await ctx.db.runAsync(
+        `INSERT INTO yjs_snapshots (doc_id, snapshot, last_seq, compacted_at) VALUES (?, ?, ?, ?)`,
+        [`local.${newId}`, opts.crdtState, 0, now]
+      )
+      await ctx.outbox.enqueueCrdtUpdate(newId, opts.crdtState)
     }
     await ctx.outbox.enqueueRecord('note', newId, 'create', serialized)
   })

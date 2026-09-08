@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, AppState, Pressable, StyleSheet, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Alert,
+  AppState,
+  Pressable,
+  Share,
+  StyleSheet,
+  View
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
-import type { BridgeCfg } from '@memry/contracts/webview-bridge'
+import type { BridgeCfg, EditorAttachmentBlockType } from '@memry/contracts/webview-bridge'
 import { AppText } from '@/components/ui/app-text'
 import { Icon } from '@/components/ui/icon'
 import { NavBarInline } from '@/components/ui/nav-bar'
+import { PromptDialog } from '@/components/ui/prompt-dialog'
 import { EditorView, type EditorControls } from '@/editor/editor-view'
-import { formatG3Report } from '@/editor/__rig__/latency'
 import { beginTrace, mark } from '@/editor/__rig__/open-trace'
 import type { OpenDoc } from '@/editor/doc-manager'
 import { getEditorSession, type EditorSession } from '@/editor/session'
@@ -16,13 +24,21 @@ import { insertAttachment, pickDocument, pickImage } from '@/features/attachment
 import { resolveAsset } from '@/features/attachments/resolve'
 import { AddPropertySheet } from '@/features/notes/add-property-sheet'
 import { AddTagSheet } from '@/features/notes/add-tag-sheet'
+import { readBookmarkKeys, toggleBookmark } from '@/features/notes/bookmarks'
+import { NoteFooter } from '@/features/notes/chrome/note-footer'
+import { NoteMoreSheet } from '@/features/notes/chrome/note-more-sheet'
+import { QuickOpenModal } from '@/features/notes/chrome/quick-open-modal'
 import { editGate } from '@/features/notes/edit-gate'
-import { NoteManageSheet } from '@/features/notes/manage'
+import { MoveSheet } from '@/features/notes/move-sheet'
 import {
   addTag,
   clearPendingSeed,
+  createNote,
+  deleteNote,
+  duplicateNote,
   materializedBody,
   readNoteRecord,
+  renameNote,
   resolveSeedMarkdown,
   setNoteProperty,
   setNoteTags,
@@ -32,15 +48,18 @@ import {
   type NotePayload,
   type NoteRecord
 } from '@/features/notes/note-ops'
+import { readNotesSnapshot, type NotesSnapshot } from '@/features/notes/notes-repo'
 import { NoteProperties } from '@/features/notes/properties'
 import { propertyTypes } from '@/features/notes/property-types'
 import { NoteTags } from '@/features/notes/tags'
+import { useWorkspaceTabs } from '@/features/workspace-tabs/provider'
+import { WorkspaceTabsModal } from '@/features/workspace-tabs/workspace-tabs-modal'
 import { extractErrorMessage } from '@/lib/errors'
 import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
 import { ensureNoteBody } from '@/sync/body-fetch'
 import { getSyncEngine } from '@/sync/engine'
-import { subscribeReadOnly } from '@/sync/read-only-mode'
+import { getReadOnlyState, subscribeReadOnly } from '@/sync/read-only-mode'
 import { sizes, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
@@ -58,6 +77,19 @@ const BODY_GAP = 14
  */
 const SAVE_SETTLE_MS = 800
 
+function showFailure(action: string, error: unknown): void {
+  const message = extractErrorMessage(error, 'That could not be completed.')
+  log.error(`${action} failed`, { error: message })
+  Alert.alert(`${action} failed`, message)
+}
+
+type NoteOverlay =
+  | { kind: 'none' }
+  | { kind: 'quick-open' }
+  | { kind: 'more' }
+  | { kind: 'rename' }
+  | { kind: 'move'; snapshot: NotesSnapshot }
+
 /**
  * The note editor (boards 28, 32 and 33). Journals open through the same
  * screen.
@@ -69,6 +101,13 @@ const SAVE_SETTLE_MS = 800
 export default function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const c = useColors()
+  const {
+    tabs: openTabs,
+    register: registerTab,
+    open: openTab,
+    close: closeTab,
+    setVisible: setTabsVisible
+  } = useWorkspaceTabs()
 
   const [session, setSession] = useState<EditorSession | null>(null)
   const [doc, setDoc] = useState<OpenDoc | null>(null)
@@ -78,21 +117,54 @@ export default function NoteScreen() {
   const [seedMarkdown, setSeedMarkdown] = useState<string | undefined>(undefined)
   const [vaultReadOnly, setVaultReadOnly] = useState(false)
   const [saveState, setSaveState] = useState<'saved' | 'saving'>('saved')
-  const [managing, setManaging] = useState(false)
+  const [overlay, setOverlay] = useState<NoteOverlay>({ kind: 'none' })
+  const [keyboardVisible, setKeyboardVisible] = useState<boolean | null>(null)
+  const [editorPanelOpen, setEditorPanelOpen] = useState(false)
+  const [bookmarked, setBookmarked] = useState(false)
   const [tagsEditing, setTagsEditing] = useState(false)
   const [addingTag, setAddingTag] = useState(false)
   const [addingProperty, setAddingProperty] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const controls = useRef<EditorControls | null>(null)
   const localUpdates = useRef(0)
+  const currentIdRef = useRef(id)
+  const currentDocRef = useRef(doc)
+
+  useEffect(() => {
+    currentIdRef.current = id
+    currentDocRef.current = doc
+  }, [doc, id])
 
   useEffect(() => subscribeReadOnly((state) => setVaultReadOnly(state.readOnly)), [])
 
   const gate = editGate({ vaultReadOnly })
+  const writable = gate === 'editing'
+
+  const allowMutation = useCallback((action: string): boolean => {
+    if (!getReadOnlyState().readOnly) return true
+    Alert.alert('Read-only right now', `${action} is disabled until writing is available again.`)
+    return false
+  }, [])
 
   const applyRecord = useCallback((record: NoteRecord | null) => {
     setPayload(record?.payload ?? null)
   }, [])
+
+  useEffect(() => {
+    if (!id || !payload) return
+    registerTab({ id, title: payload.title ?? 'Untitled' })
+  }, [id, payload, registerTab])
+
+  useEffect(() => {
+    if (!id || !session) return
+    let cancelled = false
+    void readBookmarkKeys(session.db).then((keys) => {
+      if (!cancelled) setBookmarked(keys.has(`note:${id}`))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [id, session])
 
   // The seed marker is cleared only once the seed has actually LANDED — the
   // guest parses the markdown into blocks, which arrives here as an ordinary
@@ -288,12 +360,15 @@ export default function NoteScreen() {
       if (!session) return
       void (async () => {
         const noteId = await resolveWikiTarget(session.db, target)
-        if (noteId) router.push(`/(vault)/(tabs)/notes/${noteId}`)
+        if (noteId) {
+          const record = await readNoteRecord(session.db, noteId)
+          openTab({ id: noteId, title: record?.payload.title ?? 'Untitled' })
+        }
         // A link with no target is a real state (the note has not been created
         // yet), not an error — the desktop shows the same nothing-happens.
       })()
     },
-    [session]
+    [openTab, session]
   )
 
   const onWikiQuery = useCallback(
@@ -310,19 +385,177 @@ export default function NoteScreen() {
   )
 
   const onInsert = useCallback(
-    async (kind: 'image' | 'file') => {
-      if (!ctx || !session || !id) return
-      const picked = kind === 'image' ? await pickImage() : await pickDocument()
+    async (request: { blockType: EditorAttachmentBlockType; referenceBlockId?: string }) => {
+      const sourceId = id
+      const sourceDoc = doc
+      const sourceControls = controls.current
+      const sourceCtx = ctx
+      const sourceSession = session
+      if (
+        !sourceCtx ||
+        !sourceSession ||
+        !sourceId ||
+        !sourceDoc ||
+        !sourceControls ||
+        !allowMutation('Adding attachments')
+      )
+        return
+      const picked = request.blockType === 'image' ? await pickImage() : await pickDocument()
       if (!picked) return
-      const result = await insertAttachment(ctx, session.attachments, id, picked)
+      if (
+        currentIdRef.current !== sourceId ||
+        currentDocRef.current !== sourceDoc ||
+        controls.current !== sourceControls ||
+        !allowMutation('Adding attachments')
+      )
+        return
+      const result = await insertAttachment(sourceCtx, sourceSession.attachments, sourceId, picked)
       if (!result) return
-      applyRecord(await readNoteRecord(ctx.db, id))
+      if (
+        currentIdRef.current !== sourceId ||
+        currentDocRef.current !== sourceDoc ||
+        controls.current !== sourceControls
+      )
+        return
+      const nextRecord = await readNoteRecord(sourceCtx.db, sourceId)
+      if (
+        currentIdRef.current !== sourceId ||
+        currentDocRef.current !== sourceDoc ||
+        controls.current !== sourceControls
+      )
+        return
+      applyRecord(nextRecord)
       // The editor owns the block structure; the host only names the reference
       // and its type, so a PDF becomes a file block rather than a broken image.
-      controls.current?.insertAttachment(result.ref, result.filename, result.mimeType)
+      sourceControls.insertAttachment(
+        result.ref,
+        result.filename,
+        result.mimeType,
+        request.blockType,
+        request.referenceBlockId
+      )
     },
-    [applyRecord, ctx, id, session]
+    [allowMutation, applyRecord, ctx, doc, id, session]
   )
+
+  const refreshRecord = useCallback(() => {
+    if (session && id) void readNoteRecord(session.db, id).then(applyRecord)
+  }, [applyRecord, id, session])
+
+  const openQuickNote = useCallback(
+    (note: { id: string; title: string }) => {
+      setOverlay({ kind: 'none' })
+      openTab(note)
+    },
+    [openTab]
+  )
+
+  const createQuickNote = useCallback(
+    async (title: string) => {
+      if (!ctx || !allowMutation('Creating notes')) return
+      try {
+        const noteId = await createNote(ctx, { title })
+        setOverlay({ kind: 'none' })
+        openTab({ id: noteId, title: title.trim() || 'Untitled' })
+      } catch (error) {
+        showFailure('Create note', error)
+      }
+    },
+    [allowMutation, ctx, openTab]
+  )
+
+  const openMove = useCallback(async () => {
+    if (!session || !allowMutation('Moving notes')) return
+    setOverlay({ kind: 'none' })
+    try {
+      const snapshot = await readNotesSnapshot(session.db)
+      setOverlay({ kind: 'move', snapshot })
+    } catch (error) {
+      showFailure('Move note', error)
+    }
+  }, [allowMutation, session])
+
+  const runBookmark = useCallback(async () => {
+    if (!ctx || !id || !allowMutation('Changing bookmarks')) return
+    setOverlay({ kind: 'none' })
+    try {
+      await toggleBookmark(ctx, 'note', id, bookmarked)
+      setBookmarked(!bookmarked)
+    } catch (error) {
+      showFailure('Bookmark', error)
+    }
+  }, [allowMutation, bookmarked, ctx, id])
+
+  const runDuplicate = useCallback(async () => {
+    if (!ctx || !id || !allowMutation('Duplicating notes')) return
+    setOverlay({ kind: 'none' })
+    try {
+      const editor = controls.current
+      if (!editor || !doc) throw new Error('The editor is not ready yet')
+      await editor.flush()
+      const body = await editor.exportMarkdown()
+      if (!allowMutation('Duplicating notes')) return
+      const newId = await duplicateNote(ctx, id, { body, crdtState: doc.encodeState() })
+      if (!newId) return
+      const record = await readNoteRecord(ctx.db, newId)
+      openTab({ id: newId, title: record?.payload.title ?? 'Untitled copy' })
+    } catch (error) {
+      showFailure('Duplicate note', error)
+    }
+  }, [allowMutation, ctx, doc, id, openTab])
+
+  const runShare = useCallback(async () => {
+    if (!ctx || !id) return
+    setOverlay({ kind: 'none' })
+    try {
+      const editor = controls.current
+      if (!editor) throw new Error('The editor is not ready yet')
+      const body = await editor.exportMarkdown()
+      const title = payload?.title ?? 'Untitled'
+      await Share.share({ title, message: `# ${title}\n\n${body}` })
+    } catch (error) {
+      showFailure('Share', error)
+    }
+  }, [ctx, id, payload])
+
+  const confirmDelete = useCallback(() => {
+    if (!ctx || !id || !allowMutation('Deleting notes')) return
+    const title = payload?.title ?? 'Untitled'
+    setOverlay({ kind: 'none' })
+    Alert.alert(
+      `Delete “${title}”?`,
+      'The note is removed here and on every synced device. Links pointing at it will break.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            if (!allowMutation('Deleting notes')) return
+            void (async () => {
+              // Drain the guest before writing the tombstone. A late body
+              // update newer than the delete can otherwise resurrect it.
+              const editor = controls.current
+              const deletingDoc = doc
+              if (!editor || !deletingDoc) throw new Error('The editor is not ready yet')
+              await editor.flush()
+              if (!allowMutation('Deleting notes')) return
+              deletingDoc.setWritable(false)
+              try {
+                await deleteNote(ctx, id)
+              } catch (error) {
+                deletingDoc.setWritable(true)
+                throw error
+              }
+              const tab = openTabs.find((candidate) => candidate.destination.noteId === id)
+              if (tab) closeTab(tab.id)
+              else router.replace('/notes')
+            })().catch((error: unknown) => showFailure('Delete note', error))
+          }
+        }
+      ]
+    )
+  }, [allowMutation, closeTab, ctx, doc, id, openTabs, payload])
 
   const tags = payload?.tags ?? []
   const properties = payload?.properties ?? {}
@@ -357,7 +590,7 @@ export default function NoteScreen() {
     )
   }
 
-  if (!doc || !id) {
+  if (!doc || !id || !session) {
     return (
       <SafeAreaView
         style={[styles.safe, { backgroundColor: c.canvas.background }]}
@@ -398,7 +631,7 @@ export default function NoteScreen() {
               </AppText>
             </View>
           }
-          actions={[{ icon: 'more', label: 'More', onPress: () => setManaging(true) }]}
+          actions={[{ icon: 'more', label: 'More', onPress: () => setOverlay({ kind: 'more' }) }]}
         />
       </View>
 
@@ -448,11 +681,24 @@ export default function NoteScreen() {
         onNavigate={onNavigate}
         onWikiQuery={onWikiQuery}
         onAssetRequest={onAssetRequest}
+        onInsertRequest={(request) => void onInsert(request)}
+        onKeyboardVisibilityChange={setKeyboardVisible}
+        onPanelVisibilityChange={setEditorPanelOpen}
         seedMarkdown={seedMarkdown}
         onReady={(next) => {
           controls.current = next
         }}
       />
+
+      {keyboardVisible === false && !editorPanelOpen ? (
+        <NoteFooter
+          tabCount={Math.max(1, openTabs.length)}
+          onFind={() => controls.current?.openFind()}
+          onQuickOpen={() => setOverlay({ kind: 'quick-open' })}
+          onTabs={() => setTabsVisible(true)}
+          onMore={() => setOverlay({ kind: 'more' })}
+        />
+      ) : null}
 
       <AddTagSheet
         visible={addingTag}
@@ -469,26 +715,66 @@ export default function NoteScreen() {
         onCreate={createProperty}
       />
 
-      <NoteManageSheet
-        visible={managing}
-        ctx={ctx}
-        noteId={id}
-        title={title}
-        folderPath={payload?.folderPath ?? ''}
-        onClose={() => setManaging(false)}
-        editor={{
-          undo: () => controls.current?.undo(),
-          redo: () => controls.current?.redo(),
-          insert: (kind) => void onInsert(kind),
-          measure: () =>
-            controls.current ? formatG3Report(controls.current.measure()) : 'editor not ready',
-          resetMeasurement: () => controls.current?.resetMeasurement()
-        }}
-        onChanged={() => {
-          if (session) void readNoteRecord(session.db, id).then(applyRecord)
-        }}
-        onDeleted={() => router.back()}
+      <QuickOpenModal
+        visible={overlay.kind === 'quick-open'}
+        db={session.db}
+        currentNote={{ title, ...(payload?.content ? { excerpt: payload.content } : {}) }}
+        canCreate={writable}
+        onClose={() => setOverlay({ kind: 'none' })}
+        onOpen={openQuickNote}
+        onCreate={(nextTitle) => void createQuickNote(nextTitle)}
       />
+
+      <WorkspaceTabsModal
+        onNewTab={() => {
+          setOverlay({ kind: 'quick-open' })
+        }}
+      />
+
+      <NoteMoreSheet
+        visible={overlay.kind === 'more'}
+        title={title}
+        bookmarked={bookmarked}
+        readOnly={!writable}
+        onClose={() => setOverlay({ kind: 'none' })}
+        onToggleBookmark={() => void runBookmark()}
+        onRename={() => setOverlay({ kind: 'rename' })}
+        onMove={() => void openMove()}
+        onDuplicate={() => void runDuplicate()}
+        onShare={() => void runShare()}
+        onDelete={confirmDelete}
+      />
+
+      <PromptDialog
+        visible={overlay.kind === 'rename'}
+        title="Rename note"
+        initialValue={title}
+        confirmLabel="Rename"
+        onCancel={() => setOverlay({ kind: 'none' })}
+        onConfirm={(nextTitle) => {
+          setOverlay({ kind: 'none' })
+          if (!ctx || !allowMutation('Renaming notes')) return
+          void renameNote(ctx, id, nextTitle)
+            .then(refreshRecord)
+            .catch((error: unknown) => {
+              showFailure('Rename note', error)
+            })
+        }}
+      />
+
+      {overlay.kind === 'move' ? (
+        <MoveSheet
+          visible
+          ctx={writable ? ctx : null}
+          target={{ kind: 'note', id, folderPath: payload?.folderPath ?? '' }}
+          snapshot={overlay.snapshot}
+          onClose={() => setOverlay({ kind: 'none' })}
+          onMoved={() => {
+            setOverlay({ kind: 'none' })
+            refreshRecord()
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   )
 }

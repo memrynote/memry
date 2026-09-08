@@ -133,9 +133,23 @@ export const HostAssetSchema = z.object({
  */
 const AddressedDocId = z.string().min(1).optional()
 
+export const EDITOR_ATTACHMENT_BLOCK_TYPES = ['image', 'file'] as const
+export type EditorAttachmentBlockType = (typeof EDITOR_ATTACHMENT_BLOCK_TYPES)[number]
+
 export const HostInsertAttachmentSchema = z.object({
   type: z.literal('insert-attachment'),
   docId: AddressedDocId,
+  /**
+   * The block the toolbar asked to create. Optional for v1 compatibility;
+   * older callers still get the historical image-by-MIME/file fallback.
+   */
+  blockType: z.enum(EDITOR_ATTACHMENT_BLOCK_TYPES).optional(),
+  /**
+   * Cursor block captured before the native picker covered the editor. The
+   * selection can blur while Photos/Documents is open, so insertion must not
+   * depend on whichever cursor WebKit reports after the picker returns.
+   */
+  referenceBlockId: z.string().min(1).optional(),
   ref: z.string().min(1),
   name: z.string().default(''),
   /**
@@ -148,7 +162,14 @@ export const HostInsertAttachmentSchema = z.object({
   width: z.number().int().min(0).default(0)
 })
 
-export const BRIDGE_EXEC_COMMANDS = ['undo', 'redo', 'focus', 'blur', 'flush'] as const
+/** Request a snapshot of the mounted document through its schema serializer. */
+export const HostExportMarkdownSchema = z.object({
+  type: z.literal('export-markdown'),
+  reqId: z.string().min(1),
+  docId: z.string().min(1)
+})
+
+export const BRIDGE_EXEC_COMMANDS = ['undo', 'redo', 'focus', 'blur', 'flush', 'open-find'] as const
 export type BridgeExecCommand = (typeof BRIDGE_EXEC_COMMANDS)[number]
 
 export const HostExecSchema = z.object({
@@ -189,6 +210,7 @@ export const HostMsgSchema = z.discriminatedUnion('type', [
   HostAssetSchema,
   HostExecSchema,
   HostInsertAttachmentSchema,
+  HostExportMarkdownSchema,
   HostProbeSchema
 ])
 
@@ -222,6 +244,43 @@ export const GuestAssetReqSchema = z.object({
   reqId: z.string().min(1),
   /** Vault-relative reference exactly as written in the doc. */
   ref: z.string()
+})
+
+export const GuestInsertRequestSchema = z.object({
+  type: z.literal('insert-request'),
+  docId: z.string().min(1),
+  blockType: z.enum(EDITOR_ATTACHMENT_BLOCK_TYPES),
+  referenceBlockId: z.string().min(1)
+})
+
+/**
+ * Whether the software keyboard is covering the mounted document.
+ *
+ * The guest is authoritative because WKWebView's `visualViewport` is the only
+ * layer that sees the same viewport the fixed editor toolbar is positioned
+ * against. Addressing the state prevents a late resize from a departing note
+ * hiding or showing the native footer for the note that replaced it.
+ */
+export const GuestKeyboardVisibilitySchema = z.object({
+  type: z.literal('keyboard-visibility'),
+  docId: z.string().min(1),
+  visible: z.boolean()
+})
+
+export const GuestEditorPanelVisibilitySchema = z.object({
+  type: z.literal('editor-panel-visibility'),
+  docId: z.string().min(1),
+  open: z.boolean()
+})
+
+export const GuestMarkdownExportSchema = z.object({
+  type: z.literal('markdown-export'),
+  reqId: z.string().min(1),
+  docId: z.string().min(1),
+  result: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('ok'), markdown: z.string() }),
+    z.object({ status: z.literal('error'), detail: z.string() })
+  ])
 })
 
 export const GuestNavSchema = z.object({
@@ -347,6 +406,10 @@ export const GuestMsgSchema = z.discriminatedUnion('type', [
   GuestYUpdateSchema,
   GuestWikiQuerySchema,
   GuestAssetReqSchema,
+  GuestInsertRequestSchema,
+  GuestKeyboardVisibilitySchema,
+  GuestEditorPanelVisibilitySchema,
+  GuestMarkdownExportSchema,
   GuestNavSchema,
   GuestMetricsSchema,
   GuestPaintedSchema,

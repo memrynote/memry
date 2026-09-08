@@ -79,6 +79,12 @@ different from the desktop one:
 - **Every WebView-originated update is durable before it is acked** — committed
   to SQLite in the same transaction as its outbox row.
 
+The mobile bridge also reports keyboard and editor-panel visibility so the native
+note shell can hide its footer while the WebView toolbar is active. Attachment
+requests carry both the requested block type and the reference block id captured
+before the native picker opens. The host can request a live Markdown export for
+sharing or note actions without treating the WebView replica as durable storage.
+
 ### Drift is caught on the ASSET, not the types
 
 Both halves import the contract module directly, so the types cannot drift.

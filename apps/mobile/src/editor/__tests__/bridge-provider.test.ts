@@ -55,6 +55,33 @@ describe('EditorBridgeProvider', () => {
     expect(transport.sent).toHaveLength(1)
   })
 
+  it('sends find as an addressed editor command', () => {
+    const transport = collector()
+    const provider = new EditorBridgeProvider('rn-test')
+    provider.attach(transport)
+
+    provider.send({ type: 'exec', cmd: 'open-find', docId: 'note-3' })
+    provider.flush()
+
+    expect(transport.sent).toHaveLength(1)
+    expect(transport.sent[0]).toContain('"cmd":"open-find"')
+    expect(transport.sent[0]).toContain('"docId":"note-3"')
+  })
+
+  it('sends an addressed markdown export request', () => {
+    const transport = collector()
+    const provider = new EditorBridgeProvider('rn-test')
+    provider.attach(transport)
+
+    provider.send({ type: 'export-markdown', reqId: 'markdown:1', docId: 'note-3' })
+    provider.flush()
+
+    expect(transport.sent).toHaveLength(1)
+    expect(transport.sent[0]).toContain('"type":"export-markdown"')
+    expect(transport.sent[0]).toContain('"reqId":"markdown:1"')
+    expect(transport.sent[0]).toContain('"docId":"note-3"')
+  })
+
   it('keeps the send sequence monotonic across a resync', () => {
     const transport = collector()
     const resyncs: string[] = []
@@ -96,6 +123,75 @@ describe('EditorBridgeProvider', () => {
     // overlay up forever and `onReady` never re-fires.
     expect(seen.map((m) => m.type)).toEqual(['nav', 'ready'])
     expect(provider.getCounters().seqGaps).toBe(1)
+  })
+
+  it('delivers an addressed native attachment-picker request', () => {
+    const provider = new EditorBridgeProvider('rn-test')
+    provider.attach(collector())
+    const seen: GuestMsg[] = []
+    provider.onGuestMsg((msg) => seen.push(msg))
+
+    provider.receive(
+      guestEnvelope(1, [
+        {
+          type: 'insert-request',
+          docId: 'note-1',
+          blockType: 'image',
+          referenceBlockId: 'block-7'
+        }
+      ])
+    )
+
+    expect(seen).toEqual([
+      {
+        type: 'insert-request',
+        docId: 'note-1',
+        blockType: 'image',
+        referenceBlockId: 'block-7'
+      }
+    ])
+  })
+
+  it('delivers addressed keyboard visibility without losing the document', () => {
+    const provider = new EditorBridgeProvider('rn-test')
+    provider.attach(collector())
+    const seen: GuestMsg[] = []
+    provider.onGuestMsg((msg) => seen.push(msg))
+
+    provider.receive(
+      guestEnvelope(1, [{ type: 'keyboard-visibility', docId: 'note-2', visible: true }])
+    )
+
+    expect(seen).toEqual([{ type: 'keyboard-visibility', docId: 'note-2', visible: true }])
+  })
+
+  it('delivers addressed panel visibility and markdown export replies', () => {
+    const provider = new EditorBridgeProvider('rn-test')
+    provider.attach(collector())
+    const seen: GuestMsg[] = []
+    provider.onGuestMsg((msg) => seen.push(msg))
+
+    provider.receive(
+      guestEnvelope(1, [
+        { type: 'editor-panel-visibility', docId: 'note-2', open: true },
+        {
+          type: 'markdown-export',
+          reqId: 'markdown:2',
+          docId: 'note-2',
+          result: { status: 'ok', markdown: '# Live title' }
+        }
+      ])
+    )
+
+    expect(seen).toEqual([
+      { type: 'editor-panel-visibility', docId: 'note-2', open: true },
+      {
+        type: 'markdown-export',
+        reqId: 'markdown:2',
+        docId: 'note-2',
+        result: { status: 'ok', markdown: '# Live title' }
+      }
+    ])
   })
 
   it('batches on the flush interval rather than per message', () => {
