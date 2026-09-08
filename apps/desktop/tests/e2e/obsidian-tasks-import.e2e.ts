@@ -35,13 +35,8 @@ import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { getNoteHandleByTitle, openNoteByTitle } from './utils/note-sync-helpers'
 import { closeTaskDrawer, openTaskDrawer, taskRow } from './utils/task-drawer-helpers'
-import {
-  navigateTo,
-  showAllTasksScope,
-  waitForAppReady,
-  waitForVaultReady,
-  SELECTORS
-} from './utils/electron-helpers'
+import { ready } from './utils/desktop-test-helpers'
+import { navigateTo, showAllTasksScope, SELECTORS } from './utils/electron-helpers'
 
 /** Two spaces before each `[`, which is what the Dataview format actually writes. */
 const DATAVIEW_LINE = '- [ ] Pay rent  [due:: 2026-09-15]  [priority:: high]'
@@ -194,8 +189,7 @@ test.describe('Obsidian Tasks import', () => {
     page,
     testVaultPath
   }) => {
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
 
     // #given three Obsidian Tasks lines written straight to disk
     const title = `Obsidian Tasks ${Date.now()}`
@@ -234,8 +228,7 @@ test.describe('Obsidian Tasks import', () => {
     // #when the app is reloaded and the same note opened again
     await page.reload()
     await page.waitForLoadState('domcontentloaded')
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
     await openInEditor(page, title)
     await page.waitForTimeout(3_000)
 
@@ -250,8 +243,7 @@ test.describe('Obsidian Tasks import', () => {
     page,
     testVaultPath
   }) => {
-    await waitForAppReady(page)
-    await waitForVaultReady(page)
+    await ready(page)
 
     // #given the same three lines, imported by opening the note
     const title = `Obsidian Tasks UI ${Date.now()}`

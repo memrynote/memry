@@ -1,7 +1,13 @@
 import type { ElectronApplication, Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { MOD, ready, uniqueLabel } from './utils/desktop-test-helpers'
-import { createNote, navigateTo, SELECTORS, showAllTasksScope } from './utils/electron-helpers'
+import {
+  createNote,
+  dismissFirstRunOnboarding,
+  navigateTo,
+  SELECTORS,
+  showAllTasksScope
+} from './utils/electron-helpers'
 
 async function tabTitles(page: Page): Promise<string[]> {
   return page
@@ -101,6 +107,7 @@ test.describe('Session, context menu, settings, shortcuts, and state E2E', () =>
 
     const secondPage = await createSecondaryWindow(electronApp)
     await expect(secondPage.locator(SELECTORS.tabBar).first()).toBeVisible()
+    await dismissFirstRunOnboarding(secondPage)
     await secondPage.getByRole('button', { name: 'Inbox', exact: true }).click()
     await expect(secondPage.locator(SELECTORS.activeTab).first()).toContainText('Inbox')
   })
