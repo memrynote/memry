@@ -47,6 +47,25 @@ describe('rewriteNoteRefsForMove', () => {
     )
   })
 
+  it('keeps a mobile root-relative attachment ref when its note moves', () => {
+    const body = '![photo](attachments/n1/photo.png)\n'
+
+    expect(
+      rewriteNoteRefsForMove(body, 'movies/Foo.md', 'notes/Foo.md', {
+        sourceNoteId: 'n1',
+        preserveRootRelativeAttachments: true
+      })
+    ).toBeNull()
+  })
+
+  it('re-expresses a mobile root-relative ref when moving a block to another note', () => {
+    const body = '![photo](attachments/n1/photo.png)\n'
+
+    expect(rewriteNoteRefsForMove(body, 'a/Foo.md', 'b/deep/Bar.md', { sourceNoteId: 'n1' })).toBe(
+      '![photo](../../attachments/n1/photo.png)\n'
+    )
+  })
+
   it('re-points a ref at another vault file, not just at an attachment', () => {
     const body = '![photo](images/photo.png)\n'
 
