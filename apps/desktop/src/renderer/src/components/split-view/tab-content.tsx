@@ -9,10 +9,12 @@
  * 3. useMemo with tab.id key ensures content is cached per tab instance
  */
 
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import type { Tab } from '@/contexts/tabs/types'
 import { TabIdentityProvider } from '@/contexts/tabs/tab-identity'
+import { useTabActions } from '@/contexts/tabs'
 import { useTasksOptional } from '@/contexts/tasks'
+import { TabErrorBoundary } from '@/components/tabs/tab-error-boundary'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
@@ -90,7 +92,12 @@ interface TabContentProps {
  */
 export const TabContent = ({ tab, groupId, className }: TabContentProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('common')
+  const { closeTab } = useTabActions()
   const tasksContext = useTasksOptional()
+
+  const handleCloseTab = useCallback((): void => {
+    closeTab(tab.id, groupId)
+  }, [closeTab, groupId, tab.id])
 
   // FolderViewPage's `useFolderView` keys its live-refresh subscriptions off
   // scope identity — memoized here (independent of the broader `content`
@@ -182,7 +189,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         return <LazyTemplateEditorPage templateId={tab.entityId} tabId={tab.id} />
 
       case 'graph':
-        return <LazyGraphPage />
+        return <LazyGraphPage onClose={handleCloseTab} />
 
       case 'tags':
         return <LazyTagsHubPage />
@@ -242,7 +249,8 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
     tab.viewState?.query,
     tasksContext,
     folderScope,
-    tagScope
+    tagScope,
+    handleCloseTab
   ])
 
   return (
@@ -254,7 +262,12 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       data-tab-content={tab.id}
     >
       <TabIdentityProvider tabId={tab.id} groupId={groupId} entityId={tab.entityId}>
-        <React.Suspense fallback={null}>{content}</React.Suspense>
+        <TabErrorBoundary
+          key={`${tab.id}:${tab.type}:${tab.entityId ?? ''}`}
+          onCloseTab={handleCloseTab}
+        >
+          <React.Suspense fallback={null}>{content}</React.Suspense>
+        </TabErrorBoundary>
       </TabIdentityProvider>
     </div>
   )

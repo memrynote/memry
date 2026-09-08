@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button'
 import { useLocalGraphData } from '@/hooks/use-graph-data'
 import { buildGraphologyGraph } from '@/lib/graph-builder'
 import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
+import { hasWebGLSupport } from '@/lib/webgl-support'
 import type { GraphPhysicsOptions } from '@/lib/graph-physics'
 import { useT } from '@memry/i18n/renderer'
 import { GraphEvents } from './graph-events'
 import { GraphTooltip } from './graph-tooltip'
+import { GraphRenderUnavailable } from './graph-render-unavailable'
 import { LivePhysics, type PhysicsHandle } from './physics-layout'
 
 const CENTER_HIGHLIGHT_COLOR = '#f59e0b'
@@ -47,6 +49,7 @@ export function LocalGraphPanel({
 }: LocalGraphPanelProps): React.JSX.Element {
   const { t } = useT('graph')
   const { resolvedTheme } = useTheme()
+  const [webglAvailable] = useState(() => hasWebGLSupport())
   const { data, isLoading } = useLocalGraphData(noteId)
 
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
@@ -172,6 +175,15 @@ export function LocalGraphPanel({
         <div className="flex h-full items-center justify-center">
           <span className="text-xs text-muted-foreground">{t('local-panel.empty')}</span>
         </div>
+        <PanelHeader onClose={onClose} />
+      </div>
+    )
+  }
+
+  if (!webglAvailable) {
+    return (
+      <div className="relative h-[250px] rounded-md border border-border bg-muted/30 overflow-hidden">
+        <GraphRenderUnavailable className="p-4" />
         <PanelHeader onClose={onClose} />
       </div>
     )

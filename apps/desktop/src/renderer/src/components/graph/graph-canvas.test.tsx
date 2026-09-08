@@ -234,6 +234,12 @@ describe('GraphCanvas', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () =>
+        ({
+          getExtension: vi.fn()
+        }) as unknown as RenderingContext
+    )
     graphCanvasMocks.sigmaContainerProps = null
     graphCanvasMocks.sigma.getGraph = () => graphCanvasMocks.sigmaContainerProps?.graph
     graphCanvasMocks.createNote.mockResolvedValue({
@@ -247,6 +253,23 @@ describe('GraphCanvas', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('renders a safe fallback when WebGL is unavailable', () => {
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(null)
+
+    render(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={settings}
+        onFocusNode={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText("Graph isn't available on this device")).toBeInTheDocument()
+    expect(screen.queryByTestId('sigma')).not.toBeInTheDocument()
   })
 
   it('builds sigma settings, applies reducers, and handles hover/context menu actions', async () => {

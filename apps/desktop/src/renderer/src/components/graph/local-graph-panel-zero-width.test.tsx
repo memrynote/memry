@@ -116,6 +116,12 @@ describe('LocalGraphPanel on a container with no width', () => {
     mocks.refreshCount = 0
     frames = new Map()
     nextFrameHandle = 0
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () =>
+        ({
+          getExtension: vi.fn()
+        }) as unknown as RenderingContext
+    )
     offsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth')
     Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
       configurable: true,

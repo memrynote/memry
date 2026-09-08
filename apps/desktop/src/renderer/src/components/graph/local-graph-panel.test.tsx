@@ -135,6 +135,12 @@ describe('LocalGraphPanel', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () =>
+        ({
+          getExtension: vi.fn()
+        }) as unknown as RenderingContext
+    )
     mocks.localGraph = { data: graphData, isLoading: false }
     mocks.sigmaContainerProps = null
     document.documentElement.style.setProperty('--graph-dimmed-node', '#dddddd')
@@ -215,6 +221,17 @@ describe('LocalGraphPanel', () => {
       vi.runOnlyPendingTimers()
     })
     unmount()
+  })
+
+  it('renders a safe fallback with the local panel close control when WebGL is unavailable', () => {
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(null)
+    const onClose = vi.fn()
+
+    render(<LocalGraphPanel noteId="note-a" onClose={onClose} />)
+
+    expect(screen.getByText('page.render-failed')).toBeInTheDocument()
+    fireEvent.click(screen.getByTitle('local-panel.close'))
+    expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('runs a live simulation and stops it on unmount', () => {

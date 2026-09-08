@@ -18,6 +18,8 @@ interface TabErrorBoundaryProps {
   children: ReactNode
   /** Fallback callback when error occurs */
   onError?: (error: Error, errorInfo: ErrorInfo) => void
+  /** Remove the tab that cannot render, so a persisted failure cannot strand the app. */
+  onCloseTab?: () => void
 }
 
 interface TabErrorBoundaryImplProps extends TabErrorBoundaryProps {
@@ -30,6 +32,7 @@ interface TabErrorBoundaryLabels {
   errorOccurred: string
   tryAgain: string
   sendReport: string
+  closeTab: string
 }
 
 interface TabErrorBoundaryState {
@@ -82,11 +85,20 @@ class TabErrorBoundaryImpl extends Component<
                 {this.state.error.message}
               </code>
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {this.props.onCloseTab && (
+                <button
+                  type="button"
+                  onClick={this.props.onCloseTab}
+                  className="flex items-center gap-2 px-4 py-2 bg-tint text-tint-foreground rounded-md hover:bg-tint-hover transition-colors"
+                >
+                  {labels.closeTab}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={this.handleRetry}
-                className="flex items-center gap-2 px-4 py-2 bg-tint text-tint-foreground rounded-md hover:bg-tint-hover transition-colors"
+                className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
                 {labels.tryAgain}
@@ -123,7 +135,8 @@ export function TabErrorBoundary(props: TabErrorBoundaryProps): ReactNode {
           'phaseF.componentsTabsTabErrorBoundary.anErrorOccurredWhileRenderingThisTabContent'
         ),
         tryAgain: t('phaseF.componentsTabsTabErrorBoundary.tryAgain'),
-        sendReport: t('phaseF.componentsTabsTabErrorBoundary.sendReport')
+        sendReport: t('phaseF.componentsTabsTabErrorBoundary.sendReport'),
+        closeTab: t('button.close')
       }}
     />
   )

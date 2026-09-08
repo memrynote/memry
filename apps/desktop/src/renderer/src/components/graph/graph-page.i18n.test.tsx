@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
@@ -15,6 +15,8 @@ const graphHookMocks = vi.hoisted(() => ({
   useGraphSettings: vi.fn()
 }))
 
+const renderingMocks = vi.hoisted(() => ({ webglAvailable: true }))
+
 vi.mock('@/hooks/use-graph-data', () => ({
   useGraphData: graphHookMocks.useGraphData,
   useGraphReactivity: graphHookMocks.useGraphReactivity
@@ -26,6 +28,10 @@ vi.mock('@/hooks/use-graph-filters', () => ({
 
 vi.mock('@/hooks/use-graph-settings', () => ({
   useGraphSettings: graphHookMocks.useGraphSettings
+}))
+
+vi.mock('@/lib/webgl-support', () => ({
+  hasWebGLSupport: () => renderingMocks.webglAvailable
 }))
 
 vi.mock('./graph-canvas', () => ({
@@ -56,6 +62,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  renderingMocks.webglAvailable = true
   graphHookMocks.useGraphData.mockReturnValue({
     data: null,
     isLoading: false,
@@ -86,6 +93,22 @@ function graphData(data: GraphDataResponse): GraphDataResponse {
 }
 
 describe('GraphPage i18n', () => {
+  it('offers a close action when the device cannot render WebGL', () => {
+    renderingMocks.webglAvailable = false
+    const onClose = vi.fn()
+
+    render(
+      <I18nextProvider i18n={i18nEn}>
+        <GraphPage onClose={onClose} />
+      </I18nextProvider>
+    )
+
+    expect(screen.getByText("Graph isn't available on this device")).toBeInTheDocument()
+    expect(screen.queryByTestId('graph-control-panel')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it('renders loading state copy', () => {
     graphHookMocks.useGraphData.mockReturnValue({
       data: null,

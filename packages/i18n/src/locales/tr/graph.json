@@ -2,6 +2,8 @@
   "page": {
     "loading": "Grafik yükleniyor...",
     "load-failed": "Grafik verileri yüklenemedi",
+    "render-failed": "Grafik bu cihazda kullanılamıyor",
+    "render-failed-description": "Bu cihaz grafik motorunu başlatamadı. Notlarınız güvende.",
     "try-again": "Tekrar dene",
     "aria-label": "Bilgi grafiği: {nodeCount, plural, one {# düğüm} other {# düğüm}} ve {edgeCount, plural, one {# bağlantı} other {# bağlantı}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Grafik düğümleri",
