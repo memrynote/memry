@@ -260,14 +260,21 @@ An `onBeforeSendHeaders` handler (`src/main/index.ts`, policy in `src/main/lib/e
 
 ### What a note stores for an attachment
 
-A note never stores the absolute `memry-file://` URL — that carries one machine's vault path, so the same note on a second device resolves it to nothing. What lands in the markdown is a path relative to the note itself:
+A note never stores the absolute `memry-file://` URL. That URL carries one machine's vault path, so the same note on a second device resolves it to nothing. The markdown stores a path to the attachment inside the vault:
 
 - `![caption](../attachments/<noteId>/abc123-photo.png)` for an image
 - `<!-- file:{"url":"../attachments/<noteId>/abc123-plan.pdf", …} -->` for the file block
 
+Desktop writes these paths relative to the note. Mobile may write the same
+attachment as `attachments/<noteId>/filename`, relative to the vault root.
+Desktop accepts both forms when it reads a note. It treats the second form as a
+vault-root path only when `<noteId>` matches the note being read. Other plain
+relative paths keep their note-relative meaning.
+
 `saveAttachment` (`src/main/vault/attachments.ts`) builds that ref for every caller — the editor's paste/drop, sidebar drops, and every importer — by looking the note's own path up in the index. A note the index cannot place (an importer writing assets before the note exists) falls back to the absolute URL and logs it; that is the shape attachments had before, so nothing is left worse off. Attachment bytes are unaffected either way: sync moves them by the note's `attachments/<noteId>/` folder, not by parsing URLs.
 
-Reading tolerates both shapes and nothing is rewritten on disk, so notes written by older versions keep their absolute URLs and keep rendering on the device that wrote them.
+Nothing is rewritten on disk during this read. Notes written by older versions
+keep their absolute URLs and keep rendering on the device that wrote them.
 
 The relative ref resolves back to a `memry-file://` URL at render time only, so the vault stays readable by Obsidian:
 
@@ -275,7 +282,7 @@ The relative ref resolves back to a `memry-file://` URL at render time only, so 
 - The `file` block is a custom spec that renders its own URL, so the same resolver reaches it through `note-file-url-context.tsx`. The resolved URL is never written back to the block's props — that would put the machine path back into the markdown.
 - Only the note page passes the note's path as a prop; the journal, canvas cards and a project's home note look it up by note id, from the same index row the write side reads.
 
-Because the ref is relative to the note's folder and attachments stay under `attachments/<noteId>/`, moving a note to a different folder would leave its existing embeds pointing at the wrong place. `moveNote` therefore re-points them: every relative ref in the body is resolved against the _old_ note folder and re-expressed relative to the new one (`rewriteNoteRefsForMove` in `@memry/editor-schema/note-refs`, shared with the CLI's `notes move`), covering both the `![alt](ref)` image embed and the `<!-- file:{"url":…} -->` marker, whose other members are left byte-identical. Refs with a URL scheme, root-anchored refs, refs that climb above the vault root, and wiki-links (which resolve by title, not by path) are left exactly as written.
+Because note-relative refs point from the note's folder and attachments stay under `attachments/<noteId>/`, moving a note to a different folder would leave those refs pointing at the wrong place. `moveNote` therefore re-points them: it resolves each note-relative ref against the _old_ note folder and expresses the same target relative to the new one (`rewriteNoteRefsForMove` in `@memry/editor-schema/note-refs`, shared with the CLI's `notes move`). A mobile root-relative ref for the moved note stays unchanged. When a block moves to another note, the same function converts that root-relative ref to a ref relative to the target note. The function covers both the `![alt](ref)` image embed and the `<!-- file:{"url":…} -->` marker, whose other members stay byte-identical. Refs with a URL scheme, root-anchored refs, refs that climb above the vault root, and wiki-links (which resolve by title, not by path) stay exactly as written.
 
 Two properties that matter more than the arithmetic:
 
