@@ -153,6 +153,12 @@ export async function waitForVaultReady(page: Page, timeout = 45000): Promise<vo
     { timeout, polling: 250 }
   )
 
+  // Vault status can flip before React mounts the app shell. Wait for the
+  // persistent tour anchor so dismissal cannot race `useFirstRunTour`'s effect.
+  await page
+    .locator('[data-tour="new-note"]')
+    .waitFor({ state: 'attached', timeout: Math.min(timeout, 10_000) })
+    .catch(() => {})
   await dismissFirstRunOnboarding(page)
 }
 
