@@ -1,6 +1,8 @@
 import type { VaultDb } from '@/db/index'
+import { withVaultTransaction } from '@/db/tx'
 import { createLogger } from '@/lib/logger'
-import { normalizeTagKey } from './note-ops'
+import { bumpClock } from '@/sync/outbox'
+import { normalizeTagKey, type NoteOpsContext } from './note-ops'
 
 const log = createLogger('TagDefinitions')
 
@@ -33,4 +35,75 @@ export async function readTagColors(db: VaultDb): Promise<Map<string, string>> {
     }
   }
   return colors
+}
+
+interface TagDefinitionPayload {
+  name?: string
+  color?: string
+  colorAuthored?: boolean
+  icon?: string | null
+  categoryId?: string | null
+  sortOrder?: number
+  views?: unknown
+  clock?: Record<string, number>
+  createdAt?: string
+  [unknownFieldsFromNewerClients: string]: unknown
+}
+
+/**
+ * Give a tag a colour and queue the row, so the pick reaches desktop and every
+ * other device instead of staying on this phone.
+ */
+export async function writeTagColorRow(
+  ctx: NoteOpsContext,
+  tag: string,
+  color: string
+): Promise<void> {
+  const existing = await ctx.db.getFirstAsync<{ id: string; payload: string | null }>(
+    `SELECT id, payload FROM sync_items
+     WHERE type = 'tag_definition' AND id = ? COLLATE NOCASE AND deleted_at IS NULL`,
+    [tag]
+  )
+  // Desktop's tag primary key is COLLATE NOCASE, `sync_items.id` here is a plain
+  // TEXT primary key. Writing `roadmap` while the row is stored as `Roadmap`
+  // would fork one tag into two rows that only ever disagree, so the stored
+  // casing wins whenever a row already exists.
+  const id = existing?.id ?? tag
+  const now = Date.now()
+
+  let stored: TagDefinitionPayload | null = null
+  if (existing?.payload) {
+    try {
+      stored = JSON.parse(existing.payload) as TagDefinitionPayload
+    } catch {
+      log.warn('Tag definition payload is not JSON; rewriting it', { tag: id })
+    }
+  }
+  const payload: TagDefinitionPayload = stored ?? {
+    name: id,
+    createdAt: new Date(now).toISOString()
+  }
+
+  payload.name = id
+  payload.color = color
+  // Desktop only records authorship when it sees `colorAuthored === true`. Without
+  // it the colour imports but counts as one the palette handed out, so it is never
+  // re-asserted onward and a third device keeps the hashed hue.
+  payload.colorAuthored = true
+  bumpClock(payload as Record<string, unknown>, ctx.deviceId)
+  const serialized = JSON.stringify(payload)
+
+  await withVaultTransaction(ctx.db, async () => {
+    await ctx.db.runAsync(
+      `INSERT INTO sync_items (id, type, vault_id, updated_at, deleted_at, payload_state, payload)
+       VALUES (?, 'tag_definition', ?, ?, NULL, 'full', ?)
+       ON CONFLICT(id) DO UPDATE SET
+         updated_at = excluded.updated_at,
+         deleted_at = NULL,
+         payload_state = 'full',
+         payload = excluded.payload`,
+      [id, ctx.vaultId, now, serialized]
+    )
+    await ctx.outbox.enqueueRecord('tag_definition', id, 'update', serialized)
+  })
 }
