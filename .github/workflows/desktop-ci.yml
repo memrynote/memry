@@ -221,7 +221,10 @@ jobs:
     name: Electron E2E smoke
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    # The suite runs ~35 min here once a couple of specs burn a 3-minute first
+    # attempt before passing on retry, so 35 cancelled the job mid-run rather
+    # than reporting a test result. macOS smoke needs ~30 min for the same set.
+    timeout-minutes: 50
 
     steps:
       - name: Checkout

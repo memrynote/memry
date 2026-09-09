@@ -869,14 +869,19 @@ export function registerTestHooks(): void {
     },
 
     async createSecondaryWindowForE2E(): Promise<number> {
+      // Shown from the start with background throttling off: a hidden or
+      // throttled renderer never fires requestAnimationFrame, and Playwright's
+      // actionability ("stable") check needs two consecutive frames, so clicks
+      // in this window would hang until the test timeout on CI.
       const win = new BrowserWindow({
         width: 1200,
         height: 800,
-        show: false,
+        show: true,
         autoHideMenuBar: true,
         webPreferences: {
           preload: join(__dirname, '../preload/index.js'),
-          sandbox: false
+          sandbox: false,
+          backgroundThrottling: false
         }
       })
 
@@ -887,6 +892,9 @@ export function registerTestHooks(): void {
       } else {
         await win.loadFile(join(__dirname, '../renderer/index.html'))
       }
+
+      win.show()
+      win.focus()
 
       return win.id
     },
