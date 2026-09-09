@@ -134,7 +134,7 @@ export default function NoteScreen() {
    * the body: the reader is scrolling a document this side does not own, and
    * there is no native scroll view under the header to attach it to.
    */
-  const scrollY = useRef(new Animated.Value(0)).current
+  const [scrollY] = useState(() => new Animated.Value(0))
   const controls = useRef<EditorControls | null>(null)
   const localUpdates = useRef(0)
   const currentIdRef = useRef(id)
