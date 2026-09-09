@@ -17,6 +17,7 @@ import {
   CreditCard,
   Ellipsis,
   File,
+  FileOutput,
   FilePlus,
   FileText,
   Folder,
@@ -104,6 +105,9 @@ const glyphs = {
   trash: Trash2,
   bell: Bell,
   share: Share2,
+  // A page with an arrow leaving it. `share` is the system share sheet; this is
+  // the note becoming a file, which is a different promise to the reader.
+  export: FileOutput,
   sync: RefreshCw,
   mic: Mic,
   camera: Camera,

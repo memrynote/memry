@@ -21,11 +21,12 @@ export interface NoteMoreSheetProps {
   onMove: () => void
   onDuplicate: () => void
   onShare: () => void
+  onExport: () => void
   onDelete: () => void
 }
 
 interface MoreAction {
-  key: 'bookmark' | 'backlinks' | 'rename' | 'move' | 'duplicate' | 'share' | 'delete'
+  key: 'bookmark' | 'backlinks' | 'rename' | 'move' | 'duplicate' | 'share' | 'export' | 'delete'
   label: string
   icon: IconName
   trailing?: string
@@ -47,6 +48,7 @@ export function NoteMoreSheet({
   onMove,
   onDuplicate,
   onShare,
+  onExport,
   onDelete
 }: NoteMoreSheetProps) {
   const c = useColors()
@@ -75,10 +77,14 @@ export function NoteMoreSheet({
     { key: 'move', label: 'Move to folder', icon: 'folder-input', onPress: onMove },
     { key: 'duplicate', label: 'Duplicate note', icon: 'copy', onPress: onDuplicate },
     { key: 'share', label: 'Share a copy', icon: 'share', onPress: onShare },
+    { key: 'export', label: 'Export…', icon: 'export', onPress: onExport },
     { key: 'delete', label: 'Delete note', icon: 'trash', destructive: true, onPress: onDelete }
   ]
+  // Export reads the note and writes a throwaway file outside the vault, so it
+  // stays available when the vault itself is not writable.
+  const readOnlyActions: readonly MoreAction['key'][] = ['share', 'export', 'backlinks']
   const actions = readOnly
-    ? allActions.filter((action) => action.key === 'share' || action.key === 'backlinks')
+    ? allActions.filter((action) => readOnlyActions.includes(action.key))
     : allActions
 
   return (
