@@ -159,17 +159,6 @@ export async function waitForVaultReady(page: Page, timeout = 45000): Promise<vo
     .locator('[data-tour="new-note"]')
     .waitFor({ state: 'attached', timeout: Math.min(timeout, 10_000) })
     .catch(() => {})
-  // A secondary BrowserWindow starts with `show: false` and can stay hidden or
-  // occluded on CI, where Chromium never fires requestAnimationFrame — a bare
-  // double-rAF wait hangs there until the test timeout. Race it with a timer so
-  // the frame wait stays a best-effort settle, not a blocking one.
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        setTimeout(resolve, 1000)
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-      })
-  )
   await dismissFirstRunOnboarding(page)
 }
 
@@ -276,7 +265,19 @@ export async function dismissFirstRunOnboarding(page: Page, timeout = 5000): Pro
       .catch(() => {})
   }
 
+  // The preload seeds both flags before the renderer mounts under E2E, so the
+  // tour cannot arm at all. Reading that state first keeps every `ready()` from
+  // paying the overlay wait below for a tour that is never coming.
+  const alreadySeen = await page
+    .evaluate((tourKey) => localStorage.getItem(tourKey) !== null, TOUR_KEY)
+    .catch(() => false)
+
   await settleFlags()
+
+  if (alreadySeen) {
+    await dismissGithubStarCard(page)
+    return
+  }
 
   const overlay = page.locator('.driver-popover, .driver-overlay').first()
   try {
