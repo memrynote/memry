@@ -17,6 +17,7 @@ import {
   refreshStartupLocaleCache
 } from './lib/startup-locale'
 import { applyZoomFactor, getStartupZoomFactor } from './lib/startup-zoom'
+import { suppressFirstRunOnboardingInE2E } from './lib/e2e-onboarding'
 import { createGeneratedRpcApi } from './generated-rpc'
 import { windowApi, getFileDropPaths, contextMenuApi, quickCaptureApi, flushApi } from './api/core'
 import { vaultApi, vaultEvents } from './api/vault'
@@ -58,6 +59,8 @@ export interface MainInvokePayload {
 }
 
 if (typeof globalThis.window !== 'undefined') {
+  suppressFirstRunOnboardingInE2E()
+
   const startupTheme = getStartupThemeSync()
   try {
     window.localStorage.setItem(THEME_STORAGE_KEY, startupTheme)

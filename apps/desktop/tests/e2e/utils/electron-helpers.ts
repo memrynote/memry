@@ -265,20 +265,12 @@ export async function dismissFirstRunOnboarding(page: Page, timeout = 5000): Pro
       .catch(() => {})
   }
 
-  // The preload seeds both flags before the renderer mounts under E2E, so the
-  // tour cannot arm at all. Reading that state first keeps every `ready()` from
-  // paying the overlay wait below for a tour that is never coming.
-  const alreadySeen = await page
-    .evaluate((tourKey) => localStorage.getItem(tourKey) !== null, TOUR_KEY)
-    .catch(() => false)
-
   await settleFlags()
 
-  if (alreadySeen) {
-    await dismissGithubStarCard(page)
-    return
-  }
-
+  // Deliberately no "flag is already set, skip the wait" short-circuit: this
+  // helper runs several times per session and sets the flag itself, so the
+  // second call would read its own write and stop dismissing — leaving an
+  // overlay that armed in between on screen for the rest of the test.
   const overlay = page.locator('.driver-popover, .driver-overlay').first()
   try {
     await overlay.waitFor({ state: 'visible', timeout: 3000 })
