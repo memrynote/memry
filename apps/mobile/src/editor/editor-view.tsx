@@ -19,6 +19,7 @@ import {
 import { bytesToBase64 } from '../lib/base64'
 import { createLogger } from '../lib/logger'
 import { useEditorHost } from './editor-host'
+import { HtmlExportRequests } from './html-export-requests'
 import { MarkdownExportRequests } from './markdown-export-requests'
 import {
   editorFrameFrom,
@@ -111,6 +112,13 @@ export interface EditorControls {
   /** Serialize the live mounted document, including edits not materialized to SQLite yet. */
   exportMarkdown(): Promise<string>
   /**
+   * The live mounted document as a standalone HTML page, for PDF/HTML export.
+   *
+   * The guest's own rendered DOM and stylesheet rather than a re-render, so
+   * what is exported is what the reader is looking at.
+   */
+  exportHtml(): Promise<string>
+  /**
    * Force a bridge flush and resolve once everything it shook loose is
    * DURABLE. Awaiting it is what makes a background transition safe: the
    * outbox drain that follows would otherwise read the queue before the last
@@ -179,6 +187,7 @@ export function EditorView({
   const bridge = host.bridge
   const hostState = useSyncExternalStore(host.subscribe, host.getState)
   const markdownExports = useMemo(() => new MarkdownExportRequests(), [])
+  const htmlExports = useMemo(() => new HtmlExportRequests(), [])
 
   /**
    * The keyboard's own height, measured natively and handed to the guest.
@@ -361,6 +370,10 @@ export function EditorView({
           markdownExports.settle(msg)
           break
 
+        case 'html-export':
+          htmlExports.settle(msg)
+          break
+
         // Unaddressed, and it needs no guard: the host only routes an
         // unaddressed message to the MOUNTED note, and the guest has one
         // document, so this can only ever be this note's own scroll.
@@ -389,7 +402,8 @@ export function EditorView({
       onScroll,
       onNavigate,
       onWikiQuery,
-      markdownExports
+      markdownExports,
+      htmlExports
     ]
   )
 
@@ -436,6 +450,11 @@ export function EditorView({
           bridge.send({ type: 'export-markdown', reqId, docId })
           bridge.flush()
         }),
+      exportHtml: () =>
+        htmlExports.request(docId, (reqId) => {
+          bridge.send({ type: 'export-html', reqId, docId })
+          bridge.flush()
+        }),
       flush: () => host.flushAndSettle(),
       insertAttachment: (ref, name, mime, blockType, referenceBlockId) => {
         bridge.send({
@@ -453,9 +472,14 @@ export function EditorView({
       measure: () => host.recorder.summary(),
       resetMeasurement: () => host.recorder.reset()
     }
-  }, [bridge, docId, host, markdownExports])
+  }, [bridge, docId, host, htmlExports, markdownExports])
 
-  useEffect(() => () => markdownExports.cancelAll(), [docId, markdownExports])
+  useEffect(() => {
+    return () => {
+      markdownExports.cancelAll()
+      htmlExports.cancelAll()
+    }
+  }, [docId, htmlExports, markdownExports])
 
   // Per OPEN, not per WebView. The guest's `ready` now fires once for the whole
   // notes stack, so a screen that waited for it would hold `null` controls for
