@@ -14,6 +14,7 @@ import {
   type BridgeCfg,
   type EditorAttachmentBlockType,
   type GuestMsg,
+  type InlineMenuTrigger,
   type WikiCandidate
 } from '@memry/contracts/webview-bridge'
 import { bytesToBase64 } from '../lib/base64'
@@ -52,8 +53,14 @@ export interface EditorViewProps {
   cfg: BridgeCfg
   /** Wiki-link tap. Targets may be `Title` or `Title#Heading`. */
   onNavigate: (target: string) => void
-  /** Autocomplete backing store; returns at most a handful of candidates. */
-  onWikiQuery: (query: string) => Promise<WikiCandidate[]>
+  /**
+   * Autocomplete backing store; returns at most a handful of candidates.
+   *
+   * One entry point for all three inline triggers (`[[`, `#`, `@`): they share
+   * the request, the debounce and the reqId round trip, and only the rows the
+   * trigger names differ.
+   */
+  onWikiQuery: (query: string, trigger: InlineMenuTrigger) => Promise<WikiCandidate[]>
   /** Resolve an image/attachment ref the WebView cannot read for itself. */
   onAssetRequest: (ref: string) => Promise<{
     url?: string
@@ -336,7 +343,7 @@ export function EditorView({
         // on a reqId; a dropped answer leaves the menu permanently empty, or
         // an image waiting out its 20 s timeout for nothing.
         case 'wiki-query':
-          void onWikiQuery(msg.query)
+          void onWikiQuery(msg.query, msg.trigger)
             .catch((err: unknown) => {
               log.warn('Wiki query failed', {
                 error: err instanceof Error ? err.message : String(err)

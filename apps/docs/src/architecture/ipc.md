@@ -103,6 +103,16 @@ than surfaced as an error the note's author could trigger. Only an allowed URL
 reaches `Linking.openURL`. The message is additive within v1, so an older
 prebuilt asset simply never sends it.
 
+One request backs all three of the editor's inline menus. `wiki-query` carries
+a `trigger` — `wiki` for `[[`, `tag` for `#`, `mention` for `@` — and the host
+answers the same `wiki-candidates` rows for each. The vault lives on the host,
+so the guest never decides what a row means: it renders the rows it is given
+and writes what the trigger says. `#` writes a `hashTag` chip carrying the
+colour and icon the tag's `tag_definition` row stores, and `@` writes a wiki
+link to the note, which is what desktop's mention menu writes. `trigger`
+defaults to `wiki`, so an older prebuilt asset that omits it behaves exactly as
+it did before.
+
 Exporting a note asks the guest for the document twice over, in two different
 shapes. `export-markdown` returns it re-serialized through the schema, which is
 what a copy or a duplicate wants. `export-html` returns the guest's OWN rendered

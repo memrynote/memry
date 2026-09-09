@@ -116,7 +116,7 @@ export const WikiCandidateSchema = z.object({
    * here. `alias` commits the label typed after `|`. `empty` is a message row
    * that keeps the menu open while the user backspaces; it is not selectable.
    */
-  kind: z.enum(['note', 'heading', 'alias', 'create', 'empty']).default('note'),
+  kind: z.enum(['note', 'heading', 'alias', 'create', 'empty', 'tag']).default('note'),
   /** Sync item id of the note the row points at. Empty when there is none. */
   id: z.string().default(''),
   /** Primary label. */
@@ -130,6 +130,14 @@ export const WikiCandidateSchema = z.object({
   target: z.string().default(''),
   /** Chip display text. Empty means "show the target". */
   alias: z.string().default(''),
+  /**
+   * Tag colour for a `tag` row — a palette name or a `#rrggbb`, exactly as the
+   * `tag_definition` row stores it, so the chip the guest writes carries the
+   * colour every other surface already paints that tag with. Empty means
+   * nobody picked one and the shared hash decides. Kind-specific, like
+   * `headingLevel`, so every existing row shape stays legal untouched.
+   */
+  color: z.string().optional(),
   /** Indent depth for `heading` rows. */
   headingLevel: z.number().int().min(1).max(6).optional()
 })
@@ -299,10 +307,26 @@ export const GuestYUpdateSchema = z.object({
   updatesB64: z.array(z.string())
 })
 
+/**
+ * Which inline trigger opened the menu, and therefore what the rows mean.
+ *
+ * `wiki` is the original `[[` autocomplete. `tag` is `#` over the vault's tags
+ * and `mention` is `@` over its notes; both ride the same request because the
+ * round trip, the debounce and the abandoned-query heuristic are identical and
+ * only the row source differs.
+ */
+export const INLINE_MENU_TRIGGERS = ['wiki', 'tag', 'mention'] as const
+export type InlineMenuTrigger = (typeof INLINE_MENU_TRIGGERS)[number]
+
 export const GuestWikiQuerySchema = z.object({
   type: z.literal('wiki-query'),
   reqId: z.string().min(1),
-  query: z.string()
+  query: z.string(),
+  /**
+   * Defaulted rather than required: a STALE prebuilt guest asset still sends
+   * the v1 shape, and `wiki` is exactly what it meant by it.
+   */
+  trigger: z.enum(INLINE_MENU_TRIGGERS).default('wiki')
 })
 
 export const GuestAssetReqSchema = z.object({

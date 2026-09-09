@@ -284,6 +284,8 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     {
       replaceQuery: (back, forward, target, alias) =>
         replaceQuery(editor, back, forward, target, alias),
+      replaceQueryWithTag: (back, forward, tag, color, icon) =>
+        replaceQuery(editor, back, forward, hashTagNode(tag, color, icon)),
       unpromoteAdjacent: (direction) => unpromoteAdjacent(editor, direction)
     },
     bridge,
@@ -1048,8 +1050,8 @@ function replaceQuery(
   editor: MobileEditor,
   back: number,
   forward: number,
-  target: string,
-  alias: string
+  targetOrNode: string | ReturnType<typeof hashTagNode>,
+  alias = ''
 ): void {
   editor.transact((tr) => {
     const { $from, from } = tr.selection
@@ -1059,7 +1061,23 @@ function replaceQuery(
     const end = Math.min($from.end(), from + forward)
     if (end > start) tr.delete(start, end)
   })
-  editor.insertInlineContent([wikiLinkNode(target, alias), ' '])
+  const node = typeof targetOrNode === 'string' ? wikiLinkNode(targetOrNode, alias) : targetOrNode
+  editor.insertInlineContent([node, ' '])
+}
+
+/**
+ * A `hashTag` node ready for `insertInlineContent` (#2099).
+ *
+ * The colour and the icon are the vault's, handed down with the menu row, so a
+ * tag picked on the phone writes the same three props desktop writes. An empty
+ * colour is the honest answer for a tag nobody has coloured: it is what
+ * desktop stores too, and every renderer hashes the name to the same hue.
+ */
+function hashTagNode(tag: string, color: string, icon: string) {
+  return {
+    type: 'hashTag' as const,
+    props: { tag, color, icon }
+  }
 }
 
 /**

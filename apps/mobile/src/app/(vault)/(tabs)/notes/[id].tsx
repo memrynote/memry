@@ -16,7 +16,11 @@ import { File, Paths } from 'expo-file-system'
 import * as Print from 'expo-print'
 import * as Sharing from 'expo-sharing'
 import { router, useLocalSearchParams, useNavigation } from 'expo-router'
-import type { BridgeCfg, EditorAttachmentBlockType } from '@memry/contracts/webview-bridge'
+import type {
+  BridgeCfg,
+  EditorAttachmentBlockType,
+  InlineMenuTrigger
+} from '@memry/contracts/webview-bridge'
 import { AppText } from '@/components/ui/app-text'
 import { NavBarInline } from '@/components/ui/nav-bar'
 import { PromptDialog } from '@/components/ui/prompt-dialog'
@@ -24,7 +28,7 @@ import { EditorView, type EditorControls } from '@/editor/editor-view'
 import { beginTrace, mark } from '@/editor/__rig__/open-trace'
 import type { OpenDoc } from '@/editor/doc-manager'
 import { getEditorSession, type EditorSession } from '@/editor/session'
-import { parseWikiTarget, queryWikiCandidates, resolveWikiTarget } from '@/editor/wiki-links'
+import { parseWikiTarget, queryInlineMenuCandidates, resolveWikiTarget } from '@/editor/wiki-links'
 import {
   insertAttachment,
   pickDocument,
@@ -450,7 +454,8 @@ export default function NoteScreen() {
   const headerOffset = useMemo(() => Animated.multiply(scrollY, -1), [scrollY])
 
   const onWikiQuery = useCallback(
-    async (query: string) => (session ? queryWikiCandidates(session.db, query) : []),
+    async (query: string, trigger: InlineMenuTrigger) =>
+      session ? queryInlineMenuCandidates(session.db, query, trigger) : [],
     [session]
   )
 
