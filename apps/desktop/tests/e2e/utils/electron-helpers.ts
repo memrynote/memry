@@ -159,6 +159,12 @@ export async function waitForVaultReady(page: Page, timeout = 45000): Promise<vo
     .locator('[data-tour="new-note"]')
     .waitFor({ state: 'attached', timeout: Math.min(timeout, 10_000) })
     .catch(() => {})
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve))
+      })
+  )
   await dismissFirstRunOnboarding(page)
 }
 
