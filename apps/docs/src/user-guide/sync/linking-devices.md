@@ -19,7 +19,7 @@ The new device never sees your passphrase. The existing device never exposes the
 
 1. Open [Settings → Account](/user-guide/settings#account) → **Devices**
 2. Choose **Link a device**
-3. memrynote shows a **QR code** and a short **linking code** (6 digits or letters)
+3. memrynote shows a **QR code** and a **linking code** — a long text string carrying the pairing data, meant to be copied, not typed by hand
 4. Keep this screen open
 
 ## On the New Device
@@ -29,7 +29,7 @@ The new device never sees your passphrase. The existing device never exposes the
 3. Choose **Link**
 4. Either:
    - **Scan the QR code** with your camera (if available)
-   - **Enter the linking code** manually
+   - **Paste the linking code** (copied from the existing device)
 
 ### If the Sign-In Times Out
 
