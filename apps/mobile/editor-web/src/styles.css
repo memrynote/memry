@@ -503,6 +503,58 @@ img.asset-missing {
   border-color: color-mix(in srgb, var(--memry-accent) 40%, transparent);
 }
 
+/* A favicon is 16px of decoration, so it opts out of the placeholder box in
+   every state: the 96px minimum above would turn one chip into a paragraph. */
+img.link-mention-favicon,
+img.bookmark-favicon {
+  min-inline-size: 0;
+  min-block-size: 0;
+  background: none;
+  border: 0;
+}
+
+/* Gone, not dashed, when the host says the icon does not exist — the same thing
+   desktop does from `img.onerror`. A frame around nothing reads as a failure
+   the reader is supposed to act on. */
+img.link-mention-favicon.asset-missing,
+img.bookmark-favicon.asset-missing {
+  display: none;
+}
+
+.link-mention-favicon {
+  display: inline-block;
+  inline-size: 0.95em;
+  block-size: 0.95em;
+  vertical-align: -0.15em;
+  margin-inline-end: 0.3em;
+  border-radius: 2px;
+}
+
+.bookmark-favicon {
+  flex: 0 0 auto;
+  inline-size: 20px;
+  block-size: 20px;
+  margin-block-start: 2px;
+  border-radius: 4px;
+}
+
+/* Its own 72px box wins over the placeholder minimum, so the card does not
+   reflow when the bytes arrive. The dashed pending frame is kept. */
+img.bookmark-image {
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+/* Last child of the flex card, next to `.bookmark-body`'s `flex: 1 1 auto`, so
+   it takes a fixed thumbnail column instead of the card's whole width. */
+.bookmark-image {
+  flex: 0 0 auto;
+  inline-size: 72px;
+  block-size: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 /* Wiki-link autocomplete. Lives in `#editor-chrome`, so it is positioned
    against the visible viewport rather than the note-tall `#root`, and it has to
    opt back into pointer events like every other pane in that layer. The bottom
