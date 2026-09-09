@@ -93,6 +93,15 @@ than settled like `metrics`, because the header rides the value directly — a
 trailing-edge report would leave it standing still through the gesture and
 jumping when the finger stops.
 
+Exporting a note asks the guest for the document twice over, in two different
+shapes. `export-markdown` returns it re-serialized through the schema, which is
+what a copy or a duplicate wants. `export-html` returns the guest's OWN rendered
+subtree wrapped with the stylesheet it is already rendering under, which is what
+a PDF wants: the host feeds that string straight to `expo-print`, so nothing
+outside the WebView re-derives BlockNote's layout and an export cannot disagree
+with the note on screen. Images need no separate path — they are already `data:`
+URIs in that DOM, which is also the only form WKWebView will print.
+
 ### Drift is caught on the ASSET, not the types
 
 Both halves import the contract module directly, so the types cannot drift.
