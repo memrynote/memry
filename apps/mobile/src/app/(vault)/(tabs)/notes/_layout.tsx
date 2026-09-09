@@ -3,7 +3,10 @@ import { router, Stack } from 'expo-router'
 import { EditorHost } from '@/editor/editor-host'
 import { getEditorSession } from '@/editor/session'
 import type { VaultDb } from '@/db/index'
-import { WorkspaceTabsProvider } from '@/features/workspace-tabs/provider'
+import {
+  WorkspaceTabsProvider,
+  type WorkspaceTabsNavigate
+} from '@/features/workspace-tabs/provider'
 import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
 
@@ -28,9 +31,10 @@ export default function NotesLayout() {
     }
   }, [])
 
-  const navigate = useCallback((noteId: string | null) => {
-    if (noteId) router.replace(`/notes/${noteId}`)
-    else router.replace('/notes')
+  const navigate = useCallback<WorkspaceTabsNavigate>((noteId, mode) => {
+    const href = noteId ? (`/notes/${noteId}` as const) : ('/notes' as const)
+    if (mode === 'push') router.push(href)
+    else router.replace(href)
   }, [])
 
   // `EditorHost` renders ONE editor WebView as a sibling of the stack (#2030).

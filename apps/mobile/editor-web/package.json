@@ -13,6 +13,7 @@
     "@blocknote/core": "^0.47.1",
     "@memry/contracts": "workspace:*",
     "@memry/editor-schema": "workspace:*",
+    "prosemirror-state": "^1.4.4",
     "yjs": "^13.6.29"
   },
   "devDependencies": {

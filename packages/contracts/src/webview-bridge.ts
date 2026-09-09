@@ -82,19 +82,56 @@ export const BridgeCfgSchema = z.object({
    * two different distances. Absent means reserve nothing, which is what every
    * caller that draws no chrome already means.
    */
-  headerHeight: z.number().min(0).optional()
+  headerHeight: z.number().min(0).optional(),
+  /**
+   * Height of the software keyboard, in CSS px, as the HOST measures it.
+   *
+   * The block picker replaces the keyboard, so it has to be exactly as tall as
+   * the keyboard was. The guest cannot measure that for itself: its frame is
+   * shrunk by a KeyboardAvoidingView, so `visualViewport` only ever reports the
+   * part of the keyboard that overlapped the WebView -- which is why the picker
+   * used to open as a sliver. Last known height, kept across a dismissal,
+   * because the picker opens after the keyboard has already gone.
+   */
+  keyboardHeight: z.number().min(0).optional()
 })
 
 export const HostCfgSchema = BridgeCfgSchema.extend({
   type: z.literal('cfg')
 })
 
+/**
+ * One row of the `[[` autocomplete menu.
+ *
+ * The WebView has no vault access, so the whole `[[target#heading|alias]]`
+ * grammar is parsed HOST-side and arrives here already resolved into rows. The
+ * guest only renders `title`/`subtitle` and inserts `target`/`alias`; it never
+ * re-reads the query to decide what a row means. That keeps one parser instead
+ * of two that can disagree about, say, a note actually titled `Sprint #4`.
+ */
 export const WikiCandidateSchema = z.object({
-  /** Note id to navigate to on accept. */
-  id: z.string().min(1),
-  /** Display name — the alias the editor writes, not the file path. */
+  /**
+   * `note` and `heading` link to something that exists. `create` links to a
+   * note that does not exist yet — desktop offers creation at CLICK time, not
+   * here. `alias` commits the label typed after `|`. `empty` is a message row
+   * that keeps the menu open while the user backspaces; it is not selectable.
+   */
+  kind: z.enum(['note', 'heading', 'alias', 'create', 'empty']).default('note'),
+  /** Sync item id of the note the row points at. Empty when there is none. */
+  id: z.string().default(''),
+  /** Primary label. */
   title: z.string(),
-  folderPath: z.string().optional()
+  /** Secondary label — the folder path, the target an alias renames, a hint. */
+  subtitle: z.string().default(''),
+  /** The note's own emoji, when it has one. Named and custom icons resolve to
+   * nothing here: the WebView has no glyph set and no icon bytes. */
+  icon: z.string().default(''),
+  /** What `[[…]]` will carry. Empty means the row cannot be accepted. */
+  target: z.string().default(''),
+  /** Chip display text. Empty means "show the target". */
+  alias: z.string().default(''),
+  /** Indent depth for `heading` rows. */
+  headingLevel: z.number().int().min(1).max(6).optional()
 })
 
 export const HostWikiCandidatesSchema = z.object({

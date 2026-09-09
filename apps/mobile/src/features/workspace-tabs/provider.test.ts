@@ -95,4 +95,22 @@ describe('WorkspaceTabsStore', () => {
     expect(store.getSnapshot()).toBe(before)
     expect(navigated).toEqual([])
   })
+
+  it('pushes when a note is opened and replaces when tabs are switched or closed', () => {
+    const navigated: [string | null, string][] = []
+    const store = new WorkspaceTabsStore(null)
+    store.setNavigate((noteId, mode) => navigated.push([noteId, mode]))
+
+    store.open({ id: 'a', title: 'A' })
+    store.open({ id: 'b', title: 'B' })
+    store.activate('note:a')
+    store.close('note:a')
+
+    expect(navigated).toEqual([
+      ['a', 'push'],
+      ['b', 'push'],
+      ['a', 'replace'],
+      ['b', 'replace']
+    ])
+  })
 })

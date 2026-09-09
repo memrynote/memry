@@ -15,6 +15,14 @@ import type { GuestBridge } from './bridge.ts'
  */
 
 const OPEN_TOKEN = '[['
+/**
+ * The rest of an open run, from the caret through its `]]`.
+ *
+ * Group 1 is whatever sits between, which after an un-promotion is the
+ * `|Alias` the user had already written. Brackets are excluded so this can
+ * never reach across into a neighbouring link's closer.
+ */
+const RUN_TAIL = /^([^[\]\n]*)\]\]/
 
 /**
  * Wait this long after the last keystroke before asking RN for candidates.
@@ -54,7 +62,7 @@ export function installWikiLinkNavigation(root: HTMLElement, bridge: GuestBridge
 }
 
 interface AutocompleteState {
-  /** Offset of the `[[` that opened the menu, within the current block's text. */
+  /** The text between the `[[` that opened the menu and the caret. */
   query: string
   reqId: string
 }
@@ -74,23 +82,72 @@ interface AutocompleteState {
  * `[[` typed mid-paragraph eats the text that followed it.
  */
 export interface WikiLinkEditorSurface {
-  /** Insert a wiki link to `title` at the cursor, followed by a space. */
-  insertWikiLink(title: string): void
+  /**
+   * Replace the raw `[[query]]` run around the cursor with a wiki link.
+   *
+   * `back` and `forward` are character counts either side of the caret. The
+   * caller runs both the delete and the insert inside ONE editor transaction:
+   * driving the delete with `execCommand` looked fine for a short query and
+   * then silently did nothing for a longer one, leaving `[[Note#` stranded in
+   * front of the finished chip.
+   */
+  replaceQuery(back: number, forward: number, target: string, alias: string): void
+  /**
+   * Turn an adjacent finished wiki link back into `[[…]]` text, caret at the
+   * end of its target. `false` when there is no link on that side.
+   */
+  unpromoteAdjacent(direction: 'before' | 'after'): boolean
+}
+
+export interface WikiLinkAutocomplete {
+  /**
+   * Open the menu against whatever `[[` already sits before the caret.
+   *
+   * The toolbar button needs this. It inserts `[[` with `execCommand`, and
+   * ProseMirror handles that `beforeinput` itself — no `input` event reaches
+   * this module, so the typing path never fires and the user was left with two
+   * bare brackets and no menu.
+   */
+  open(): void
+  close(): void
+  detach(): void
+}
+
+/**
+ * Where the menu listens and where it draws are three different elements.
+ *
+ * `root` is the mounted editor, and it is as tall as the whole note, because
+ * the RN side scrolls the WebView's own frame rather than a scroller inside
+ * it. A `position: fixed` child of it anchors to the bottom of that tall
+ * frame, metres below anything on screen -- which is why the menu appeared to
+ * do nothing while Enter still committed the highlighted note. `chrome` is the
+ * layer the toolbar already uses to stay pinned to the visible viewport, so
+ * the menu is drawn there. `toolbarHost` is measured, not written to: it is
+ * the only honest source for where the toolbar's top edge currently is, and
+ * that moves with the keyboard, the safe area and an open block picker.
+ */
+export interface WikiLinkHosts {
+  root: HTMLElement
+  chrome: HTMLElement
+  toolbarHost: HTMLElement
 }
 
 export function installWikiLinkAutocomplete(
   editor: WikiLinkEditorSurface,
   bridge: GuestBridge,
-  root: HTMLElement
-): () => void {
+  hosts: WikiLinkHosts
+): WikiLinkAutocomplete {
+  const { root, chrome, toolbarHost } = hosts
   const menu = document.createElement('div')
   menu.className = 'wiki-menu'
   menu.setAttribute('role', 'listbox')
   menu.setAttribute('aria-label', 'Link to note')
   menu.hidden = true
-  root.appendChild(menu)
+  chrome.appendChild(menu)
 
   let state: AutocompleteState | null = null
+  let rows: WikiCandidate[] = []
+  let selected = 0
   let reqCounter = 0
   let debounce: ReturnType<typeof setTimeout> | null = null
 
@@ -100,20 +157,37 @@ export function installWikiLinkAutocomplete(
       debounce = null
     }
     state = null
+    rows = []
+    selected = 0
     menu.hidden = true
     menu.replaceChildren()
   }
 
   const insert = (candidate: WikiCandidate): void => {
-    if (!state) return
-    const consumed = OPEN_TOKEN.length + state.query.length
+    // `empty` rows are messages, not targets. Desktop makes the same row
+    // unselectable rather than closing the menu the user is still typing into.
+    if (!state || !candidate.target) return
+    const back = OPEN_TOKEN.length + state.query.length
+    // The tail is read from the DOM rather than remembered from whoever opened
+    // the menu: the toolbar writes `[[]]`, a user can type the brackets by
+    // hand, and an un-promoted link arrives with `|Alias]]` already after the
+    // caret. All three have to leave the same document behind.
+    const tail = RUN_TAIL.exec(textAfterCaret())
+    const forward = tail ? tail[0].length : 0
+    const written = tail?.[1]?.startsWith('|') ? tail[1].slice(1).trim() : ''
     close()
-    // Remove the typed `[[query` before inserting the node, or the raw token
-    // survives next to the chip and the file gets both forms.
-    for (let i = 0; i < consumed; i++) {
-      document.execCommand('delete')
-    }
-    editor.insertWikiLink(candidate.title)
+    // A row that names its own label (a heading, an explicit alias) wins; a
+    // plain note row keeps whatever the user had already written, so re-picking
+    // the target of `[[Old|my label]]` does not silently drop the label.
+    editor.replaceQuery(back, forward, candidate.target, candidate.alias || written)
+  }
+
+  const paintSelection = (): void => {
+    const items = menu.querySelectorAll('.wiki-menu-item')
+    items.forEach((item, index) => {
+      item.classList.toggle('is-selected', index === selected)
+      item.setAttribute('aria-selected', index === selected ? 'true' : 'false')
+    })
   }
 
   const renderCandidates = (items: WikiCandidate[]): void => {
@@ -122,20 +196,26 @@ export function installWikiLinkAutocomplete(
       close()
       return
     }
+    rows = items
+    selected = items.findIndex((item) => item.kind !== 'empty')
     for (const item of items) {
-      const row = document.createElement('button')
-      row.type = 'button'
-      row.className = 'wiki-menu-item'
-      row.setAttribute('role', 'option')
-      row.textContent = item.folderPath ? `${item.title} — ${item.folderPath}` : item.title
-      // `pointerdown`: a `click` on a button inside a contenteditable loses the
-      // selection first, and the insert then lands at the wrong offset.
-      row.addEventListener('pointerdown', (event) => {
-        event.preventDefault()
-        insert(item)
-      })
-      menu.appendChild(row)
+      menu.appendChild(candidateRow(item, () => insert(item)))
     }
+    // The pipe is the only part of the grammar with no visible affordance, so
+    // it gets a standing hint the way desktop's menu footer does.
+    const hint = document.createElement('div')
+    hint.className = 'wiki-menu-hint'
+    hint.textContent = 'Type | to name the link'
+    menu.appendChild(hint)
+    paintSelection()
+    // The SHELL, not the host: the shell is absolutely positioned, so the host
+    // div wrapping it is zero-high and measuring it put the menu underneath the
+    // toolbar it was supposed to sit on top of.
+    const shell = toolbarHost.querySelector('.editor-toolbar-shell')
+    const top = shell?.getBoundingClientRect().top
+    // A hidden toolbar has no box, and the stylesheet's own bottom inset is
+    // the right answer then.
+    menu.style.insetBlockEnd = top === undefined ? '' : `${Math.max(0, window.innerHeight - top)}px`
     menu.hidden = false
   }
 
@@ -145,7 +225,7 @@ export function installWikiLinkAutocomplete(
     renderCandidates(msg.items)
   })
 
-  const onInput = (): void => {
+  const refresh = (): void => {
     const text = textBeforeCaret()
     const openAt = text.lastIndexOf(OPEN_TOKEN)
     if (openAt === -1) {
@@ -166,32 +246,162 @@ export function installWikiLinkAutocomplete(
     }
 
     const reqId = `w${++reqCounter}`
+    const first = state === null
     state = { query, reqId }
     if (debounce !== null) clearTimeout(debounce)
-    debounce = setTimeout(() => {
+    const ask = (): void => {
       debounce = null
       // Only if this is still the query the user is typing: a stale request
       // would repaint the menu with results for text that is already gone.
       if (state?.reqId === reqId) bridge.send({ type: 'wiki-query', reqId, query })
-    }, QUERY_DEBOUNCE_MS)
+    }
+    // The first request opens the menu, so it skips the debounce: waiting
+    // 120 ms to show anything reads as the button having done nothing.
+    if (first) ask()
+    else debounce = setTimeout(ask, QUERY_DEBOUNCE_MS)
   }
 
   const onKeyDown = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape' && state) {
+    // Before the menu's own keys: a finished link next to the caret is only
+    // ever adjacent when no query is open, so the two cannot both fire.
+    const unpromote =
+      event.key === 'Backspace' || event.key === 'ArrowLeft'
+        ? 'before'
+        : event.key === 'ArrowRight'
+          ? 'after'
+          : null
+    if (unpromote && editor.unpromoteAdjacent(unpromote)) {
+      event.preventDefault()
+      refresh()
+      return
+    }
+    if (!state || rows.length === 0) return
+    const selectable = rows.filter((row) => row.target).length
+    if (event.key === 'Escape') {
       event.preventDefault()
       close()
+      return
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (selectable === 0) return
+      event.preventDefault()
+      const step = event.key === 'ArrowDown' ? 1 : -1
+      do {
+        selected = (selected + step + rows.length) % rows.length
+      } while (!rows[selected]?.target)
+      paintSelection()
+      return
+    }
+    if (event.key === 'Enter' && !event.isComposing) {
+      const candidate = rows[selected]
+      if (!candidate?.target) return
+      event.preventDefault()
+      insert(candidate)
     }
   }
 
-  root.addEventListener('input', onInput)
-  root.addEventListener('keydown', onKeyDown)
+  root.addEventListener('input', refresh)
+  // Capture, not bubble. ProseMirror's own keydown handler is bound to the
+  // contenteditable, which is BELOW `root` in the tree, so a bubbling listener
+  // runs after it has already deleted the chip and `preventDefault` is too
+  // late. The whole point here is to get in front of it.
+  root.addEventListener('keydown', onKeyDown, true)
 
-  return () => {
-    unsubscribe()
-    root.removeEventListener('input', onInput)
-    root.removeEventListener('keydown', onKeyDown)
-    menu.remove()
+  return {
+    open: refresh,
+    close,
+    detach: () => {
+      unsubscribe()
+      root.removeEventListener('input', refresh)
+      root.removeEventListener('keydown', onKeyDown, true)
+      menu.remove()
+    }
   }
+}
+
+function candidateRow(item: WikiCandidate, onAccept: () => void): HTMLElement {
+  if (item.kind === 'empty') {
+    const message = document.createElement('div')
+    message.className = 'wiki-menu-empty'
+    message.textContent = item.title
+    return message
+  }
+
+  const row = document.createElement('button')
+  row.type = 'button'
+  row.className = 'wiki-menu-item'
+  row.setAttribute('role', 'option')
+
+  const glyph = document.createElement('span')
+  glyph.className = 'wiki-menu-glyph'
+  // The note's own emoji when it has one, so a row reads the same here as it
+  // does in the notes tree. Everything else falls back to a kind marker.
+  glyph.textContent = item.icon || ROW_GLYPH[item.kind]
+  row.appendChild(glyph)
+
+  const label = document.createElement('span')
+  label.className = 'wiki-menu-label'
+  label.textContent = item.title
+  if (item.kind === 'heading' && item.headingLevel && item.headingLevel > 1) {
+    label.style.paddingInlineStart = `${Math.min(item.headingLevel - 1, 3) * 10}px`
+  }
+  row.appendChild(label)
+
+  if (item.subtitle) {
+    const sub = document.createElement('span')
+    sub.className = 'wiki-menu-sub'
+    sub.textContent = item.subtitle
+    row.appendChild(sub)
+  }
+
+  // `pointerdown`: a `click` on a button inside a contenteditable loses the
+  // selection first, and the insert then lands at the wrong offset.
+  row.addEventListener('pointerdown', (event) => {
+    event.preventDefault()
+    onAccept()
+  })
+  return row
+}
+
+const ROW_GLYPH: Record<WikiCandidate['kind'], string> = {
+  note: '\u25e6',
+  heading: '#',
+  alias: '\u21b3',
+  create: '+',
+  empty: ''
+}
+
+/**
+ * Text of the current block from the caret to the end of its text node.
+ *
+ * Only used to spot the `]]` the toolbar left in front of the caret, so the
+ * accept path can eat it instead of stranding it next to the finished chip.
+ */
+function textAfterCaret(): string {
+  const selection = document.getSelection()
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return ''
+  const anchor = selection.anchorNode
+  if (!anchor) return ''
+
+  const block = (anchor instanceof Element ? anchor : anchor.parentElement)?.closest(
+    '[data-node-type], p, h1, h2, h3, li, blockquote'
+  )
+  if (!block) return ''
+
+  let out = ''
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+  let node = walker.nextNode()
+  let seen = false
+  while (node) {
+    if (node === anchor) {
+      out += (node.textContent ?? '').slice(selection.anchorOffset)
+      seen = true
+    } else if (seen) {
+      out += node.textContent ?? ''
+    }
+    node = walker.nextNode()
+  }
+  return out
 }
 
 /**

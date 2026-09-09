@@ -1,5 +1,11 @@
 import { useState, type ReactNode } from 'react'
-import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native'
+import {
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+  type LayoutChangeEvent
+} from 'react-native'
 
 import { AppText } from '@/components/ui/app-text'
 import { Icon, type IconName } from '@/components/ui/icon'
@@ -103,6 +109,7 @@ export function NavBarLargeTitle({ title, actions = [] }: NavBarLargeTitleProps)
 
 export function NavBarInline({ title, back, actions = [], center }: NavBarInlineProps) {
   const c = useColors()
+  const { width } = useWindowDimensions()
   const [leadingWidth, setLeadingWidth] = useState(0)
   const [trailingWidth, setTrailingWidth] = useState(0)
 
@@ -131,7 +138,15 @@ export function NavBarInline({ title, back, actions = [], center }: NavBarInline
           {/* The label can be hidden, the accessible name above cannot: a bare
               chevron with no name is unusable. */}
           {back.showLabel === false ? null : (
-            <AppText variant="body" color={c.tint.text}>
+            // A note title can be arbitrarily long and the label is one of
+            // them now that Back follows history. Capped at a share of the
+            // bar so it truncates instead of pushing the title layer over.
+            <AppText
+              variant="body"
+              color={c.tint.text}
+              numberOfLines={1}
+              style={{ maxWidth: width * 0.4 }}
+            >
               {back.label}
             </AppText>
           )}

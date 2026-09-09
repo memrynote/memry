@@ -10,6 +10,7 @@
     "@expo/ui": "~57.0.12",
     "@memry/app-core": "workspace:*",
     "@memry/contracts": "workspace:*",
+    "@memry/shared": "workspace:*",
     "@memry/storage-vault": "workspace:*",
     "@memry/sync-client": "workspace:*",
     "@noble/hashes": "^2.0.1",

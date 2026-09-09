@@ -166,6 +166,21 @@ function readViewportBottomInset(): number {
   return Number.isFinite(inset) ? Math.max(0, inset) : 0
 }
 
+/**
+ * The keyboard height the host reported, in CSS px.
+ *
+ * Preferred over the visual-viewport inset for the block picker: the WebView is
+ * inside a KeyboardAvoidingView, so the inset only covers the overlap between
+ * the keyboard and the (already shrunk) frame -- a few dozen px rather than the
+ * whole keyboard. That undercount is what made the picker open as a sliver.
+ */
+function readHostKeyboardHeight(): number {
+  const height = Number.parseFloat(
+    document.documentElement.style.getPropertyValue('--memry-keyboard-height')
+  )
+  return Number.isFinite(height) ? Math.max(0, height) : 0
+}
+
 function actionButton(options: {
   label: string
   content: Node
@@ -277,7 +292,7 @@ export function installEditorToolbar(
             setView({ kind: 'main' })
             return
           }
-          keyboardReplacementHeight = readViewportBottomInset()
+          keyboardReplacementHeight = Math.max(readHostKeyboardHeight(), readViewportBottomInset())
           setView({ kind: 'blocks' })
           actions.dismissKeyboard()
         },

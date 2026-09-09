@@ -1,23 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, Animated, AppState, Share, StyleSheet, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  AppState,
+  Share,
+  StyleSheet,
+  TextInput,
+  View
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams, useNavigation } from 'expo-router'
 import type { BridgeCfg, EditorAttachmentBlockType } from '@memry/contracts/webview-bridge'
 import { AppText } from '@/components/ui/app-text'
-import { Icon } from '@/components/ui/icon'
 import { NavBarInline } from '@/components/ui/nav-bar'
 import { PromptDialog } from '@/components/ui/prompt-dialog'
 import { EditorView, type EditorControls } from '@/editor/editor-view'
 import { beginTrace, mark } from '@/editor/__rig__/open-trace'
 import type { OpenDoc } from '@/editor/doc-manager'
 import { getEditorSession, type EditorSession } from '@/editor/session'
-import { queryWikiCandidates, resolveWikiTarget } from '@/editor/wiki-links'
+import { parseWikiTarget, queryWikiCandidates, resolveWikiTarget } from '@/editor/wiki-links'
 import { insertAttachment, pickDocument, pickImage } from '@/features/attachments/insert'
 import { resolveAsset } from '@/features/attachments/resolve'
 import { AddPropertySheet } from '@/features/notes/add-property-sheet'
 import { AddTagSheet } from '@/features/notes/add-tag-sheet'
 import { readBookmarkKeys, toggleBookmark } from '@/features/notes/bookmarks'
 import { NoteFooter } from '@/features/notes/chrome/note-footer'
+import { readBacklinks } from '@/features/notes/backlinks'
 import { NoteMoreSheet } from '@/features/notes/chrome/note-more-sheet'
 import { QuickOpenModal } from '@/features/notes/chrome/quick-open-modal'
 import { editGate } from '@/features/notes/edit-gate'
@@ -53,6 +62,7 @@ import { ensureNoteBody } from '@/sync/body-fetch'
 import { getSyncEngine } from '@/sync/engine'
 import { getReadOnlyState, subscribeReadOnly } from '@/sync/read-only-mode'
 import { sizes, space } from '@/theme/primitives'
+import { textStyles } from '@/theme/text-styles'
 import { useColors } from '@/theme/use-colors'
 
 const log = createLogger('NoteScreen')
@@ -62,10 +72,10 @@ const log = createLogger('NoteScreen')
 const BODY_GAP = 14
 
 /**
- * How long the editor must be quiet before `Saved` is claimed.
+ * How long the editor must be quiet before its pending edits are flushed.
  *
  * Long enough that a flush is not fired between two keystrokes, short enough
- * that a pause reads as saved rather than as a stuck indicator.
+ * that a pause leaves nothing sitting in the WebView.
  */
 const SAVE_SETTLE_MS = 800
 
@@ -108,11 +118,11 @@ export default function NoteScreen() {
   // a doc that has no CRDT state, so it cannot overwrite real content.
   const [seedMarkdown, setSeedMarkdown] = useState<string | undefined>(undefined)
   const [vaultReadOnly, setVaultReadOnly] = useState(false)
-  const [saveState, setSaveState] = useState<'saved' | 'saving'>('saved')
   const [overlay, setOverlay] = useState<NoteOverlay>({ kind: 'none' })
   const [keyboardVisible, setKeyboardVisible] = useState<boolean | null>(null)
   const [editorPanelOpen, setEditorPanelOpen] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
+  const [backlinkCount, setBacklinkCount] = useState(0)
   const [addingTag, setAddingTag] = useState(false)
   const [addingProperty, setAddingProperty] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -288,32 +298,21 @@ export default function NoteScreen() {
   }, [session])
 
   /**
-   * What backs `Saved`, so it reports disk rather than decorating the bar.
-   *
    * `applyFromGuest` persists the update and enqueues it BEFORE it advances the
    * owned doc, so by the time `onLocalUpdate` fires everything the host has
    * RECEIVED is already durable. What that says nothing about is the ~24 ms
-   * batch still inside the WebView, which is why the indicator only returns to
-   * `Saved` once a `flush()` that no later update overtook has resolved — the
-   * same round trip the background transition relies on.
+   * batch still inside the WebView, which is what the debounced `flush()` below
+   * collects — the same round trip the background transition relies on.
    */
   useEffect(() => {
     if (!doc || gate !== 'editing') return
     let timer: ReturnType<typeof setTimeout> | undefined
     const unsubscribe = doc.onLocalUpdate(() => {
       localUpdates.current += 1
-      setSaveState('saving')
       if (timer) clearTimeout(timer)
-      timer = setTimeout(() => {
-        const seen = localUpdates.current
-        const settled = controls.current?.flush()
-        // No controls means no way to prove the WebView has handed everything
-        // over, and an unprovable `Saved` is worse than no indicator at all.
-        if (!settled) return
-        void settled.then(() => {
-          if (localUpdates.current === seen) setSaveState('saved')
-        })
-      }, SAVE_SETTLE_MS)
+      // Saving is silent: the bar carries no status pill, so this only debounces
+      // the flush that hands the guest's pending edits over.
+      timer = setTimeout(() => void controls.current?.flush(), SAVE_SETTLE_MS)
     })
     return () => {
       if (timer) clearTimeout(timer)
@@ -373,22 +372,6 @@ export default function NoteScreen() {
    * height is simply out of sight.
    */
   const headerOffset = useMemo(() => Animated.multiply(scrollY, -1), [scrollY])
-
-  const onNavigate = useCallback(
-    (target: string) => {
-      if (!session) return
-      void (async () => {
-        const noteId = await resolveWikiTarget(session.db, target)
-        if (noteId) {
-          const record = await readNoteRecord(session.db, noteId)
-          openTab({ id: noteId, title: record?.payload.title ?? 'Untitled' })
-        }
-        // A link with no target is a real state (the note has not been created
-        // yet), not an error — the desktop shows the same nothing-happens.
-      })()
-    },
-    [openTab, session]
-  )
 
   const onWikiQuery = useCallback(
     async (query: string) => (session ? queryWikiCandidates(session.db, query) : []),
@@ -461,6 +444,29 @@ export default function NoteScreen() {
     if (session && id) void readNoteRecord(session.db, id).then(applyRecord)
   }, [applyRecord, id, session])
 
+  /**
+   * The heading's own text while the reader is typing in it. `null` means "not
+   * being edited" — the field then reads straight from the record, so a rename
+   * from the more-sheet or a sync pull shows up without racing the draft.
+   */
+  const [titleDraft, setTitleDraft] = useState<string | null>(null)
+
+  const commitTitle = useCallback(() => {
+    const draft = titleDraft
+    setTitleDraft(null)
+    if (draft === null || !ctx || !id) return
+    const trimmed = draft.trim()
+    // An emptied heading is not a rename, it is an untitled note — the same
+    // nothing-happens the rename dialog does.
+    if (trimmed.length === 0 || trimmed === (payload?.title ?? '')) return
+    if (!allowMutation('Renaming notes')) return
+    void renameNote(ctx, id, trimmed)
+      .then(refreshRecord)
+      .catch((error: unknown) => {
+        showFailure('Rename note', error)
+      })
+  }, [allowMutation, ctx, id, payload, refreshRecord, titleDraft])
+
   const openQuickNote = useCallback(
     (note: { id: string; title: string }) => {
       setOverlay({ kind: 'none' })
@@ -482,6 +488,40 @@ export default function NoteScreen() {
     },
     [allowMutation, ctx, openTab]
   )
+
+  // A wiki link that resolves opens its note. One that does not is not an
+  // error: `[[` offers a "create new note" row for a title nobody has written
+  // yet, and desktop turns that promise into a real note here, on the tap, from
+  // a confirm — never silently behind the user's back.
+  const onNavigate = useCallback(
+    (target: string) => {
+      if (!session) return
+      void (async () => {
+        const noteId = await resolveWikiTarget(session.db, target)
+        if (noteId) {
+          const record = await readNoteRecord(session.db, noteId)
+          openTab({ id: noteId, title: record?.payload.title ?? 'Untitled' })
+          return
+        }
+        const { title } = parseWikiTarget(target)
+        if (!title) return
+        Alert.alert(`No note titled "${title}"`, 'Create it?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Create', onPress: () => void createQuickNote(title) }
+        ])
+      })()
+    },
+    [createQuickNote, openTab, session]
+  )
+
+  // Counted when the sheet opens, not on every render: the scan reads every
+  // stored body, which is far too much work for a keystroke.
+  const openMore = useCallback(async () => {
+    setOverlay({ kind: 'more' })
+    if (!session || !id) return
+    const { totalReferences } = await readBacklinks(session.db, id)
+    setBacklinkCount(totalReferences)
+  }, [id, session])
 
   const openMove = useCallback(async () => {
     if (!session || !allowMutation('Moving notes')) return
@@ -576,6 +616,39 @@ export default function NoteScreen() {
     )
   }, [allowMutation, closeTab, ctx, doc, id, openTabs, payload])
 
+  /**
+   * Back follows history, not the note's folder. A wiki-link tap pushes, so the
+   * previous stack entry IS where the reader came from — another note, a
+   * folder, a tag, the list — and the label has to name that, not this note's
+   * parent folder. `getState()` is read at render because the stack entry below
+   * this screen cannot change while this screen is on top of it.
+   */
+  const navigation = useNavigation()
+  const backLabel = useMemo(() => {
+    const state = navigation.getState()
+    const previous = state ? state.routes[state.index - 1] : undefined
+    const params = (previous?.params ?? {}) as Record<string, string | undefined>
+    switch (previous?.name) {
+      case '[id]': {
+        const previousId = params.id
+        const tab = previousId
+          ? openTabs.find((candidate) => candidate.destination.noteId === previousId)
+          : undefined
+        return tab?.title ?? 'Note'
+      }
+      case 'folder': {
+        const segments = (params.path ?? '').split('/').filter((part) => part.length > 0)
+        return segments[segments.length - 1] ?? 'Notes'
+      }
+      case 'tag':
+        return params.name ?? 'Tag'
+      case 'search':
+        return 'Search'
+      default:
+        return 'Notes'
+    }
+  }, [navigation, openTabs])
+
   const tags = payload?.tags ?? []
   const properties = payload?.properties ?? {}
 
@@ -623,8 +696,6 @@ export default function NoteScreen() {
   }
 
   const title = payload?.title ?? 'Untitled'
-  const folderSegments = (payload?.folderPath ?? '').split('/').filter((part) => part.length > 0)
-  const parentFolder = folderSegments[folderSegments.length - 1] ?? 'Notes'
 
   return (
     <SafeAreaView
@@ -637,20 +708,8 @@ export default function NoteScreen() {
       <View style={[styles.navBorder, { borderBottomColor: c.line.border }]}>
         <NavBarInline
           title=""
-          back={{ label: parentFolder, onPress: () => router.back() }}
-          center={
-            <View style={styles.saveSlot}>
-              <Icon
-                name={saveState === 'saved' ? 'check' : 'sync'}
-                size={18}
-                color={c.text.secondary}
-              />
-              <AppText variant="footnote" color={c.text.secondary}>
-                {saveState === 'saved' ? 'Saved' : 'Saving…'}
-              </AppText>
-            </View>
-          }
-          actions={[{ icon: 'more', label: 'More', onPress: () => setOverlay({ kind: 'more' }) }]}
+          back={{ label: backLabel, onPress: () => router.back() }}
+          actions={[{ icon: 'more', label: 'More', onPress: () => void openMore() }]}
         />
       </View>
 
@@ -693,7 +752,26 @@ export default function NoteScreen() {
                 (editor-web/src/styles.css), and at 20 the native title sits 4pt
                 right of the prose it titles. */}
             <View style={styles.body}>
-              <AppText variant="noteTitle">{title}</AppText>
+              {/* Always a `TextInput`, never a `Text` that swaps to one on tap:
+                  the swap is what makes the whole screen nudge a point or two
+                  when the caret lands, because the two draw the same string at
+                  different metrics. One box, focused or not, cannot shift. */}
+              <TextInput
+                value={titleDraft ?? payload?.title ?? ''}
+                onChangeText={setTitleDraft}
+                onBlur={commitTitle}
+                onSubmitEditing={commitTitle}
+                editable={gate !== 'locked'}
+                multiline
+                // The heading wraps but never scrolls inside itself: it is a
+                // row of the document, so it grows and the body follows.
+                scrollEnabled={false}
+                submitBehavior="blurAndSubmit"
+                returnKeyType="done"
+                placeholder="Untitled"
+                placeholderTextColor={c.text.secondary}
+                style={[textStyles.noteTitle, styles.title, { color: c.text.primary }]}
+              />
               {/* `gate === 'locked'`, not the editor's own state: tags and
                   properties are metadata, not body, and reading the note is no
                   reason to freeze them. Only the vault's own read-only state
@@ -729,7 +807,7 @@ export default function NoteScreen() {
               onFind={() => controls.current?.openFind()}
               onQuickOpen={() => setOverlay({ kind: 'quick-open' })}
               onTabs={() => setTabsVisible(true)}
-              onMore={() => setOverlay({ kind: 'more' })}
+              onMore={() => void openMore()}
             />
           ) : null
         }
@@ -776,7 +854,9 @@ export default function NoteScreen() {
         bookmarked={bookmarked}
         readOnly={!writable}
         onClose={() => setOverlay({ kind: 'none' })}
+        backlinkCount={backlinkCount}
         onToggleBookmark={() => void runBookmark()}
+        onBacklinks={() => router.push(`/notes/backlinks?id=${encodeURIComponent(id)}`)}
         onRename={() => setOverlay({ kind: 'rename' })}
         onMove={() => void openMove()}
         onDuplicate={() => void runDuplicate()}
@@ -822,7 +902,10 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   navBorder: { borderBottomWidth: 1 },
-  saveSlot: { flexDirection: 'row', alignItems: 'center', gap: space.s6 },
   banner: { paddingHorizontal: sizes.gutter, paddingVertical: space.s8 },
-  body: { paddingTop: space.s16, paddingHorizontal: sizes.gutter, gap: BODY_GAP }
+  body: { paddingTop: space.s16, paddingHorizontal: sizes.gutter, gap: BODY_GAP },
+  // Every inset a `TextInput` adds by default is a point the heading would sit
+  // off from the prose it titles, and `includeFontPadding` is the Android one
+  // that moves the whole block down.
+  title: { padding: 0, margin: 0, includeFontPadding: false, textAlignVertical: 'top' }
 })

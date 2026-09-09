@@ -1,10 +1,18 @@
 import { useCallback, useRef, useState } from 'react'
 import { InteractionManager, Platform, Pressable, StyleSheet, View } from 'react-native'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AppText } from '@/components/ui/app-text'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Icon, type IconName } from '@/components/ui/icon'
+import type { Color } from '@/theme/colors'
 import { radius, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 import { removeTag, setNoteTags, type NoteOpsContext } from './note-ops'
@@ -53,20 +61,14 @@ export function NoteTags({ ctx, noteId, tags, readOnly, onOpenTag, onChanged }: 
       {tags.map((tag) => {
         const hue = resolveColor(tag)
         return (
-          <Pressable
+          <TagChip
             key={tag}
-            hitSlop={10}
+            tag={tag}
+            fill={hue.fill}
+            textColor={hue.text}
             onPress={() => onOpenTag(tag)}
             onLongPress={readOnly ? undefined : () => setMenuTag(tag)}
-            accessibilityRole="button"
-            accessibilityLabel={`Tag ${tag}`}
-            accessibilityHint="Opens the notes with this tag. Long press for tag actions."
-            style={[styles.chip, { backgroundColor: hue.fill }]}
-          >
-            <AppText variant="captionEmphasis" color={hue.text}>
-              {tag}
-            </AppText>
-          </Pressable>
+          />
         )
       })}
 
@@ -79,6 +81,72 @@ export function NoteTags({ ctx, noteId, tags, readOnly, onOpenTag, onChanged }: 
     </View>
   )
 }
+
+/**
+ * How long a press has to be held before the action sheet opens.
+ *
+ * Shorter than RN's 500ms default, matching `TreeRow`: the sheet is the chip's
+ * only route to removal, so it has to feel like a shortcut rather than a wait.
+ */
+const LONG_PRESS_MS = 350
+
+/**
+ * One tag chip, with a press that shows its own progress.
+ *
+ * A long press with no feedback is invisible — the finger is down, nothing
+ * moves, and the user lets go before the gesture ever fires. So the chip
+ * shrinks over exactly `LONG_PRESS_MS`, reaching its smallest at the moment
+ * the sheet opens: the animation *is* the progress bar. Releasing early
+ * springs it back, which reads as "not yet" instead of "nothing happened".
+ */
+function TagChip({
+  tag,
+  fill,
+  textColor,
+  onPress,
+  onLongPress
+}: {
+  tag: string
+  fill: Color
+  textColor: Color
+  onPress: () => void
+  onLongPress?: () => void
+}) {
+  const progress = useSharedValue(0)
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - progress.value * 0.08 }],
+    opacity: 1 - progress.value * 0.25
+  }))
+
+  const release = (): void => {
+    progress.value = withSpring(0, { damping: 16, stiffness: 260 })
+  }
+
+  return (
+    <AnimatedPressable
+      hitSlop={10}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={LONG_PRESS_MS}
+      onPressIn={() => {
+        progress.value = onLongPress
+          ? withTiming(1, { duration: LONG_PRESS_MS, easing: Easing.out(Easing.quad) })
+          : withTiming(0.4, { duration: 90 })
+      }}
+      onPressOut={release}
+      accessibilityRole="button"
+      accessibilityLabel={`Tag ${tag}`}
+      accessibilityHint="Opens the notes with this tag. Long press for tag actions."
+      style={[styles.chip, { backgroundColor: fill }, animatedStyle]}
+    >
+      <AppText variant="captionEmphasis" color={textColor}>
+        {tag}
+      </AppText>
+    </AnimatedPressable>
+  )
+}
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
 interface TagAction {
   key: 'open' | 'remove'

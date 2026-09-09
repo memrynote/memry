@@ -180,6 +180,28 @@ export function EditorView({
   const hostState = useSyncExternalStore(host.subscribe, host.getState)
   const markdownExports = useMemo(() => new MarkdownExportRequests(), [])
 
+  /**
+   * The keyboard's own height, measured natively and handed to the guest.
+   *
+   * Measured here rather than in the guest because the WebView sits inside a
+   * KeyboardAvoidingView: by the time the keyboard is up, the frame has already
+   * shrunk out from under it, so the guest's `visualViewport` inset is a
+   * fraction of the keyboard rather than the whole of it. The block picker
+   * replaces the keyboard and has to match its height, so it needs this number.
+   *
+   * The last non-zero height is kept: the picker opens right after the keyboard
+   * is dismissed, so zeroing on hide would size it from nothing.
+   */
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidShow', (event) => {
+      const height = Math.round(event.endCoordinates.height)
+      if (height > 0) setKeyboardHeight(height)
+    })
+    return () => sub.remove()
+  }, [])
+  const guestCfg = useMemo(() => ({ ...cfg, keyboardHeight }), [cfg, keyboardHeight])
+
   const docId = doc.docId
   /** Whether the shared guest is currently holding THIS note. */
   const mounted = hostState.guest === 'ready' && hostState.mountedDocId === docId
@@ -244,9 +266,9 @@ export function EditorView({
 
   /** Hand this note to the guest. Called by the host every time it becomes the mounted one. */
   const mountOnGuest = useCallback(() => {
-    bridge.send({ type: 'cfg', ...cfg })
+    bridge.send({ type: 'cfg', ...guestCfg })
     sendDocLoad()
-  }, [bridge, cfg, sendDocLoad])
+  }, [bridge, guestCfg, sendDocLoad])
 
   // Remote updates (sync, or another surface) are forwarded to the guest, and
   // ONLY while this note is the one it is holding.
@@ -273,9 +295,9 @@ export function EditorView({
   // would recolour the one the reader is looking at.
   useEffect(() => {
     if (!mounted) return
-    bridge.send({ type: 'cfg', ...cfg })
+    bridge.send({ type: 'cfg', ...guestCfg })
     bridge.flush()
-  }, [bridge, cfg, mounted])
+  }, [bridge, guestCfg, mounted])
 
   const handleGuestMsg = useCallback(
     (msg: GuestMsg) => {

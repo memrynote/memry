@@ -42,6 +42,7 @@ describe('mobile editor toolbar', () => {
   beforeEach(() => {
     document.body.replaceChildren()
     document.documentElement.style.removeProperty('--memry-viewport-bottom-inset')
+    document.documentElement.style.removeProperty('--memry-keyboard-height')
   })
 
   it('keeps Aa and Turn into as separate states from the Paper flow', () => {
@@ -198,6 +199,20 @@ describe('mobile editor toolbar', () => {
     expect(pickerAfterKeyboardDismiss?.style.getPropertyValue('--memry-picker-height')).toBe(
       '290px'
     )
+  })
+
+  it('sizes the picker from the host keyboard height, not the clipped inset', () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    install(host)
+    // What a KeyboardAvoidingView leaves the guest: a sliver of the keyboard.
+    document.documentElement.style.setProperty('--memry-viewport-bottom-inset', '34px')
+    document.documentElement.style.setProperty('--memry-keyboard-height', '336px')
+
+    button('Insert blocks').click()
+
+    const picker = document.querySelector<HTMLElement>('[aria-label="Blocks"]')
+    expect(picker?.style.getPropertyValue('--memry-picker-height')).toBe('336px')
   })
 
   it('restores editor focus when the link prompt is cancelled', () => {

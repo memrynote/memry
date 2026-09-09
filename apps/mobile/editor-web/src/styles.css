@@ -503,13 +503,20 @@ img.asset-missing {
   border-color: color-mix(in srgb, var(--memry-accent) 40%, transparent);
 }
 
-/* Wiki-link autocomplete. */
+/* Wiki-link autocomplete. Lives in `#editor-chrome`, so it is positioned
+   against the visible viewport rather than the note-tall `#root`, and it has to
+   opt back into pointer events like every other pane in that layer. The bottom
+   inset here is only the fallback for a hidden toolbar; when one is on screen
+   its measured top edge wins, so the menu never slides under it. */
 .wiki-menu {
-  position: fixed;
-  inset-block-end: calc(var(--memry-viewport-bottom-inset, 0px) + 56px);
+  position: absolute;
+  pointer-events: auto;
+  inset-block-end: var(--memry-viewport-bottom-inset, 0px);
   inset-inline: 0;
   z-index: 20;
-  max-block-size: 40vh;
+  /* Five compact rows plus the hint. Past that the list stops being a glance
+     and starts being a page. */
+  max-block-size: 216px;
   overflow-y: auto;
   background: var(--memry-paper);
   border-block-start: 1px solid var(--memry-hairline);
@@ -517,21 +524,69 @@ img.asset-missing {
 }
 
 .wiki-menu-item {
-  display: block;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   inline-size: 100%;
-  min-block-size: 44px;
-  padding-block: 12px;
-  padding-inline: 16px;
+  /* Deliberately under the 44px touch minimum used elsewhere: this list can
+     show five rows and it sits between the note and the keyboard, so a taller
+     row buries the sentence the user is in the middle of writing. The whole
+     strip is still a large target and it is never the only way to make a
+     link. */
+  min-block-size: 34px;
+  padding-block: 6px;
+  padding-inline: 14px;
   text-align: start;
   background: none;
   border: 0;
   border-block-end: 1px solid var(--memry-hairline);
   color: inherit;
-  font: inherit;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.3;
 }
 
-.wiki-menu-item:active {
+.wiki-menu-item:active,
+.wiki-menu-item.is-selected {
   background: color-mix(in srgb, var(--memry-accent) 12%, transparent);
+}
+
+.wiki-menu-glyph {
+  flex: 0 0 18px;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.wiki-menu-label {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wiki-menu-sub {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.wiki-menu-empty,
+.wiki-menu-hint {
+  padding-block: 6px;
+  padding-inline: 14px;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.wiki-menu-hint {
+  border-block-start: 1px solid var(--memry-hairline);
+}
+
+.wiki-menu-hint {
+  border-block-start: 1px solid var(--memry-hairline);
 }
 
 .reduced-motion *,

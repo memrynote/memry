@@ -38,18 +38,87 @@ export function AddPropertySheet(props: AddPropertySheetProps) {
 
 function AddPropertyBody({ existingNames, onClose, onCreate }: AddPropertySheetProps) {
   const c = useColors()
+  const [type, setType] = useState<MobilePropertyType | null>(null)
   const [name, setName] = useState('')
 
   const trimmed = name.trim()
   const usable = trimmed.length > 0 && !existingNames.includes(trimmed)
 
+  if (type === null) {
+    return (
+      <>
+        <View style={styles.header}>
+          <AppText variant="headline">Add property</AppText>
+          <Pressable hitSlop={10} onPress={onClose} accessibilityRole="button">
+            <AppText variant="headline" color={c.tint.text}>
+              Cancel
+            </AppText>
+          </Pressable>
+        </View>
+
+        <View style={styles.sectionLabel}>
+          <AppText color={c.text.secondary} style={styles.sectionText}>
+            TYPE
+          </AppText>
+        </View>
+
+        <View style={styles.list}>
+          {addablePropertyTypes.map((entryType) => {
+            const entry = propertyTypes[entryType]
+            return (
+              <Pressable
+                key={entryType}
+                onPress={() => setType(entryType)}
+                accessibilityRole="button"
+                accessibilityLabel={entry.label}
+                style={styles.item}
+              >
+                <View style={styles.iconLane}>
+                  <Icon name={entry.icon} size={16} color={c.text.secondary} />
+                </View>
+                <AppText variant="subhead">{entry.label}</AppText>
+                <View style={styles.spacer} />
+                <Icon name="chevron-right" size={16} color={c.text.tertiary} />
+              </Pressable>
+            )
+          })}
+        </View>
+      </>
+    )
+  }
+
+  const entry = propertyTypes[type]
+  const submit = () => {
+    if (usable) onCreate(trimmed, type)
+  }
+
   return (
     <>
       <View style={styles.header}>
-        <AppText variant="headline">Add property</AppText>
-        <Pressable hitSlop={10} onPress={onClose} accessibilityRole="button">
+        {/* Back returns to the type list; the typed name survives so a
+            mistaken type choice does not cost the name. */}
+        <Pressable
+          hitSlop={10}
+          onPress={() => setType(null)}
+          accessibilityRole="button"
+          accessibilityLabel="Back to property types"
+          style={styles.back}
+        >
+          <Icon name="chevron-left" size={18} color={c.tint.text} />
           <AppText variant="headline" color={c.tint.text}>
-            Cancel
+            {entry.label}
+          </AppText>
+        </Pressable>
+        <Pressable
+          hitSlop={10}
+          onPress={submit}
+          disabled={!usable}
+          accessibilityRole="button"
+          accessibilityLabel="Add property"
+          accessibilityState={{ disabled: !usable }}
+        >
+          <AppText variant="headline" color={usable ? c.tint.text : c.text.tertiary}>
+            Add
           </AppText>
         </Pressable>
       </View>
@@ -59,6 +128,7 @@ function AddPropertyBody({ existingNames, onClose, onCreate }: AddPropertySheetP
           autoFocus
           value={name}
           onChangeText={setName}
+          onSubmitEditing={submit}
           placeholder="Property name"
           placeholderTextColor={c.text.tertiary}
           autoCapitalize="none"
@@ -76,34 +146,6 @@ function AddPropertyBody({ existingNames, onClose, onCreate }: AddPropertySheetP
           ]}
         />
       </View>
-
-      <View style={styles.sectionLabel}>
-        <AppText color={c.text.secondary} style={styles.sectionText}>
-          TYPE
-        </AppText>
-      </View>
-
-      <View style={styles.list}>
-        {addablePropertyTypes.map((type) => {
-          const entry = propertyTypes[type]
-          return (
-            <Pressable
-              key={type}
-              onPress={() => {
-                if (usable) onCreate(trimmed, type)
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={entry.label}
-              style={styles.item}
-            >
-              <View style={styles.iconLane}>
-                <Icon name={entry.icon} size={16} color={c.text.secondary} />
-              </View>
-              <AppText variant="subhead">{entry.label}</AppText>
-            </Pressable>
-          )
-        })}
-      </View>
     </>
   )
 }
@@ -116,7 +158,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: sizes.gutter
   },
-  fieldRow: { paddingHorizontal: sizes.gutter, paddingBottom: space.s12 },
+  fieldRow: { paddingHorizontal: sizes.gutter, paddingBottom: space.s20 },
   field: {
     height: 40,
     paddingHorizontal: space.s12,
@@ -132,5 +174,7 @@ const styles = StyleSheet.create({
   },
   list: { paddingHorizontal: sizes.gutter, paddingBottom: space.s20 },
   item: { height: sizes.tapTarget, flexDirection: 'row', alignItems: 'center', gap: space.s12 },
-  iconLane: { width: 24, flexShrink: 0 }
+  iconLane: { width: 24, flexShrink: 0 },
+  spacer: { flex: 1 },
+  back: { flexDirection: 'row', alignItems: 'center', gap: space.s4 }
 })

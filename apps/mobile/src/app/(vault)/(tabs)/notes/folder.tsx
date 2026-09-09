@@ -28,7 +28,7 @@ import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
 import { getSyncEngine } from '@/sync/engine'
 import { subscribeReadOnly } from '@/sync/read-only-mode'
-import { sizes, space } from '@/theme/primitives'
+import { sizes } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
 const log = createLogger('NoteFolderScreen')
@@ -45,7 +45,6 @@ const NOTHING_EXPANDED: ReadonlySet<string> = new Set<string>()
 
 type FolderScreenRow =
   | { kind: 'folders-header' }
-  | { kind: 'notes-header'; count: number }
   | { kind: 'folder'; node: FolderNode }
   | { kind: 'note'; note: NoteEntry }
 
@@ -134,7 +133,6 @@ export default function NoteFolderScreen() {
       out.push({ kind: 'folders-header' })
       for (const row of folders) out.push({ kind: 'folder', node: row.node })
     }
-    out.push({ kind: 'notes-header', count: node.notes.length })
     for (const row of flattened) {
       if (row.kind === 'note') out.push({ kind: 'note', note: row.note })
     }
@@ -193,10 +191,6 @@ export default function NoteFolderScreen() {
           switch (item.kind) {
             case 'folders-header':
               return <TreeSectionHeader label="FOLDERS" />
-            case 'notes-header':
-              return (
-                <TreeSectionHeader label={`NOTES — ${item.count}`} style={styles.notesHeader} />
-              )
             // Folder rows carry no SWIPE actions — a folder's verbs are a
             // batch over every note beneath it, which is a different change
             // from a note's — but they do carry the long-press menu.
@@ -258,7 +252,6 @@ export default function NoteFolderScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   navBorder: { borderBottomWidth: 1 },
-  notesHeader: { marginTop: space.s4 },
   empty: { paddingHorizontal: sizes.gutter, paddingTop: sizes.gutter },
   fab: { position: 'absolute', end: sizes.gutter, bottom: sizes.gutter }
 })

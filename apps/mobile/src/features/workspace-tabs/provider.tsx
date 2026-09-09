@@ -34,9 +34,9 @@ export class WorkspaceTabsStore {
 
   constructor(private readonly storage: WorkspaceTabsStorage | null) {}
 
-  private navigate: (noteId: string | null) => void = () => undefined
+  private navigate: WorkspaceTabsNavigate = () => undefined
 
-  setNavigate(navigate: (noteId: string | null) => void): void {
+  setNavigate(navigate: WorkspaceTabsNavigate): void {
     this.navigate = navigate
   }
 
@@ -91,7 +91,10 @@ export class WorkspaceTabsStore {
 
   readonly open = (note: WorkspaceNote): void => {
     this.register(note)
-    this.navigate(note.id)
+    // Opening a note is a step forward in time — a wiki-link tap, quick open,
+    // a duplicate. It pushes so Back returns to whatever the reader came from,
+    // note or folder, instead of the new note's parent folder.
+    this.navigate(note.id, 'push')
   }
 
   readonly register = (note: WorkspaceNote): void => {
@@ -110,7 +113,9 @@ export class WorkspaceTabsStore {
     const tab = this.state.tabs.find((candidate) => candidate.id === tabId)
     if (!tab) return
     this.publish(activateWorkspaceTab(this.state, tabId, Date.now()))
-    this.navigate(tab.destination.noteId)
+    // Switching or closing tabs is not travel: it swaps what the current stack
+    // entry shows and leaves the history behind it intact.
+    this.navigate(tab.destination.noteId, 'replace')
   }
 
   readonly close = (tabId: string): void => {
@@ -124,7 +129,7 @@ export class WorkspaceTabsStore {
     this.publish(next)
     if (!wasActive) return
     const active = next.tabs.find((tab) => tab.id === next.activeTabId)
-    this.navigate(active?.destination.noteId ?? null)
+    this.navigate(active?.destination.noteId ?? null, 'replace')
   }
 
   flush(): Promise<void> {
@@ -152,11 +157,14 @@ interface WorkspaceTabsContextValue {
   setVisible: (visible: boolean) => void
 }
 
+/** `push` moves forward in history; `replace` swaps the current entry. */
+export type WorkspaceTabsNavigate = (noteId: string | null, mode: 'push' | 'replace') => void
+
 const WorkspaceTabsContext = createContext<WorkspaceTabsContextValue | null>(null)
 
 export interface WorkspaceTabsProviderProps {
   db: VaultDb | null
-  navigate: (noteId: string | null) => void
+  navigate: WorkspaceTabsNavigate
   children: ReactNode
 }
 

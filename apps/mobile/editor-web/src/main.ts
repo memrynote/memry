@@ -5,14 +5,23 @@ import { beginOpenMarks, guestMarks, markGuest } from './open-marks.ts'
 import * as Y from 'yjs'
 import { BlockNoteEditor } from '@blocknote/core'
 import { codeBlockOptions } from '@blocknote/code-block'
-import { createWikiLinkInlineContent, wikiLinkConfig } from '@memry/editor-schema/inline'
+import {
+  createWikiLinkInlineContent,
+  wikiLinkConfig,
+  wikiLinkToText
+} from '@memry/editor-schema/inline'
 import { BRIDGE_FRAGMENT_NAME, type BridgeExecCommand } from '@memry/contracts/webview-bridge'
 import { assertNoWebStorage, createGuestBridge, type GuestBridge } from './bridge.ts'
 import { bindAssetBridge } from './assets.ts'
+import { TextSelection } from 'prosemirror-state'
 import { installImageResolver } from './images.ts'
 import { isForMountedDoc } from './routing.ts'
 import { createMobileEditorSchema } from './schema.ts'
-import { installWikiLinkAutocomplete, installWikiLinkNavigation } from './wiki-links.ts'
+import {
+  installWikiLinkAutocomplete,
+  installWikiLinkNavigation,
+  type WikiLinkAutocomplete
+} from './wiki-links.ts'
 import { installVisibleViewportInset } from './visual-viewport.ts'
 import { installFindInNote, type FindInNoteController } from './find-in-note.ts'
 import {
@@ -222,17 +231,23 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   doc.on('update', onUpdate)
 
   const detachNav = installWikiLinkNavigation(root, bridge)
-  const detachAutocomplete = installWikiLinkAutocomplete(
-    { insertWikiLink: (title) => editor.insertInlineContent([wikiLinkNode(title), ' ']) },
-    bridge,
-    root
-  )
   const detachAssets = installImageResolver(root)
   const detachMetrics = installMetrics(root, bridge)
   chrome.replaceChildren()
   const findHost = document.createElement('div')
   const toolbarHost = document.createElement('div')
   chrome.append(findHost, toolbarHost)
+  // After `replaceChildren`, or the menu is swept out of the chrome layer the
+  // moment the toolbar claims it.
+  const wikiLinks = installWikiLinkAutocomplete(
+    {
+      replaceQuery: (back, forward, target, alias) =>
+        replaceQuery(editor, back, forward, target, alias),
+      unpromoteAdjacent: (direction) => unpromoteAdjacent(editor, direction)
+    },
+    bridge,
+    { root, chrome, toolbarHost }
+  )
   let toolbarPanelOpen = false
   let findOpen = false
   const reportPanelVisibility = (): void => {
@@ -245,7 +260,7 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   }
   const toolbar = installEditorToolbar(
     toolbarHost,
-    toolbarActions(editor, docId, bridge),
+    toolbarActions(editor, docId, bridge, wikiLinks),
     (open) => {
       toolbarPanelOpen = open
       reportPanelVisibility()
@@ -289,7 +304,7 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     teardown: () => {
       doc.off('update', onUpdate)
       detachNav()
-      detachAutocomplete()
+      wikiLinks.detach()
       detachAssets()
       detachMetrics()
       detachToolbarSelection()
@@ -535,8 +550,35 @@ function toggleStyle(editor: MobileEditor, style: InlineStyle): void {
   }
 }
 
-function toolbarActions(editor: MobileEditor, docId: string, guest: GuestBridge) {
+function toolbarActions(
+  editor: MobileEditor,
+  docId: string,
+  guest: GuestBridge,
+  wiki: WikiLinkAutocomplete
+) {
   const refresh = (): void => mounted?.toolbar.update(readToolbarSelection(editor))
+  // `execCommand` reaches ProseMirror as a `beforeinput` it handles itself, so
+  // no `input` event escapes to the autocomplete's own listener. Opening the
+  // menu explicitly is what makes the toolbar button do anything at all.
+  // Both brackets go in at once and the caret is walked back between them, so
+  // the button leaves a finished `[[]]` the user types INTO rather than a half
+  // token they have to close themselves. `execCommand` reaches ProseMirror as a
+  // `beforeinput` it handles itself, so no `input` event escapes to the
+  // autocomplete's own listener -- opening the menu explicitly is what makes
+  // the button do anything at all.
+  const openWikiLink = (): void => {
+    editor.focus()
+    document.execCommand('insertText', false, '[[]]')
+    const selection = document.getSelection()
+    if (selection?.isCollapsed) {
+      // `modify` over `collapse`: ProseMirror re-reads the DOM selection, and a
+      // raw offset set against a node it is about to replace lands nowhere.
+      selection.modify('move', 'backward', 'character')
+      selection.modify('move', 'backward', 'character')
+    }
+    wiki.open()
+    refresh()
+  }
   const refocus = (): void => {
     editor.focus()
     refresh()
@@ -556,9 +598,7 @@ function toolbarActions(editor: MobileEditor, docId: string, guest: GuestBridge)
         return
       }
       if (action.kind === 'wikiLink') {
-        editor.focus()
-        document.execCommand('insertText', false, '[[')
-        refresh()
+        openWikiLink()
         return
       }
       insertBlock(editor, action)
@@ -589,9 +629,7 @@ function toolbarActions(editor: MobileEditor, docId: string, guest: GuestBridge)
       refocus()
     },
     insertWikiLink(): void {
-      editor.focus()
-      document.execCommand('insertText', false, '[[')
-      refresh()
+      openWikiLink()
     },
     insertImage(): void {
       requestAttachment('image')
@@ -619,6 +657,7 @@ function applyCfg(cfg: {
   reducedMotion: boolean
   readOnly: boolean
   headerHeight?: number
+  keyboardHeight?: number
 }): void {
   const html = document.documentElement
   html.setAttribute('data-theme', cfg.theme)
@@ -632,6 +671,10 @@ function applyCfg(cfg: {
   // the header travels the same one. Live, because the header is the note's own
   // title block and grows as tags and properties are added to it.
   html.style.setProperty('--memry-header-inset', `${Math.max(0, cfg.headerHeight ?? 0)}px`)
+  // The host's own keyboard measurement, which the block picker sizes itself
+  // from. See `keyboardHeight` on the cfg message for why the guest cannot
+  // measure it.
+  html.style.setProperty('--memry-keyboard-height', `${Math.max(0, cfg.keyboardHeight ?? 0)}px`)
   readOnly = cfg.readOnly
   if (mounted) {
     mounted.editor.isEditable = !cfg.readOnly
@@ -858,6 +901,62 @@ function fingerprintSchema(built: {
 }
 
 /**
+ * Turn the wiki link the cursor is sitting against back into `[[…]]` text.
+ *
+ * Desktop's rule, and the reason it exists: a finished chip is an atom, so
+ * Backspace next to one deletes the entire link when all the user wanted was
+ * to add a `#Heading` or a `|Alias` to it. Un-promoting hands the raw form
+ * back with the caret at the END of the target, which is exactly where both of
+ * those go. Desktop paints the same text with a decoration instead of writing
+ * it; this writes it, so the un-promotion costs one undo step.
+ */
+function unpromoteAdjacent(editor: MobileEditor, direction: 'before' | 'after'): boolean {
+  let done = false
+  editor.transact((tr) => {
+    const { $from, empty } = tr.selection
+    if (!empty) return
+    const node = direction === 'before' ? $from.nodeBefore : $from.nodeAfter
+    if (node?.type.name !== 'wikiLink') return
+    const target = String(node.attrs.target ?? '')
+    if (!target) return
+    const text = wikiLinkToText(target, String(node.attrs.alias ?? ''))
+    const start = direction === 'before' ? $from.pos - node.nodeSize : $from.pos
+    tr.replaceWith(start, start + node.nodeSize, tr.doc.type.schema.text(text))
+    tr.setSelection(TextSelection.create(tr.doc, start + OPEN_TOKEN_LENGTH + target.length))
+    done = true
+  })
+  return done
+}
+
+const OPEN_TOKEN_LENGTH = 2
+
+/**
+ * Swap the raw `[[query]]` run around the cursor for a wiki link, atomically.
+ *
+ * One transaction for the delete so the whole run goes in a single step. The
+ * previous `execCommand('delete')` loop asked the browser to repeat a backward
+ * delete N times and ProseMirror only honoured some of them, which left
+ * `[[Note#` sitting in front of the finished chip on longer queries.
+ */
+function replaceQuery(
+  editor: MobileEditor,
+  back: number,
+  forward: number,
+  target: string,
+  alias: string
+): void {
+  editor.transact((tr) => {
+    const { $from, from } = tr.selection
+    // Clamped to the caret's own text block: a query can never have spilled
+    // out of it, so anything past the edge belongs to a neighbour.
+    const start = Math.max($from.start(), from - back)
+    const end = Math.min($from.end(), from + forward)
+    if (end > start) tr.delete(start, end)
+  })
+  editor.insertInlineContent([wikiLinkNode(target, alias), ' '])
+}
+
+/**
  * A wiki-link node ready for `insertInlineContent`.
  *
  * The shared helper deliberately OMITS unset mark props — that is what keeps a
@@ -866,12 +965,12 @@ function fingerprintSchema(built: {
  * therefore filled from the schema's own defaults rather than a second
  * hard-coded copy, so a future mark added to the config comes along for free.
  */
-function wikiLinkNode(title: string) {
+function wikiLinkNode(target: string, alias: string) {
   const schemaProps = wikiLinkConfig.propSchema
   return {
     type: 'wikiLink' as const,
     props: {
-      ...createWikiLinkInlineContent(title, title).props,
+      ...createWikiLinkInlineContent(target, alias).props,
       bold: schemaProps.bold.default,
       italic: schemaProps.italic.default,
       underline: schemaProps.underline.default,

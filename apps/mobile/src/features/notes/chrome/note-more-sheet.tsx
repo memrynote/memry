@@ -13,8 +13,10 @@ export interface NoteMoreSheetProps {
   title: string
   bookmarked: boolean
   readOnly: boolean
+  backlinkCount: number
   onClose: () => void
   onToggleBookmark: () => void
+  onBacklinks: () => void
   onRename: () => void
   onMove: () => void
   onDuplicate: () => void
@@ -23,9 +25,10 @@ export interface NoteMoreSheetProps {
 }
 
 interface MoreAction {
-  key: 'bookmark' | 'rename' | 'move' | 'duplicate' | 'share' | 'delete'
+  key: 'bookmark' | 'backlinks' | 'rename' | 'move' | 'duplicate' | 'share' | 'delete'
   label: string
   icon: IconName
+  trailing?: string
   destructive?: boolean
   onPress: () => void
 }
@@ -36,8 +39,10 @@ export function NoteMoreSheet({
   title,
   bookmarked,
   readOnly,
+  backlinkCount,
   onClose,
   onToggleBookmark,
+  onBacklinks,
   onRename,
   onMove,
   onDuplicate,
@@ -59,13 +64,22 @@ export function NoteMoreSheet({
       icon: bookmarked ? 'bookmark-off' : 'bookmark',
       onPress: onToggleBookmark
     },
+    {
+      key: 'backlinks',
+      label: 'Backlinks',
+      icon: 'link',
+      ...(backlinkCount > 0 ? { trailing: String(backlinkCount) } : {}),
+      onPress: onBacklinks
+    },
     { key: 'rename', label: 'Rename note', icon: 'pencil', onPress: onRename },
     { key: 'move', label: 'Move to folder', icon: 'folder-input', onPress: onMove },
     { key: 'duplicate', label: 'Duplicate note', icon: 'copy', onPress: onDuplicate },
     { key: 'share', label: 'Share a copy', icon: 'share', onPress: onShare },
     { key: 'delete', label: 'Delete note', icon: 'trash', destructive: true, onPress: onDelete }
   ]
-  const actions = readOnly ? allActions.filter((action) => action.key === 'share') : allActions
+  const actions = readOnly
+    ? allActions.filter((action) => action.key === 'share' || action.key === 'backlinks')
+    : allActions
 
   return (
     <BottomSheet
@@ -116,6 +130,11 @@ export function NoteMoreSheet({
               <AppText color={color} style={styles.actionLabel}>
                 {action.label}
               </AppText>
+              {action.trailing ? (
+                <AppText variant="footnote" color={c.text.tertiary}>
+                  {action.trailing}
+                </AppText>
+              ) : null}
             </Pressable>
           )
         })}

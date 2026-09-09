@@ -17,6 +17,7 @@ import { radius, sizes, space } from '@/theme/primitives'
 import { textStyles } from '@/theme/text-styles'
 import { useColors } from '@/theme/use-colors'
 import { normalizeTagKey, readVaultTags } from './note-ops'
+import { groupTagsByCategory, tagLabelInGroup } from './tag-groups'
 import { useTagColors } from './use-tag-colors'
 
 export interface AddTagSheetProps {
@@ -66,12 +67,12 @@ function AddTagBody({ db, existing, onClose, onPick }: AddTagSheetProps) {
     if (db) void readVaultTags(db).then(setVaultTags)
   }, [db])
 
-  const { matching, canCreate } = useMemo(() => {
+  const { groups, canCreate } = useMemo(() => {
     const key = normalizeTagKey(query)
     const taken = new Set(existing.map(normalizeTagKey))
     const available = vaultTags.filter((tag) => !taken.has(normalizeTagKey(tag)))
     return {
-      matching: available.filter((tag) => normalizeTagKey(tag).includes(key)),
+      groups: groupTagsByCategory(available.filter((tag) => normalizeTagKey(tag).includes(key))),
       canCreate:
         key.length > 0 && !vaultTags.some((tag) => normalizeTagKey(tag) === key) && !taken.has(key)
     }
@@ -115,52 +116,65 @@ function AddTagBody({ db, existing, onClose, onPick }: AddTagSheetProps) {
         </View>
       </View>
 
-      <View style={styles.sectionLabel}>
-        <AppText variant="caption" color={c.text.secondary} style={styles.sectionText}>
-          {/* Board 33 only ever draws this with a query typed. With an empty
-              one the list is the whole vault, and calling that MATCHING would
-              be false. */}
-          {query.trim().length > 0 ? 'MATCHING' : 'ALL TAGS'}
-        </AppText>
-      </View>
-
       <ScrollView
         style={styles.chipsScroll}
-        contentContainerStyle={styles.chips}
+        contentContainerStyle={styles.scrollContent}
         // Without this the first tap on a chip is spent dismissing the keyboard
         // the autofocused field raised, and the tag is never added.
         keyboardShouldPersistTaps="handled"
       >
-        {matching.map((tag) => {
-          const hue = resolveColor(tag)
-          return (
+        {groups.map((group) => (
+          <View key={group.category ?? '__uncategorized__'} style={styles.group}>
+            <View style={styles.sectionLabel}>
+              <AppText variant="caption" color={c.text.secondary} style={styles.sectionText}>
+                {/* Board 33 only ever drew this with a query typed; with an
+                    empty one the list is the whole vault. The category name
+                    stays true either way, so only the catch-all changes. */}
+                {group.category
+                  ? group.category.toUpperCase()
+                  : query.trim().length > 0
+                    ? 'MATCHING'
+                    : 'ALL TAGS'}
+              </AppText>
+            </View>
+            <View style={styles.chips}>
+              {group.tags.map((tag) => {
+                const hue = resolveColor(tag)
+                return (
+                  <Pressable
+                    key={tag}
+                    hitSlop={10}
+                    onPress={() => onPick(tag)}
+                    accessibilityRole="button"
+                    // The full path, never the shortened label: the chip reads
+                    // `clients/acme` under WORK, but the tag is `work/clients/acme`.
+                    accessibilityLabel={`Add tag ${tag}`}
+                    style={[styles.chip, { backgroundColor: hue.fill }]}
+                  >
+                    <AppText variant="captionEmphasis" color={hue.text}>
+                      {tagLabelInGroup(tag, group.category)}
+                    </AppText>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </View>
+        ))}
+        {canCreate ? (
+          <View style={styles.chips}>
             <Pressable
-              key={tag}
               hitSlop={10}
-              onPress={() => onPick(tag)}
+              onPress={() => onPick(query.trim())}
               accessibilityRole="button"
-              accessibilityLabel={`Add tag ${tag}`}
-              style={[styles.chip, { backgroundColor: hue.fill }]}
+              accessibilityLabel={`Create tag ${query.trim()}`}
+              style={[styles.createChip, { borderColor: c.line.border }]}
             >
-              <AppText variant="captionEmphasis" color={hue.text}>
-                {tag}
+              <Icon name="plus" size={10} strokeWidth={3} color={c.text.secondary} />
+              <AppText variant="captionEmphasis" color={c.text.secondary}>
+                {`Create "${query.trim()}"`}
               </AppText>
             </Pressable>
-          )
-        })}
-        {canCreate ? (
-          <Pressable
-            hitSlop={10}
-            onPress={() => onPick(query.trim())}
-            accessibilityRole="button"
-            accessibilityLabel={`Create tag ${query.trim()}`}
-            style={[styles.createChip, { borderColor: c.line.border }]}
-          >
-            <Icon name="plus" size={10} strokeWidth={3} color={c.text.secondary} />
-            <AppText variant="captionEmphasis" color={c.text.secondary}>
-              {`Create "${query.trim()}"`}
-            </AppText>
-          </Pressable>
+          </View>
         ) : null}
       </ScrollView>
 
@@ -209,12 +223,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.99
   },
   chipsScroll: { flexShrink: 1 },
+  scrollContent: { paddingBottom: space.s12 },
+  group: { paddingBottom: space.s4 },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: space.s6,
     paddingHorizontal: sizes.gutter,
-    paddingBottom: space.s12
+    paddingBottom: space.s8
   },
   chip: { paddingVertical: space.s4, paddingHorizontal: 10, borderRadius: radius.full },
   createChip: {

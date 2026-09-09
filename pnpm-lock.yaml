@@ -991,6 +991,9 @@ importers:
       '@memry/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@memry/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@memry/storage-vault':
         specifier: workspace:*
         version: link:../../packages/storage-vault
@@ -1169,6 +1172,9 @@ importers:
       '@memry/editor-schema':
         specifier: workspace:*
         version: link:../../../packages/editor-schema
+      prosemirror-state:
+        specifier: ^1.4.4
+        version: 1.4.4
       yjs:
         specifier: ^13.6.29
         version: 13.6.29
