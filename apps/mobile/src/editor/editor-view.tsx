@@ -19,8 +19,7 @@ import {
 import { bytesToBase64 } from '../lib/base64'
 import { createLogger } from '../lib/logger'
 import { useEditorHost } from './editor-host'
-import { HtmlExportRequests } from './html-export-requests'
-import { MarkdownExportRequests } from './markdown-export-requests'
+import { createHtmlExportRequests, createMarkdownExportRequests } from './export-requests'
 import {
   editorFrameFrom,
   type EditorFrame,
@@ -186,8 +185,8 @@ export function EditorView({
   const host = useEditorHost()
   const bridge = host.bridge
   const hostState = useSyncExternalStore(host.subscribe, host.getState)
-  const markdownExports = useMemo(() => new MarkdownExportRequests(), [])
-  const htmlExports = useMemo(() => new HtmlExportRequests(), [])
+  const markdownExports = useMemo(() => createMarkdownExportRequests(), [])
+  const htmlExports = useMemo(() => createHtmlExportRequests(), [])
 
   /**
    * The keyboard's own height, measured natively and handed to the guest.
