@@ -38,9 +38,16 @@ import { readBookmarkKeys, toggleBookmark } from '@/features/notes/bookmarks'
 import { NoteFooter } from '@/features/notes/chrome/note-footer'
 import { readBacklinks } from '@/features/notes/backlinks'
 import { NoteMoreSheet } from '@/features/notes/chrome/note-more-sheet'
+import { ReminderSheet } from '@/features/notes/chrome/reminder-sheet'
 import { QuickOpenModal } from '@/features/notes/chrome/quick-open-modal'
 import { editGate } from '@/features/notes/edit-gate'
 import { MoveSheet } from '@/features/notes/move-sheet'
+import {
+  describeReminder,
+  readNoteReminder,
+  reminderPermission,
+  type NoteReminder
+} from '@/features/notes/reminders'
 import {
   addTag,
   clearPendingSeed,
@@ -128,6 +135,7 @@ type NoteOverlay =
   | { kind: 'none' }
   | { kind: 'quick-open' }
   | { kind: 'more' }
+  | { kind: 'reminder' }
   | { kind: 'rename' }
   | { kind: 'move'; snapshot: NotesSnapshot }
 
@@ -161,6 +169,15 @@ export default function NoteScreen() {
   const [keyboardVisible, setKeyboardVisible] = useState<boolean | null>(null)
   const [editorPanelOpen, setEditorPanelOpen] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
+  const [reminder, setReminder] = useState<NoteReminder | null>(null)
+  /**
+   * Whether this device can ring at all.
+   *
+   * Read when the sheet opens rather than stored: the user can turn
+   * notifications off in Settings at any time, and a flag written when the
+   * reminder was set would keep promising a banner that can no longer appear.
+   */
+  const [notificationsOff, setNotificationsOff] = useState(false)
   const [backlinkCount, setBacklinkCount] = useState(0)
   const [addingTag, setAddingTag] = useState(false)
   const [addingProperty, setAddingProperty] = useState(false)
@@ -209,6 +226,11 @@ export default function NoteScreen() {
     let cancelled = false
     void readBookmarkKeys(session.db).then((keys) => {
       if (!cancelled) setBookmarked(keys.has(`note:${id}`))
+    })
+    // A reminder set on the desktop arrives through a pull, not through this
+    // screen, so the sync subscription below refreshes it too.
+    void readNoteReminder(session.db, id).then((next) => {
+      if (!cancelled) setReminder(next)
     })
     return () => {
       cancelled = true
@@ -310,6 +332,7 @@ export default function NoteScreen() {
         }
         const refreshed = await readNoteRecord(session.db, id)
         if (refreshed) applyRecord(refreshed)
+        setReminder(await readNoteReminder(session.db, id))
       })()
     })
   }, [applyRecord, id, session])
@@ -370,6 +393,15 @@ export default function NoteScreen() {
           }
         : null,
     [session]
+  )
+
+  /**
+   * The bell row, derived from the row and the clock — never a second boolean
+   * to keep in step with the reminder itself.
+   */
+  const reminderBadge = useMemo(
+    () => describeReminder(reminder, new Date(), notificationsOff),
+    [notificationsOff, reminder]
   )
 
   const cfg: BridgeCfg = useMemo(
@@ -558,6 +590,8 @@ export default function NoteScreen() {
   const openMore = useCallback(async () => {
     setOverlay({ kind: 'more' })
     if (!session || !id) return
+    setReminder(await readNoteReminder(session.db, id))
+    setNotificationsOff((await reminderPermission()) === 'denied')
     const { totalReferences } = await readBacklinks(session.db, id)
     setBacklinkCount(totalReferences)
   }, [id, session])
@@ -964,7 +998,9 @@ export default function NoteScreen() {
         readOnly={!writable}
         onClose={() => setOverlay({ kind: 'none' })}
         backlinkCount={backlinkCount}
+        reminder={reminderBadge}
         onToggleBookmark={() => void runBookmark()}
+        onReminder={() => setOverlay({ kind: 'reminder' })}
         onBacklinks={() => router.push(`/notes/backlinks?id=${encodeURIComponent(id)}`)}
         onRename={() => setOverlay({ kind: 'rename' })}
         onMove={() => void openMove()}
@@ -990,6 +1026,18 @@ export default function NoteScreen() {
             })
         }}
       />
+
+      {overlay.kind === 'reminder' ? (
+        <ReminderSheet
+          visible
+          ctx={writable ? ctx : null}
+          noteId={id}
+          noteTitle={title}
+          reminder={reminder}
+          onClose={() => setOverlay({ kind: 'none' })}
+          onChanged={setReminder}
+        />
+      ) : null}
 
       {overlay.kind === 'move' ? (
         <MoveSheet

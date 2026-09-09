@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AppText } from '@/components/ui/app-text'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Icon, type IconName } from '@/components/ui/icon'
+import type { Color } from '@/theme/colors'
+import type { ReminderBadge } from '@/features/notes/reminders'
 import { space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
@@ -14,8 +16,11 @@ export interface NoteMoreSheetProps {
   bookmarked: boolean
   readOnly: boolean
   backlinkCount: number
+  /** Already derived by `describeReminder`; this sheet never reads the clock. */
+  reminder: ReminderBadge
   onClose: () => void
   onToggleBookmark: () => void
+  onReminder: () => void
   onBacklinks: () => void
   onRename: () => void
   onMove: () => void
@@ -26,11 +31,22 @@ export interface NoteMoreSheetProps {
 }
 
 interface MoreAction {
-  key: 'bookmark' | 'backlinks' | 'rename' | 'move' | 'duplicate' | 'share' | 'export' | 'delete'
+  key:
+    | 'bookmark'
+    | 'reminder'
+    | 'backlinks'
+    | 'rename'
+    | 'move'
+    | 'duplicate'
+    | 'share'
+    | 'export'
+    | 'delete'
   label: string
   icon: IconName
   trailing?: string
   destructive?: boolean
+  /** Only the reminder row uses this today, for its active state. */
+  iconColor?: Color
   onPress: () => void
 }
 
@@ -41,8 +57,10 @@ export function NoteMoreSheet({
   bookmarked,
   readOnly,
   backlinkCount,
+  reminder,
   onClose,
   onToggleBookmark,
+  onReminder,
   onBacklinks,
   onRename,
   onMove,
@@ -65,6 +83,16 @@ export function NoteMoreSheet({
       label: bookmarked ? 'Remove bookmark' : 'Bookmark note',
       icon: bookmarked ? 'bookmark-off' : 'bookmark',
       onPress: onToggleBookmark
+    },
+    {
+      key: 'reminder',
+      label: reminder.label,
+      // The ringing bell plus the AA text step of the accent, which is the only
+      // tinted colour small enough glyphs are allowed to use.
+      icon: reminder.amber ? 'bell-ring' : 'bell',
+      ...(reminder.trailing ? { trailing: reminder.trailing } : {}),
+      ...(reminder.amber ? { iconColor: c.tint.text } : {}),
+      onPress: onReminder
     },
     {
       key: 'backlinks',
@@ -131,7 +159,7 @@ export function NoteMoreSheet({
               ]}
             >
               <View style={styles.iconSlot}>
-                <Icon name={action.icon} size={22} color={color} />
+                <Icon name={action.icon} size={22} color={action.iconColor ?? color} />
               </View>
               <AppText color={color} style={styles.actionLabel}>
                 {action.label}
