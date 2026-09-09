@@ -344,16 +344,12 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     bridge,
     { root, chrome, toolbarHost }
   )
-  const pasteLinks = installPasteLinkMenu(pasteLinkSurface(editor), bridge, {
-    root,
-    chrome,
-    toolbarHost
-  })
   let toolbarPanelOpen = false
   let findOpen = false
   let dateSheetOpen = false
+  let pasteMenuOpen = false
   /**
-   * The chrome, derived in one place from all three flags.
+   * The chrome, derived in one place from all four flags.
    *
    * Find-in-note and the date sheet both stand where the toolbar does, so the
    * toolbar has to step aside for either. Each used to call `setSuppressed`
@@ -371,10 +367,19 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     bridge.send({
       type: 'editor-panel-visibility',
       docId,
-      open: toolbarPanelOpen || findOpen || dateSheetOpen
+      open: toolbarPanelOpen || findOpen || dateSheetOpen || pasteMenuOpen
     })
     bridge.flush()
   }
+  const pasteLinks = installPasteLinkMenu(
+    pasteLinkSurface(editor),
+    bridge,
+    { root, chrome, toolbarHost },
+    (open) => {
+      pasteMenuOpen = open
+      syncChrome()
+    }
+  )
   const toolbar = installEditorToolbar(
     toolbarHost,
     toolbarActions(editor, docId, bridge, wikiLinks),

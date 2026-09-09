@@ -81,8 +81,11 @@ function install(overrides: Partial<PasteLinkSurface> = {}) {
   document.body.append(root, chrome, toolbarHost)
   const api = surface(overrides)
   const { bridge, sent } = bridgeWithSpy()
-  const menu = installPasteLinkMenu(api, bridge, { root, chrome, toolbarHost })
-  return { root, api, bridge, sent, menu }
+  const panel: boolean[] = []
+  const menu = installPasteLinkMenu(api, bridge, { root, chrome, toolbarHost }, (open) =>
+    panel.push(open)
+  )
+  return { root, api, bridge, sent, menu, panel }
 }
 
 describe('paste-link menu', () => {
@@ -214,6 +217,22 @@ describe('paste-link menu', () => {
     paste(root, URL)
 
     expect(rows()).toHaveLength(0)
+  })
+
+  it('reports itself as a panel so the native footer gets out of its way', () => {
+    const { root, menu, panel } = install()
+
+    paste(root, URL)
+    expect(panel).toEqual([true])
+
+    tap('url')
+    expect(panel).toEqual([true, false])
+
+    // A note torn down with the strip open must not leave the next note's
+    // footer hidden by a menu that no longer exists.
+    paste(root, URL)
+    menu.detach()
+    expect(panel).toEqual([true, false, true, false])
   })
 })
 

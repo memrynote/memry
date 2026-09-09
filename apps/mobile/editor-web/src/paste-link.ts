@@ -127,7 +127,18 @@ interface OpenState {
 export function installPasteLinkMenu(
   surface: PasteLinkSurface,
   bridge: GuestBridge,
-  hosts: PasteLinkHosts
+  hosts: PasteLinkHosts,
+  /**
+   * Whether the strip is covering the bottom of the document.
+   *
+   * The note's footer is a NATIVE view floating over the WebView, so no z-index
+   * inside the guest can get out from under it — the bottom row of this menu
+   * was drawn behind the tab bar and could not be tapped at all. The toolbar's
+   * block picker and the find bar already solve that by reporting themselves as
+   * a panel, which is what makes the native footer stand down; this reports
+   * through the same channel rather than inventing a second one.
+   */
+  onOpenChange: (open: boolean) => void
 ): PasteLinkMenu {
   const { root, chrome, toolbarHost } = hosts
 
@@ -144,9 +155,11 @@ export function installPasteLinkMenu(
   const pending = new Map<string, { option: PreviewOption; url: string }>()
 
   const close = (): void => {
+    if (state === null) return
     state = null
     menu.hidden = true
     menu.replaceChildren()
+    onOpenChange(false)
   }
 
   const requestPreview = (option: PreviewOption, url: string): void => {
@@ -211,6 +224,7 @@ export function installPasteLinkMenu(
     const top = shell?.getBoundingClientRect().top
     menu.style.insetBlockEnd = top === undefined ? '' : `${Math.max(0, window.innerHeight - top)}px`
     menu.hidden = false
+    onOpenChange(true)
   }
 
   const onPaste = (event: ClipboardEvent): void => {
@@ -265,6 +279,9 @@ export function installPasteLinkMenu(
   return {
     close,
     detach: () => {
+      // Through `close`, so a note torn down with the strip open does not leave
+      // the next note's footer hidden by a menu that no longer exists.
+      close()
       unsubscribe()
       root.removeEventListener('paste', onPaste)
       root.removeEventListener('input', onInput)
