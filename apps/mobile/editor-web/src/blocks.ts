@@ -32,11 +32,11 @@ import { icon, type IconName } from './icons.ts'
  * `{task:id}`, and bookmark and embed were `<img src=https://…>` that the
  * WebView's CSP (`img-src data: blob:`) blocks outright.
  *
- * No renderer below emits a remote `<img>` or an `<a href>`. A remote image
- * cannot load under that CSP and would be turned into the 96px pending
- * placeholder by `images.ts`; a tapped `<a href>` navigates the WebView off the
- * editor document, and the guest-to-host protocol has no message that opens a
- * URL externally (see `@memry/contracts/webview-bridge`).
+ * No renderer below emits an `<a href>` or a remote `src`. Navigation out of
+ * the editor document is refused by the host outright, so a block that carries
+ * an external URL exposes it as `data-url` and lets `external-links.ts` route
+ * the tap over the bridge. A remote picture is parked on `data-asset-ref`, which
+ * `images.ts` trades with the host for a data URI the CSP does allow.
  */
 
 const CALLOUT_ICONS: Record<(typeof CALLOUT_TYPE_VALUES)[number], IconName> = {
@@ -81,6 +81,21 @@ function span(className: string, text?: string): HTMLSpanElement {
   const element = document.createElement('span')
   element.className = className
   if (text !== undefined) element.textContent = text
+  return element
+}
+
+/**
+ * An `<img>` with no `src`, only the reference `images.ts` claims.
+ *
+ * Setting `src` to the remote URL first would flash the broken-image glyph and
+ * spend a blocked request under `img-src data: blob:` before the resolver could
+ * strip it.
+ */
+function assetImage(className: string, ref: string): HTMLImageElement {
+  const element = document.createElement('img')
+  element.className = className
+  element.alt = ''
+  element.setAttribute('data-asset-ref', ref)
   return element
 }
 
@@ -206,14 +221,24 @@ export function createTouchBlockSpecs() {
 
     bookmark: createBlockSpec(bookmarkConfig, {
       render(block) {
-        const { url, domain, title, description, siteName } = block.props
+        const { url, domain, title, description, image, favicon, siteName } = block.props
         const hostname = hostnameOf(url)
 
         const dom = document.createElement('div')
         dom.className = 'bookmark-block'
+        // The card is the tap target; `external-links.ts` reads this.
+        if (url) dom.setAttribute('data-url', url)
 
-        const glyph = span('bookmark-icon')
-        glyph.appendChild(icon('link'))
+        // The favicon REPLACES the link glyph rather than joining it: both mean
+        // "this is a link", and the glyph is the fallback for a card whose
+        // favicon the scrape never found.
+        let leading: HTMLElement
+        if (favicon) {
+          leading = assetImage('bookmark-favicon', favicon)
+        } else {
+          leading = span('bookmark-icon')
+          leading.appendChild(icon('link'))
+        }
 
         const body = span('bookmark-body')
         body.appendChild(span('bookmark-title', title || hostname || url || 'Bookmark'))
@@ -221,12 +246,8 @@ export function createTouchBlockSpecs() {
         const site = siteName || domain || hostname
         if (site) body.appendChild(span('bookmark-site', site))
 
-        // `image` and `favicon` are deliberately not drawn. Both are remote
-        // http(s) URLs, which the WebView's CSP (`img-src data: blob:`) refuses;
-        // an `<img>` pointing at one would be claimed by `images.ts` and shown
-        // as a 96px dashed "not downloaded yet" placeholder, which is a worse
-        // lie than no picture at all.
-        dom.append(glyph, body)
+        dom.append(leading, body)
+        if (image) dom.appendChild(assetImage('bookmark-image', image))
         return { dom }
       },
       toExternalHTML: blockExternalHTML.bookmark

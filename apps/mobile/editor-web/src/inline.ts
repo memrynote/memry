@@ -23,11 +23,11 @@ import { icon } from './icons.ts'
  * main process. Only `render` is supplied here.
  *
  * Two constraints shape every chip below. The WebView's CSP is
- * `img-src data: blob:`, so no renderer may emit a remote `<img>` — a favicon
- * URL would be swapped for the 96px "not downloaded yet" placeholder by
- * `images.ts`. And nothing may emit an `<a href>`: a tap inside the WebView
- * navigates the editor document away, and the guest-to-host protocol has no
- * message that opens a URL externally.
+ * `img-src data: blob:`, so a remote favicon is never an `src`: it is parked on
+ * `data-asset-ref` and `images.ts` has the host fetch the bytes and hand back a
+ * data URI. Nor may anything navigate: a chip that carries an external URL
+ * exposes it as `data-url`, and `external-links.ts` routes the tap over the
+ * bridge for the host to hand to the OS.
  */
 
 /** An icon prop that is an emoji rather than a name in desktop's icon registry. */
@@ -37,6 +37,21 @@ function span(className: string, text?: string): HTMLSpanElement {
   const element = document.createElement('span')
   element.className = className
   if (text !== undefined) element.textContent = text
+  return element
+}
+
+/**
+ * An `<img>` with no `src`, only the reference `images.ts` claims.
+ *
+ * Setting `src` to the remote URL first would flash the broken-image glyph and
+ * spend a blocked request under `img-src data: blob:` before the resolver could
+ * strip it.
+ */
+function assetImage(className: string, ref: string): HTMLImageElement {
+  const element = document.createElement('img')
+  element.className = className
+  element.alt = ''
+  element.setAttribute('data-asset-ref', ref)
   return element
 }
 
@@ -177,7 +192,7 @@ export function createTouchInlineSpecs(): MemryInlineSpecs {
     }),
 
     linkMention: createLinkMentionSpec((inlineContent) => {
-      const { url, domain, title, siteName } = inlineContent.props
+      const { url, domain, title, favicon, siteName } = inlineContent.props
       let hostname = ''
       try {
         hostname = new URL(url).hostname.replace(/^www\./, '')
@@ -185,19 +200,23 @@ export function createTouchInlineSpecs(): MemryInlineSpecs {
         hostname = ''
       }
 
-      // A `<span>` rather than the shared `LinkMention` spec's `<a>`, and no
-      // favicon. Two separate reasons: the favicon is a remote http(s) URL the
-      // CSP (`img-src data: blob:`) cannot load, and a tapped `<a href>`
-      // navigates the WebView off the editor document with no way back — the
-      // guest-to-host protocol has no "open externally" message.
+      // A `<span>` rather than the shared `LinkMention` spec's `<a>`: the host
+      // refuses every WebView navigation, so an `<a href>` would be a dead
+      // chip, and `data-url` below is what makes it tappable instead. The
+      // favicon IS drawn, as a `data-asset-ref` the host proxies into a data
+      // URI — the CSP still forbids loading that remote URL directly.
       const dom = span('link-mention')
       dom.setAttribute('data-link-mention', '')
       dom.setAttribute('data-url', url)
       dom.setAttribute('data-domain', domain)
       dom.setAttribute('data-title', title)
+      // Read back by the shared spec's `parse`, so the round trip stays
+      // symmetric even though this side never reads it.
+      dom.setAttribute('data-favicon', favicon)
       dom.setAttribute('data-site-name', siteName)
       dom.setAttribute('contenteditable', 'false')
 
+      if (favicon) dom.appendChild(assetImage('link-mention-favicon', favicon))
       dom.appendChild(span('link-mention-site', siteName || domain || hostname || url))
       if (title) dom.appendChild(span('link-mention-title', title))
 

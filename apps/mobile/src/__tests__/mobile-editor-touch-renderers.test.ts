@@ -15,11 +15,12 @@ import { createTouchInlineSpecs, dateMentionLabel } from '../../editor-web/src/i
  * pill without its `((date:…))` token.
  *
  * Two of the assertions are contracts rather than looks. No renderer may emit
- * an `<img>` (the WebView's CSP is `img-src data: blob:`, so a remote one is
- * swapped for a "not downloaded yet" placeholder by `images.ts`), and none may
- * emit an `<a href>` (a tap navigates the WebView off the editor document, and
- * the guest-to-host protocol has no message that opens a URL externally).
- * Those are written here as assertions, not as comments in the renderer.
+ * an `<a href>` (a tap navigates the WebView off the editor document, and the
+ * guest-to-host protocol has no message that opens a URL externally), and no
+ * `<img>` may carry an `src`: the WebView's CSP is `img-src data: blob:`, so a
+ * remote picture is parked on `data-asset-ref` for `images.ts` to trade with the
+ * host for a data URI. Those are written here as assertions, not as comments in
+ * the renderer.
  *
  * jsdom is not declared in `apps/mobile/package.json`; it resolves from the
  * pnpm workspace root, which is why the environment can be requested here
@@ -266,7 +267,7 @@ describe('youtubeEmbed', () => {
 })
 
 describe('bookmark', () => {
-  it('shows title, description and site with no image and no link', () => {
+  it('shows title, description and site, with the favicon and image as host-proxied refs', () => {
     const { dom } = renderBlock('bookmark', {
       url: 'https://www.example.com/a/deep/page',
       domain: 'example.com',
@@ -280,7 +281,16 @@ describe('bookmark', () => {
     expect(dom.querySelector('.bookmark-title')?.textContent).toBe('A deep page')
     expect(dom.querySelector('.bookmark-description')?.textContent).toBe('What the page is about.')
     expect(dom.querySelector('.bookmark-site')?.textContent).toBe('Example')
-    expect(countTags(dom, 'img')).toBe(0)
+
+    const favicon = dom.querySelector('img.bookmark-favicon')!
+    expect(favicon.getAttribute('data-asset-ref')).toBe('https://www.example.com/favicon.ico')
+    expect(favicon.hasAttribute('src')).toBe(false)
+    const image = dom.querySelector('img.bookmark-image')!
+    expect(image.getAttribute('data-asset-ref')).toBe('https://www.example.com/og.png')
+    expect(image.hasAttribute('src')).toBe(false)
+
+    expect(dom.querySelector('.bookmark-icon')).toBeNull()
+    expect(countTags(dom, 'img')).toBe(2)
     expect(countTags(dom, 'a')).toBe(0)
   })
 
@@ -297,6 +307,8 @@ describe('bookmark', () => {
 
     expect(dom.querySelector('.bookmark-title')?.textContent).toBe('example.com')
     expect(dom.querySelector('.bookmark-description')).toBeNull()
+    expect(dom.querySelector('.bookmark-icon')).not.toBeNull()
+    expect(countTags(dom, 'img')).toBe(0)
   })
 })
 
@@ -454,7 +466,7 @@ describe('inlineCheckbox', () => {
 })
 
 describe('linkMention', () => {
-  it('shows site and title as text, with no link and no favicon', () => {
+  it('shows site and title as text, with the favicon as a host-proxied ref and no link', () => {
     const { dom } = renderInline('linkMention', {
       url: 'https://www.example.com/post',
       domain: 'example.com',
@@ -466,8 +478,14 @@ describe('linkMention', () => {
     expect(dom.textContent).not.toContain('((mention:')
     expect(dom.querySelector('.link-mention-site')?.textContent).toBe('Example')
     expect(dom.querySelector('.link-mention-title')?.textContent).toBe('A post')
+    expect(dom.getAttribute('data-favicon')).toBe('https://www.example.com/favicon.ico')
+
+    const favicon = dom.querySelector('img.link-mention-favicon')!
+    expect(favicon.getAttribute('data-asset-ref')).toBe('https://www.example.com/favicon.ico')
+    expect(favicon.hasAttribute('src')).toBe(false)
+
     expect(countTags(dom, 'a')).toBe(0)
-    expect(countTags(dom, 'img')).toBe(0)
+    expect(countTags(dom, 'img')).toBe(1)
   })
 
   it('omits the title line when there is none', () => {
@@ -481,6 +499,7 @@ describe('linkMention', () => {
 
     expect(dom.querySelector('.link-mention-title')).toBeNull()
     expect(dom.querySelector('.link-mention-site')?.textContent).toBe('example.com')
+    expect(countTags(dom, 'img')).toBe(0)
   })
 })
 
