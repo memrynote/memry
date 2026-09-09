@@ -227,6 +227,63 @@ function runElectronBuilder(args, options = {}) {
   )
 }
 
+function runElectronRebuild(args) {
+  execFileSync(process.execPath, [electronRebuildCli, ...args], {
+    cwd: repoRoot,
+    stdio: 'inherit',
+    shell: false,
+    env: {
+      ...process.env,
+      SKIP_ELECTRON_REBUILD: '1'
+    }
+  })
+}
+
+/**
+ * The staged `--only ...,classic-level --module-dir <stage>` rebuild above does
+ * not touch the classic-level the CRDT store actually loads, for the two reasons
+ * documented in scripts/ensure-native.sh: @electron/rebuild's walker never
+ * descends into y-leveldb's sibling level -> classic-level copy under pnpm, and
+ * Prebuildify.findPrebuiltModule short-circuits the compile whenever a
+ * `node.napi.node` prebuild is present (`--force` does not override that; only
+ * `--build-from-source` does).
+ *
+ * macOS hides this: pnpm's install-time node-gyp-build compiles classic-level
+ * from source there, so the staged copy already has a build/Release. Windows
+ * ships a matching win32-x64 prebuild, so nothing ever compiles and the package
+ * ran the CRDT store on a Node binary (#1988, #2045).
+ *
+ * Drive every staged copy directly: --module-dir is always a rebuild candidate
+ * regardless of the walk.
+ */
+function forceBuildStagedClassicLevel(targetArch) {
+  const storeDir = path.join(stageDir, 'node_modules', '.pnpm')
+  const packageDirs = (fs.existsSync(storeDir) ? fs.readdirSync(storeDir) : [])
+    .filter((entry) => entry.startsWith('classic-level@'))
+    .map((entry) => path.join(storeDir, entry, 'node_modules', 'classic-level'))
+    .filter((moduleDir) => fs.existsSync(moduleDir))
+
+  if (packageDirs.length === 0) {
+    throw new Error(`No staged classic-level copy to rebuild for Electron under ${storeDir}`)
+  }
+
+  for (const moduleDir of packageDirs) {
+    console.log(`Force-building ${path.relative(stageDir, moduleDir)} for Electron`)
+    runElectronRebuild([
+      '--force',
+      '--build-from-source',
+      '--only',
+      'classic-level',
+      '--module-dir',
+      moduleDir,
+      '--arch',
+      targetArch,
+      '--version',
+      electronVersion
+    ])
+  }
+}
+
 function main() {
   const { args, configPath } = parseElectronBuilderArgs(process.argv.slice(2))
 
@@ -258,30 +315,18 @@ function main() {
   })
   removePath(path.join(stageDir, 'node_modules', '@memry', 'desktop'))
   removePath(path.join(stageDir, 'electron-builder.env'))
-  execFileSync(
-    process.execPath,
-    [
-      electronRebuildCli,
-      '--force',
-      '--only',
-      nativeModules.join(','),
-      '--module-dir',
-      stageDir,
-      '--arch',
-      targetArch,
-      '--version',
-      electronVersion
-    ],
-    {
-      cwd: repoRoot,
-      stdio: 'inherit',
-      shell: false,
-      env: {
-        ...process.env,
-        SKIP_ELECTRON_REBUILD: '1'
-      }
-    }
-  )
+  runElectronRebuild([
+    '--force',
+    '--only',
+    nativeModules.join(','),
+    '--module-dir',
+    stageDir,
+    '--arch',
+    targetArch,
+    '--version',
+    electronVersion
+  ])
+  forceBuildStagedClassicLevel(targetArch)
   relativizeInternalSymlinks(path.join(stageDir, 'node_modules'))
 
   // The slim staged node_modules no longer contains electron, so electron-builder
