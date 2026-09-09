@@ -1,6 +1,8 @@
 import { resolveIcon } from '@/features/notes/icon-value'
+import { normalizeTagKey, readVaultTags } from '@/features/notes/note-ops'
+import { readTagStyles } from '@/features/notes/tag-definitions'
 import { extractMarkdownHeadings } from '@memry/shared/markdown-headings'
-import type { WikiCandidate } from '@memry/contracts/webview-bridge'
+import type { InlineMenuTrigger, WikiCandidate } from '@memry/contracts/webview-bridge'
 import type { VaultDb } from '../db/index'
 
 /**
@@ -134,28 +136,7 @@ export async function queryWikiCandidates(
     if (owner) return headingRows(db, owner, headingPart, limit)
   }
 
-  const needle = targetPart.toLowerCase()
-  const prefix: WikiCandidate[] = []
-  const contains: WikiCandidate[] = []
-  for (const note of notes) {
-    const row: WikiCandidate = {
-      kind: 'note',
-      id: note.id,
-      title: note.title,
-      subtitle: note.folderPath,
-      icon: note.icon,
-      target: note.title,
-      alias: ''
-    }
-    const haystack = note.title.toLowerCase()
-    // An empty query means "the notes I touched most recently", which is the
-    // useful answer the moment `[[` is typed and nothing else is known yet.
-    if (needle.length === 0 || haystack.startsWith(needle)) prefix.push(row)
-    else if (haystack.includes(needle)) contains.push(row)
-    if (prefix.length >= limit) break
-  }
-
-  const rows = [...prefix, ...contains].slice(0, limit)
+  const rows = noteRows(notes, targetPart, limit)
   // Desktop offers creation whenever the typed target names no existing note.
   // Accepting the row only writes the link; the note itself is created later,
   // from the confirm dialog the broken link raises when it is tapped.
@@ -171,6 +152,34 @@ export async function queryWikiCandidates(
     })
   }
   return rows
+}
+
+/**
+ * Notes whose title matches, prefix hits before substring hits.
+ *
+ * An empty query means "the notes I touched most recently", which is the
+ * useful answer the moment `[[` or `@` is typed and nothing else is known yet.
+ */
+function noteRows(notes: NoteTitle[], query: string, limit: number): WikiCandidate[] {
+  const needle = query.toLowerCase()
+  const prefix: WikiCandidate[] = []
+  const contains: WikiCandidate[] = []
+  for (const note of notes) {
+    const row: WikiCandidate = {
+      kind: 'note',
+      id: note.id,
+      title: note.title,
+      subtitle: note.folderPath,
+      icon: note.icon,
+      target: note.title,
+      alias: ''
+    }
+    const haystack = note.title.toLowerCase()
+    if (needle.length === 0 || haystack.startsWith(needle)) prefix.push(row)
+    else if (haystack.includes(needle)) contains.push(row)
+    if (prefix.length >= limit) break
+  }
+  return [...prefix, ...contains].slice(0, limit)
 }
 
 async function headingRows(
@@ -245,4 +254,98 @@ async function readNoteTitles(db: VaultDb): Promise<NoteTitle[]> {
     }
   }
   return out
+}
+
+/**
+ * Rows for `#query` — the vault's tags, plus an inline-create row (#2099).
+ *
+ * The colour and the emoji travel with the row because the guest writes them
+ * straight onto the `hashTag` node it inserts. A tag nobody has coloured gets
+ * an empty `color`, which is not a gap: `getTagColors` hashes the name to the
+ * same hue every other surface already paints it with, so the chip matches
+ * desktop without this device inventing a `tag_definition` row.
+ *
+ * Case-insensitive, like tag identity everywhere else, and the stored casing
+ * wins over the typed one so picking `#Roadmap` never forks the tag.
+ */
+export async function queryTagCandidates(
+  db: VaultDb,
+  query: string,
+  limit = 8
+): Promise<WikiCandidate[]> {
+  const typed = query.trim()
+  const needle = normalizeTagKey(typed)
+  const [tags, styles] = await Promise.all([readVaultTags(db), readTagStyles(db)])
+
+  const prefix: WikiCandidate[] = []
+  const contains: WikiCandidate[] = []
+  let exact = false
+  for (const tag of tags) {
+    const key = normalizeTagKey(tag)
+    if (key === needle) exact = true
+    const style = styles.get(key)
+    const row: WikiCandidate = {
+      kind: 'tag',
+      id: tag,
+      title: tag,
+      subtitle: '',
+      // Verbatim, not filtered to an emoji: it is written onto the node, and a
+      // named icon stripped here would erase what desktop stored for the tag.
+      icon: style?.icon ?? '',
+      target: tag,
+      alias: '',
+      color: style?.color ?? ''
+    }
+    if (needle.length === 0 || key.startsWith(needle)) prefix.push(row)
+    else if (key.includes(needle)) contains.push(row)
+    if (prefix.length >= limit) break
+  }
+
+  const rows = [...prefix, ...contains].slice(0, limit)
+  // Desktop lets a tag be created by typing it, so an unknown name is never a
+  // dead end. The chip is the whole creation: a tag exists because a note
+  // carries it, and `tag_definition` only ever records a colour someone picked.
+  if (needle.length > 0 && !exact) {
+    rows.push({
+      kind: 'create',
+      id: '',
+      title: typed,
+      subtitle: 'Create tag',
+      icon: '',
+      target: typed,
+      alias: '',
+      color: ''
+    })
+  }
+  return rows
+}
+
+/**
+ * Rows for `@query` — notes, most recently touched first (#2099).
+ *
+ * Accepting one writes a WIKI LINK, which is what desktop's `@` menu writes
+ * (`use-mention-suggestions.ts`): the chip has to resolve to a note by title on
+ * every device, and `linkMention` is the URL-bookmark chip, which carries no
+ * note identity at all.
+ *
+ * No create row, again mirroring desktop: `@` is a pointer at something that
+ * exists, and `[[` is the surface that offers to invent one.
+ */
+export async function queryMentionCandidates(
+  db: VaultDb,
+  query: string,
+  limit = 8
+): Promise<WikiCandidate[]> {
+  return noteRows(await readNoteTitles(db), query.trim(), limit)
+}
+
+/** Route an inline-menu request to the rows its trigger means. */
+export async function queryInlineMenuCandidates(
+  db: VaultDb,
+  query: string,
+  trigger: InlineMenuTrigger
+): Promise<WikiCandidate[]> {
+  if (trigger === 'tag') return queryTagCandidates(db, query)
+  if (trigger === 'mention') return queryMentionCandidates(db, query)
+  return queryWikiCandidates(db, query)
 }

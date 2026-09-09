@@ -1,5 +1,6 @@
 import { parseWikiLinkText } from '@memry/editor-schema/inline'
-import type { WikiCandidate } from '@memry/contracts/webview-bridge'
+import { getTagColors } from '@memry/contracts/tag-colors'
+import type { InlineMenuTrigger, WikiCandidate } from '@memry/contracts/webview-bridge'
 import type { GuestBridge } from './bridge.ts'
 
 /**
@@ -8,6 +9,12 @@ import type { GuestBridge } from './bridge.ts'
  * Two halves, both bridge-mediated because the WebView has no vault access:
  *   * tap → `nav` message; RN routes, including `Title#Heading` targets.
  *   * `[[` → `wiki-query` / `wiki-candidates` autocomplete.
+ *
+ * The same autocomplete serves `#` tags and `@` note mentions (#2099). They
+ * share every hard part — the debounce, the abandoned-query heuristic, the
+ * reqId round trip, the caret-relative delete — and differ only in what a row
+ * means and what accepting one writes, so one menu owns all three triggers
+ * rather than three that can disagree about which of them is open.
  *
  * The inserted node is built with `createWikiLinkInlineContent` from the shared
  * package, so the alias and the on-disk form are exactly what desktop writes.
@@ -40,6 +47,26 @@ const QUERY_DEBOUNCE_MS = 120
  */
 const ABANDONED_QUERY = /\n|\s{2,}/
 
+/**
+ * `#tag` before the caret. The character class is desktop's `TAG_CHAR_PATTERN`
+ * (`hash-tag-inline-plugin.ts`), so the phone offers exactly the names the
+ * desktop would let the user type, and a space ends the tag on both.
+ *
+ * The opener class carries `\ufffc`, the object-replacement character an atom
+ * renders as, so a `#` typed straight after a finished chip still opens.
+ */
+const TAG_RUN = /(?:^|[\s\ufffc([{"'])#([a-zA-Z0-9_\-/]*)$/
+
+/**
+ * `@query` before the caret. Note titles have spaces in them, so unlike a tag
+ * this runs on until `ABANDONED_QUERY` says the user has moved on. Excluding
+ * `@` from the class is what makes the LAST one win in `a@b @c`.
+ */
+const MENTION_RUN = /(?:^|[\s\ufffc([{"'])@([^@\n]*)$/
+
+/** An icon prop that is a name in desktop's registry rather than an emoji. */
+const ICON_NAME = /^[A-Za-z0-9._-]+$/
+
 export function installWikiLinkNavigation(root: HTMLElement, bridge: GuestBridge): () => void {
   const onPointerUp = (event: Event): void => {
     const target = event.target
@@ -62,9 +89,10 @@ export function installWikiLinkNavigation(root: HTMLElement, bridge: GuestBridge
 }
 
 interface AutocompleteState {
-  /** The text between the `[[` that opened the menu and the caret. */
+  /** The text between the trigger that opened the menu and the caret. */
   query: string
   reqId: string
+  trigger: InlineMenuTrigger
 }
 
 /**
@@ -92,6 +120,14 @@ export interface WikiLinkEditorSurface {
    * front of the finished chip.
    */
   replaceQuery(back: number, forward: number, target: string, alias: string): void
+  /**
+   * The same replacement, writing a `hashTag` node instead of a wiki link.
+   *
+   * `color` and `icon` are carried rather than derived: they are what the
+   * vault's `tag_definition` row says, so the chip this phone writes is the
+   * one every other device already paints for that tag.
+   */
+  replaceQueryWithTag(back: number, forward: number, tag: string, color: string, icon: string): void
   /**
    * Turn an adjacent finished wiki link back into `[[…]]` text, caret at the
    * end of its target. `false` when there is no link on that side.
@@ -167,18 +203,35 @@ export function installWikiLinkAutocomplete(
     // `empty` rows are messages, not targets. Desktop makes the same row
     // unselectable rather than closing the menu the user is still typing into.
     if (!state || !candidate.target) return
-    const back = OPEN_TOKEN.length + state.query.length
+    const trigger = state.trigger
+    // `#` and `@` are one character; `[[` is two. Everything else about the
+    // backwards delete is the same, and getting this wrong eats the character
+    // in front of the trigger.
+    const back = (trigger === 'wiki' ? OPEN_TOKEN.length : 1) + state.query.length
     // The tail is read from the DOM rather than remembered from whoever opened
     // the menu: the toolbar writes `[[]]`, a user can type the brackets by
     // hand, and an un-promoted link arrives with `|Alias]]` already after the
-    // caret. All three have to leave the same document behind.
-    const tail = RUN_TAIL.exec(textAfterCaret())
+    // caret. All three have to leave the same document behind. `#` and `@`
+    // have no closer, so there is never anything past the caret to eat.
+    const tail = trigger === 'wiki' ? RUN_TAIL.exec(textAfterCaret()) : null
     const forward = tail ? tail[0].length : 0
     const written = tail?.[1]?.startsWith('|') ? tail[1].slice(1).trim() : ''
     close()
+    if (trigger === 'tag') {
+      editor.replaceQueryWithTag(
+        back,
+        forward,
+        candidate.target,
+        candidate.color ?? '',
+        candidate.icon
+      )
+      return
+    }
     // A row that names its own label (a heading, an explicit alias) wins; a
     // plain note row keeps whatever the user had already written, so re-picking
-    // the target of `[[Old|my label]]` does not silently drop the label.
+    // the target of `[[Old|my label]]` does not silently drop the label. An
+    // `@` mention is a note row, so it takes the plain-title branch — the same
+    // wiki link desktop's mention menu writes.
     editor.replaceQuery(back, forward, candidate.target, candidate.alias || written)
   }
 
@@ -198,15 +251,19 @@ export function installWikiLinkAutocomplete(
     }
     rows = items
     selected = items.findIndex((item) => item.kind !== 'empty')
+    menu.setAttribute('aria-label', MENU_LABEL[state?.trigger ?? 'wiki'])
     for (const item of items) {
       menu.appendChild(candidateRow(item, () => insert(item)))
     }
     // The pipe is the only part of the grammar with no visible affordance, so
-    // it gets a standing hint the way desktop's menu footer does.
-    const hint = document.createElement('div')
-    hint.className = 'wiki-menu-hint'
-    hint.textContent = 'Type | to name the link'
-    menu.appendChild(hint)
+    // it gets a standing hint the way desktop's menu footer does. `#` and `@`
+    // have no such grammar, so they get no footer.
+    if (state?.trigger === 'wiki') {
+      const hint = document.createElement('div')
+      hint.className = 'wiki-menu-hint'
+      hint.textContent = 'Type | to name the link'
+      menu.appendChild(hint)
+    }
     paintSelection()
     // The SHELL, not the host: the shell is absolutely positioned, so the host
     // div wrapping it is zero-high and measuring it put the menu underneath the
@@ -226,34 +283,25 @@ export function installWikiLinkAutocomplete(
   })
 
   const refresh = (): void => {
-    const text = textBeforeCaret()
-    const openAt = text.lastIndexOf(OPEN_TOKEN)
-    if (openAt === -1) {
+    const opened = detectTrigger(textBeforeCaret())
+    if (!opened) {
       close()
       return
     }
-    const query = text.slice(openAt + OPEN_TOKEN.length)
-    // A completed `[[X]]` is not an open menu — it is a link the user finished
-    // typing by hand, which the spec's own parse rule promotes. A query that
-    // has run away into ordinary prose is not one either.
-    if (
-      query.includes(']]') ||
-      ABANDONED_QUERY.test(query) ||
-      parseWikiLinkText(text.slice(openAt))
-    ) {
-      close()
-      return
-    }
+    const { trigger, query } = opened
 
     const reqId = `w${++reqCounter}`
-    const first = state === null
-    state = { query, reqId }
+    // A trigger change counts as a first request even though a menu is already
+    // up: the rows on screen answer a different question, and debouncing the
+    // replacement leaves tags showing under an `@`.
+    const first = state === null || state.trigger !== trigger
+    state = { query, reqId, trigger }
     if (debounce !== null) clearTimeout(debounce)
     const ask = (): void => {
       debounce = null
       // Only if this is still the query the user is typing: a stale request
       // would repaint the menu with results for text that is already gone.
-      if (state?.reqId === reqId) bridge.send({ type: 'wiki-query', reqId, query })
+      if (state?.reqId === reqId) bridge.send({ type: 'wiki-query', reqId, query, trigger })
     }
     // The first request opens the menu, so it skips the debounce: waiting
     // 120 ms to show anything reads as the button having done nothing.
@@ -319,6 +367,54 @@ export function installWikiLinkAutocomplete(
   }
 }
 
+const MENU_LABEL: Record<InlineMenuTrigger, string> = {
+  wiki: 'Link to note',
+  tag: 'Add a tag',
+  mention: 'Mention a note'
+}
+
+/**
+ * Which inline menu the caret is currently inside, if any.
+ *
+ * `[[` is asked first and wins outright whenever it is open, because `#` and
+ * `|` are both part of its own grammar: without that precedence, typing
+ * `[[Note#` would swap the heading list for the vault's tags mid-word.
+ *
+ * Between `#` and `@` the one NEARER the caret wins, so `#tag @no` opens the
+ * mention menu and backspacing back over the `@` returns to the tag.
+ */
+export function detectTrigger(text: string): { trigger: InlineMenuTrigger; query: string } | null {
+  const openAt = text.lastIndexOf(OPEN_TOKEN)
+  if (openAt !== -1) {
+    const query = text.slice(openAt + OPEN_TOKEN.length)
+    // A completed `[[X]]` is not an open menu — it is a link the user finished
+    // typing by hand, which the spec's own parse rule promotes. A query that
+    // has run away into ordinary prose is not one either.
+    if (
+      !query.includes(']]') &&
+      !ABANDONED_QUERY.test(query) &&
+      !parseWikiLinkText(text.slice(openAt))
+    ) {
+      return { trigger: 'wiki', query }
+    }
+  }
+
+  const tag = TAG_RUN.exec(text)?.[1]
+  const mentionMatch = MENTION_RUN.exec(text)?.[1]
+  const mention =
+    mentionMatch !== undefined && !ABANDONED_QUERY.test(mentionMatch) ? mentionMatch : undefined
+
+  if (tag !== undefined && mention !== undefined) {
+    // Both are anchored at the caret, so the longer query started further back.
+    return tag.length < mention.length
+      ? { trigger: 'tag', query: tag }
+      : { trigger: 'mention', query: mention }
+  }
+  if (tag !== undefined) return { trigger: 'tag', query: tag }
+  if (mention !== undefined) return { trigger: 'mention', query: mention }
+  return null
+}
+
 function candidateRow(item: WikiCandidate, onAccept: () => void): HTMLElement {
   if (item.kind === 'empty') {
     const message = document.createElement('div')
@@ -334,14 +430,24 @@ function candidateRow(item: WikiCandidate, onAccept: () => void): HTMLElement {
 
   const glyph = document.createElement('span')
   glyph.className = 'wiki-menu-glyph'
-  // The note's own emoji when it has one, so a row reads the same here as it
-  // does in the notes tree. Everything else falls back to a kind marker.
-  glyph.textContent = item.icon || ROW_GLYPH[item.kind]
+  // The note's or tag's own emoji when it has one, so a row reads the same
+  // here as it does in the notes tree. An icon NAME addresses desktop's
+  // HugeIcon registry, which this bundle does not carry — the same rule
+  // `inline.ts` applies when it paints a chip. Everything else falls back to a
+  // kind marker, and a tag's marker is painted in the tag's own colour.
+  const emoji = item.icon && !ICON_NAME.test(item.icon) ? item.icon : ''
+  glyph.textContent = emoji || ROW_GLYPH[item.kind]
+  if (item.kind === 'tag' && !emoji) {
+    glyph.style.color = getTagColors(item.color ?? '', item.title).text
+    glyph.style.opacity = '1'
+  }
   row.appendChild(glyph)
 
   const label = document.createElement('span')
   label.className = 'wiki-menu-label'
-  label.textContent = item.title
+  // The `#` is part of how a tag reads everywhere else in Memry, and the row
+  // is the only place the user sees the name before committing to it.
+  label.textContent = item.kind === 'tag' ? `#${item.title}` : item.title
   if (item.kind === 'heading' && item.headingLevel && item.headingLevel > 1) {
     label.style.paddingInlineStart = `${Math.min(item.headingLevel - 1, 3) * 10}px`
   }
@@ -368,7 +474,8 @@ const ROW_GLYPH: Record<WikiCandidate['kind'], string> = {
   heading: '#',
   alias: '\u21b3',
   create: '+',
-  empty: ''
+  empty: '',
+  tag: '\u25cf'
 }
 
 /**

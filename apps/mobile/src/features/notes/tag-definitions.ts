@@ -37,6 +37,38 @@ export async function readTagColors(db: VaultDb): Promise<Map<string, string>> {
   return colors
 }
 
+/**
+ * The colour AND icon each tag was given, by normalized tag name.
+ *
+ * `readTagColors` above answers the one question the chip renderers ask; the
+ * `#` inline menu also needs the tag's emoji, and reading the table twice for
+ * one menu open is a scan this device does not need to pay twice.
+ */
+export async function readTagStyles(db: VaultDb): Promise<Map<string, TagStyle>> {
+  const rows = await db.getAllAsync<{ id: string; payload: string | null }>(
+    `SELECT id, payload FROM sync_items WHERE type = 'tag_definition' AND deleted_at IS NULL`
+  )
+  const styles = new Map<string, TagStyle>()
+  for (const row of rows) {
+    if (!row.payload) continue
+    try {
+      const parsed = JSON.parse(row.payload) as { color?: unknown; icon?: unknown }
+      styles.set(normalizeTagKey(row.id), {
+        color: typeof parsed.color === 'string' ? parsed.color : '',
+        icon: typeof parsed.icon === 'string' ? parsed.icon : ''
+      })
+    } catch {
+      log.warn('Tag definition payload is not JSON; skipping', { tag: row.id })
+    }
+  }
+  return styles
+}
+
+export interface TagStyle {
+  color: string
+  icon: string
+}
+
 interface TagDefinitionPayload {
   name?: string
   color?: string
