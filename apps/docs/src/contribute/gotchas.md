@@ -24,7 +24,7 @@ Symptom: no `ERR_DLOPEN_FAILED`. The native binding loads, the LevelDB store ope
 - Its module walker only descends into `<module>/node_modules`. Under pnpm, y-leveldb's `level` -> `classic-level@1.4.x` sits in a sibling directory inside `.pnpm`, so the copy the CRDT store actually loads is never visited. The only walkable `classic-level` is the dev-only 3.x, which electron-builder then prunes out of the package.
 - Even when visited, `Prebuildify.findPrebuiltModule` accepts an existing `prebuilds/<platform>/node.napi.node` and short-circuits the compile. `--force` does not override that; only `--build-from-source` does.
 
-`apps/desktop/scripts/ensure-native.sh` handles both targets by driving each `.pnpm/classic-level@*` copy directly. Never treat the plain `-o ...,classic-level` flag as proof the rebuild happened. The only proof is a `build/Release/*.node` inside the classic-level package, which `check-packaged-runtime-deps.js` asserts on every packaged build.
+`apps/desktop/scripts/ensure-native.sh` (dev/test) and `apps/desktop/scripts/build-packaged-app.js` (packaging) both handle this by driving each `.pnpm/classic-level@*` copy directly with `--build-from-source --module-dir`. macOS hides a regression here — pnpm's install-time `node-gyp-build` compiles classic-level from source on darwin, so only the Windows build job proves the packaging path. Never treat the plain `-o ...,classic-level` flag as proof the rebuild happened. The only proof is a `build/Release/*.node` inside the classic-level package, which `check-packaged-runtime-deps.js` asserts on every packaged build.
 
 ## Electron binary re-downloads on every worktree
 
