@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   AppState,
   Pressable,
   Share,
@@ -126,15 +125,6 @@ export default function NoteScreen() {
   const [addingTag, setAddingTag] = useState(false)
   const [addingProperty, setAddingProperty] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [headerHeight, setHeaderHeight] = useState(0)
-  /**
-   * Where the WebView's document is scrolled to, driven from the guest.
-   *
-   * The header floats OVER the editor, so this is the only way it can move with
-   * the body: the reader is scrolling a document this side does not own, and
-   * there is no native scroll view under the header to attach it to.
-   */
-  const [scrollY] = useState(() => new Animated.Value(0))
   const controls = useRef<EditorControls | null>(null)
   const localUpdates = useRef(0)
   const currentIdRef = useRef(id)
@@ -360,27 +350,9 @@ export default function NoteScreen() {
       // The guest applies this live (`mounted.editor.isEditable = !cfg.readOnly`),
       // so the note is editable from the first frame and only a locked vault
       // takes that away.
-      readOnly: gate !== 'editing',
-      // The document starts below the floating header rather than behind it.
-      // Measured, not assumed: tags and properties wrap, so this block's height
-      // is the note's own and changes while the reader edits it.
-      headerHeight
+      readOnly: gate !== 'editing'
     }),
-    [gate, headerHeight]
-  )
-
-  /**
-   * How far the header has been pushed off the top, never more than its own
-   * height.
-   *
-   * `diffClamp` rather than a plain clamp so the header comes back on the way
-   * UP from wherever the reader is, which is what makes it feel attached to the
-   * gesture instead of to the top of the document.
-   */
-  const headerOffset = useMemo(
-    () =>
-      headerHeight > 0 ? Animated.multiply(Animated.diffClamp(scrollY, 0, headerHeight), -1) : null,
-    [headerHeight, scrollY]
+    [gate]
   )
 
   const onNavigate = useCallback(
@@ -672,6 +644,37 @@ export default function NoteScreen() {
         </View>
       ) : null}
 
+      {/* Board 32 draws this block at `padding-inline: 20`. It is 16 here
+          because the WebView below is `padding-inline: 16px`
+          (editor-web/src/styles.css), and at 20 the native title sits 4pt right
+          of the prose it titles. */}
+      <Pressable style={styles.body} onPress={() => setTagsEditing(false)}>
+        <AppText variant="noteTitle">{title}</AppText>
+        {/* `gate === 'locked'`, not the editor's own state: tags and properties
+            are metadata, not body, and reading the note is no reason to freeze
+            them. Only the vault's own read-only state is. */}
+        <NoteTags
+          ctx={ctx}
+          noteId={id}
+          tags={tags}
+          readOnly={gate === 'locked'}
+          editing={tagsEditing}
+          onEditingChange={setTagsEditing}
+          onAdd={() => setAddingTag(true)}
+          onChanged={(next) => setPayload((prev) => (prev ? { ...prev, tags: next } : prev))}
+        />
+        <NoteProperties
+          ctx={ctx}
+          noteId={id}
+          properties={properties}
+          readOnly={gate === 'locked'}
+          onChanged={(next) => setPayload((prev) => (prev ? { ...prev, properties: next } : prev))}
+          onAddProperty={() => setAddingProperty(true)}
+          onAddTag={() => setAddingTag(true)}
+          onInteract={() => setTagsEditing(false)}
+        />
+      </Pressable>
+
       <EditorView
         doc={doc}
         cfg={cfg}
@@ -681,57 +684,6 @@ export default function NoteScreen() {
         onInsertRequest={(request) => void onInsert(request)}
         onKeyboardVisibilityChange={setKeyboardVisible}
         onPanelVisibilityChange={setEditorPanelOpen}
-        onScroll={(y) => scrollY.setValue(y)}
-        // Handed over rather than rendered here. It has to paint ON TOP of the
-        // WebView, and the WebView is a sibling of this whole stack — a header
-        // in this tree draws under it whatever its `zIndex` says. The document
-        // reserves `headerHeight` of top padding for it, so it covers paper at
-        // rest and scrolls off with the body rather than clipping it.
-        chrome={
-          <Animated.View
-            onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
-            style={[
-              // Opaque, because the body now runs UNDER it: a translucent
-              // header would show the prose passing behind the title.
-              { backgroundColor: c.canvas.background },
-              headerOffset ? { transform: [{ translateY: headerOffset }] } : null
-            ]}
-          >
-            {/* Board 32 draws this block at `padding-inline: 20`. It is 16 here
-                because the WebView below is `padding-inline: 16px`
-                (editor-web/src/styles.css), and at 20 the native title sits 4pt
-                right of the prose it titles. */}
-            <Pressable style={styles.body} onPress={() => setTagsEditing(false)}>
-              <AppText variant="noteTitle">{title}</AppText>
-              {/* `gate === 'locked'`, not the editor's own state: tags and
-                  properties are metadata, not body, and reading the note is no
-                  reason to freeze them. Only the vault's own read-only state
-                  is. */}
-              <NoteTags
-                ctx={ctx}
-                noteId={id}
-                tags={tags}
-                readOnly={gate === 'locked'}
-                editing={tagsEditing}
-                onEditingChange={setTagsEditing}
-                onAdd={() => setAddingTag(true)}
-                onChanged={(next) => setPayload((prev) => (prev ? { ...prev, tags: next } : prev))}
-              />
-              <NoteProperties
-                ctx={ctx}
-                noteId={id}
-                properties={properties}
-                readOnly={gate === 'locked'}
-                onChanged={(next) =>
-                  setPayload((prev) => (prev ? { ...prev, properties: next } : prev))
-                }
-                onAddProperty={() => setAddingProperty(true)}
-                onAddTag={() => setAddingTag(true)}
-                onInteract={() => setTagsEditing(false)}
-              />
-            </Pressable>
-          </Animated.View>
-        }
         seedMarkdown={seedMarkdown}
         onReady={(next) => {
           controls.current = next

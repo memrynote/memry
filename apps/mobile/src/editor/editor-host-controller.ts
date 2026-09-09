@@ -1,4 +1,4 @@
-import type { ComponentRef, ReactNode } from 'react'
+import type { ComponentRef } from 'react'
 import type { Animated, View } from 'react-native'
 import { BRIDGE_PROTOCOL_VERSION, type GuestMsg } from '@memry/contracts/webview-bridge'
 import { base64ToBytes } from '../lib/base64'
@@ -132,16 +132,6 @@ export interface EditorHostState {
   /** Whether to draw the guest at all. */
   visible: boolean
   /**
-   * The mounted attachment's native chrome, drawn AFTER the guest.
-   *
-   * Deliberately not part of `DocLayout`. A note's header is arbitrary UI with
-   * its own render lifecycle, and the layout channel is the WebView's geometry
-   * — folding one into the other would let a header re-render reach
-   * `EditorFrame` / `ScreenTransition` and move the editor. Kept apart, nothing
-   * on this path can perturb where the guest is drawn.
-   */
-  chrome: ReactNode | null
-  /**
    * Whether the host's container view exists to measure against.
    *
    * Published because refs attach children-first: a note's placeholder can be
@@ -206,7 +196,6 @@ export class EditorHostController {
   private attachments: HostDoc[] = []
   private layouts = new WeakMap<HostDoc, DocLayout>()
   private focused = new WeakMap<HostDoc, boolean>()
-  private chromes = new WeakMap<HostDoc, ReactNode | null>()
   private sinks = new Map<string, DocSink>()
   private inFlight = new Set<Promise<void>>()
   private containerView: EditorHostContainer | null = null
@@ -225,8 +214,7 @@ export class EditorHostController {
     transition: null,
     visible: false,
     containerReady: false,
-    instance: 0,
-    chrome: null
+    instance: 0
   }
 
   constructor(sid = 'rn-editor-host') {
@@ -268,7 +256,6 @@ export class EditorHostController {
       this.attachments.splice(at, 1)
       this.layouts.delete(doc)
       this.focused.delete(doc)
-      this.chromes.delete(doc)
       this.pruneSinks()
       this.syncMount()
     }
@@ -291,20 +278,6 @@ export class EditorHostController {
   /** Where this attachment's route wants the editor drawn, and whether it has settled. */
   setLayout(doc: HostDoc, layout: DocLayout): void {
     this.layouts.set(doc, layout)
-    if (doc === this.mountedDoc) this.publish()
-  }
-
-  /**
-   * The native chrome this attachment wants drawn OVER the guest.
-   *
-   * Separate from `setLayout` on purpose: see `EditorHostState.chrome`. A view
-   * rendered inside the note screen cannot paint here at all — the screen is a
-   * child of the host and the WebView is its later SIBLING, so paint order
-   * follows the host's own children and no `zIndex` inside the screen crosses
-   * that boundary.
-   */
-  setChrome(doc: HostDoc, chrome: ReactNode | null): void {
-    this.chromes.set(doc, chrome)
     if (doc === this.mountedDoc) this.publish()
   }
 
@@ -630,8 +603,7 @@ export class EditorHostController {
       // left to draw whatever these conditions say.
       visible: layout.frame !== null && mountedDocId !== null && this.shownDocId === mountedDocId,
       containerReady: this.containerView !== null,
-      instance: this.instance,
-      chrome: this.mountedDoc ? (this.chromes.get(this.mountedDoc) ?? null) : null
+      instance: this.instance
     }
     for (const listener of this.listeners) listener()
   }

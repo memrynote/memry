@@ -71,18 +71,7 @@ export const BridgeCfgSchema = z.object({
   rtl: z.boolean(),
   reducedMotion: z.boolean(),
   /** Also driven by kill-switch / entitlement state, not just UI intent. */
-  readOnly: z.boolean(),
-  /**
-   * Space to reserve at the top of the document for native chrome drawn OVER
-   * it, in CSS px.
-   *
-   * The note title and its metadata are RN views floating above the WebView, so
-   * the document has to start below them without the host resizing the guest's
-   * frame — resizing it would make the reader's scroll and the header's travel
-   * two different distances. Absent means reserve nothing, which is what every
-   * caller that draws no chrome already means.
-   */
-  headerHeight: z.number().min(0).optional()
+  readOnly: z.boolean()
 })
 
 export const HostCfgSchema = BridgeCfgSchema.extend({
@@ -309,21 +298,6 @@ export const GuestMetricsSchema = z.object({
 })
 
 /**
- * Where the document is scrolled to, in CSS px from the top.
- *
- * Frame-throttled rather than the 200 ms trailing edge `metrics` uses: the
- * native header rides this value, so a settled-only report would leave it
- * standing still through the gesture and jumping when the finger stops.
- *
- * Unaddressed, like `metrics`: it describes the guest's ONE document, which is
- * whichever note is mounted, and the host routes it to that note's screen.
- */
-export const GuestScrollSchema = z.object({
-  type: z.literal('scroll'),
-  y: z.number()
-})
-
-/**
  * The mounted document is on screen. Sent once per `doc-load`, from a frame
  * callback, and it is the end of the note-open latency trace
  * (`apps/mobile/src/editor/__rig__/open-trace.ts`).
@@ -438,7 +412,6 @@ export const GuestMsgSchema = z.discriminatedUnion('type', [
   GuestMarkdownExportSchema,
   GuestNavSchema,
   GuestMetricsSchema,
-  GuestScrollSchema,
   GuestPaintedSchema,
   GuestErrSchema
 ])

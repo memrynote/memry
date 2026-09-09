@@ -618,7 +618,6 @@ function applyCfg(cfg: {
   rtl: boolean
   reducedMotion: boolean
   readOnly: boolean
-  headerHeight?: number
 }): void {
   const html = document.documentElement
   html.setAttribute('data-theme', cfg.theme)
@@ -627,11 +626,6 @@ function applyCfg(cfg: {
   // written in logical properties, so `dir` alone flips it correctly.
   html.setAttribute('dir', cfg.rtl ? 'rtl' : 'ltr')
   html.classList.toggle('reduced-motion', cfg.reducedMotion)
-  // Padding rather than a shorter document: the host draws its header over this
-  // page and never resizes the frame, so the reader scrolls one distance and
-  // the header travels the same one. Live, because the header is the note's own
-  // title block and grows as tags and properties are added to it.
-  html.style.setProperty('--memry-header-inset', `${Math.max(0, cfg.headerHeight ?? 0)}px`)
   readOnly = cfg.readOnly
   if (mounted) {
     mounted.editor.isEditable = !cfg.readOnly
@@ -715,43 +709,6 @@ function installMetrics(element: HTMLElement, guest: GuestBridge): () => void {
     document.removeEventListener('selectionchange', schedule)
   }
 }
-
-/**
- * Report the document's scroll offset so the native header can ride it.
- *
- * Once per animation frame at most, coalescing the burst WebKit fires during a
- * fling. Not flushed explicitly: the bridge's own 24 ms cadence carries it,
- * which keeps this off the per-event-crossing path the batching rule forbids
- * and still puts the header within a frame and a half of the finger.
- *
- * Installed once for the WebView rather than per note, like the guest's other
- * document-level listeners: `window` is the scroller, it outlives every
- * `mountDoc`, and `mountDoc` resets it to 0 — which reports itself here and
- * puts the next note's header back at the top.
- */
-function installScrollReports(guest: GuestBridge): void {
-  let frame: number | null = null
-  let lastY = -1
-
-  const report = (): void => {
-    frame = null
-    const y = Math.max(0, Math.round(window.scrollY))
-    if (y === lastY) return
-    lastY = y
-    guest.send({ type: 'scroll', y })
-  }
-
-  window.addEventListener(
-    'scroll',
-    () => {
-      if (frame !== null) return
-      frame = requestAnimationFrame(report)
-    },
-    { passive: true }
-  )
-}
-
-installScrollReports(bridge)
 
 // The flush the contract requires on a background transition. `pagehide` is
 // the only event WKWebView reliably delivers before iOS suspends the process.

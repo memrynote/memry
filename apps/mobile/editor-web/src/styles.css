@@ -51,10 +51,7 @@ body {
 }
 
 #root {
-  /* The leading pad carries the native header the host floats over this page
-     (`headerHeight` on the `cfg` message). Zero until the host reports one, so
-     a surface that draws no chrome is unchanged. */
-  padding-block: calc(16px + var(--memry-header-inset, 0px)) 96px;
+  padding-block: 16px 96px;
   padding-inline: 16px;
   min-height: 100vh;
   box-sizing: border-box;

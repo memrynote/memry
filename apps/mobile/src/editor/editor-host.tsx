@@ -16,7 +16,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  useWindowDimensions,
   View,
   type LayoutChangeEvent
 } from 'react-native'
@@ -80,9 +79,6 @@ export function EditorHost({ children }: { children: ReactNode }) {
         {/* After the children, so the editor draws over the note screen's
             placeholder rather than under it. */}
         <HostWebView controller={controller} />
-        {/* And after the editor, which is the only place a note's own header
-            can be drawn on top of it — see `setChrome`. */}
-        <ChromeLayer controller={controller} />
       </View>
     </EditorHostContext.Provider>
   )
@@ -251,42 +247,6 @@ function HostWebView({ controller }: { controller: EditorHostController }) {
         </KeyboardAvoidingView>
       </Animated.View>
     </View>
-  )
-}
-
-/**
- * The mounted note's own chrome, drawn over the guest.
- *
- * It rides the route's slide for the same reason the guest does (#2053): this
- * content used to be part of the note screen and arrived with it, so anything
- * that stood still here would be a title landing before the body it titles.
- *
- * It does NOT ride a POP, and cannot: the note screen leaves the React tree the
- * moment `back()` is dispatched, taking its attachment and its chrome with it,
- * exactly as it already takes the guest's frame. The header now blanks for the
- * length of a pop alongside the body rather than sliding out with the screen.
- *
- * `box-none` throughout, so everything the chrome does not itself cover stays
- * the editor's touch — the header is one strip, not a lid over the document.
- */
-function ChromeLayer({ controller }: { controller: EditorHostController }) {
-  const state = useSyncExternalStore(controller.subscribe, controller.getState)
-  const { width } = useWindowDimensions()
-  const { transition } = state
-  const slide = useMemo(
-    () => (transition ? slideOffset(transition, width) : null),
-    [transition, width]
-  )
-
-  if (!state.chrome) return null
-
-  return (
-    <Animated.View
-      style={[styles.container, slide ? { transform: [{ translateX: slide }] } : null]}
-      pointerEvents="box-none"
-    >
-      {state.chrome}
-    </Animated.View>
   )
 }
 
