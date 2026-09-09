@@ -191,6 +191,30 @@ bridge.onHostMsg((msg) => {
       break
     }
 
+    case 'export-html': {
+      if (!mounted || !isForMountedDoc(msg, mounted.docId)) return
+      try {
+        bridge.send({
+          type: 'html-export',
+          reqId: msg.reqId,
+          docId: mounted.docId,
+          result: { status: 'ok', html: renderDocumentHtml() }
+        })
+      } catch (error) {
+        bridge.send({
+          type: 'html-export',
+          reqId: msg.reqId,
+          docId: mounted.docId,
+          result: {
+            status: 'error',
+            detail: error instanceof Error ? error.message : String(error)
+          }
+        })
+      }
+      bridge.flush()
+      break
+    }
+
     case 'exec':
       if (!isForMountedDoc(msg, mounted?.docId ?? null)) return
       runExec(msg.cmd)
@@ -338,6 +362,36 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     bridge.send({ type: 'painted', docId, marks: guestMarks() })
     bridge.flush()
   })
+}
+
+/**
+ * The mounted note as a standalone HTML document, for the host's PDF/HTML export.
+ *
+ * A SNAPSHOT of what is already on screen, not a second renderer: the subtree
+ * is the one BlockNote laid out and the rules are the ones it laid it out
+ * under, so an export can never disagree with the note. Images come along for
+ * free — `images.ts` has already swapped their vault refs for `data:` URIs in
+ * this DOM — which also satisfies WKWebView's refusal to load local asset URLs
+ * when printing.
+ *
+ * The wrapper keeps the `id="root"`, because the document's page padding and
+ * inline measure are written against that selector and a bare `<body>` would
+ * export the text hard against the paper edge. `#editor-chrome` is deliberately
+ * left out: the toolbar and the find bar are app furniture, not the note. The
+ * inline custom properties the host sets on `<html>` are left out for the same
+ * reason and by construction — they are element styles rather than rules, so
+ * the native header's reserved inset falls back to its own `0px` and the
+ * exported page does not open with a band of empty paper.
+ */
+function renderDocumentHtml(): string {
+  const styles = Array.from(document.querySelectorAll('style'))
+    .map((element) => element.textContent ?? '')
+    .join('\n')
+  return (
+    `<!doctype html><html lang="${document.documentElement.lang || 'en'}" dir="${document.documentElement.dir || 'ltr'}">` +
+    `<head><meta charset="utf-8"><style>${styles}</style></head>` +
+    `<body><div id="root">${root.innerHTML}</div></body></html>`
+  )
 }
 
 /**
