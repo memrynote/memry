@@ -2,6 +2,8 @@ import type { AttachmentTransfer } from '@/adapters/attachments'
 import type { VaultDb } from '@/db/index'
 import { bytesToBase64 } from '@/lib/base64'
 import { createLogger } from '@/lib/logger'
+import { classifyAssetRef } from './asset-ref'
+import { fetchRemoteImage } from './remote'
 
 const log = createLogger('AttachmentResolve')
 
@@ -16,9 +18,12 @@ const log = createLogger('AttachmentResolve')
  * Mobile has no vault tree, so it records the pairing at download time
  * (migration 0003) and matches on it here.
  *
- * The answer is a data URI, not a file URI: the editor document's CSP allows
- * `data:` and `blob:` only, and `allowFileAccess` is off — a WebView that could
- * read the sandbox would be a much bigger hole than a base64 round trip.
+ * The answer is a data URI, not a file URI or a remote URL: the editor
+ * document's CSP allows `data:` and `blob:` only, and `allowFileAccess` is off.
+ * A WebView that could read the sandbox would be a much bigger hole than a
+ * base64 round trip, and a WebView allowed to reach the network would leak
+ * which notes a reader has open to whichever host the note links to. `remote.ts`
+ * answers remote URLs in the same shape for the same reason.
  */
 
 export type ResolvedAsset =
@@ -71,6 +76,23 @@ export async function noteAttachmentIds(
   } catch {
     return { ids: [], known: false }
   }
+}
+
+/**
+ * The editor's single entry point: one `asset-req` ref, whatever it points at.
+ *
+ * `resolveAsset` stays vault-only — it has callers that only ever hold an
+ * attachment path — so the fork lives here rather than inside it.
+ */
+export async function resolveEditorAsset(
+  deps: AssetResolverDeps,
+  noteId: string,
+  ref: string
+): Promise<ResolvedAsset> {
+  const classified = classifyAssetRef(ref)
+  return classified.kind === 'remote'
+    ? fetchRemoteImage(classified.url)
+    : resolveAsset(deps, noteId, classified.ref)
 }
 
 export async function resolveAsset(

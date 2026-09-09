@@ -21,7 +21,7 @@ import type { OpenDoc } from '@/editor/doc-manager'
 import { getEditorSession, type EditorSession } from '@/editor/session'
 import { parseWikiTarget, queryWikiCandidates, resolveWikiTarget } from '@/editor/wiki-links'
 import { insertAttachment, pickDocument, pickImage } from '@/features/attachments/insert'
-import { resolveAsset } from '@/features/attachments/resolve'
+import { resolveEditorAsset } from '@/features/attachments/resolve'
 import { AddPropertySheet } from '@/features/notes/add-property-sheet'
 import { AddTagSheet } from '@/features/notes/add-tag-sheet'
 import { readBookmarkKeys, toggleBookmark } from '@/features/notes/bookmarks'
@@ -381,7 +381,7 @@ export default function NoteScreen() {
   const onAssetRequest = useCallback(
     async (ref: string) => {
       if (!session || !id) return { status: 'missing' as const }
-      return resolveAsset({ db: session.db, transfer: session.attachments }, id, ref)
+      return resolveEditorAsset({ db: session.db, transfer: session.attachments }, id, ref)
     },
     [id, session]
   )
