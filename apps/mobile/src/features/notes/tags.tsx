@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { InteractionManager, Platform, Pressable, StyleSheet, View } from 'react-native'
+import { InteractionManager, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -9,14 +9,22 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { COLOR_ROWS, TAG_COLORS, isHexColor } from '@memry/contracts/tag-colors'
+
 import { AppText } from '@/components/ui/app-text'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Icon, type IconName } from '@/components/ui/icon'
+import { createLogger } from '@/lib/logger'
 import type { Color } from '@/theme/colors'
-import { radius, space } from '@/theme/primitives'
+import { tagColor, type TagColor } from '@/theme/colors/tag-colors'
+import { radius, sizes, space } from '@/theme/primitives'
+import { textStyles } from '@/theme/text-styles'
 import { useColors } from '@/theme/use-colors'
-import { removeTag, setNoteTags, type NoteOpsContext } from './note-ops'
+import { normalizeTagKey, removeTag, setNoteTags, type NoteOpsContext } from './note-ops'
+import { writeTagColorRow } from './tag-definitions'
 import { useTagColors } from './use-tag-colors'
+
+const log = createLogger('NoteTags')
 
 /**
  * The inline tag row (board 33).
@@ -45,6 +53,7 @@ export interface NoteTagsProps {
 export function NoteTags({ ctx, noteId, tags, readOnly, onOpenTag, onChanged }: NoteTagsProps) {
   const resolveColor = useTagColors(ctx?.db ?? null)
   const [menuTag, setMenuTag] = useState<string | null>(null)
+  const [overrides, setOverrides] = useState<Map<string, string>>(() => new Map())
 
   const commit = useCallback(
     async (next: string[]) => {
@@ -54,12 +63,31 @@ export function NoteTags({ ctx, noteId, tags, readOnly, onOpenTag, onChanged }: 
     [ctx, noteId, onChanged]
   )
 
+  const setColor = useCallback(
+    (tag: string, color: string) => {
+      if (!ctx) return
+      // `useTagColors` reads the synced rows once per mount, so the chip would
+      // keep its old hue until this screen is remounted without the override.
+      setOverrides((prev) => new Map(prev).set(normalizeTagKey(tag), color))
+      setMenuTag(null)
+      void writeTagColorRow(ctx, tag, color).catch((err: unknown) => {
+        log.error('Failed to store the tag colour', { tag, error: String(err) })
+      })
+    },
+    [ctx]
+  )
+
+  const hueFor = (tag: string): TagColor => {
+    const override = overrides.get(normalizeTagKey(tag))
+    return override ? tagColor(tag, override) : resolveColor(tag)
+  }
+
   if (tags.length === 0) return null
 
   return (
     <View style={styles.row}>
       {tags.map((tag) => {
-        const hue = resolveColor(tag)
+        const hue = hueFor(tag)
         return (
           <TagChip
             key={tag}
@@ -74,9 +102,11 @@ export function NoteTags({ ctx, noteId, tags, readOnly, onOpenTag, onChanged }: 
 
       <TagActionSheet
         tag={menuTag}
+        currentColor={menuTag === null ? null : hueFor(menuTag).text}
         onClose={() => setMenuTag(null)}
         onOpen={onOpenTag}
         onRemove={(tag) => void commit(removeTag(tags, tag))}
+        onSetColor={setColor}
       />
     </View>
   )
@@ -149,12 +179,16 @@ function TagChip({
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
 interface TagAction {
-  key: 'open' | 'remove'
+  key: 'open' | 'color' | 'remove'
   label: string
   icon: IconName
   destructive?: boolean
+  /** Runs in place instead of through the dismiss-then-act sequencing below. */
+  staysOpen?: boolean
   onPress: () => void
 }
+
+type SheetMode = 'actions' | 'color'
 
 /**
  * The long-press menu for one chip.
@@ -164,22 +198,39 @@ interface TagAction {
  */
 function TagActionSheet({
   tag,
+  currentColor,
   onClose,
   onOpen,
-  onRemove
+  onRemove,
+  onSetColor
 }: {
   tag: string | null
+  currentColor: string | null
   onClose: () => void
   onOpen: (tag: string) => void
   onRemove: (tag: string) => void
+  onSetColor: (tag: string, color: string) => void
 }) {
   const c = useColors()
   const insets = useSafeAreaInsets()
+  const [mode, setMode] = useState<SheetMode>('actions')
+  const [hex, setHex] = useState('')
+  const [openedFor, setOpenedFor] = useState(tag)
   const pendingAction = useRef<(() => void) | null>(null)
   const runPendingAction = (): void => {
     const action = pendingAction.current
     pendingAction.current = null
     action?.()
+  }
+
+  if (tag !== openedFor) {
+    setOpenedFor(tag)
+    setMode('actions')
+    setHex('')
+  }
+
+  const applyHex = (): void => {
+    if (tag !== null && isHexColor(hex)) onSetColor(tag, hex)
   }
 
   const actions: readonly TagAction[] = tag
@@ -189,6 +240,13 @@ function TagActionSheet({
           label: 'Show notes with this tag',
           icon: 'list',
           onPress: () => onOpen(tag)
+        },
+        {
+          key: 'color',
+          label: 'Set colour',
+          icon: 'color',
+          staysOpen: true,
+          onPress: () => setMode('color')
         },
         {
           key: 'remove',
@@ -216,42 +274,119 @@ function TagActionSheet({
           Tag actions
         </AppText>
       </View>
-      <View style={[styles.sheetActions, { borderTopColor: c.line.border }]}>
-        {actions.map((action, index) => {
-          const color = action.destructive ? c.ui.destructiveText : c.text.primary
-          return (
+      {mode === 'color' && tag !== null ? (
+        <View style={[styles.picker, { borderTopColor: c.line.border }]}>
+          <View style={styles.pickerHeader}>
             <Pressable
-              key={action.key}
+              hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel={action.label}
-              onPress={() => {
-                // Same sequencing as `NoteMoreSheet`: the action runs once this
-                // Modal is really gone, or navigation races its dismissal.
-                pendingAction.current = action.onPress
-                onClose()
-                if (Platform.OS !== 'ios') {
-                  void InteractionManager.runAfterInteractions(runPendingAction)
-                }
-              }}
-              style={({ pressed }) => [
-                styles.sheetAction,
-                index > 0 && {
-                  borderTopColor: c.line.border,
-                  borderTopWidth: StyleSheet.hairlineWidth
-                },
-                pressed && { backgroundColor: c.canvas.surface }
+              accessibilityLabel="Back to tag actions"
+              onPress={() => setMode('actions')}
+            >
+              <Icon name="chevron-left" size={22} color={c.text.primary} />
+            </Pressable>
+            <AppText variant="headline">Colour</AppText>
+          </View>
+
+          {COLOR_ROWS.map((row) => (
+            <View key={row.join('-')} style={styles.swatchRow}>
+              {row.map((name) => {
+                const fill = TAG_COLORS[name].text
+                const selected = currentColor?.toLowerCase() === fill.toLowerCase()
+                return (
+                  <Pressable
+                    key={name}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Set colour ${name}`}
+                    onPress={() => onSetColor(tag, name)}
+                    style={[styles.swatch, { backgroundColor: fill }]}
+                  >
+                    {selected ? (
+                      <Icon name="check" size={16} strokeWidth={3} color={c.canvas.popover} />
+                    ) : null}
+                  </Pressable>
+                )
+              })}
+            </View>
+          ))}
+
+          <View style={styles.hexRow}>
+            <View
+              style={[
+                styles.field,
+                { backgroundColor: c.canvas.surface, borderColor: c.line.border }
               ]}
             >
-              <View style={styles.sheetIconSlot}>
-                <Icon name={action.icon} size={22} color={color} />
-              </View>
-              <AppText color={color} style={styles.sheetActionLabel}>
-                {action.label}
+              <TextInput
+                value={hex}
+                onChangeText={setHex}
+                placeholder="#RRGGBB"
+                placeholderTextColor={c.text.tertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={7}
+                returnKeyType="done"
+                onSubmitEditing={applyHex}
+                accessibilityLabel="Custom colour hex"
+                style={[styles.input, textStyles.subhead, { color: c.text.primary }]}
+              />
+            </View>
+            <Pressable
+              hitSlop={10}
+              disabled={!isHexColor(hex)}
+              accessibilityRole="button"
+              accessibilityLabel="Apply custom colour"
+              onPress={applyHex}
+              style={styles.hexApply}
+            >
+              <AppText variant="headline" color={isHexColor(hex) ? c.tint.text : c.text.tertiary}>
+                Apply
               </AppText>
             </Pressable>
-          )
-        })}
-      </View>
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.sheetActions, { borderTopColor: c.line.border }]}>
+          {actions.map((action, index) => {
+            const color = action.destructive ? c.ui.destructiveText : c.text.primary
+            return (
+              <Pressable
+                key={action.key}
+                accessibilityRole="button"
+                accessibilityLabel={action.label}
+                onPress={() => {
+                  if (action.staysOpen) {
+                    action.onPress()
+                    return
+                  }
+                  // Same sequencing as `NoteMoreSheet`: the action runs once this
+                  // Modal is really gone, or navigation races its dismissal.
+                  pendingAction.current = action.onPress
+                  onClose()
+                  if (Platform.OS !== 'ios') {
+                    void InteractionManager.runAfterInteractions(runPendingAction)
+                  }
+                }}
+                style={({ pressed }) => [
+                  styles.sheetAction,
+                  index > 0 && {
+                    borderTopColor: c.line.border,
+                    borderTopWidth: StyleSheet.hairlineWidth
+                  },
+                  pressed && { backgroundColor: c.canvas.surface }
+                ]}
+              >
+                <View style={styles.sheetIconSlot}>
+                  <Icon name={action.icon} size={22} color={color} />
+                </View>
+                <AppText color={color} style={styles.sheetActionLabel}>
+                  {action.label}
+                </AppText>
+              </Pressable>
+            )
+          })}
+        </View>
+      )}
     </BottomSheet>
   )
 }
@@ -288,5 +423,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  sheetActionLabel: { flex: 1, minWidth: 0 }
+  sheetActionLabel: { flex: 1, minWidth: 0 },
+  picker: { borderTopWidth: StyleSheet.hairlineWidth, paddingBottom: space.s12 },
+  pickerHeader: {
+    height: sizes.navBar,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.s8,
+    paddingStart: space.s16,
+    paddingEnd: space.s16
+  },
+  swatchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: space.s12,
+    paddingStart: space.s16,
+    paddingEnd: space.s16,
+    paddingBottom: space.s12
+  },
+  swatch: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  hexRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.s8,
+    paddingStart: space.s16,
+    paddingEnd: space.s16
+  },
+  field: {
+    flex: 1,
+    height: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingStart: space.s12,
+    paddingEnd: space.s12,
+    borderRadius: radius.md,
+    borderWidth: 1
+  },
+  input: { flex: 1 },
+  hexApply: { minHeight: sizes.tapTarget, justifyContent: 'center' }
 })
