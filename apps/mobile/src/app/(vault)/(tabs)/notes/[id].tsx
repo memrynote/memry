@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Animated,
   AppState,
+  Platform,
   Share,
   StyleSheet,
   TextInput,
   View
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { File, Paths } from 'expo-file-system'
+import * as Print from 'expo-print'
+import * as Sharing from 'expo-sharing'
 import { router, useLocalSearchParams, useNavigation } from 'expo-router'
 import type { BridgeCfg, EditorAttachmentBlockType } from '@memry/contracts/webview-bridge'
 import { AppText } from '@/components/ui/app-text'
@@ -20,7 +25,12 @@ import { beginTrace, mark } from '@/editor/__rig__/open-trace'
 import type { OpenDoc } from '@/editor/doc-manager'
 import { getEditorSession, type EditorSession } from '@/editor/session'
 import { parseWikiTarget, queryWikiCandidates, resolveWikiTarget } from '@/editor/wiki-links'
-import { insertAttachment, pickDocument, pickImage } from '@/features/attachments/insert'
+import {
+  insertAttachment,
+  pickDocument,
+  pickImage,
+  sanitizeFilename
+} from '@/features/attachments/insert'
 import { resolveEditorAsset } from '@/features/attachments/resolve'
 import { AddPropertySheet } from '@/features/notes/add-property-sheet'
 import { AddTagSheet } from '@/features/notes/add-tag-sheet'
@@ -84,6 +94,35 @@ function showFailure(action: string, error: unknown): void {
   log.error(`${action} failed`, { error: message })
   Alert.alert(`${action} failed`, message)
 }
+
+/**
+ * What "Export" can produce, as data rather than three parallel switches.
+ *
+ * `uti` is what iOS routes on and `mimeType` is what Android routes on; both
+ * are set because the receiving app decides what it can open from them, and a
+ * PDF offered with no type is a file iOS will only let the reader save.
+ *
+ * A third format would not be free: the Android fallback below is an `Alert`,
+ * which caps at three buttons, and two formats plus Cancel already fills it.
+ */
+const EXPORT_FORMATS = [
+  {
+    key: 'pdf',
+    label: 'Export as PDF',
+    extension: 'pdf',
+    uti: 'com.adobe.pdf',
+    mimeType: 'application/pdf'
+  },
+  {
+    key: 'html',
+    label: 'Export as HTML',
+    extension: 'html',
+    uti: 'public.html',
+    mimeType: 'text/html'
+  }
+] as const
+
+type ExportFormat = (typeof EXPORT_FORMATS)[number]
 
 type NoteOverlay =
   | { kind: 'none' }
@@ -577,6 +616,76 @@ export default function NoteScreen() {
     }
   }, [ctx, id, payload])
 
+  /**
+   * Render the note to a file and hand it to the system share sheet.
+   *
+   * The HTML is the GUEST's own rendered document, so the export is what the
+   * reader is looking at rather than a second rendering of the same note that
+   * can drift from it. Flushed first, like `runDuplicate`, because an export
+   * that silently drops the last sentence typed is worse than a slow one.
+   *
+   * `printToFileAsync` names its output from a UUID, and that name is what the
+   * share sheet and the receiving app both show — so the file is renamed to the
+   * note before it leaves. No `ctx` guard: nothing here reads or writes the
+   * vault, which is why export survives read-only mode.
+   *
+   * Known gap: an attachment the Wi-Fi-only policy has not downloaded yet is a
+   * placeholder in that DOM, so it exports as one. Fixing it means kicking off
+   * the downloads and waiting, which is its own piece of work.
+   */
+  const runExport = useCallback(
+    async (format: ExportFormat) => {
+      try {
+        const editor = controls.current
+        if (!editor) throw new Error('The editor is not ready yet')
+        await editor.flush()
+        const html = await editor.exportHtml()
+        const title = payload?.title ?? 'Untitled'
+        const target = new File(Paths.cache, `${sanitizeFilename(title)}.${format.extension}`)
+        if (format.key === 'pdf') {
+          const { uri } = await Print.printToFileAsync({ html })
+          new File(uri).moveSync(target, { overwrite: true })
+        } else {
+          target.write(html)
+        }
+        await Sharing.shareAsync(target.uri, {
+          UTI: format.uti,
+          mimeType: format.mimeType,
+          dialogTitle: title
+        })
+      } catch (error) {
+        showFailure('Export', error)
+      }
+    },
+    [payload]
+  )
+
+  /** Ask which format. Only the ASKING is platform-specific; `runExport` is not. */
+  const showExportChoice = useCallback(() => {
+    setOverlay({ kind: 'none' })
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: 'Export note',
+          options: [...EXPORT_FORMATS.map((format) => format.label), 'Cancel'],
+          cancelButtonIndex: EXPORT_FORMATS.length
+        },
+        (index) => {
+          const chosen = EXPORT_FORMATS[index]
+          if (chosen) void runExport(chosen)
+        }
+      )
+      return
+    }
+    Alert.alert('Export note', undefined, [
+      ...EXPORT_FORMATS.map((format) => ({
+        text: format.label,
+        onPress: () => void runExport(format)
+      })),
+      { text: 'Cancel', style: 'cancel' as const }
+    ])
+  }, [runExport])
+
   const confirmDelete = useCallback(() => {
     if (!ctx || !id || !allowMutation('Deleting notes')) return
     const title = payload?.title ?? 'Untitled'
@@ -861,6 +970,7 @@ export default function NoteScreen() {
         onMove={() => void openMove()}
         onDuplicate={() => void runDuplicate()}
         onShare={() => void runShare()}
+        onExport={showExportChoice}
         onDelete={confirmDelete}
       />
 

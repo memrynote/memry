@@ -191,6 +191,45 @@ bridge.onHostMsg((msg) => {
       break
     }
 
+    case 'export-html': {
+      // Answered even when the request is not for the mounted document, which
+      // is the one way this differs from `export-markdown`. Returning in
+      // silence leaves the host's promise to run out its own timeout, and that
+      // timeout is 15 s — long enough for a reader who tapped Export during a
+      // note switch to conclude the app has hung. `msg.docId` rather than the
+      // mounted one, so the host's own docId check on the reply matches.
+      if (!mounted || !isForMountedDoc(msg, mounted.docId)) {
+        bridge.send({
+          type: 'html-export',
+          reqId: msg.reqId,
+          docId: msg.docId,
+          result: { status: 'error', detail: 'That note is no longer open here' }
+        })
+        bridge.flush()
+        return
+      }
+      try {
+        bridge.send({
+          type: 'html-export',
+          reqId: msg.reqId,
+          docId: mounted.docId,
+          result: { status: 'ok', html: renderDocumentHtml() }
+        })
+      } catch (error) {
+        bridge.send({
+          type: 'html-export',
+          reqId: msg.reqId,
+          docId: mounted.docId,
+          result: {
+            status: 'error',
+            detail: error instanceof Error ? error.message : String(error)
+          }
+        })
+      }
+      bridge.flush()
+      break
+    }
+
     case 'exec':
       if (!isForMountedDoc(msg, mounted?.docId ?? null)) return
       runExec(msg.cmd)
@@ -338,6 +377,70 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     bridge.send({ type: 'painted', docId, marks: guestMarks() })
     bridge.flush()
   })
+}
+
+/**
+ * The mounted note as a standalone HTML document, for the host's PDF/HTML export.
+ *
+ * A SNAPSHOT of what is already on screen, not a second renderer: the subtree
+ * is the one BlockNote laid out and the rules are the ones it laid it out
+ * under, so an export can never disagree with the note. Images come along for
+ * free — `images.ts` has already swapped their vault refs for `data:` URIs in
+ * this DOM — which also satisfies WKWebView's refusal to load local asset URLs
+ * when printing.
+ *
+ * The wrapper keeps the `id="root"`, because the document's page padding and
+ * inline measure are written against that selector and a bare `<body>` would
+ * export the text hard against the paper edge. `#editor-chrome` is deliberately
+ * left out: the toolbar and the find bar are app furniture, not the note. The
+ * inline custom properties the host sets on `<html>` are left out for the same
+ * reason and by construction — they are element styles rather than rules, so
+ * the native header's reserved inset falls back to its own `0px` and the
+ * exported page does not open with a band of empty paper.
+ */
+function renderDocumentHtml(): string {
+  const styles = Array.from(document.querySelectorAll('style'))
+    .map((element) => element.textContent ?? '')
+    .join('\n')
+  const snapshot = root.cloneNode(true) as HTMLElement
+  stripEditingAffordances(snapshot)
+  return (
+    `<!doctype html><html lang="${document.documentElement.lang || 'en'}" dir="${document.documentElement.dir || 'ltr'}">` +
+    `<head><meta charset="utf-8"><style>${styles}</style></head>` +
+    `<body><div id="root">${snapshot.innerHTML}</div></body></html>`
+  )
+}
+
+/**
+ * Attributes that make the live editor an editor, removed from the export.
+ *
+ * Without this the `.html` file opens in a browser as a focusable, typeable
+ * text box announcing itself as "Note content" — a copy of the editor rather
+ * than a copy of the note. It has to walk descendants too: ProseMirror marks
+ * atoms like wiki-link chips and images `contenteditable="false"`, so the
+ * attribute appears well below the one element BlockNote owns.
+ *
+ * Only attributes are touched. Classes stay, because they ARE the styling the
+ * exported stylesheet matches on, and the find bar needs no cleanup at all —
+ * it highlights through the CSS Custom Highlight API, which never enters the
+ * DOM.
+ */
+const EDITING_ATTRIBUTES = [
+  'contenteditable',
+  'tabindex',
+  'role',
+  'spellcheck',
+  'autocorrect',
+  'autocapitalize'
+]
+
+function stripEditingAffordances(element: HTMLElement): void {
+  for (const node of [element, ...Array.from(element.querySelectorAll('*'))]) {
+    for (const name of EDITING_ATTRIBUTES) node.removeAttribute(name)
+    for (const attribute of Array.from(node.attributes)) {
+      if (attribute.name.startsWith('aria-')) node.removeAttribute(attribute.name)
+    }
+  }
 }
 
 /**

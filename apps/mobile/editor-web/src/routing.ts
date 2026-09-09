@@ -18,6 +18,7 @@ export function isForMountedDoc(msg: HostMsg, mountedDocId: string | null): bool
   switch (msg.type) {
     case 'y-update':
     case 'export-markdown':
+    case 'export-html':
       return msg.docId === mountedDocId
     case 'exec':
     case 'insert-attachment':
