@@ -1,6 +1,8 @@
 import * as BackgroundTask from 'expo-background-task'
 import * as TaskManager from 'expo-task-manager'
 import { AppState } from 'react-native'
+import { openVaultDb } from '../db/index'
+import { reconcileReminders } from '../features/notes/reminders'
 import { createLogger } from '../lib/logger'
 import { createMobileHttpClient } from '../adapters/http-client'
 import { syncBaseUrl } from './server-config'
@@ -52,6 +54,24 @@ export async function registerBackgroundSync(minIntervalMinutes = 15): Promise<v
   }
 }
 
+/**
+ * Reconcile without a caller-supplied context.
+ *
+ * The DB handle is memoized per vault by `openVaultDb`, so this is a map lookup
+ * on every pass but the first. Failures are swallowed by `reconcileReminders`
+ * itself; the `catch` is for the open.
+ */
+async function reconcileVaultReminders(vaultId: string): Promise<void> {
+  try {
+    const db = await openVaultDb(vaultId)
+    await reconcileReminders({ db, vaultId })
+  } catch (err) {
+    log.warn('Reminder reconcile on foreground failed', {
+      error: err instanceof Error ? err.message : String(err)
+    })
+  }
+}
+
 let foregroundWired = false
 
 /**
@@ -77,6 +97,11 @@ export function wireForegroundSync(): void {
     if (next === 'active' && previous !== 'active') {
       startSyncSocket(vaultId)
       void requestVaultSync(vaultId, 'app-foreground')
+      // The reminder reconciler's third edge, on the listener that already owns
+      // this transition rather than on a second one of its own. iOS can drop
+      // pending notifications while the app is away — a revoked permission, the
+      // per-app cap — and this is where the database gets to put them back.
+      void reconcileVaultReminders(vaultId)
     } else if (next !== 'active' && previous === 'active') {
       stopSyncSocket()
       void requestVaultSync(vaultId, 'app-background')

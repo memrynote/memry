@@ -35,3 +35,20 @@ export type ReminderStatus = (typeof reminderStatus)[keyof typeof reminderStatus
 export function noteDateReminderId(noteId: string, anchorId: string): string {
   return `rem_nd_${noteId}_${anchorId}`
 }
+
+/**
+ * Deterministic id for the ONE user-set reminder on a note or journal.
+ *
+ * Desktop mints a random `rem_<nanoid>` and resolves "one reminder per note" by
+ * deleting the rows it can currently see. Two devices offline cannot see each
+ * other's, so random ids give a note TWO reminders after the merge. Deriving
+ * the id from the target makes those the same row and lets the vector clock
+ * decide the time — the same reasoning `bookmarkSyncId` and
+ * `noteDateReminderId` already encode.
+ *
+ * Distinct prefix from `rem_nd_`: `note_date` rows are owned by desktop's
+ * note-content reconciler and must never collide with a user-set reminder.
+ */
+export function noteReminderSyncId(noteId: string): string {
+  return `rem_note_${noteId}`
+}

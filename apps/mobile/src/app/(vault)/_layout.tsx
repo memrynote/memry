@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Stack } from 'expo-router'
+import { router, Stack } from 'expo-router'
+import { openVaultDb } from '@/db/index'
+import { onReminderTap, reconcileReminders } from '@/features/notes/reminders'
 import { FirstSyncScreen } from '@/features/sync/first-sync-screen'
 import { FirstSyncProgressBar } from '@/features/sync/progress'
 import { SyncErrorScreen } from '@/features/sync/sync-error-screen'
@@ -49,6 +51,9 @@ export default function VaultLayout() {
 
   useEffect(() => {
     let cancelled = false
+    // Filled inside the async body below, torn down by the cleanup that cannot
+    // await it.
+    const teardown: (() => void)[] = []
     void (async () => {
       const vaultId = await loadCurrentVaultId()
       if (!vaultId || cancelled) return
@@ -56,6 +61,18 @@ export default function VaultLayout() {
       wireForegroundSync()
       void registerBackgroundSync()
       startSyncSocket(vaultId)
+
+      // Reminders: two of the three edges. Relaunch is this call; a pull is the
+      // subscription; the foreground edge lives in `sync/background.ts`, on the
+      // AppState listener that already owns that transition. The pass is
+      // idempotent, so overlapping calls cost nothing.
+      const reminderCtx = { db: await openVaultDb(vaultId), vaultId }
+      if (cancelled) return
+      void reconcileReminders(reminderCtx)
+      teardown.push(
+        getSyncEngine(vaultId).onSynced(() => void reconcileReminders(reminderCtx)),
+        onReminderTap(({ noteId }) => router.push(`/notes/${noteId}`))
+      )
 
       try {
         setSyncing(true)
@@ -86,6 +103,7 @@ export default function VaultLayout() {
     })()
     return () => {
       cancelled = true
+      for (const off of teardown) off()
       // Three things already leak here (two NetInfo subscriptions and the
       // engine registry, none of which have a removal path), so the socket
       // gets an explicit stop rather than becoming a fourth. Clearing the
