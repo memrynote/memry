@@ -585,6 +585,35 @@ export async function readVaultTags(db: VaultDb): Promise<string[]> {
   return [...seen.values()].sort((a, b) => a.localeCompare(b))
 }
 
+/**
+ * The ids of every note carrying `tag`, case-insensitively.
+ *
+ * Its own scan rather than a field on `NoteEntry`: only the tag screen needs
+ * it, and widening the snapshot would put a per-note tag array behind every
+ * notes list render for one screen's sake.
+ */
+export async function readNoteIdsWithTag(db: VaultDb, tag: string): Promise<Set<string>> {
+  const key = normalizeTagKey(tag)
+  const ids = new Set<string>()
+  if (key.length === 0) return ids
+  const rows = await db.getAllAsync<{ id: string; payload: string | null }>(
+    `SELECT id, payload FROM sync_items WHERE type = 'note' AND deleted_at IS NULL`
+  )
+  for (const row of rows) {
+    if (!row.payload) continue
+    try {
+      const tags = (JSON.parse(row.payload) as { tags?: unknown }).tags
+      if (!Array.isArray(tags)) continue
+      if (tags.some((entry) => typeof entry === 'string' && normalizeTagKey(entry) === key)) {
+        ids.add(row.id)
+      }
+    } catch {
+      // Unparseable payloads are already reported by the projection layer.
+    }
+  }
+  return ids
+}
+
 export async function setNoteTags(
   ctx: NoteOpsContext,
   noteId: string,

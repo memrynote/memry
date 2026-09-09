@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { readVaultTags } from '../note-ops'
+import { readNoteIdsWithTag, readVaultTags } from '../note-ops'
 import { openTestVault, type TestVault } from './vault-db-harness'
 
 let vault: TestVault | null = null
@@ -61,5 +61,38 @@ describe('readVaultTags', () => {
     await insert(vault.db, { id: 'untagged', type: 'note', payload: JSON.stringify({ tags: 7 }) })
 
     await expect(readVaultTags(vault.db)).resolves.toEqual(['kept'])
+  })
+})
+
+describe('readNoteIdsWithTag', () => {
+  it('matches case-insensitively, skips deleted rows and journals, and ignores an empty tag', async () => {
+    vault = openTestVault()
+    await insert(vault.db, {
+      id: 'n1',
+      type: 'note',
+      payload: JSON.stringify({ tags: ['Roadmap', 'commons'] })
+    })
+    await insert(vault.db, {
+      id: 'n2',
+      type: 'note',
+      payload: JSON.stringify({ tags: ['ROADMAP'] })
+    })
+    await insert(vault.db, { id: 'n3', type: 'note', payload: JSON.stringify({ tags: ['other'] }) })
+    await insert(vault.db, {
+      id: 'gone',
+      type: 'note',
+      payload: JSON.stringify({ tags: ['roadmap'] }),
+      deletedAt: 2
+    })
+    // The tag screen lists the notes tree, which holds no journals.
+    await insert(vault.db, {
+      id: 'j1',
+      type: 'journal',
+      payload: JSON.stringify({ tags: ['roadmap'] })
+    })
+    await insert(vault.db, { id: 'broken', type: 'note', payload: '{not json' })
+
+    await expect(readNoteIdsWithTag(vault.db, 'roadmap')).resolves.toEqual(new Set(['n1', 'n2']))
+    await expect(readNoteIdsWithTag(vault.db, '  ')).resolves.toEqual(new Set())
   })
 })

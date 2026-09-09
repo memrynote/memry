@@ -1,8 +1,10 @@
-import { useCallback } from 'react'
-import { Pressable, StyleSheet, View } from 'react-native'
+import { useCallback, useRef, useState } from 'react'
+import { InteractionManager, Platform, Pressable, StyleSheet, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AppText } from '@/components/ui/app-text'
-import { Icon } from '@/components/ui/icon'
+import { BottomSheet } from '@/components/ui/bottom-sheet'
+import { Icon, type IconName } from '@/components/ui/icon'
 import { radius, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 import { removeTag, setNoteTags, type NoteOpsContext } from './note-ops'
@@ -16,33 +18,25 @@ import { useTagColors } from './use-tag-colors'
  * not cosmetic — a mobile edit that lower-cased tags would rewrite them for
  * every device on the next sync.
  *
- * The row has two states. At rest it is plain chips. Tapping any chip arms the
- * editing state, which adds a remove badge to every chip and a dashed add
- * button after them; the screen disarms it when a tap lands anywhere else.
+ * The row is stateless. A tap on a chip is navigation — it opens the vault's
+ * notes carrying that tag — and a long press opens the chip's action sheet,
+ * which is where removal lives. The row used to arm an editing state on the
+ * first tap and remove on the second, with a 14pt badge as the only hint; two
+ * taps to reach a target that small is not a gesture anyone finds.
  */
 export interface NoteTagsProps {
   ctx: NoteOpsContext | null
   noteId: string
   tags: string[]
   readOnly: boolean
-  editing: boolean
-  onEditingChange: (editing: boolean) => void
-  onAdd: () => void
+  /** Show every note carrying this tag. */
+  onOpenTag: (tag: string) => void
   onChanged: (tags: string[]) => void
 }
 
-export function NoteTags({
-  ctx,
-  noteId,
-  tags,
-  readOnly,
-  editing,
-  onEditingChange,
-  onAdd,
-  onChanged
-}: NoteTagsProps) {
-  const c = useColors()
+export function NoteTags({ ctx, noteId, tags, readOnly, onOpenTag, onChanged }: NoteTagsProps) {
   const resolveColor = useTagColors(ctx?.db ?? null)
+  const [menuTag, setMenuTag] = useState<string | null>(null)
 
   const commit = useCallback(
     async (next: string[]) => {
@@ -52,7 +46,7 @@ export function NoteTags({
     [ctx, noteId, onChanged]
   )
 
-  const armed = editing && !readOnly
+  if (tags.length === 0) return null
 
   return (
     <View style={styles.row}>
@@ -62,43 +56,135 @@ export function NoteTags({
           <Pressable
             key={tag}
             hitSlop={10}
-            disabled={readOnly}
-            // The badge is an affordance, not the target. It sits 4pt outside
-            // the chip's bounds, and RN hit-tests a child only within its
-            // parent's frame on iOS as well as Android, so half of a 14pt
-            // badge would be dead. The armed chip carries the removal instead,
-            // which also makes it a two-tap gesture rather than a 14pt one.
-            onPress={() => (armed ? void commit(removeTag(tags, tag)) : onEditingChange(true))}
+            onPress={() => onOpenTag(tag)}
+            onLongPress={readOnly ? undefined : () => setMenuTag(tag)}
             accessibilityRole="button"
-            accessibilityLabel={armed ? `Remove tag ${tag}` : `Tag ${tag}`}
+            accessibilityLabel={`Tag ${tag}`}
+            accessibilityHint="Opens the notes with this tag. Long press for tag actions."
             style={[styles.chip, { backgroundColor: hue.fill }]}
           >
             <AppText variant="captionEmphasis" color={hue.text}>
               {tag}
             </AppText>
-            {armed ? (
-              <View style={[styles.badge, { backgroundColor: c.text.secondary }]}>
-                <Icon name="close" size={8} strokeWidth={3} color={c.canvas.background} />
-              </View>
-            ) : null}
           </Pressable>
         )
       })}
-      {!readOnly && (armed || tags.length === 0) ? (
-        <Pressable
-          hitSlop={10}
-          onPress={onAdd}
-          accessibilityRole="button"
-          accessibilityLabel="Add tag"
-          style={[styles.add, { borderColor: c.line.border }]}
-        >
-          {/* `text.tertiary` is 2.81:1 on the canvas and fails the 3:1 glyph
-              floor DESIGN.md sets, so every tertiary mark on boards 32 and 33
-              is drawn in `text.secondary` instead. */}
-          <Icon name="plus" size={12} color={c.text.secondary} />
-        </Pressable>
-      ) : null}
+
+      <TagActionSheet
+        tag={menuTag}
+        onClose={() => setMenuTag(null)}
+        onOpen={onOpenTag}
+        onRemove={(tag) => void commit(removeTag(tags, tag))}
+      />
     </View>
+  )
+}
+
+interface TagAction {
+  key: 'open' | 'remove'
+  label: string
+  icon: IconName
+  destructive?: boolean
+  onPress: () => void
+}
+
+/**
+ * The long-press menu for one chip.
+ *
+ * It names both verbs rather than relying on the gesture alone, so the sheet
+ * also teaches what the plain tap does.
+ */
+function TagActionSheet({
+  tag,
+  onClose,
+  onOpen,
+  onRemove
+}: {
+  tag: string | null
+  onClose: () => void
+  onOpen: (tag: string) => void
+  onRemove: (tag: string) => void
+}) {
+  const c = useColors()
+  const insets = useSafeAreaInsets()
+  const pendingAction = useRef<(() => void) | null>(null)
+  const runPendingAction = (): void => {
+    const action = pendingAction.current
+    pendingAction.current = null
+    action?.()
+  }
+
+  const actions: readonly TagAction[] = tag
+    ? [
+        {
+          key: 'open',
+          label: 'Show notes with this tag',
+          icon: 'list',
+          onPress: () => onOpen(tag)
+        },
+        {
+          key: 'remove',
+          label: 'Remove from this note',
+          icon: 'trash',
+          destructive: true,
+          onPress: () => onRemove(tag)
+        }
+      ]
+    : []
+
+  return (
+    <BottomSheet
+      visible={tag !== null}
+      onClose={onClose}
+      onDismiss={runPendingAction}
+      accessibilityLabel={tag ? `Actions for tag ${tag}` : 'Tag actions'}
+      style={{ paddingBottom: insets.bottom }}
+    >
+      <View style={styles.sheetHeader}>
+        <AppText variant="headline" numberOfLines={1}>
+          {tag ?? ''}
+        </AppText>
+        <AppText variant="caption" color={c.text.secondary}>
+          Tag actions
+        </AppText>
+      </View>
+      <View style={[styles.sheetActions, { borderTopColor: c.line.border }]}>
+        {actions.map((action, index) => {
+          const color = action.destructive ? c.ui.destructiveText : c.text.primary
+          return (
+            <Pressable
+              key={action.key}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}
+              onPress={() => {
+                // Same sequencing as `NoteMoreSheet`: the action runs once this
+                // Modal is really gone, or navigation races its dismissal.
+                pendingAction.current = action.onPress
+                onClose()
+                if (Platform.OS !== 'ios') {
+                  void InteractionManager.runAfterInteractions(runPendingAction)
+                }
+              }}
+              style={({ pressed }) => [
+                styles.sheetAction,
+                index > 0 && {
+                  borderTopColor: c.line.border,
+                  borderTopWidth: StyleSheet.hairlineWidth
+                },
+                pressed && { backgroundColor: c.canvas.surface }
+              ]}
+            >
+              <View style={styles.sheetIconSlot}>
+                <Icon name={action.icon} size={22} color={color} />
+              </View>
+              <AppText color={color} style={styles.sheetActionLabel}>
+                {action.label}
+              </AppText>
+            </Pressable>
+          )
+        })}
+      </View>
+    </BottomSheet>
   )
 }
 
@@ -111,23 +197,28 @@ const styles = StyleSheet.create({
     gap: space.s8
   },
   chip: { paddingVertical: space.s4, paddingHorizontal: 10, borderRadius: radius.full },
-  badge: {
-    position: 'absolute',
-    top: -space.s4,
-    end: -space.s4,
-    width: 14,
-    height: 14,
-    borderRadius: radius.full,
+  sheetHeader: {
+    height: 53,
+    justifyContent: 'center',
+    gap: space.s2,
+    paddingStart: space.s16,
+    paddingEnd: space.s16
+  },
+  sheetActions: { borderTopWidth: StyleSheet.hairlineWidth },
+  sheetAction: {
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingStart: space.s16,
+    paddingEnd: space.s16
+  },
+  sheetIconSlot: {
+    width: 24,
+    height: 24,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  add: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center'
-  }
+  sheetActionLabel: { flex: 1, minWidth: 0 }
 })

@@ -39,8 +39,6 @@ export interface NotePropertiesProps {
   onChanged: (properties: Record<string, unknown>) => void
   onAddProperty: () => void
   onAddTag: () => void
-  /** Any tap in this section also leaves the tag row's editing state. */
-  onInteract: () => void
 }
 
 /** The open option picker: which property, and the options it can pick from. */
@@ -58,8 +56,7 @@ export function NoteProperties({
   readOnly,
   onChanged,
   onAddProperty,
-  onAddTag,
-  onInteract
+  onAddTag
 }: NotePropertiesProps) {
   const c = useColors()
   const [expanded, setExpanded] = useState(false)
@@ -144,10 +141,7 @@ export function NoteProperties({
     <View>
       <Pressable
         hitSlop={10}
-        onPress={() => {
-          onInteract()
-          setExpanded((prev) => !prev)
-        }}
+        onPress={() => setExpanded((prev) => !prev)}
         accessibilityRole="button"
         accessibilityLabel="Properties"
         accessibilityState={{ expanded }}
@@ -192,18 +186,20 @@ export function NoteProperties({
                 setPicker({ name: row.name, type: row.type, options, selected })
               }
               onLongPress={() => confirmDrop(row.name)}
-              onInteract={onInteract}
             />
           ))}
-
-          {readOnly ? null : (
-            <View style={styles.ghostRow}>
-              <GhostButton label="Add property" onPress={onAddProperty} />
-              <GhostButton label="Add tag" onPress={onAddTag} />
-            </View>
-          )}
         </View>
       ) : null}
+
+      {/* OUTSIDE the collapse. These are the only way in to either sheet, and
+          behind a collapsed section that starts closed they were unreachable
+          without first discovering that the `Properties` header opens. */}
+      {readOnly ? null : (
+        <View style={styles.ghostRow}>
+          <GhostButton label="Add property" onPress={onAddProperty} />
+          <GhostButton label="Add tag" onPress={onAddTag} />
+        </View>
+      )}
 
       <BottomSheet
         visible={picker !== null}
@@ -278,8 +274,7 @@ function PropertyRow({
   readOnly,
   onCommit,
   onOpenPicker,
-  onLongPress,
-  onInteract
+  onLongPress
 }: {
   name: string
   value: unknown
@@ -289,7 +284,6 @@ function PropertyRow({
   onCommit: (value: unknown) => void
   onOpenPicker: (options: SelectOption[], selected: string[]) => void
   onLongPress: () => void
-  onInteract: () => void
 }) {
   const c = useColors()
   const initial = formatPropertyValue(value)
@@ -303,7 +297,7 @@ function PropertyRow({
   }
 
   return (
-    <Pressable onPress={onInteract} onLongPress={onLongPress} style={styles.row}>
+    <Pressable onLongPress={onLongPress} style={styles.row}>
       <View style={styles.iconLane}>
         <Icon name={propertyTypes[type].icon} size={14} color={c.text.secondary} />
       </View>
@@ -323,7 +317,6 @@ function PropertyRow({
           onCommit={onCommit}
           onCommitDraft={commitIfChanged}
           onOpenPicker={onOpenPicker}
-          onInteract={onInteract}
         />
       </View>
     </Pressable>
@@ -341,8 +334,7 @@ function PropertyValue({
   onDraftChange,
   onCommit,
   onCommitDraft,
-  onOpenPicker,
-  onInteract
+  onOpenPicker
 }: {
   name: string
   value: unknown
@@ -355,7 +347,6 @@ function PropertyValue({
   onCommit: (value: unknown) => void
   onCommitDraft: () => void
   onOpenPicker: (options: SelectOption[], selected: string[]) => void
-  onInteract: () => void
 }) {
   const c = useColors()
 
@@ -449,7 +440,6 @@ function PropertyValue({
       value={draft}
       editable={!readOnly}
       onChangeText={onDraftChange}
-      onFocus={onInteract}
       onBlur={onCommitDraft}
       onSubmitEditing={onCommitDraft}
       keyboardType={type === 'number' ? 'decimal-pad' : 'default'}
@@ -484,6 +474,8 @@ const styles = StyleSheet.create({
   sectionText: { fontFamily: fontFamilies.sans, fontSize: 11, lineHeight: 16, letterSpacing: 0.99 },
   countText: { fontFamily: fontFamilies.sansMedium, fontSize: 11, lineHeight: 16 },
   list: { paddingTop: 10 },
+  // Separates the ghost row from the header when collapsed and from the last
+  // property row when expanded.
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: space.s6 },
   iconLane: { width: 20, flexShrink: 0 },
   nameLane: { width: 112, flexShrink: 0 },
@@ -505,7 +497,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   chevronExpanded: { transform: [{ rotate: '90deg' }] },
-  ghostRow: { flexDirection: 'row', gap: space.s12 },
+  ghostRow: { flexDirection: 'row', gap: space.s12, paddingTop: 10 },
   ghost: {
     flexDirection: 'row',
     alignItems: 'center',

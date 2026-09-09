@@ -204,6 +204,16 @@ const NOTE_COMPARATORS: Record<MobileSortMode, (a: NoteEntry, b: NoteEntry) => n
   'created-asc': (a, b) => a.createdAt - b.createdAt || byId(a, b)
 }
 
+/**
+ * A flat note list in the tree's own order.
+ *
+ * Exported so a list that is not a folder — the tag screen — orders itself with
+ * the same comparators rather than growing a second one that drifts.
+ */
+export function sortNotes(notes: readonly NoteEntry[], sort: MobileSortMode): NoteEntry[] {
+  return [...notes].sort(NOTE_COMPARATORS[sort])
+}
+
 // --- tree ------------------------------------------------------------------
 
 function segmentsOf(folderPath: string): string[] {

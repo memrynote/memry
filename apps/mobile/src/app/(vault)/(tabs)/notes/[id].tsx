@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  AppState,
-  Pressable,
-  Share,
-  StyleSheet,
-  View
-} from 'react-native'
+import { ActivityIndicator, Alert, Animated, AppState, Share, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import type { BridgeCfg, EditorAttachmentBlockType } from '@memry/contracts/webview-bridge'
@@ -122,7 +113,6 @@ export default function NoteScreen() {
   const [keyboardVisible, setKeyboardVisible] = useState<boolean | null>(null)
   const [editorPanelOpen, setEditorPanelOpen] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
-  const [tagsEditing, setTagsEditing] = useState(false)
   const [addingTag, setAddingTag] = useState(false)
   const [addingProperty, setAddingProperty] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -702,7 +692,7 @@ export default function NoteScreen() {
                 because the WebView below is `padding-inline: 16px`
                 (editor-web/src/styles.css), and at 20 the native title sits 4pt
                 right of the prose it titles. */}
-            <Pressable style={styles.body} onPress={() => setTagsEditing(false)}>
+            <View style={styles.body}>
               <AppText variant="noteTitle">{title}</AppText>
               {/* `gate === 'locked'`, not the editor's own state: tags and
                   properties are metadata, not body, and reading the note is no
@@ -713,9 +703,7 @@ export default function NoteScreen() {
                 noteId={id}
                 tags={tags}
                 readOnly={gate === 'locked'}
-                editing={tagsEditing}
-                onEditingChange={setTagsEditing}
-                onAdd={() => setAddingTag(true)}
+                onOpenTag={(tag) => router.push(`/notes/tag?name=${encodeURIComponent(tag)}`)}
                 onChanged={(next) => setPayload((prev) => (prev ? { ...prev, tags: next } : prev))}
               />
               <NoteProperties
@@ -728,9 +716,8 @@ export default function NoteScreen() {
                 }
                 onAddProperty={() => setAddingProperty(true)}
                 onAddTag={() => setAddingTag(true)}
-                onInteract={() => setTagsEditing(false)}
               />
-            </Pressable>
+            </View>
           </Animated.View>
         }
         seedMarkdown={seedMarkdown}
