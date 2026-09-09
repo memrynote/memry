@@ -720,21 +720,24 @@ export default function NoteScreen() {
             </View>
           </Animated.View>
         }
+        // Handed over for the same reason the header is: it floats over the
+        // WebView, and the WebView is a sibling of this whole stack.
+        footer={
+          keyboardVisible === false && !editorPanelOpen ? (
+            <NoteFooter
+              tabCount={Math.max(1, openTabs.length)}
+              onFind={() => controls.current?.openFind()}
+              onQuickOpen={() => setOverlay({ kind: 'quick-open' })}
+              onTabs={() => setTabsVisible(true)}
+              onMore={() => setOverlay({ kind: 'more' })}
+            />
+          ) : null
+        }
         seedMarkdown={seedMarkdown}
         onReady={(next) => {
           controls.current = next
         }}
       />
-
-      {keyboardVisible === false && !editorPanelOpen ? (
-        <NoteFooter
-          tabCount={Math.max(1, openTabs.length)}
-          onFind={() => controls.current?.openFind()}
-          onQuickOpen={() => setOverlay({ kind: 'quick-open' })}
-          onTabs={() => setTabsVisible(true)}
-          onMore={() => setOverlay({ kind: 'more' })}
-        />
-      ) : null}
 
       <AddTagSheet
         visible={addingTag}

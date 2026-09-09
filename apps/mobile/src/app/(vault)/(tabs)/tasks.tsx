@@ -2,14 +2,16 @@ import { StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '@/components/ui/empty-state'
+import { useTabBarHeight } from '@/components/ui/tab-bar'
 import { useColors } from '@/theme/use-colors'
 
 export default function TasksScreen() {
   const c = useColors()
+  const tabBarHeight = useTabBarHeight()
   return (
     <SafeAreaView
       edges={['left', 'right']}
-      style={[styles.root, { backgroundColor: c.canvas.background }]}
+      style={[styles.root, { backgroundColor: c.canvas.background, paddingBottom: tabBarHeight }]}
     >
       <View style={styles.center}>
         <EmptyState icon="task" title="Tasks" body="This tab arrives in a later pass." />

@@ -83,6 +83,14 @@ export interface EditorViewProps {
    */
   chrome?: ReactNode
   /**
+   * Native chrome to float over the BOTTOM of the editor — the note's footer.
+   *
+   * Handed to the host for the same reason `chrome` is, and pinned to the
+   * bottom of the host container rather than to this note's frame: it is the
+   * screen's floating bar, and the document runs under it.
+   */
+  footer?: ReactNode
+  /**
    * Markdown to seed the doc with when it has no CRDT state at all.
    *
    * A note created here, or one pulled from a desktop whose create-time
@@ -163,6 +171,7 @@ export function EditorView({
   onPanelVisibilityChange,
   onScroll,
   chrome,
+  footer,
   seedMarkdown,
   onReady
 }: EditorViewProps) {
@@ -521,13 +530,22 @@ export function EditorView({
   useEffect(() => {
     host.setChrome(
       hostDoc,
-      chrome ? (
-        <View style={[styles.chrome, { top: chromeTop }]} pointerEvents="box-none">
-          {chrome}
-        </View>
+      chrome || footer ? (
+        <>
+          {chrome ? (
+            <View style={[styles.chrome, { top: chromeTop }]} pointerEvents="box-none">
+              {chrome}
+            </View>
+          ) : null}
+          {footer ? (
+            <View style={styles.footer} pointerEvents="box-none">
+              {footer}
+            </View>
+          ) : null}
+        </>
       ) : null
     )
-  }, [chrome, chromeTop, host, hostDoc])
+  }, [chrome, chromeTop, footer, host, hostDoc])
 
   /**
    * Give the keyboard back when this screen goes.
@@ -569,6 +587,9 @@ const styles = StyleSheet.create({
   // also the clip, so the header scrolls out of the editor rather than up onto
   // the nav bar.
   chrome: { position: 'absolute', start: 0, end: 0, overflow: 'hidden' },
+  // Pinned to the host container, not to the note's frame: the footer floats
+  // at the bottom of the screen and the document scrolls under it.
+  footer: { position: 'absolute', start: 0, end: 0, bottom: 0 },
   loading: {
     position: 'absolute',
     top: 0,

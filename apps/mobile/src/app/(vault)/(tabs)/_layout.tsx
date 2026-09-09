@@ -1,7 +1,9 @@
 import { Tabs } from 'expo-router'
+import { StyleSheet, View } from 'react-native'
 
 import type { IconName } from '@/components/ui/icon'
-import { TabBar, type TabBarItem } from '@/components/ui/tab-bar'
+import { TabBar, useFloatingBarOffset, type TabBarItem } from '@/components/ui/tab-bar'
+import { sizes } from '@/theme/primitives'
 
 const TABS = [
   { name: 'home', label: 'Home', icon: 'home' },
@@ -10,6 +12,17 @@ const TABS = [
   { name: 'journal', label: 'Journal', icon: 'journal' },
   { name: 'more', label: 'More', icon: 'more' }
 ] as const satisfies readonly { name: string; label: string; icon: IconName }[]
+
+// A component rather than JSX inside the `tabBar` render prop: that prop is
+// called as a plain function, so a hook in it would not be a hook of its own.
+function FloatingTabBar({ items }: { items: TabBarItem[] }) {
+  const bottom = useFloatingBarOffset()
+  return (
+    <View style={[styles.floating, { bottom }]}>
+      <TabBar items={items} />
+    </View>
+  )
+}
 
 export default function TabsLayout() {
   return (
@@ -47,7 +60,9 @@ export default function TabsLayout() {
           ]
         })
 
-        return <TabBar items={items} />
+        // Absolute so the screens keep the full height and their content
+        // scrolls under the glass instead of stopping above it.
+        return <FloatingTabBar items={items} />
       }}
     >
       {TABS.map((tab) => (
@@ -56,3 +71,7 @@ export default function TabsLayout() {
     </Tabs>
   )
 }
+
+const styles = StyleSheet.create({
+  floating: { position: 'absolute', start: sizes.gutter, end: sizes.gutter }
+})

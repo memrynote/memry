@@ -10,6 +10,7 @@ import { Icon, type IconName } from '@/components/ui/icon'
 import { PromptDialog } from '@/components/ui/prompt-dialog'
 import { SearchField } from '@/components/ui/search-field'
 import { SwipeRow } from '@/components/ui/swipe-row'
+import { useTabBarHeight } from '@/components/ui/tab-bar'
 import { TreeRow } from '@/components/ui/tree-row'
 import { openVaultDb, type VaultDb } from '@/db/index'
 import { getEditorSession } from '@/editor/session'
@@ -207,6 +208,8 @@ export default function NotesScreen() {
     [vaultId]
   )
 
+  const tabBarHeight = useTabBarHeight()
+
   const navActions: { icon: IconName; label: string; onPress: () => void }[] = [
     { icon: 'sort', label: 'Sort notes', onPress: () => setSortOpen(true) },
     { icon: 'search', label: 'Search notes', onPress: () => setSearching(true) },
@@ -312,6 +315,7 @@ export default function NotesScreen() {
             }
           }
         }}
+        contentContainerStyle={{ paddingBottom: tabBarHeight }}
         ListEmptyComponent={
           <AppText variant="footnote" color={c.text.secondary} style={styles.empty}>
             {query.trim().length > 0
@@ -322,7 +326,11 @@ export default function NotesScreen() {
       />
 
       {readOnly ? null : (
-        <FAB onPress={() => void create()} accessibilityLabel="New note" style={styles.fab} />
+        <FAB
+          onPress={() => void create()}
+          accessibilityLabel="New note"
+          style={[styles.fab, { bottom: tabBarHeight + sizes.gutter }]}
+        />
       )}
 
       <SortSheet
