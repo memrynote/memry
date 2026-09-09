@@ -159,10 +159,15 @@ export async function waitForVaultReady(page: Page, timeout = 45000): Promise<vo
     .locator('[data-tour="new-note"]')
     .waitFor({ state: 'attached', timeout: Math.min(timeout, 10_000) })
     .catch(() => {})
+  // A secondary BrowserWindow starts with `show: false` and can stay hidden or
+  // occluded on CI, where Chromium never fires requestAnimationFrame — a bare
+  // double-rAF wait hangs there until the test timeout. Race it with a timer so
+  // the frame wait stays a best-effort settle, not a blocking one.
   await page.evaluate(
     () =>
       new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve))
+        setTimeout(resolve, 1000)
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
       })
   )
   await dismissFirstRunOnboarding(page)
