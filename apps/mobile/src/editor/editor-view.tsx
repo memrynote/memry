@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode
+} from 'react'
 import { ActivityIndicator, Keyboard, StyleSheet, View } from 'react-native'
 import { useIsFocused } from 'expo-router'
 import { useTransitionProgress } from 'react-native-screens'
@@ -61,6 +69,19 @@ export interface EditorViewProps {
   onKeyboardVisibilityChange?: (visible: boolean) => void
   /** Whether a block/turn-into/link panel is covering the native footer. */
   onPanelVisibilityChange?: (open: boolean) => void
+  /** Where the guest's document is scrolled to, in CSS px, once per frame at most. */
+  onScroll?: (y: number) => void
+  /**
+   * Native chrome to float over the editor — the note's title and metadata.
+   *
+   * Handed to the HOST rather than rendered here. This component is a
+   * descendant of the notes stack, the WebView is the stack's later sibling, so
+   * anything rendered from here paints UNDER the editor whatever its `zIndex`
+   * says. It is positioned onto this note's own frame on the way through, so
+   * the caller writes the header in the editor's coordinates and not the
+   * host container's.
+   */
+  chrome?: ReactNode
   /**
    * Markdown to seed the doc with when it has no CRDT state at all.
    *
@@ -140,6 +161,8 @@ export function EditorView({
   onInsertRequest,
   onKeyboardVisibilityChange,
   onPanelVisibilityChange,
+  onScroll,
+  chrome,
   seedMarkdown,
   onReady
 }: EditorViewProps) {
@@ -307,6 +330,13 @@ export function EditorView({
           markdownExports.settle(msg)
           break
 
+        // Unaddressed, and it needs no guard: the host only routes an
+        // unaddressed message to the MOUNTED note, and the guest has one
+        // document, so this can only ever be this note's own scroll.
+        case 'scroll':
+          onScroll?.(msg.y)
+          break
+
         case 'err':
           log.warn('Editor reported an error', { code: msg.code, detail: msg.detail })
           break
@@ -325,6 +355,7 @@ export function EditorView({
       onInsertRequest,
       onKeyboardVisibilityChange,
       onPanelVisibilityChange,
+      onScroll,
       onNavigate,
       onWikiQuery,
       markdownExports
@@ -473,6 +504,32 @@ export function EditorView({
   }, [hostState.containerReady, measure, pushLayout])
 
   /**
+   * The header, positioned onto this note's editor and handed to the host.
+   *
+   * The chrome slot spans the whole host container, so the offset the caller
+   * cannot know is supplied here — from the frame this component already
+   * reports, rather than from a nav-bar constant that a sync banner or the
+   * read-only banner would silently invalidate.
+   *
+   * This wrapper CLIPS, and that is the whole reason the header used to stop
+   * short: it is only as tall as the header it holds, a transform does not
+   * change that height, so a header translated up by its own height leaves the
+   * wrapper entirely. Without the clip it kept painting above `frame.top` —
+   * over the nav bar — and the last row of it read as pinned there forever.
+   */
+  const chromeTop = hostState.frame?.top ?? 0
+  useEffect(() => {
+    host.setChrome(
+      hostDoc,
+      chrome ? (
+        <View style={[styles.chrome, { top: chromeTop }]} pointerEvents="box-none">
+          {chrome}
+        </View>
+      ) : null
+    )
+  }, [chrome, chromeTop, host, hostDoc])
+
+  /**
    * Give the keyboard back when this screen goes.
    *
    * The WebView used to be unmounted with the route, which resigned first
@@ -507,6 +564,11 @@ export function EditorView({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  // Only as tall as what it holds: the strip below it is the document, and a
+  // full-height wrapper would take the touches meant for it. That height is
+  // also the clip, so the header scrolls out of the editor rather than up onto
+  // the nav bar.
+  chrome: { position: 'absolute', start: 0, end: 0, overflow: 'hidden' },
   loading: {
     position: 'absolute',
     top: 0,
