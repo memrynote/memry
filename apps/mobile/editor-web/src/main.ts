@@ -8,6 +8,7 @@ import { codeBlockOptions } from '@blocknote/code-block'
 import {
   createInlineCheckboxContent,
   createInlineImageContent,
+  createLinkMentionContent,
   createWikiLinkInlineContent,
   wikiLinkConfig,
   wikiLinkToText
@@ -25,6 +26,16 @@ import {
   installWikiLinkNavigation,
   type WikiLinkAutocomplete
 } from './wiki-links.ts'
+import {
+  dropAt,
+  installPasteLinkMenu,
+  isLinkMention,
+  isPastedUrl,
+  linkDomain,
+  replaceAt,
+  rewriteInlineContent,
+  type PasteLinkSurface
+} from './paste-link.ts'
 import { installVisibleViewportInset } from './visual-viewport.ts'
 import { installFindInNote, type FindInNoteController } from './find-in-note.ts'
 import {
@@ -333,6 +344,11 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     bridge,
     { root, chrome, toolbarHost }
   )
+  const pasteLinks = installPasteLinkMenu(pasteLinkSurface(editor), bridge, {
+    root,
+    chrome,
+    toolbarHost
+  })
   let toolbarPanelOpen = false
   let findOpen = false
   let dateSheetOpen = false
@@ -417,6 +433,7 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
       detachNav()
       wikiLinks.detach()
       detachExternalLinks()
+      pasteLinks.detach()
       detachAssets()
       detachMetrics()
       detachToolbarSelection()
@@ -525,6 +542,162 @@ function isEditorEmpty(editor: MobileEditor): boolean {
   if (!only) return true
   const content = only.content
   return !Array.isArray(content) || content.length === 0
+}
+
+/**
+ * Derived from `getBlock` rather than from `document`, which is the same block
+ * type reached through a different instantiation of BlockNote's generics — TS
+ * reports the two as unrelated types that happen to share a name.
+ */
+type MobileBlock = NonNullable<ReturnType<MobileEditor['getBlock']>>
+
+/**
+ * Rewrite the first inline node anywhere in the document that `match` accepts.
+ *
+ * Recursive because a mention can sit inside a list item's children, which is
+ * exactly where a pasted link most often lands. Stops at the first hit: a
+ * document can hold the same URL twice, and the one this is called for is the
+ * one the reader just made.
+ */
+function rewriteDocument(
+  blocks: MobileBlock[],
+  match: (node: unknown) => boolean,
+  rewrite: (inline: unknown[], index: number) => unknown[]
+): { block: MobileBlock; content: MobileBlock['content'] } | null {
+  for (const block of blocks) {
+    const content = rewriteInlineContent(block.content, match, rewrite)
+    if (content !== null) return { block, content }
+    const found = block.children.length ? rewriteDocument(block.children, match, rewrite) : null
+    if (found) return found
+  }
+  return null
+}
+
+function findBlock(
+  blocks: MobileBlock[],
+  match: (block: MobileBlock) => boolean
+): MobileBlock | null {
+  for (const block of blocks) {
+    if (match(block)) return block
+    const found = block.children.length ? findBlock(block.children, match) : null
+    if (found) return found
+  }
+  return null
+}
+
+/**
+ * The schema-typed half of the paste-link menu (#2104).
+ *
+ * Every call here is written against the custom schema, which is why it lives
+ * in this module and the menu takes it as a parameter — the same split
+ * `WikiLinkEditorSurface` documents.
+ *
+ * The blocks and props are desktop's, byte for byte: `linkMention` inline
+ * content from `@memry/editor-schema`, a `youtubeEmbed` carrying `videoId` and
+ * `videoUrl`, a `bookmark` carrying `url` and `domain` immediately and the rest
+ * when the host answers. A note made on the phone therefore opens on desktop as
+ * the same note, and not as a second dialect of the same three block types.
+ */
+function pasteLinkSurface(editor: MobileEditor): PasteLinkSurface {
+  return {
+    cursorBlockId: () => editor.getTextCursorPosition().block.id,
+
+    toMention(blockId, url) {
+      const block = editor.getBlock(blockId)
+      if (!block) return false
+      const content = rewriteInlineContent(
+        block.content,
+        (node) => isPastedUrl(node, url),
+        (inline, index) => replaceAt(inline, index, createLinkMentionContent(url, linkDomain(url)))
+      )
+      if (content === null) return false
+      editor.updateBlock(block, { content })
+      return true
+    },
+
+    toEmbed(blockId, url, videoId) {
+      // The URL is dropped from the paragraph first: an embed is a block of its
+      // own, so leaving the link behind would show the reader the same video
+      // twice. Inside a table it lands after the whole table, because a table
+      // cell holds inline content only — desktop makes the same trade.
+      const block = dropPastedUrl(editor, blockId, url)
+      if (!block) return
+      editor.insertBlocks(
+        [{ type: 'youtubeEmbed', props: { videoId, videoUrl: url } }],
+        block,
+        'after'
+      )
+    },
+
+    toBookmark(blockId, url) {
+      const block = dropPastedUrl(editor, blockId, url)
+      if (!block) return
+      editor.insertBlocks(
+        [{ type: 'bookmark', props: { url, domain: linkDomain(url) } }],
+        block,
+        'after'
+      )
+    },
+
+    applyPreview(option, url, preview) {
+      const domain = preview.domain || linkDomain(url)
+      if (option === 'mention') {
+        const found = rewriteDocument(
+          editor.document,
+          (node) => isLinkMention(node, url),
+          (inline, index) =>
+            replaceAt(
+              inline,
+              index,
+              createLinkMentionContent(
+                url,
+                domain,
+                preview.title,
+                preview.favicon,
+                preview.siteName
+              )
+            )
+        )
+        // Gone means the reader undid the mention or deleted the block while
+        // the fetch was in flight, which is an answer with nothing left to
+        // apply rather than a failure.
+        if (found) editor.updateBlock(found.block, { content: found.content })
+        return
+      }
+
+      const target = findBlock(
+        editor.document,
+        (block) => block.type === 'bookmark' && block.props.url === url
+      )
+      if (!target) return
+      editor.updateBlock(target, {
+        props: {
+          url,
+          domain,
+          title: preview.title,
+          description: preview.description,
+          image: preview.image,
+          favicon: preview.favicon,
+          siteName: preview.siteName
+        }
+      })
+    }
+  }
+}
+
+/**
+ * Remove the pasted URL from its block and answer the block to insert after.
+ *
+ * The block is re-read rather than remembered: the menu can be tapped several
+ * frames after the paste, and `updateBlock` invalidates the snapshot the caller
+ * would otherwise hand to `insertBlocks`.
+ */
+function dropPastedUrl(editor: MobileEditor, blockId: string, url: string): MobileBlock | null {
+  const block = editor.getBlock(blockId)
+  if (!block) return null
+  const content = rewriteInlineContent(block.content, (node) => isPastedUrl(node, url), dropAt)
+  if (content !== null) editor.updateBlock(block, { content })
+  return editor.getBlock(blockId) ?? null
 }
 
 /**

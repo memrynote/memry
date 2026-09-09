@@ -288,6 +288,52 @@ export const HostProbeSchema = z.object({
   slot: z.enum(['early', 'late'])
 })
 
+/**
+ * What a page says about itself: the four strings a bookmark card and a link
+ * mention chip draw, plus the two remote image URLs they would draw if they
+ * could.
+ *
+ * Every field defaults to empty rather than being optional, because "the page
+ * had no `og:title`" and "the fetch failed" have to reach the same renderer.
+ * The guest already falls back to the hostname for both (`blocks.ts`,
+ * `inline.ts`), so an empty answer is a complete answer.
+ *
+ * `image` and `favicon` are carried and STORED but not drawn: they are remote
+ * http(s) URLs and the guest CSP is `img-src data: blob:`. Dropping them here
+ * instead would be worse than not drawing them — desktop reads the same block
+ * props out of the shared Y.Doc and does draw them, so a mobile-made bookmark
+ * would be permanently picture-less on every device. Drawing them on the phone
+ * is #2097's job, not this message's.
+ */
+export const LinkPreviewSchema = z.object({
+  title: z.string().default(''),
+  domain: z.string().default(''),
+  description: z.string().default(''),
+  image: z.string().default(''),
+  favicon: z.string().default(''),
+  siteName: z.string().default('')
+})
+
+/**
+ * Metadata for a URL the reader chose to turn into a bookmark or a mention.
+ *
+ * Additive within v1 on the same argument as `insert-attachment`: the guest is
+ * a prebuilt asset shipping inside the app that speaks to it, so the only peer
+ * that can disagree is a stale asset, which `editor:check` and the `ready`
+ * handshake already catch. A stale asset simply never asks.
+ *
+ * The fetch is on the HOST because the guest cannot make one: its CSP has no
+ * `connect-src` for remote origins, and the document has no network at all by
+ * contract. It is also the only side that can be honest about the privacy cost
+ * — this is the one bridge message that puts a request on the wire to a third
+ * party, and it is sent only when the reader has tapped `Bookmark` or
+ * `Mention`, never on open and never for a URL they merely pasted.
+ */
+export const HostLinkPreviewSchema = LinkPreviewSchema.extend({
+  type: z.literal('link-preview'),
+  reqId: z.string().min(1)
+})
+
 export const HostMsgSchema = z.discriminatedUnion('type', [
   HostDocLoadSchema,
   HostYUpdateSchema,
@@ -298,6 +344,7 @@ export const HostMsgSchema = z.discriminatedUnion('type', [
   HostInsertAttachmentSchema,
   HostExportMarkdownSchema,
   HostExportHtmlSchema,
+  HostLinkPreviewSchema,
   HostProbeSchema
 ])
 
@@ -560,11 +607,25 @@ export const GuestErrSchema = z.object({
   detail: z.string()
 })
 
+/**
+ * Ask the host what a pasted URL's page says about itself.
+ *
+ * Always answered, including on failure — the guest holds the reqId of an
+ * in-flight request and would otherwise leave a bookmark card showing nothing
+ * but its hostname with no way to know the answer is never coming.
+ */
+export const GuestLinkPreviewReqSchema = z.object({
+  type: z.literal('link-preview-req'),
+  reqId: z.string().min(1),
+  url: z.string().min(1)
+})
+
 export const GuestMsgSchema = z.discriminatedUnion('type', [
   GuestReadySchema,
   GuestYUpdateSchema,
   GuestWikiQuerySchema,
   GuestAssetReqSchema,
+  GuestLinkPreviewReqSchema,
   GuestInsertRequestSchema,
   GuestKeyboardVisibilitySchema,
   GuestEditorPanelVisibilitySchema,
@@ -605,6 +666,7 @@ export type HostEnvelope = z.infer<typeof HostEnvelopeSchema>
 export type GuestEnvelope = z.infer<typeof GuestEnvelopeSchema>
 export type BridgeCfg = z.infer<typeof BridgeCfgSchema>
 export type WikiCandidate = z.infer<typeof WikiCandidateSchema>
+export type LinkPreview = z.infer<typeof LinkPreviewSchema>
 
 /** Either direction, for code that only cares about the framing. */
 export interface BridgeEnvelope<T> {

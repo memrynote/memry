@@ -1181,6 +1181,9 @@ importers:
       '@memry/editor-schema':
         specifier: workspace:*
         version: link:../../../packages/editor-schema
+      '@memry/shared':
+        specifier: workspace:*
+        version: link:../../../packages/shared
       prosemirror-state:
         specifier: ^1.4.4
         version: 1.4.4
