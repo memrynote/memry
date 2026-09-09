@@ -93,6 +93,16 @@ than settled like `metrics`, because the header rides the value directly — a
 trailing-edge report would leave it standing still through the gesture and
 jumping when the finger stops.
 
+The guest never navigates. The host refuses every WebView load except the
+`about:blank` document it started from, so a tapped link, a link-mention chip or
+a bookmark block is reported as `open-external` with the URL instead. That URL is
+note content and therefore untrusted: the host checks its scheme against the
+same `https:` / `http:` / `mailto:` allowlist desktop applies before
+`shell.openExternal`, and a rejected one is logged and dropped silently rather
+than surfaced as an error the note's author could trigger. Only an allowed URL
+reaches `Linking.openURL`. The message is additive within v1, so an older
+prebuilt asset simply never sends it.
+
 Exporting a note asks the guest for the document twice over, in two different
 shapes. `export-markdown` returns it re-serialized through the schema, which is
 what a copy or a duplicate wants. `export-html` returns the guest's OWN rendered
