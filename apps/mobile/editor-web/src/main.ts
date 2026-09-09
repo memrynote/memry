@@ -14,6 +14,7 @@ import { BRIDGE_FRAGMENT_NAME, type BridgeExecCommand } from '@memry/contracts/w
 import { assertNoWebStorage, createGuestBridge, type GuestBridge } from './bridge.ts'
 import { bindAssetBridge } from './assets.ts'
 import { TextSelection } from 'prosemirror-state'
+import { installExternalLinks } from './external-links.ts'
 import { installImageResolver } from './images.ts'
 import { isForMountedDoc } from './routing.ts'
 import { createMobileEditorSchema } from './schema.ts'
@@ -270,6 +271,7 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   doc.on('update', onUpdate)
 
   const detachNav = installWikiLinkNavigation(root, bridge)
+  const detachExternalLinks = installExternalLinks(root, bridge)
   const detachAssets = installImageResolver(root)
   const detachMetrics = installMetrics(root, bridge)
   chrome.replaceChildren()
@@ -344,6 +346,7 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
       doc.off('update', onUpdate)
       detachNav()
       wikiLinks.detach()
+      detachExternalLinks()
       detachAssets()
       detachMetrics()
       detachToolbarSelection()

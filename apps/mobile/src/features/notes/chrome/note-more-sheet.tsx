@@ -7,7 +7,13 @@ import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { Icon, type IconName } from '@/components/ui/icon'
 import type { Color } from '@/theme/colors'
 import type { ReminderBadge } from '@/features/notes/reminders'
-import { space } from '@/theme/primitives'
+import {
+  formatStatTimestamp,
+  readingTimeLabel,
+  wordCountLabel,
+  type NoteStats
+} from '@/features/notes/note-stats'
+import { radius, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
 export interface NoteMoreSheetProps {
@@ -18,6 +24,8 @@ export interface NoteMoreSheetProps {
   backlinkCount: number
   /** Already derived by `describeReminder`; this sheet never reads the clock. */
   reminder: ReminderBadge
+  /** Null until the stats have been read off the guest document. */
+  stats: NoteStats | null
   onClose: () => void
   onToggleBookmark: () => void
   onReminder: () => void
@@ -58,6 +66,7 @@ export function NoteMoreSheet({
   readOnly,
   backlinkCount,
   reminder,
+  stats,
   onClose,
   onToggleBookmark,
   onReminder,
@@ -173,6 +182,19 @@ export function NoteMoreSheet({
           )
         })}
       </View>
+      {stats ? (
+        <View style={[styles.stats, { backgroundColor: c.canvas.surface }]}>
+          <AppText variant="footnote" color={c.text.tertiary}>
+            {`${wordCountLabel(stats.wordCount)} · ${readingTimeLabel(stats.wordCount)}`}
+          </AppText>
+          <AppText variant="footnote" color={c.text.tertiary}>
+            {`Created ${formatStatTimestamp(stats.createdAt)}`}
+          </AppText>
+          <AppText variant="footnote" color={c.text.tertiary}>
+            {`Modified ${formatStatTimestamp(stats.modifiedAt)}`}
+          </AppText>
+        </View>
+      ) : null}
     </BottomSheet>
   )
 }
@@ -201,5 +223,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  actionLabel: { flex: 1, minWidth: 0 }
+  actionLabel: { flex: 1, minWidth: 0 },
+  // The shaded block the actions sit above: recessed, non-interactive, last.
+  stats: {
+    marginTop: space.s16,
+    marginStart: space.s16,
+    marginEnd: space.s16,
+    marginBottom: space.s8,
+    paddingVertical: space.s12,
+    paddingHorizontal: space.s16,
+    borderRadius: radius.lg,
+    gap: space.s4
+  }
 })

@@ -373,6 +373,29 @@ export const GuestNavSchema = z.object({
   target: z.string()
 })
 
+/**
+ * A tapped external link, handed to the OS by the host.
+ *
+ * The guest cannot open one itself. Its document is `about:blank` with a CSP
+ * that forbids every remote fetch, so a navigation inside the WebView is
+ * either blocked or leaves the editor with no way back — which is why every
+ * renderer here draws its links as inert elements and routes the tap instead.
+ *
+ * The URL is UNTRUSTED at this boundary: it comes from note content, which is
+ * whatever any device ever wrote. The host validates the scheme against the
+ * same allowlist desktop applies before `shell.openExternal`
+ * (`apps/mobile/src/editor/external-url.ts`); `javascript:` and custom app
+ * schemes are dropped there, not here.
+ *
+ * Additive within v1 for the reason `painted` states: the guest is a prebuilt
+ * asset shipped inside the app that speaks to it, so a bump would only turn a
+ * stale asset into a dead editor. A stale asset simply never sends this.
+ */
+export const GuestOpenExternalSchema = z.object({
+  type: z.literal('open-external'),
+  url: z.string().min(1)
+})
+
 export const GuestMetricsSchema = z.object({
   type: z.literal('metrics'),
   /** Content height in CSS px, for native chrome sizing. */
@@ -511,6 +534,7 @@ export const GuestMsgSchema = z.discriminatedUnion('type', [
   GuestMarkdownExportSchema,
   GuestHtmlExportSchema,
   GuestNavSchema,
+  GuestOpenExternalSchema,
   GuestMetricsSchema,
   GuestScrollSchema,
   GuestPaintedSchema,

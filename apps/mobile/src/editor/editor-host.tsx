@@ -111,6 +111,22 @@ function slideOffset(transition: ScreenTransition, width: number): Animated.Anim
   return Animated.multiply(I18nManager.isRTL ? -width : width, Animated.add(arriving, leaving))
 }
 
+/**
+ * The guest never navigates. Not to a note's external link, not anywhere.
+ *
+ * `originWhitelist` alone did not mean that. react-native-webview hands a
+ * navigation its whitelist rejects to `Linking.openURL`, so before #2096 every
+ * `<a href>` in a note reached the OS unfiltered — `javascript:` and custom app
+ * schemes included — as an accident of the hardening. Refusing the load here is
+ * what makes `open-external` the ONE way out of the document, and that path
+ * checks the scheme (`external-url.ts`).
+ *
+ * The initial document load is `about:blank`; everything else is content.
+ */
+function allowOnlyTheEditorDocument(request: { url: string }): boolean {
+  return request.url === 'about:blank' || request.url.startsWith('about:')
+}
+
 function HostWebView({ controller }: { controller: EditorHostController }) {
   const webViewRef = useRef<WebView>(null)
   // Seeded from the window rather than zero. The guest starts loading the
@@ -238,6 +254,7 @@ function HostWebView({ controller }: { controller: EditorHostController }) {
             // this stops a crafted note from turning a tap into a navigation
             // anyway.
             originWhitelist={['about:blank']}
+            onShouldStartLoadWithRequest={allowOnlyTheEditorDocument}
             allowFileAccess={false}
             allowsInlineMediaPlayback
             keyboardDisplayRequiresUserAction={false}

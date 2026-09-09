@@ -7,7 +7,7 @@ import {
   useSyncExternalStore,
   type ReactNode
 } from 'react'
-import { ActivityIndicator, Keyboard, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, Keyboard, Linking, StyleSheet, View } from 'react-native'
 import { useIsFocused } from 'expo-router'
 import { useTransitionProgress } from 'react-native-screens'
 import {
@@ -20,6 +20,7 @@ import { bytesToBase64 } from '../lib/base64'
 import { createLogger } from '../lib/logger'
 import { useEditorHost } from './editor-host'
 import { createHtmlExportRequests, createMarkdownExportRequests } from './export-requests'
+import { isAllowedExternalUrl } from './external-url'
 import {
   editorFrameFrom,
   type EditorFrame,
@@ -312,6 +313,23 @@ export function EditorView({
       switch (msg.type) {
         case 'nav':
           onNavigate(msg.target)
+          break
+
+        // The URL is note content, so it is untrusted: the scheme check is the
+        // whole guard, and a rejected one must stay silent to the reader rather
+        // than becoming an error the note's author can trigger at will.
+        case 'open-external':
+          if (!isAllowedExternalUrl(msg.url)) {
+            log.warn('Blocked external link with a disallowed scheme', {
+              url: msg.url.slice(0, 128)
+            })
+            break
+          }
+          void Linking.openURL(msg.url).catch((err: unknown) => {
+            log.warn('Opening external link failed', {
+              error: err instanceof Error ? err.message : String(err)
+            })
+          })
           break
 
         // Both of these ALWAYS answer, including on rejection. The guest waits

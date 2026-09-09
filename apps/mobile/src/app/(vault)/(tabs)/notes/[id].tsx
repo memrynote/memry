@@ -61,11 +61,13 @@ import {
   setNoteProperty,
   setNoteTags,
   shouldSeedFromMarkdown,
+  toEpochMs,
   type MobilePropertyType,
   type NoteOpsContext,
   type NotePayload,
   type NoteRecord
 } from '@/features/notes/note-ops'
+import { calculateWordCount, type NoteStats } from '@/features/notes/note-stats'
 import { readNotesSnapshot, type NotesSnapshot } from '@/features/notes/notes-repo'
 import { NoteProperties } from '@/features/notes/properties'
 import { propertyTypes } from '@/features/notes/property-types'
@@ -179,6 +181,8 @@ export default function NoteScreen() {
    */
   const [notificationsOff, setNotificationsOff] = useState(false)
   const [backlinkCount, setBacklinkCount] = useState(0)
+  const [rowUpdatedAt, setRowUpdatedAt] = useState<number | null>(null)
+  const [moreStats, setMoreStats] = useState<NoteStats | null>(null)
   const [addingTag, setAddingTag] = useState(false)
   const [addingProperty, setAddingProperty] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -214,6 +218,7 @@ export default function NoteScreen() {
 
   const applyRecord = useCallback((record: NoteRecord | null) => {
     setPayload(record?.payload ?? null)
+    setRowUpdatedAt(record?.updatedAt ?? null)
   }, [])
 
   useEffect(() => {
@@ -586,15 +591,37 @@ export default function NoteScreen() {
   )
 
   // Counted when the sheet opens, not on every render: the scan reads every
-  // stored body, which is far too much work for a keystroke.
+  // stored body, which is far too much work for a keystroke. Word count and
+  // timestamps come from the guest itself, not kept live for the same reason.
   const openMore = useCallback(async () => {
+    setMoreStats(null)
     setOverlay({ kind: 'more' })
-    if (!session || !id) return
-    setReminder(await readNoteReminder(session.db, id))
-    setNotificationsOff((await reminderPermission()) === 'denied')
-    const { totalReferences } = await readBacklinks(session.db, id)
-    setBacklinkCount(totalReferences)
-  }, [id, session])
+    if (session && id) {
+      setReminder(await readNoteReminder(session.db, id))
+      setNotificationsOff((await reminderPermission()) === 'denied')
+      const { totalReferences } = await readBacklinks(session.db, id)
+      setBacklinkCount(totalReferences)
+    }
+    const editor = controls.current
+    if (!editor) return
+    const created = payload?.createdAt
+    const modified = payload?.modifiedAt
+    void editor
+      .exportMarkdown()
+      .then((body) => {
+        setMoreStats({
+          wordCount: calculateWordCount(body),
+          createdAt: created === undefined || created === null ? null : toEpochMs(created, 0),
+          // A payload written by a client that carries no edit time of its own
+          // leaves the row timestamp as the only thing that knows.
+          modifiedAt:
+            modified === undefined || modified === null
+              ? rowUpdatedAt
+              : toEpochMs(modified, rowUpdatedAt ?? 0)
+        })
+      })
+      .catch(() => {})
+  }, [id, payload, rowUpdatedAt, session])
 
   const openMove = useCallback(async () => {
     if (!session || !allowMutation('Moving notes')) return
@@ -996,6 +1023,7 @@ export default function NoteScreen() {
         title={title}
         bookmarked={bookmarked}
         readOnly={!writable}
+        stats={moreStats}
         onClose={() => setOverlay({ kind: 'none' })}
         backlinkCount={backlinkCount}
         reminder={reminderBadge}
