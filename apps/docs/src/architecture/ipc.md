@@ -85,6 +85,14 @@ requests carry both the requested block type and the reference block id captured
 before the native picker opens. The host can request a live Markdown export for
 sharing or note actions without treating the WebView replica as durable storage.
 
+Two messages carry the note's native header, which floats OVER the document
+rather than above it: `cfg.headerHeight` tells the guest how much space to
+reserve at the top so the prose starts below the title, and the guest reports
+its scroll position back as `scroll`. That report is frame-throttled rather
+than settled like `metrics`, because the header rides the value directly — a
+trailing-edge report would leave it standing still through the gesture and
+jumping when the finger stops.
+
 ### Drift is caught on the ASSET, not the types
 
 Both halves import the contract module directly, so the types cannot drift.
