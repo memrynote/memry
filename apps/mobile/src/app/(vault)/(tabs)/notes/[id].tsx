@@ -98,13 +98,12 @@ function showFailure(action: string, error: unknown): void {
 /**
  * What "Export" can produce, as data rather than three parallel switches.
  *
- * The picker's buttons, the file it writes and the type it hands the share
- * sheet all read off these rows, so adding a format is one row and not an
- * option list, a `switch` and an extension map that can disagree.
- *
  * `uti` is what iOS routes on and `mimeType` is what Android routes on; both
  * are set because the receiving app decides what it can open from them, and a
  * PDF offered with no type is a file iOS will only let the reader save.
+ *
+ * A third format would not be free: the Android fallback below is an `Alert`,
+ * which caps at three buttons, and two formats plus Cancel already fills it.
  */
 const EXPORT_FORMATS = [
   {
@@ -629,6 +628,10 @@ export default function NoteScreen() {
    * share sheet and the receiving app both show — so the file is renamed to the
    * note before it leaves. No `ctx` guard: nothing here reads or writes the
    * vault, which is why export survives read-only mode.
+   *
+   * Known gap: an attachment the Wi-Fi-only policy has not downloaded yet is a
+   * placeholder in that DOM, so it exports as one. Fixing it means kicking off
+   * the downloads and waiting, which is its own piece of work.
    */
   const runExport = useCallback(
     async (format: ExportFormat) => {
@@ -657,13 +660,7 @@ export default function NoteScreen() {
     [payload]
   )
 
-  /**
-   * Ask which format, without a second bottom sheet for a two-item choice.
-   *
-   * `ActionSheetIOS` is the native list on the platform this ships to; the
-   * `Alert` fallback keeps the feature alive on Android instead of leaving the
-   * row inert there. Only the ASKING is platform-specific — `runExport` is not.
-   */
+  /** Ask which format. Only the ASKING is platform-specific; `runExport` is not. */
   const showExportChoice = useCallback(() => {
     setOverlay({ kind: 'none' })
     if (Platform.OS === 'ios') {

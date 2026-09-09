@@ -218,12 +218,8 @@ export const HostExportMarkdownSchema = z.object({
 })
 
 /**
- * Request the mounted document as a standalone HTML page, for export.
- *
- * Additive within v1 on the same reasoning `insert-attachment` gives: the guest
- * is a PREBUILT asset shipping inside the app that speaks to it, so there is no
- * older peer here, only a stale asset — which `editor:check` and the
- * `contractHash` in the `ready` handshake already catch.
+ * Request the mounted document as a standalone HTML page, for export. Additive
+ * within v1 for the reason `insert-attachment` sets out above.
  *
  * Separate from `export-markdown` rather than a format flag on it, because the
  * two answer different questions. Markdown is the document re-serialized
@@ -359,8 +355,7 @@ export const GuestMarkdownExportSchema = z.object({
  * `html` is a whole document, not a fragment: the guest wraps its rendered
  * `#root` subtree together with every `<style>` the page is running under, so
  * the string the host receives renders identically with no stylesheet the host
- * would have to keep in step. Additive within v1 for the same reason its
- * request is.
+ * would have to keep in step.
  */
 export const GuestHtmlExportSchema = z.object({
   type: z.literal('html-export'),
