@@ -19,6 +19,10 @@ export function isForMountedDoc(msg: HostMsg, mountedDocId: string | null): bool
     case 'y-update':
     case 'export-markdown':
     case 'export-html':
+    // A block move's answer DELETES the block it names, so it is strict for the
+    // same reason `y-update` is: applied to the wrong note it reads as a note
+    // that lost a paragraph on its own (#2100).
+    case 'block-move-result':
       return msg.docId === mountedDocId
     case 'exec':
     case 'insert-attachment':

@@ -94,6 +94,19 @@ export interface OutboxSink {
 /** Origin tags. Identity comparison, so they can never collide with a string. */
 export const ORIGIN_REMOTE = Symbol('memry-remote')
 export const ORIGIN_GUEST = Symbol('memry-guest')
+/** A write this process made itself — a block moved in from another note. */
+export const ORIGIN_HOST = Symbol('memry-host')
+
+/**
+ * What Yjs encodes for a delta that carries nothing.
+ *
+ * A no-op mutation still produces an update: two zero bytes, the empty
+ * structs/deleteSet pair. Committing that would queue a push the peers gain
+ * nothing from and count a loose local row towards compaction, so it is
+ * recognised by its length rather than by trusting the caller to have changed
+ * something.
+ */
+const EMPTY_UPDATE_BYTES = 2
 
 /**
  * Local updates kept loose before the doc is snapshotted.
@@ -112,6 +125,24 @@ export interface OpenDoc {
   isEmpty(): boolean
   /** A WebView-originated update: persist, then ack into the outbox. */
   applyFromGuest(update: Uint8Array): Promise<void>
+  /**
+   * A HOST-originated persisted write — today, a block moved in from another
+   * note (#2100).
+   *
+   * `mutate` runs against a SCRATCH clone of this doc, never against the live
+   * one. That is not a stylistic choice: `applyFromGuest`'s order — commit
+   * first, advance the doc second (see the comment on it) — cannot be honoured
+   * by a `doc.transact()` on the live doc, because a transaction advances the
+   * doc as it runs and a failed commit would then leave an update that exists
+   * only in memory with the rest of the session built on top of it. Mutating a
+   * scratch clone and encoding the DELTA against this doc's state vector gives
+   * the same bytes with the commit still in front of them. It is the same
+   * recipe `sync/__tests__/convergence.test.ts` already uses; this method is
+   * that recipe, named, so no caller has to re-derive it.
+   *
+   * Tagged ORIGIN_HOST, which fans out to BOTH listener sets — see `onUpdate`.
+   */
+  applyFromHost(mutate: (draft: Y.Doc) => void): Promise<void>
   /** Stop accepting new local updates before a destructive operation. */
   setWritable(writable: boolean): void
   /** A sync-originated update: persisting it is the pull engine's job. */
@@ -353,6 +384,18 @@ export class EditorDocManager {
       }
       if (origin === ORIGIN_REMOTE) {
         for (const listener of remoteListeners) listener(update)
+        return
+      }
+      if (origin === ORIGIN_HOST) {
+        // BOTH, and it is the only origin that goes to both. The forwarding
+        // rule is "who does not have these bytes yet": ORIGIN_GUEST skips the
+        // remote set because the WebView authored them, ORIGIN_REMOTE skips
+        // the local set because the pull engine owns their durability. A host
+        // write is the one origin NEITHER side has — the WebView must receive
+        // it (remote set) and the screen must count it as unsaved work in
+        // flight (local set).
+        for (const listener of remoteListeners) listener(update)
+        for (const listener of localListeners) listener(update)
       }
     }
     doc.on('update', onUpdate)
@@ -413,6 +456,33 @@ export class EditorDocManager {
         // and the disk in agreement, and the caller resyncs the WebView from
         // that agreed state.
         await persistGuestUpdate(update)
+      },
+
+      async applyFromHost(mutate) {
+        if (!writable) throw new Error('Document is not writable')
+        // Paused guest updates first: the mutation reads the doc to decide
+        // where its bytes go, and running it over a doc that is missing
+        // keystrokes still in the pause queue would place them against a
+        // structure the WebView has already moved past.
+        await replayPausedUpdates
+        const draft = new Y.Doc()
+        Y.applyUpdate(draft, Y.encodeStateAsUpdate(doc))
+        mutate(draft)
+        const update = Y.encodeStateAsUpdate(draft, Y.encodeStateVector(doc))
+        draft.destroy()
+        // Empty delta = the mutation was a no-op. Nothing to commit, nothing
+        // to push.
+        if (update.length <= EMPTY_UPDATE_BYTES) return
+        // DURABLE FIRST, exactly as `applyFromGuest`, and for the same reason:
+        // a doc advanced past a commit that failed is a divergence with no
+        // symptom until the next open.
+        await run(async () => {
+          await store.appendLocalUpdate(docId, update)
+          await outbox.enqueueCrdtUpdate(docId, update)
+        })
+        Y.applyUpdate(doc, update, ORIGIN_HOST)
+        looseLocal += 1
+        await maybeCompact()
       },
 
       applyFromRemote(update) {

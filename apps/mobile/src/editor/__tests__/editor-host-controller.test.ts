@@ -50,6 +50,9 @@ function fakeOpenDoc(docId: string): FakeDoc {
         }
         applied.push(bytesToBase64(update))
       },
+      // The controller never moves a block; the member exists so this fake
+      // still satisfies `OpenDoc`.
+      applyFromHost: async () => {},
       applyFromRemote: () => {},
       refreshFromServer: async () => 0,
       onLocalUpdate: () => () => {},

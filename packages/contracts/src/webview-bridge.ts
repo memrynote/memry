@@ -288,6 +288,33 @@ export const HostProbeSchema = z.object({
   slot: z.enum(['early', 'late'])
 })
 
+/**
+ * The answer to `block-move-request` (#2100). ALWAYS sent, cancel included: a
+ * dropped answer leaves the block ringed and the guest's pending slot occupied
+ * for the rest of the session.
+ *
+ * On `moved` the target note already holds a durable copy of the subtree, so
+ * the guest removing the source is the SECOND half of a move whose first half
+ * cannot be rolled back — which is why a lost answer duplicates rather than
+ * deletes. `blockId` rides the answer instead of being looked up from `reqId`,
+ * so the guest's delete names its target explicitly.
+ *
+ * `docId` is required and strict (see the guest's `isForMountedDoc`): an answer
+ * applied to the wrong note reads as a note that lost a paragraph on its own.
+ * Additive within v1 for the reason `insert-attachment` sets out above.
+ */
+export const HostBlockMoveResultSchema = z.object({
+  type: z.literal('block-move-result'),
+  reqId: z.string().min(1),
+  docId: z.string().min(1),
+  blockId: z.string().min(1),
+  result: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('moved'), targetTitle: z.string() }),
+    z.object({ status: z.literal('cancelled') }),
+    z.object({ status: z.literal('failed'), detail: z.string() })
+  ])
+})
+
 export const HostMsgSchema = z.discriminatedUnion('type', [
   HostDocLoadSchema,
   HostYUpdateSchema,
@@ -298,7 +325,8 @@ export const HostMsgSchema = z.discriminatedUnion('type', [
   HostInsertAttachmentSchema,
   HostExportMarkdownSchema,
   HostExportHtmlSchema,
-  HostProbeSchema
+  HostProbeSchema,
+  HostBlockMoveResultSchema
 ])
 
 // ---------------------------------------------------------------------------
@@ -560,6 +588,26 @@ export const GuestErrSchema = z.object({
   detail: z.string()
 })
 
+/**
+ * "Move this block into another note" (#2100).
+ *
+ * A REQUEST, not a command: the guest cannot reach the target note's Y.Doc,
+ * and the host cannot build a block, so the only division that works is the
+ * host copying a subtree the guest's own schema produced and the guest
+ * deleting the source once the copy is durable. The host answers with
+ * `block-move-result`, every time, cancel included.
+ *
+ * Additive within v1: a stale prebuilt asset simply never sends this.
+ */
+export const GuestBlockMoveRequestSchema = z.object({
+  type: z.literal('block-move-request'),
+  reqId: z.string().min(1),
+  docId: z.string().min(1),
+  blockId: z.string().min(1),
+  /** Human label for the picker's title and the toast. Never parsed. */
+  label: z.string().default('')
+})
+
 export const GuestMsgSchema = z.discriminatedUnion('type', [
   GuestReadySchema,
   GuestYUpdateSchema,
@@ -575,7 +623,8 @@ export const GuestMsgSchema = z.discriminatedUnion('type', [
   GuestMetricsSchema,
   GuestScrollSchema,
   GuestPaintedSchema,
-  GuestErrSchema
+  GuestErrSchema,
+  GuestBlockMoveRequestSchema
 ])
 
 // ---------------------------------------------------------------------------

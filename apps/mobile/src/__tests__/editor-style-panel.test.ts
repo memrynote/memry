@@ -36,7 +36,9 @@ function toolbarActions(): EditorToolbarActions {
     insertImage: vi.fn(),
     undo: vi.fn(),
     redo: vi.fn(),
-    dismissKeyboard: vi.fn()
+    dismissKeyboard: vi.fn(),
+    openBlockActions: vi.fn(),
+    blockAction: vi.fn()
   }
 }
 
