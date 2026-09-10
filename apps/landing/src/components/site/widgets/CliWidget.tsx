@@ -108,6 +108,10 @@ export function CliWidget({ className }: CliWidgetProps) {
   const prefersReducedMotion = useReducedMotion()
   const [history, setHistory] = useState<Line[]>([])
   const [input, setInput] = useState('')
+  // The auto-play types here, never into the <input>. Session replay (rrweb) records one
+  // input event per character otherwise, which pinned every landing recording's
+  // activity_score to 100 (~125 keypresses/sec at CHAR_MS). See the ph-no-capture note below.
+  const [demo, setDemo] = useState('')
   const [live, setLive] = useState(true) // true while the auto-play owns the prompt
   const [focused, setFocused] = useState(false)
 
@@ -121,7 +125,7 @@ export function CliWidget({ className }: CliWidgetProps) {
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [history, input])
+  }, [history, input, demo])
 
   // The auto-play loop. Tears down on unmount or the moment `live` flips to false.
   useEffect(() => {
@@ -146,7 +150,7 @@ export function CliWidget({ className }: CliWidgetProps) {
       if (cancelled) return
       const { cmd } = DEMO[demoRef.current]
       if (charRef.current <= cmd.length) {
-        setInput(cmd.slice(0, charRef.current))
+        setDemo(cmd.slice(0, charRef.current))
         charRef.current += 1
         timerRef.current = setTimeout(type, CHAR_MS + Math.random() * 9)
       } else {
@@ -158,7 +162,7 @@ export function CliWidget({ className }: CliWidgetProps) {
       if (cancelled) return
       const { cmd, out } = DEMO[demoRef.current]
       const wasLast = demoRef.current === DEMO.length - 1
-      setInput('')
+      setDemo('')
       const cmdLine: Line = { id: nextLineId(), kind: 'cmd', text: cmd }
       const outLine: Line = { id: nextLineId(), kind: 'out', text: out }
       setHistory((h) => [...h, cmdLine, outLine].slice(-MAX_LINES))
@@ -187,7 +191,7 @@ export function CliWidget({ className }: CliWidgetProps) {
     if (!live) return
     clearTimeout(timerRef.current)
     setLive(false) // triggers the auto-play effect cleanup
-    setInput('') // drop whatever the demo was half-typing
+    setDemo('') // drop whatever the demo was half-typing
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -283,6 +287,17 @@ export function CliWidget({ className }: CliWidgetProps) {
                 memrynote
               </span>
               &nbsp;
+              {live && demo && (
+                // ph-no-capture is posthog-js's default rrweb blockClass: the subtree is not
+                // recorded at all, so the per-character retype costs zero replay mutations.
+                <span
+                  aria-hidden
+                  className="ph-no-capture whitespace-pre"
+                  style={{ color: TERM.ink }}
+                >
+                  {demo}
+                </span>
+              )}
               <input
                 ref={inputRef}
                 type="text"
@@ -303,7 +318,7 @@ export function CliWidget({ className }: CliWidgetProps) {
                 aria-label="Type a memrynote command"
                 className="min-w-0 bg-transparent outline-none"
                 style={{
-                  width: `${Math.max(input.length, 1) + 1}ch`,
+                  width: live ? '1ch' : `${Math.max(input.length, 1) + 1}ch`,
                   color: TERM.ink,
                   fontFamily: MONO
                 }}
