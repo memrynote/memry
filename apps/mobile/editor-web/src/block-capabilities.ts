@@ -10,7 +10,7 @@
  * which is the surface this one is the phone's answer to.
  */
 
-import type { BlockColour } from './editor-toolbar.ts'
+import type { BlockColour } from '@memry/contracts/webview-bridge'
 
 /** The narrow slice of a block these helpers read. A real `Block` satisfies it. */
 export interface BlockLikeForCaps {
