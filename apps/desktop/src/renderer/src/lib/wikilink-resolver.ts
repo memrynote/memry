@@ -8,6 +8,7 @@
  */
 
 import { notesService } from '@/services/notes-service'
+import { resolveCanvasByTitle } from '@/lib/canvas-lookup'
 import { getFileType, getExtension, isSupported } from '@memry/shared/file-types'
 import { splitWikiTarget, isBlockReference, resolveWikiTarget } from '@memry/shared/wiki-target'
 
@@ -15,7 +16,7 @@ import { splitWikiTarget, isBlockReference, resolveWikiTarget } from '@memry/sha
 // Types
 // ============================================================================
 
-export type ResolutionType = 'note' | 'file' | 'create' | 'not-found'
+export type ResolutionType = 'note' | 'file' | 'canvas' | 'create' | 'not-found'
 
 export interface ResolvedWikiLink {
   type: ResolutionType
@@ -123,6 +124,24 @@ export async function resolveWikiLink(target: string): Promise<ResolvedWikiLink>
     notesService.resolveByTitle(title)
   )
   if (resolved) return resolvedRecord(resolved.match, resolved.heading)
+
+  // Notes first, canvases second, and that order is the compatibility story:
+  // every link that resolved to a note before this change still does, so a
+  // canvas can only ever claim a target nothing else answered (#1983). A canvas
+  // has no headings, so the heading half of `[[Canvas#Anything]]` is dropped —
+  // the canvas still opens, which is what the note-side block-reference branch
+  // already does.
+  const canvas = await resolveWikiTarget(trimmedTarget, (title) => resolveCanvasByTitle(title))
+  if (canvas) {
+    return {
+      type: 'canvas',
+      id: canvas.match.id,
+      title: canvas.match.title,
+      fileType: 'markdown',
+      icon: 'pen-tool',
+      heading: null
+    }
+  }
 
   // Not found in database
   if (hasKnownExtension) {

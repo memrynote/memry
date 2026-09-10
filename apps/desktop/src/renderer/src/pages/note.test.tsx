@@ -504,6 +504,9 @@ vi.mock('@/components/note', () => ({
         <button type="button" onClick={() => onInternalLinkClick('Missing.png')}>
           Internal missing file
         </button>
+        <button type="button" onClick={() => onInternalLinkClick('Sprint Board')}>
+          Internal canvas link
+        </button>
         {/* What opening the note reports: the tags the body already carried. */}
         <button type="button" onClick={() => onInlineTagsChange(['work'], 'load')}>
           Load inline tags
@@ -874,8 +877,28 @@ describe('NotePage', () => {
       if (target === 'Diagram.pdf')
         return Promise.resolve({ type: 'file', id: 'file-1', title: 'Diagram.pdf', icon: 'file' })
       if (target === 'New Note') return Promise.resolve({ type: 'create', title: 'New Note' })
+      if (target === 'Sprint Board')
+        return Promise.resolve({ type: 'canvas', id: 'canvas-1', title: 'Sprint Board' })
       return Promise.resolve({ type: 'not-found' })
     })
+  })
+
+  it('opens a canvas a wiki link names (#1983)', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    fireEvent.click(await screen.findByText('Internal canvas link'))
+
+    await waitFor(() =>
+      expect(mocks.openTab).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'canvas',
+          title: 'Sprint Board',
+          path: '/canvas/canvas-1',
+          entityId: 'canvas-1'
+        }),
+        expect.anything()
+      )
+    )
   })
 
   it('renders empty, loading, and error states', async () => {

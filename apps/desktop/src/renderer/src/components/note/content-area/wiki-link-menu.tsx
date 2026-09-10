@@ -3,7 +3,7 @@
  */
 
 import type { SuggestionMenuProps } from '@blocknote/react'
-import { FileAudio, FileText, Hash, Plus, Type } from '@/lib/icons'
+import { FileAudio, FileText, Hash, PenTool, Plus, Type } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -23,8 +23,10 @@ export type WikiLinkSuggestionItem = {
    * over the `#`, and it carries no target, so picking it does nothing.
    * `alias` is the whole menu once both halves of `[[target|alias]]` are
    * settled: one row that commits the display name.
+   * `canvas` is a spatial canvas — a vault item with no headings and no
+   * embed form, so it is a plain row with the canvas icon (#1983).
    */
-  type: 'note' | 'create' | 'heading' | 'headingEmpty' | 'alias'
+  type: 'note' | 'canvas' | 'create' | 'heading' | 'headingEmpty' | 'alias'
   lastEdited?: string
   fileType?: WikiLinkFileType
   mimeType?: string | null
@@ -208,6 +210,9 @@ export function WikiLinkMenu({
             aria-selected={isSelected}
           >
             {item.type === 'create' ? <Plus className="mt-0.5 h-4 w-4 shrink-0" /> : null}
+            {item.type === 'canvas' ? (
+              <PenTool className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+            ) : null}
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-start">
               {item.type === 'create' ? (
                 <>

@@ -25,6 +25,7 @@ import {
   ExternalLink,
   FolderInput,
   FolderOpen,
+  Link,
   PenTool,
   Pencil,
   Smile,
@@ -106,6 +107,8 @@ export function CanvasRow({
   const menus = useRowMenuState()
 
   const title = canvas.title || t('canvas.untitled')
+  /** What `[[…]]` would carry for this canvas; empty when it has no title. */
+  const linkTarget = canvas.title?.trim() ?? ''
   const unreadable = canvas.unreadable === true
 
   const revealEntry: CanvasMenuEntry = {
@@ -164,6 +167,23 @@ export function CanvasRow({
           icon: Copy,
           onSelect: () => onDuplicate(canvas)
         },
+        // The wiki link itself, not the file path: a path resolves to nothing in
+        // the editor, and what the writer wants is something they can paste into
+        // a note and click (#1983). Left out for an untitled canvas, which has no
+        // target a link could carry.
+        ...(linkTarget
+          ? [
+              {
+                kind: 'item' as const,
+                id: 'copy-link',
+                label: t('canvas.actions.copyLink'),
+                icon: Link,
+                onSelect: () => {
+                  void navigator.clipboard.writeText(`[[${linkTarget}]]`)
+                }
+              }
+            ]
+          : []),
         { kind: 'separator', id: 'sep-icon' },
         {
           kind: 'item',

@@ -19,6 +19,24 @@ write the words you want in the sentence — `[[Continent#North America|North of
 Once both halves are settled the dropdown becomes a single **Display as** row that commits
 it. The link still points at the note; only the visible text changes.
 
+## Linking a Canvas
+
+Canvases sit in the same dropdown as notes, below them, with the canvas icon. Pick one and
+the link is written as `[[Sprint Board]]` — the canvas title, exactly the way a note link
+carries a note title. Clicking it opens the canvas.
+
+A canvas has no headings, so `#` does nothing for one: `[[Sprint Board#Ideas]]` opens the
+board itself.
+
+Notes are matched first. A note and a canvas that share a name both keep working — the link
+opens the note, as it always has — so rename one of them if you need to reach the other.
+
+From the sidebar, a canvas's row menu has **Copy link**, which puts `[[Sprint Board]]` on the
+clipboard ready to paste into a note.
+
+Untitled canvases are not offered: there is no title for the link to carry, so give the
+canvas a name first.
+
 ## Linking Selected Text
 
 Select a word or a sentence and press **Link to note** in the selection toolbar (next to the

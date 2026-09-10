@@ -31,7 +31,15 @@ export type OpenableTab = Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>
  * they must open in the file viewer, never the markdown editor (#800).
  */
 export type MemryLinkKind =
-  'note' | 'file' | 'task' | 'inbox' | 'journal' | 'project' | 'folder' | 'calendar_event'
+  | 'note'
+  | 'file'
+  | 'task'
+  | 'inbox'
+  | 'journal'
+  | 'project'
+  | 'folder'
+  | 'canvas'
+  | 'calendar_event'
 
 /**
  * Where inside a note a link lands, in the two forms the two consumers need.
@@ -70,7 +78,16 @@ export type ParsedMemryHref = { label: string | null } & (
 )
 
 /** Hostnames whose whole path is the item id. */
-const SIMPLE_HOSTS = ['note', 'file', 'task', 'inbox', 'journal', 'project', 'folder'] as const
+const SIMPLE_HOSTS = [
+  'note',
+  'file',
+  'task',
+  'inbox',
+  'journal',
+  'project',
+  'folder',
+  'canvas'
+] as const
 
 type SimpleHost = (typeof SIMPLE_HOSTS)[number]
 
@@ -318,6 +335,15 @@ export function tabFromMemryHref(
         title: title ?? parsed.label ?? parsed.id,
         icon: 'folder',
         path: `/folder/${encodeURIComponent(parsed.id)}`,
+        entityId: parsed.id
+      }
+    case 'canvas':
+      return {
+        ...BASE,
+        type: 'canvas',
+        title: title ?? parsed.label ?? 'Canvas',
+        icon: 'pen-tool',
+        path: `/canvas/${parsed.id}`,
         entityId: parsed.id
       }
     case 'calendar_event': {

@@ -406,6 +406,30 @@ describe('tabFromMemryHref', () => {
     )
   })
 
+  it('opens a canvas link in the canvas tab (#1983)', () => {
+    const href = buildMemryHref({ kind: 'canvas', id: 'canvas-1', label: 'Sprint Board' })
+    expect(href).toBe('memry://canvas/canvas-1?label=Sprint+Board')
+    expect(parseMemryHref(href as string)).toEqual({
+      kind: 'canvas',
+      id: 'canvas-1',
+      label: 'Sprint Board'
+    })
+    expect(tabFromMemryHref(href as string)).toMatchObject({
+      type: 'canvas',
+      title: 'Sprint Board',
+      path: '/canvas/canvas-1',
+      entityId: 'canvas-1'
+    })
+  })
+
+  it('drops an anchor on a canvas, which has no inside to address', () => {
+    expect(parseMemryHref('memry://canvas/canvas-1#Ideas')).toEqual({
+      kind: 'canvas',
+      id: 'canvas-1',
+      label: null
+    })
+  })
+
   it('never marks an opened tab as pinned, modified, preview or deleted', () => {
     expect(tabFromMemryHref('memry://note/n1')).toMatchObject({
       isPinned: false,

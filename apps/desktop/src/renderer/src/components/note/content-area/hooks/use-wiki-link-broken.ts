@@ -7,6 +7,9 @@
  * Targets that resolve to nothing become the plugin's broken set, painted as
  * `.wiki-link-broken` (see `wiki-link-broken-plugin.ts`).
  *
+ * A target no note claims is asked of the canvas list before it is called
+ * broken, because a canvas is a link target too (#1983).
+ *
  * Resolution order per target matches the click path: the note half of
  * `[[Note#Heading]]` first, the raw string second — so a note literally named
  * `Sprint #4` is not marked broken. `[[#Heading]]` addresses the note it is
@@ -23,6 +26,8 @@ import { useEffect } from 'react'
 import type { EditorView } from '@tiptap/pm/view'
 import { splitWikiTarget } from '@memry/shared/wiki-target'
 import { notesService, onNoteCreated, onNoteDeleted, onNoteRenamed } from '@/services/notes-service'
+import { clearCanvasLookupCache, resolveCanvasByTitle } from '@/lib/canvas-lookup'
+import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 import { registerEditorPlugin } from '../register-editor-plugin'
 import { getLiveTiptapView } from '../live-prosemirror-view'
 import {
@@ -87,6 +92,17 @@ export function useWikiLinkBroken(editor: unknown): void {
           return
         }
         if (cancelled) return
+
+        // A canvas is a link target too (#1983), and the note index has never
+        // heard of one — without this pass every working `[[My Canvas]]` would
+        // be painted broken. Asked only about titles no note claimed, so the
+        // common case costs nothing.
+        for (const title of unknown) {
+          if (resolvedCache.get(title.toLowerCase()) === true) continue
+          const canvas = await resolveCanvasByTitle(title)
+          if (canvas) resolvedCache.set(title.toLowerCase(), true)
+        }
+        if (cancelled) return
       }
 
       const broken = new Set<string>()
@@ -111,6 +127,7 @@ export function useWikiLinkBroken(editor: unknown): void {
 
     const forceRefresh = (): void => {
       resolvedCache.clear()
+      clearCanvasLookupCache()
       scheduleRefresh()
     }
 
@@ -119,7 +136,10 @@ export function useWikiLinkBroken(editor: unknown): void {
     const unsubscribes = [
       onNoteCreated(forceRefresh),
       onNoteRenamed(forceRefresh),
-      onNoteDeleted(forceRefresh)
+      onNoteDeleted(forceRefresh),
+      onCanvasCreated(forceRefresh),
+      onCanvasUpdated(forceRefresh),
+      onCanvasDeleted(forceRefresh)
     ]
 
     return () => {

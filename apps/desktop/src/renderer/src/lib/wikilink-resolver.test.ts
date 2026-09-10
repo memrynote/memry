@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { notesService } from '@/services/notes-service'
+import { resolveCanvasByTitle } from '@/lib/canvas-lookup'
 import { resolveWikiLink, hasFileExtension } from './wikilink-resolver'
 
 vi.mock('@/services/notes-service', () => ({
@@ -8,11 +9,18 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
+vi.mock('@/lib/canvas-lookup', () => ({
+  resolveCanvasByTitle: vi.fn()
+}))
+
 describe('wikilink-resolver', () => {
   const resolveByTitle = vi.mocked(notesService.resolveByTitle)
+  const resolveCanvas = vi.mocked(resolveCanvasByTitle)
 
   beforeEach(() => {
     resolveByTitle.mockReset()
+    resolveCanvas.mockReset()
+    resolveCanvas.mockResolvedValue(null)
   })
 
   describe('resolveWikiLink', () => {
@@ -222,6 +230,63 @@ describe('wikilink-resolver', () => {
       expect(resolveByTitle).not.toHaveBeenCalled()
       expect(result.type).toBe('not-found')
       expect(result.heading).toBe('Decisions')
+    })
+  })
+
+  describe('canvases (#1983)', () => {
+    it('resolves a target no note claims to the canvas of that name', async () => {
+      resolveByTitle.mockResolvedValue(null)
+      resolveCanvas.mockImplementation(async (title) =>
+        title.toLowerCase() === 'sprint board' ? { id: 'canvas-1', title: 'Sprint Board' } : null
+      )
+
+      const result = await resolveWikiLink('sprint board')
+
+      expect(result).toEqual({
+        type: 'canvas',
+        id: 'canvas-1',
+        title: 'Sprint Board',
+        fileType: 'markdown',
+        icon: 'pen-tool',
+        heading: null
+      })
+    })
+
+    it('keeps notes ahead of canvases, so an existing link never changes meaning', async () => {
+      resolveByTitle.mockResolvedValue({
+        id: 'note-1',
+        path: 'Notes/Sprint Board.md',
+        title: 'Sprint Board',
+        fileType: 'markdown'
+      })
+      resolveCanvas.mockResolvedValue({ id: 'canvas-1', title: 'Sprint Board' })
+
+      const result = await resolveWikiLink('Sprint Board')
+
+      expect(result.type).toBe('note')
+      expect(result.id).toBe('note-1')
+      expect(resolveCanvas).not.toHaveBeenCalled()
+    })
+
+    it('opens the canvas named before a `#`, carrying no heading', async () => {
+      resolveByTitle.mockResolvedValue(null)
+      resolveCanvas.mockImplementation(async (title) =>
+        title === 'Sprint Board' ? { id: 'canvas-1', title: 'Sprint Board' } : null
+      )
+
+      const result = await resolveWikiLink('Sprint Board#Ideas')
+
+      expect(result.type).toBe('canvas')
+      expect(result.id).toBe('canvas-1')
+      expect(result.heading).toBeNull()
+    })
+
+    it('still offers to create a note when nothing answers the target', async () => {
+      resolveByTitle.mockResolvedValue(null)
+
+      const result = await resolveWikiLink('Nothing Here')
+
+      expect(result.type).toBe('create')
     })
   })
 

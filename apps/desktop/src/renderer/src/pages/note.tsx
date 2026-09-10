@@ -1210,6 +1210,22 @@ export function NotePage({ noteId }: NotePageProps) {
             })
             break
 
+          case 'canvas':
+            // A canvas has no editor to land inside, so there is no heading to
+            // carry: the link opens the board itself (#1983).
+            openLinked({
+              type: 'canvas',
+              title: resolution.title,
+              icon: 'pen-tool',
+              path: `/canvas/${resolution.id}`,
+              entityId: resolution.id,
+              isPinned: false,
+              isModified: false,
+              isPreview: false,
+              isDeleted: false
+            })
+            break
+
           case 'create':
             // Ask before creating — a stale `[[Old Title]]` used to silently
             // mint a duplicate note here (#1716). The dialog carries the
