@@ -12,6 +12,7 @@ function toolbarActions(): EditorToolbarActions {
   return {
     insert: vi.fn(),
     tableAction: vi.fn(),
+    styleAction: vi.fn(),
     turnInto: vi.fn(),
     toggleStyle: vi.fn(),
     toggleBulletedList: vi.fn(),
@@ -118,6 +119,11 @@ describe('mobile editor toolbar', () => {
     controller.update({
       blockLabel: 'H2',
       table: null,
+      alignment: 'left',
+      textColour: 'default',
+      backgroundColour: 'default',
+      canNest: false,
+      canUnnest: false,
       activeStyles: {
         bold: true,
         italic: false,

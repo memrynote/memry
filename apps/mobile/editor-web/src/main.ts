@@ -34,8 +34,10 @@ import {
   type EditorToolbarSelection,
   type InlineStyle,
   type InsertBlockAction,
+  type StyleAction,
   type TableAction
 } from './editor-toolbar.ts'
+import { readAlignment, readColour, runStyleAction } from './block-styles.ts'
 import {
   applyTableStructureOp,
   handleCellPaste,
@@ -762,6 +764,11 @@ function readToolbarSelection(editor: MobileEditor): EditorToolbarSelection {
   return {
     blockLabel: blockLabel(editor),
     table: readTableSelection(editor),
+    alignment: readAlignment(editor.getTextCursorPosition().block.props),
+    textColour: readColour(styles.textColor),
+    backgroundColour: readColour(styles.backgroundColor),
+    canNest: editor.canNestBlock(),
+    canUnnest: editor.canUnnestBlock(),
     activeStyles: {
       bold: styles.bold === true,
       italic: styles.italic === true,
@@ -852,6 +859,12 @@ function toolbarActions(
     },
     tableAction(action: TableAction): void {
       runTableAction(editor, docId, guest, action)
+      refresh()
+    },
+    styleAction(action: StyleAction): void {
+      // No `focus()` first: the style panel replaced the keyboard, and taking
+      // focus back here would raise it again under the open panel.
+      runStyleAction(editor, action)
       refresh()
     },
     turnInto(block: ConvertibleBlock): void {

@@ -344,6 +344,7 @@ function toolbarActions(): EditorToolbarActions {
   return {
     insert: vi.fn(),
     tableAction: vi.fn(),
+    styleAction: vi.fn(),
     turnInto: vi.fn(),
     toggleStyle: vi.fn(),
     toggleBulletedList: vi.fn(),
@@ -368,6 +369,11 @@ function button(name: string): HTMLButtonElement {
 function selection(table: EditorToolbarSelection['table']): EditorToolbarSelection {
   return {
     blockLabel: 'T',
+    alignment: 'left',
+    textColour: 'default',
+    backgroundColour: 'default',
+    canNest: false,
+    canUnnest: false,
     table,
     activeStyles: { bold: false, italic: false, underline: false, strike: false, code: false }
   }

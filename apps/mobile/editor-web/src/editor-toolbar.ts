@@ -1,6 +1,66 @@
+import { COLORS_DEFAULT } from '@blocknote/core'
+
 import type { TableStructureOp } from './tables.ts'
 
 export type InlineStyle = 'bold' | 'italic' | 'underline' | 'strike' | 'code'
+
+/**
+ * The alignments desktop's `TextAlignButton` offers (#2102).
+ *
+ * `justify` is in BlockNote's prop but on neither toolbar, so it is not here
+ * either — the value is still read back untouched on a block desktop justified.
+ */
+export type TextAlignment = 'left' | 'center' | 'right'
+
+export const TEXT_ALIGNMENTS = [
+  'left',
+  'center',
+  'right'
+] as const satisfies readonly TextAlignment[]
+
+const ALIGNMENT_LABELS: Readonly<Record<TextAlignment, string>> = {
+  left: 'Align left',
+  center: 'Align centre',
+  right: 'Align right'
+}
+
+/** Bar lengths, not a character: no font has a left/right-aligned `≡`. */
+const ALIGNMENT_PATHS: Readonly<Record<TextAlignment, readonly string[]>> = {
+  left: ['M4 7h16', 'M4 12h10', 'M4 17h14'],
+  center: ['M4 7h16', 'M7 12h10', 'M5 17h14'],
+  right: ['M4 7h16', 'M10 12h10', 'M6 17h14']
+}
+
+/**
+ * The palette desktop paints with, verbatim.
+ *
+ * These are the ten entries `@blocknote/react`'s `ColorPicker` lists, and the
+ * values land in the same `textColor` / `backgroundColor` styles the desktop
+ * `ColorStyleButton` writes — so a run coloured on the phone is the same
+ * string desktop reads back, and the markdown colour marker is unchanged.
+ */
+export const BLOCK_COLOURS = [
+  'default',
+  'gray',
+  'brown',
+  'red',
+  'orange',
+  'yellow',
+  'green',
+  'blue',
+  'purple',
+  'pink'
+] as const
+
+export type BlockColour = (typeof BLOCK_COLOURS)[number]
+
+/** What the style panel can ask for (#2102). */
+export type StyleAction =
+  | { kind: 'align'; alignment: TextAlignment }
+  | { kind: 'text-colour'; colour: BlockColour }
+  | { kind: 'background-colour'; colour: BlockColour }
+  | { kind: 'nest' }
+  | { kind: 'unnest' }
 
 export type ConvertibleBlock =
   | { kind: 'paragraph' }
@@ -37,6 +97,8 @@ interface PickerVisual {
   label: string
   glyph: string
   glyphStyle?: 'serif' | 'mono'
+  /** Drawn instead of `glyph` when the mark is a shape no character carries. */
+  glyphNode?: Node
 }
 
 interface PickerItem extends PickerVisual {
@@ -232,11 +294,22 @@ export interface EditorToolbarSelection {
   blockLabel: string
   activeStyles: Readonly<Record<InlineStyle, boolean>>
   table: TableSelectionState | null
+  /**
+   * `null` on a block that has no `textAlignment` prop — a table, an image.
+   * A `justify` written on desktop arrives here verbatim and simply checks
+   * none of the three cards, rather than being rewritten to `left`.
+   */
+  alignment: string | null
+  textColour: BlockColour
+  backgroundColour: BlockColour
+  canNest: boolean
+  canUnnest: boolean
 }
 
 export interface EditorToolbarActions {
   insert(action: InsertBlockAction): void
   tableAction(action: TableAction): void
+  styleAction(action: StyleAction): void
   turnInto(block: ConvertibleBlock): void
   toggleStyle(style: InlineStyle): void
   toggleBulletedList(): void
@@ -265,6 +338,7 @@ type ToolbarView =
   | { kind: 'blocks' }
   | { kind: 'turn-into' }
   | { kind: 'table' }
+  | { kind: 'style' }
   | { kind: 'link-prompt' }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -366,7 +440,12 @@ export function installEditorToolbar(
   let selection: EditorToolbarSelection = {
     blockLabel: 'T',
     activeStyles: { bold: false, italic: false, underline: false, strike: false, code: false },
-    table: null
+    table: null,
+    alignment: 'left',
+    textColour: 'default',
+    backgroundColour: 'default',
+    canNest: false,
+    canUnnest: false
   }
 
   const render = (): void => {
@@ -384,6 +463,7 @@ export function installEditorToolbar(
 
     if (view.kind === 'blocks') shell.appendChild(blockPicker())
     if (view.kind === 'turn-into') shell.appendChild(turnIntoPicker())
+    if (view.kind === 'style') shell.appendChild(stylePicker())
     if (view.kind === 'table') shell.appendChild(tablePicker())
     if (view.kind === 'link-prompt') shell.appendChild(linkPrompt())
     host.appendChild(shell)
@@ -395,6 +475,7 @@ export function installEditorToolbar(
       next.kind === 'blocks' ||
       next.kind === 'turn-into' ||
       next.kind === 'table' ||
+      next.kind === 'style' ||
       next.kind === 'link-prompt'
     if (nextPanelOpen !== panelOpen) {
       panelOpen = nextPanelOpen
@@ -566,12 +647,40 @@ export function installEditorToolbar(
         onPress: () => actions.toggleStyle('code'),
         className: 'editor-toolbar-format-item',
         pressed: selection.activeStyles.code
+      }),
+      // Alignment, colour and indentation are 25 choices between them (#2102).
+      // They go behind one disclosure rather than into this row: the row is
+      // already at the 44 px touch floor on a phone, and the panel replaces
+      // the keyboard, so the paragraph being styled stays on screen.
+      actionButton({
+        label: 'Style',
+        content: svg([
+          'M12 4a8 8 0 0 0 0 16 2 2 0 0 0 2-2 2 2 0 0 1 2-2h1a3 3 0 0 0 3-3 9 9 0 0 0-8-9Z',
+          'M8 11h.01',
+          'M11.5 8h.01',
+          'M15 10h.01'
+        ]),
+        onPress: () => {
+          if (view.kind === 'style') {
+            setView({ kind: 'formatting' })
+            return
+          }
+          keyboardReplacementHeight = Math.max(readHostKeyboardHeight(), readViewportBottomInset())
+          setView({ kind: 'style' })
+          actions.dismissKeyboard()
+        },
+        className: 'editor-toolbar-format-item',
+        pressed: view.kind === 'style'
       })
     )
     return toolbar
   }
 
-  const pickerCard = (item: PickerVisual, onPress: () => void, selected = false): HTMLElement => {
+  const pickerCard = (
+    item: PickerVisual,
+    onPress: () => void,
+    selected = false
+  ): HTMLButtonElement => {
     const card = actionButton({
       label: item.label,
       content: document.createDocumentFragment(),
@@ -580,7 +689,8 @@ export function installEditorToolbar(
       pressed: selected,
       preserveEditorSelection: false
     })
-    const glyph = text(item.glyph, 'editor-picker-glyph')
+    const glyph = text(item.glyphNode ? '' : item.glyph, 'editor-picker-glyph')
+    if (item.glyphNode) glyph.appendChild(item.glyphNode)
     if (item.glyphStyle) glyph.dataset.style = item.glyphStyle
     card.append(glyph, text(item.label, 'editor-picker-label'))
     if (selected) card.appendChild(text('✓', 'editor-picker-check'))
@@ -686,6 +796,108 @@ export function installEditorToolbar(
       )
     }
     scroll.appendChild(grid)
+    panel.appendChild(scroll)
+    return panel
+  }
+
+  const colourRow = (
+    title: string,
+    active: BlockColour,
+    swatch: (colour: BlockColour) => HTMLElement,
+    onPick: (colour: BlockColour) => void
+  ): HTMLElement => {
+    const section = document.createElement('section')
+    const row = document.createElement('div')
+    row.className = 'editor-colour-row'
+    for (const colour of BLOCK_COLOURS) {
+      const button = actionButton({
+        label: `${title}: ${colour}`,
+        content: swatch(colour),
+        onPress: () => onPick(colour),
+        className: 'editor-colour-swatch',
+        pressed: active === colour,
+        preserveEditorSelection: false
+      })
+      row.appendChild(button)
+    }
+    section.append(text(title, 'editor-picker-section-label'), row)
+    return section
+  }
+
+  /**
+   * Alignment, colour and indentation (#2102).
+   *
+   * The panel stays open after every tap, like the table panel's structure
+   * rows: these are settings a person nudges and looks at, not one-shot
+   * insertions, and re-opening the panel between each nudge would cost four
+   * taps to centre and indent one line.
+   */
+  const stylePicker = (): HTMLElement => {
+    const panel = picker('Style')
+    if (keyboardReplacementHeight > 0) {
+      panel.style.setProperty('--memry-picker-height', `${keyboardReplacementHeight}px`)
+    }
+    const scroll = document.createElement('div')
+    scroll.className = 'editor-picker-scroll'
+
+    if (selection.alignment !== null) {
+      const section = document.createElement('section')
+      const grid = document.createElement('div')
+      grid.className = 'editor-picker-grid'
+      for (const alignment of TEXT_ALIGNMENTS) {
+        grid.appendChild(
+          pickerCard(
+            {
+              label: ALIGNMENT_LABELS[alignment],
+              glyph: '',
+              glyphNode: svg(ALIGNMENT_PATHS[alignment])
+            },
+            () => actions.styleAction({ kind: 'align', alignment }),
+            selection.alignment === alignment
+          )
+        )
+      }
+      section.append(text('Alignment', 'editor-picker-section-label'), grid)
+      scroll.appendChild(section)
+    }
+
+    scroll.append(
+      colourRow(
+        'Text colour',
+        selection.textColour,
+        (colour) => {
+          const chip = text('A', 'editor-colour-chip')
+          chip.style.color = COLORS_DEFAULT[colour]?.text ?? 'inherit'
+          return chip
+        },
+        (colour) => actions.styleAction({ kind: 'text-colour', colour })
+      ),
+      colourRow(
+        'Highlight',
+        selection.backgroundColour,
+        (colour) => {
+          const chip = text('A', 'editor-colour-chip')
+          chip.style.background = COLORS_DEFAULT[colour]?.background ?? 'transparent'
+          return chip
+        },
+        (colour) => actions.styleAction({ kind: 'background-colour', colour })
+      )
+    )
+
+    const indent = document.createElement('section')
+    const indentGrid = document.createElement('div')
+    indentGrid.className = 'editor-picker-grid'
+    for (const item of [
+      { label: 'Indent', glyph: '⇥', kind: 'nest' as const, enabled: selection.canNest },
+      { label: 'Outdent', glyph: '⇤', kind: 'unnest' as const, enabled: selection.canUnnest }
+    ]) {
+      const card = pickerCard(item, () => actions.styleAction({ kind: item.kind }))
+      card.disabled = !item.enabled
+      indentGrid.appendChild(card)
+    }
+    indent.append(text('Indentation', 'editor-picker-section-label'), indentGrid)
+    scroll.appendChild(indent)
+
     panel.appendChild(scroll)
     return panel
   }
