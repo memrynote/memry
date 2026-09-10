@@ -11,6 +11,7 @@ import {
 function toolbarActions(): EditorToolbarActions {
   return {
     insert: vi.fn(),
+    tableAction: vi.fn(),
     turnInto: vi.fn(),
     toggleStyle: vi.fn(),
     toggleBulletedList: vi.fn(),
@@ -116,6 +117,7 @@ describe('mobile editor toolbar', () => {
 
     controller.update({
       blockLabel: 'H2',
+      table: null,
       activeStyles: {
         bold: true,
         italic: false,

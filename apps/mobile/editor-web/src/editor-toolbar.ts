@@ -1,3 +1,5 @@
+import type { TableStructureOp } from './tables.ts'
+
 export type InlineStyle = 'bold' | 'italic' | 'underline' | 'strike' | 'code'
 
 export type ConvertibleBlock =
@@ -18,16 +20,43 @@ export type InsertBlockAction =
   | { kind: 'attachment'; blockType: 'image' | 'file' }
   | { kind: 'wikiLink' }
 
-interface PickerItem {
+/**
+ * What the table panel can ask for (#2101).
+ *
+ * `inline-image` and `inline-checkbox` sit here rather than in the block
+ * picker because a table cell is inline-only: the `image` block cannot go in
+ * one, and the two inline specs that can have had no entry point on mobile.
+ */
+export type TableAction =
+  | { kind: 'structure'; op: TableStructureOp }
+  | { kind: 'inline-image' }
+  | { kind: 'inline-checkbox' }
+  | { kind: 'delete-table' }
+
+interface PickerVisual {
   label: string
   glyph: string
-  action: InsertBlockAction
   glyphStyle?: 'serif' | 'mono'
+}
+
+interface PickerItem extends PickerVisual {
+  action: InsertBlockAction
 }
 
 interface PickerGroup {
   label: string
   items: readonly PickerItem[]
+}
+
+interface TablePickerItem extends PickerVisual {
+  action: TableAction
+  /** Locked out when the table carries a merged cell the phone cannot re-index. */
+  structural?: boolean
+}
+
+interface TablePickerGroup {
+  label: string
+  items: readonly TablePickerItem[]
 }
 
 export const BLOCK_PICKER_GROUPS = [
@@ -102,13 +131,112 @@ export const TURN_INTO_ITEMS: readonly PickerItem[] = BLOCK_PICKER_GROUPS[0].ite
   (item) => item.action.kind === 'convertible'
 )
 
+/**
+ * The table panel, which is mobile's whole answer to desktop's border nubs.
+ *
+ * Every row is an ordinary picker card, so each one is a 64 px target rather
+ * than a hairline on a cell border, and the operation applies to the cell the
+ * caret is already in — there is nothing to aim at.
+ */
+export const TABLE_PICKER_GROUPS: readonly TablePickerGroup[] = [
+  {
+    label: 'Row',
+    items: [
+      {
+        label: 'Insert above',
+        glyph: '⤒',
+        structural: true,
+        action: { kind: 'structure', op: { kind: 'insert-row', side: 'above' } }
+      },
+      {
+        label: 'Insert below',
+        glyph: '⤓',
+        structural: true,
+        action: { kind: 'structure', op: { kind: 'insert-row', side: 'below' } }
+      },
+      {
+        label: 'Move up',
+        glyph: '↑',
+        structural: true,
+        action: { kind: 'structure', op: { kind: 'move-row', direction: 'up' } }
+      },
+      {
+        label: 'Move down',
+        glyph: '↓',
+        structural: true,
+        action: { kind: 'structure', op: { kind: 'move-row', direction: 'down' } }
+      },
+      {
+        label: 'Delete row',
+        glyph: '⊖',
+        structural: true,
+        action: { kind: 'structure', op: { kind: 'delete-row' } }
+      }
+    ]
+  },
+  {
+    label: 'Column',
+    items: [
+      {
+        label: 'Insert before',
+        glyph: '⇤',
+        structural: true,
+        action: { kind: 'structure', op: { kind: 'insert-column', side: 'before' } }
+      },
+      {
+        label: 'Insert after',
+        glyph: '⇥',
+        structural: true,
+        action: { kind: 'structure', op: { kind: 'insert-column', side: 'after' } }
+      },
+      {
+        label: 'Move start',
+        glyph: '↞',
+        structural: true,
+        action: { kind: 'structure', op: { kind: 'move-column', direction: 'start' } }
+      },
+      {
+        label: 'Move end',
+        glyph: '↠',
+        structural: true,
+        action: { kind: 'structure', op: { kind: 'move-column', direction: 'end' } }
+      },
+      {
+        label: 'Delete column',
+        glyph: '⊖',
+        structural: true,
+        action: { kind: 'structure', op: { kind: 'delete-column' } }
+      }
+    ]
+  },
+  {
+    label: 'Cell',
+    items: [
+      { label: 'Image', glyph: '▧', action: { kind: 'inline-image' } },
+      { label: 'Checkbox', glyph: '☐', action: { kind: 'inline-checkbox' } }
+    ]
+  },
+  {
+    label: 'Table',
+    items: [{ label: 'Delete table', glyph: '✕', action: { kind: 'delete-table' } }]
+  }
+]
+
+/** Present only while the caret is inside a table cell. */
+export interface TableSelectionState {
+  /** The table holds a merged cell, so row and column indices no longer line up. */
+  structureLocked: boolean
+}
+
 export interface EditorToolbarSelection {
   blockLabel: string
   activeStyles: Readonly<Record<InlineStyle, boolean>>
+  table: TableSelectionState | null
 }
 
 export interface EditorToolbarActions {
   insert(action: InsertBlockAction): void
+  tableAction(action: TableAction): void
   turnInto(block: ConvertibleBlock): void
   toggleStyle(style: InlineStyle): void
   toggleBulletedList(): void
@@ -136,6 +264,7 @@ type ToolbarView =
   | { kind: 'formatting' }
   | { kind: 'blocks' }
   | { kind: 'turn-into' }
+  | { kind: 'table' }
   | { kind: 'link-prompt' }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -236,7 +365,8 @@ export function installEditorToolbar(
   let keyboardReplacementHeight = 0
   let selection: EditorToolbarSelection = {
     blockLabel: 'T',
-    activeStyles: { bold: false, italic: false, underline: false, strike: false, code: false }
+    activeStyles: { bold: false, italic: false, underline: false, strike: false, code: false },
+    table: null
   }
 
   const render = (): void => {
@@ -247,11 +377,14 @@ export function installEditorToolbar(
     const shell = document.createElement('div')
     shell.className = `editor-toolbar-shell editor-toolbar-shell-${view.kind}`
     shell.appendChild(
-      view.kind === 'main' || view.kind === 'blocks' ? mainToolbar() : formattingToolbar()
+      view.kind === 'main' || view.kind === 'blocks' || view.kind === 'table'
+        ? mainToolbar()
+        : formattingToolbar()
     )
 
     if (view.kind === 'blocks') shell.appendChild(blockPicker())
     if (view.kind === 'turn-into') shell.appendChild(turnIntoPicker())
+    if (view.kind === 'table') shell.appendChild(tablePicker())
     if (view.kind === 'link-prompt') shell.appendChild(linkPrompt())
     host.appendChild(shell)
   }
@@ -259,7 +392,10 @@ export function installEditorToolbar(
   const setView = (next: ToolbarView): void => {
     view = next
     const nextPanelOpen =
-      next.kind === 'blocks' || next.kind === 'turn-into' || next.kind === 'link-prompt'
+      next.kind === 'blocks' ||
+      next.kind === 'turn-into' ||
+      next.kind === 'table' ||
+      next.kind === 'link-prompt'
     if (nextPanelOpen !== panelOpen) {
       panelOpen = nextPanelOpen
       onPanelVisibilityChange?.(panelOpen)
@@ -316,7 +452,33 @@ export function installEditorToolbar(
       })
     )
 
-    if (view.kind !== 'blocks') toolbar.appendChild(turnIntoButton())
+    if (selection.table !== null) {
+      toolbar.appendChild(
+        actionButton({
+          label: 'Table',
+          content: text('▦', 'editor-toolbar-table'),
+          onPress: () => {
+            if (view.kind === 'table') {
+              setView({ kind: 'main' })
+              return
+            }
+            // Same keyboard-replacement dance as the block picker: the panel
+            // takes the keyboard's space, and ProseMirror keeps its selection
+            // across the blur, so the caret is still in the cell the
+            // operation applies to.
+            keyboardReplacementHeight = Math.max(
+              readHostKeyboardHeight(),
+              readViewportBottomInset()
+            )
+            setView({ kind: 'table' })
+            actions.dismissKeyboard()
+          },
+          pressed: view.kind === 'table'
+        })
+      )
+    }
+
+    if (view.kind === 'main') toolbar.appendChild(turnIntoButton())
 
     const spacer = document.createElement('span')
     spacer.className = 'editor-toolbar-spacer'
@@ -335,14 +497,14 @@ export function installEditorToolbar(
         className: 'editor-toolbar-history'
       }),
       actionButton({
-        label: view.kind === 'blocks' ? 'Dismiss picker' : 'Hide keyboard',
+        label: view.kind === 'main' ? 'Hide keyboard' : 'Dismiss picker',
         content:
-          view.kind === 'blocks'
-            ? svg(['m7 9 5 5 5-5'])
-            : svg(['M4 6h16v10H4z', 'm8 19 4 2 4-2', 'M8 10h.01m4 0h.01m4 0h.01']),
+          view.kind === 'main'
+            ? svg(['M4 6h16v10H4z', 'm8 19 4 2 4-2', 'M8 10h.01m4 0h.01m4 0h.01'])
+            : svg(['m7 9 5 5 5-5']),
         onPress: () => {
-          if (view.kind === 'blocks') setView({ kind: 'main' })
-          else actions.dismissKeyboard()
+          if (view.kind === 'main') actions.dismissKeyboard()
+          else setView({ kind: 'main' })
         },
         className: 'editor-toolbar-history'
       })
@@ -409,7 +571,7 @@ export function installEditorToolbar(
     return toolbar
   }
 
-  const pickerCard = (item: PickerItem, onPress: () => void, selected = false): HTMLElement => {
+  const pickerCard = (item: PickerVisual, onPress: () => void, selected = false): HTMLElement => {
     const card = actionButton({
       label: item.label,
       content: document.createDocumentFragment(),
@@ -457,6 +619,45 @@ export function installEditorToolbar(
         )
       }
       section.append(label, grid)
+      scroll.appendChild(section)
+    }
+    panel.appendChild(scroll)
+    return panel
+  }
+
+  const tablePicker = (): HTMLElement => {
+    const panel = picker('Table')
+    if (keyboardReplacementHeight > 0) {
+      panel.style.setProperty('--memry-picker-height', `${keyboardReplacementHeight}px`)
+    }
+    const scroll = document.createElement('div')
+    scroll.className = 'editor-picker-scroll'
+    const locked = selection.table?.structureLocked === true
+    if (locked) {
+      // Honest rather than silently wrong: the merge came from a desktop the
+      // phone cannot re-index, and a "working" button would corrupt the table.
+      const note = text(
+        'This table has merged cells. Rows and columns can only be changed on desktop.',
+        'editor-picker-note'
+      )
+      note.setAttribute('role', 'note')
+      scroll.appendChild(note)
+    }
+    for (const group of TABLE_PICKER_GROUPS) {
+      const items = group.items.filter((item) => !(locked && item.structural))
+      if (items.length === 0) continue
+      const section = document.createElement('section')
+      const grid = document.createElement('div')
+      grid.className = 'editor-picker-grid'
+      for (const item of items) {
+        grid.appendChild(
+          pickerCard(item, () => {
+            if (item.action.kind !== 'structure') setView({ kind: 'main' })
+            actions.tableAction(item.action)
+          })
+        )
+      }
+      section.append(text(group.label, 'editor-picker-section-label'), grid)
       scroll.appendChild(section)
     }
     panel.appendChild(scroll)
@@ -536,6 +737,12 @@ export function installEditorToolbar(
   return {
     update(next) {
       selection = next
+      // A caret that has left the table takes the panel with it; the actions
+      // in it apply to a cell that is no longer under the cursor.
+      if (view.kind === 'table' && next.table === null) {
+        setView({ kind: 'main' })
+        return
+      }
       render()
     },
     setReadOnly(next) {
