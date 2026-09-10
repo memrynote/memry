@@ -12,6 +12,7 @@ import {
   WikiLink,
   type MemryInlineSpecs
 } from '@memry/editor-schema/inline'
+import { dateMentionLabel } from './date-mentions.ts'
 import { icon } from './icons.ts'
 
 /**
@@ -55,43 +56,6 @@ function assetImage(className: string, ref: string): HTMLImageElement {
   return element
 }
 
-function startOfDay(date: Date): number {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-}
-
-/**
- * The text a date pill shows.
- *
- * Desktop also has a `This/Next/Last <Weekday>` tier. It is left out rather
- * than approximated: that tier reads the user's week-start preference, and the
- * `cfg` message the host sends this WebView carries theme, locale, direction,
- * reduced motion and read-only — not week start. Guessing Monday would print a
- * different day name on the phone than on the desktop for the same date.
- */
-export function dateMentionLabel(props: {
-  dateISO: string
-  hasTime: boolean
-  dateFormat: string
-  timeFormat: string
-}): string {
-  const date = props.dateISO ? new Date(props.dateISO) : null
-  if (!date || Number.isNaN(date.getTime())) return 'Date'
-
-  const full = `${date.getDate()} ${date.toLocaleDateString(undefined, { month: 'short' })}, ${date.getFullYear()}`
-  let label = full
-  if (props.dateFormat !== 'full') {
-    const days = Math.round((startOfDay(date) - startOfDay(new Date())) / 86_400_000)
-    if (days === 0) label = 'Today'
-    else if (days === 1) label = 'Tomorrow'
-    else if (days === -1) label = 'Yesterday'
-  }
-
-  if (!props.hasTime) return label
-
-  const hour12 = props.timeFormat === '12h' ? true : props.timeFormat === '24h' ? false : undefined
-  return `${label} ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12 })}`
-}
-
 export function createTouchInlineSpecs(): MemryInlineSpecs {
   return {
     hashTag: createHashTagSpec((inlineContent) => {
@@ -123,7 +87,14 @@ export function createTouchInlineSpecs(): MemryInlineSpecs {
       dom.setAttribute('data-anchor-id', anchorId)
       dom.setAttribute('data-date-iso', dateISO)
       dom.setAttribute('data-has-time', String(hasTime))
+      // `dateFormat` and `timeFormat` were the two props this DOM did not
+      // carry. The shared `parse` reads all six back off these attributes, and
+      // the sheet seeds itself from them the way desktop's popover does, so a
+      // pill that omitted them lost its formatting on a copy/paste and could
+      // not be opened for editing.
+      dom.setAttribute('data-date-format', dateFormat)
       dom.setAttribute('data-remind', remind)
+      dom.setAttribute('data-time-format', timeFormat)
       dom.setAttribute('contenteditable', 'false')
       dom.setAttribute('role', 'button')
 

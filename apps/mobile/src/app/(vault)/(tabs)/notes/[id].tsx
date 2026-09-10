@@ -433,7 +433,14 @@ export default function NoteScreen() {
       // The document starts below the floating header rather than behind it.
       // Measured, not assumed: tags and properties wrap, so this block's height
       // is the note's own and changes while the reader edits it.
-      headerHeight
+      headerHeight,
+      // Constant, like `theme` and `locale` above, and for the same reason:
+      // desktop reads this from the synced `calendar.weekStartDay` setting and
+      // mobile syncs no settings at all yet. `monday` is the default
+      // `settings-schemas.ts` ships, so a phone and an unconfigured desktop
+      // print the same "This / Next / Last <Weekday>" on the same date. This is
+      // the site that re-wires when settings sync reaches mobile.
+      weekStart: 'monday'
     }),
     [gate, headerHeight]
   )

@@ -2,7 +2,8 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { createTouchBlockSpecs, formatFileSize } from '../../editor-web/src/blocks'
-import { createTouchInlineSpecs, dateMentionLabel } from '../../editor-web/src/inline'
+import { dateMentionLabel } from '../../editor-web/src/date-mentions'
+import { createTouchInlineSpecs } from '../../editor-web/src/inline'
 
 /**
  * What a reader actually sees on a phone (epic #2025).
@@ -386,7 +387,11 @@ describe('dateMention', () => {
   it('names the neighbouring days and falls back to the full form', () => {
     expect(dateMentionLabel({ dateISO: isoOffsetByDays(1), ...plain })).toBe('Tomorrow')
     expect(dateMentionLabel({ dateISO: isoOffsetByDays(-1), ...plain })).toBe('Yesterday')
-    expect(dateMentionLabel({ dateISO: isoOffsetByDays(9), ...plain })).toMatch(
+    // Far enough out to be past the week tier on any day of the week: +9 days
+    // can still land in the NEXT week, which now reads "Next <Weekday>"
+    // (#2103). The tier itself is covered in `date-mention-sheet.test.ts`,
+    // against a fixed `now`.
+    expect(dateMentionLabel({ dateISO: isoOffsetByDays(30), ...plain })).toMatch(
       /^\d{1,2} \S+, \d{4}$/
     )
     expect(
