@@ -120,12 +120,18 @@ export function EmojiPicker({
       aria-label={t('menus.emoji.aria')}
       onKeyDown={handleKeyDown}
       className={cn(
-        embedded ? 'relative' : 'absolute start-0 top-full z-50 mt-2',
+        embedded
+          ? // Cap the panel at the room the host Popover measured so a short window
+            // shrinks the scrollable grid instead of pushing the tab bar off the top
+            // edge (#1984). The var is inherited from the Popover content and resolves
+            // to `none` outside one, so the free-floating panel is unaffected.
+            'relative flex max-h-(--radix-popover-content-available-height) flex-col overflow-hidden'
+          : 'absolute start-0 top-full z-50 mt-2',
         'rounded-xl border border-border bg-popover shadow-lg',
         'animate-in fade-in-0 zoom-in-95 duration-150'
       )}
     >
-      <div className="flex border-b border-border">
+      <div className="flex shrink-0 border-b border-border">
         <button
           type="button"
           onClick={() => setActiveTab('emoji')}
@@ -166,6 +172,7 @@ export function EmojiPicker({
 
       <div
         ref={contentRef}
+        className="min-h-0 overflow-y-auto"
         style={
           activeTab !== 'emoji' && contentSize
             ? { width: contentSize.width, height: contentSize.height, overflow: 'hidden' }
@@ -205,7 +212,7 @@ export function EmojiPicker({
       </div>
 
       {hasEmoji && (
-        <div className="border-t border-border p-2">
+        <div className="shrink-0 border-t border-border p-2">
           <button
             type="button"
             onClick={handleRemove}

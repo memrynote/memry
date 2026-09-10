@@ -34,8 +34,18 @@ vi.mock('@/components/ui/popover', async () => {
           onOpenChange?.(true)
         }
       }),
-    PopoverContent: ({ children, open }: any) =>
-      open ? React.createElement('div', null, children) : null
+    PopoverContent: ({ children, open, collisionPadding, side }: any) =>
+      open
+        ? React.createElement(
+            'div',
+            {
+              'data-testid': 'popover-content',
+              'data-collision-padding': String(collisionPadding),
+              'data-side': side
+            },
+            children
+          )
+        : null
   }
 })
 
@@ -184,5 +194,21 @@ describe('IconPickerButton', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Set icon' }))
     expect(onPickerOpenChange).toHaveBeenCalledWith(true)
+  })
+
+  // Radix runs `shift` before `flip`, so a bottom-placed panel taller than the room
+  // under the trigger is flipped up afterwards with no second clamp and loses its tab
+  // bar off the top edge (#1984). Side placement puts `shift` on the overflowing axis.
+  it('opens to the side, off the viewport edges, so it cannot be clipped', () => {
+    render(
+      <IconPickerButton hasIcon={false} onIconChange={vi.fn()} ariaLabel="Set icon">
+        <span>📝</span>
+      </IconPickerButton>
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Set icon' }))
+
+    const content = screen.getByTestId('popover-content')
+    expect(content.getAttribute('data-collision-padding')).toBe('8')
+    expect(content.getAttribute('data-side')).toBe('right')
   })
 })

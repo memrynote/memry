@@ -82,8 +82,10 @@ export function IconPickerButton({
           </button>
         </PopoverTrigger>
         <PopoverContent
+          side="right"
           align="start"
           sideOffset={4}
+          collisionPadding={8}
           className="w-auto border-0 bg-transparent p-0 shadow-none"
           onClick={(e) => e.stopPropagation()}
         >
