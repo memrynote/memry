@@ -666,6 +666,12 @@ through `boundedNetFetch` (`telemetry/bounded-net-fetch.ts`) with a 30 s abort d
 still in flight when Chromium's network service dies never settles on its own, and a flush loop
 awaiting it would otherwise stall for the rest of the run with every later batch queued behind it.
 
+The keychain side of that hang is bounded twice over: OS keychain calls are serialized through one
+process-wide single-flight queue with a run-wide unavailability latch, so a wedged Secret Service
+can burn at most one libuv threadpool thread instead of all four, and the main process raises
+`UV_THREADPOOL_SIZE` to 16 before anything can use the pool. See
+[Cryptography](./cryptography.md).
+
 ### Autosave Event Throttling
 
 `note_updated` and `journal_updated` events fired by the autosave path are throttled to at most

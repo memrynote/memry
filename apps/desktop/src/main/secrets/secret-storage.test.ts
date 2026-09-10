@@ -55,12 +55,15 @@ vi.mock('keytar', () => ({
 import {
   KEYCHAIN_READ_TIMEOUT_MS,
   SECRET_STORE_FILENAME,
+  deleteLegacySecret,
   deleteSecret,
   finalizeKeytarMigration,
   getSecret,
   isSafeStorageAvailable,
+  readLegacySecret,
   resetSecretStorageForTests,
-  setSecret
+  setSecret,
+  writeLegacySecret
 } from './secret-storage'
 
 const SERVICE = 'com.memry.test-service'
@@ -672,6 +675,120 @@ describe('secret-storage', () => {
       await expect(
         getSecret(SERVICE, ACCOUNT, { treatUnreadableAsAbsent: true })
       ).resolves.toBeNull()
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // OS keychain single flight
+  //
+  // The deadline above frees our promise, never the native thread: a keytar
+  // call wedged in libsecret keeps its libuv threadpool thread for the rest of
+  // the process. Only one call may therefore be in flight at a time, so a dead
+  // Secret Service costs one thread per run instead of the whole pool.
+  // --------------------------------------------------------------------------
+
+  describe('OS keychain single flight', () => {
+    const hangForever = (): Promise<string | null> => new Promise<string | null>(() => {})
+    // Real-timer microtask/macrotask drain: the queue hands control over with
+    // .then, so nothing reaches keytar synchronously.
+    const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+
+    afterEach(() => {
+      vi.useRealTimers()
+      harness.keytarGet.mockImplementation(
+        async (s: string, a: string) => harness.keytarStore.get(`${s}:${a}`) ?? null
+      )
+    })
+
+    it('shares one native call between concurrent reads of the same entry', async () => {
+      let release: (value: string | null) => void = () => {}
+      harness.keytarGet.mockImplementation(
+        () =>
+          new Promise<string | null>((resolve) => {
+            release = resolve
+          })
+      )
+
+      const first = readLegacySecret(SERVICE, ACCOUNT)
+      const second = readLegacySecret(SERVICE, ACCOUNT)
+      await flush()
+
+      expect(harness.keytarGet).toHaveBeenCalledTimes(1)
+      release('shared')
+      await expect(first).resolves.toBe('shared')
+      await expect(second).resolves.toBe('shared')
+
+      // The dedup entry is dropped once the call settles, so a later read is
+      // a fresh native call rather than a cached value.
+      harness.keytarGet.mockResolvedValueOnce('fresh')
+      await expect(readLegacySecret(SERVICE, ACCOUNT)).resolves.toBe('fresh')
+      expect(harness.keytarGet).toHaveBeenCalledTimes(2)
+    })
+
+    it('serializes reads of different entries', async () => {
+      const started: string[] = []
+      const gates = new Map<string, () => void>()
+      harness.keytarGet.mockImplementation(
+        (_service: string, account: string) =>
+          new Promise<string | null>((resolve) => {
+            started.push(account)
+            gates.set(account, () => resolve(`value:${account}`))
+          })
+      )
+
+      const first = readLegacySecret(SERVICE, 'account-a')
+      const second = readLegacySecret(SERVICE, 'account-b')
+      await flush()
+
+      expect(started).toEqual(['account-a'])
+
+      gates.get('account-a')!()
+      await expect(first).resolves.toBe('value:account-a')
+      await flush()
+
+      expect(started).toEqual(['account-a', 'account-b'])
+      gates.get('account-b')!()
+      await expect(second).resolves.toBe('value:account-b')
+    })
+
+    it('rejects a read queued behind a hung one without a second native call', async () => {
+      vi.useFakeTimers()
+      harness.keytarGet.mockImplementation(hangForever)
+
+      const first = readLegacySecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
+      const queued = readLegacySecret(SERVICE, 'other-account').catch((err: Error) => err.name)
+
+      await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
+
+      await expect(first).resolves.toBe('KeychainUnavailableError')
+      await expect(queued).resolves.toBe('KeychainUnavailableError')
+      expect(harness.keytarGet).toHaveBeenCalledTimes(1)
+    })
+
+    it('refuses writes and deletes once the keychain has latched', async () => {
+      vi.useFakeTimers()
+      harness.keytarGet.mockImplementation(hangForever)
+      const first = readLegacySecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
+      await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
+      await expect(first).resolves.toBe('KeychainUnavailableError')
+
+      await expect(writeLegacySecret(SERVICE, ACCOUNT, 'value')).rejects.toThrow(/keychain/i)
+      await expect(deleteLegacySecret(SERVICE, ACCOUNT)).rejects.toThrow(/keychain/i)
+      expect(harness.keytarSet).not.toHaveBeenCalled()
+      expect(harness.keytarDelete).not.toHaveBeenCalled()
+    })
+
+    it('still deletes the safeStorage copy when the keychain has latched', async () => {
+      await setSecret(SERVICE, ACCOUNT, 'value')
+
+      vi.useFakeTimers()
+      harness.keytarGet.mockImplementation(hangForever)
+      const first = readLegacySecret(SERVICE, 'probe').catch((err: Error) => err.name)
+      await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
+      await expect(first).resolves.toBe('KeychainUnavailableError')
+
+      await expect(deleteSecret(SERVICE, ACCOUNT)).resolves.toBeUndefined()
+      expect(readStoreJson().entries[SERVICE]?.[ACCOUNT]).toBeUndefined()
     })
   })
 })

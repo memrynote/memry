@@ -80,13 +80,39 @@ export class KeychainUnavailableError extends Error {
   }
 }
 
-async function readLegacySecret(service: string, account: string): Promise<string | null> {
-  if (keychainTimedOut) throw new KeychainUnavailableError(service, account, 'latched')
+// The deadline above only settles OUR promise. keytar runs on a Napi
+// AsyncWorker, so the native call keeps sitting inside libsecret on a libuv
+// threadpool thread that nothing can reclaim — that thread is gone for the rest
+// of the process. Startup issues several keychain reads at once (the sync
+// runtime's refresh token, the Google Calendar sign-in probe, the telemetry
+// access token), so by the time the first deadline fires and flips the latch,
+// three of the four threads are already burned and the app is one fs read away
+// from the same deadlock.
+//
+// So: at most ONE keytar call is in flight process-wide. Concurrent reads of
+// the same service/account share the in-flight promise; every other call queues
+// behind it and re-checks the latch when its turn comes, rejecting without
+// touching keytar. A wedged Secret Service can therefore cost at most one
+// threadpool thread per run.
+let keytarQueue: Promise<unknown> = Promise.resolve()
+const inFlightKeychainReads = new Map<string, Promise<string | null>>()
+
+function withKeychainDeadline<T>(
+  service: string,
+  account: string,
+  call: () => Promise<T>
+): Promise<T> {
+  // Promise.resolve, not the raw return value: unit tests mock keytar with
+  // plain vi.fn()s that return undefined.
+  const pending = Promise.resolve(call())
+  // We stop waiting; the native call does not. Keep a handler on it so a late
+  // rejection can never surface as an unhandled rejection.
+  void pending.catch(() => {})
   let timer: ReturnType<typeof setTimeout> | undefined
   const deadline = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
       keychainTimedOut = true
-      logger.warn('OS keychain read timed out; skipping the OS keychain for the rest of this run', {
+      logger.warn('OS keychain call timed out; skipping the OS keychain for the rest of this run', {
         service,
         account,
         timeoutMs: KEYCHAIN_READ_TIMEOUT_MS
@@ -94,11 +120,56 @@ async function readLegacySecret(service: string, account: string): Promise<strin
       reject(new KeychainUnavailableError(service, account, 'timeout'))
     }, KEYCHAIN_READ_TIMEOUT_MS)
   })
-  try {
-    return await Promise.race([keytar.getPassword(service, account), deadline])
-  } finally {
-    clearTimeout(timer)
+  return Promise.race([pending, deadline]).finally(() => clearTimeout(timer))
+}
+
+/**
+ * Run one keytar operation, serialized process-wide and bounded by the
+ * deadline. The queue advances when the deadline settles, never when the native
+ * call does — a wedged libsecret call never settles, and waiting on it would
+ * wedge the queue as well.
+ */
+function runKeytarOp<T>(service: string, account: string, op: () => Promise<T>): Promise<T> {
+  if (keychainTimedOut) {
+    return Promise.reject(new KeychainUnavailableError(service, account, 'latched'))
   }
+  const run = keytarQueue.then(() => {
+    // The call ahead of us in the queue may have latched in the meantime.
+    if (keychainTimedOut) throw new KeychainUnavailableError(service, account, 'latched')
+    return withKeychainDeadline(service, account, op)
+  })
+  keytarQueue = run.then(
+    () => undefined,
+    () => undefined
+  )
+  return run
+}
+
+/**
+ * Read the OS keychain. Reads are idempotent, so concurrent callers for the
+ * same entry share one native call instead of queueing behind each other.
+ */
+export function readLegacySecret(service: string, account: string): Promise<string | null> {
+  const key = cleanupKey(service, account)
+  const existing = inFlightKeychainReads.get(key)
+  if (existing) return existing
+  const run = runKeytarOp(service, account, () => keytar.getPassword(service, account))
+  inFlightKeychainReads.set(key, run)
+  const clear = (): void => {
+    if (inFlightKeychainReads.get(key) === run) inFlightKeychainReads.delete(key)
+  }
+  run.then(clear, clear)
+  return run
+}
+
+/** Write to the OS keychain through the shared single-flight queue. */
+export function writeLegacySecret(service: string, account: string, value: string): Promise<void> {
+  return runKeytarOp(service, account, () => keytar.setPassword(service, account, value))
+}
+
+/** Delete from the OS keychain through the shared single-flight queue. */
+export function deleteLegacySecret(service: string, account: string): Promise<boolean> {
+  return runKeytarOp(service, account, () => keytar.deletePassword(service, account))
 }
 
 const cleanupKey = (service: string, account: string): string => `${service}\u0000${account}`
@@ -109,6 +180,8 @@ export function resetSecretStorageForTests(): void {
   keytarMigrationFinalized.clear()
   loggedPlaintextBackend = false
   keychainTimedOut = false
+  keytarQueue = Promise.resolve()
+  inFlightKeychainReads.clear()
 }
 
 // ---------------------------------------------------------------------------
@@ -376,7 +449,7 @@ export async function setSecret(service: string, account: string, value: string)
       // The safeStorage copy is now authoritative; drop any stale OS keychain
       // copy so the read fallback can never resurrect an outdated secret.
       try {
-        await keytar.deletePassword(service, account)
+        await deleteLegacySecret(service, account)
       } catch (err) {
         logger.warn('Could not remove stale OS keychain copy after write', {
           error: err,
@@ -399,7 +472,7 @@ export async function setSecret(service: string, account: string, value: string)
     }
   }
 
-  await keytar.setPassword(service, account, value)
+  await writeLegacySecret(service, account, value)
 }
 
 export async function deleteSecret(service: string, account: string): Promise<void> {
@@ -407,8 +480,18 @@ export async function deleteSecret(service: string, account: string): Promise<vo
   // from scratch, so drop any "migration complete" verdict for it.
   keytarMigrationFinalized.delete(cleanupKey(service, account))
   // Keytar first: it was the pre-migration source of truth and its errors are
-  // what call sites historically surfaced.
-  await keytar.deletePassword(service, account)
+  // what call sites historically surfaced. A keychain that is wedged or already
+  // latched is the one exception — sign-out must not hang or fail on it, and
+  // the safeStorage copy removed below is the authoritative one.
+  try {
+    await deleteLegacySecret(service, account)
+  } catch (err) {
+    if (!(err instanceof KeychainUnavailableError)) throw err
+    logger.warn('OS keychain unavailable; deleting the safeStorage copy only', {
+      service,
+      account
+    })
+  }
   // Store removal only needs the userData path, not encryption availability.
   const filePath = resolveStoreFilePath()
   if (filePath) removeCiphertext(filePath, service, account)
@@ -439,7 +522,7 @@ export async function finalizeKeytarMigration(service: string, account: string):
       return
     }
     if (legacy === value) {
-      await keytar.deletePassword(service, account)
+      await deleteLegacySecret(service, account)
       keytarMigrationFinalized.add(cleanupKey(service, account))
       logger.info('Removed confirmed migrated secret from OS keychain', { service, account })
     }
@@ -519,7 +602,7 @@ async function migrateLegacySecret(
   }
 
   try {
-    await keytar.deletePassword(service, account)
+    await deleteLegacySecret(service, account)
     logger.info('Migrated secret from OS keychain to safeStorage', { service, account })
   } catch (err) {
     // The safeStorage copy is verified; a lingering keytar copy is harmless
@@ -617,7 +700,7 @@ async function cleanupLegacyKeytarCopy(
   try {
     const legacy = await readLegacySecret(service, account)
     if (legacy !== null && legacy === expected) {
-      await keytar.deletePassword(service, account)
+      await deleteLegacySecret(service, account)
       logger.info('Removed migrated secret from OS keychain', { service, account })
     }
   } catch (err) {
