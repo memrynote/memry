@@ -361,6 +361,181 @@ export const HostLinkPreviewSchema = LinkPreviewSchema.extend({
   reqId: z.string().min(1)
 })
 
+// ---------------------------------------------------------------------------
+// Editor toolbar vocabulary
+// ---------------------------------------------------------------------------
+//
+// The formatting toolbar is a NATIVE React Native view; the WebView is a
+// document surface only. Every button the host draws names one of the actions
+// below, and every state the host renders (which styles are active, whether
+// the caret is in a table) arrives as a `toolbar-selection`. Both halves
+// compile against these schemas, so a picker card the guest cannot honour is a
+// type error, not a dead button.
+
+export const INLINE_STYLES = ['bold', 'italic', 'underline', 'strike', 'code'] as const
+export const InlineStyleSchema = z.enum(INLINE_STYLES)
+export type InlineStyle = z.infer<typeof InlineStyleSchema>
+
+/**
+ * The alignments desktop's `TextAlignButton` offers (#2102).
+ *
+ * `justify` is in BlockNote's prop but on neither toolbar, so it is not here
+ * either — the value is still read back untouched on a block desktop justified.
+ */
+export const TEXT_ALIGNMENTS = ['left', 'center', 'right'] as const
+export const TextAlignmentSchema = z.enum(TEXT_ALIGNMENTS)
+export type TextAlignment = z.infer<typeof TextAlignmentSchema>
+
+/**
+ * The palette desktop paints with, verbatim.
+ *
+ * These are the ten entries `@blocknote/react`'s `ColorPicker` lists, and the
+ * values land in the same `textColor` / `backgroundColor` styles the desktop
+ * `ColorStyleButton` writes — so a run coloured on the phone is the same
+ * string desktop reads back, and the markdown colour marker is unchanged.
+ */
+export const BLOCK_COLOURS = [
+  'default',
+  'gray',
+  'brown',
+  'red',
+  'orange',
+  'yellow',
+  'green',
+  'blue',
+  'purple',
+  'pink'
+] as const
+export const BlockColourSchema = z.enum(BLOCK_COLOURS)
+export type BlockColour = z.infer<typeof BlockColourSchema>
+
+/** What the style panel can ask for (#2102). */
+export const StyleActionSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('align'), alignment: TextAlignmentSchema }),
+  z.object({ kind: z.literal('text-colour'), colour: BlockColourSchema }),
+  z.object({ kind: z.literal('background-colour'), colour: BlockColourSchema }),
+  z.object({ kind: z.literal('nest') }),
+  z.object({ kind: z.literal('unnest') })
+])
+export type StyleAction = z.infer<typeof StyleActionSchema>
+
+export const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const
+export const HeadingLevelSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6)
+])
+export type HeadingLevel = z.infer<typeof HeadingLevelSchema>
+
+export const ConvertibleBlockSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('paragraph') }),
+  z.object({ kind: z.literal('heading'), level: HeadingLevelSchema }),
+  z.object({ kind: z.literal('bulletListItem') }),
+  z.object({ kind: z.literal('numberedListItem') }),
+  z.object({ kind: z.literal('checkListItem') }),
+  z.object({ kind: z.literal('toggleListItem') }),
+  z.object({ kind: z.literal('quote') }),
+  z.object({ kind: z.literal('codeBlock') }),
+  z.object({ kind: z.literal('callout') })
+])
+export type ConvertibleBlock = z.infer<typeof ConvertibleBlockSchema>
+
+export const InsertBlockActionSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('convertible'), block: ConvertibleBlockSchema }),
+  z.object({ kind: z.literal('divider') }),
+  z.object({ kind: z.literal('table') }),
+  z.object({ kind: z.literal('attachment'), blockType: z.enum(EDITOR_ATTACHMENT_BLOCK_TYPES) }),
+  z.object({ kind: z.literal('wikiLink') })
+])
+export type InsertBlockAction = z.infer<typeof InsertBlockActionSchema>
+
+/** A structural edit to the table the caret is in, applied to that cell's row or column. */
+export const TableStructureOpSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('insert-row'), side: z.enum(['above', 'below']) }),
+  z.object({ kind: z.literal('insert-column'), side: z.enum(['before', 'after']) }),
+  z.object({ kind: z.literal('delete-row') }),
+  z.object({ kind: z.literal('delete-column') }),
+  z.object({ kind: z.literal('move-row'), direction: z.enum(['up', 'down']) }),
+  z.object({ kind: z.literal('move-column'), direction: z.enum(['start', 'end']) })
+])
+export type TableStructureOp = z.infer<typeof TableStructureOpSchema>
+
+/**
+ * What the table panel can ask for (#2101).
+ *
+ * `inline-image` and `inline-checkbox` sit here rather than in the block
+ * picker because a table cell is inline-only: the `image` block cannot go in
+ * one, and the two inline specs that can have had no entry point on mobile.
+ */
+export const TableActionSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('structure'), op: TableStructureOpSchema }),
+  z.object({ kind: z.literal('inline-image') }),
+  z.object({ kind: z.literal('inline-checkbox') }),
+  z.object({ kind: z.literal('delete-table') })
+])
+export type TableAction = z.infer<typeof TableActionSchema>
+
+/** Present only while the caret is inside a table cell. */
+export const TableSelectionStateSchema = z.object({
+  /** The table holds a merged cell, so row and column indices no longer line up. */
+  structureLocked: z.boolean()
+})
+export type TableSelectionState = z.infer<typeof TableSelectionStateSchema>
+
+export const EditorToolbarSelectionSchema = z.object({
+  /** The glyph the Turn-into chip shows for the block under the caret. */
+  blockLabel: z.string(),
+  activeStyles: z.record(InlineStyleSchema, z.boolean()),
+  table: TableSelectionStateSchema.nullable(),
+  /**
+   * `null` on a block that has no `textAlignment` prop — a table, an image.
+   * A `justify` written on desktop arrives here verbatim and simply checks
+   * none of the three cards, rather than being rewritten to `left`.
+   */
+  alignment: z.string().nullable(),
+  textColour: BlockColourSchema,
+  backgroundColour: BlockColourSchema,
+  canNest: z.boolean(),
+  canUnnest: z.boolean()
+})
+export type EditorToolbarSelection = z.infer<typeof EditorToolbarSelectionSchema>
+
+/**
+ * One press on the native toolbar, for the guest to apply to its document.
+ *
+ * `focus`, `undo`, `redo` and `blur` overlap `exec` in name only: the toolbar
+ * versions re-read the selection afterwards and hand focus back to the editor,
+ * which is what a button on a formatting bar means and what a host-level
+ * command deliberately does not do.
+ */
+export const ToolbarActionSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('toggle-style'), style: InlineStyleSchema }),
+  z.object({ kind: z.literal('turn-into'), block: ConvertibleBlockSchema }),
+  z.object({ kind: z.literal('insert'), action: InsertBlockActionSchema }),
+  z.object({ kind: z.literal('table'), action: TableActionSchema }),
+  z.object({ kind: z.literal('style'), action: StyleActionSchema }),
+  z.object({ kind: z.literal('toggle-bulleted-list') }),
+  z.object({ kind: z.literal('create-link'), url: z.string().min(1) }),
+  z.object({ kind: z.literal('focus') }),
+  z.object({ kind: z.literal('insert-wiki-link') }),
+  z.object({ kind: z.literal('insert-image') }),
+  z.object({ kind: z.literal('undo') }),
+  z.object({ kind: z.literal('redo') }),
+  z.object({ kind: z.literal('blur') }),
+  /** The `•••`: open the guest's block-actions sheet for the caret's block (#2100). */
+  z.object({ kind: z.literal('open-block-actions') })
+])
+export type ToolbarAction = z.infer<typeof ToolbarActionSchema>
+
+export const HostToolbarActionSchema = z.object({
+  type: z.literal('toolbar-action'),
+  docId: z.string().min(1),
+  action: ToolbarActionSchema
+})
+
 export const HostMsgSchema = z.discriminatedUnion('type', [
   HostDocLoadSchema,
   HostYUpdateSchema,
@@ -373,7 +548,8 @@ export const HostMsgSchema = z.discriminatedUnion('type', [
   HostExportHtmlSchema,
   HostLinkPreviewSchema,
   HostProbeSchema,
-  HostBlockMoveResultSchema
+  HostBlockMoveResultSchema,
+  HostToolbarActionSchema
 ])
 
 // ---------------------------------------------------------------------------
@@ -449,6 +625,27 @@ export const GuestEditorPanelVisibilitySchema = z.object({
   type: z.literal('editor-panel-visibility'),
   docId: z.string().min(1),
   open: z.boolean()
+})
+
+/**
+ * Whether the document's contenteditable holds focus. With the keyboard
+ * measured on the host, this is the other half of "show the toolbar": a
+ * keyboard raised by the title field or a tag sheet is not the editor's.
+ */
+export const GuestEditorFocusSchema = z.object({
+  type: z.literal('editor-focus'),
+  docId: z.string().min(1),
+  focused: z.boolean()
+})
+
+/**
+ * What the native toolbar should reflect about the caret. Sent only when it
+ * changes, so a keystroke that leaves the styles alone puts nothing on the wire.
+ */
+export const GuestToolbarSelectionSchema = z.object({
+  type: z.literal('toolbar-selection'),
+  docId: z.string().min(1),
+  selection: EditorToolbarSelectionSchema
 })
 
 export const GuestMarkdownExportSchema = z.object({
@@ -677,6 +874,8 @@ export const GuestMsgSchema = z.discriminatedUnion('type', [
   GuestInsertRequestSchema,
   GuestKeyboardVisibilitySchema,
   GuestEditorPanelVisibilitySchema,
+  GuestEditorFocusSchema,
+  GuestToolbarSelectionSchema,
   GuestMarkdownExportSchema,
   GuestHtmlExportSchema,
   GuestNavSchema,
