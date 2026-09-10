@@ -143,6 +143,76 @@ describe('runCrdtPreflight', () => {
     expect(mockFork).toHaveBeenCalledTimes(2)
   })
 
+  /**
+   * `reason` is the only free text that reaches telemetry
+   * (crdt-persistence.ts), and "child exited with code 1" answers nothing. The
+   * child now prints the LevelDB error the y-leveldb transaction wrapper used
+   * to swallow, so the discriminating line has to survive into `reason`.
+   */
+  describe('failure reason', () => {
+    const LOCK_ERROR =
+      'crdt-preflight: store open failed: IO error: lock /home/ada/.config/Memry/crdt-store/LOCK: already held by process <- [LEVEL_DATABASE_NOT_OPEN] Database is not open'
+
+    async function failBothTransportsWith(line: string): Promise<string | undefined> {
+      const pending = runCrdtPreflight(STORE_DIR)
+      child.say(PREFLIGHT_MARK_STARTED)
+      child.say(PREFLIGHT_MARK_BINDING_LOADED)
+      child.say(PREFLIGHT_MARK_STORE_OPS.open)
+      child.emit('exit', 1)
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalled())
+      nodeChild.say(PREFLIGHT_MARK_STARTED)
+      nodeChild.say(PREFLIGHT_MARK_BINDING_LOADED)
+      nodeChild.say(PREFLIGHT_MARK_STORE_OPS.open)
+      nodeChild.say(line)
+      nodeChild.emit('exit', 1)
+      return (await pending).reason
+    }
+
+    it('carries the child’s LevelDB error alongside the exit code', async () => {
+      const reason = await failBothTransportsWith(LOCK_ERROR)
+
+      expect(reason).toContain('child exited with code 1')
+      expect(reason).toContain('already held by process')
+      expect(reason).toContain('LEVEL_DATABASE_NOT_OPEN')
+    })
+
+    it('strips absolute paths — the message ships, the user’s directory does not', async () => {
+      const reason = await failBothTransportsWith(LOCK_ERROR)
+
+      // The main redactor knows the vault root, not userData, so a store path
+      // in here would leave the device verbatim.
+      expect(reason).not.toContain('/home/ada')
+      expect(reason).not.toContain('crdt-store')
+      expect(reason).toContain('<path>')
+    })
+
+    it('strips Windows paths too', async () => {
+      const reason = await failBothTransportsWith(
+        'IO error: lock C:\\Users\\Ada\\AppData\\Roaming\\memry\\crdt-store\\LOCK: held'
+      )
+
+      expect(reason).not.toContain('C:\\Users')
+      expect(reason).toContain('<path>')
+    })
+
+    it('bounds the detail so a runaway line cannot become the telemetry payload', async () => {
+      const reason = await failBothTransportsWith(`Corruption: ${'x'.repeat(5000)}`)
+
+      expect(reason?.length).toBeLessThan(300)
+    })
+
+    it('ignores stage markers and stack frames when picking the line', async () => {
+      const pending = runCrdtPreflight(STORE_DIR)
+      child.say(PREFLIGHT_MARK_STARTED)
+      child.emit('exit', 1)
+      // Only a 'binding' failure so the node retry never runs.
+      const reason = (await pending).reason
+
+      // Markers are the only thing on stderr — nothing to attach.
+      expect(reason).toBe('child exited with code 1 (0x1)')
+    })
+  })
+
   // The child reports how far it got on stderr, because the exit code alone
   // cannot tell "the store aborted the binding" from "this machine cannot
   // start a utility process at all" (Windows 0xFFFF7003, crashpad init).

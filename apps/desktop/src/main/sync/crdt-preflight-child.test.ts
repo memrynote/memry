@@ -1,4 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
+import { mkdtemp, rm } from 'fs/promises'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+  type MockInstance
+} from 'vitest'
 import {
   PREFLIGHT_MARK_BINDING_LOADED,
   PREFLIGHT_MARK_STARTED,
@@ -9,7 +21,13 @@ const mockWriteSync = vi.hoisted(() => vi.fn())
 const mockRmSync = vi.hoisted(() => vi.fn())
 const mockRmdirSync = vi.hoisted(() => vi.fn())
 const mockUnlinkSync = vi.hoisted(() => vi.fn())
-const mockRequire = vi.hoisted(() => vi.fn())
+// `require` AND `require.resolve`: the child resolves the level adapter through
+// y-leveldb's own resolution, so both halves of the createRequire result are used.
+const mockRequire = vi.hoisted(() => {
+  const fn = vi.fn() as ReturnType<typeof vi.fn> & { resolve: (id: string) => string }
+  fn.resolve = () => '/fake/node_modules/y-leveldb/dist/y-leveldb.cjs'
+  return fn
+})
 
 // Only the entry points the child actually uses are swapped; everything else
 // stays real so yjs keeps working. The delete-shaped calls are stubbed purely
@@ -54,6 +72,9 @@ interface FakePersistence {
 
 let persistence: FakePersistence
 let constructedWith: string[]
+/** Directories the injected level adapter was actually constructed against. */
+let levelConstructedWith: string[]
+let levelOpen: Mock<() => Promise<void>>
 let loadedDoc: { destroy: ReturnType<typeof vi.fn> }
 let exitSpy: MockInstance<(code?: number) => never>
 let abortSpy: MockInstance<() => never>
@@ -91,13 +112,31 @@ describe('crdt-preflight-child', () => {
   beforeEach(() => {
     persistence = makePersistence()
     constructedWith = []
+    levelConstructedWith = []
+    levelOpen = vi.fn(async () => undefined)
     mockWriteSync.mockReset().mockReturnValue(0)
+    mockRequire.resolve = () => '/fake/node_modules/y-leveldb/dist/y-leveldb.cjs'
     mockRequire.mockReset().mockImplementation((id: string) => {
+      // Stands in for `level`, whose only job here is to be constructed by
+      // y-leveldb and opened by the child.
+      if (id === 'level') {
+        return {
+          Level: class {
+            constructor(dir: string) {
+              levelConstructedWith.push(dir)
+            }
+            open = (): Promise<void> => levelOpen()
+          }
+        }
+      }
       if (id !== 'y-leveldb') throw new Error(`unexpected require: ${id}`)
       return {
         LeveldbPersistence: class {
-          constructor(dir: string) {
+          constructor(dir: string, opts?: { Level?: new (dir: string, o: object) => unknown }) {
             constructedWith.push(dir)
+            // Real y-leveldb constructs the adapter in its own constructor;
+            // the child's diagnostic depends on that, so the fake does too.
+            if (opts?.Level) new opts.Level(dir, {})
           }
           storeUpdate = persistence.storeUpdate
           getYDoc = persistence.getYDoc
@@ -259,6 +298,67 @@ describe('crdt-preflight-child', () => {
       expect(persistence.clearDocument).not.toHaveBeenCalled()
     })
 
+    /**
+     * The field failure this exists for (2026.909.1, Linux): every y-leveldb
+     * call runs inside `_transact`, which catches, warns and resolves `null`,
+     * so a store that could not be opened at all still walked past the write
+     * and read markers and died on `TypeError: Cannot read properties of null
+     * (reading 'destroy')`. The LevelDB error was never printed anywhere.
+     */
+    it('prints the LevelDB open error, root cause first, and stops at the open marker', async () => {
+      levelOpen.mockRejectedValue(
+        Object.assign(new Error('Database is not open'), {
+          code: 'LEVEL_DATABASE_NOT_OPEN',
+          cause: new Error(
+            'IO error: lock /Users/ada/Library/Application Support/memry/crdt-store/LOCK: already held by process'
+          )
+        })
+      )
+
+      const code = await runChild()
+
+      expect(code).toBe(1)
+      expect(levelConstructedWith).toEqual([STORE_DIR])
+      const openLine = marks().find((line) => line.includes('store open failed'))
+      // The wrapper says only "Database is not open"; the cause is the line
+      // that separates a held LOCK from a corrupt store, so it leads.
+      expect(openLine).toContain('IO error: lock')
+      expect(openLine).toContain('already held by process')
+      expect(openLine).toContain('[LEVEL_DATABASE_NOT_OPEN] Database is not open')
+      expect(openLine?.indexOf('IO error')).toBeLessThan(
+        openLine?.indexOf('LEVEL_DATABASE_NOT_OPEN') ?? -1
+      )
+      // Nothing past the open was attempted — the store markers would otherwise
+      // claim a write and a read that never really ran.
+      expect(
+        marks()
+          .filter((line) => line.startsWith('@@'))
+          .at(-1)
+      ).toBe(`${PREFLIGHT_MARK_STORE_OPS.open}\n`)
+      expect(persistence.storeUpdate).not.toHaveBeenCalled()
+    })
+
+    it('opens the store explicitly before the first y-leveldb call', async () => {
+      await runChild()
+
+      expect(levelOpen).toHaveBeenCalledTimes(1)
+      expect(levelOpen.mock.invocationCallOrder[0]).toBeLessThan(
+        persistence.storeUpdate.mock.invocationCallOrder[0]
+      )
+    })
+
+    it('names the swallowed read instead of dereferencing null', async () => {
+      persistence.getYDoc.mockResolvedValue(null)
+
+      const code = await runChild()
+
+      expect(code).toBe(1)
+      const reported = errorSpy.mock.calls[0]?.[0]
+      expect(reported).toBeInstanceOf(Error)
+      expect(reported).not.toBeInstanceOf(TypeError)
+      expect(String(reported)).toContain('store read returned null')
+    })
+
     it('exits non-zero, without loading the binding, when no probe dir is passed', async () => {
       const code = await runChild(null)
 
@@ -266,6 +366,55 @@ describe('crdt-preflight-child', () => {
       expect(mockRequire).not.toHaveBeenCalled()
       expect(errorSpy.mock.calls[0]?.[0]).toBeInstanceOf(Error)
       expect(String(errorSpy.mock.calls[0]?.[0])).toContain('missing probe directory')
+    })
+  })
+
+  /**
+   * The one test that loads the real y-leveldb and the real classic-level
+   * binding. Everything above proves the child's wiring against fakes, which
+   * cannot prove the two things that actually matter in the field: that
+   * y-leveldb honours the injected `Level` adapter at all, and that a store
+   * whose LOCK is held really does reject the explicit open with a message
+   * naming the lock. Needs `pnpm --filter @memry/desktop rebuild:node`.
+   */
+  describe('against a real LevelDB store', () => {
+    it('reports the held LOCK instead of dying on a null dereference', async () => {
+      const { createRequire: realCreateRequire } =
+        await vi.importActual<typeof import('module')>('module')
+      const realRequire = realCreateRequire(import.meta.url)
+      // Mirror the child's own two-step resolution: `level` comes from
+      // y-leveldb's directory, not ours. It matters — the repo carries two
+      // classic-level copies, and LevelDB's lock table lives inside a loaded
+      // native binary, so a holder from the other copy would not conflict.
+      const yLeveldbRequire = realCreateRequire(realRequire.resolve('y-leveldb'))
+      mockRequire.resolve = (id: string) => realRequire.resolve(id)
+      mockRequire.mockImplementation((id: string) =>
+        id === 'level' ? yLeveldbRequire(id) : realRequire(id)
+      )
+
+      // Holding the LOCK here is what the previous app process does to the
+      // next one when it never exits cleanly.
+      const { Level } = yLeveldbRequire('level') as {
+        Level: new (dir: string, opts: object) => { open(): Promise<void>; close(): Promise<void> }
+      }
+      const dir = await mkdtemp(join(tmpdir(), 'memry-preflight-lock-'))
+      const holder = new Level(dir, {})
+      await holder.open()
+
+      try {
+        expect(await runChild(dir)).toBe(1)
+
+        const openLine = marks().find((line) => line.includes('store open failed'))
+        expect(openLine).toBeDefined()
+        expect(openLine).toContain('lock')
+        expect(openLine).toContain('LOCK')
+        // The masked failure: a TypeError from `loaded.destroy()` naming
+        // neither the store nor the cause.
+        expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain('reading')
+      } finally {
+        await holder.close()
+        await rm(dir, { recursive: true, force: true })
+      }
     })
   })
 

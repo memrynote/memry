@@ -220,6 +220,19 @@ store from a machine that cannot start a child at all:
 - `binding-in-use` — a `store` failure that reproduced against an empty
   directory. Not a marker the child can write; the provider assigns it (below).
 
+The markers name the failing operation, not its cause. y-leveldb opens its
+database lazily and runs every call inside a transaction wrapper that catches,
+warns and resolves `null` — so a store that could not be opened at all used to
+walk past the `write` and `read` markers and die on a null dereference, with the
+LevelDB error never printed anywhere. The child therefore hands y-leveldb its
+own level adapter, opens it **explicitly** right after the `open` marker, and
+prints the whole cause chain root cause first (`IO error: lock <dir>/LOCK:
+already held by process`, `Corruption: …`) — which is what tells a store held
+open by a previous process apart from a store that is genuinely damaged. The
+parent attaches that line to the failure `reason`, bounded and with absolute
+paths stripped, so it reaches the `CRDT_PERSISTENCE_UNAVAILABLE` telemetry event
+too.
+
 A `bootstrap` **or** `store` failure is retried once as a plain node child
 (`ELECTRON_RUN_AS_NODE`), which starts no Chromium and no crash handler. A
 verdict reported with `transport: node` therefore means the Chromium-free
