@@ -525,6 +525,46 @@ describe('exceptionEvent', () => {
     expect(result?.properties).not.toHaveProperty('$exception_fingerprint')
   })
 
+  it('omits $exception_fingerprint for a generic constructor-name error code', () => {
+    // `toErrorCode` reports `Error` for every bare `new Error(...)`; pinning the
+    // fingerprint to it merged ~30 unrelated failures into one issue (#2134).
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({ errorCode: 'Error', error: { message: 'net::ERR_TIMED_OUT' } }),
+      ctx
+    )
+    expect(result?.properties).not.toHaveProperty('$exception_fingerprint')
+  })
+
+  it('omits $exception_fingerprint for the UnknownError fallback code', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({ errorCode: 'UnknownError', error: { message: 'boom' } }),
+      ctx
+    )
+    expect(result?.properties).not.toHaveProperty('$exception_fingerprint')
+  })
+
+  it('still pins $exception_fingerprint for a typed code that happens to end in Error', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({ errorCode: 'SqliteError', error: { message: 'database is locked' } }),
+      ctx
+    )
+    expect(result?.properties.$exception_fingerprint).toBe('SqliteError')
+  })
+
+  it('keeps the generic code as $exception_list[0].type even when it does not group', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({ errorCode: 'Error', error: { message: 'net::ERR_TIMED_OUT' } }),
+      ctx
+    )
+    const list = result?.properties.$exception_list as { type: string; value: string }[]
+    expect(list[0].type).toBe('Error')
+    expect(list[0].value).toBe('net::ERR_TIMED_OUT')
+  })
+
   it('still sets $exception_list[0].type to the event name when there is no errorCode', () => {
     const result = exceptionEvent(
       batchFixture(),

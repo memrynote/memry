@@ -321,6 +321,33 @@ export const isLegacyMutationDropNoise = (batch: TelemetryBatch, event: Telemetr
   event.dimensions?.log_action === 'local_mutation_dropped' &&
   isVersionBefore(batch.appVersion, DROP_TRIPWIRE_FIX_VERSION)
 
+// `toErrorCode` falls back to the error's constructor name, so every bare
+// `new Error('...')` in the codebase reports errorCode `Error`. Pinning the
+// fingerprint to that collapsed ~30 unrelated failures — offline network
+// errors, a Squirrel read-only-volume update failure, `data.db failed PRAGMA
+// quick_check`, missing agent API keys — into ONE issue, titled after whichever
+// stack the first sample happened to carry (#2134). A generic constructor name
+// is not a code: it says nothing about what failed, so it must not group.
+//
+// Omitting the fingerprint hands grouping back to PostHog's pattern hash, which
+// reads the type, the message and the stack frames — the failures above split
+// into their own issues instead of one meaningless bucket.
+const NON_DISCRIMINATING_ERROR_CODES = new Set([
+  'Error',
+  'EvalError',
+  'RangeError',
+  'ReferenceError',
+  'SyntaxError',
+  'TypeError',
+  'URIError',
+  'AggregateError',
+  'UnknownError',
+  'StringError'
+])
+
+const isGroupableErrorCode = (errorCode: string | undefined): errorCode is string =>
+  Boolean(errorCode) && !NON_DISCRIMINATING_ERROR_CODES.has(errorCode as string)
+
 // Error Tracking requires the event name to be exactly `$exception`; a plain
 // `exception` lands in Events and never reaches the Error Tracking product.
 //
@@ -391,10 +418,12 @@ export const exceptionEvent = (
       // Unlike `type`, the fingerprint must NOT fall back to event.name: that would
       // collapse every distinct error without an errorCode into one Error Tracking
       // issue (all grouped under e.g. "app_error_seen"), defeating the pinning this
-      // comment block exists to justify. Omit the key when there is no errorCode so
-      // PostHog falls back to its own pattern-hash grouping instead. Do not
-      // "simplify" this back to an unconditional assignment.
-      ...(event.errorCode ? { $exception_fingerprint: event.errorCode } : {}),
+      // comment block exists to justify. Omit the key when there is no errorCode,
+      // and equally when the code is only a generic constructor name
+      // (NON_DISCRIMINATING_ERROR_CODES), so PostHog falls back to its own
+      // pattern-hash grouping instead. Do not "simplify" this back to an
+      // unconditional assignment.
+      ...(isGroupableErrorCode(event.errorCode) ? { $exception_fingerprint: event.errorCode } : {}),
       surface: event.surface,
       action: event.action,
       app_version: batch.appVersion,
