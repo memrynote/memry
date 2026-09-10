@@ -72,6 +72,19 @@ const config: ExpoConfig = {
       'expo-local-authentication',
       { faceIDPermission: 'Memry uses Face ID to unlock your vault on this device.' }
     ],
+    [
+      // Without this plugin the prebuilt Info.plist carries no
+      // NSPhotoLibraryUsageDescription, and iOS kills the process the moment
+      // the picker asks for photo access — inserting an image quits the app.
+      // Camera and microphone are blocked on purpose: the app only ever reads
+      // from the library, so it must not ask for either.
+      'expo-image-picker',
+      {
+        photosPermission: 'Memry needs your photos so you can add one to a note.',
+        cameraPermission: false,
+        microphonePermission: false
+      }
+    ],
     ...(googleSignIn && reversedIosClientId
       ? ([
           ['@react-native-google-signin/google-signin', { iosUrlScheme: reversedIosClientId }]
