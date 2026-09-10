@@ -7,9 +7,10 @@ import { pushPostHogLogs, type LogRecord } from './posthog-logs'
 import { hashTelemetryId } from './telemetry'
 
 // Server-side product/business events, errors and logs → PostHog, the same sink
-// desktop telemetry uses. Every server-emitted signal shares one distinct_id per
-// environment (server events are not attributed to an individual end user); actor
-// context (user/device/vault id) rides along as PostHog properties instead.
+// desktop telemetry uses. Business events are attributed to the acting user via
+// the HMAC hash of their id as distinct_id, so unique-user metrics are real;
+// errors and logs (which have no single actor) still share one distinct_id per
+// environment, with actor context riding along as PostHog properties instead.
 // Server rows are tagged properties.surface = 'server'. Detailed error
 // messages/stacks are redacted and go to PostHog Logs only, never to the event.
 
@@ -166,11 +167,12 @@ const getErrorType = (error: unknown): string => {
 
 const getRequestPath = (req: WaitUntilContext['req']): string => req.path ?? req.url ?? '/'
 
-// Fixed per environment, not per caller — server business/error/log events are
-// attributed to one pseudo-actor ("the server"), not an individual end user.
-// Any real actor (user/device/vault id) the caller knows about rides along as a
-// property instead; see captureBusinessEvent's user_id and captureServerError's
-// detail.user_id/device_id/vault_id.
+// Fixed per environment, not per caller — server error/log signals are attributed
+// to one pseudo-actor ("the server"), not an individual end user. Any real actor
+// (user/device/vault id) the caller knows about rides along as a property
+// instead; see captureServerError's detail.user_id/device_id/vault_id. Business
+// events do NOT use this — they carry the hashed user id (#2131); this stays
+// their fallback for the actor-less case.
 const serverDistinctId = (env: AnalyticsEnv): string =>
   `memry_server_${safeLabel(env.ENVIRONMENT, 'unknown')}`
 
@@ -187,7 +189,11 @@ export const captureBusinessEvent = async (
     const hashedUserId = await hashTelemetryId(env.TELEMETRY_HMAC_KEY, distinctId)
     const posthogEvent: PostHogEvent = {
       event,
-      distinct_id: serverDistinctId(env),
+      // The hash is already opaque, so using it as distinct_id leaks nothing the
+      // user_id property did not already carry — and it stops every server event
+      // collapsing onto one PostHog person (#2131). Empty ids never happen at the
+      // current call sites, but fall back rather than emit a blank distinct_id.
+      distinct_id: distinctId ? hashedUserId : serverDistinctId(env),
       properties: {
         ...properties,
         // Trusted keys are assigned after the spread (not before) so a
