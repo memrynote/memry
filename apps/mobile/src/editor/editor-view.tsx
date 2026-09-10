@@ -15,6 +15,7 @@ import {
   type EditorAttachmentBlockType,
   type GuestMsg,
   type InlineMenuTrigger,
+  type LinkPreview,
   type WikiCandidate
 } from '@memry/contracts/webview-bridge'
 import { bytesToBase64 } from '../lib/base64'
@@ -85,6 +86,14 @@ export interface EditorViewProps {
     mime?: string
     status: 'ready' | 'pending' | 'missing'
   }>
+  /**
+   * What a pasted URL's page says about itself, for the paste-link menu (#2104).
+   *
+   * The guest has no network, so the fetch is the host's. Asked for only after
+   * the reader has chosen `Bookmark` or `Mention` — this is the one message on
+   * this boundary that reaches a third-party server.
+   */
+  onLinkPreview: (url: string) => Promise<LinkPreview>
   /** Native file picker requested by the WebView toolbar. */
   onInsertRequest: (request: {
     blockType: EditorAttachmentBlockType
@@ -207,6 +216,7 @@ export function EditorView({
   onNavigate,
   onWikiQuery,
   onAssetRequest,
+  onLinkPreview,
   onInsertRequest,
   onKeyboardVisibilityChange,
   onPanelVisibilityChange,
@@ -400,6 +410,31 @@ export function EditorView({
             })
           break
 
+        // Answers unconditionally, like the two above and for the same reason:
+        // the guest holds the reqId of an in-flight request, and a dropped
+        // answer leaves the bookmark it belongs to showing a bare hostname
+        // with nothing to say the metadata is never coming.
+        case 'link-preview-req':
+          void onLinkPreview(msg.url)
+            .catch((err: unknown) => {
+              log.warn('Link preview failed', {
+                error: err instanceof Error ? err.message : String(err)
+              })
+              return {
+                title: '',
+                domain: '',
+                description: '',
+                image: '',
+                favicon: '',
+                siteName: ''
+              }
+            })
+            .then((preview) => {
+              bridge.send({ type: 'link-preview', reqId: msg.reqId, ...preview })
+              bridge.flush()
+            })
+          break
+
         case 'insert-request':
           if (msg.docId === docId) {
             onInsertRequest({
@@ -481,6 +516,7 @@ export function EditorView({
       onAssetRequest,
       onBlockMoveRequest,
       onInsertRequest,
+      onLinkPreview,
       onKeyboardVisibilityChange,
       onPanelVisibilityChange,
       onScroll,

@@ -871,6 +871,13 @@ img.bookmark-image {
   min-block-size: 0;
 }
 
+/* The still frame fills its own 16:9 frame in every state, so a note does not
+   jump when the bytes land. Same reasoning as `img.bookmark-image` above. */
+img.embed-image {
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
 /* Last child of the flex card, next to `.bookmark-body`'s `flex: 1 1 auto`, so
    it takes a fixed thumbnail column instead of the card's whole width. */
 .bookmark-image {
@@ -965,6 +972,65 @@ img.bookmark-image {
 
 .wiki-menu-hint {
   border-block-start: 1px solid var(--memry-hairline);
+}
+
+/* The paste-link strip (#2104). Same box as the wiki menu — pinned above the
+   toolbar, full-bleed, one hairline per row — because it answers the same kind
+   of question in the same place, and two different sheets in one gap would read
+   as two different features. Rows are taller: there are at most four of them,
+   so each can meet the 44px touch minimum the wiki list gives up to fit five. */
+.paste-link-menu {
+  position: absolute;
+  pointer-events: auto;
+  inset-block-end: var(--memry-viewport-bottom-inset, 0px);
+  inset-inline: 0;
+  z-index: 20;
+  background: var(--memry-paper);
+  border-block-start: 1px solid var(--memry-hairline);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.paste-link-menu-title {
+  padding-block: 6px;
+  padding-inline: 14px;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.paste-link-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding-block: 8px;
+  padding-inline: 14px;
+  text-align: start;
+  background: none;
+  border: 0;
+  border-block-start: 1px solid var(--memry-hairline);
+  color: inherit;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.paste-link-item:active {
+  background: color-mix(in srgb, var(--memry-accent) 12%, transparent);
+}
+
+.paste-link-glyph {
+  display: inline-flex;
+  flex: 0 0 18px;
+  font-size: 16px;
+  opacity: 0.6;
+}
+
+.paste-link-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The root element is in the selector list as well as its descendants: `html`
@@ -1154,6 +1220,73 @@ img.bookmark-image {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The YouTube card with a thumbnail. Not a `.embed-block` row: the frame is the
+   card, and the url is a caption under it rather than a column beside a glyph. */
+.embed-media {
+  display: block;
+  inline-size: 100%;
+  box-sizing: border-box;
+  margin-block: 8px;
+}
+
+.embed-thumb {
+  position: relative;
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--memry-ink) 6%, transparent);
+}
+
+.embed-image {
+  inline-size: 100%;
+  block-size: 100%;
+  /* `hqdefault` is a 4:3 frame with letterbox bars; cropping it to the card is
+     what desktop does too, so the two read as the same block. */
+  object-fit: cover;
+}
+
+/* Purely a "this is a video" marker. It is NOT a play control — tapping the
+   card leaves for YouTube, and nothing plays in the note. */
+.embed-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #fff;
+  background: rgb(0 0 0 / 25%);
+  pointer-events: none;
+}
+
+/* Two lines, then an ellipsis: a video title can be a paragraph, and the card
+   is a reference to the video, not a place to read one. */
+.embed-media .embed-name {
+  display: -webkit-box;
+  margin-block-start: 8px;
+  font-size: 17px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* The title takes the room it needs first; the URL is the line that gives way,
+   clipped to one line by `.embed-url` above. */
+.embed-media .embed-url {
+  display: block;
+  margin-block-start: 4px;
+  font-size: 13px;
+  color: var(--memry-muted);
+}
+
+/* No title (a block read back from disk): the URL sits directly under the frame
+   and takes the title's spacing. */
+.embed-thumb + .embed-url {
+  margin-block-start: 8px;
 }
 
 .bookmark-description {

@@ -85,6 +85,17 @@ requests carry both the requested block type and the reference block id captured
 before the native picker opens. The host can request a live Markdown export for
 sharing or note actions without treating the WebView replica as durable storage.
 
+One pair of messages leaves the device. `link-preview-req` / `link-preview` fetch
+what a pasted link's page says about itself — title, description, site name and
+the favicon and cover-image URLs — so the paste-link menu can turn a URL into a
+bookmark card or a mention chip. The fetch is the host's because the WebView
+document has no network by contract and its CSP grants no remote origin, and it
+happens **only** after the reader has tapped `Bookmark` or `Mention`: never on
+note open, and never for a URL they left as plain text. The two image URLs are
+stored on the block but not drawn on the phone — the guest CSP is
+`img-src data: blob:` — because desktop reads the same props out of the shared
+Y.Doc and does draw them.
+
 Two messages carry the note's native header, which floats OVER the document
 rather than above it: `cfg.headerHeight` tells the guest how much space to
 reserve at the top so the prose starts below the title, and the guest reports

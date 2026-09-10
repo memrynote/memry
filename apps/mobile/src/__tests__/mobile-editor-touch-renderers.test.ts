@@ -247,18 +247,56 @@ describe('file', () => {
 })
 
 describe('youtubeEmbed', () => {
-  it('shows a card with no image and no link', () => {
+  it('shows the thumbnail as a host-proxied ref, with no link and no player', () => {
     const { dom } = renderBlock('youtubeEmbed', {
       videoId: 'dQw4w9WgXcQ',
-      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      title: 'Never Gonna Give You Up'
     })
 
-    expect(dom.querySelector('.embed-title')?.textContent).toBe('YouTube')
+    expect(dom.querySelector('.embed-name')?.textContent).toBe('Never Gonna Give You Up')
+    const image = dom.querySelector('img.embed-image')
+    // A bare `src` would be a blocked request under `img-src data: blob:`; the
+    // ref is what `images.ts` claims and the host fetches.
+    expect(image?.getAttribute('data-asset-ref')).toBe(
+      'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg'
+    )
+    expect(image?.hasAttribute('src')).toBe(false)
     expect(dom.querySelector('.embed-url')?.textContent).toBe(
       'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
     )
-    expect(countTags(dom, 'img')).toBe(0)
+    // The tap target `external-links.ts` reads. Nothing plays in the note, so
+    // there is no iframe and no anchor to navigate.
+    expect(dom.querySelector('[data-url]')?.getAttribute('data-url')).toBe(
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    )
+    expect(countTags(dom, 'iframe')).toBe(0)
     expect(countTags(dom, 'a')).toBe(0)
+  })
+
+  it('falls back to the plain card when the block carries no video id', () => {
+    const { dom } = renderBlock('youtubeEmbed', {
+      videoId: '',
+      videoUrl: 'https://www.youtube.com/watch?v='
+    })
+
+    expect(dom.querySelector('.embed-title')?.textContent).toBe('YouTube')
+    expect(countTags(dom, 'img')).toBe(0)
+  })
+
+  it('keeps the url line alone when no title was ever fetched', () => {
+    // The `![embed](url)` marker on disk carries no title, so this is what
+    // every embed looks like after a note is read back from a file.
+    const { dom } = renderBlock('youtubeEmbed', {
+      videoId: 'dQw4w9WgXcQ',
+      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      title: ''
+    })
+
+    expect(dom.querySelector('.embed-name')).toBeNull()
+    expect(dom.querySelector('.embed-url')?.textContent).toBe(
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    )
   })
 
   it('drops the url line when the block carries neither url nor id', () => {

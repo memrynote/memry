@@ -92,6 +92,7 @@ import { useWorkspaceTabs } from '@/features/workspace-tabs/provider'
 import { WorkspaceTabsModal } from '@/features/workspace-tabs/workspace-tabs-modal'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { extractErrorMessage } from '@/lib/errors'
+import { fetchLinkPreview } from '@/lib/link-preview'
 import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
 import { ensureNoteBody } from '@/sync/body-fetch'
@@ -632,6 +633,11 @@ export default function NoteScreen() {
     [id, session]
   )
 
+  // Not memoised against anything: it takes a URL and makes one request, and
+  // it is reached only when the reader has already tapped `Bookmark` or
+  // `Mention` in the guest's paste menu (#2104).
+  const onLinkPreview = useCallback((url: string) => fetchLinkPreview(url), [])
+
   const onInsert = useCallback(
     async (request: { blockType: EditorAttachmentBlockType; referenceBlockId?: string }) => {
       const sourceId = id
@@ -1134,6 +1140,7 @@ export default function NoteScreen() {
         onNavigate={onNavigate}
         onWikiQuery={onWikiQuery}
         onAssetRequest={onAssetRequest}
+        onLinkPreview={onLinkPreview}
         onInsertRequest={(request) => void onInsert(request)}
         onBlockMoveRequest={onBlockMove}
         onKeyboardVisibilityChange={setKeyboardVisible}

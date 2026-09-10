@@ -64,7 +64,15 @@ export const youtubeEmbedConfig = {
   type: 'youtubeEmbed' as const,
   propSchema: {
     videoId: { default: '' },
-    videoUrl: { default: '' }
+    videoUrl: { default: '' },
+    /**
+     * The video's own title, fetched when the reader chooses `Embed video`.
+     *
+     * Additive and empty by default: the on-disk form is `![embed](url)` and
+     * carries no title, so a block read back from a file — or written by an
+     * older build — has none, and both renderers fall back to the URL alone.
+     */
+    title: { default: '' }
   },
   content: 'none' as const
 }
