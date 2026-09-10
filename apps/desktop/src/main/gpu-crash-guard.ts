@@ -90,6 +90,17 @@ export function applyGpuCrashGuard(): void {
 }
 
 /**
+ * Chromium no longer falls back to SwiftShader for WebGL on its own. Without
+ * this switch a launch that has no GPU WebGL (hardware acceleration disabled by
+ * the guard above, a blocklisted driver, Remote Desktop, a VM) gets no WebGL
+ * context at all, and every Sigma graph surface renders the "graph isn't
+ * available" fallback. Must run before app 'ready'.
+ */
+export function enableSoftwareWebglFallback(): void {
+  app.commandLine.appendSwitch('enable-unsafe-swiftshader')
+}
+
+/**
  * Pure decision: should a `child-process-gone` event be recorded as a GPU crash?
  * Only the GPU process dying for a real fault qualifies — exclude 'clean-exit'
  * (normal shutdown) and, since Electron 40, 'memory-eviction' (OS memory-pressure

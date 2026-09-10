@@ -243,9 +243,13 @@ Turn the motion off with **Live motion** under the gear icon → **Display** if 
 still graph — the same forces then run once and stop, which is also the lighter option on
 very large vaults.
 
-If the device cannot start WebGL, Memry shows a safe fallback instead of opening the graph.
-Your notes remain available, and **Close** removes the graph tab so it will not be restored on
-the next launch.
+Memry turns on Chromium's software WebGL renderer, so a device without GPU acceleration — a
+remote desktop session, a virtual machine, a blocklisted graphics driver, or a launch where Memry
+disabled hardware acceleration after a GPU crash — still draws the graph, only more slowly.
+
+If even the software renderer cannot start, Memry shows a safe fallback instead of opening the
+graph. Your notes remain available, and **Close** removes the graph tab so it will not be
+restored on the next launch.
 
 ## Renaming a Linked Note
 

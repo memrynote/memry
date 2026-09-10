@@ -145,7 +145,12 @@ import {
   performQuitAndInstall
 } from './updater'
 import { clearPendingInstallMarker, isPendingInstallInFlight } from './updater-install-guard'
-import { applyGpuCrashGuard, recordGpuCrash, shouldRecordGpuCrash } from './gpu-crash-guard'
+import {
+  applyGpuCrashGuard,
+  enableSoftwareWebglFallback,
+  recordGpuCrash,
+  shouldRecordGpuCrash
+} from './gpu-crash-guard'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
 import { getMainI18n, setMainI18n } from './lib/main-i18n'
 import {
@@ -290,6 +295,7 @@ migrateLegacyLogDir()
 // blacklisted Windows GPUs paint nothing, leaving an invisible window), fall
 // back to software rendering this launch instead of stranding the user.
 applyGpuCrashGuard()
+enableSoftwareWebglFallback()
 
 // Native crashes (the ones no JS handler ever sees) leave a minidump in
 // app.getPath('crashDumps') for the Path B diagnostic bundle the user submits

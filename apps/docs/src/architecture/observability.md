@@ -260,6 +260,19 @@ void trackTelemetry('onboarding_completed', {
 
 The `void` makes the call non-blocking and unfailable from the UI's point of view.
 
+### WebGL Availability
+
+Every Sigma graph surface (`graph-page`, `graph-canvas`, `local-graph-panel`) probes
+`hasWebGLSupport()` (`apps/desktop/src/renderer/src/lib/webgl-support.ts`) before mounting.
+Chromium no longer falls back to SwiftShader for WebGL on its own, so `main/index.ts` appends
+`--enable-unsafe-swiftshader` before `ready` (`enableSoftwareWebglFallback()` in
+`gpu-crash-guard.ts`): a launch without GPU WebGL — hardware acceleration disabled by the crash
+guard, a blocklisted driver, Remote Desktop, a VM — renders the graph in software instead of
+showing the "Graph isn't available on this device" fallback. When even that fails, the probe
+records one `app_log_recorded` `warn` per session (`source: WebGLSupport`,
+`log_action: webgl_unavailable`) so affected installs can be counted in PostHog. The fallback is an
+expected device condition, never an `app_error_seen` exception.
+
 ### Events Before the Runtime Exists
 
 `trackMainEvent` used to no-op while `getTelemetryRuntime()` was still `null`, so anything that
