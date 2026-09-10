@@ -30,6 +30,64 @@ pnpm --filter @memry/mobile start:staging # Metro only, staging server
 
 Both set `EXPO_PUBLIC_MEMRY_SERVER=staging`. Bare `ios` / `start` are not the mobile test path; use the `:staging` scripts unless Kaan says otherwise.
 
+### One simulator per worktree
+
+Several worktrees may need a simulator at the same time. Never assume port 8081 or "the booted simulator" is yours — a Metro on 8081 is very likely another worktree's, and a native build from this tree talking to that Metro shows the *other* tree's JS with no error anywhere. Claim a slot first.
+
+Slots (device, Metro port):
+
+| slot | device | port |
+| --- | --- | --- |
+| 0 | iPhone 17 Pro | 8081 |
+| 1 | iPhone 17 | 8082 |
+| 2 | iPhone 17 Pro Max | 8083 |
+| 3 | iPhone Air | 8084 |
+| 4 | iPhone 17e | 8085 |
+
+Claim the lowest slot that is free or already this worktree's:
+
+```bash
+WT="$(git rev-parse --show-toplevel)"
+mkdir -p ~/.memry/sim-slots
+for i in 0 1 2 3 4; do
+  port=$((8081 + i)); claim=~/.memry/sim-slots/slot-$i
+  owner="$(cat "$claim" 2>/dev/null)"
+  if [ "$owner" = "$WT" ]; then break; fi
+  if [ -z "$(lsof -ti :$port)" ] && { [ -z "$owner" ] || [ ! -d "$owner" ]; }; then
+    printf '%s' "$WT" > "$claim"; break
+  fi
+  i=""
+done
+[ -n "$i" ] || { echo "no free simulator slot"; exit 1; }
+DEVICE="$(sed -n "$((i + 1))p" <<'EOF'
+iPhone 17 Pro
+iPhone 17
+iPhone 17 Pro Max
+iPhone Air
+iPhone 17e
+EOF
+)"
+PORT=$((8081 + i))
+UDID="$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for v in d.values() for x in v if x['name']=='$DEVICE'))")"
+echo "slot=$i device=$DEVICE port=$PORT udid=$UDID"
+```
+
+Then, from `apps/mobile`:
+
+```bash
+EXPO_PUBLIC_MEMRY_SERVER=staging npx expo start --clear --port "$PORT"   # background, keep alive
+EXPO_PUBLIC_MEMRY_SERVER=staging npx expo run:ios -d "$DEVICE" --port "$PORT"  # build + install, exits
+```
+
+Rules:
+
+- Start Metro yourself on `$PORT` and keep it running; never let `run:ios` pick up a stray bundler. `--clear` is mandatory (stale `editor-web` asset otherwise).
+- `run:ios` exiting immediately is normal — it only builds and installs. Metro is a separate process and does **not** die when the simulator or the app closes; kill it with `kill $(lsof -ti :$PORT)` when done.
+- Only one `expo run:ios` at a time across all worktrees — xcodebuild and DerivedData are shared. Serialize with `while ! mkdir ~/.memry/xcodebuild.lock 2>/dev/null; do sleep 10; done` and `rmdir` after.
+- Always target the slot explicitly: `xcrun simctl io "$UDID" screenshot shot.png`, `xcrun simctl boot "$UDID"`. Never use `booted`.
+- Turn off the simulator's hardware keyboard (⇧⌘K) before any editor/toolbar test — otherwise the toolbar never appears and nothing errors.
+- Release the slot when finished: `rm -f ~/.memry/sim-slots/slot-$i` (and kill Metro). A claim whose worktree directory no longer exists is stale and may be taken.
+
 ## Verify
 
 ```bash
