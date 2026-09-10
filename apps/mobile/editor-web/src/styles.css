@@ -813,6 +813,10 @@ img.bookmark-image {
   border-block-start: 1px solid var(--memry-hairline);
 }
 
+/* The root element is in the selector list as well as its descendants: `html`
+   is the guest's scroller, so `scroll-behavior` has to be neutralised ON it,
+   not only inside it. */
+.reduced-motion,
 .reduced-motion *,
 .reduced-motion *::before,
 .reduced-motion *::after {

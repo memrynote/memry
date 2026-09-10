@@ -1,3 +1,5 @@
+import { scrollBehavior } from './reduced-motion'
+
 const QUERY_DEBOUNCE_MS = 150
 const MUTATION_DEBOUNCE_MS = 300
 const MATCHES_HIGHLIGHT = 'memry-find-matches'
@@ -173,7 +175,7 @@ export function installFindInNote(
       const bottom =
         rect.bottom > window.innerHeight - margin ? rect.bottom - window.innerHeight + margin : 0
       if (top !== 0 || bottom !== 0) {
-        window.scrollBy({ top: top || bottom, behavior: 'smooth' })
+        window.scrollBy({ top: top || bottom, behavior: scrollBehavior() })
       }
     }
   }
