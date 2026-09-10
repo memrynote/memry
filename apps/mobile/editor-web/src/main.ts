@@ -4,6 +4,7 @@
 import { beginOpenMarks, guestMarks, markGuest } from './open-marks.ts'
 import * as Y from 'yjs'
 import { BlockNoteEditor } from '@blocknote/core'
+import { en as coreEn } from '@blocknote/core/locales'
 import { codeBlockOptions } from '@blocknote/code-block'
 import {
   createInlineCheckboxContent,
@@ -103,6 +104,14 @@ const schemaV = fingerprintSchema(schema)
 function createEditor(fragment: Y.XmlFragment) {
   return BlockNoteEditor.create({
     schema,
+    // No placeholder text on mobile: the hint sat under the caret on a small
+    // screen and read as content the moment the keyboard came up.
+    dictionary: {
+      ...coreEn,
+      placeholders: Object.fromEntries(
+        Object.keys(coreEn.placeholders).map((key) => [key, ''])
+      ) as typeof coreEn.placeholders
+    },
     collaboration: {
       fragment,
       // No remote cursors are ever shown here — one person, one device, one
