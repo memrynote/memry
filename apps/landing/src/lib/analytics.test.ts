@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 import {
   createLandingEventData,
   createLandingPageViewData,
+  isReplayRecorderException,
   isSafeLinksScannerException,
   readLandingCampaignParams,
   trackLandingEvent,
@@ -134,6 +135,90 @@ describe('SafeLinks scanner noise', () => {
     assert.equal(isSafeLinksScannerException({ event: '$exception' }), false)
     assert.equal(
       isSafeLinksScannerException({ event: '$exception', properties: { $exception_values: null } }),
+      false
+    )
+  })
+})
+
+describe('replay recorder noise', () => {
+  const recorderSource = ['/assets/posthog-CRUr1Hn-.js']
+
+  it('drops the Firefox DOM-permission errors thrown inside the posthog chunk', () => {
+    for (const value of [
+      "SecurityError: Permission to call 'get parentNode' denied.",
+      'Permission denied to access property "nodeType"'
+    ]) {
+      assert.equal(
+        isReplayRecorderException({
+          event: '$exception',
+          properties: { $exception_values: [value], $exception_sources: recorderSource }
+        }),
+        true
+      )
+    }
+  })
+
+  it('matches any hash of the posthog chunk', () => {
+    assert.equal(
+      isReplayRecorderException({
+        event: '$exception',
+        properties: {
+          $exception_values: ["SecurityError: Permission to call 'get parentNode' denied."],
+          $exception_sources: ['/assets/posthog-Zz00zZ99.js']
+        }
+      }),
+      true
+    )
+  })
+
+  it('keeps the same message when it comes from app code', () => {
+    assert.equal(
+      isReplayRecorderException({
+        event: '$exception',
+        properties: {
+          $exception_values: ["SecurityError: Permission to call 'get parentNode' denied."],
+          $exception_sources: ['/assets/index-Og-Irb9y.js']
+        }
+      }),
+      false
+    )
+  })
+
+  it('keeps genuine exceptions from the posthog chunk', () => {
+    assert.equal(
+      isReplayRecorderException({
+        event: '$exception',
+        properties: {
+          $exception_values: ['TypeError: x is not a function'],
+          $exception_sources: recorderSource
+        }
+      }),
+      false
+    )
+  })
+
+  it('never drops a non-exception event, whatever it contains', () => {
+    assert.equal(
+      isReplayRecorderException({
+        event: '$pageview',
+        properties: {
+          $exception_values: ["SecurityError: Permission to call 'get parentNode' denied."],
+          $exception_sources: recorderSource
+        }
+      }),
+      false
+    )
+  })
+
+  it('tolerates a null, empty, or property-less event', () => {
+    assert.equal(isReplayRecorderException(null), false)
+    assert.equal(isReplayRecorderException(undefined), false)
+    assert.equal(isReplayRecorderException({ event: '$exception' }), false)
+    assert.equal(
+      isReplayRecorderException({
+        event: '$exception',
+        properties: { $exception_values: null, $exception_sources: null }
+      }),
       false
     )
   })

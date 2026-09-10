@@ -62,8 +62,16 @@
     <!--image-preloads-->
     <!--boot-modulepreloads-->
 
+    <!-- crossorigin is not optional here. This is the only cross-origin <script> on the
+         site, and without it the browser strips the message and stack off anything it
+         throws: every failure inside it arrived in error tracking as the opaque
+         placeholder `Script error.` (16 occurrences, Brave, over one recent week) while
+         the replay console showed the real text. datafa.st serves
+         `Access-Control-Allow-Origin: *`, so opting in costs nothing and the real
+         message survives. -->
     <script
       defer
+      crossorigin="anonymous"
       data-website-id="dfid_NF1lUqOqA3jIvh778H1ph"
       data-domain="memrynote.com"
       src="https://datafa.st/js/script.js"

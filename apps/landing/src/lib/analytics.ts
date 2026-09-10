@@ -150,6 +150,50 @@ export function isSafeLinksScannerException(
   })
 }
 
+// rrweb — the recorder posthog-js bundles for session replay — walks the DOM from a
+// MutationObserver. On Firefox it can be handed a node it is not allowed to read
+// (an extension-injected or otherwise privileged subtree), and every mutation on that
+// node throws again:
+//
+//   SecurityError: Permission to call 'get parentNode' denied.
+//   Permission denied to access property "nodeType"
+//
+// One Firefox 154/Windows session logged 1,760 of these in 467s (~4/sec) with 0
+// keypresses. The throw is inside the vendored recorder — the reported source is our
+// own `/assets/posthog-<hash>.js` chunk, not app code — so there is nothing here to fix:
+// the page has no iframes and creates none of the nodes involved. Dropped so the
+// observability tool cannot bury real exceptions by reporting on itself.
+//
+// Deliberately narrow on both axes: the message must be one of these two DOM-permission
+// strings AND the exception must be sourced to the posthog chunk (a stable name, see the
+// `manualChunks` entry in vite.config.ts). A DOM-permission error thrown from app code
+// still reaches error tracking.
+const RECORDER_DOM_PERMISSION =
+  /Permission to call '[^']+' denied|Permission denied to access property/
+const RECORDER_CHUNK_SOURCE = /\/assets\/posthog-[^/"\s]*\.js/
+
+const EXCEPTION_SOURCE_KEYS = ['$exception_sources', '$exception_list', '$exception_source']
+
+export function isReplayRecorderException(
+  event: { event?: string; properties?: Record<string, unknown> } | null | undefined
+): boolean {
+  if (!event || event.event !== '$exception') return false
+  const properties = event.properties
+  if (!properties) return false
+
+  const matches = (keys: readonly string[], pattern: RegExp): boolean =>
+    keys.some((key) => {
+      const value = properties[key]
+      if (value === undefined || value === null) return false
+      return pattern.test(asSearchableText(value))
+    })
+
+  return (
+    matches(EXCEPTION_MESSAGE_KEYS, RECORDER_DOM_PERMISSION) &&
+    matches(EXCEPTION_SOURCE_KEYS, RECORDER_CHUNK_SOURCE)
+  )
+}
+
 // Product analytics + session replay via posthog-js, direct to PostHog's
 // reverse-proxy subdomain. Session replay cannot be server-proxied, so this
 // replaces the old sendBeacon/fetch pipe into sync-server. `load` no-ops when
@@ -178,7 +222,8 @@ function load(): Promise<PostHog | null> {
         capture_pageview: false,
         // Returning null drops the event before it is queued. Everything else is
         // passed through untouched.
-        before_send: (event) => (isSafeLinksScannerException(event) ? null : event),
+        before_send: (event) =>
+          isSafeLinksScannerException(event) || isReplayRecorderException(event) ? null : event,
         session_recording: {
           maskAllInputs: true,
           // maskAllInputs only covers <input>/<textarea> values; account, login
