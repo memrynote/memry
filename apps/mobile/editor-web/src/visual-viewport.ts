@@ -14,33 +14,47 @@ export interface VisibleViewportController {
   destroy(): void
 }
 
-/** Distance between the visible viewport and the layout viewport's bottom. */
-export function visibleViewportBottomInset(metrics: VisibleViewportMetrics): number {
-  const { layoutHeight, viewportHeight, viewportOffsetTop } = metrics
-  return Math.max(0, Math.round(layoutHeight - viewportHeight - viewportOffsetTop))
-}
-
 /**
- * Whether something — in practice the software keyboard — is covering part of
- * the frame.
+ * How much of the frame the software keyboard covers, or `null` when this
+ * frame cannot say.
  *
- * Deliberately NOT `bottomInset > 0`. The inset is a POSITION and it decays to
- * zero on its own: scrolling with the keyboard up walks `offsetTop` all the way
- * up to the occluded height, at which point the visible viewport ends exactly
- * at the layout viewport's bottom and chrome pinned to that bottom is already
- * in the right place. Reading that as "the keyboard went away" is what used to
- * delete the toolbar part-way down a note (#2131). The occlusion itself is the
- * height the visible viewport is SHORT by, and that number does not move while
- * the reader scrolls.
+ * `visualViewport.height` only means "the part a person can see" while the
+ * visual viewport is at REST. Scroll down with the keyboard up and WKWebView
+ * pans the visual viewport towards the layout viewport's bottom, after which
+ * `height` reports the distance left to that bottom and
+ * `height + offsetTop === layoutHeight` identically. A frame taken mid-pan says
+ * nothing about the keyboard, so it is refused rather than believed: the
+ * keyboard did not move while the reader's finger did.
  */
-export function visibleViewportOccludedHeight(metrics: VisibleViewportMetrics): number {
+export function visibleViewportOccludedHeight(metrics: VisibleViewportMetrics): number | null {
+  if (Math.round(metrics.viewportOffsetTop) > 0) return null
   return Math.max(0, Math.round(metrics.layoutHeight - metrics.viewportHeight))
 }
 
-export function visibleViewportState(metrics: VisibleViewportMetrics): VisibleViewportState {
+/**
+ * Where chrome pinned to the bottom of the WebView's fixed layer has to sit.
+ *
+ * NEGATIVE on purpose. WKWebView carries that layer up with the pan, so past
+ * the occluded height the chrome has to be pushed back DOWN below the layer's
+ * own bottom edge to stay on the keyboard. Clamping this at zero is what let
+ * the formatting toolbar climb the screen on every downward scroll and snap
+ * back on the way up (#2131).
+ */
+export function visibleViewportBottomInset(
+  occludedHeight: number,
+  viewportOffsetTop: number
+): number {
+  return Math.round(occludedHeight - viewportOffsetTop)
+}
+
+export function visibleViewportState(
+  metrics: VisibleViewportMetrics,
+  latchedOccludedHeight: number
+): VisibleViewportState {
+  const occludedHeight = visibleViewportOccludedHeight(metrics) ?? latchedOccludedHeight
   return {
-    bottomInset: visibleViewportBottomInset(metrics),
-    keyboardVisible: visibleViewportOccludedHeight(metrics) > 0
+    bottomInset: visibleViewportBottomInset(occludedHeight, metrics.viewportOffsetTop),
+    keyboardVisible: occludedHeight > 0
   }
 }
 
@@ -51,6 +65,9 @@ export function visibleViewportState(metrics: VisibleViewportMetrics): VisibleVi
  * `visualViewport` reports the part a person can still see. React Native's
  * KeyboardAvoidingView cannot correct fixed DOM chrome because it only adds
  * native wrapper padding; this CSS inset closes that boundary explicitly.
+ *
+ * The occluded height is carried across frames because only the resting ones
+ * can measure it; see `visibleViewportOccludedHeight`.
  */
 export function installVisibleViewportInset(
   onKeyboardVisibilityChange?: (visible: boolean) => void
@@ -58,16 +75,19 @@ export function installVisibleViewportInset(
   const viewport = window.visualViewport
   const root = document.documentElement
   let state: VisibleViewportState = { bottomInset: 0, keyboardVisible: false }
+  let occludedHeight = 0
 
   const update = (): void => {
     const layoutHeight = Math.max(window.innerHeight, root.clientHeight)
-    const next = viewport
-      ? visibleViewportState({
+    const metrics = viewport
+      ? {
           layoutHeight,
           viewportHeight: viewport.height,
           viewportOffsetTop: viewport.offsetTop
-        })
-      : { bottomInset: 0, keyboardVisible: false }
+        }
+      : { layoutHeight, viewportHeight: layoutHeight, viewportOffsetTop: 0 }
+    occludedHeight = visibleViewportOccludedHeight(metrics) ?? occludedHeight
+    const next = visibleViewportState(metrics, occludedHeight)
     root.style.setProperty('--memry-viewport-bottom-inset', `${next.bottomInset}px`)
     const visibilityChanged = next.keyboardVisible !== state.keyboardVisible
     state = next

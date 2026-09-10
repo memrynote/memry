@@ -9,74 +9,13 @@ import {
   visibleViewportState
 } from '../../editor-web/src/visual-viewport'
 
+// One real iPhone 17 Pro frame, keyboard up and the visual viewport at rest:
+// a 539 layout viewport, 432 of it visible, so the keyboard covers 107.
+const AT_REST = { layoutHeight: 539, viewportHeight: 432, viewportOffsetTop: 0 }
+
 describe('editor visual viewport', () => {
-  it('moves fixed chrome above the software keyboard', () => {
-    expect(
-      visibleViewportBottomInset({
-        layoutHeight: 650,
-        viewportHeight: 360,
-        viewportOffsetTop: 0
-      })
-    ).toBe(290)
-  })
-
-  it('accounts for a visible viewport offset', () => {
-    expect(
-      visibleViewportBottomInset({
-        layoutHeight: 650,
-        viewportHeight: 600,
-        viewportOffsetTop: 20
-      })
-    ).toBe(30)
-  })
-
-  it('never creates a negative inset', () => {
-    expect(
-      visibleViewportBottomInset({
-        layoutHeight: 650,
-        viewportHeight: 650,
-        viewportOffsetTop: 10
-      })
-    ).toBe(0)
-  })
-
-  it('reads the keyboard as gone only when the visible viewport is whole again', () => {
-    expect(
-      visibleViewportState({
-        layoutHeight: 650,
-        viewportHeight: 360,
-        viewportOffsetTop: 0
-      })
-    ).toEqual({ bottomInset: 290, keyboardVisible: true })
-    expect(
-      visibleViewportState({
-        layoutHeight: 650,
-        viewportHeight: 650,
-        viewportOffsetTop: 0
-      })
-    ).toEqual({ bottomInset: 0, keyboardVisible: false })
-  })
-
-  // The numbers are one frame of a real iPhone 17 Pro scroll, taken off the
-  // WebView while the keyboard was up: `offsetTop` climbs to the whole occluded
-  // height, the inset it drives correctly reaches zero because chrome pinned to
-  // the layout viewport's bottom is already sitting on the keyboard, and the
-  // keyboard is still there. Deriving visibility from that zero deleted the
-  // formatting toolbar part-way down every note (#2131).
-  it('keeps the keyboard visible once a scroll has zeroed the inset', () => {
-    expect(
-      visibleViewportState({
-        layoutHeight: 539,
-        viewportHeight: 432,
-        viewportOffsetTop: 107
-      })
-    ).toEqual({ bottomInset: 0, keyboardVisible: true })
-  })
-
-  it('measures occlusion independently of the scroll offset', () => {
-    const occluded = { layoutHeight: 539, viewportHeight: 432 }
-    expect(visibleViewportOccludedHeight({ ...occluded, viewportOffsetTop: 0 })).toBe(107)
-    expect(visibleViewportOccludedHeight({ ...occluded, viewportOffsetTop: 107 })).toBe(107)
+  it('measures what the keyboard covers while the viewport is at rest', () => {
+    expect(visibleViewportOccludedHeight(AT_REST)).toBe(107)
     expect(
       visibleViewportOccludedHeight({
         layoutHeight: 767,
@@ -86,11 +25,77 @@ describe('editor visual viewport', () => {
     ).toBe(0)
   })
 
+  // Scrolling down with the keyboard up pans the visual viewport, after which
+  // `height + offsetTop === layoutHeight` and the difference says nothing about
+  // the keyboard. Believing it collapsed the inset and let the toolbar climb the
+  // screen on the way down while the way back up looked fine (#2131).
+  it('refuses to measure the keyboard from a panned viewport', () => {
+    expect(
+      visibleViewportOccludedHeight({
+        layoutHeight: 539,
+        viewportHeight: 370,
+        viewportOffsetTop: 169
+      })
+    ).toBeNull()
+    expect(
+      visibleViewportOccludedHeight({
+        layoutHeight: 539,
+        viewportHeight: 204,
+        viewportOffsetTop: 335
+      })
+    ).toBeNull()
+  })
+
+  it('pushes chrome back down as the pan carries the fixed layer up', () => {
+    expect(visibleViewportBottomInset(107, 0)).toBe(107)
+    expect(visibleViewportBottomInset(107, 107)).toBe(0)
+    // Negative: past the occluded height the layer has travelled further than
+    // the keyboard covers, so chrome belongs BELOW its bottom edge.
+    expect(visibleViewportBottomInset(107, 169)).toBe(-62)
+    expect(visibleViewportBottomInset(107, 335)).toBe(-228)
+  })
+
+  it('keeps the keyboard visible through a pan by reusing the resting measurement', () => {
+    expect(visibleViewportState(AT_REST, 0)).toEqual({ bottomInset: 107, keyboardVisible: true })
+    expect(
+      visibleViewportState({ layoutHeight: 539, viewportHeight: 204, viewportOffsetTop: 335 }, 107)
+    ).toEqual({ bottomInset: -228, keyboardVisible: true })
+  })
+
+  it('lets the keyboard go once the visible viewport is whole again', () => {
+    expect(
+      visibleViewportState({ layoutHeight: 767, viewportHeight: 767, viewportOffsetTop: 0 }, 107)
+    ).toEqual({ bottomInset: 0, keyboardVisible: false })
+  })
+
+  it('holds chrome on the keyboard across a whole downward scroll', () => {
+    // `bottom` of the fixed layer in its own client coordinates. WKWebView
+    // carries the layer up with the pan, so this is what the inset has to
+    // cancel; a pinned toolbar lands on 432 in every frame.
+    const layerBottom = (viewportOffsetTop: number): number => 539 - viewportOffsetTop
+    let occluded = 0
+    const landings: number[] = []
+    for (const frame of [
+      AT_REST,
+      { layoutHeight: 539, viewportHeight: 432, viewportOffsetTop: 107 },
+      { layoutHeight: 539, viewportHeight: 370, viewportOffsetTop: 169 },
+      { layoutHeight: 539, viewportHeight: 204, viewportOffsetTop: 335 }
+    ]) {
+      occluded = visibleViewportOccludedHeight(frame) ?? occluded
+      const { bottomInset } = visibleViewportState(frame, occluded)
+      landings.push(layerBottom(frame.viewportOffsetTop) - bottomInset)
+    }
+    expect(landings).toEqual([432, 432, 432, 432])
+  })
+
   it('does not report the keyboard gone while the reader scrolls under it', () => {
     let offsetTop = 0
+    let height = 432
     const listeners = new Set<EventListenerOrEventListenerObject>()
     const viewport = {
-      height: 432,
+      get height() {
+        return height
+      },
       get offsetTop() {
         return offsetTop
       },
@@ -117,9 +122,17 @@ describe('editor visual viewport', () => {
     const seen: boolean[] = []
     const controller = installVisibleViewportInset((visible) => seen.push(visible))
 
-    for (offsetTop of [0, 40, 80, 107]) dispatchScroll()
+    for (const [nextOffsetTop, nextHeight] of [
+      [107, 432],
+      [169, 370],
+      [335, 204]
+    ]) {
+      offsetTop = nextOffsetTop
+      height = nextHeight
+      dispatchScroll()
+    }
 
-    expect(controller.getState()).toEqual({ bottomInset: 0, keyboardVisible: true })
+    expect(controller.getState()).toEqual({ bottomInset: -228, keyboardVisible: true })
     // The install-time `true`, and nothing after it. A `false` here is the bug.
     expect(seen).toEqual([true])
     controller.destroy()
