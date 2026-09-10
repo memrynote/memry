@@ -60,7 +60,6 @@ describe('inline trigger menus', () => {
   let sent: GuestMsg[] = []
   let root: HTMLElement
   let chrome: HTMLElement
-  let toolbarHost: HTMLElement
   let surface: WikiLinkEditorSurface
   let detach: () => void
 
@@ -116,23 +115,6 @@ describe('inline trigger menus', () => {
     )
   }
 
-  /**
-   * A toolbar shell whose top edge the test controls.
-   *
-   * jsdom has no layout, so the rect is stubbed: the point of these tests is
-   * which number the menu reads and WHEN, not what the browser would measure.
-   */
-  function toolbarShell(top: number): (next: number) => void {
-    const shell = document.createElement('div')
-    shell.className = 'editor-toolbar-shell'
-    let edge = top
-    shell.getBoundingClientRect = (() => ({ top: edge })) as unknown as () => DOMRect
-    toolbarHost.appendChild(shell)
-    return (next: number) => {
-      edge = next
-    }
-  }
-
   function tagRow(title: string): WikiCandidate {
     return {
       kind: 'tag',
@@ -161,14 +143,13 @@ describe('inline trigger menus', () => {
     root = document.createElement('div')
     root.innerHTML = '<p data-node-type="paragraph"></p>'
     chrome = document.createElement('div')
-    toolbarHost = document.createElement('div')
-    document.body.append(root, chrome, toolbarHost)
+    document.body.append(root, chrome)
     surface = {
       replaceQuery: vi.fn(),
       replaceQueryWithTag: vi.fn(),
       unpromoteAdjacent: vi.fn(() => false)
     }
-    detach = installWikiLinkAutocomplete(surface, bridge, { root, chrome, toolbarHost }).detach
+    detach = installWikiLinkAutocomplete(surface, bridge, { root, chrome }).detach
   })
 
   afterEach(() => {
@@ -309,48 +290,6 @@ describe('inline trigger menus', () => {
     row('a24').dispatchEvent(down)
 
     expect(down.defaultPrevented).toBe(true)
-  })
-
-  it('sits on top of the toolbar rather than under it', () => {
-    toolbarShell(500)
-    typeInto('#a')
-    answer([tagRow('a24')])
-
-    expect(chrome.querySelector<HTMLElement>('.wiki-menu')?.style.insetBlockEnd).toBe(
-      `${window.innerHeight - 500}px`
-    )
-  })
-
-  it('follows the toolbar when a picker opens under an open menu', async () => {
-    const moveShell = toolbarShell(500)
-    typeInto('#a')
-    answer([tagRow('a24')])
-
-    // What a block or style picker does: the toolbar swaps its shell for a
-    // taller one. A menu placed once keeps the old inset and ends up floating
-    // in the middle of the note, which is the bug this covers.
-    moveShell(200)
-    toolbarHost.appendChild(document.createElement('div'))
-    await Promise.resolve()
-
-    expect(chrome.querySelector<HTMLElement>('.wiki-menu')?.style.insetBlockEnd).toBe(
-      `${window.innerHeight - 200}px`
-    )
-  })
-
-  it('leaves a closed menu alone when the toolbar moves', async () => {
-    const moveShell = toolbarShell(500)
-    typeInto('#a')
-    answer([tagRow('a24')])
-    typeInto('#a ')
-
-    moveShell(200)
-    toolbarHost.appendChild(document.createElement('div'))
-    await Promise.resolve()
-
-    expect(chrome.querySelector<HTMLElement>('.wiki-menu')?.style.insetBlockEnd).toBe(
-      `${window.innerHeight - 500}px`
-    )
   })
 
   it('closes the menu once the run is abandoned', () => {

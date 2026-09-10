@@ -99,10 +99,12 @@ export interface EditorViewProps {
     blockType: EditorAttachmentBlockType
     referenceBlockId: string
   }) => void
-  /** Software-keyboard state reported by the guest's visual viewport. */
-  onKeyboardVisibilityChange?: (visible: boolean) => void
-  /** Whether a block/turn-into/link panel is covering the native footer. */
-  onPanelVisibilityChange?: (open: boolean) => void
+  /**
+   * Whether the bottom of the screen is taken: by the keyboard, by a toolbar
+   * panel standing in for it, or by one of the guest's own sheets. The note
+   * footer has no room while it is.
+   */
+  onBottomOccupiedChange?: (occupied: boolean) => void
   /** Where the guest's document is scrolled to, in CSS px, once per frame at most. */
   onScroll?: (y: number) => void
   /**
@@ -218,8 +220,7 @@ export function EditorView({
   onAssetRequest,
   onLinkPreview,
   onInsertRequest,
-  onKeyboardVisibilityChange,
-  onPanelVisibilityChange,
+  onBottomOccupiedChange,
   onScroll,
   chrome,
   footer,
@@ -232,28 +233,6 @@ export function EditorView({
   const hostState = useSyncExternalStore(host.subscribe, host.getState)
   const markdownExports = useMemo(() => createMarkdownExportRequests(), [])
   const htmlExports = useMemo(() => createHtmlExportRequests(), [])
-
-  /**
-   * The keyboard's own height, measured natively and handed to the guest.
-   *
-   * Measured here rather than in the guest because the WebView sits inside a
-   * KeyboardAvoidingView: by the time the keyboard is up, the frame has already
-   * shrunk out from under it, so the guest's `visualViewport` inset is a
-   * fraction of the keyboard rather than the whole of it. The block picker
-   * replaces the keyboard and has to match its height, so it needs this number.
-   *
-   * The last non-zero height is kept: the picker opens right after the keyboard
-   * is dismissed, so zeroing on hide would size it from nothing.
-   */
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
-  useEffect(() => {
-    const sub = Keyboard.addListener('keyboardDidShow', (event) => {
-      const height = Math.round(event.endCoordinates.height)
-      if (height > 0) setKeyboardHeight(height)
-    })
-    return () => sub.remove()
-  }, [])
-  const guestCfg = useMemo(() => ({ ...cfg, keyboardHeight }), [cfg, keyboardHeight])
 
   const docId = doc.docId
   /** Whether the shared guest is currently holding THIS note. */
@@ -319,9 +298,9 @@ export function EditorView({
 
   /** Hand this note to the guest. Called by the host every time it becomes the mounted one. */
   const mountOnGuest = useCallback(() => {
-    bridge.send({ type: 'cfg', ...guestCfg })
+    bridge.send({ type: 'cfg', ...cfg })
     sendDocLoad()
-  }, [bridge, guestCfg, sendDocLoad])
+  }, [bridge, cfg, sendDocLoad])
 
   // Remote updates (sync, or another surface) are forwarded to the guest, and
   // ONLY while this note is the one it is holding.
@@ -348,9 +327,9 @@ export function EditorView({
   // would recolour the one the reader is looking at.
   useEffect(() => {
     if (!mounted) return
-    bridge.send({ type: 'cfg', ...guestCfg })
+    bridge.send({ type: 'cfg', ...cfg })
     bridge.flush()
-  }, [bridge, guestCfg, mounted])
+  }, [bridge, cfg, mounted])
 
   const handleGuestMsg = useCallback(
     (msg: GuestMsg) => {
@@ -476,14 +455,6 @@ export function EditorView({
             })
           break
 
-        case 'keyboard-visibility':
-          if (msg.docId === docId) onKeyboardVisibilityChange?.(msg.visible)
-          break
-
-        case 'editor-panel-visibility':
-          if (msg.docId === docId) onPanelVisibilityChange?.(msg.open)
-          break
-
         case 'markdown-export':
           markdownExports.settle(msg)
           break
@@ -505,8 +476,8 @@ export function EditorView({
 
         default:
           // `y-update` and `painted` are settled by the controller against the
-          // note they name, and `metrics` is a chrome hint the native side does
-          // not use yet.
+          // note they name, as are the toolbar's own messages; `metrics` is a
+          // chrome hint the native side does not use yet.
           break
       }
     },
@@ -517,8 +488,6 @@ export function EditorView({
       onBlockMoveRequest,
       onInsertRequest,
       onLinkPreview,
-      onKeyboardVisibilityChange,
-      onPanelVisibilityChange,
       onScroll,
       onNavigate,
       onWikiQuery,
@@ -554,6 +523,17 @@ export function EditorView({
   useEffect(() => host.setFocused(hostDoc, focused), [focused, host, hostDoc])
 
   useEffect(() => host.attach(hostDoc), [host, hostDoc])
+
+  useEffect(() => host.setReadOnly(hostDoc, cfg.readOnly), [cfg.readOnly, host, hostDoc])
+
+  // Reported for this note whichever note the guest holds: only the focused
+  // route's screen is on the glass, and the host's keyboard is the same
+  // keyboard for every note.
+  const occupied =
+    hostState.keyboardOverlap > 0 ||
+    hostState.bottomChrome.kind === 'panel' ||
+    hostState.guestPanelOpen
+  useEffect(() => onBottomOccupiedChange?.(occupied), [occupied, onBottomOccupiedChange])
 
   const controls = useMemo<EditorControls>(() => {
     const exec = (cmd: DocScopedCommand): void => {

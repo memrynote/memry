@@ -22,7 +22,7 @@ import {
 } from './block-capabilities.ts'
 import { runBlockAction, type BlockActionEditorSurface } from './block-actions.ts'
 import { readColour } from './block-styles.ts'
-import type { EditorToolbarController } from './editor-toolbar.ts'
+import type { BlockActionsPanelController } from './block-actions-panel.ts'
 import { scrollBehavior } from './reduced-motion.ts'
 import { isForMountedDoc } from './routing.ts'
 
@@ -68,26 +68,14 @@ export interface BlockMenuController {
 /**
  * How much of the viewport's bottom the open panel covers.
  *
- * MEASURED, not read from `--memry-keyboard-height`. That variable is the
- * host's keyboard report, and it is 0 until the keyboard has come up at least
- * once — which is exactly the long-press path, where the reader taps an image
- * without ever having typed. Reading it there returns 0, the block is judged
- * already visible, and the panel opens on top of the block it addresses.
- *
- * The toolbar renders synchronously from `setView`, so by the time this is
- * called the panel is in the document and has a box. The keyboard variable
- * stays as the fallback for a panel that somehow has no laid-out element,
- * which is what jsdom and a `display: none` chrome layer both look like.
+ * MEASURED, because the panel sizes to its content. The sheet renders
+ * synchronously from `openBlockActions`, so by the time this is called the
+ * panel is in the document and has a box; zero is what jsdom and a
+ * `display: none` chrome layer both look like, and then there is nothing to
+ * scroll clear of.
  */
 function readPanelHeight(): number {
-  const measured =
-    document.querySelector('.editor-toolbar-shell-block-actions')?.getBoundingClientRect().height ??
-    0
-  if (measured > 0) return measured
-  const height = Number.parseFloat(
-    document.documentElement.style.getPropertyValue('--memry-keyboard-height')
-  )
-  return Number.isFinite(height) ? Math.max(0, height) : 0
+  return document.querySelector('.editor-block-actions-shell')?.getBoundingClientRect().height ?? 0
 }
 
 /**
@@ -155,11 +143,11 @@ function installLongPress(
 export function installBlockMenu(options: {
   root: HTMLElement
   editor: BlockMenuEditorSurface
-  toolbar: EditorToolbarController
+  panel: BlockActionsPanelController
   bridge: BlockMenuBridge
   docId: string
 }): BlockMenuController {
-  const { root, editor, toolbar, bridge, docId } = options
+  const { root, editor, panel, bridge, docId } = options
 
   let readOnly = false
   let addressed: string | null = null
@@ -240,7 +228,7 @@ export function installBlockMenu(options: {
     const target = buildTarget(blockId)
     if (!target) return
     paintAddressed(blockId)
-    toolbar.openBlockActions(target, onPanelClose)
+    panel.openBlockActions(target, onPanelClose)
     scrollAddressedIntoView(blockId)
   }
 
@@ -302,7 +290,7 @@ export function installBlockMenu(options: {
     // The host cannot open a picker it has not been asked for, and the panel is
     // already on its way out — there is nothing left to batch behind.
     bridge.flush()
-    toolbar.closePanel()
+    panel.closePanel()
   }
 
   const detachLongPress = installLongPress(root, onLongPress, {
@@ -348,7 +336,7 @@ export function installBlockMenu(options: {
         const target = buildTarget(blockId)
         if (!target) {
           paintAddressed(null)
-          toolbar.closePanel()
+          panel.closePanel()
           return
         }
         requestMove(target)
@@ -360,17 +348,17 @@ export function installBlockMenu(options: {
         const target = buildTarget(blockId)
         if (target) {
           paintAddressed(blockId)
-          toolbar.openBlockActions(target, onPanelClose)
+          panel.openBlockActions(target, onPanelClose)
           return
         }
       }
       paintAddressed(null)
-      toolbar.closePanel()
+      panel.closePanel()
     },
     setReadOnly(next: boolean): void {
       readOnly = next
       if (!next) return
-      // The toolbar closes its own panel; this drops what the panel was about.
+      // The panel closes itself on read-only; this drops what it was about.
       pendingMove = null
       paintAddressed(null)
     },

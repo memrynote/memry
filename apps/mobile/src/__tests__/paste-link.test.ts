@@ -77,12 +77,11 @@ function tap(option: string): void {
 function install(overrides: Partial<PasteLinkSurface> = {}) {
   const root = document.createElement('div')
   const chrome = document.createElement('div')
-  const toolbarHost = document.createElement('div')
-  document.body.append(root, chrome, toolbarHost)
+  document.body.append(root, chrome)
   const api = surface(overrides)
   const { bridge, sent } = bridgeWithSpy()
   const panel: boolean[] = []
-  const menu = installPasteLinkMenu(api, bridge, { root, chrome, toolbarHost }, (open) =>
+  const menu = installPasteLinkMenu(api, bridge, { root, chrome }, (open) =>
     panel.push(open)
   )
   return { root, api, bridge, sent, menu, panel }

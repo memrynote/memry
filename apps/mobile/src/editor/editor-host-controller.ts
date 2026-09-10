@@ -1,6 +1,11 @@
 import type { ComponentRef, ReactNode } from 'react'
 import type { Animated, View } from 'react-native'
-import { BRIDGE_PROTOCOL_VERSION, type GuestMsg } from '@memry/contracts/webview-bridge'
+import {
+  BRIDGE_PROTOCOL_VERSION,
+  type EditorToolbarSelection,
+  type GuestMsg,
+  type ToolbarAction
+} from '@memry/contracts/webview-bridge'
 import { base64ToBytes } from '../lib/base64'
 import { createLogger } from '../lib/logger'
 import { createInjectionTransport, EditorBridgeProvider } from './bridge-provider'
@@ -8,6 +13,16 @@ import type { OpenDoc } from './doc-manager'
 import { EDITOR_WEB_CONTRACT_HASH } from './editor-web-asset'
 import { LatencyRecorder } from './__rig__/latency'
 import { mark, markGuestPhases, markWebViewLoad } from './__rig__/open-trace'
+import {
+  bottomChromeOf,
+  FALLBACK_PANEL_HEIGHT,
+  INITIAL_BOTTOM_CHROME,
+  reduceBottomChrome,
+  type BottomChrome,
+  type BottomChromeEvent,
+  type BottomChromeModel,
+  type ToolbarIntents
+} from './toolbar/bottom-chrome'
 
 const log = createLogger('EditorHost')
 
@@ -113,6 +128,28 @@ export interface HostDoc {
   mount(): void
 }
 
+/** What the toolbar shows before the guest has described a caret. */
+export const EMPTY_TOOLBAR_SELECTION: EditorToolbarSelection = {
+  blockLabel: 'T',
+  activeStyles: { bold: false, italic: false, underline: false, strike: false, code: false },
+  table: null,
+  alignment: 'left',
+  textColour: 'default',
+  backgroundColour: 'default',
+  canNest: false,
+  canUnnest: false
+}
+
+/**
+ * How much of a frame the keyboard covers, given both edges in window
+ * coordinates. Zero when the keyboard is down: its top edge is then the
+ * screen's bottom, below any frame.
+ */
+export function keyboardOverlapOf(hostBottom: number | null, keyboardTop: number | null): number {
+  if (hostBottom === null || keyboardTop === null) return 0
+  return Math.max(0, Math.round(hostBottom - keyboardTop))
+}
+
 export interface EditorHostState {
   guest: GuestState
   /** The note the host has HANDED to the guest. */
@@ -156,6 +193,20 @@ export interface EditorHostState {
    * came back blank behind a permanent spinner. A new `key` rebuilds it.
    */
   instance: number
+  /**
+   * How much of the mounted editor's frame the software keyboard covers, in
+   * pt. The host shrinks the WebView by exactly this, so the keyboard never
+   * overlaps the document and WebKit's visual viewport never pans (#2131).
+   */
+  keyboardOverlap: number
+  /** The height a keyboard-replacing panel takes: the last keyboard measured. */
+  panelHeight: number
+  /** What to draw under the WebView. */
+  bottomChrome: BottomChrome
+  /** The caret's state as the guest last described it, for the toolbar. */
+  toolbarSelection: EditorToolbarSelection
+  /** A guest panel — find-in-note, the date sheet — holds the keyboard strip. */
+  guestPanelOpen: boolean
 }
 
 export interface DocLayout {
@@ -210,6 +261,15 @@ export class EditorHostController {
   private sinks = new Map<string, DocSink>()
   private inFlight = new Set<Promise<void>>()
   private containerView: EditorHostContainer | null = null
+  /** The container's window origin, as last measured; see `measureContainerTop`. */
+  private containerTop: number | null = null
+  /** The keyboard's top edge in window coordinates, or `null` before any frame. */
+  private keyboardTop: number | null = null
+  private panelHeight = FALLBACK_PANEL_HEIGHT
+  private chromeModel: BottomChromeModel = INITIAL_BOTTOM_CHROME
+  private selection: EditorToolbarSelection = EMPTY_TOOLBAR_SELECTION
+  private guestPanelOpen = false
+  private readOnlys = new WeakMap<HostDoc, boolean>()
   private webViewStartedAt = Date.now()
   private mountedDoc: HostDoc | null = null
   private shownDocId: string | null = null
@@ -226,7 +286,30 @@ export class EditorHostController {
     visible: false,
     containerReady: false,
     instance: 0,
-    chrome: null
+    chrome: null,
+    keyboardOverlap: 0,
+    panelHeight: FALLBACK_PANEL_HEIGHT,
+    bottomChrome: { kind: 'hidden' },
+    toolbarSelection: EMPTY_TOOLBAR_SELECTION,
+    guestPanelOpen: false
+  }
+
+  /**
+   * What the native toolbar can ask for.
+   *
+   * Opening a panel other than the link prompt also blurs the guest: the panel
+   * takes the keyboard's place, so the keyboard has to go, and the caret stays
+   * put in ProseMirror across the blur. The link prompt's own field is what
+   * holds the keyboard up, so it is the exception.
+   */
+  readonly toolbar: ToolbarIntents = {
+    showRow: (row) => this.dispatch({ type: 'show-row', row }),
+    openPanel: (panel) => {
+      this.dispatch({ type: 'open-panel', panel })
+      if (panel !== 'link-prompt') this.sendToolbarAction({ kind: 'blur' })
+    },
+    closePanel: () => this.dispatch({ type: 'close-panel' }),
+    act: (action) => this.sendToolbarAction(action)
   }
 
   constructor(sid = 'rn-editor-host') {
@@ -269,6 +352,7 @@ export class EditorHostController {
       this.layouts.delete(doc)
       this.focused.delete(doc)
       this.chromes.delete(doc)
+      this.readOnlys.delete(doc)
       this.pruneSinks()
       this.syncMount()
     }
@@ -308,6 +392,36 @@ export class EditorHostController {
     if (doc === this.mountedDoc) this.publish()
   }
 
+  /**
+   * Whether this attachment's note is read-only, which hides the toolbar and
+   * closes any panel. Read from the mounted attachment only, like its layout.
+   */
+  setReadOnly(doc: HostDoc, readOnly: boolean): void {
+    this.readOnlys.set(doc, readOnly)
+    if (doc === this.mountedDoc) this.dispatch({ type: 'read-only', readOnly })
+  }
+
+  /**
+   * The keyboard's frame changed. `screenY` is its top edge in window
+   * coordinates; with the keyboard down that is the screen's bottom.
+   *
+   * Only the edge is kept. The overlap is derived at publish time against the
+   * mounted frame, so a keyboard that was already up when a note is placed
+   * shrinks that note's editor the moment its frame is known.
+   */
+  setKeyboardFrame(screenY: number): void {
+    this.keyboardTop = screenY
+    const overlap = keyboardOverlapOf(this.hostBottomInWindow(), screenY)
+    this.dispatch({ type: 'keyboard', up: overlap > 0 })
+  }
+
+  /** The mounted editor's bottom edge in window coordinates, once placed. */
+  hostBottomInWindow(): number | null {
+    const layout = this.mountedDoc ? this.layouts.get(this.mountedDoc) : null
+    if (!layout?.frame || this.containerTop === null) return null
+    return this.containerTop + layout.frame.top + layout.frame.height
+  }
+
   /** The view a note's editor is positioned within. */
   setContainerView(view: EditorHostContainer | null): void {
     if (this.containerView === view) return
@@ -333,7 +447,10 @@ export class EditorHostController {
       onMeasured(null)
       return
     }
-    container.measureInWindow((_x, y) => onMeasured(y))
+    container.measureInWindow((_x, y) => {
+      this.containerTop = y
+      onMeasured(y)
+    })
   }
 
   /** The transport the guest's `onLoadEnd` hands over. */
@@ -464,9 +581,38 @@ export class EditorHostController {
         this.publish()
         return
 
+      case 'toolbar-selection':
+        if (msg.docId !== this.mountedDoc?.doc.docId) return
+        this.selection = msg.selection
+        this.dispatch({ type: 'caret', inTable: msg.selection.table !== null })
+        return
+
+      case 'editor-focus':
+        if (msg.docId !== this.mountedDoc?.doc.docId) return
+        this.dispatch({ type: 'editor-focus', focused: msg.focused })
+        return
+
+      case 'editor-panel-visibility':
+        if (msg.docId !== this.mountedDoc?.doc.docId) return
+        this.guestPanelOpen = msg.open
+        this.dispatch({ type: 'suppressed', suppressed: msg.open })
+        return
+
       default:
         this.mountedDoc?.onGuestMsg(msg)
     }
+  }
+
+  private dispatch(event: BottomChromeEvent): void {
+    this.chromeModel = reduceBottomChrome(this.chromeModel, event)
+    this.publish()
+  }
+
+  private sendToolbarAction(action: ToolbarAction): void {
+    const docId = this.mountedDoc?.doc.docId
+    if (!docId || this.guest !== 'ready') return
+    this.bridge.send({ type: 'toolbar-action', docId, action })
+    this.bridge.flush()
   }
 
   private persist(msg: Extract<GuestMsg, { type: 'y-update' }>): void {
@@ -579,7 +725,18 @@ export class EditorHostController {
       this.publish()
       return
     }
-    if (changed) this.blurGuest()
+    if (changed) {
+      this.blurGuest()
+      // Nothing about the toolbar carries over: the caret, the open panel and
+      // the guest's own sheets all belonged to the note being replaced.
+      this.selection = EMPTY_TOOLBAR_SELECTION
+      this.guestPanelOpen = false
+      this.chromeModel = reduceBottomChrome(this.chromeModel, { type: 'reset' })
+      this.chromeModel = reduceBottomChrome(this.chromeModel, {
+        type: 'read-only',
+        readOnly: (next && this.readOnlys.get(next)) ?? false
+      })
+    }
     this.mountedDoc = next
     this.publish()
     if (next && this.guest === 'ready') next.mount()
@@ -607,6 +764,10 @@ export class EditorHostController {
   private publish(): void {
     const layout = (this.mountedDoc ? this.layouts.get(this.mountedDoc) : null) ?? NO_LAYOUT
     const mountedDocId = this.mountedDoc?.doc.docId ?? null
+    const keyboardOverlap = keyboardOverlapOf(this.hostBottomInWindow(), this.keyboardTop)
+    // The last keyboard measured is what a panel replaces, so it is kept
+    // across a dismissal: the panel opens after the keyboard has already gone.
+    if (keyboardOverlap > 0) this.panelHeight = keyboardOverlap
     this.snapshot = {
       guest: this.guest,
       mountedDocId,
@@ -631,7 +792,12 @@ export class EditorHostController {
       visible: layout.frame !== null && mountedDocId !== null && this.shownDocId === mountedDocId,
       containerReady: this.containerView !== null,
       instance: this.instance,
-      chrome: this.mountedDoc ? (this.chromes.get(this.mountedDoc) ?? null) : null
+      chrome: this.mountedDoc ? (this.chromes.get(this.mountedDoc) ?? null) : null,
+      keyboardOverlap,
+      panelHeight: this.panelHeight,
+      bottomChrome: bottomChromeOf(this.chromeModel),
+      toolbarSelection: this.selection,
+      guestPanelOpen: this.guestPanelOpen
     }
     for (const listener of this.listeners) listener()
   }

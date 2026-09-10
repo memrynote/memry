@@ -14,7 +14,7 @@
  * it can be asserted against a real editor.
  */
 
-import { BLOCK_COLOURS, type BlockColour, type StyleAction } from './editor-toolbar.ts'
+import { BLOCK_COLOURS, type BlockColour, type StyleAction } from '@memry/contracts/webview-bridge'
 
 interface BlockLike {
   /** BlockNote identifies the block to update by id, so it travels with it. */

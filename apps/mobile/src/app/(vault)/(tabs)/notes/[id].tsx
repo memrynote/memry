@@ -218,8 +218,9 @@ export default function NoteScreen() {
   const [seedMarkdown, setSeedMarkdown] = useState<string | undefined>(undefined)
   const [vaultReadOnly, setVaultReadOnly] = useState(false)
   const [overlay, setOverlay] = useState<NoteOverlay>({ kind: 'none' })
-  const [keyboardVisible, setKeyboardVisible] = useState<boolean | null>(null)
-  const [editorPanelOpen, setEditorPanelOpen] = useState(false)
+  // The keyboard, a toolbar panel in its place, or a guest sheet: the footer
+  // has no room while any of them is up.
+  const [bottomOccupied, setBottomOccupied] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
   const [reminder, setReminder] = useState<NoteReminder | null>(null)
   /**
@@ -1143,8 +1144,7 @@ export default function NoteScreen() {
         onLinkPreview={onLinkPreview}
         onInsertRequest={(request) => void onInsert(request)}
         onBlockMoveRequest={onBlockMove}
-        onKeyboardVisibilityChange={setKeyboardVisible}
-        onPanelVisibilityChange={setEditorPanelOpen}
+        onBottomOccupiedChange={setBottomOccupied}
         onScroll={(y) => scrollY.setValue(y)}
         // Handed over rather than rendered here. It has to paint ON TOP of the
         // WebView, and the WebView is a sibling of this whole stack — a header
@@ -1226,7 +1226,7 @@ export default function NoteScreen() {
                 <Toast message={toast.message} action={toast.action} icon={null} />
               </View>
             ) : null}
-            {keyboardVisible === false && !editorPanelOpen ? (
+            {!bottomOccupied ? (
               <NoteFooter
                 tabCount={Math.max(1, openTabs.length)}
                 onFind={() => controls.current?.openFind()}

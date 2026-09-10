@@ -14,19 +14,17 @@ import {
   type BlockMenuEditorSurface
 } from '../../editor-web/src/block-menu'
 import {
-  installEditorToolbar,
-  type EditorToolbarActions,
-  type EditorToolbarController
-} from '../../editor-web/src/editor-toolbar'
+  installBlockActionsPanel,
+  type BlockActionsPanelController
+} from '../../editor-web/src/block-actions-panel'
 
 /**
  * The two entry points, the highlight, and the move round trip (#2100).
  *
- * Driven through the REAL toolbar, because the panel is a `ToolbarView` and
- * routing it through one is the whole reason the feature costs no new chrome
- * plumbing — a fake toolbar would assert the wiring the design chose not to
- * write. The editor and the bridge are stubs; the schema is the real one, so
- * the capabilities the panel draws from are the app's.
+ * Driven through the REAL panel, the guest's own block-actions sheet, because
+ * a fake one would assert wiring the design chose not to write. The editor and
+ * the bridge are stubs; the schema is the real one, so the capabilities the
+ * panel draws from are the app's.
  */
 
 const DOC_ID = 'note-1'
@@ -119,7 +117,7 @@ function highlighted(root: HTMLElement): string[] {
 interface Harness {
   root: HTMLElement
   menu: BlockMenuController
-  toolbar: EditorToolbarController
+  panel: BlockActionsPanelController
   blocks: Map<string, StubBlock>
   sent: GuestMsg[]
   deliver(msg: HostMsg): void
@@ -132,8 +130,8 @@ function harness(initial: readonly StubBlock[]): Harness {
   document.body.replaceChildren()
   const root = document.createElement('div')
   root.id = 'root'
-  const toolbarHost = document.createElement('div')
-  document.body.append(root, toolbarHost)
+  const panelHost = document.createElement('div')
+  document.body.append(root, panelHost)
   mountBlocks(root, initial)
 
   const blocks = new Map(initial.map((block) => [block.id, block]))
@@ -168,31 +166,15 @@ function harness(initial: readonly StubBlock[]): Harness {
   }
 
   let menu: BlockMenuController | null = null
-  const actions: EditorToolbarActions = {
-    insert: vi.fn(),
-    tableAction: vi.fn(),
-    styleAction: vi.fn(),
-    turnInto: vi.fn(),
-    toggleStyle: vi.fn(),
-    toggleBulletedList: vi.fn(),
-    createLink: vi.fn(),
-    focusEditor: vi.fn(),
-    insertWikiLink: vi.fn(),
-    insertImage: vi.fn(),
-    undo: vi.fn(),
-    redo: vi.fn(),
-    dismissKeyboard: vi.fn(),
-    openBlockActions: () => menu?.openForCaret(),
+  const panel = installBlockActionsPanel(panelHost, root, {
     blockAction: (blockId, action) => menu?.run(blockId, action)
-  }
-  const toolbar = installEditorToolbar(toolbarHost, actions)
-  toolbar.setKeyboardVisible(true)
-  menu = installBlockMenu({ root, editor, toolbar, bridge, docId: DOC_ID })
+  })
+  menu = installBlockMenu({ root, editor, panel, bridge, docId: DOC_ID })
 
   return {
     root,
     menu,
-    toolbar,
+    panel,
     blocks,
     sent,
     deliver: (msg) => hostListener?.(msg),
@@ -252,7 +234,7 @@ describe('bringing the addressed block clear of the panel', () => {
     document.documentElement.style.setProperty('--memry-keyboard-height', '0px')
     stubLayout({
       '.bn-block-outer': { top: VIEWPORT - 68, height: 60 },
-      '.editor-toolbar-shell-block-actions': { top: VIEWPORT - 300, height: 300 }
+      '.editor-block-actions-shell': { top: VIEWPORT - 300, height: 300 }
     })
     const scrollBy = stubScrollBy()
 
@@ -268,7 +250,7 @@ describe('bringing the addressed block clear of the panel', () => {
     const app = harness([image('img1')])
     stubLayout({
       '.bn-block-outer': { top: 100, height: 60 },
-      '.editor-toolbar-shell-block-actions': { top: VIEWPORT - 300, height: 300 }
+      '.editor-block-actions-shell': { top: VIEWPORT - 300, height: 300 }
     })
     const scrollBy = stubScrollBy()
 
@@ -284,7 +266,7 @@ describe('bringing the addressed block clear of the panel', () => {
     document.documentElement.classList.add('reduced-motion')
     stubLayout({
       '.bn-block-outer': { top: VIEWPORT - 68, height: 60 },
-      '.editor-toolbar-shell-block-actions': { top: VIEWPORT - 300, height: 300 }
+      '.editor-block-actions-shell': { top: VIEWPORT - 300, height: 300 }
     })
     const scrollBy = stubScrollBy()
 
@@ -306,10 +288,8 @@ describe('long-press', () => {
 
     vi.advanceTimersByTime(1)
 
-    // The panel is the image's, and it draws no toolbar row above it: those
-    // rows act on the caret, which is still in the paragraph.
+    // The panel is the image's, while the caret is still in the paragraph.
     expect(document.querySelector('[aria-label="Image"]')).not.toBeNull()
-    expect(document.querySelector('.editor-toolbar-main')).toBeNull()
     // `image`'s propSchema has `backgroundColor` and no `textColor`.
     expect(button('Highlight: red')).toBeInstanceOf(HTMLButtonElement)
     expect(document.querySelector('[aria-label="Text colour: red"]')).toBeNull()
@@ -391,9 +371,9 @@ describe('the highlight', () => {
 
     press(contentOf(app.root, 'img1'))
     vi.advanceTimersByTime(450)
-    // Both halves, because `applyCfg` sets both: the toolbar closes its own
+    // Both halves, because `applyCfg` sets both: the panel closes itself
     // panel and the menu drops what the panel was about.
-    app.toolbar.setReadOnly(true)
+    app.panel.setReadOnly(true)
     app.menu.setReadOnly(true)
 
     expect(document.querySelector('.editor-block-actions')).toBeNull()
