@@ -758,6 +758,40 @@ traffic does not go through `/telemetry/batch`. The old `POST /telemetry/web` en
   The match is deliberately narrow — only that exact COM signature. A broad "drop every non-Error
   rejection" rule would hide real bugs.
 
+### Session replay coverage
+
+Landing replay is **not sampled**. In PostHog project `412311`, `session_recording_opt_in` is on
+and `session_recording_sample_rate`, `session_recording_minimum_duration_milliseconds`,
+`session_recording_linked_flag`, and the URL / event trigger configs are all unset — every session
+is eligible. The client passes only masking options (see [#860](https://github.com/memrynote/memry/issues/860)
+for the cookie-consent posture: no banner, no consent gate, so nothing client-side suppresses the
+recorder either).
+
+**`$sdk_debug_rrweb_start_attempted` is a per-event property, not a per-session one.** It reports
+the recorder's state at the moment that single event was captured. `analytics.ts` captures the
+first `$pageview` immediately after `posthog.init()`, and the recorder only starts once PostHog's
+remote-config response comes back — so in almost every session the _first_ event carries
+`start_attempted = false` (or no value at all) even when the recording starts a few hundred
+milliseconds later. Grouping sessions by their first `$pageview` therefore undercounts coverage
+badly; it is the wrong shape of query, not a coverage number.
+
+Aggregate over the whole session instead — `max(properties.$sdk_debug_rrweb_start_attempted = true)`
+grouped by `$session_id` — or just count `raw_session_replay_events`. Measured over the 7 days to
+2026-09-10 (`$lib = 'web'`): **350 of 408 sessions (85.8%) started a recording**, and
+`raw_session_replay_events` holds stored replays for **365 sessions**. The same window read
+first-`$pageview`-only says 49%.
+
+Of the 58 sessions that never started a recording, **46 captured exactly one event** — a bounce
+that ended before the remote-config round trip completed. That residual is structural: the
+`posthog-js` bundle is imported lazily (it is the largest dependency on the site; see the comment
+on `load` in `analytics.ts`), so init, remote config, and recorder start all happen after first
+paint. Eagerly importing it would shrink the gap at the cost of first paint, which is a trade the
+lazy import deliberately makes in the other direction.
+
+Practical consequence for anyone reasoning about the landing funnel: replay covers ~86% of
+sessions with no sampling bias, but the uncovered slice is **skewed towards the shortest sessions**.
+Do not read replay as evidence about immediate bounces.
+
 ## Error Reporting
 
 Desktop error reporting follows the same product telemetry setting. Each captured error ships
