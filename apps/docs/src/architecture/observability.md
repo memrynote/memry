@@ -870,6 +870,23 @@ strings are normalized away. Expected handled `4xx`
 responses (e.g. `SYNC_PAYMENT_REQUIRED`) are still counted as `server_error_seen` but are logged at
 `warn` rather than `error` level, keeping real failures distinguishable from expected noise.
 
+### Server Business Events
+
+Server-side product events — `user_signed_up`, `user_logged_in`, `device_registered`,
+`vault_registered`, `vault_deleted`, and the Paddle subscription events — go through
+`captureBusinessEvent` in `apps/sync-server/src/services/analytics.ts`. Unlike `server_error_seen`,
+these have a real actor, so their `distinct_id` is the **HMAC hash of the acting user's id**
+(`hashTelemetryId`, same key and shape as the install hash). The raw id never reaches PostHog, and
+the hash is also kept in the `user_id` property so queries written against that property keep
+working. If a business event ever has no acting user, it falls back to the fixed
+`memry_server_<environment>` id rather than an empty one.
+
+Before this, every server business event shared that fixed id, so `uniq(person_id)` over any of
+them evaluated to 1 and every unique-user funnel or retention metric touching a server event was
+wrong. Events emitted before the fix keep the old `distinct_id` and **person history is not
+backfilled**, so person-level metrics over server events are only correct from the fix forward.
+Event counts were unaffected in either period.
+
 ## Error & Diagnostic Logs in PostHog
 
 Error events also become searchable **log lines** in PostHog Logs. This replaced a self-hosted

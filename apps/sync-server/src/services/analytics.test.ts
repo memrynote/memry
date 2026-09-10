@@ -40,6 +40,34 @@ describe('captureBusinessEvent → PostHog', () => {
     expect(body.batch[0].event).toBe('vault_registered')
     expect(body.batch[0].properties.surface).toBe('server')
     expect(body.batch[0].properties.environment).toBe('staging')
+  })
+
+  it('uses the hashed user id as distinct_id so events do not collapse onto one person', async () => {
+    const fetchSpy = stubFetch()
+
+    await captureBusinessEvent(posthogEnv, 'user_signed_up', 'user-1', {})
+    await captureBusinessEvent(posthogEnv, 'user_signed_up', 'user-2', {})
+
+    const hashOne = await hashTelemetryId(posthogEnv.TELEMETRY_HMAC_KEY, 'user-1')
+    const hashTwo = await hashTelemetryId(posthogEnv.TELEMETRY_HMAC_KEY, 'user-2')
+    const first = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string).batch[0]
+    const second = JSON.parse((fetchSpy.mock.calls[1][1] as RequestInit).body as string).batch[0]
+
+    expect(first.distinct_id).toBe(hashOne)
+    expect(first.distinct_id).not.toBe('user-1')
+    expect(second.distinct_id).toBe(hashTwo)
+    // The whole point of #2131: two users must be two PostHog persons.
+    expect(first.distinct_id).not.toBe(second.distinct_id)
+    // user_id stays in properties for backward compatibility.
+    expect(first.properties.user_id).toBe(hashOne)
+  })
+
+  it('falls back to the per-environment server id when there is no user', async () => {
+    const fetchSpy = stubFetch()
+
+    await captureBusinessEvent(posthogEnv, 'vault_registered', '', {})
+
+    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string)
     expect(body.batch[0].distinct_id).toBe('memry_server_staging')
   })
 
