@@ -634,6 +634,21 @@ that batch, so one malformed event cannot wedge the queue head and replay the sa
 on every flush. Transient failures — `5xx`, `429`, and network errors — leave the batch queued for
 a later retry.
 
+### Token Lookup & Request Deadlines
+
+The batch client asks the token manager for an access token only when the install is
+`signed_in`; an `anonymous` or `signed_out` install ships every batch without touching the secret
+store. Looking the token up regardless cost an OS keychain round-trip per flush, and on a machine
+whose keychain hangs (see [Cryptography](./cryptography.md)) that round-trip wedged the whole
+pipeline: events stopped while the log shipper — which never asks for a token — kept going. That
+"logs but no events" split is the diagnostic signature; the diagnostic report upload
+(`sendIncidentReport`) sat behind the same lookup and showed as `Sending…` forever.
+
+Every `net.fetch` on the telemetry path — event batches, log shipping, incident reports — goes
+through `boundedNetFetch` (`telemetry/bounded-net-fetch.ts`) with a 30 s abort deadline. A request
+still in flight when Chromium's network service dies never settles on its own, and a flush loop
+awaiting it would otherwise stall for the rest of the run with every later batch queued behind it.
+
 ### Autosave Event Throttling
 
 `note_updated` and `journal_updated` events fired by the autosave path are throttled to at most

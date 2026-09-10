@@ -53,6 +53,7 @@ vi.mock('keytar', () => ({
 }))
 
 import {
+  KEYCHAIN_READ_TIMEOUT_MS,
   SECRET_STORE_FILENAME,
   deleteSecret,
   finalizeKeytarMigration,
@@ -619,6 +620,58 @@ describe('secret-storage', () => {
 
       expect(harness.keytarDelete).toHaveBeenCalledWith(SERVICE, ACCOUNT)
       expect(harness.keytarStore.has(`${SERVICE}:${ACCOUNT}`)).toBe(false)
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // OS keychain read bound
+  // --------------------------------------------------------------------------
+
+  describe('OS keychain read bound', () => {
+    const hangForever = (): Promise<string | null> => new Promise<string | null>(() => {})
+
+    afterEach(() => {
+      vi.useRealTimers()
+      harness.keytarGet.mockImplementation(
+        async (s: string, a: string) => harness.keytarStore.get(`${s}:${a}`) ?? null
+      )
+    })
+
+    it('gives up on a hung OS keychain read and reports the secret as unreadable', async () => {
+      vi.useFakeTimers()
+      harness.keytarGet.mockImplementation(hangForever)
+
+      const outcome = getSecret(SERVICE, ACCOUNT).then(
+        () => 'resolved',
+        (err: Error) => err.name
+      )
+      await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
+
+      await expect(outcome).resolves.toBe('KeychainUnavailableError')
+    })
+
+    it('stops asking the OS keychain for the rest of the run once a read has timed out', async () => {
+      vi.useFakeTimers()
+      harness.keytarGet.mockImplementation(hangForever)
+      const first = getSecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
+      await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
+      await expect(first).resolves.toBe('KeychainUnavailableError')
+
+      await expect(getSecret(SERVICE, 'other-account')).rejects.toThrow(/keychain/i)
+
+      expect(harness.keytarGet).toHaveBeenCalledTimes(1)
+    })
+
+    it('reports a latched keychain as absent only for callers that opted in', async () => {
+      vi.useFakeTimers()
+      harness.keytarGet.mockImplementation(hangForever)
+      const first = getSecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
+      await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
+      await expect(first).resolves.toBe('KeychainUnavailableError')
+
+      await expect(
+        getSecret(SERVICE, ACCOUNT, { treatUnreadableAsAbsent: true })
+      ).resolves.toBeNull()
     })
   })
 })

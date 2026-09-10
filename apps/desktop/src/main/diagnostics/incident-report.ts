@@ -4,8 +4,8 @@
 // consent. `buildIncidentReport` is pure given its deps — it is what the renderer
 // both previews and sends (the incidentId is generated once by the caller and
 // injected, so preview and send produce byte-identical reports).
+import { boundedNetFetch } from '../telemetry/bounded-net-fetch'
 import { randomBytes } from 'node:crypto'
-import { net } from 'electron'
 
 import { redactText } from '@memry/contracts/redact'
 import type {
@@ -136,7 +136,7 @@ export const sendIncidentReport = async (
   deps: SendIncidentReportDeps
 ): Promise<{ incidentId: string }> => {
   const endpoint = resolveEndpoint(deps.endpoint, report.buildChannel)
-  const fetchFn = deps.fetch ?? ((input, init) => net.fetch(input.toString(), init))
+  const fetchFn = deps.fetch ?? ((input, init) => boundedNetFetch(input, init))
   let bearer: string | null = null
   try {
     bearer = await (deps.getAccessToken ?? getValidAccessToken)()

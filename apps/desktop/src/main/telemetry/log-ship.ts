@@ -4,8 +4,8 @@
 // batches+ships redacted lines to /telemetry/logs. Nothing in this module wires
 // itself into the real logger at startup — see the caller for that (installLogShip
 // is invoked once from main startup).
+import { boundedNetFetch } from './bounded-net-fetch'
 import log from 'electron-log'
-import { net } from 'electron'
 
 import { redactLogLine } from '@memry/contracts/redact'
 import type { DiagnosticLogBatch, DiagnosticLogLine } from '@memry/contracts/diagnostics-api'
@@ -103,7 +103,7 @@ const resolveEndpoint = (override: string | undefined, channel: TelemetryBuildCh
 }
 
 const wrapFetch = (custom?: TelemetryFetch): TelemetryFetch =>
-  custom ?? (async (input, init) => net.fetch(input.toString(), init))
+  custom ?? (async (input, init) => boundedNetFetch(input, init))
 
 export const installLogShip = (deps: LogShipDeps): LogShip => {
   if (logShipInstance) return logShipInstance
