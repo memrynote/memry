@@ -118,6 +118,22 @@ inside libsecret, and each blocked call held one of libuv's four threadpool thre
 them stuck, every `fs/promises` read in the app — journal entries, file pages, project folders —
 stalled behind the keychain.
 
+The timeout alone was not enough. It settles our promise; it cannot free the native thread, because
+`keytar` runs on a Napi `AsyncWorker` that stays parked inside libsecret. Startup issues several
+keychain reads at once (the sync runtime's refresh token, the Google Calendar sign-in probe, the
+telemetry access token), so three threads were already burned before the first deadline fired. So
+every OS keychain call — read, write and delete alike, from `secret-storage.ts` and from the shared
+`dev` keychain path in `crypto/keychain.ts` — goes through one process-wide single-flight queue.
+Concurrent reads of the same service/account share the in-flight promise; everything else waits, and
+a queued call re-checks the latch when its turn comes and rejects without touching `keytar`. A dead
+Secret Service therefore costs exactly one threadpool thread per run. Deleting a secret tolerates a
+latched keychain so sign-out cannot hang on it; the authoritative safeStorage copy is still removed.
+
+`main/uv-threadpool.ts`, the first module the main process executes, raises `UV_THREADPOOL_SIZE` to
+16 unless the environment already sets it. libuv reads that variable once, when the pool is created
+on first use, so it has to run before any async fs / zlib / crypto / keytar work. This only widens
+the margin for everything else sharing the pool — the single-flight queue is the actual guard.
+
 A legacy secret migrates lazily on first read: encrypt, persist, decrypt round-trip verify
 byte-identical against the source, and only then delete the OS keychain copy. Any verification
 failure keeps the OS keychain authoritative. The vault master key goes one step further — its OS

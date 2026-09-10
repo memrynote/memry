@@ -1,14 +1,16 @@
-import keytar from 'keytar'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import type { KeychainEntry } from '@memry/contracts/crypto'
 
 import {
+  deleteLegacySecret,
   deleteSecret,
   finalizeKeytarMigration,
   getSecret,
-  setSecret
+  readLegacySecret,
+  setSecret,
+  writeLegacySecret
 } from '../secrets/secret-storage'
 import { normalizeDeviceSuffix, resolveKeychainAccount } from './keychain-account'
 
@@ -22,6 +24,8 @@ function resolveAccount(entry: KeychainEntry): string {
 // file — stays per-worktree. Migrating out of keytar there would strand the
 // shared key for every other worktree, so plain `pnpm dev` keeps keytar
 // authoritative. Production (no MEMRY_DEVICE) and explicit devices migrate.
+// It still goes through secret-storage's OS keychain gateway so that it shares
+// the single-flight queue and the run-wide unavailability latch.
 function usesSharedDevKeychain(): boolean {
   return normalizeDeviceSuffix(process.env.MEMRY_DEVICE) === 'dev'
 }
@@ -67,7 +71,7 @@ export const storeKey = async (entry: KeychainEntry, key: Uint8Array): Promise<v
   const account = resolveAccount(entry)
   try {
     if (usesSharedDevKeychain()) {
-      await withTestTimeout(keytar.setPassword(entry.service, account, encoded), undefined)
+      await withTestTimeout(writeLegacySecret(entry.service, account, encoded), undefined)
     } else {
       await withTestTimeout(setSecret(entry.service, account, encoded), undefined)
     }
@@ -84,7 +88,7 @@ export const retrieveKey = async (entry: KeychainEntry): Promise<Uint8Array | nu
   let encoded: string | null
   try {
     if (usesSharedDevKeychain()) {
-      encoded = await withTestTimeout(keytar.getPassword(entry.service, account), null)
+      encoded = await withTestTimeout(readLegacySecret(entry.service, account), null)
     } else {
       // The master key's OS keychain copy is only dropped after the retrieved
       // key has been confirmed against the vault verifier — see
@@ -111,7 +115,7 @@ export const deleteKey = async (entry: KeychainEntry): Promise<void> => {
   const account = resolveAccount(entry)
   try {
     if (usesSharedDevKeychain()) {
-      await keytar.deletePassword(entry.service, account)
+      await deleteLegacySecret(entry.service, account)
     } else {
       await deleteSecret(entry.service, account)
     }
