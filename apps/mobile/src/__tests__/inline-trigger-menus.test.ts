@@ -6,6 +6,7 @@ import type { GuestMsg, HostMsg, WikiCandidate } from '@memry/contracts/webview-
 import type { GuestBridge } from '../../editor-web/src/bridge'
 import {
   detectTrigger,
+  inlineMenuScrollPlan,
   installWikiLinkAutocomplete,
   type WikiLinkEditorSurface
 } from '../../editor-web/src/wiki-links'
@@ -59,6 +60,7 @@ describe('inline trigger menus', () => {
   let sent: GuestMsg[] = []
   let root: HTMLElement
   let chrome: HTMLElement
+  let toolbarHost: HTMLElement
   let surface: WikiLinkEditorSurface
   let detach: () => void
 
@@ -94,6 +96,56 @@ describe('inline trigger menus', () => {
     hostListener?.({ type: 'wiki-candidates', reqId: query.reqId, items })
   }
 
+  /** One finger down and up on the same spot: a pick. */
+  function tap(target: HTMLElement, clientY = 400): void {
+    for (const type of ['pointerdown', 'pointerup']) {
+      target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientY }))
+    }
+  }
+
+  /** A finger that lands on a row and travels: a scroll of the list. */
+  function drag(target: HTMLElement, from: number, to: number): void {
+    target.dispatchEvent(
+      new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientY: from })
+    )
+    target.dispatchEvent(
+      new MouseEvent('pointermove', { bubbles: true, cancelable: true, clientY: to })
+    )
+    target.dispatchEvent(
+      new MouseEvent('pointerup', { bubbles: true, cancelable: true, clientY: to })
+    )
+  }
+
+  /**
+   * A toolbar shell whose top edge the test controls.
+   *
+   * jsdom has no layout, so the rect is stubbed: the point of these tests is
+   * which number the menu reads and WHEN, not what the browser would measure.
+   */
+  function toolbarShell(top: number): (next: number) => void {
+    const shell = document.createElement('div')
+    shell.className = 'editor-toolbar-shell'
+    let edge = top
+    shell.getBoundingClientRect = (() => ({ top: edge })) as unknown as () => DOMRect
+    toolbarHost.appendChild(shell)
+    return (next: number) => {
+      edge = next
+    }
+  }
+
+  function tagRow(title: string): WikiCandidate {
+    return {
+      kind: 'tag',
+      id: title,
+      title,
+      subtitle: '',
+      icon: '',
+      target: title,
+      alias: '',
+      color: ''
+    }
+  }
+
   function row(label: string): HTMLButtonElement {
     const match = [...chrome.querySelectorAll('button')].find((candidate) =>
       candidate.textContent?.includes(label)
@@ -109,7 +161,7 @@ describe('inline trigger menus', () => {
     root = document.createElement('div')
     root.innerHTML = '<p data-node-type="paragraph"></p>'
     chrome = document.createElement('div')
-    const toolbarHost = document.createElement('div')
+    toolbarHost = document.createElement('div')
     document.body.append(root, chrome, toolbarHost)
     surface = {
       replaceQuery: vi.fn(),
@@ -150,7 +202,7 @@ describe('inline trigger menus', () => {
       }
     ])
 
-    row('Roadmap').dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }))
+    tap(row('Roadmap'))
 
     // `'#'.length + 'road'.length`, and nothing forward: a tag has no closer.
     expect(surface.replaceQueryWithTag).toHaveBeenCalledWith(5, 0, 'Roadmap', 'tangerine', '🚀')
@@ -189,7 +241,7 @@ describe('inline trigger menus', () => {
       }
     ])
 
-    row('Tokyo trip').dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }))
+    tap(row('Tokyo trip'))
 
     expect(surface.replaceQuery).toHaveBeenCalledWith(4, 0, 'Tokyo trip', '')
     expect(surface.replaceQueryWithTag).not.toHaveBeenCalled()
@@ -221,6 +273,86 @@ describe('inline trigger menus', () => {
     expect(sent.at(-1)).toMatchObject({ trigger: 'mention', query: 'tok' })
   })
 
+  it('scrolls the list on a drag rather than picking the row it started on', () => {
+    typeInto('#a')
+    answer([
+      tagRow('a24'),
+      tagRow('absurd'),
+      tagRow('active'),
+      tagRow('andy-weir'),
+      tagRow('annual'),
+      tagRow('architecture')
+    ])
+
+    drag(row('a24'), 400, 260)
+
+    // The whole defect in one assertion: the first touch of a scroll used to
+    // be the pick, so the list could only ever be read five rows deep.
+    expect(surface.replaceQueryWithTag).not.toHaveBeenCalled()
+    expect(chrome.querySelector<HTMLElement>('.wiki-menu')?.hidden).toBe(false)
+  })
+
+  it('still picks when the finger barely moves', () => {
+    typeInto('#a')
+    answer([tagRow('a24')])
+
+    drag(row('a24'), 400, 396)
+
+    expect(surface.replaceQueryWithTag).toHaveBeenCalledWith(2, 0, 'a24', '', '')
+  })
+
+  it('keeps the caret out of the editor while a row is being pressed', () => {
+    typeInto('#a')
+    answer([tagRow('a24')])
+
+    const down = new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientY: 400 })
+    row('a24').dispatchEvent(down)
+
+    expect(down.defaultPrevented).toBe(true)
+  })
+
+  it('sits on top of the toolbar rather than under it', () => {
+    toolbarShell(500)
+    typeInto('#a')
+    answer([tagRow('a24')])
+
+    expect(chrome.querySelector<HTMLElement>('.wiki-menu')?.style.insetBlockEnd).toBe(
+      `${window.innerHeight - 500}px`
+    )
+  })
+
+  it('follows the toolbar when a picker opens under an open menu', async () => {
+    const moveShell = toolbarShell(500)
+    typeInto('#a')
+    answer([tagRow('a24')])
+
+    // What a block or style picker does: the toolbar swaps its shell for a
+    // taller one. A menu placed once keeps the old inset and ends up floating
+    // in the middle of the note, which is the bug this covers.
+    moveShell(200)
+    toolbarHost.appendChild(document.createElement('div'))
+    await Promise.resolve()
+
+    expect(chrome.querySelector<HTMLElement>('.wiki-menu')?.style.insetBlockEnd).toBe(
+      `${window.innerHeight - 200}px`
+    )
+  })
+
+  it('leaves a closed menu alone when the toolbar moves', async () => {
+    const moveShell = toolbarShell(500)
+    typeInto('#a')
+    answer([tagRow('a24')])
+    typeInto('#a ')
+
+    moveShell(200)
+    toolbarHost.appendChild(document.createElement('div'))
+    await Promise.resolve()
+
+    expect(chrome.querySelector<HTMLElement>('.wiki-menu')?.style.insetBlockEnd).toBe(
+      `${window.innerHeight - 500}px`
+    )
+  })
+
   it('closes the menu once the run is abandoned', () => {
     typeInto('#road')
     answer([
@@ -240,5 +372,45 @@ describe('inline trigger menus', () => {
     typeInto('#road ')
 
     expect(chrome.querySelector<HTMLElement>('.wiki-menu')?.hidden).toBe(true)
+  })
+})
+
+/**
+ * Where the menu leaves the line the reader is typing.
+ *
+ * The plan is asserted rather than the scroll: jsdom has no layout, so a test
+ * driving the DOM path would measure zeroes and pass on any arithmetic.
+ */
+describe('inlineMenuScrollPlan', () => {
+  it('does nothing when the caret already sits above the menu', () => {
+    expect(
+      inlineMenuScrollPlan({ caretBottom: 200, menuTop: 520, scrollY: 0, maxScroll: 4000 })
+    ).toEqual({ scrollBy: 0, pad: 0 })
+  })
+
+  it('scrolls the caret clear when the menu covers it, with room to spare', () => {
+    // 700 + 12 margin - 520 = 192, and there are 4000px of note left.
+    expect(
+      inlineMenuScrollPlan({ caretBottom: 700, menuTop: 520, scrollY: 0, maxScroll: 4000 })
+    ).toEqual({ scrollBy: 192, pad: 0 })
+  })
+
+  it('leaves a margin, so the line is readable rather than merely uncovered', () => {
+    expect(
+      inlineMenuScrollPlan({ caretBottom: 520, menuTop: 520, scrollY: 0, maxScroll: 4000 }).scrollBy
+    ).toBe(12)
+  })
+
+  it('asks for exactly the document the last line is missing', () => {
+    // Scrolled to the very end: every pixel of the scroll has to be invented.
+    expect(
+      inlineMenuScrollPlan({ caretBottom: 700, menuTop: 520, scrollY: 4000, maxScroll: 4000 })
+    ).toEqual({ scrollBy: 192, pad: 192 })
+  })
+
+  it('only pads the part it cannot scroll', () => {
+    expect(
+      inlineMenuScrollPlan({ caretBottom: 700, menuTop: 520, scrollY: 3950, maxScroll: 4000 })
+    ).toEqual({ scrollBy: 192, pad: 142 })
   })
 })

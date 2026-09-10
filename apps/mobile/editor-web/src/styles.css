@@ -58,7 +58,11 @@ body {
   /* The leading pad carries the native header the host floats over this page
      (`headerHeight` on the `cfg` message). Zero until the host reports one, so
      a surface that draws no chrome is unchanged. */
-  padding-block: calc(16px + var(--memry-header-inset, 0px)) 96px;
+  /* The trailing pad grows while an inline menu is open (`wiki-links.ts`): the
+     line being typed has to be able to scroll clear of the menu, and on the
+     last line of a note there is otherwise nothing below it to scroll. */
+  padding-block: calc(16px + var(--memry-header-inset, 0px))
+    calc(96px + var(--memry-inline-menu-pad, 0px));
   padding-inline: 16px;
   min-height: 100vh;
   box-sizing: border-box;
