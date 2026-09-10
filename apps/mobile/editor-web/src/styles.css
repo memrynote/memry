@@ -419,6 +419,49 @@ body {
   white-space: nowrap;
 }
 
+/* The alignment / colour / indentation panel (#2102). */
+.editor-picker-glyph svg {
+  inline-size: 20px;
+  block-size: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.editor-picker-card[disabled] {
+  opacity: 0.4;
+}
+
+.editor-colour-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding-inline: 12px;
+}
+
+.editor-colour-swatch {
+  flex: 0 0 44px;
+}
+
+.editor-colour-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 32px;
+  block-size: 32px;
+  border: 1px solid var(--memry-hairline);
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.editor-colour-swatch[aria-pressed='true'] .editor-colour-chip {
+  border-color: var(--memry-accent-text);
+  box-shadow: 0 0 0 1px var(--memry-accent-text);
+}
+
 /* The merged-cell explanation in the table panel (#2101). */
 .editor-picker-note {
   display: block;
