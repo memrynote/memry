@@ -114,7 +114,11 @@ const BLOCK_FIXTURES: Record<MemryBlockType, unknown> = {
   youtubeEmbed: {
     id: 'blk',
     type: 'youtubeEmbed',
-    props: { videoId: 'dQw4w9WgXcQ', videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+    props: {
+      videoId: 'dQw4w9WgXcQ',
+      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      title: 'Never Gonna Give You Up'
+    },
     children: []
   },
   bookmark: {

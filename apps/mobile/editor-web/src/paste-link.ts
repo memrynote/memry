@@ -76,8 +76,8 @@ const OPTION_ICON: Record<PasteLinkOption, IconName> = {
   url: 'globe'
 }
 
-/** The two options whose block carries metadata worth fetching. */
-export type PreviewOption = 'mention' | 'bookmark'
+/** The options whose block carries metadata worth fetching. */
+export type PreviewOption = 'mention' | 'bookmark' | 'embed'
 
 /**
  * The editor operations the menu needs, supplied by the caller.
@@ -190,6 +190,9 @@ export function installPasteLinkMenu(
         const videoId = extractYouTubeVideoId(url)
         if (!videoId) return
         surface.toEmbed(blockId, url, videoId)
+        // The card is complete without this — the thumbnail comes from the id
+        // alone — so the fetch only ever adds the video's title under it.
+        requestPreview('embed', url)
         return
       }
       case 'bookmark':

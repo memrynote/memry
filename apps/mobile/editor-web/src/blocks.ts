@@ -14,6 +14,7 @@ import {
   youtubeEmbedConfig
 } from '@memry/editor-schema/blocks'
 import { blockExternalHTML } from '@memry/editor-schema/server'
+import { getYouTubeThumbnailUrl } from '@memry/shared/youtube'
 import { icon, type IconName } from './icons.ts'
 
 /**
@@ -199,8 +200,40 @@ export function createTouchBlockSpecs() {
 
     youtubeEmbed: createBlockSpec(youtubeEmbedConfig, {
       render(block) {
-        const { videoId, videoUrl } = block.props
+        const { videoId, videoUrl, title } = block.props
+        const target = videoUrl || videoId
 
+        // Desktop shows the still frame and only swaps in the player on a
+        // click. Mobile keeps the still frame and nothing else: the note is not
+        // a place to watch a video, and the CSP has no room for an iframe. A
+        // tap leaves for the YouTube app through the shared `data-url` carrier
+        // `external-links.ts` already watches.
+        if (videoId) {
+          const dom = document.createElement('div')
+          dom.className = 'embed-media'
+          dom.setAttribute('data-embed', 'youtube')
+          if (videoUrl) dom.setAttribute('data-url', videoUrl)
+
+          const frame = span('embed-thumb')
+          // The thumbnail is a remote `https:` reference, which the host
+          // fetches and answers as a data URI exactly like a bookmark's card
+          // image — the guest may not load it itself under `img-src data:`.
+          frame.appendChild(assetImage('embed-image', getYouTubeThumbnailUrl(videoId)))
+          const badge = span('embed-play')
+          badge.appendChild(icon('play'))
+          frame.appendChild(badge)
+
+          dom.appendChild(frame)
+          // Title above URL, both under the frame. The title is absent for a
+          // block read back from disk — the marker carries only the URL — so
+          // the URL line is the one that is always there.
+          if (title) dom.appendChild(span('embed-name', title))
+          if (target) dom.appendChild(span('embed-url', target))
+          return { dom }
+        }
+
+        // No id: nothing to show a frame for, so the block stays the plain row
+        // card it was.
         const dom = document.createElement('div')
         dom.className = 'embed-block'
         dom.setAttribute('data-embed', 'youtube')
@@ -210,7 +243,6 @@ export function createTouchBlockSpecs() {
 
         const body = span('embed-body')
         body.appendChild(span('embed-title', 'YouTube'))
-        const target = videoUrl || videoId
         if (target) body.appendChild(span('embed-url', target))
 
         dom.append(glyph, body)

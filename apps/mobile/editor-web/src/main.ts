@@ -670,6 +670,17 @@ function pasteLinkSurface(editor: MobileEditor): PasteLinkSurface {
         return
       }
 
+      if (option === 'embed') {
+        const embed = findBlock(
+          editor.document,
+          (block) => block.type === 'youtubeEmbed' && block.props.videoUrl === url
+        )
+        // Only the title is taken. The rest of a YouTube page's metadata
+        // describes the site, not the video, and the card has no room for it.
+        if (embed && preview.title) editor.updateBlock(embed, { props: { title: preview.title } })
+        return
+      }
+
       const target = findBlock(
         editor.document,
         (block) => block.type === 'bookmark' && block.props.url === url

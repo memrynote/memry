@@ -44,3 +44,14 @@ function getValidVideoId(value: string | null | undefined): string | null {
 
   return value
 }
+
+/**
+ * The still frame YouTube serves for a video id.
+ *
+ * `hqdefault` is the largest size that exists for EVERY video — `maxresdefault`
+ * is absent on older uploads and answers 404, which the mobile host records as
+ * a permanent `missing` and never re-asks.
+ */
+export function getYouTubeThumbnailUrl(videoId: string): string {
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+}

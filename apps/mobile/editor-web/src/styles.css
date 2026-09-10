@@ -790,6 +790,13 @@ img.bookmark-image {
   min-block-size: 0;
 }
 
+/* The still frame fills its own 16:9 frame in every state, so a note does not
+   jump when the bytes land. Same reasoning as `img.bookmark-image` above. */
+img.embed-image {
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
 /* Last child of the flex card, next to `.bookmark-body`'s `flex: 1 1 auto`, so
    it takes a fixed thumbnail column instead of the card's whole width. */
 .bookmark-image {
@@ -1132,6 +1139,73 @@ img.bookmark-image {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The YouTube card with a thumbnail. Not a `.embed-block` row: the frame is the
+   card, and the url is a caption under it rather than a column beside a glyph. */
+.embed-media {
+  display: block;
+  inline-size: 100%;
+  box-sizing: border-box;
+  margin-block: 8px;
+}
+
+.embed-thumb {
+  position: relative;
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--memry-ink) 6%, transparent);
+}
+
+.embed-image {
+  inline-size: 100%;
+  block-size: 100%;
+  /* `hqdefault` is a 4:3 frame with letterbox bars; cropping it to the card is
+     what desktop does too, so the two read as the same block. */
+  object-fit: cover;
+}
+
+/* Purely a "this is a video" marker. It is NOT a play control — tapping the
+   card leaves for YouTube, and nothing plays in the note. */
+.embed-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #fff;
+  background: rgb(0 0 0 / 25%);
+  pointer-events: none;
+}
+
+/* Two lines, then an ellipsis: a video title can be a paragraph, and the card
+   is a reference to the video, not a place to read one. */
+.embed-media .embed-name {
+  display: -webkit-box;
+  margin-block-start: 8px;
+  font-size: 17px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* The title takes the room it needs first; the URL is the line that gives way,
+   clipped to one line by `.embed-url` above. */
+.embed-media .embed-url {
+  display: block;
+  margin-block-start: 4px;
+  font-size: 13px;
+  color: var(--memry-muted);
+}
+
+/* No title (a block read back from disk): the URL sits directly under the frame
+   and takes the title's spacing. */
+.embed-thumb + .embed-url {
+  margin-block-start: 8px;
 }
 
 .bookmark-description {
