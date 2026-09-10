@@ -389,6 +389,8 @@ vi.mock('electron', () => ({
     getLocale: vi.fn(() => 'en-US'),
     quit: vi.fn(),
     exit: vi.fn(),
+    disableHardwareAcceleration: vi.fn(),
+    commandLine: { appendSwitch: vi.fn() },
     dock: { setIcon: vi.fn() }
   },
   shell: { openExternal: vi.fn(), openPath: vi.fn() },
