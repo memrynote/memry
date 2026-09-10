@@ -84,17 +84,6 @@ export const BridgeCfgSchema = z.object({
    */
   headerHeight: z.number().min(0).optional(),
   /**
-   * Height of the software keyboard, in CSS px, as the HOST measures it.
-   *
-   * The block picker replaces the keyboard, so it has to be exactly as tall as
-   * the keyboard was. The guest cannot measure that for itself: its frame is
-   * shrunk by a KeyboardAvoidingView, so `visualViewport` only ever reports the
-   * part of the keyboard that overlapped the WebView -- which is why the picker
-   * used to open as a sliver. Last known height, kept across a dismissal,
-   * because the picker opens after the keyboard has already gone.
-   */
-  keyboardHeight: z.number().min(0).optional(),
-  /**
    * First day of the week, for the date pill's `This / Next / Last <Weekday>`
    * label tier.
    *
@@ -608,19 +597,11 @@ export const GuestInsertRequestSchema = z.object({
 })
 
 /**
- * Whether the software keyboard is covering the mounted document.
- *
- * The guest is authoritative because WKWebView's `visualViewport` is the only
- * layer that sees the same viewport the fixed editor toolbar is positioned
- * against. Addressing the state prevents a late resize from a departing note
- * hiding or showing the native footer for the note that replaced it.
+ * Whether one of the guest's OWN bottom panels — find-in-note or the date
+ * sheet — is open. The host hides the native toolbar and the note footer while
+ * it is. The keyboard itself is not reported here: the host measures it
+ * natively, which is the one place its frame is known before it moves.
  */
-export const GuestKeyboardVisibilitySchema = z.object({
-  type: z.literal('keyboard-visibility'),
-  docId: z.string().min(1),
-  visible: z.boolean()
-})
-
 export const GuestEditorPanelVisibilitySchema = z.object({
   type: z.literal('editor-panel-visibility'),
   docId: z.string().min(1),
@@ -872,7 +853,6 @@ export const GuestMsgSchema = z.discriminatedUnion('type', [
   GuestAssetReqSchema,
   GuestLinkPreviewReqSchema,
   GuestInsertRequestSchema,
-  GuestKeyboardVisibilitySchema,
   GuestEditorPanelVisibilitySchema,
   GuestEditorFocusSchema,
   GuestToolbarSelectionSchema,

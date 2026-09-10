@@ -152,17 +152,15 @@ describe('EditorBridgeProvider', () => {
     ])
   })
 
-  it('delivers addressed keyboard visibility without losing the document', () => {
+  it('delivers addressed editor focus without losing the document', () => {
     const provider = new EditorBridgeProvider('rn-test')
     provider.attach(collector())
     const seen: GuestMsg[] = []
     provider.onGuestMsg((msg) => seen.push(msg))
 
-    provider.receive(
-      guestEnvelope(1, [{ type: 'keyboard-visibility', docId: 'note-2', visible: true }])
-    )
+    provider.receive(guestEnvelope(1, [{ type: 'editor-focus', docId: 'note-2', focused: true }]))
 
-    expect(seen).toEqual([{ type: 'keyboard-visibility', docId: 'note-2', visible: true }])
+    expect(seen).toEqual([{ type: 'editor-focus', docId: 'note-2', focused: true }])
   })
 
   it('delivers addressed panel visibility and markdown export replies', () => {
