@@ -108,6 +108,16 @@ service and account strings the OS keychain used. The retired `keytar` module st
 read-only fallback: every read tries the safeStorage store first and falls back to the OS keychain
 under the identical account.
 
+That fallback is bounded (`readLegacySecret` in `secrets/secret-storage.ts`). An OS keychain read
+that has not answered within 5 s (`KEYCHAIN_READ_TIMEOUT_MS`) is reported as **unreadable**
+(`KeychainUnavailableError`), never as absent — the #772 guard still holds — and the OS keychain is
+skipped for the rest of the run. Only callers that opted into `treatUnreadableAsAbsent` see `null`.
+Without the bound, a machine with no working Secret Service (a ChromeOS Crostini container, a
+headless session, a locked keyring whose prompt nobody can answer) left every `keytar` call blocked
+inside libsecret, and each blocked call held one of libuv's four threadpool threads: with four of
+them stuck, every `fs/promises` read in the app — journal entries, file pages, project folders —
+stalled behind the keychain.
+
 A legacy secret migrates lazily on first read: encrypt, persist, decrypt round-trip verify
 byte-identical against the source, and only then delete the OS keychain copy. Any verification
 failure keeps the OS keychain authoritative. The vault master key goes one step further — its OS

@@ -278,6 +278,7 @@ describe('createTelemetryClient', () => {
     it('sends Authorization header when getAccessToken resolves a token', async () => {
       // #given a client with getAccessToken that resolves a JWT
       const { deps, calls } = createDeps({
+        getAuthState: () => 'signed_in',
         getAccessToken: async () => 'jwt-token'
       })
       const client = createTelemetryClient(deps)
@@ -296,6 +297,7 @@ describe('createTelemetryClient', () => {
     it('sends no Authorization header when getAccessToken resolves null', async () => {
       // #given a client with getAccessToken that resolves null
       const { deps, calls } = createDeps({
+        getAuthState: () => 'signed_in',
         getAccessToken: async () => null
       })
       const client = createTelemetryClient(deps)
@@ -312,6 +314,7 @@ describe('createTelemetryClient', () => {
     it('flush still succeeds when getAccessToken throws', async () => {
       // #given a client with getAccessToken that throws
       const { deps, calls } = createDeps({
+        getAuthState: () => 'signed_in',
         getAccessToken: async () => {
           throw new Error('token fetch failed')
         }
@@ -331,6 +334,7 @@ describe('createTelemetryClient', () => {
     it('Authorization header is exactly Bearer <token> with one space', async () => {
       // #given a client with a known token
       const { deps, calls } = createDeps({
+        getAuthState: () => 'signed_in',
         getAccessToken: async () => 'my-access-token'
       })
       const client = createTelemetryClient(deps)
@@ -500,5 +504,33 @@ describe('createTelemetryClient — crash durability', () => {
     // #then nothing is restored and nothing is left on disk
     expect(client.getQueueDepth()).toBe(0)
     expect(fs.existsSync(persistPath)).toBe(false)
+  })
+
+  describe('access token lookup', () => {
+    it('never touches the token store for an install that is not signed in', async () => {
+      const getAccessToken = vi.fn(async () => 'token')
+      const { deps, fetchMock } = createDeps({ getAccessToken, getAuthState: () => 'anonymous' })
+      const client = createTelemetryClient(deps)
+      client.track(buildEvent('11111111-1111-1111-1111-111111111111'))
+
+      await client.flush('manual')
+
+      expect(getAccessToken).not.toHaveBeenCalled()
+      const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined
+      expect(init?.headers).not.toHaveProperty('Authorization')
+    })
+
+    it('attaches the token for a signed-in install', async () => {
+      const getAccessToken = vi.fn(async () => 'token')
+      const { deps, fetchMock } = createDeps({ getAccessToken, getAuthState: () => 'signed_in' })
+      const client = createTelemetryClient(deps)
+      client.track(buildEvent('11111111-1111-1111-1111-111111111111'))
+
+      await client.flush('manual')
+
+      expect(getAccessToken).toHaveBeenCalledTimes(1)
+      const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined
+      expect(init?.headers).toHaveProperty('Authorization', 'Bearer token')
+    })
   })
 })

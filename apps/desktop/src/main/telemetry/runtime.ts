@@ -1,6 +1,7 @@
+import { boundedNetFetch } from './bounded-net-fetch'
 import { randomUUID } from 'node:crypto'
 
-import { app, net } from 'electron'
+import { app } from 'electron'
 
 import type {
   TelemetryAuthState,
@@ -108,10 +109,7 @@ const computeInitialEnabled = (
 
 const wrapFetch = (custom?: TelemetryFetch): TelemetryFetch => {
   if (custom) return custom
-  return async (input, init) => {
-    const response = await net.fetch(input.toString(), init)
-    return response
-  }
+  return async (input, init) => boundedNetFetch(input, init)
 }
 
 export const initializeTelemetryRuntime = (deps?: TelemetryRuntimeDeps): TelemetryRuntime => {

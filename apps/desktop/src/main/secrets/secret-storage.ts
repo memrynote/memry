@@ -59,6 +59,48 @@ const keytarMigrationFinalized = new Set<string>()
 
 let loggedPlaintextBackend = false
 
+// keytar has no timeout of its own. Where the Secret Service is missing or
+// wedged (a ChromeOS Crostini container, a headless session, a locked keyring
+// whose prompt nobody can answer) libsecret blocks for as long as D-Bus waits,
+// and every blocked call holds one of libuv's four threadpool threads. Enough
+// of them and every fs/promises read in the app stalls behind the keychain:
+// journal entries, file pages, project folders. Bound the read, and once it
+// has timed out stop asking for the rest of the run.
+export const KEYCHAIN_READ_TIMEOUT_MS = 5_000
+let keychainTimedOut = false
+
+export class KeychainUnavailableError extends Error {
+  constructor(service: string, account: string, cause: 'timeout' | 'latched') {
+    super(
+      cause === 'timeout'
+        ? `OS keychain did not answer within ${KEYCHAIN_READ_TIMEOUT_MS}ms for ${service}/${account}`
+        : `OS keychain is unavailable for the rest of this run (${service}/${account})`
+    )
+    this.name = 'KeychainUnavailableError'
+  }
+}
+
+async function readLegacySecret(service: string, account: string): Promise<string | null> {
+  if (keychainTimedOut) throw new KeychainUnavailableError(service, account, 'latched')
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      keychainTimedOut = true
+      logger.warn('OS keychain read timed out; skipping the OS keychain for the rest of this run', {
+        service,
+        account,
+        timeoutMs: KEYCHAIN_READ_TIMEOUT_MS
+      })
+      reject(new KeychainUnavailableError(service, account, 'timeout'))
+    }, KEYCHAIN_READ_TIMEOUT_MS)
+  })
+  try {
+    return await Promise.race([keytar.getPassword(service, account), deadline])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 const cleanupKey = (service: string, account: string): string => `${service}\u0000${account}`
 
 /** Test-only: reset per-run module state between test cases. */
@@ -66,6 +108,7 @@ export function resetSecretStorageForTests(): void {
   keytarCleanupAttempted.clear()
   keytarMigrationFinalized.clear()
   loggedPlaintextBackend = false
+  keychainTimedOut = false
 }
 
 // ---------------------------------------------------------------------------
@@ -259,7 +302,19 @@ export async function getSecret(
     }
   }
 
-  const legacy = await keytar.getPassword(service, account)
+  let legacy: string | null
+  try {
+    legacy = await readLegacySecret(service, account)
+  } catch (err) {
+    if (err instanceof KeychainUnavailableError && options?.treatUnreadableAsAbsent) {
+      logger.warn('OS keychain unavailable; caller opted to treat the secret as absent', {
+        service,
+        account
+      })
+      return null
+    }
+    throw err
+  }
   if (legacy !== null) {
     if (filePath !== null) {
       await migrateLegacySecret(
@@ -368,6 +423,7 @@ export async function deleteSecret(service: string, account: string): Promise<vo
  */
 export async function finalizeKeytarMigration(service: string, account: string): Promise<void> {
   if (keytarMigrationFinalized.has(cleanupKey(service, account))) return
+  if (keychainTimedOut) return
   if (!isSafeStorageAvailable()) return
   const filePath = resolveStoreFilePath()
   if (!filePath) return
@@ -376,7 +432,7 @@ export async function finalizeKeytarMigration(service: string, account: string):
     if (ciphertext === null) return
     const value = decryptValue(ciphertext)
     if (value === null) return
-    const legacy = await keytar.getPassword(service, account)
+    const legacy = await readLegacySecret(service, account)
     if (legacy === null) {
       // Nothing left in the OS keychain — this migration is done for this run.
       keytarMigrationFinalized.add(cleanupKey(service, account))
@@ -559,7 +615,7 @@ async function cleanupLegacyKeytarCopy(
   if (keytarCleanupAttempted.has(key)) return
   keytarCleanupAttempted.add(key)
   try {
-    const legacy = await keytar.getPassword(service, account)
+    const legacy = await readLegacySecret(service, account)
     if (legacy !== null && legacy === expected) {
       await keytar.deletePassword(service, account)
       logger.info('Removed migrated secret from OS keychain', { service, account })

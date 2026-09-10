@@ -151,7 +151,10 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
     const batch = buildBatch(events)
 
     let bearerValue: string | null = null
-    if (deps.getAccessToken) {
+    // Only a signed-in install has a token to find. Looking one up anyway
+    // costs an OS keychain round-trip per flush, and on a machine whose
+    // keychain hangs that round-trip wedged the whole pipeline.
+    if (deps.getAccessToken && batch.authState === 'signed_in') {
       try {
         bearerValue = await deps.getAccessToken()
       } catch (error) {

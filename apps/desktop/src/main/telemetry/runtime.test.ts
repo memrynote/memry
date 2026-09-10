@@ -255,6 +255,7 @@ describe('initializeTelemetryRuntime', () => {
       endpoint: 'https://example.test/telemetry/batch',
       initialEnabled: true,
       flushIntervalMs: null,
+      authStateProvider: () => 'signed_in',
       accessTokenProvider: async () => 'jwt-token'
     })
 
