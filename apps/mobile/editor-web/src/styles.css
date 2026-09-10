@@ -81,11 +81,13 @@ body {
   pointer-events: none;
 }
 
-.editor-toolbar-shell-blocks {
+.editor-toolbar-shell-blocks,
+.editor-toolbar-shell-table {
   inset-block-end: 0;
 }
 
-.editor-toolbar-shell-blocks .editor-picker {
+.editor-toolbar-shell-blocks .editor-picker,
+.editor-toolbar-shell-table .editor-picker {
   flex: 0 0 var(--memry-picker-height, auto);
   block-size: var(--memry-picker-height, auto);
   max-block-size: var(--memry-picker-height, min(546px, calc(100dvh - 56px)));
@@ -415,6 +417,21 @@ body {
   line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The merged-cell explanation in the table panel (#2101). */
+.editor-picker-note {
+  display: block;
+  padding-block: 8px;
+  padding-inline: 12px;
+  color: var(--memry-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.editor-toolbar-table {
+  font-size: 17px;
+  line-height: 24px;
 }
 
 .editor-picker-check {

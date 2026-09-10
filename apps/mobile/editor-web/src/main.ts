@@ -6,6 +6,8 @@ import * as Y from 'yjs'
 import { BlockNoteEditor } from '@blocknote/core'
 import { codeBlockOptions } from '@blocknote/code-block'
 import {
+  createInlineCheckboxContent,
+  createInlineImageContent,
   createWikiLinkInlineContent,
   wikiLinkConfig,
   wikiLinkToText
@@ -31,8 +33,17 @@ import {
   type EditorToolbarController,
   type EditorToolbarSelection,
   type InlineStyle,
-  type InsertBlockAction
+  type InsertBlockAction,
+  type TableAction
 } from './editor-toolbar.ts'
+import {
+  applyTableStructureOp,
+  handleCellPaste,
+  hasMergedCells,
+  readTableCursor,
+  type TableContentLike,
+  type TableCursor
+} from './tables.ts'
 import './styles.css'
 
 /**
@@ -82,6 +93,9 @@ function createEditor(fragment: Y.XmlFragment) {
     },
     trailingBlock: true,
     animations: false,
+    // A cell holds inline content only, so a pasted `| a | b |` read as
+    // markdown would splice a whole table over the row the caret is in (#1641).
+    pasteHandler: (context) => handleCellPaste(context.editor, context),
     /*
      * The label belongs on the element that IS the text box.
      *
@@ -110,6 +124,19 @@ interface MountedDoc {
 
 let mounted: MountedDoc | null = null
 let readOnly = false
+
+/**
+ * An image the user asked to put INSIDE a table cell.
+ *
+ * The native picker covers the editor and can blur the selection, so the
+ * caret's position is captured before the request goes out and restored when
+ * the bytes come back — desktop's `use-table-cell-image` does the same. No new
+ * bridge message: the round trip is the existing `insert-request` /
+ * `insert-attachment` pair, and this is the guest remembering what it asked
+ * for. If the memory is lost the attachment simply lands as a block, which is
+ * what it did before this existed.
+ */
+let pendingCellImage: { docId: string; pos: number } | null = null
 
 const viewport = installVisibleViewportInset((visible) => {
   if (!mounted) return
@@ -154,6 +181,10 @@ bridge.onHostMsg((msg) => {
 
     case 'insert-attachment': {
       if (!mounted || !isForMountedDoc(msg, mounted.docId)) return
+      if (insertPendingCellImage(mounted.editor, mounted.docId, msg.ref, msg.name, msg.mime)) {
+        mounted.toolbar.update(readToolbarSelection(mounted.editor))
+        break
+      }
       insertAttachmentBlock(
         mounted.editor,
         msg.ref,
@@ -240,6 +271,7 @@ bridge.onHostMsg((msg) => {
 
 function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void {
   mounted?.teardown()
+  pendingCellImage = null
 
   const doc = new Y.Doc()
   if (stateB64.length > 0) {
@@ -577,6 +609,111 @@ function insertBlock(editor: MobileEditor, action: InsertBlockAction): void {
   }
 }
 
+/* ---------------------------------------------------------------- */
+/* Table editing (#2101)                                             */
+/* ---------------------------------------------------------------- */
+
+type TableBlock = Extract<MobileEditor['document'][number], { type: 'table' }>
+
+/** The table the caret is inside, or `null` when it is not inside one. */
+function tableBlockAt(editor: MobileEditor): TableBlock | null {
+  const block = editor.getTextCursorPosition().block
+  return block.type === 'table' ? (block as TableBlock) : null
+}
+
+function tableContentOf(block: TableBlock): TableContentLike {
+  return block.content as unknown as TableContentLike
+}
+
+function readTableSelection(editor: MobileEditor): { structureLocked: boolean } | null {
+  if (readTableCursor(editor) === null) return null
+  const block = tableBlockAt(editor)
+  // No block means the caret is in a cell of a table this schema cannot name,
+  // which is not something to guess a row index against.
+  if (!block) return { structureLocked: true }
+  return { structureLocked: hasMergedCells(tableContentOf(block)) }
+}
+
+/**
+ * Insert the picked image INTO the cell it was asked for.
+ *
+ * Returns whether it claimed the attachment; `false` sends it down the
+ * ordinary block path. A cell is inline-only, so this is the only way a
+ * picture reaches one — `inlineImage` exists for exactly this reason.
+ */
+function insertPendingCellImage(
+  editor: MobileEditor,
+  docId: string,
+  ref: string,
+  name: string,
+  mime: string
+): boolean {
+  const pending = pendingCellImage
+  // Consumed either way: a file the user picked instead of an image is not
+  // going to arrive a second time.
+  pendingCellImage = null
+  if (!pending || pending.docId !== docId) return false
+  if (!mime.startsWith('image/')) return false
+
+  editor.transact((tr) => {
+    const pos = Math.min(Math.max(pending.pos, 0), tr.doc.content.size)
+    tr.setSelection(TextSelection.create(tr.doc, pos))
+  })
+  if (readTableCursor(editor) === null) return false
+  editor.insertInlineContent([createInlineImageContent(ref, name)])
+  return true
+}
+
+function runTableAction(
+  editor: MobileEditor,
+  docId: string,
+  guest: GuestBridge,
+  action: TableAction
+): void {
+  switch (action.kind) {
+    case 'structure': {
+      const cursor: TableCursor | null = readTableCursor(editor)
+      const block = tableBlockAt(editor)
+      if (!cursor || !block) return
+      const next = applyTableStructureOp(tableContentOf(block), cursor, action.op)
+      // `null` is "the table does not allow that" — the last body row, a move
+      // off the end, a merged cell. Nothing to report and nothing to write.
+      if (!next) return
+      editor.updateBlock(block, {
+        content: next as unknown as TableBlock['content']
+      })
+      return
+    }
+
+    case 'inline-checkbox':
+      editor.insertInlineContent([createInlineCheckboxContent(false), ' '])
+      return
+
+    case 'inline-image': {
+      const block = tableBlockAt(editor)
+      if (!block) return
+      pendingCellImage = { docId, pos: editor.transact((tr) => tr.selection.from) }
+      const active = document.activeElement
+      if (active instanceof HTMLElement) active.blur()
+      guest.send({ type: 'insert-request', docId, blockType: 'image', referenceBlockId: block.id })
+      guest.flush()
+      return
+    }
+
+    case 'delete-table': {
+      const block = tableBlockAt(editor)
+      if (!block) return
+      editor.removeBlocks([block])
+      return
+    }
+
+    default: {
+      const _exhaustive: never = action
+      void _exhaustive
+    }
+  }
+}
+
 function blockLabel(editor: MobileEditor): string {
   const block = editor.getTextCursorPosition().block
   switch (block.type) {
@@ -624,6 +761,7 @@ function readToolbarSelection(editor: MobileEditor): EditorToolbarSelection {
   const styles = editor.getActiveStyles()
   return {
     blockLabel: blockLabel(editor),
+    table: readTableSelection(editor),
     activeStyles: {
       bold: styles.bold === true,
       italic: styles.italic === true,
@@ -711,6 +849,10 @@ function toolbarActions(
       }
       insertBlock(editor, action)
       refocus()
+    },
+    tableAction(action: TableAction): void {
+      runTableAction(editor, docId, guest, action)
+      refresh()
     },
     turnInto(block: ConvertibleBlock): void {
       turnInto(editor, block)
