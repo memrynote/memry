@@ -1,5 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { hasWebGLSupport } from './webgl-support'
+
+const mocks = vi.hoisted(() => ({ trackRendererLog: vi.fn() }))
+
+vi.mock('./telemetry-diagnostics', () => ({ trackRendererLog: mocks.trackRendererLog }))
 
 describe('hasWebGLSupport', () => {
   afterEach(() => {
@@ -35,5 +39,36 @@ describe('hasWebGLSupport', () => {
     })
 
     expect(hasWebGLSupport()).toBe(false)
+  })
+})
+
+describe('hasWebGLSupport telemetry', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    mocks.trackRendererLog.mockClear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('reports an unavailable WebGL context once per session', async () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+    const { hasWebGLSupport: probe } = await import('./webgl-support')
+
+    expect(probe()).toBe(false)
+    expect(probe()).toBe(false)
+    expect(mocks.trackRendererLog).toHaveBeenCalledTimes(1)
+    expect(mocks.trackRendererLog).toHaveBeenCalledWith('warn', 'webgl_unavailable', 'WebGLSupport')
+  })
+
+  it('stays silent when WebGL works', async () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      getExtension: () => null
+    } as unknown as RenderingContext)
+    const { hasWebGLSupport: probe } = await import('./webgl-support')
+
+    expect(probe()).toBe(true)
+    expect(mocks.trackRendererLog).not.toHaveBeenCalled()
   })
 })

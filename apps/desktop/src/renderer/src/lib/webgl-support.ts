@@ -1,3 +1,15 @@
+import { trackRendererLog } from './telemetry-diagnostics'
+
+let unavailabilityReported = false
+
+function reportUnavailable(): false {
+  if (!unavailabilityReported) {
+    unavailabilityReported = true
+    trackRendererLog('warn', 'webgl_unavailable', 'WebGLSupport')
+  }
+  return false
+}
+
 /**
  * Sigma needs at least one WebGL context for every graph surface. Probe the
  * browser boundary once before mounting Sigma so unsupported devices get a
@@ -13,11 +25,11 @@ export function hasWebGLSupport(): boolean {
       canvas.getContext('webgl2') ??
       canvas.getContext('webgl') ??
       canvas.getContext('experimental-webgl')
-    if (!context) return false
+    if (!context) return reportUnavailable()
 
     ;(context as WebGLRenderingContext).getExtension('WEBGL_lose_context')?.loseContext()
     return true
   } catch {
-    return false
+    return reportUnavailable()
   }
 }

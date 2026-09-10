@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({
     isPackaged: true,
     disableHardwareAcceleration: vi.fn(),
     getVersion: vi.fn(() => '2026.702.2'),
-    getPath: vi.fn((name: string) => `/userdata/${name}`)
+    getPath: vi.fn((name: string) => `/userdata/${name}`),
+    commandLine: { appendSwitch: vi.fn() }
   }
 }))
 
@@ -24,6 +25,7 @@ vi.mock('./telemetry/diagnostics', () => ({
 import { readFileSync, writeFileSync, rmSync } from 'node:fs'
 import {
   applyGpuCrashGuard,
+  enableSoftwareWebglFallback,
   recordGpuCrash,
   shouldDisableHwAccel,
   shouldRecordGpuCrash
@@ -126,5 +128,13 @@ describe('recordGpuCrash', () => {
     expect(writeFileSync).toHaveBeenCalledTimes(1)
     const [, payload] = vi.mocked(writeFileSync).mock.calls[0]
     expect(JSON.parse(payload as string)).toEqual({ disabledForGpu: true, version: '2026.702.2' })
+  })
+})
+
+describe('enableSoftwareWebglFallback', () => {
+  it('lets Chromium fall back to SwiftShader so a launch without GPU WebGL still gets a context', () => {
+    enableSoftwareWebglFallback()
+
+    expect(mocks.app.commandLine.appendSwitch).toHaveBeenCalledWith('enable-unsafe-swiftshader')
   })
 })
