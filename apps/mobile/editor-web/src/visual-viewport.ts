@@ -15,14 +15,33 @@ export interface VisibleViewportController {
 }
 
 /** Distance between the visible viewport and the layout viewport's bottom. */
-export function visibleViewportBottomInset(_metrics: VisibleViewportMetrics): number {
-  const { layoutHeight, viewportHeight, viewportOffsetTop } = _metrics
+export function visibleViewportBottomInset(metrics: VisibleViewportMetrics): number {
+  const { layoutHeight, viewportHeight, viewportOffsetTop } = metrics
   return Math.max(0, Math.round(layoutHeight - viewportHeight - viewportOffsetTop))
 }
 
+/**
+ * Whether something — in practice the software keyboard — is covering part of
+ * the frame.
+ *
+ * Deliberately NOT `bottomInset > 0`. The inset is a POSITION and it decays to
+ * zero on its own: scrolling with the keyboard up walks `offsetTop` all the way
+ * up to the occluded height, at which point the visible viewport ends exactly
+ * at the layout viewport's bottom and chrome pinned to that bottom is already
+ * in the right place. Reading that as "the keyboard went away" is what used to
+ * delete the toolbar part-way down a note (#2131). The occlusion itself is the
+ * height the visible viewport is SHORT by, and that number does not move while
+ * the reader scrolls.
+ */
+export function visibleViewportOccludedHeight(metrics: VisibleViewportMetrics): number {
+  return Math.max(0, Math.round(metrics.layoutHeight - metrics.viewportHeight))
+}
+
 export function visibleViewportState(metrics: VisibleViewportMetrics): VisibleViewportState {
-  const bottomInset = visibleViewportBottomInset(metrics)
-  return { bottomInset, keyboardVisible: bottomInset > 0 }
+  return {
+    bottomInset: visibleViewportBottomInset(metrics),
+    keyboardVisible: visibleViewportOccludedHeight(metrics) > 0
+  }
 }
 
 /**
