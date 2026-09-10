@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useState } from 'react'
 import { Folder } from '@/lib/icons'
-import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { FOLDER_CUSTOM_ICON_CLASS, NoteIconDisplay } from '@/lib/render-note-icon'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useT } from '@memry/i18n/renderer'
 
@@ -46,7 +46,11 @@ export function FolderEmojiChip({ icon, onIconChange }: FolderEmojiChipProps): R
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border bg-muted transition-colors hover:bg-accent"
         >
           {icon ? (
-            <NoteIconDisplay value={icon} className="text-[17px] leading-none" />
+            <NoteIconDisplay
+              value={icon}
+              className="text-[17px] leading-none"
+              customIconClassName={FOLDER_CUSTOM_ICON_CLASS}
+            />
           ) : (
             <Folder className="h-4 w-4 text-muted-foreground" />
           )}
