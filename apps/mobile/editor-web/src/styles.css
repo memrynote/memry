@@ -22,6 +22,9 @@
      `ui.destructive` / `ui.destructiveText` already makes in the RN theme. */
   --memry-accent-text: color-mix(in srgb, var(--memry-accent) 78%, #000);
   --memry-hairline: rgba(28, 25, 23, 0.1);
+  /* `ui.destructiveText` from the RN white theme, so "Remove date" reads the
+     same red as every other destructive row in the app. */
+  --memry-danger: #d63333;
   color-scheme: light;
 }
 
@@ -31,6 +34,7 @@
   --memry-muted: #a8a29e;
   --memry-accent-text: color-mix(in srgb, var(--memry-accent) 82%, #fff);
   --memry-hairline: rgba(245, 245, 244, 0.14);
+  --memry-danger: #ff6b6b;
   color-scheme: dark;
 }
 
@@ -523,6 +527,114 @@ body {
 .editor-link-add {
   background: var(--memry-ink);
   color: var(--memry-paper);
+}
+
+/* The date pill's sheet (#2103). Borrows the picker's shell so it sits where
+   the block picker and the table panel sit; only the rows are its own. */
+.editor-date-sheet-shell {
+  inset-block-end: 0;
+}
+
+.editor-date-sheet {
+  pointer-events: auto;
+}
+
+.editor-date-title {
+  flex: 1 1 auto;
+}
+
+.editor-date-done {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--memry-accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.editor-date-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-block-size: 52px;
+  padding-inline: 12px;
+}
+
+.editor-date-row-label {
+  color: var(--memry-ink);
+  font-size: 15px;
+}
+
+.editor-date-input {
+  min-inline-size: 0;
+  block-size: 40px;
+  box-sizing: border-box;
+  padding-inline: 12px;
+  border: 1px solid var(--memry-hairline);
+  border-radius: 10px;
+  outline: none;
+  background: color-mix(in srgb, var(--memry-ink) 4%, var(--memry-paper));
+  color: var(--memry-ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.editor-date-input:focus {
+  border-color: var(--memry-accent);
+}
+
+/* A switch rather than a checkbox: the knob is a pseudo-free child so the
+   44px target stays on the button itself. */
+.editor-date-switch {
+  flex: 0 0 52px;
+  display: flex;
+  align-items: center;
+  inline-size: 52px;
+  block-size: 32px;
+  padding: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--memry-ink) 12%, transparent);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.editor-date-switch[aria-checked='true'] {
+  background: var(--memry-accent);
+  justify-content: flex-end;
+}
+
+.editor-date-switch-knob {
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: 999px;
+  background: var(--memry-paper);
+}
+
+.editor-date-option {
+  block-size: 48px;
+  justify-content: space-between;
+}
+
+.editor-date-clear {
+  display: flex;
+  align-items: center;
+  inline-size: calc(100% - 24px);
+  block-size: 52px;
+  margin-block-start: 8px;
+  margin-inline: 12px;
+  padding-inline: 12px;
+  border: 1px solid var(--memry-hairline);
+  border-radius: 12px;
+  background: var(--memry-paper);
+  color: var(--memry-danger);
+  font: inherit;
+  font-size: 15px;
+  text-align: start;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .bn-editor {

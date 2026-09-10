@@ -39,6 +39,12 @@ import {
 } from './editor-toolbar.ts'
 import { readAlignment, readColour, runStyleAction } from './block-styles.ts'
 import {
+  installDateMentionSheet,
+  setDateMentionWeekStart,
+  type DateMentionEditorSurface,
+  type DateMentionSheetController
+} from './date-mentions.ts'
+import {
   applyTableStructureOp,
   handleCellPaste,
   hasMergedCells,
@@ -121,6 +127,7 @@ interface MountedDoc {
   editor: MobileEditor
   toolbar: EditorToolbarController
   find: FindInNoteController
+  dateSheet: DateMentionSheetController
   teardown: () => void
 }
 
@@ -311,7 +318,8 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   chrome.replaceChildren()
   const findHost = document.createElement('div')
   const toolbarHost = document.createElement('div')
-  chrome.append(findHost, toolbarHost)
+  const dateSheetHost = document.createElement('div')
+  chrome.append(findHost, toolbarHost, dateSheetHost)
   // After `replaceChildren`, or the menu is swept out of the chrome layer the
   // moment the toolbar claims it.
   const wikiLinks = installWikiLinkAutocomplete(
@@ -327,11 +335,12 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   )
   let toolbarPanelOpen = false
   let findOpen = false
+  let dateSheetOpen = false
   const reportPanelVisibility = (): void => {
     bridge.send({
       type: 'editor-panel-visibility',
       docId,
-      open: toolbarPanelOpen || findOpen
+      open: toolbarPanelOpen || findOpen || dateSheetOpen
     })
     bridge.flush()
   }
@@ -348,6 +357,19 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     findOpen = state.open
     reportPanelVisibility()
   })
+  // The date sheet stands where the toolbar does, so the toolbar steps aside
+  // for it exactly as it does for find-in-note.
+  const dateSheet = installDateMentionSheet(
+    dateSheetHost,
+    root,
+    dateMentionSurface(editor),
+    (open) => {
+      toolbar.setSuppressed(open || findOpen)
+      dateSheetOpen = open
+      reportPanelVisibility()
+    }
+  )
+  dateSheet.setReadOnly(readOnly)
   toolbar.setReadOnly(readOnly)
   toolbar.setKeyboardVisible(viewport.getState().keyboardVisible)
   const detachToolbarSelection = editor.onSelectionChange(() => {
@@ -378,6 +400,7 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     editor,
     toolbar,
     find,
+    dateSheet,
     teardown: () => {
       doc.off('update', onUpdate)
       detachNav()
@@ -386,6 +409,7 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
       detachAssets()
       detachMetrics()
       detachToolbarSelection()
+      dateSheet.destroy()
       find.destroy()
       toolbar.destroy()
       editor.unmount()
@@ -913,6 +937,19 @@ function toolbarActions(
   }
 }
 
+/**
+ * The editor as the date sheet's narrow surface.
+ *
+ * A cast for the same reason `tableContentOf` needs one: `updateBlock`'s
+ * `PartialBlock` is keyed by the block's own type, so no hand-written signature
+ * that takes a generic block can be assignable to it. The content written back
+ * is the block's own array with one `dateMention` replaced or removed, which is
+ * exactly what the desktop popover writes.
+ */
+function dateMentionSurface(editor: MobileEditor): DateMentionEditorSurface {
+  return editor as unknown as DateMentionEditorSurface
+}
+
 function applyCfg(cfg: {
   theme: 'light' | 'dark'
   locale: string
@@ -921,6 +958,7 @@ function applyCfg(cfg: {
   readOnly: boolean
   headerHeight?: number
   keyboardHeight?: number
+  weekStart?: 'sunday' | 'monday'
 }): void {
   const html = document.documentElement
   html.setAttribute('data-theme', cfg.theme)
@@ -938,10 +976,15 @@ function applyCfg(cfg: {
   // from. See `keyboardHeight` on the cfg message for why the guest cannot
   // measure it.
   html.style.setProperty('--memry-keyboard-height', `${Math.max(0, cfg.keyboardHeight ?? 0)}px`)
+  // Which week a date falls in decides whether its pill reads "This Saturday"
+  // or "Next Saturday". Read at render time by every pill, so it has to be set
+  // before the document mounts; the host sends `cfg` ahead of `doc-load`.
+  setDateMentionWeekStart(cfg.weekStart === 'sunday' ? 0 : 1)
   readOnly = cfg.readOnly
   if (mounted) {
     mounted.editor.isEditable = !cfg.readOnly
     mounted.toolbar.setReadOnly(cfg.readOnly)
+    mounted.dateSheet.setReadOnly(cfg.readOnly)
   }
 }
 

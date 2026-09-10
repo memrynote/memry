@@ -103,6 +103,15 @@ than surfaced as an error the note's author could trigger. Only an allowed URL
 reaches `Linking.openURL`. The message is additive within v1, so an older
 prebuilt asset simply never sends it.
 
+`cfg` also carries the reader's first day of the week as `weekStart`. A date
+pill's label depends on it — the same Sunday reads as "This Sunday" from a
+Monday week and "Next Sunday" from a Sunday one — and the guest cannot pick for
+itself without printing a different day name than the desktop showing the same
+note. Desktop takes the value from the synced `calendar.weekStartDay` setting;
+mobile syncs no settings yet and sends `monday`, the default the settings schema
+ships. The field is optional, so an older prebuilt asset that has never heard of
+it renders exactly as it did before.
+
 One request backs all three of the editor's inline menus. `wiki-query` carries
 a `trigger` — `wiki` for `[[`, `tag` for `#`, `mention` for `@` — and the host
 answers the same `wiki-candidates` rows for each. The vault lives on the host,

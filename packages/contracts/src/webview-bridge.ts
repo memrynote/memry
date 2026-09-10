@@ -93,7 +93,20 @@ export const BridgeCfgSchema = z.object({
    * used to open as a sliver. Last known height, kept across a dismissal,
    * because the picker opens after the keyboard has already gone.
    */
-  keyboardHeight: z.number().min(0).optional()
+  keyboardHeight: z.number().min(0).optional(),
+  /**
+   * First day of the week, for the date pill's `This / Next / Last <Weekday>`
+   * label tier.
+   *
+   * Desktop reads it from the synced `calendar.weekStartDay` setting and the
+   * pill's label depends on it -- 5 September is "Next Saturday" from a Monday
+   * week and "This Saturday" from a Sunday one. The guest cannot pick for
+   * itself: guessing from the device locale would print a different day name on
+   * the phone than on the desktop for the same date, which is why the tier was
+   * left out of `dateMentionLabel` until this field existed. Absent means
+   * Monday, the same default `settings-schemas.ts` ships.
+   */
+  weekStart: z.enum(['sunday', 'monday']).optional()
 })
 
 export const HostCfgSchema = BridgeCfgSchema.extend({
