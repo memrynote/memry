@@ -476,6 +476,17 @@ Errors additionally become `$exception` events for PostHog Error Tracking (`exce
 `services/posthog-transform.ts`), fingerprinted on our own `errorCode` when one is present so
 grouping follows the app's own error taxonomy rather than PostHog's pattern-hash default.
 
+**Generic constructor names do not group.** `toErrorCode` falls back to the error's constructor
+name, so every bare `new Error('...')` reports `errorCode: 'Error'`. Pinning the fingerprint to
+that merged roughly thirty unrelated production failures — offline network errors, a Squirrel
+read-only-volume update failure, `data.db failed PRAGMA quick_check`, missing agent API keys —
+into one issue titled after whichever stack the first sample happened to carry (#2134). The
+transform therefore omits `$exception_fingerprint` for the built-in constructor names plus the
+`UnknownError` / `StringError` fallbacks (`NON_DISCRIMINATING_ERROR_CODES`), handing those back to
+PostHog's pattern hash so they split into real issues. A generic name still rides along as
+`$exception_list[0].type`; only the grouping key changes. Give a failure a typed code if you want
+it grouped as its own issue.
+
 Three server-side guards keep this stream from flooding the PostHog quota:
 
 - **Warn-level log lines never reach Error Tracking.** The desktop demotes expected failures to
