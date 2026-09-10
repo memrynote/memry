@@ -62,7 +62,7 @@ function selection(overrides: Partial<EditorToolbarSelection> = {}): EditorToolb
   }
 }
 
-function openStylePanel(overrides: Partial<EditorToolbarSelection> = {}): EditorToolbarActions {
+function mountToolbar(overrides: Partial<EditorToolbarSelection> = {}) {
   document.body.replaceChildren()
   const actions = toolbarActions()
   const host = document.createElement('div')
@@ -70,6 +70,11 @@ function openStylePanel(overrides: Partial<EditorToolbarSelection> = {}): Editor
   const controller = installEditorToolbar(host, actions)
   controller.setKeyboardVisible(true)
   controller.update(selection(overrides))
+  return { actions, controller }
+}
+
+function openStylePanel(overrides: Partial<EditorToolbarSelection> = {}): EditorToolbarActions {
+  const { actions } = mountToolbar(overrides)
   button('Formatting').click()
   button('Style').click()
   return actions
@@ -127,6 +132,39 @@ describe('style panel', () => {
 
     expect(button('Align right').getAttribute('aria-pressed')).toBe('true')
     expect(button('Align left').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('closes the panel when the keyboard comes back, instead of stacking on it', () => {
+    const { controller } = mountToolbar()
+    button('Formatting').click()
+    button('Style').click()
+    // Opening the panel replaces the keyboard, which is what the host reports.
+    controller.setKeyboardVisible(false)
+    expect(controller.isPanelOpen()).toBe(true)
+
+    // A tap into the note raises the keyboard again.
+    controller.setKeyboardVisible(true)
+
+    expect(controller.isPanelOpen()).toBe(false)
+    expect(document.querySelector('[aria-label="Align left"]')).toBeNull()
+    // Back on the formatting row the Style button came from, not the main one.
+    expect(button('Style').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('keeps the link prompt open when its own input raises the keyboard', () => {
+    const { controller } = mountToolbar()
+    button('Formatting').click()
+    button('Link').click()
+    expect(controller.isPanelOpen()).toBe(true)
+
+    // iOS can drop the keyboard as the tap blurs ProseMirror and raise it
+    // again when the URL field takes focus. That is the prompt's own input,
+    // not a tap into the note.
+    controller.setKeyboardVisible(false)
+    controller.setKeyboardVisible(true)
+
+    expect(controller.isPanelOpen()).toBe(true)
+    expect(document.querySelector('[aria-label="Link URL"]')).not.toBeNull()
   })
 })
 

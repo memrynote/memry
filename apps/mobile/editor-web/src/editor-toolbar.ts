@@ -31,6 +31,12 @@ const ALIGNMENT_PATHS: Readonly<Record<TextAlignment, readonly string[]>> = {
   right: ['M4 7h16', 'M10 12h10', 'M6 17h14']
 }
 
+/** Arrows against the same stack of bars, so the header row reads as one set. */
+const INDENT_PATHS: Readonly<Record<'nest' | 'unnest', readonly string[]>> = {
+  nest: ['M4 7h16', 'M10 12h10', 'M4 17h16', 'M4 10 6.5 12 4 14'],
+  unnest: ['M4 7h16', 'M10 12h10', 'M4 17h16', 'M6.5 10 4 12 6.5 14']
+}
+
 /**
  * The palette desktop paints with, verbatim.
  *
@@ -697,13 +703,14 @@ export function installEditorToolbar(
     return card
   }
 
-  const picker = (title: string): HTMLElement => {
+  const picker = (title: string, accessory?: Node): HTMLElement => {
     const panel = document.createElement('section')
     panel.className = 'editor-picker'
     panel.setAttribute('aria-label', title)
     const header = document.createElement('div')
     header.className = 'editor-picker-header'
     header.appendChild(text(title))
+    if (accessory) header.appendChild(accessory)
     panel.appendChild(header)
     return panel
   }
@@ -824,6 +831,69 @@ export function installEditorToolbar(
     return section
   }
 
+  const styleIcon = (options: {
+    label: string
+    paths: readonly string[]
+    onPress: () => void
+    pressed?: boolean
+    enabled?: boolean
+  }): HTMLButtonElement => {
+    const button = actionButton({
+      label: options.label,
+      content: svg(options.paths),
+      onPress: options.onPress,
+      className: 'editor-style-icon',
+      pressed: options.pressed,
+      preserveEditorSelection: false
+    })
+    if (options.enabled === false) button.disabled = true
+    return button
+  }
+
+  /**
+   * Alignment and indentation, icon-only, in the panel header (#2102).
+   *
+   * Six labelled cards took three stacked sections and most of the note with
+   * them. The marks are self-describing at a glance and the aria-labels carry
+   * the words, so the header row does the same job in one line.
+   */
+  const styleHeaderActions = (): HTMLElement => {
+    const row = document.createElement('div')
+    row.className = 'editor-style-actions'
+
+    if (selection.alignment !== null) {
+      for (const alignment of TEXT_ALIGNMENTS) {
+        row.appendChild(
+          styleIcon({
+            label: ALIGNMENT_LABELS[alignment],
+            paths: ALIGNMENT_PATHS[alignment],
+            onPress: () => actions.styleAction({ kind: 'align', alignment }),
+            pressed: selection.alignment === alignment
+          })
+        )
+      }
+      const divider = document.createElement('span')
+      divider.className = 'editor-style-divider'
+      row.appendChild(divider)
+    }
+
+    row.append(
+      styleIcon({
+        label: 'Outdent',
+        paths: INDENT_PATHS.unnest,
+        onPress: () => actions.styleAction({ kind: 'unnest' }),
+        enabled: selection.canUnnest
+      }),
+      styleIcon({
+        label: 'Indent',
+        paths: INDENT_PATHS.nest,
+        onPress: () => actions.styleAction({ kind: 'nest' }),
+        enabled: selection.canNest
+      })
+    )
+    return row
+  }
+
   /**
    * Alignment, colour and indentation (#2102).
    *
@@ -833,33 +903,12 @@ export function installEditorToolbar(
    * taps to centre and indent one line.
    */
   const stylePicker = (): HTMLElement => {
-    const panel = picker('Style')
+    const panel = picker('Style', styleHeaderActions())
     if (keyboardReplacementHeight > 0) {
       panel.style.setProperty('--memry-picker-height', `${keyboardReplacementHeight}px`)
     }
     const scroll = document.createElement('div')
     scroll.className = 'editor-picker-scroll'
-
-    if (selection.alignment !== null) {
-      const section = document.createElement('section')
-      const grid = document.createElement('div')
-      grid.className = 'editor-picker-grid'
-      for (const alignment of TEXT_ALIGNMENTS) {
-        grid.appendChild(
-          pickerCard(
-            {
-              label: ALIGNMENT_LABELS[alignment],
-              glyph: '',
-              glyphNode: svg(ALIGNMENT_PATHS[alignment])
-            },
-            () => actions.styleAction({ kind: 'align', alignment }),
-            selection.alignment === alignment
-          )
-        )
-      }
-      section.append(text('Alignment', 'editor-picker-section-label'), grid)
-      scroll.appendChild(section)
-    }
 
     scroll.append(
       colourRow(
@@ -883,20 +932,6 @@ export function installEditorToolbar(
         (colour) => actions.styleAction({ kind: 'background-colour', colour })
       )
     )
-
-    const indent = document.createElement('section')
-    const indentGrid = document.createElement('div')
-    indentGrid.className = 'editor-picker-grid'
-    for (const item of [
-      { label: 'Indent', glyph: '⇥', kind: 'nest' as const, enabled: selection.canNest },
-      { label: 'Outdent', glyph: '⇤', kind: 'unnest' as const, enabled: selection.canUnnest }
-    ]) {
-      const card = pickerCard(item, () => actions.styleAction({ kind: item.kind }))
-      card.disabled = !item.enabled
-      indentGrid.appendChild(card)
-    }
-    indent.append(text('Indentation', 'editor-picker-section-label'), indentGrid)
-    scroll.appendChild(indent)
 
     panel.appendChild(scroll)
     return panel
@@ -966,7 +1001,17 @@ export function installEditorToolbar(
       render()
     },
     setKeyboardVisible(next) {
+      const wasVisible = keyboardVisible
       keyboardVisible = next
+      // A picker takes the keyboard's place, so the keyboard coming back means
+      // the person tapped into the note: the panel gives the space back rather
+      // than stacking on top of the keyboard and burying the paragraph. The
+      // link prompt is the exception -- its own input is what raised the
+      // keyboard.
+      if (next && !wasVisible && panelOpen && view.kind !== 'link-prompt') {
+        setView({ kind: view.kind === 'style' ? 'formatting' : 'main' })
+        return
+      }
       render()
     },
     setSuppressed(next) {

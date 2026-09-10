@@ -90,7 +90,8 @@ body {
 }
 
 .editor-toolbar-shell-blocks,
-.editor-toolbar-shell-table {
+.editor-toolbar-shell-table,
+.editor-toolbar-shell-style {
   inset-block-end: 0;
 }
 
@@ -99,6 +100,30 @@ body {
   flex: 0 0 var(--memry-picker-height, auto);
   block-size: var(--memry-picker-height, auto);
   max-block-size: var(--memry-picker-height, min(546px, calc(100dvh - 56px)));
+}
+
+/* The style panel is a header row and two colour rows, so it sizes to its
+   content rather than filling the keyboard's slot: the paragraph being styled
+   keeps the space the panel does not need. The keyboard height is only the
+   ceiling. */
+.editor-toolbar-shell-style .editor-picker {
+  flex: 0 1 auto;
+  max-block-size: var(--memry-picker-height, min(240px, calc(100dvh - 56px)));
+}
+
+.editor-toolbar-shell-style .editor-picker-header {
+  flex: 0 0 44px;
+  block-size: 44px;
+  padding-inline: 10px;
+}
+
+.editor-toolbar-shell-style .editor-picker-section-label {
+  block-size: 20px;
+  padding-inline: 10px;
+}
+
+.editor-toolbar-shell-style .editor-picker-scroll {
+  padding-block-end: 8px;
 }
 
 .editor-find-shell {
@@ -339,6 +364,7 @@ body {
 .editor-picker-header {
   display: flex;
   align-items: center;
+  gap: 4px;
   flex: 0 0 36px;
   block-size: 36px;
   padding-inline: 12px;
@@ -441,28 +467,64 @@ body {
   opacity: 0.4;
 }
 
+/* Ten swatches share the row instead of wrapping onto a second one: the
+   palette is a single line at any phone width. */
 .editor-colour-row {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  padding-inline: 12px;
+  gap: 2px;
+  padding-inline: 8px;
 }
 
 .editor-colour-swatch {
-  flex: 0 0 44px;
+  flex: 1 1 0;
+  min-inline-size: 0;
+  inline-size: auto;
+  block-size: 34px;
+  border-radius: 9px;
 }
 
 .editor-colour-chip {
   display: flex;
   align-items: center;
   justify-content: center;
-  inline-size: 32px;
-  block-size: 32px;
+  inline-size: 26px;
+  block-size: 26px;
   border: 1px solid var(--memry-hairline);
-  border-radius: 10px;
-  font-size: 16px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 20px;
+  line-height: 17px;
+}
+
+.editor-style-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-inline-start: auto;
+}
+
+.editor-style-icon {
+  flex: 0 0 36px;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: 9px;
+}
+
+.editor-style-icon svg {
+  inline-size: 19px;
+  block-size: 19px;
+}
+
+.editor-style-icon[disabled] {
+  opacity: 0.35;
+}
+
+.editor-style-divider {
+  flex: 0 0 1px;
+  inline-size: 1px;
+  block-size: 20px;
+  margin-inline: 5px;
+  background: var(--memry-hairline);
 }
 
 .editor-colour-swatch[aria-pressed='true'] .editor-colour-chip {
