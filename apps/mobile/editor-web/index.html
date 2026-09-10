@@ -7,10 +7,18 @@
       area and the zoom gesture. `maximum-scale=1` also stops iOS auto-zooming
       the page when a contenteditable takes focus, which otherwise shifts the
       whole editor sideways on every tap.
+
+      `interactive-widget=overlays-content`: the host shrinks this frame so it
+      ENDS above the software keyboard, and the keyboard never overlaps it. Left
+      to its default, WebKit still subtracts the keyboard's window frame from
+      its viewport calculations (`_inputViewBoundsForViewportCalculations`),
+      which shrinks the visual viewport and pans it inside the layout viewport
+      once the document is scrolled near its end. Declaring the keyboard an
+      overlay makes WebKit ignore it there, which is the truth of this frame.
     -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, interactive-widget=overlays-content"
     />
     <!--
       No network at editor open (contract: self-contained local asset). The CSP

@@ -180,6 +180,7 @@ function BottomChrome({ controller }: { controller: EditorHostController }) {
       selection={state.toolbarSelection}
       panelHeight={state.panelHeight}
       keyboardOverlap={state.keyboardOverlap}
+      availableHeight={state.frame?.height ?? 0}
       intents={controller.toolbar}
     />
   )

@@ -7,6 +7,7 @@ import { LinkPrompt } from '@/editor/toolbar/link-prompt'
 import { BlocksPanel, TablePanel, TurnIntoPanel } from '@/editor/toolbar/pickers'
 import { StylePanel } from '@/editor/toolbar/style-panel'
 import { FormattingRow, MainRow } from '@/editor/toolbar/toolbar-rows'
+import { sizes } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
 export interface EditorBottomChromeProps {
@@ -16,6 +17,8 @@ export interface EditorBottomChromeProps {
   panelHeight: number
   /** How much of the host the keyboard covers right now, in pt. The spacer under the toolbar. */
   keyboardOverlap: number
+  /** The editor frame's height, the most a content-sized panel may take. */
+  availableHeight: number
   intents: ToolbarIntents
 }
 
@@ -30,13 +33,16 @@ export function EditorBottomChrome({
   selection,
   panelHeight,
   keyboardOverlap,
+  availableHeight,
   intents
 }: EditorBottomChromeProps): JSX.Element {
   const c = useColors()
   const panel = chrome.kind === 'panel' ? chrome.panel : null
   // A panel takes the keyboard's place, so the keyboard's space is already
   // spoken for. The link prompt is the exception; its own field holds the
-  // keyboard up, so the spacer stays under it.
+  // keyboard up, so the spacer stays under it. The spacer is also drawn under
+  // a HIDDEN chrome: that is what keeps the WebView above a keyboard the title
+  // field or a tag sheet raised.
   const spacer = panel === null || panel === 'link-prompt'
 
   return (
@@ -51,6 +57,7 @@ export function EditorBottomChrome({
           panel={panel}
           selection={selection}
           panelHeight={panelHeight}
+          availableHeight={availableHeight}
           intents={intents}
         />
       )}
@@ -63,20 +70,27 @@ function PanelView({
   panel,
   selection,
   panelHeight,
+  availableHeight,
   intents
 }: {
   panel: ToolbarPanel
   selection: EditorToolbarSelection
   panelHeight: number
+  availableHeight: number
   intents: ToolbarIntents
 }) {
   switch (panel) {
     case 'blocks':
       return <BlocksPanel style={{ height: panelHeight }} intents={intents} />
-    case 'turn-into':
+    case 'turn-into': {
+      // Fourteen cards are taller than a keyboard, so the grid sizes to its
+      // content under the DOM's `min(546px, viewport - 56px)` ceiling rather
+      // than scrolling inside the keyboard's slot.
+      const ceiling = Math.max(panelHeight, Math.min(546, availableHeight - sizes.row))
       return (
-        <TurnIntoPanel style={{ height: panelHeight }} selection={selection} intents={intents} />
+        <TurnIntoPanel style={{ maxHeight: ceiling }} selection={selection} intents={intents} />
       )
+    }
     case 'table':
       return <TablePanel style={{ height: panelHeight }} selection={selection} intents={intents} />
     case 'style':

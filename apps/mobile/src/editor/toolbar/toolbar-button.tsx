@@ -43,7 +43,14 @@ export function ToolbarButton({
         background ? { backgroundColor: background } : null,
         style,
         disabled ? styles.disabled : null,
-        pressed || selected ? { backgroundColor: c.canvas.surfaceActive } : null
+        selected ? { backgroundColor: c.canvas.surfaceActive } : null,
+        // A button with its own fill keeps it while pressed; the ink-filled
+        // Add button would otherwise lose its paper label under the wash.
+        pressed
+          ? background && !selected
+            ? styles.pressedFill
+            : { backgroundColor: c.canvas.surfaceActive }
+          : null
       ]}
     >
       {children(selected ? c.tint.text : c.text.primary)}
@@ -59,5 +66,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.lg
   },
-  disabled: { opacity: 0.35 }
+  disabled: { opacity: 0.35 },
+  pressedFill: { opacity: 0.7 }
 })

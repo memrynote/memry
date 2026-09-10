@@ -38,6 +38,7 @@ export function StylePanel({
     <PickerShell
       title="Style"
       style={style}
+      headerStyle={styles.header}
       accessory={<StyleHeaderActions selection={selection} act={act} />}
     >
       <PickerScroll>
@@ -177,6 +178,9 @@ function ColourRow({
 }
 
 const styles = StyleSheet.create({
+  // Five 36pt icon buttons live in this header, so it is the 44pt row the
+  // DOM gave the style panel rather than the 36pt title strip.
+  header: { height: 44, paddingHorizontal: 10 },
   headerActions: {
     marginStart: 'auto',
     flexDirection: 'row',

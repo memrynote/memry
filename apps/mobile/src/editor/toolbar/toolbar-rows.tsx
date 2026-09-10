@@ -1,6 +1,7 @@
 import type { EditorToolbarSelection, InlineStyle } from '@memry/contracts/webview-bridge'
 import {
   I18nManager,
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -81,6 +82,7 @@ export function MainRow({ panel, selection, intents }: ToolbarRowProps) {
       <ToolbarButton
         label="Undo"
         style={styles.historyButton}
+        hitSlop={2}
         onPress={() => intents.act({ kind: 'undo' })}
       >
         {(colour) => <Glyph paths={TOOLBAR_PATHS.undo} colour={colour} />}
@@ -88,6 +90,7 @@ export function MainRow({ panel, selection, intents }: ToolbarRowProps) {
       <ToolbarButton
         label="Redo"
         style={styles.historyButton}
+        hitSlop={2}
         onPress={() => intents.act({ kind: 'redo' })}
       >
         {(colour) => <Glyph paths={TOOLBAR_PATHS.redo} colour={colour} />}
@@ -96,6 +99,7 @@ export function MainRow({ panel, selection, intents }: ToolbarRowProps) {
         <ToolbarButton
           label="Hide keyboard"
           style={styles.historyButton}
+          hitSlop={2}
           onPress={() => intents.act({ kind: 'blur' })}
         >
           {(colour) => <Glyph paths={TOOLBAR_PATHS.hideKeyboard} colour={colour} />}
@@ -104,6 +108,7 @@ export function MainRow({ panel, selection, intents }: ToolbarRowProps) {
         <ToolbarButton
           label="Dismiss picker"
           style={styles.historyButton}
+          hitSlop={2}
           onPress={intents.closePanel}
         >
           {(colour) => <Glyph paths={TOOLBAR_PATHS.dismissPicker} colour={colour} />}
@@ -121,7 +126,14 @@ const INLINE_STYLE_BUTTONS: readonly { style: InlineStyle; label: string; glyph:
 ]
 
 const INLINE_STYLE_TEXT: Readonly<Partial<Record<InlineStyle, StyleProp<TextStyle>>>> = {
-  italic: { fontFamily: fontFamilies.serif, fontStyle: 'italic' },
+  // The platform serif rather than Crimson Pro: no italic face of it is
+  // registered, and a synthesised slant at regular weight is not the DOM's
+  // Georgia italic at 600.
+  italic: {
+    fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
+    fontStyle: 'italic',
+    fontWeight: '600'
+  },
   underline: { textDecorationLine: 'underline' },
   strike: { textDecorationLine: 'line-through' }
 }
@@ -228,7 +240,9 @@ const styles = StyleSheet.create({
   formattingRow: { justifyContent: 'space-between' },
   formattingButton: { width: 46 },
   historyButton: { width: 40 },
-  formatItem: { flex: 1, width: 'auto', minWidth: 42 },
+  // `flex: 1 1 42px; min-inline-size: 0` in the DOM: a hard 42pt floor would
+  // overflow the row on every phone narrower than 440pt.
+  formatItem: { flexBasis: 42, flexGrow: 1, flexShrink: 1, width: 'auto', minWidth: 0 },
   spacer: { flex: 1 },
   aa: { fontFamily: fontFamilies.sansMedium, fontSize: 18, lineHeight: 22, letterSpacing: -0.36 },
   wiki: { fontFamily: fontFamilies.mono, fontSize: 15, lineHeight: 20, letterSpacing: -0.6 },
