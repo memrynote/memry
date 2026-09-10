@@ -1,4 +1,5 @@
 import type { ExpoConfig } from 'expo/config'
+import { withEntitlementsPlist } from 'expo/config-plugins'
 
 /**
  * Native Google sign-in needs a Google Cloud project, and a build without one
@@ -101,4 +102,23 @@ const config: ExpoConfig = {
   }
 }
 
-export default config
+/**
+ * `expo-notifications` is installed, so its iOS plugin runs on every prebuild
+ * and writes `aps-environment` into the entitlements — the remote-push
+ * capability. Memry never uses remote push; reminders are local
+ * `scheduleNotificationAsync` calls (src/features/notes/reminder-notifications.ts).
+ * The entitlement only breaks device builds: Xcode automatic signing falls back
+ * to the wildcard "iOS Team Provisioning Profile: *", which cannot carry Push
+ * Notifications, so xcodebuild refuses to sign. Same story as the
+ * data-protection entitlement noted on `ios` above.
+ *
+ * Registering the mod here, on the exported config, is what makes the delete
+ * stick: mods run in reverse registration order, and this one is registered
+ * before any plugin is applied, so it is the last to touch the plist before it
+ * is written. Adding it to `plugins` instead would run it *before*
+ * expo-notifications, which would simply put the key back.
+ */
+export default withEntitlementsPlist(config, (entitlements) => {
+  delete entitlements.modResults['aps-environment']
+  return entitlements
+})
