@@ -49,6 +49,23 @@ const log = createLogger('EditorView')
  * against the document it names.
  */
 
+/**
+ * "Move this block into another note", as the SCREEN sees it (#2100).
+ *
+ * No `reqId` and no `docId`: those belong to the wire, and this component owns
+ * the wire. The screen answers by resolving.
+ */
+export interface BlockMoveRequest {
+  blockId: string
+  /** The block's own label, for the picker's title. Never parsed. */
+  label: string
+}
+
+export type BlockMoveResult =
+  | { status: 'moved'; targetId: string; targetTitle: string }
+  | { status: 'cancelled' }
+  | { status: 'failed'; detail: string }
+
 export interface EditorViewProps {
   doc: OpenDoc
   cfg: BridgeCfg
@@ -116,6 +133,15 @@ export interface EditorViewProps {
    * real body everywhere.
    */
   seedMarkdown?: string
+  /**
+   * "Move this block into another note."
+   *
+   * Resolving is what ANSWERS the guest, and a rejection is answered too —
+   * same always-answer chain as `onWikiQuery` and `onAssetRequest`, because a
+   * dropped answer leaves the block ringed and the guest's pending slot
+   * occupied for the rest of the session.
+   */
+  onBlockMoveRequest?: (request: BlockMoveRequest) => Promise<BlockMoveResult>
   /** Exposed so the screen can drive undo/redo and flush (T071/T076). */
   onReady?: (controls: EditorControls) => void
 }
@@ -198,6 +224,7 @@ export function EditorView({
   chrome,
   footer,
   seedMarkdown,
+  onBlockMoveRequest,
   onReady
 }: EditorViewProps) {
   const host = useEditorHost()
@@ -417,6 +444,38 @@ export function EditorView({
           }
           break
 
+        // Answered ALWAYS, including on rejection and on a screen that has no
+        // handler: the guest holds one pending slot and the block stays ringed
+        // until this reply lands.
+        case 'block-move-request':
+          if (msg.docId !== docId) break
+          void (
+            onBlockMoveRequest?.({ blockId: msg.blockId, label: msg.label }) ??
+            Promise.resolve<BlockMoveResult>({ status: 'cancelled' })
+          )
+            .catch((err: unknown) => {
+              log.warn('Block move failed', {
+                error: err instanceof Error ? err.message : String(err)
+              })
+              return { status: 'failed', detail: 'The move failed' } as BlockMoveResult
+            })
+            .then((result) => {
+              bridge.send({
+                type: 'block-move-result',
+                reqId: msg.reqId,
+                docId: msg.docId,
+                blockId: msg.blockId,
+                result:
+                  result.status === 'moved'
+                    ? { status: 'moved', targetTitle: result.targetTitle }
+                    : result.status === 'cancelled'
+                      ? { status: 'cancelled' }
+                      : { status: 'failed', detail: result.detail }
+              })
+              bridge.flush()
+            })
+          break
+
         case 'keyboard-visibility':
           if (msg.docId === docId) onKeyboardVisibilityChange?.(msg.visible)
           break
@@ -455,6 +514,7 @@ export function EditorView({
       bridge,
       docId,
       onAssetRequest,
+      onBlockMoveRequest,
       onInsertRequest,
       onLinkPreview,
       onKeyboardVisibilityChange,

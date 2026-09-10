@@ -1,5 +1,6 @@
 import { COLORS_DEFAULT } from '@blocknote/core'
 
+import type { BlockAction, BlockActionTarget } from './block-capabilities.ts'
 import type { TableStructureOp } from './tables.ts'
 
 export type InlineStyle = 'bold' | 'italic' | 'underline' | 'strike' | 'code'
@@ -326,10 +327,27 @@ export interface EditorToolbarActions {
   undo(): void
   redo(): void
   dismissKeyboard(): void
+  /**
+   * The `•••`. It LOOPS BACK: only the caller can name the caret's block
+   * and read what that block can do, so it answers by calling the controller's
+   * own `openBlockActions(target)`.
+   */
+  openBlockActions(): void
+  /** Dispatch from the block actions panel. The id is the panel's, not the caret's. */
+  blockAction(blockId: string, action: BlockAction): void
 }
 
 export interface EditorToolbarController {
   update(selection: EditorToolbarSelection): void
+  /**
+   * Show the block actions panel for one already-addressed block (#2100).
+   *
+   * `onClose` fires when the panel stops addressing that block — Done, an
+   * action that finished, a keyboard coming back, read-only. The block menu
+   * hangs the highlight's lifetime off it, because the panel is the only thing
+   * that knows it went away.
+   */
+  openBlockActions(target: BlockActionTarget, onClose?: () => void): void
   setReadOnly(readOnly: boolean): void
   setKeyboardVisible(visible: boolean): void
   setSuppressed(suppressed: boolean): void
@@ -346,6 +364,12 @@ type ToolbarView =
   | { kind: 'table' }
   | { kind: 'style' }
   | { kind: 'link-prompt' }
+  /**
+   * The first arm to carry a payload, deliberately: the other panels act on
+   * whatever the caret is on at tap time, this one acts on the block it was
+   * opened for and nothing can substitute another.
+   */
+  | { kind: 'block-actions'; target: BlockActionTarget }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
@@ -443,6 +467,8 @@ export function installEditorToolbar(
   let suppressed = false
   let panelOpen = false
   let keyboardReplacementHeight = 0
+  /** Set by `openBlockActions`, fired once when the panel stops addressing its block. */
+  let blockActionsOnClose: (() => void) | null = null
   let selection: EditorToolbarSelection = {
     blockLabel: 'T',
     activeStyles: { bold: false, italic: false, underline: false, strike: false, code: false },
@@ -461,12 +487,20 @@ export function installEditorToolbar(
 
     const shell = document.createElement('div')
     shell.className = `editor-toolbar-shell editor-toolbar-shell-${view.kind}`
-    shell.appendChild(
-      view.kind === 'main' || view.kind === 'blocks' || view.kind === 'table'
-        ? mainToolbar()
-        : formattingToolbar()
-    )
+    // Block actions draws NO row above its panel. Every other view stacks one,
+    // but those rows act on the CARET, and on the long-press path the caret is
+    // somewhere else entirely — a row of caret actions above a menu addressing
+    // a different block is a lie about what the buttons do. The panel carries
+    // its own header instead: the block's name and a Done.
+    if (view.kind !== 'block-actions') {
+      shell.appendChild(
+        view.kind === 'main' || view.kind === 'blocks' || view.kind === 'table'
+          ? mainToolbar()
+          : formattingToolbar()
+      )
+    }
 
+    if (view.kind === 'block-actions') shell.appendChild(blockActionsPanel(view.target))
     if (view.kind === 'blocks') shell.appendChild(blockPicker())
     if (view.kind === 'turn-into') shell.appendChild(turnIntoPicker())
     if (view.kind === 'style') shell.appendChild(stylePicker())
@@ -476,18 +510,27 @@ export function installEditorToolbar(
   }
 
   const setView = (next: ToolbarView): void => {
+    const closingBlockActions = view.kind === 'block-actions' && next.kind !== 'block-actions'
     view = next
     const nextPanelOpen =
       next.kind === 'blocks' ||
       next.kind === 'turn-into' ||
       next.kind === 'table' ||
       next.kind === 'style' ||
-      next.kind === 'link-prompt'
+      next.kind === 'link-prompt' ||
+      next.kind === 'block-actions'
     if (nextPanelOpen !== panelOpen) {
       panelOpen = nextPanelOpen
       onPanelVisibilityChange?.(panelOpen)
     }
     render()
+    // After the render, so the notified party sees the DOM it is reacting to.
+    // Cleared first: the callback belongs to the panel that has just gone.
+    if (closingBlockActions) {
+      const notify = blockActionsOnClose
+      blockActionsOnClose = null
+      notify?.()
+    }
   }
 
   const turnIntoButton = (className?: string): HTMLButtonElement => {
@@ -565,7 +608,22 @@ export function installEditorToolbar(
       )
     }
 
-    if (view.kind === 'main') toolbar.appendChild(turnIntoButton())
+    if (view.kind === 'main') {
+      toolbar.append(
+        turnIntoButton(),
+        // After the chip, before the spacer, rather than in the trailing
+        // history group. `.editor-toolbar` is a plain flex row with no
+        // horizontal scroll, and the fixed-width buttons already come to
+        // 386 px inside a 393 px phone's 377 px of content once the spacer has
+        // shrunk to nothing — so whatever goes last is what gets clipped.
+        // Undo / Redo / dismiss are reached far oftener than this is.
+        actionButton({
+          label: 'Block actions',
+          content: svg(['M6 12h.01', 'M12 12h.01', 'M18 12h.01']),
+          onPress: actions.openBlockActions
+        })
+      )
+    }
 
     const spacer = document.createElement('span')
     spacer.className = 'editor-toolbar-spacer'
@@ -937,6 +995,125 @@ export function installEditorToolbar(
     return panel
   }
 
+  /**
+   * A labelled full-width row. The picker's two-column cards are for choosing
+   * a block; these are verbs against one, and Delete has to be able to look
+   * like the destructive one it is.
+   */
+  const blockActionRow = (options: {
+    label: string
+    paths: readonly string[]
+    onPress: () => void
+    destructive?: boolean
+  }): HTMLButtonElement => {
+    const glyph = text('', 'editor-picker-glyph')
+    glyph.appendChild(svg(options.paths))
+    const content = document.createDocumentFragment()
+    content.append(glyph, text(options.label, 'editor-picker-label'))
+    return actionButton({
+      label: options.label,
+      content,
+      onPress: options.onPress,
+      className: `editor-block-action-row${options.destructive ? ' editor-block-action-destructive' : ''}`,
+      preserveEditorSelection: false
+    })
+  }
+
+  /**
+   * Colour, Duplicate, Move and Delete against ONE block (#2100).
+   *
+   * Every row is drawn from `target.caps`, which is derived from the live
+   * schema — the panel holds no knowledge of block types at all, so a block
+   * whose propSchema gains a colour prop gains the row without an edit here.
+   */
+  const blockActionsPanel = (target: BlockActionTarget): HTMLElement => {
+    const done = actionButton({
+      label: 'Done',
+      content: text('Done'),
+      onPress: () => setView({ kind: 'main' }),
+      className: 'editor-block-actions-done',
+      preserveEditorSelection: false
+    })
+    const panel = picker(target.caps.label, done)
+    panel.classList.add('editor-block-actions')
+    if (keyboardReplacementHeight > 0) {
+      panel.style.setProperty('--memry-picker-height', `${keyboardReplacementHeight}px`)
+    }
+
+    const scroll = document.createElement('div')
+    scroll.className = 'editor-picker-scroll'
+
+    if (target.caps.hasChildren) {
+      // Duplicate, Move and Delete all carry the subtree, as they do on
+      // desktop. On a phone that can double a note in one tap, so it is said
+      // out loud rather than discovered.
+      const note = text('Includes nested blocks', 'editor-picker-note')
+      note.setAttribute('role', 'note')
+      scroll.appendChild(note)
+    }
+
+    if (target.caps.colourText) {
+      scroll.appendChild(
+        colourRow(
+          'Text colour',
+          target.textColour,
+          (colour) => {
+            const chip = text('A', 'editor-colour-chip')
+            chip.style.color = COLORS_DEFAULT[colour]?.text ?? 'inherit'
+            return chip
+          },
+          (colour) => actions.blockAction(target.blockId, { kind: 'colour', slot: 'text', colour })
+        )
+      )
+    }
+    if (target.caps.colourBackground) {
+      scroll.appendChild(
+        colourRow(
+          'Highlight',
+          target.backgroundColour,
+          (colour) => {
+            const chip = text('A', 'editor-colour-chip')
+            chip.style.background = COLORS_DEFAULT[colour]?.background ?? 'transparent'
+            return chip
+          },
+          (colour) =>
+            actions.blockAction(target.blockId, { kind: 'colour', slot: 'background', colour })
+        )
+      )
+    }
+
+    const rows = document.createElement('section')
+    rows.className = 'editor-block-action-rows'
+    rows.appendChild(
+      blockActionRow({
+        label: 'Duplicate',
+        paths: ['M9 9h10v12H9z', 'M15 5H5v12'],
+        onPress: () => actions.blockAction(target.blockId, { kind: 'duplicate' })
+      })
+    )
+    if (target.caps.canMove) {
+      rows.appendChild(
+        blockActionRow({
+          label: 'Move to another note…',
+          paths: ['M4 6h6l2 2h8v11H4z', 'M10 13h6', 'm13.5 10.5 3 2.5-3 2.5'],
+          onPress: () => actions.blockAction(target.blockId, { kind: 'move' })
+        })
+      )
+    }
+    rows.appendChild(
+      blockActionRow({
+        label: 'Delete',
+        paths: ['M5 7h14', 'M9 7V5h6v2', 'M7 7l1 13h8l1-13', 'M10 11v6', 'M14 11v6'],
+        onPress: () => actions.blockAction(target.blockId, { kind: 'delete' }),
+        destructive: true
+      })
+    )
+    scroll.appendChild(rows)
+
+    panel.appendChild(scroll)
+    return panel
+  }
+
   const linkPrompt = (): HTMLElement => {
     const panel = picker('Add link')
     panel.classList.add('editor-link-prompt')
@@ -982,6 +1159,20 @@ export function installEditorToolbar(
 
   render()
   return {
+    openBlockActions(target, onClose) {
+      blockActionsOnClose = onClose ?? null
+      // Already up: this is the re-render after a colour tap, so the keyboard
+      // stays dismissed and the slot keeps the height it was measured at. A
+      // second `dismissKeyboard()` here would blur an element that is already
+      // blurred and flush the bridge on every swatch.
+      if (view.kind === 'block-actions') {
+        setView({ kind: 'block-actions', target })
+        return
+      }
+      keyboardReplacementHeight = Math.max(readHostKeyboardHeight(), readViewportBottomInset())
+      setView({ kind: 'block-actions', target })
+      actions.dismissKeyboard()
+    },
     update(next) {
       selection = next
       // A caret that has left the table takes the panel with it; the actions

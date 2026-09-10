@@ -142,6 +142,23 @@ outside the WebView re-derives BlockNote's layout and an export cannot disagree
 with the note on screen. Images need no separate path — they are already `data:`
 URIs in that DOM, which is also the only form WKWebView will print.
 
+Block actions stay inside the guest. Colour, Duplicate and Delete on a block
+never cross the bridge: the WebView already holds the editor, so it writes the
+same block props and calls the same `insertBlocks` / `removeBlocks` desktop's
+side menu does, and the result reaches the host as an ordinary `y-update`. The
+one exception is "Move to another note", because the target note's Y.Doc lives
+only on the host and the host cannot build a block. So the guest sends
+`block-move-request` with the block id, the host shows its note picker,
+deep-copies the block's Yjs subtree into the target document verbatim — every
+attribute and every mark, with fresh container ids — through the same
+durable-first write path guest updates use, and answers `block-move-result`.
+The answer is ALWAYS sent, cancel included, and the guest removes the source
+block only on `moved`, so a crash between the two halves leaves a duplicate
+rather than a hole. Attachment blocks are refused (their bytes live under the
+source note's id), and so is a target whose seed markdown is still pending,
+because a block appended to that doc would make the seed unreachable on every
+device.
+
 ### Drift is caught on the ASSET, not the types
 
 Both halves import the contract module directly, so the types cannot drift.

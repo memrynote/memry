@@ -22,7 +22,9 @@ function toolbarActions(): EditorToolbarActions {
     insertImage: vi.fn(),
     undo: vi.fn(),
     redo: vi.fn(),
-    dismissKeyboard: vi.fn()
+    dismissKeyboard: vi.fn(),
+    openBlockActions: vi.fn(),
+    blockAction: vi.fn()
   }
 }
 
@@ -221,6 +223,36 @@ describe('mobile editor toolbar', () => {
 
     const picker = document.querySelector<HTMLElement>('[aria-label="Blocks"]')
     expect(picker?.style.getPropertyValue('--memry-picker-height')).toBe('336px')
+  })
+
+  it('offers block actions from the main row and loops the request back (#2100)', () => {
+    const actions = toolbarActions()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    install(host, actions)
+
+    // Only this side can name the caret's block and read what it can do, so the
+    // button asks its caller rather than opening anything itself.
+    button('Block actions').click()
+    expect(actions.openBlockActions).toHaveBeenCalledOnce()
+
+    // On the main row next to the block chip, not in the trailing history
+    // group: the row does not scroll, so whatever goes last is what a narrow
+    // phone clips.
+    const labels = [...host.querySelectorAll('button')].map((element) =>
+      element.getAttribute('aria-label')
+    )
+    expect(labels).toEqual([
+      'Insert blocks',
+      'Formatting',
+      'Insert wiki link',
+      'Insert image',
+      'Turn into. Current block: T',
+      'Block actions',
+      'Undo',
+      'Redo',
+      'Hide keyboard'
+    ])
   })
 
   it('restores editor focus when the link prompt is cancelled', () => {

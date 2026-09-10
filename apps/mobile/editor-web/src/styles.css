@@ -91,7 +91,8 @@ body {
 
 .editor-toolbar-shell-blocks,
 .editor-toolbar-shell-table,
-.editor-toolbar-shell-style {
+.editor-toolbar-shell-style,
+.editor-toolbar-shell-block-actions {
   inset-block-end: 0;
 }
 
@@ -123,6 +124,32 @@ body {
 }
 
 .editor-toolbar-shell-style .editor-picker-scroll {
+  padding-block-end: 8px;
+}
+
+/* Content-sized like the style panel rather than filling the keyboard's slot:
+   the panel is a header, up to two colour rows and three rows of verbs, and
+   the block it addresses keeps the space the panel does not need. The keyboard
+   height is only the ceiling (#2100). */
+.editor-toolbar-shell-block-actions .editor-picker {
+  flex: 0 1 auto;
+  max-block-size: var(--memry-picker-height, min(360px, calc(100dvh - 56px)));
+}
+
+.editor-toolbar-shell-block-actions .editor-picker-header {
+  flex: 0 0 44px;
+  block-size: 44px;
+  padding-inline: 10px;
+  color: var(--memry-ink);
+  font-size: 15px;
+}
+
+.editor-toolbar-shell-block-actions .editor-picker-section-label {
+  block-size: 20px;
+  padding-inline: 10px;
+}
+
+.editor-toolbar-shell-block-actions .editor-picker-scroll {
   padding-block-end: 8px;
 }
 
@@ -530,6 +557,60 @@ body {
 .editor-colour-swatch[aria-pressed='true'] .editor-colour-chip {
   border-color: var(--memry-accent-text);
   box-shadow: 0 0 0 1px var(--memry-accent-text);
+}
+
+/* The block actions panel (#2100). */
+.editor-block-actions-done {
+  flex: 0 0 auto;
+  inline-size: auto;
+  min-inline-size: 44px;
+  margin-inline-start: auto;
+  padding-inline: 8px;
+  color: var(--memry-accent-text);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.editor-block-action-rows {
+  display: flex;
+  flex-direction: column;
+  padding-block-start: 4px;
+}
+
+.editor-block-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  inline-size: 100%;
+  flex: 0 0 48px;
+  block-size: 48px;
+  padding-inline: 12px;
+  border-radius: 0;
+  text-align: start;
+}
+
+.editor-block-action-row .editor-picker-glyph {
+  block-size: 24px;
+}
+
+.editor-block-action-destructive,
+.editor-block-action-destructive .editor-picker-glyph,
+.editor-block-action-destructive .editor-picker-label {
+  color: var(--memry-danger);
+}
+
+/*
+ * The addressed block, while its menu is open.
+ *
+ * Memry's tint on the block's own element. BlockNote's hard-coded blue
+ * `ProseMirror-selectednode` outline is never in play here: the menu creates no
+ * NodeSelection, it only names an id.
+ */
+.bn-block-outer[data-memry-block-action] > .bn-block {
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 2px var(--memry-accent);
+  background: color-mix(in srgb, var(--memry-accent) 8%, transparent);
 }
 
 /* The merged-cell explanation in the table panel (#2101). */

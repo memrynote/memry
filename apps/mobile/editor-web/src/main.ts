@@ -50,6 +50,12 @@ import {
   type TableAction
 } from './editor-toolbar.ts'
 import { readAlignment, readColour, runStyleAction } from './block-styles.ts'
+import type { BlockAction } from './block-capabilities.ts'
+import {
+  installBlockMenu,
+  type BlockMenuController,
+  type BlockMenuEditorSurface
+} from './block-menu.ts'
 import {
   installDateMentionSheet,
   setDateMentionWeekStart,
@@ -148,6 +154,7 @@ interface MountedDoc {
   toolbar: EditorToolbarController
   find: FindInNoteController
   dateSheet: DateMentionSheetController
+  blockMenu: BlockMenuController
   teardown: () => void
 }
 
@@ -410,6 +417,15 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
       syncChrome()
     }
   )
+  // After the toolbar, because the menu drives the toolbar's panel.
+  const blockMenu = installBlockMenu({
+    root,
+    editor: editor as unknown as BlockMenuEditorSurface,
+    toolbar,
+    bridge,
+    docId
+  })
+  blockMenu.setReadOnly(readOnly)
   dateSheet.setReadOnly(readOnly)
   toolbar.setReadOnly(readOnly)
   toolbar.setKeyboardVisible(viewport.getState().keyboardVisible)
@@ -442,6 +458,7 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     toolbar,
     find,
     dateSheet,
+    blockMenu,
     teardown: () => {
       doc.off('update', onUpdate)
       detachNav()
@@ -451,6 +468,7 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
       detachAssets()
       detachMetrics()
       detachToolbarSelection()
+      blockMenu.destroy()
       dateSheet.destroy()
       find.destroy()
       toolbar.destroy()
@@ -1137,6 +1155,15 @@ function toolbarActions(
       const active = document.activeElement
       if (active instanceof HTMLElement) active.blur()
       guest.flush()
+    },
+    openBlockActions(): void {
+      // Loops back: only the block menu can name the caret's block and read
+      // what it can do, and it answers by calling the toolbar's own
+      // `openBlockActions(target)`.
+      mounted?.blockMenu.openForCaret()
+    },
+    blockAction(blockId: string, action: BlockAction): void {
+      mounted?.blockMenu.run(blockId, action)
     }
   }
 }
@@ -1189,6 +1216,7 @@ function applyCfg(cfg: {
     mounted.editor.isEditable = !cfg.readOnly
     mounted.toolbar.setReadOnly(cfg.readOnly)
     mounted.dateSheet.setReadOnly(cfg.readOnly)
+    mounted.blockMenu.setReadOnly(cfg.readOnly)
   }
 }
 

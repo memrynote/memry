@@ -26,7 +26,13 @@ import { createMobileHttpClient } from '@/adapters/http-client'
 import { AppText } from '@/components/ui/app-text'
 import { NavBarInline } from '@/components/ui/nav-bar'
 import { PromptDialog } from '@/components/ui/prompt-dialog'
-import { EditorView, type EditorControls } from '@/editor/editor-view'
+import { Toast, type ToastAction } from '@/components/ui/toast'
+import {
+  EditorView,
+  type BlockMoveRequest,
+  type BlockMoveResult,
+  type EditorControls
+} from '@/editor/editor-view'
 import { beginTrace, mark } from '@/editor/__rig__/open-trace'
 import type { OpenDoc } from '@/editor/doc-manager'
 import { getEditorSession, type EditorSession } from '@/editor/session'
@@ -39,6 +45,7 @@ import {
 } from '@/features/attachments/insert'
 import { resolveEditorAsset } from '@/features/attachments/resolve'
 import { AddPropertySheet } from '@/features/notes/add-property-sheet'
+import { BlockMovePicker } from '@/features/notes/chrome/block-move-picker'
 import { AddTagSheet } from '@/features/notes/add-tag-sheet'
 import { readBookmarkKeys, toggleBookmark } from '@/features/notes/bookmarks'
 import { NoteFooter } from '@/features/notes/chrome/note-footer'
@@ -48,6 +55,7 @@ import { NoteMoreSheet } from '@/features/notes/chrome/note-more-sheet'
 import { ReminderSheet } from '@/features/notes/chrome/reminder-sheet'
 import { QuickOpenModal } from '@/features/notes/chrome/quick-open-modal'
 import { editGate } from '@/features/notes/edit-gate'
+import { moveBlockToNote } from '@/features/notes/move-block'
 import { MoveSheet } from '@/features/notes/move-sheet'
 import {
   describeReminder,
@@ -119,6 +127,9 @@ const SAVE_SETTLE_MS = 800
  */
 const STATUS_POLL_MS = 1_000
 
+/** Long enough to read the note's name and reach `Open`. */
+const TOAST_MS = 4000
+
 function showFailure(action: string, error: unknown): void {
   const message = extractErrorMessage(error, 'That could not be completed.')
   log.error(`${action} failed`, { error: message })
@@ -161,6 +172,24 @@ type NoteOverlay =
   | { kind: 'reminder' }
   | { kind: 'rename' }
   | { kind: 'move'; snapshot: NotesSnapshot }
+  /**
+   * A move-block request, in flight.
+   *
+   * The overlay IS the pending request: there is exactly one slot, so a second
+   * request while one is open is refused rather than queued, and every
+   * dismissal path has the resolver in hand — there is no way to close it
+   * without answering the guest.
+   */
+  | {
+      kind: 'move-block'
+      request: BlockMoveRequest
+      resolve: (target: MoveTarget | null) => void
+    }
+
+interface MoveTarget {
+  id: string
+  title: string
+}
 
 /**
  * The note editor (boards 28, 32 and 33). Journals open through the same
@@ -231,6 +260,33 @@ export default function NoteScreen() {
   const localUpdates = useRef(0)
   const currentIdRef = useRef(id)
   const currentDocRef = useRef(doc)
+  const [toast, setToast] = useState<{ message: string; action?: ToastAction } | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /**
+   * The pending block move's resolver, and the single move slot.
+   *
+   * Held here as well as in the overlay because the guest MUST be answered
+   * even when this screen goes away: `EditorHost` outlives the route, so a
+   * dropped answer leaves the block ringed and the guest's pending slot
+   * occupied for the rest of the session.
+   */
+  const pendingBlockMove = useRef<((target: MoveTarget | null) => void) | null>(null)
+
+  // Cleanup runs on unmount AND when the route swaps to another note, which
+  // are the two ways a picker can be abandoned with the guest still waiting.
+  useEffect(() => () => pendingBlockMove.current?.(null), [id])
+
+  const showToast = useCallback((next: { message: string; action?: ToastAction }) => {
+    setToast(next)
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(null), TOAST_MS)
+  }, [])
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current)
+    },
+    []
+  )
 
   useEffect(() => {
     currentIdRef.current = id
@@ -636,6 +692,71 @@ export default function NoteScreen() {
     [allowMutation, applyRecord, ctx, doc, id, session]
   )
 
+  /**
+   * "Move this block into another note" (#2100).
+   *
+   * The identity re-check across the await is the same one `onInsert` does and
+   * for the same reason: the reader can navigate, and a note that is no longer
+   * on screen must not have a block torn out of it by a picker it opened.
+   */
+  const onBlockMove = useCallback(
+    async (request: BlockMoveRequest): Promise<BlockMoveResult> => {
+      const attempt = async (): Promise<BlockMoveResult> => {
+        const sourceId = id
+        const sourceDoc = doc
+        const sourceSession = session
+        if (!sourceSession || !sourceId || !sourceDoc) {
+          return { status: 'failed', detail: 'This note is not ready yet' }
+        }
+        if (!allowMutation('Moving blocks')) {
+          return { status: 'failed', detail: 'Read-only right now' }
+        }
+        if (pendingBlockMove.current) return { status: 'cancelled' }
+
+        const target = await new Promise<MoveTarget | null>((resolve) => {
+          const settle = (picked: MoveTarget | null): void => {
+            // Whichever path gets here first answers; the rest are no-ops, so
+            // an unmount racing a tap cannot resolve twice or hang.
+            if (pendingBlockMove.current === null) return
+            pendingBlockMove.current = null
+            setOverlay({ kind: 'none' })
+            resolve(picked)
+          }
+          pendingBlockMove.current = settle
+          setOverlay({ kind: 'move-block', request, resolve: settle })
+        })
+        if (!target) return { status: 'cancelled' }
+
+        if (currentIdRef.current !== sourceId || currentDocRef.current !== sourceDoc) {
+          return { status: 'failed', detail: 'That note is no longer open' }
+        }
+        if (!allowMutation('Moving blocks')) {
+          return { status: 'failed', detail: 'Read-only right now' }
+        }
+
+        const outcome = await moveBlockToNote(
+          { docs: sourceSession.docs, db: sourceSession.db },
+          { sourceDoc, blockId: request.blockId, targetNoteId: target.id }
+        )
+        if (outcome.status === 'error') return { status: 'failed', detail: outcome.detail }
+
+        showToast({
+          message: `Moved to ${target.title}`,
+          action: { label: 'Open', onPress: () => openTab(target) }
+        })
+        return { status: 'moved', targetId: target.id, targetTitle: target.title }
+      }
+
+      const result = await attempt()
+      // Every refusal is surfaced HERE, and only here. The guest stays silent
+      // on `failed` by design, so a screen that returns one quietly leaves the
+      // reader watching the block's highlight vanish with nothing happening.
+      if (result.status === 'failed') showFailure('Move block', result.detail)
+      return result
+    },
+    [allowMutation, doc, id, openTab, session, showToast]
+  )
+
   const refreshRecord = useCallback(() => {
     if (session && id) void readNoteRecord(session.db, id).then(applyRecord)
   }, [applyRecord, id, session])
@@ -1021,6 +1142,7 @@ export default function NoteScreen() {
         onAssetRequest={onAssetRequest}
         onLinkPreview={onLinkPreview}
         onInsertRequest={(request) => void onInsert(request)}
+        onBlockMoveRequest={onBlockMove}
         onKeyboardVisibilityChange={setKeyboardVisible}
         onPanelVisibilityChange={setEditorPanelOpen}
         onScroll={(y) => scrollY.setValue(y)}
@@ -1092,16 +1214,28 @@ export default function NoteScreen() {
         }
         // Handed over for the same reason the header is: it floats over the
         // WebView, and the WebView is a sibling of this whole stack.
+        // The toast rides the FOOTER slot rather than being rendered in this
+        // tree. A `View` here paints under the WebView for the same reason the
+        // header does — the editor is a later sibling of the whole stack — so
+        // an absolutely-positioned toast would be invisible behind the note.
+        // The slot is bottom-pinned, so the two stack upwards in order.
         footer={
-          keyboardVisible === false && !editorPanelOpen ? (
-            <NoteFooter
-              tabCount={Math.max(1, openTabs.length)}
-              onFind={() => controls.current?.openFind()}
-              onQuickOpen={() => setOverlay({ kind: 'quick-open' })}
-              onTabs={() => setTabsVisible(true)}
-              onMore={() => void openMore()}
-            />
-          ) : null
+          <>
+            {toast ? (
+              <View pointerEvents="box-none" style={styles.toastLayer}>
+                <Toast message={toast.message} action={toast.action} icon={null} />
+              </View>
+            ) : null}
+            {keyboardVisible === false && !editorPanelOpen ? (
+              <NoteFooter
+                tabCount={Math.max(1, openTabs.length)}
+                onFind={() => controls.current?.openFind()}
+                onQuickOpen={() => setOverlay({ kind: 'quick-open' })}
+                onTabs={() => setTabsVisible(true)}
+                onMore={() => void openMore()}
+              />
+            ) : null}
+          </>
         }
         seedMarkdown={seedMarkdown}
         onReady={(next) => {
@@ -1189,6 +1323,16 @@ export default function NoteScreen() {
         />
       ) : null}
 
+      {overlay.kind === 'move-block' ? (
+        <BlockMovePicker
+          db={session.db}
+          currentNoteId={id}
+          blockLabel={overlay.request.label}
+          onCancel={() => overlay.resolve(null)}
+          onPick={overlay.resolve}
+        />
+      ) : null}
+
       {overlay.kind === 'move' ? (
         <MoveSheet
           visible
@@ -1215,5 +1359,11 @@ const styles = StyleSheet.create({
   // Every inset a `TextInput` adds by default is a point the heading would sit
   // off from the prose it titles, and `includeFontPadding` is the Android one
   // that moves the whole block down.
-  title: { padding: 0, margin: 0, includeFontPadding: false, textAlignVertical: 'top' }
+  title: { padding: 0, margin: 0, includeFontPadding: false, textAlignVertical: 'top' },
+  toastLayer: {
+    paddingStart: sizes.gutter,
+    paddingEnd: sizes.gutter,
+    paddingBottom: space.s24,
+    alignItems: 'center'
+  }
 })
