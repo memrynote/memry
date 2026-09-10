@@ -547,15 +547,22 @@ body {
   flex: 1 1 auto;
 }
 
-.editor-date-done {
+.editor-date-dismiss {
+  display: flex;
   flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  /* 44px is the tap target the glyph sits inside; the negative margin keeps it
+     from growing the header the text button did not. */
+  inline-size: 44px;
+  block-size: 44px;
+  margin-block: -12px;
+  margin-inline-end: -12px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--memry-accent-text);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 20px;
   -webkit-tap-highlight-color: transparent;
 }
 

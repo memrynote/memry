@@ -336,7 +336,22 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   let toolbarPanelOpen = false
   let findOpen = false
   let dateSheetOpen = false
-  const reportPanelVisibility = (): void => {
+  /**
+   * The chrome, derived in one place from all three flags.
+   *
+   * Find-in-note and the date sheet both stand where the toolbar does, so the
+   * toolbar has to step aside for either. Each used to call `setSuppressed`
+   * from its own callback with only its own state in hand, which meant closing
+   * find while the date sheet was still open un-suppressed the toolbar and put
+   * the toolbar and the sheet on screen together. A flag is set, then the whole
+   * chrome is re-derived — no callback decides on its own.
+   *
+   * `toolbar` is referenced before its declaration on purpose: `syncChrome` is
+   * only ever called from a callback, and `installEditorToolbar` never invokes
+   * its own callback during install (`setView` runs from interaction only).
+   */
+  const syncChrome = (): void => {
+    toolbar.setSuppressed(findOpen || dateSheetOpen)
     bridge.send({
       type: 'editor-panel-visibility',
       docId,
@@ -349,24 +364,20 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     toolbarActions(editor, docId, bridge, wikiLinks),
     (open) => {
       toolbarPanelOpen = open
-      reportPanelVisibility()
+      syncChrome()
     }
   )
   const find = installFindInNote(findHost, root, (state) => {
-    toolbar.setSuppressed(state.open)
     findOpen = state.open
-    reportPanelVisibility()
+    syncChrome()
   })
-  // The date sheet stands where the toolbar does, so the toolbar steps aside
-  // for it exactly as it does for find-in-note.
   const dateSheet = installDateMentionSheet(
     dateSheetHost,
     root,
     dateMentionSurface(editor),
     (open) => {
-      toolbar.setSuppressed(open || findOpen)
       dateSheetOpen = open
-      reportPanelVisibility()
+      syncChrome()
     }
   )
   dateSheet.setReadOnly(readOnly)
@@ -423,12 +434,7 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     docId,
     visible: viewport.getState().keyboardVisible
   })
-  bridge.send({
-    type: 'editor-panel-visibility',
-    docId,
-    open: toolbar.isPanelOpen()
-  })
-  bridge.flush()
+  syncChrome()
 
   // The frame callback runs once the mounted document has been styled and laid
   // out, at the frame boundary just before the compositor presents it — so this

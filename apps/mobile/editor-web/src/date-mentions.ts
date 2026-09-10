@@ -376,6 +376,31 @@ export interface DateMentionSheetController {
   destroy(): void
 }
 
+/**
+ * The dismiss glyph, drawn here rather than imported from `icons.ts`.
+ *
+ * Six lines of duplicated SVG boilerplate buy the module doc's promise above:
+ * `date-mentions.ts` imports nothing, which is the only reason the timezone
+ * tests can load it in a real child `node` with a real `TZ`. One import would
+ * cost that, and a day-boundary bug is invisible at UTC.
+ */
+function chevronDown(): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('width', '1em')
+  svg.setAttribute('height', '1em')
+  svg.setAttribute('fill', 'none')
+  svg.setAttribute('stroke', 'currentColor')
+  svg.setAttribute('stroke-width', '2')
+  svg.setAttribute('stroke-linecap', 'round')
+  svg.setAttribute('stroke-linejoin', 'round')
+  svg.setAttribute('aria-hidden', 'true')
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  path.setAttribute('d', 'm6 9 6 6 6-6')
+  svg.append(path)
+  return svg
+}
+
 function labelled(text: string, className: string): HTMLSpanElement {
   const element = document.createElement('span')
   element.className = className
@@ -462,13 +487,20 @@ export function installDateMentionSheet(
 
     const header = document.createElement('div')
     header.className = 'editor-picker-header'
-    const done = document.createElement('button')
-    done.type = 'button'
-    done.className = 'editor-date-done'
-    done.textContent = 'Done'
-    done.setAttribute('aria-label', 'Close date options')
-    done.addEventListener('click', close)
-    header.append(labelled('Date', 'editor-date-title'), done)
+    // A chevron, not a "Done". Every field above writes the moment it changes,
+    // so there is nothing here to confirm, and a button that reads like a
+    // commit invites the belief that closing any other way loses the edit.
+    // This is a keyboard-replacement panel rather than a modal sheet, and the
+    // gesture that dismisses one is the gesture that dismisses the keyboard —
+    // touching the note again. The button stays because a tap-outside is not
+    // discoverable and VoiceOver needs a labelled way out.
+    const dismiss = document.createElement('button')
+    dismiss.type = 'button'
+    dismiss.className = 'editor-date-dismiss'
+    dismiss.append(chevronDown())
+    dismiss.setAttribute('aria-label', 'Close date options')
+    dismiss.addEventListener('click', close)
+    header.append(labelled('Date', 'editor-date-title'), dismiss)
     panel.append(header)
 
     const scroll = document.createElement('div')
@@ -547,7 +579,46 @@ export function installDateMentionSheet(
     host.append(shell)
   }
 
+  /**
+   * True for the span of a tap that landed on a pill.
+   *
+   * A pill tap runs `pointerdown` → the editor takes focus → `pointerup`, so
+   * without this the `focusin` below would close the sheet the same gesture is
+   * about to open. WebKit is free to deliver that focus on either side of
+   * `pointerup`, which is why the flag is cleared a turn later rather than at
+   * the top of the handler.
+   */
+  let pillGesture = false
+
+  const onPointerDown = (event: Event): void => {
+    const node = event.target
+    pillGesture = node instanceof HTMLElement && node.closest('[data-date-mention]') !== null
+  }
+
+  /**
+   * The other half of "one owner for the strip above the keyboard".
+   *
+   * Opening sends the keyboard away (the `blur` below). Nothing sent the sheet
+   * away when the keyboard came back, so tapping the note with the sheet open
+   * left both on screen and buried the note between them.
+   *
+   * `focusin` rather than a pointer event on the editor: it is the one signal
+   * every keyboard-raising path shares, including the ones that fire no
+   * pointer event at all — a caret moved by assistive technology, a
+   * programmatic `focus()`. And never the viewport inset: a panel that stands
+   * in the keyboard's own space cannot ask the inset whether the keyboard is
+   * up and get an answer it can trust.
+   */
+  const onFocusIn = (): void => {
+    if (pillGesture) return
+    close()
+  }
+
   const onPointerUp = (event: Event): void => {
+    // Cleared after the gesture settles, not inside it — see `pillGesture`.
+    setTimeout(() => {
+      pillGesture = false
+    }, 0)
     if (readOnly) return
     const node = event.target
     if (!(node instanceof HTMLElement)) return
@@ -565,7 +636,9 @@ export function installDateMentionSheet(
     emit()
   }
 
+  editorRoot.addEventListener('pointerdown', onPointerDown)
   editorRoot.addEventListener('pointerup', onPointerUp)
+  editorRoot.addEventListener('focusin', onFocusIn)
   render()
 
   return {
@@ -576,7 +649,9 @@ export function installDateMentionSheet(
       if (next) close()
     },
     destroy() {
+      editorRoot.removeEventListener('pointerdown', onPointerDown)
       editorRoot.removeEventListener('pointerup', onPointerUp)
+      editorRoot.removeEventListener('focusin', onFocusIn)
       const wasOpen = target !== null
       target = null
       host.replaceChildren()

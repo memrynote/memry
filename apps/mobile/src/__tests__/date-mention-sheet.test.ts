@@ -312,11 +312,18 @@ function mountSheet(props: Record<string, string> = {}) {
   const { editor, updateBlock } = surface([block])
   const visibility = vi.fn()
   const controller = installDateMentionSheet(host, root, editor, visibility)
-  return { controller, host, pill, updateBlock, visibility }
+  return { controller, host, root, pill, updateBlock, visibility }
 }
 
+/** The real gesture: `pointerdown` then `pointerup`, because the sheet reads both. */
 function tap(element: HTMLElement): void {
+  element.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }))
   element.dispatchEvent(new Event('pointerup', { bubbles: true, cancelable: true }))
+}
+
+/** What the editor taking the caret back looks like — the keyboard coming up. */
+function focusEditor(root: HTMLElement): void {
+  root.dispatchEvent(new Event('focusin', { bubbles: true }))
 }
 
 function control(host: HTMLElement, name: string): HTMLElement {
@@ -404,12 +411,62 @@ describe('the date sheet', () => {
     expect(controller.isOpen()).toBe(false)
   })
 
-  it('closes without writing when Done is pressed', () => {
+  it('closes without writing when the dismiss chevron is pressed', () => {
     const { controller, host, pill, updateBlock } = mountSheet()
     tap(pill)
     control(host, 'Close date options').dispatchEvent(new Event('click', { bubbles: true }))
     expect(controller.isOpen()).toBe(false)
     expect(updateBlock).not.toHaveBeenCalled()
+  })
+
+  // One owner for the strip above the keyboard: the sheet stands in the
+  // keyboard's space, so the two may never be on screen together.
+  it('closes when the editor takes focus back, so the keyboard never shares the strip', () => {
+    const { controller, host, root, pill, visibility } = mountSheet()
+    tap(pill)
+    expect(controller.isOpen()).toBe(true)
+    // A tap on the note body: pointerdown lands off the pill, then the editor
+    // focuses and the keyboard is on its way up.
+    root.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }))
+    focusEditor(root)
+    expect(controller.isOpen()).toBe(false)
+    expect(host.hidden).toBe(true)
+    expect(visibility).toHaveBeenLastCalledWith(false)
+  })
+
+  it('stays open when the focus is the pill tap that opened it', () => {
+    const { controller, pill, root, visibility } = mountSheet()
+    // WebKit may deliver the editor's focus on either side of `pointerup`, so
+    // both orders have to survive. Before:
+    pill.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }))
+    focusEditor(root)
+    pill.dispatchEvent(new Event('pointerup', { bubbles: true, cancelable: true }))
+    expect(controller.isOpen()).toBe(true)
+    // And after, on the same gesture.
+    focusEditor(root)
+    expect(controller.isOpen()).toBe(true)
+    expect(visibility).toHaveBeenCalledTimes(1)
+  })
+
+  it('retargets rather than closing when a second pill is tapped', () => {
+    const { controller, host, root, pill } = mountSheet()
+    const other = pillElement({ 'data-anchor-id': 'dm_2', 'data-has-time': 'true' })
+    root.append(other)
+    tap(pill)
+    expect(controller.isOpen()).toBe(true)
+    tap(other)
+    expect(controller.isOpen()).toBe(true)
+    // The second pill carries a time, so its sheet grew the Time field.
+    expect(host.querySelector('[aria-label="Time"]')).not.toBeNull()
+  })
+
+  it('stops closing on focus once destroyed', () => {
+    const { controller, root, pill } = mountSheet()
+    tap(pill)
+    controller.destroy()
+    expect(controller.isOpen()).toBe(false)
+    // No listener left to throw on a surface the sheet no longer owns.
+    expect(() => focusEditor(root)).not.toThrow()
   })
 
   it('will not open on a read-only note', () => {
