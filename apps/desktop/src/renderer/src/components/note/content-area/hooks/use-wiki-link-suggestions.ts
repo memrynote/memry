@@ -6,6 +6,7 @@ import { isBlockReference } from '@memry/shared/wiki-target'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { notesService } from '@/services/notes-service'
+import { listTitledCanvases } from '@/lib/canvas-lookup'
 import { createWikiLinkInlineContent } from '../wiki-link'
 import { parseWikiLinkQuery, pickAlias } from '../wiki-link-utils'
 import { activeRunWikiLink, replaceActiveRunWithWikiLink } from '../wiki-link-edit-plugin'
@@ -175,14 +176,31 @@ export function useWikiLinkSuggestions(editor: any) {
 
       const filtered = search ? fuzzySearch(notes, search, ['title']) : notes
 
+      // Canvases are vault items the same way notes are, and the menu is the
+      // only place a writer discovers one while writing (#1983). Untitled ones
+      // are left out: they have no target a link could carry.
+      const canvases = await listTitledCanvases()
+      const filteredCanvases = search ? fuzzySearch(canvases, search, ['title']) : canvases
+
       const exactNote = search
         ? filtered.find((note) => note.title.toLowerCase() === search.toLowerCase())
+        : undefined
+      const exactCanvas = search
+        ? filteredCanvases.find((canvas) => canvas.title.toLowerCase() === search.toLowerCase())
         : undefined
       if (alias && exactNote) {
         return [aliasRow(exactNote.title, alias)]
       }
+      if (alias && exactCanvas) {
+        return [aliasRow(exactCanvas.title, alias)]
+      }
 
-      const sorted = filtered.slice(0, 10)
+      // Notes keep the top of the list — they are what the grammar has always
+      // been for, and the resolver reads them first too. A few slots are held
+      // back for canvases, so a vault whose notes fill the menu on their own
+      // does not hide every canvas the query matched.
+      const canvasSlots = Math.min(filteredCanvases.length, 3)
+      const sorted = filtered.slice(0, 10 - canvasSlots)
 
       const suggestions: WikiLinkSuggestionItem[] = sorted.map((note) => ({
         id: note.id,
@@ -197,7 +215,18 @@ export function useWikiLinkSuggestions(editor: any) {
         ...(note.fileSize != null ? { fileSize: note.fileSize } : {})
       }))
 
-      const hasExactMatch = search ? Boolean(exactNote) : true
+      for (const canvas of filteredCanvases.slice(0, Math.max(0, 10 - suggestions.length))) {
+        suggestions.push({
+          id: canvas.id,
+          title: canvas.title,
+          target: canvas.title,
+          alias,
+          exists: true,
+          type: 'canvas'
+        })
+      }
+
+      const hasExactMatch = search ? Boolean(exactNote ?? exactCanvas) : true
 
       if (search && !hasExactMatch) {
         // The row names the note that will actually be created, which is the

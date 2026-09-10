@@ -713,6 +713,20 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               ...(resolution.heading && { viewState: { headingText: resolution.heading } })
             })
             break
+          case 'canvas':
+            // No editor to land inside, so no heading to carry (#1983).
+            openTab({
+              type: 'canvas',
+              title: resolution.title,
+              icon: 'pen-tool',
+              path: `/canvas/${resolution.id}`,
+              entityId: resolution.id,
+              isPinned: false,
+              isModified: false,
+              isPreview: false,
+              isDeleted: false
+            })
+            break
           case 'create':
             // Same confirm dialog as the note editor (#1716) instead of the
             // old dead-end "not found" toast.

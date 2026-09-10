@@ -99,7 +99,12 @@ async function resolveWikiHrefs(
   await Promise.all(
     targets.map(async (target) => {
       const resolved = await resolveWikiLink(target).catch(() => null)
-      if (!resolved || (resolved.type !== 'note' && resolved.type !== 'file')) return
+      if (
+        !resolved ||
+        (resolved.type !== 'note' && resolved.type !== 'file' && resolved.type !== 'canvas')
+      ) {
+        return
+      }
 
       const href = buildMemryHref({
         kind: resolved.type,

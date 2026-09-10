@@ -13,6 +13,7 @@ import { WIKI_LINK_BROKEN_PLUGIN_KEY, createWikiLinkBrokenPlugin } from '../wiki
 
 const mocks = vi.hoisted(() => ({
   resolveTitles: vi.fn<(titles: string[]) => Promise<Record<string, unknown>>>(),
+  listCanvases: vi.fn<() => Promise<{ canvases: Array<{ id: string; title: string | null }> }>>(),
   createdCallbacks: [] as Array<() => void>,
   renamedCallbacks: [] as Array<() => void>,
   deletedCallbacks: [] as Array<() => void>
@@ -34,6 +35,16 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
+vi.mock('@/services/canvas-service', () => ({
+  canvasService: { list: () => mocks.listCanvases() },
+  onCanvasCreated: () => () => {},
+  onCanvasUpdated: () => () => {},
+  onCanvasDeleted: () => () => {}
+}))
+
+vi.mock('@/lib/logger', () => ({ createLogger: () => ({ error: vi.fn(), warn: vi.fn() }) }))
+
+import { clearCanvasLookupCache } from '@/lib/canvas-lookup'
 import { useWikiLinkBroken } from './use-wiki-link-broken'
 
 const schema = new Schema({
@@ -99,6 +110,9 @@ describe('useWikiLinkBroken', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     mocks.resolveTitles.mockReset()
+    mocks.listCanvases.mockReset()
+    mocks.listCanvases.mockResolvedValue({ canvases: [] })
+    clearCanvasLookupCache()
     mocks.createdCallbacks.length = 0
     mocks.renamedCallbacks.length = 0
     mocks.deletedCallbacks.length = 0
@@ -152,5 +166,18 @@ describe('useWikiLinkBroken', () => {
 
     expect(mocks.resolveTitles).toHaveBeenCalledTimes(2)
     expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual([])
+  })
+
+  it('does not paint a canvas link broken (#1983)', async () => {
+    mocks.resolveTitles.mockResolvedValue({ 'Sprint Board': null, Ghost: null })
+    mocks.listCanvases.mockResolvedValue({
+      canvases: [{ id: 'canvas-1', title: 'Sprint Board' }]
+    })
+    const editor = editorWith(['Sprint Board', 'Ghost'])
+
+    renderHook(() => useWikiLinkBroken(editor))
+    await flushResolve()
+
+    expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual(['Ghost'])
   })
 })

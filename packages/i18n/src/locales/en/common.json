@@ -363,6 +363,7 @@
     "actions": {
       "rename": "Rename",
       "duplicate": "Duplicate",
+      "copyLink": "Copy link",
       "setIcon": "Set icon",
       "removeIcon": "Remove icon",
       "moveToFolder": "Move to folder",

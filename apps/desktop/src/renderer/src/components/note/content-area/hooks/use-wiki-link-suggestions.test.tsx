@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   listNotes: vi.fn(),
   getFile: vi.fn(),
   getByPath: vi.fn(),
+  listCanvases: vi.fn(),
   logger: {
     error: vi.fn()
   }
@@ -19,15 +20,23 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
+vi.mock('@/services/canvas-service', () => ({
+  canvasService: { list: (...args: unknown[]) => mocks.listCanvases(...args) }
+}))
+
 vi.mock('@/lib/logger', () => ({
   createLogger: () => mocks.logger
 }))
 
+import { clearCanvasLookupCache } from '@/lib/canvas-lookup'
+
 describe('useWikiLinkSuggestions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearCanvasLookupCache()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'))
+    mocks.listCanvases.mockResolvedValue({ canvases: [] })
     mocks.listNotes.mockResolvedValue({
       notes: [
         {
@@ -401,6 +410,53 @@ describe('useWikiLinkSuggestions', () => {
         [{ type: 'wikiLink', props: { target: 'Daily Note#Kararlar alındı', alias: 'dün' } }],
         { updateSelection: true }
       )
+    })
+  })
+
+  describe('canvases (#1983)', () => {
+    it('offers canvases below notes and drops the create row on an exact canvas', async () => {
+      mocks.listCanvases.mockResolvedValue({
+        canvases: [
+          { id: 'canvas-1', title: 'Roadmap Board' },
+          { id: 'canvas-2', title: null }
+        ]
+      })
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Roadmap')
+      })
+
+      // The note keeps the top of the list; the canvas is a row of its own, and
+      // the untitled canvas has no target so it is never offered.
+      expect(items.map((item) => [item.type, item.target])).toEqual([
+        ['note', 'Roadmap'],
+        ['canvas', 'Roadmap Board']
+      ])
+
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Roadmap Board')
+      })
+      expect(items.map((item) => item.type)).toEqual(['canvas'])
+    })
+
+    it('commits an alias against an exact canvas name', async () => {
+      mocks.listCanvases.mockResolvedValue({
+        canvases: [{ id: 'canvas-1', title: 'Sprint Board' }]
+      })
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Sprint Board | the board')
+      })
+
+      expect(items).toEqual([
+        expect.objectContaining({ type: 'alias', target: 'Sprint Board', alias: 'the board' })
+      ])
     })
   })
 
