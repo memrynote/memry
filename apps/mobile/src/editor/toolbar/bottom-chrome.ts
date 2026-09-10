@@ -87,7 +87,9 @@ export function reduceBottomChrome(
     case 'suppressed':
       return { ...model, suppressed: event.suppressed }
     case 'show-row':
-      return model.panel === null ? { ...model, row: event.row } : model
+      // The row buttons stay drawn above an open panel, so switching rows also
+      // closes it; a panel with no way out is what a dead Aa button leaves.
+      return { ...model, row: event.row, panel: null }
     case 'open-panel':
       return model.readOnly ? model : { ...model, panel: event.panel, row: PANEL_ROW[event.panel] }
     case 'close-panel':

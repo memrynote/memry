@@ -148,13 +148,19 @@ describe('bottom chrome panels', () => {
     expect(bottomChromeOf(model)).toEqual({ kind: 'hidden' })
   })
 
-  it('ignores a row change while a panel is open', () => {
-    const model = run([
+  it('closes the panel when a row button above it is pressed', () => {
+    const fromBlocks = run([
       ...typing,
       { type: 'open-panel', panel: 'blocks' },
       { type: 'show-row', row: 'formatting' }
     ])
-    expect(bottomChromeOf(model)).toEqual({ kind: 'panel', panel: 'blocks', row: 'main' })
+    expect(bottomChromeOf(fromBlocks)).toEqual({ kind: 'toolbar', row: 'formatting' })
+    const fromStyle = run([
+      ...typing,
+      { type: 'open-panel', panel: 'style' },
+      { type: 'show-row', row: 'main' }
+    ])
+    expect(bottomChromeOf(fromStyle)).toEqual({ kind: 'toolbar', row: 'main' })
   })
 
   it('closes the table panel when the caret leaves the table, and only that panel', () => {

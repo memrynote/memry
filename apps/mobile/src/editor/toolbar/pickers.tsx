@@ -18,10 +18,11 @@ export interface PickerShellProps {
   title: string
   accessory?: ReactNode
   style?: StyleProp<ViewStyle>
+  headerStyle?: StyleProp<ViewStyle>
   children: ReactNode
 }
 
-export function PickerShell({ title, accessory, style, children }: PickerShellProps) {
+export function PickerShell({ title, accessory, style, headerStyle, children }: PickerShellProps) {
   const c = useColors()
   return (
     <View
@@ -32,7 +33,7 @@ export function PickerShell({ title, accessory, style, children }: PickerShellPr
         style
       ]}
     >
-      <View style={styles.header}>
+      <View style={[styles.header, headerStyle]}>
         <Text style={[styles.headerTitle, { color: c.text.secondary }]}>{title}</Text>
         {accessory}
       </View>
