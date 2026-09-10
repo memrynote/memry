@@ -13,11 +13,13 @@ import {
   Animated,
   Dimensions,
   I18nManager,
-  KeyboardAvoidingView,
+  Keyboard,
+  LayoutAnimation,
   Platform,
   StyleSheet,
   useWindowDimensions,
   View,
+  type KeyboardEvent,
   type LayoutChangeEvent
 } from 'react-native'
 import type { EditorHostContainer, ScreenTransition } from './editor-host-controller'
@@ -26,6 +28,7 @@ import { useColors } from '@/theme/use-colors'
 import { loadEditorWebHtml } from './editor-web-asset'
 import { mark } from './__rig__/open-trace'
 import { EditorHostController } from './editor-host-controller'
+import { EditorBottomChrome } from './toolbar/editor-bottom-chrome'
 
 /**
  * The one editor WebView, hoisted above the note routes (#2030).
@@ -57,6 +60,12 @@ import { EditorHostController } from './editor-host-controller'
  *
  * The keyboard behaviour lives here rather than in the route, so the frame the
  * route reports is a stable rectangle that the keyboard animation never moves.
+ * Inside that rectangle the WebView is a column above the native toolbar and a
+ * spacer the height of the keyboard's overlap: the document's frame ENDS where
+ * the toolbar begins, so no text is ever under it and the keyboard never
+ * overlaps the WebView. That is what keeps WebKit's visual viewport from
+ * panning inside its layout viewport, which is what made every position
+ * derived inside the guest chase the keyboard (#2131).
  */
 
 const EditorHostContext = createContext<EditorHostController | null>(null)
@@ -127,8 +136,58 @@ function allowOnlyTheEditorDocument(request: { url: string }): boolean {
   return request.url === 'about:blank' || request.url.startsWith('about:')
 }
 
+/**
+ * The keyboard's frame, measured natively, once per keyboard event.
+ *
+ * `keyboardWillChangeFrame` on iOS carries every show, hide and height change
+ * (the URL keyboard is not the text one) with the system animation's duration
+ * and curve. The same `LayoutAnimation` React Native's own KeyboardAvoidingView
+ * configures makes the WebView's frame follow the keyboard in one animated
+ * layout pass rather than a relayout per frame, which is what a per-frame
+ * animated keyboard height would cost a document.
+ */
+function useKeyboardFrame(controller: EditorHostController): void {
+  useEffect(() => {
+    const onFrame = (event: KeyboardEvent): void => {
+      const { duration, easing } = event
+      if (duration && easing) {
+        const ms = Math.max(10, duration)
+        LayoutAnimation.configureNext({
+          duration: ms,
+          update: { duration: ms, type: LayoutAnimation.Types[easing] ?? 'keyboard' }
+        })
+      }
+      controller.setKeyboardFrame(event.endCoordinates.screenY)
+    }
+    const subscriptions =
+      Platform.OS === 'ios'
+        ? [Keyboard.addListener('keyboardWillChangeFrame', onFrame)]
+        : [
+            Keyboard.addListener('keyboardDidShow', onFrame),
+            Keyboard.addListener('keyboardDidHide', onFrame)
+          ]
+    return () => {
+      for (const subscription of subscriptions) subscription.remove()
+    }
+  }, [controller])
+}
+
+function BottomChrome({ controller }: { controller: EditorHostController }) {
+  const state = useSyncExternalStore(controller.subscribe, controller.getState)
+  return (
+    <EditorBottomChrome
+      chrome={state.bottomChrome}
+      selection={state.toolbarSelection}
+      panelHeight={state.panelHeight}
+      keyboardOverlap={state.keyboardOverlap}
+      intents={controller.toolbar}
+    />
+  )
+}
+
 function HostWebView({ controller }: { controller: EditorHostController }) {
   const webViewRef = useRef<WebView>(null)
+  useKeyboardFrame(controller)
   // Seeded from the window rather than zero. The guest starts loading the
   // moment it is created, and this is the prewarm: a first frame at height 0
   // is the one case where WebKit could reasonably defer the work this host
@@ -236,36 +295,32 @@ function HostWebView({ controller }: { controller: EditorHostController }) {
         ]}
         pointerEvents={state.visible ? 'auto' : 'none'}
       >
-        <KeyboardAvoidingView
-          style={styles.fill}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <WebView
-            key={state.instance}
-            ref={webViewRef}
-            source={{ html, baseUrl: 'about:blank' }}
-            onLoadEnd={onLoadEnd}
-            onMessage={onMessage}
-            onContentProcessDidTerminate={onTerminated}
-            onRenderProcessGone={onTerminated}
-            style={webViewStyle}
-            javaScriptEnabled
-            // The document is local and its CSP forbids every remote fetch;
-            // this stops a crafted note from turning a tap into a navigation
-            // anyway.
-            originWhitelist={['about:blank']}
-            onShouldStartLoadWithRequest={allowOnlyTheEditorDocument}
-            allowFileAccess={false}
-            allowsInlineMediaPlayback
-            keyboardDisplayRequiresUserAction={false}
-            hideKeyboardAccessoryView
-            automaticallyAdjustContentInsets={false}
-            // The editor sizes its own document; a bouncing scroll view under
-            // it fights the caret on iOS.
-            bounces={false}
-            overScrollMode="never"
-          />
-        </KeyboardAvoidingView>
+        <WebView
+          key={state.instance}
+          ref={webViewRef}
+          source={{ html, baseUrl: 'about:blank' }}
+          onLoadEnd={onLoadEnd}
+          onMessage={onMessage}
+          onContentProcessDidTerminate={onTerminated}
+          onRenderProcessGone={onTerminated}
+          style={webViewStyle}
+          javaScriptEnabled
+          // The document is local and its CSP forbids every remote fetch;
+          // this stops a crafted note from turning a tap into a navigation
+          // anyway.
+          originWhitelist={['about:blank']}
+          onShouldStartLoadWithRequest={allowOnlyTheEditorDocument}
+          allowFileAccess={false}
+          allowsInlineMediaPlayback
+          keyboardDisplayRequiresUserAction={false}
+          hideKeyboardAccessoryView
+          automaticallyAdjustContentInsets={false}
+          // The editor sizes its own document; a bouncing scroll view under
+          // it fights the caret on iOS.
+          bounces={false}
+          overScrollMode="never"
+        />
+        <BottomChrome controller={controller} />
       </Animated.View>
     </View>
   )

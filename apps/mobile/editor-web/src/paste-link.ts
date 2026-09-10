@@ -108,10 +108,8 @@ export interface PasteLinkSurface {
 export interface PasteLinkHosts {
   /** The mounted editor: where the paste is heard. */
   root: HTMLElement
-  /** The viewport-pinned layer the toolbar and the wiki menu already draw in. */
+  /** The viewport-pinned layer the wiki menu already draws in. Its bottom is the native toolbar's top. */
   chrome: HTMLElement
-  /** Measured, never written to — the toolbar's live top edge. */
-  toolbarHost: HTMLElement
 }
 
 export interface PasteLinkMenu {
@@ -140,7 +138,7 @@ export function installPasteLinkMenu(
    */
   onOpenChange: (open: boolean) => void
 ): PasteLinkMenu {
-  const { root, chrome, toolbarHost } = hosts
+  const { root, chrome } = hosts
 
   const menu = document.createElement('div')
   menu.className = 'paste-link-menu'
@@ -219,13 +217,6 @@ export function installPasteLinkMenu(
       menu.appendChild(optionRow(option, () => choose(option)))
     }
 
-    // The same anchoring the wiki menu uses, and for the same reason: `chrome`
-    // is pinned to the visible viewport but the toolbar's top edge moves with
-    // the keyboard and the safe area, so it is measured rather than assumed.
-    // The SHELL, not the host — the host div wrapping it is zero-high.
-    const shell = toolbarHost.querySelector('.editor-toolbar-shell')
-    const top = shell?.getBoundingClientRect().top
-    menu.style.insetBlockEnd = top === undefined ? '' : `${Math.max(0, window.innerHeight - top)}px`
     menu.hidden = false
     onOpenChange(true)
   }

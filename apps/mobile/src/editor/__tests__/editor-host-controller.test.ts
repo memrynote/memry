@@ -6,6 +6,8 @@ import type { OpenDoc } from '../doc-manager'
 import {
   editorFrameFrom,
   EditorHostController,
+  EMPTY_TOOLBAR_SELECTION,
+  type EditorHostContainer,
   type HostDoc,
   type ScreenTransition
 } from '../editor-host-controller'
@@ -451,5 +453,215 @@ describe('EditorHostController visibility', () => {
     // where A's happened to sit.
     expect(host.getState().frame).toBeNull()
     expect(host.getState().visible).toBe(false)
+  })
+})
+
+/**
+ * The toolbar is native and the keyboard is measured here (#2131), so the
+ * controller now answers three more questions the guest used to guess at
+ * from its visual viewport: how much of the editor the keyboard covers,
+ * whether the toolbar belongs on screen, and which note a press is for.
+ */
+describe('EditorHostController bottom chrome', () => {
+  /** A placed note: container at window y 100, editor 700 tall from its top. */
+  function place(host: EditorHostController, doc: HostDoc, containerTop = 100): void {
+    host.setContainerView({
+      measureInWindow: (onMeasured: (x: number, y: number) => void) => onMeasured(0, containerTop)
+    } as unknown as EditorHostContainer)
+    host.measureContainerTop(() => {})
+    host.setLayout(doc, { frame: { top: 0, height: 700 }, transition })
+  }
+
+  function mountedNote(): { host: EditorHostController; sent: string[]; seq: () => number } {
+    const { host, sent } = warmHost()
+    const a = attachment(fakeOpenDoc('note-a'))
+    host.attach(a)
+    host.setFocused(a, true)
+    place(host, a)
+    let seq = 2
+    host.bridge.receive(guestEnvelope(seq++, [painted('note-a')]))
+    return { host, sent, seq: () => seq++ }
+  }
+
+  const focus = (docId: string, focused: boolean): GuestMsg => ({
+    type: 'editor-focus',
+    docId,
+    focused
+  })
+
+  it('shrinks the editor by the keyboard overlap and keeps that height for panels', () => {
+    const { host } = mountedNote()
+
+    // Host bottom is at window y 800; a keyboard whose top edge is at 464
+    // covers 336 of it.
+    host.setKeyboardFrame(464)
+    expect(host.getState().keyboardOverlap).toBe(336)
+    expect(host.getState().panelHeight).toBe(336)
+
+    host.setKeyboardFrame(852)
+    expect(host.getState().keyboardOverlap).toBe(0)
+    // The picker opens after the keyboard has gone, and has to be as tall as
+    // the keyboard was.
+    expect(host.getState().panelHeight).toBe(336)
+  })
+
+  it('applies a keyboard that was already up once the note is placed', () => {
+    const { host } = warmHost()
+    const a = attachment(fakeOpenDoc('note-a'))
+    host.attach(a)
+    host.setKeyboardFrame(464)
+    expect(host.getState().keyboardOverlap).toBe(0)
+
+    place(host, a)
+
+    expect(host.getState().keyboardOverlap).toBe(336)
+  })
+
+  it('shows the toolbar only for a focused editor under a raised keyboard', () => {
+    const { host, seq } = mountedNote()
+
+    // The title field's keyboard: the editor shrinks, no toolbar.
+    host.setKeyboardFrame(464)
+    expect(host.getState().bottomChrome).toEqual({ kind: 'hidden' })
+    expect(host.getState().keyboardOverlap).toBe(336)
+
+    host.bridge.receive(guestEnvelope(seq(), [focus('note-a', true)]))
+    expect(host.getState().bottomChrome).toEqual({ kind: 'toolbar', row: 'main' })
+
+    host.bridge.receive(guestEnvelope(seq(), [focus('note-a', false)]))
+    expect(host.getState().bottomChrome).toEqual({ kind: 'hidden' })
+  })
+
+  it('opens a panel in the keyboard place, blurs the guest, and closes when the keyboard returns', () => {
+    const { host, sent, seq } = mountedNote()
+    host.setKeyboardFrame(464)
+    host.bridge.receive(guestEnvelope(seq(), [focus('note-a', true)]))
+
+    host.toolbar.openPanel('blocks')
+
+    expect(host.getState().bottomChrome).toEqual({ kind: 'panel', panel: 'blocks', row: 'main' })
+    expect(sent.at(-1)).toMatch(/toolbar-action/)
+    expect(sent.at(-1)).toMatch(/blur/)
+    expect(sent.at(-1)).toMatch(/note-a/)
+
+    // The blur lands: focus goes, then the keyboard. The panel stays.
+    host.bridge.receive(guestEnvelope(seq(), [focus('note-a', false)]))
+    host.setKeyboardFrame(852)
+    expect(host.getState().bottomChrome.kind).toBe('panel')
+
+    // A tap into the note brings the keyboard back and takes the panel away.
+    host.bridge.receive(guestEnvelope(seq(), [focus('note-a', true)]))
+    host.setKeyboardFrame(464)
+    expect(host.getState().bottomChrome).toEqual({ kind: 'toolbar', row: 'main' })
+  })
+
+  it('does not blur the guest for the link prompt, whose own field needs the keyboard', () => {
+    const { host, sent } = mountedNote()
+    const before = sent.length
+
+    host.toolbar.openPanel('link-prompt')
+
+    expect(sent.length).toBe(before)
+    expect(host.getState().bottomChrome).toEqual({
+      kind: 'panel',
+      panel: 'link-prompt',
+      row: 'formatting'
+    })
+  })
+
+  it('forwards a press to the mounted note and reflects its caret back', () => {
+    const { host, sent, seq } = mountedNote()
+
+    host.toolbar.act({ kind: 'toggle-style', style: 'bold' })
+    expect(sent.at(-1)).toMatch(/toggle-style/)
+    expect(sent.at(-1)).toMatch(/note-a/)
+
+    const selection = { ...EMPTY_TOOLBAR_SELECTION, blockLabel: 'H1', table: null }
+    host.bridge.receive(
+      guestEnvelope(seq(), [{ type: 'toolbar-selection', docId: 'note-a', selection }])
+    )
+    expect(host.getState().toolbarSelection.blockLabel).toBe('H1')
+
+    // A selection for a note the guest is not holding is not this note's.
+    host.bridge.receive(
+      guestEnvelope(seq(), [
+        { type: 'toolbar-selection', docId: 'note-z', selection: { ...selection, blockLabel: 'Q' } }
+      ])
+    )
+    expect(host.getState().toolbarSelection.blockLabel).toBe('H1')
+  })
+
+  it('closes the table panel when the caret leaves the table', () => {
+    const { host, seq } = mountedNote()
+    host.setKeyboardFrame(464)
+    host.bridge.receive(guestEnvelope(seq(), [focus('note-a', true)]))
+    host.toolbar.openPanel('table')
+    expect(host.getState().bottomChrome.kind).toBe('panel')
+
+    host.bridge.receive(
+      guestEnvelope(seq(), [
+        { type: 'toolbar-selection', docId: 'note-a', selection: EMPTY_TOOLBAR_SELECTION }
+      ])
+    )
+
+    expect(host.getState().bottomChrome).toEqual({ kind: 'toolbar', row: 'main' })
+  })
+
+  it('steps aside for a guest sheet and tells the screen the strip is taken', () => {
+    const { host, seq } = mountedNote()
+    host.setKeyboardFrame(464)
+    host.bridge.receive(guestEnvelope(seq(), [focus('note-a', true)]))
+
+    host.bridge.receive(
+      guestEnvelope(seq(), [{ type: 'editor-panel-visibility', docId: 'note-a', open: true }])
+    )
+    expect(host.getState().bottomChrome).toEqual({ kind: 'hidden' })
+    expect(host.getState().guestPanelOpen).toBe(true)
+
+    host.bridge.receive(
+      guestEnvelope(seq(), [{ type: 'editor-panel-visibility', docId: 'note-a', open: false }])
+    )
+    expect(host.getState().bottomChrome).toEqual({ kind: 'toolbar', row: 'main' })
+    expect(host.getState().guestPanelOpen).toBe(false)
+  })
+
+  it('hides the toolbar and closes a panel for a read-only note', () => {
+    const { host, seq } = mountedNote()
+    host.setKeyboardFrame(464)
+    host.bridge.receive(guestEnvelope(seq(), [focus('note-a', true)]))
+    host.toolbar.openPanel('style')
+    const [a] = [host.getState().mountedDocId]
+    expect(a).toBe('note-a')
+
+    // Only the mounted attachment's read-only state counts.
+    const other = attachment(fakeOpenDoc('note-b'))
+    host.setReadOnly(other, true)
+    expect(host.getState().bottomChrome.kind).toBe('panel')
+  })
+
+  it('drops the toolbar state when the guest is handed another note', () => {
+    const { host, seq } = mountedNote()
+    host.setKeyboardFrame(464)
+    host.bridge.receive(guestEnvelope(seq(), [focus('note-a', true)]))
+    host.toolbar.openPanel('style')
+    host.bridge.receive(
+      guestEnvelope(seq(), [
+        {
+          type: 'toolbar-selection',
+          docId: 'note-a',
+          selection: { ...EMPTY_TOOLBAR_SELECTION, blockLabel: 'H1' }
+        }
+      ])
+    )
+
+    const b = attachment(fakeOpenDoc('note-b'))
+    host.attach(b)
+    host.setFocused(b, true)
+
+    expect(host.getState().mountedDocId).toBe('note-b')
+    expect(host.getState().bottomChrome).toEqual({ kind: 'hidden' })
+    expect(host.getState().toolbarSelection).toEqual(EMPTY_TOOLBAR_SELECTION)
+    // The keyboard is the same keyboard for every note.
+    expect(host.getState().keyboardOverlap).toBe(0)
   })
 })

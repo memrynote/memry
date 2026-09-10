@@ -162,22 +162,20 @@ export interface WikiLinkAutocomplete {
 }
 
 /**
- * Where the menu listens and where it draws are three different elements.
+ * Where the menu listens and where it draws are two different elements.
  *
  * `root` is the mounted editor, and it is as tall as the whole note, because
  * the RN side scrolls the WebView's own frame rather than a scroller inside
  * it. A `position: fixed` child of it anchors to the bottom of that tall
  * frame, metres below anything on screen -- which is why the menu appeared to
  * do nothing while Enter still committed the highlighted note. `chrome` is the
- * layer the toolbar already uses to stay pinned to the visible viewport, so
- * the menu is drawn there. `toolbarHost` is measured, not written to: it is
- * the only honest source for where the toolbar's top edge currently is, and
- * that moves with the keyboard, the safe area and an open block picker.
+ * fixed layer pinned to the visible viewport, so the menu is drawn there. The
+ * viewport's bottom is the native toolbar's top: the WebView's frame ends
+ * there, so the menu's own `inset-block-end: 0` is already the right place.
  */
 export interface WikiLinkHosts {
   root: HTMLElement
   chrome: HTMLElement
-  toolbarHost: HTMLElement
 }
 
 export function installWikiLinkAutocomplete(
@@ -185,7 +183,7 @@ export function installWikiLinkAutocomplete(
   bridge: GuestBridge,
   hosts: WikiLinkHosts
 ): WikiLinkAutocomplete {
-  const { root, chrome, toolbarHost } = hosts
+  const { root, chrome } = hosts
   const menu = document.createElement('div')
   menu.className = 'wiki-menu'
   menu.setAttribute('role', 'listbox')
@@ -231,27 +229,11 @@ export function installWikiLinkAutocomplete(
   const tapped = (): boolean => drag === null || !drag.moved
 
   /**
-   * Sit the menu on top of whatever chrome currently holds the screen's bottom.
-   *
-   * The SHELL, not the host: the shell is absolutely positioned, so the host
-   * div wrapping it is zero-high and measuring it put the menu underneath the
-   * toolbar it was supposed to sit on top of.
-   *
-   * Re-run rather than measured once when the menu opens. The toolbar is placed
-   * by the stylesheet and so is always current; the menu is placed by this
-   * number, so anything that moves the toolbar afterwards -- a block or style
-   * picker opening and closing, the keyboard going away, a rotation -- leaves
-   * the two disagreeing, and a menu still holding the inset a 546px picker
-   * gave it floats in the middle of the note with the keyboard far below it.
+   * The frame resized -- the keyboard came or went, the device rotated -- so
+   * the menu's bottom edge moved and the caret may be under it again.
    */
   const reposition = (): void => {
     if (menu.hidden) return
-    const shell = toolbarHost.querySelector('.editor-toolbar-shell')
-    const top = shell?.getBoundingClientRect().top
-    // A hidden toolbar has no box, and the stylesheet's own bottom inset is
-    // the right answer then.
-    menu.style.insetBlockEnd = top === undefined ? '' : `${Math.max(0, window.innerHeight - top)}px`
-    // Where the menu lands decides what it covers, so the two go together.
     keepCaretVisible()
   }
 
@@ -259,7 +241,7 @@ export function installWikiLinkAutocomplete(
    * Scroll the caret clear of the menu, making room underneath it if needed.
    *
    * Runs after the menu is drawn, because where its top edge lands depends on
-   * how many rows came back and on where the toolbar currently is.
+   * how many rows came back.
    */
   const keepCaretVisible = (): void => {
     const caretBottom = caretBottomEdge()
@@ -465,15 +447,6 @@ export function installWikiLinkAutocomplete(
   const onMenuPointerEnd = (): void => {
     drag = null
   }
-  // The toolbar swaps its whole shell to open a picker, so the signal is the
-  // host's children changing, not a resize: the shell is absolutely positioned
-  // and the host it hangs in stays zero-high whatever the toolbar does.
-  const toolbarChanged = new MutationObserver(reposition)
-  toolbarChanged.observe(toolbarHost, { childList: true, subtree: true })
-  // The keyboard, a rotation, and iOS's own accessory bar all arrive here.
-  const viewport = window.visualViewport
-  viewport?.addEventListener('resize', reposition)
-  viewport?.addEventListener('scroll', reposition)
   window.addEventListener('resize', reposition)
 
   menu.addEventListener('pointerdown', onMenuPointerDown)
@@ -496,9 +469,6 @@ export function installWikiLinkAutocomplete(
     detach: () => {
       unsubscribe()
       setPad(0)
-      toolbarChanged.disconnect()
-      viewport?.removeEventListener('resize', reposition)
-      viewport?.removeEventListener('scroll', reposition)
       window.removeEventListener('resize', reposition)
       root.removeEventListener('input', refresh)
       root.removeEventListener('keydown', onKeyDown, true)

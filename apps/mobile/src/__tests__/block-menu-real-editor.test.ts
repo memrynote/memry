@@ -10,11 +10,7 @@ import {
   type BlockMenuBridge,
   type BlockMenuEditorSurface
 } from '../../editor-web/src/block-menu'
-import {
-  installEditorToolbar,
-  type EditorToolbarActions,
-  type EditorToolbarController
-} from '../../editor-web/src/editor-toolbar'
+import { installBlockActionsPanel } from '../../editor-web/src/block-actions-panel'
 
 /**
  * The long-press gates against the DOM BlockNote actually renders (#2100).
@@ -36,8 +32,8 @@ function harness(blocks: readonly Record<string, unknown>[]) {
   document.body.replaceChildren()
   const root = document.createElement('div')
   root.id = 'root'
-  const toolbarHost = document.createElement('div')
-  document.body.append(root, toolbarHost)
+  const panelHost = document.createElement('div')
+  document.body.append(root, panelHost)
 
   const editor = BlockNoteEditor.create({ schema: createMobileEditorSchema() })
   editor.mount(root)
@@ -49,30 +45,11 @@ function harness(blocks: readonly Record<string, unknown>[]) {
     onHostMsg: () => () => {}
   }
 
-  let toolbar: EditorToolbarController | null = null
-  const actions: EditorToolbarActions = {
-    insert: vi.fn(),
-    tableAction: vi.fn(),
-    styleAction: vi.fn(),
-    turnInto: vi.fn(),
-    toggleStyle: vi.fn(),
-    toggleBulletedList: vi.fn(),
-    createLink: vi.fn(),
-    focusEditor: vi.fn(),
-    insertWikiLink: vi.fn(),
-    insertImage: vi.fn(),
-    undo: vi.fn(),
-    redo: vi.fn(),
-    dismissKeyboard: vi.fn(),
-    openBlockActions: vi.fn(),
-    blockAction: vi.fn()
-  }
-  toolbar = installEditorToolbar(toolbarHost, actions)
-  toolbar.setKeyboardVisible(true)
+  const panel = installBlockActionsPanel(panelHost, root, { blockAction: vi.fn() })
   const menu = installBlockMenu({
     root,
     editor: editor as unknown as BlockMenuEditorSurface,
-    toolbar,
+    panel,
     bridge,
     docId: 'note-1'
   })

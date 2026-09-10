@@ -14,7 +14,16 @@ import {
   wikiLinkConfig,
   wikiLinkToText
 } from '@memry/editor-schema/inline'
-import { BRIDGE_FRAGMENT_NAME, type BridgeExecCommand } from '@memry/contracts/webview-bridge'
+import {
+  BRIDGE_FRAGMENT_NAME,
+  type BridgeExecCommand,
+  type ConvertibleBlock,
+  type EditorToolbarSelection,
+  type InlineStyle,
+  type InsertBlockAction,
+  type StyleAction,
+  type TableAction
+} from '@memry/contracts/webview-bridge'
 import { assertNoWebStorage, createGuestBridge, type GuestBridge } from './bridge.ts'
 import { bindAssetBridge } from './assets.ts'
 import { TextSelection } from 'prosemirror-state'
@@ -37,25 +46,18 @@ import {
   rewriteInlineContent,
   type PasteLinkSurface
 } from './paste-link.ts'
-import { installVisibleViewportInset } from './visual-viewport.ts'
 import { installFindInNote, type FindInNoteController } from './find-in-note.ts'
-import {
-  installEditorToolbar,
-  type ConvertibleBlock,
-  type EditorToolbarController,
-  type EditorToolbarSelection,
-  type InlineStyle,
-  type InsertBlockAction,
-  type StyleAction,
-  type TableAction
-} from './editor-toolbar.ts'
+import { dispatchToolbarAction, type EditorToolbarActions } from './toolbar-actions.ts'
 import { readAlignment, readColour, runStyleAction } from './block-styles.ts'
-import type { BlockAction } from './block-capabilities.ts'
 import {
   installBlockMenu,
   type BlockMenuController,
   type BlockMenuEditorSurface
 } from './block-menu.ts'
+import {
+  installBlockActionsPanel,
+  type BlockActionsPanelController
+} from './block-actions-panel.ts'
 import {
   installDateMentionSheet,
   setDateMentionWeekStart,
@@ -151,10 +153,13 @@ interface MountedDoc {
   docId: string
   doc: Y.Doc
   editor: MobileEditor
-  toolbar: EditorToolbarController
+  actions: EditorToolbarActions
+  /** The last `toolbar-selection` put on the wire, so an unchanged one is not. */
+  selectionWire: string
   find: FindInNoteController
   dateSheet: DateMentionSheetController
   blockMenu: BlockMenuController
+  blockActionsPanel: BlockActionsPanelController
   teardown: () => void
 }
 
@@ -173,13 +178,6 @@ let readOnly = false
  * what it did before this existed.
  */
 let pendingCellImage: { docId: string; pos: number } | null = null
-
-const viewport = installVisibleViewportInset((visible) => {
-  if (!mounted) return
-  mounted.toolbar.setKeyboardVisible(visible)
-  bridge.send({ type: 'keyboard-visibility', docId: mounted.docId, visible })
-  bridge.flush()
-})
 
 bridge.onHostMsg((msg) => {
   switch (msg.type) {
@@ -218,7 +216,7 @@ bridge.onHostMsg((msg) => {
     case 'insert-attachment': {
       if (!mounted || !isForMountedDoc(msg, mounted.docId)) return
       if (insertPendingCellImage(mounted.editor, mounted.docId, msg.ref, msg.name, msg.mime)) {
-        mounted.toolbar.update(readToolbarSelection(mounted.editor))
+        publishToolbarSelection()
         break
       }
       insertAttachmentBlock(
@@ -229,7 +227,7 @@ bridge.onHostMsg((msg) => {
         msg.blockType,
         msg.referenceBlockId
       )
-      mounted.toolbar.update(readToolbarSelection(mounted.editor))
+      publishToolbarSelection()
       break
     }
 
@@ -302,6 +300,11 @@ bridge.onHostMsg((msg) => {
       if (!isForMountedDoc(msg, mounted?.docId ?? null)) return
       runExec(msg.cmd)
       break
+
+    case 'toolbar-action':
+      if (!mounted || !isForMountedDoc(msg, mounted.docId)) return
+      dispatchToolbarAction(mounted.actions, msg.action)
+      break
   }
 })
 
@@ -344,11 +347,10 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   const detachMetrics = installMetrics(root, bridge)
   chrome.replaceChildren()
   const findHost = document.createElement('div')
-  const toolbarHost = document.createElement('div')
   const dateSheetHost = document.createElement('div')
-  chrome.append(findHost, toolbarHost, dateSheetHost)
-  // After `replaceChildren`, or the menu is swept out of the chrome layer the
-  // moment the toolbar claims it.
+  const blockActionsHost = document.createElement('div')
+  chrome.append(findHost, dateSheetHost, blockActionsHost)
+  // After `replaceChildren`, or the menu is swept out of the chrome layer.
   const wikiLinks = installWikiLinkAutocomplete(
     {
       replaceQuery: (back, forward, target, alias) =>
@@ -358,49 +360,44 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
       unpromoteAdjacent: (direction) => unpromoteAdjacent(editor, direction)
     },
     bridge,
-    { root, chrome, toolbarHost }
+    { root, chrome }
   )
-  let toolbarPanelOpen = false
   let findOpen = false
   let dateSheetOpen = false
   let pasteMenuOpen = false
+  let blockActionsOpen = false
   /**
-   * The chrome, derived in one place from all four flags.
+   * The guest's own bottom panels, reported in one place from all four flags.
    *
-   * Find-in-note and the date sheet both stand where the toolbar does, so the
-   * toolbar has to step aside for either. Each used to call `setSuppressed`
-   * from its own callback with only its own state in hand, which meant closing
-   * find while the date sheet was still open un-suppressed the toolbar and put
-   * the toolbar and the sheet on screen together. A flag is set, then the whole
-   * chrome is re-derived — no callback decides on its own.
-   *
-   * `toolbar` is referenced before its declaration on purpose: `syncChrome` is
-   * only ever called from a callback, and `installEditorToolbar` never invokes
-   * its own callback during install (`setView` runs from interaction only).
+   * Find-in-note and the date sheet both stand where the native toolbar does,
+   * so the host hides it for either. Each used to report only its own state,
+   * which meant closing find while the date sheet was still open put the
+   * toolbar and the sheet on screen together. A flag is set, then the whole
+   * answer is re-derived — no callback decides on its own.
    */
   const syncChrome = (): void => {
-    toolbar.setSuppressed(findOpen || dateSheetOpen)
     bridge.send({
       type: 'editor-panel-visibility',
       docId,
-      open: toolbarPanelOpen || findOpen || dateSheetOpen || pasteMenuOpen
+      open: findOpen || dateSheetOpen || pasteMenuOpen || blockActionsOpen
     })
     bridge.flush()
   }
   const pasteLinks = installPasteLinkMenu(
     pasteLinkSurface(editor),
     bridge,
-    { root, chrome, toolbarHost },
+    { root, chrome },
     (open) => {
       pasteMenuOpen = open
       syncChrome()
     }
   )
-  const toolbar = installEditorToolbar(
-    toolbarHost,
-    toolbarActions(editor, docId, bridge, wikiLinks),
+  const blockActionsPanel = installBlockActionsPanel(
+    blockActionsHost,
+    root,
+    { blockAction: (blockId, action) => mounted?.blockMenu.run(blockId, action) },
     (open) => {
-      toolbarPanelOpen = open
+      blockActionsOpen = open
       syncChrome()
     }
   )
@@ -421,18 +418,27 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   const blockMenu = installBlockMenu({
     root,
     editor: editor as unknown as BlockMenuEditorSurface,
-    toolbar,
+    panel: blockActionsPanel,
     bridge,
     docId
   })
   blockMenu.setReadOnly(readOnly)
   dateSheet.setReadOnly(readOnly)
-  toolbar.setReadOnly(readOnly)
-  toolbar.setKeyboardVisible(viewport.getState().keyboardVisible)
-  const detachToolbarSelection = editor.onSelectionChange(() => {
-    toolbar.update(readToolbarSelection(editor))
-  })
-  toolbar.update(readToolbarSelection(editor))
+  const detachToolbarSelection = editor.onSelectionChange(publishToolbarSelection)
+  // Whether the contenteditable holds focus, for the host's toolbar. The host
+  // measures the keyboard itself, but a keyboard raised by the title field or
+  // a tag sheet is not the editor's, and this is how it tells the two apart.
+  let focused = root.contains(document.activeElement)
+  const sendFocus = (next: boolean): void => {
+    if (next === focused) return
+    focused = next
+    bridge.send({ type: 'editor-focus', docId, focused: next })
+    bridge.flush()
+  }
+  const onFocusIn = (): void => sendFocus(true)
+  const onFocusOut = (): void => sendFocus(false)
+  root.addEventListener('focusin', onFocusIn)
+  root.addEventListener('focusout', onFocusOut)
 
   // Seeding is deliberately AFTER the doc is wired up: the parsed blocks then
   // travel the ordinary local-update path, so the seed is persisted and queued
@@ -455,10 +461,12 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
     docId,
     doc,
     editor,
-    toolbar,
+    actions: toolbarActions(editor, docId, bridge, wikiLinks),
+    selectionWire: '',
     find,
     dateSheet,
     blockMenu,
+    blockActionsPanel,
     teardown: () => {
       doc.off('update', onUpdate)
       detachNav()
@@ -469,20 +477,19 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
       detachMetrics()
       detachToolbarSelection()
       blockMenu.destroy()
+      blockActionsPanel.destroy()
+      root.removeEventListener('focusin', onFocusIn)
+      root.removeEventListener('focusout', onFocusOut)
       dateSheet.destroy()
       find.destroy()
-      toolbar.destroy()
       editor.unmount()
       doc.destroy()
     }
   }
 
   bridge.markLoaded()
-  bridge.send({
-    type: 'keyboard-visibility',
-    docId,
-    visible: viewport.getState().keyboardVisible
-  })
+  bridge.send({ type: 'editor-focus', docId, focused })
+  publishToolbarSelection()
   syncChrome()
 
   // The frame callback runs once the mounted document has been styled and laid
@@ -1025,6 +1032,22 @@ function readToolbarSelection(editor: MobileEditor): EditorToolbarSelection {
   }
 }
 
+/**
+ * Hand the caret's state to the native toolbar, when it changed.
+ *
+ * `onSelectionChange` fires per keystroke and most keystrokes leave the styles
+ * alone, so the wire form is compared first: a message per character would be
+ * the per-keystroke crossing the batching rule exists to prevent.
+ */
+function publishToolbarSelection(): void {
+  if (!mounted) return
+  const selection = readToolbarSelection(mounted.editor)
+  const wire = JSON.stringify(selection)
+  if (wire === mounted.selectionWire) return
+  mounted.selectionWire = wire
+  bridge.send({ type: 'toolbar-selection', docId: mounted.docId, selection })
+}
+
 function toggleStyle(editor: MobileEditor, style: InlineStyle): void {
   switch (style) {
     case 'bold':
@@ -1054,8 +1077,8 @@ function toolbarActions(
   docId: string,
   guest: GuestBridge,
   wiki: WikiLinkAutocomplete
-) {
-  const refresh = (): void => mounted?.toolbar.update(readToolbarSelection(editor))
+): EditorToolbarActions {
+  const refresh = publishToolbarSelection
   // `execCommand` reaches ProseMirror as a `beforeinput` it handles itself, so
   // no `input` event escapes to the autocomplete's own listener. Opening the
   // menu explicitly is what makes the toolbar button do anything at all.
@@ -1158,12 +1181,8 @@ function toolbarActions(
     },
     openBlockActions(): void {
       // Loops back: only the block menu can name the caret's block and read
-      // what it can do, and it answers by calling the toolbar's own
-      // `openBlockActions(target)`.
+      // what it can do, and it answers by opening the guest's own sheet.
       mounted?.blockMenu.openForCaret()
-    },
-    blockAction(blockId: string, action: BlockAction): void {
-      mounted?.blockMenu.run(blockId, action)
     }
   }
 }
@@ -1188,7 +1207,6 @@ function applyCfg(cfg: {
   reducedMotion: boolean
   readOnly: boolean
   headerHeight?: number
-  keyboardHeight?: number
   weekStart?: 'sunday' | 'monday'
 }): void {
   const html = document.documentElement
@@ -1203,10 +1221,6 @@ function applyCfg(cfg: {
   // the header travels the same one. Live, because the header is the note's own
   // title block and grows as tags and properties are added to it.
   html.style.setProperty('--memry-header-inset', `${Math.max(0, cfg.headerHeight ?? 0)}px`)
-  // The host's own keyboard measurement, which the block picker sizes itself
-  // from. See `keyboardHeight` on the cfg message for why the guest cannot
-  // measure it.
-  html.style.setProperty('--memry-keyboard-height', `${Math.max(0, cfg.keyboardHeight ?? 0)}px`)
   // Which week a date falls in decides whether its pill reads "This Saturday"
   // or "Next Saturday". Read at render time by every pill, so it has to be set
   // before the document mounts; the host sends `cfg` ahead of `doc-load`.
@@ -1214,9 +1228,9 @@ function applyCfg(cfg: {
   readOnly = cfg.readOnly
   if (mounted) {
     mounted.editor.isEditable = !cfg.readOnly
-    mounted.toolbar.setReadOnly(cfg.readOnly)
     mounted.dateSheet.setReadOnly(cfg.readOnly)
     mounted.blockMenu.setReadOnly(cfg.readOnly)
+    mounted.blockActionsPanel.setReadOnly(cfg.readOnly)
   }
 }
 
