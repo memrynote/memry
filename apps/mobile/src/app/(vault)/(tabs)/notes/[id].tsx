@@ -5,6 +5,7 @@ import {
   Alert,
   Animated,
   AppState,
+  I18nManager,
   Platform,
   Share,
   StyleSheet,
@@ -78,6 +79,7 @@ import { propertyTypes } from '@/features/notes/property-types'
 import { NoteTags } from '@/features/notes/tags'
 import { useWorkspaceTabs } from '@/features/workspace-tabs/provider'
 import { WorkspaceTabsModal } from '@/features/workspace-tabs/workspace-tabs-modal'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { extractErrorMessage } from '@/lib/errors'
 import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
@@ -413,6 +415,8 @@ export default function NoteScreen() {
     [notificationsOff, reminder]
   )
 
+  const reducedMotion = useReducedMotion()
+
   const cfg: BridgeCfg = useMemo(
     () => ({
       // Constant, not the device scheme (#2033). The guest HAS a dark
@@ -423,9 +427,16 @@ export default function NoteScreen() {
       theme: 'light',
       locale: 'en',
       // RTL follows the app's own layout direction, which is what the shared
-      // logical-property CSS is written against.
-      rtl: false,
-      reducedMotion: false,
+      // logical-property CSS is written against. Read straight off `I18nManager`
+      // with no subscription: RN decides the direction at startup and a change
+      // only takes effect after the app is restarted, so there is nothing later
+      // to listen for.
+      rtl: I18nManager.isRTL,
+      // Live, not read once at mount: the reader can flip "reduce motion" from
+      // Control Centre while the note is open, and `EditorView` re-sends `cfg`
+      // whenever this object changes, so the guest picks the new value up
+      // without a reload.
+      reducedMotion,
       // The guest applies this live (`mounted.editor.isEditable = !cfg.readOnly`),
       // so the note is editable from the first frame and only a locked vault
       // takes that away.
@@ -442,7 +453,7 @@ export default function NoteScreen() {
       // the site that re-wires when settings sync reaches mobile.
       weekStart: 'monday'
     }),
-    [gate, headerHeight]
+    [gate, headerHeight, reducedMotion]
   )
 
   /**
