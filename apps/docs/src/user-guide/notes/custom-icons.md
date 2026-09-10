@@ -16,6 +16,9 @@ and switch to **Custom**.
 Dragging an image straight out of a browser window works too — it arrives as a link, and is
 handled the same way.
 
+The panel opens beside the icon you clicked, and never off the edge of the window: in a window too
+short to hold it, the tabs and the **Remove** row stay put and the grid below them scrolls.
+
 Each new icon is named after its file, minus the extension; a linked icon is named after the file
 name in the link, or the site it came from. Hover a row and click the pencil to rename it; the name
 is what the search box matches, so name them the way you would look for them later. The trash icon
