@@ -122,7 +122,7 @@ describe('guest stylesheet', () => {
 
 describe('guest scripts', () => {
   it('never hardcode a smooth scroll the stylesheet cannot reach', () => {
-    const scripts = ['find-in-note.ts', 'main.ts', 'editor-toolbar.ts', 'blocks.ts', 'inline.ts']
+    const scripts = ['find-in-note.ts', 'main.ts', 'blocks.ts', 'inline.ts']
 
     for (const name of scripts) {
       expect(guestSource(name), name).not.toMatch(/behavior:\s*'smooth'/)

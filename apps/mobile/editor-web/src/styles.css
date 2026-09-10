@@ -79,9 +79,12 @@ body {
   display: none;
 }
 
-.editor-toolbar-shell {
+/* The date pill's sheet (#2103) stands in the keyboard's place, so it pins
+   to the bottom of the frame. The frame ends where the native toolbar begins,
+   so no inset is needed to clear it. */
+.editor-date-sheet-shell {
   position: absolute;
-  inset-block-end: var(--memry-viewport-bottom-inset, 0px);
+  inset-block-end: 0;
   inset-inline: 0;
   display: flex;
   flex-direction: column;
@@ -89,54 +92,27 @@ body {
   pointer-events: none;
 }
 
-.editor-toolbar-shell-blocks,
-.editor-toolbar-shell-table,
-.editor-toolbar-shell-style,
-.editor-toolbar-shell-block-actions {
+/* The block-actions sheet (#2100): the guest's own bottom panel, pinned to
+   the bottom of the frame like the date sheet. Content-sized rather than
+   filling the keyboard's slot: a header, up to two colour rows and three rows
+   of verbs, and the block it addresses keeps the space the panel does not
+   need. The frame ends at the native toolbar, so no inset clears it. */
+.editor-block-actions-shell {
+  position: absolute;
   inset-block-end: 0;
+  inset-inline: 0;
+  display: flex;
+  flex-direction: column;
+  max-block-size: 100dvh;
+  pointer-events: none;
 }
 
-.editor-toolbar-shell-blocks .editor-picker,
-.editor-toolbar-shell-table .editor-picker {
-  flex: 0 0 var(--memry-picker-height, auto);
-  block-size: var(--memry-picker-height, auto);
-  max-block-size: var(--memry-picker-height, min(546px, calc(100dvh - 56px)));
-}
-
-/* The style panel is a header row and two colour rows, so it sizes to its
-   content rather than filling the keyboard's slot: the paragraph being styled
-   keeps the space the panel does not need. The keyboard height is only the
-   ceiling. */
-.editor-toolbar-shell-style .editor-picker {
+.editor-block-actions {
   flex: 0 1 auto;
-  max-block-size: var(--memry-picker-height, min(240px, calc(100dvh - 56px)));
+  max-block-size: min(360px, 100dvh);
 }
 
-.editor-toolbar-shell-style .editor-picker-header {
-  flex: 0 0 44px;
-  block-size: 44px;
-  padding-inline: 10px;
-}
-
-.editor-toolbar-shell-style .editor-picker-section-label {
-  block-size: 20px;
-  padding-inline: 10px;
-}
-
-.editor-toolbar-shell-style .editor-picker-scroll {
-  padding-block-end: 8px;
-}
-
-/* Content-sized like the style panel rather than filling the keyboard's slot:
-   the panel is a header, up to two colour rows and three rows of verbs, and
-   the block it addresses keeps the space the panel does not need. The keyboard
-   height is only the ceiling (#2100). */
-.editor-toolbar-shell-block-actions .editor-picker {
-  flex: 0 1 auto;
-  max-block-size: var(--memry-picker-height, min(360px, calc(100dvh - 56px)));
-}
-
-.editor-toolbar-shell-block-actions .editor-picker-header {
+.editor-block-actions .editor-picker-header {
   flex: 0 0 44px;
   block-size: 44px;
   padding-inline: 10px;
@@ -144,18 +120,18 @@ body {
   font-size: 15px;
 }
 
-.editor-toolbar-shell-block-actions .editor-picker-section-label {
+.editor-block-actions .editor-picker-section-label {
   block-size: 20px;
   padding-inline: 10px;
 }
 
-.editor-toolbar-shell-block-actions .editor-picker-scroll {
+.editor-block-actions .editor-picker-scroll {
   padding-block-end: 8px;
 }
 
 .editor-find-shell {
   position: absolute;
-  inset-block-end: var(--memry-viewport-bottom-inset, 0px);
+  inset-block-end: 0;
   inset-inline: 0;
   display: flex;
   align-items: center;
@@ -246,136 +222,8 @@ body {
   background: color-mix(in srgb, var(--memry-accent) 48%, transparent);
 }
 
-.editor-toolbar,
 .editor-picker {
   pointer-events: auto;
-}
-
-.editor-toolbar {
-  display: flex;
-  align-items: center;
-  flex: 0 0 56px;
-  block-size: 56px;
-  box-sizing: border-box;
-  padding-block: 6px;
-  padding-inline: 8px;
-  background: var(--memry-paper);
-  border-block-start: 1px solid var(--memry-hairline);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
-}
-
-.editor-toolbar-main {
-  gap: 2px;
-}
-
-.editor-toolbar-formatting {
-  justify-content: space-between;
-  gap: 0;
-}
-
-.editor-toolbar-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 44px;
-  inline-size: 44px;
-  block-size: 44px;
-  box-sizing: border-box;
-  padding: 0;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--memry-ink);
-  font: inherit;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.editor-toolbar-button svg {
-  inline-size: 21px;
-  block-size: 21px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.editor-toolbar-button:active,
-.editor-toolbar-button[aria-pressed='true'] {
-  background: color-mix(in srgb, var(--memry-ink) 7%, transparent);
-}
-
-.editor-toolbar-button[aria-pressed='true'] {
-  color: var(--memry-accent-text);
-}
-
-.editor-toolbar-aa-button {
-  flex-basis: 46px;
-  inline-size: 46px;
-}
-
-.editor-toolbar-aa {
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 22px;
-  letter-spacing: -0.02em;
-}
-
-.editor-toolbar-wiki {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 15px;
-  line-height: 20px;
-  letter-spacing: -0.04em;
-}
-
-.editor-block-chip {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 34px;
-  block-size: 34px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--memry-ink) 7%, transparent);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 20px;
-}
-
-.editor-toolbar-spacer {
-  flex: 1 1 28px;
-  min-inline-size: 0;
-}
-
-.editor-toolbar-history {
-  flex-basis: 40px;
-  inline-size: 40px;
-}
-
-.editor-toolbar-format-item {
-  flex: 1 1 42px;
-  inline-size: auto;
-  min-inline-size: 0;
-}
-
-.editor-format-glyph {
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 22px;
-}
-
-.editor-format-italic {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-style: italic;
-}
-
-.editor-format-underline {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.editor-format-strike {
-  text-decoration: line-through;
 }
 
 .editor-picker {
@@ -447,6 +295,45 @@ body {
   color: var(--memry-ink);
 }
 
+.editor-picker-label {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--memry-ink);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Buttons inside the guest's own panels (the block-actions sheet). The
+   formatting toolbar is native; this is the reset its rows and swatches share. */
+.editor-panel-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  inline-size: 44px;
+  block-size: 44px;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--memry-ink);
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.editor-panel-button:active,
+.editor-panel-button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--memry-ink) 7%, transparent);
+}
+
+.editor-panel-button[aria-pressed='true'] {
+  color: var(--memry-accent-text);
+}
+
 .editor-picker-glyph {
   display: flex;
   align-items: center;
@@ -460,26 +347,6 @@ body {
   line-height: 24px;
 }
 
-.editor-picker-glyph[data-style='serif'] {
-  font-family: Georgia, 'Times New Roman', serif;
-}
-
-.editor-picker-glyph[data-style='mono'] {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
-}
-
-.editor-picker-label {
-  min-inline-size: 0;
-  overflow: hidden;
-  color: var(--memry-ink);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 18px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* The alignment / colour / indentation panel (#2102). */
 .editor-picker-glyph svg {
   inline-size: 20px;
@@ -488,10 +355,6 @@ body {
   stroke: currentColor;
   stroke-width: 1.8;
   stroke-linecap: round;
-}
-
-.editor-picker-card[disabled] {
-  opacity: 0.4;
 }
 
 /* Ten swatches share the row instead of wrapping onto a second one: the
@@ -521,37 +384,6 @@ body {
   font-size: 13px;
   font-weight: 600;
   line-height: 17px;
-}
-
-.editor-style-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin-inline-start: auto;
-}
-
-.editor-style-icon {
-  flex: 0 0 36px;
-  inline-size: 36px;
-  block-size: 36px;
-  border-radius: 9px;
-}
-
-.editor-style-icon svg {
-  inline-size: 19px;
-  block-size: 19px;
-}
-
-.editor-style-icon[disabled] {
-  opacity: 0.35;
-}
-
-.editor-style-divider {
-  flex: 0 0 1px;
-  inline-size: 1px;
-  block-size: 20px;
-  margin-inline: 5px;
-  background: var(--memry-hairline);
 }
 
 .editor-colour-swatch[aria-pressed='true'] .editor-colour-chip {
@@ -623,63 +455,10 @@ body {
   line-height: 17px;
 }
 
-.editor-toolbar-table {
-  font-size: 17px;
-  line-height: 24px;
-}
-
 .editor-picker-check {
   margin-inline-start: auto;
   color: var(--memry-accent-text);
   font-size: 13px;
-}
-
-.editor-link-prompt {
-  max-block-size: 116px;
-}
-
-.editor-link-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 8px;
-  padding: 8px 12px 16px;
-}
-
-.editor-link-form input {
-  min-inline-size: 0;
-  block-size: 44px;
-  box-sizing: border-box;
-  padding-inline: 12px;
-  border: 1px solid var(--memry-hairline);
-  border-radius: 8px;
-  outline: none;
-  background: var(--memry-paper);
-  color: var(--memry-ink);
-  font: inherit;
-  font-size: 16px;
-}
-
-.editor-link-form input:focus {
-  border-color: var(--memry-accent);
-}
-
-.editor-link-action {
-  inline-size: auto;
-  padding-inline: 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.editor-link-add {
-  background: var(--memry-ink);
-  color: var(--memry-paper);
-}
-
-/* The date pill's sheet (#2103). Borrows the picker's shell so it sits where
-   the block picker and the table panel sit; only the rows are its own. */
-.editor-date-sheet-shell {
-  inset-block-end: 0;
 }
 
 .editor-date-sheet {
@@ -890,13 +669,13 @@ img.embed-image {
 
 /* Wiki-link autocomplete. Lives in `#editor-chrome`, so it is positioned
    against the visible viewport rather than the note-tall `#root`, and it has to
-   opt back into pointer events like every other pane in that layer. The bottom
-   inset here is only the fallback for a hidden toolbar; when one is on screen
-   its measured top edge wins, so the menu never slides under it. */
+   opt back into pointer events like every other pane in that layer. The frame
+   ends at the native toolbar's top edge, so the bottom of the viewport is
+   already the right place. */
 .wiki-menu {
   position: absolute;
   pointer-events: auto;
-  inset-block-end: var(--memry-viewport-bottom-inset, 0px);
+  inset-block-end: 0;
   inset-inline: 0;
   z-index: 20;
   /* Five compact rows plus the hint. Past that the list stops being a glance
@@ -982,7 +761,7 @@ img.embed-image {
 .paste-link-menu {
   position: absolute;
   pointer-events: auto;
-  inset-block-end: var(--memry-viewport-bottom-inset, 0px);
+  inset-block-end: 0;
   inset-inline: 0;
   z-index: 20;
   background: var(--memry-paper);

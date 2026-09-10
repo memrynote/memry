@@ -18,6 +18,8 @@
  * actions and the panel says so.
  */
 
+import type { TableStructureOp } from '@memry/contracts/webview-bridge'
+
 /** The two node names BlockNote gives a table cell — a header cell is its own type. */
 const TABLE_CELL_NODES = new Set(['tableCell', 'tableHeader'])
 
@@ -112,14 +114,6 @@ export interface TableContentLike {
   headerCols?: number
   rows: TableRowLike[]
 }
-
-export type TableStructureOp =
-  | { kind: 'insert-row'; side: 'above' | 'below' }
-  | { kind: 'insert-column'; side: 'before' | 'after' }
-  | { kind: 'delete-row' }
-  | { kind: 'delete-column' }
-  | { kind: 'move-row'; direction: 'up' | 'down' }
-  | { kind: 'move-column'; direction: 'start' | 'end' }
 
 function isCellObject(cell: unknown): cell is TableCellLike {
   return typeof cell === 'object' && cell !== null && (cell as TableCellLike).type === 'tableCell'

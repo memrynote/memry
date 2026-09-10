@@ -480,7 +480,7 @@ export function installDateMentionSheet(
     const parts = readWallClock(value.dateISO)
 
     const shell = document.createElement('div')
-    shell.className = 'editor-toolbar-shell editor-date-sheet-shell'
+    shell.className = 'editor-date-sheet-shell'
     const panel = document.createElement('section')
     panel.className = 'editor-picker editor-date-sheet'
     panel.setAttribute('aria-label', 'Date options')
