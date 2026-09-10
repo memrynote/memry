@@ -23,7 +23,11 @@ const USER_AGENT = 'memry-sync-server'
 // Only recent releases still accrue downloads; totals for older ones stop moving and
 // their stored rows simply go quiet.
 const RELEASES_PER_PAGE = 30
-const EVENT_NAME = 'release_asset_downloaded'
+// Named for what it is: a snapshot of a counter, not a user action. It was
+// `release_asset_downloaded` until 2026-09-10 (issue #2141), which sat next to genuine user
+// events like `landing_download_click` and got used as a funnel step. Events emitted before
+// the rename still carry the old name, so queries spanning the cutover must ask for both.
+const EVENT_NAME = 'release_download_count_snapshot'
 const SERVER_SURFACE = 'server'
 
 export interface ReleaseDownloadsEnv {

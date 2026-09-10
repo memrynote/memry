@@ -130,7 +130,7 @@ describe('syncReleaseDownloadCounts', () => {
     expect(emitted).toBe(1)
     const events = capturedEvents(postHogFetch)
     expect(events).toHaveLength(1)
-    expect(events[0].event).toBe('release_asset_downloaded')
+    expect(events[0].event).toBe('release_download_count_snapshot')
     expect(events[0].distinct_id).toBe('memry_releases_production')
     expect(events[0].properties).toMatchObject({
       release_tag: 'v2026-08-06',

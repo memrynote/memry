@@ -630,14 +630,14 @@ project, not by separate projects.
 
 Additional events in the same pipeline:
 
-| Event                        | Source                                    |
-| ---------------------------- | ----------------------------------------- |
-| `app_launch_phase_completed` | Electron main/renderer startup milestones |
-| `app_log_recorded`           | Sanitized desktop diagnostic breadcrumbs  |
-| `app_error_seen`             | Renderer, React boundary, and main errors |
-| `server_error_seen`          | Sync-server request/background failures   |
-| `server_log_recorded`        | Structured sync-server diagnostic logs    |
-| `release_asset_downloaded`   | Daily GitHub Releases download-count pull |
+| Event                             | Source                                                       |
+| --------------------------------- | ------------------------------------------------------------ |
+| `app_launch_phase_completed`      | Electron main/renderer startup milestones                    |
+| `app_log_recorded`                | Sanitized desktop diagnostic breadcrumbs                     |
+| `app_error_seen`                  | Renderer, React boundary, and main errors                    |
+| `server_error_seen`               | Sync-server request/background failures                      |
+| `server_log_recorded`             | Structured sync-server diagnostic logs                       |
+| `release_download_count_snapshot` | Daily GitHub Releases download-count pull (not a user event) |
 
 ### Batch Validation & Retry
 
@@ -697,7 +697,16 @@ default — so a short-window caller must not be able to expire a still-live 5-m
 Downloads happen on GitHub Releases, where PostHog cannot see them — the landing site's
 download-click event measures intent, not a download. A daily cron on the sync server
 (`services/release-downloads.ts`, run from the `scheduled` handler at 04:00 UTC) reads
-`GET /repos/memrynote/memry/releases` and emits one `release_asset_downloaded` event per asset.
+`GET /repos/memrynote/memry/releases` and emits one `release_download_count_snapshot` event per asset.
+
+**It is a metric snapshot, not a user event.** One emission per poll per asset, from a fixed
+service `distinct_id` — nobody downloaded anything at the moment it fired. Person and user counts
+on it collapse to the service identity and mean nothing, and it must never be used as a funnel or
+conversion step next to genuine user events like `landing_download_click` or `app_started`. The
+name says so: it was `release_asset_downloaded` until 2026-09-10, which read as a user action and
+was mistaken for one. The old name is marked deprecated and hidden in PostHog data management;
+events emitted before the rename still carry it, so any query spanning the cutover must ask for
+both names.
 
 **`assets[].download_count` is cumulative per asset.** Emitting it raw would produce a
 monotonically increasing counter that is useless as an event stream — and it fails silently,
@@ -1285,7 +1294,7 @@ POSTHOG_HOST=https://us.i.posthog.com    # wrangler var (staging and production)
 and in practice it is **required in staging and production**. Without it the pull is
 unauthenticated and shares the 60-requests-per-hour-per-IP budget with every other Worker on the
 same Cloudflare egress address, which other tenants routinely exhaust before our one daily request
-arrives — GitHub then answers 403 and no `release_asset_downloaded` event is emitted that day. A
+arrives — GitHub then answers 403 and no `release_download_count_snapshot` event is emitted that day. A
 fine-grained PAT with public-repo read access is enough (this reads a public repo's Releases API and
 needs no write scope), and authenticated calls get 5,000/hour:
 
