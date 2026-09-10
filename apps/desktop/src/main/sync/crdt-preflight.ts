@@ -35,6 +35,31 @@ const PREFLIGHT_TIMEOUT_MS = 10_000
 // The interesting part of a native abort is the first crash banner; keep
 // enough of it to identify the failing subsystem in log aggregation.
 const STDERR_CAPTURE_CHARS = 4096
+// How much of the child's own error line rides along in `reason`. `reason` is
+// shipped as telemetry (crdt-persistence.ts), so it stays short.
+const REASON_DETAIL_CHARS = 200
+// Absolute paths, POSIX and Windows. The child's most useful line names the
+// store — `IO error: lock /home/<user>/.config/.../LOCK: already held by
+// process` — and the main redactor only knows the VAULT root, not userData, so
+// that path would ship verbatim. The message is the signal; the path is not.
+const ABSOLUTE_PATH = /(?:[A-Za-z]:\\|\/)[^\s'"]*[\\/][^\s'"]*/g
+
+/**
+ * The child's first real error line, bounded and path-free.
+ *
+ * Everything the child says is either a stage marker, an error line or a stack
+ * frame. The markers already become `stage`/`storeOp`, and stack frames name
+ * our own bundle, so the first line that is neither is the one carrying the
+ * LevelDB verdict.
+ */
+function firstErrorLine(stderr: string): string | undefined {
+  for (const raw of stderr.split('\n')) {
+    const line = raw.trim()
+    if (!line || line.startsWith('@@memry-preflight:') || line.startsWith('at ')) continue
+    return line.replace(ABSOLUTE_PATH, '<path>').slice(0, REASON_DETAIL_CHARS)
+  }
+  return undefined
+}
 
 export type { CrdtPreflightStage }
 
@@ -166,13 +191,23 @@ async function execPreflight(storeDir: string, transport: Transport): Promise<Cr
       return undefined
     }
 
-    /** A failure verdict, staged and attributed from whatever stderr carried. */
-    const failure = (reason: string): CrdtPreflightResult => ({
-      ok: false,
-      stage: stageFromMarkers(),
-      storeOp: storeOpFromMarkers(),
-      reason
-    })
+    /**
+     * A failure verdict, staged and attributed from whatever stderr carried.
+     *
+     * The exit code alone ("child exited with code 1") says nothing, so the
+     * child's own error line rides along: it is what tells a held LOCK apart
+     * from a corrupt store, and `reason` is the only part of this that reaches
+     * telemetry.
+     */
+    const failure = (reason: string): CrdtPreflightResult => {
+      const detail = firstErrorLine(stderr)
+      return {
+        ok: false,
+        stage: stageFromMarkers(),
+        storeOp: storeOpFromMarkers(),
+        reason: detail ? `${reason}: ${detail}` : reason
+      }
+    }
 
     const settle = (result: CrdtPreflightResult): void => {
       if (settled) return
