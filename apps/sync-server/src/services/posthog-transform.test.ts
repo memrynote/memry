@@ -195,6 +195,20 @@ describe('productEvent', () => {
     expect(result.properties.platform).toBe('darwin')
   })
 
+  it('sets $session_id from the batch session id so desktop events are session-scoped', () => {
+    const result = productEvent(batchFixture(), eventFixture({ name: 'page_viewed' }), ctx)
+    // Tracks the custom session_id rather than a second identifier: both must
+    // point at the same session or `uniq($session_id)` stays pinned at 1 (#2132).
+    expect(result.properties.$session_id).toBe('22222222-2222-4222-8222-222222222222')
+    expect(result.properties.$session_id).toBe(result.properties.session_id)
+  })
+
+  it("sets $lib so Error Tracking's library filter does not exclude desktop", () => {
+    const result = productEvent(batchFixture(), eventFixture(), ctx)
+    expect(result.properties.$lib).toBe('memry-desktop')
+    expect(result.properties.$lib_version).toBe('2026.7.1')
+  })
+
   it('renames page_viewed to $pageview', () => {
     const result = productEvent(batchFixture(), eventFixture({ name: 'page_viewed' }), ctx)
     expect(result.event).toBe('$pageview')
@@ -372,6 +386,9 @@ describe('productEvent trusted-key collisions', () => {
         'action',
         'environment',
         'session_id',
+        '$session_id',
+        '$lib',
+        '$lib_version',
         '$set',
         'platform',
         'app_version',
@@ -418,6 +435,13 @@ describe('productEvent trusted-key collisions', () => {
 })
 
 describe('exceptionEvent', () => {
+  it('carries $session_id and $lib so issues report sessions and pass the library filter', () => {
+    const result = exceptionEvent(batchFixture(), eventFixture({ errorCode: 'BOOM' }), ctx)
+    expect(result?.properties.$session_id).toBe('22222222-2222-4222-8222-222222222222')
+    expect(result?.properties.$lib).toBe('memry-desktop')
+    expect(result?.properties.$lib_version).toBe('2026.7.1')
+  })
+
   it('returns null for an event with no error signal', () => {
     expect(exceptionEvent(batchFixture(), eventFixture(), ctx)).toBeNull()
   })

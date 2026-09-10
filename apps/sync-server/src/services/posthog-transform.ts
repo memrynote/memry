@@ -42,6 +42,11 @@ export interface TransformContext {
 // call sites means the failure mode of a future mistake is "telemetry stays
 // anonymous", not "raw account ids are now in a third-party product forever".
 // Do not relax this to a truthiness check.
+// Value of PostHog's `$lib` for everything that arrives through the desktop
+// telemetry pipeline. The landing site's posthog-js reports `web`; desktop
+// reported nothing at all, so Error Tracking's `library` filter dropped it.
+export const POSTHOG_LIB = 'memry-desktop'
+
 const ACCOUNT_HASH_PATTERN = /^[0-9a-f]{64}$/
 
 export const isAccountHash = (value: string | undefined): value is string =>
@@ -132,6 +137,16 @@ export const productEvent = (
   properties.action = event.action
   properties.environment = ctx.environment
   properties.session_id = batch.sessionId
+  // PostHog's own session key, tracking the batch's session id (a UUID from
+  // randomUUID in the desktop telemetry runtime). Without it every desktop event
+  // lands session-less, so the whole platform collapsed to `uniq($session_id) = 1`
+  // and every Error Tracking issue read `sessions: 0` (#2132). `session_id` stays
+  // alongside it: existing dashboards break down on that name.
+  properties.$session_id = batch.sessionId
+  // Error Tracking's `library` filter reads $lib, and a null $lib silently
+  // excluded every desktop issue from it.
+  properties.$lib = POSTHOG_LIB
+  properties.$lib_version = batch.appVersion
   properties.$set = personProperties(batch, ctx)
 
   // platform / app_version / build_channel are ALSO event properties, not only
@@ -395,6 +410,9 @@ export const exceptionEvent = (
       // PostHog falls back to its own pattern-hash grouping instead. Do not
       // "simplify" this back to an unconditional assignment.
       ...(event.errorCode ? { $exception_fingerprint: event.errorCode } : {}),
+      $session_id: batch.sessionId,
+      $lib: POSTHOG_LIB,
+      $lib_version: batch.appVersion,
       surface: event.surface,
       action: event.action,
       app_version: batch.appVersion,

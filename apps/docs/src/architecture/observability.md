@@ -467,14 +467,20 @@ sync server transforms each accepted desktop event into a PostHog event
 path-analysis and web-analytics views. Batch metadata (platform, arch, locale, app version, build
 channel, auth state, sync state, timezone offset) becomes person properties (`$set`); the event's
 own `dimensions` are flattened onto event properties first, then overwritten by server-derived keys
-(`surface`, `action`, `environment`, `session_id`) so a client can never spoof a trusted key by
-naming a dimension after it. Server-side business and error events (`services/analytics.ts`) post
+(`surface`, `action`, `environment`, `session_id`, `$session_id`, `$lib`, `$lib_version`) so a
+client can never spoof a trusted key by naming a dimension after it. `$session_id` carries the same
+per-launch UUID as `session_id`: PostHog's session-scoped metrics and Error Tracking's `sessions`
+count read only `$session_id`, so without it every desktop event was session-less and all desktop
+traffic collapsed into a single session. `$lib` is `memry-desktop` (`$lib_version` is the app
+version), which is what Error Tracking's `library` filter matches on. Server-side business and error events (`services/analytics.ts`) post
 to the same capture API, tagged `surface: 'server'`, so one PostHog project holds every event from
 both desktop and server.
 
 Errors additionally become `$exception` events for PostHog Error Tracking (`exceptionEvent` in
 `services/posthog-transform.ts`), fingerprinted on our own `errorCode` when one is present so
-grouping follows the app's own error taxonomy rather than PostHog's pattern-hash default.
+grouping follows the app's own error taxonomy rather than PostHog's pattern-hash default. They
+carry `$session_id`, `$lib` and `$lib_version` too, so an issue reports a real session count and is
+reachable through the `library` filter.
 
 Three server-side guards keep this stream from flooding the PostHog quota:
 
