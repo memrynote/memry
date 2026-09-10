@@ -197,6 +197,21 @@ export class OutboxStore {
   }
 
   /**
+   * Rows still queued for one item, body updates and record writes alike.
+   *
+   * The note screen's status indicator asks this: zero is the only honest
+   * basis for saying an edit reached the server, because a row is deleted
+   * from this table exactly when the push that carried it was accepted.
+   */
+  async pendingCountForItem(itemId: string): Promise<number> {
+    const row = await this.db.getFirstAsync<{ n: number }>(
+      'SELECT COUNT(*) AS n FROM outbox WHERE item_id = ?',
+      [itemId]
+    )
+    return row?.n ?? 0
+  }
+
+  /**
    * Drop a note's queued rows. Called when a note is deleted locally: its
    * pending body updates describe a note that no longer exists, and pushing
    * them after the tombstone resurrects content on other devices.
@@ -298,6 +313,17 @@ export class OutboxDrain {
   private trailing: Promise<DrainResult> | null = null
 
   constructor(private readonly deps: OutboxDrainDeps) {}
+
+  /**
+   * Whether a pass is in flight right now.
+   *
+   * Read by the note screen's status indicator, which may only say "syncing"
+   * while a push is genuinely running — the passes are event-driven, so
+   * between them a queued row is waiting, not travelling.
+   */
+  get isDraining(): boolean {
+    return this.running !== null
+  }
 
   /**
    * Drain the queue. Never two passes at once — that would double-send — and

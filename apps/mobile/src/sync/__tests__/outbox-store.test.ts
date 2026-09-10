@@ -36,3 +36,23 @@ describe('OutboxStore enqueue notifications', () => {
     expect(notify).toHaveBeenCalledOnce()
   })
 })
+
+describe('OutboxStore.pendingCountForItem', () => {
+  it('counts only the rows belonging to the note it was asked about', async () => {
+    const getFirstAsync = vi.fn(async () => ({ n: 3 }))
+    const db = { getFirstAsync } as unknown as VaultDb
+    const store = new OutboxStore(db)
+
+    expect(await store.pendingCountForItem('note-1')).toBe(3)
+    const [sql, params] = getFirstAsync.mock.calls[0] as unknown as [string, unknown[]]
+    // Scope is the whole point: the note screen's indicator would report every
+    // other note's backlog as this note's if the filter went missing.
+    expect(sql).toContain('WHERE item_id = ?')
+    expect(params).toEqual(['note-1'])
+  })
+
+  it('reads an empty queue as zero rather than undefined', async () => {
+    const db = { getFirstAsync: vi.fn(async () => null) } as unknown as VaultDb
+    expect(await new OutboxStore(db).pendingCountForItem('note-1')).toBe(0)
+  })
+})

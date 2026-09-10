@@ -417,3 +417,31 @@ describe('OutboxDrain server rejections', () => {
     expect(failed.flatMap((f) => f.ids)).toContain(20)
   })
 })
+
+describe('OutboxDrain.isDraining', () => {
+  it('is true only while a pass is in flight', async () => {
+    let release: (() => void) | undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const store: OutboxQueue = {
+      claimBatch: async () => {
+        await gate
+        return []
+      },
+      complete: async () => {},
+      fail: async () => {},
+      pendingCount: async () => 0
+    }
+    const worker = drain(store)
+
+    expect(worker.isDraining).toBe(false)
+    const pass = worker.drain()
+    // The note screen may only say "Syncing…" here; before and after this
+    // window a queued row is waiting, not travelling.
+    expect(worker.isDraining).toBe(true)
+    release?.()
+    await pass
+    expect(worker.isDraining).toBe(false)
+  })
+})

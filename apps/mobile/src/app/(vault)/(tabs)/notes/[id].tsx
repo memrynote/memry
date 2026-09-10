@@ -22,6 +22,7 @@ import type {
   EditorAttachmentBlockType,
   InlineMenuTrigger
 } from '@memry/contracts/webview-bridge'
+import { createMobileHttpClient } from '@/adapters/http-client'
 import { AppText } from '@/components/ui/app-text'
 import { NavBarInline } from '@/components/ui/nav-bar'
 import { PromptDialog } from '@/components/ui/prompt-dialog'
@@ -41,6 +42,7 @@ import { AddPropertySheet } from '@/features/notes/add-property-sheet'
 import { AddTagSheet } from '@/features/notes/add-tag-sheet'
 import { readBookmarkKeys, toggleBookmark } from '@/features/notes/bookmarks'
 import { NoteFooter } from '@/features/notes/chrome/note-footer'
+import { NoteSaveStatusLabel } from '@/features/notes/chrome/save-status'
 import { readBacklinks } from '@/features/notes/backlinks'
 import { NoteMoreSheet } from '@/features/notes/chrome/note-more-sheet'
 import { ReminderSheet } from '@/features/notes/chrome/reminder-sheet'
@@ -76,6 +78,7 @@ import { calculateWordCount, type NoteStats } from '@/features/notes/note-stats'
 import { readNotesSnapshot, type NotesSnapshot } from '@/features/notes/notes-repo'
 import { NoteProperties } from '@/features/notes/properties'
 import { propertyTypes } from '@/features/notes/property-types'
+import { noteSaveStatus } from '@/features/notes/save-status'
 import { NoteTags } from '@/features/notes/tags'
 import { useWorkspaceTabs } from '@/features/workspace-tabs/provider'
 import { WorkspaceTabsModal } from '@/features/workspace-tabs/workspace-tabs-modal'
@@ -86,6 +89,7 @@ import { loadCurrentVaultId } from '@/sync/auth-client'
 import { ensureNoteBody } from '@/sync/body-fetch'
 import { getSyncEngine } from '@/sync/engine'
 import { getReadOnlyState, subscribeReadOnly } from '@/sync/read-only-mode'
+import { syncBaseUrl } from '@/sync/server-config'
 import { sizes, space } from '@/theme/primitives'
 import { textStyles } from '@/theme/text-styles'
 import { useColors } from '@/theme/use-colors'
@@ -103,6 +107,16 @@ const BODY_GAP = 14
  * that a pause leaves nothing sitting in the WebView.
  */
 const SAVE_SETTLE_MS = 800
+
+/**
+ * How often the status indicator re-reads this note's queue depth.
+ *
+ * Polled rather than pushed because nothing in the outbox emits: rows are
+ * deleted by the drain, in another module, on a pass this screen did not
+ * start. The timer only runs while something is actually outstanding, so the
+ * resting cost of the indicator is zero.
+ */
+const STATUS_POLL_MS = 1_000
 
 function showFailure(action: string, error: unknown): void {
   const message = extractErrorMessage(error, 'That could not be completed.')
@@ -192,6 +206,17 @@ export default function NoteScreen() {
   const [addingTag, setAddingTag] = useState(false)
   const [addingProperty, setAddingProperty] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  /**
+   * The three observable halves of the save/sync indicator (#2115).
+   *
+   * `dirty` is the guest→host window, `queued` is this note's rows in the
+   * outbox and `online` is the HTTP adapter's own flag — the same rule the
+   * sync banner follows, so the dev network switch flips both together.
+   */
+  const [dirty, setDirty] = useState(false)
+  const [queued, setQueued] = useState(0)
+  const [pushing, setPushing] = useState(false)
+  const [online, setOnline] = useState(true)
   const [headerHeight, setHeaderHeight] = useState(0)
   /**
    * Where the WebView's document is scrolled to, driven from the guest.
@@ -380,18 +405,84 @@ export default function NoteScreen() {
   useEffect(() => {
     if (!doc || gate !== 'editing') return
     let timer: ReturnType<typeof setTimeout> | undefined
+    let cancelled = false
     const unsubscribe = doc.onLocalUpdate(() => {
       localUpdates.current += 1
       if (timer) clearTimeout(timer)
-      // Saving is silent: the bar carries no status pill, so this only debounces
-      // the flush that hands the guest's pending edits over.
-      timer = setTimeout(() => void controls.current?.flush(), SAVE_SETTLE_MS)
+      // The status indicator's `saving` window opens here and closes when the
+      // flush RESOLVES, which is when everything the guest had is durable.
+      setDirty(true)
+      timer = setTimeout(() => {
+        const run = controls.current?.flush()
+        if (run) {
+          void run.finally(() => {
+            if (!cancelled) setDirty(false)
+          })
+        } else if (!cancelled) {
+          // No controls means no guest to wait for; nothing is in flight.
+          setDirty(false)
+        }
+      }, SAVE_SETTLE_MS)
     })
     return () => {
+      cancelled = true
       if (timer) clearTimeout(timer)
       unsubscribe()
     }
   }, [doc, gate])
+
+  /** The adapter's online rule, dev network switch included. */
+  useEffect(() => createMobileHttpClient(syncBaseUrl()).onOnlineChanged(setOnline), [])
+
+  /** Reads the queue and reports whether anything is still in it. */
+  const readQueueDepth = useCallback(async (): Promise<boolean> => {
+    if (!session || !id) return false
+    try {
+      const depth = await session.outbox.pendingCountForItem(id)
+      setQueued(depth)
+      setPushing(session.drain.isDraining)
+      return depth > 0
+    } catch (err) {
+      // A failed count must never surface as a wrong status, so the previous
+      // reading stands rather than being reset to "synced".
+      log.warn('Reading the note queue depth failed', {
+        error: extractErrorMessage(err, 'unknown error')
+      })
+      return false
+    }
+  }, [id, session])
+
+  /**
+   * A self-stopping poll rather than an interval.
+   *
+   * It always takes one reading — a queue left full by an earlier session is
+   * exactly the case no local edit will announce — and keeps going only while
+   * something is outstanding, so an idle note costs nothing. `dirty` is a
+   * dependency so that the first keystroke restarts the loop.
+   */
+  useEffect(() => {
+    if (!session || !id) return
+    let stopped = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const tick = async (): Promise<void> => {
+      const stillQueued = await readQueueDepth()
+      if (stopped || !(stillQueued || dirty)) return
+      timer = setTimeout(() => void tick(), STATUS_POLL_MS)
+    }
+    timer = setTimeout(() => void tick(), 0)
+    return () => {
+      stopped = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [dirty, id, readQueueDepth, session])
+
+  const saveStatus = noteSaveStatus({
+    dirty,
+    queued,
+    online,
+    pushing,
+    parked: vaultReadOnly
+  })
 
   const ctx: NoteOpsContext | null = useMemo(
     () =>
@@ -902,6 +993,7 @@ export default function NoteScreen() {
         <NavBarInline
           title=""
           back={{ label: backLabel, onPress: () => router.back() }}
+          center={<NoteSaveStatusLabel status={saveStatus} />}
           actions={[{ icon: 'more', label: 'More', onPress: () => void openMore() }]}
         />
       </View>
