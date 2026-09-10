@@ -886,6 +886,65 @@ img.bookmark-image {
   border-block-start: 1px solid var(--memry-hairline);
 }
 
+/* The paste-link strip (#2104). Same box as the wiki menu — pinned above the
+   toolbar, full-bleed, one hairline per row — because it answers the same kind
+   of question in the same place, and two different sheets in one gap would read
+   as two different features. Rows are taller: there are at most four of them,
+   so each can meet the 44px touch minimum the wiki list gives up to fit five. */
+.paste-link-menu {
+  position: absolute;
+  pointer-events: auto;
+  inset-block-end: var(--memry-viewport-bottom-inset, 0px);
+  inset-inline: 0;
+  z-index: 20;
+  background: var(--memry-paper);
+  border-block-start: 1px solid var(--memry-hairline);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.paste-link-menu-title {
+  padding-block: 6px;
+  padding-inline: 14px;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.paste-link-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding-block: 8px;
+  padding-inline: 14px;
+  text-align: start;
+  background: none;
+  border: 0;
+  border-block-start: 1px solid var(--memry-hairline);
+  color: inherit;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.paste-link-item:active {
+  background: color-mix(in srgb, var(--memry-accent) 12%, transparent);
+}
+
+.paste-link-glyph {
+  display: inline-flex;
+  flex: 0 0 18px;
+  font-size: 16px;
+  opacity: 0.6;
+}
+
+.paste-link-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The root element is in the selector list as well as its descendants: `html`
    is the guest's scroller, so `scroll-behavior` has to be neutralised ON it,
    not only inside it. */
