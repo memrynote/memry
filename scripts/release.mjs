@@ -69,7 +69,7 @@ const keychainService = 'memry-sign-pin'
 // Velopack refuses to pack an app that never calls VelopackApp.build().run().
 // The app-side updater ships in its own change; flip this to false in the same
 // release that ships it.
-const skipVeloAppCheck = true
+const skipVeloAppCheck = false
 
 async function runCli() {
   const options = parseReleaseArgs(process.argv.slice(2))
