@@ -61,6 +61,7 @@
     "./sync-socket": "./src/sync-socket.ts",
     "./sync-payloads": "./src/sync-payloads.ts",
     "./tag-colors": "./src/tag-colors.ts",
+    "./tag-searches-api": "./src/tag-searches-api.ts",
     "./tags-api": "./src/tags-api.ts",
     "./tasks-api": "./src/tasks-api.ts",
     "./telemetry-api": "./src/telemetry-api.ts",

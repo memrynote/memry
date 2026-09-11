@@ -69,11 +69,26 @@ export type PropertyType = (typeof PropertyTypes)[keyof typeof PropertyTypes]
  * What a folder view is scoped to. A folder view over a directory and a
  * folder view over a tag are the same page with a different row source.
  */
-export type ViewScope = { kind: 'folder'; path: string } | { kind: 'tag'; tag: string }
+export type ViewScope =
+  | { kind: 'folder'; path: string }
+  | {
+      kind: 'tag'
+      tag: string
+      /**
+       * Extra tags ANDed onto `tag`. Absent or empty means "single tag", which
+       * is exactly the behaviour every build before multi-tag selection had —
+       * older persisted tab state and older callers stay valid.
+       */
+      andTags?: string[]
+    }
 
 export const ViewScopeSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('folder'), path: z.string() }),
-  z.object({ kind: z.literal('tag'), tag: z.string().min(1) })
+  z.object({
+    kind: z.literal('tag'),
+    tag: z.string().min(1),
+    andTags: z.array(z.string().min(1)).optional()
+  })
 ])
 
 /**
@@ -82,7 +97,27 @@ export const ViewScopeSchema = z.discriminatedUnion('kind', [
  * tags and preserves it for paths.
  */
 export function scopeKey(scope: ViewScope): string {
-  return scope.kind === 'folder' ? `folder:${scope.path}` : `tag:${scope.tag.toLowerCase()}`
+  if (scope.kind === 'folder') return `folder:${scope.path}`
+  const extra = normalizeAndTags(scope.tag, scope.andTags)
+  const base = `tag:${scope.tag.toLowerCase()}`
+  return extra.length === 0 ? base : `${base}+${extra.join('+')}`
+}
+
+/**
+ * The ANDed tags of a tag scope, folded to lower case, de-duplicated, stripped
+ * of the primary tag and sorted — so `#a` + `#B` and `#b` + `#A` are one key
+ * and one query, in either click order.
+ */
+export function normalizeAndTags(primaryTag: string, andTags: string[] | undefined): string[] {
+  if (!andTags || andTags.length === 0) return []
+  const primary = primaryTag.trim().toLowerCase()
+  const seen = new Set<string>()
+  for (const raw of andTags) {
+    const normalized = raw.trim().toLowerCase()
+    if (normalized === '' || normalized === primary) continue
+    seen.add(normalized)
+  }
+  return [...seen].sort()
 }
 
 // ============================================================================

@@ -56,6 +56,39 @@ describe('ViewScope', () => {
   it('folds tag case, because tags are case-preserving but match case-insensitively', () => {
     expect(scopeKey({ kind: 'tag', tag: 'Araba' })).toBe(scopeKey({ kind: 'tag', tag: 'araba' }))
   })
+
+  it('keys a multi-tag scope independently of click order and case', () => {
+    expect(scopeKey({ kind: 'tag', tag: 'work', andTags: ['Urgent', 'travel'] })).toBe(
+      scopeKey({ kind: 'tag', tag: 'Work', andTags: ['TRAVEL', 'urgent'] })
+    )
+  })
+
+  it('keys an empty or primary-only andTags list exactly like a single-tag scope', () => {
+    const single = scopeKey({ kind: 'tag', tag: 'work' })
+    expect(scopeKey({ kind: 'tag', tag: 'work', andTags: [] })).toBe(single)
+    expect(scopeKey({ kind: 'tag', tag: 'work', andTags: ['WORK'] })).toBe(single)
+  })
+
+  it('distinguishes a narrowed scope from the single-tag scope', () => {
+    expect(scopeKey({ kind: 'tag', tag: 'work', andTags: ['urgent'] })).not.toBe(
+      scopeKey({ kind: 'tag', tag: 'work' })
+    )
+  })
+
+  it('parses an optional andTags list and rejects blanks', () => {
+    expect(ViewScopeSchema.parse({ kind: 'tag', tag: 'work', andTags: ['urgent'] })).toEqual({
+      kind: 'tag',
+      tag: 'work',
+      andTags: ['urgent']
+    })
+    expect(ViewScopeSchema.parse({ kind: 'tag', tag: 'work' })).toEqual({
+      kind: 'tag',
+      tag: 'work'
+    })
+    expect(ViewScopeSchema.safeParse({ kind: 'tag', tag: 'work', andTags: [''] }).success).toBe(
+      false
+    )
+  })
 })
 
 describe('ColumnConfigSchema', () => {

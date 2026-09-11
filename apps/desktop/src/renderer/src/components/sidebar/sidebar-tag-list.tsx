@@ -4,6 +4,7 @@ import { Search, X, ChevronRight, ChevronDown, Tags } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { useToggleTagOnActiveTagTab } from '@/hooks/use-tag-and-tags'
 import { useTagCategories, type HubTag } from '@/hooks/use-tag-categories'
 import { getTagColors } from '@/components/note/tags-row/tag-colors'
 import { buildTagTree, type TagTreeNode } from '@/lib/tag-tree'
@@ -162,7 +163,7 @@ interface TagTreeItemProps {
   node: TagTreeNode
   expanded: Set<string>
   onToggle: (fullPath: string) => void
-  onTagClick: (tag: string, color: string) => void
+  onTagClick: (tag: string, color: string, additive: boolean) => void
 }
 
 function TagTreeItem({
@@ -196,9 +197,11 @@ function TagTreeItem({
     onToggle(node.fullPath)
   }
 
+  // Ctrl (Windows/Linux) or Cmd (macOS) toggles this tag in the active tag
+  // page's AND filter instead of navigating. A plain click is untouched.
   const handleTagClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    onTagClick(node.fullPath, node.color ?? '')
+    onTagClick(node.fullPath, node.color ?? '', e.metaKey || e.ctrlKey)
   }
 
   // Middle-click opens the tag in a background tab — the row's "Open in New
@@ -340,6 +343,7 @@ export function SidebarTagList({
   const { t: tPhaseF } = useT('notes')
   const { t } = useT('common')
   const { openSidebarItem } = useSidebarNavigation()
+  const toggleTagOnActiveTagTab = useToggleTagOnActiveTagTab()
   const { tags, isLoading: isLoadingTags, error } = useNoteTagsQuery()
   const { categories, uncategorized, isLoading: isLoadingCategories } = useTagCategories()
   const isLoading = isLoadingTags || isLoadingCategories
@@ -464,7 +468,11 @@ export function SidebarTagList({
   }, [])
 
   const handleTagClick = React.useCallback(
-    (tagName: string, tagColor: string) => {
+    (tagName: string, tagColor: string, additive: boolean) => {
+      // Ctrl/Cmd-click narrows the tag page that is already open rather than
+      // navigating. With no tag page in front, there is nothing to narrow, so
+      // it falls through to a plain open — the tag still has to be reachable.
+      if (additive && toggleTagOnActiveTagTab(tagName)) return
       openSidebarItem({
         type: 'tag',
         title: tagName,
@@ -473,7 +481,7 @@ export function SidebarTagList({
         color: tagColor
       })
     },
-    [openSidebarItem]
+    [openSidebarItem, toggleTagOnActiveTagTab]
   )
 
   const groups = React.useMemo<TagGroup[]>(() => {

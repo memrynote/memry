@@ -8,7 +8,7 @@ import {
   type TestDatabaseResult,
   type TestDb
 } from '@tests/utils/test-db'
-import { listTagItems } from './tag-items'
+import { itemTagsMatch, listTagItems } from './tag-items'
 
 // ============================================================================
 // Helpers
@@ -137,5 +137,103 @@ describe('listTagItems', () => {
 
   it('returns an empty array for an unused tag', () => {
     expect(listTagItems(indexDb, dataDb, 'nothing')).toEqual([])
+  })
+
+  describe('AND semantics (andTags)', () => {
+    function seedAndFixture(): void {
+      insertNote(indexDb, 'n1', 'Both')
+      insertNoteTag(indexDb, 'n1', 'work')
+      insertNoteTag(indexDb, 'n1', 'urgent')
+      insertNote(indexDb, 'n2', 'Only work')
+      insertNoteTag(indexDb, 'n2', 'work')
+      insertNote(indexDb, 'n3', 'All three')
+      insertNoteTag(indexDb, 'n3', 'work')
+      insertNoteTag(indexDb, 'n3', 'urgent')
+      insertNoteTag(indexDb, 'n3', 'travel')
+    }
+
+    it('an empty andTags list is the unfiltered single-tag query', () => {
+      seedAndFixture()
+
+      expect(
+        listTagItems(indexDb, dataDb, 'work', [])
+          .map((i) => i.id)
+          .sort()
+      ).toEqual(['n1', 'n2', 'n3'])
+    })
+
+    it('keeps only items carrying every selected tag', () => {
+      seedAndFixture()
+
+      expect(
+        listTagItems(indexDb, dataDb, 'work', ['urgent'])
+          .map((i) => i.id)
+          .sort()
+      ).toEqual(['n1', 'n3'])
+    })
+
+    it('narrows further as a third tag is added', () => {
+      seedAndFixture()
+
+      expect(listTagItems(indexDb, dataDb, 'work', ['urgent', 'travel']).map((i) => i.id)).toEqual([
+        'n3'
+      ])
+    })
+
+    it('normalizes the ANDed tags the same way as the primary tag', () => {
+      insertNote(indexDb, 'n1', 'Mixed case')
+      insertNoteTag(indexDb, 'n1', 'Work')
+      insertNoteTag(indexDb, 'n1', 'Urgent')
+
+      expect(listTagItems(indexDb, dataDb, 'work', ['  URGENT '])).toHaveLength(1)
+    })
+
+    it('matches descendants of an ANDed tag but not prefix collisions', () => {
+      insertNote(indexDb, 'n1', 'Descendant')
+      insertNoteTag(indexDb, 'n1', 'work')
+      insertNoteTag(indexDb, 'n1', 'project/alpha')
+      insertNote(indexDb, 'n2', 'Prefix decoy')
+      insertNoteTag(indexDb, 'n2', 'work')
+      insertNoteTag(indexDb, 'n2', 'projection')
+
+      expect(listTagItems(indexDb, dataDb, 'work', ['project']).map((i) => i.id)).toEqual(['n1'])
+    })
+
+    it('ignores the primary tag repeated in andTags', () => {
+      seedAndFixture()
+
+      expect(
+        listTagItems(indexDb, dataDb, 'work', ['WORK'])
+          .map((i) => i.id)
+          .sort()
+      ).toEqual(['n1', 'n2', 'n3'])
+    })
+
+    it('ANDs across sources', () => {
+      insertTask(dataDb, 't1', 'Both')
+      insertTaskTag(dataDb, 't1', 'work')
+      insertTaskTag(dataDb, 't1', 'urgent')
+      insertTask(dataDb, 't2', 'Only work')
+      insertTaskTag(dataDb, 't2', 'work')
+      const i1 = seedInboxItem(dataDb, { id: 'i1', title: 'Both' })
+      seedInboxItemTags(dataDb, i1, ['work', 'urgent'])
+      const i2 = seedInboxItem(dataDb, { id: 'i2', title: 'Only work' })
+      seedInboxItemTags(dataDb, i2, ['work'])
+
+      expect(
+        listTagItems(indexDb, dataDb, 'work', ['urgent'])
+          .map((i) => i.id)
+          .sort()
+      ).toEqual(['i1', 't1'])
+    })
+  })
+})
+
+describe('itemTagsMatch', () => {
+  it('matches exactly, and by descendant, never by bare prefix', () => {
+    expect(itemTagsMatch(['work'], 'work')).toBe(true)
+    expect(itemTagsMatch(['Work/Meetings'], 'work')).toBe(true)
+    expect(itemTagsMatch(['workshop'], 'work')).toBe(false)
+    expect(itemTagsMatch([], 'work')).toBe(false)
   })
 })

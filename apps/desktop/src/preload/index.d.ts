@@ -1321,6 +1321,14 @@ export interface BackupSettingsDTO {
   lastBackupAt: string | null
 }
 
+/** A named multi-tag (AND) search; `tags[0]` is the primary tag. */
+export interface TagSearchDTO {
+  id: string
+  name: string
+  tags: string[]
+  createdAt: string
+}
+
 export interface GraphSettingsDTO {
   layout: 'forceatlas2' | 'circular' | 'random'
   nodeSizing: 'uniform' | 'by-connections' | 'by-word-count'
@@ -1408,6 +1416,8 @@ export interface SettingsClientAPI {
   setBackupSettings(
     settings: Partial<BackupSettingsDTO>
   ): Promise<{ success: boolean; error?: string }>
+  getTagSearches(): Promise<TagSearchDTO[]>
+  setTagSearches(searches: TagSearchDTO[]): Promise<TagSearchDTO[]>
   getGraphSettings(): Promise<GraphSettingsDTO>
   setGraphSettings(
     settings: Partial<GraphSettingsDTO>

@@ -24,7 +24,13 @@ export const FOLDER_VIEW_STATE_KEYS = {
   /** In-page search text. */
   searchQuery: 'folderSearchQuery',
   /** Whether the search input is expanded. */
-  searchOpen: 'folderSearchOpen'
+  searchOpen: 'folderSearchOpen',
+  /**
+   * Tag scope only: extra tags ANDed onto the tab's primary tag. Lives here
+   * rather than in `.folder.md` because a tag has no config file, and because
+   * this is a per-tab lens — two tabs on `#work` may narrow differently.
+   */
+  tagAndTags: 'tagAndTags'
 } as const
 
 /**
@@ -66,3 +72,13 @@ export const parseSearchQuery = (raw: unknown): string | undefined =>
 
 export const parseSearchOpen = (raw: unknown): boolean | undefined =>
   typeof raw === 'boolean' ? raw : undefined
+
+/**
+ * Tag-scope AND selection. Older sessions have no such key at all, and a
+ * session written by a future build could hold anything, so this rejects
+ * everything that is not a list of non-empty strings.
+ */
+export const parseTagAndTags = (raw: unknown): string[] | undefined =>
+  Array.isArray(raw) && raw.every((v) => typeof v === 'string' && v.trim() !== '')
+    ? (raw as string[]).map((v) => v.trim())
+    : undefined
