@@ -67,6 +67,21 @@ vi.mock('./index', () => ({
   getStatus: vi.fn(() => ({ path: mockVaultPath, isOpen: true }))
 }))
 
+/**
+ * Who references an attachment is a vault-wide question answered by reading
+ * every note — covered on its own in `attachment-reference-scan.test.ts`. Here
+ * it is a seam, so the delete guard can be exercised in both directions without
+ * standing up an index database.
+ */
+const referenceScan = vi.hoisted(() => ({
+  findNotesReferencingAttachment: vi.fn((_target: { ownerNoteId: string; filename: string }) => ({
+    referencedBy: [] as string[],
+    complete: true
+  }))
+}))
+
+vi.mock('./attachment-reference-scan', () => referenceScan)
+
 // ============================================================================
 // Pure Function Tests - Path Utilities (T391)
 // ============================================================================
@@ -273,6 +288,12 @@ describe('attachment operations', () => {
     const indexModule = await import('./index')
     mockGetStatus = indexModule.getStatus as ReturnType<typeof vi.fn>
     mockGetStatus.mockReturnValue({ path: tempVault.path, isOpen: true })
+
+    referenceScan.findNotesReferencingAttachment.mockReset()
+    referenceScan.findNotesReferencingAttachment.mockReturnValue({
+      referencedBy: [],
+      complete: true
+    })
   })
 
   afterEach(() => {
@@ -411,6 +432,50 @@ describe('attachment operations', () => {
     it('T393: does not throw for non-existent attachment', async () => {
       await expect(deleteAttachment('note123', 'nonexistent.png')).resolves.not.toThrow()
     })
+
+    it('#2077: keeps the file when another note still references it', async () => {
+      const saveResult = await saveAttachment('note123', Buffer.from('pdf'), 'report.pdf')
+      const filename = path.basename(saveResult.path!)
+      referenceScan.findNotesReferencingAttachment.mockReturnValueOnce({
+        referencedBy: ['note-b'],
+        complete: true
+      })
+
+      const outcome = await deleteAttachment('note123', filename)
+
+      expect(outcome).toEqual({ deleted: false, referencedBy: ['note-b'] })
+      expect(fs.existsSync(path.join(tempVault.path, 'attachments', 'note123', filename))).toBe(
+        true
+      )
+    })
+
+    it('#2077: keeps the file when the reference scan could not complete', async () => {
+      const saveResult = await saveAttachment('note123', Buffer.from('pdf'), 'report.pdf')
+      const filename = path.basename(saveResult.path!)
+      referenceScan.findNotesReferencingAttachment.mockReturnValueOnce({
+        referencedBy: [],
+        complete: false
+      })
+
+      const outcome = await deleteAttachment('note123', filename)
+
+      expect(outcome.deleted).toBe(false)
+      expect(fs.existsSync(path.join(tempVault.path, 'attachments', 'note123', filename))).toBe(
+        true
+      )
+    })
+
+    it('#2077: asks about the file the owning note is deleting, excluding itself', async () => {
+      const saveResult = await saveAttachment('note123', Buffer.from('pdf'), 'report.pdf')
+      const filename = path.basename(saveResult.path!)
+
+      await deleteAttachment('note123', filename)
+
+      expect(referenceScan.findNotesReferencingAttachment).toHaveBeenCalledWith(
+        { ownerNoteId: 'note123', filename },
+        { excludeNoteId: 'note123' }
+      )
+    })
   })
 
   describe('deleteNoteAttachments', () => {
@@ -427,6 +492,23 @@ describe('attachment operations', () => {
 
     it('T393: succeeds if folder does not exist', async () => {
       await expect(deleteNoteAttachments('nonexistent')).resolves.not.toThrow()
+    })
+
+    it('#2077: keeps a shared file and the folder holding it', async () => {
+      const shared = await saveAttachment('note123', Buffer.from('pdf'), 'shared.pdf')
+      await saveAttachment('note123', Buffer.from('data'), 'solo.png')
+      const sharedName = path.basename(shared.path!)
+      referenceScan.findNotesReferencingAttachment.mockImplementation((target) =>
+        target.filename === sharedName
+          ? { referencedBy: ['note-b'], complete: true }
+          : { referencedBy: [], complete: true }
+      )
+
+      await deleteNoteAttachments('note123')
+
+      const folder = path.join(tempVault.path, 'attachments', 'note123')
+      expect(fs.existsSync(path.join(folder, sharedName))).toBe(true)
+      expect(fs.readdirSync(folder)).toEqual([sharedName])
     })
   })
 

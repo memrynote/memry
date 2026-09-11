@@ -85,6 +85,10 @@ export const NotesChannels = {
     ATTACHMENT_OPEN_EXTERNAL: 'notes:attachment-open-external',
     /** Rename an attachment on disk, keeping its nanoid prefix and extension */
     ATTACHMENT_RENAME: 'notes:attachment-rename',
+    /** Every attachment stored anywhere in the vault, for the "insert existing" picker */
+    LIST_VAULT_ATTACHMENTS: 'notes:list-vault-attachments',
+    /** Block props for embedding an attachment another note already stores */
+    INSERT_EXISTING_ATTACHMENT: 'notes:insert-existing-attachment',
     /** Get folder config (template settings) */
     GET_FOLDER_CONFIG: 'notes:get-folder-config',
     /** Set folder config (template settings) */

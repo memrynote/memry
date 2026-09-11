@@ -12,6 +12,7 @@ Three ways:
 - **Drag from your OS file manager** — drop a file onto the editor at the position you want it. The file is **copied** into the vault attachments directory (`<vault>/attachments/`), so the original on your filesystem can be moved or deleted without breaking the note.
 - **Drag from the sidebar** — drag a file item (PDF, image, audio, …) from the left sidebar onto a note. This **embeds it by reference** using the item's own vault path, so no second copy is made.
 - **Slash menu** — `/file` inserts a File block; click to pick a file.
+- **Reuse a file the vault already has** — `/existing attachment` opens a picker listing every attachment in the vault, with the note each one is stored under. Picking one embeds it **by reference**, so the same PDF can sit in two notes without a second copy.
 
 While you drag over a note, a line marks where the file will land, and dropping inserts it exactly there. The line follows the cursor once per frame instead of on every pointer event, so dragging over a long note stays smooth.
 
@@ -152,11 +153,34 @@ are absolute paths (including Windows `\\server\share` style ones) and `http(s)`
 URLs. If an image shows up broken, check that the referenced file actually sits
 where the path points, relative to the note.
 
+### One File, Several Notes
+
+An attachment is stored once, under the note it was first added to
+(`<vault>/attachments/<note-id>/`), and it stays there. When a second note embeds
+it through `/existing attachment`, that note simply points at the same file —
+nothing is copied, nothing is uploaded again, and the two embeds stay
+independent blocks you can resize, align or remove separately.
+
+A few consequences worth knowing:
+
+- **Removing the embed from one note leaves the other alone.** A file is only
+  deleted from disk once no note references it any more; while a second note
+  still does, the bytes stay.
+- **Moving either note is fine.** The reference is recomputed against the note's
+  new folder, so it keeps naming the same file.
+- **Sync carries one blob.** The note that stores the file syncs it; on the other
+  device both embeds resolve against that single copy.
+- **Renaming is done from the owning note.** The rename action is only offered
+  for files stored under the note you are in. If the owner renames a file, a
+  borrowing note's embed self-heals by prefix on the next load.
+- **Files you already duplicated stay duplicated.** Memry never collapses two
+  existing copies of the same file behind your back.
+
 ## Removing or Replacing
 
 Click the file block menu to:
 
-- **Delete** — removes the block from the note; the underlying file stays in the attachments dir until garbage collection
+- **Delete** — removes the block from the note; the underlying file stays in the attachments dir until garbage collection, and is never removed while another note still references it
 - **Replace** — swap the bound file without re-creating the block
 
 ## Storage

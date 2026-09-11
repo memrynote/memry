@@ -7,6 +7,8 @@ import type {
 import type {
   AttachmentRenameResult,
   AttachmentResolveResult,
+  InsertExistingAttachmentResult,
+  VaultAttachmentEntry,
   NoteSizeClass,
   NoteLargeFileInfo,
   LargeFileOpenResult,
@@ -200,9 +202,19 @@ export interface AttachmentUploadFile {
   arrayBuffer(): Promise<ArrayBuffer>
 }
 
+export type { InsertExistingAttachmentResult, VaultAttachmentEntry }
+
 export interface DeleteAttachmentResponse {
   success: boolean
   error?: string
+  /**
+   * False when the bytes were kept because another note still embeds them
+   * (#2077). Absent on responses from older main processes, so read it as
+   * "deleted" only when it is explicitly `false`.
+   */
+  deleted?: boolean
+  /** Note ids that still reference the file; empty whenever `deleted` is true. */
+  referencedBy?: string[]
 }
 
 export interface FolderConfig {
@@ -682,6 +694,23 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.DELETE_ATTACHMENT,
       params: ['noteId', 'filename'],
       invokeArgs: ['{ noteId, filename }']
+    }),
+    // #2077: the "insert existing attachment" pair. The picker lists what the
+    // vault already stores; the insert returns block props pointing at those
+    // same bytes, so two notes share one blob instead of copying it.
+    listVaultAttachments: defineMethod<() => Promise<VaultAttachmentEntry[]>>({
+      channel: NotesChannels.invoke.LIST_VAULT_ATTACHMENTS
+    }),
+    insertExistingAttachment: defineMethod<
+      (
+        noteId: string,
+        ownerNoteId: string,
+        filename: string
+      ) => Promise<InsertExistingAttachmentResult>
+    >({
+      channel: NotesChannels.invoke.INSERT_EXISTING_ATTACHMENT,
+      params: ['noteId', 'ownerNoteId', 'filename'],
+      invokeArgs: ['{ noteId, ownerNoteId, filename }']
     }),
     getFolderConfig: defineMethod<(folderPath: string) => Promise<FolderConfig | null>>({
       channel: NotesChannels.invoke.GET_FOLDER_CONFIG,

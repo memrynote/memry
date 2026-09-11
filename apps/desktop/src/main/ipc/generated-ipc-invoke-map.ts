@@ -206,7 +206,7 @@ export interface MainIpcInvokeHandlers {
   "notes:create-folder": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "notes:create-property-definition": (...args: [{ name: string; type: "number" | "date" | "text" | "select" | "url" | "status" | "checkbox" | "multiselect"; options?: { value: string; color: string; default?: boolean | undefined; }[] | undefined; defaultValue?: unknown; color?: string | undefined; }]) => Awaited<Promise<{ success: true; definition: import("../../../../../packages/contracts/src/property-types").PropertyDefinition | undefined; } | { success: true; definition: { type: string; name: string; createdAt: string; color: string | null; clock: import("../../../../../packages/contracts/src/sync-api").VectorClock | null; syncedAt: string | null; options: string | null; defaultValue: string | null; }; }> | { success: false; error: string }>
   "notes:delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
-  "notes:delete-attachment": (...args: [{ noteId: string; filename: string; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
+  "notes:delete-attachment": (...args: [{ noteId: string; filename: string; }]) => Awaited<Promise<{ deleted: boolean; referencedBy: string[]; success: true; }> | { success: false; error: string }>
   "notes:delete-folder": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "notes:delete-property-definition": (...args: [{ name: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:delete-version": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
@@ -230,12 +230,14 @@ export interface MainIpcInvokeHandlers {
   "notes:get-version": (...args: [string]) => Awaited<Promise<import("../vault/notes-versions").SnapshotDetail | null>>
   "notes:get-versions": (...args: [string]) => Awaited<Promise<import("../vault/notes-versions").SnapshotListItem[]>>
   "notes:import-files": (...args: [{ sourcePaths: string[]; targetFolder?: string | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").ImportFilesResult> | { success: false; error: string }>
+  "notes:insert-existing-attachment": (...args: [{ noteId: string; ownerNoteId: string; filename: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").InsertExistingAttachmentResult>>
   "notes:large-file-close": (...args: [string]) => Awaited<Promise<void>>
   "notes:large-file-open": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileOpenResult>>
   "notes:large-file-read-lines": (...args: [{ sessionId: string; startLine: number; count: number; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileLinesResult | null>>
   "notes:large-file-search": (...args: [{ sessionId: string; query: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileSearchResult | null>>
   "notes:list": (...args: [{ folder?: string | undefined; tags?: string[] | undefined; sortBy?: "title" | "position" | "modified" | "created" | undefined; sortOrder?: "asc" | "desc" | undefined; limit?: number | undefined; offset?: number | undefined; fields?: "full" | "tree" | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").NoteListResponse>>
   "notes:list-attachments": (...args: [string]) => Awaited<Promise<import("../vault/attachments").AttachmentInfo[]>>
+  "notes:list-vault-attachments": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").VaultAttachmentEntry[]>>
   "notes:move": (...args: [{ id: string; newFolder: string; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
   "notes:open-external": (...args: [string]) => Awaited<Promise<void>>
   "notes:preview-by-title": (...args: [string]) => Awaited<Promise<{ id: string; title: string; emoji: string | null; snippet: string | null; tags: { name: string; color: string; }[]; createdAt: string; } | null>>

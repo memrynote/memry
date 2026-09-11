@@ -185,6 +185,49 @@ export interface AttachmentRenameResult {
   name: string
 }
 
+export const InsertExistingAttachmentSchema = z.object({
+  /** The note that will carry the new block. */
+  noteId: z.string(),
+  /** The note whose `attachments/<id>/` folder stores the bytes. */
+  ownerNoteId: z.string(),
+  /** Stored basename inside that folder, e.g. `k3f9x2-report.pdf` */
+  filename: z.string().min(1)
+})
+
+/**
+ * One stored attachment anywhere in the vault (#2077).
+ *
+ * Identity is `(ownerNoteId, filename)` — the folder the bytes live in plus
+ * their name. That pair is what a second note references; nothing is copied.
+ */
+export interface VaultAttachmentEntry {
+  ownerNoteId: string
+  /** Null when the owning note is no longer in the index; the bytes still are. */
+  ownerNoteTitle: string | null
+  /** Stored basename, e.g. `k3f9x2-report.pdf` */
+  filename: string
+  /** The stored basename without its nanoid prefix, for display. */
+  displayName: string
+  size: number
+  mimeType: string
+  type: 'image' | 'file'
+  /** File mtime, ISO-8601. The picker lists newest first. */
+  modifiedAt: string
+}
+
+/** Block props for an embed that points at an already-stored attachment. */
+export interface InsertExistingAttachmentResult {
+  /** Ref for the block's `url` prop, relative to the receiving note. */
+  url: string
+  /** Display name for the block's `name` prop. */
+  name: string
+  filename: string
+  ownerNoteId: string
+  size: number
+  mimeType: string
+  type: 'image' | 'file'
+}
+
 export interface AttachmentResolveResult {
   /** Absolute on-disk path, remapped to this device's vault for cross-device notes */
   absolutePath: string
