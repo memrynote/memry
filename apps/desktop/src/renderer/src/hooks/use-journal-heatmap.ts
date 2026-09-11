@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import type { HeatmapEntry } from '../../../preload/index.d'
 import { journalService } from '@/services/journal-service'
 import { journalKeys, ENTRY_STALE_TIME, ENTRY_GC_TIME } from './journal-query-keys'
-import { useJournalChangeInvalidation } from './use-journal-invalidation'
 
 export interface UseJournalHeatmapResult {
   data: HeatmapEntry[]
@@ -26,10 +25,9 @@ export function useJournalHeatmap(year: number): UseJournalHeatmapResult {
     gcTime: ENTRY_GC_TIME
   })
 
-  useJournalChangeInvalidation(
-    journalKeys.heatmap(year),
-    (eventDate) => parseInt(eventDate.slice(0, 4), 10) === year
-  )
+  // No local journal-change subscription here on purpose: `useJournalChangeEvents`
+  // invalidates `journalKeys.heatmap(<year of the changed date>)` from App level, which
+  // is the same predicate but survives the Home board being a background tab.
 
   const reload = useCallback(async () => {
     await refetch()

@@ -55,6 +55,7 @@ import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-mod
 import { SettingsModal } from '@/components/settings-modal'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { useCalendarChangeEvents } from '@/hooks/use-calendar-change-events'
+import { useJournalChangeEvents } from '@/hooks/use-journal-change-events'
 import { useIndexRecoveryNotice } from '@/hooks/use-index-recovery-notice'
 import { useCloseTabsOnEntityDelete } from '@/hooks/use-close-tabs-on-entity-delete'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
@@ -238,6 +239,7 @@ const AppContent = (): React.JSX.Element => {
   useIndexRecoveryNotice() // Says so when Memry repaired its own search index
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
   useCalendarChangeEvents() // Global cache invalidation for calendar ranges in background tabs
+  useJournalChangeEvents() // Global cache invalidation for journal entries/heatmaps in background tabs
   useCloseTabsOnEntityDelete() // A deleted canvas takes its tabs with it, in every group
   const toggleSearch = useCallback(() => setSearchOpen((prev) => !prev), [])
   const openShortcutsDialog = useCallback(() => setShowShortcutsDialog(true), [])
