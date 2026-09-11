@@ -306,7 +306,7 @@ export async function writeJournalEntryWithContent(
       // If properties is empty object, don't add to frontmatter (effectively clearing)
     } else if (existing.properties && Object.keys(existing.properties).length > 0) {
       // Preserve existing properties if not updating
-      frontmatter.properties = existing.properties
+      frontmatter = writePropertiesToRoot(frontmatter, existing.properties)
     }
   } else {
     // Create new entry

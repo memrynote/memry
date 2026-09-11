@@ -466,6 +466,21 @@ Today I worked on tests.`
       expect(raw).not.toMatch(/^properties:/m)
     })
 
+    it('keeps preserved properties at the root when an update omits them', async () => {
+      await writeJournalEntry('2026-01-15', 'First version', undefined, {
+        status: 'active',
+        owner: 'Kaan'
+      })
+
+      await writeJournalEntry('2026-01-15', 'Updated version', ['updated'])
+
+      const filePath = path.join(tempVault.path, 'journal', '2026-01-15.md')
+      const raw = fs.readFileSync(filePath, 'utf8')
+      expect(raw).toMatch(/^status: active$/m)
+      expect(raw).toMatch(/^owner: Kaan$/m)
+      expect(raw).not.toMatch(/^properties:/m)
+    })
+
     it('T381: updates existing journal entry', async () => {
       // First write
       await writeJournalEntry('2026-01-15', 'First version')
