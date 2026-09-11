@@ -25,6 +25,9 @@ const externalRuntimeDependencies = [
   'libsodium-wrappers-sumo',
   'sharp',
   'sqlite-vec',
+  // loads a platform-specific .node binary through its own loader at import
+  // time, so it can only be required lazily from the loose tree (velopack-native.ts)
+  'velopack',
   'y-leveldb',
   // must be a single instance: external y-leveldb resolves its yjs peer from
   // the loose tree, so the main bundle has to use that same copy
