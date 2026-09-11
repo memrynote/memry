@@ -11,12 +11,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   InsertExistingAttachmentDialog,
   attachmentKey,
+  buildInsertedAttachmentBlock,
   filterVaultAttachments
 } from './insert-existing-attachment-dialog'
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key })
 }))
+
+const toastError = vi.fn()
+vi.mock('sonner', () => ({ toast: { error: (...args: unknown[]) => toastError(...args) } }))
 
 const listVaultAttachments = vi.fn()
 const insertExistingAttachment = vi.fn()
@@ -33,6 +37,7 @@ function setupApi(): void {
 }
 
 afterEach(() => {
+  toastError.mockReset()
   listVaultAttachments.mockReset()
   insertExistingAttachment.mockReset()
   uploadAttachment.mockReset()
@@ -77,6 +82,47 @@ describe('filterVaultAttachments', () => {
     expect(filterVaultAttachments([PDF, PHOTO], 'REPORT')).toEqual([PDF])
     expect(filterVaultAttachments([PDF, PHOTO], 'trip')).toEqual([PHOTO])
     expect(filterVaultAttachments([PDF, PHOTO], '  ')).toEqual([PDF, PHOTO])
+  })
+})
+
+describe('buildInsertedAttachmentBlock', () => {
+  it('builds an image block for an image, keeping the name as the caption', () => {
+    expect(
+      buildInsertedAttachmentBlock({
+        url: '../attachments/note-c/aaaaaa-photo.png',
+        name: 'photo.png',
+        size: 10,
+        mimeType: 'image/png',
+        type: 'image'
+      })
+    ).toEqual({
+      type: 'image',
+      props: {
+        url: '../attachments/note-c/aaaaaa-photo.png',
+        caption: 'photo.png',
+        previewWidth: 600
+      }
+    })
+  })
+
+  it('builds a file block for everything else, carrying size and mime type', () => {
+    expect(
+      buildInsertedAttachmentBlock({
+        url: '../attachments/note-a/k3f9x2-report.pdf',
+        name: 'report.pdf',
+        size: 2048,
+        mimeType: 'application/pdf',
+        type: 'file'
+      })
+    ).toEqual({
+      type: 'file',
+      props: {
+        url: '../attachments/note-a/k3f9x2-report.pdf',
+        name: 'report.pdf',
+        size: 2048,
+        mimeType: 'application/pdf'
+      }
+    })
   })
 })
 
@@ -132,6 +178,25 @@ describe('InsertExistingAttachmentDialog', () => {
     const rows = await screen.findAllByTestId('insert-existing-attachment-row')
     expect(rows).toHaveLength(1)
     expect(rows[0]).toHaveTextContent('photo.png')
+  })
+
+  it('reports a listing failure and shows nothing rather than a stale list', async () => {
+    listVaultAttachments.mockRejectedValue(new Error('nope'))
+    renderDialog()
+
+    await waitFor(() => expect(toastError).toHaveBeenCalled())
+    expect(screen.queryAllByTestId('insert-existing-attachment-row')).toHaveLength(0)
+  })
+
+  it('reports an insert failure and leaves the note untouched', async () => {
+    listVaultAttachments.mockResolvedValue([PDF])
+    insertExistingAttachment.mockRejectedValue(new Error('gone'))
+    const { onInsert } = renderDialog()
+
+    fireEvent.click(await screen.findByTestId('insert-existing-attachment-row'))
+
+    await waitFor(() => expect(toastError).toHaveBeenCalled())
+    expect(onInsert).not.toHaveBeenCalled()
   })
 
   it('shows the empty state when the vault has no attachments', async () => {

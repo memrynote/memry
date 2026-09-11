@@ -510,6 +510,28 @@ describe('attachment operations', () => {
       expect(fs.existsSync(path.join(folder, sharedName))).toBe(true)
       expect(fs.readdirSync(folder)).toEqual([sharedName])
     })
+
+    it('#2077: keeps the folder when something that is not a file is in it', async () => {
+      await saveAttachment('note123', Buffer.from('data'), 'solo.png')
+      const folder = path.join(tempVault.path, 'attachments', 'note123')
+      fs.mkdirSync(path.join(folder, 'nested'))
+
+      await deleteNoteAttachments('note123')
+
+      // The attachment went; the thing this code does not understand stayed.
+      expect(fs.readdirSync(folder)).toEqual(['nested'])
+    })
+
+    it('#2077: reports a delete failure rather than swallowing it', async () => {
+      await saveAttachment('note123', Buffer.from('data'), 'solo.png')
+      const folder = path.join(tempVault.path, 'attachments', 'note123')
+      fs.chmodSync(folder, 0o500)
+      try {
+        await expect(deleteNoteAttachments('note123')).rejects.toThrow(AttachmentError)
+      } finally {
+        fs.chmodSync(folder, 0o700)
+      }
+    })
   })
 
   describe('listNoteAttachments', () => {

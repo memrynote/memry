@@ -25,19 +25,48 @@ import {
 import { Input } from '@/components/ui/input'
 import { File, FileText, Image } from '@/lib/icons'
 
+/** What main hands back for a picked attachment; the block props come from it. */
+export interface InsertedAttachment {
+  url: string
+  name: string
+  size: number
+  mimeType: string
+  type: 'image' | 'file'
+}
+
+/**
+ * The BlockNote block for an attachment that is already in the vault.
+ *
+ * Lives here rather than in ContentArea so it can be tested without mounting
+ * the editor, and written out rather than calling `createFileBlockContent`
+ * because `file-block.tsx` pulls in react-pdf at module load — naming a block
+ * type must not drag a PDF renderer in with it.
+ */
+export function buildInsertedAttachmentBlock(result: InsertedAttachment) {
+  if (result.type === 'image') {
+    return {
+      type: 'image' as const,
+      props: { url: result.url, caption: result.name, previewWidth: 600 }
+    }
+  }
+  return {
+    type: 'file' as const,
+    props: {
+      url: result.url,
+      name: result.name,
+      size: result.size,
+      mimeType: result.mimeType
+    }
+  }
+}
+
 export interface InsertExistingAttachmentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   /** The note that will carry the new block. */
   noteId: string
   /** Called with the resolved block props once the user picks a row. */
-  onInsert: (result: {
-    url: string
-    name: string
-    size: number
-    mimeType: string
-    type: 'image' | 'file'
-  }) => void
+  onInsert: (result: InsertedAttachment) => void
 }
 
 function formatFileSize(bytes: number): string {

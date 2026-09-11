@@ -16,7 +16,8 @@ import {
 
 const state = vi.hoisted(() => ({
   vaultPath: '',
-  rows: [] as { id: string; path: string; title: string }[]
+  rows: [] as { id: string; path: string; title: string }[],
+  throwOnRows: false
 }))
 
 vi.mock('./notes-io', () => ({
@@ -35,7 +36,10 @@ vi.mock('../database', () => ({
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
-  getAllNoteRefRows: () => state.rows,
+  getAllNoteRefRows: () => {
+    if (state.throwOnRows) throw new Error('index unavailable')
+    return state.rows
+  },
   getNoteCacheById: (_db: unknown, id: string) => state.rows.find((row) => row.id === id)
 }))
 
@@ -59,6 +63,7 @@ describe('attachment references', () => {
       { id: 'note-a', path: 'notes/A.md', title: 'Invoices' },
       { id: 'note-b', path: 'notes/archive/2026/B.md', title: 'Archive' }
     ]
+    state.throwOnRows = false
   })
 
   afterEach(() => {
@@ -99,6 +104,38 @@ describe('attachment references', () => {
 
     it('is empty when the vault has no attachments folder', () => {
       expect(listVaultAttachments()).toEqual([])
+    })
+
+    it('still lists the files when the note titles cannot be read', () => {
+      writeAttachment('note-a', 'k3f9x2-report.pdf')
+      state.throwOnRows = true
+
+      expect(listVaultAttachments()).toEqual([
+        expect.objectContaining({ ownerNoteId: 'note-a', ownerNoteTitle: null })
+      ])
+    })
+
+    it('skips an owner folder it cannot read and keeps walking the rest', () => {
+      writeAttachment('note-a', 'k3f9x2-report.pdf')
+      writeAttachment('note-b', 'bbbbbb-secret.pdf')
+      const locked = path.join(state.vaultPath, 'attachments', 'note-b')
+      fs.chmodSync(locked, 0o000)
+      try {
+        expect(listVaultAttachments().map((e) => e.filename)).toEqual(['k3f9x2-report.pdf'])
+      } finally {
+        fs.chmodSync(locked, 0o700)
+      }
+    })
+
+    it('is empty rather than partial when the attachments folder itself is unreadable', () => {
+      writeAttachment('note-a', 'k3f9x2-report.pdf')
+      const root = path.join(state.vaultPath, 'attachments')
+      fs.chmodSync(root, 0o000)
+      try {
+        expect(listVaultAttachments()).toEqual([])
+      } finally {
+        fs.chmodSync(root, 0o700)
+      }
     })
   })
 
