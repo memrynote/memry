@@ -336,7 +336,8 @@ export function registerFolderViewHandlers(): void {
             // TagItem carries no word count for any kind.
             wordCount: 0,
             properties: propertiesMap.get(item.id) ?? {},
-            kind: item.kind
+            kind: item.kind,
+            fileType: 'markdown'
           }))
 
           const page = rows.slice(input.offset, input.offset + input.limit)
@@ -364,7 +365,10 @@ export function registerFolderViewHandlers(): void {
             emoji: noteCache.emoji,
             created: noteCache.createdAt,
             modified: noteCache.modifiedAt,
-            wordCount: noteCache.wordCount
+            wordCount: noteCache.wordCount,
+            // #2073: the renderer has to know a PDF row from a note row so its
+            // metadata cells stay read-only instead of rewriting the binary.
+            fileType: noteCache.fileType
           })
           .from(noteCache)
           .where(and(like(noteCache.path, pathPattern), isNull(noteCache.date)))
@@ -414,7 +418,8 @@ export function registerFolderViewHandlers(): void {
           created: note.created,
           modified: note.modified,
           wordCount: note.wordCount ?? 0,
-          properties: propertiesMap.get(note.id) || {}
+          properties: propertiesMap.get(note.id) || {},
+          fileType: note.fileType ?? 'markdown'
         }))
 
         // Count total (simplified - just use current batch)

@@ -70,6 +70,12 @@ export interface NoteWithProperties {
   properties: Record<string, unknown>
   /** Row kind. Absent means 'note' — folder views only ever contain notes. */
   kind?: 'note' | 'task' | 'inbox'
+  /**
+   * What the row's file actually is. Only markdown carries frontmatter, so the
+   * tag and property cells stay read-only for anything else (#2073).
+   * Absent means 'markdown'.
+   */
+  fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
 }
 
 export interface AvailableProperty {

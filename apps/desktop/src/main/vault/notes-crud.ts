@@ -64,7 +64,7 @@ import type { FolderInfo } from '@memry/contracts/templates-api'
 import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
-import { getFileType, getExtension } from '@memry/shared/file-types'
+import { getFileType, getExtension, isBinaryFileType } from '@memry/shared/file-types'
 import { getStatus, getConfig } from './index'
 import {
   emitNoteEvent,
@@ -605,6 +605,22 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
 export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   const db = getIndexDatabase()
   const dataDb = getDatabase()
+
+  // #2073: a PDF/image/audio/video row is binary content. Everything below
+  // reads the file as UTF-8, parses it as markdown and writes a serialized
+  // string back — on a PDF that replaces every non-ASCII byte with U+FFFD and
+  // prepends a YAML block, destroying the file. There is no durable home for a
+  // binary file's tags (`note_tags` is a rebuildable cache that `rebuildIndex`
+  // drops, and only markdown can restore itself from frontmatter), so the
+  // honest answer is to refuse rather than to accept and lose the bytes.
+  const cachedRow = getNoteCacheById(db, input.id)
+  if (cachedRow?.fileType && isBinaryFileType(cachedRow.fileType)) {
+    throw new NoteError(
+      `Cannot edit note metadata on a ${cachedRow.fileType} file: ${cachedRow.path}`,
+      NoteErrorCode.NOT_MARKDOWN,
+      input.id
+    )
+  }
 
   const existing = await getNoteById(input.id)
   if (!existing) {

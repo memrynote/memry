@@ -30,6 +30,7 @@ import { useOpenPage } from '@/hooks/use-open-target'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { GroupedTable } from '@/components/folder-view/grouped-table'
+import { isMetadataEditableRow } from '@/components/folder-view/row-metadata-editability'
 import { ColumnSelector } from '@/components/folder-view/column-selector'
 import { FilterBuilder } from '@/components/folder-view/filter-builder'
 import { GroupBySelector } from '@/components/folder-view/group-by-selector'
@@ -464,23 +465,46 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   )
 
   // `updateNoteTags` goes to the notes-only `notesService.update` IPC, but the
-  // table wires this to every row's tag chips — and under tag scope a row can
-  // be a task or an inbox item. Gate on kind so a non-note id can never reach
-  // it. Ideally the chip's remove affordance wouldn't be offered on those rows
-  // at all, but the per-row `onTagRemove` closure lives in the table
-  // components; this is the last line before the IPC.
+  // table wires this to every row's tag chips — and a row can be a task, an
+  // inbox item, or a PDF/image filed in the folder. The cells no longer offer
+  // the remove affordance on those rows; this stays as the last line before
+  // the IPC, because reaching `updateNote` with a binary id used to overwrite
+  // the file with markdown (#2073).
   const handleTagRemove = useCallback(
     (noteId: string, tag: string): void => {
       const note = notes.find((n) => n.id === noteId)
       if (!note) return
-      if ((note.kind ?? 'note') !== 'note') {
-        log.warn('Ignoring tag removal on a non-note row', { id: noteId, kind: note.kind })
+      if (!isMetadataEditableRow(note)) {
+        log.warn('Ignoring tag removal on a row with no writable frontmatter', {
+          id: noteId,
+          kind: note.kind,
+          fileType: note.fileType
+        })
         return
       }
       const nextTags = note.tags.filter((t) => t !== tag)
       void updateNoteTags(noteId, nextTags)
     },
     [notes, updateNoteTags]
+  )
+
+  // Same gate for the property cells: `propertiesService.set` lands in the very
+  // same `updateNote` writer as a tag edit, so a PDF row must never reach it.
+  const handlePropertyUpdate = useCallback(
+    (noteId: string, propertyName: string, value: unknown): void => {
+      const note = notes.find((n) => n.id === noteId)
+      if (!note) return
+      if (!isMetadataEditableRow(note)) {
+        log.warn('Ignoring property update on a row with no writable frontmatter', {
+          id: noteId,
+          kind: note.kind,
+          fileType: note.fileType
+        })
+        return
+      }
+      void updateNoteProperty(noteId, propertyName, value)
+    },
+    [notes, updateNoteProperty]
   )
 
   // ============================================================================
@@ -892,6 +916,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         selectedNoteIds.map((id) => {
           const note = notes.find((n) => n.id === id)
           if (!note || note.tags.includes(tag)) return Promise.resolve()
+          // A PDF/image row in a mixed selection has no frontmatter to write.
+          if (!isMetadataEditableRow(note)) return Promise.resolve()
           return updateNoteTags(id, [...note.tags, tag])
         })
       )
@@ -1226,7 +1252,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onTagRemove={handleTagRemove}
               onSetIcon={(...args) => void updateNoteIcon(...args)}
               tagMetaMap={tagMetaMap}
-              onPropertyUpdate={(...args) => void updateNoteProperty(...args)}
+              onPropertyUpdate={(...args) => void handlePropertyUpdate(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}
               onSortingChange={(...args) => void updateSorting(...args)}
               onDisplayNameChange={(...args) => void updateDisplayName(...args)}
@@ -1262,7 +1288,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onTagRemove={handleTagRemove}
               onSetIcon={(...args) => void updateNoteIcon(...args)}
               tagMetaMap={tagMetaMap}
-              onPropertyUpdate={(...args) => void updateNoteProperty(...args)}
+              onPropertyUpdate={(...args) => void handlePropertyUpdate(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}
               onSortingChange={(...args) => void updateSorting(...args)}
               onDisplayNameChange={(...args) => void updateDisplayName(...args)}
