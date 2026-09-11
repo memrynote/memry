@@ -75,4 +75,33 @@ describe('memryCodeBlockOptions', () => {
     const colors = new Set(tokens.flat().map((token) => token.color))
     expect(colors.size).toBeGreaterThan(1)
   })
+
+  it('hands BlockNote a parser that emits both themes as CSS variables', async () => {
+    // #given BlockNote reuses `globalThis[Symbol.for('blocknote.shikiParser')]`
+    // if it is already set, which is how the dual-theme options get in. Without
+    // it every token is github-dark, unreadable on the light theme.
+
+    // #when
+    await memryCodeBlockOptions.createHighlighter()
+    const parser = (globalThis as Record<symbol, unknown>)[
+      Symbol.for('blocknote.shikiParser')
+    ] as (args: { content: string; language: string; pos: number; size: number }) => {
+      type: { attrs?: Record<string, unknown> }
+    }[]
+    const decorations = parser({
+      // powershell, because `createHighlighter` loads it eagerly; BlockNote's
+      // own grammars load on demand and are absent here.
+      content: 'Get-ChildItem',
+      language: 'powershell',
+      pos: 0,
+      size: 'Get-ChildItem'.length + 2
+    })
+
+    // #then
+    const styles = decorations
+      .map((decoration) => String(decoration.type.attrs?.style ?? ''))
+      .join(' ')
+    expect(styles).toContain('--shiki-light')
+    expect(styles).toContain('--shiki-dark')
+  })
 })

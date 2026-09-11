@@ -161,15 +161,126 @@
   padding-inline-end: 4px !important;
 }
 
-/* Code block: always dark background regardless of theme (matches github-dark Shiki theme) */
+/* Code block: theme-aware. The highlighter emits both github-light and
+   github-dark as CSS variables per token (see packages/editor-schema/src/
+   code-block.ts), so each theme picks its own token colours here. The surface
+   is the sidebar colour rather than shiki's own background, so the block reads
+   as part of the app in both themes instead of a white or black slab. */
 .bn-block-content[data-content-type='codeBlock'] {
-  background-color: #24292e !important;
-  color: #e1e4e8 !important;
+  background-color: var(--sidebar) !important;
+  color: var(--shiki-light, #24292e) !important;
 }
 
-/* Language selector: theme-aware text color */
-.dark .bn-block-content[data-content-type='codeBlock'] > div > select {
-  color: #e1e4e8 !important;
+.dark .bn-block-content[data-content-type='codeBlock'] {
+  color: var(--shiki-dark, #e1e4e8) !important;
+}
+
+.bn-block-content[data-content-type='codeBlock'] .shiki {
+  color: var(--shiki-light);
+}
+
+.dark .bn-block-content[data-content-type='codeBlock'] .shiki {
+  color: var(--shiki-dark);
+}
+
+/* Code text size. A bare `font-family: monospace` with no explicit font-size
+   makes browsers fall back to their own fixed default (~13px), unrelated to the
+   editor's S/M/L setting. `0.875em` re-ties code to that setting and keeps it a
+   notch below body text — 14px at the Medium 16px. */
+.bn-block-content[data-content-type='codeBlock'] > pre,
+.bn-block-content[data-content-type='codeBlock'] > pre code,
+.bn-inline-content code {
+  font-size: 0.875em;
+}
+
+/* Code block toolbar: one pill in the block's block-start / inline-end corner,
+   holding the language picker and the copy button. Placed from the DOM by
+   code-block-toolbar.tsx, hence `fixed` with no inset here. */
+.memry-code-toolbar {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+.memry-code-toolbar-language {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* The picker is a native select stripped to text plus our own chevron: the
+   chevron is a sibling because a <select> renders no children of its own. */
+.memry-code-toolbar-language > select {
+  appearance: none;
+  height: 24px;
+  padding-inline: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  outline: none;
+}
+
+.memry-code-toolbar-language > svg {
+  position: absolute;
+  inset-inline-end: 6px;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+.memry-code-toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.memry-code-toolbar-language > select:hover,
+.memry-code-toolbar-language:hover > svg,
+.memry-code-toolbar-button:hover {
+  color: var(--foreground);
+}
+
+.memry-code-toolbar-language > select:hover,
+.memry-code-toolbar-button:hover {
+  background-color: var(--muted);
+}
+
+.memry-code-toolbar-language > select:focus-visible,
+.memry-code-toolbar-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memry-code-toolbar-button {
+    transition: none;
+  }
+}
+
+/* BlockNote's own picker, replaced by the toolbar above: a bare <select> at the
+   block's top-LEFT in hardcoded white, at half opacity. Hidden rather than
+   restyled — two pickers on one block is the confusing outcome, and the block
+   is still typed through ours. */
+.bn-block-content[data-content-type='codeBlock'] > div:has(> select) {
+  display: none;
 }
 
 /* ===== TYPOGRAPHY OVERRIDES ===== */

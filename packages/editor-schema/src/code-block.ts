@@ -1,5 +1,6 @@
 import { codeBlockOptions } from '@blocknote/code-block'
 import type { CodeBlockOptions } from '@blocknote/core'
+import { createParser } from 'prosemirror-highlight/shiki'
 
 /**
  * BlockNote's code block options plus the languages its shiki bundle lacks.
@@ -32,6 +33,28 @@ function sortByDisplayName(languages: SupportedLanguages): SupportedLanguages {
   )
 }
 
+/**
+ * BlockNote highlights with whichever theme loaded first — github-dark — so a
+ * code block stayed dark-on-dark in the light theme. Shiki can emit both themes
+ * at once as CSS variables (`--shiki-light` / `--shiki-dark`) instead of a fixed
+ * colour, which lets base.css pick per theme with no re-highlight on toggle.
+ *
+ * BlockNote builds its parser as `globalThis[shikiParser] || createParser(h)` —
+ * no options — and caches it under that symbol, so seeding the symbol first is
+ * the supported way to hand it a configured parser.
+ */
+const SHIKI_PARSER = Symbol.for('blocknote.shikiParser')
+
+function installDualThemeParser(
+  highlighter: Awaited<ReturnType<typeof codeBlockOptions.createHighlighter>>
+): void {
+  const global = globalThis as Record<symbol, unknown>
+  global[SHIKI_PARSER] = createParser(highlighter, {
+    themes: { light: 'github-light', dark: 'github-dark' },
+    defaultColor: false
+  })
+}
+
 export const memryCodeBlockOptions = {
   ...codeBlockOptions,
   supportedLanguages: sortByDisplayName({
@@ -45,6 +68,7 @@ export const memryCodeBlockOptions = {
       () => import('@shikijs/langs-precompiled/powershell'),
       () => import('@shikijs/langs-precompiled/kusto')
     )
+    installDualThemeParser(highlighter)
     return highlighter
   }
 } satisfies CodeBlockOptions

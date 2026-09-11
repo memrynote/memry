@@ -319,6 +319,11 @@
         "insert": "Insert",
         "close": "Close"
       }
+    },
+    "codeBlock": {
+      "copy": "Copy code",
+      "copied": "Copied",
+      "language": "Language"
     }
   },
   "dateMention": {

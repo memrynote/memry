@@ -22,7 +22,8 @@
     "@blocknote/code-block": "^0.47.1",
     "@blocknote/core": "^0.47.1",
     "@memry/shared": "workspace:*",
-    "@shikijs/langs-precompiled": "^3"
+    "@shikijs/langs-precompiled": "^3",
+    "prosemirror-highlight": "^0.13.0"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*"
