@@ -114,6 +114,32 @@ describe('blocknote-converter code block language', () => {
     expect(result).toContain('function foo()')
   })
 
+  it.each([
+    ['```powershell\nGet-ChildItem\n```', 'powershell'],
+    // The alias is kept verbatim as the prop; BlockNote resolves it to the
+    // `kusto` grammar at render time, the same way `bash` reaches `shellscript`.
+    ['```kql\nStormEvents | count\n```', 'kql']
+  ])('round-trips %s as a Memry-added language', async (original, language) => {
+    // #given a language BlockNote's own bundle lacks (#2170).
+
+    // #when
+    const blocks = await markdownToBlocks(original)
+    expect(blocks).not.toBeNull()
+
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const { blocksToYFragment } = await import('./blocknote-converter')
+    blocksToYFragment(blocks!, fragment)
+
+    writeMarkdownSourceToYDoc(doc, null)
+    const result = await yDocToMarkdown(doc)
+
+    // #then
+    const codeBlock = blocks!.find((b) => b.type === 'codeBlock')
+    expect((codeBlock!.props as { language: string }).language).toBe(language)
+    expect(result).toContain('```' + language)
+  })
+
   it('handles code blocks with no language specified', async () => {
     // #given
     const markdown = '```\nplain code\n```'

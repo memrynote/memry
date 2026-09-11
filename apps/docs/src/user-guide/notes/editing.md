@@ -35,7 +35,7 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Bullet list, numbered list, check list
 - Quote, callout
 - Toggle list (collapsible section — nest text, images, even other toggles inside it)
-- Code block (language picker)
+- Code block (language picker: 50 languages, alphabetical, including PowerShell and KQL)
 - Divider
 - Image, file
 - Table

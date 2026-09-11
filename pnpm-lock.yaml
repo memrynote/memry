@@ -1362,6 +1362,9 @@ importers:
       '@memry/shared':
         specifier: workspace:*
         version: link:../shared
+      '@shikijs/langs-precompiled':
+        specifier: ^3
+        version: 3.23.0
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
