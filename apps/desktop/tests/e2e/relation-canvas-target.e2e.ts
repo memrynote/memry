@@ -52,8 +52,15 @@ test.describe('Relation property canvas targets', () => {
     await expect(addRelation).toBeVisible()
     await addRelation.click()
 
-    await page.getByRole('textbox').last().fill(canvasTitle)
-    await page.getByRole('option', { name: canvasTitle, exact: true }).first().click()
+    // Targeted by the search header's aria-label (it mirrors the placeholder):
+    // `getByRole('textbox').last()` lands on the note editor, not the popover.
+    const search = page.getByRole('textbox', { name: /^Search notes, tasks/ }).first()
+    await expect(search).toBeVisible()
+    await search.fill(canvasTitle)
+
+    const option = page.getByRole('option', { name: canvasTitle, exact: true }).first()
+    await expect(option).toBeVisible({ timeout: 20000 })
+    await option.click()
 
     const chip = page.getByRole('button', { name: canvasTitle, exact: true }).first()
     await expect(chip).toBeVisible()
