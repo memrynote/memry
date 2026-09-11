@@ -2,6 +2,9 @@ import type { UpdaterErrorPhase } from './updater'
 
 export type UpdaterBackendKind = 'electron-updater' | 'velopack'
 
+/** What the install marker records at hand-off time so the next launch knows which installer was supposed to run. */
+export type UpdateInstaller = UpdaterBackendKind | 'velopack-handoff'
+
 /**
  * Backend-neutral description of a release a check found. `version` is raw
  * (Velopack packVersion / electron-updater info.version); the host formats it
