@@ -11,6 +11,7 @@ import type {
   TaskSettings,
   VoiceTranscriptionSettings
 } from '../../contracts/src/settings-schemas.ts'
+import type { TagSearch } from '../../contracts/src/tag-searches-api.ts'
 import { SettingsChannels } from '../../contracts/src/ipc-channels.ts'
 import type { SidebarSortMode, SidebarSortSurface } from '../../contracts/src/sidebar-sort.ts'
 import {
@@ -304,6 +305,13 @@ export const settingsRpc = defineDomain({
     setBackupSettings: defineMethod<(settings: Partial<BackupSettings>) => SuccessResponse>({
       channel: SettingsChannels.invoke.SET_BACKUP_SETTINGS,
       params: ['settings']
+    }),
+    getTagSearches: defineMethod<() => Promise<TagSearch[]>>({
+      channel: SettingsChannels.invoke.GET_TAG_SEARCHES
+    }),
+    setTagSearches: defineMethod<(searches: TagSearch[]) => Promise<TagSearch[]>>({
+      channel: SettingsChannels.invoke.SET_TAG_SEARCHES,
+      params: ['searches']
     }),
     getGraphSettings: defineMethod<() => Promise<GraphSettings>>({
       channel: SettingsChannels.invoke.GET_GRAPH_SETTINGS

@@ -312,7 +312,7 @@ export function registerFolderViewHandlers(): void {
             return { notes: [], total: 0, hasMore: false }
           }
 
-          const items = listTagItems(db, dataDb, input.scope.tag)
+          const items = listTagItems(db, dataDb, input.scope.tag, input.scope.andTags)
           const noteIds = items.filter((i) => i.kind === 'note').map((i) => i.id)
           const propertiesMap = await fetchPropertiesFor(db, noteIds)
 
@@ -472,7 +472,7 @@ export function registerFolderViewHandlers(): void {
             return { builtIn: builtInForScope, properties: [], formulas: [] }
           }
 
-          const items = listTagItems(db, dataDb, input.scope.tag)
+          const items = listTagItems(db, dataDb, input.scope.tag, input.scope.andTags)
           const noteIds = items.filter((item) => item.kind === 'note').map((item) => item.id)
           const propCounts = await fetchPropertyCounts(db, noteIds)
 

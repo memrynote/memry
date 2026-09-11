@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
 import type { ViewScope } from '@memry/contracts/folder-view-api'
+import { FOLDER_VIEW_STATE_KEYS, parseTagAndTags } from '@/pages/folder-view-state'
 
 // =============================================================================
 // LAZY PAGE COMPONENTS
@@ -108,9 +109,22 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
     () => ({ kind: 'folder', path: tab.entityId ?? '' }),
     [tab.entityId]
   )
+  // The ANDed tags a tag tab is narrowed by live in that tab's own view state
+  // (see `FOLDER_VIEW_STATE_KEYS.tagAndTags`), so they survive a tab switch and
+  // a session restore, and so two tabs on the same tag can narrow differently.
+  // Read here — rather than inside the page — because the scope IS the query
+  // key `useFolderView` subscribes on.
+  const tagAndTags = parseTagAndTags(tab.viewState?.[FOLDER_VIEW_STATE_KEYS.tagAndTags])
+  const tagAndTagsToken = tagAndTags?.join('\u0000') ?? ''
   const tagScope = useMemo<ViewScope>(
-    () => ({ kind: 'tag', tag: tab.entityId ?? '' }),
-    [tab.entityId]
+    () => ({
+      kind: 'tag',
+      tag: tab.entityId ?? '',
+      // Omitted entirely when empty, so a plain single-tag tab produces the
+      // exact scope object older builds produced.
+      ...(tagAndTagsToken === '' ? {} : { andTags: tagAndTagsToken.split('\u0000') })
+    }),
+    [tab.entityId, tagAndTagsToken]
   )
 
   // PERFORMANCE: Memoize content based on tab identity to prevent remounting

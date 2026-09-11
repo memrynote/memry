@@ -489,6 +489,10 @@ export const SettingsChannels = {
     SET_API_KEY: 'settings:setApiKey',
     /** Test API provider connection */
     TEST_API_CONNECTION: 'settings:testApiConnection',
+    /** Get saved multi-tag searches */
+    GET_TAG_SEARCHES: 'settings:getTagSearches',
+    /** Replace the saved multi-tag search list */
+    SET_TAG_SEARCHES: 'settings:setTagSearches',
     /** Get graph view settings */
     GET_GRAPH_SETTINGS: 'settings:getGraphSettings',
     /** Update graph view settings */

@@ -37,6 +37,11 @@ import type {
   InboxSettings
 } from '@memry/contracts/settings-schemas'
 import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
+import {
+  MAX_SAVED_TAG_SEARCHES,
+  parseTagSearches,
+  type TagSearch
+} from '@memry/contracts/tag-searches-api'
 import type { GraphSettings } from '@memry/contracts/graph-api'
 import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
@@ -250,6 +255,9 @@ function getDbOrNull() {
     return null
   }
 }
+
+/** Settings key holding the saved multi-tag searches blob. */
+const TAG_SEARCHES_GROUP_KEY = 'tagSearches'
 
 /**
  * Read a JSON-blob settings group with corruption recovery (T015).
@@ -1118,6 +1126,35 @@ export function registerSettingsHandlers(): void {
       writeGroupSettings('backup', BACKUP_SETTINGS_DEFAULTS, updates)
   )
 
+  ipcMain.handle(SettingsChannels.invoke.GET_TAG_SEARCHES, (): TagSearch[] => {
+    const db = getDbOrNull()
+    if (!db) return []
+    const raw = getSetting(db, TAG_SEARCHES_GROUP_KEY)
+    // No key at all is the normal state for every vault created before saved
+    // searches existed — an empty list, not an error.
+    if (!raw) return []
+    try {
+      return parseTagSearches(JSON.parse(raw))
+    } catch {
+      logger.warn('Corrupted settings for "tagSearches", resetting to defaults')
+      deleteSetting(db, TAG_SEARCHES_GROUP_KEY)
+      return []
+    }
+  })
+
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_TAG_SEARCHES,
+    (_event, searches: TagSearch[]): TagSearch[] => {
+      const db = getDbOrNull()
+      if (!db) return []
+      // Re-validate whatever the renderer sent: the persisted blob must never
+      // become something `parseTagSearches` would later throw away wholesale.
+      const next = parseTagSearches({ searches }).slice(0, MAX_SAVED_TAG_SEARCHES)
+      setSetting(db, TAG_SEARCHES_GROUP_KEY, JSON.stringify({ searches: next }))
+      return next
+    }
+  )
+
   ipcMain.handle(SettingsChannels.invoke.GET_GRAPH_SETTINGS, () =>
     readGroupSettings('graph', GRAPH_SETTINGS_DEFAULTS)
   )
@@ -1366,6 +1403,8 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_SYNC_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_BACKUP_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_BACKUP_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_TAG_SEARCHES)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_TAG_SEARCHES)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_GRAPH_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_GRAPH_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS)

@@ -1221,4 +1221,60 @@ describe('settings-handlers', () => {
       expect(removeHandlerCalls).toContain(SettingsChannels.invoke.SET_CALENDAR_GOOGLE_SETTINGS)
     })
   })
+  describe('saved tag searches', () => {
+    const search = {
+      id: 's1',
+      name: 'Work + urgent',
+      tags: ['work', 'urgent'],
+      createdAt: '2026-09-11T00:00:00.000Z'
+    }
+
+    it('#given a vault that never saved a search #when get #then returns an empty list', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+
+      await expect(invokeHandler(SettingsChannels.invoke.GET_TAG_SEARCHES)).resolves.toEqual([])
+    })
+
+    it('#given a saved search #when set then get #then round-trips it', async () => {
+      registerSettingsHandlers()
+
+      const written = await invokeHandler(SettingsChannels.invoke.SET_TAG_SEARCHES, [search])
+
+      expect(written).toEqual([search])
+      expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+        expect.anything(),
+        'tagSearches',
+        JSON.stringify({ searches: [search] })
+      )
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(JSON.stringify({ searches: [search] }))
+      await expect(invokeHandler(SettingsChannels.invoke.GET_TAG_SEARCHES)).resolves.toEqual([
+        search
+      ])
+    })
+
+    it('#given a malformed entry #when set #then it is dropped before persisting', async () => {
+      registerSettingsHandlers()
+
+      await expect(
+        invokeHandler(SettingsChannels.invoke.SET_TAG_SEARCHES, [search, { id: 'bad' }])
+      ).resolves.toEqual([search])
+    })
+
+    it('#given a corrupted blob #when get #then resets to an empty list', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue('{not json')
+
+      await expect(invokeHandler(SettingsChannels.invoke.GET_TAG_SEARCHES)).resolves.toEqual([])
+      expect(settingsQueries.deleteSetting).toHaveBeenCalledWith(expect.anything(), 'tagSearches')
+    })
+
+    it('#given registered handlers #when unregister #then removes GET and SET channels', () => {
+      registerSettingsHandlers()
+      unregisterSettingsHandlers()
+
+      expect(removeHandlerCalls).toContain(SettingsChannels.invoke.GET_TAG_SEARCHES)
+      expect(removeHandlerCalls).toContain(SettingsChannels.invoke.SET_TAG_SEARCHES)
+    })
+  })
 })

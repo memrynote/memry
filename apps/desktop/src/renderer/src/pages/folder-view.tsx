@@ -42,6 +42,9 @@ import { BulkActionBar } from '@/components/folder-view/bulk-action-bar'
 import type { TagMetaMap } from '@/components/folder-view/note-card-pieces'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
 import { TagIconChip } from '@/components/settings/tag-icon-chip'
+import { TagAndFilterBar } from '@/components/folder-view/tag-and-filter-bar'
+import { useTagAndTags } from '@/hooks/use-tag-and-tags'
+import type { TagSearch } from '@memry/contracts/tag-searches-api'
 import { TagOverflowMenu } from '@/components/folder-view/tag-overflow-menu'
 import { TagRenameDialog } from '@/components/sidebar/tag-rename-dialog'
 import { TagDeleteDialog } from '@/components/sidebar/tag-delete-dialog'
@@ -80,6 +83,9 @@ interface FolderViewPageProps {
   /** What this page is scoped to — a folder directory or a tag. */
   scope: ViewScope
 }
+
+/** Stable empty selection, so folder scope never produces a new array identity. */
+const EMPTY_TAG_SELECTION: string[] = []
 
 /**
  * Folder View Page Component
@@ -586,6 +592,45 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // subscriptions. Depends on the tag string (not `scope`) so a new `scope`
   // object reference each render doesn't resubscribe.
   const activeTagName = scope.kind === 'tag' ? scope.tag : null
+
+  // Tag scope's ANDed selection. Read straight off the scope — `TabContent`
+  // owns it in the tab's view state, and the sidebar writes it too.
+  const tagAndTags = useMemo(
+    () => (scope.kind === 'tag' ? (scope.andTags ?? []) : EMPTY_TAG_SELECTION),
+    [scope]
+  )
+  const { setAndTags, toggleTag, clearAndTags } = useTagAndTags(activeTagName ?? '', tagAndTags)
+
+  const handleOpenSavedSearch = useCallback(
+    (search: TagSearch): void => {
+      const [primary, ...rest] = search.tags
+      if (!primary) return
+      // Same primary tag: swap the extras in place, no navigation.
+      if (activeTagName && primary.toLowerCase() === activeTagName.toLowerCase()) {
+        setAndTags(rest)
+        return
+      }
+      // Different primary: a fresh tag tab seeded with the saved AND set.
+      // `forceNew` so the seed cannot be swallowed by dedup onto an existing
+      // tab that is showing the same tag with a different selection.
+      openTab(
+        {
+          type: 'tag',
+          title: primary,
+          icon: 'tag',
+          path: `/tags/${primary}`,
+          entityId: primary,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false,
+          viewState: { [FOLDER_VIEW_STATE_KEYS.tagAndTags]: rest }
+        },
+        { forceNew: true }
+      )
+    },
+    [activeTagName, openTab, setAndTags]
+  )
 
   useEffect(() => {
     if (activeTagName === null) return
@@ -1181,6 +1226,19 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
           )}
         </div>
       </header>
+
+      {/* Tag scope: the ANDed selection, clear-all and saved searches. Renders
+          nothing when there is no extra tag and no saved search, so a plain
+          single-tag page is byte-for-byte the page it was before. */}
+      {scope.kind === 'tag' && (
+        <TagAndFilterBar
+          primaryTag={scope.tag}
+          andTags={tagAndTags}
+          onRemoveTag={toggleTag}
+          onClearAll={clearAndTags}
+          onOpenSavedSearch={handleOpenSavedSearch}
+        />
+      )}
 
       {/* Content - relative container for absolute positioned table */}
       <div className="flex-1 relative min-w-0">

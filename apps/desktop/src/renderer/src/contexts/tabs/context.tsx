@@ -209,6 +209,13 @@ interface TabActionsContextType {
   getTab: (tabId: string, groupId?: string) => Tab | null
 
   /**
+   * Read the active tab out of the current state WITHOUT subscribing to it.
+   * Same contract as `getTab`, for callers that do not know the tab id —
+   * notably the sidebar, which must not re-render on every tab change.
+   */
+  getActiveTabSnapshot: () => Tab | null
+
+  /**
    * Split the view.
    *
    * Returns the id of the pane it created, so a caller can act on that pane in
@@ -672,6 +679,17 @@ export const TabProvider = ({
     return stateRef.current.tabGroups[actualGroupId]?.tabs.find((t) => t.id === tabId) ?? null
   }, [])
 
+  /**
+   * One-shot read of the active tab WITHOUT subscribing to tab state — the
+   * ref-backed sibling of `getActiveTab`, for callers outside the tab tree
+   * (the sidebar) that must not re-render on every tab change.
+   */
+  const getActiveTabSnapshot = useCallback((): Tab | null => {
+    const group = stateRef.current.tabGroups[activeGroupIdRef.current]
+    if (!group || !group.activeTabId) return null
+    return group.tabs.find((t) => t.id === group.activeTabId) ?? null
+  }, [])
+
   const saveTabState = useCallback(
     (
       tabId: string,
@@ -832,6 +850,7 @@ export const TabProvider = ({
       moveTabToGroup,
       saveTabState,
       getTab,
+      getActiveTabSnapshot,
       splitView,
       closeSplit,
       moveTabToNewSplit,
@@ -868,6 +887,7 @@ export const TabProvider = ({
       moveTabToGroup,
       saveTabState,
       getTab,
+      getActiveTabSnapshot,
       splitView,
       closeSplit,
       moveTabToNewSplit,

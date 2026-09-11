@@ -173,6 +173,23 @@ Tags are zero-cost and discoverable. Properties are structured and great for fil
 - **Folder view columns** — show any property as a sortable column
 - **Search palette** — type `#tag` to filter results by tag
 
+### Narrowing a tag page to several tags
+
+A tag page starts on one tag. To see only the items that carry **every** tag you care
+about, **Ctrl-click** (Windows, Linux) or **Cmd-click** (macOS) further tags in the sidebar
+while that page is open. Each additional tag narrows the result; the page does not navigate
+away, and a plain click still just opens the tag it was clicked on.
+
+The tags currently narrowing the page are listed above the table. Remove one with the `x` on
+its chip, or use **Clear all** to drop back to the single tag the page opened on. A tag also
+matches its `/` children here — selecting `project` keeps items tagged `project/alpha` —
+exactly as a single-tag page always has.
+
+**Save search** names the current combination. Saved searches are stored with the vault, not
+in one window, so they survive a restart; reopen one from the **Saved searches** menu on the
+same bar to get the identical filter back. Existing vaults simply start with no saved
+searches.
+
 ## Where Tags Show Up
 
 - Tags row on each note

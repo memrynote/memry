@@ -198,15 +198,51 @@ function listInboxItemsForTag(dataDb: DataDb, normalizedTag: string): TagItem[] 
 }
 
 /**
+ * In-memory twin of `tagMatches`: exact match, or a `/` descendant. Kept
+ * character-for-character equivalent to the SQL predicate so an ANDed tag
+ * narrows by exactly the rule the primary tag was selected by.
+ */
+export function itemTagsMatch(itemTags: string[], normalizedTag: string): boolean {
+  return itemTags.some((raw) => {
+    const tag = raw.toLowerCase().trim()
+    return tag === normalizedTag || tag.startsWith(`${normalizedTag}/`)
+  })
+}
+
+/**
  * List notes, tasks and inbox items tagged with `tag` or any of its `/`
  * descendants (e.g. `work` also matches `work/meetings`, never `workshop`).
+ *
+ * `andTags` narrows that set further: a row is kept only when it also matches
+ * EVERY extra tag by the same exact-or-descendant rule. An empty/omitted
+ * `andTags` is the original single-tag query, untouched.
+ *
+ * The primary tag stays the SQL-indexed selector and the AND pass runs over
+ * the rows it already returned, so adding tags only ever shrinks the work —
+ * it never widens the scan on a large vault.
  */
-export function listTagItems(indexDb: IndexDb, dataDb: DataDb, tag: string): TagItem[] {
+export function listTagItems(
+  indexDb: IndexDb,
+  dataDb: DataDb,
+  tag: string,
+  andTags: string[] = []
+): TagItem[] {
   const normalizedTag = tag.toLowerCase().trim()
 
-  return [
+  const items = [
     ...listNoteItems(indexDb, normalizedTag),
     ...listTaskItems(dataDb, normalizedTag),
     ...listInboxItemsForTag(dataDb, normalizedTag)
   ]
+
+  const extra = [
+    ...new Set(
+      andTags
+        .map((value) => value.toLowerCase().trim())
+        .filter((value) => value !== '' && value !== normalizedTag)
+    )
+  ]
+  if (extra.length === 0) return items
+
+  return items.filter((item) => extra.every((needle) => itemTagsMatch(item.tags, needle)))
 }
