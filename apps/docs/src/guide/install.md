@@ -61,13 +61,21 @@ anything interrupts the install, including shutting the PC down mid-update. For 
 reason, an update is no longer installed while Windows itself is shutting down; it
 simply applies the next time you quit the app.
 
-One caveat if you are already affected. On Windows the step that removes the old files
-is run by the version you currently have installed, not by the one being installed — so
-these workarounds only take effect on updates _away from_ a build that contains them. If
-your updates are failing today, install the latest version manually once
-(uninstall from **Settings → Apps**, then run the installer from
-[the download page](https://memrynote.com/download/desktop); your vault and settings are kept).
-Updates after that run on their own.
+An install under `%LOCALAPPDATA%\Programs\MemryNote` came from the earlier installer. It
+moves to the new installer on its own, once, on the next update: the app downloads the
+new installer alongside the update, checks its signature, and after you quit it removes
+the old install and installs the new one in `%LOCALAPPDATA%\MemryNote`. Your vault,
+settings and search index stay where they are. There is nothing to do, and the app opens
+again by itself when the switch is done. The Start menu entry comes back at the same
+place; a memrynote pin on the taskbar may need to be pinned again, once.
+
+If the release you are updating to does not carry the new installer yet, the update
+installs the way it always has. An update there can be blocked by a file in the install
+folder being held open, usually antivirus or a leftover memrynote process. The installer
+works around that on its own.
+
+On either one, an update is never installed while Windows itself is shutting down. It
+applies the next time you quit the app.
 
 ## Run from Source
 

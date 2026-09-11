@@ -1111,6 +1111,34 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   to `Update.exe` and read on the next launch, and an `install`-phase failure advances the streak
   exactly as above. Velopack does no download-time staging, so it never produces the
   `downloaded`-phase attempts Squirrel.Mac does.
+  The marker also records which installer was handed off to (`installer`:
+  `electron-updater`, `velopack`, or `velopack-handoff`), and the silent install-on-quit path
+  writes it too, so a Windows update that applies on a normal quit and never comes back is no longer
+  invisible.
+- **NSIS to Velopack hand-off**: a Windows install made by the older NSIS installer keeps
+  electron-updater for checking and downloading. Once the NSIS `setup.exe` is on disk,
+  `apps/desktop/src/main/installer-handoff.ts` looks for `MemryNote-win-Setup.exe` on the same
+  release tag (`HEAD`, then a streamed download into `userData/installer-handoff/`, folded into the
+  `downloading` state) and verifies it with `Get-AuthenticodeSignature`: status `Valid` and a signer
+  subject containing `CN=Open Source Developer Kaan Karaca`, or the file is deleted and never run.
+  The install step then spawns a detached batch script (rendered by
+  `installer-handoff-script.ts`, so its exact command lines are pinned by tests) that waits for the
+  app's PID to exit, runs a copy of `Uninstall MemryNote.exe /S _?=INSTALLDIR` (no `--updated`,
+  so the tolerant removal path runs, and the copy blocks until the old install, its shortcuts and
+  its uninstall key are gone), runs `MemryNote-win-Setup.exe --silent --verbose --log userData/logs/velopack-setup.log`, and
+  falls back to the already-downloaded NSIS installer if no
+  Velopack `Memrynote.exe` exists afterwards, so the user is never left without an app. Every
+  refusal falls back to the plain NSIS install: a release without the Velopack asset (info log
+  only), a download failure (`INSTALLER_HANDOFF_DOWNLOAD_FAILED` through the updater error path) and
+  a signature failure (`INSTALLER_HANDOFF_UNVERIFIED`). The next launch reads the marker: still the
+  same version is the usual `UPDATE_INSTALL_DID_NOT_APPLY` with `source: velopack-handoff`; a new
+  version running from the Velopack layout (`..\Update.exe` next to the app) is
+  `app_update_installed` with `action: migrated` and `source: velopack-handoff`; a new version
+  still running from an NSIS layout is `INSTALLER_HANDOFF_DID_NOT_APPLY`, meaning the update
+  arrived but the migration did not. `Memrynote.exe --cli migrate-installer path\to\MemryNote-win-Setup.exe`
+  drives the same verify-then-hand-off path against a local file (exit 0 when scheduled, 1
+  otherwise, Windows only), which is what the `migrate` job in
+  `.github/workflows/velopack-smoke.yml` runs on a real NSIS install.
 - **Expired GitHub signed asset URLs**: GitHub serves a release asset by redirecting to a
   short-lived signed `release-assets.githubusercontent.com` URL. When the follow-up GET lands after
   that token expires, GitHub answers with the non-standard status **618 `jwt:expired`**, and
