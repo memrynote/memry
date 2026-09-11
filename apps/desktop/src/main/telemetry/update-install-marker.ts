@@ -15,11 +15,19 @@ import path from 'node:path'
 import { app } from 'electron'
 
 import { createLogger } from '../lib/logger'
+import type { UpdateInstaller } from '../updater-backend'
+import { detectWindowsInstallLayout, type WindowsInstallLayout } from '../windows-install-layout'
 import { trackMainEvent } from './track'
 
 const logger = createLogger('UpdateInstallMarker')
 
 export const UPDATE_INSTALL_MARKER_FILENAME = 'update-install-attempt.json'
+
+const UPDATE_INSTALLERS: ReadonlySet<string> = new Set<UpdateInstaller>([
+  'electron-updater',
+  'velopack',
+  'velopack-handoff'
+])
 
 export interface UpdateInstallAttempt {
   /**
@@ -31,22 +39,49 @@ export interface UpdateInstallAttempt {
   /** Display version being installed. Reported as-is; never compared. */
   toVersion?: string
   startedAt: string
+  /** Which installer was handed off to. Markers written by older builds lack it. */
+  installer?: UpdateInstaller
 }
 
+export type UpdateInstallOutcome =
+  'applied' | 'did-not-apply' | 'handoff-applied' | 'handoff-fell-back'
+
 const markerPath = (): string => path.join(app.getPath('userData'), UPDATE_INSTALL_MARKER_FILENAME)
+
+const parseInstaller = (value: unknown): UpdateInstaller | undefined =>
+  typeof value === 'string' && UPDATE_INSTALLERS.has(value) ? (value as UpdateInstaller) : undefined
 
 const parseAttempt = (raw: string): UpdateInstallAttempt | null => {
   try {
     const parsed = JSON.parse(raw) as Partial<UpdateInstallAttempt>
     if (!parsed || typeof parsed.fromVersion !== 'string' || !parsed.fromVersion) return null
+    const installer = parseInstaller(parsed.installer)
     return {
       fromVersion: parsed.fromVersion,
       toVersion: typeof parsed.toVersion === 'string' ? parsed.toVersion : undefined,
-      startedAt: typeof parsed.startedAt === 'string' ? parsed.startedAt : ''
+      startedAt: typeof parsed.startedAt === 'string' ? parsed.startedAt : '',
+      ...(installer ? { installer } : {})
     }
   } catch {
     return null
   }
+}
+
+/**
+ * Same version: the installer never applied. A hand-off marker that comes back on
+ * a new version proves the migration only when the app now runs from the Velopack
+ * layout; any other layout means the NSIS fallback (or a manual reinstall) is what
+ * delivered the update. The layout is read through a thunk because probing it hits
+ * the filesystem, and only a hand-off marker has any use for it.
+ */
+export const resolveUpdateInstallOutcome = (
+  attempt: UpdateInstallAttempt,
+  currentVersion: string,
+  readInstallLayout: () => WindowsInstallLayout
+): UpdateInstallOutcome => {
+  if (attempt.fromVersion === currentVersion) return 'did-not-apply'
+  if (attempt.installer !== 'velopack-handoff') return 'applied'
+  return readInstallLayout() === 'velopack' ? 'handoff-applied' : 'handoff-fell-back'
 }
 
 /**
@@ -55,12 +90,17 @@ const parseAttempt = (raw: string): UpdateInstallAttempt | null => {
  * and must never throw: losing the marker only costs a diagnostic, while
  * throwing here would break the install itself.
  */
-export const markUpdateInstallStarted = (fromVersion: string, toVersion?: string): void => {
+export const markUpdateInstallStarted = (
+  fromVersion: string,
+  toVersion?: string,
+  installer?: UpdateInstaller
+): void => {
   try {
     const attempt: UpdateInstallAttempt = {
       fromVersion,
       ...(toVersion ? { toVersion } : {}),
-      startedAt: new Date().toISOString()
+      startedAt: new Date().toISOString(),
+      ...(installer ? { installer } : {})
     }
     fs.writeFileSync(markerPath(), JSON.stringify(attempt), 'utf-8')
   } catch (error) {
@@ -79,7 +119,10 @@ export const markUpdateInstallStarted = (fromVersion: string, toVersion?: string
  * Returns the failed attempt so the caller can surface it in-app: telemetry
  * tells us, but the user is the one stuck on an old version with no idea why.
  */
-export const detectFailedUpdateInstall = (currentVersion: string): UpdateInstallAttempt | null => {
+export const detectFailedUpdateInstall = (
+  currentVersion: string,
+  readInstallLayout: () => WindowsInstallLayout = () => detectWindowsInstallLayout(process.execPath)
+): UpdateInstallAttempt | null => {
   let raw: string
   try {
     raw = fs.readFileSync(markerPath(), 'utf-8')
@@ -97,21 +140,60 @@ export const detectFailedUpdateInstall = (currentVersion: string): UpdateInstall
   // A corrupt marker proves an install was attempted but not from WHICH
   // version, and without that the applied/failed split is a coin flip.
   if (!attempt) return null
-  // Booted as a different build: the installer did its job.
-  if (attempt.fromVersion !== currentVersion) return null
+
+  const outcome = resolveUpdateInstallOutcome(attempt, currentVersion, readInstallLayout)
+  if (outcome === 'applied') return null
+
+  if (outcome === 'handoff-applied') {
+    logger.info('NSIS install migrated to Velopack', {
+      fromVersion: attempt.fromVersion,
+      toVersion: attempt.toVersion
+    })
+    trackMainEvent('app_update_installed', {
+      surface: 'updater',
+      action: 'migrated',
+      source: 'velopack-handoff',
+      result: 'success',
+      dimensions: { from_version: attempt.fromVersion }
+    })
+    return null
+  }
+
+  if (outcome === 'handoff-fell-back') {
+    // The user did get the update (NSIS fallback or manual reinstall); the
+    // migration to Velopack is what did not happen.
+    logger.warn('Velopack hand-off did not apply; the update installed through NSIS instead', {
+      fromVersion: attempt.fromVersion,
+      toVersion: attempt.toVersion,
+      layout: readInstallLayout()
+    })
+    trackMainEvent('app_error_seen', {
+      surface: 'app',
+      action: 'install',
+      objectType: 'exception',
+      source: 'velopack-handoff',
+      result: 'failed',
+      errorCode: 'INSTALLER_HANDOFF_DID_NOT_APPLY',
+      dimensions: { prior_app_version: attempt.fromVersion }
+    })
+    return null
+  }
 
   const startedAt = Date.parse(attempt.startedAt)
   const durationMs = Number.isFinite(startedAt) ? Math.max(0, Date.now() - startedAt) : undefined
 
   logger.error('update install did not apply; still running the version that started it', {
     fromVersion: attempt.fromVersion,
-    toVersion: attempt.toVersion
+    toVersion: attempt.toVersion,
+    installer: attempt.installer
   })
+  // `source` is the installer hint; the errorCode stays the same so Error
+  // Tracking keeps one issue.
   trackMainEvent('app_error_seen', {
     surface: 'app',
     action: 'install',
     objectType: 'exception',
-    source: 'updater',
+    source: attempt.installer ?? 'updater',
     result: 'failed',
     errorCode: 'UPDATE_INSTALL_DID_NOT_APPLY',
     metrics: durationMs === undefined ? undefined : { durationMs },

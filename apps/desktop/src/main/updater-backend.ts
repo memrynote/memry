@@ -2,6 +2,9 @@ import type { UpdaterErrorPhase } from './updater'
 
 export type UpdaterBackendKind = 'electron-updater' | 'velopack'
 
+/** What the install marker records at hand-off time so the next launch knows which installer was supposed to run. */
+export type UpdateInstaller = UpdaterBackendKind | 'velopack-handoff'
+
 /**
  * Backend-neutral description of a release a check found. `version` is raw
  * (Velopack packVersion / electron-updater info.version); the host formats it
@@ -33,6 +36,8 @@ export interface UpdaterHost {
 
 export interface UpdaterBackend {
   readonly kind: UpdaterBackendKind
+  /** The installer an install started right now would use. It changes once a hand-off is armed. */
+  readonly installer: UpdateInstaller
   /**
    * Drives onChecking → onUpdateAvailable/onUpToDate. On failure the host must have
    * been told (through host.onError, or through the backend's own event stream if it

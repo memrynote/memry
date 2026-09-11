@@ -119,6 +119,16 @@ vi.mock('./velopack-native', () => ({
   })
 }))
 
+// The NSIS hand-off reads userData and the filesystem at construction; its own
+// behaviour is covered in updater-nsis-handoff.test.ts.
+vi.mock('./installer-handoff', () => ({
+  createInstallerHandoff: () => ({
+    prepare: async () => {},
+    armed: () => false,
+    launch: () => false
+  })
+}))
+
 vi.mock('./store', () => ({
   getUpdaterPrefs: mocks.store.getUpdaterPrefs,
   setSkippedVersion: mocks.store.setSkippedVersion,
@@ -1001,7 +1011,7 @@ describe('updater', () => {
 
     // Raw app version (comparable on the next launch) + the display version of
     // the build being installed.
-    expect(markUpdateInstallStarted).toHaveBeenCalledWith('1.2.3', 'v1.2.7')
+    expect(markUpdateInstallStarted).toHaveBeenCalledWith('1.2.3', 'v1.2.7', 'electron-updater')
     // The marker must land BEFORE the handoff: afterwards the process is gone.
     expect(vi.mocked(markUpdateInstallStarted).mock.invocationCallOrder[0]).toBeLessThan(
       mocks.autoUpdater.quitAndInstall.mock.invocationCallOrder[0]
