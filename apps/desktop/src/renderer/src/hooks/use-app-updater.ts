@@ -2,6 +2,11 @@ import { useCallback, useSyncExternalStore } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import { getI18n } from 'react-i18next'
+import { createLogger } from '@/lib/logger'
+import {
+  DEMO_RELEASE_NOTES,
+  DEMO_RELEASE_NOTES_HTML
+} from '@/components/updater/demo-release-notes'
 
 const DEFAULT_STATE: AppUpdateState = {
   currentVersion: '0.0.0',
@@ -59,6 +64,18 @@ let snapshot: AppUpdaterSnapshot = {
 const listeners = new Set<() => void>()
 let unsubscribeFromMain: (() => void) | null = null
 
+/**
+ * The last state main actually broadcast, kept apart from the published snapshot so
+ * the dev override below can be lifted without a round-trip to main. In production
+ * this is always identical to `snapshot.state`.
+ */
+let baseState: AppUpdateState = DEFAULT_STATE
+let devOverride: Partial<AppUpdateState> | null = null
+
+function withOverride(state: AppUpdateState): AppUpdateState {
+  return devOverride ? { ...state, ...devOverride } : state
+}
+
 function emit(next: AppUpdaterSnapshot): void {
   snapshot = next
   for (const listener of listeners) listener()
@@ -66,7 +83,8 @@ function emit(next: AppUpdaterSnapshot): void {
 
 /** A fresh state from main clears any previously surfaced error. */
 function publishState(state: AppUpdateState): void {
-  emit({ state, isLoading: false, error: null })
+  baseState = state
+  emit({ state: withOverride(state), isLoading: false, error: null })
 }
 
 function publishError(message: string): void {
@@ -100,9 +118,104 @@ function subscribe(listener: () => void): () => void {
     if (listeners.size === 0) {
       unsubscribeFromMain?.()
       unsubscribeFromMain = null
-      snapshot = { state: DEFAULT_STATE, isLoading: true, error: null }
+      baseState = DEFAULT_STATE
+      snapshot = { state: withOverride(DEFAULT_STATE), isLoading: true, error: null }
     }
   }
+}
+
+/**
+ * Dev-only console harness. `updater.ts` bails out when `!app.isPackaged` and
+ * `isUpdateSupported()` is `app.isPackaged`, so under `pnpm dev` the renderer only
+ * ever receives `updateSupported: false` and every update surface stays hidden.
+ * Without this there is nothing to look at while building them.
+ *
+ * The override is merged over main's state before it reaches subscribers, so
+ * `useAppUpdater` and `useAppUpdaterSelector` see the same thing and every mounted
+ * surface moves at once. The whole block sits behind `import.meta.env.DEV` and is
+ * stripped from production bundles.
+ */
+const UPDATE_PRESET_NAMES = [
+  'available',
+  'downloading',
+  'ready',
+  'installing',
+  'failed',
+  'reset'
+] as const
+
+export type UpdatePresetName = (typeof UPDATE_PRESET_NAMES)[number]
+
+const DEMO_VERSION = '2026.999.9'
+
+export function buildUpdatePreset(
+  preset: UpdatePresetName,
+  current: string,
+  opts: { percent?: number } = {}
+): Partial<AppUpdateState> | null {
+  if (preset === 'reset') return null
+
+  const base: Partial<AppUpdateState> = {
+    updateSupported: true,
+    currentVersion: current,
+    availableVersion: DEMO_VERSION,
+    releaseName: `MemryNote ${DEMO_VERSION}`,
+    releaseDate: new Date().toISOString(),
+    releaseNotes: DEMO_RELEASE_NOTES,
+    releaseNotesHtml: DEMO_RELEASE_NOTES_HTML,
+    downloadProgressPercent: null,
+    error: null,
+    installFailed: null,
+    // `available` and `downloading` are hidden by the presentation model while
+    // auto-download is on, so the presets must turn it off or they show nothing.
+    autoDownloadEnabled: false,
+    autoCheckEnabled: true
+  }
+
+  switch (preset) {
+    case 'available':
+      return { ...base, status: 'available' }
+    case 'downloading':
+      return {
+        ...base,
+        status: 'downloading',
+        downloadProgressPercent: opts.percent ?? 37
+      }
+    case 'ready':
+      return { ...base, status: 'downloaded' }
+    case 'installing':
+      return { ...base, status: 'installing' }
+    case 'failed':
+      return {
+        ...base,
+        status: 'error',
+        error:
+          'ENOENT: no such file or directory, rename\n  /Applications/MemryNote.app/Contents/Frameworks/update.pending',
+        installFailed: { version: DEMO_VERSION }
+      }
+  }
+}
+
+if (import.meta.env.DEV) {
+  const log = createLogger('Dev:UpdateHarness')
+
+  const apply = (preset: string, opts: { percent?: number } = {}): void => {
+    if (!(UPDATE_PRESET_NAMES as readonly string[]).includes(preset)) {
+      log.warn(`unknown preset "${preset}" — try one of ${UPDATE_PRESET_NAMES.join(', ')}`)
+      return
+    }
+    devOverride = buildUpdatePreset(preset as UpdatePresetName, baseState.currentVersion, opts)
+    emit({ ...snapshot, state: withOverride(baseState) })
+    log.info(`update preset "${preset}" applied`)
+  }
+
+  const win = window as unknown as {
+    memryUpdate?: (preset: string, opts?: { percent?: number }) => void
+  }
+  win.memryUpdate = apply
+  log.info(
+    `dev helper ready — run memryUpdate('<preset>') in the console. Presets: ${UPDATE_PRESET_NAMES.join(', ')}`
+  )
 }
 
 /**
