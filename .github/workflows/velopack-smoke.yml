@@ -1,0 +1,138 @@
+name: Velopack Windows smoke
+
+# Proves the Velopack Windows path on a real Windows box: the signed Setup.exe
+# installs silently, the install layout is what the updater expects, and
+# Update.exe applies a newer package in place while Defender is running.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag holding MemryNote-win-Setup.exe and the *-full.nupkg files
+        required: true
+      from_version:
+        description: Version inside Setup.exe
+        required: true
+      to_version:
+        description: Version of the nupkg to apply as an update
+        required: true
+      update_tag:
+        description: Release tag holding that nupkg. Defaults to release_tag.
+        required: false
+
+permissions:
+  # read, not write: the release script dispatches this against a release it has
+  # already published, and a read token can download those assets. Pointing it at
+  # an unpublished draft instead would need contents: write, because GITHUB_TOKEN
+  # can only see drafts with push access.
+  contents: read
+
+jobs:
+  smoke:
+    name: Install, verify, update
+    runs-on: windows-2022
+    timeout-minutes: 30
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      FROM_VERSION: ${{ inputs.from_version }}
+      TO_VERSION: ${{ inputs.to_version }}
+      UPDATE_TAG: ${{ inputs.update_tag || inputs.release_tag }}
+    steps:
+      - name: Download Velopack assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          New-Item -ItemType Directory -Force assets | Out-Null
+          gh release download $env:RELEASE_TAG --repo "${{ github.repository }}" -D assets `
+            --pattern 'MemryNote-win-Setup.exe'
+          gh release download $env:UPDATE_TAG --repo "${{ github.repository }}" -D assets `
+            --pattern "MemryNote-$env:TO_VERSION-full.nupkg"
+          Get-ChildItem assets | Format-Table Name, Length
+
+      - name: Setup.exe is Authenticode-signed by the Certum certificate
+        shell: pwsh
+        run: |
+          $sig = Get-AuthenticodeSignature .\assets\MemryNote-win-Setup.exe
+          $sig | Format-List Status, StatusMessage
+          $sig.SignerCertificate.Subject
+          if ($sig.Status -ne 'Valid') { throw "Setup.exe signature status: $($sig.Status)" }
+          if ($sig.SignerCertificate.Subject -notmatch 'Kaan Karaca') { throw "unexpected signer: $($sig.SignerCertificate.Subject)" }
+
+      - name: Install silently
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath .\assets\MemryNote-win-Setup.exe -ArgumentList '--silent', '--verbose', '--log', "$PWD\setup.log" -PassThru -Wait
+          Write-Host "setup exit code: $($p.ExitCode)"
+          Get-Content setup.log -Tail 40
+          Start-Sleep -Seconds 5
+          Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
+          if ($p.ExitCode -ne 0) { throw "Setup.exe exited $($p.ExitCode)" }
+
+      - name: Install layout is what the updater expects
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:LOCALAPPDATA 'MemryNote'
+          Get-ChildItem $root | Format-Table Name, Length
+          foreach ($f in @('Update.exe', 'current\Memrynote.exe', 'current\sq.version')) {
+            $path = Join-Path $root $f
+            if (-not (Test-Path $path)) { throw "missing $path" }
+          }
+          $ver = ([xml](Get-Content (Join-Path $root 'current\sq.version'))).package.metadata.version
+          Write-Host "installed version: $ver"
+          if ($ver -ne $env:FROM_VERSION) { throw "expected $env:FROM_VERSION, got $ver" }
+          foreach ($exe in @('Update.exe', 'current\Memrynote.exe')) {
+            $sig = Get-AuthenticodeSignature (Join-Path $root $exe)
+            Write-Host "$exe : $($sig.Status) / $($sig.SignerCertificate.Subject)"
+            if ($sig.Status -ne 'Valid') { throw "$exe signature status: $($sig.Status)" }
+          }
+          $lnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\MemryNote.lnk'
+          if (-not (Test-Path $lnk)) { throw "missing Start menu shortcut $lnk" }
+          $uninstall = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\MemryNote' -ErrorAction Stop
+          Write-Host "uninstall entry: $($uninstall.DisplayName) $($uninstall.DisplayVersion)"
+
+      - name: App launches from the install
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:LOCALAPPDATA 'MemryNote\current\Memrynote.exe'
+          $p = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 25
+          $alive = Get-Process -Id $p.Id -ErrorAction SilentlyContinue
+          Get-Process Memrynote -ErrorAction SilentlyContinue | Format-Table Id, StartTime
+          Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
+          if (-not $alive) { throw 'Memrynote.exe exited within 25s of launch' }
+
+      - name: Update.exe applies the newer package in place
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:LOCALAPPDATA 'MemryNote'
+          $pkg = Resolve-Path ".\assets\MemryNote-$env:TO_VERSION-full.nupkg"
+          $p = Start-Process -FilePath (Join-Path $root 'Update.exe') -ArgumentList 'apply', '--norestart', '--package', "$pkg" -PassThru -Wait
+          Write-Host "update exit code: $($p.ExitCode)"
+          Get-ChildItem $root -Filter '*.log' | ForEach-Object { Write-Host "== $($_.Name)"; Get-Content $_.FullName -Tail 60 }
+          if ($p.ExitCode -ne 0) { throw "Update.exe exited $($p.ExitCode)" }
+          $ver = ([xml](Get-Content (Join-Path $root 'current\sq.version'))).package.metadata.version
+          Write-Host "version after update: $ver"
+          if ($ver -ne $env:TO_VERSION) { throw "expected $env:TO_VERSION after update, got $ver" }
+          $sig = Get-AuthenticodeSignature (Join-Path $root 'current\Memrynote.exe')
+          if ($sig.Status -ne 'Valid') { throw "updated Memrynote.exe signature status: $($sig.Status)" }
+
+      - name: Updated app launches
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:LOCALAPPDATA 'MemryNote\current\Memrynote.exe'
+          $p = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 25
+          $alive = Get-Process -Id $p.Id -ErrorAction SilentlyContinue
+          Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
+          if (-not $alive) { throw 'updated Memrynote.exe exited within 25s of launch' }
+
+      - name: Collect logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: velopack-smoke-logs
+          path: |
+            setup.log
+            ${{ env.LOCALAPPDATA }}\MemryNote\*.log
+          if-no-files-found: ignore
