@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "笔记导出成功",
       "failedToUpdateProperty": "更新属性失败",
       "failedToUpdateTags": "更新标签失败",
+      "failedToUpdateIcon": "更新图标失败",
       "reminderSnoozed": "提醒已延迟",
       "failedToSnoozeReminder": "推迟提醒失败",
       "defaultTemplateSet": "已设置默认模板",

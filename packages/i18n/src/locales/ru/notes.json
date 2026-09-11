@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Заметка успешно экспортирована",
       "failedToUpdateProperty": "Не удалось обновить ресурс.",
       "failedToUpdateTags": "Не удалось обновить теги.",
+      "failedToUpdateIcon": "Не удалось обновить значок",
       "reminderSnoozed": "Напоминание отложено",
       "failedToSnoozeReminder": "Не удалось отложить напоминание.",
       "defaultTemplateSet": "Набор шаблонов по умолчанию",

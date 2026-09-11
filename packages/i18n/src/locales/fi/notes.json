@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Muistiinpanon vienti onnistui",
       "failedToUpdateProperty": "Omaisuuden päivittäminen epäonnistui",
       "failedToUpdateTags": "Tunnisteiden päivittäminen epäonnistui",
+      "failedToUpdateIcon": "Kuvakkeen päivitys epäonnistui",
       "reminderSnoozed": "Muistutus torkutettu",
       "failedToSnoozeReminder": "Muistutuksen torkkuminen epäonnistui",
       "defaultTemplateSet": "Oletusmalli asetettu",

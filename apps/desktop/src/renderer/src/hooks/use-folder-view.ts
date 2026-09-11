@@ -239,6 +239,8 @@ interface UseFolderViewResult {
   updateNoteProperty: (noteId: string, propertyId: string, value: unknown) => Promise<void>
   /** Update tags on a note */
   updateNoteTags: (noteId: string, tags: string[]) => Promise<void>
+  /** Set (or clear, with `null`) a note's icon */
+  updateNoteIcon: (noteId: string, emoji: string | null) => Promise<void>
   /** Total unfiltered note count (for "showing X of Y") */
   unfilteredCount: number
 }
@@ -940,6 +942,48 @@ export function useFolderView({
   )
 
   /**
+   * Set or clear a note's icon with optimistic cache update.
+   *
+   * `null` removes the icon. The row's title cell reads `note.emoji`, so the
+   * optimistic write is what makes the new glyph appear before the IPC lands.
+   */
+  const updateNoteIcon = useCallback(
+    async (noteId: string, emoji: string | null) => {
+      const previousData = queryClient.getQueryData<InfiniteData<ListWithPropertiesResponse>>(
+        folderViewKeys.notes(scope)
+      )
+
+      queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
+        folderViewKeys.notes(scope),
+        (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              notes: page.notes.map((note) => (note.id === noteId ? { ...note, emoji } : note))
+            }))
+          }
+        }
+      )
+
+      try {
+        const result = await notesService.update({ id: noteId, emoji })
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to update icon')
+        }
+      } catch (err) {
+        log.error('Failed to update icon:', err)
+        toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateIcon'))
+        if (previousData) {
+          queryClient.setQueryData(folderViewKeys.notes(scope), previousData)
+        }
+      }
+    },
+    [scope, queryClient]
+  )
+
+  /**
    * Refresh all data by invalidating queries
    */
   const refresh = useCallback(async () => {
@@ -1153,7 +1197,8 @@ export function useFolderView({
     refresh,
     removeNotesOptimistically,
     updateNoteProperty,
-    updateNoteTags
+    updateNoteTags,
+    updateNoteIcon
   }
 }
 

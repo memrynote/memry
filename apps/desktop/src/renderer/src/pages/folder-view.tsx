@@ -147,7 +147,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     refresh,
     removeNotesOptimistically,
     updateNoteProperty,
-    updateNoteTags
+    updateNoteTags,
+    updateNoteIcon
   } = useFolderView({ scope, initialViewName: storedViewName ?? undefined })
 
   // Get first note for formula preview in editor
@@ -1223,6 +1224,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
               onTagRemove={handleTagRemove}
+              onSetIcon={(...args) => void updateNoteIcon(...args)}
               tagMetaMap={tagMetaMap}
               onPropertyUpdate={(...args) => void updateNoteProperty(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}
@@ -1258,6 +1260,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
               onTagRemove={handleTagRemove}
+              onSetIcon={(...args) => void updateNoteIcon(...args)}
               tagMetaMap={tagMetaMap}
               onPropertyUpdate={(...args) => void updateNoteProperty(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}

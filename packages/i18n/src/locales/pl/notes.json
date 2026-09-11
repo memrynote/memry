@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Notatka została pomyślnie wyeksportowana",
       "failedToUpdateProperty": "Nie udało się zaktualizować właściwości",
       "failedToUpdateTags": "Nie udało się zaktualizować tagów",
+      "failedToUpdateIcon": "Nie udało się zaktualizować ikony",
       "reminderSnoozed": "Przypomnienie zostało odłożone",
       "failedToSnoozeReminder": "Nie udało się odłożyć przypomnienia",
       "defaultTemplateSet": "Domyślny zestaw szablonów",

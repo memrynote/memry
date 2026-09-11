@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "메모를 성공적으로 내보냈습니다.",
       "failedToUpdateProperty": "속성을 업데이트하지 못했습니다.",
       "failedToUpdateTags": "태그를 업데이트하지 못했습니다.",
+      "failedToUpdateIcon": "아이콘을 업데이트하지 못했습니다",
       "reminderSnoozed": "알림이 일시중지되었습니다.",
       "failedToSnoozeReminder": "알림을 일시중지하지 못했습니다.",
       "defaultTemplateSet": "기본 템플릿 세트",

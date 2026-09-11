@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "メモは正常にエクスポートされました",
       "failedToUpdateProperty": "プロパティの更新に失敗しました",
       "failedToUpdateTags": "タグの更新に失敗しました",
+      "failedToUpdateIcon": "アイコンの更新に失敗しました",
       "reminderSnoozed": "リマインダーがスヌーズされました",
       "failedToSnoozeReminder": "リマインダーのスヌーズに失敗しました",
       "defaultTemplateSet": "デフォルトのテンプレートセット",

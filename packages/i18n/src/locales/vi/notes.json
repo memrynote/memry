@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Ghi chú đã xuất thành công",
       "failedToUpdateProperty": "Không cập nhật được thuộc tính",
       "failedToUpdateTags": "Không thể cập nhật thẻ",
+      "failedToUpdateIcon": "Không thể cập nhật biểu tượng",
       "reminderSnoozed": "Nhắc nhở đã được hoãn",
       "failedToSnoozeReminder": "Không thể hoãn nhắc nhở",
       "defaultTemplateSet": "Mẫu mặc định đã được đặt",

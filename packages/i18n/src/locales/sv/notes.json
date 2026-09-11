@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Noten exporterades framgångsrikt",
       "failedToUpdateProperty": "Misslyckades med att uppdatera egenskap",
       "failedToUpdateTags": "Det gick inte att uppdatera taggar",
+      "failedToUpdateIcon": "Det gick inte att uppdatera ikonen",
       "reminderSnoozed": "Påminnelse uppskjuten",
       "failedToSnoozeReminder": "Det gick inte att skjuta upp påminnelse",
       "defaultTemplateSet": "Standardmall inställd",

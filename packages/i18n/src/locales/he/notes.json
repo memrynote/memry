@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "הערה יצאה בהצלחה",
       "failedToUpdateProperty": "עדכון הנכס נכשל",
       "failedToUpdateTags": "עדכון התגים נכשל",
+      "failedToUpdateIcon": "עדכון הסמל נכשל",
       "reminderSnoozed": "התזכורת הושהה",
       "failedToSnoozeReminder": "השהיית התזכורת נכשלה",
       "defaultTemplateSet": "ערכת תבנית ברירת מחדל",

@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Noten blev eksporteret",
       "failedToUpdateProperty": "Ejendommen kunne ikke opdateres",
       "failedToUpdateTags": "Kunne ikke opdatere tags",
+      "failedToUpdateIcon": "Kunne ikke opdatere ikonet",
       "reminderSnoozed": "Påmindelsen er udsat",
       "failedToSnoozeReminder": "Kunne ikke udsætte påmindelsen",
       "defaultTemplateSet": "Standard skabelonsæt",

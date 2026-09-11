@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Nota berjaya dieksport",
       "failedToUpdateProperty": "Gagal mengemas kini harta benda",
       "failedToUpdateTags": "Gagal mengemas kini teg",
+      "failedToUpdateIcon": "Gagal mengemas kini ikon",
       "reminderSnoozed": "Peringatan ditunda",
       "failedToSnoozeReminder": "Gagal menunda peringatan",
       "defaultTemplateSet": "Set templat lalai",

@@ -148,6 +148,8 @@ interface GroupedTableProps {
   onTagClick?: (tag: string) => void
   /** Called when a tag is removed */
   onTagRemove?: (noteId: string, tag: string) => void
+  /** Set (or clear, with `null`) a row's icon */
+  onSetIcon?: (noteId: string, icon: string | null) => void
   /** Tag color + icon, keyed by lowercased tag name */
   tagMetaMap?: TagMetaMap
   /** Called when a property value is updated */
@@ -318,6 +320,7 @@ export function GroupedTable({
   onFolderClick,
   onTagClick,
   onTagRemove,
+  onSetIcon,
   tagMetaMap,
   onPropertyUpdate,
   onColumnsChange,
@@ -1234,6 +1237,7 @@ export function GroupedTable({
                   onOpenInNewTab={onOpenInNewTab}
                   onMoveToFolder={onMoveToFolder}
                   onDelete={onDelete}
+                  onSetIcon={onSetIcon}
                 >
                   <tr
                     data-index={virtualRow.index}

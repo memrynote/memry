@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Notatet ble eksportert",
       "failedToUpdateProperty": "Kunne ikke oppdatere egenskapen",
       "failedToUpdateTags": "Kunne ikke oppdatere tagger",
+      "failedToUpdateIcon": "Kunne ikke oppdatere ikonet",
       "reminderSnoozed": "Påminnelsen er slumret",
       "failedToSnoozeReminder": "Kunne ikke slumre påminnelsen",
       "defaultTemplateSet": "Standard malsett",
