@@ -31,4 +31,20 @@ describe('headless CLI mode', () => {
     expect(runCli).toHaveBeenCalledWith(['--vault', '/Users/test/MemryVault', 'vault', 'status'])
     expect(exit).toHaveBeenCalledWith(2)
   })
+
+  it('routes migrate-installer to its own command instead of the vault CLI', async () => {
+    const runCli = vi.fn(async () => 0)
+    const migrateInstaller = vi.fn(async () => 1)
+    const exit = vi.fn()
+
+    await runHeadlessCli(['migrate-installer', 'C:\\Downloads\\MemryNote-win-Setup.exe'], {
+      runCli,
+      migrateInstaller,
+      exit
+    })
+
+    expect(migrateInstaller).toHaveBeenCalledWith(['C:\\Downloads\\MemryNote-win-Setup.exe'])
+    expect(runCli).not.toHaveBeenCalled()
+    expect(exit).toHaveBeenCalledWith(1)
+  })
 })
