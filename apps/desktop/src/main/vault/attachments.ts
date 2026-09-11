@@ -17,6 +17,7 @@ import { getStatus } from './index'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
+import { findNotesReferencingAttachment } from './attachment-reference-scan'
 
 const logger = createLogger('VaultAttachments')
 
@@ -429,32 +430,73 @@ export async function saveAttachment(
   }
 }
 
+export interface DeleteAttachmentOutcome {
+  /** False when the bytes were kept because another note still embeds them. */
+  deleted: boolean
+  /** Note ids that still reference the file; empty whenever `deleted` is true. */
+  referencedBy: string[]
+}
+
 /**
- * Delete a specific attachment
+ * Delete a specific attachment, unless another note still references it (#2077).
  *
- * @param noteId - The note ID
+ * Since "insert existing attachment" exists, `attachments/<noteId>/<file>` is no
+ * longer owned by exactly one note: a second note can embed the same bytes by
+ * pointing at the same path. Unlinking on request would blank that note's embed
+ * with nothing to recover from, so the bytes only go when the owning note is the
+ * last reference — the reference scan, not a stored counter, is the source of
+ * truth, because the references live in note bodies that sync, merge and get
+ * edited outside the app.
+ *
+ * Retaining is reported rather than thrown: the caller asked to detach the file
+ * from this note and that succeeded; the blob simply outlives the request.
+ *
+ * @param noteId - The note ID that owns the attachments folder
  * @param filename - The filename to delete
  */
-export async function deleteAttachment(noteId: string, filename: string): Promise<void> {
+export async function deleteAttachment(
+  noteId: string,
+  filename: string
+): Promise<DeleteAttachmentOutcome> {
   const vaultPath = getVaultPath()
   const filePath = getAttachmentPath(vaultPath, noteId, filename)
+
+  const scan = findNotesReferencingAttachment(
+    { ownerNoteId: noteId, filename },
+    { excludeNoteId: noteId }
+  )
+  if (!scan.complete || scan.referencedBy.length > 0) {
+    logger.info('Attachment kept: another note still references it', {
+      noteId,
+      referenceCount: scan.referencedBy.length,
+      scanComplete: scan.complete
+    })
+    return { deleted: false, referencedBy: scan.referencedBy }
+  }
 
   try {
     await unlink(filePath)
   } catch (error) {
     if (isNodeError(error) && error.code === 'ENOENT') {
       // File already doesn't exist, that's fine
-      return
+      return { deleted: true, referencedBy: [] }
     }
     throw new AttachmentError(
       `Failed to delete attachment: ${filename}`,
       AttachmentErrorCode.DELETE_FAILED
     )
   }
+  return { deleted: true, referencedBy: [] }
 }
 
 /**
- * Delete all attachments for a note (when note is deleted)
+ * Delete this note's attachments, keeping any file another note still embeds.
+ *
+ * Not a `rm -rf` any more (#2077): a shared reference points at
+ * `attachments/<ownerNoteId>/<file>`, so wiping the owner's folder wholesale
+ * would blank a second note's embed. Files go one at a time through the same
+ * reference scan {@link deleteAttachment} uses, and the folder itself is only
+ * removed once it is genuinely empty.
  *
  * @param noteId - The note ID
  */
@@ -467,8 +509,21 @@ export async function deleteNoteAttachments(noteId: string): Promise<void> {
   }
 
   try {
-    await rm(attachmentsDir, { recursive: true, force: true })
-  } catch {
+    const entries = await readdir(attachmentsDir, { withFileTypes: true })
+    let retained = 0
+    for (const entry of entries) {
+      if (!entry.isFile()) {
+        retained++
+        continue
+      }
+      const outcome = await deleteAttachment(noteId, entry.name)
+      if (!outcome.deleted) retained++
+    }
+    if (retained === 0) {
+      await rm(attachmentsDir, { recursive: true, force: true })
+    }
+  } catch (error) {
+    if (error instanceof AttachmentError) throw error
     throw new AttachmentError(
       `Failed to delete attachments folder for note: ${noteId}`,
       AttachmentErrorCode.DELETE_FAILED

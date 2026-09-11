@@ -25,7 +25,8 @@ import {
   LargeFileReadLinesSchema,
   LargeFileSearchSchema,
   AttachmentActionSchema,
-  AttachmentRenameSchema
+  AttachmentRenameSchema,
+  InsertExistingAttachmentSchema
 } from '@memry/contracts/notes-api'
 import {
   resolveAttachment,
@@ -33,6 +34,10 @@ import {
   openAttachmentExternal
 } from '../vault/attachment-actions'
 import { renameAttachment } from '../vault/attachment-rename'
+import {
+  buildExistingAttachmentReference,
+  listVaultAttachments
+} from '../vault/attachment-references'
 import {
   openLargeFileSession,
   readLargeFileLines,
@@ -857,15 +862,32 @@ export function registerNotesHandlers(): void {
     })
   )
 
-  // notes:delete-attachment - Delete an attachment
+  // notes:delete-attachment - Detach an attachment from this note, deleting the
+  // bytes only when no other note still references them (#2077).
   registerCommand(
     NotesChannels.invoke.DELETE_ATTACHMENT,
     DeleteAttachmentSchema,
     async (input) => {
-      await deleteAttachment(input.noteId, input.filename)
-      return { success: true as const }
+      const outcome = await deleteAttachment(input.noteId, input.filename)
+      return { success: true as const, ...outcome }
     },
     'errors:attachment.deleteFailed'
+  )
+
+  // notes:list-vault-attachments - Everything the vault already stores, for the
+  // "insert existing attachment" picker (#2077).
+  ipcMain.handle(
+    NotesChannels.invoke.LIST_VAULT_ATTACHMENTS,
+    createHandler(() => listVaultAttachments())
+  )
+
+  // notes:insert-existing-attachment - Block props that point a second note at
+  // an attachment another note already stores. Nothing is copied or uploaded.
+  ipcMain.handle(
+    NotesChannels.invoke.INSERT_EXISTING_ATTACHMENT,
+    createValidatedHandler(InsertExistingAttachmentSchema, (input) =>
+      buildExistingAttachmentReference(input.noteId, input.ownerNoteId, input.filename)
+    )
   )
 
   // =========================================================================

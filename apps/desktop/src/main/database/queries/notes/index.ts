@@ -12,10 +12,12 @@ export {
   bulkInsertNotes,
   clearNoteCache,
   getAllNoteIds,
+  getAllNoteRefRows,
   getAllCrdtNoteIds,
   getNotesModifiedAfter,
   type ListNotesOptions,
   type NoteCacheFileRow,
+  type NoteCacheRefRow,
   type NoteTreeCacheRow
 } from './note-crud'
 

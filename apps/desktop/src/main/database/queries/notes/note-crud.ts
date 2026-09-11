@@ -266,6 +266,28 @@ export function clearNoteCache(db: IndexDb): void {
   db.delete(noteCache).run()
 }
 
+export interface NoteCacheRefRow {
+  id: string
+  path: string
+  title: string
+}
+
+/**
+ * Every note in the index as `id`/`path`/`title`, journals included.
+ *
+ * Deliberately unfiltered, unlike {@link listNoteCacheFilesAfter} (which drops
+ * dated journal rows) and {@link listNotesFromCache} (which pages): the one
+ * caller walks the whole vault looking for notes that reference a given
+ * attachment, and a journal that embeds a PDF has to count as a reference or
+ * deleting the file would take the journal's embed with it.
+ */
+export function getAllNoteRefRows(db: IndexDb): NoteCacheRefRow[] {
+  return db
+    .select({ id: noteCache.id, path: noteCache.path, title: noteCache.title })
+    .from(noteCache)
+    .all()
+}
+
 export function getAllNoteIds(db: IndexDb): string[] {
   return db
     .select({ id: noteCache.id })

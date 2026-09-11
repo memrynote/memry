@@ -31,6 +31,23 @@ describe('rewriteNoteRefsForMove', () => {
     )
   })
 
+  it('re-points a shared ref at the OWNING note’s folder, not its own (#2077)', () => {
+    // `n2` embeds a file stored under `n1`. Moving n2 must keep the ref aimed
+    // at `attachments/n1/`, or the second note's embed goes blank while the
+    // bytes sit untouched on disk.
+    const body =
+      '<!-- file:{"url":"../attachments/n1/k3f9x2-report.pdf","name":"report.pdf","size":1,"mimeType":"application/pdf"} -->\n'
+
+    expect(
+      rewriteNoteRefsForMove(body, 'notes/B.md', 'notes/archive/2026/B.md', {
+        sourceNoteId: 'n2',
+        preserveRootRelativeAttachments: true
+      })
+    ).toBe(
+      '<!-- file:{"url":"../../../attachments/n1/k3f9x2-report.pdf","name":"report.pdf","size":1,"mimeType":"application/pdf"} -->\n'
+    )
+  })
+
   it('drops the `../` the note no longer needs when it moves up', () => {
     const body = '![photo](../../../attachments/n1/photo.png)\n'
 

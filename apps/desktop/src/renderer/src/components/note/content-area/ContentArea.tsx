@@ -86,6 +86,11 @@ import { serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
 import { MoveBlockDialog } from './move-block-dialog'
+import {
+  InsertExistingAttachmentDialog,
+  buildInsertedAttachmentBlock,
+  type InsertedAttachment
+} from './insert-existing-attachment-dialog'
 import { createMultiBlockIndentPlugin } from './multi-block-indent-plugin'
 import { createBulletCollapsePlugin, BULLET_FOLD_GUTTER } from './bullet-collapse-plugin'
 
@@ -1454,6 +1459,23 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor, noteId, tasksCtx]
   )
 
+  // "Insert existing attachment" (#2077): the picker resolves block props that
+  // point at bytes the vault already stores, so the second note references the
+  // same file instead of getting a copy of it. Nothing is uploaded here — the
+  // owning note's attachment already syncs.
+  const [insertExistingAttachmentOpen, setInsertExistingAttachmentOpen] = useState(false)
+
+  const insertExistingAttachment = useCallback(
+    (result: InsertedAttachment): void => {
+      editor.insertBlocks(
+        [buildInsertedAttachmentBlock(result)],
+        editor.getTextCursorPosition().block.id,
+        'after'
+      )
+    },
+    [editor]
+  )
+
   // "Move to" from the block side menu: the picker names a target note, then
   // the block's markdown is appended there BEFORE it is removed here. Ordering
   // matters — a failed append must leave the block where it is rather than lose
@@ -1733,6 +1755,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               }}
             />
           )}
+          {insertExistingAttachmentOpen && noteId && (
+            <InsertExistingAttachmentDialog
+              open
+              onOpenChange={(open) => !open && setInsertExistingAttachmentOpen(false)}
+              noteId={noteId}
+              onInsert={insertExistingAttachment}
+            />
+          )}
           {moveBlockId && noteId && (
             <MoveBlockDialog
               open
@@ -1974,9 +2004,21 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   group: 'Basic blocks',
                   subtext: t('editor.slashMenu.linkToNote.subtext')
                 }
+                // #2077: embed a file the vault already has. Same group as
+                // `/file` and `/pdf` because it is the same intent — the
+                // difference is that no second copy lands in the vault.
+                const existingAttachmentItem = {
+                  key: 'existing_attachment',
+                  title: t('editor.slashMenu.existingAttachment.title'),
+                  onItemClick: () => setInsertExistingAttachmentOpen(true),
+                  aliases: ['existing', 'reuse', 'attachment', 'shared', 'library'],
+                  group: fileItem?.group ?? 'Basic blocks',
+                  subtext: t('editor.slashMenu.existingAttachment.subtext')
+                }
                 const all = orderSlashMenuItemsByGroup([
                   ...defaults,
                   ...pdfItems,
+                  existingAttachmentItem,
                   calloutItem,
                   ...(taskItem ? [taskItem] : []),
                   ...dateItems,

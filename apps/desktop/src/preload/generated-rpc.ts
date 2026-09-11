@@ -117,6 +117,8 @@ export function createGeneratedRpcApi({
         })) as GeneratedRpcApi["notes"]["uploadAttachment"],
       "listAttachments": ((noteId) => invoke("notes:list-attachments", noteId)) as GeneratedRpcApi["notes"]["listAttachments"],
       "deleteAttachment": ((noteId, filename) => invoke("notes:delete-attachment", { noteId, filename })) as GeneratedRpcApi["notes"]["deleteAttachment"],
+      "listVaultAttachments": (() => invoke("notes:list-vault-attachments")) as GeneratedRpcApi["notes"]["listVaultAttachments"],
+      "insertExistingAttachment": ((noteId, ownerNoteId, filename) => invoke("notes:insert-existing-attachment", { noteId, ownerNoteId, filename })) as GeneratedRpcApi["notes"]["insertExistingAttachment"],
       "getFolderConfig": ((folderPath) => invoke("notes:get-folder-config", folderPath)) as GeneratedRpcApi["notes"]["getFolderConfig"],
       "setFolderConfig": ((folderPath, config) => invoke("notes:set-folder-config", { folderPath, config })) as GeneratedRpcApi["notes"]["setFolderConfig"],
       "getFolderTemplate": ((folderPath) => invoke("notes:get-folder-template", folderPath)) as GeneratedRpcApi["notes"]["getFolderTemplate"],

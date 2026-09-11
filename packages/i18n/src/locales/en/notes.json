@@ -237,6 +237,10 @@
       "linkToNote": {
         "title": "Link to note",
         "subtext": "Search notes — or type [[ anywhere"
+      },
+      "existingAttachment": {
+        "title": "Existing attachment",
+        "subtext": "Embed a file already in this vault — no second copy"
       }
     },
     "filePanel": {
@@ -277,6 +281,14 @@
         "moved": "Block moved to “{title}”",
         "failed": "Could not move the block"
       }
+    },
+    "insertExistingAttachment": {
+      "title": "Insert existing attachment",
+      "description": "Embed a file this vault already stores. Nothing is copied — both notes point at the same file.",
+      "searchPlaceholder": "Search attachments…",
+      "empty": "No attachments in this vault yet.",
+      "loadFailed": "Failed to load the vault's attachments",
+      "insertFailed": "Failed to insert the attachment"
     }
   },
   "dateMention": {

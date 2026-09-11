@@ -63,6 +63,34 @@ afterEach(() => {
   fs.rmSync(vaultPath, { recursive: true, force: true })
 })
 
+describe('shared attachment references (#2077)', () => {
+  it('resolves a ref into another note’s attachments folder', () => {
+    const absolute = writeAttachment('attachments/owner-note/k3f9x2-report.pdf')
+
+    const result = resolveAttachment(NOTE_ID, '../attachments/owner-note/k3f9x2-report.pdf')
+
+    expect(result.absolutePath).toBe(absolute)
+    expect(result.exists).toBe(true)
+  })
+
+  it('self-heals a shared ref after the owning note renames the file', () => {
+    // The owner renamed `k3f9x2-report.pdf` to `k3f9x2-invoice.pdf`; the
+    // borrowing note's body still names the old one. Self-heal matches on the
+    // nanoid prefix inside the owner's folder, so the embed keeps rendering
+    // instead of going blank.
+    writeAttachment('attachments/owner-note/k3f9x2-invoice.pdf')
+
+    const result = resolveAttachment(NOTE_ID, '../attachments/owner-note/k3f9x2-report.pdf')
+
+    expect(path.basename(result.absolutePath)).toBe('k3f9x2-invoice.pdf')
+    expect(result.exists).toBe(true)
+  })
+
+  it('still refuses a ref that climbs out of the vault', () => {
+    expect(() => resolveAttachment(NOTE_ID, '../../../../etc/passwd')).toThrow(NoteError)
+  })
+})
+
 describe('resolveAttachment', () => {
   it('resolves a note-relative ref to the on-disk path', () => {
     const absolute = writeAttachment('attachments/n1/k3f9x2-report.pdf')
