@@ -3,6 +3,10 @@ name: Velopack Windows smoke
 # Proves the Velopack Windows path on a real Windows box: the signed Setup.exe
 # installs silently, the install layout is what the updater expects, and
 # Update.exe applies a newer package in place while Defender is running.
+#
+# The second job proves the NSIS -> Velopack hand-off: an install made by the
+# older NSIS installer is removed and replaced by the Velopack install without
+# a gap, with the Start menu shortcut back in place and the app running.
 
 on:
   workflow_dispatch:
@@ -19,6 +23,18 @@ on:
       update_tag:
         description: Release tag holding that nupkg. Defaults to release_tag.
         required: false
+      nsis_release_tag:
+        description: Release tag holding the NSIS *-setup.exe used as the "existing install" fixture
+        required: false
+        default: v2026-09-10
+      run_cli_migration:
+        description: >-
+          Drive the hand-off through `Memrynote.exe --cli migrate-installer` from the NSIS
+          install instead of running the generated script standalone. Only meaningful once
+          nsis_release_tag points at a release whose NSIS build contains the hand-off code.
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   # read, not write: the release script dispatches this against a release it has
@@ -135,4 +151,135 @@ jobs:
           path: |
             setup.log
             ${{ env.LOCALAPPDATA }}\MemryNote\*.log
+          if-no-files-found: ignore
+
+  migrate:
+    name: NSIS install hands off to Velopack
+    runs-on: windows-2022
+    timeout-minutes: 30
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      NSIS_RELEASE_TAG: ${{ inputs.nsis_release_tag }}
+      RUN_CLI_MIGRATION: ${{ inputs.run_cli_migration }}
+      # electron-builder keys the per-user uninstall entry by UUID v5 of the appId
+      # (com.memrynote.memry) under its own namespace, not by the appId itself.
+      NSIS_UNINSTALL_KEY: HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\c72afc79-ad45-5346-bedb-8907a549c673
+    steps:
+      # The checkout is only for apps/desktop/scripts/installer-handoff-script.mjs,
+      # which renders the hand-off script from the same function the app uses. It
+      # has no dependencies, so there is no pnpm install here.
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Download installers
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          New-Item -ItemType Directory -Force nsis, assets | Out-Null
+          gh release download $env:NSIS_RELEASE_TAG --repo "${{ github.repository }}" -D nsis `
+            --pattern '*-setup.exe'
+          gh release download $env:RELEASE_TAG --repo "${{ github.repository }}" -D assets `
+            --pattern 'MemryNote-win-Setup.exe'
+          Get-ChildItem nsis, assets | Format-Table Name, Length
+          $nsis = Get-ChildItem nsis -Filter '*-setup.exe' | Select-Object -First 1
+          if (-not $nsis) { throw "no *-setup.exe on $env:NSIS_RELEASE_TAG" }
+          "NSIS_INSTALLER=$($nsis.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Setup.exe is Authenticode-signed by the Certum certificate
+        shell: pwsh
+        run: |
+          $sig = Get-AuthenticodeSignature .\assets\MemryNote-win-Setup.exe
+          $sig | Format-List Status, StatusMessage
+          if ($sig.Status -ne 'Valid') { throw "Setup.exe signature status: $($sig.Status)" }
+          if ($sig.SignerCertificate.Subject -notmatch 'Kaan Karaca') { throw "unexpected signer: $($sig.SignerCertificate.Subject)" }
+
+      - name: Install the NSIS build silently
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath $env:NSIS_INSTALLER -ArgumentList '/S' -PassThru -Wait
+          Write-Host "NSIS setup exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw "NSIS setup exited $($p.ExitCode)" }
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\MemryNote\Memrynote.exe'
+          if (-not (Test-Path $exe)) { throw "missing $exe" }
+          $uninstaller = Join-Path $env:LOCALAPPDATA 'Programs\MemryNote\Uninstall MemryNote.exe'
+          if (-not (Test-Path $uninstaller)) { throw "missing $uninstaller" }
+          $entry = Get-ItemProperty $env:NSIS_UNINSTALL_KEY -ErrorAction Stop
+          Write-Host "NSIS uninstall entry: $($entry.DisplayName) $($entry.DisplayVersion)"
+          $lnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\MemryNote.lnk'
+          if (-not (Test-Path $lnk)) { throw "missing Start menu shortcut $lnk" }
+          "NSIS_EXE=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # Gated off by default: the NSIS fixture is a published release, and a
+      # published NSIS build only contains the `migrate-installer` command once a
+      # release with this code has shipped. Until then the standalone step below
+      # exercises the same script the command spawns.
+      - name: Hand off through the headless CLI
+        if: env.RUN_CLI_MIGRATION == 'true'
+        shell: pwsh
+        run: |
+          $setup = Resolve-Path .\assets\MemryNote-win-Setup.exe
+          $p = Start-Process -FilePath $env:NSIS_EXE -ArgumentList '--cli', 'migrate-installer', "$setup" -PassThru -Wait -NoNewWindow
+          Write-Host "migrate-installer exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw "migrate-installer exited $($p.ExitCode)" }
+
+      - name: Hand off through the generated script
+        if: env.RUN_CLI_MIGRATION != 'true'
+        shell: pwsh
+        run: |
+          $app = Start-Process -FilePath $env:NSIS_EXE -PassThru
+          Start-Sleep -Seconds 5
+          $setup = Resolve-Path .\assets\MemryNote-win-Setup.exe
+          node apps/desktop/scripts/installer-handoff-script.mjs `
+            --pid $app.Id `
+            --exe Memrynote.exe `
+            --install-dir (Join-Path $env:LOCALAPPDATA 'Programs\MemryNote') `
+            --setup "$setup" `
+            --log "$PWD\velopack-setup.log" `
+            --nsis-installer $env:NSIS_INSTALLER | Out-File -FilePath handoff.cmd -Encoding ascii
+          Get-Content handoff.cmd
+          Start-Process -FilePath cmd.exe -ArgumentList '/c', "$PWD\handoff.cmd" -WindowStyle Hidden
+          Start-Sleep -Seconds 3
+          Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
+
+      - name: Velopack install replaced the NSIS install
+        shell: pwsh
+        run: |
+          $nsisDir = Join-Path $env:LOCALAPPDATA 'Programs\MemryNote'
+          $velopackExe = Join-Path $env:LOCALAPPDATA 'MemryNote\current\Memrynote.exe'
+          $deadline = (Get-Date).AddMinutes(10)
+          while ((Get-Date) -lt $deadline -and -not (Test-Path $velopackExe)) { Start-Sleep -Seconds 5 }
+          Start-Sleep -Seconds 20
+          if (Test-Path velopack-setup.log) { Get-Content velopack-setup.log -Tail 40 }
+          if (-not (Test-Path $velopackExe)) { throw "hand-off did not produce $velopackExe" }
+          if (Test-Path $nsisDir) { Get-ChildItem $nsisDir -Recurse | Format-Table FullName; throw "NSIS install still present at $nsisDir" }
+          if (Test-Path $env:NSIS_UNINSTALL_KEY) { throw "NSIS uninstall entry still present" }
+          $sig = Get-AuthenticodeSignature $velopackExe
+          Write-Host "Memrynote.exe : $($sig.Status) / $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') { throw "Memrynote.exe signature status: $($sig.Status)" }
+          $lnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\MemryNote.lnk'
+          if (-not (Test-Path $lnk)) { throw "missing Start menu shortcut $lnk after hand-off" }
+          $entry = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\MemryNote' -ErrorAction Stop
+          Write-Host "Velopack uninstall entry: $($entry.DisplayName) $($entry.DisplayVersion)"
+          $running = @(Get-Process Memrynote -ErrorAction SilentlyContinue)
+          $running | Format-Table Id, Path
+          $fromVelopack = @($running | Where-Object { $_.Path -eq $velopackExe })
+          if ($fromVelopack.Count -eq 0) { throw 'Setup.exe did not leave Memrynote.exe running from the Velopack install' }
+          $running | Stop-Process -Force
+
+      - name: Collect logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: velopack-migrate-logs
+          path: |
+            handoff.cmd
+            velopack-setup.log
+            ${{ env.LOCALAPPDATA }}\MemryNote\*.log
+            ${{ env.APPDATA }}\memrynote\logs\*.log
           if-no-files-found: ignore
