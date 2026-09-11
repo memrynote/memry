@@ -1,7 +1,10 @@
 // First import on purpose: sizes the libuv threadpool before anything can use
 // it (see uv-threadpool.ts — libuv reads the env var once, on first use).
 import './uv-threadpool'
-// Second on purpose: wires @memry/sync-client's logger/telemetry facades
+// Second on purpose: Velopack's install/update hooks are command-line arguments
+// this process must handle before it does anything else (it may exit inside them).
+import './velopack-bootstrap'
+// Third on purpose: wires @memry/sync-client's logger/telemetry facades
 // before any extracted sync module can log.
 import './sync/sync-client-runtime'
 import {
