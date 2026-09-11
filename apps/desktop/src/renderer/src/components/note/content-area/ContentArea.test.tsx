@@ -62,6 +62,16 @@ const contentAreaMocks = vi.hoisted(() => ({
   }
 }))
 
+// The picker itself is covered by `attachment-picker-dialog.test.tsx`; here
+// only the routing matters, so it stands in as a probe for which kind was asked
+// for. Rendering the real one would reach `listVaultAttachments` over IPC.
+vi.mock('./attachment-picker-dialog', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./attachment-picker-dialog')>()),
+  AttachmentPickerDialog: ({ kind }: { kind: string }) => (
+    <div data-testid="attachment-picker-dialog" data-kind={kind} />
+  )
+}))
+
 vi.mock('@blocknote/react', () => ({
   useCreateBlockNote: vi.fn((options) => {
     contentAreaMocks.blockNoteOptions = options
@@ -135,6 +145,7 @@ vi.mock('@blocknote/react', () => ({
   ]),
   FilePanelController: () => <div data-testid="file-panel-controller" />,
   UploadTab: () => <div data-testid="upload-tab" />,
+  useBlockNoteEditor: () => contentAreaMocks.editor,
   // `TableBorderHandles` reaches for the table-handle extension so the nubs on
   // the cell borders can open BlockNote's own row/column/cell menus. It renders
   // nothing until a cell is hovered, which jsdom (no layout) never reports —
@@ -1060,20 +1071,40 @@ describe('ContentArea', () => {
     ).resolves.toBe('attachments/shot.png')
   })
 
-  it('offers a PDF slash item that runs the default file item', async () => {
+  // #2161: there is no "existing attachment" command any more. Every command
+  // that wants a file opens the one picker, which offers upload AND the vault's
+  // own files, narrowed to the kind the command named. Running BlockNote's own
+  // file item instead would reach the upload-only panel and hide the vault.
+  it.each([
+    ['pdf', 'pdf', 'pdf'],
+    ['media', 'media', 'media'],
+    ['image', 'image', 'image'],
+    ['file', 'file', 'file']
+  ])('routes /%s to the attachment picker, narrowed to %s', async (query, key, kind) => {
     render(<ContentArea noteId="note-1" />)
 
     const slashController = contentAreaMocks.suggestionControllers.find(
       (controller) => controller.triggerCharacter === '/'
     )
-    const items = await slashController.getItems('pdf')
-    expect(items).toHaveLength(1)
-    expect(items[0]).toMatchObject({ key: 'pdf', group: 'Media' })
+    const items = await slashController.getItems(query)
+    const item = items.find((candidate: { key?: string }) => candidate.key === key)
+    expect(item).toBeDefined()
 
-    items[0].onItemClick()
-    expect(contentAreaMocks.defaultFileItemClick).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      item.onItemClick()
+    })
 
-    // `/photo` is a new alias on BlockNote's image item.
+    expect(contentAreaMocks.defaultFileItemClick).not.toHaveBeenCalled()
+    expect(screen.getByTestId('attachment-picker-dialog')).toHaveAttribute('data-kind', kind)
+  })
+
+  it('keeps /photo on the image item rather than splitting it across two rows', async () => {
+    render(<ContentArea noteId="note-1" />)
+
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+
     await expect(slashController.getItems('photo')).resolves.toEqual([
       expect.objectContaining({ key: 'image' })
     ])

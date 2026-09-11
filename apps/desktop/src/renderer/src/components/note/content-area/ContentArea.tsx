@@ -6,14 +6,13 @@ import {
   SuggestionMenuController,
   GridSuggestionMenuController,
   useCreateBlockNote,
-  useComponentsContext,
   getDefaultReactSlashMenuItems,
   FilePanelController,
-  UploadTab,
   type FilePanelProps,
   type SuggestionMenuProps
 } from '@blocknote/react'
 import { SuggestionMenu } from '@blocknote/core/extensions'
+import { Paperclip } from '@/lib/icons'
 import { BlockNoteView } from '@blocknote/shadcn'
 import {
   ImageAttachmentMenu,
@@ -87,10 +86,11 @@ import { registerEditorPlugin } from './register-editor-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
 import { MoveBlockDialog } from './move-block-dialog'
 import {
-  InsertExistingAttachmentDialog,
+  AttachmentPickerDialog,
   buildInsertedAttachmentBlock,
+  type AttachmentKind,
   type InsertedAttachment
-} from './insert-existing-attachment-dialog'
+} from './attachment-picker-dialog'
 import { createMultiBlockIndentPlugin } from './multi-block-indent-plugin'
 import { createBulletCollapsePlugin, BULLET_FOLD_GUTTER } from './bullet-collapse-plugin'
 
@@ -264,34 +264,25 @@ function findBookmarkBlock(blocks: any[], url: string): any {
   return null
 }
 
-/**
- * BlockNote's file panel with its "Embed" tab removed.
- *
- * Embed writes a remote URL onto the block: the content then lives outside the
- * vault and renders as a broken box offline, which is the opposite of what an
- * offline-first note app promises. Upload is the only way in.
- *
- * This assembles the stock panel rather than reimplementing it — `UploadTab`
- * and the panel Root both come from BlockNote. Root is used directly instead of
- * `<FilePanel tabs={...} />` only so the `loading` flag `UploadTab` sets stays
- * wired to the panel's spinner; `FilePanel` keeps that state private.
- */
-function UploadOnlyFilePanel({ blockId }: FilePanelProps): React.ReactElement {
-  const Components = useComponentsContext()!
-  const { t } = useT('notes')
-  const [loading, setLoading] = useState(false)
-  const tabName = t('editor.filePanel.uploadTab')
+/** What the attachment picker was asked to do. */
+interface AttachmentPickerRequest {
+  kind: AttachmentKind
+  /**
+   * Set when the picker was opened from an empty media block: the result
+   * replaces that block instead of landing after the caret.
+   */
+  replaceBlockId?: string
+}
 
-  return (
-    <Components.FilePanel.Root
-      className="bn-panel"
-      defaultOpenTab={tabName}
-      openTab={tabName}
-      setOpenTab={() => {}}
-      tabs={[{ name: tabName, tabPanel: <UploadTab blockId={blockId} setLoading={setLoading} /> }]}
-      loading={loading}
-    />
-  )
+/**
+ * The kind of attachment an empty media block is waiting for.
+ *
+ * BlockNote's block vocabulary, not the picker's, so the mapping lives here.
+ */
+function attachmentKindForBlockType(blockType: string | undefined): AttachmentKind {
+  if (blockType === 'image') return 'image'
+  if (blockType === 'video' || blockType === 'audio') return 'media'
+  return 'file'
 }
 
 // =============================================================================
@@ -1462,21 +1453,78 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor, noteId, tasksCtx]
   )
 
-  // "Insert existing attachment" (#2077): the picker resolves block props that
-  // point at bytes the vault already stores, so the second note references the
-  // same file instead of getting a copy of it. Nothing is uploaded here — the
-  // owning note's attachment already syncs.
-  const [insertExistingAttachmentOpen, setInsertExistingAttachmentOpen] = useState(false)
+  // The attachment picker every `/image`, `/media`, `/pdf`, `/file` opens
+  // (#2161). Its kind doubles as its open flag: a kind means "show me files of
+  // this sort", null means closed. Picking an existing file resolves block
+  // props that point at bytes the vault already stores, so the second note
+  // references the same file instead of getting a copy of it (#2077).
+  const [attachmentPicker, setAttachmentPicker] = useState<AttachmentPickerRequest | null>(null)
 
-  const insertExistingAttachment = useCallback(
+  const openAttachmentPicker = useCallback((kind: AttachmentKind): void => {
+    setAttachmentPicker({ kind })
+  }, [])
+
+  /**
+   * BlockNote's file panel, replaced outright.
+   *
+   * The stock panel offers an "Embed" tab that writes a remote URL onto the
+   * block — the content then lives outside the vault and renders as a broken
+   * box offline, the opposite of what an offline-first note app promises — and
+   * an "Upload" tab built on a bare `<input type="file">`, which the OS styles:
+   * the same note looks like three different apps on macOS, Windows and Linux.
+   *
+   * So the panel is one row that opens the same picker `/image` and `/pdf` do,
+   * narrowed to what this block can hold. Upload and the vault's own files are
+   * both in there, which is more than the stock panel offered anyway.
+   *
+   * Created once: `FilePanelController` remounts its `filePanel` whenever the
+   * component's identity changes, and `t` is not identity-stable. What the
+   * panel needs is read through a ref each render refreshes instead — the label
+   * already translated, so the i18n scanner can still see which namespace the
+   * key belongs to.
+   */
+  const filePanelLabel = t('editor.filePanel.choose')
+  const filePanelDeps = useRef({ editor, label: filePanelLabel, open: setAttachmentPicker })
+  filePanelDeps.current = { editor, label: filePanelLabel, open: setAttachmentPicker }
+  const [VaultFilePanel] = useState(
+    () =>
+      function VaultFilePanel({ blockId }: FilePanelProps): React.ReactElement {
+        const deps = filePanelDeps.current
+        return (
+          <div className="bn-panel z-30 rounded-lg border bg-popover p-1 shadow-md">
+            <button
+              type="button"
+              data-testid="file-panel-choose"
+              className="flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-popover-foreground outline-none hover:bg-accent focus-visible:bg-accent"
+              onClick={() =>
+                deps.open({
+                  kind: attachmentKindForBlockType(deps.editor.getBlock(blockId)?.type),
+                  replaceBlockId: blockId
+                })
+              }
+            >
+              <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+              {deps.label}
+            </button>
+          </div>
+        )
+      }
+  )
+
+  const insertPickedAttachment = useCallback(
     (result: InsertedAttachment): void => {
-      editor.insertBlocks(
-        [buildInsertedAttachmentBlock(result)],
-        editor.getTextCursorPosition().block.id,
-        'after'
-      )
+      const block = buildInsertedAttachmentBlock(result)
+      // Opened from an empty media block: that block IS the placeholder the
+      // user is filling in, so inserting after it would leave the empty one
+      // behind with its panel still up.
+      const replaceBlockId = attachmentPicker?.replaceBlockId
+      if (replaceBlockId) {
+        editor.replaceBlocks([replaceBlockId], [block])
+        return
+      }
+      editor.insertBlocks([block], editor.getTextCursorPosition().block.id, 'after')
     },
-    [editor]
+    [editor, attachmentPicker]
   )
 
   // "Move to" from the block side menu: the picker names a target note, then
@@ -1758,12 +1806,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               }}
             />
           )}
-          {insertExistingAttachmentOpen && noteId && (
-            <InsertExistingAttachmentDialog
+          {attachmentPicker && noteId && (
+            <AttachmentPickerDialog
               open
-              onOpenChange={(open) => !open && setInsertExistingAttachmentOpen(false)}
+              onOpenChange={(open) => !open && setAttachmentPicker(null)}
               noteId={noteId}
-              onInsert={insertExistingAttachment}
+              kind={attachmentPicker.kind}
+              onInsert={insertPickedAttachment}
             />
           )}
           {moveBlockId && noteId && (
@@ -1909,7 +1958,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               }}
             />
             {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
-            <FilePanelController filePanel={UploadOnlyFilePanel} />
+            <FilePanelController filePanel={VaultFilePanel} />
             <SuggestionMenuController
               triggerCharacter="/"
               getItems={async (query) => {
@@ -1933,29 +1982,67 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                           }
                         : item
                     }
-                    if ((item as { key?: string }).key !== 'image') return item
-                    // `img` and `picture` already ship as image aliases; `photo`
-                    // did not, and is what people actually type.
-                    const withPhoto = { ...item, aliases: [...(item.aliases ?? []), 'photo'] }
-                    return inCell ? { ...withPhoto, onItemClick: pickImageForCell } : withPhoto
+                    // Every attachment command opens the same picker (#2161).
+                    // BlockNote's own items insert an empty block and pop the
+                    // file panel, which can only upload — so a file already in
+                    // the vault had to be found through a separate "existing
+                    // attachment" command the user had to know existed. The
+                    // picker offers upload and the vault's own files together,
+                    // narrowed to the kind that was asked for.
+                    const key = (item as { key?: string }).key
+                    if (key === 'image') {
+                      // `img` and `picture` already ship as image aliases;
+                      // `photo` did not, and is what people actually type.
+                      const withPhoto = {
+                        ...item,
+                        aliases: [...(item.aliases ?? []), 'photo']
+                      }
+                      return inCell
+                        ? { ...withPhoto, onItemClick: pickImageForCell }
+                        : { ...withPhoto, onItemClick: () => openAttachmentPicker('image') }
+                    }
+                    if (key === 'video' || key === 'audio') {
+                      return { ...item, onItemClick: () => openAttachmentPicker('media') }
+                    }
+                    if (key === 'file') {
+                      return {
+                        ...item,
+                        aliases: [...(item.aliases ?? []), 'attachment', 'upload'],
+                        onItemClick: () => openAttachmentPicker('file')
+                      }
+                    }
+                    return item
                   }),
                   // `updateBlock` is typed against the whole schema union, so a
                   // helper that only ever writes table content cannot state its
                   // parameter in terms the editor's own signature accepts.
                   editor as unknown as TableInsertEditor
                 )
-                // `/pdf` is the same item as `/file` — same insert, same panel —
-                // relabelled, because "attach a PDF" is what most people are
-                // actually after and `/pdf` matched nothing before.
+                // `/pdf` and `/media` are the same item as `/file` — same
+                // picker, same insert — relabelled and pre-narrowed, because
+                // "attach a PDF" or "add a picture or a video" is what people
+                // are actually after and neither word matched anything before.
                 const fileItem = defaults.find((item) => (item as { key?: string }).key === 'file')
-                const pdfItems = fileItem
+                const kindItems = fileItem
                   ? [
                       {
                         ...fileItem,
                         key: 'pdf',
                         title: t('editor.slashMenu.pdf.title'),
                         subtext: t('editor.slashMenu.pdf.subtext'),
-                        aliases: ['pdf', 'document', 'attachment']
+                        aliases: ['pdf', 'document'],
+                        onItemClick: () => openAttachmentPicker('pdf')
+                      },
+                      {
+                        ...fileItem,
+                        key: 'media',
+                        title: t('editor.slashMenu.media.title'),
+                        subtext: t('editor.slashMenu.media.subtext'),
+                        // No `photo`/`picture` here: both are already image aliases, and a
+                        // second row under the same word makes the user choose
+                        // between two things that do the same thing.
+                        aliases: ['media', 'video', 'audio', 'movie'],
+                        onItemClick: () => openAttachmentPicker('media')
                       }
                     ]
                   : []
@@ -2007,21 +2094,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   group: 'Basic blocks',
                   subtext: t('editor.slashMenu.linkToNote.subtext')
                 }
-                // #2077: embed a file the vault already has. Same group as
-                // `/file` and `/pdf` because it is the same intent — the
-                // difference is that no second copy lands in the vault.
-                const existingAttachmentItem = {
-                  key: 'existing_attachment',
-                  title: t('editor.slashMenu.existingAttachment.title'),
-                  onItemClick: () => setInsertExistingAttachmentOpen(true),
-                  aliases: ['existing', 'reuse', 'attachment', 'shared', 'library'],
-                  group: fileItem?.group ?? 'Basic blocks',
-                  subtext: t('editor.slashMenu.existingAttachment.subtext')
-                }
                 const all = orderSlashMenuItemsByGroup([
                   ...defaults,
-                  ...pdfItems,
-                  existingAttachmentItem,
+                  ...kindItems,
                   calloutItem,
                   ...(taskItem ? [taskItem] : []),
                   ...dateItems,
