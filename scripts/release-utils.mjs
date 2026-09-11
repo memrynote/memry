@@ -51,6 +51,8 @@ export function parseReleaseArgs(argv) {
     dryRun: false,
     help: false,
     humanize: false,
+    restart: false,
+    smoke: false,
     tag: undefined,
     watch: true,
     yes: false
@@ -86,6 +88,16 @@ export function parseReleaseArgs(argv) {
 
     if (arg === '--no-watch') {
       options.watch = false
+      continue
+    }
+
+    if (arg === '--restart') {
+      options.restart = true
+      continue
+    }
+
+    if (arg === '--smoke') {
+      options.smoke = true
       continue
     }
 

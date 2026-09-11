@@ -81,3 +81,6 @@ agents/
 .feedback
 
 .omp/
+
+# Local release pipeline working dir (scripts/release.mjs)
+.release-state/
