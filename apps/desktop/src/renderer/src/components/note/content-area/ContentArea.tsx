@@ -673,6 +673,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       const block = editor.getTextCursorPosition()?.block
       if (!block) return
 
+      // Nothing to do: the editor's paste handler already inserted the URL as a
+      // plain inline link, leaving the block (list item, table cell, ...) and
+      // the surrounding text untouched. See `paste-url-link.ts`.
       if (option === 'url') return
 
       // The pasted URL sits in the block as either a link node or plain text

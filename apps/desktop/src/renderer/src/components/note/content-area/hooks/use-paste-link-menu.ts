@@ -1,7 +1,6 @@
 import { useCallback, useLayoutEffect, useState } from 'react'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
-
-const URL_REGEX = /^https?:\/\/\S+$/
+import { readBareUrl } from '../paste-url-link'
 
 function detectEmbedProvider(url: string): string | null {
   if (extractYouTubeVideoId(url)) return 'youtube'
@@ -51,8 +50,8 @@ export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkM
     const handlePaste = (e: ClipboardEvent): void => {
       if (state.isOpen) return
 
-      const text = e.clipboardData?.getData('text/plain')?.trim()
-      if (!text || !URL_REGEX.test(text)) return
+      const text = readBareUrl(e.clipboardData?.getData('text/plain'))
+      if (!text) return
 
       const options: PasteLinkOption[] = ['mention']
       if (detectEmbedProvider(text)) {
