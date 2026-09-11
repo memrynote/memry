@@ -246,3 +246,16 @@ export function dropGapStartIndex(
 
   return dropPosition === 'before' ? index : index + 1
 }
+
+/**
+ * The virtual window plus the row that must stay mounted, in ascending order.
+ *
+ * The sidebar icon picker is a popover rendered inside its row, so a row the
+ * virtualizer drops takes the open panel with it and the picker looks like it
+ * closed itself mid-pick (#1986). Feeding this through the virtualizer's
+ * `rangeExtractor` keeps that one row rendered wherever the list is scrolled.
+ */
+export function withPinnedIndex(indexes: number[], pinnedIndex: number): number[] {
+  if (pinnedIndex < 0 || indexes.includes(pinnedIndex)) return indexes
+  return [...indexes, pinnedIndex].sort((a, b) => a - b)
+}
