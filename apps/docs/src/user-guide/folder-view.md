@@ -49,6 +49,21 @@ A filter bar above the table accepts:
 
 Active filters show as chips you can dismiss.
 
+### Tag values suggest themselves
+
+A `Tags contains` (or `does not contain`) condition does not make you remember how a tag is
+spelled. Click into its value box and memrynote lists your five most-used tags, drawn as the
+same coloured pills you see everywhere else. Type and the list re-ranks on each keystroke,
+finding a nested tag by its last segment too — `design` surfaces `work/design`. <kbd>↑</kbd>
+and <kbd>↓</kbd> move through the list, <kbd>Enter</kbd> puts the highlighted tag in the box,
+and the table behind the popover narrows straight away.
+
+### Opening a row in a background tab
+
+Middle-click a row — in the table, list, or gallery layout — to open it in a background tab,
+the same gesture the sidebar rows support. On a tag page this follows the row's kind: a task
+row opens Tasks and an inbox row opens the Inbox, exactly as a normal click would.
+
 ## Density
 
 A density toggle in the toolbar:

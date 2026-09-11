@@ -68,6 +68,7 @@ import {
   type AppIcon
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { handleMiddleClick } from '@/lib/middle-click'
 import { getColumnLabel } from '@/lib/contract-display-names'
 import { evaluateFormula } from '@/lib/expression-evaluator'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
@@ -143,6 +144,8 @@ interface GroupedTableProps {
   onNoteOpen?: (noteId: string) => void
   /** Called when a note should be opened in a new tab */
   onOpenInNewTab?: (noteId: string) => void
+  /** Middle-click gesture: open the row in a background tab. */
+  onOpenInBackgroundTab?: (noteId: string) => void
   /** Called when a folder cell is clicked */
   onFolderClick?: (folderPath: string) => void
   /** Called when a tag is clicked */
@@ -318,6 +321,7 @@ export function GroupedTable({
   selectedRowIds: externalSelectedRowIds,
   onNoteOpen,
   onOpenInNewTab,
+  onOpenInBackgroundTab,
   onFolderClick,
   onTagClick,
   onTagRemove,
@@ -1266,6 +1270,9 @@ export function GroupedTable({
                     )}
                     onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}
+                    onMouseDown={(e) =>
+                      handleMiddleClick(e, () => onOpenInBackgroundTab?.(row.original.id))
+                    }
                   >
                     {/* Leading per-row checkbox (reveals on hover or while a selection is active) */}
                     <td
