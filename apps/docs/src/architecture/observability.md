@@ -114,7 +114,7 @@ the others. If the app begins quitting inside the delay the queue is left undrai
 task cannot re-arm a service the shutdown sequence has already torn down.
 
 The updater is the first tenant: `initializeUpdater()` reconciles install health, reads its prefs,
-resolves `app-update.yml` and fires the `startup-check` update check, none of which is on the way to
+selects its backend and fires the `startup-check` update check, none of which is on the way to
 the first frame.
 
 ### Login-Shell PATH Gate
@@ -1024,6 +1024,17 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
 reason, phase, mode, status, kind, result`, plus numeric metric keys like
   `durationMs`/`itemCount`) ships verbatim; most other field values run through the same redaction as
   the message.
+- **Updater backends**: `initializeUpdater()` picks one backend at init and keeps it for the
+  session. Velopack when `process.platform === 'win32'`, the app is packaged, and
+  `new UpdateManager('https://github.com/memrynote/memry')` constructs; electron-updater in every
+  other case, which covers macOS, Linux, and Windows installs made by the older NSIS installer,
+  where Velopack's constructor throws `This application is not properly installed`. Velopack reads
+  the GitHub releases feed itself (`releases.win.json` plus the `.nupkg` assets) and has no
+  `app-update.yml`. Both backends drive the same state machine in
+  `apps/desktop/src/main/updater.ts`, so the `phase` values, the severity classification, the
+  install marker and the install-health streak below are backend-neutral. What differs is the
+  library's own log lines, which carry scope `ElectronUpdater` on one path and scope `Velopack` on
+  the other.
 - **Updater failures**: every failure in `apps/desktop/src/main/updater.ts` logs a
   `describeUpdaterError()` field bag alongside the raw error, so a silent auto-update failure is
   diagnosable from Loki alone: `phase` (`startup-check`, `scheduled-check`, `auto-check-enable`,
@@ -1095,6 +1106,11 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   be ordered, so "newer than the failing one" is not a test that can be written. Every field is
   re-validated on read and a corrupt file degrades to "no streak"; an install that has never failed
   has no file and behaves exactly as before.
+  Both backends share this streak and the pending-install marker (`update-install-attempt.json`,
+  reported as `UPDATE_INSTALL_DID_NOT_APPLY`). On Velopack the marker is written before the hand-off
+  to `Update.exe` and read on the next launch, and an `install`-phase failure advances the streak
+  exactly as above. Velopack does no download-time staging, so it never produces the
+  `downloaded`-phase attempts Squirrel.Mac does.
 - **Expired GitHub signed asset URLs**: GitHub serves a release asset by redirecting to a
   short-lived signed `release-assets.githubusercontent.com` URL. When the follow-up GET lands after
   that token expires, GitHub answers with the non-standard status **618 `jwt:expired`**, and
