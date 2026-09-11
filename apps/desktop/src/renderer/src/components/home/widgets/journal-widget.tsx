@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatTimeOfDay } from '@/lib/time-format'
 import {
   buildWeekDays,
+  buildUpcomingDays,
   recentEntryDates,
   relativeDayLabel,
   entrySnippet
@@ -49,11 +50,26 @@ export function JournalWidget({ size }: WidgetComponentProps): React.JSX.Element
     [todayIso, entryDates, lang]
   )
   const recentDates = useMemo(() => recentEntryDates(allEntries, limit), [allEntries, limit])
+  const upcomingDays = useMemo(() => buildUpcomingDays(todayIso, lang), [todayIso, lang])
 
   const entryQueries = useQueries({
     queries: recentDates.map((date) => ({
       queryKey: journalKeys.entry(date),
       queryFn: () => journalService.getEntry(date),
+      staleTime: ENTRY_STALE_TIME,
+      gcTime: ENTRY_GC_TIME
+    }))
+  })
+
+  // One read per upcoming day and no more: the window is a fixed four days, so this
+  // cannot fan out per rendered day of an open-ended range. Read the entry cache
+  // directly instead of gating on the heatmap -- the window can cross into a year no
+  // heatmap covers (Dec 30 -> Jan 1), and these are the keys `useJournalChangeEvents`
+  // already invalidates, so an entry written for a future day refreshes this section.
+  const upcomingQueries = useQueries({
+    queries: upcomingDays.map((day) => ({
+      queryKey: journalKeys.entry(day.iso),
+      queryFn: () => journalService.getEntry(day.iso),
       staleTime: ENTRY_STALE_TIME,
       gcTime: ENTRY_GC_TIME
     }))
@@ -163,6 +179,48 @@ export function JournalWidget({ size }: WidgetComponentProps): React.JSX.Element
           )
         })
       )}
+
+      {/* Upcoming: today plus the next three local days. Navigation targets first,
+          previews second -- an empty day stays clickable and is never dressed up as
+          an entry. Calendar events deliberately stay in the calendar widget. */}
+      <section className="mt-0.5 flex flex-col border-t pt-2.5">
+        <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
+          {t('home.widget.journalUpcoming')}
+        </h3>
+        {upcomingDays.map((day, index) => {
+          const entry = upcomingQueries[index]?.data
+          const snippet = entry ? entrySnippet(entry.content, 60) : ''
+          return (
+            <button
+              key={day.iso}
+              type="button"
+              data-testid="journal-upcoming-day"
+              data-date={day.iso}
+              onClick={() => openJournal(day.iso)}
+              className="-mx-2 flex items-baseline gap-2 rounded px-2 py-1 text-start hover:bg-muted/40 active:bg-muted/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
+            >
+              <span
+                className={`w-20 shrink-0 text-[12px] font-medium ${
+                  day.isToday ? 'text-[var(--tint)]' : 'text-foreground/80'
+                }`}
+              >
+                {index === 0
+                  ? t('home.widget.journalToday')
+                  : index === 1
+                    ? t('home.widget.journalTomorrow')
+                    : `${day.weekdayShort} ${day.dayNum}`}
+              </span>
+              <span
+                className={`truncate text-[12px] leading-5 ${
+                  snippet ? 'text-text-tertiary' : 'text-muted-foreground/70'
+                }`}
+              >
+                {snippet || t('home.widget.journalNoEntryYet')}
+              </span>
+            </button>
+          )
+        })}
+      </section>
     </div>
   )
 }
