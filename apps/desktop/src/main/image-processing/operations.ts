@@ -13,7 +13,7 @@ const MAX_INBOX_THUMBNAIL_DIMENSION = 400
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'])
 const VIDEO_TYPES = new Set(['video/mp4', 'video/webm'])
 
-type SharpFactory = typeof import('sharp')
+type SharpFactory = typeof import('sharp').default
 
 let sharpPromise: Promise<SharpFactory> | null = null
 let cachedFfmpegPath: string | null | undefined
