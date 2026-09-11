@@ -75,7 +75,7 @@ vi.mock('@/components/ui/sidebar', () => ({
   SidebarMenuButton: ({ children }: { children: ReactNode }) => (
     <button type="button">{children}</button>
   ),
-  useSidebar: () => ({ isMobile: false })
+  useSidebar: () => ({ isMobile: false, open: true, setOpen: vi.fn(), setOpenMobile: vi.fn() })
 }))
 vi.mock('@/components/download-vault-dialog', () => ({
   DownloadVaultDialog: () => null

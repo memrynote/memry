@@ -160,6 +160,7 @@ vi.mock('@/hooks', () => ({
   useMouseNavButtons: vi.fn(),
   useChordShortcuts: () => true,
   useSettingsShortcut: vi.fn(),
+  useSwitchVaultShortcut: vi.fn(),
   useNewNoteShortcut: vi.fn(),
   useUndoKeyboardShortcut: vi.fn(),
   useReminderNotifications: vi.fn(),

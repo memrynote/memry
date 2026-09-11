@@ -903,6 +903,7 @@
         "quickSearch": "Open quick search",
         "createNote": "Create a note",
         "openSettings": "Open settings",
+        "switchVault": "Switch vault",
         "keyboardShortcuts": "Open keyboard shortcuts",
         "undoTaskAction": "Undo last task action",
         "toggleSidebar": "Toggle the sidebar",

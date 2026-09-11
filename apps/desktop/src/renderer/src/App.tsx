@@ -38,6 +38,7 @@ import {
   useTaskOrder,
   useVault,
   useSettingsShortcut,
+  useSwitchVaultShortcut,
   useNewNoteShortcut,
   useUndoKeyboardShortcut,
   useReminderNotifications,
@@ -48,6 +49,7 @@ import {
 } from '@/hooks'
 import { matchesShortcut } from '@/hooks/use-keyboard-shortcuts-base'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
+import { requestVaultSwitcherOpen } from '@/lib/vault-switcher-open'
 import { HintModeProvider } from '@/contexts/hint-mode'
 import { HintOverlay, HintIndicator } from '@/components/hint-overlay'
 import { CommandPalette } from '@/components/search/command-palette'
@@ -232,6 +234,7 @@ const AppContent = (): React.JSX.Element => {
   const isChordActive = useChordShortcuts()
   const { open: openSettings } = useSettingsModal()
   useSettingsShortcut(openSettings)
+  useSwitchVaultShortcut(requestVaultSwitcherOpen)
   useNewNoteShortcut(() => void handleNewNote())
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders

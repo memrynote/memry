@@ -1422,6 +1422,10 @@
         "settings": {
           "label": "Open Settings",
           "description": "Open the settings panel"
+        },
+        "switchVault": {
+          "label": "Switch Vault",
+          "description": "Open the vault switcher"
         }
       },
       "tabs": {
