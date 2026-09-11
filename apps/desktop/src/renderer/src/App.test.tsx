@@ -547,7 +547,7 @@ describe('App', () => {
       render(<App />)
     })
 
-    // App, UpdatePromptDialog and UpdateReleaseNotesTabOpener share one subscription.
+    // App and the install-failed dialog share one subscription.
     expect(updaterListeners).toHaveLength(1)
 
     const push = async (percent: number): Promise<void> => {

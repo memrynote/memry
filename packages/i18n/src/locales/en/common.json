@@ -984,5 +984,44 @@
       "clickRow": "Click row",
       "reset": "Reset"
     }
+  },
+  "update": {
+    "available": "Update available",
+    "downloading": "Downloading {version}",
+    "ready": "Update ready",
+    "failed": "Update failed",
+    "downloadAction": "Download",
+    "restartAction": "Restart",
+    "detailsAction": "Details",
+    "popover": {
+      "readyTitle": "Memry {version} is ready",
+      "availableTitle": "Memry {version} is available",
+      "readySubtitle": "You're on {current}",
+      "availableSubtitle": "You're on {current} · nothing has downloaded yet",
+      "allChanges": "All changes",
+      "restartNow": "Restart now",
+      "onNextQuit": "On next quit",
+      "download": "Download",
+      "notNow": "Not now",
+      "moreOptions": "More update options",
+      "skipVersion": "Skip {version}",
+      "turnOffAuto": "Turn off automatic updates",
+      "copyVersionInfo": "Copy version info"
+    },
+    "installing": {
+      "title": "Installing {version}",
+      "titleUnknownVersion": "Installing update",
+      "subtitle": "Memry will reopen in a moment. Everything you wrote is already on disk."
+    },
+    "installFailed": {
+      "title": "Memry couldn't finish installing {version}",
+      "titleUnknownVersion": "Memry couldn't finish installing the update",
+      "body": "Your vault was never touched — an update is applied to the app, not to your notes. You're still on {current} and everything works as before.",
+      "errorLabel": "What went wrong",
+      "downloadManually": "Download {version} manually",
+      "downloadManuallyUnknownVersion": "Download Memry manually",
+      "tryAgain": "Try again",
+      "copyDetails": "Copy details"
+    }
   }
 }
