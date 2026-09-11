@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./inline": "./src/inline/index.ts",
     "./blocks": "./src/blocks/index.ts",
+    "./code-block": "./src/code-block.ts",
     "./conformance": "./src/conformance.ts",
     "./note-refs": "./src/blocks/rewrite-note-refs.ts",
     "./server": "./src/server.ts"
@@ -20,7 +21,9 @@
   "dependencies": {
     "@blocknote/code-block": "^0.47.1",
     "@blocknote/core": "^0.47.1",
-    "@memry/shared": "workspace:*"
+    "@memry/shared": "workspace:*",
+    "@shikijs/langs-precompiled": "^3",
+    "prosemirror-highlight": "^0.13.0"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*"

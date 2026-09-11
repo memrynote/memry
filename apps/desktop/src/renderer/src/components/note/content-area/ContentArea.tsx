@@ -108,6 +108,7 @@ import {
 } from './hooks'
 import { BlockMarqueeOverlay } from './block-marquee-overlay'
 import { TableBorderHandles } from './table-border-handles'
+import { CodeBlockToolbar } from './code-block-toolbar'
 import { PasteLinkMenu } from './paste-link-menu'
 import { handleEditorPaste, isSelectionInTableCell } from './table-cell-paste'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
@@ -2144,6 +2145,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               `TableHandleMenu` / `TableCellMenu`, which need the editor and
               components contexts this view provides. */}
             <TableBorderHandles containerEl={innerContainerEl} />
+            <CodeBlockToolbar containerEl={innerContainerEl} />
           </BlockNoteView>
 
           {aiEnabled && (

@@ -1362,6 +1362,12 @@ importers:
       '@memry/shared':
         specifier: workspace:*
         version: link:../shared
+      '@shikijs/langs-precompiled':
+        specifier: ^3
+        version: 3.23.0
+      prosemirror-highlight:
+        specifier: ^0.13.0
+        version: 0.13.0(@shikijs/types@3.23.0)(@types/hast@3.0.4)(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-transform@1.11.0)(prosemirror-view@1.41.6)
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*

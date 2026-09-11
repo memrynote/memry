@@ -35,11 +35,25 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Bullet list, numbered list, check list
 - Quote, callout
 - Toggle list (collapsible section — nest text, images, even other toggles inside it)
-- Code block (language picker)
+- Code block (language picker: 50 languages, alphabetical, including PowerShell and KQL)
 - Divider
 - Image, file
 - Table
 - Wiki-link block (or inline `[[...]]`)
+
+## Code Blocks
+
+`/code` or ` ``` ` starts a code block. Point at one, or put the cursor in it,
+and a small toolbar appears in its top-right corner:
+
+- the **language picker**, which sets the syntax highlighting — 50 languages,
+  alphabetical, Plain Text first, including PowerShell and KQL
+- **Copy code**, which puts the whole block on the clipboard
+
+Highlighting follows your theme: the same block is light in the light theme and
+dark in the dark one, on the sidebar's own background rather than a black slab.
+Code text sits one notch below body text and scales with **Appearance → Font
+Size**.
 
 ## Tables
 
