@@ -74,6 +74,51 @@ describe('tabCrudReducer', () => {
     vi.unstubAllGlobals()
   })
 
+  it('carries viewState onto a singleton focused in another group', () => {
+    // #2071: a journal tab opened from the command palette lives at
+    // `/journal/<date>` with an entityId, so a reminder's `/journal` open misses
+    // both path-keyed dedup branches and lands here. Dropping the incoming
+    // viewState left that tab on the day it already showed — today — instead of
+    // the reminder's date.
+    const state = baseState({
+      tabGroups: {
+        g1: group('g1', [tab('tasks', 'tasks', { path: '/tasks' })]),
+        g2: group('g2', [
+          tab('journal', 'journal', {
+            path: '/journal/2026-05-10',
+            entityId: '2026-05-10',
+            viewState: { date: '2026-05-10' }
+          })
+        ])
+      }
+    })
+
+    const next = tabCrudReducer(
+      state,
+      openAction({
+        tab: {
+          type: 'journal',
+          title: 'Journal',
+          icon: 'book-open',
+          path: '/journal',
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false,
+          viewState: { date: '2026-03-02' }
+        }
+      })
+    )
+
+    const focused = next.tabGroups.g2.tabs.find((t) => t.id === 'journal')
+    expect(focused?.viewState).toEqual({ date: '2026-03-02' })
+    expect(next.tabGroups.g2.activeTabId).toBe('journal')
+    expect(next.activeGroupId).toBe('g2')
+    // Focused, never cloned.
+    expect(next.tabGroups.g1.tabs).toHaveLength(1)
+    expect(next.tabGroups.g2.tabs).toHaveLength(1)
+  })
+
   it('opens tabs through replace, singleton, entity, insertion, and background paths', () => {
     const state = baseState()
 

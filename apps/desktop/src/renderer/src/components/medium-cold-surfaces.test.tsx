@@ -42,6 +42,7 @@ vi.mock('sonner', () => ({
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
     info: vi.fn(),
+    warn: vi.fn(),
     error: vi.fn()
   })
 }))
@@ -397,15 +398,52 @@ describe('medium cold renderer surfaces', () => {
     )
     expect(dismissMutate).toHaveBeenCalledWith('rem-1')
 
+    // #2071: the OS-notification click opens the reminder's OWN day. The date
+    // must ride `viewState.date` — the journal page reads it there and nowhere
+    // else — and the tab must keep the singleton `/journal` path so an already
+    // open journal tab is moved to that day instead of staying on today.
     act(() => {
       clickCallbacks[0]({ reminder: reminders[1] })
     })
     expect(openTab).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'journal',
-        path: '/journal?date=2026-05-10'
+        path: '/journal',
+        viewState: { date: '2026-05-10' }
       })
     )
+
+    // The in-app toast's "View" is the same navigation, not a second one.
+    openTab.mockClear()
+    toastMock.base.mock.calls[1][1].action.onClick()
+    expect(openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'journal',
+        path: '/journal',
+        viewState: { date: '2026-05-10' }
+      })
+    )
+
+    // A note reminder still opens its note tab, unchanged.
+    openTab.mockClear()
+    act(() => {
+      clickCallbacks[0]({ reminder: reminders[2] })
+    })
+    expect(openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', path: '/notes/note-3', entityId: 'note-3' })
+    )
+
+    // A journal target that is not a real day opens nothing at all, rather than
+    // falling through to today's entry.
+    openTab.mockClear()
+    toastMock.error.mockClear()
+    act(() => {
+      clickCallbacks[0]({
+        reminder: { id: 'rem-7', title: 'Broken', targetType: 'journal', targetId: '2026-02-31' }
+      })
+    })
+    expect(openTab).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith('reminder.dataUnavailable')
 
     unmount()
     expect(unsubDue).toHaveBeenCalled()

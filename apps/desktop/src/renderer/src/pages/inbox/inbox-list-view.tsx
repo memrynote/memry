@@ -43,6 +43,9 @@ import { notesKeys } from '@/hooks/use-notes-query'
 import { useInboxKeyboard } from '@/hooks/use-inbox-keyboard'
 import type { FilingTarget, ImageFilingMode } from '@memry/domain-inbox'
 import { toast } from 'sonner'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:InboxListView')
 
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
 
@@ -434,23 +437,31 @@ export function InboxListView({
         void inboxService.markViewed(entry.inboxItemId)
       }
 
-      openTab(
-        buildReminderTargetTab({
-          targetType: entry.nav.targetType,
-          targetId: entry.nav.targetId,
-          targetTitle: entry.nav.targetTitle,
-          projectId: entry.nav.projectId,
-          anchorId: entry.nav.anchorId,
-          highlightStart: entry.nav.highlightStart,
-          highlightEnd: entry.nav.highlightEnd,
-          highlightText: entry.nav.highlightText,
-          fallbacks: {
-            note: t('reminder.noteFallback'),
-            journal: t('reminder.journalFallback'),
-            task: t('reminder.taskFallback')
-          }
-        })
-      )
+      const tab = buildReminderTargetTab({
+        targetType: entry.nav.targetType,
+        targetId: entry.nav.targetId,
+        targetTitle: entry.nav.targetTitle,
+        projectId: entry.nav.projectId,
+        anchorId: entry.nav.anchorId,
+        highlightStart: entry.nav.highlightStart,
+        highlightEnd: entry.nav.highlightEnd,
+        highlightText: entry.nav.highlightText,
+        fallbacks: {
+          note: t('reminder.noteFallback'),
+          journal: t('reminder.journalFallback'),
+          task: t('reminder.taskFallback')
+        }
+      })
+
+      // A journal reminder whose stored date is unusable has no day to open.
+      // Say so rather than dropping the user on today's entry.
+      if (!tab) {
+        log.warn(`Reminder target is unusable: ${entry.nav.targetType} ${entry.nav.targetId}`)
+        toast.error(t('reminder.dataUnavailable'))
+        return
+      }
+
+      openTab(tab)
     },
     [openTab, t, setActiveDetailItemId]
   )

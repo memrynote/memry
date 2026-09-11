@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import { useTabs } from '@/contexts/tabs'
 import { useT } from '@memry/i18n/renderer'
 import { useDismissReminder } from '@/hooks/use-reminders'
+import { buildReminderTargetTab } from '@/lib/open-reminder-target'
 import type { ReminderWithTarget } from '@/services/reminder-service'
 
 const log = createLogger('Hook:ReminderNotifications')
@@ -44,59 +45,49 @@ interface ReminderClickedEvent {
 export function useReminderNotifications(): void {
   const { openTab } = useTabs()
   const { t } = useT('common')
+  // The reminder target fallbacks live in the inbox namespace, beside the other
+  // reminder strings the detail panel and the reminder list already use.
+  const { t: inboxT } = useT('inbox')
   const dismissMutation = useDismissReminder()
 
-  // Navigate to reminder target
+  // Navigate to reminder target.
+  //
+  // Deliberately the SAME builder the inbox reminder detail and the reminder
+  // list use. This path used to carry its own switch, which opened a journal as
+  // `path: '/journal?date=<date>'` with no `viewState` — the journal page reads
+  // the day off `viewState.date` and ignores the query, and the singleton-tab
+  // dedup matches on `path`, so clicking a due journal reminder focused the
+  // open journal tab and left it on today (#2071). It also had no `task` case
+  // at all, so a due task reminder's "View" did nothing.
   const navigateToTarget = useCallback(
     (reminder: ReminderWithTarget) => {
-      switch (reminder.targetType) {
-        case 'note':
-        case 'highlight':
-          openTab({
-            type: 'note',
-            title: reminder.targetTitle || 'Note',
-            icon: 'file-text',
-            path: `/notes/${reminder.targetId}`,
-            entityId: reminder.targetId,
-            isPinned: false,
-            isModified: false,
-            isPreview: false,
-            isDeleted: false
-          })
-          break
+      const tab = buildReminderTargetTab({
+        targetType: reminder.targetType,
+        targetId: reminder.targetId,
+        targetTitle: reminder.targetTitle,
+        projectId: reminder.projectId ?? undefined,
+        anchorId: reminder.anchorId ?? undefined,
+        highlightStart: reminder.highlightStart ?? undefined,
+        highlightEnd: reminder.highlightEnd ?? undefined,
+        highlightText: reminder.highlightText ?? undefined,
+        fallbacks: {
+          note: inboxT('reminder.noteFallback'),
+          journal: inboxT('reminder.journalFallback'),
+          task: inboxT('reminder.taskFallback')
+        }
+      })
 
-        case 'journal':
-          openTab({
-            type: 'journal',
-            title: `Journal - ${reminder.targetId}`,
-            icon: 'book-open',
-            path: `/journal?date=${reminder.targetId}`,
-            isPinned: false,
-            isModified: false,
-            isPreview: false,
-            isDeleted: false
-          })
-          break
-
-        case 'note_date':
-          // Inline date pill reminder: open the note and scroll to the pill via
-          // its stable anchor id (note.tsx reads viewState.anchorId).
-          openTab({
-            type: 'note',
-            title: reminder.targetTitle || 'Note',
-            icon: 'file-text',
-            path: `/notes/${reminder.targetId}`,
-            entityId: reminder.targetId,
-            isPinned: false,
-            isModified: false,
-            isPreview: false,
-            isDeleted: false,
-            viewState: { anchorId: reminder.anchorId ?? undefined }
-          })
-          break
+      // A journal reminder whose stored date is unusable has no day to open.
+      // Say so rather than dropping the user on today's entry.
+      if (!tab) {
+        log.warn(`Reminder ${reminder.id} has an unusable target: ${reminder.targetId}`)
+        toast.error(inboxT('reminder.dataUnavailable'))
+        return
       }
+
+      openTab(tab)
     },
-    [openTab]
+    [openTab, inboxT]
   )
 
   // Show toast notification for a reminder
