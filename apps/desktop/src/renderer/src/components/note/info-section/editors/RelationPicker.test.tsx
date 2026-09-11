@@ -9,7 +9,8 @@ import { RelationPicker } from './RelationPicker'
 
 const mocks = vi.hoisted(() => ({
   quick: vi.fn(),
-  searchEvents: vi.fn()
+  searchEvents: vi.fn(),
+  listCanvases: vi.fn()
 }))
 
 vi.mock('@/services/search-service', () => ({
@@ -17,6 +18,9 @@ vi.mock('@/services/search-service', () => ({
 }))
 vi.mock('@/services/calendar-service', () => ({
   calendarService: { searchEvents: (input: unknown) => mocks.searchEvents(input) }
+}))
+vi.mock('@/services/canvas-service', () => ({
+  canvasService: { list: () => mocks.listCanvases() }
 }))
 
 let i18nEn: I18nInstance
@@ -36,11 +40,16 @@ interface MockHit {
 function mockSearch({
   notes = [],
   tasks = [],
-  events = []
+  events = [],
+  canvases = [],
+  journals = []
 }: {
   notes?: MockHit[]
   tasks?: MockHit[]
   events?: MockHit[]
+  canvases?: MockHit[]
+  /** `id` is the entry's ISO date. */
+  journals?: MockHit[]
 }): void {
   const results: SearchResultItem[] = [
     ...notes.map((note) => ({
@@ -74,6 +83,22 @@ function mockSearch({
         priority: 0,
         completedAt: null
       }
+    })),
+    ...journals.map((journal) => ({
+      id: `jrn_${journal.id}`,
+      type: 'journal' as const,
+      title: journal.title,
+      snippet: '',
+      score: 1,
+      normalizedScore: 1,
+      matchType: 'fuzzy' as const,
+      modifiedAt: '2026-01-01T00:00:00.000Z',
+      metadata: {
+        type: 'journal' as const,
+        date: journal.id,
+        path: `/journal/${journal.id}.md`,
+        tags: []
+      }
     }))
   ]
   mocks.quick.mockResolvedValue({ results, queryTimeMs: 1 })
@@ -84,6 +109,16 @@ function mockSearch({
       startAt: '2026-01-01T00:00:00.000Z',
       endAt: null,
       isAllDay: false
+    }))
+  })
+  mocks.listCanvases.mockResolvedValue({
+    canvases: canvases.map((canvas) => ({
+      id: canvas.id,
+      title: canvas.title,
+      folder: null,
+      icon: null,
+      createdAt: 0,
+      updatedAt: 0
     }))
   })
 }
@@ -104,6 +139,41 @@ describe('RelationPicker', () => {
     expect(await screen.findByText('NOTES & FILES')).toBeInTheDocument()
     expect(await screen.findByText('TASKS')).toBeInTheDocument()
     expect(screen.queryByText('EVENTS')).not.toBeInTheDocument()
+    expect(screen.queryByText('CANVASES')).not.toBeInTheDocument()
+    expect(screen.queryByText('JOURNAL')).not.toBeInTheDocument()
+  })
+
+  it('searches canvases and journal entries in their own groups', async () => {
+    mockSearch({
+      canvases: [{ id: 'cnv_1', title: 'Sprint Board' }],
+      journals: [{ id: '2026-05-10', title: 'Sprint retro' }]
+    })
+    const onSelect = vi.fn()
+    renderWithI18n(<RelationPicker onSelect={onSelect} />)
+    await userEvent.type(screen.getByRole('textbox'), 'sprint')
+
+    expect(await screen.findByText('CANVASES')).toBeInTheDocument()
+    expect(await screen.findByText('JOURNAL')).toBeInTheDocument()
+
+    await userEvent.click(await screen.findByText('Sprint Board'))
+    expect(onSelect).toHaveBeenCalledWith('memry://canvas/cnv_1')
+
+    // A journal URI carries the DATE, never the note row id.
+    await userEvent.click(await screen.findByText('Sprint retro'))
+    expect(onSelect).toHaveBeenCalledWith('memry://journal/2026-05-10')
+  })
+
+  it('filters canvases by title rather than listing every canvas', async () => {
+    mockSearch({
+      canvases: [
+        { id: 'cnv_1', title: 'Sprint Board' },
+        { id: 'cnv_2', title: 'Holiday plans' }
+      ]
+    })
+    renderWithI18n(<RelationPicker onSelect={vi.fn()} />)
+    await userEvent.type(screen.getByRole('textbox'), 'sprint')
+    expect(await screen.findByText('Sprint Board')).toBeInTheDocument()
+    expect(screen.queryByText('Holiday plans')).not.toBeInTheDocument()
   })
 
   it('emits a well-formed URI on select', async () => {
@@ -159,6 +229,7 @@ describe('RelationPicker', () => {
     renderWithI18n(<RelationPicker onSelect={vi.fn()} />)
     expect(mocks.quick).not.toHaveBeenCalled()
     expect(mocks.searchEvents).not.toHaveBeenCalled()
+    expect(mocks.listCanvases).not.toHaveBeenCalled()
   })
 
   it('shows an empty state when a search has no matches anywhere', async () => {

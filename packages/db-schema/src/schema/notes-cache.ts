@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core'
+import type { RelationKind } from '@memry/contracts/relation-uri'
 import { sql } from 'drizzle-orm'
 import { nocaseText } from './nocase.ts'
 import type { FileType } from '@memry/shared/file-types'
@@ -137,7 +138,10 @@ export const propertyRefs = sqliteTable(
       .notNull()
       .references(() => noteCache.id, { onDelete: 'cascade' }),
     propertyName: text('property_name').notNull(),
-    targetType: text('target_type').$type<'note' | 'task' | 'event'>().notNull(),
+    // Widened as the relation grammar grows (canvas, journal). Safe without a
+    // migration: the column is plain TEXT and this table is a rebuildable
+    // index-DB cache, never synced — an older build simply rebuilds it.
+    targetType: text('target_type').$type<RelationKind>().notNull(),
     targetId: text('target_id').notNull()
   },
   (table) => [

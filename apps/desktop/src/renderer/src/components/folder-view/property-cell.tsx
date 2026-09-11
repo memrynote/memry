@@ -23,6 +23,8 @@ import {
   FileText,
   CheckSquare,
   Calendar,
+  PenTool,
+  BookOpen,
   type AppIcon
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -762,7 +764,9 @@ const EMPTY_RELATION_URIS: string[] = []
 const RELATION_KIND_ICONS: Record<RelationKind, AppIcon> = {
   note: FileText,
   task: CheckSquare,
-  event: Calendar
+  event: Calendar,
+  canvas: PenTool,
+  journal: BookOpen
 }
 
 /**

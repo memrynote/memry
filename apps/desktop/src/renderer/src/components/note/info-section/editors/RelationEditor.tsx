@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react'
-import { FileText, CheckSquare, Calendar, Plus, X, type AppIcon } from '@/lib/icons'
+import {
+  FileText,
+  CheckSquare,
+  Calendar,
+  PenTool,
+  BookOpen,
+  Plus,
+  X,
+  type AppIcon
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { propertiesService, type ResolvedRelationRef } from '@/services/properties-service'
@@ -15,7 +24,9 @@ const log = createLogger('RelationEditor')
 const KIND_ICONS: Record<RelationKind, AppIcon> = {
   note: FileText,
   task: CheckSquare,
-  event: Calendar
+  event: Calendar,
+  canvas: PenTool,
+  journal: BookOpen
 }
 
 interface RelationEditorProps {
