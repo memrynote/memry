@@ -5,6 +5,7 @@ import { createLogger } from './lib/logger'
 import { broadcastToAllWindows } from './lib/window-broadcast'
 import { getMainI18n } from './lib/main-i18n'
 import { formatAppVersionForDisplay } from './lib/app-version-display'
+import { createInstallerHandoff } from './installer-handoff'
 import { getUpdaterPrefs, setAutoCheckPref, setAutoDownloadPref, setSkippedVersion } from './store'
 import { trackMainError, trackMainWarning } from './telemetry/diagnostics'
 import { trackMainEvent } from './telemetry/track'
@@ -353,9 +354,8 @@ const host: UpdaterHost = {
 }
 
 /**
- * One decision, once. Windows packaged builds prefer Velopack; every other platform,
- * and a Windows install that is not a Velopack install (NSIS), stays on
- * electron-updater unchanged.
+ * One decision, once. Windows packaged builds prefer Velopack; every other platform
+ * stays on electron-updater unchanged.
  */
 function selectUpdaterBackend(host: UpdaterHost): UpdaterBackend {
   if (process.platform === 'win32') {
@@ -363,6 +363,9 @@ function selectUpdaterBackend(host: UpdaterHost): UpdaterBackend {
     if (velopack) {
       return velopack
     }
+    // An NSIS install. electron-updater keeps checking and downloading; the install
+    // step migrates to Velopack when the release carries its installer.
+    return createElectronUpdaterBackend(host, { handoff: createInstallerHandoff(host) })
   }
   return createElectronUpdaterBackend(host)
 }
@@ -447,6 +450,15 @@ export function initializeUpdater(): void {
   // performQuitAndInstall() instead, which must not install twice.
   app.on('will-quit', () => {
     if (state.status === 'downloaded' && !quitAndInstallRequested) {
+      // Same marker as the Restart path, written before the hand-off: the
+      // installer runs after this process exits, so this is the last evidence.
+      if (!installOnQuitDisabledForSessionEnd) {
+        markUpdateInstallStarted(
+          getCurrentVersion(),
+          state.availableVersion ?? undefined,
+          backend?.installer
+        )
+      }
       backend?.applyOnQuit()
     }
   })
@@ -667,7 +679,11 @@ export function performQuitAndInstall(): void {
   // and the shutdown chain has already disposed the telemetry runtime and the
   // log-ship transport, so an install failure from here on reaches nobody. The
   // next launch reads this marker and reports the install that never applied.
-  markUpdateInstallStarted(getCurrentVersion(), state.availableVersion ?? undefined)
+  markUpdateInstallStarted(
+    getCurrentVersion(),
+    state.availableVersion ?? undefined,
+    backend?.installer
+  )
   backend?.applyAndRestart()
 }
 

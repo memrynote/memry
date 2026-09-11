@@ -64,6 +64,7 @@ export function createVelopackBackend(host: UpdaterHost): UpdaterBackend | null 
 
   const backend: UpdaterBackend = {
     kind: 'velopack',
+    installer: 'velopack',
     async check(): Promise<void> {
       host.onChecking()
       let info: UpdateInfo | null

@@ -36,6 +36,8 @@ export interface UpdaterHost {
 
 export interface UpdaterBackend {
   readonly kind: UpdaterBackendKind
+  /** The installer an install started right now would use. It changes once a hand-off is armed. */
+  readonly installer: UpdateInstaller
   /**
    * Drives onChecking → onUpdateAvailable/onUpToDate. On failure the host must have
    * been told (through host.onError, or through the backend's own event stream if it

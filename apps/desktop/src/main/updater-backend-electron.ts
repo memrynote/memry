@@ -1,7 +1,9 @@
+import { app } from 'electron'
 import { autoUpdater, type UpdateInfo } from 'electron-updater'
 import { createLogger } from './lib/logger'
 import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { htmlToPlainText } from './lib/html-to-plain-text'
+import type { InstallerHandoff } from './installer-handoff'
 import { isExpiredSignedAssetError, isUpdaterCheckPhase } from './updater-error-severity'
 import { describeUpdaterError } from './updater'
 import { plainTextReleaseNotes, stripDeveloperChangelog } from './updater-release-notes'
@@ -43,7 +45,11 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 
 const logger = createLogger('Updater')
 
-export function createElectronUpdaterBackend(host: UpdaterHost): UpdaterBackend {
+export function createElectronUpdaterBackend(
+  host: UpdaterHost,
+  options: { handoff?: InstallerHandoff } = {}
+): UpdaterBackend {
+  const { handoff } = options
   /**
    * Retries still available for the in-flight check. electron-updater emits its
    * `error` event *before* checkForUpdates() rejects, so without this the first
@@ -76,7 +82,16 @@ export function createElectronUpdaterBackend(host: UpdaterHost): UpdaterBackend 
   })
 
   autoUpdater.on('update-downloaded', (info) => {
-    host.onDownloaded(toAvailableUpdate(info))
+    if (!handoff) {
+      host.onDownloaded(toAvailableUpdate(info))
+      return
+    }
+    // The host stays in `downloading` until the Velopack installer is on disk and
+    // verified (or the hand-off declined), so "Restart to install" never appears
+    // before everything the hand-off needs exists.
+    void handoff
+      .prepare(info, (percent) => host.onDownloadProgress(percent))
+      .then(() => host.onDownloaded(toAvailableUpdate(info)))
   })
 
   autoUpdater.on('error', (error) => {
@@ -102,6 +117,9 @@ export function createElectronUpdaterBackend(host: UpdaterHost): UpdaterBackend 
 
   return {
     kind: 'electron-updater',
+    get installer() {
+      return handoff?.armed() ? 'velopack-handoff' : 'electron-updater'
+    },
     /**
      * Ask again when GitHub's signed release-asset URL expired between the redirect
      * and the follow-up GET (status 618, `jwt:expired`). electron-updater does not
@@ -139,13 +157,24 @@ export function createElectronUpdaterBackend(host: UpdaterHost): UpdaterBackend 
     setInstallOnQuit(enabled: boolean): void {
       autoUpdater.autoInstallOnAppQuit = enabled
     },
+    // electron-updater installs from its own `quit` hook when autoInstallOnAppQuit
+    // is on; `will-quit` runs first, so turning the flag off here once the hand-off
+    // script is running is what stops it from ALSO running the NSIS installer.
     applyOnQuit(): void {
-      // electron-updater installs from its own `quit` hook when autoInstallOnAppQuit is on.
+      if (!autoUpdater.autoInstallOnAppQuit) return
+      if (handoff?.launch()) {
+        autoUpdater.autoInstallOnAppQuit = false
+      }
     },
     // (isSilent=true, isForceRunAfter=true): install with no visible NSIS window
     // (adds /S) and relaunch afterwards (adds --force-run). macOS Squirrel relaunches
     // regardless; the flags only affect the Windows NSIS installer.
     applyAndRestart(): void {
+      if (handoff?.launch()) {
+        autoUpdater.autoInstallOnAppQuit = false
+        app.quit()
+        return
+      }
       autoUpdater.quitAndInstall(true, true)
     }
   }

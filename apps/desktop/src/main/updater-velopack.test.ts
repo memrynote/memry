@@ -114,6 +114,16 @@ vi.mock('./velopack-native', () => ({
   loadVelopack: () => ({ UpdateManager: mocks.UpdateManager })
 }))
 
+// The NSIS fallback path constructs the hand-off, which reads userData and the
+// filesystem; its own behaviour is covered in updater-nsis-handoff.test.ts.
+vi.mock('./installer-handoff', () => ({
+  createInstallerHandoff: () => ({
+    prepare: async () => {},
+    armed: () => false,
+    launch: () => false
+  })
+}))
+
 vi.mock('./store', () => ({
   getUpdaterPrefs: mocks.store.getUpdaterPrefs,
   setSkippedVersion: mocks.store.setSkippedVersion,
@@ -491,7 +501,7 @@ describe('velopack updater backend', () => {
 
       updater.performQuitAndInstall()
 
-      expect(markUpdateInstallStarted).toHaveBeenCalledWith('1.2.3', 'v1.2.4')
+      expect(markUpdateInstallStarted).toHaveBeenCalledWith('1.2.3', 'v1.2.4', 'velopack')
       expect(vi.mocked(markUpdateInstallStarted).mock.invocationCallOrder[0]).toBeLessThan(
         mocks.velopack.waitExitThenApplyUpdate.mock.invocationCallOrder[0]
       )
