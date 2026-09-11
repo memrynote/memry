@@ -66,7 +66,7 @@ is run by the version you currently have installed, not by the one being install
 these workarounds only take effect on updates _away from_ a build that contains them. If
 your updates are failing today, install the latest version manually once
 (uninstall from **Settings → Apps**, then run the installer from
-[the download page](https://memrynote.com/download); your vault and settings are kept).
+[the download page](https://memrynote.com/download/desktop); your vault and settings are kept).
 Updates after that run on their own.
 
 ## Run from Source
