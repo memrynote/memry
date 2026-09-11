@@ -108,13 +108,14 @@ export function SidebarUpdateRow(): React.JSX.Element | null {
       )}
       <button
         type="button"
-        onClick={
-          isFailed
-            ? reopenInstallFailed
-            : presentation.kind === 'available'
-              ? handleDownload
-              : handleRestart
-        }
+        // The row itself is the popover trigger, so a verb click has to stop here.
+        // Without this it both acts and opens the popover it is meant to skip.
+        onClick={(event) => {
+          event.stopPropagation()
+          if (isFailed) reopenInstallFailed()
+          else if (presentation.kind === 'available') handleDownload()
+          else handleRestart()
+        }}
         className={cn(
           '[grid-area:1/1] justify-self-end pointer-events-auto rounded text-[11px] font-medium',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tint-ring)]',

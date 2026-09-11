@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
+import { cloneElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 
 import { SidebarUpdateRow } from './sidebar-update-row'
@@ -9,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   downloadUpdate: vi.fn().mockResolvedValue(undefined),
   quitAndInstall: vi.fn().mockResolvedValue(undefined),
   reopenInstallFailed: vi.fn(),
+  openPopover: vi.fn(),
   state: {} as AppUpdateState
 }))
 
@@ -35,7 +37,12 @@ vi.mock('@/components/updater/update-popover', () => ({
 
 vi.mock('@/components/ui/popover', () => ({
   Popover: ({ children }: { children: ReactNode }) => <div data-testid="popover">{children}</div>,
-  PopoverTrigger: ({ children }: { children: ReactNode }) => <>{children}</>
+  // Mirrors Radix `asChild`: the trigger hands its onClick to the child element, so
+  // anything nested inside the row bubbles into it unless it stops first.
+  PopoverTrigger: ({ children }: { children: ReactNode }) =>
+    cloneElement(children as ReactElement<{ onClick?: () => void }>, {
+      onClick: mocks.openPopover
+    })
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -93,6 +100,24 @@ describe('SidebarUpdateRow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'downloadAction' }))
     expect(mocks.downloadUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it('acts from the trailing verb without also opening the popover', () => {
+    mocks.state = makeState({ status: 'downloaded', availableVersion: '2026.999.9' })
+    render(<SidebarUpdateRow />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'restartAction' }))
+    expect(mocks.quitAndInstall).toHaveBeenCalledTimes(1)
+    expect(mocks.openPopover).not.toHaveBeenCalled()
+  })
+
+  it('opens the popover when the row itself is clicked', () => {
+    mocks.state = makeState({ status: 'downloaded', availableVersion: '2026.999.9' })
+    render(<SidebarUpdateRow />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'ready' }))
+    expect(mocks.openPopover).toHaveBeenCalledTimes(1)
+    expect(mocks.quitAndInstall).not.toHaveBeenCalled()
   })
 
   it('restarts from the trailing verb once an update is ready', () => {
