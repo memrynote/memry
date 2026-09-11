@@ -9,8 +9,7 @@ const mocks = vi.hoisted(() => ({
   downloadUpdate: vi.fn().mockResolvedValue(undefined),
   quitAndInstall: vi.fn().mockResolvedValue(undefined),
   skipVersion: vi.fn().mockResolvedValue(undefined),
-  setAutoDownload: vi.fn().mockResolvedValue(undefined),
-  openTab: vi.fn()
+  setAutoDownload: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('@/hooks/use-app-updater', () => ({
@@ -21,8 +20,6 @@ vi.mock('@/hooks/use-app-updater', () => ({
     setAutoDownload: mocks.setAutoDownload
   })
 }))
-
-vi.mock('@/contexts/tabs', () => ({ useTabs: () => ({ openTab: mocks.openTab }) }))
 
 vi.mock('@/components/ui/popover', () => ({
   PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>
@@ -139,21 +136,25 @@ describe('UpdatePopover', () => {
     expect(screen.queryByRole('button', { name: /allChanges/ })).not.toBeInTheDocument()
   })
 
-  it('opens the release-notes tab from "All changes"', () => {
+  it('sends "All changes" to the latest release page', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
     render(
       <UpdatePopover
         kind="ready"
         version="2026.999.9"
-        state={state({ releaseNotes: '- One\n- Two', releaseNotesHtml: '<p>One</p>' })}
+        state={state({ releaseNotes: '- One\n- Two' })}
         onClose={vi.fn()}
       />
     )
 
     expect(screen.getByText('One')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /allChanges/ }))
-    expect(mocks.openTab).toHaveBeenCalledWith(
-      expect.objectContaining({ path: '/virtual/release-notes/2026.999.9' })
+    expect(open).toHaveBeenCalledWith(
+      'https://github.com/memrynote/memry/releases/latest',
+      '_blank',
+      'noopener,noreferrer'
     )
+    open.mockRestore()
   })
 
   it('holds skip and auto-update off in the overflow menu', () => {

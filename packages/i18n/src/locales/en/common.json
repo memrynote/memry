@@ -971,8 +971,8 @@
     "restartAction": "Restart",
     "detailsAction": "Details",
     "popover": {
-      "readyTitle": "Memry {version} is ready",
-      "availableTitle": "Memry {version} is available",
+      "readyTitle": "MemryNote {version} is ready",
+      "availableTitle": "MemryNote {version} is available",
       "readySubtitle": "You're on {current}",
       "availableSubtitle": "You're on {current} · nothing has downloaded yet",
       "allChanges": "All changes",
@@ -988,15 +988,15 @@
     "installing": {
       "title": "Installing {version}",
       "titleUnknownVersion": "Installing update",
-      "subtitle": "Memry will reopen in a moment. Everything you wrote is already on disk."
+      "subtitle": "MemryNote will reopen in a moment. Everything you wrote is already on disk."
     },
     "installFailed": {
-      "title": "Memry couldn't finish installing {version}",
-      "titleUnknownVersion": "Memry couldn't finish installing the update",
+      "title": "MemryNote couldn't finish installing {version}",
+      "titleUnknownVersion": "MemryNote couldn't finish installing the update",
       "body": "Your vault was never touched — an update is applied to the app, not to your notes. You're still on {current} and everything works as before.",
       "errorLabel": "What went wrong",
       "downloadManually": "Download {version} manually",
-      "downloadManuallyUnknownVersion": "Download Memry manually",
+      "downloadManuallyUnknownVersion": "Download MemryNote manually",
       "tryAgain": "Try again",
       "copyDetails": "Copy details"
     }

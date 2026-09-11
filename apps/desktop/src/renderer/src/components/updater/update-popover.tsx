@@ -11,12 +11,12 @@ import {
 import { ArrowUpRight, MoreHorizontal } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useAppUpdater } from '@/hooks/use-app-updater'
-import { useTabs } from '@/contexts/tabs'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
-import { planReleaseNotesTab } from './release-notes-tab'
 
 const log = createLogger('Component:UpdatePopover')
+
+const RELEASES_URL = 'https://github.com/memrynote/memry/releases/latest'
 
 const LEADING_MARKER = /^\s*(?:[-*•·–]|\d+[.)])\s*/
 const LEADING_EMOJI = /^[\p{Extended_Pictographic}️‍\s]+/u
@@ -62,7 +62,6 @@ export function UpdatePopover({
 }: UpdatePopoverProps): React.JSX.Element {
   const { t } = useT('common')
   const { downloadUpdate, quitAndInstall, skipVersion, setAutoDownload } = useAppUpdater()
-  const { openTab } = useTabs()
 
   const highlights = parseHighlights(state.releaseNotes)
 
@@ -100,21 +99,11 @@ export function UpdatePopover({
   }, [state.currentVersion, version, onClose])
 
   const handleAllChanges = useCallback(() => {
-    const plan = planReleaseNotesTab(state, null)
-    if (!plan) return
     onClose()
-    openTab({
-      type: 'virtual-note',
-      title: plan.title,
-      icon: 'file-text',
-      path: `/virtual/release-notes/${plan.version}`,
-      isPinned: false,
-      isModified: false,
-      isPreview: false,
-      isDeleted: false,
-      viewState: { content: plan.content, contentType: plan.contentType }
-    })
-  }, [state, openTab, onClose])
+    // Routed to the OS browser by the main-process openExternal allowlist. The full
+    // changelog belongs on the release page, not in a tab the user has to close.
+    window.open(RELEASES_URL, '_blank', 'noopener,noreferrer')
+  }, [onClose])
 
   const isReady = kind === 'ready'
 
