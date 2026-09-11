@@ -110,6 +110,7 @@
     "libsodium-wrappers-sumo": "^0.8.2",
     "sharp": "0.35.0",
     "sqlite-vec": "0.1.7-alpha.2",
+    "velopack": "1.2.110-ge826545",
     "y-leveldb": "^0.2.0",
     "yjs": "^13.6.29"
   },

@@ -65,6 +65,38 @@ function pruneOnnxRuntime(nodeModulesDir, platformName, archName) {
   }
 }
 
+// velopack ships a prebuilt for every platform it supports (~19 MB total) while its
+// loader only ever requires the host's, so a packaged build keeps exactly one.
+const VELOPACK_NATIVE_BINARIES = new Map([
+  ['win32-x64', 'velopack_nodeffi_win_x64_msvc.node'],
+  ['win32-ia32', 'velopack_nodeffi_win_x86_msvc.node'],
+  ['win32-arm64', 'velopack_nodeffi_win_arm64_msvc.node'],
+  ['darwin-x64', 'velopack_nodeffi_osx.node'],
+  ['darwin-arm64', 'velopack_nodeffi_osx.node'],
+  ['darwin-universal', 'velopack_nodeffi_osx.node'],
+  ['linux-x64', 'velopack_nodeffi_linux_x64_gnu.node'],
+  ['linux-arm64', 'velopack_nodeffi_linux_arm64_gnu.node']
+])
+
+function pruneVelopackNative(nodeModulesDir, platformName, archName) {
+  const nativeDir = join(nodeModulesDir, 'velopack', 'lib', 'native')
+  if (!existsSync(nativeDir)) {
+    return
+  }
+
+  const keptBinary = VELOPACK_NATIVE_BINARIES.get(`${platformName}-${archName}`)
+  const entries = readdirSync(nativeDir)
+  if (!keptBinary || !entries.includes(keptBinary)) {
+    return
+  }
+
+  for (const entry of entries) {
+    if (entry.endsWith('.node') && entry !== keptBinary) {
+      removePath(join(nativeDir, entry))
+    }
+  }
+}
+
 function pruneBetterSqliteBuildArtifacts(nodeModulesDir) {
   const betterSqliteRoot = join(nodeModulesDir, 'better-sqlite3')
 
@@ -115,6 +147,7 @@ export default async function prunePackagedApp(context) {
     }
 
     pruneOnnxRuntime(nodeModulesDir, context.electronPlatformName, archName)
+    pruneVelopackNative(nodeModulesDir, context.electronPlatformName, archName)
     pruneBetterSqliteBuildArtifacts(nodeModulesDir)
   }
 }
