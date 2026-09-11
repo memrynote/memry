@@ -1,18 +1,23 @@
 name: Publish Desktop Release
 
+# Build-only. Every platform is built and the asset set is validated here, then
+# staged as workflow artifacts. Nothing reaches the release: the Windows Velopack
+# packages are Authenticode-signed with a hardware-backed Certum key that only
+# exists on the maintainer's Mac, so the local `pnpm release` downloads these
+# artifacts, signs Windows, uploads, and publishes. See
+# apps/docs/src/contribute/releasing.md.
+
 on:
   workflow_dispatch:
     inputs:
       draft_tag:
-        description: Draft release tag to publish. Leave empty to use the newest draft.
+        description: Draft release tag to build. Leave empty to use the newest draft.
         required: false
-      dry_run:
-        description: Build artifacts without uploading or publishing the release
-        required: false
-        type: boolean
-        default: false
 
 permissions:
+  # Write rather than read even though no step here writes: GITHUB_TOKEN can only
+  # see a draft release with push access, and setup-release reads the draft to
+  # validate it.
   contents: write
 
 concurrency:
@@ -37,6 +42,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       app_version: ${{ steps.version.outputs.app_version }}
+      commit_sha: ${{ github.sha }}
       draft_tag: ${{ steps.draft.outputs.draft_tag }}
       release_id: ${{ steps.draft.outputs.release_id }}
       release_name: ${{ steps.version.outputs.release_name }}
@@ -444,6 +450,13 @@ jobs:
             throw 'No Windows installer artifact was produced.'
           }
 
+          # The local Velopack pack step takes this ZIP as its input; it is the
+          # same content as dist/win-unpacked. A silent absence must not reach
+          # the Mac, where it would surface as an unexplained packing failure.
+          if (-not (Get-ChildItem $assetDir -Filter '*-win.zip')) {
+            throw 'No Windows ZIP artifact was produced.'
+          }
+
           if (-not (Test-Path (Join-Path $assetDir 'latest.yml'))) {
             throw 'latest.yml was not produced.'
           }
@@ -597,8 +610,8 @@ jobs:
           path: ${{ steps.assets.outputs.asset_dir }}/*
           if-no-files-found: error
 
-  publish-release:
-    name: Attach assets and publish release
+  stage-release:
+    name: Stage release assets
     needs:
       - setup-release
       - build-macos
@@ -727,184 +740,75 @@ jobs:
 
           echo "asset_dir=$asset_dir" >> "$GITHUB_OUTPUT"
 
-      - name: Upload assets to draft release
-        if: ${{ !inputs.dry_run }}
+      - name: Write release metadata
+        id: metadata
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
+          COMMIT_SHA: ${{ needs.setup-release.outputs.commit_sha }}
+          DRAFT_TAG: ${{ needs.setup-release.outputs.draft_tag }}
+          RELEASE_ID: ${{ needs.setup-release.outputs.release_id }}
+          RELEASE_NAME: ${{ needs.setup-release.outputs.release_name }}
+          TAG: ${{ needs.setup-release.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release upload "${{ needs.setup-release.outputs.draft_tag }}" \
-            "${{ steps.assets.outputs.asset_dir }}"/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --clobber
+          metadata_dir="$RUNNER_TEMP/release-metadata"
+          rm -rf "$metadata_dir"
+          mkdir -p "$metadata_dir"
 
-      - name: Rename draft to publish-day release
-        if: ${{ !inputs.dry_run }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          gh api \
-            --method PATCH \
-            "repos/${GITHUB_REPOSITORY}/releases/${{ needs.setup-release.outputs.release_id }}" \
-            -f tag_name="${{ needs.setup-release.outputs.tag }}" \
-            -f target_commitish="${GITHUB_SHA}" \
-            -f name="${{ needs.setup-release.outputs.release_name }}" \
-            -F draft=true \
-            -F prerelease=false
-
-      - name: Verify uploaded release assets
-        if: ${{ !inputs.dry_run }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          gh release view "${{ needs.setup-release.outputs.tag }}" \
-            --repo "$GITHUB_REPOSITORY" \
-            --json tagName,name,isDraft,isPrerelease,assets,url \
-            > "$RUNNER_TEMP/release.json"
+          # Built with JSON.stringify instead of by pasting shell into a JSON
+          # literal: this file is the only thing telling the local `pnpm release`
+          # which draft to finish, and a quote or newline in a release name must
+          # not produce JSON the Mac side cannot parse.
           node <<'NODE'
-          const { readFileSync } = require('node:fs')
+          const { writeFileSync } = require('node:fs')
 
-          const release = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/release.json`, 'utf8'))
-          const assetNames = release.assets.map((asset) => asset.name)
+          const metadata = {
+            appVersion: process.env.APP_VERSION,
+            tag: process.env.TAG,
+            releaseName: process.env.RELEASE_NAME,
+            draftTag: process.env.DRAFT_TAG,
+            releaseId: process.env.RELEASE_ID,
+            commitSha: process.env.COMMIT_SHA
+          }
 
-          const hasAsset = (predicate, message) => {
-            if (!assetNames.some(predicate)) {
-              throw new Error(message)
+          for (const [key, value] of Object.entries(metadata)) {
+            if (!value) {
+              throw new Error(`Release metadata field ${key} is empty`)
             }
           }
 
-          if (!release.isDraft) {
-            throw new Error('Release was published before asset verification finished')
-          }
-
-          hasAsset(
-            (name) => name.endsWith('-x64.dmg') || (name.endsWith('.dmg') && !name.includes('arm64')),
-            'Release is missing a macOS x64 DMG asset'
+          writeFileSync(
+            `${process.env.RUNNER_TEMP}/release-metadata/release-metadata.json`,
+            `${JSON.stringify(metadata, null, 2)}\n`
           )
-          hasAsset((name) => name.endsWith('-arm64.dmg'), 'Release is missing a macOS arm64 DMG asset')
-          hasAsset((name) => name.endsWith('.zip'), 'Release is missing a macOS ZIP asset')
-          hasAsset((name) => name === 'latest-mac.yml', 'Release is missing latest-mac.yml')
-          hasAsset((name) => name.endsWith('.exe'), 'Release is missing a Windows installer asset')
-          hasAsset((name) => name === 'latest.yml', 'Release is missing Windows latest.yml')
-          hasAsset((name) => name.endsWith('.AppImage'), 'Release is missing a Linux AppImage asset')
-          hasAsset((name) => name.endsWith('.deb'), 'Release is missing a Linux deb asset')
           NODE
 
-      - name: Publish release
-        if: ${{ !inputs.dry_run }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          gh api \
-            --method PATCH \
-            "repos/${GITHUB_REPOSITORY}/releases/${{ needs.setup-release.outputs.release_id }}" \
-            -F draft=false \
-            -F prerelease=false \
-            -f make_latest=true
+          cat "$metadata_dir/release-metadata.json"
+          echo "metadata_dir=$metadata_dir" >> "$GITHUB_OUTPUT"
 
-      - name: Final release check
-        if: ${{ !inputs.dry_run }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          gh release view "${{ needs.setup-release.outputs.tag }}" \
-            --repo "$GITHUB_REPOSITORY" \
-            --json name,isDraft,isPrerelease,assets,url \
-            > "$RUNNER_TEMP/published-release.json"
-          node <<'NODE'
-          const { readFileSync } = require('node:fs')
-
-          const release = JSON.parse(
-            readFileSync(`${process.env.RUNNER_TEMP}/published-release.json`, 'utf8')
-          )
-
-          if (release.isDraft) {
-            throw new Error('Release is still marked as draft after publish')
-          }
-
-          if (release.isPrerelease) {
-            throw new Error('Release is marked as prerelease')
-          }
-
-          if (release.assets.length === 0) {
-            throw new Error('Published release has no assets')
-          }
-
-          console.log(`Published ${release.name}: ${release.url}`)
-          console.log(`Assets: ${release.assets.length}`)
-          NODE
-
-  update-homebrew-tap:
-    name: Bump Homebrew cask
-    needs:
-      - setup-release
-      - publish-release
-    if: ${{ !inputs.dry_run }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Upload staged release assets
+        uses: actions/upload-artifact@v4
         with:
-          node-version-file: .nvmrc
+          name: memry-release-${{ needs.setup-release.outputs.app_version }}
+          path: ${{ steps.assets.outputs.asset_dir }}/*
+          if-no-files-found: error
 
-      - name: Generate and push cask
+      # Deliberately not named memry-release-*: the download step above pulls
+      # every memry-release-*-<version> artifact into the asset dir, and a job
+      # re-run of stage-release would otherwise sweep this file in with the
+      # release assets.
+      - name: Upload release metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-metadata-${{ needs.setup-release.outputs.app_version }}
+          path: ${{ steps.metadata.outputs.metadata_dir }}
+          if-no-files-found: error
+
+      - name: Report staged build
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # PAT with contents:write on memrynote/homebrew-tap; GITHUB_TOKEN cannot
-          # write to a different repo.
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          TAG: ${{ needs.setup-release.outputs.tag }}
           APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
+          DRAFT_TAG: ${{ needs.setup-release.outputs.draft_tag }}
         run: |
           set -euo pipefail
-          if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
-            echo "::error::Set HOMEBREW_TAP_TOKEN (PAT with contents:write on memrynote/homebrew-tap) to auto-bump the cask."
-            exit 1
-          fi
-
-          work="$RUNNER_TEMP/cask"
-          mkdir -p "$work"
-
-          # Names the cask url will resolve to; if electron-builder ever renames
-          # the DMG, gh release download fails loudly here instead of shipping a
-          # 404 cask.
-          arm_dmg="MemryNote-${APP_VERSION}-arm64.dmg"
-          x64_dmg="MemryNote-${APP_VERSION}-x64.dmg"
-
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
-            --pattern "$arm_dmg" --pattern "$x64_dmg" --dir "$work" --clobber
-
-          sha_arm="$(sha256sum "$work/$arm_dmg" | cut -d' ' -f1)"
-          sha_x64="$(sha256sum "$work/$x64_dmg" | cut -d' ' -f1)"
-
-          node scripts/generate-homebrew-cask.mjs \
-            --tag "$TAG" \
-            --app-version "$APP_VERSION" \
-            --sha-arm "$sha_arm" \
-            --sha-x64 "$sha_x64" \
-            > "$work/memry.rb"
-
-          git clone --depth 1 \
-            "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/memrynote/homebrew-tap.git" \
-            "$work/tap"
-          cp "$work/memry.rb" "$work/tap/Casks/memry.rb"
-
-          cd "$work/tap"
-          git config user.name "memry-release-bot"
-          git config user.email "release-bot@memrynote.com"
-          git add Casks/memry.rb
-          if git diff --staged --quiet; then
-            echo "Cask already up to date for ${TAG}."
-          else
-            git commit -m "chore: bump memry cask to ${TAG}"
-            git push
-          fi
+          echo "::notice::Staged ${APP_VERSION} for draft ${DRAFT_TAG}. Nothing was uploaded to the release."
+          echo "::notice::Finish the release on the signing Mac with: pnpm release"
