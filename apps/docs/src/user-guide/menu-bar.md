@@ -35,8 +35,8 @@ and Linux, and a simple dialog showing the version on Windows.
 Windows and Linux. It runs the same check as the button in
 [Settings → General → Updates](/user-guide/settings), and always reports the
 result as a toast, so the click is never silent even when automatic downloads
-are on. When a new version is found the usual update prompt opens with the
-release notes.
+are on. When a new version is found it surfaces as the quiet update row in the
+sidebar footer rather than a dialog.
 
 ## Insert and Format act on the focused note
 
