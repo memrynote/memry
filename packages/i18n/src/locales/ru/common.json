@@ -119,12 +119,6 @@
       "feedbackSuccess": "Спасибо за отзыв!",
       "feedbackTitle": "Отправить отзыв",
       "newItemMenu": "Создать…",
-      "updateAvailable": "Обновить",
-      "updateDownloading": "Загрузка…",
-      "updateDownloadingPercent": "Загрузка {percent}%",
-      "updateInstallingSubtitle": "MemryNote перезапустится автоматически.",
-      "updateInstallingTitle": "Установка обновления",
-      "updateRestart": "Перезапустить",
       "feedbackPrivacyEmailOptional": "Ваш email — только если вы его укажете, и только чтобы мы могли ответить",
       "feedbackPrivacyEmailSignedIn": "Email вашего аккаунта ({email}), чтобы мы могли ответить",
       "feedbackPrivacyMessage": "Ваше сообщение — ровно так, как вы его написали",
@@ -660,19 +654,6 @@
       "previous": "Назад",
       "progress": "{current} из {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Автоматически скачивать и устанавливать обновления",
-    "availableBody": "Доступна версия {version} — у вас {current}. Хотите скачать её сейчас?",
-    "availableTitle": "Доступна новая версия MemryNote!",
-    "download": "Скачать",
-    "downloadedBody": "Версия {version} загружена. Перезапустите MemryNote, чтобы завершить установку.",
-    "downloadedTitle": "Обновление готово к установке",
-    "later": "Позже",
-    "releaseNotesLabel": "Заметки о выпуске",
-    "remindLater": "Напомнить позже",
-    "restartNow": "Перезапустить сейчас",
-    "skip": "Пропустить эту версию"
   },
   "capture": {
     "focusShortcut": "Фокус на поле захвата",

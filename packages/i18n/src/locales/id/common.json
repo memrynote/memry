@@ -119,12 +119,6 @@
       "feedbackSuccess": "Terima kasih atas masukannya!",
       "feedbackTitle": "Kirim masukan",
       "newItemMenu": "Buat baru…",
-      "updateAvailable": "Perbarui",
-      "updateDownloading": "Mengunduh…",
-      "updateDownloadingPercent": "Mengunduh {percent}%",
-      "updateInstallingSubtitle": "MemryNote akan mulai ulang otomatis.",
-      "updateInstallingTitle": "Memasang pembaruan",
-      "updateRestart": "Mulai ulang",
       "feedbackPrivacyEmailOptional": "Email Anda — hanya jika Anda menambahkannya, dan hanya agar kami dapat membalas",
       "feedbackPrivacyEmailSignedIn": "Email akun Anda ({email}), agar kami dapat membalas",
       "feedbackPrivacyMessage": "Pesan Anda, persis seperti yang Anda tulis",
@@ -660,19 +654,6 @@
       "previous": "Sebelumnya",
       "progress": "{current} dari {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Otomatis unduh & pasang pembaruan",
-    "availableBody": "{version} tersedia — Anda memiliki {current}. Ingin mengunduhnya sekarang?",
-    "availableTitle": "Versi baru MemryNote tersedia!",
-    "download": "Unduh",
-    "downloadedBody": "{version} telah diunduh. Mulai ulang MemryNote untuk menyelesaikan pemasangan.",
-    "downloadedTitle": "Pembaruan siap dipasang",
-    "later": "Nanti",
-    "releaseNotesLabel": "Catatan Rilis",
-    "remindLater": "Ingatkan Nanti",
-    "restartNow": "Mulai Ulang Sekarang",
-    "skip": "Lewati Versi Ini"
   },
   "capture": {
     "focusShortcut": "Fokuskan input tangkapan",

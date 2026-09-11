@@ -119,12 +119,6 @@
       "feedbackSuccess": "תודה על המשוב!",
       "feedbackTitle": "שלח משוב",
       "newItemMenu": "צור חדש…",
-      "updateAvailable": "עדכון",
-      "updateDownloading": "מוריד…",
-      "updateDownloadingPercent": "מוריד {percent}%",
-      "updateInstallingSubtitle": "MemryNote יופעל מחדש אוטומטית.",
-      "updateInstallingTitle": "מתקין עדכון",
-      "updateRestart": "הפעל מחדש",
       "feedbackPrivacyEmailOptional": "האימייל שלך — רק אם תוסיף אותו, ורק כדי שנוכל להשיב",
       "feedbackPrivacyEmailSignedIn": "האימייל של החשבון שלך ({email}), כדי שנוכל להשיב",
       "feedbackPrivacyMessage": "ההודעה שלך, בדיוק כפי שכתבת אותה",
@@ -660,19 +654,6 @@
       "previous": "הקודם",
       "progress": "{current} מתוך {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "הורד והתקן עדכונים אוטומטית",
-    "availableBody": "{version} זמינה — יש לך {current}. האם ברצונך להוריד אותה עכשיו?",
-    "availableTitle": "גרסה חדשה של MemryNote זמינה!",
-    "download": "הורד",
-    "downloadedBody": "{version} הורדה. הפעל מחדש את MemryNote כדי להשלים את ההתקנה.",
-    "downloadedTitle": "עדכון מוכן להתקנה",
-    "later": "מאוחר יותר",
-    "releaseNotesLabel": "הערות שחרור",
-    "remindLater": "הזכר לי מאוחר יותר",
-    "restartNow": "הפעל מחדש עכשיו",
-    "skip": "דלג על גרסה זו"
   },
   "capture": {
     "focusShortcut": "מקד את קלט הלכידה",

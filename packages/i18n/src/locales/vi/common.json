@@ -119,12 +119,6 @@
       "feedbackSuccess": "Cảm ơn phản hồi của bạn!",
       "feedbackTitle": "Gửi phản hồi",
       "newItemMenu": "Tạo mới…",
-      "updateAvailable": "Cập nhật",
-      "updateDownloading": "Đang tải xuống…",
-      "updateDownloadingPercent": "Đang tải xuống {percent}%",
-      "updateInstallingSubtitle": "MemryNote sẽ tự khởi động lại.",
-      "updateInstallingTitle": "Đang cài đặt bản cập nhật",
-      "updateRestart": "Khởi động lại",
       "feedbackPrivacyEmailOptional": "Email của bạn — chỉ khi bạn tự điền vào, và chỉ để chúng tôi trả lời",
       "feedbackPrivacyEmailSignedIn": "Email tài khoản của bạn ({email}), để chúng tôi trả lời",
       "feedbackPrivacyMessage": "Tin nhắn của bạn, đúng như bạn đã viết",
@@ -660,19 +654,6 @@
       "previous": "Trước",
       "progress": "{current} trên {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Tự động tải xuống và cài đặt bản cập nhật",
-    "availableBody": "Đã có {version} — bạn đang dùng {current}. Bạn muốn tải xuống ngay không?",
-    "availableTitle": "Đã có phiên bản mới của MemryNote!",
-    "download": "Tải xuống",
-    "downloadedBody": "Đã tải xuống {version}. Khởi động lại MemryNote để hoàn tất cài đặt.",
-    "downloadedTitle": "Bản cập nhật sẵn sàng cài đặt",
-    "later": "Để sau",
-    "releaseNotesLabel": "Ghi chú phát hành",
-    "remindLater": "Nhắc tôi sau",
-    "restartNow": "Khởi động lại ngay",
-    "skip": "Bỏ qua phiên bản này"
   },
   "capture": {
     "focusShortcut": "Đưa con trỏ vào ô ghi nhanh",

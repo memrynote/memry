@@ -119,12 +119,6 @@
       "feedbackSuccess": "شكرًا على ملاحظاتك!",
       "feedbackTitle": "إرسال ملاحظات",
       "newItemMenu": "إنشاء جديد…",
-      "updateAvailable": "تحديث",
-      "updateDownloading": "جارٍ التنزيل…",
-      "updateDownloadingPercent": "جارٍ التنزيل {percent}%",
-      "updateInstallingSubtitle": "ستتم إعادة تشغيل MemryNote تلقائيًا.",
-      "updateInstallingTitle": "جارٍ تثبيت التحديث",
-      "updateRestart": "إعادة التشغيل",
       "feedbackPrivacyEmailOptional": "بريدك الإلكتروني — فقط إن أضفته، ولا نستخدمه إلا للرد عليك",
       "feedbackPrivacyEmailSignedIn": "بريد حسابك ({email})، للرد عليك",
       "feedbackPrivacyMessage": "رسالتك، تمامًا كما كتبتها",
@@ -660,19 +654,6 @@
       "previous": "السابق",
       "progress": "{current} من {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "تنزيل التحديثات وتثبيتها تلقائيًا",
-    "availableBody": "يتوفر {version} — لديك {current}. هل تريد تنزيله الآن؟",
-    "availableTitle": "يتوفر إصدار جديد من MemryNote!",
-    "download": "تنزيل",
-    "downloadedBody": "تم تنزيل {version}. أعد تشغيل MemryNote لإكمال التثبيت.",
-    "downloadedTitle": "التحديث جاهز للتثبيت",
-    "later": "لاحقًا",
-    "releaseNotesLabel": "ملاحظات الإصدار",
-    "remindLater": "ذكّرني لاحقًا",
-    "restartNow": "أعد التشغيل الآن",
-    "skip": "تخطي هذا الإصدار"
   },
   "capture": {
     "focusShortcut": "التركيز على حقل الالتقاط",

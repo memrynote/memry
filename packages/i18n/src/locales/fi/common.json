@@ -119,12 +119,6 @@
       "feedbackSuccess": "Kiitos palautteesta!",
       "feedbackTitle": "Lähetä palautetta",
       "newItemMenu": "Luo uusi…",
-      "updateAvailable": "Päivitä",
-      "updateDownloading": "Ladataan…",
-      "updateDownloadingPercent": "Ladataan {percent} %",
-      "updateInstallingSubtitle": "MemryNote käynnistyy uudelleen automaattisesti.",
-      "updateInstallingTitle": "Asennetaan päivitystä",
-      "updateRestart": "Käynnistä uudelleen",
       "feedbackPrivacyEmailOptional": "Sähköpostisi — vain jos lisäät sen, ja vain jotta voimme vastata",
       "feedbackPrivacyEmailSignedIn": "Tilisi sähköposti ({email}), jotta voimme vastata",
       "feedbackPrivacyMessage": "Viestisi juuri sellaisena kuin sen kirjoitit",
@@ -660,19 +654,6 @@
       "previous": "Edellinen",
       "progress": "{current} / {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Lataa ja asenna päivitykset automaattisesti",
-    "availableBody": "{version} on saatavilla — sinulla on {current}. Haluatko ladata sen nyt?",
-    "availableTitle": "MemryNotesta on saatavilla uusi versio!",
-    "download": "Lataa",
-    "downloadedBody": "{version} on ladattu. Käynnistä MemryNote uudelleen viimeistelläksesi asennuksen.",
-    "downloadedTitle": "Päivitys valmis asennettavaksi",
-    "later": "Myöhemmin",
-    "releaseNotesLabel": "Julkaisutiedot",
-    "remindLater": "Muistuta myöhemmin",
-    "restartNow": "Käynnistä uudelleen nyt",
-    "skip": "Ohita tämä versio"
   },
   "capture": {
     "focusShortcut": "Kohdista tallennussyöttöön",

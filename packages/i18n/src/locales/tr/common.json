@@ -119,12 +119,6 @@
       "feedbackSuccess": "Geri bildiriminiz için teşekkürler!",
       "feedbackTitle": "Geri bildirim gönder",
       "newItemMenu": "Yeni oluştur…",
-      "updateAvailable": "Güncelle",
-      "updateDownloading": "İndiriliyor…",
-      "updateDownloadingPercent": "İndiriliyor %{percent}",
-      "updateInstallingSubtitle": "MemryNote otomatik olarak yeniden başlayacak.",
-      "updateInstallingTitle": "Güncelleme kuruluyor",
-      "updateRestart": "Yeniden başlat",
       "feedbackPrivacyEmailOptional": "E-postanız — yalnızca siz eklerseniz, yalnızca size yanıt verebilmemiz için",
       "feedbackPrivacyEmailSignedIn": "Hesap e-postanız ({email}), yanıt verebilmemiz için",
       "feedbackPrivacyMessage": "Mesajınız, tam olarak yazdığınız gibi",
@@ -660,19 +654,6 @@
       "previous": "Geri",
       "progress": "{current} / {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Güncellemeleri otomatik indir ve kur",
-    "availableBody": "{version} yayınlandı — sizde {current} var. Şimdi indirmek ister misiniz?",
-    "availableTitle": "MemryNote'un yeni bir sürümü var!",
-    "download": "İndir",
-    "downloadedBody": "{version} indirildi. Kurulumu tamamlamak için MemryNote'u yeniden başlatın.",
-    "downloadedTitle": "Güncelleme kuruluma hazır",
-    "later": "Sonra",
-    "releaseNotesLabel": "Sürüm Notları",
-    "remindLater": "Sonra Hatırlat",
-    "restartNow": "Şimdi Yeniden Başlat",
-    "skip": "Bu Sürümü Atla"
   },
   "capture": {
     "focusShortcut": "Yakalama girişine odaklan",

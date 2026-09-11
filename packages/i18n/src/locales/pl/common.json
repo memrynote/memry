@@ -119,12 +119,6 @@
       "feedbackSuccess": "Dziękujemy za opinię!",
       "feedbackTitle": "Wyślij opinię",
       "newItemMenu": "Utwórz nowy…",
-      "updateAvailable": "Aktualizacja",
-      "updateDownloading": "Pobieranie…",
-      "updateDownloadingPercent": "Pobieranie {percent}%",
-      "updateInstallingSubtitle": "MemryNote uruchomi się ponownie automatycznie.",
-      "updateInstallingTitle": "Instalowanie aktualizacji",
-      "updateRestart": "Uruchom ponownie",
       "feedbackPrivacyEmailOptional": "Twój e-mail — tylko jeśli go podasz i tylko po to, żebyśmy mogli odpowiedzieć",
       "feedbackPrivacyEmailSignedIn": "E-mail Twojego konta ({email}), żebyśmy mogli odpowiedzieć",
       "feedbackPrivacyMessage": "Twoja wiadomość — dokładnie tak, jak ją napisano",
@@ -660,19 +654,6 @@
       "previous": "Wstecz",
       "progress": "{current} z {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Automatycznie pobieraj i instaluj aktualizacje",
-    "availableBody": "{version} jest dostępna — masz {current}. Czy chcesz ją teraz pobrać?",
-    "availableTitle": "Dostępna jest nowa wersja MemryNote!",
-    "download": "Pobierz",
-    "downloadedBody": "{version} została pobrana. Uruchom ponownie MemryNote, aby dokończyć instalację.",
-    "downloadedTitle": "Aktualizacja gotowa do zainstalowania",
-    "later": "Później",
-    "releaseNotesLabel": "Informacje o wydaniu",
-    "remindLater": "Przypomnij później",
-    "restartNow": "Uruchom ponownie",
-    "skip": "Pomiń tę wersję"
   },
   "capture": {
     "focusShortcut": "Ustaw fokus na polu zapisu",

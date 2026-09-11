@@ -119,12 +119,6 @@
       "feedbackSuccess": "感謝您的意見回饋！",
       "feedbackTitle": "傳送意見回饋",
       "newItemMenu": "建立新項目…",
-      "updateAvailable": "更新",
-      "updateDownloading": "下載中…",
-      "updateDownloadingPercent": "下載中 {percent}%",
-      "updateInstallingSubtitle": "MemryNote 將自動重新啟動。",
-      "updateInstallingTitle": "正在安裝更新",
-      "updateRestart": "重新啟動",
       "feedbackPrivacyEmailOptional": "您的電子郵件——只有在您填寫時才會送出，而且只用來回覆您",
       "feedbackPrivacyEmailSignedIn": "您的帳戶電子郵件（{email}），以便我們回覆",
       "feedbackPrivacyMessage": "您的訊息，原封不動",
@@ -660,19 +654,6 @@
       "previous": "上一步",
       "progress": "{current} / {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "自動下載並安裝更新",
-    "availableBody": "{version} 已可使用——您目前的版本為 {current}。要立即下載嗎？",
-    "availableTitle": "MemryNote 有新版本可用！",
-    "download": "下載",
-    "downloadedBody": "{version} 已下載完成。請重新啟動 MemryNote 以完成安裝。",
-    "downloadedTitle": "更新已準備好安裝",
-    "later": "稍後",
-    "releaseNotesLabel": "版本說明",
-    "remindLater": "稍後提醒我",
-    "restartNow": "立即重新啟動",
-    "skip": "略過此版本"
   },
   "capture": {
     "focusShortcut": "聚焦擷取輸入欄",

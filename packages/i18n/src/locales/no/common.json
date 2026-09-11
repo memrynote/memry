@@ -119,12 +119,6 @@
       "feedbackSuccess": "Takk for tilbakemeldingen!",
       "feedbackTitle": "Send tilbakemelding",
       "newItemMenu": "Opprett ny…",
-      "updateAvailable": "Oppdater",
-      "updateDownloading": "Laster ned…",
-      "updateDownloadingPercent": "Laster ned {percent}%",
-      "updateInstallingSubtitle": "MemryNote starter på nytt automatisk.",
-      "updateInstallingTitle": "Installerer oppdatering",
-      "updateRestart": "Start på nytt",
       "feedbackPrivacyEmailOptional": "E-postadressen din — bare hvis du oppgir den, og bare så vi kan svare",
       "feedbackPrivacyEmailSignedIn": "E-postadressen til kontoen din ({email}), så vi kan svare",
       "feedbackPrivacyMessage": "Meldingen din, nøyaktig slik du skrev den",
@@ -660,19 +654,6 @@
       "previous": "Forrige",
       "progress": "{current} av {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Last ned og installer oppdateringer automatisk",
-    "availableBody": "{version} er tilgjengelig — du har {current}. Vil du laste den ned nå?",
-    "availableTitle": "En ny versjon av MemryNote er tilgjengelig!",
-    "download": "Last ned",
-    "downloadedBody": "{version} er lastet ned. Start MemryNote på nytt for å fullføre installasjonen.",
-    "downloadedTitle": "Oppdatering klar til installasjon",
-    "later": "Senere",
-    "releaseNotesLabel": "Versjonsmerknader",
-    "remindLater": "Minn meg på det senere",
-    "restartNow": "Start på nytt nå",
-    "skip": "Hopp over denne versjonen"
   },
   "capture": {
     "focusShortcut": "Fokuser fangstfelt",

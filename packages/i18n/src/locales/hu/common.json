@@ -119,12 +119,6 @@
       "feedbackSuccess": "Köszönjük a visszajelzést!",
       "feedbackTitle": "Visszajelzés küldése",
       "newItemMenu": "Új létrehozása…",
-      "updateAvailable": "Frissítés",
-      "updateDownloading": "Letöltés…",
-      "updateDownloadingPercent": "Letöltés {percent}%",
-      "updateInstallingSubtitle": "A memrynote automatikusan újraindul.",
-      "updateInstallingTitle": "Frissítés telepítése",
-      "updateRestart": "Újraindítás",
       "feedbackPrivacyEmailOptional": "Az e-mail-címed — csak ha megadod, és csak azért, hogy válaszolni tudjunk",
       "feedbackPrivacyEmailSignedIn": "A fiókod e-mail-címe ({email}), hogy válaszolni tudjunk",
       "feedbackPrivacyMessage": "Az üzeneted, pontosan úgy, ahogy megírtad",
@@ -660,19 +654,6 @@
       "previous": "Vissza",
       "progress": "{current} / {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Frissítések automatikus letöltése és telepítése",
-    "availableBody": "A(z) {version} elérhető – neked a(z) {current} van. Letöltöd most?",
-    "availableTitle": "A MemryNote új verziója érhető el!",
-    "download": "Letöltés",
-    "downloadedBody": "A(z) {version} letöltődött. Indítsd újra a MemryNote-ot a telepítés befejezéséhez.",
-    "downloadedTitle": "A frissítés telepítésre kész",
-    "later": "Később",
-    "releaseNotesLabel": "Kiadási megjegyzések",
-    "remindLater": "Emlékeztess később",
-    "restartNow": "Újraindítás most",
-    "skip": "Verzió kihagyása"
   },
   "capture": {
     "focusShortcut": "Rögzítési mező fókuszálása",

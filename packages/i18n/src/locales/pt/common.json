@@ -119,12 +119,6 @@
       "feedbackSuccess": "Obrigado pelos comentários!",
       "feedbackTitle": "Enviar comentários",
       "newItemMenu": "Criar novo…",
-      "updateAvailable": "Atualizar",
-      "updateDownloading": "A transferir…",
-      "updateDownloadingPercent": "A transferir {percent}%",
-      "updateInstallingSubtitle": "O MemryNote irá reiniciar automaticamente.",
-      "updateInstallingTitle": "A instalar atualização",
-      "updateRestart": "Reiniciar",
       "feedbackPrivacyEmailOptional": "O seu email — apenas se o adicionar, e apenas para lhe podermos responder",
       "feedbackPrivacyEmailSignedIn": "O email da sua conta ({email}), para lhe podermos responder",
       "feedbackPrivacyMessage": "A sua mensagem, exatamente como a escreveu",
@@ -660,19 +654,6 @@
       "previous": "Anterior",
       "progress": "{current} de {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Transferir e instalar atualizações automaticamente",
-    "availableBody": "{version} está disponível — tem a {current}. Deseja transferi-la agora?",
-    "availableTitle": "Está disponível uma nova versão do MemryNote!",
-    "download": "Transferir",
-    "downloadedBody": "{version} foi transferida. Reinicie o MemryNote para concluir a instalação.",
-    "downloadedTitle": "Atualização pronta a instalar",
-    "later": "Mais tarde",
-    "releaseNotesLabel": "Notas de lançamento",
-    "remindLater": "Lembrar-me mais tarde",
-    "restartNow": "Reiniciar agora",
-    "skip": "Ignorar esta versão"
   },
   "capture": {
     "focusShortcut": "Focar campo de captura",

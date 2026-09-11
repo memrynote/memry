@@ -119,12 +119,6 @@
       "feedbackSuccess": "Tack för din feedback!",
       "feedbackTitle": "Skicka feedback",
       "newItemMenu": "Skapa ny…",
-      "updateAvailable": "Uppdatera",
-      "updateDownloading": "Hämtar…",
-      "updateDownloadingPercent": "Hämtar {percent}%",
-      "updateInstallingSubtitle": "MemryNote startar om automatiskt.",
-      "updateInstallingTitle": "Installerar uppdatering",
-      "updateRestart": "Starta om",
       "feedbackPrivacyEmailOptional": "Din e-postadress — bara om du anger den, och bara så att vi kan svara",
       "feedbackPrivacyEmailSignedIn": "E-postadressen till ditt konto ({email}), så att vi kan svara",
       "feedbackPrivacyMessage": "Ditt meddelande, precis som du skrev det",
@@ -660,19 +654,6 @@
       "previous": "Föregående",
       "progress": "{current} av {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Hämta och installera uppdateringar automatiskt",
-    "availableBody": "{version} är tillgänglig — du har {current}. Vill du hämta den nu?",
-    "availableTitle": "En ny version av MemryNote är tillgänglig!",
-    "download": "Hämta",
-    "downloadedBody": "{version} har hämtats. Starta om MemryNote för att slutföra installationen.",
-    "downloadedTitle": "Uppdatering redo att installeras",
-    "later": "Senare",
-    "releaseNotesLabel": "Versionsinformation",
-    "remindLater": "Påminn mig senare",
-    "restartNow": "Starta om nu",
-    "skip": "Hoppa över denna version"
   },
   "capture": {
     "focusShortcut": "Fokusera insamlingsfält",

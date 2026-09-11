@@ -119,12 +119,6 @@
       "feedbackSuccess": "Tak for din feedback!",
       "feedbackTitle": "Send feedback",
       "newItemMenu": "Opret ny…",
-      "updateAvailable": "Opdatér",
-      "updateDownloading": "Henter…",
-      "updateDownloadingPercent": "Henter {percent}%",
-      "updateInstallingSubtitle": "MemryNote genstarter automatisk.",
-      "updateInstallingTitle": "Installerer opdatering",
-      "updateRestart": "Genstart",
       "feedbackPrivacyEmailOptional": "Din e-mail — kun hvis du tilføjer den, og kun så vi kan svare",
       "feedbackPrivacyEmailSignedIn": "Din konto-e-mail ({email}), så vi kan svare",
       "feedbackPrivacyMessage": "Din besked, præcis som du skrev den",
@@ -660,19 +654,6 @@
       "previous": "Forrige",
       "progress": "{current} af {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Hent og installér opdateringer automatisk",
-    "availableBody": "{version} er tilgængelig — du har {current}. Vil du hente den nu?",
-    "availableTitle": "En ny version af MemryNote er tilgængelig!",
-    "download": "Hent",
-    "downloadedBody": "{version} er hentet. Genstart MemryNote for at fuldføre installationen.",
-    "downloadedTitle": "Opdatering klar til installation",
-    "later": "Senere",
-    "releaseNotesLabel": "Udgivelsesnoter",
-    "remindLater": "Påmind mig senere",
-    "restartNow": "Genstart nu",
-    "skip": "Spring denne version over"
   },
   "capture": {
     "focusShortcut": "Fokusér optagelsesfelt",

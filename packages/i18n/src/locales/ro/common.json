@@ -119,12 +119,6 @@
       "feedbackSuccess": "Mulțumim pentru feedback!",
       "feedbackTitle": "Trimite feedback",
       "newItemMenu": "Creează nou…",
-      "updateAvailable": "Actualizare",
-      "updateDownloading": "Se descarcă…",
-      "updateDownloadingPercent": "Se descarcă {percent}%",
-      "updateInstallingSubtitle": "MemryNote va reporni automat.",
-      "updateInstallingTitle": "Se instalează actualizarea",
-      "updateRestart": "Repornește",
       "feedbackPrivacyEmailOptional": "Emailul tău — doar dacă îl adaugi și doar ca să îți putem răspunde",
       "feedbackPrivacyEmailSignedIn": "Emailul contului tău ({email}), ca să îți putem răspunde",
       "feedbackPrivacyMessage": "Mesajul tău, exact așa cum l-ai scris",
@@ -660,19 +654,6 @@
       "previous": "Anterior",
       "progress": "{current} din {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Descarcă și instalează automat actualizările",
-    "availableBody": "{version} este disponibilă — ai {current}. Vrei să o descarci acum?",
-    "availableTitle": "O nouă versiune de MemryNote este disponibilă!",
-    "download": "Descarcă",
-    "downloadedBody": "{version} a fost descărcată. Repornește MemryNote pentru a finaliza instalarea.",
-    "downloadedTitle": "Actualizare pregătită pentru instalare",
-    "later": "Mai târziu",
-    "releaseNotesLabel": "Note de lansare",
-    "remindLater": "Amintește-mi mai târziu",
-    "restartNow": "Repornește acum",
-    "skip": "Omite această versiune"
   },
   "capture": {
     "focusShortcut": "Focalizează câmpul de captură",

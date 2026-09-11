@@ -119,12 +119,6 @@
       "feedbackSuccess": "ขอบคุณสำหรับความคิดเห็น!",
       "feedbackTitle": "ส่งความคิดเห็น",
       "newItemMenu": "สร้างใหม่…",
-      "updateAvailable": "อัปเดต",
-      "updateDownloading": "กำลังดาวน์โหลด…",
-      "updateDownloadingPercent": "กำลังดาวน์โหลด {percent}%",
-      "updateInstallingSubtitle": "MemryNote จะรีสตาร์ทโดยอัตโนมัติ",
-      "updateInstallingTitle": "กำลังติดตั้งอัปเดต",
-      "updateRestart": "รีสตาร์ท",
       "feedbackPrivacyEmailOptional": "อีเมลของคุณ — เฉพาะเมื่อคุณกรอกไว้ และเพื่อให้เราตอบกลับได้เท่านั้น",
       "feedbackPrivacyEmailSignedIn": "อีเมลบัญชีของคุณ ({email}) เพื่อให้เราตอบกลับได้",
       "feedbackPrivacyMessage": "ข้อความของคุณ ตามที่คุณเขียนไว้ทุกประการ",
@@ -660,19 +654,6 @@
       "previous": "ก่อนหน้า",
       "progress": "{current} จาก {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "ดาวน์โหลดและติดตั้งอัปเดตอัตโนมัติ",
-    "availableBody": "{version} พร้อมใช้งาน — คุณกำลังใช้ {current} ต้องการดาวน์โหลดตอนนี้หรือไม่?",
-    "availableTitle": "MemryNote เวอร์ชันใหม่พร้อมใช้งานแล้ว!",
-    "download": "ดาวน์โหลด",
-    "downloadedBody": "ดาวน์โหลด {version} เรียบร้อยแล้ว รีสตาร์ท MemryNote เพื่อติดตั้งให้เสร็จสิ้น",
-    "downloadedTitle": "อัปเดตพร้อมติดตั้งแล้ว",
-    "later": "ภายหลัง",
-    "releaseNotesLabel": "บันทึกการอัปเดต",
-    "remindLater": "เตือนฉันภายหลัง",
-    "restartNow": "รีสตาร์ทตอนนี้",
-    "skip": "ข้ามเวอร์ชันนี้"
   },
   "capture": {
     "focusShortcut": "โฟกัสช่องบันทึก",
