@@ -128,6 +128,7 @@ vi.mock('@/hooks', () => ({
   useMouseNavButtons: vi.fn(),
   useChordShortcuts: () => true,
   useSettingsShortcut: vi.fn(),
+  useSwitchVaultShortcut: vi.fn(),
   useNewNoteShortcut: (callback: () => void) => {
     newNoteShortcut = callback
   },

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Plus, Check, Loader2, X, Cloud, Trash2 } from '@/lib/icons'
 
 import { Picker } from '@/components/ui/picker'
@@ -28,12 +28,13 @@ import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useAuth } from '@/contexts/auth-context'
 import { DownloadVaultDialog } from '@/components/download-vault-dialog'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useVaultSwitcherOpenRequest } from '@/lib/vault-switcher-open'
 import type { AccountVaultInfo, VaultInfo } from '../../../preload/index.d'
 import { useT } from '@memry/i18n/renderer'
 
 export function VaultSwitcher() {
   const { t: tPhaseF } = useT('common')
-  const { isMobile } = useSidebar()
+  const { isMobile, open: sidebarOpen, setOpen: setSidebarOpen, setOpenMobile } = useSidebar()
   const { status, isLoading, selectVault, switchVault } = useVault()
   const { vaults, removeVault } = useVaultList()
   const { open: openSettings } = useSettingsModal()
@@ -46,12 +47,63 @@ export function VaultSwitcher() {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  /** Element focused when ⌘⇧O opened the switcher, so Escape can hand it back. */
+  const restoreFocusRef = useRef<HTMLElement | null>(null)
+  /** The shortcut may expand a collapsed sidebar; put it back when we are done. */
+  const collapseSidebarOnCloseRef = useRef(false)
+
   const isAuthenticated = authState.status === 'authenticated'
   const remoteOnlyVaults = accountVaults.filter((vault) => !vault.localPath)
 
   const currentVaultName = status?.path
     ? status.path.split('/').pop() || 'Vault'
     : 'No Vault Selected'
+
+  // ⌘⇧O (see `hooks/use-switch-vault-shortcut.ts`) opens this same picker rather
+  // than a second vault list, so switching from the shortcut and from the
+  // sidebar go through one code path.
+  useVaultSwitcherOpenRequest(
+    useCallback(() => {
+      if (open) return
+      const active = document.activeElement
+      restoreFocusRef.current = active instanceof HTMLElement ? active : null
+
+      if (isMobile) {
+        setOpenMobile(true)
+      } else if (!sidebarOpen) {
+        // The sidebar is `collapsible="offcanvas"`: while closed the trigger is
+        // parked off-screen and the popover would anchor to nothing.
+        collapseSidebarOnCloseRef.current = true
+        setSidebarOpen(true)
+      }
+
+      setOpen(true)
+      if (isAuthenticated) void refreshAccountVaults()
+    }, [
+      open,
+      isMobile,
+      sidebarOpen,
+      setOpenMobile,
+      setSidebarOpen,
+      isAuthenticated,
+      refreshAccountVaults
+    ])
+  )
+
+  // Runs for every close — Escape, an outside click, or picking a vault — because
+  // the picker's own state can close it without going through `onOpenChange`.
+  useEffect(() => {
+    if (open) return
+
+    if (collapseSidebarOnCloseRef.current) {
+      collapseSidebarOnCloseRef.current = false
+      setSidebarOpen(false)
+    }
+
+    const previous = restoreFocusRef.current
+    restoreFocusRef.current = null
+    if (previous?.isConnected) previous.focus()
+  }, [open, setSidebarOpen])
 
   const handleSelectNewVault = useCallback(async () => {
     await selectVault()

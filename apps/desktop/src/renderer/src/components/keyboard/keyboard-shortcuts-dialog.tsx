@@ -54,6 +54,7 @@ const getShortcutGroups = (t: TFunction<'common'>): ShortcutGroup[] => {
         },
         { combos: [[mod, 'N']], description: t('shortcuts.items.general.createNote') },
         { combos: [[mod, ',']], description: t('shortcuts.items.general.openSettings') },
+        { combos: [[mod, shift, 'O']], description: t('shortcuts.items.general.switchVault') },
         {
           combos: [['?'], [mod, '/']],
           description: t('shortcuts.items.general.keyboardShortcuts')

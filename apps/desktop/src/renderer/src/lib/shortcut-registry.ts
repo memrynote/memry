@@ -16,6 +16,7 @@ export type ShortcutId =
   | 'nav.newNote'
   | 'nav.search'
   | 'nav.settings'
+  | 'nav.switchVault'
   | 'tabs.closeTab'
   | 'tabs.nextTab'
   | 'tabs.prevTab'
@@ -84,6 +85,14 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     description: 'Open the settings panel',
     category: 'Navigation',
     defaultBinding: { key: ',', modifiers: { meta: true } }
+  },
+  {
+    id: 'nav.switchVault',
+    i18nKey: 'nav.switchVault',
+    label: 'Switch Vault',
+    description: 'Open the vault switcher',
+    category: 'Navigation',
+    defaultBinding: { key: 'o', modifiers: { meta: true, shift: true } }
   },
 
   // Tabs

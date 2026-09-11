@@ -28,6 +28,7 @@ export * from './use-vault'
 
 // Settings
 export * from './use-settings-shortcut'
+export * from './use-switch-vault-shortcut'
 
 // New note
 export * from './use-new-note-shortcut'
