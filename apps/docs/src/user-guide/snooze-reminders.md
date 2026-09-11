@@ -65,6 +65,8 @@ memrynote shows a toast with:
 - Title and snippet
 - Action buttons (snooze 5 min, snooze 10 min, custom snooze, open, dismiss)
 
+Opening a reminder — from the toast, from the system notification, or from a row in the inbox reminders view — always lands on the reminder's own source: the note, the note's date pill, the highlight, the task with its project, or the **journal day the reminder was set for**, never today's entry. If a journal reminder's stored date is unreadable, memrynote tells you instead of opening a different day.
+
 A system notification is shown as well. Dismissing, snoozing, or deleting the reminder also retires its system notification — on macOS it is removed from Notification Center, and on Windows and Linux the banner is closed — so handled reminders don't pile up. "Dismiss all" does the same for every reminder in the batch, and only for those: a reminder that wasn't part of the action keeps its notification. If a snoozed reminder comes due again, its new notification replaces the earlier one for that reminder instead of stacking a second banner. Notifications you haven't acted on are never dismissed for you.
 
 Dismissing a reminder updates every place it appears right away — the inbox reminders view, the note's reminder pill, the journal badge, the task chip, and any other open memrynote window. "Dismiss all" behaves the same way, refreshing those views once per reminder it actually dismissed.
