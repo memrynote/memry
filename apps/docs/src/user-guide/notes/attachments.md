@@ -11,8 +11,21 @@ Three ways:
 
 - **Drag from your OS file manager** — drop a file onto the editor at the position you want it. The file is **copied** into the vault attachments directory (`<vault>/attachments/`), so the original on your filesystem can be moved or deleted without breaking the note.
 - **Drag from the sidebar** — drag a file item (PDF, image, audio, …) from the left sidebar onto a note. This **embeds it by reference** using the item's own vault path, so no second copy is made.
-- **Slash menu** — `/file` inserts a File block; click to pick a file.
-- **Reuse a file the vault already has** — `/existing attachment` opens a picker listing every attachment in the vault, with the note each one is stored under. Picking one embeds it **by reference**, so the same PDF can sit in two notes without a second copy.
+- **Slash menu** — `/image`, `/media`, `/pdf` and `/file` all open the same attachment picker, narrowed to the kind you asked for.
+
+### The attachment picker
+
+Every attachment command opens one picker, and it offers both routes in one
+list:
+
+- **Upload from your computer** — the first row. Opens your system's file dialog,
+  filtered to the kind the command named, and **copies** the file into the vault.
+- **A file the vault already has** — every attachment in the vault, with the note
+  each one is stored under. Picking one embeds it **by reference**, so the same
+  PDF can sit in two notes without a second copy.
+
+Type to search both the file names and the notes they belong to; `↑` / `↓` move,
+`↵` inserts, `esc` closes.
 
 While you drag over a note, a line marks where the file will land, and dropping inserts it exactly there. The line follows the cursor once per frame instead of on every pointer event, so dragging over a long note stays smooth.
 
@@ -157,7 +170,7 @@ where the path points, relative to the note.
 
 An attachment is stored once, under the note it was first added to
 (`<vault>/attachments/<note-id>/`), and it stays there. When a second note embeds
-it through `/existing attachment`, that note simply points at the same file —
+it through the attachment picker, that note simply points at the same file —
 nothing is copied, nothing is uploaded again, and the two embeds stay
 independent blocks you can resize, align or remove separately.
 
