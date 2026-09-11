@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useTabs } from '@/contexts/tabs'
 import { useT } from '@memry/i18n/renderer'
 import { toLocalDateKey } from '@/components/calendar/date-utils'
+import { buildMemryHref, tabFromMemryHref } from '@/lib/memry-links'
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 
 /**
@@ -42,6 +43,11 @@ function toCalendarFocusDate(startAt: string | undefined): string | null {
  *               contains it has loaded. `focusedAt` is the re-trigger token —
  *               without a fresh one, a second click on the same event is a
  *               no-op, since both effects short-circuit on the consumed token.
+ *
+ * - canvas/journal — delegated to the shared `memry://` grammar in
+ *               `memry-links`, which is already the one place that knows how a
+ *               canvas tab and a journal day open. Relations deliberately do
+ *               not mint a second scheme for the same two destinations.
  *
  * A dangling ref (`exists: false`) has nothing to open and is ignored.
  */
@@ -89,6 +95,15 @@ export function useRelationNavigation(): (ref: ResolvedRelationRef) => void {
             ...(ref.projectId ? { selectedProjectId: ref.projectId } : {})
           }
         })
+        return
+      }
+
+      if (ref.targetType === 'canvas' || ref.targetType === 'journal') {
+        const href = buildMemryHref({ kind: ref.targetType, id: ref.targetId })
+        const tab = href
+          ? tabFromMemryHref(href, { title: ref.title || undefined, now: Date.now() })
+          : null
+        if (tab) openTab(tab)
         return
       }
 

@@ -468,10 +468,12 @@
       "deleted": "Deleted",
       "removeAria": "Remove {title}",
       "addAria": "Add relation",
-      "searchPlaceholder": "Search notes, tasks and events…",
+      "searchPlaceholder": "Search notes, tasks, events, canvases and journal…",
       "groupNotes": "Notes & Files",
       "groupTasks": "Tasks",
       "groupEvents": "Events",
+      "groupCanvases": "Canvases",
+      "groupJournals": "Journal",
       "empty": "No results"
     },
     "types": {

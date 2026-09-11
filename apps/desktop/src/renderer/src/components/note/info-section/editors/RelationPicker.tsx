@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { formatRelationUri, type RelationKind } from '@memry/contracts/relation-uri'
-import { FileText, CheckSquare, Calendar, type AppIcon } from '@/lib/icons'
+import { FileText, CheckSquare, Calendar, PenTool, BookOpen, type AppIcon } from '@/lib/icons'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { Picker } from '@/components/ui/picker'
 import { useT } from '@memry/i18n/renderer'
@@ -9,7 +9,9 @@ import { useRelationSearch, type RelationSearchResult } from './use-relation-sea
 const GROUP_ICONS: Record<RelationKind, AppIcon> = {
   note: FileText,
   task: CheckSquare,
-  event: Calendar
+  event: Calendar,
+  canvas: PenTool,
+  journal: BookOpen
 }
 
 interface RelationPickerProps {
@@ -19,7 +21,7 @@ interface RelationPickerProps {
 
 /**
  * Search content for the relation property picker: a search input plus
- * results grouped into Notes & Files / Tasks / Events. Meant to be mounted
+ * results grouped into Notes & Files / Tasks / Events / Canvases / Journal. Meant to be mounted
  * inside a Radix Popover by the caller (see RelationEditor's "+" trigger) —
  * this component owns no open/close state of its own, matching how
  * EmojiPicker is dropped into TagIconChip's PopoverContent.
@@ -27,10 +29,15 @@ interface RelationPickerProps {
 export function RelationPicker({ onSelect }: RelationPickerProps): React.JSX.Element {
   const { t } = useT('notes')
   const [query, setQuery] = useState('')
-  const { notes, tasks, events, loading } = useRelationSearch(query)
+  const { notes, tasks, events, canvases, journals, loading } = useRelationSearch(query)
 
   const trimmed = query.trim()
-  const hasResults = notes.length > 0 || tasks.length > 0 || events.length > 0
+  const hasResults =
+    notes.length > 0 ||
+    tasks.length > 0 ||
+    events.length > 0 ||
+    canvases.length > 0 ||
+    journals.length > 0
 
   const renderGroup = (
     kind: RelationKind,
@@ -68,6 +75,8 @@ export function RelationPicker({ onSelect }: RelationPickerProps): React.JSX.Ele
         {renderGroup('note', t('properties.relation.groupNotes'), notes)}
         {renderGroup('task', t('properties.relation.groupTasks'), tasks)}
         {renderGroup('event', t('properties.relation.groupEvents'), events)}
+        {renderGroup('canvas', t('properties.relation.groupCanvases'), canvases)}
+        {renderGroup('journal', t('properties.relation.groupJournals'), journals)}
         {trimmed !== '' && !hasResults && !loading && (
           <Picker.Empty message={t('properties.relation.empty')} />
         )}

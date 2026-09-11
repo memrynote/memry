@@ -37,6 +37,33 @@ function insertEvent(db: TestDb, id: string, title: string): void {
   `)
 }
 
+function insertCanvas(
+  db: TestDb,
+  id: string,
+  title: string,
+  deletedAt: number | null = null
+): void {
+  db.run(sql`
+    INSERT INTO canvases (
+      id, vault_id, title, snapshot_ciphertext, vector_clock, created_at, updated_at, deleted_at
+    )
+    VALUES (${id}, 'vault-1', ${title}, '', '{}', 0, 0, ${deletedAt})
+  `)
+}
+
+function insertJournal(db: TestDb, id: string, title: string, date: string): void {
+  db.run(sql`
+    INSERT INTO note_cache (
+      id, path, title, file_type, content_hash, word_count, character_count,
+      date, created_at, modified_at
+    )
+    VALUES (
+      ${id}, ${`journal/${date}.md`}, ${title}, 'markdown', ${`hash-${id}`}, 0, 0,
+      ${date}, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'
+    )
+  `)
+}
+
 describe('properties:resolveRefs', () => {
   let indexDb: TestDb
   let dataDb: TestDb
@@ -53,6 +80,9 @@ describe('properties:resolveRefs', () => {
     insertNote(indexDb, 'nte_emoji', 'Jane Doe', 'markdown', '👩')
     insertTask(dataDb, 'tsk_1', 'Call Richard')
     insertEvent(dataDb, 'evt_1', 'Lunch')
+    insertCanvas(dataDb, 'cnv_1', 'Sprint Board')
+    insertCanvas(dataDb, 'cnv_gone', 'Deleted Board', 1_700_000_000_000)
+    insertJournal(indexDb, 'jrn_1', 'Sprint retro', '2026-05-10')
   })
 
   describe('navigation and display payload', () => {
@@ -73,6 +103,40 @@ describe('properties:resolveRefs', () => {
     it("returns an event's startAt so the calendar can move its range before focusing", async () => {
       const [event] = await resolveRefs(indexDb, dataDb, ['memry://event/evt_1'])
       expect(event.startAt).toBe('2026-05-10T12:00:00.000Z')
+    })
+
+    it('resolves a canvas by id', async () => {
+      const [canvas] = await resolveRefs(indexDb, dataDb, ['memry://canvas/cnv_1'])
+      expect(canvas).toMatchObject({
+        targetType: 'canvas',
+        targetId: 'cnv_1',
+        title: 'Sprint Board',
+        exists: true
+      })
+    })
+
+    // The row survives a delete as a sync tombstone; the chip must still read
+    // as dangling so the user can see and remove it.
+    it('treats a soft-deleted canvas as a dangling target', async () => {
+      const [canvas] = await resolveRefs(indexDb, dataDb, ['memry://canvas/cnv_gone'])
+      expect(canvas.exists).toBe(false)
+    })
+
+    it('resolves a journal entry by its date and returns the date to navigate with', async () => {
+      const [journal] = await resolveRefs(indexDb, dataDb, ['memry://journal/2026-05-10'])
+      expect(journal).toMatchObject({
+        targetType: 'journal',
+        targetId: '2026-05-10',
+        title: 'Sprint retro',
+        exists: true,
+        date: '2026-05-10'
+      })
+    })
+
+    it('reports a day with no entry as dangling', async () => {
+      const [journal] = await resolveRefs(indexDb, dataDb, ['memry://journal/2026-05-11'])
+      expect(journal.exists).toBe(false)
+      expect(journal.targetId).toBe('2026-05-11')
     })
 
     it('leaves the navigation fields off a target that does not exist', async () => {
