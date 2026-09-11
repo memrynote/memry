@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Plus, Check, Loader2, X, Cloud, Trash2 } from '@/lib/icons'
 
-import { Picker } from '@/components/ui/picker'
+import { Picker, PICKER_ROW_SELECTOR } from '@/components/ui/picker'
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -117,6 +117,22 @@ export function VaultSwitcher() {
     [switchVault]
   )
 
+  // Radix's own auto-focus takes the first row. Open on the active vault
+  // instead, so ⌘⇧O lands where the user already is and Up/Down (handled in
+  // `ui/picker/picker-content.tsx`) walks out from there.
+  const handleOpenAutoFocus = useCallback((event: Event) => {
+    const content = event.currentTarget
+    if (!(content instanceof HTMLElement)) return
+
+    const target =
+      content.querySelector<HTMLElement>('[data-active-vault="true"]') ??
+      content.querySelector<HTMLElement>(PICKER_ROW_SELECTOR)
+    if (!target) return
+
+    event.preventDefault()
+    target.focus()
+  }, [])
+
   const handleSignIn = useCallback(() => {
     setOpen(false)
     openSettings('account')
@@ -192,6 +208,7 @@ export function VaultSwitcher() {
           </Picker.Trigger>
           <Picker.Content
             width="auto"
+            onOpenAutoFocus={handleOpenAutoFocus}
             onCloseAutoFocus={(e) => e.preventDefault()}
             className="min-w-56"
             align="start"
@@ -207,9 +224,17 @@ export function VaultSwitcher() {
                       key={vault.path}
                       type="button"
                       onClick={() => !isActive && void handleSwitchVault(vault.path)}
+                      data-active-vault={isActive ? 'true' : undefined}
                       className={cn(
                         'group/vault flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 transition-colors',
-                        isActive ? 'bg-accent' : 'hover:bg-accent cursor-pointer'
+                        // Arrow keys walk these rows (see `picker-content.tsx`).
+                        // The tinted row IS the cursor — hover and keyboard
+                        // focus share it, and the active vault is marked by its
+                        // check and weight instead, so exactly one row ever
+                        // reads as highlighted. A ring here would collide with
+                        // the popover edge and the row below it.
+                        'focus:outline-none focus-visible:bg-accent',
+                        isActive ? 'cursor-default' : 'hover:bg-accent cursor-pointer'
                       )}
                     >
                       <Check
@@ -283,7 +308,7 @@ export function VaultSwitcher() {
                         setOpen(false)
                         setVaultToDownload(vault)
                       }}
-                      className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer"
+                      className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer focus:outline-none focus-visible:bg-accent"
                     >
                       <Cloud className="size-3.5 shrink-0 text-muted-foreground" />
                       <span className="flex-1 truncate text-start text-muted-foreground">
@@ -336,7 +361,7 @@ export function VaultSwitcher() {
                   <button
                     type="button"
                     onClick={handleSignIn}
-                    className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer"
+                    className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer focus:outline-none focus-visible:bg-accent"
                   >
                     <Cloud className="size-3.5 text-sidebar-terracotta" />
                     <span className="text-sidebar-terracotta font-medium">

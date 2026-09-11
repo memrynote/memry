@@ -8,6 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import React from 'react'
 
@@ -51,11 +52,35 @@ vi.mock('@/components/ui/picker', async () => {
     )
   }
   Picker.Trigger = ({ children }: { children: ReactNode }) => <>{children}</>
-  Picker.Content = ({ children }: { children: ReactNode }) => {
+  /**
+   * Radix dispatches a cancelable event on the content container before it
+   * auto-focuses, which is the seam the component uses to open on the active
+   * vault instead of the first row. Reproduce exactly that: dispatch once on
+   * open, and honour `preventDefault`.
+   */
+  Picker.Content = ({
+    children,
+    onOpenAutoFocus
+  }: {
+    children: ReactNode
+    onOpenAutoFocus?: (event: Event) => void
+  }) => {
     const { open, onOpenChange } = React.useContext(OpenContext)
+    const ref = React.useRef<HTMLDivElement>(null)
+
+    React.useEffect(() => {
+      const content = ref.current
+      if (!open || !content || !onOpenAutoFocus) return
+      const listener = onOpenAutoFocus as EventListener
+      content.addEventListener('autoFocusOnMount', listener)
+      content.dispatchEvent(new CustomEvent('autoFocusOnMount', { cancelable: true }))
+      content.removeEventListener('autoFocusOnMount', listener)
+    }, [open, onOpenAutoFocus])
+
     if (!open) return null
     return (
       <div
+        ref={ref}
         data-testid="vault-picker"
         onKeyDown={(e) => {
           if (e.key === 'Escape') onOpenChange(false)
@@ -65,7 +90,9 @@ vi.mock('@/components/ui/picker', async () => {
       </div>
     )
   }
-  Picker.List = ({ children }: { children: ReactNode }) => <div>{children}</div>
+  Picker.List = ({ children }: { children: ReactNode }) => (
+    <div data-slot="picker-list">{children}</div>
+  )
   Picker.Separator = () => <hr />
   Picker.Empty = ({ message }: { message: string }) => <div>{message}</div>
   Picker.Item = ({ value, label }: { value: string; label: string }) => {
@@ -76,7 +103,8 @@ vi.mock('@/components/ui/picker', async () => {
       </button>
     )
   }
-  return { Picker }
+  // Same string the real module exports; the component uses it to pick rows.
+  return { Picker, PICKER_ROW_SELECTOR: '[data-slot="picker-list"] button:not([disabled])' }
 })
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -217,6 +245,32 @@ describe('VaultSwitcher shortcut opening', () => {
     act(() => requestVaultSwitcherOpen())
 
     fireEvent.click(screen.getByText('Old'))
+
+    expect(mocks.switchVault).toHaveBeenCalledWith('/vaults/Old')
+  })
+
+  it('opens focused on the active vault, so the arrow keys start where the user is', () => {
+    render(<VaultSwitcher />)
+
+    act(() => requestVaultSwitcherOpen())
+
+    const activeRow = within(screen.getByTestId('vault-picker'))
+      .getByText('Active')
+      .closest('button')
+    expect(document.activeElement).toBe(activeRow)
+  })
+
+  it('switches the vault on Enter over a focused row', async () => {
+    render(<VaultSwitcher />)
+    act(() => requestVaultSwitcherOpen())
+
+    // Arrow-key movement between rows lives in `ui/picker/picker-content.tsx`;
+    // what matters here is that landing on a row and pressing Enter switches.
+    const row = within(screen.getByTestId('vault-picker'))
+      .getByText('Old')
+      .closest('button') as HTMLButtonElement
+    row.focus()
+    await userEvent.keyboard('{Enter}')
 
     expect(mocks.switchVault).toHaveBeenCalledWith('/vaults/Old')
   })

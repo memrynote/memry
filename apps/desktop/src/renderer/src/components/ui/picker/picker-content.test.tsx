@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 import { Picker } from './index'
 
 /**
@@ -101,5 +102,110 @@ describe('PickerList', () => {
     const list = screen.getByRole('listbox')
     expect(list.className).toContain('overflow-y-auto')
     expect(list.className).toContain('min-h-0')
+  })
+})
+
+describe('PickerContent keyboard navigation', () => {
+  /**
+   * Radix focuses the first row on open and loops Tab, but nothing moves focus
+   * on Arrow keys — a picker opened from the keyboard (⌘⇧O on the vault
+   * switcher) could only ever activate that first row. Rows here cover both
+   * shapes a list carries: `Picker.Item`s and a row the call site renders
+   * itself, the way the vault switcher renders its vaults.
+   */
+  const renderNavigable = (
+    onValueChange = vi.fn(),
+    contentProps: Partial<React.ComponentProps<typeof Picker.Content>> = {}
+  ): { rows: HTMLElement[]; content: HTMLElement; search: HTMLElement } => {
+    render(
+      <Picker defaultOpen onValueChange={onValueChange}>
+        <Picker.Trigger>trigger</Picker.Trigger>
+        <Picker.Content data-testid="content" {...contentProps}>
+          <Picker.Search placeholder="search" />
+          <Picker.List>
+            <Picker.Item value="one" label="one" />
+            <Picker.Item value="two" label="two" />
+            <button type="button" onClick={() => onValueChange('own-row')}>
+              own row
+            </button>
+            <Picker.Item value="off" label="off" disabled />
+          </Picker.List>
+        </Picker.Content>
+      </Picker>
+    )
+    const content = screen.getByTestId('content')
+    return {
+      content,
+      search: screen.getByPlaceholderText('search'),
+      rows: ['one', 'two', 'own row'].map((label) => screen.getByText(label).closest('button')!)
+    }
+  }
+
+  it('walks the rows on ArrowDown and wraps at the end', () => {
+    const { content, rows } = renderNavigable()
+    rows[0].focus()
+
+    fireEvent.keyDown(content, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(rows[1])
+
+    // The call site's own row is reachable too, not just `Picker.Item`s.
+    fireEvent.keyDown(content, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(rows[2])
+
+    // A disabled row is skipped rather than parking focus on a dead end.
+    fireEvent.keyDown(content, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(rows[0])
+  })
+
+  it('walks backwards on ArrowUp and wraps at the top', () => {
+    const { content, rows } = renderNavigable()
+    rows[0].focus()
+
+    fireEvent.keyDown(content, { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(rows[2])
+
+    fireEvent.keyDown(content, { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(rows[1])
+  })
+
+  it('enters the list from the content itself, where Radix parks focus', () => {
+    const { content, rows } = renderNavigable()
+    content.focus()
+
+    fireEvent.keyDown(content, { key: 'ArrowDown' })
+
+    expect(document.activeElement).toBe(rows[0])
+  })
+
+  it('activates the focused row on Enter', async () => {
+    const onValueChange = vi.fn()
+    const { content, rows } = renderNavigable(onValueChange)
+    rows[0].focus()
+
+    fireEvent.keyDown(content, { key: 'ArrowDown' })
+    await userEvent.keyboard('{Enter}')
+
+    expect(onValueChange).toHaveBeenCalledWith('two')
+  })
+
+  it('leaves the Arrow keys to the caret while the search field has focus', () => {
+    const { search } = renderNavigable()
+    search.focus()
+
+    fireEvent.keyDown(search, { key: 'ArrowDown' })
+
+    expect(document.activeElement).toBe(search)
+  })
+
+  it('still runs a call site handler, and lets it preempt the navigation', () => {
+    // `inline-priority-popover` binds digit shortcuts on `Picker.Content`.
+    const onKeyDown = vi.fn((e: React.KeyboardEvent) => e.preventDefault())
+    const { content, rows } = renderNavigable(vi.fn(), { onKeyDown })
+    rows[0].focus()
+
+    fireEvent.keyDown(content, { key: 'ArrowDown' })
+
+    expect(onKeyDown).toHaveBeenCalled()
+    expect(document.activeElement).toBe(rows[0])
   })
 })

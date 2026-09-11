@@ -62,7 +62,10 @@ export const PickerItem = React.forwardRef<HTMLButtonElement, PickerItemProps>(
         data-slot="picker-item"
         className={cn(
           'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
-          'hover:bg-accent focus:outline-none',
+          // Arrow-key navigation (see `picker-content.tsx`) moves focus between
+          // rows, so the focused row carries the same tint hover uses — one
+          // highlighted row, no ring to collide with the popover edge.
+          'hover:bg-accent focus:outline-none focus-visible:bg-accent',
           isSelected && !indicatorColor && 'bg-accent',
           destructive && 'text-destructive focus:text-destructive',
           className
@@ -96,16 +99,16 @@ export const PickerItem = React.forwardRef<HTMLButtonElement, PickerItemProps>(
           )}
         </span>
 
-        {trailing && <span className="shrink-0 ml-auto">{trailing}</span>}
+        {trailing && <span className="shrink-0 ms-auto">{trailing}</span>}
 
         {shortcut && (
-          <kbd className="ml-auto shrink-0 text-[11px] text-muted-foreground/50 font-mono">
+          <kbd className="ms-auto shrink-0 text-[11px] text-muted-foreground/50 font-mono">
             {shortcut}
           </kbd>
         )}
 
         {indicator === 'check' && isSelected && (
-          <CheckMark color={indicatorColor} className="ml-auto" />
+          <CheckMark color={indicatorColor} className="ms-auto" />
         )}
       </button>
     )

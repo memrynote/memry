@@ -24,5 +24,6 @@ export const Picker = Object.assign(PickerRoot, {
 })
 
 export { usePickerSearch } from './use-picker-search'
+export { PICKER_ROW_SELECTOR } from './picker-content'
 export { usePickerContext } from './types'
 export type { PickerMode, PickerIndicator } from './types'
