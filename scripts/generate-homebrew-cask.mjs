@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Renders the Homebrew cask for MemryNote from release inputs so publish-release
-// can push it to memrynote/homebrew-tap on every release (no manual brew edits).
+// Renders the Homebrew cask for MemryNote from release inputs so
+// publish-homebrew-cask.yml can push it to memrynote/homebrew-tap on every
+// release (no manual brew edits).
 //
 // Usage:
 //   node scripts/generate-homebrew-cask.mjs \

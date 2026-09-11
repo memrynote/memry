@@ -100,11 +100,26 @@ describe('release helpers', () => {
         dryRun: true,
         help: false,
         humanize: true,
+        restart: false,
+        smoke: false,
         tag: 'vnext',
         watch: false,
         yes: true
       }
     )
+  })
+
+  it('parses the local pipeline flags', () => {
+    assert.deepEqual(parseReleaseArgs(['--restart', '--smoke']), {
+      dryRun: false,
+      help: false,
+      humanize: false,
+      restart: true,
+      smoke: true,
+      tag: undefined,
+      watch: true,
+      yes: false
+    })
   })
 
   it('builds humanizer args from release flags', () => {
