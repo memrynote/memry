@@ -1,19 +1,16 @@
 import { app, BrowserWindow } from 'electron'
-import { autoUpdater, type UpdateInfo } from 'electron-updater'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import { UpdaterChannels } from '@memry/contracts/ipc-updater'
 import { createLogger } from './lib/logger'
 import { broadcastToAllWindows } from './lib/window-broadcast'
 import { getMainI18n } from './lib/main-i18n'
 import { formatAppVersionForDisplay } from './lib/app-version-display'
-import { htmlToPlainText } from './lib/html-to-plain-text'
 import { getUpdaterPrefs, setAutoCheckPref, setAutoDownloadPref, setSkippedVersion } from './store'
 import { trackMainError, trackMainWarning } from './telemetry/diagnostics'
 import { trackMainEvent } from './telemetry/track'
 import { markUpdateInstallStarted } from './telemetry/update-install-marker'
 import {
   classifyUpdaterError,
-  isExpiredSignedAssetError,
   isReadOnlyVolumeError,
   isUpdaterCheckPhase,
   recordUpdaterCheckFailure,
@@ -21,30 +18,11 @@ import {
   resetUpdaterCheckHealth
 } from './updater-error-severity'
 import { recordUpdateInstallFailure, reconcileUpdateInstallHealth } from './updater-install-health'
+import type { UpdaterBackend, UpdaterHost } from './updater-backend'
+import { createElectronUpdaterBackend } from './updater-backend-electron'
+import { createVelopackBackend } from './updater-backend-velopack'
 
 const logger = createLogger('Updater')
-
-/**
- * electron-updater defaults its own logger to `console` (AppUpdater sets it at
- * construction), and a packaged build has no console attached — so its
- * diagnostics went nowhere. That is the half of the update pipeline we never
- * see: "Cannot run installer: error code: EACCES/UNKNOWN/ENOENT", the
- * elevate.exe retry, differential-download fallbacks. Routing them into the app
- * log makes a user's main.log answer why an update did not install.
- */
-const libraryLogger = createLogger('ElectronUpdater')
-const updaterLibraryLogger = {
-  info: (message?: unknown) => logMessage('info', message),
-  warn: (message?: unknown) => logMessage('warn', message),
-  error: (message?: unknown) => logMessage('error', message),
-  debug: (message?: unknown) => logMessage('debug', message)
-}
-
-function logMessage(level: 'info' | 'warn' | 'error' | 'debug', message?: unknown): void {
-  // electron-updater passes arbitrary values here; best-effort stringify for the log line.
-  // eslint-disable-next-line @typescript-eslint/no-base-to-string
-  libraryLogger[level](typeof message === 'string' ? message : String(message ?? ''))
-}
 
 /**
  * How often to re-check for updates while the app is running when auto-check is on.
@@ -230,32 +208,13 @@ function noteInstallAttemptFailure(phase: UpdaterErrorPhase): void {
   }
 }
 
-/**
- * Extra attempts for a check that died on an expired GitHub signed-asset URL,
- * and the pause before each. A check is three small GETs, so asking again is
- * cheap; the delay is there because the expiry is a timing race, not a state we
- * can observe. Bounded at two so a genuinely refused asset still fails within
- * seconds instead of retrying forever.
- */
-const SIGNED_ASSET_RETRY_ATTEMPTS = 2
-const SIGNED_ASSET_RETRY_DELAY_MS = 2_000
-
-/**
- * Retries still available for the in-flight check. electron-updater emits its
- * `error` event *before* checkForUpdates() rejects, so without this the first
- * attempt would already have flipped the UI to `error` and shipped an exception
- * for a failure we are about to recover from. Zero whenever no check is running,
- * so a download- or install-phase failure is never suppressed.
- */
-let signedAssetRetriesLeft = 0
-
-const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
-
 let initialized = false
 let activeCheck: Promise<AppUpdateState> | null = null
 let activeDownload: Promise<AppUpdateState> | null = null
 let quitAndInstallRequested = false
 let autoCheckTimer: ReturnType<typeof setInterval> | null = null
+let backend: UpdaterBackend | null = null
+let installOnQuitDisabledForSessionEnd = false
 
 let state: AppUpdateState = {
   currentVersion: getCurrentDisplayVersion(),
@@ -275,6 +234,140 @@ let state: AppUpdateState = {
 }
 
 /**
+ * The state machine seen from a backend. Every transition an update source can cause
+ * goes through here, so electron-updater and Velopack drive one identical
+ * `AppUpdateState` and the renderer never learns which one is installed.
+ */
+const host: UpdaterHost = {
+  onChecking() {
+    logger.info('checking for updates')
+    setState({
+      status: 'checking',
+      error: null,
+      lastCheckedAt: Date.now(),
+      downloadProgressPercent: null
+    })
+  },
+
+  onUpdateAvailable(update) {
+    recordUpdaterCheckSuccess()
+    const displayVersion = formatAppVersionForDisplay(update.version)
+
+    // Honor "Skip This Version": suppress the prompt for a version the user
+    // dismissed. A manual check from Settings clears the skip (see checkForUpdates).
+    if (getUpdaterPrefs().skippedVersion === displayVersion) {
+      logger.info('update available but skipped by user', { version: update.version })
+      setState({
+        status: 'up-to-date',
+        availableVersion: null,
+        releaseName: null,
+        releaseDate: null,
+        releaseNotes: null,
+        releaseNotesHtml: null,
+        downloadProgressPercent: null,
+        error: null
+      })
+      return false
+    }
+
+    logger.info('update available', { version: update.version })
+    setState({
+      status: 'available',
+      availableVersion: displayVersion,
+      releaseName: update.releaseName,
+      releaseDate: update.releaseDate,
+      releaseNotes: update.releaseNotes,
+      releaseNotesHtml: update.releaseNotesHtml,
+      downloadProgressPercent: null,
+      error: null
+    })
+    // No native dialog here: the renderer surfaces an in-app modal from this state.
+    return true
+  },
+
+  onUpToDate() {
+    recordUpdaterCheckSuccess()
+    logger.info('no update available')
+    setState({
+      status: 'up-to-date',
+      availableVersion: null,
+      releaseName: null,
+      releaseDate: null,
+      releaseNotes: null,
+      releaseNotesHtml: null,
+      downloadProgressPercent: null,
+      error: null
+    })
+  },
+
+  onDownloadProgress(percent) {
+    setState({
+      status: 'downloading',
+      downloadProgressPercent: Math.max(0, Math.min(100, Math.round(percent)))
+    })
+  },
+
+  onDownloaded(update) {
+    logger.info('update downloaded', { version: update.version })
+    setState({
+      status: 'downloaded',
+      availableVersion: formatAppVersionForDisplay(update.version),
+      releaseName: update.releaseName,
+      releaseDate: update.releaseDate,
+      releaseNotes: update.releaseNotes,
+      releaseNotesHtml: update.releaseNotesHtml,
+      downloadProgressPercent: 100,
+      error: null
+    })
+    // No native dialog: the renderer surfaces the in-app "restart to install" modal
+    // from the 'downloaded' state (Restart Now / Later).
+  },
+
+  onError(error) {
+    const message =
+      error instanceof Error ? error.message : getMainI18n().t('system:error.updateFailed')
+    const phase = currentErrorPhase()
+    // The local main.log line and the user-facing state stay at error severity:
+    // only the telemetry severity is classified.
+    logger.error('updater error', error, describeUpdaterError(error, phase))
+    // Update-pipeline breakage (feed 404s, signature failures, disk-full
+    // downloads) must reach error tracking: affected users cannot update to a fix.
+    reportUpdaterFailure(error, phase)
+    // The app is on the mounted DMG or a translocated ~/Downloads copy, so
+    // Squirrel cannot stage anything and never will from here. Its own message
+    // explains that without naming the fix, so say what to do instead. The
+    // `isInApplicationsFolder()` guard is what keeps this from telling a
+    // correctly installed user to move an app that is already in place; it is
+    // macOS-only, so `?.()` leaves every other platform on the raw message.
+    const readOnlyVolume = isReadOnlyVolumeError(error) && app.isInApplicationsFolder?.() === false
+    setState({
+      status: 'error',
+      error: readOnlyVolume ? getMainI18n().t('system:error.updateReadOnlyVolume') : message
+    })
+    noteInstallAttemptFailure(phase)
+  },
+
+  currentPhase: currentErrorPhase,
+
+  isAutoDownloadEnabled: () => state.autoDownloadEnabled
+}
+
+/**
+ * One decision, once. Windows packaged builds prefer Velopack; every other platform,
+ * and a Windows install that is not a Velopack install (NSIS), stays on
+ * electron-updater unchanged.
+ */
+function selectUpdaterBackend(host: UpdaterHost): UpdaterBackend {
+  if (process.platform === 'win32') {
+    const velopack = createVelopackBackend(host)
+    if (velopack) {
+      return velopack
+    }
+  }
+  return createElectronUpdaterBackend(host)
+}
+
+/**
  * Surface a previous session's failed install to the renderer. Called at startup
  * from the update-install marker, which runs long before initializeUpdater() —
  * setState merges, so the flag survives updater init either way.
@@ -289,24 +382,25 @@ export function noteFailedUpdateInstall(version: string | null): void {
 }
 
 /**
- * Windows kills the detached NSIS installer that autoInstallOnAppQuit spawns
- * when the quit is part of an OS shutdown/restart/log-off — after the old
- * install has already been removed. That is how a user ends up with an install
- * directory holding only the uninstaller and a dead Start menu shortcut
- * (#1851). When the OS session is ending, skip the install-on-quit entirely:
- * the downloaded update applies on the next user-initiated quit or via the
- * in-app Restart prompt instead. `query-session-end` can fire for a shutdown
- * that another app then cancels — the cost of that false positive is one
- * skipped silent install, which the next quit picks up.
+ * Windows kills the detached installer that install-on-quit spawns when the quit
+ * is part of an OS shutdown/restart/log-off — after the old install has already
+ * been removed. That is how a user ends up with an install directory holding only
+ * the uninstaller and a dead Start menu shortcut (#1851). When the OS session is
+ * ending, skip the install-on-quit entirely: the downloaded update applies on the
+ * next user-initiated quit or via the in-app Restart prompt instead.
+ * `query-session-end` can fire for a shutdown that another app then cancels — the
+ * cost of that false positive is one skipped silent install, which the next quit
+ * picks up.
  */
 function disableInstallOnSessionEnd(): void {
-  if (!autoUpdater.autoInstallOnAppQuit) {
+  if (installOnQuitDisabledForSessionEnd || !backend) {
     return
   }
+  installOnQuitDisabledForSessionEnd = true
   logger.warn(
     'OS session ending — skipping install-on-quit so a killed installer cannot remove the existing install'
   )
-  autoUpdater.autoInstallOnAppQuit = false
+  backend.setInstallOnQuit(false)
 }
 
 function watchWindowForSessionEnd(window: BrowserWindow): void {
@@ -340,140 +434,23 @@ export function initializeUpdater(): void {
   if (strandedInstallVersion) {
     noteFailedUpdateInstall(strandedInstallVersion)
   }
-  autoUpdater.logger = updaterLibraryLogger
   const prefs = getUpdaterPrefs()
   const autoDownloadEnabled = prefs.autoDownload ?? false
   const autoCheckEnabled = prefs.autoCheck ?? true
-  autoUpdater.autoDownload = autoDownloadEnabled
-  autoUpdater.autoInstallOnAppQuit = true
+  backend = selectUpdaterBackend(host)
+  logger.info('updater backend selected', { backend: backend.kind })
+  backend.setAutoDownload(autoDownloadEnabled)
+  backend.setInstallOnQuit(true)
   registerSessionEndInstallGuard()
+  // A normal quit with an update already downloaded: the backend applies it in
+  // place, without relaunching. The Restart-to-install path goes through
+  // performQuitAndInstall() instead, which must not install twice.
+  app.on('will-quit', () => {
+    if (state.status === 'downloaded' && !quitAndInstallRequested) {
+      backend?.applyOnQuit()
+    }
+  })
   setState({ autoDownloadEnabled, autoCheckEnabled })
-
-  autoUpdater.on('checking-for-update', () => {
-    logger.info('checking for updates')
-    setState({
-      status: 'checking',
-      error: null,
-      lastCheckedAt: Date.now(),
-      downloadProgressPercent: null
-    })
-  })
-
-  autoUpdater.on('update-available', (info) => {
-    recordUpdaterCheckSuccess()
-    const displayVersion = formatUpdateVersion(info)
-
-    // Honor "Skip This Version": suppress the prompt for a version the user
-    // dismissed. A manual check from Settings clears the skip (see checkForUpdates).
-    if (getUpdaterPrefs().skippedVersion === displayVersion) {
-      logger.info('update available but skipped by user', { version: info.version })
-      setState({
-        status: 'up-to-date',
-        availableVersion: null,
-        releaseName: null,
-        releaseDate: null,
-        releaseNotes: null,
-        releaseNotesHtml: null,
-        downloadProgressPercent: null,
-        error: null
-      })
-      return
-    }
-
-    logger.info('update available', { version: info.version })
-    setState({
-      status: 'available',
-      availableVersion: displayVersion,
-      releaseName: info.releaseName ?? null,
-      releaseDate: info.releaseDate ?? null,
-      releaseNotes: normalizeReleaseNotes(info),
-      releaseNotesHtml: rawReleaseNotesHtml(info),
-      downloadProgressPercent: null,
-      error: null
-    })
-    // No native dialog here: the renderer surfaces an in-app modal from this state.
-    // When auto-download is on, electron-updater downloads automatically (autoDownload=true),
-    // so the state flows straight to 'downloading' without prompting.
-  })
-
-  autoUpdater.on('update-not-available', () => {
-    recordUpdaterCheckSuccess()
-    logger.info('no update available')
-    setState({
-      status: 'up-to-date',
-      availableVersion: null,
-      releaseName: null,
-      releaseDate: null,
-      releaseNotes: null,
-      releaseNotesHtml: null,
-      downloadProgressPercent: null,
-      error: null
-    })
-  })
-
-  autoUpdater.on('download-progress', (progress) => {
-    setState({
-      status: 'downloading',
-      downloadProgressPercent: Math.max(0, Math.min(100, Math.round(progress.percent)))
-    })
-  })
-
-  autoUpdater.on('update-downloaded', (info) => {
-    logger.info('update downloaded', { version: info.version })
-    const displayVersion = formatUpdateVersion(info)
-    setState({
-      status: 'downloaded',
-      availableVersion: displayVersion,
-      releaseName: info.releaseName ?? null,
-      releaseDate: info.releaseDate ?? null,
-      releaseNotes: normalizeReleaseNotes(info),
-      releaseNotesHtml: rawReleaseNotesHtml(info),
-      downloadProgressPercent: 100,
-      error: null
-    })
-    // No native dialog: the renderer surfaces the in-app "restart to install" modal
-    // from the 'downloaded' state (Restart Now / Later).
-  })
-
-  autoUpdater.on('error', (error) => {
-    const message =
-      error instanceof Error ? error.message : getMainI18n().t('system:error.updateFailed')
-    const phase = currentErrorPhase()
-    // An expired signed release-asset URL is a token that aged out mid-redirect,
-    // not a broken update. runUpdateCheck() is about to ask GitHub again for a
-    // fresh one, so leave the user-facing state and the telemetry alone —
-    // surfacing a failure we then recover from is the noise, not the signal.
-    if (
-      signedAssetRetriesLeft > 0 &&
-      isUpdaterCheckPhase(phase) &&
-      isExpiredSignedAssetError(error)
-    ) {
-      logger.warn(
-        'update check hit an expired release-asset url, retrying',
-        error,
-        describeUpdaterError(error, phase)
-      )
-      return
-    }
-    // The local main.log line and the user-facing state stay at error severity:
-    // only the telemetry severity is classified.
-    logger.error('updater error', error, describeUpdaterError(error, phase))
-    // Update-pipeline breakage (feed 404s, signature failures, disk-full
-    // downloads) must reach error tracking: affected users cannot update to a fix.
-    reportUpdaterFailure(error, phase)
-    // The app is on the mounted DMG or a translocated ~/Downloads copy, so
-    // Squirrel cannot stage anything and never will from here. Its own message
-    // explains that without naming the fix, so say what to do instead. The
-    // `isInApplicationsFolder()` guard is what keeps this from telling a
-    // correctly installed user to move an app that is already in place; it is
-    // macOS-only, so `?.()` leaves every other platform on the raw message.
-    const readOnlyVolume = isReadOnlyVolumeError(error) && app.isInApplicationsFolder?.() === false
-    setState({
-      status: 'error',
-      error: readOnlyVolume ? getMainI18n().t('system:error.updateReadOnlyVolume') : message
-    })
-    noteInstallAttemptFailure(phase)
-  })
 
   if (autoCheckEnabled) {
     startAutoCheckTimer()
@@ -523,7 +500,8 @@ export async function checkForUpdates(options?: {
   /** Clear a previously skipped version so it can surface again (manual checks). */
   clearSkip?: boolean
 }): Promise<AppUpdateState> {
-  if (!state.updateSupported) {
+  const activeBackend = backend
+  if (!state.updateSupported || !activeBackend) {
     return getUpdateState()
   }
 
@@ -535,7 +513,8 @@ export async function checkForUpdates(options?: {
     return activeCheck
   }
 
-  activeCheck = runUpdateCheck()
+  activeCheck = activeBackend
+    .check()
     .then(() => getUpdateState())
     .finally(() => {
       activeCheck = null
@@ -544,34 +523,9 @@ export async function checkForUpdates(options?: {
   return activeCheck
 }
 
-/**
- * Run the check, asking again when GitHub's signed release-asset URL expired
- * between the redirect and the follow-up GET (status 618, `jwt:expired`).
- * electron-updater does not retry that itself, so a single aged-out token used
- * to lose the whole check — 36 production exceptions across four releases, all
- * in the check phase. Only the final attempt reaches the `error` handler.
- */
-async function runUpdateCheck(): Promise<void> {
-  try {
-    for (let attempt = 0; ; attempt += 1) {
-      signedAssetRetriesLeft = SIGNED_ASSET_RETRY_ATTEMPTS - attempt
-      try {
-        await autoUpdater.checkForUpdates()
-        return
-      } catch (error) {
-        if (signedAssetRetriesLeft <= 0 || !isExpiredSignedAssetError(error)) {
-          throw error
-        }
-        await delay(SIGNED_ASSET_RETRY_DELAY_MS * (attempt + 1))
-      }
-    }
-  } finally {
-    signedAssetRetriesLeft = 0
-  }
-}
-
 export async function downloadUpdate(): Promise<AppUpdateState> {
-  if (!state.updateSupported) {
+  const activeBackend = backend
+  if (!state.updateSupported || !activeBackend) {
     return getUpdateState()
   }
 
@@ -590,8 +544,8 @@ export async function downloadUpdate(): Promise<AppUpdateState> {
     downloadProgressPercent: state.downloadProgressPercent ?? 0
   })
 
-  activeDownload = autoUpdater
-    .downloadUpdate()
+  activeDownload = activeBackend
+    .download()
     .then(() => getUpdateState())
     .finally(() => {
       activeDownload = null
@@ -639,8 +593,7 @@ export function setAutoDownloadEnabled(enabled: boolean): AppUpdateState {
     action: 'changed',
     dimensions: { setting: 'auto_download' }
   })
-  // electron-updater reads autoDownload only when the NEXT update-available fires.
-  autoUpdater.autoDownload = enabled
+  backend?.setAutoDownload(enabled)
   setState({ autoDownloadEnabled: enabled })
   // Close the gap where an update is already waiting: opting in should not leave that
   // update stuck behind the manual Download button, so start its download now.
@@ -696,7 +649,7 @@ export function quitAndInstall(): void {
   // window starts tearing down. Without this the frozen window (and any vault
   // teardown underneath) reads as a hang / broken vault picker.
   setState({ status: 'installing' })
-  // Trigger the app's graceful shutdown first. Calling autoUpdater.quitAndInstall()
+  // Trigger the app's graceful shutdown first. Handing off to the installer
   // directly here is cancelled by the before-quit handler (event.preventDefault +
   // app.exit), so the update never installs and the app re-prompts on every launch.
   // The shutdown handler calls performQuitAndInstall() once cleanup completes.
@@ -707,18 +660,15 @@ export function isQuitAndInstallRequested(): boolean {
   return quitAndInstallRequested
 }
 
-// Performs the real Squirrel/NSIS install + relaunch. Must run only after the
-// app's graceful shutdown (vault close, write-back flush) has completed.
-// (isSilent=true, isForceRunAfter=true): install with no visible NSIS window
-// (adds /S) and relaunch afterwards (adds --force-run). macOS Squirrel relaunches
-// regardless; the flags only affect the Windows NSIS installer.
+// Performs the real install + relaunch. Must run only after the app's graceful
+// shutdown (vault close, write-back flush) has completed.
 export function performQuitAndInstall(): void {
   // Last chance to leave evidence: the installer runs after this process exits,
   // and the shutdown chain has already disposed the telemetry runtime and the
   // log-ship transport, so an install failure from here on reaches nobody. The
   // next launch reads this marker and reports the install that never applied.
   markUpdateInstallStarted(getCurrentVersion(), state.availableVersion ?? undefined)
-  autoUpdater.quitAndInstall(true, true)
+  backend?.applyAndRestart()
 }
 
 function setState(patch: Partial<AppUpdateState>): void {
@@ -739,10 +689,6 @@ function getCurrentDisplayVersion(): string {
   return formatAppVersionForDisplay(getCurrentVersion())
 }
 
-function formatUpdateVersion(info: UpdateInfo): string {
-  return formatAppVersionForDisplay(info.version)
-}
-
 function isUpdateSupported(): boolean {
   return app.isPackaged === true
 }
@@ -750,64 +696,4 @@ function isUpdateSupported(): boolean {
 function broadcastState(): void {
   const snapshot = getUpdateState()
   broadcastToAllWindows(UpdaterChannels.events.STATE_CHANGED, snapshot)
-}
-
-function stripDeveloperChangelog(text: string): string {
-  const lines = text.split('\n')
-  const index = lines.findIndex((line) => line.trim().toLowerCase() === 'changelog')
-  if (index === -1) {
-    return text
-  }
-  return lines.slice(0, index).join('\n').trimEnd()
-}
-
-/**
- * The full release-notes body kept verbatim (HTML from the update feed) for the
- * read-only "release notes" tab. Unlike normalizeReleaseNotes, this does NOT convert
- * to plain text or strip the developer changelog, so the tab keeps the clickable PR
- * references / Full Changelog link. For array feeds each entry is prefixed with its
- * version heading.
- */
-function rawReleaseNotesHtml(info: UpdateInfo): string | null {
-  const { releaseNotes } = info
-
-  if (!releaseNotes) {
-    return null
-  }
-
-  if (typeof releaseNotes === 'string') {
-    return releaseNotes.trim() || null
-  }
-
-  const combined = releaseNotes
-    .map((entry) => {
-      const heading = entry.version ? `<h3>${formatAppVersionForDisplay(entry.version)}</h3>\n` : ''
-      return `${heading}${entry.note ?? ''}`.trim()
-    })
-    .filter(Boolean)
-    .join('\n')
-
-  return combined || null
-}
-
-function normalizeReleaseNotes(info: UpdateInfo): string | null {
-  const { releaseNotes } = info
-
-  if (!releaseNotes) {
-    return null
-  }
-
-  if (typeof releaseNotes === 'string') {
-    return stripDeveloperChangelog(htmlToPlainText(releaseNotes)) || null
-  }
-
-  const combined = releaseNotes
-    .map((entry) => {
-      const heading = entry.version ? `${formatAppVersionForDisplay(entry.version)}\n` : ''
-      return `${heading}${stripDeveloperChangelog(htmlToPlainText(entry.note ?? ''))}`.trim()
-    })
-    .filter(Boolean)
-    .join('\n\n')
-
-  return combined || null
 }
