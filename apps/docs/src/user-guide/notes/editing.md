@@ -367,6 +367,10 @@ Colours are stored by name, not as a fixed shade, so notes you coloured in an ea
 
 Pasting a URL offers four ways to keep it: plain **URL**, an inline **Mention** pill, an **Embed** (for a video the app recognises), or a **Bookmark** card.
 
+**URL** keeps the line you are on exactly as it was. Paste into a bulleted item and it stays a bulleted item, bullet and all; the same goes for a numbered item, an item nested under another, and a table cell. Whatever you had typed before and after the cursor is still there, with the link sitting between them.
+
+The link it leaves behind is ordinary text. You can put the cursor on either side of it, select part or all of it, copy it, retype it, delete it, or drag it to another line — the same as any other words in the note. It is saved as plain Markdown, so it reads the same way after a sync or in another editor.
+
 This works inside a table cell too. **Mention** replaces the pasted URL in that one cell and leaves the rest of the table alone. **Embed** and **Bookmark** are blocks in their own right and a cell holds text only, so they take the URL out of the cell and place the card after the whole table.
 
 ## Pasting into a Table Cell
