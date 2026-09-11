@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Jegyzet sikeresen exportálva",
       "failedToUpdateProperty": "Nem sikerült frissíteni a tulajdonságot",
       "failedToUpdateTags": "Nem sikerült frissíteni a címkéket",
+      "failedToUpdateIcon": "Az ikon frissítése sikertelen",
       "reminderSnoozed": "Az emlékeztető elhalasztva",
       "failedToSnoozeReminder": "Nem sikerült elhalasztani az emlékeztetőt",
       "defaultTemplateSet": "Alapértelmezett sablonkészlet",

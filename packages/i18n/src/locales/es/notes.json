@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Nota exportada exitosamente",
       "failedToUpdateProperty": "No se pudo actualizar la propiedad",
       "failedToUpdateTags": "No se pudieron actualizar las etiquetas",
+      "failedToUpdateIcon": "No se pudo actualizar el icono",
       "reminderSnoozed": "Recordatorio pospuesto",
       "failedToSnoozeReminder": "No se pudo posponer el recordatorio",
       "defaultTemplateSet": "Conjunto de plantillas predeterminado",

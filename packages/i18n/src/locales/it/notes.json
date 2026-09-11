@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Nota esportata con successo",
       "failedToUpdateProperty": "Impossibile aggiornare la proprietà",
       "failedToUpdateTags": "Impossibile aggiornare i tag",
+      "failedToUpdateIcon": "Aggiornamento dell'icona non riuscito",
       "reminderSnoozed": "Promemoria posticipato",
       "failedToSnoozeReminder": "Impossibile posticipare il promemoria",
       "defaultTemplateSet": "Insieme di modelli predefiniti",

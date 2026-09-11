@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Bilješka je uspješno izvezena",
       "failedToUpdateProperty": "Ažuriranje svojstva nije uspjelo",
       "failedToUpdateTags": "Ažuriranje oznaka nije uspjelo",
+      "failedToUpdateIcon": "Ažuriranje ikone nije uspjelo",
       "reminderSnoozed": "Podsjetnik je odgođen",
       "failedToSnoozeReminder": "Odgoda podsjetnika nije uspjela",
       "defaultTemplateSet": "Zadani skup predložaka",

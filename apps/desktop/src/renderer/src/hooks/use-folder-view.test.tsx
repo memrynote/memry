@@ -302,12 +302,14 @@ describe('useFolderView', () => {
     await act(async () => {
       await result.current.updateNoteProperty('n1', 'status', 'review')
       await result.current.updateNoteTags('n1', ['new'])
+      await result.current.updateNoteIcon('n1', '🚀')
       result.current.removeNotesOptimistically(['n2'])
       await result.current.refresh()
     })
 
     expect(mocks.propertiesSet).toHaveBeenCalledWith('n1', { status: 'review' })
     expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', tags: ['new'] })
+    expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', emoji: '🚀' })
     expect(window.api.folderView.getViews).toHaveBeenCalled()
   })
 
@@ -454,6 +456,13 @@ describe('useFolderView', () => {
       await result.current.updateNoteTags('n1', ['bad'])
     })
     expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToUpdateTags')
+
+    mocks.notesUpdate.mockResolvedValueOnce({ success: false, error: 'No icon' })
+    await act(async () => {
+      await result.current.updateNoteIcon('n1', null)
+    })
+    expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', emoji: null })
+    expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToUpdateIcon')
     ;(window.api.folderView.getConfig as any).mockRejectedValueOnce(new Error('summary failed'))
     await act(async () => {
       await result.current.updateSummaryConfig('title', { type: 'count' })

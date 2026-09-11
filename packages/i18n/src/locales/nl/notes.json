@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Opmerking succesvol geëxporteerd",
       "failedToUpdateProperty": "Kan de eigenschap niet updaten",
       "failedToUpdateTags": "Kan tags niet updaten",
+      "failedToUpdateIcon": "Kan pictogram niet bijwerken",
       "reminderSnoozed": "Herinnering gesnoozed",
       "failedToSnoozeReminder": "Kan herinnering niet snoozen",
       "defaultTemplateSet": "Standaardsjabloonset",

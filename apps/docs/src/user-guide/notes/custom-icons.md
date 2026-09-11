@@ -9,6 +9,10 @@ everywhere.
 Open any icon picker — click a folder's icon in the sidebar, or a note's icon next to its title —
 and switch to **Custom**.
 
+When a folder is open as a tab, you can also right-click any note row there and choose **Set Icon**
+(or **Remove Icon**, when the note already has one). That opens the same picker in a centred
+dialog, which is handy when the note's own icon is not on screen.
+
 - **Drop an image** anywhere on the panel,
 - **Click the upload area** and pick one or more files, or
 - **Paste a link** into the link field and press Enter.

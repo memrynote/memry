@@ -26,6 +26,38 @@ vi.mock('@/components/ui/context-menu', () => ({
   ContextMenuShortcut: ({ children }: { children: React.ReactNode }) => <span>{children}</span>
 }))
 
+// The picker lives in a Dialog (Radix portal + modal focus trap is noisy in
+// jsdom) and is code-split, so stub both: the dialog renders inline when open,
+// the picker exposes one button per action.
+vi.mock('@/components/ui/dialog', () => ({
+  Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
+    open ? <div data-testid="icon-dialog">{children}</div> : null,
+  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>
+}))
+
+vi.mock('@/components/note/note-title/EmojiPicker', () => ({
+  EmojiPicker: ({
+    onSelect,
+    onRemove,
+    hasEmoji
+  }: {
+    onSelect: (icon: string) => void
+    onRemove: () => void
+    hasEmoji: boolean
+  }) => (
+    <div data-testid="emoji-picker" data-has-emoji={String(hasEmoji)}>
+      <button type="button" onClick={() => onSelect('🚀')}>
+        pick-rocket
+      </button>
+      <button type="button" onClick={onRemove}>
+        picker-remove
+      </button>
+    </div>
+  )
+}))
+
 const makeNote = (overrides: Partial<NoteWithProperties> = {}): NoteWithProperties =>
   ({
     id: 'note-1',
@@ -195,6 +227,85 @@ describe('RowContextMenu', () => {
 
     fireEvent.click(findButtonWithText('Move 2 Notes to Folder'))
     expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2'])
+  })
+
+  it('offers Set Icon and writes the picked icon back through onSetIcon', async () => {
+    const onSetIcon = vi.fn()
+
+    render(
+      <RowContextMenu
+        note={makeNote()}
+        isPartOfSelection={false}
+        selectedCount={1}
+        selectedNoteIds={['note-1']}
+        onSetIcon={onSetIcon}
+      >
+        <div>row</div>
+      </RowContextMenu>
+    )
+
+    // No icon set yet, so Remove Icon must stay hidden.
+    expect(screen.queryByText('removeIcon')).toBeNull()
+    expect(screen.queryByTestId('icon-dialog')).toBeNull()
+
+    fireEvent.click(screen.getByText('setIcon'))
+
+    const picker = await screen.findByTestId('emoji-picker')
+    expect(picker.dataset.hasEmoji).toBe('false')
+
+    fireEvent.click(screen.getByText('pick-rocket'))
+    expect(onSetIcon).toHaveBeenCalledWith('note-1', '🚀')
+  })
+
+  it('offers Remove Icon only when the row already has one, and clears it', () => {
+    const onSetIcon = vi.fn()
+
+    render(
+      <RowContextMenu
+        note={makeNote({ emoji: '📚' })}
+        isPartOfSelection={false}
+        selectedCount={1}
+        selectedNoteIds={['note-1']}
+        onSetIcon={onSetIcon}
+      >
+        <div>row</div>
+      </RowContextMenu>
+    )
+
+    fireEvent.click(screen.getByText('removeIcon'))
+    expect(onSetIcon).toHaveBeenCalledWith('note-1', null)
+  })
+
+  it('hides the icon actions for non-note rows and when no handler is wired', () => {
+    const onSetIcon = vi.fn()
+
+    const { unmount } = render(
+      <RowContextMenu
+        note={makeNote({ id: 'task-1', kind: 'task', emoji: '📚' })}
+        isPartOfSelection={false}
+        selectedCount={1}
+        selectedNoteIds={[]}
+        onSetIcon={onSetIcon}
+      >
+        <div>row</div>
+      </RowContextMenu>
+    )
+    expect(screen.queryByText('setIcon')).toBeNull()
+    expect(screen.queryByText('removeIcon')).toBeNull()
+    unmount()
+
+    render(
+      <RowContextMenu
+        note={makeNote({ emoji: '📚' })}
+        isPartOfSelection={false}
+        selectedCount={1}
+        selectedNoteIds={['note-1']}
+      >
+        <div>row</div>
+      </RowContextMenu>
+    )
+    expect(screen.queryByText('setIcon')).toBeNull()
+    expect(screen.queryByText('removeIcon')).toBeNull()
   })
 
   it('does not offer bulk Delete or Move when the selection holds no notes', () => {

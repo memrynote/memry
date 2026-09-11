@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "筆記匯出成功",
       "failedToUpdateProperty": "無法更新屬性",
       "failedToUpdateTags": "無法更新標籤",
+      "failedToUpdateIcon": "更新圖示失敗",
       "reminderSnoozed": "提醒已延遲",
       "failedToSnoozeReminder": "無法延後提醒",
       "defaultTemplateSet": "已設為預設範本",

@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Catatan berhasil diekspor",
       "failedToUpdateProperty": "Gagal memperbarui properti",
       "failedToUpdateTags": "Gagal memperbarui tag",
+      "failedToUpdateIcon": "Gagal memperbarui ikon",
       "reminderSnoozed": "Pengingat ditunda",
       "failedToSnoozeReminder": "Gagal menunda pengingat",
       "defaultTemplateSet": "Kumpulan templat bawaan",

@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Notiz erfolgreich exportiert",
       "failedToUpdateProperty": "Die Eigenschaft konnte nicht aktualisiert werden",
       "failedToUpdateTags": "Tags konnten nicht aktualisiert werden",
+      "failedToUpdateIcon": "Symbol konnte nicht aktualisiert werden",
       "reminderSnoozed": "Erinnerung wurde deaktiviert",
       "failedToSnoozeReminder": "Schlummerfunktion der Erinnerung fehlgeschlagen",
       "defaultTemplateSet": "Standardvorlagensatz",

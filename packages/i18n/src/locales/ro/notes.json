@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Nota exportată cu succes",
       "failedToUpdateProperty": "Nu s-a putut actualiza proprietatea",
       "failedToUpdateTags": "Nu s-au actualizat etichetele",
+      "failedToUpdateIcon": "Actualizarea pictogramei a eșuat",
       "reminderSnoozed": "Memento amânat",
       "failedToSnoozeReminder": "Mementoul nu a fost amânat",
       "defaultTemplateSet": "Set de șabloane implicit",

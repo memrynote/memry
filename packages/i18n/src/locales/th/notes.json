@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "บันทึกโน้ตสำเร็จแล้ว",
       "failedToUpdateProperty": "ล้มเหลวในการอัปเดตทรัพย์สิน",
       "failedToUpdateTags": "ไม่สามารถอัปเดตแท็กได้",
+      "failedToUpdateIcon": "อัปเดตไอคอนไม่สำเร็จ",
       "reminderSnoozed": "เลื่อนการเตือนแล้ว",
       "failedToSnoozeReminder": "ไม่สามารถเลื่อนเตือนความจำได้",
       "defaultTemplateSet": "ตั้งค่าเทมเพลตเริ่มต้นแล้ว",

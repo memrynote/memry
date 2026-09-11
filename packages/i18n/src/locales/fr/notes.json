@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Note exportée avec succès",
       "failedToUpdateProperty": "Échec de la mise à jour de la propriété",
       "failedToUpdateTags": "Échec de la mise à jour des balises",
+      "failedToUpdateIcon": "Échec de la mise à jour de l'icône",
       "reminderSnoozed": "Rappel mis en attente",
       "failedToSnoozeReminder": "Échec de la répétition du rappel",
       "defaultTemplateSet": "Ensemble de modèles par défaut",

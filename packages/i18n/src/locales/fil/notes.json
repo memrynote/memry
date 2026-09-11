@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Matagumpay na na-export ang tala",
       "failedToUpdateProperty": "Nabigong i-update ang property",
       "failedToUpdateTags": "Nabigong i-update ang mga tag",
+      "failedToUpdateIcon": "Nabigong i-update ang icon",
       "reminderSnoozed": "Naka-snooze ang paalala",
       "failedToSnoozeReminder": "Nabigong i-snooze ang paalala",
       "defaultTemplateSet": "Default na set ng template",

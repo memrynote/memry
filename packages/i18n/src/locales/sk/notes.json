@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Poznámka bola úspešne exportovaná",
       "failedToUpdateProperty": "Nepodarilo sa aktualizovať vlastnosť",
       "failedToUpdateTags": "Nepodarilo sa aktualizovať značky",
+      "failedToUpdateIcon": "Nepodarilo sa aktualizovať ikonu",
       "reminderSnoozed": "Pripomienka odložená",
       "failedToSnoozeReminder": "Nepodarilo sa odložiť pripomienku",
       "defaultTemplateSet": "Predvolená šablóna nastavená",

@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Not başarıyla dışa aktarıldı",
       "failedToUpdateProperty": "Özellik güncellenemedi",
       "failedToUpdateTags": "Etiketler güncellenemedi",
+      "failedToUpdateIcon": "Simge güncellenemedi",
       "reminderSnoozed": "Hatırlatıcı ertelendi",
       "failedToSnoozeReminder": "Hatırlatıcı ertelenemedi",
       "defaultTemplateSet": "Varsayılan şablon ayarlandı",

@@ -25,15 +25,23 @@ import {
   FolderInput,
   PanelLeft,
   Link,
-  Trash2
+  Smile,
+  Trash2,
+  X
 } from '@/lib/icons'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
+import { lazy, Suspense, useState } from 'react'
+
+const LazyEmojiPicker = lazy(async () => ({
+  default: (await import('@/components/note/note-title/EmojiPicker')).EmojiPicker
+}))
 
 const log = createLogger('Component:RowContextMenu')
 
@@ -56,6 +64,8 @@ interface RowContextMenuProps {
   onMoveToFolder?: (noteIds: string[]) => void
   /** Callback when note(s) should be deleted */
   onDelete?: (noteIds: string[]) => void
+  /** Callback to set (or clear, with `null`) the row's icon */
+  onSetIcon?: (noteId: string, icon: string | null) => void
 }
 
 /**
@@ -70,10 +80,16 @@ export function RowContextMenu({
   onNoteOpen,
   onOpenInNewTab,
   onMoveToFolder,
-  onDelete
+  onDelete,
+  onSetIcon
 }: RowContextMenuProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
   const fileActions = useFileActionLabels()
+
+  // The picker is hosted in a centred dialog rather than a popover: a context
+  // menu has no stable element to anchor to (the row spans the whole table),
+  // and a dialog is the one placement that can never land off screen.
+  const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
 
   // Delete and Move to Folder are notes-only IPCs (notesService.delete /
   // notesService.move). Folder view rows are always notes (kind absent),
@@ -151,6 +167,11 @@ export function RowContextMenu({
     }
   }
 
+  const handleSetIcon = (icon: string | null): void => {
+    if (!isNote) return
+    onSetIcon?.(note.id, icon)
+  }
+
   const handleDelete = (): void => {
     if (!isNote) return
     onDelete?.([note.id])
@@ -172,90 +193,122 @@ export function RowContextMenu({
   }
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent className="w-52">
-        {showBulkActions ? (
-          // Bulk actions menu (multi-select)
-          <>
-            <ContextMenuItem onClick={handleBulkMoveToFolder}>
-              <FolderInput className="me-2 h-4 w-4" />
-              Move {selectedNoteCount} Notes to Folder...
-              <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem variant="destructive" onClick={handleBulkDelete}>
-              <Trash2 className="me-2 h-4 w-4" />
-              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete')}
-              {selectedNoteCount} {tPhaseF('phaseF.componentsFolderViewRowContextMenu.notes')}
-            </ContextMenuItem>
-          </>
-        ) : (
-          // Single note actions menu
-          <>
-            {/* Open actions */}
-            <ContextMenuItem onClick={handleOpen}>
-              <FileText className="me-2 h-4 w-4" />
-
-              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.open')}
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleOpenInNewTab}>
-              <FileText className="me-2 h-4 w-4" />
-              Open in New Tab
-              <ContextMenuShortcut>⌘↵</ContextMenuShortcut>
-            </ContextMenuItem>
-
-            <ContextMenuSeparator />
-
-            {/* External actions */}
-            <ContextMenuItem onClick={() => void handleOpenExternal()}>
-              <ExternalLink className="me-2 h-4 w-4" />
-
-              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.openInExternalEditor')}
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => void handleRevealInFinder()}>
-              <FolderOpen className="me-2 h-4 w-4" />
-
-              {fileActions.revealInFolder}
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleRevealInSidebar}>
-              <PanelLeft className="me-2 h-4 w-4" />
-
-              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.revealInSidebar')}
-            </ContextMenuItem>
-
-            <ContextMenuSeparator />
-
-            {/* Utility actions */}
-            <ContextMenuItem onClick={() => void handleCopyLink()}>
-              <Link className="me-2 h-4 w-4" />
-
-              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.copyLink')}
-            </ContextMenuItem>
-            {isNote && (
-              <ContextMenuItem onClick={handleMoveToFolder}>
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+        <ContextMenuContent className="w-52">
+          {showBulkActions ? (
+            // Bulk actions menu (multi-select)
+            <>
+              <ContextMenuItem onClick={handleBulkMoveToFolder}>
                 <FolderInput className="me-2 h-4 w-4" />
-                Move to Folder...
+                Move {selectedNoteCount} Notes to Folder...
                 <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
               </ContextMenuItem>
-            )}
+              <ContextMenuSeparator />
+              <ContextMenuItem variant="destructive" onClick={handleBulkDelete}>
+                <Trash2 className="me-2 h-4 w-4" />
+                {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete')}
+                {selectedNoteCount} {tPhaseF('phaseF.componentsFolderViewRowContextMenu.notes')}
+              </ContextMenuItem>
+            </>
+          ) : (
+            // Single note actions menu
+            <>
+              {/* Open actions */}
+              <ContextMenuItem onClick={handleOpen}>
+                <FileText className="me-2 h-4 w-4" />
 
-            {isNote && (
-              <>
-                <ContextMenuSeparator />
+                {tPhaseF('phaseF.componentsFolderViewRowContextMenu.open')}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={handleOpenInNewTab}>
+                <FileText className="me-2 h-4 w-4" />
+                Open in New Tab
+                <ContextMenuShortcut>⌘↵</ContextMenuShortcut>
+              </ContextMenuItem>
 
-                {/* Destructive actions */}
-                <ContextMenuItem variant="destructive" onClick={handleDelete}>
-                  <Trash2 className="me-2 h-4 w-4" />
+              <ContextMenuSeparator />
 
-                  {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete2')}
+              {/* External actions */}
+              <ContextMenuItem onClick={() => void handleOpenExternal()}>
+                <ExternalLink className="me-2 h-4 w-4" />
+
+                {tPhaseF('phaseF.componentsFolderViewRowContextMenu.openInExternalEditor')}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => void handleRevealInFinder()}>
+                <FolderOpen className="me-2 h-4 w-4" />
+
+                {fileActions.revealInFolder}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={handleRevealInSidebar}>
+                <PanelLeft className="me-2 h-4 w-4" />
+
+                {tPhaseF('phaseF.componentsFolderViewRowContextMenu.revealInSidebar')}
+              </ContextMenuItem>
+
+              <ContextMenuSeparator />
+
+              {/* Utility actions */}
+              <ContextMenuItem onClick={() => void handleCopyLink()}>
+                <Link className="me-2 h-4 w-4" />
+
+                {tPhaseF('phaseF.componentsFolderViewRowContextMenu.copyLink')}
+              </ContextMenuItem>
+              {isNote && onSetIcon && (
+                <ContextMenuItem onClick={() => setIsIconPickerOpen(true)}>
+                  <Smile className="me-2 h-4 w-4" />
+                  {tPhaseF('tree.actions.setIcon')}
                 </ContextMenuItem>
-              </>
-            )}
-          </>
-        )}
-      </ContextMenuContent>
-    </ContextMenu>
+              )}
+              {isNote && onSetIcon && note.emoji && (
+                <ContextMenuItem onClick={() => handleSetIcon(null)}>
+                  <X className="me-2 h-4 w-4" />
+                  {tPhaseF('tree.actions.removeIcon')}
+                </ContextMenuItem>
+              )}
+              {isNote && (
+                <ContextMenuItem onClick={handleMoveToFolder}>
+                  <FolderInput className="me-2 h-4 w-4" />
+                  Move to Folder...
+                  <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
+                </ContextMenuItem>
+              )}
+
+              {isNote && (
+                <>
+                  <ContextMenuSeparator />
+
+                  {/* Destructive actions */}
+                  <ContextMenuItem variant="destructive" onClick={handleDelete}>
+                    <Trash2 className="me-2 h-4 w-4" />
+
+                    {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete2')}
+                  </ContextMenuItem>
+                </>
+              )}
+            </>
+          )}
+        </ContextMenuContent>
+      </ContextMenu>
+
+      <Dialog open={isIconPickerOpen} onOpenChange={setIsIconPickerOpen}>
+        <DialogContent className="w-auto max-w-none border-0 bg-transparent p-0 shadow-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{tPhaseF('tree.actions.setIcon')}</DialogTitle>
+          </DialogHeader>
+          <Suspense fallback={null}>
+            <LazyEmojiPicker
+              isOpen
+              embedded
+              onClose={() => setIsIconPickerOpen(false)}
+              onSelect={(icon) => handleSetIcon(icon)}
+              onRemove={() => handleSetIcon(null)}
+              hasEmoji={!!note.emoji}
+            />
+          </Suspense>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "تم تصدير الملاحظة بنجاح",
       "failedToUpdateProperty": "فشل في تحديث الخاصية",
       "failedToUpdateTags": "فشل تحديث العلامات",
+      "failedToUpdateIcon": "فشل تحديث الأيقونة",
       "reminderSnoozed": "تم تأجيل التذكير",
       "failedToSnoozeReminder": "فشل تأجيل التذكير",
       "defaultTemplateSet": "مجموعة القالب الافتراضية",

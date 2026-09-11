@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Nota exportada com sucesso",
       "failedToUpdateProperty": "Falha ao atualizar a propriedade",
       "failedToUpdateTags": "Falha ao atualizar tags",
+      "failedToUpdateIcon": "Falha ao atualizar o ícone",
       "reminderSnoozed": "Lembrete adiado",
       "failedToSnoozeReminder": "Falha ao adiar o lembrete",
       "defaultTemplateSet": "Conjunto de modelos padrão",

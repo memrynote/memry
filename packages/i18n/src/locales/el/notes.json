@@ -722,6 +722,7 @@
       "noteExportedSuccessfully": "Η σημείωση εξήχθη με επιτυχία",
       "failedToUpdateProperty": "Η ενημέρωση της ιδιοκτησίας απέτυχε",
       "failedToUpdateTags": "Η ενημέρωση των ετικετών απέτυχε",
+      "failedToUpdateIcon": "Αποτυχία ενημέρωσης εικονιδίου",
       "reminderSnoozed": "Η υπενθύμιση αναβλήθηκε",
       "failedToSnoozeReminder": "Απέτυχε η αναβολή της υπενθύμισης",
       "defaultTemplateSet": "Προεπιλεγμένο σύνολο προτύπων",
