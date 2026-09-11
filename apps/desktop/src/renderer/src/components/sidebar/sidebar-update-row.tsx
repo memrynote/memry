@@ -39,8 +39,8 @@ function StatusDot({ tone, dim }: { tone: 'tint' | 'destructive'; dim?: boolean 
 /**
  * One quiet 28px row in the sidebar footer, sized and spaced like the nav rows
  * above it so the status dot lands in the same 16px icon lane. It states what is
- * happening and nothing more. The decision lives in the popover, which opens only
- * when the user clicks the row.
+ * happening and nothing more. The decision lives in the popover, which opens on a
+ * click or on a deliberate hover.
  */
 export function SidebarUpdateRow(): React.JSX.Element | null {
   const { t } = useT('common')
@@ -139,10 +139,9 @@ export function SidebarUpdateRow(): React.JSX.Element | null {
       )}
       <button
         type="button"
-        // The row itself is the popover trigger, so a verb click has to stop here.
-        // Without this it both acts and opens the popover it is meant to skip.
-        onClick={(event) => {
-          event.stopPropagation()
+        // Sibling of the row button, not nested in it, so acting here never reaches
+        // the row's own toggle. The popover stays shut.
+        onClick={() => {
           if (isFailed) reopenInstallFailed()
           else if (presentation.kind === 'available') handleDownload()
           else handleRestart()
