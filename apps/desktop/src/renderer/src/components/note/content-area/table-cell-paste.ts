@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { BlockNoteEditor } from '@blocknote/core'
+import { insertUrlAsLink, readBareUrl } from './paste-url-link'
 
 /**
  * BlockNote reads `text/plain` off the clipboard as markdown. Everywhere else
@@ -40,6 +41,7 @@ export function isSelectionInTableCell(editor: BlockNoteEditor<any, any, any>): 
 
 interface PasteContext {
   editor: BlockNoteEditor<any, any, any>
+  event: ClipboardEvent
   defaultPasteHandler: (options?: {
     prioritizeMarkdownOverHTML?: boolean
     plainTextAsMarkdown?: boolean
@@ -48,8 +50,21 @@ interface PasteContext {
 
 export function handleEditorPaste({
   editor,
+  event,
   defaultPasteHandler
 }: PasteContext): boolean | undefined {
+  // A clipboard holding nothing but a URL becomes an inline link, wherever the
+  // cursor is. The default handler would read it as markdown and replace the
+  // block, dropping a list item's bullet or number. See `paste-url-link.ts`.
+  // A clipboard carrying files is an attachment paste even when its text
+  // flavour happens to read as a URL — leave those to the default handler.
+  const clipboard = event?.clipboardData
+  const url = clipboard?.files?.length ? null : readBareUrl(clipboard?.getData('text/plain'))
+  if (url && insertUrlAsLink(editor, url)) {
+    event.preventDefault()
+    return true
+  }
+
   if (!isSelectionInTableCell(editor)) return defaultPasteHandler()
 
   // Both flags gate a markdown reading of `text/plain`: the first sniffs the

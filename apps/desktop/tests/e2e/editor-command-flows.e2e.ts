@@ -46,6 +46,16 @@ async function chooseSlashItem(
   await page.keyboard.press('Enter')
 }
 
+/** Replaces the document with one empty bulleted list item and puts the caret in it. */
+async function resetToEmptyBulletItem(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const editor = (window as any).__memryEditor
+    if (!editor) throw new Error('window.__memryEditor not exposed')
+    editor.replaceBlocks(editor.document, [{ type: 'bulletListItem', content: '' }])
+    editor.setTextCursorPosition(editor.document[0].id, 'end')
+  })
+}
+
 async function firstBlockHasBoldText(page: Page): Promise<boolean> {
   return page.evaluate(() => {
     const editor = (window as any).__memryEditor
@@ -245,5 +255,62 @@ test.describe('Editor command flows E2E', () => {
       ;(window as any).__memryResolveAiInvocation?.()
       await window.electron.ipcRenderer.invoke('ai-inline:stop-server')
     })
+  })
+
+  // Issue #2081: choosing "URL" used to replace the list item with a paragraph,
+  // so the bullet disappeared. Issue #2080: the pasted URL has to stay ordinary
+  // editable inline content.
+  test('keeps the bullet and an editable link when a URL is pasted into a list item', async ({
+    page
+  }) => {
+    const url = 'https://example.com/paste-target'
+    await createNote(page, uniqueLabel('Paste URL In List'))
+    await focusEditor(page)
+    await resetToEmptyBulletItem(page)
+
+    await pastePlainText(page, url)
+    await expect(page.locator('[data-paste-link-menu]')).toBeVisible()
+    // Menu order: Mention, Bookmark, URL — "URL" is always the last option.
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('Enter')
+
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const editor = (window as any).__memryEditor
+          if (!editor) throw new Error('window.__memryEditor not exposed')
+          const block = editor.document[0]
+          return {
+            type: block?.type,
+            links: (block?.content ?? [])
+              .filter((inline: any) => inline.type === 'link')
+              .map((inline: any) => inline.href)
+          }
+        })
+      )
+      .toEqual({ type: 'bulletListItem', links: [url] })
+
+    // The bullet is still rendered, not just present in the model.
+    await expect(
+      page.locator('.bn-block-content[data-content-type="bulletListItem"]').first()
+    ).toBeVisible()
+
+    // The link is editable inline content: typing continues the same list item
+    // instead of replacing or deleting the link.
+    await page.keyboard.type(' tail')
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const editor = (window as any).__memryEditor
+          const block = editor.document[0]
+          return {
+            type: block?.type,
+            text: (block?.content ?? [])
+              .map((inline: any) => (inline.type === 'link' ? `<link>` : (inline.text ?? '')))
+              .join('')
+          }
+        })
+      )
+      .toEqual({ type: 'bulletListItem', text: '<link> tail' })
   })
 })
