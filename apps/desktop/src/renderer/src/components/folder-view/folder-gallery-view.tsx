@@ -11,6 +11,7 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { Folder } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { handleMiddleClick } from '@/lib/middle-click'
 import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import { FolderViewEmptyState } from './folder-view-empty-state'
@@ -28,6 +29,8 @@ export interface FolderGalleryViewProps {
   searchQuery?: string
   tagMetaMap: TagMetaMap
   onNoteOpen: (noteId: string) => void
+  /** Middle-click gesture: open the card in a background tab. */
+  onOpenInBackgroundTab?: (noteId: string) => void
   onTagClick?: (tag: string) => void
   onCreateNote?: () => void
   onClearAll?: () => void
@@ -45,6 +48,7 @@ export function FolderGalleryView({
   searchQuery,
   tagMetaMap,
   onNoteOpen,
+  onOpenInBackgroundTab,
   onTagClick,
   onCreateNote,
   onClearAll,
@@ -92,6 +96,7 @@ export function FolderGalleryView({
           role="button"
           tabIndex={0}
           onClick={() => onNoteOpen(note.id)}
+          onMouseDown={(e) => handleMiddleClick(e, () => onOpenInBackgroundTab?.(note.id))}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()

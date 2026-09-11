@@ -7,7 +7,7 @@ import { Download } from '@/lib/icons'
 import { useAppUpdater } from '@/hooks/use-app-updater'
 import memryLogo from '@/assets/icon-logo.png'
 
-const DOWNLOAD_URL = 'https://memrynote.com/download'
+const DOWNLOAD_URL = 'https://memrynote.com/download/desktop'
 
 /**
  * Only surfaces for an install that was attempted and never applied — the flag is

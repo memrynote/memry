@@ -238,13 +238,13 @@
         "title": "Link to note",
         "subtext": "Search notes — or type [[ anywhere"
       },
-      "existingAttachment": {
-        "title": "Existing attachment",
-        "subtext": "Embed a file already in this vault — no second copy"
+      "media": {
+        "title": "Media",
+        "subtext": "Attach an image, video, or audio file"
       }
     },
     "filePanel": {
-      "uploadTab": "Upload"
+      "choose": "Choose a file…"
     },
     "upload": {
       "failed": "Could not attach that file"
@@ -282,13 +282,43 @@
         "failed": "Could not move the block"
       }
     },
-    "insertExistingAttachment": {
-      "title": "Insert existing attachment",
-      "description": "Embed a file this vault already stores. Nothing is copied — both notes point at the same file.",
-      "searchPlaceholder": "Search attachments…",
-      "empty": "No attachments in this vault yet.",
+    "attachmentPicker": {
+      "title": {
+        "image": "Add an image",
+        "media": "Add media",
+        "pdf": "Add a PDF",
+        "file": "Add a file"
+      },
+      "placeholder": {
+        "image": "Search images, or upload a new one…",
+        "media": "Search media, or upload a new one…",
+        "pdf": "Search PDFs, or upload a new one…",
+        "file": "Search attachments, or upload a new one…"
+      },
+      "upload": {
+        "image": "Upload an image…",
+        "media": "Upload media…",
+        "pdf": "Upload a PDF…",
+        "file": "Upload a file…"
+      },
+      "empty": {
+        "image": "No images in this vault yet.",
+        "media": "No media in this vault yet.",
+        "pdf": "No PDFs in this vault yet.",
+        "file": "No attachments in this vault yet."
+      },
+      "addHeading": "Add",
+      "vaultHeading": "In this vault",
+      "uploading": "Uploading…",
+      "noMatches": "Nothing matches that.",
       "loadFailed": "Failed to load the vault's attachments",
-      "insertFailed": "Failed to insert the attachment"
+      "insertFailed": "Failed to insert the attachment",
+      "uploadFailed": "Failed to upload the file",
+      "hint": {
+        "navigate": "Navigate",
+        "insert": "Insert",
+        "close": "Close"
+      }
     }
   },
   "dateMention": {
@@ -649,7 +679,8 @@
       "placeholderProperty": "Property",
       "placeholderOperator": "Operator",
       "placeholderValue": "Value",
-      "removeFilter": "Remove filter"
+      "removeFilter": "Remove filter",
+      "tagSuggestions": "Tag suggestions"
     },
     "componentsFolderViewFolderTableView": {
       "notesTable": "Notes table",

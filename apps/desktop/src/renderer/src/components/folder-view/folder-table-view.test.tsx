@@ -591,6 +591,32 @@ describe('FolderTableView', () => {
     fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
     expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2', 'note-3'])
   })
+
+  it('opens a row in a background tab on middle click, and ignores other buttons', () => {
+    const onOpenInBackgroundTab = vi.fn()
+    const onNoteOpen = vi.fn()
+
+    render(
+      <FolderTableView
+        notes={notes}
+        columns={columns}
+        onNoteOpen={onNoteOpen}
+        onOpenInBackgroundTab={onOpenInBackgroundTab}
+      />
+    )
+
+    const grid = screen.getByRole('grid', { name: 'notesTable' })
+    const row = grid.querySelector('[data-row-id="note-1"]') as HTMLElement
+
+    fireEvent.mouseDown(row, { button: 0 })
+    expect(onOpenInBackgroundTab).not.toHaveBeenCalled()
+
+    const middle = fireEvent.mouseDown(row, { button: 1 })
+    expect(onOpenInBackgroundTab).toHaveBeenCalledWith('note-1')
+    // Suppressed so Chromium does not start autoscrolling the table.
+    expect(middle).toBe(false)
+    expect(onNoteOpen).not.toHaveBeenCalled()
+  })
 })
 
 describe('GroupedTable', () => {
@@ -940,6 +966,25 @@ describe('GroupedTable', () => {
     const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
     fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
     expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2'])
+  })
+
+  it('opens a grouped row in a background tab on middle click', () => {
+    const onOpenInBackgroundTab = vi.fn()
+
+    render(
+      <GroupedTable
+        notes={notes}
+        columns={columns}
+        groupBy={{ property: 'status' }}
+        onOpenInBackgroundTab={onOpenInBackgroundTab}
+      />
+    )
+
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    const row = grid.querySelector('[data-row-id="note-1"]') as HTMLElement
+
+    fireEvent.mouseDown(row, { button: 1 })
+    expect(onOpenInBackgroundTab).toHaveBeenCalledWith('note-1')
   })
 })
 

@@ -48,22 +48,26 @@ memrynote into your **Applications** folder and open it from there, and updates 
 working. **Settings → General → App Updates** says so directly when this is what is
 blocking you.
 
-Windows has two kinds of install, and where memrynote lives tells you which one you have.
+On Windows, an update can also be blocked by a file in the install folder being held
+open — antivirus and leftover memrynote processes are the usual causes. The installer
+works around this on its own now, and it writes an `install.log` next to the app
+(typically `%LOCALAPPDATA%\Programs\memrynote`) that names the file it could not move.
+That log is the most useful thing you can send us if an update still fails.
 
-An install under `%LOCALAPPDATA%\MemryNote` came from the newer installer
-(`MemryNote-win-Setup.exe`). Updates there are applied by `Update.exe`, a small helper
-that sits next to the app, once memrynote has closed. If that is interrupted, by a crash
-or by the PC shutting down mid-update, the next launch finishes the pending update before
-memrynote opens. Nothing is left half-installed, and your vault and settings are never
-touched.
+A failed Windows update can no longer remove the app. The installer keeps the old
+version in a backup folder next to the install folder until the new files are fully in
+place, and restores it automatically — at the next Windows sign-in at the latest — if
+anything interrupts the install, including shutting the PC down mid-update. For the same
+reason, an update is no longer installed while Windows itself is shutting down; it
+simply applies the next time you quit the app.
 
-An install under `%LOCALAPPDATA%\Programs\memrynote` came from the earlier installer and
-keeps updating the way it always has, until it is migrated. An update there can be
-blocked by a file in the install folder being held open, usually antivirus or a leftover
-memrynote process. The installer works around that on its own.
-
-On either one, an update is never installed while Windows itself is shutting down. It
-applies the next time you quit the app.
+One caveat if you are already affected. On Windows the step that removes the old files
+is run by the version you currently have installed, not by the one being installed — so
+these workarounds only take effect on updates _away from_ a build that contains them. If
+your updates are failing today, install the latest version manually once
+(uninstall from **Settings → Apps**, then run the installer from
+[the download page](https://memrynote.com/download/desktop); your vault and settings are kept).
+Updates after that run on their own.
 
 ## Run from Source
 

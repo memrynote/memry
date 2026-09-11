@@ -73,6 +73,8 @@ The modifier gestures apply to those top-of-sidebar views:
 
 In the notes tree, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> click selects several rows at once instead — use the context menu there.
 
+Rows in a [Folder View](/user-guide/folder-view) or on a tag page take the middle-click gesture too, opening that row in a background tab.
+
 Each copy is an independent tab: close, pin, or move one and the other stays put. Edits made in either appear in both.
 
 Whole-app views — Home, Inbox, Calendar, Tasks, Journal, Graph, and Tags — stay single-instance, since a second copy would show exactly the same thing. Their rows leave **Open in New Tab** out of the menu rather than offer a command that would only refocus the tab you already have, and the modifier gestures focus that tab instead of duplicating it.
