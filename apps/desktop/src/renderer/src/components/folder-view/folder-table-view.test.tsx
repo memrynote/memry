@@ -942,3 +942,37 @@ describe('GroupedTable', () => {
     expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2'])
   })
 })
+
+// #2073: a folder holds PDFs and images next to notes. Their rows have no
+// frontmatter to write, and the tag write path used to overwrite the binary
+// with markdown, so the remove affordance must not be offered at all.
+describe('binary file rows (#2073)', () => {
+  const mixedNotes = [
+    { ...notes[0], tags: ['alpha'], fileType: 'markdown' },
+    { ...notes[1], id: 'pdf-1', title: 'Invoice.pdf', tags: ['billing'], fileType: 'pdf' }
+  ] as any[]
+
+  it.each([
+    ['FolderTableView', FolderTableView],
+    ['GroupedTable', GroupedTable]
+  ])('%s offers tag removal on the note row but not on the PDF row', (_name, Component) => {
+    const onTagRemove = vi.fn()
+
+    render(
+      <Component
+        notes={mixedNotes}
+        columns={columns}
+        formulas={{ double: 'score * 2' }}
+        propertyTypes={{ score: 'number' }}
+        onTagClick={vi.fn()}
+        onTagRemove={onTagRemove}
+      />
+    )
+
+    fireEvent.mouseEnter(screen.getByRole('option', { name: 'alpha' }))
+    expect(screen.getByRole('button', { name: 'removeAria alpha' })).toBeTruthy()
+
+    fireEvent.mouseEnter(screen.getByRole('option', { name: 'billing' }))
+    expect(screen.queryByRole('button', { name: 'removeAria billing' })).toBeNull()
+  })
+})

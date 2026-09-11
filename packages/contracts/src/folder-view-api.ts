@@ -458,6 +458,19 @@ export interface NoteWithProperties {
 
   /** Row kind. Absent means 'note' — folder views only ever contain notes. */
   kind?: 'note' | 'task' | 'inbox'
+
+  /**
+   * What the row's file actually is. A folder contains PDFs, images, audio and
+   * video alongside markdown notes, and only markdown can carry frontmatter.
+   * Cells that write metadata must stay read-only for every other value —
+   * writing one would replace the binary's bytes with text (#2073).
+   * Absent means 'markdown' for rows that predate this field.
+   *
+   * Spelled out rather than imported from `NoteFileType` in `search-api`: this
+   * module is imported by the sync client, and the extra module edge drags
+   * `inbox-api` (and its Node `Buffer` types) into that build.
+   */
+  fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
 }
 
 // ============================================================================

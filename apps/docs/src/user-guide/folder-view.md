@@ -73,13 +73,17 @@ Click any editable cell to update a property in place. Supported types:
 
 Some fields (e.g. created date) are read-only.
 
+### PDFs, images, and other attachments
+
+A folder can hold PDFs, images, audio, and video alongside your notes, and they get their own rows in the table. Tags and properties live in a note's frontmatter, which only Markdown files have, so those cells are read-only on an attachment row: existing tags still display, but there is no remove control and the value cannot be edited. Renaming, moving, and opening an attachment work as usual.
+
 ## Bulk Operations
 
 Select rows with checkboxes for:
 
 - Move to folder
-- Add / remove tags
-- Set / clear properties (for editable types)
+- Add / remove tags (Markdown notes only)
+- Set / clear properties (for editable types, Markdown notes only)
 - Delete
 
 The bulk action bar appears at the top of the table when rows are selected.

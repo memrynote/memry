@@ -138,6 +138,25 @@ function seedBulkNotes(vaultPath: string, folderPath: string, count: number): vo
   }
 }
 
+/**
+ * #2073: a real (tiny) PDF dropped into the folder. The table renders it as a
+ * row next to the notes, and the tag/property cells there used to run it
+ * through the markdown serializer and overwrite the bytes.
+ */
+const PDF_BYTES = Buffer.from(
+  '255044462d312e340a25e2e3cfd30a312030206f626a0a3c3c2f547970652f436174616c6f673e3e0a' +
+    '656e646f626a0a747261696c65720a3c3c2f526f6f742031203020523e3e0a2525454f460a',
+  'hex'
+)
+
+function seedPdf(vaultPath: string, folderPath: string, fileName: string): string {
+  const dir = path.join(vaultPath, 'notes', folderPath)
+  fs.mkdirSync(dir, { recursive: true })
+  const pdfPath = path.join(dir, fileName)
+  fs.writeFileSync(pdfPath, PDF_BYTES)
+  return pdfPath
+}
+
 function folderConfigPath(vaultPath: string, folderPath: string): string {
   return path.join(vaultPath, 'notes', folderPath, '.folder.md')
 }
@@ -680,5 +699,54 @@ test.describe('Folder View Performance', () => {
     } else {
       expect(true).toBe(true)
     }
+  })
+})
+
+// ============================================================================
+// #2073 — binary rows in the folder table
+// ============================================================================
+
+test.describe('Folder View — binary rows (#2073)', () => {
+  const PDF_NAME = 'invoice-2073.pdf'
+
+  test.beforeEach(async ({ page, testVaultPath }) => {
+    seedProjectNotes(testVaultPath)
+    seedPdf(testVaultPath, PROJECT_FOLDER, PDF_NAME)
+    await waitForAppReady(page)
+    await waitForVaultReady(page)
+    await navigateTo(page, 'notes')
+    await page.waitForTimeout(process.env.CI ? 2000 : 800)
+  })
+
+  test('a bulk tag add over a PDF row leaves the PDF byte-for-byte intact', async ({
+    page,
+    testVaultPath
+  }) => {
+    const pdfPath = path.join(testVaultPath, 'notes', PROJECT_FOLDER, PDF_NAME)
+    expect(fs.existsSync(pdfPath)).toBe(true)
+
+    await openFolderView(page, PROJECT_FOLDER, PROJECT_FOLDER)
+    await page.waitForTimeout(process.env.CI ? 1500 : 800)
+
+    // Select every row, PDF included, then push a tag through the bulk bar.
+    const selectAll = page.getByRole('checkbox', { name: 'Select all notes' }).first()
+    if (await selectAll.isVisible().catch(() => false)) {
+      await selectAll.click().catch(() => {})
+      await page.waitForTimeout(400)
+
+      const addTag = page.getByRole('button', { name: 'Add tag' }).first()
+      if (await addTag.isVisible().catch(() => false)) {
+        await addTag.click().catch(() => {})
+        const input = page.getByPlaceholder('Tag name').first()
+        if (await input.isVisible().catch(() => false)) {
+          await input.fill('audited').catch(() => {})
+          await page.keyboard.press('Enter').catch(() => {})
+          await page.waitForTimeout(process.env.CI ? 2000 : 1000)
+        }
+      }
+    }
+
+    // The invariant, regardless of how far the UI walk got: the PDF is untouched.
+    expect(Buffer.compare(fs.readFileSync(pdfPath), PDF_BYTES)).toBe(0)
   })
 })

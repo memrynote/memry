@@ -94,6 +94,7 @@ import { RowContextMenu } from './row-context-menu'
 import { FolderViewEmptyState } from './folder-view-empty-state'
 import { SummaryRow } from './summary-row'
 import { SelectionCheckbox, SELECT_COLUMN_WIDTH, type SelectionState } from './selection-checkbox'
+import { isMetadataEditableRow } from './row-metadata-editability'
 
 /**
  * Sort order configuration (matches .folder.md format)
@@ -468,7 +469,7 @@ export function FolderTableView({
           tags={note.tags}
           onTagClick={onTagClick}
           onTagRemove={
-            onTagRemove
+            onTagRemove && isMetadataEditableRow(note)
               ? (tag) => {
                   onTagRemove(note.id, tag)
                 }
@@ -525,7 +526,7 @@ export function FolderTableView({
             type={type}
             highlightQuery={highlightQuery}
             onSave={
-              onPropertyUpdate
+              onPropertyUpdate && isMetadataEditableRow(note)
                 ? (nextValue) => {
                     onPropertyUpdate(note.id, columnId, nextValue)
                   }

@@ -35,7 +35,9 @@ export const NoteErrorCode = {
   WRITE_FAILED: 'NOTE_WRITE_FAILED',
   READ_FAILED: 'NOTE_READ_FAILED',
   DELETE_FAILED: 'NOTE_DELETE_FAILED',
-  INVALID_PATH: 'NOTE_INVALID_PATH'
+  INVALID_PATH: 'NOTE_INVALID_PATH',
+  /** The target is a binary file (PDF, image, audio, video), not a markdown note. */
+  NOT_MARKDOWN: 'NOTE_NOT_MARKDOWN'
 } as const
 
 export type NoteErrorCode = (typeof NoteErrorCode)[keyof typeof NoteErrorCode]
