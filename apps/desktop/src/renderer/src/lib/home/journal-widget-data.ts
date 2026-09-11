@@ -9,6 +9,13 @@ export interface WeekDay {
   isToday: boolean
 }
 
+export interface UpcomingDay {
+  iso: string
+  dayNum: number
+  weekdayShort: string
+  isToday: boolean
+}
+
 export type RelativeDayLabel =
   { kind: 'today' } | { kind: 'yesterday' } | { kind: 'date'; text: string }
 
@@ -37,6 +44,29 @@ export function buildWeekDays(todayIso: string, entryDates: Set<string>, lang: s
       weekdayNarrow: d.toLocaleDateString(lang, { weekday: 'narrow' }),
       hasEntry: entryDates.has(iso),
       isToday: iso === todayIso
+    })
+  }
+  return days
+}
+
+/**
+ * `count` consecutive days starting at `todayIso` (today first, then the future).
+ *
+ * All arithmetic runs on local calendar fields, never UTC: `parseIso` lands on local
+ * midnight and `setDate` steps whole local days, so a DST boundary inside the window
+ * still advances exactly one calendar day.
+ */
+export function buildUpcomingDays(todayIso: string, lang: string, count = 4): UpcomingDay[] {
+  const today = parseIso(todayIso)
+  const days: UpcomingDay[] = []
+  for (let offset = 0; offset < count; offset++) {
+    const d = new Date(today)
+    d.setDate(today.getDate() + offset)
+    days.push({
+      iso: toLocalIso(d),
+      dayNum: d.getDate(),
+      weekdayShort: d.toLocaleDateString(lang, { weekday: 'short' }),
+      isToday: offset === 0
     })
   }
   return days

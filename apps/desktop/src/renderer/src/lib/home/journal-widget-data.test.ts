@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { HeatmapEntry } from '../../../../preload/index.d'
 import {
   buildWeekDays,
+  buildUpcomingDays,
   recentEntryDates,
   relativeDayLabel,
   entrySnippet
@@ -97,5 +98,65 @@ describe('entrySnippet wiki links (issue #1556)', () => {
 
   it('reads an aliased link as its alias, not the raw target|alias run', () => {
     expect(entrySnippet('see [[Sprint Notes|retro]] today')).toBe('see retro today')
+  })
+})
+
+describe('buildUpcomingDays', () => {
+  it('returns today first, then the next three days', () => {
+    const days = buildUpcomingDays('2026-06-23', 'en-US')
+    expect(days.map((d) => d.iso)).toEqual(['2026-06-23', '2026-06-24', '2026-06-25', '2026-06-26'])
+    expect(days[0].isToday).toBe(true)
+    expect(days.slice(1).every((d) => !d.isToday)).toBe(true)
+    expect(days[3].dayNum).toBe(26)
+    expect(days[0].weekdayShort).toBeTruthy()
+  })
+
+  it('crosses a month boundary', () => {
+    expect(buildUpcomingDays('2026-06-29', 'en-US').map((d) => d.iso)).toEqual([
+      '2026-06-29',
+      '2026-06-30',
+      '2026-07-01',
+      '2026-07-02'
+    ])
+  })
+
+  it('crosses a year boundary', () => {
+    expect(buildUpcomingDays('2026-12-30', 'en-US').map((d) => d.iso)).toEqual([
+      '2026-12-30',
+      '2026-12-31',
+      '2027-01-01',
+      '2027-01-02'
+    ])
+  })
+
+  it('crosses a leap day', () => {
+    expect(buildUpcomingDays('2028-02-27', 'en-US').map((d) => d.iso)).toEqual([
+      '2028-02-27',
+      '2028-02-28',
+      '2028-02-29',
+      '2028-03-01'
+    ])
+  })
+
+  // Local calendar arithmetic, not UTC or +24h: a 23- or 25-hour day inside the window
+  // must still advance exactly one calendar date, in whatever zone the run happens in.
+  it('advances one calendar day at a time across DST transition dates', () => {
+    for (const start of ['2026-03-07', '2026-10-31', '2026-03-27', '2026-11-01']) {
+      const days = buildUpcomingDays(start, 'en-US')
+      expect(days).toHaveLength(4)
+      for (let i = 1; i < days.length; i++) {
+        const previous = new Date(`${days[i - 1].iso}T12:00:00Z`)
+        const current = new Date(`${days[i].iso}T12:00:00Z`)
+        expect(current.getTime() - previous.getTime()).toBe(24 * 60 * 60 * 1000)
+        expect(days[i].dayNum).toBe(Number(days[i].iso.slice(8)))
+      }
+    }
+  })
+
+  it('honours an explicit count', () => {
+    expect(buildUpcomingDays('2026-06-23', 'en-US', 2).map((d) => d.iso)).toEqual([
+      '2026-06-23',
+      '2026-06-24'
+    ])
   })
 })

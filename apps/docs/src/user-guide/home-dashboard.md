@@ -36,17 +36,17 @@ If two devices reorder boards at the same time, the last write wins for position
 
 Widgets are the cards on a board. Available types:
 
-| Widget          | Shows                                                   |
-| --------------- | ------------------------------------------------------- |
-| Recently Edited | Notes ordered by last-modified, most recent first       |
-| Recently Opened | Notes and canvases ordered by when you last opened them |
-| Bookmarks       | Your bookmarked notes                                   |
-| Tasks           | Tasks, with an inline filter and count                  |
-| Inbox           | Unfiled inbox items, with a triage row                  |
-| Folder          | The contents of a chosen folder                         |
-| Calendar        | An at-a-glance calendar of upcoming entries             |
-| Journal         | Today's journal entry and your current streak           |
-| Project         | One project's overview, tasks, notes, files and events  |
+| Widget          | Shows                                                     |
+| --------------- | --------------------------------------------------------- |
+| Recently Edited | Notes ordered by last-modified, most recent first         |
+| Recently Opened | Notes and canvases ordered by when you last opened them   |
+| Bookmarks       | Your bookmarked notes                                     |
+| Tasks           | Tasks, with an inline filter and count                    |
+| Inbox           | Unfiled inbox items, with a triage row                    |
+| Folder          | The contents of a chosen folder                           |
+| Calendar        | An at-a-glance calendar of upcoming entries               |
+| Journal         | Recent and upcoming journal days, and your current streak |
+| Project         | One project's overview, tasks, notes, files and events    |
 
 **Recently Edited and Recently Opened are siblings, not duplicates.** The first answers "what did I change?", the second "what did I read?" — and a note you open without typing in it appears only in the second. Recently Opened also lists canvases: a canvas row carries its own icon and reopens the canvas when you click it. A note you open _and_ edit shows up in both; the row subtitle is what tells them apart, reading "opened 12m ago" on one and "edited 3m ago" on the other.
 
@@ -55,6 +55,8 @@ Unlike everything else on a board, the Recently Opened **list** is per-device: i
 The Calendar widget shows today's events. New events reach it on their own: create one on the Calendar tab, or in the day panel, or let a connected calendar sync one in while you are working somewhere else, and the widget has it the next time the board is in front of you. There is nothing to refresh and no need to restart, and that holds whether or not the board was the tab you were looking at when the event appeared. If you leave Memry open overnight it rolls over on its own at local midnight — the widget, its event count, and the "Next:" line all switch to the new day without a restart. The same applies after the machine wakes from sleep or the system clock changes. "Today" means your local day, from midnight to midnight on your own clock, and the event count in the board header reads exactly the same day as the widget below it — a late-evening or just-after-midnight event that one shows, the other counts. The header's event count is the widget's row count and nothing more: a task due today is not an event, so it does not appear in the widget and is not counted as one in the header — it is already in the header's tasks-due count.
 
 The Journal widget keeps up the same way. Write on the Journal tab, let an edit arrive from another device, or change the day's file outside Memry, and the widget's week strip and its entry previews catch up on their own — the next time the board is in front of you if it was sitting in a background tab. There is nothing to refresh, and you do not have to leave the page and come back. The days it marks are your local days, so an entry written just before midnight belongs to the day you wrote it on.
+
+Under the week strip and the recent entries, the Journal widget lists **Upcoming**: today and the next three days on your own calendar. A day you have already written for shows the start of that entry; a day you have not shows "No entry yet" and is still a button. Click any of them and the Journal tab opens on exactly that date, including one in next month or next year — so writing tomorrow's plan is one click, not a walk through the date picker. Calendar events are not repeated here; those stay in the Calendar widget.
 
 The Project widget is a chosen project in miniature. Its body has the same five tabs as the project page: **Overview**, **Tasks**, **Notes**, **Files** and **Events**. Rows behave as they do on the page — open a note, tick a task off, change a status or a priority. Pick the project from the pill in the widget's header, the way the Folder widget picks its folder; the pill carries the project's colour and name, so several project widgets side by side stay tellable apart.
 

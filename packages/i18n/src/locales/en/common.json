@@ -770,6 +770,9 @@
       "journalStreak": "{count, plural, one {#-day streak} other {#-day streak}}",
       "journalToday": "Today",
       "journalYesterday": "Yesterday",
+      "journalTomorrow": "Tomorrow",
+      "journalUpcoming": "Upcoming",
+      "journalNoEntryYet": "No entry yet",
       "loadError": "Couldn't load",
       "unknown": "Unknown widget"
     },
