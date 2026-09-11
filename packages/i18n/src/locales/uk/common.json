@@ -119,12 +119,6 @@
       "feedbackSuccess": "Дякуємо за відгук!",
       "feedbackTitle": "Надіслати відгук",
       "newItemMenu": "Створити нове…",
-      "updateAvailable": "Оновити",
-      "updateDownloading": "Завантаження…",
-      "updateDownloadingPercent": "Завантаження {percent}%",
-      "updateInstallingSubtitle": "MemryNote перезапуститься автоматично.",
-      "updateInstallingTitle": "Встановлення оновлення",
-      "updateRestart": "Перезапустити",
       "feedbackPrivacyEmailOptional": "Ваша електронна пошта — лише якщо ви її додасте, і лише щоб ми могли відповісти",
       "feedbackPrivacyEmailSignedIn": "Пошта вашого облікового запису ({email}), щоб ми могли відповісти",
       "feedbackPrivacyMessage": "Ваше повідомлення, точно таким, як ви його написали",
@@ -660,19 +654,6 @@
       "previous": "Назад",
       "progress": "{current} з {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Автоматично завантажувати та встановлювати оновлення",
-    "availableBody": "{version} доступна — у вас {current}. Бажаєте завантажити її зараз?",
-    "availableTitle": "Доступна нова версія MemryNote!",
-    "download": "Завантажити",
-    "downloadedBody": "{version} завантажено. Перезапустіть MemryNote, щоб завершити встановлення.",
-    "downloadedTitle": "Оновлення готове до встановлення",
-    "later": "Пізніше",
-    "releaseNotesLabel": "Примітки до випуску",
-    "remindLater": "Нагадати пізніше",
-    "restartNow": "Перезапустити зараз",
-    "skip": "Пропустити цю версію"
   },
   "capture": {
     "focusShortcut": "Фокус на полі захоплення",

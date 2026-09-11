@@ -118,8 +118,8 @@ vi.mock('@/components/sidebar/sidebar-drill-down-container', () => ({
   SidebarDrillDownContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>
 }))
 
-vi.mock('@/components/sidebar/sidebar-update-button', () => ({
-  SidebarUpdateButton: () => null
+vi.mock('@/components/sidebar/sidebar-update-row', () => ({
+  SidebarUpdateRow: () => null
 }))
 
 vi.mock('@/components/sidebar/sidebar-feedback-button', () => ({

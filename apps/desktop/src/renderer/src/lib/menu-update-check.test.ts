@@ -66,7 +66,7 @@ describe('runMenuUpdateCheck', () => {
   })
 
   it('reports an available update even when the in-app prompt stays silent', async () => {
-    // Auto-download suppresses UpdatePromptDialog, so the toast is the only
+    // Auto-download suppresses the sidebar update row, so the toast is the only
     // feedback an explicit menu click gets.
     mockUpdaterResult({ status: 'available', availableVersion: '1.1.0', autoDownloadEnabled: true })
 

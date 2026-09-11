@@ -119,12 +119,6 @@
       "feedbackSuccess": "Merci pour votre commentaire !",
       "feedbackTitle": "Envoyer un commentaire",
       "newItemMenu": "Créer un nouvel élément…",
-      "updateAvailable": "Mettre à jour",
-      "updateDownloading": "Téléchargement…",
-      "updateDownloadingPercent": "Téléchargement {percent}%",
-      "updateInstallingSubtitle": "MemryNote redémarrera automatiquement.",
-      "updateInstallingTitle": "Installation de la mise à jour",
-      "updateRestart": "Redémarrer",
       "feedbackPrivacyEmailOptional": "Votre e-mail — seulement si vous l'ajoutez, et uniquement pour pouvoir vous répondre",
       "feedbackPrivacyEmailSignedIn": "L'e-mail de votre compte ({email}), pour pouvoir vous répondre",
       "feedbackPrivacyMessage": "Votre message, exactement tel que vous l'avez écrit",
@@ -660,19 +654,6 @@
       "previous": "Précédent",
       "progress": "{current} sur {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Télécharger et installer les mises à jour automatiquement",
-    "availableBody": "{version} est disponible — vous avez {current}. Voulez-vous la télécharger maintenant ?",
-    "availableTitle": "Une nouvelle version de MemryNote est disponible !",
-    "download": "Télécharger",
-    "downloadedBody": "{version} a été téléchargée. Redémarrez MemryNote pour terminer l'installation.",
-    "downloadedTitle": "Mise à jour prête à installer",
-    "later": "Plus tard",
-    "releaseNotesLabel": "Notes de version",
-    "remindLater": "Me le rappeler plus tard",
-    "restartNow": "Redémarrer maintenant",
-    "skip": "Ignorer cette version"
   },
   "capture": {
     "focusShortcut": "Activer le champ de capture",

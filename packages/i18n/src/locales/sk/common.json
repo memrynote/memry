@@ -119,12 +119,6 @@
       "feedbackSuccess": "Ďakujeme za spätnú väzbu!",
       "feedbackTitle": "Odoslať spätnú väzbu",
       "newItemMenu": "Vytvoriť novú…",
-      "updateAvailable": "Aktualizovať",
-      "updateDownloading": "Sťahuje sa…",
-      "updateDownloadingPercent": "Sťahuje sa {percent} %",
-      "updateInstallingSubtitle": "MemryNote sa automaticky reštartuje.",
-      "updateInstallingTitle": "Inštaluje sa aktualizácia",
-      "updateRestart": "Reštartovať",
       "feedbackPrivacyEmailOptional": "Váš e-mail — iba ak ho uvediete a len preto, aby sme mohli odpovedať",
       "feedbackPrivacyEmailSignedIn": "E-mail vášho účtu ({email}), aby sme mohli odpovedať",
       "feedbackPrivacyMessage": "Vaša správa presne tak, ako ste ju napísali",
@@ -660,19 +654,6 @@
       "previous": "Späť",
       "progress": "{current} z {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Automaticky sťahovať a inštalovať aktualizácie",
-    "availableBody": "Je dostupná verzia {version} — máte {current}. Chcete si ju stiahnuť teraz?",
-    "availableTitle": "Je dostupná nová verzia MemryNote!",
-    "download": "Stiahnuť",
-    "downloadedBody": "Verzia {version} bola stiahnutá. Reštartujte MemryNote na dokončenie inštalácie.",
-    "downloadedTitle": "Aktualizácia je pripravená na inštaláciu",
-    "later": "Neskôr",
-    "releaseNotesLabel": "Poznámky k vydaniu",
-    "remindLater": "Pripomenúť neskôr",
-    "restartNow": "Reštartovať teraz",
-    "skip": "Preskočiť túto verziu"
   },
   "capture": {
     "focusShortcut": "Zamerať pole zachytávania",

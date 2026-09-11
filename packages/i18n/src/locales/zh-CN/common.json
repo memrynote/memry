@@ -119,12 +119,6 @@
       "feedbackSuccess": "感谢你的反馈！",
       "feedbackTitle": "发送反馈",
       "newItemMenu": "新建…",
-      "updateAvailable": "更新",
-      "updateDownloading": "下载中…",
-      "updateDownloadingPercent": "下载中 {percent}%",
-      "updateInstallingSubtitle": "MemryNote 将自动重启。",
-      "updateInstallingTitle": "正在安装更新",
-      "updateRestart": "重启",
       "feedbackPrivacyEmailOptional": "你的邮箱——仅在你填写时发送，且只用于回复你",
       "feedbackPrivacyEmailSignedIn": "你的账户邮箱（{email}），以便我们回复你",
       "feedbackPrivacyMessage": "你的留言，与你写下的完全一致",
@@ -660,19 +654,6 @@
       "previous": "上一步",
       "progress": "{current} / {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "自动下载并安装更新",
-    "availableBody": "{version} 现已可用——你当前使用的是 {current}。是否立即下载？",
-    "availableTitle": "MemryNote 有新版本可用！",
-    "download": "下载",
-    "downloadedBody": "{version} 已下载完成。重启 MemryNote 以完成安装。",
-    "downloadedTitle": "更新已准备好安装",
-    "later": "稍后",
-    "releaseNotesLabel": "更新说明",
-    "remindLater": "稍后提醒我",
-    "restartNow": "立即重启",
-    "skip": "跳过此版本"
   },
   "capture": {
     "focusShortcut": "聚焦捕获输入框",

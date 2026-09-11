@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useAppUpdater } from '@/hooks/use-app-updater'
+import { toUpdatePresentation } from '@/components/updater/update-presentation'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useTelemetrySettings } from '@/hooks/use-telemetry-settings'
 import { useReportIncident } from '@/components/diagnostics/incident-report-provider'
@@ -34,6 +35,7 @@ type SettingsT = ReturnType<typeof useT>['t']
 
 export function GeneralSettings() {
   const { t, i18n } = useT('settings')
+  const { t: tCommon } = useT('common')
   const [isChangingLocale, setIsChangingLocale] = useState(false)
   const {
     settings: tabSettings,
@@ -233,6 +235,17 @@ export function GeneralSettings() {
     [setAutoDownload, t]
   )
 
+  const updatePresentation = toUpdatePresentation(updateState)
+  const updateRowLabel =
+    updatePresentation.kind === 'downloading'
+      ? tCommon('update.downloading', { version: updatePresentation.version })
+      : updatePresentation.kind === 'available'
+        ? tCommon('update.available')
+        : updatePresentation.kind === 'ready'
+          ? tCommon('update.ready')
+          : updatePresentation.kind === 'failed'
+            ? tCommon('update.failed')
+            : tCommon('update.installing.titleUnknownVersion')
   const updateDescription = getUpdateDescription(updateState, updaterError, t)
   const updateActionLabel = getUpdateActionLabel(updateState, t)
   const isUpdateActionDisabled =
@@ -311,6 +324,35 @@ export function GeneralSettings() {
             </Button>
           </div>
         </SettingRowTall>
+        {/* Same words as the sidebar row, from the same presentation model, so the
+            two surfaces can never disagree about what phase the update is in. */}
+        {updatePresentation.kind !== 'hidden' && (
+          <SettingRow label={updateRowLabel}>
+            <div className="flex items-center gap-3">
+              {updatePresentation.kind !== 'downloading' &&
+                'version' in updatePresentation &&
+                updatePresentation.version && (
+                  <span className="font-mono text-[11px] text-text-tertiary">
+                    {updatePresentation.version}
+                  </span>
+                )}
+              {(updatePresentation.kind === 'ready' || updatePresentation.kind === 'available') && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={updatePresentation.kind === 'ready' ? 'default' : 'outline'}
+                  onClick={() =>
+                    void (updatePresentation.kind === 'ready' ? quitAndInstall() : downloadUpdate())
+                  }
+                >
+                  {updatePresentation.kind === 'ready'
+                    ? tCommon('update.popover.restartNow')
+                    : tCommon('update.downloadAction')}
+                </Button>
+              )}
+            </div>
+          </SettingRow>
+        )}
       </SettingsGroup>
 
       <SettingsGroup label={t('general.groups.languageRegion')}>

@@ -119,12 +119,6 @@
       "feedbackSuccess": "Ευχαριστούμε για τα σχόλια!",
       "feedbackTitle": "Αποστολή σχολίων",
       "newItemMenu": "Δημιουργία νέου…",
-      "updateAvailable": "Ενημέρωση",
-      "updateDownloading": "Λήψη…",
-      "updateDownloadingPercent": "Λήψη {percent}%",
-      "updateInstallingSubtitle": "Το MemryNote θα επανεκκινήσει αυτόματα.",
-      "updateInstallingTitle": "Εγκατάσταση ενημέρωσης",
-      "updateRestart": "Επανεκκίνηση",
       "feedbackPrivacyEmailOptional": "Το email σας — μόνο αν το προσθέσετε, και μόνο για να μπορέσουμε να απαντήσουμε",
       "feedbackPrivacyEmailSignedIn": "Το email του λογαριασμού σας ({email}), για να μπορέσουμε να απαντήσουμε",
       "feedbackPrivacyMessage": "Το μήνυμά σας, ακριβώς όπως το γράψατε",
@@ -660,19 +654,6 @@
       "previous": "Προηγούμενο",
       "progress": "{current} από {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Αυτόματη λήψη και εγκατάσταση ενημερώσεων",
-    "availableBody": "Η έκδοση {version} είναι διαθέσιμη — έχετε την {current}. Θέλετε να την κατεβάσετε τώρα;",
-    "availableTitle": "Μια νέα έκδοση του MemryNote είναι διαθέσιμη!",
-    "download": "Λήψη",
-    "downloadedBody": "Η έκδοση {version} κατέβηκε. Επανεκκινήστε το MemryNote για να ολοκληρωθεί η εγκατάσταση.",
-    "downloadedTitle": "Η ενημέρωση είναι έτοιμη για εγκατάσταση",
-    "later": "Αργότερα",
-    "releaseNotesLabel": "Σημειώσεις έκδοσης",
-    "remindLater": "Υπενθύμιση αργότερα",
-    "restartNow": "Επανεκκίνηση τώρα",
-    "skip": "Παράλειψη αυτής της έκδοσης"
   },
   "capture": {
     "focusShortcut": "Εστίαση στο πεδίο καταγραφής",

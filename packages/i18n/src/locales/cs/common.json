@@ -119,12 +119,6 @@
       "feedbackSuccess": "Děkujeme za zpětnou vazbu!",
       "feedbackTitle": "Odeslat zpětnou vazbu",
       "newItemMenu": "Vytvořit nový…",
-      "updateAvailable": "Aktualizovat",
-      "updateDownloading": "Stahování…",
-      "updateDownloadingPercent": "Stahování {percent}%",
-      "updateInstallingSubtitle": "MemryNote se automaticky restartuje.",
-      "updateInstallingTitle": "Instalace aktualizace",
-      "updateRestart": "Restartovat",
       "feedbackPrivacyEmailOptional": "Váš e-mail — jen pokud ho uvedete, a jen abychom mohli odpovědět",
       "feedbackPrivacyEmailSignedIn": "E-mail vašeho účtu ({email}), abychom mohli odpovědět",
       "feedbackPrivacyMessage": "Vaše zpráva přesně tak, jak jste ji napsali",
@@ -660,19 +654,6 @@
       "previous": "Předchozí",
       "progress": "{current} z {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Automaticky stahovat a instalovat aktualizace",
-    "availableBody": "{version} je dostupná — máte {current}. Chcete ji nyní stáhnout?",
-    "availableTitle": "Je dostupná nová verze MemryNote!",
-    "download": "Stáhnout",
-    "downloadedBody": "{version} byla stažena. Restartujte MemryNote pro dokončení instalace.",
-    "downloadedTitle": "Aktualizace připravena k instalaci",
-    "later": "Později",
-    "releaseNotesLabel": "Poznámky k vydání",
-    "remindLater": "Připomenout později",
-    "restartNow": "Restartovat nyní",
-    "skip": "Přeskočit tuto verzi"
   },
   "capture": {
     "focusShortcut": "Zaměřit pole pro zachycení",

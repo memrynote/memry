@@ -119,12 +119,6 @@
       "feedbackSuccess": "Bedankt voor je feedback!",
       "feedbackTitle": "Feedback verzenden",
       "newItemMenu": "Nieuw maken…",
-      "updateAvailable": "Bijwerken",
-      "updateDownloading": "Downloaden…",
-      "updateDownloadingPercent": "Downloaden {percent}%",
-      "updateInstallingSubtitle": "MemryNote start automatisch opnieuw op.",
-      "updateInstallingTitle": "Update installeren",
-      "updateRestart": "Opnieuw opstarten",
       "feedbackPrivacyEmailOptional": "Je e-mailadres — alleen als je het invult, en alleen zodat we kunnen antwoorden",
       "feedbackPrivacyEmailSignedIn": "Het e-mailadres van je account ({email}), zodat we kunnen antwoorden",
       "feedbackPrivacyMessage": "Je bericht, precies zoals je het hebt geschreven",
@@ -660,19 +654,6 @@
       "previous": "Vorige",
       "progress": "{current} van {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Updates automatisch downloaden en installeren",
-    "availableBody": "{version} is beschikbaar — je hebt {current}. Wil je deze nu downloaden?",
-    "availableTitle": "Er is een nieuwe versie van MemryNote beschikbaar!",
-    "download": "Downloaden",
-    "downloadedBody": "{version} is gedownload. Start MemryNote opnieuw op om de installatie te voltooien.",
-    "downloadedTitle": "Update klaar om te installeren",
-    "later": "Later",
-    "releaseNotesLabel": "Releaseopmerkingen",
-    "remindLater": "Later herinneren",
-    "restartNow": "Nu opnieuw opstarten",
-    "skip": "Deze versie overslaan"
   },
   "capture": {
     "focusShortcut": "Vastlegveld focussen",

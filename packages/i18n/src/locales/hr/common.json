@@ -119,12 +119,6 @@
       "feedbackSuccess": "Hvala na povratnim informacijama!",
       "feedbackTitle": "Pošalji povratne informacije",
       "newItemMenu": "Stvori novo…",
-      "updateAvailable": "Ažuriraj",
-      "updateDownloading": "Preuzimanje…",
-      "updateDownloadingPercent": "Preuzimanje {percent}%",
-      "updateInstallingSubtitle": "MemryNote će se automatski ponovno pokrenuti.",
-      "updateInstallingTitle": "Instaliranje ažuriranja",
-      "updateRestart": "Ponovno pokreni",
       "feedbackPrivacyEmailOptional": "Vaša e-adresa — samo ako je upišete i samo kako bismo mogli odgovoriti",
       "feedbackPrivacyEmailSignedIn": "E-adresa vašeg računa ({email}), kako bismo mogli odgovoriti",
       "feedbackPrivacyMessage": "Vaša poruka, točno onako kako ste je napisali",
@@ -660,19 +654,6 @@
       "previous": "Natrag",
       "progress": "{current} od {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Automatski preuzmi i instaliraj ažuriranja",
-    "availableBody": "{version} je dostupna — imate {current}. Želite li je preuzeti sada?",
-    "availableTitle": "Dostupna je nova verzija aplikacije MemryNote!",
-    "download": "Preuzmi",
-    "downloadedBody": "{version} je preuzeta. Ponovno pokrenite MemryNote za dovršetak instalacije.",
-    "downloadedTitle": "Ažuriranje je spremno za instalaciju",
-    "later": "Kasnije",
-    "releaseNotesLabel": "Bilješke o izdanju",
-    "remindLater": "Podsjeti me kasnije",
-    "restartNow": "Ponovno pokreni sada",
-    "skip": "Preskoči ovu verziju"
   },
   "capture": {
     "focusShortcut": "Fokusiraj polje za snimanje",

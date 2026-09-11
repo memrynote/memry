@@ -71,16 +71,21 @@ project or sending product feedback.
 
 Shows the installed version. If a newer version is available, a button lets you check, download, and install.
 
-When memrynote finds an update it opens an in-app **update prompt** showing the new version, what you have now, and the release notes. From there you can:
+An update never takes the window. It announces itself as one quiet row in the sidebar footer, above the sync and settings row, and nothing else happens until you act on it.
 
-- **Download** — fetch the update; progress shows on the sidebar update button, and once ready the prompt returns to offer **Restart Now** (or **Later**).
-- **Remind Me Later** — dismiss for now; the prompt reappears on the next launch or update check.
-- **Skip This Version** — never prompt automatically for this version again. A manual check clears the skip so the version can surface again.
-- **Automatically download & install updates** — when enabled, future updates download in the background and install on the next quit without prompting.
+With **Automatically download & install updates** on, which is the default, you never see the download at all. The first thing you meet is **Update ready**, meaning the new version is already on disk and only needs a restart. Turn the setting off and an earlier **Update available** row appears instead, with a **Download** action, and a thin progress line along the bottom edge of the row while it fetches. memrynote only shows progress for a download you started; one it started on your own behalf stays silent.
 
-When a version surfaces, memrynote also opens its **release notes** as a read-only tab. That tab always opens in the background. It never takes focus from the note, template, or canvas you are working in, so an update arriving mid-edit cannot interrupt or discard what you are typing. Click it when you want to read the notes, or close it and reopen it with `Cmd/Ctrl+Shift+T`.
+Hover the row for a moment, or click it, and a small panel opens with the version, up to three highlights from the release, and two ways out:
 
-You can also run the same check from the menu bar without opening Settings: **memrynote → Check for Updates…** on macOS, **Help → Check for Updates…** on Windows and Linux. The result is always reported as a toast — up to date, an available or ready-to-install version, or the error — and an available update still opens the update prompt unless automatic downloads are on. In a development build the toast says updates are packaged-release only.
+- **Restart now** — quit and install immediately. Your tabs, scroll position, and cursor come back where they were.
+- **On next quit** — close the panel and carry on. The update installs the next time you quit on your own. memrynote does not ask again, and there is no toast or reminder.
+- **All changes** — opens the full release notes on GitHub in your browser.
+
+A **⋯** menu in the same panel holds the rarer choices: skip this version, turn off automatic updates, or copy your version details for a bug report.
+
+If an install fails, the row turns red and a dialog explains what happened. Your vault is never involved — an update replaces the app, not your notes — so a failed install leaves you on your current version with everything intact. The dialog shows the installer's own error and offers a manual download.
+
+You can also run a check from the menu bar without opening Settings: **memrynote → Check for Updates…** on macOS, **Help → Check for Updates…** on Windows and Linux. The result is reported as a toast. In a development build the toast says updates are packaged-release only.
 
 ### Language & Region
 

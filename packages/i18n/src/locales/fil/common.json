@@ -119,12 +119,6 @@
       "feedbackSuccess": "Salamat sa feedback!",
       "feedbackTitle": "Magpadala ng feedback",
       "newItemMenu": "Lumikha ng bago…",
-      "updateAvailable": "I-update",
-      "updateDownloading": "Dina-download…",
-      "updateDownloadingPercent": "Dina-download {percent}%",
-      "updateInstallingSubtitle": "Awtomatikong magre-restart ang MemryNote.",
-      "updateInstallingTitle": "Ini-install ang update",
-      "updateRestart": "I-restart",
       "feedbackPrivacyEmailOptional": "Ang iyong email — kung idadagdag mo ito, at para lang makasagot kami",
       "feedbackPrivacyEmailSignedIn": "Ang email ng iyong account ({email}), para makasagot kami",
       "feedbackPrivacyMessage": "Ang iyong mensahe, tulad mismo ng pagkakasulat mo",
@@ -660,19 +654,6 @@
       "previous": "Nakaraan",
       "progress": "{current} sa {total}"
     }
-  },
-  "updatePrompt": {
-    "autoUpdateLabel": "Awtomatikong i-download at i-install ang mga update",
-    "availableBody": "Available na ang {version} — mayroon kang {current}. Gusto mo bang i-download ito ngayon?",
-    "availableTitle": "May bagong bersyon ng MemryNote na available!",
-    "download": "I-download",
-    "downloadedBody": "Na-download na ang {version}. I-restart ang MemryNote para tapusin ang pag-install.",
-    "downloadedTitle": "Handa nang i-install ang update",
-    "later": "Mamaya",
-    "releaseNotesLabel": "Mga Tala sa Paglabas",
-    "remindLater": "Paalalahanan Mo Ako Mamaya",
-    "restartNow": "I-restart Ngayon",
-    "skip": "Laktawan ang Bersyong Ito"
   },
   "capture": {
     "focusShortcut": "I-focus ang capture input",

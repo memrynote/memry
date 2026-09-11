@@ -6,7 +6,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
  * Menu-bar "Check for Updates…" (macOS app menu, Help menu on Windows/Linux).
  *
  * Runs the same check as the Settings button and always reports the outcome as a
- * toast. An available or downloaded update also raises `UpdatePromptDialog` from
+ * toast. An available or downloaded update also surfaces the sidebar update row from
  * the broadcast state, but that prompt stays silent when auto-download is on or
  * the user dismissed it this session — the toast is what keeps an explicit menu
  * click from looking dead.
