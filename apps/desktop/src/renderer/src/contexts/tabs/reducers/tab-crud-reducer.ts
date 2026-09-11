@@ -189,7 +189,11 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         }
       }
 
-      // Cross-group singleton focus: when no explicit groupId, find singleton anywhere
+      // Cross-group singleton focus: when no explicit groupId, find singleton
+      // anywhere. The incoming `viewState` is merged in, exactly as both dedup
+      // branches around this one do: a singleton open carries WHICH day/item to
+      // show (the journal's `date`, the calendar's `focusDate`), so focusing the
+      // existing tab without it silently lands the user on today.
       if (
         !forceNew &&
         SINGLETON_TAB_TYPES.includes(tab.type) &&
@@ -200,7 +204,14 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         if (existing) {
           const existingGroup = state.tabGroups[existing.groupId]
           const updatedTabs = existingGroup.tabs.map((t) =>
-            t.id === existing.tab.id ? { ...t, isPreview: false, lastAccessedAt: Date.now() } : t
+            t.id === existing.tab.id
+              ? {
+                  ...t,
+                  isPreview: false,
+                  lastAccessedAt: Date.now(),
+                  ...(tab.viewState && { viewState: { ...t.viewState, ...tab.viewState } })
+                }
+              : t
           )
           const groupAfter = background
             ? { ...existingGroup, tabs: updatedTabs }

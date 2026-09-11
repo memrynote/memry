@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { buildReminderTargetTab } from './open-reminder-target'
+import { buildReminderTargetTab, isJournalDateId } from './open-reminder-target'
 
 const fallbacks = { note: 'Untitled note', journal: 'Journal', task: 'Task' }
 
@@ -23,7 +23,7 @@ describe('buildReminderTargetTab', () => {
       isPreview: false,
       isDeleted: false
     })
-    expect(tab.viewState).toBeUndefined()
+    expect(tab?.viewState).toBeUndefined()
   })
 
   it('falls back to the note fallback title when target title is null', () => {
@@ -34,7 +34,7 @@ describe('buildReminderTargetTab', () => {
       fallbacks
     })
 
-    expect(tab.title).toBe('Untitled note')
+    expect(tab?.title).toBe('Untitled note')
   })
 
   it('builds a note tab with highlight view state for highlight targets', () => {
@@ -48,9 +48,9 @@ describe('buildReminderTargetTab', () => {
       fallbacks
     })
 
-    expect(tab.type).toBe('note')
-    expect(tab.path).toBe('/notes/note-3')
-    expect(tab.viewState).toEqual({
+    expect(tab?.type).toBe('note')
+    expect(tab?.path).toBe('/notes/note-3')
+    expect(tab?.viewState).toEqual({
       highlightStart: 10,
       highlightEnd: 25,
       highlightText: 'important bit'
@@ -70,7 +70,7 @@ describe('buildReminderTargetTab', () => {
       path: '/journal',
       title: 'Journal'
     })
-    expect(tab.viewState).toEqual({ date: '2026-06-12' })
+    expect(tab?.viewState).toEqual({ date: '2026-06-12' })
   })
 
   it('builds a tasks tab that opens the task and its project', () => {
@@ -87,9 +87,31 @@ describe('buildReminderTargetTab', () => {
       path: '/tasks',
       title: 'Ship release notes'
     })
-    expect(tab.viewState).toMatchObject({
+    expect(tab?.viewState).toMatchObject({
       openTaskId: 'task-9',
       selectedProjectId: 'project-7'
     })
+  })
+})
+
+describe('isJournalDateId', () => {
+  it('accepts real calendar days', () => {
+    expect(isJournalDateId('2026-01-01')).toBe(true)
+    expect(isJournalDateId('2024-02-29')).toBe(true)
+    expect(isJournalDateId('2026-12-31')).toBe(true)
+  })
+
+  it('rejects a well-shaped string that is not a real day', () => {
+    // `new Date('2026-02-31')` rolls forward to March — exactly the "opens an
+    // unrelated date" failure the guard exists to stop.
+    expect(isJournalDateId('2026-02-31')).toBe(false)
+    expect(isJournalDateId('2026-13-01')).toBe(false)
+    expect(isJournalDateId('2026-00-10')).toBe(false)
+  })
+
+  it('rejects anything that is not a YYYY-MM-DD string', () => {
+    expect(isJournalDateId('')).toBe(false)
+    expect(isJournalDateId('2026-6-1')).toBe(false)
+    expect(isJournalDateId('note-1')).toBe(false)
   })
 })

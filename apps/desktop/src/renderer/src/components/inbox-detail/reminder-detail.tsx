@@ -11,6 +11,7 @@ import { inboxService } from '@/services/inbox-service'
 import { inboxKeys } from '@/hooks/use-inbox'
 import { useUndoableAction } from '@/hooks/use-undoable-action'
 import { useTabs } from '@/contexts/tabs'
+import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
 import { buildReminderTargetTab } from '@/lib/open-reminder-target'
 import type { InboxItem, InboxItemListItem } from '@/types'
@@ -104,23 +105,31 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
 
     inboxService.markViewed(item.id).catch((err) => log.warn('Failed to mark reminder viewed', err))
 
-    openTab(
-      buildReminderTargetTab({
-        targetType: metadata.targetType,
-        targetId: metadata.targetId,
-        targetTitle: metadata.targetTitle,
-        projectId: metadata.projectId,
-        anchorId: metadata.anchorId,
-        highlightStart: metadata.highlightStart,
-        highlightEnd: metadata.highlightEnd,
-        highlightText: metadata.highlightText,
-        fallbacks: {
-          note: t('reminder.noteFallback'),
-          journal: t('reminder.journalFallback'),
-          task: t('reminder.taskFallback')
-        }
-      })
-    )
+    const tab = buildReminderTargetTab({
+      targetType: metadata.targetType,
+      targetId: metadata.targetId,
+      targetTitle: metadata.targetTitle,
+      projectId: metadata.projectId,
+      anchorId: metadata.anchorId,
+      highlightStart: metadata.highlightStart,
+      highlightEnd: metadata.highlightEnd,
+      highlightText: metadata.highlightText,
+      fallbacks: {
+        note: t('reminder.noteFallback'),
+        journal: t('reminder.journalFallback'),
+        task: t('reminder.taskFallback')
+      }
+    })
+
+    // A journal reminder whose stored date is unusable has no day to open.
+    // Say so rather than dropping the user on today's entry.
+    if (!tab) {
+      log.warn(`Reminder ${item.id} has an unusable target: ${metadata.targetId}`)
+      toast.error(t('reminder.dataUnavailable'))
+      return
+    }
+
+    openTab(tab)
   }, [metadata, item.id, openTab, t])
 
   if (!metadata) {
