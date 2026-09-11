@@ -47,6 +47,8 @@ interface UpdatePopoverProps {
   version: string
   state: AppUpdateState
   onClose: () => void
+  onMouseEnter?: () => void
+  onMouseLeave?: () => void
 }
 
 /**
@@ -58,7 +60,9 @@ export function UpdatePopover({
   kind,
   version,
   state,
-  onClose
+  onClose,
+  onMouseEnter,
+  onMouseLeave
 }: UpdatePopoverProps): React.JSX.Element {
   const { t } = useT('common')
   const { downloadUpdate, quitAndInstall, skipVersion, setAutoDownload } = useAppUpdater()
@@ -113,6 +117,8 @@ export function UpdatePopover({
       align="start"
       sideOffset={6}
       className="w-80 p-0"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       // Opening must not yank the caret out of the editor. Tab still reaches
       // everything inside, because only the initial autofocus is suppressed.
       onOpenAutoFocus={(event) => event.preventDefault()}

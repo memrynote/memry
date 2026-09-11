@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { cloneElement } from 'react'
-import type { ReactElement, ReactNode } from 'react'
+import { act } from 'react'
+import type { ReactNode } from 'react'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 
 import { SidebarUpdateRow } from './sidebar-update-row'
@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
   downloadUpdate: vi.fn().mockResolvedValue(undefined),
   quitAndInstall: vi.fn().mockResolvedValue(undefined),
   reopenInstallFailed: vi.fn(),
-  openPopover: vi.fn(),
   state: {} as AppUpdateState
 }))
 
@@ -30,19 +29,30 @@ vi.mock('@/components/updater/install-failed-dismissal', () => ({
 }))
 
 vi.mock('@/components/updater/update-popover', () => ({
-  UpdatePopover: ({ kind, version }: { kind: string; version: string }) => (
-    <div data-testid="update-popover">{`${kind}:${version}`}</div>
+  UpdatePopover: ({
+    kind,
+    version,
+    onMouseEnter,
+    onMouseLeave
+  }: {
+    kind: string
+    version: string
+    onMouseEnter?: () => void
+    onMouseLeave?: () => void
+  }) => (
+    <div data-testid="update-popover" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+      {`${kind}:${version}`}
+    </div>
   )
 }))
 
 vi.mock('@/components/ui/popover', () => ({
-  Popover: ({ children }: { children: ReactNode }) => <div data-testid="popover">{children}</div>,
-  // Mirrors Radix `asChild`: the trigger hands its onClick to the child element, so
-  // anything nested inside the row bubbles into it unless it stops first.
-  PopoverTrigger: ({ children }: { children: ReactNode }) =>
-    cloneElement(children as ReactElement<{ onClick?: () => void }>, {
-      onClick: mocks.openPopover
-    })
+  Popover: ({ open, children }: { open: boolean; children: ReactNode }) => (
+    <div data-testid="popover" data-open={String(open)}>
+      {children}
+    </div>
+  ),
+  PopoverAnchor: ({ children }: { children: ReactNode }) => <>{children}</>
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -72,6 +82,17 @@ function makeState(patch: Partial<AppUpdateState>): AppUpdateState {
     installFailed: null,
     ...patch
   }
+}
+
+function isOpen(): boolean {
+  return screen.getByTestId('popover').getAttribute('data-open') === 'true'
+}
+
+/** The hover target is the positioned wrapper, not either button inside it. */
+function rowContainer(): HTMLElement {
+  const row = screen.getByTestId('popover').querySelector('.group\\/update')
+  if (!row) throw new Error('row container not rendered')
+  return row as HTMLElement
 }
 
 describe('SidebarUpdateRow', () => {
@@ -108,16 +129,63 @@ describe('SidebarUpdateRow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'restartAction' }))
     expect(mocks.quitAndInstall).toHaveBeenCalledTimes(1)
-    expect(mocks.openPopover).not.toHaveBeenCalled()
+    expect(isOpen()).toBe(false)
   })
 
-  it('opens the popover when the row itself is clicked', () => {
+  it('opens and closes the popover on the row click', () => {
     mocks.state = makeState({ status: 'downloaded', availableVersion: '2026.999.9' })
     render(<SidebarUpdateRow />)
 
     fireEvent.click(screen.getByRole('button', { name: 'ready' }))
-    expect(mocks.openPopover).toHaveBeenCalledTimes(1)
+    expect(isOpen()).toBe(true)
     expect(mocks.quitAndInstall).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'ready' }))
+    expect(isOpen()).toBe(false)
+  })
+
+  it('opens on hover, but only after the user has settled on the row', () => {
+    vi.useFakeTimers()
+    mocks.state = makeState({ status: 'downloaded', availableVersion: '2026.999.9' })
+    render(<SidebarUpdateRow />)
+
+    fireEvent.mouseEnter(rowContainer())
+    act(() => void vi.advanceTimersByTime(399))
+    expect(isOpen()).toBe(false)
+
+    act(() => void vi.advanceTimersByTime(1))
+    expect(isOpen()).toBe(true)
+    vi.useRealTimers()
+  })
+
+  it('ignores a pointer merely crossing the row on its way elsewhere', () => {
+    vi.useFakeTimers()
+    mocks.state = makeState({ status: 'downloaded', availableVersion: '2026.999.9' })
+    render(<SidebarUpdateRow />)
+
+    fireEvent.mouseEnter(rowContainer())
+    act(() => void vi.advanceTimersByTime(150))
+    fireEvent.mouseLeave(rowContainer())
+    act(() => void vi.advanceTimersByTime(2000))
+    expect(isOpen()).toBe(false)
+    vi.useRealTimers()
+  })
+
+  it('survives the trip from the row into the panel', () => {
+    vi.useFakeTimers()
+    mocks.state = makeState({ status: 'downloaded', availableVersion: '2026.999.9' })
+    render(<SidebarUpdateRow />)
+
+    fireEvent.mouseEnter(rowContainer())
+    act(() => void vi.advanceTimersByTime(400))
+    expect(isOpen()).toBe(true)
+
+    fireEvent.mouseLeave(rowContainer())
+    act(() => void vi.advanceTimersByTime(100))
+    fireEvent.mouseEnter(screen.getByTestId('update-popover'))
+    act(() => void vi.advanceTimersByTime(2000))
+    expect(isOpen()).toBe(true)
+    vi.useRealTimers()
   })
 
   it('restarts from the trailing verb once an update is ready', () => {

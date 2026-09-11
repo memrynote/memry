@@ -1,14 +1,22 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 import { useAppUpdater } from '@/hooks/use-app-updater'
-import { Popover, PopoverTrigger } from '@/components/ui/popover'
+import { Popover, PopoverAnchor } from '@/components/ui/popover'
 import { toUpdatePresentation } from '@/components/updater/update-presentation'
 import { UpdatePopover } from '@/components/updater/update-popover'
 import { reopenInstallFailed } from '@/components/updater/install-failed-dismissal'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:SidebarUpdateRow')
+
+/**
+ * Long enough that crossing the row on the way to Settings does not open anything,
+ * short enough that aiming at it feels immediate.
+ */
+const HOVER_OPEN_MS = 400
+/** Covers the gap between the row and the panel, so the trip there does not close it. */
+const HOVER_CLOSE_MS = 180
 
 const ROW =
   'flex h-7 w-full items-center gap-1.5 rounded-[5px] ps-1 pe-2.5 text-[13px] leading-4 font-medium text-sidebar-foreground'
@@ -38,8 +46,24 @@ export function SidebarUpdateRow(): React.JSX.Element | null {
   const { t } = useT('common')
   const { state, downloadUpdate, quitAndInstall } = useAppUpdater()
   const [open, setOpen] = useState(false)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const presentation = toUpdatePresentation(state)
+
+  const cancelHover = useCallback(() => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    hoverTimer.current = null
+  }, [])
+
+  const scheduleOpen = useCallback(
+    (next: boolean) => {
+      cancelHover()
+      hoverTimer.current = setTimeout(() => setOpen(next), next ? HOVER_OPEN_MS : HOVER_CLOSE_MS)
+    },
+    [cancelHover]
+  )
+
+  useEffect(() => cancelHover, [cancelHover])
 
   const handleDownload = useCallback(() => {
     void downloadUpdate().catch((err) => log.error('update download failed', err))
@@ -85,7 +109,14 @@ export function SidebarUpdateRow(): React.JSX.Element | null {
       type="button"
       aria-label={label}
       title={label}
-      onClick={isFailed ? reopenInstallFailed : undefined}
+      onClick={
+        isFailed
+          ? reopenInstallFailed
+          : () => {
+              cancelHover()
+              setOpen((wasOpen) => !wasOpen)
+            }
+      }
       className={cn(
         ROW,
         'absolute inset-0 hover:bg-sidebar-accent transition-colors',
@@ -130,7 +161,11 @@ export function SidebarUpdateRow(): React.JSX.Element | null {
   )
 
   const row = (
-    <div className="group/update relative mb-1 h-7">
+    <div
+      className="group/update relative mb-1 h-7"
+      onMouseEnter={isFailed ? undefined : () => scheduleOpen(true)}
+      onMouseLeave={isFailed ? undefined : () => scheduleOpen(false)}
+    >
       {rowButton}
       {trailing}
     </div>
@@ -141,13 +176,17 @@ export function SidebarUpdateRow(): React.JSX.Element | null {
   if (isFailed) return row
 
   return (
+    // Anchor rather than trigger: the row owns `open` so that hover and click agree.
+    // A trigger would toggle on its own and fight the hover timers.
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{row}</PopoverTrigger>
+      <PopoverAnchor asChild>{row}</PopoverAnchor>
       <UpdatePopover
         kind={presentation.kind}
         version={presentation.version}
         state={state}
         onClose={() => setOpen(false)}
+        onMouseEnter={cancelHover}
+        onMouseLeave={() => scheduleOpen(false)}
       />
     </Popover>
   )
