@@ -291,7 +291,9 @@ test.describe('Editor command flows E2E', () => {
       .toEqual({ type: 'bulletListItem', links: [url] })
 
     // The bullet is still rendered, not just present in the model.
-    await expect(page.locator(`${SELECTORS.noteEditor} li`).first()).toBeVisible()
+    await expect(
+      page.locator('.bn-block-content[data-content-type="bulletListItem"]').first()
+    ).toBeVisible()
 
     // The link is editable inline content: typing continues the same list item
     // instead of replacing or deleting the link.
