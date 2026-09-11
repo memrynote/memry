@@ -26,6 +26,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
+import type { SidebarItem } from '@/contexts/tabs/types'
 import { useOpenPage } from '@/hooks/use-open-target'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
@@ -70,10 +71,12 @@ import {
   type FilterExpression,
   type ColumnConfig,
   type GroupByConfig,
-  type ViewScope
+  type ViewScope,
+  type NoteWithProperties
 } from '@memry/contracts/folder-view-api'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import type { TagSuggestion } from '@/lib/tag-suggestions'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 
@@ -86,6 +89,44 @@ interface FolderViewPageProps {
 
 /** Stable empty selection, so folder scope never produces a new array identity. */
 const EMPTY_TAG_SELECTION: string[] = []
+
+/**
+ * The sidebar item a row opens as. A tag page can list tasks and inbox items
+ * beside notes, and those live on their own pages — so the row's `kind`, not
+ * the page, decides where it goes. Shared by the plain open and the
+ * middle-click background open so a row lands in the same place either way.
+ */
+function sidebarItemForRow(item: NoteWithProperties): SidebarItem {
+  const kind = item.kind ?? 'note'
+
+  if (kind === 'task') {
+    return {
+      type: 'tasks',
+      title: 'Tasks',
+      icon: 'CheckSquare',
+      path: '/tasks',
+      // No `selectedProjectId`: under tag scope a row carries no project id,
+      // only a folder name, so the Tasks page falls back to its default
+      // project scope.
+      viewState: { openTaskId: item.id, activeInternalTab: 'all', activeTab: 'all' }
+    }
+  }
+
+  if (kind === 'inbox') {
+    return {
+      type: 'inbox',
+      title: 'Inbox',
+      icon: 'Inbox',
+      path: '/inbox',
+      // Fresh `focusedAt` token so Inbox's focus effect re-fires even when the
+      // same item is opened twice in a row (it dedupes on the token) — see
+      // inbox.tsx's focus effect.
+      viewState: { focusInboxItemId: item.id, focusedAt: Date.now() }
+    }
+  }
+
+  return { type: 'note', path: item.path, entityId: item.id, title: item.title, emoji: item.emoji }
+}
 
 /**
  * Folder View Page Component
@@ -342,6 +383,13 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     return map
   }, [allTags])
 
+  // Value suggestions for a `tags` filter condition — the same vault tags the
+  // pills are drawn from, so the dropdown's colors match the rows'.
+  const tagSuggestions = useMemo<TagSuggestion[]>(
+    () => allTags.map((tag) => ({ name: tag.tag, color: tag.color, count: tag.count })),
+    [allTags]
+  )
+
   // Tag scope's header identity — the stored tag definition (color/icon), a
   // deterministic color fallback via getTagColors (same as tag-view.tsx),
   // and the hierarchy segments for a nested tag like "araba/lastik".
@@ -387,47 +435,20 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     (rowId: string): void => {
       const item = notes.find((n) => n.id === rowId)
       if (!item) return
-      const kind = item.kind ?? 'note'
+      openSidebarItem(sidebarItemForRow(item))
+    },
+    [notes, openSidebarItem]
+  )
 
-      if (kind === 'task') {
-        openSidebarItem({
-          type: 'tasks',
-          title: 'Tasks',
-          icon: 'CheckSquare',
-          path: '/tasks',
-          // No `selectedProjectId`: under tag scope a row carries no project
-          // id, only a folder name, so the Tasks page falls back to its
-          // default project scope.
-          viewState: {
-            openTaskId: item.id,
-            activeInternalTab: 'all',
-            activeTab: 'all'
-          }
-        })
-        return
-      }
-
-      if (kind === 'inbox') {
-        openSidebarItem({
-          type: 'inbox',
-          title: 'Inbox',
-          icon: 'Inbox',
-          path: '/inbox',
-          // Fresh `focusedAt` token so Inbox's focus effect re-fires even
-          // when the same item is opened twice in a row (it dedupes on the
-          // token) — see inbox.tsx's focus effect.
-          viewState: { focusInboxItemId: item.id, focusedAt: Date.now() }
-        })
-        return
-      }
-
-      openSidebarItem({
-        type: 'note',
-        path: item.path,
-        entityId: item.id,
-        title: item.title,
-        emoji: item.emoji
-      })
+  // Middle-click: the row's "Open in New Tab" as a gesture, in the background,
+  // exactly as the sidebar rows behave. Both scopes route through the same
+  // sidebar item as a plain open, so a tag page's task/inbox rows still land
+  // on their own pages rather than opening as a note.
+  const handleRowOpenInBackgroundTab = useCallback(
+    (rowId: string): void => {
+      const item = notes.find((n) => n.id === rowId)
+      if (!item) return
+      openSidebarItem(sidebarItemForRow(item), { inNewTab: true, inBackground: true })
     },
     [notes, openSidebarItem]
   )
@@ -1147,6 +1168,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
           <FilterBuilder
             filters={activeView?.filters as FilterExpression | undefined}
             availableProperties={availableProperties}
+            tagSuggestions={tagSuggestions}
             builtInColumns={builtInColumns}
             onFiltersChange={(...args) => void updateFilters(...args)}
             lockedCondition={
@@ -1273,6 +1295,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               density="compact"
               tagMetaMap={tagMetaMap}
               onNoteOpen={onRowOpen}
+              onOpenInBackgroundTab={handleRowOpenInBackgroundTab}
               onTagClick={handleTagClick}
               onCreateNote={() => void handleCreateNote()}
               onClearAll={handleClearAll}
@@ -1285,6 +1308,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               scrollKey={activeScrollKey}
               tagMetaMap={tagMetaMap}
               onNoteOpen={onRowOpen}
+              onOpenInBackgroundTab={handleRowOpenInBackgroundTab}
               onTagClick={handleTagClick}
               onCreateNote={() => void handleCreateNote()}
               onClearAll={handleClearAll}
@@ -1305,6 +1329,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onSelectionChange={handleSelectionChange}
               onNoteOpen={onRowOpen}
               onOpenInNewTab={handleOpenInNewTab}
+              onOpenInBackgroundTab={handleRowOpenInBackgroundTab}
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
               onTagRemove={handleTagRemove}
@@ -1341,6 +1366,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onSelectionChange={handleSelectionChange}
               onNoteOpen={onRowOpen}
               onOpenInNewTab={handleOpenInNewTab}
+              onOpenInBackgroundTab={handleRowOpenInBackgroundTab}
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
               onTagRemove={handleTagRemove}

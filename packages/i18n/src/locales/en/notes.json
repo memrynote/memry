@@ -679,7 +679,8 @@
       "placeholderProperty": "Property",
       "placeholderOperator": "Operator",
       "placeholderValue": "Value",
-      "removeFilter": "Remove filter"
+      "removeFilter": "Remove filter",
+      "tagSuggestions": "Tag suggestions"
     },
     "componentsFolderViewFolderTableView": {
       "notesTable": "Notes table",
