@@ -145,7 +145,6 @@ vi.mock('@blocknote/react', () => ({
   ]),
   FilePanelController: () => <div data-testid="file-panel-controller" />,
   UploadTab: () => <div data-testid="upload-tab" />,
-  useBlockNoteEditor: () => contentAreaMocks.editor,
   // `TableBorderHandles` reaches for the table-handle extension so the nubs on
   // the cell borders can open BlockNote's own row/column/cell menus. It renders
   // nothing until a cell is hovered, which jsdom (no layout) never reports —

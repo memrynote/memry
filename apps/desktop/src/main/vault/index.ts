@@ -1148,6 +1148,12 @@ export async function autoOpenLastVault(): Promise<void> {
         initVault(testVaultPath)
       }
       await openVault(testVaultPath)
+      // The normal launch path registers the vault it opens (selectVault ->
+      // upsertVault/touchVault). Without the same registration here the E2E
+      // vault is open but absent from the vault list, so surfaces that read the
+      // list -- the vault switcher's rows -- render as if no vault existed.
+      upsertVault(createVaultInfo(testVaultPath))
+      touchVault(testVaultPath)
       return
     } catch (error) {
       logger.error('Failed to open test vault:', error)

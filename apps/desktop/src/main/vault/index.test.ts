@@ -1212,6 +1212,9 @@ describe('vault lifecycle', () => {
 
     expect(mocks.initVault).toHaveBeenCalledWith('/vault/e2e')
     expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, error: 'boom' }))
+    // Registered like any other opened vault, so list-driven surfaces (the
+    // vault switcher) see the vault the E2E run is actually in.
+    expect(mocks.vaults.map((vault) => vault.path)).toContain('/vault/e2e')
     expect(mocks.sent).toContainEqual({ channel: 'vault:index-progress', payload: 55 })
     expect(mocks.sent).toContainEqual({ channel: 'vault:error', payload: 'boom' })
   })

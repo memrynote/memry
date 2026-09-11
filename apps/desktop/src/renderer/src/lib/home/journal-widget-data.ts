@@ -72,10 +72,20 @@ export function buildUpcomingDays(todayIso: string, lang: string, count = 4): Up
   return days
 }
 
-/** Dates with content, most recent first, capped at `limit`. */
-export function recentEntryDates(entries: HeatmapEntry[], limit: number): string[] {
+/**
+ * Dates with content, most recent first, capped at `limit`.
+ *
+ * `excludeIso` drops one date from the result -- the widget uses it to keep today
+ * out of this list, since the Upcoming section's "Today" row already previews it
+ * and would otherwise render the same entry snippet twice.
+ */
+export function recentEntryDates(
+  entries: HeatmapEntry[],
+  limit: number,
+  excludeIso?: string
+): string[] {
   return entries
-    .filter((e) => e.level > 0)
+    .filter((e) => e.level > 0 && e.date !== excludeIso)
     .map((e) => e.date)
     .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))
     .slice(0, limit)

@@ -55,6 +55,10 @@ describe('recentEntryDates', () => {
   it('returns all qualifying dates when limit exceeds count', () => {
     expect(recentEntryDates(entries, 10)).toEqual(['2026-06-23', '2026-06-22', '2026-06-20'])
   })
+
+  it('excludes the given date so it does not also appear in Upcoming (#2083)', () => {
+    expect(recentEntryDates(entries, 10, '2026-06-23')).toEqual(['2026-06-22', '2026-06-20'])
+  })
 })
 
 describe('relativeDayLabel', () => {

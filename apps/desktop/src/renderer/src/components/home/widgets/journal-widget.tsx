@@ -49,7 +49,10 @@ export function JournalWidget({ size }: WidgetComponentProps): React.JSX.Element
     () => buildWeekDays(todayIso, entryDates, lang),
     [todayIso, entryDates, lang]
   )
-  const recentDates = useMemo(() => recentEntryDates(allEntries, limit), [allEntries, limit])
+  const recentDates = useMemo(
+    () => recentEntryDates(allEntries, limit, todayIso),
+    [allEntries, limit, todayIso]
+  )
   const upcomingDays = useMemo(() => buildUpcomingDays(todayIso, lang), [todayIso, lang])
 
   const entryQueries = useQueries({
