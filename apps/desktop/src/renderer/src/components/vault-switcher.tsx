@@ -227,10 +227,14 @@ export function VaultSwitcher() {
                       data-active-vault={isActive ? 'true' : undefined}
                       className={cn(
                         'group/vault flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 transition-colors',
-                        // Arrow keys walk these rows (see `picker-content.tsx`),
-                        // so a keyboard-focused row has to be visible.
-                        'focus:outline-none focus-visible:bg-accent focus-visible:ring-1 focus-visible:ring-ring',
-                        isActive ? 'bg-accent' : 'hover:bg-accent cursor-pointer'
+                        // Arrow keys walk these rows (see `picker-content.tsx`).
+                        // The tinted row IS the cursor — hover and keyboard
+                        // focus share it, and the active vault is marked by its
+                        // check and weight instead, so exactly one row ever
+                        // reads as highlighted. A ring here would collide with
+                        // the popover edge and the row below it.
+                        'focus:outline-none focus-visible:bg-accent',
+                        isActive ? 'cursor-default' : 'hover:bg-accent cursor-pointer'
                       )}
                     >
                       <Check
@@ -304,7 +308,7 @@ export function VaultSwitcher() {
                         setOpen(false)
                         setVaultToDownload(vault)
                       }}
-                      className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer focus:outline-none focus-visible:bg-accent focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer focus:outline-none focus-visible:bg-accent"
                     >
                       <Cloud className="size-3.5 shrink-0 text-muted-foreground" />
                       <span className="flex-1 truncate text-start text-muted-foreground">
@@ -357,7 +361,7 @@ export function VaultSwitcher() {
                   <button
                     type="button"
                     onClick={handleSignIn}
-                    className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer focus:outline-none focus-visible:bg-accent focus-visible:ring-1 focus-visible:ring-ring"
+                    className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer focus:outline-none focus-visible:bg-accent"
                   >
                     <Cloud className="size-3.5 text-sidebar-terracotta" />
                     <span className="text-sidebar-terracotta font-medium">

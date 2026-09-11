@@ -63,8 +63,9 @@ export const PickerItem = React.forwardRef<HTMLButtonElement, PickerItemProps>(
         className={cn(
           'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
           // Arrow-key navigation (see `picker-content.tsx`) moves focus between
-          // rows, so a focused row has to read as focused.
-          'hover:bg-accent focus:outline-none focus-visible:bg-accent focus-visible:ring-1 focus-visible:ring-ring',
+          // rows, so the focused row carries the same tint hover uses — one
+          // highlighted row, no ring to collide with the popover edge.
+          'hover:bg-accent focus:outline-none focus-visible:bg-accent',
           isSelected && !indicatorColor && 'bg-accent',
           destructive && 'text-destructive focus:text-destructive',
           className
