@@ -1,19 +1,22 @@
 /**
- * Tests for InsertExistingAttachmentDialog (#2077).
+ * Tests for AttachmentPickerDialog (#2077, #2161).
  *
- * The dialog's whole job is to turn a picked row into block props that point at
- * bytes already in the vault, so what is asserted is that it asks main for the
- * reference and never uploads anything.
+ * The dialog is the one surface every attachment command opens, so what is
+ * asserted is both routes out of it: picking a stored file asks main for a
+ * reference and uploads nothing, and uploading sends the bytes once. The kind
+ * filter is asserted too — `/pdf` must not offer to reuse a PNG.
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  InsertExistingAttachmentDialog,
+  AttachmentPickerDialog,
   attachmentKey,
+  attachmentKindMatches,
   buildInsertedAttachmentBlock,
   filterVaultAttachments
-} from './insert-existing-attachment-dialog'
+} from './attachment-picker-dialog'
+import type { AttachmentKind } from './attachment-picker-dialog'
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key })
@@ -35,6 +38,9 @@ function setupApi(): void {
     uploadAttachment
   }
 }
+
+// cmdk keeps the highlighted row in view; jsdom has no scroller.
+Element.prototype.scrollIntoView = vi.fn()
 
 afterEach(() => {
   toastError.mockReset()
@@ -64,13 +70,17 @@ const PHOTO = {
   type: 'image' as const
 }
 
-function renderDialog(onInsert = vi.fn()): { onInsert: ReturnType<typeof vi.fn> } {
+function renderDialog(
+  kind: AttachmentKind = 'file',
+  onInsert = vi.fn()
+): { onInsert: ReturnType<typeof vi.fn> } {
   setupApi()
   render(
-    <InsertExistingAttachmentDialog
+    <AttachmentPickerDialog
       open
       onOpenChange={vi.fn()}
       noteId="note-b"
+      kind={kind}
       onInsert={onInsert}
     />
   )
@@ -134,12 +144,12 @@ describe('attachmentKey', () => {
   })
 })
 
-describe('InsertExistingAttachmentDialog', () => {
+describe('AttachmentPickerDialog', () => {
   it('lists what the vault stores, with the note that owns each file', async () => {
     listVaultAttachments.mockResolvedValue([PDF, PHOTO])
     renderDialog()
 
-    const rows = await screen.findAllByTestId('insert-existing-attachment-row')
+    const rows = await screen.findAllByTestId('attachment-picker-row')
     expect(rows).toHaveLength(2)
     expect(rows[0]).toHaveTextContent('report.pdf')
     expect(rows[0]).toHaveTextContent('Invoices')
@@ -159,7 +169,7 @@ describe('InsertExistingAttachmentDialog', () => {
     insertExistingAttachment.mockResolvedValue(result)
     const { onInsert } = renderDialog()
 
-    fireEvent.click(await screen.findByTestId('insert-existing-attachment-row'))
+    fireEvent.click(await screen.findByTestId('attachment-picker-row'))
 
     await waitFor(() => expect(onInsert).toHaveBeenCalledWith(result))
     expect(insertExistingAttachment).toHaveBeenCalledWith('note-b', 'note-a', PDF.filename)
@@ -169,13 +179,13 @@ describe('InsertExistingAttachmentDialog', () => {
   it('narrows the list as the user types', async () => {
     listVaultAttachments.mockResolvedValue([PDF, PHOTO])
     renderDialog()
-    await screen.findAllByTestId('insert-existing-attachment-row')
+    await screen.findAllByTestId('attachment-picker-row')
 
-    fireEvent.change(screen.getByTestId('insert-existing-attachment-search'), {
+    fireEvent.change(screen.getByTestId('attachment-picker-search'), {
       target: { value: 'photo' }
     })
 
-    const rows = await screen.findAllByTestId('insert-existing-attachment-row')
+    const rows = await screen.findAllByTestId('attachment-picker-row')
     expect(rows).toHaveLength(1)
     expect(rows[0]).toHaveTextContent('photo.png')
   })
@@ -185,7 +195,7 @@ describe('InsertExistingAttachmentDialog', () => {
     renderDialog()
 
     await waitFor(() => expect(toastError).toHaveBeenCalled())
-    expect(screen.queryAllByTestId('insert-existing-attachment-row')).toHaveLength(0)
+    expect(screen.queryAllByTestId('attachment-picker-row')).toHaveLength(0)
   })
 
   it('reports an insert failure and leaves the note untouched', async () => {
@@ -193,7 +203,7 @@ describe('InsertExistingAttachmentDialog', () => {
     insertExistingAttachment.mockRejectedValue(new Error('gone'))
     const { onInsert } = renderDialog()
 
-    fireEvent.click(await screen.findByTestId('insert-existing-attachment-row'))
+    fireEvent.click(await screen.findByTestId('attachment-picker-row'))
 
     await waitFor(() => expect(toastError).toHaveBeenCalled())
     expect(onInsert).not.toHaveBeenCalled()
@@ -203,6 +213,71 @@ describe('InsertExistingAttachmentDialog', () => {
     listVaultAttachments.mockResolvedValue([])
     renderDialog()
 
-    expect(await screen.findByText('editor.insertExistingAttachment.empty')).toBeInTheDocument()
+    expect(await screen.findByTestId('attachment-picker-empty')).toHaveTextContent(
+      'editor.attachmentPicker.empty.file'
+    )
+  })
+
+  it('offers only the kind that was asked for, so /pdf never proposes a PNG', async () => {
+    listVaultAttachments.mockResolvedValue([PDF, PHOTO])
+    renderDialog('pdf')
+
+    const rows = await screen.findAllByTestId('attachment-picker-row')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toHaveTextContent('report.pdf')
+  })
+
+  it('uploads a chosen file once and inserts what main stored', async () => {
+    listVaultAttachments.mockResolvedValue([])
+    uploadAttachment.mockResolvedValue({
+      success: true,
+      path: '../attachments/note-b/zzzzzz-slide.png',
+      name: 'slide.png',
+      size: 12,
+      mimeType: 'image/png',
+      type: 'image'
+    })
+    const { onInsert } = renderDialog('image')
+
+    fireEvent.change(screen.getByTestId('attachment-picker-file-input'), {
+      target: { files: [new File(['x'], 'slide.png', { type: 'image/png' })] }
+    })
+
+    await waitFor(() =>
+      expect(onInsert).toHaveBeenCalledWith({
+        url: '../attachments/note-b/zzzzzz-slide.png',
+        name: 'slide.png',
+        size: 12,
+        mimeType: 'image/png',
+        type: 'image'
+      })
+    )
+    expect(uploadAttachment).toHaveBeenCalledTimes(1)
+    expect(insertExistingAttachment).not.toHaveBeenCalled()
+  })
+
+  it('reports a failed upload and inserts nothing', async () => {
+    listVaultAttachments.mockResolvedValue([])
+    uploadAttachment.mockResolvedValue({ success: false, error: 'too big' })
+    const { onInsert } = renderDialog('file')
+
+    fireEvent.change(screen.getByTestId('attachment-picker-file-input'), {
+      target: { files: [new File(['x'], 'huge.zip', { type: 'application/zip' })] }
+    })
+
+    await waitFor(() => expect(toastError).toHaveBeenCalled())
+    expect(onInsert).not.toHaveBeenCalled()
+  })
+})
+
+describe('attachmentKindMatches', () => {
+  it('splits media from the rest of the files, which `entry.type` cannot', () => {
+    expect(attachmentKindMatches('video/mp4', 'media')).toBe(true)
+    expect(attachmentKindMatches('audio/mpeg', 'media')).toBe(true)
+    expect(attachmentKindMatches('image/png', 'media')).toBe(true)
+    expect(attachmentKindMatches('application/pdf', 'media')).toBe(false)
+    expect(attachmentKindMatches('video/mp4', 'image')).toBe(false)
+    expect(attachmentKindMatches('APPLICATION/PDF', 'pdf')).toBe(true)
+    expect(attachmentKindMatches('application/zip', 'file')).toBe(true)
   })
 })

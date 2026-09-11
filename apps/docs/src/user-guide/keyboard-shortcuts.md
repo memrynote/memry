@@ -14,7 +14,7 @@ Default shortcuts. Entries in the Navigation, Tabs, and View categories are rebi
 | Open settings         | <kbd>⌘</kbd>+<kbd>,</kbd>                              |
 | Switch vault          | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>O</kbd>                 |
 
-> **Switch vault** opens the vault switcher in the sidebar footer from anywhere — if the sidebar is hidden it slides open for the duration, and <kbd>Esc</kbd> closes the switcher and puts the sidebar back without changing vaults. Like the other app shortcuts it stands down while you are typing in a field or in the note editor.
+> **Switch vault** opens the vault switcher in the sidebar footer from anywhere — if the sidebar is hidden it slides open for the duration, and <kbd>Esc</kbd> closes the switcher and puts the sidebar back without changing vaults. It opens on the vault you are in: <kbd>↓</kbd> and <kbd>↑</kbd> move through the list (wrapping at either end) and <kbd>Enter</kbd> switches to the highlighted vault, so a switch never needs the mouse. Like the other app shortcuts it stands down while you are typing in a field or in the note editor.
 
 > Hold <kbd>⌘</kbd> (<kbd>Ctrl</kbd> on Windows / Linux) to reveal the section numbers on the sidebar icons, then press the number to jump — <kbd>⌘</kbd>+<kbd>1</kbd> opens Home, <kbd>⌘</kbd>+<kbd>2</kbd> Inbox, and so on. Numbers follow the sidebar's visible top-to-bottom order (Home is always 1), so they shift if you hide a section. This shortcut works everywhere, including inside the editor, and is fixed rather than rebindable.
 

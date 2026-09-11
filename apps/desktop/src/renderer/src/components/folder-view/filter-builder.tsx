@@ -27,6 +27,7 @@ import {
   getDefaultOperator
 } from '@/lib/filter-evaluator'
 import { FilterRow, type FilterCondition, type PropertyInfo } from './filter-row'
+import type { TagSuggestion } from '@/lib/tag-suggestions'
 import type { FilterExpression } from '@memry/contracts/folder-view-api'
 import { useT } from '@memry/i18n/renderer'
 
@@ -39,6 +40,11 @@ interface FilterBuilderProps {
   filters?: FilterExpression
   /** Available custom properties */
   availableProperties: Array<{ name: string; type: string; usageCount: number }>
+  /**
+   * Vault tags, offered as value suggestions on a `tags` condition. Omitted
+   * or empty, that value stays a plain text input.
+   */
+  tagSuggestions?: readonly TagSuggestion[]
   /** Built-in column info */
   builtInColumns: Array<{ id: string; displayName: string; type: string }>
   /** Called when filters change (debounced) */
@@ -220,6 +226,7 @@ function uiStateToFilterExpression(state: FilterUIState): FilterExpression | und
 export function FilterBuilder({
   filters,
   availableProperties,
+  tagSuggestions,
   builtInColumns,
   onFiltersChange,
   lockedCondition,
@@ -452,6 +459,9 @@ export function FilterBuilder({
               <Button
                 variant="ghost"
                 size="sm"
+                // Icon-only: without a name the button is unreachable by
+                // assistive tech (the tooltip is not an accessible name).
+                aria-label={tPhaseF('phaseF.componentsFolderViewFilterBuilder.filter')}
                 className={cn(
                   'gap-1.5 px-2 text-muted-foreground',
                   filterCount > 0 && 'text-foreground',
@@ -534,6 +544,7 @@ export function FilterBuilder({
                 key={condition.id}
                 condition={condition}
                 availableProperties={propertyInfos}
+                tagSuggestions={tagSuggestions}
                 onChange={(updated) => handleUpdateCondition(condition.id, updated)}
                 onRemove={() => handleRemoveCondition(condition.id)}
               />
@@ -578,6 +589,7 @@ export function FilterBuilder({
                     key={condition.id}
                     condition={condition}
                     availableProperties={propertyInfos}
+                    tagSuggestions={tagSuggestions}
                     onChange={(updated) =>
                       handleUpdateGroupCondition(group.id, condition.id, updated)
                     }

@@ -105,6 +105,20 @@ vi.mock('electron-updater', () => ({
   autoUpdater: mocks.autoUpdater
 }))
 
+// The win32 cases below reach backend selection, which asks Velopack whether this
+// process is a Velopack install by constructing an UpdateManager. Mocked so the
+// answer is "no" on every platform CI runs on, instead of depending on what the real
+// native library decides about the test process.
+vi.mock('./velopack-native', () => ({
+  loadVelopack: () => ({
+    UpdateManager: class {
+      constructor() {
+        throw new Error('This application is not properly installed')
+      }
+    }
+  })
+}))
+
 vi.mock('./store', () => ({
   getUpdaterPrefs: mocks.store.getUpdaterPrefs,
   setSkippedVersion: mocks.store.setSkippedVersion,

@@ -24,7 +24,8 @@
       "destination": "https://memrynote.com/:path",
       "permanent": true
     },
-    { "source": "/alternatives", "destination": "/compare", "permanent": true }
+    { "source": "/alternatives", "destination": "/compare", "permanent": true },
+    { "source": "/download", "destination": "/download/desktop", "permanent": true }
   ],
   "headers": [
     {

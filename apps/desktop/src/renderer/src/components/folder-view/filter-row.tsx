@@ -25,6 +25,8 @@ import { cn } from '@/lib/utils'
 import { getOperatorsForType, getDefaultOperator, type PropertyType } from '@/lib/filter-evaluator'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
 import { getColumnLabel } from '@/lib/contract-display-names'
+import { TagValueInput } from './tag-value-input'
+import type { TagSuggestion } from '@/lib/tag-suggestions'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
@@ -49,6 +51,11 @@ interface FilterRowProps {
   condition: FilterCondition
   /** Available properties for selection */
   availableProperties: PropertyInfo[]
+  /**
+   * Vault tags, for the `tags` property's value suggestions. Omitted (or
+   * empty) leaves that value a plain text input.
+   */
+  tagSuggestions?: readonly TagSuggestion[]
   /** Called when the condition changes */
   onChange: (condition: FilterCondition) => void
   /** Called when the condition should be removed */
@@ -97,6 +104,7 @@ function PropertyIcon({
 export function FilterRow({
   condition,
   availableProperties,
+  tagSuggestions,
   onChange,
   onRemove,
   className
@@ -184,6 +192,7 @@ export function FilterRow({
       {/* Property Selector — chip with a leading type icon */}
       <Select value={condition.property} onValueChange={handlePropertyChange}>
         <SelectTrigger
+          aria-label={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderProperty')}
           className={cn(
             CHIP,
             // SelectValue renders the selected item (icon + name); hide only the chevron.
@@ -230,6 +239,7 @@ export function FilterRow({
       {/* Operator Selector — chip with a trailing chevron */}
       <Select value={condition.operator} onValueChange={handleOperatorChange}>
         <SelectTrigger
+          aria-label={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderOperator')}
           className={cn(
             CHIP,
             'justify-start text-muted-foreground [&>svg:last-child]:h-3 [&>svg:last-child]:w-3'
@@ -254,6 +264,9 @@ export function FilterRow({
           type={currentProperty?.type || 'text'}
           value={condition.value}
           onChange={handleValueChange}
+          // Only the built-in `tags` column takes vault tags as its value; a
+          // custom multiselect has its own options, which these are not.
+          tagSuggestions={currentProperty?.id === 'tags' ? tagSuggestions : undefined}
         />
       )}
 
@@ -281,10 +294,24 @@ interface ValueInputProps {
   type: PropertyType
   value: unknown
   onChange: (value: unknown) => void
+  /** Vault tags to suggest; only set for the built-in `tags` property. */
+  tagSuggestions?: readonly TagSuggestion[]
 }
 
-function ValueInput({ type, value, onChange }: ValueInputProps): React.JSX.Element {
+function ValueInput({ type, value, onChange, tagSuggestions }: ValueInputProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
+
+  if (tagSuggestions && tagSuggestions.length > 0) {
+    return (
+      <TagValueInput
+        value={stringifyUnknown(value)}
+        onChange={onChange}
+        suggestions={tagSuggestions}
+        placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderValue')}
+      />
+    )
+  }
+
   switch (type) {
     case 'number':
     case 'rating':

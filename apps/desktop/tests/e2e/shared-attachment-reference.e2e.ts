@@ -66,17 +66,19 @@ test.describe('Shared attachment references', () => {
 
     await restoreSingleNoteTab(page, testVaultPath, seeded.borrowerNoteId, borrowerTitle)
 
-    // The user-visible path: `/` slash menu → "Existing attachment" → pick.
+    // The user-visible path: `/pdf` → the picker → pick a file already stored.
+    // There is no "existing attachment" command any more: asking for a PDF is
+    // what surfaces the vault's PDFs (#2161).
     const editor = page.locator(SELECTORS.noteEditor).first()
     await editor.click()
-    await page.keyboard.type('/existing')
+    await page.keyboard.type('/pdf')
 
-    await page.getByText('Existing attachment', { exact: true }).first().click()
+    await page.getByText('PDF', { exact: true }).first().click()
 
-    const dialog = page.getByTestId('insert-existing-attachment-dialog')
+    const dialog = page.getByTestId('attachment-picker-dialog')
     await expect(dialog).toBeVisible()
 
-    const row = dialog.getByTestId('insert-existing-attachment-row').filter({
+    const row = dialog.getByTestId('attachment-picker-row').filter({
       hasText: ORIGINAL_NAME
     })
     await expect(row).toHaveCount(1)
