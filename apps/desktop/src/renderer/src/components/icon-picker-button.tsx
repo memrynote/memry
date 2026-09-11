@@ -86,6 +86,11 @@ export function IconPickerButton({
           align="start"
           sideOffset={4}
           collisionPadding={8}
+          // Radix's default shift limiter keeps the panel glued to its row, which
+          // on a short window intermittently left the bottom of the panel below
+          // the window edge instead of clamping it. 'always' drops the limiter,
+          // so the panel is shifted fully back into view every time.
+          sticky="always"
           className="w-auto border-0 bg-transparent p-0 shadow-none"
           onClick={(e) => e.stopPropagation()}
         >

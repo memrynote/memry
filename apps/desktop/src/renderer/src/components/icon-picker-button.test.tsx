@@ -34,14 +34,15 @@ vi.mock('@/components/ui/popover', async () => {
           onOpenChange?.(true)
         }
       }),
-    PopoverContent: ({ children, open, collisionPadding, side }: any) =>
+    PopoverContent: ({ children, open, collisionPadding, side, sticky }: any) =>
       open
         ? React.createElement(
             'div',
             {
               'data-testid': 'popover-content',
               'data-collision-padding': String(collisionPadding),
-              'data-side': side
+              'data-side': side,
+              'data-sticky': sticky
             },
             children
           )
@@ -210,5 +211,20 @@ describe('IconPickerButton', () => {
     const content = screen.getByTestId('popover-content')
     expect(content.getAttribute('data-collision-padding')).toBe('8')
     expect(content.getAttribute('data-side')).toBe('right')
+  })
+
+  // Radix's default shift limiter keeps the panel glued to its row, which on a
+  // short window left the bottom of the panel below the window edge instead of
+  // clamping it — intermittently, depending on how tall the lazy panel was when
+  // Radix first placed it (#1986).
+  it('drops the shift limiter so the panel is always clamped into view', () => {
+    render(
+      <IconPickerButton hasIcon={false} onIconChange={vi.fn()} ariaLabel="Set icon">
+        <span>📝</span>
+      </IconPickerButton>
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Set icon' }))
+
+    expect(screen.getByTestId('popover-content').getAttribute('data-sticky')).toBe('always')
   })
 })

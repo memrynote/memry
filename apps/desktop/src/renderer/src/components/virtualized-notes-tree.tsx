@@ -17,7 +17,7 @@ import {
   useLayoutEffect,
   useImperativeHandle
 } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import {
   FolderOpen,
   LayoutGrid,
@@ -38,6 +38,7 @@ import {
   flattenTree,
   getAllFolderIds,
   TREE_ROW_HEIGHT,
+  withPinnedIndex,
   type TreeStructure,
   type FolderVirtualItem,
   type NoteVirtualItem
@@ -1028,13 +1029,39 @@ export function VirtualizedNotesTree({
     }
   }, [scrollContainerRef])
 
+  /**
+   * Index of the row whose icon picker is open, or -1.
+   *
+   * The picker is a Radix Popover living inside the row, so a row the
+   * virtualizer drops unmounts the popover with it and the panel vanishes
+   * mid-pick — the open state survives at this level, which is why it comes
+   * back when the row scrolls in again (#1986). Scrolling the sidebar at all,
+   * even by a stray trackpad nudge, is enough on rows near the edge of the
+   * virtual window.
+   */
+  const pinnedRowIndex = useMemo(() => {
+    const pinnedId = iconPickerFolderPath ? `folder-${iconPickerFolderPath}` : iconPickerNoteId
+    if (!pinnedId) return -1
+    return flatItems.findIndex((item) => item.id === pinnedId)
+  }, [flatItems, iconPickerFolderPath, iconPickerNoteId])
+
+  // Keep that row rendered wherever the scroll goes, so the popover stays mounted
+  // and Radix just re-anchors it instead of the picker disappearing.
+  const rangeExtractor = useCallback(
+    (range: Parameters<typeof defaultRangeExtractor>[0]) => {
+      return withPinnedIndex(defaultRangeExtractor(range), pinnedRowIndex)
+    },
+    [pinnedRowIndex]
+  )
+
   // Virtual list setup
   const virtualizer = useVirtualizer({
     count: flatItems.length,
     getScrollElement: () => scrollContainerRef?.current ?? parentRef.current,
     estimateSize: () => TREE_ROW_HEIGHT,
     overscan: 10, // Render 10 extra items above/below viewport
-    scrollMargin: usesExternalScroll ? scrollMargin : 0
+    scrollMargin: usesExternalScroll ? scrollMargin : 0,
+    rangeExtractor
   })
 
   /**

@@ -63,6 +63,8 @@ export function TagIconChip({ icon, color, onIconChange }: TagIconChipProps): Re
         align="start"
         sideOffset={6}
         collisionPadding={8}
+        // Same shift limiter as the sidebar picker (#1986).
+        sticky="always"
         className="w-auto border-0 bg-transparent p-0 shadow-none"
         onClick={(e) => e.stopPropagation()}
       >

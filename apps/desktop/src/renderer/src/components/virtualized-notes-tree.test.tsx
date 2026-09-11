@@ -25,7 +25,12 @@ Object.defineProperty(navigator, 'platform', {
 const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
   scrollToIndex: vi.fn(),
-  openPagesInNewTab: true
+  openPagesInNewTab: true,
+  // Last options the tree handed the virtualizer, so a test can drive the
+  // rangeExtractor the real virtualizer would call.
+  virtualizerOptions: null as {
+    rangeExtractor?: (range: { startIndex: number; endIndex: number }) => number[]
+  } | null
 }))
 
 vi.mock('@/hooks/use-general-settings', () => ({
@@ -46,17 +51,25 @@ vi.mock('@/contexts/tabs', () => ({
 }))
 
 vi.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: ({ count }: { count: number }) => ({
-    getVirtualItems: () =>
-      Array.from({ length: count }, (_, index) => ({
-        index,
-        key: index,
-        start: index * 28,
-        size: 28
-      })),
-    getTotalSize: () => count * 28,
-    scrollToIndex: mocks.scrollToIndex
-  })
+  defaultRangeExtractor: ({ startIndex, endIndex }: { startIndex: number; endIndex: number }) =>
+    Array.from({ length: endIndex - startIndex + 1 }, (_, offset) => startIndex + offset),
+  useVirtualizer: (options: {
+    count: number
+    rangeExtractor?: (range: { startIndex: number; endIndex: number }) => number[]
+  }) => {
+    mocks.virtualizerOptions = options
+    return {
+      getVirtualItems: () =>
+        Array.from({ length: options.count }, (_, index) => ({
+          index,
+          key: index,
+          start: index * 28,
+          size: 28
+        })),
+      getTotalSize: () => options.count * 28,
+      scrollToIndex: mocks.scrollToIndex
+    }
+  }
 }))
 
 vi.mock('@/components/ui/context-menu', () => ({
@@ -102,23 +115,35 @@ vi.mock('@/components/icon-picker-button', () => ({
     children,
     hasIcon,
     onIconChange,
+    onPickerOpenChange,
     ariaLabel
   }: {
     children: React.ReactNode
     hasIcon: boolean
     onIconChange: (icon: string | null) => void
+    onPickerOpenChange?: (open: boolean) => void
     ariaLabel: string
   }) => (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      onClick={(event) => {
-        event.stopPropagation()
-        onIconChange(hasIcon ? null : 'icon:Star')
-      }}
-    >
-      {children}
-    </button>
+    <>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        onClick={(event) => {
+          event.stopPropagation()
+          onIconChange(hasIcon ? null : 'icon:Star')
+        }}
+      >
+        {children}
+      </button>
+      <button
+        type="button"
+        aria-label={`open ${ariaLabel}`}
+        onClick={(event) => {
+          event.stopPropagation()
+          onPickerOpenChange?.(true)
+        }}
+      />
+    </>
   )
 }))
 
@@ -513,6 +538,21 @@ describe('VirtualizedNotesTree', () => {
     // workNote has an emoji, so the icon button reports hasIcon and clears it on click
     await user.click(within(noteRow).getByRole('button', { name: 'Set Icon' }))
     expect(props.onSetNoteIcon).toHaveBeenCalledWith('note-work', null)
+  })
+
+  // A row the virtualizer drops takes the open picker popover with it, so the
+  // panel vanished mid-pick whenever the sidebar scrolled (#1986).
+  it('pins the row whose icon picker is open into the virtual range', async () => {
+    const user = userEvent.setup()
+    renderTree()
+
+    const rangeOffTheRow = { startIndex: 40, endIndex: 42 }
+    expect(mocks.virtualizerOptions?.rangeExtractor?.(rangeOffTheRow)).toEqual([40, 41, 42])
+
+    // Rows are: 0 the "Work" folder, 1 the note inside it, 2 the root note.
+    await user.click(screen.getAllByLabelText('open Set Icon')[0])
+
+    expect(mocks.virtualizerOptions?.rangeExtractor?.(rangeOffTheRow)).toEqual([1, 40, 41, 42])
   })
 
   it('handles storage failures and disabled drag without moving items', () => {
