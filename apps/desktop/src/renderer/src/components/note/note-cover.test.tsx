@@ -8,7 +8,7 @@
  * nothing — so the DOM is swept, not just the image.
  */
 
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { coverWashForSeed, coverWashGradient } from '@memry/shared/cover-image'
@@ -231,6 +231,22 @@ describe('NoteCover reposition', () => {
     fireEvent.keyDown(band(), { key: 'Escape' })
     expect(onFocusChange).not.toHaveBeenCalled()
     expect(onRepositioningChange).toHaveBeenCalledWith(false)
+  })
+
+  it('saves and cancels from the pill, not the keyboard alone', () => {
+    const saved = renderCover({ repositioning: true, focus: 40 })
+    fireEvent.keyDown(band(), { key: 'ArrowDown' })
+    fireEvent.click(screen.getByTestId('note-cover-reposition-save'))
+    expect(saved.onFocusChange).toHaveBeenCalledWith(42)
+    expect(saved.onRepositioningChange).toHaveBeenCalledWith(false)
+
+    cleanup()
+
+    const dropped = renderCover({ repositioning: true, focus: 40 })
+    fireEvent.keyDown(band(), { key: 'ArrowDown' })
+    fireEvent.click(screen.getByTestId('note-cover-reposition-cancel'))
+    expect(dropped.onFocusChange).not.toHaveBeenCalled()
+    expect(dropped.onRepositioningChange).toHaveBeenCalledWith(false)
   })
 
   it('saves and leaves reposition when focus moves off the band', () => {

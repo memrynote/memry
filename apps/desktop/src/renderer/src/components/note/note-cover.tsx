@@ -222,7 +222,7 @@ export const NoteCover = memo(function NoteCover({
         />
       )}
 
-      {credit && creditUrl && (
+      {credit && creditUrl && !isRepositioning && (
         <a
           href={creditUrl}
           target="_blank"
@@ -243,22 +243,36 @@ export const NoteCover = memo(function NoteCover({
       {isRepositioning ? (
         <div
           data-testid="note-cover-reposition-hint"
+          // The band treats a press as the start of a drag, so a press that
+          // lands on save or cancel must not also move the focal point.
+          onPointerDown={(event) => event.stopPropagation()}
           className={cn(
-            'pointer-events-none absolute inset-x-0 bottom-1/2 mx-auto w-fit translate-y-1/2',
-            'flex items-center gap-2 rounded-lg px-3 py-1.5',
-            'border border-border bg-background/92 text-[12px] text-text-tertiary'
+            'absolute bottom-3 start-3 flex items-center gap-0.5',
+            'rounded-lg border border-border bg-background/92 p-0.5'
           )}
         >
-          {t('cover.repositionHint')}
-          <span className="flex items-center gap-1">
+          <span className="px-2 py-1 text-[12px] text-text-tertiary">
+            {t('cover.repositionHint')}
+          </span>
+          <button
+            type="button"
+            onClick={commit}
+            className={TOOLBAR_BUTTON_CLASS}
+            data-testid="note-cover-reposition-save"
+          >
             <Kbd>{'\u21b5'}</Kbd>
             {t('cover.repositionSave')}
-          </span>
-          <span aria-hidden>{'\u00b7'}</span>
-          <span className="flex items-center gap-1">
+          </button>
+          <span aria-hidden className="mx-0.5 h-4 w-px bg-border" />
+          <button
+            type="button"
+            onClick={cancel}
+            className={TOOLBAR_BUTTON_CLASS}
+            data-testid="note-cover-reposition-cancel"
+          >
             <Kbd>{'esc'}</Kbd>
             {t('cover.repositionCancel')}
-          </span>
+          </button>
         </div>
       ) : (
         <div
