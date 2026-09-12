@@ -278,7 +278,6 @@
         "upload": "업로드"
       },
       "photos": {
-        "prompt": "입력하여 Unsplash에서 사진 검색",
         "searching": "Unsplash에서 검색 중…",
         "noResults": "해당 검색과 일치하는 사진이 없습니다",
         "remaining": "{count}개 남음",

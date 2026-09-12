@@ -278,7 +278,6 @@
         "upload": "Ladda upp"
       },
       "photos": {
-        "prompt": "Skriv för att söka foton på Unsplash",
         "searching": "Söker på Unsplash…",
         "noResults": "Inga foton matchar den sökningen",
         "remaining": "{count} kvar",

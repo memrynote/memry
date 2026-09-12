@@ -278,7 +278,6 @@
         "upload": "Upload"
       },
       "photos": {
-        "prompt": "Skriv for at søge efter fotos på Unsplash",
         "searching": "Søger på Unsplash…",
         "noResults": "Ingen fotos matcher den søgning",
         "remaining": "{count} tilbage",

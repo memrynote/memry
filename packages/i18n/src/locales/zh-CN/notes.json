@@ -278,7 +278,6 @@
         "upload": "上传"
       },
       "photos": {
-        "prompt": "输入以在 Unsplash 上搜索照片",
         "searching": "正在搜索 Unsplash…",
         "noResults": "没有与该搜索匹配的照片",
         "remaining": "还剩 {count} 次",

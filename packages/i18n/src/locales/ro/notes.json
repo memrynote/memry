@@ -278,7 +278,6 @@
         "upload": "Încărcați"
       },
       "photos": {
-        "prompt": "Tastați pentru a căuta fotografii pe Unsplash",
         "searching": "Se caută pe Unsplash…",
         "noResults": "Nicio fotografie nu corespunde acestei căutări",
         "remaining": "Au mai rămas {count}",

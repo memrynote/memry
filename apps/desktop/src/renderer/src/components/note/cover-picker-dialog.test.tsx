@@ -85,6 +85,10 @@ const PHOTO_SEARCH_DEBOUNCE_MS = 400
 const realSearches = () =>
   unsplashSearch.mock.calls.filter((call) => (call[0] as { query: string }).query !== '')
 
+/** Searches for one exact term, ignoring the tab's own default-photos search. */
+const searchesFor = (query: string) =>
+  unsplashSearch.mock.calls.filter((call) => (call[0] as { query: string }).query === query)
+
 /** Types into the palette's one search input and lets the debounce elapse. */
 async function searchFor(text: string) {
   fireEvent.change(screen.getByTestId('cover-picker-search'), { target: { value: text } })
@@ -309,12 +313,26 @@ describe('CoverPickerDialog photos', () => {
     fireEvent.change(screen.getByTestId('cover-picker-search'), { target: { value: 'su' } })
     await searchFor('sunset')
 
-    await waitFor(() => expect(realSearches()).toHaveLength(1))
+    await waitFor(() => expect(searchesFor('sunset')).toHaveLength(1))
     expect(unsplashSearch).toHaveBeenCalledWith({ query: 'sunset', page: 1 })
 
     await searchFor('')
     await searchFor('sunset')
+    expect(searchesFor('sunset')).toHaveLength(1)
+  })
+
+  it('fills the photos tab with a default set before anything is typed', async () => {
+    const user = photosUser()
+    renderPicker()
+    await openPhotosTab(user)
+
+    await act(async () => {
+      vi.advanceTimersByTime(PHOTO_SEARCH_DEBOUNCE_MS)
+    })
+
+    expect(await screen.findByTestId('cover-picker-photo')).toBeInTheDocument()
     expect(realSearches()).toHaveLength(1)
+    expect(screen.queryByTestId('cover-picker-photos-empty')).toBeNull()
   })
 
   it('hotlinks the thumbnail and counts the remaining rate limit', async () => {

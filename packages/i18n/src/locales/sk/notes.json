@@ -278,7 +278,6 @@
         "upload": "Nahrať"
       },
       "photos": {
-        "prompt": "Zadajte text na vyhľadanie fotiek na Unsplash",
         "searching": "Vyhľadávanie na Unsplash…",
         "noResults": "Žiadne fotky nezodpovedajú tomuto vyhľadávaniu",
         "remaining": "Zostáva {count}",

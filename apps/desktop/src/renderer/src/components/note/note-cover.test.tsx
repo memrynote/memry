@@ -233,6 +233,24 @@ describe('NoteCover reposition', () => {
     expect(onRepositioningChange).toHaveBeenCalledWith(false)
   })
 
+  it('saves and leaves reposition when focus moves off the band', () => {
+    const { onFocusChange, onRepositioningChange } = renderCover({ repositioning: true, focus: 40 })
+
+    fireEvent.keyDown(band(), { key: 'ArrowDown' })
+    fireEvent.blur(band(), { relatedTarget: document.body })
+
+    expect(onFocusChange).toHaveBeenCalledWith(42)
+    expect(onRepositioningChange).toHaveBeenCalledWith(false)
+  })
+
+  it('stays in reposition while focus moves inside the band', () => {
+    const { onRepositioningChange } = renderCover({ repositioning: true, focus: 40 })
+
+    fireEvent.blur(band(), { relatedTarget: screen.getByRole('img') })
+
+    expect(onRepositioningChange).not.toHaveBeenCalled()
+  })
+
   it('never enters reposition for a wash', () => {
     renderCover({ cover: { kind: 'wash', id: 'sage' }, repositioning: true })
 

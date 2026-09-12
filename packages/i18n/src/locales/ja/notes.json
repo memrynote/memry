@@ -278,7 +278,6 @@
         "upload": "アップロード"
       },
       "photos": {
-        "prompt": "入力してUnsplashの写真を検索",
         "searching": "Unsplashを検索中…",
         "noResults": "その検索に一致する写真がありません",
         "remaining": "残り{count}件",

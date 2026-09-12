@@ -278,7 +278,6 @@
         "upload": "Uploaden"
       },
       "photos": {
-        "prompt": "Typ om foto's op Unsplash te zoeken",
         "searching": "Zoeken op Unsplash…",
         "noResults": "Geen foto's komen overeen met die zoekopdracht",
         "remaining": "Nog {count}",

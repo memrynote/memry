@@ -278,7 +278,6 @@
         "upload": "Prijenos"
       },
       "photos": {
-        "prompt": "Upišite za pretragu fotografija na Unsplashu",
         "searching": "Pretraživanje Unsplasha…",
         "noResults": "Nijedna fotografija ne odgovara toj pretrazi",
         "remaining": "Preostalo {count}",

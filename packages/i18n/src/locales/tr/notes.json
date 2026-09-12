@@ -278,7 +278,6 @@
         "upload": "Yükle"
       },
       "photos": {
-        "prompt": "Unsplash'te fotoğraf aramak için yazın",
         "searching": "Unsplash'te aranıyor…",
         "noResults": "Bu aramayla eşleşen fotoğraf yok",
         "remaining": "{count} kaldı",

@@ -278,7 +278,6 @@
         "upload": "Mag-upload"
       },
       "photos": {
-        "prompt": "Mag-type para maghanap ng mga larawan sa Unsplash",
         "searching": "Naghahanap sa Unsplash…",
         "noResults": "Walang larawang tumutugma sa paghahanap na iyon",
         "remaining": "{count} na natitira",

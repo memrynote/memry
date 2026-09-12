@@ -65,6 +65,27 @@ function UnsplashMark() {
 /** Long enough that a typed word costs one request, short enough to feel live. */
 const PHOTO_SEARCH_DEBOUNCE_MS = 400
 
+/**
+ * What the Photos tab shows before anything is typed. An empty tab reads as
+ * broken, and Unsplash has no "give me anything" call that the search endpoint
+ * can answer, so one of these stands in for it. Picked per open, so the tab
+ * looks different each time rather than shipping one fixed wall of photos.
+ */
+const PHOTO_DEFAULT_QUERIES = [
+  'minimal landscape',
+  'calm abstract',
+  'soft gradient',
+  'mountain fog',
+  'quiet architecture',
+  'ocean texture',
+  'desert light',
+  'forest canopy'
+] as const
+
+function randomDefaultPhotoQuery(): string {
+  return PHOTO_DEFAULT_QUERIES[Math.floor(Math.random() * PHOTO_DEFAULT_QUERIES.length)]
+}
+
 export type CoverPickerTabId = 'washes' | 'photos' | 'fromNote' | 'upload'
 
 interface CoverPickerTab {
@@ -86,7 +107,6 @@ export const COVER_PICKER_TABS: readonly CoverPickerTab[] = [
  * beside an error, so no render can show a spinner over stale results.
  */
 type PhotoSearch =
-  | { kind: 'idle' }
   | { kind: 'searching' }
   | { kind: 'photos'; photos: UnsplashPhoto[]; rateLimitRemaining: number | null }
   | { kind: 'error'; reason: UnsplashFailureReason }
@@ -168,6 +188,7 @@ export function CoverPickerDialog({
   const [photoFetch, setPhotoFetch] = useState<{ query: string; result: PhotoSearch } | null>(null)
   const [photoDownload, setPhotoDownload] = useState<PhotoDownload>({ kind: 'none' })
   const [photosConfigured, setPhotosConfigured] = useState(true)
+  const [defaultPhotoQuery, setDefaultPhotoQuery] = useState(randomDefaultPhotoQuery)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const photoCache = useRef(new Map<string, PhotoSearch>())
 
@@ -185,6 +206,7 @@ export function CoverPickerDialog({
       setPhotoFetch(null)
       setPhotoDownload({ kind: 'none' })
       setPhotosConfigured(true)
+      setDefaultPhotoQuery(randomDefaultPhotoQuery())
       photoCache.current.clear()
     }
   }
@@ -218,13 +240,14 @@ export function CoverPickerDialog({
   const tab = !photosConfigured && requestedTab === 'photos' ? 'washes' : requestedTab
 
   const trimmedQuery = query.trim()
+  /** Never empty: with nothing typed the tab still has something to show. */
+  const photoQuery = trimmedQuery || defaultPhotoQuery
 
   const photoSearch = useMemo<PhotoSearch>(() => {
-    if (!trimmedQuery) return { kind: 'idle' }
-    const cached = photoCache.current.get(trimmedQuery)
+    const cached = photoCache.current.get(photoQuery)
     if (cached) return cached
-    return photoFetch?.query === trimmedQuery ? photoFetch.result : { kind: 'searching' }
-  }, [photoFetch, trimmedQuery])
+    return photoFetch?.query === photoQuery ? photoFetch.result : { kind: 'searching' }
+  }, [photoFetch, photoQuery])
 
   // An empty query is answered from the key alone, with no network call and
   // nothing to send, so it is a free capability probe. Asking on open is what
@@ -252,12 +275,12 @@ export function CoverPickerDialog({
   // the query is a local filter, and a local filter has no business leaving the
   // device or spending the hourly quota.
   useEffect(() => {
-    if (!open || !photosConfigured || tab !== 'photos' || !trimmedQuery) return
-    if (photoCache.current.has(trimmedQuery)) return
+    if (!open || !photosConfigured || tab !== 'photos') return
+    if (photoCache.current.has(photoQuery)) return
     let cancelled = false
     const timer = setTimeout(() => {
       unsplashService
-        .search({ query: trimmedQuery, page: 1 })
+        .search({ query: photoQuery, page: 1 })
         .then((result) => {
           if (cancelled) return
           if (!result.ok) {
@@ -266,7 +289,7 @@ export function CoverPickerDialog({
               return
             }
             setPhotoFetch({
-              query: trimmedQuery,
+              query: photoQuery,
               result: { kind: 'error', reason: result.reason }
             })
             return
@@ -276,20 +299,20 @@ export function CoverPickerDialog({
             photos: result.photos,
             rateLimitRemaining: result.rateLimitRemaining
           }
-          photoCache.current.set(trimmedQuery, next)
-          setPhotoFetch({ query: trimmedQuery, result: next })
+          photoCache.current.set(photoQuery, next)
+          setPhotoFetch({ query: photoQuery, result: next })
         })
         .catch((err: unknown) => {
           if (cancelled) return
           logger.error('Unsplash search failed', err)
-          setPhotoFetch({ query: trimmedQuery, result: { kind: 'error', reason: 'failed' } })
+          setPhotoFetch({ query: photoQuery, result: { kind: 'error', reason: 'failed' } })
         })
     }, PHOTO_SEARCH_DEBOUNCE_MS)
     return () => {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [open, photosConfigured, tab, trimmedQuery])
+  }, [open, photosConfigured, tab, photoQuery])
 
   const washName = useCallback((id: CoverWashId) => t(`cover.picker.wash.${id}`), [t])
 
@@ -561,15 +584,6 @@ export function CoverPickerDialog({
                   data-reason={photoErrorReason}
                 >
                   {t(PHOTO_ERROR_KEYS[photoErrorReason])}
-                </p>
-              )}
-
-              {photoSearch.kind === 'idle' && (
-                <p
-                  className="px-2 py-5 text-center text-sm text-muted-foreground"
-                  data-testid="cover-picker-photos-prompt"
-                >
-                  {t('cover.picker.photos.prompt')}
                 </p>
               )}
 

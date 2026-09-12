@@ -278,7 +278,6 @@
         "upload": "Muat naik"
       },
       "photos": {
-        "prompt": "Taip untuk mencari foto di Unsplash",
         "searching": "Mencari di Unsplash…",
         "noResults": "Tiada foto sepadan dengan carian itu",
         "remaining": "{count} lagi",

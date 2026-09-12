@@ -174,6 +174,18 @@ export const NoteCover = memo(function NoteCover({
       tabIndex={isRepositioning ? 0 : undefined}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
+      // Leaving the band is a save, not a trap: without this the only way out of
+      // reposition is the keyboard, and every click lands on a band that still
+      // shows the resize cursor and hides its own toolbar.
+      onBlur={(event) => {
+        if (!isRepositioning) return
+        if (
+          event.relatedTarget instanceof Node &&
+          event.currentTarget.contains(event.relatedTarget)
+        )
+          return
+        commit()
+      }}
       onKeyDown={(event) => {
         if (!isRepositioning) return
         if (event.key === 'Enter') {

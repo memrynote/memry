@@ -278,7 +278,6 @@
         "upload": "Lataa"
       },
       "photos": {
-        "prompt": "Kirjoita hakeaksesi kuvia Unsplashista",
         "searching": "Haetaan Unsplashista…",
         "noResults": "Yksikään kuva ei vastaa hakua",
         "remaining": "{count} jäljellä",

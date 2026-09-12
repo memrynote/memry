@@ -278,7 +278,6 @@
         "upload": "Unggah"
       },
       "photos": {
-        "prompt": "Ketik untuk mencari foto di Unsplash",
         "searching": "Mencari di Unsplash…",
         "noResults": "Tidak ada foto yang cocok dengan pencarian itu",
         "remaining": "Tersisa {count}",

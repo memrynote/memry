@@ -278,7 +278,6 @@
         "upload": "Feltöltés"
       },
       "photos": {
-        "prompt": "Írjon be szöveget fotók kereséséhez az Unsplashon",
         "searching": "Keresés az Unsplashon…",
         "noResults": "Egyetlen fotó sem felel meg a keresésnek",
         "remaining": "{count} van hátra",

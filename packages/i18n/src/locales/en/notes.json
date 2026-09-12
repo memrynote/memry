@@ -563,7 +563,6 @@
         "upload": "Upload"
       },
       "photos": {
-        "prompt": "Type to search photos on Unsplash",
         "searching": "Searching Unsplash…",
         "noResults": "No photos match that search",
         "remaining": "{count} left",

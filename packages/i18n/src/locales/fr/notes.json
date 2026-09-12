@@ -278,7 +278,6 @@
         "upload": "Importer"
       },
       "photos": {
-        "prompt": "Tapez pour rechercher des photos sur Unsplash",
         "searching": "Recherche sur Unsplash…",
         "noResults": "Aucune photo ne correspond à cette recherche",
         "remaining": "{count} restantes",

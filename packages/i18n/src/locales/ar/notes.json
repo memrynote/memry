@@ -278,7 +278,6 @@
         "upload": "رفع"
       },
       "photos": {
-        "prompt": "اكتب للبحث عن صور في Unsplash",
         "searching": "جارٍ البحث في Unsplash…",
         "noResults": "لا توجد صور مطابقة لهذا البحث",
         "remaining": "{count} متبقٍ",

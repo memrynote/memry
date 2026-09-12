@@ -278,7 +278,6 @@
         "upload": "Prześlij"
       },
       "photos": {
-        "prompt": "Wpisz, aby wyszukać zdjęcia w Unsplash",
         "searching": "Wyszukiwanie w Unsplash…",
         "noResults": "Żadne zdjęcie nie pasuje do tego wyszukiwania",
         "remaining": "Pozostało {count}",

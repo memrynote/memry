@@ -278,7 +278,6 @@
         "upload": "Hochladen"
       },
       "photos": {
-        "prompt": "Tippen, um Fotos auf Unsplash zu suchen",
         "searching": "Unsplash wird durchsucht…",
         "noResults": "Keine Fotos entsprechen dieser Suche",
         "remaining": "Noch {count}",

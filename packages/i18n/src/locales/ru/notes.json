@@ -278,7 +278,6 @@
         "upload": "Загрузить"
       },
       "photos": {
-        "prompt": "Введите текст для поиска фото на Unsplash",
         "searching": "Поиск на Unsplash…",
         "noResults": "Нет фото, соответствующих этому запросу",
         "remaining": "Осталось {count}",
