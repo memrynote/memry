@@ -148,6 +148,12 @@ normally. Text styles need no such line: markdown carries them itself.
 
 Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> to confirm.
 
+## Inserting a Template
+
+`/` and **Insert template…** drops a [template](/user-guide/templates)'s body in at the cursor. Choosing the row opens the picker. Type a query instead and matching templates appear as their own rows under **Templates**, so `/meeting` then <kbd>Enter</kbd> inserts Meeting Notes straight away.
+
+Nothing already in the note is touched: the text before and after the cursor stays as it was. See [Inserting a Template at the Cursor](/user-guide/templates#inserting-a-template-at-the-cursor) for how it differs from **Apply Template**.
+
 ## Markdown Shortcuts
 
 Common markdown shortcuts work inline:
