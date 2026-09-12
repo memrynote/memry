@@ -22,7 +22,7 @@
     "@memry/shared": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "gray-matter": "^4.0.3",
-    "nanoid": "^5.1.6"
+    "nanoid": "^6.0.0"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*",

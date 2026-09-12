@@ -652,8 +652,8 @@ importers:
         specifier: ^12.23.26
         version: 12.34.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       nanoid:
-        specifier: ^5.1.6
-        version: 5.1.16
+        specifier: ^6.0.0
+        version: 6.0.0
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1262,8 +1262,8 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       nanoid:
-        specifier: ^5.1.6
-        version: 5.1.16
+        specifier: ^6.0.0
+        version: 6.0.0
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
@@ -12208,6 +12208,11 @@ packages:
   nanoid@5.1.16:
     resolution: {integrity: sha512-kVrnsrJqMR8+oLJnGEmSWw9BivK5mt7H3FZatVRjrc5wGqFYuBxX1yG7+A7Gi5AefkX6t/oCkizcQgpu0cY1dQ==}
     engines: {node: ^18 || >=20}
+    hasBin: true
+
+  nanoid@6.0.0:
+    resolution: {integrity: sha512-mkUH+rPkwU2qPadJ0oJZOjeZ5Mxn8Q1UhevwkTRWNuUZzyia3h4rhzK39hxaHTk0o2OxB8W2SQ6A8k23ZDi1pQ==}
+    engines: {node: ^22 || ^24 || >=26}
     hasBin: true
 
   nanospinner@1.2.2:
@@ -28793,6 +28798,8 @@ snapshots:
   nanoid@3.3.8: {}
 
   nanoid@5.1.16: {}
+
+  nanoid@6.0.0: {}
 
   nanospinner@1.2.2:
     dependencies:
