@@ -116,7 +116,9 @@ Inserting never replaces anything. Everything before and after the cursor stays 
 
 Only the template's **body** is inserted. Its tags and properties are not applied to the note — use **Apply Template** above if you want those.
 
-`{{title}}` resolves to the note's title. The row is hidden while the cursor is inside a table cell.
+There is a second way in, for when you would rather point at a block than move the cursor. Hover any block, click its <kbd>⋮⋮</kbd> drag handle, and pick **Insert template…**. The template lands directly below the block you hovered, and that block is left alone even when it is empty.
+
+`{{title}}` resolves to the note's title. The slash row is hidden while the cursor is inside a table cell.
 
 ## Deleting a Template
 

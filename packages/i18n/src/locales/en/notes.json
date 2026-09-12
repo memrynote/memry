@@ -278,6 +278,7 @@
       },
       "colors": "Colors",
       "duplicate": "Duplicate",
+      "insertTemplate": "Insert template…",
       "moveTo": "Move to…",
       "delete": "Delete",
       "comment": "Comment",
