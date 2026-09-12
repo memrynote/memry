@@ -377,6 +377,10 @@ export function createGeneratedRpcApi({
       "previewReport": ((trigger) => invoke("diagnostics:previewReport", trigger)) as GeneratedRpcApi["diagnostics"]["previewReport"],
       "sendReport": ((report) => invoke("diagnostics:sendReport", report)) as GeneratedRpcApi["diagnostics"]["sendReport"],
     },
+    "unsplash": {
+      "search": ((input) => invoke("unsplash:search", input)) as GeneratedRpcApi["unsplash"]["search"],
+      "download": ((input) => invoke("unsplash:download", input)) as GeneratedRpcApi["unsplash"]["download"],
+    },
   }
 
   for (const [eventName, channel] of Object.entries(eventChannels)) {

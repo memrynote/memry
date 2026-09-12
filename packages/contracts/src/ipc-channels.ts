@@ -1040,3 +1040,19 @@ export const DiagnosticsChannels = {
 
 export type DiagnosticsInvokeChannel =
   (typeof DiagnosticsChannels.invoke)[keyof typeof DiagnosticsChannels.invoke]
+
+// ============================================================================
+// Unsplash Channels
+// ============================================================================
+
+export const UnsplashChannels = {
+  invoke: {
+    /** Search Unsplash for cover photos to hotlink in the picker */
+    SEARCH: 'unsplash:search',
+    /** Copy a chosen photo into the note's attachments folder */
+    DOWNLOAD: 'unsplash:download'
+  }
+} as const
+
+export type UnsplashInvokeChannel =
+  (typeof UnsplashChannels.invoke)[keyof typeof UnsplashChannels.invoke]
