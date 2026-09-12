@@ -325,6 +325,24 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
   pendingTimers.set(noteId, { timer, doc })
 }
 
+/**
+ * Disarm one note's pending pass, for a note that is ceasing to exist.
+ *
+ * The armed timer holds its own reference to the Y.Doc, so closing or purging
+ * the doc does not reach it — and by the time it fires the note has no index
+ * row, which is exactly the condition `writebackNewNote` treats as "a note
+ * arrived from sync", re-creating the file the user just deleted.
+ */
+export function cancelWriteback(noteId: string): void {
+  const pending = pendingTimers.get(noteId)
+  if (pending) {
+    clearTimeout(pending.timer)
+    pendingTimers.delete(noteId)
+  }
+  lastWritebackCost.delete(noteId)
+  debugState.delete(noteId)
+}
+
 export function cancelPendingWritebacks(): void {
   for (const { timer } of pendingTimers.values()) {
     clearTimeout(timer)
@@ -875,6 +893,12 @@ async function handleJournalCollision(
 }
 
 export async function handleSyncDeletion(noteId: string): Promise<void> {
+  // Ahead of the no-row exit, because the row is exactly what this device may
+  // already have dropped — a note deleted here first, then tombstoned by the
+  // peer. The doc is what nothing else is left pointing at, and a doc that
+  // outlives its note is what the inactive-doc sweep resurrects.
+  await getCrdtProvider().purge(noteId)
+
   const indexDb = getIndexDatabase()
   const cached = getNoteCacheById(indexDb, noteId)
   if (!cached) return
@@ -887,8 +911,6 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
   await deleteFile(absolutePath).catch((err) => {
     log.error('Failed to delete synced note file', { noteId, error: err })
   })
-
-  await getCrdtProvider().close(noteId)
 
   if (!isJournalId(noteId)) {
     try {

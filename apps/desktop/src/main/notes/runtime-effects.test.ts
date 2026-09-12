@@ -3,7 +3,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   initForNote: vi.fn(async () => ({}) as never),
   setNoteLocalOnly: vi.fn(),
+  purge: vi.fn(async () => undefined),
   enqueueLocalSyncCreate: vi.fn(),
+  enqueueLocalSyncDelete: vi.fn(),
   enqueueLocalSyncUpdate: vi.fn(),
   removePendingNoteSyncItems: vi.fn(),
   recordPendingCrdtNotes: vi.fn(),
@@ -13,7 +15,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../sync/crdt-provider', () => ({
   getCrdtProvider: () => ({
     initForNote: mocks.initForNote,
-    setNoteLocalOnly: mocks.setNoteLocalOnly
+    setNoteLocalOnly: mocks.setNoteLocalOnly,
+    purge: mocks.purge
   })
 }))
 
@@ -24,7 +27,7 @@ vi.mock('../sync/crdt-pending-notes', () => ({
 
 vi.mock('../sync/local-mutations', () => ({
   enqueueLocalSyncCreate: mocks.enqueueLocalSyncCreate,
-  enqueueLocalSyncDelete: vi.fn(),
+  enqueueLocalSyncDelete: mocks.enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate: mocks.enqueueLocalSyncUpdate,
   removePendingNoteSyncItems: mocks.removePendingNoteSyncItems
 }))
@@ -38,7 +41,7 @@ vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
 vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 
-import { setNoteLocalOnlyState, syncNoteCreate } from './runtime-effects'
+import { setNoteLocalOnlyState, syncNoteCreate, syncNoteDelete } from './runtime-effects'
 
 describe('syncNoteCreate', () => {
   beforeEach(() => {
@@ -109,5 +112,36 @@ describe('setNoteLocalOnlyState', () => {
     expect(mocks.enqueueLocalSyncUpdate).toHaveBeenCalledWith('note', 'note-1')
     expect(mocks.recordPendingCrdtNotes).toHaveBeenCalledWith(['note-1'])
     expect(mocks.clearPendingCrdtNotes).not.toHaveBeenCalled()
+  })
+})
+
+describe('syncNoteDelete', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("purges the note's CRDT doc, so nothing downstream can rebuild the note from it", async () => {
+    // A doc left in the provider's map is swept every 5 minutes, pulled with a
+    // network origin, and written back — and with no index row left, write-back
+    // re-creates the note in the default folder.
+    syncNoteDelete('note-1')
+    await vi.waitFor(() => expect(mocks.purge).toHaveBeenCalledWith('note-1'))
+  })
+
+  it('enqueues the tombstone before the doc is purged', () => {
+    syncNoteDelete('note-1')
+
+    expect(mocks.enqueueLocalSyncDelete).toHaveBeenCalledWith('note', 'note-1')
+    expect(mocks.enqueueLocalSyncDelete.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.purge.mock.invocationCallOrder[0]
+    )
+  })
+
+  it('drops the note from the pending-CRDT set the replay drains', () => {
+    // The drain merges remote state per pending id, which is a second route
+    // into the same write-back that re-creates the note.
+    syncNoteDelete('note-1')
+
+    expect(mocks.clearPendingCrdtNotes).toHaveBeenCalledWith(['note-1'])
   })
 })

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   keytarGet: vi.fn(),
   keytarSet: vi.fn(),
   keytarDelete: vi.fn(),
+  purge: vi.fn(async () => {}),
   updateNoteMetadata: vi.fn(),
   updateNoteCache: vi.fn(),
   attachmentEmitSaved: vi.fn(),
@@ -98,7 +99,8 @@ vi.mock('./sync/crdt-provider', () => ({
   getCrdtProvider: () => ({
     initForNote: mocks.initForNote,
     updateMeta: mocks.updateMeta,
-    setNoteLocalOnly: vi.fn()
+    setNoteLocalOnly: vi.fn(),
+    purge: mocks.purge
   })
 }))
 

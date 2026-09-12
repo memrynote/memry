@@ -19,6 +19,7 @@ import {
   writeJournalEntryWithContent
 } from '../../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
+import { getCrdtProvider } from '../crdt-provider'
 import { flushProjectionEvents } from '../../projections'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
@@ -167,6 +168,18 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         return 'skipped'
       }
     }
+
+    // Floated for the same reason as `noteHandler.applyDelete`: this runs per
+    // item inside a pull batch and the ordering-critical half of `purge` is
+    // synchronous anyway.
+    void getCrdtProvider()
+      .purge(itemId)
+      .catch((err) => {
+        log.error('Failed to purge the CRDT doc of a remotely deleted journal', {
+          itemId,
+          error: err
+        })
+      })
 
     if (existing.journalDate) {
       deleteJournalEntryFile(existing.journalDate).catch((err) => {
