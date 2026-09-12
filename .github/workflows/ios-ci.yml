@@ -134,10 +134,13 @@ jobs:
       - name: Build the core XCFramework
         run: crates/memry-core/build-xcframework.sh
 
+      # No --config: passing one explicitly makes SwiftLint ignore the nested
+      # .swiftlint.yml files that relax the force rules for the test targets.
       - name: SwiftLint
+        working-directory: apps/ios
         run: |
           brew install swiftlint
-          swiftlint lint --strict --config apps/ios/.swiftlint.yml apps/ios
+          swiftlint lint --strict
 
       - name: Editor asset binding is current
         run: |

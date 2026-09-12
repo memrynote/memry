@@ -24,16 +24,8 @@ disabled_rules:
 
 # The shell logs through OSLog `Logger`, never `print`. The ios-ci grep gate
 # catches it too; this makes it visible in the editor.
-# Tests may force-unwrap and force-try: a nil there fails the test, it does not
-# crash a user's app.
-force_unwrapping: &test_exempt
-  excluded:
-    - MemryTests
-    - MemryConformanceTests
-    - MemryUITests
-
-force_try: *test_exempt
-
+# The test targets relax force_unwrapping / force_try through their own nested
+# .swiftlint.yml: a nil there fails the test, it does not crash a user's app.
 custom_rules:
   no_print:
     name: 'print() is not a logger'
@@ -42,6 +34,9 @@ custom_rules:
     severity: error
 
 force_cast:
+  severity: error
+
+force_try:
   severity: error
 
 # The plan's per-directory ceilings live in scripts/check-line-ceilings.mjs,

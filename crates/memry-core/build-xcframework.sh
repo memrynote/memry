@@ -17,27 +17,34 @@ crate_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 workspace_dir="$(dirname "$crate_dir")"
 repo_root="$(dirname "$workspace_dir")"
 
+# Named, not an array: under `set -u` bash 3.2 -- which is what macOS ships and
+# what CI runs -- expanding an EMPTY array is an unbound-variable error.
+cargo_profile="dev"
 profile="debug"
-cargo_profile_flag=()
 if [[ "${1:-}" == "--release" ]]; then
+  cargo_profile="release"
   profile="release"
-  cargo_profile_flag=(--release)
 fi
 
 # The C header slices are compiled against this floor; if it disagrees with the
 # Xcode project's deployment target the linker warns per object file.
 export IPHONEOS_DEPLOYMENT_TARGET=26.0
 
+# uniffi's bindgen shells out to `cargo metadata`, which resolves from the
+# CURRENT directory and ignores --manifest-path. Run the whole script from the
+# workspace root so it finds crates/Cargo.toml however it was invoked.
+cd "$workspace_dir"
+
 targets=(aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios)
 
 swift_pkg="$repo_root/packages/swift/MemryCore"
 generated_dir="$swift_pkg/Sources/MemryCore/Generated"
 xcframework="$swift_pkg/MemryCoreFFI.xcframework"
-staging="$crate_dir/target/xcframework-staging"
+staging="$workspace_dir/target/xcframework-staging"
 
 for target in "${targets[@]}"; do
   rustup target add "$target" >/dev/null
-  cargo build --manifest-path "$crate_dir/Cargo.toml" --target "$target" "${cargo_profile_flag[@]}"
+  cargo build -p memry-core --target "$target" --profile "$cargo_profile"
 done
 
 # One bindgen run over any one built library: the metadata is identical across
@@ -45,7 +52,7 @@ done
 # architecture happened to build last.
 rm -rf "$staging" "$generated_dir"
 mkdir -p "$staging" "$generated_dir"
-cargo run --manifest-path "$workspace_dir/Cargo.toml" -p uniffi-bindgen-swift -- \
+cargo run -p uniffi-bindgen-swift -- \
   generate \
   --library "$workspace_dir/target/aarch64-apple-ios/$profile/libmemry_core.a" \
   --language swift \

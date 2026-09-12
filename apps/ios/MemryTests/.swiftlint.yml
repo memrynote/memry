@@ -1,0 +1,7 @@
+# Nested config: inherits apps/ios/.swiftlint.yml and relaxes the force rules.
+# A nil in a test is a test failure with a clear message, not a user-visible
+# crash, and `try!` in a fixture is louder than a swallowed error.
+disabled_rules:
+  - force_unwrapping
+  - force_try
+  - force_cast
