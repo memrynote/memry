@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 /**
- * The seam under test is "a delete raised with no sync service, replayed at the
- * next runtime start" — so everything here is real: a migrated SQLite data DB,
- * the real `SyncQueueManager`, and the real `TaskSyncService`. The only mock is
- * the module-level `getDatabase()` handle `local-mutations` reaches for, which
- * has no test seam of its own.
+ * The seam under test is "a local delete leaves a durable tombstone, replayed
+ * until the server is confirmed rid of the item" — so everything here is real:
+ * a migrated SQLite data DB, the real `SyncQueueManager`, and the real
+ * `TaskSyncService`. The only mock is the module-level `getDatabase()` handle
+ * `local-mutations` reaches for, which has no test seam of its own.
  */
 let activeDb: unknown = null
 
@@ -29,7 +29,7 @@ import { markSyncEligible, markSyncIneligible } from '@memry/sync-client/sync-el
 
 const DEVICE_ID = 'device-A'
 
-describe('deletes raised while the sync runtime is down', () => {
+describe('local delete tombstones', () => {
   let testDb: TestDatabaseResult
   let db: DataDb
   let queue: SyncQueueManager
@@ -107,7 +107,11 @@ describe('deletes raised while the sync runtime is down', () => {
     expect(queued[0]?.itemId).toBe('note-1')
     expect(queued[0]?.operation).toBe('delete')
     expect(JSON.parse(queued[0]?.payload ?? '{}')).toMatchObject({ clock: { [DEVICE_ID]: 4 } })
-    expect(db.select().from(syncPendingDeletes).all()).toHaveLength(0)
+
+    // #then — and the tombstone OUTLIVES the flush: only a manifest check that
+    // finds the server rid of the id may retire it, so a pull that lands
+    // between the flush and the server acking cannot resurrect the note.
+    expect(db.select().from(syncPendingDeletes).all()).toHaveLength(1)
   })
 
   it('replays a task delete through the task sync service at the next start', () => {
@@ -135,7 +139,55 @@ describe('deletes raised while the sync runtime is down', () => {
       id: 'task-1',
       clock: { [DEVICE_ID]: 3 }
     })
-    expect(db.select().from(syncPendingDeletes).all()).toHaveLength(0)
+    expect(db.select().from(syncPendingDeletes).all()).toHaveLength(1)
+  })
+
+  it('records a tombstone for a delete the live sync service accepted', () => {
+    // #given — the runtime IS up, the ordinary online delete path
+    db.insert(projects)
+      .values({ id: 'proj-live', name: 'P', color: '#000', position: 0, isInbox: false })
+      .run()
+    db.insert(tasks)
+      .values({ id: 'task-live', projectId: 'proj-live', title: 'T', priority: 0, position: 0 })
+      .run()
+    initTaskSyncService({ queue, db, getDeviceId: () => DEVICE_ID })
+
+    // #when
+    enqueueLocalSyncDelete(
+      'task',
+      'task-live',
+      JSON.stringify({ id: 'task-live', clock: { [DEVICE_ID]: 1 } })
+    )
+
+    // #then — the delete is queued as before
+    const queued = queue.peek(10)
+    expect(queued).toHaveLength(1)
+    expect(queued[0]?.operation).toBe('delete')
+
+    // #then — and a tombstone is kept too. Tasks are hard-deleted locally, so
+    // this row is the only remaining record that the user deleted the id, and
+    // the pull path needs it to refuse a replayed upsert of the same id.
+    const pending = db.select().from(syncPendingDeletes).all()
+    expect(pending).toHaveLength(1)
+    expect(pending[0]?.itemId).toBe('task-live')
+  })
+
+  it('keeps a task delete raised before this device is registered', () => {
+    // #given — a live service but no current device row. The service is still
+    // called, and RecordSyncController.enqueueDelete returns silently in that
+    // state; delete is the one mutation with no offline-clock fallback to catch
+    // it, so only the tombstone survives the call.
+    db.delete(syncDevices).run()
+    initTaskSyncService({ queue, db, getDeviceId: () => null })
+
+    // #when
+    enqueueLocalSyncDelete('task', 'task-nodev', JSON.stringify({ id: 'task-nodev', clock: {} }))
+
+    // #then — nothing reached the queue, but the delete is not lost
+    expect(queue.getPendingCount()).toBe(0)
+    const pending = db.select().from(syncPendingDeletes).all()
+    expect(pending).toHaveLength(1)
+    expect(pending[0]?.itemId).toBe('task-nodev')
   })
 
   it('records nothing when the install has no sync runtime by policy', () => {

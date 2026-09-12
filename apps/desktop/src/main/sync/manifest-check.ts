@@ -16,12 +16,17 @@ import { homePages } from '@memry/db-schema/schema/home-pages'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
-import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
+import type {
+  RecordSyncItemType,
+  RecordSyncManifest,
+  SyncItemType
+} from '@memry/contracts/sync-api'
 import { withRetry } from '@memry/sync-client/retry'
 import { toOutboundReminderPayload } from '@memry/sync-client/reminder-outbound'
 import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-retention'
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
+import { clearPendingDelete, listPendingDeletes } from './pending-deletes'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
@@ -111,7 +116,21 @@ export async function checkManifestIntegrity(
     // quarantined sibling as "server-only" forever (endless re-pull loop).
     const serverItemMap = new Map(serverItems.map((item) => [itemRefKey(item.type, item.id), item]))
 
-    const localRefs = getLocalSyncableRefs(deps.db)
+    // Every id this device has deleted and the server has not yet been
+    // confirmed rid of. Both diff directions must ignore them: the local→server
+    // direction would re-upload a deleted-but-unpushed item as a `create`, and
+    // the server→local direction would count the still-present server row as
+    // server-only, reset LAST_CURSOR to '0' and replay the whole history back
+    // into `applyUpsert`. Same reason the canvas blocks below exclude
+    // tombstones, for the hard-delete types that have no tombstone column.
+    const pendingDeletes = listPendingDeletes(deps.db)
+    const tombstonedKeys = new Set(
+      pendingDeletes.flatMap((p) => tombstoneRefKeys(p.type, p.itemId))
+    )
+
+    const localRefs = getLocalSyncableRefs(deps.db).filter(
+      (ref) => !tombstonedKeys.has(itemRefKey(ref.type, ref.id))
+    )
     // A note held locally counts as present whether the server row calls it
     // 'note' or 'journal' — the classification is derived and must not make
     // the item look server-only.
@@ -167,12 +186,26 @@ export async function checkManifestIntegrity(
         // repairs activity rows that never reached the server.
         item.type !== 'task_activity' &&
         !localKeys.has(itemRefKey(item.type, item.id)) &&
+        !tombstonedKeys.has(itemRefKey(item.type, item.id)) &&
         !deps.isQuarantined?.(item.id, item.type)
     )
     if (serverOnlyIds.length > 0) {
       log.warn('Server has items not found locally, will trigger re-pull', {
         count: serverOnlyIds.length
       })
+    }
+
+    // The manifest is a complete, freshly fetched server inventory, so an id
+    // missing from it is an id the server is rid of — the delete landed and
+    // fanned out. Retiring the tombstone here is what stops it blocking a
+    // legitimate future item with the same id.
+    for (const pending of pendingDeletes) {
+      const stillOnServer = tombstoneRefKeys(pending.type, pending.itemId).some((key) =>
+        serverItemMap.has(key)
+      )
+      if (stillOnServer) continue
+
+      clearPendingDelete(deps.db, pending.type, pending.itemId)
     }
 
     if (reEnqueuedCount > 0) {
@@ -189,6 +222,17 @@ export async function checkManifestIntegrity(
     log.error('Manifest integrity check failed', err)
     return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0, performed: false }
   }
+}
+
+/**
+ * A note deleted as `note` can be listed by the server as `journal` and the
+ * other way round — the classification is derived from the row, so the
+ * tombstone has to cover both spellings of the id.
+ */
+function tombstoneRefKeys(type: SyncItemType, itemId: string): string[] {
+  return type === 'note' || type === 'journal'
+    ? [itemRefKey('note', itemId), itemRefKey('journal', itemId)]
+    : [itemRefKey(type, itemId)]
 }
 
 interface LocalSyncableRef {
