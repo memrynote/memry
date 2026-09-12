@@ -4,18 +4,25 @@
  * that a tab is highlighted.
  */
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VaultAttachmentEntry } from '@memry/rpc/notes'
+import type { UnsplashPhoto } from '@memry/contracts/unsplash-api'
 import { coverWashGradient } from '@memry/shared/cover-image'
 
 const listVaultAttachments = vi.hoisted(() => vi.fn())
 const insertExistingAttachment = vi.hoisted(() => vi.fn())
 const uploadAttachment = vi.hoisted(() => vi.fn())
+const unsplashSearch = vi.hoisted(() => vi.fn())
+const unsplashDownload = vi.hoisted(() => vi.fn())
 
 vi.mock('@/services/notes-service', () => ({
   notesService: { listVaultAttachments, insertExistingAttachment, uploadAttachment }
+}))
+
+vi.mock('@/services/unsplash-service', () => ({
+  unsplashService: { search: unsplashSearch, download: unsplashDownload }
 }))
 
 import { COVER_PICKER_TABS, CoverPickerDialog } from './cover-picker-dialog'
@@ -47,7 +54,30 @@ function renderPicker() {
   return { onApply, onOpenChange }
 }
 
+const UNSPLASH_PHOTO: UnsplashPhoto = {
+  id: 'ph_1',
+  thumbUrl: 'https://images.unsplash.com/photo-1?w=200',
+  previewUrl: 'https://images.unsplash.com/photo-1?w=400',
+  fullUrl: 'https://images.unsplash.com/photo-1?w=1080',
+  downloadLocation: 'https://api.unsplash.com/photos/ph_1/download',
+  authorName: 'Ada Lovelace',
+  htmlUrl: 'https://unsplash.com/photos/ph_1',
+  blurHash: null,
+  width: 4000,
+  height: 3000
+}
+
 const panel = () => screen.getByTestId('cover-picker-panel')
+
+const PHOTO_SEARCH_DEBOUNCE_MS = 400
+
+/** Types into the palette's one search input and lets the debounce elapse. */
+async function searchFor(text: string) {
+  fireEvent.change(screen.getByTestId('cover-picker-search'), { target: { value: text } })
+  await act(async () => {
+    vi.advanceTimersByTime(PHOTO_SEARCH_DEBOUNCE_MS)
+  })
+}
 
 beforeEach(() => {
   listVaultAttachments.mockReset().mockResolvedValue([PHOTO, NOT_AN_IMAGE])
@@ -55,6 +85,16 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ url: '../attachments/nte_other/beach.png' })
   uploadAttachment.mockReset()
+  unsplashSearch.mockReset().mockResolvedValue({
+    ok: true,
+    photos: [UNSPLASH_PHOTO],
+    rateLimitRemaining: 42
+  })
+  unsplashDownload.mockReset().mockResolvedValue({
+    ok: true,
+    ref: '../attachments/nte_9f2c1a/ph_1.jpg',
+    credit: { name: 'Ada Lovelace', url: 'https://unsplash.com/photos/ph_1' }
+  })
 })
 
 describe('CoverPickerDialog tabs', () => {
@@ -105,7 +145,12 @@ describe('CoverPickerDialog tabs', () => {
     await user.click(screen.getByRole('tab', { name: 'Washes' }))
 
     const tabs = screen.getAllByRole('tab')
-    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['true', 'false', 'false'])
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual([
+      'true',
+      'false',
+      'false',
+      'false'
+    ])
     expect(screen.getAllByTestId('cover-picker-wash')[0]).toHaveAttribute('aria-selected', 'true')
   })
 
@@ -168,5 +213,129 @@ describe('CoverPickerDialog apply', () => {
 
     await user.click(screen.getByRole('tab', { name: 'From note' }))
     expect(screen.getByTestId('cover-picker-empty')).toBeInTheDocument()
+  })
+})
+
+describe('CoverPickerDialog photos', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('never opens on photos and asks nothing of Unsplash until a query is typed', () => {
+    renderPicker()
+
+    expect(panel()).toHaveAttribute('data-tab', 'washes')
+    expect(screen.getByRole('tab', { name: 'Photos' })).toBeInTheDocument()
+    expect(unsplashSearch).not.toHaveBeenCalled()
+  })
+
+  it('hides the photos tab for a build with no access key', async () => {
+    unsplashSearch.mockResolvedValue({ ok: false, reason: 'not-configured' })
+    renderPicker()
+    expect(screen.getByRole('tab', { name: 'Photos' })).toBeInTheDocument()
+
+    await searchFor('sunset')
+
+    await waitFor(() => expect(screen.queryByRole('tab', { name: 'Photos' })).toBeNull())
+    expect(screen.getAllByRole('tab')).toHaveLength(COVER_PICKER_TABS.length - 1)
+  })
+
+  it('searches once per settled query and serves a repeat from the cache', async () => {
+    renderPicker()
+
+    fireEvent.change(screen.getByTestId('cover-picker-search'), { target: { value: 's' } })
+    fireEvent.change(screen.getByTestId('cover-picker-search'), { target: { value: 'su' } })
+    await searchFor('sunset')
+
+    await waitFor(() => expect(unsplashSearch).toHaveBeenCalledTimes(1))
+    expect(unsplashSearch).toHaveBeenCalledWith({ query: 'sunset', page: 1 })
+
+    await searchFor('')
+    await searchFor('sunset')
+    expect(unsplashSearch).toHaveBeenCalledTimes(1)
+  })
+
+  it('hotlinks the thumbnail and counts the remaining rate limit', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPicker()
+    await searchFor('sunset')
+
+    await user.click(screen.getByRole('tab', { name: 'Photos' }))
+    const tile = await screen.findByTestId('cover-picker-photo')
+    expect(tile.querySelector('img')).toHaveAttribute('src', UNSPLASH_PHOTO.thumbUrl)
+    expect(screen.getByTestId('cover-picker-rate-limit')).toHaveTextContent('42')
+  })
+
+  it('marks a spent rate limit without hiding the tab', async () => {
+    unsplashSearch.mockResolvedValue({ ok: true, photos: [UNSPLASH_PHOTO], rateLimitRemaining: 0 })
+    renderPicker()
+    await searchFor('sunset')
+
+    const counter = await screen.findByTestId('cover-picker-rate-limit')
+    expect(counter.className).toContain('amber')
+    expect(screen.getByRole('tab', { name: 'Photos' })).toBeInTheDocument()
+  })
+
+  it('downloads the picked photo and applies its ref and credit', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const { onApply, onOpenChange } = renderPicker()
+    await searchFor('sunset')
+
+    await user.click(screen.getByRole('tab', { name: 'Photos' }))
+    await user.click(await screen.findByTestId('cover-picker-photo'))
+
+    await waitFor(() =>
+      expect(unsplashDownload).toHaveBeenCalledWith({ noteId: NOTE_ID, photo: UNSPLASH_PHOTO })
+    )
+    expect(onApply).toHaveBeenCalledWith(
+      { kind: 'image', ref: '../attachments/nte_9f2c1a/ph_1.jpg' },
+      {
+        reposition: false,
+        credit: { name: 'Ada Lovelace', url: 'https://unsplash.com/photos/ph_1' }
+      }
+    )
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('keeps the dialog open and names the reason when a download fails', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    unsplashDownload.mockResolvedValue({ ok: false, reason: 'write-failed' })
+    const { onApply, onOpenChange } = renderPicker()
+    await searchFor('sunset')
+
+    await user.click(screen.getByRole('tab', { name: 'Photos' }))
+    await user.click(await screen.findByTestId('cover-picker-photo'))
+
+    const message = await screen.findByTestId('cover-picker-photos-error')
+    expect(message).toHaveAttribute('data-reason', 'write-failed')
+    expect(message).not.toBeEmptyDOMElement()
+    expect(onApply).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+  })
+
+  it('gives every failure reason its own line rather than one spinner', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const seen = new Map<string, string>()
+
+    for (const reason of ['offline', 'rate-limited', 'failed'] as const) {
+      unsplashSearch.mockResolvedValue({ ok: false, reason })
+      const { unmount } = render(
+        <CoverPickerDialog open onOpenChange={vi.fn()} noteId={NOTE_ID} onApply={vi.fn()} />
+      )
+      await searchFor('sunset')
+      await user.click(screen.getByRole('tab', { name: 'Photos' }))
+
+      const message = await screen.findByTestId('cover-picker-photos-error')
+      expect(message).toHaveAttribute('data-reason', reason)
+      expect(screen.queryByTestId('cover-picker-photos-searching')).toBeNull()
+      seen.set(reason, message.textContent ?? '')
+      unmount()
+    }
+
+    expect(new Set(seen.values()).size).toBe(3)
   })
 })

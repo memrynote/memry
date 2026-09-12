@@ -552,8 +552,23 @@
       "placeholder": "Search covers",
       "tab": {
         "washes": "Washes",
+        "photos": "Photos",
         "fromNote": "From note",
         "upload": "Upload"
+      },
+      "photos": {
+        "prompt": "Type to search photos on Unsplash",
+        "searching": "Searching Unsplash…",
+        "noResults": "No photos match that search",
+        "remaining": "{count} left",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash photos are not available in this build",
+          "offline": "No connection to Unsplash",
+          "rateLimited": "Unsplash is rate limited, try again shortly",
+          "failed": "Unsplash could not be reached",
+          "writeFailed": "That photo could not be saved to the vault"
+        }
       },
       "upload": "Upload",
       "uploading": "Uploading…",
