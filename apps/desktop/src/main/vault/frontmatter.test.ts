@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import matter from 'gray-matter'
 import type { PropertyType } from '@memry/contracts/property-types'
-import { COVER_FRONTMATTER_KEY, isCoverImageValue } from '@memry/shared/cover-image'
+import { COVER_FRONTMATTER_KEY } from '@memry/shared/cover-image'
 import {
   parseNote,
   serializeNote,
@@ -572,26 +572,57 @@ Body text
   })
 })
 
-describe('isCoverImageValue', () => {
-  it('accepts http(s) URLs whatever the case of the scheme', () => {
-    expect(isCoverImageValue('https://example.com/x')).toBe(true)
-    expect(isCoverImageValue('HTTP://EXAMPLE.COM/x')).toBe(true)
+describe('value-gated cover keys', () => {
+  const COVER_REF = '../attachments/n1/abc123-photo.jpg'
+
+  it('hides a wash cover from extractProperties the way an image cover is hidden', () => {
+    expect(extractProperties({ cover: 'wash:sage', status: 'reading' })).toEqual({
+      status: 'reading'
+    })
   })
 
-  it('accepts an image path, including a query string or fragment after it', () => {
-    expect(isCoverImageValue('../attachments/n1/a.JPG')).toBe(true)
-    expect(isCoverImageValue('a.png?v=2')).toBe(true)
-    expect(isCoverImageValue('a.webp#frag')).toBe(true)
-    expect(isCoverImageValue('x.avif')).toBe(true)
+  it('reserves coverFocus, coverCredit and coverCreditUrl only when the value fits', () => {
+    expect(
+      extractProperties({
+        coverFocus: 24,
+        coverCredit: 'Ana Ruiz',
+        coverCreditUrl: 'https://unsplash.com/@ana',
+        status: 'reading'
+      })
+    ).toEqual({ status: 'reading' })
+
+    // Written by a user long before these keys meant anything.
+    expect(
+      extractProperties({
+        coverFocus: 'top of the shelf',
+        coverCredit: '',
+        coverCreditUrl: 'unsplash.com/@ana'
+      })
+    ).toEqual({
+      coverFocus: 'top of the shelf',
+      coverCredit: '',
+      coverCreditUrl: 'unsplash.com/@ana'
+    })
   })
 
-  it('rejects prose, non-image paths, emptiness and non-strings', () => {
-    expect(isCoverImageValue('')).toBe(false)
-    expect(isCoverImageValue('Hardback')).toBe(false)
-    expect(isCoverImageValue(null)).toBe(false)
-    expect(isCoverImageValue(undefined)).toBe(false)
-    expect(isCoverImageValue(42)).toBe(false)
-    expect(isCoverImageValue('notes/readme.md')).toBe(false)
-    expect(isCoverImageValue('https')).toBe(false)
+  it('REGRESSION: a property rewrite preserves focus and credit alongside the cover', () => {
+    expect(
+      replacePropertiesOnRoot(
+        {
+          cover: COVER_REF,
+          coverFocus: 24,
+          coverCredit: 'Ana Ruiz',
+          coverCreditUrl: 'https://unsplash.com/@ana',
+          status: 'todo'
+        },
+        { status: 'done' }
+      )
+    ).toEqual({
+      cover: COVER_REF,
+      coverFocus: 24,
+      coverCredit: 'Ana Ruiz',
+      coverCreditUrl: 'https://unsplash.com/@ana',
+      status: 'done'
+    })
   })
 })

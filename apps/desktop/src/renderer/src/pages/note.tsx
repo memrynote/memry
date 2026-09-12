@@ -112,7 +112,7 @@ import { markLaunchNoteReadable } from '@/lib/launch-restore'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
 import { graphKeys } from '@/hooks/use-graph-data'
 import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
-import { isCoverImageValue } from '@memry/shared/cover-image'
+import { isCoverValue } from '@memry/shared/cover-image'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
@@ -1033,7 +1033,7 @@ export function NotePage({ noteId }: NotePageProps) {
   )
 
   const { setCover, removeCover } = useNoteCover(noteId ?? null, refetchNote)
-  const cover = note && isCoverImageValue(note.frontmatter.cover) ? note.frontmatter.cover : null
+  const cover = note && isCoverValue(note.frontmatter.cover) ? note.frontmatter.cover : null
 
   const handleToggleFullWidth = useCallback(
     async (value: boolean) => {

@@ -16,7 +16,16 @@ import {
 import { generateNoteId, isValidNoteId } from '../lib/id'
 import { isRelationValue } from '@memry/contracts/relation-uri'
 import { replaceWikiLinks, splitWikiTarget } from '@memry/shared/wiki-target'
-import { COVER_FRONTMATTER_KEY, isCoverImageValue } from '@memry/shared/cover-image'
+import {
+  COVER_CREDIT_FRONTMATTER_KEY,
+  COVER_CREDIT_URL_FRONTMATTER_KEY,
+  COVER_FOCUS_FRONTMATTER_KEY,
+  COVER_FRONTMATTER_KEY,
+  isCoverCreditUrlValue,
+  isCoverCreditValue,
+  isCoverFocusValue,
+  isCoverValue
+} from '@memry/shared/cover-image'
 
 // ============================================================================
 // Types
@@ -369,11 +378,20 @@ import { PROJECT_PROPERTY_KEY, type PropertyType } from '@memry/contracts/proper
  */
 const RESERVED_FRONTMATTER_KEYS = new Set(['tags', 'aliases', 'properties'])
 
+/**
+ * Each cover key is gated on its value, never on its name alone: a vault that
+ * already carries `coverCredit: TBD` keeps it as a user property.
+ */
+const VALUE_GATED_FRONTMATTER_KEYS: ReadonlyMap<string, (value: unknown) => boolean> = new Map([
+  [COVER_FRONTMATTER_KEY, isCoverValue as (value: unknown) => boolean],
+  [COVER_FOCUS_FRONTMATTER_KEY, isCoverFocusValue as (value: unknown) => boolean],
+  [COVER_CREDIT_FRONTMATTER_KEY, isCoverCreditValue as (value: unknown) => boolean],
+  [COVER_CREDIT_URL_FRONTMATTER_KEY, isCoverCreditUrlValue as (value: unknown) => boolean]
+])
+
 function isReservedFrontmatterKey(name: string, value: unknown): boolean {
-  return (
-    RESERVED_FRONTMATTER_KEYS.has(name) ||
-    (name === COVER_FRONTMATTER_KEY && isCoverImageValue(value))
-  )
+  if (RESERVED_FRONTMATTER_KEYS.has(name)) return true
+  return VALUE_GATED_FRONTMATTER_KEYS.get(name)?.(value) ?? false
 }
 
 export interface NormalizedPropertiesResult {
