@@ -230,6 +230,7 @@ export function NoteLayout({
         activeHeadingId={activeHeadingId ?? undefined}
         onHeadingClick={handleHeadingClick}
         stats={stats}
+        belowCover={Boolean(cover)}
       />
 
       {topBar}
