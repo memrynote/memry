@@ -38,8 +38,8 @@ import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { NoteCover } from '@/components/note/note-cover'
+import { CoverPickerDialog } from '@/components/note/cover-picker-dialog'
 import { useNoteCover } from '@/components/note/use-note-cover'
-import { AttachmentPickerDialog } from '@/components/note/content-area/attachment-picker-dialog'
 import { BacklinksSection, Backlink, Mention, backlinkId } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import {
@@ -1923,12 +1923,14 @@ export function NotePage({ noteId }: NotePageProps) {
         getOriginalNames={getAttachmentOriginalNames}
       />
 
-      <AttachmentPickerDialog
+      <CoverPickerDialog
         open={isCoverPickerOpen}
         onOpenChange={setIsCoverPickerOpen}
         noteId={noteId}
-        kind="image"
-        onInsert={(result) => void setCover({ kind: 'image', ref: result.url })}
+        onApply={(value, { reposition }) => {
+          void setCover(value)
+          setIsRepositioningCover(reposition)
+        }}
       />
 
       {/* Apply Template Dialog */}
