@@ -1306,7 +1306,7 @@ describe('ContentArea', () => {
           noteTitle: 'My note',
           notePath: 'Notes/My note.md',
           referenceBlockId: 'url-block',
-          consumeEmptyReference: true
+          placement: 'replace-if-empty'
         })
       )
     )

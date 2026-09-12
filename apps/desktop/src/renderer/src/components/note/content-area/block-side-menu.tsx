@@ -31,10 +31,11 @@ import { SideMenuExtension } from '@blocknote/core/extensions'
 import { TextSelection } from 'prosemirror-state'
 import type { Node as ProseMirrorNode } from 'prosemirror-model'
 import type { BlockNoteEditor } from '@blocknote/core'
-import { ArrowRight, Copy, MessageCircle, Palette, Trash2, Type } from '@/lib/icons'
+import { ArrowRight, Copy, LayoutTemplate, MessageCircle, Palette, Trash2, Type } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import { isMac } from '@/lib/shortcut-registry'
 import { getEditorSelectionFromState, getProseMirrorState } from './review-formatting-toolbar'
+import type { TemplateAnchor } from './insert-template'
 import type { ReviewSelection } from './types'
 
 type AnyBlock = { id: string; type: string; props?: Record<string, unknown>; content?: unknown }
@@ -244,6 +245,25 @@ function MoveToItem({ onRequestMove }: { onRequestMove?: (blockId: string) => vo
   )
 }
 
+function InsertTemplateItem({
+  onRequestInsertTemplate
+}: {
+  onRequestInsertTemplate?: (anchor: TemplateAnchor) => void
+}) {
+  const { t } = useT('notes')
+  const block = useCurrentBlock()
+
+  if (!block || !onRequestInsertTemplate) return null
+
+  return (
+    <MenuItem
+      icon={<LayoutTemplate size={16} />}
+      label={t('editor.blockMenu.insertTemplate')}
+      onClick={() => onRequestInsertTemplate({ blockId: block.id, placement: 'after' })}
+    />
+  )
+}
+
 function CommentItem({ onAddComment }: { onAddComment?: (selection: ReviewSelection) => void }) {
   const { t } = useT('notes')
   const editor = useBlockNoteEditor<any, any, any>()
@@ -306,6 +326,7 @@ export interface BlockSideMenuProps {
   onAddComment?: (selection: ReviewSelection) => void
   /** Opens the "move block to another note" picker for the given block. */
   onRequestMove?: (blockId: string) => void
+  onRequestInsertTemplate?: (anchor: TemplateAnchor) => void
 }
 
 interface BlockSideMenuControllerProps extends BlockSideMenuProps {
@@ -322,13 +343,20 @@ interface BlockSideMenuControllerProps extends BlockSideMenuProps {
 export function BlockSideMenuController({
   onAddComment,
   onRequestMove,
+  onRequestInsertTemplate,
   floatingUIOptions
 }: BlockSideMenuControllerProps) {
   const { t } = useT('notes')
 
   const dragHandleMenu = useMemo<FC>(
-    () => () => <MemryDragHandleMenu onAddComment={onAddComment} onRequestMove={onRequestMove} />,
-    [onAddComment, onRequestMove]
+    () => () => (
+      <MemryDragHandleMenu
+        onAddComment={onAddComment}
+        onRequestMove={onRequestMove}
+        onRequestInsertTemplate={onRequestInsertTemplate}
+      />
+    ),
+    [onAddComment, onRequestMove, onRequestInsertTemplate]
   )
 
   const sideMenu = useMemo<FC>(
@@ -343,7 +371,11 @@ export function BlockSideMenuController({
   return <SideMenuController sideMenu={sideMenu} floatingUIOptions={floatingUIOptions} />
 }
 
-function MemryDragHandleMenu({ onAddComment, onRequestMove }: BlockSideMenuProps) {
+function MemryDragHandleMenu({
+  onAddComment,
+  onRequestMove,
+  onRequestInsertTemplate
+}: BlockSideMenuProps) {
   const { t } = useT('notes')
   const Components = useComponentsContext()!
 
@@ -361,6 +393,7 @@ function MemryDragHandleMenu({ onAddComment, onRequestMove }: BlockSideMenuProps
       </BlockColorsItem>
       <Components.Generic.Menu.Divider />
       <DuplicateItem />
+      <InsertTemplateItem onRequestInsertTemplate={onRequestInsertTemplate} />
       <MoveToItem onRequestMove={onRequestMove} />
       <RemoveBlockItem>
         <span className="flex items-center gap-2">
