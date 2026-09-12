@@ -26,6 +26,7 @@ import {
   isAvailable,
   resetUnsplashCacheForTests,
   searchPhotos,
+  type UnsplashFetch,
   type UnsplashResponse
 } from './service'
 
@@ -129,14 +130,16 @@ describe('searchPhotos', () => {
   })
 
   it('sends the Client-ID header and returns photos with the remaining rate limit', async () => {
-    const fetch = vi.fn(async () => searchOk([RAW_PHOTO], { 'X-Ratelimit-Remaining': '47' }))
+    const fetch = vi.fn<UnsplashFetch>(async () =>
+      searchOk([RAW_PHOTO], { 'X-Ratelimit-Remaining': '47' })
+    )
 
     const result = await searchPhotos({ query: 'mountains' }, { fetch })
 
     expect(result).toEqual({ ok: true, photos: [PHOTO], rateLimitRemaining: 47 })
-    const [url, init] = fetch.mock.calls[0] as [string, { headers: Record<string, string> }]
+    const [url, init] = fetch.mock.calls[0]
     expect(url).toContain('query=mountains')
-    expect(init.headers.Authorization).toBe(`Client-ID ${ACCESS_KEY}`)
+    expect(init?.headers?.Authorization).toBe(`Client-ID ${ACCESS_KEY}`)
   })
 
   it('reports a null rate limit when the header is absent', async () => {
@@ -251,7 +254,7 @@ describe('searchPhotos', () => {
 
   it('does not cache a failure', async () => {
     const fetch = vi
-      .fn<(url: string) => Promise<UnsplashResponse>>()
+      .fn<UnsplashFetch>()
       .mockResolvedValueOnce(response({ ok: false, status: 500 }))
       .mockResolvedValueOnce(searchOk([RAW_PHOTO]))
 
@@ -266,7 +269,7 @@ describe('searchPhotos', () => {
 describe('downloadPhoto', () => {
   function trackingFetch(overrides: Partial<Record<'ping' | 'bytes', UnsplashResponse>> = {}) {
     const calls: string[] = []
-    const fetch = vi.fn(async (url: string) => {
+    const fetch = vi.fn<UnsplashFetch>(async (url) => {
       calls.push(url)
       if (url === PHOTO.downloadLocation) {
         return overrides.ping ?? response({ json: { url: PHOTO.fullUrl } })
@@ -302,8 +305,8 @@ describe('downloadPhoto', () => {
 
     await downloadPhoto({ noteId: 'note-1', photo: PHOTO }, { fetch })
 
-    const [, init] = fetch.mock.calls[0] as [string, { headers: Record<string, string> }]
-    expect(init.headers.Authorization).toBe(`Client-ID ${ACCESS_KEY}`)
+    const [, init] = fetch.mock.calls[0]
+    expect(init?.headers?.Authorization).toBe(`Client-ID ${ACCESS_KEY}`)
   })
 
   it('still saves the cover when the tracking ping fails', async () => {
@@ -395,7 +398,7 @@ describe('downloadPhoto', () => {
   })
 
   it('maps a network error on the byte fetch to offline', async () => {
-    const fetch = vi.fn(async (url: string) => {
+    const fetch = vi.fn<UnsplashFetch>(async (url) => {
       if (url === PHOTO.downloadLocation) return response({ json: {} })
       throw new Error('socket hang up')
     })
