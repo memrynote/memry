@@ -60,21 +60,40 @@ function defaultValueFor(type: PropertyType): unknown {
 }
 
 /**
- * Types templates cannot store. Hidden from the picker on template surfaces
- * rather than mapped to something else on save — a `relation` value is an array
- * of `memry://` URIs, and storing it as text would flatten it to a JSON string.
+ * UI types map 1:1 onto stored types except `status`, which stores as select,
+ * and `relation`, which templates cannot store at all — a `relation` value is an
+ * array of `memry://` URIs, and storing it as text would flatten it to a JSON
+ * string. `null` means the property is dropped rather than degraded.
+ *
+ * Totality is the point: a new `PropertyType` member breaks the build here
+ * instead of reaching `TemplatePropertySchema` and failing at the IPC boundary.
  */
-export const TEMPLATE_UNSUPPORTED_PROPERTY_TYPES: PropertyType[] = ['relation']
+export const TEMPLATE_PROPERTY_TYPE_BY_UI_TYPE = {
+  text: 'text',
+  number: 'number',
+  date: 'date',
+  checkbox: 'checkbox',
+  url: 'url',
+  status: 'select',
+  select: 'select',
+  multiselect: 'multiselect',
+  relation: null,
+  project: 'project'
+} as const satisfies Record<PropertyType, TemplateProperty['type'] | null>
+
+/** Hidden from the picker on template surfaces. */
+export const TEMPLATE_UNSUPPORTED_PROPERTY_TYPES: PropertyType[] = (
+  Object.keys(TEMPLATE_PROPERTY_TYPE_BY_UI_TYPE) as PropertyType[]
+).filter((type) => TEMPLATE_PROPERTY_TYPE_BY_UI_TYPE[type] === null)
 
 type StorablePropertyType = Exclude<PropertyType, 'relation'>
 
 function isStorable(type: PropertyType): type is StorablePropertyType {
-  return !TEMPLATE_UNSUPPORTED_PROPERTY_TYPES.includes(type)
+  return TEMPLATE_PROPERTY_TYPE_BY_UI_TYPE[type] !== null
 }
 
-/** UI types map 1:1 onto stored types except `status`, which stores as select. */
 function toStoredType(type: StorablePropertyType): TemplateProperty['type'] {
-  return type === 'status' ? 'select' : type
+  return TEMPLATE_PROPERTY_TYPE_BY_UI_TYPE[type]
 }
 
 export function toEditableProperties(props: TemplateProperty[]): EditableProperty[] {

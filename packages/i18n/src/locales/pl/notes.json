@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Usuń elementy {count}",
       "bookmark": "Zakładka",
       "removeFromBookmarks": "Usuń z zakładek",
-      "applyTemplate": "Zastosuj szablon"
+      "applyTemplate": "Zastosuj szablon",
+      "saveAsTemplate": "Zapisz jako szablon"
     },
     "deleteDialog": {
       "noteTitle": "Usuń notatkę",
@@ -102,6 +103,7 @@
       "fullWidth": "Pełna szerokość",
       "disableLocalOnly": "Wyłącz tylko lokalne",
       "setLocalOnly": "Ustaw tylko lokalnie",
+      "saveAsTemplate": "Zapisz jako szablon",
       "copyPath": "Skopiuj ścieżkę",
       "delete": "Usuń notatkę",
       "find": "Znajdź…",
@@ -852,6 +854,19 @@
     "full": "Zastąp treść i dodaj szczegóły szablonu",
     "success": "Szablon zastosowany",
     "title": "Zastąpić treść notatki?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Zapisz notatkę jako szablon",
+    "description": "Utwórz z tej notatki szablon do wielokrotnego użytku. Sama notatka pozostaje bez zmian.",
+    "nameLabel": "Nazwa szablonu",
+    "loading": "Odczytywanie notatki…",
+    "summary": "Zapisuje treść notatki, {tagCount, plural, one {# tag} few {# tagi} many {# tagów} other {# tagu}} i {propertyCount, plural, one {# właściwość} few {# właściwości} many {# właściwości} other {# właściwości}}.",
+    "save": "Zapisz szablon",
+    "cancel": "Anuluj",
+    "success": "Szablon zapisany",
+    "edit": "Edytuj szablon",
+    "failed": "Nie udało się zapisać szablonu",
+    "loadFailed": "Nie udało się odczytać notatki"
   },
   "tagView": {
     "moreActions": "Więcej akcji",

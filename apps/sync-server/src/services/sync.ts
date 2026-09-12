@@ -47,6 +47,7 @@ interface ExistingSyncItemRow {
   clock: string | VectorClock | null
   blob_key?: string | null
   size_bytes?: number | null
+  deleted_at?: number | null
   created_at?: number | null
   createdAt?: number | null
 }
@@ -188,6 +189,18 @@ export const detectReplay = (incoming?: VectorClock, existing?: VectorClock): bo
   return true
 }
 
+/** True when `incoming` happens strictly after `existing` (dominates every component, exceeds one). */
+const happensAfter = (incoming: VectorClock, existing: VectorClock): boolean => {
+  let strictlyGreater = false
+  for (const key of new Set([...Object.keys(incoming), ...Object.keys(existing)])) {
+    const inVal = incoming[key] ?? 0
+    const exVal = existing[key] ?? 0
+    if (inVal < exVal) return false
+    if (inVal > exVal) strictlyGreater = true
+  }
+  return strictlyGreater
+}
+
 const isSupportedRecordSyncItemType = (type: string): type is RecordSyncItemType =>
   RECORD_SYNC_ITEM_TYPE_SET.has(type as RecordSyncItemType)
 
@@ -206,6 +219,29 @@ export const shouldRejectRecordReplay = (
     return false
   }
   return detectReplay(incoming, existing)
+}
+
+/**
+ * Delete wins over a concurrent write. `detectReplay` passes as soon as ONE
+ * component is ahead, which a device that edited the item before it saw the
+ * delete always satisfies — so without this the next write clears the tombstone
+ * (`deleted_at = excluded.deleted_at`) and the item returns to every device's
+ * manifest. Only a writer that demonstrably saw the delete, meaning its clock
+ * happens strictly after the tombstone's, may re-create the id. Types without a
+ * required clock, and legacy tombstones stored without one, keep the old
+ * behaviour: there is nothing to compare, and refusing them would wedge the id.
+ */
+export const shouldRejectResurrection = (
+  itemType: PushItemInput['type'],
+  operation: PushItemInput['operation'],
+  existingDeletedAt: number | null | undefined,
+  incoming?: VectorClock,
+  existing?: VectorClock
+): boolean => {
+  if (operation === 'delete' || !existingDeletedAt) return false
+  if (!isSupportedRecordSyncItemType(itemType) || !requiresRecordClock(itemType)) return false
+  if (!incoming || !existing) return false
+  return !happensAfter(incoming, existing)
 }
 
 export const computeContentHash = async (payload: {
@@ -468,7 +504,7 @@ const processPushWave = async (
       statements.push(
         db
           .prepare(
-            `SELECT item_type, item_id, version, clock, blob_key, size_bytes, created_at
+            `SELECT item_type, item_id, version, clock, blob_key, size_bytes, created_at, deleted_at
              FROM sync_items
              WHERE user_id = ? AND vault_id = ? AND item_id IN (${chunk.map(() => '?').join(', ')})`
           )
@@ -503,7 +539,19 @@ const processPushWave = async (
             ? (JSON.parse(existing.clock) as VectorClock)
             : (existing.clock ?? undefined)
         if (shouldRejectRecordReplay(item.type, item.clock, existingClock)) {
-          reject(index, 'SYNC_REPLAY_DETECTED')
+          reject(index, ErrorCodes.SYNC_REPLAY_DETECTED)
+          continue
+        }
+        if (
+          shouldRejectResurrection(
+            item.type,
+            item.operation,
+            existing.deleted_at,
+            item.clock,
+            existingClock
+          )
+        ) {
+          reject(index, ErrorCodes.SYNC_DELETE_WINS)
           continue
         }
       }

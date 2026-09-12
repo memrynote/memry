@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Löschen Sie {count}-Elemente",
       "bookmark": "Lesezeichen",
       "removeFromBookmarks": "Aus Lesezeichen entfernen",
-      "applyTemplate": "Vorlage anwenden"
+      "applyTemplate": "Vorlage anwenden",
+      "saveAsTemplate": "Als Vorlage speichern"
     },
     "deleteDialog": {
       "noteTitle": "Notiz löschen",
@@ -102,6 +103,7 @@
       "fullWidth": "Volle Breite",
       "disableLocalOnly": "Nur lokal deaktivieren",
       "setLocalOnly": "Nur lokal einstellen",
+      "saveAsTemplate": "Als Vorlage speichern",
       "copyPath": "Pfad kopieren",
       "delete": "Notiz löschen",
       "find": "Suchen…",
@@ -852,6 +854,19 @@
     "full": "Inhalt ersetzen & Vorlagendetails hinzufügen",
     "success": "Vorlage angewendet",
     "title": "Notizinhalt ersetzen?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Notiz als Vorlage speichern",
+    "description": "Erstellen Sie aus dieser Notiz eine wiederverwendbare Vorlage. Die Notiz selbst bleibt unverändert.",
+    "nameLabel": "Vorlagenname",
+    "loading": "Notiz wird gelesen…",
+    "summary": "Speichert den Notizinhalt, {tagCount, plural, one {# Tag} other {# Tags}} und {propertyCount, plural, one {# Eigenschaft} other {# Eigenschaften}}.",
+    "save": "Vorlage speichern",
+    "cancel": "Abbrechen",
+    "success": "Vorlage gespeichert",
+    "edit": "Vorlage bearbeiten",
+    "failed": "Vorlage konnte nicht gespeichert werden",
+    "loadFailed": "Notiz konnte nicht gelesen werden"
   },
   "tagView": {
     "moreActions": "Weitere Aktionen",

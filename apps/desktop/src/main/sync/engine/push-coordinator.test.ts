@@ -443,6 +443,30 @@ describe('PushCoordinator', () => {
       expect(queue.getSize()).toBe(0)
       expect(markPushSynced).toHaveBeenCalledWith(expect.anything(), 'task-1')
     })
+
+    // The server refuses an upsert that would resurrect a tombstoned row and
+    // writes nothing. Retrying can only be refused again, so burning the retry
+    // budget only delays the dead-letter. The tombstone arrives on the next
+    // pull and takes the local row with it.
+    it('#then a delete-wins rejection drops the row instead of burning the retry budget', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      const markPushSynced = vi.fn()
+      getHandlerMock.mockReturnValue({ markPushSynced })
+      rejectAllWith('SYNC_DELETE_WINS')
+
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Deleted elsewhere' })
+      })
+
+      await coordinator.push()
+
+      expect(queue.getSize()).toBe(0)
+      // Nothing was stored, so the row must not be stamped as synced.
+      expect(markPushSynced).not.toHaveBeenCalled()
+    })
   })
 
   describe('#given the edge kills an oversized push batch with 503', () => {

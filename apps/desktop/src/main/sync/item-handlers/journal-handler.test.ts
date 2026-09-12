@@ -70,6 +70,11 @@ vi.mock('../../vault/note-sync', () => ({
   deleteNoteFromCache: (...args: unknown[]) => mockDeleteNoteFromCache(...args)
 }))
 
+const mockPurgeCrdtDoc = vi.fn(() => Promise.resolve())
+vi.mock('../crdt-provider', () => ({
+  getCrdtProvider: () => ({ purge: mockPurgeCrdtDoc })
+}))
+
 vi.mock('../../projections', () => ({
   flushProjectionEvents: (...args: unknown[]) => mockFlushProjectionEvents(...args)
 }))
@@ -200,6 +205,9 @@ describe('journalHandler', () => {
     expect(journalHandler.applyDelete(ctx, 'journal-1', { 'device-a': 2 })).toBe('applied')
 
     expect(mockDeleteJournalEntryFile).toHaveBeenCalledWith('2026-05-10')
+    // A journal entry carries a Y.Doc exactly as a note does, so the same
+    // sweep resurrects it if the delete leaves the doc behind.
+    expect(mockPurgeCrdtDoc).toHaveBeenCalledWith('journal-1')
     expect(ctx.emit).toHaveBeenCalledWith(JournalChannels.events.ENTRY_DELETED, {
       date: '2026-05-10',
       source: 'sync'

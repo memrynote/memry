@@ -62,7 +62,8 @@
       "deleteSelectedItems": "ลบ {count} รายการ",
       "bookmark": "บุ๊กมาร์ก",
       "removeFromBookmarks": "นำออกจากบุ๊กมาร์ก",
-      "applyTemplate": "ใช้เทมเพลต"
+      "applyTemplate": "ใช้เทมเพลต",
+      "saveAsTemplate": "บันทึกเป็นเทมเพลต"
     },
     "deleteDialog": {
       "noteTitle": "ลบบันทึก",
@@ -102,6 +103,7 @@
       "fullWidth": "ความกว้างเต็ม",
       "disableLocalOnly": "ปิดใช้งานเฉพาะเครื่อง",
       "setLocalOnly": "ตั้งค่าเฉพาะเครื่อง",
+      "saveAsTemplate": "บันทึกเป็นเทมเพลต",
       "copyPath": "คัดลอกเส้นทาง",
       "delete": "ลบโน้ต",
       "find": "ค้นหา…",
@@ -852,6 +854,19 @@
     "full": "แทนที่เนื้อหาและเพิ่มรายละเอียดของเทมเพลต",
     "success": "ใช้เทมเพลตแล้ว",
     "title": "แทนที่เนื้อหาโน้ต?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "บันทึกโน้ตเป็นเทมเพลต",
+    "description": "สร้างเทมเพลตที่นำกลับมาใช้ใหม่ได้จากโน้ตนี้ ตัวโน้ตเองจะยังคงเดิม",
+    "nameLabel": "ชื่อเทมเพลต",
+    "loading": "กำลังอ่านโน้ตนี้…",
+    "summary": "บันทึกเนื้อหาของโน้ต {tagCount, plural, other {# แท็ก}} และ {propertyCount, plural, other {# คุณสมบัติ}}",
+    "save": "บันทึกเทมเพลต",
+    "cancel": "ยกเลิก",
+    "success": "บันทึกเทมเพลตแล้ว",
+    "edit": "แก้ไขเทมเพลต",
+    "failed": "ไม่สามารถบันทึกเทมเพลตได้",
+    "loadFailed": "ไม่สามารถอ่านโน้ตนี้ได้"
   },
   "tagView": {
     "moreActions": "การดำเนินการเพิ่มเติม",

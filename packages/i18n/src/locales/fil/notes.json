@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Tanggalin ang {count} item",
       "bookmark": "I-bookmark",
       "removeFromBookmarks": "Alisin sa Mga Bookmark",
-      "applyTemplate": "Ilapat ang Template"
+      "applyTemplate": "Ilapat ang Template",
+      "saveAsTemplate": "I-save bilang Template"
     },
     "deleteDialog": {
       "noteTitle": "Tanggalin ang Tala",
@@ -102,6 +103,7 @@
       "fullWidth": "Buong lapad",
       "disableLocalOnly": "Huwag paganahin ang lokal lamang",
       "setLocalOnly": "Itakda ang lokal lamang",
+      "saveAsTemplate": "I-save bilang Template",
       "copyPath": "Kopyahin ang landas",
       "delete": "Tanggalin ang tala",
       "find": "Hanapin…",
@@ -852,6 +854,19 @@
     "full": "Palitan ang nilalaman at idagdag ang mga detalye ng template",
     "success": "Nailapat ang template",
     "title": "Palitan ang nilalaman ng tala?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "I-save ang tala bilang template",
+    "description": "Gumawa ng template na magagamit muli mula sa talang ito. Mananatili ang tala mismo gaya ng dati.",
+    "nameLabel": "Pangalan ng template",
+    "loading": "Binabasa ang talang ito…",
+    "summary": "Ise-save ang nilalaman ng tala, {tagCount, plural, other {# na tag}} at {propertyCount, plural, other {# na katangian}}.",
+    "save": "I-save ang template",
+    "cancel": "Kanselahin",
+    "success": "Na-save ang template",
+    "edit": "I-edit ang template",
+    "failed": "Nabigong i-save ang template",
+    "loadFailed": "Hindi mabasa ang talang ito"
   },
   "tagView": {
     "moreActions": "Higit pang pagkilos",

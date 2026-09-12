@@ -14,6 +14,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
+import { getCrdtProvider } from '../crdt-provider'
 import { writeSyncedNoteFile } from '../bulk-apply'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
@@ -672,6 +673,20 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         return 'skipped'
       }
     }
+
+    // Deliberately floated. `applyDelete` is synchronous by interface and runs
+    // per item inside a pull batch, so awaiting a LevelDB clear here would
+    // stall every later item in the batch behind this note's store write. The
+    // part that has to be ordered is not: `purge` cancels the armed write-back,
+    // drops the note's buffered updates and zeroes its snapshot debt
+    // synchronously, before its first await, so by the time the row below is
+    // gone nothing can rebuild the note from its doc. Only the store clear is
+    // late, and a doc already out of the provider's map is unreachable.
+    void getCrdtProvider()
+      .purge(itemId)
+      .catch((err) => {
+        log.error('Failed to purge the CRDT doc of a remotely deleted note', { itemId, error: err })
+      })
 
     const absolutePath = toAbsolutePath(existing.path)
     deleteNoteFromCache(indexDb, itemId)

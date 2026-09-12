@@ -12,6 +12,7 @@ import { parallelWithLimit } from '@memry/sync-client/concurrency'
 import { MAX_CRDT_SNAPSHOT_BATCH_ENTRIES } from '@memry/sync-client/crdt-payload'
 import {
   scheduleWriteback,
+  cancelWriteback,
   flushPendingWritebacks,
   recordNetworkUpdate,
   resetWritebackState
@@ -631,7 +632,27 @@ export class CrdtProvider {
     }
   }
 
+  /**
+   * Erase every trace of one note's CRDT state: the caller's guarantee that
+   * nothing downstream can rebuild the note out of its doc.
+   *
+   * Each line ahead of `close()` closes a route that survives the doc itself.
+   * The armed write-back keeps its own reference to the Y.Doc and, with the
+   * note's index row already gone, would re-create the file from `meta.title`.
+   * The update queue's buffer is not reachable from the doc at all. And the
+   * snapshot debt would make `close()` push the body of a note that no longer
+   * exists — a snapshot asserts completeness, so that push is what puts the
+   * deleted note back on the server.
+   *
+   * Safe to repeat: every step converges on the same absence.
+   */
   async purge(noteId: string): Promise<void> {
+    cancelWriteback(noteId)
+    this.updateQueue?.dropNote(noteId)
+
+    const entry = this.docs.get(noteId)
+    if (entry) entry.pendingSnapshotBytes = 0
+
     await this.close(noteId)
     await this.persistence?.clearDocument(noteId).catch((err) => {
       log.warn('Failed to clear persisted CRDT doc during purge', { noteId, error: err })

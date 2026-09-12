@@ -2,6 +2,7 @@ import type { VectorClock, SyncItemType } from '@memry/contracts/sync-api'
 import type { SyncAdapterRegistry } from '@memry/sync-core'
 import { getHandler, getRemoteSyncAdapter } from './item-handlers'
 import type { ApplyResult, DrizzleDb, EmitToWindows } from './item-handlers'
+import { hasPendingDelete } from './pending-deletes'
 import { createLogger } from '../lib/logger'
 import { trackMainEvent } from '../telemetry/track'
 
@@ -64,6 +65,20 @@ export class ItemApplier {
             vaultKey: input.vaultKey
           })
         : handler!.applyDelete(ctx, input.itemId, input.clock)
+    }
+
+    // Tasks and notes are hard-deleted locally, so "no local row" means both
+    // "never had it" and "the user just deleted it". Without this check the
+    // handlers insert unconditionally, and any replay of the server's history
+    // — a manifest-triggered cursor reset, a re-link, a restore — brings the
+    // deleted item back. The tombstone is the only surviving record of the
+    // delete until the server acknowledges it.
+    if (hasPendingDelete(db, input.type, input.itemId)) {
+      log.warn('Refusing a remote upsert for an item deleted locally', {
+        type: input.type,
+        itemId: input.itemId
+      })
+      return 'skipped'
     }
 
     const decoded = new TextDecoder().decode(input.content)

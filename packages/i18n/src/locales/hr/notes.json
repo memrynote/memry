@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Izbrišite stavke {count}",
       "bookmark": "Zabilježi",
       "removeFromBookmarks": "Ukloni iz zabilješki",
-      "applyTemplate": "Primijeni predložak"
+      "applyTemplate": "Primijeni predložak",
+      "saveAsTemplate": "Spremi kao predložak"
     },
     "deleteDialog": {
       "noteTitle": "Izbriši bilješku",
@@ -102,6 +103,7 @@
       "fullWidth": "Puna širina",
       "disableLocalOnly": "Onemogući samo lokalno",
       "setLocalOnly": "Postavi samo lokalno",
+      "saveAsTemplate": "Spremi kao predložak",
       "copyPath": "Kopiraj put",
       "delete": "Izbriši bilješku",
       "find": "Pronađi…",
@@ -852,6 +854,19 @@
     "full": "Zamijeni sadržaj i dodaj podatke predloška",
     "success": "Predložak je primijenjen",
     "title": "Zamijeniti sadržaj bilješke?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Spremi bilješku kao predložak",
+    "description": "Stvorite predložak za višekratnu upotrebu iz ove bilješke. Sama bilješka ostaje nepromijenjena.",
+    "nameLabel": "Naziv predloška",
+    "loading": "Čitanje bilješke…",
+    "summary": "Sprema sadržaj bilješke, {tagCount, plural, one {# oznaku} few {# oznake} other {# oznaka}} i {propertyCount, plural, one {# svojstvo} few {# svojstva} other {# svojstava}}.",
+    "save": "Spremi predložak",
+    "cancel": "Odustani",
+    "success": "Predložak je spremljen",
+    "edit": "Uredi predložak",
+    "failed": "Spremanje predloška nije uspjelo",
+    "loadFailed": "Bilješku nije moguće pročitati"
   },
   "tagView": {
     "moreActions": "Više radnji",

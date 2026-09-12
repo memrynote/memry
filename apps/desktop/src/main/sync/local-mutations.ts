@@ -8,7 +8,6 @@ import { shouldEmitThrottled } from '../telemetry/throttle'
 import { isSyncEligible } from '@memry/sync-client/sync-eligibility'
 import {
   buildContentDeletePayload,
-  clearPendingDelete,
   listPendingDeletes,
   recordPendingDelete
 } from './pending-deletes'
@@ -114,8 +113,12 @@ interface DeleteEnqueuer {
  * no dirty marker — so on a paid multi-device install the deleted item simply
  * came back from the other device (#1579).
  *
- * When the service is down the delete is written to `sync_pending_deletes`
- * instead, and `flushPendingLocalDeletes` replays it at the next runtime start.
+ * EVERY delete is written to `sync_pending_deletes`, not just the ones raised
+ * with no service. Tasks and notes are hard-deleted locally, so once the row is
+ * gone that tombstone is the only evidence the user deleted the id, and the
+ * pull path needs it to refuse a replayed upsert. `flushPendingLocalDeletes`
+ * replays the row at every runtime start and `checkManifestIntegrity` retires
+ * it once the server is confirmed rid of the item.
  */
 function enqueueDeleteOrDefer(
   type: LocalSyncType,
@@ -123,15 +126,32 @@ function enqueueDeleteOrDefer(
   itemId: string,
   snapshotPayload?: string
 ): void {
-  if (service) {
-    service.enqueueDelete(itemId, snapshotPayload)
-    return
-  }
+  // Recording is ADDITIVE and must never gate delivery. Handing the delete to a
+  // live service is still the whole job; the tombstone only survives the cases
+  // where that hand-off silently achieves nothing, such as
+  // `RecordSyncController.enqueueDelete` returning on a null device id. Those
+  // deletes are recovered by `flushPendingLocalDeletes` at the next runtime
+  // start rather than by withholding the call.
+  recordDeleteTombstone(type, itemId, snapshotPayload, !service)
+  if (!service) return
 
-  deferDelete(type, itemId, snapshotPayload)
+  // Arity matters: the content services spread the rest into the controller's
+  // `extra`, and a type whose delete takes no argument must not receive an
+  // explicit `undefined`.
+  if (snapshotPayload === undefined) service.enqueueDelete(itemId)
+  else service.enqueueDelete(itemId, snapshotPayload)
 }
 
-function deferDelete(type: LocalSyncType, itemId: string, snapshotPayload?: string): void {
+/**
+ * `reportUndeliverable` keeps the #1579 telemetry where it was: a delete with
+ * no payload is only a dropped mutation when there was no service to take it.
+ */
+function recordDeleteTombstone(
+  type: LocalSyncType,
+  itemId: string,
+  snapshotPayload: string | undefined,
+  reportUndeliverable: boolean
+): void {
   // Expected absence: this install has no sync runtime by policy, so there is
   // no peer that still holds the item and nothing would ever drain the row.
   if (!isSyncEligible()) return
@@ -151,17 +171,19 @@ function deferDelete(type: LocalSyncType, itemId: string, snapshotPayload?: stri
       // tombstone — or the caller passed no snapshot for a type that rebuilds
       // its payload from a row this code cannot read. The second is a real
       // remaining hole, so it stays reported.
-      trackMutationDrop(
-        'local_delete_undeferrable',
-        type,
-        'Delete dropped — sync service not running and no payload to defer'
-      )
+      if (reportUndeliverable) {
+        trackMutationDrop(
+          'local_delete_undeferrable',
+          type,
+          'Delete dropped — sync service not running and no payload to defer'
+        )
+      }
       return
     }
 
     recordPendingDelete(db, type, itemId, payload)
   } catch (err) {
-    log.warn('Failed to record a delete raised while the sync runtime was down', {
+    log.warn('Failed to record a local delete tombstone', {
       type,
       itemId,
       error: err
@@ -170,7 +192,7 @@ function deferDelete(type: LocalSyncType, itemId: string, snapshotPayload?: stri
 }
 
 /**
- * Replay the deletes recorded while the sync runtime was down. Runs from
+ * Replay every delete this device still owes the server. Runs from
  * `recoverDirtyItems` at every runtime start — the same "re-push what this
  * device still owes the server" pass, for the one operation that had none.
  *
@@ -180,9 +202,11 @@ function deferDelete(type: LocalSyncType, itemId: string, snapshotPayload?: stri
  * body from a row that is gone, so the body captured at delete time is handed
  * straight to the service's queue.
  *
- * Never loses a row it cannot deliver: a record type whose service is still
- * missing re-records itself through `deferDelete`, and a content type is left
- * untouched until its service exists.
+ * Idempotent, and deliberately does not consume the row. Re-pushing a delete
+ * the server already applied is a no-op there, whereas clearing the tombstone
+ * here would both destroy a replayed delete whose re-enqueue then failed and
+ * re-open the resurrection window for the id. Only `checkManifestIntegrity`
+ * retires a tombstone, once the server no longer lists the item.
  */
 export function flushPendingLocalDeletes(db: DrizzleDb): number {
   const pending = listPendingDeletes(db)
@@ -194,13 +218,8 @@ export function flushPendingLocalDeletes(db: DrizzleDb): number {
       if (item.type === 'note' || item.type === 'journal') {
         const service = item.type === 'note' ? getNoteSyncService() : getJournalSyncService()
         if (!service) continue
-        clearPendingDelete(db, item.type, item.itemId)
         service.enqueueRecoveredDelete(item.itemId, item.payload)
       } else {
-        // Cleared first: the replay re-records it when the service is somehow
-        // still down, and clearing afterwards would delete what was just
-        // written back.
-        clearPendingDelete(db, item.type, item.itemId)
         enqueueLocalSyncDelete(item.type as LocalSyncType, item.itemId, item.payload)
       }
 
@@ -215,7 +234,7 @@ export function flushPendingLocalDeletes(db: DrizzleDb): number {
   }
 
   if (flushed > 0) {
-    log.info('Replayed deletes raised while the sync runtime was down', { count: flushed })
+    log.info('Replayed deletes this device still owes the server', { count: flushed })
   }
   return flushed
 }
@@ -590,13 +609,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
         getNoteSyncService()?.enqueueRecoveredUpdate(itemId)
       },
       enqueueDelete(itemId: string): void {
-        const service = getNoteSyncService()
-        if (service) {
-          service.enqueueDelete(itemId)
-          return
-        }
-
-        deferDelete('note', itemId)
+        enqueueDeleteOrDefer('note', getNoteSyncService(), itemId)
       }
     }
   },
@@ -628,15 +641,16 @@ const localSyncRegistry = createSyncAdapterRegistry([
       enqueueDelete(itemId: string, date?: string): void {
         if (!date) return
 
-        const service = getJournalSyncService()
-        if (service) {
-          service.enqueueDelete(itemId, date)
-          return
-        }
-
         // The date is not put on the wire (see JournalSyncService), so the
-        // deferred tombstone carries the same body a note's does.
-        deferDelete('journal', itemId)
+        // tombstone carries the same body a note's does. The adapter keeps the
+        // date out of the tombstone path, where the second argument means the
+        // caller's row snapshot.
+        const service = getJournalSyncService()
+        enqueueDeleteOrDefer(
+          'journal',
+          service && { enqueueDelete: (id: string) => service.enqueueDelete(id, date) },
+          itemId
+        )
       }
     }
   },

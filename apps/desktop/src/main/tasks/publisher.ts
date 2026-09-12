@@ -10,6 +10,7 @@ import {
   syncTaskDelete,
   syncTaskUpdate
 } from './runtime-effects'
+import { removeTaskLineFromSourceNote } from './remove-task-line-from-note'
 import { trackMainEvent } from '../telemetry/track'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import {
@@ -63,7 +64,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
         dimensions: { changed_fields: changedFieldsDimension(changedFields) }
       })
     },
-    taskDeleted: ({ id, snapshot }) => {
+    taskDeleted: async ({ id, snapshot }) => {
       recordTaskDeleted(id, snapshot)
       syncTaskDelete(id, snapshot)
       emitTaskEvent(TasksChannels.events.DELETED, { id })
@@ -74,6 +75,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
         objectType: 'task',
         result: 'success'
       })
+      if (snapshot?.sourceNoteId) await removeTaskLineFromSourceNote(id, snapshot.sourceNoteId)
     },
     taskCompleted: ({ id, task, previous }) => {
       emitTaskEvent(TasksChannels.events.COMPLETED, { id, task })

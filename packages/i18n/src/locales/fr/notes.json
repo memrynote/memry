@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Supprimer les éléments {count}",
       "bookmark": "Ajouter aux favoris",
       "removeFromBookmarks": "Retirer des favoris",
-      "applyTemplate": "Appliquer un modèle"
+      "applyTemplate": "Appliquer un modèle",
+      "saveAsTemplate": "Enregistrer comme modèle"
     },
     "deleteDialog": {
       "noteTitle": "Supprimer la note",
@@ -102,6 +103,7 @@
       "fullWidth": "Pleine largeur",
       "disableLocalOnly": "Désactiver le local uniquement",
       "setLocalOnly": "Définir en local uniquement",
+      "saveAsTemplate": "Enregistrer comme modèle",
       "copyPath": "Copier le chemin",
       "delete": "Supprimer la note",
       "find": "Rechercher…",
@@ -852,6 +854,19 @@
     "full": "Remplacer le contenu et ajouter les détails du modèle",
     "success": "Modèle appliqué",
     "title": "Remplacer le contenu de la note ?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Enregistrer la note comme modèle",
+    "description": "Créez un modèle réutilisable à partir de cette note. La note elle-même reste inchangée.",
+    "nameLabel": "Nom du modèle",
+    "loading": "Lecture de la note…",
+    "summary": "Enregistre le contenu de la note, {tagCount, plural, one {# balise} other {# balises}} et {propertyCount, plural, one {# propriété} other {# propriétés}}.",
+    "save": "Enregistrer le modèle",
+    "cancel": "Annuler",
+    "success": "Modèle enregistré",
+    "edit": "Modifier le modèle",
+    "failed": "Échec de l'enregistrement du modèle",
+    "loadFailed": "Impossible de lire cette note"
   },
   "tagView": {
     "moreActions": "Plus d'actions",

@@ -23,6 +23,7 @@ import { useNoteTreeData } from '@/hooks/use-note-tree-data'
 import { useNoteTreeActions } from '@/hooks/use-note-tree-actions'
 import { NoteTreeDeleteDialog, NoteTreeTemplateSelector } from '@/components/note-tree-dialogs'
 import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
+import { SaveNoteAsTemplateDialog } from '@/components/note/save-note-as-template-dialog'
 import {
   NotesTreeSkeleton,
   NotesTreeEmpty,
@@ -60,6 +61,7 @@ import {
   FilePlus,
   FolderPlus,
   LayoutTemplate,
+  Save,
   LayoutGrid,
   X,
   Monitor,
@@ -247,6 +249,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
 
   const [pendingRevealNoteId, setPendingRevealNoteId] = useState<string | null>(null)
   const [applyTemplateNote, setApplyTemplateNote] = useState<NoteListItem | null>(null)
+  const [saveAsTemplateNote, setSaveAsTemplateNote] = useState<NoteListItem | null>(null)
   // Mirrors `pendingRevealNoteId` for the virtualized-tree effect below, which
   // needs a non-state read of the pending id so it isn't itself reactive state
   // driving an effect (see the effect's comment).
@@ -388,6 +391,10 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                   <ContextMenuItem onClick={() => setApplyTemplateNote(note)}>
                     <LayoutTemplate className="me-2 h-4 w-4" />
                     {t('tree.actions.applyTemplate')}
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => setSaveAsTemplateNote(note)}>
+                    <Save className="me-2 h-4 w-4" />
+                    {t('tree.actions.saveAsTemplate')}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
                   <ContextMenuItem onClick={() => actions.setIconPickerNoteId(note.id)}>
@@ -664,6 +671,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           onRenameCancel={actions.handleRenameCancel}
           isRenaming={actions.isRenaming}
           onApplyTemplateToNote={setApplyTemplateNote}
+          onSaveNoteAsTemplate={setSaveAsTemplateNote}
           onDeleteNote={actions.handleDeleteClick}
           onOpenExternal={(...args) => void actions.handleOpenExternal(...args)}
           onRevealInFinder={(...args) => void actions.handleRevealInFinder(...args)}
@@ -752,6 +760,12 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         noteId={applyTemplateNote?.id ?? null}
         isOpen={applyTemplateNote !== null}
         onClose={() => setApplyTemplateNote(null)}
+      />
+
+      <SaveNoteAsTemplateDialog
+        noteId={saveAsTemplateNote?.id ?? null}
+        isOpen={saveAsTemplateNote !== null}
+        onClose={() => setSaveAsTemplateNote(null)}
       />
     </div>
   )
