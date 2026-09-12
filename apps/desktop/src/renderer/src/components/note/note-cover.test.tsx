@@ -222,14 +222,14 @@ describe('NoteCover reposition', () => {
     expect(onRepositioningChange).toHaveBeenCalledWith(false)
   })
 
-  it('restores the pre-drag focus on escape', () => {
+  it('drops the drag on escape without writing the note', () => {
     const { onFocusChange, onRepositioningChange } = renderCover({ repositioning: true, focus: 30 })
 
     fireEvent.keyDown(band(), { key: 'ArrowDown' })
     expect(screen.getByRole('img')).toHaveStyle({ objectPosition: '50% 32%' })
 
     fireEvent.keyDown(band(), { key: 'Escape' })
-    expect(onFocusChange).toHaveBeenCalledWith(30)
+    expect(onFocusChange).not.toHaveBeenCalled()
     expect(onRepositioningChange).toHaveBeenCalledWith(false)
   })
 

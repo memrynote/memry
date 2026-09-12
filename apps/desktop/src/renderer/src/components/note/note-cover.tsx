@@ -127,10 +127,9 @@ export const NoteCover = memo(function NoteCover({
     stopReposition()
   }, [drag, onFocusChange, stopReposition])
 
-  const cancel = useCallback(() => {
-    if (drag && drag.draft !== drag.original) onFocusChange(drag.original)
-    stopReposition()
-  }, [drag, onFocusChange, stopReposition])
+  // The draft never left this component, so leaving reposition is enough. Writing
+  // the original back would dirty the note, and a dirty note syncs.
+  const cancel = stopReposition
 
   const trackPointer = useCallback(
     (event: PointerEvent<HTMLDivElement>) => {
