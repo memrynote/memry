@@ -275,13 +275,27 @@ the endpoint listening on the same URL and token. Individual client connections 
 Agent Chat and external clients can reconnect without restarting the app or reopening the vault.
 
 Client-specific config keys vary. Use the copied URL as the MCP server URL and the copied token as a
-Bearer authorization header. Plain external clients can use read tools, but they do not get the
-in-app conversation/window context that approved writes require.
+Bearer authorization header. External clients are read-only. The token admits a client to the read
+tools; it does not admit it to the write tools.
+
+Every vault write has to be authorised by a turn memrynote itself is running. When Agent Chat starts a
+turn it mints a fresh single-use write capability, hands it only to the backend it spawns for that
+turn, and destroys it when the turn ends. The write tools accept nothing else. An external client
+holding the endpoint token, or a stale capability from a turn that has already finished, is refused
+with `PERMISSION_DENIED` and the reason that writes need a running memrynote Agent turn. A conversation
+id is not a credential: knowing one, even a real one, does not let a client write.
+
+External clients still see the write tools listed. They are advertised to every client because
+memrynote's own Claude CLI, Codex CLI, and local-model backends discover their tools from that same
+list. Calling one without an active turn fails rather than writes.
 
 A write is only approved for a conversation that still exists. A conversation that has been deleted —
 including one deleted on another device and carried here by sync — no longer counts as an existing
 conversation, so its write tools are refused rather than writing into a record that is gone from your
 chat history everywhere.
+
+Closing the vault or quitting the app destroys every live write capability, so a backend that somehow
+outlives its turn cannot write afterwards.
 
 ## Tools
 
@@ -506,8 +520,9 @@ results.
 If you switch tool confirmations to **Ask first** in settings, memrynote pauses the turn and shows inline
 approval controls inside the tool row. You can allow the request once, allow create tools always for
 that conversation, deny it, or edit the arguments before allowing. Note updates load a before/after
-diff before the write is applied. Unauthenticated or context-free write requests continue to be
-denied.
+diff before the write is applied. Write requests that present no active-turn capability — every
+external MCP client, and any call arriving after its turn ended — continue to be denied, whichever
+confirmation setting you choose.
 
 Stopping the turn while an approval is waiting counts as a denial: the pending request is refused,
 the tool never runs, and the approval controls disappear. Nothing is written to your vault.

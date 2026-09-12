@@ -4,6 +4,11 @@ import { toSafeToken } from '@memry/contracts/telemetry-api'
 import { createLogger } from '../../lib/logger'
 import { trackMainEvent } from '../../telemetry/track'
 import { setWriteGate as setMcpWriteGate } from '../mcp/lifecycle'
+import {
+  resolveTurnWriteGrant,
+  revokeAllTurnWriteGrants,
+  revokeTurnWriteGrantsFor
+} from '../turn-grants'
 import type { ConversationStore } from '../storage/conversation-store'
 import type { MessageStore } from '../storage/message-store'
 import { broadcastAgentEvent } from './event-bus'
@@ -117,7 +122,20 @@ export class AgentRuntime {
 
   install(): void {
     setMcpWriteGate(async (ctx) => {
-      const conversation = this.deps.conversations.getById(ctx.conversationId)
+      // The only thing that authorises a write. A conversation id proves
+      // nothing — it is persisted, stable and reusable — so the caller has to
+      // present the capability minted by the turn that is running right now.
+      // Anything else (an external MCP client holding the bearer token, a
+      // stale grant from a finished turn, a real conversation id) lands here.
+      const conversationId = resolveTurnWriteGrant(ctx.writeGrant)
+      if (!conversationId) {
+        return {
+          approved: false,
+          reason:
+            'Vault writes are only available to a tool call inside a running memrynote Agent turn.'
+        }
+      }
+      const conversation = this.deps.conversations.getById(conversationId)
       if (!conversation) {
         return { approved: false, reason: 'Unknown conversation' }
       }
@@ -137,7 +155,7 @@ export class AgentRuntime {
       const requiresDiff = decision.outcome === 'await_user' ? decision.requiresDiff : false
       broadcastAgentEvent({
         kind: 'tool_call_pending_approval',
-        conversationId: ctx.conversationId,
+        conversationId,
         toolCallId,
         name: ctx.toolName,
         args: ctx.parsedArgs,
@@ -152,7 +170,7 @@ export class AgentRuntime {
       })
 
       const userDecision = await this.waitForApproval({
-        conversationId: ctx.conversationId,
+        conversationId,
         toolCallId,
         name: ctx.toolName,
         args: ctx.parsedArgs,
@@ -175,7 +193,7 @@ export class AgentRuntime {
       }
 
       if (userDecision.kind === 'allow_always') {
-        this.deps.conversations.addToTrustList(ctx.conversationId, ctx.toolName)
+        this.deps.conversations.addToTrustList(conversationId, ctx.toolName)
       }
 
       const args = userDecision.kind === 'edit_allow' ? userDecision.editedArgs : ctx.parsedArgs
@@ -238,6 +256,9 @@ export class AgentRuntime {
 
   releaseTurnLock(conversationId: string): void {
     this.turnLocks.delete(conversationId)
+    // The turn is over, so its write capability dies with it. Covers the paths
+    // runTurn's own revoke cannot: a throw before it reaches its try/finally.
+    revokeTurnWriteGrantsFor(conversationId)
     // Same reasoning, from the other end: the turn is over and produced its last
     // handle before this ran, so dropping the flag here keeps the set bounded
     // rather than holding an id until that conversation is used again.
@@ -294,6 +315,7 @@ export class AgentRuntime {
   async killAll(): Promise<void> {
     this.isShuttingDown = true
     setMcpWriteGate(null)
+    revokeAllTurnWriteGrants()
 
     for (const toolCallId of [...this.pending.keys()]) {
       this.settleApproval(toolCallId, { kind: 'deny' })

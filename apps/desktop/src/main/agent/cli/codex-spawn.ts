@@ -23,7 +23,7 @@ export interface CodexSpawnOptions {
   mcp?: {
     serverUrl: string
     authorizationValue: string
-    conversationId: string
+    writeGrant: string
     windowId: string
   }
 }
@@ -69,7 +69,7 @@ export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubp
       '-c',
       'mcp_servers.memry.bearer_token_env_var="MEMRY_AGENT_TOKEN"',
       '-c',
-      'mcp_servers.memry.env_http_headers={"X-Memry-Conversation"="MEMRY_AGENT_CONVERSATION","X-Memry-Window"="MEMRY_AGENT_WINDOW"}',
+      'mcp_servers.memry.env_http_headers={"X-Memry-Turn"="MEMRY_AGENT_TURN","X-Memry-Window"="MEMRY_AGENT_WINDOW"}',
       '-c',
       'mcp_servers.memry.default_tools_approval_mode="approve"'
     )
@@ -85,7 +85,7 @@ export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubp
       ...(opts.mcp
         ? {
             MEMRY_AGENT_TOKEN: opts.mcp.authorizationValue,
-            MEMRY_AGENT_CONVERSATION: opts.mcp.conversationId,
+            MEMRY_AGENT_TURN: opts.mcp.writeGrant,
             MEMRY_AGENT_WINDOW: opts.mcp.windowId
           }
         : {})

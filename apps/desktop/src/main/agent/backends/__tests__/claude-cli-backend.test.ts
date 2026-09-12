@@ -16,6 +16,8 @@ vi.mock('../../cli/claude-binary', () => ({
 }))
 
 import { ClaudeCliBackend } from '../claude-cli-backend'
+import type { TurnWriteGrant } from '../../turn-grants'
+const TEST_GRANT = 'turn-grant-1' as TurnWriteGrant
 
 describe('ClaudeCliBackend', () => {
   it('spawns Claude turns and parses JSONL backend events', async () => {
@@ -49,6 +51,7 @@ describe('ClaudeCliBackend', () => {
     const run = await backend.runTurn({
       prompt: 'User: create a task',
       conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       options: { backend: 'claude_cli', claudeEffort: 'high', model: 'sonnet' }
     })
@@ -58,7 +61,7 @@ describe('ClaudeCliBackend', () => {
 
     expect(spawn).toHaveBeenCalledWith({
       prompt: 'User: create a task',
-      conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       effort: 'high',
       model: 'sonnet',

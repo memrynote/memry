@@ -113,7 +113,7 @@ export async function startAgent(): Promise<AgentHandle> {
 
   const spawnClaudeAdapter = async ({
     prompt,
-    conversationId,
+    writeGrant,
     windowId,
     effort,
     model,
@@ -132,12 +132,12 @@ export async function startAgent(): Promise<AgentHandle> {
 
     const sub = await spawnClaudeTurn({
       binaryPath: 'claude',
-      ...(status?.url && status['token']
+      ...(status?.url && status['token'] && writeGrant
         ? {
             mcp: {
               serverUrl: status.url,
               authorizationValue: status['token'],
-              conversationId,
+              writeGrant,
               windowId,
               allowedTools: ALLOWED_AGENT_TOOLS
             }
@@ -170,7 +170,7 @@ export async function startAgent(): Promise<AgentHandle> {
 
   const spawnCodexAdapter = async ({
     prompt,
-    conversationId,
+    writeGrant,
     windowId,
     reasoningEffort,
     model,
@@ -193,12 +193,12 @@ export async function startAgent(): Promise<AgentHandle> {
       reasoningEffort,
       model,
       ...(permissions ? { permissions } : {}),
-      ...(status?.url && status['token']
+      ...(status?.url && status['token'] && writeGrant
         ? {
             mcp: {
               serverUrl: status.url,
               authorizationValue: status['token'],
-              conversationId,
+              writeGrant,
               windowId
             }
           }

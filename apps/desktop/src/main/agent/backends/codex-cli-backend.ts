@@ -1,9 +1,11 @@
 import { detectCodexBinary } from '../cli/codex-binary'
 import { createCodexStreamParser } from '../cli/codex-stream-parser'
 import type { BackendEvent } from '../cli/types'
+import type { TurnWriteGrant } from '../turn-grants'
 import type {
   AgentBackend,
   AgentBackendRunInput,
+  AgentBackendTurnInput,
   BackendRunHandle,
   CodexCliSpawnInput,
   RawSubprocessHandle
@@ -16,7 +18,7 @@ export class CodexCliBackend implements AgentBackend {
     private readonly deps: { spawn: (input: CodexCliSpawnInput) => Promise<RawSubprocessHandle> }
   ) {}
 
-  async runTurn(input: AgentBackendRunInput): Promise<BackendRunHandle> {
+  async runTurn(input: AgentBackendTurnInput): Promise<BackendRunHandle> {
     return this.run(input, 'turn')
   }
 
@@ -40,13 +42,16 @@ export class CodexCliBackend implements AgentBackend {
     }
   }
 
-  private async run(input: AgentBackendRunInput, purpose: 'turn' | 'summary' | 'title') {
+  private async run(
+    input: AgentBackendRunInput & { writeGrant?: TurnWriteGrant },
+    purpose: 'turn' | 'summary' | 'title'
+  ) {
     const reasoningEffort =
       input.options.backend === 'codex_cli' ? input.options.reasoningEffort : 'medium'
     const model = input.options.backend === 'codex_cli' ? input.options.model : undefined
     const subprocess = await this.deps.spawn({
       prompt: input.prompt,
-      conversationId: input.conversationId,
+      ...(input.writeGrant ? { writeGrant: input.writeGrant } : {}),
       windowId: input.windowId,
       reasoningEffort,
       model,

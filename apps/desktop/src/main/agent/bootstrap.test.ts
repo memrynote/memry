@@ -142,6 +142,8 @@ vi.mock('./runtime/runtime', () => ({
 }))
 
 import { startAgent } from './bootstrap'
+import type { TurnWriteGrant } from './turn-grants'
+const TEST_GRANT = 'turn-grant-1' as TurnWriteGrant
 
 describe('startAgent', () => {
   beforeEach(() => {
@@ -212,6 +214,7 @@ describe('startAgent', () => {
     await deps.backends.get('claude_cli').runTurn({
       prompt: 'hello',
       conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       options: { backend: 'claude_cli', claudeEffort: 'low', model: 'sonnet' }
     })
@@ -222,7 +225,7 @@ describe('startAgent', () => {
         mcp: {
           serverUrl: 'http://127.0.0.1:54321',
           authorizationValue: 'local-auth-value',
-          conversationId: 'conversation-1',
+          writeGrant: TEST_GRANT,
           windowId: 'window-1',
           allowedTools: expect.stringContaining('mcp__memry__')
         },
@@ -240,6 +243,7 @@ describe('startAgent', () => {
     await deps.backends.get('claude_cli').runTurn({
       prompt: 'hello',
       conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       options: { backend: 'claude_cli', claudeEffort: 'low' }
     })
@@ -256,7 +260,7 @@ describe('startAgent', () => {
         mcp: expect.objectContaining({
           serverUrl: 'http://127.0.0.1:54321',
           authorizationValue: 'local-auth-value',
-          conversationId: 'conversation-1',
+          writeGrant: TEST_GRANT,
           windowId: 'window-1'
         })
       })
@@ -274,6 +278,7 @@ describe('startAgent', () => {
     await deps.backends.get('codex_cli').runTurn({
       prompt: 'hello',
       conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       options: { backend: 'codex_cli', reasoningEffort: 'high', model: 'gpt-5.5' }
     })
@@ -294,7 +299,7 @@ describe('startAgent', () => {
         mcp: {
           serverUrl: 'http://127.0.0.1:54321',
           authorizationValue: 'local-auth-value',
-          conversationId: 'conversation-1',
+          writeGrant: TEST_GRANT,
           windowId: 'window-1'
         }
       })
