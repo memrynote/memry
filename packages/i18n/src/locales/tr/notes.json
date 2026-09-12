@@ -274,8 +274,23 @@
       "placeholder": "Kapak ara",
       "tab": {
         "washes": "Tonlar",
+        "photos": "Fotoğraflar",
         "fromNote": "Nottan",
         "upload": "Yükle"
+      },
+      "photos": {
+        "prompt": "Unsplash'te fotoğraf aramak için yazın",
+        "searching": "Unsplash'te aranıyor…",
+        "noResults": "Bu aramayla eşleşen fotoğraf yok",
+        "remaining": "{count} kaldı",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash fotoğrafları bu sürümde kullanılamıyor",
+          "offline": "Unsplash bağlantısı yok",
+          "rateLimited": "Unsplash istek sınırına ulaştı, kısa süre sonra tekrar deneyin",
+          "failed": "Unsplash'e ulaşılamadı",
+          "writeFailed": "Bu fotoğraf kasaya kaydedilemedi"
+        }
       },
       "upload": "Yükle",
       "uploading": "Yükleniyor…",

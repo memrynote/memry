@@ -274,8 +274,23 @@
       "placeholder": "カバー画像を検索",
       "tab": {
         "washes": "カラー",
+        "photos": "写真",
         "fromNote": "メモから",
         "upload": "アップロード"
+      },
+      "photos": {
+        "prompt": "入力してUnsplashの写真を検索",
+        "searching": "Unsplashを検索中…",
+        "noResults": "その検索に一致する写真がありません",
+        "remaining": "残り{count}件",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "このビルドではUnsplashの写真は利用できません",
+          "offline": "Unsplashに接続できません",
+          "rateLimited": "Unsplashのレート制限に達しました。しばらくしてから再試行してください",
+          "failed": "Unsplashに接続できませんでした",
+          "writeFailed": "その写真を保管庫に保存できませんでした"
+        }
       },
       "upload": "アップロード",
       "uploading": "アップロード中…",

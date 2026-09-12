@@ -274,8 +274,23 @@
       "placeholder": "Søg covers",
       "tab": {
         "washes": "Nuancer",
+        "photos": "Fotos",
         "fromNote": "Fra noten",
         "upload": "Upload"
+      },
+      "photos": {
+        "prompt": "Skriv for at søge efter fotos på Unsplash",
+        "searching": "Søger på Unsplash…",
+        "noResults": "Ingen fotos matcher den søgning",
+        "remaining": "{count} tilbage",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash-fotos er ikke tilgængelige i denne build",
+          "offline": "Ingen forbindelse til Unsplash",
+          "rateLimited": "Unsplash er hastighedsbegrænset, prøv igen om lidt",
+          "failed": "Unsplash kunne ikke nås",
+          "writeFailed": "Det foto kunne ikke gemmes i boksen"
+        }
       },
       "upload": "Upload",
       "uploading": "Uploader…",

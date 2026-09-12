@@ -274,8 +274,23 @@
       "placeholder": "Sök omslag",
       "tab": {
         "washes": "Toner",
+        "photos": "Foton",
         "fromNote": "Från anteckningen",
         "upload": "Ladda upp"
+      },
+      "photos": {
+        "prompt": "Skriv för att söka foton på Unsplash",
+        "searching": "Söker på Unsplash…",
+        "noResults": "Inga foton matchar den sökningen",
+        "remaining": "{count} kvar",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash-foton är inte tillgängliga i den här versionen",
+          "offline": "Ingen anslutning till Unsplash",
+          "rateLimited": "Unsplash har nått sin gräns för förfrågningar, försök igen om en liten stund",
+          "failed": "Det gick inte att nå Unsplash",
+          "writeFailed": "Det fotot kunde inte sparas i valvet"
+        }
       },
       "upload": "Ladda upp",
       "uploading": "Laddar upp…",

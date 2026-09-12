@@ -274,8 +274,23 @@
       "placeholder": "Traži naslovne slike",
       "tab": {
         "washes": "Tonovi",
+        "photos": "Fotografije",
         "fromNote": "Iz bilješke",
         "upload": "Prijenos"
+      },
+      "photos": {
+        "prompt": "Upišite za pretragu fotografija na Unsplashu",
+        "searching": "Pretraživanje Unsplasha…",
+        "noResults": "Nijedna fotografija ne odgovara toj pretrazi",
+        "remaining": "Preostalo {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Fotografije s Unsplasha nisu dostupne u ovoj verziji",
+          "offline": "Nema veze s Unsplashom",
+          "rateLimited": "Unsplash je ograničio broj zahtjeva, pokušajte ponovno uskoro",
+          "failed": "Nije moguće doći do Unsplasha",
+          "writeFailed": "Tu fotografiju nije moguće spremiti u trezor"
+        }
       },
       "upload": "Prenesi",
       "uploading": "Prijenos u tijeku…",

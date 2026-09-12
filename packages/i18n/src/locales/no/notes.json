@@ -274,8 +274,23 @@
       "placeholder": "Søk i omslag",
       "tab": {
         "washes": "Fargetoner",
+        "photos": "Bilder",
         "fromNote": "Fra notatet",
         "upload": "Last opp"
+      },
+      "photos": {
+        "prompt": "Skriv for å søke etter bilder på Unsplash",
+        "searching": "Søker på Unsplash…",
+        "noResults": "Ingen bilder samsvarer med søket",
+        "remaining": "{count} igjen",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash-bilder er ikke tilgjengelige i denne versjonen",
+          "offline": "Ingen tilkobling til Unsplash",
+          "rateLimited": "Unsplash har satt en fartsgrense, prøv igjen om litt",
+          "failed": "Fikk ikke kontakt med Unsplash",
+          "writeFailed": "Det bildet kunne ikke lagres i hvelvet"
+        }
       },
       "upload": "Last opp",
       "uploading": "Laster opp…",

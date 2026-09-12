@@ -274,8 +274,23 @@
       "placeholder": "搜尋封面",
       "tab": {
         "washes": "純色",
+        "photos": "照片",
         "fromNote": "來自筆記",
         "upload": "上傳"
+      },
+      "photos": {
+        "prompt": "輸入以在 Unsplash 上搜尋照片",
+        "searching": "正在搜尋 Unsplash…",
+        "noResults": "沒有符合該搜尋的照片",
+        "remaining": "還剩 {count} 次",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "此版本不支援 Unsplash 照片",
+          "offline": "無法連線至 Unsplash",
+          "rateLimited": "Unsplash 已達請求限制，請稍後再試",
+          "failed": "無法連線至 Unsplash",
+          "writeFailed": "無法將該照片儲存到保險庫"
+        }
       },
       "upload": "上傳",
       "uploading": "正在上傳…",

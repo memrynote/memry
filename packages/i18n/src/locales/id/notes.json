@@ -274,8 +274,23 @@
       "placeholder": "Cari sampul",
       "tab": {
         "washes": "Warna",
+        "photos": "Foto",
         "fromNote": "Dari catatan",
         "upload": "Unggah"
+      },
+      "photos": {
+        "prompt": "Ketik untuk mencari foto di Unsplash",
+        "searching": "Mencari di Unsplash…",
+        "noResults": "Tidak ada foto yang cocok dengan pencarian itu",
+        "remaining": "Tersisa {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Foto Unsplash tidak tersedia di build ini",
+          "offline": "Tidak ada koneksi ke Unsplash",
+          "rateLimited": "Unsplash dibatasi kecepatannya, coba lagi sebentar lagi",
+          "failed": "Unsplash tidak dapat dijangkau",
+          "writeFailed": "Foto itu tidak dapat disimpan ke gudang"
+        }
       },
       "upload": "Unggah",
       "uploading": "Mengunggah…",

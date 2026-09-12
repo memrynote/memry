@@ -274,8 +274,23 @@
       "placeholder": "Пошук обкладинок",
       "tab": {
         "washes": "Відтінки",
+        "photos": "Фото",
         "fromNote": "З нотатки",
         "upload": "Завантажити"
+      },
+      "photos": {
+        "prompt": "Введіть текст для пошуку фото на Unsplash",
+        "searching": "Пошук на Unsplash…",
+        "noResults": "Немає фото, що відповідають цьому пошуку",
+        "remaining": "Залишилось {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Фото Unsplash недоступні в цій збірці",
+          "offline": "Немає з'єднання з Unsplash",
+          "rateLimited": "Unsplash обмежив кількість запитів, спробуйте ще раз незабаром",
+          "failed": "Не вдалося з'єднатися з Unsplash",
+          "writeFailed": "Не вдалося зберегти це фото у сховище"
+        }
       },
       "upload": "Завантажити",
       "uploading": "Завантаження…",

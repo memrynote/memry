@@ -274,8 +274,23 @@
       "placeholder": "Pesquisar capas",
       "tab": {
         "washes": "Tons",
+        "photos": "Fotos",
         "fromNote": "Da nota",
         "upload": "Carregar"
+      },
+      "photos": {
+        "prompt": "Escreva para pesquisar fotos no Unsplash",
+        "searching": "A pesquisar no Unsplash…",
+        "noResults": "Nenhuma foto corresponde a essa pesquisa",
+        "remaining": "Faltam {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "As fotos do Unsplash não estão disponíveis nesta compilação",
+          "offline": "Sem ligação ao Unsplash",
+          "rateLimited": "O Unsplash está com limite de pedidos atingido, tente novamente em breve",
+          "failed": "Não foi possível contactar o Unsplash",
+          "writeFailed": "Não foi possível guardar essa foto no cofre"
+        }
       },
       "upload": "Carregar",
       "uploading": "A carregar…",

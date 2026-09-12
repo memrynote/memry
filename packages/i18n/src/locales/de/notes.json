@@ -274,8 +274,23 @@
       "placeholder": "Titelbilder suchen",
       "tab": {
         "washes": "Farbtöne",
+        "photos": "Fotos",
         "fromNote": "Aus der Notiz",
         "upload": "Hochladen"
+      },
+      "photos": {
+        "prompt": "Tippen, um Fotos auf Unsplash zu suchen",
+        "searching": "Unsplash wird durchsucht…",
+        "noResults": "Keine Fotos entsprechen dieser Suche",
+        "remaining": "Noch {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash-Fotos sind in dieser Version nicht verfügbar",
+          "offline": "Keine Verbindung zu Unsplash",
+          "rateLimited": "Unsplash ist ratenbegrenzt, versuche es gleich noch einmal",
+          "failed": "Unsplash konnte nicht erreicht werden",
+          "writeFailed": "Dieses Foto konnte nicht im Tresor gespeichert werden"
+        }
       },
       "upload": "Hochladen",
       "uploading": "Wird hochgeladen…",

@@ -274,8 +274,23 @@
       "placeholder": "커버 검색",
       "tab": {
         "washes": "색상",
+        "photos": "사진",
         "fromNote": "메모에서",
         "upload": "업로드"
+      },
+      "photos": {
+        "prompt": "입력하여 Unsplash에서 사진 검색",
+        "searching": "Unsplash에서 검색 중…",
+        "noResults": "해당 검색과 일치하는 사진이 없습니다",
+        "remaining": "{count}개 남음",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "이 빌드에서는 Unsplash 사진을 사용할 수 없습니다",
+          "offline": "Unsplash에 연결할 수 없습니다",
+          "rateLimited": "Unsplash 요청이 제한되었습니다. 잠시 후 다시 시도하세요",
+          "failed": "Unsplash에 연결할 수 없습니다",
+          "writeFailed": "해당 사진을 금고에 저장할 수 없습니다"
+        }
       },
       "upload": "업로드",
       "uploading": "업로드 중…",

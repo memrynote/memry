@@ -274,8 +274,23 @@
       "placeholder": "חיפוש תמונות שער",
       "tab": {
         "washes": "גוונים",
+        "photos": "תמונות",
         "fromNote": "מההערה",
         "upload": "העלאה"
+      },
+      "photos": {
+        "prompt": "הקלידו כדי לחפש תמונות ב-Unsplash",
+        "searching": "מחפש ב-Unsplash…",
+        "noResults": "אין תמונות התואמות לחיפוש זה",
+        "remaining": "נותרו {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "תמונות Unsplash אינן זמינות בגרסה זו",
+          "offline": "אין חיבור ל-Unsplash",
+          "rateLimited": "יש הגבלת קצב ב-Unsplash, נסו שוב בקרוב",
+          "failed": "לא ניתן היה להתחבר ל-Unsplash",
+          "writeFailed": "לא ניתן היה לשמור את התמונה הזו בכספת"
+        }
       },
       "upload": "העלאה",
       "uploading": "מעלה…",

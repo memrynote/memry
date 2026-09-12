@@ -274,8 +274,23 @@
       "placeholder": "ค้นหาภาพหน้าปก",
       "tab": {
         "washes": "สีพื้น",
+        "photos": "ภาพถ่าย",
         "fromNote": "จากโน้ต",
         "upload": "อัปโหลด"
+      },
+      "photos": {
+        "prompt": "พิมพ์เพื่อค้นหาภาพถ่ายบน Unsplash",
+        "searching": "กำลังค้นหาบน Unsplash…",
+        "noResults": "ไม่มีภาพถ่ายที่ตรงกับการค้นหานั้น",
+        "remaining": "เหลืออีก {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "ภาพถ่ายจาก Unsplash ไม่พร้อมใช้งานในบิลด์นี้",
+          "offline": "ไม่มีการเชื่อมต่อกับ Unsplash",
+          "rateLimited": "Unsplash ถูกจำกัดอัตราการใช้งาน โปรดลองใหม่อีกครั้งในไม่ช้า",
+          "failed": "ไม่สามารถติดต่อ Unsplash ได้",
+          "writeFailed": "ไม่สามารถบันทึกภาพถ่ายนั้นลงในคลังได้"
+        }
       },
       "upload": "อัปโหลด",
       "uploading": "กำลังอัปโหลด…",

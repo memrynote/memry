@@ -274,8 +274,23 @@
       "placeholder": "Rechercher des couvertures",
       "tab": {
         "washes": "Teintes",
+        "photos": "Photos",
         "fromNote": "Depuis la note",
         "upload": "Importer"
+      },
+      "photos": {
+        "prompt": "Tapez pour rechercher des photos sur Unsplash",
+        "searching": "Recherche sur Unsplash…",
+        "noResults": "Aucune photo ne correspond à cette recherche",
+        "remaining": "{count} restantes",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Les photos Unsplash ne sont pas disponibles dans cette version",
+          "offline": "Aucune connexion à Unsplash",
+          "rateLimited": "Unsplash limite les requêtes, réessayez dans un instant",
+          "failed": "Impossible de joindre Unsplash",
+          "writeFailed": "Cette photo n'a pas pu être enregistrée dans le coffre-fort"
+        }
       },
       "upload": "Importer",
       "uploading": "Import en cours…",

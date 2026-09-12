@@ -274,8 +274,23 @@
       "placeholder": "搜索封面",
       "tab": {
         "washes": "纯色",
+        "photos": "照片",
         "fromNote": "来自笔记",
         "upload": "上传"
+      },
+      "photos": {
+        "prompt": "输入以在 Unsplash 上搜索照片",
+        "searching": "正在搜索 Unsplash…",
+        "noResults": "没有与该搜索匹配的照片",
+        "remaining": "还剩 {count} 次",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "此版本不支持 Unsplash 照片",
+          "offline": "无法连接到 Unsplash",
+          "rateLimited": "Unsplash 请求受限，请稍后重试",
+          "failed": "无法访问 Unsplash",
+          "writeFailed": "无法将该照片保存到保险库"
+        }
       },
       "upload": "上传",
       "uploading": "正在上传…",

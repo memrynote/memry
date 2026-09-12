@@ -274,8 +274,23 @@
       "placeholder": "Hledat obálky",
       "tab": {
         "washes": "Odstíny",
+        "photos": "Fotky",
         "fromNote": "Z poznámky",
         "upload": "Nahrát"
+      },
+      "photos": {
+        "prompt": "Zadejte hledaný výraz pro fotky na Unsplash",
+        "searching": "Hledání na Unsplash…",
+        "noResults": "Žádné fotky neodpovídají hledání",
+        "remaining": "Zbývá {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Fotky Unsplash nejsou v této verzi k dispozici",
+          "offline": "Žádné připojení k Unsplash",
+          "rateLimited": "Unsplash má omezenou rychlost, zkuste to za chvíli znovu",
+          "failed": "Unsplash se nepodařilo kontaktovat",
+          "writeFailed": "Tuto fotku se nepodařilo uložit do trezoru"
+        }
       },
       "upload": "Nahrát",
       "uploading": "Nahrávání…",

@@ -274,8 +274,23 @@
       "placeholder": "Cari kulit",
       "tab": {
         "washes": "Sapuan warna",
+        "photos": "Foto",
         "fromNote": "Daripada nota",
         "upload": "Muat naik"
+      },
+      "photos": {
+        "prompt": "Taip untuk mencari foto di Unsplash",
+        "searching": "Mencari di Unsplash…",
+        "noResults": "Tiada foto sepadan dengan carian itu",
+        "remaining": "{count} lagi",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Foto Unsplash tidak tersedia dalam binaan ini",
+          "offline": "Tiada sambungan ke Unsplash",
+          "rateLimited": "Unsplash dihadkan kadar, cuba lagi sebentar lagi",
+          "failed": "Tidak dapat menghubungi Unsplash",
+          "writeFailed": "Foto itu tidak dapat disimpan ke peti besi"
+        }
       },
       "upload": "Muat naik",
       "uploading": "Memuat naik…",

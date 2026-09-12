@@ -274,8 +274,23 @@
       "placeholder": "Hľadať obálky",
       "tab": {
         "washes": "Odtiene",
+        "photos": "Fotky",
         "fromNote": "Z poznámky",
         "upload": "Nahrať"
+      },
+      "photos": {
+        "prompt": "Zadajte text na vyhľadanie fotiek na Unsplash",
+        "searching": "Vyhľadávanie na Unsplash…",
+        "noResults": "Žiadne fotky nezodpovedajú tomuto vyhľadávaniu",
+        "remaining": "Zostáva {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Fotky Unsplash nie sú v tejto verzii k dispozícii",
+          "offline": "Žiadne pripojenie k Unsplash",
+          "rateLimited": "Unsplash má obmedzenú rýchlosť požiadaviek, skúste to čoskoro znova",
+          "failed": "Unsplash sa nepodarilo kontaktovať",
+          "writeFailed": "Túto fotku sa nepodarilo uložiť do trezora"
+        }
       },
       "upload": "Nahrať",
       "uploading": "Nahráva sa…",

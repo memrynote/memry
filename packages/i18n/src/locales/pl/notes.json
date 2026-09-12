@@ -274,8 +274,23 @@
       "placeholder": "Szukaj okładek",
       "tab": {
         "washes": "Odcienie",
+        "photos": "Zdjęcia",
         "fromNote": "Z notatki",
         "upload": "Prześlij"
+      },
+      "photos": {
+        "prompt": "Wpisz, aby wyszukać zdjęcia w Unsplash",
+        "searching": "Wyszukiwanie w Unsplash…",
+        "noResults": "Żadne zdjęcie nie pasuje do tego wyszukiwania",
+        "remaining": "Pozostało {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Zdjęcia Unsplash nie są dostępne w tej wersji",
+          "offline": "Brak połączenia z Unsplash",
+          "rateLimited": "Unsplash ograniczył liczbę żądań, spróbuj ponownie za chwilę",
+          "failed": "Nie udało się połączyć z Unsplash",
+          "writeFailed": "Nie udało się zapisać tego zdjęcia w sejfie"
+        }
       },
       "upload": "Prześlij",
       "uploading": "Przesyłanie…",

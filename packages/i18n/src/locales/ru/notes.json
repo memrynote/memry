@@ -274,8 +274,23 @@
       "placeholder": "Поиск обложек",
       "tab": {
         "washes": "Оттенки",
+        "photos": "Фото",
         "fromNote": "Из заметки",
         "upload": "Загрузить"
+      },
+      "photos": {
+        "prompt": "Введите текст для поиска фото на Unsplash",
+        "searching": "Поиск на Unsplash…",
+        "noResults": "Нет фото, соответствующих этому запросу",
+        "remaining": "Осталось {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Фото Unsplash недоступны в этой сборке",
+          "offline": "Нет соединения с Unsplash",
+          "rateLimited": "Unsplash ограничил количество запросов, повторите попытку немного позже",
+          "failed": "Не удалось связаться с Unsplash",
+          "writeFailed": "Не удалось сохранить это фото в хранилище"
+        }
       },
       "upload": "Загрузить",
       "uploading": "Загрузка…",

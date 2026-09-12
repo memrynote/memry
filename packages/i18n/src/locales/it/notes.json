@@ -274,8 +274,23 @@
       "placeholder": "Cerca copertine",
       "tab": {
         "washes": "Tinte",
+        "photos": "Foto",
         "fromNote": "Dalla nota",
         "upload": "Carica"
+      },
+      "photos": {
+        "prompt": "Digita per cercare foto su Unsplash",
+        "searching": "Ricerca su Unsplash…",
+        "noResults": "Nessuna foto corrisponde a quella ricerca",
+        "remaining": "{count} rimanenti",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Le foto di Unsplash non sono disponibili in questa build",
+          "offline": "Nessuna connessione a Unsplash",
+          "rateLimited": "Unsplash ha limitato le richieste, riprova tra poco",
+          "failed": "Impossibile raggiungere Unsplash",
+          "writeFailed": "Impossibile salvare quella foto nella volta"
+        }
       },
       "upload": "Carica",
       "uploading": "Caricamento…",

@@ -274,8 +274,23 @@
       "placeholder": "Hae kansikuvia",
       "tab": {
         "washes": "Sävyt",
+        "photos": "Kuvat",
         "fromNote": "Muistiinpanosta",
         "upload": "Lataa"
+      },
+      "photos": {
+        "prompt": "Kirjoita hakeaksesi kuvia Unsplashista",
+        "searching": "Haetaan Unsplashista…",
+        "noResults": "Yksikään kuva ei vastaa hakua",
+        "remaining": "{count} jäljellä",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash-kuvat eivät ole käytettävissä tässä versiossa",
+          "offline": "Ei yhteyttä Unsplashiin",
+          "rateLimited": "Unsplashin käyttöä on rajoitettu, yritä uudelleen hetken kuluttua",
+          "failed": "Unsplashiin ei saatu yhteyttä",
+          "writeFailed": "Tätä kuvaa ei voitu tallentaa holviin"
+        }
       },
       "upload": "Lataa",
       "uploading": "Ladataan…",

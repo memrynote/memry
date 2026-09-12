@@ -274,8 +274,23 @@
       "placeholder": "ابحث في الأغلفة",
       "tab": {
         "washes": "درجات لونية",
+        "photos": "الصور",
         "fromNote": "من الملاحظة",
         "upload": "رفع"
+      },
+      "photos": {
+        "prompt": "اكتب للبحث عن صور في Unsplash",
+        "searching": "جارٍ البحث في Unsplash…",
+        "noResults": "لا توجد صور مطابقة لهذا البحث",
+        "remaining": "{count} متبقٍ",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "صور Unsplash غير متاحة في هذا الإصدار",
+          "offline": "لا يوجد اتصال بـ Unsplash",
+          "rateLimited": "تم تقييد معدل الطلبات على Unsplash، حاول مرة أخرى بعد قليل",
+          "failed": "تعذّر الوصول إلى Unsplash",
+          "writeFailed": "تعذّر حفظ هذه الصورة في الخزنة"
+        }
       },
       "upload": "رفع",
       "uploading": "جارٍ الرفع…",

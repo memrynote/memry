@@ -274,8 +274,23 @@
       "placeholder": "Omslagen zoeken",
       "tab": {
         "washes": "Tinten",
+        "photos": "Foto's",
         "fromNote": "Uit notitie",
         "upload": "Uploaden"
+      },
+      "photos": {
+        "prompt": "Typ om foto's op Unsplash te zoeken",
+        "searching": "Zoeken op Unsplash…",
+        "noResults": "Geen foto's komen overeen met die zoekopdracht",
+        "remaining": "Nog {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash-foto's zijn niet beschikbaar in deze build",
+          "offline": "Geen verbinding met Unsplash",
+          "rateLimited": "Unsplash heeft een snelheidslimiet bereikt, probeer het straks opnieuw",
+          "failed": "Kan Unsplash niet bereiken",
+          "writeFailed": "Die foto kon niet worden opgeslagen in de kluis"
+        }
       },
       "upload": "Uploaden",
       "uploading": "Uploaden…",

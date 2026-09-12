@@ -274,8 +274,23 @@
       "placeholder": "Tìm ảnh bìa",
       "tab": {
         "washes": "Màu nền",
+        "photos": "Ảnh",
         "fromNote": "Từ ghi chú",
         "upload": "Tải lên"
+      },
+      "photos": {
+        "prompt": "Nhập để tìm ảnh trên Unsplash",
+        "searching": "Đang tìm trên Unsplash…",
+        "noResults": "Không có ảnh nào khớp với tìm kiếm đó",
+        "remaining": "Còn lại {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Ảnh Unsplash không khả dụng trong bản dựng này",
+          "offline": "Không có kết nối với Unsplash",
+          "rateLimited": "Unsplash đang bị giới hạn tốc độ, hãy thử lại sau ít phút",
+          "failed": "Không thể kết nối với Unsplash",
+          "writeFailed": "Không thể lưu ảnh đó vào kho lưu trữ"
+        }
       },
       "upload": "Tải lên",
       "uploading": "Đang tải lên…",

@@ -274,8 +274,23 @@
       "placeholder": "Maghanap ng mga cover",
       "tab": {
         "washes": "Mga kulay",
+        "photos": "Mga Larawan",
         "fromNote": "Mula sa tala",
         "upload": "Mag-upload"
+      },
+      "photos": {
+        "prompt": "Mag-type para maghanap ng mga larawan sa Unsplash",
+        "searching": "Naghahanap sa Unsplash…",
+        "noResults": "Walang larawang tumutugma sa paghahanap na iyon",
+        "remaining": "{count} na natitira",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Hindi available ang mga larawan ng Unsplash sa build na ito",
+          "offline": "Walang koneksyon sa Unsplash",
+          "rateLimited": "Na-rate limit ang Unsplash, subukan ulit sandali",
+          "failed": "Hindi ma-reach ang Unsplash",
+          "writeFailed": "Hindi ma-save ang larawang iyon sa vault"
+        }
       },
       "upload": "Mag-upload",
       "uploading": "Ina-upload…",

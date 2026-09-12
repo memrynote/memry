@@ -274,8 +274,23 @@
       "placeholder": "Buscar portadas",
       "tab": {
         "washes": "Tonos",
+        "photos": "Fotos",
         "fromNote": "De la nota",
         "upload": "Subir"
+      },
+      "photos": {
+        "prompt": "Escribe para buscar fotos en Unsplash",
+        "searching": "Buscando en Unsplash…",
+        "noResults": "Ninguna foto coincide con esa búsqueda",
+        "remaining": "Quedan {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Las fotos de Unsplash no están disponibles en esta versión",
+          "offline": "Sin conexión con Unsplash",
+          "rateLimited": "Unsplash tiene un límite de solicitudes, inténtalo de nuevo en breve",
+          "failed": "No se pudo contactar con Unsplash",
+          "writeFailed": "Esa foto no se pudo guardar en la bóveda"
+        }
       },
       "upload": "Subir",
       "uploading": "Subiendo…",
