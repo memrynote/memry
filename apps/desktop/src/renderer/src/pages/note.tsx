@@ -20,7 +20,6 @@ import { useReducedMotion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
-import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { LargeFileViewer } from '@/components/note/large-file-viewer'
 import {
@@ -227,7 +226,6 @@ export function NotePage({ noteId }: NotePageProps) {
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
-  const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
@@ -370,6 +368,12 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Focus editor at end when clicking empty space
   const focusAtEndRef = useRef<(() => void) | null>(null)
+
+  // Opens the editor's template picker at the caret. The overflow menu used to
+  // apply a template over the whole body behind an overwrite prompt; a template
+  // is now always inserted, never a replacement, so both surfaces run the one
+  // insert-at-cursor path.
+  const openTemplateInsertRef = useRef<(() => void) | null>(null)
 
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
@@ -1490,7 +1494,7 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'find') openFind()
           if (action === 'version-history') setIsVersionHistoryOpen(true)
           if (action === 'export') setIsExportDialogOpen(true)
-          if (action === 'apply-template') setIsApplyTemplateOpen(true)
+          if (action === 'insert-template') openTemplateInsertRef.current?.()
           if (action === 'rename') handleRename()
           if (action === 'move-to-folder') setIsMoveDialogOpen(true)
           if (action === 'copy-path') void handleCopyPath()
@@ -1543,11 +1547,15 @@ export function NotePage({ noteId }: NotePageProps) {
               label={t('editor.toolbar.export')}
               icon={<Download className="size-4" />}
             />
-            <Picker.Item
-              value="apply-template"
-              label={t('editor.toolbar.applyTemplate')}
-              icon={<PenLine className="size-4" />}
-            />
+            {/* A large file has no block editor behind it, so there is no
+                caret to insert a template at. */}
+            {!isLargeFile && (
+              <Picker.Item
+                value="insert-template"
+                label={t('editor.slashMenu.insertTemplate.title')}
+                icon={<PenLine className="size-4" />}
+              />
+            )}
             <Picker.Item
               value="full-width"
               label={t('editor.toolbar.fullWidth')}
@@ -1798,6 +1806,7 @@ export function NotePage({ noteId }: NotePageProps) {
                 tagIconMap={tagIconMap}
                 onInlineTagsChange={(...args) => void handleInlineTagsChange(...args)}
                 focusAtEndRef={focusAtEndRef}
+                openTemplateInsertRef={openTemplateInsertRef}
                 marqueeZoneEl={marqueeZoneEl}
                 review={{
                   plainMarkdown: review.plainMarkdown,
@@ -1881,13 +1890,6 @@ export function NotePage({ noteId }: NotePageProps) {
         onOpenChange={setIsAttachmentsOpen}
         noteId={noteId}
         getOriginalNames={getAttachmentOriginalNames}
-      />
-
-      {/* Apply Template Dialog */}
-      <ApplyTemplateToNoteDialog
-        noteId={noteId}
-        isOpen={isApplyTemplateOpen}
-        onClose={() => setIsApplyTemplateOpen(false)}
       />
 
       {/* Version History Panel */}

@@ -163,6 +163,13 @@ export interface ContentAreaProps {
   /** Ref that receives a focusAtEnd function to focus the editor at the end of the document */
   focusAtEndRef?: React.RefObject<(() => void) | null>
   /**
+   * Ref that receives a function opening the template picker at the caret, so
+   * surfaces outside the editor (the note's overflow menu) reach the same
+   * insert-at-cursor path `/insert template` uses instead of overwriting the
+   * note body.
+   */
+  openTemplateInsertRef?: React.RefObject<(() => void) | null>
+  /**
    * The outer wrapper element that owns the marquee selection trigger area
    * (and the overlay's coordinate space). When omitted, falls back to the
    * inner `.bn-container` so callers that don't want the extended hit area

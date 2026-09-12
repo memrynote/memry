@@ -1312,6 +1312,36 @@ describe('ContentArea', () => {
     )
   })
 
+  it('opens the template picker at the caret when the note menu asks for it', async () => {
+    const openTemplateInsert = { current: null } as React.RefObject<(() => void) | null>
+    render(<ContentArea noteId="note-1" openTemplateInsertRef={openTemplateInsert} />)
+    await waitFor(() => expect(openTemplateInsert.current).toBeTypeOf('function'))
+
+    await act(async () => {
+      openTemplateInsert.current?.()
+    })
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(contentAreaMocks.editor.getTextCursorPosition).toHaveBeenCalled()
+  })
+
+  it('still opens the picker when the editor has no text cursor to read', async () => {
+    // The menu is reachable without ever putting a caret in the body. With no
+    // cursor, the last block anchors the insert instead of the call throwing.
+    contentAreaMocks.editor.getTextCursorPosition.mockImplementation(() => {
+      throw new Error('no text cursor')
+    })
+    const openTemplateInsert = { current: null } as React.RefObject<(() => void) | null>
+    render(<ContentArea noteId="note-1" openTemplateInsertRef={openTemplateInsert} />)
+    await waitFor(() => expect(openTemplateInsert.current).toBeTypeOf('function'))
+
+    await act(async () => {
+      openTemplateInsert.current?.()
+    })
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
   it('hides both template surfaces while the caret is in a table cell', async () => {
     // A template is a block insert, and a cell cannot hold one: it lands after
     // the whole table and takes the caret with it (#1640).

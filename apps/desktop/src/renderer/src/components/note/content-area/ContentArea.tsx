@@ -325,6 +325,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   tagIconMap,
   onInlineTagsChange,
   focusAtEndRef,
+  openTemplateInsertRef,
   yjsFragment,
   yjsDoc,
   isRemoteUpdateRef,
@@ -1516,6 +1517,26 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     },
     [editor, fetchNote, getTemplate]
   )
+
+  // The note's overflow menu opens the same picker `/insert template` does, at
+  // the caret. When the editor was never focused there is no text cursor, so
+  // the last block anchors the insert and the template lands at the end.
+  useEffect(() => {
+    if (!openTemplateInsertRef) return
+    openTemplateInsertRef.current = () => {
+      const blocks = editor.document
+      let anchorId: string | undefined
+      try {
+        anchorId = editor.getTextCursorPosition().block.id
+      } catch {
+        anchorId = blocks[blocks.length - 1]?.id
+      }
+      if (anchorId) setTemplateAnchorBlockId(anchorId)
+    }
+    return () => {
+      openTemplateInsertRef.current = null
+    }
+  }, [editor, openTemplateInsertRef])
 
   /**
    * BlockNote's file panel, replaced outright.
