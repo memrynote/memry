@@ -37,7 +37,11 @@ import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { NoteCover } from '@/components/note/note-cover'
-import { CoverPickerDialog } from '@/components/note/cover-picker-dialog'
+import {
+  CoverPickerDialog,
+  coverPickerAnchorFrom,
+  type CoverPickerAnchor
+} from '@/components/note/cover-picker-dialog'
 import { useNoteCover } from '@/components/note/use-note-cover'
 import { BacklinksSection, Backlink, Mention, backlinkId } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
@@ -242,7 +246,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false)
   const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false)
-  const [isCoverPickerOpen, setIsCoverPickerOpen] = useState(false)
+  const [coverPickerAnchor, setCoverPickerAnchor] = useState<CoverPickerAnchor | null>(null)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   // External ref to the inline title textarea so the "Rename" menu item can focus it
@@ -1697,7 +1701,7 @@ export function NotePage({ noteId }: NotePageProps) {
             focus={coverFocus}
             credit={coverCredit}
             creditUrl={coverCreditUrl}
-            onChange={() => setIsCoverPickerOpen(true)}
+            onChange={(event) => setCoverPickerAnchor(coverPickerAnchorFrom(event))}
             onRemove={() => void removeCover()}
             onFocusChange={(next) => void setCoverFocus(next)}
             repositioning={isRepositioningCover}
@@ -1787,7 +1791,9 @@ export function NotePage({ noteId }: NotePageProps) {
             onCreateTag={(...args) => void handleCreateTag(...args)}
             onAddProperty={handleAddPropertyWithExpand}
             existingNames={properties.map((p) => p.name)}
-            onAddCover={cover ? undefined : () => setIsCoverPickerOpen(true)}
+            onAddCover={
+              cover ? undefined : (event) => setCoverPickerAnchor(coverPickerAnchorFrom(event))
+            }
             disabled={isDeleted}
           />
         </div>
@@ -1937,8 +1943,10 @@ export function NotePage({ noteId }: NotePageProps) {
       />
 
       <CoverPickerDialog
-        open={isCoverPickerOpen}
-        onOpenChange={setIsCoverPickerOpen}
+        anchor={coverPickerAnchor}
+        onOpenChange={(next) => {
+          if (!next) setCoverPickerAnchor(null)
+        }}
         noteId={noteId}
         onApply={(value, { reposition, credit }) => {
           void setCover(value, credit)

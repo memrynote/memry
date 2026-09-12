@@ -1,4 +1,4 @@
-import { useState, memo } from 'react'
+import { useState, memo, type MouseEvent as ReactMouseEvent } from 'react'
 import { Image, List, Tag } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { TagInputPopup } from './tags-row/TagInputPopup'
@@ -14,7 +14,7 @@ export interface GhostAffordanceRowProps {
   onAddTag: (tagId: string) => void
   onCreateTag: (name: string, color: string) => void
   onAddProperty: (property: NewProperty) => void
-  onAddCover?: () => void
+  onAddCover?: (event: ReactMouseEvent<HTMLElement>) => void
   /** Property types this surface cannot store; hidden from the picker rather than degraded on save. */
   excludeTypes?: PropertyType[]
   /** Property names already on the entity — a second `project` is shown but disabled. */

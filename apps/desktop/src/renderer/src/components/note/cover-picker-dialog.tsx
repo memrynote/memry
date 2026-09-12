@@ -1,7 +1,8 @@
 /**
  * CoverPickerDialog — the one surface for choosing a note's cover.
  *
- * A command palette rather than a gallery modal: a search row, a tab row, and a
+ * A command palette rather than a gallery modal, and a non-modal popover opened
+ * at the click point rather than a centred sheet: a search row, a tab row, and a
  * body whose entries are one flat, arrow-navigable list. Each tab is a row in
  * `COVER_PICKER_TABS`, so a new source (the Unsplash Photos tab) is one entry
  * plus one `items` branch; the switch is exhaustive, so the compiler names the
@@ -13,7 +14,15 @@
  * @module components/note/cover-picker-dialog
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent
+} from 'react'
 import { toast } from 'sonner'
 import type { VaultAttachmentEntry } from '@memry/rpc/notes'
 import type {
@@ -32,7 +41,7 @@ import { notesService } from '@/services/notes-service'
 import { unsplashService } from '@/services/unsplash-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Kbd } from '@/components/ui/kbd'
 import { Image, Loader2, Search, Upload } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -43,6 +52,15 @@ import {
 } from './content-area/attachment-picker-dialog'
 
 const logger = createLogger('CoverPicker')
+
+/** Unsplash's own mark. Brand glyphs do not live in the icon set. */
+function UnsplashMark() {
+  return (
+    <svg aria-hidden viewBox="0 0 20 20" className="h-3 w-3 shrink-0 fill-current">
+      <path d="M7 6.5V2h6v4.5zM13 9h5v9H2V9h5v4.5h6z" />
+    </svg>
+  )
+}
 
 /** Long enough that a typed word costs one request, short enough to feel live. */
 const PHOTO_SEARCH_DEBOUNCE_MS = 400
@@ -106,8 +124,24 @@ function itemKey(item: CoverPickerItem): string {
   }
 }
 
+/** Where the picker opens: the click's viewport coordinates, not a boolean. */
+export interface CoverPickerAnchor {
+  x: number
+  y: number
+}
+
+export function coverPickerAnchorFrom(event: ReactMouseEvent<HTMLElement>): CoverPickerAnchor {
+  // Keyboard activation of a button reports a click at 0/0, which would pin the
+  // picker to the viewport corner; the button's own centre is the real origin.
+  if (event.clientX === 0 && event.clientY === 0) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+  }
+  return { x: event.clientX, y: event.clientY }
+}
+
 export interface CoverPickerDialogProps {
-  open: boolean
+  anchor: CoverPickerAnchor | null
   onOpenChange: (open: boolean) => void
   /** The note that will own an uploaded file. */
   noteId: string
@@ -117,7 +151,13 @@ export interface CoverPickerDialogProps {
   ) => void
 }
 
-export function CoverPickerDialog({ open, onOpenChange, noteId, onApply }: CoverPickerDialogProps) {
+export function CoverPickerDialog({
+  anchor,
+  onOpenChange,
+  noteId,
+  onApply
+}: CoverPickerDialogProps) {
+  const open = anchor !== null
   const { t } = useT('notes')
   const [requestedTab, setTab] = useState<CoverPickerTabId>('washes')
   const [query, setQuery] = useState('')
@@ -387,15 +427,32 @@ export function CoverPickerDialog({ open, onOpenChange, noteId, onApply }: Cover
         : null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-xl gap-0 overflow-hidden p-0 [&>button]:hidden"
+    <Popover open={open} onOpenChange={onOpenChange} modal={false}>
+      {anchor !== null && (
+        <PopoverAnchor asChild>
+          {/* `left` stays physical: clientX is measured from the viewport's left
+              edge in both LTR and RTL. */}
+          <div
+            className="pointer-events-none fixed h-0 w-0"
+            style={{ left: anchor.x, top: anchor.y }}
+          />
+        </PopoverAnchor>
+      )}
+      <PopoverContent
+        side="bottom"
+        align="start"
+        sideOffset={8}
+        collisionPadding={12}
+        className="w-[34rem] gap-0 overflow-hidden p-0"
         data-testid="cover-picker-dialog"
-        aria-describedby={undefined}
+        aria-label={t('cover.picker.title')}
         onKeyDown={handleKeyDown}
+        // The search input's own autoFocus is the intended landing spot.
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        // A click outside that never takes focus leaves the picker open; focus
+        // leaving and esc still close it.
+        onPointerDownOutside={(event) => event.preventDefault()}
       >
-        <DialogTitle className="sr-only">{t('cover.picker.title')}</DialogTitle>
-
         <div className="flex items-center gap-2.5 border-b px-3.5">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
@@ -420,7 +477,7 @@ export function CoverPickerDialog({ open, onOpenChange, noteId, onApply }: Cover
               aria-selected={entry.id === tab}
               onClick={() => selectTab(entry.id)}
               className={cn(
-                'rounded-md px-2 py-1 text-[12.5px] font-medium',
+                'flex items-center gap-1.5 rounded-md px-2 py-1 text-[12.5px] font-medium',
                 'transition-colors duration-150 motion-reduce:transition-none',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 entry.id === tab
@@ -428,6 +485,7 @@ export function CoverPickerDialog({ open, onOpenChange, noteId, onApply }: Cover
                   : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
               )}
             >
+              {entry.id === 'photos' && <UnsplashMark />}
               {t(`cover.picker.tab.${entry.id}`)}
             </button>
           ))}
@@ -448,7 +506,7 @@ export function CoverPickerDialog({ open, onOpenChange, noteId, onApply }: Cover
 
         <div
           role="tabpanel"
-          className="max-h-[min(24rem,60vh)] overflow-y-auto p-2"
+          className="h-[21rem] overflow-y-auto [scrollbar-gutter:stable] p-2"
           data-testid="cover-picker-panel"
           data-tab={tab}
         >
@@ -661,7 +719,7 @@ export function CoverPickerDialog({ open, onOpenChange, noteId, onApply }: Cover
             if (file) void upload(file)
           }}
         />
-      </DialogContent>
-    </Dialog>
+      </PopoverContent>
+    </Popover>
   )
 }

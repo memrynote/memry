@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent
 } from 'react'
 import { useT } from '@memry/i18n/renderer'
@@ -39,7 +40,7 @@ export interface NoteCoverProps {
   focus: number
   credit?: string | null
   creditUrl?: string | null
-  onChange: () => void
+  onChange: (event: ReactMouseEvent<HTMLElement>) => void
   onRemove: () => void
   onFocusChange: (focus: number) => void
   /** Reposition is controlled so the picker's "Apply & reposition" can start it. */

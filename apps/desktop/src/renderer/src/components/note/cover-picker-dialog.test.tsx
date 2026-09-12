@@ -50,7 +50,14 @@ const NOT_AN_IMAGE: VaultAttachmentEntry = {
 function renderPicker() {
   const onApply = vi.fn()
   const onOpenChange = vi.fn()
-  render(<CoverPickerDialog open onOpenChange={onOpenChange} noteId={NOTE_ID} onApply={onApply} />)
+  render(
+    <CoverPickerDialog
+      anchor={{ x: 0, y: 0 }}
+      onOpenChange={onOpenChange}
+      noteId={NOTE_ID}
+      onApply={onApply}
+    />
+  )
   return { onApply, onOpenChange }
 }
 
@@ -87,7 +94,7 @@ async function searchFor(text: string) {
 }
 
 async function openPhotosTab(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('tab', { name: 'Photos' }))
+  await user.click(screen.getByRole('tab', { name: 'Unsplash' }))
 }
 
 function photosUser() {
@@ -249,7 +256,7 @@ describe('CoverPickerDialog photos', () => {
 
     expect(panel()).toHaveAttribute('data-tab', 'washes')
     await waitFor(() => expect(unsplashSearch).toHaveBeenCalledWith({ query: '' }))
-    expect(screen.getByRole('tab', { name: 'Photos' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Unsplash' })).toBeInTheDocument()
     expect(realSearches()).toHaveLength(0)
   })
 
@@ -267,7 +274,7 @@ describe('CoverPickerDialog photos', () => {
     unsplashSearch.mockResolvedValue({ ok: false, reason: 'not-configured' })
     renderPicker()
 
-    await waitFor(() => expect(screen.queryByRole('tab', { name: 'Photos' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('tab', { name: 'Unsplash' })).toBeNull())
     expect(screen.getAllByRole('tab')).toHaveLength(COVER_PICKER_TABS.length - 1)
   })
 
@@ -290,7 +297,7 @@ describe('CoverPickerDialog photos', () => {
     })
 
     expect(panel()).toHaveAttribute('data-tab', 'washes')
-    expect(screen.queryByRole('tab', { name: 'Photos' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'Unsplash' })).toBeNull()
   })
 
   it('searches once per settled query and serves a repeat from the cache', async () => {
@@ -336,7 +343,7 @@ describe('CoverPickerDialog photos', () => {
 
     const counter = await screen.findByTestId('cover-picker-rate-limit')
     expect(counter.className).toContain('amber')
-    expect(screen.getByRole('tab', { name: 'Photos' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Unsplash' })).toBeInTheDocument()
   })
 
   it('downloads the picked photo and applies its ref and credit', async () => {
@@ -387,7 +394,12 @@ describe('CoverPickerDialog photos', () => {
         )
       )
       const { unmount } = render(
-        <CoverPickerDialog open onOpenChange={vi.fn()} noteId={NOTE_ID} onApply={vi.fn()} />
+        <CoverPickerDialog
+          anchor={{ x: 0, y: 0 }}
+          onOpenChange={vi.fn()}
+          noteId={NOTE_ID}
+          onApply={vi.fn()}
+        />
       )
       await openPhotosTab(user)
       await searchFor('sunset')
@@ -400,5 +412,44 @@ describe('CoverPickerDialog photos', () => {
     }
 
     expect(new Set(seen.values()).size).toBe(3)
+  })
+})
+
+describe('CoverPickerDialog surface', () => {
+  it('stays open when a click outside never moves focus', async () => {
+    const user = userEvent.setup()
+    const { onOpenChange } = renderPicker()
+
+    await user.click(document.body)
+
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+    expect(screen.getByTestId('cover-picker-dialog')).toBeInTheDocument()
+  })
+
+  it('closes when focus moves to something outside it', async () => {
+    const { onOpenChange } = renderPicker()
+    const outside = document.createElement('button')
+    document.body.appendChild(outside)
+
+    act(() => {
+      outside.focus()
+    })
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    outside.remove()
+  })
+
+  it('keeps the panel the same size across a tab switch', async () => {
+    const user = userEvent.setup()
+    renderPicker()
+
+    const onWashes = panel().className
+    expect(onWashes).toContain('h-[21rem]')
+
+    await user.click(screen.getByRole('tab', { name: 'From note' }))
+    expect(panel().className).toBe(onWashes)
+
+    await user.click(screen.getByRole('tab', { name: 'Upload' }))
+    expect(panel().className).toBe(onWashes)
   })
 })
