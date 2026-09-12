@@ -103,7 +103,6 @@
       "fullWidth": "전폭",
       "disableLocalOnly": "로컬만 비활성화",
       "setLocalOnly": "로컬만 설정",
-      "applyTemplate": "템플릿 적용",
       "saveAsTemplate": "템플릿으로 저장",
       "copyPath": "경로 복사",
       "delete": "메모 삭제",

@@ -1,5 +1,6 @@
 {
   "worktree": {
-    "setup": "pnpm install"
+    "setup": "set -euo pipefail\n\nSKIP_ELECTRON_REBUILD=1 pnpm install --frozen-lockfile\npnpm env:link\npnpm env:check\npnpm repair:links\n\nmkdir -p ~/.memry\nwhile ! mkdir ~/.memry/native-rebuild.lock 2>/dev/null; do sleep 5; done\npnpm --filter @memry/desktop rebuild:electron\nrmdir ~/.memry/native-rebuild.lock\n\npnpm --filter @memry/mobile editor:build\n\nwhile ! mkdir ~/.memry/pod.lock 2>/dev/null; do sleep 5; done\ncd apps/mobile\nnpx expo prebuild --platform ios --no-install\n(cd ios && pod install)\ncd ../..\nrmdir ~/.memry/pod.lock",
+    "teardown": "set -uo pipefail\n\nfor p in 8081 8082 8083 8084 8085; do kill $(lsof -ti :$p) 2>/dev/null || true; done\n\nWT=\"$(git rev-parse --show-toplevel)\"\nfor f in ~/.memry/sim-slots/slot-*; do\n  [ \"$(cat \"$f\" 2>/dev/null)\" = \"$WT\" ] && rm -f \"$f\"\ndone\n\nrmdir ~/.memry/native-rebuild.lock ~/.memry/pod.lock 2>/dev/null || true"
   }
 }

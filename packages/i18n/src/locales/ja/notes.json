@@ -103,7 +103,6 @@
       "fullWidth": "全幅",
       "disableLocalOnly": "ローカルのみを無効にする",
       "setLocalOnly": "ローカルのみに設定",
-      "applyTemplate": "テンプレートを適用",
       "saveAsTemplate": "テンプレートとして保存",
       "copyPath": "パスをコピー",
       "delete": "メモを削除",

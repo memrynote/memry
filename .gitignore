@@ -79,3 +79,5 @@ agents/
 .superpowers/
 
 .feedback
+
+.release-state/

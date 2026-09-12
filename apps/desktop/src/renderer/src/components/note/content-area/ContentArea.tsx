@@ -91,6 +91,9 @@ import {
   type AttachmentKind,
   type InsertedAttachment
 } from './attachment-picker-dialog'
+import { insertTemplateBlocks } from './insert-template'
+import { TemplateSelector } from '@/components/note/template-selector'
+import { useTemplates } from '@/hooks/use-templates'
 import { createMultiBlockIndentPlugin } from './multi-block-indent-plugin'
 import { createBulletCollapsePlugin, BULLET_FOLD_GUTTER } from './bullet-collapse-plugin'
 
@@ -130,9 +133,12 @@ import { DateMentionPopover, type DateMentionValue } from './date-mention-popove
 import { MentionMenu, type MentionSuggestionItem } from './mention-menu'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { createLogger } from '@/lib/logger'
 import { useMentionSuggestions } from './hooks/use-mention-suggestions'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
+
+const log = createLogger('ContentArea')
 
 const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
 
@@ -319,6 +325,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   tagIconMap,
   onInlineTagsChange,
   focusAtEndRef,
+  openTemplateInsertRef,
   yjsFragment,
   yjsDoc,
   isRemoteUpdateRef,
@@ -467,21 +474,28 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // `attachments/<noteId>/`, so those surfaces need both pieces. They are
   // looked up once per note, reused by every block in it, and re-fetched when
   // the mounted note changes.
-  const notePathLookupRef = useRef<{ noteId: string; path: Promise<string | undefined> } | null>(
-    null
-  )
-  const fetchNotePath = useCallback(async (): Promise<string | undefined> => {
+  const noteLookupRef = useRef<{
+    noteId: string
+    note: Promise<{ path?: string; title?: string } | undefined>
+  } | null>(null)
+  const fetchNote = useCallback(async (): Promise<
+    { path?: string; title?: string } | undefined
+  > => {
     const id = noteIdRef.current
     if (!id) return undefined
-    const cached = notePathLookupRef.current
-    if (cached?.noteId === id) return cached.path
+    const cached = noteLookupRef.current
+    if (cached?.noteId === id) return cached.note
     const lookup = notesService
       .get(id)
-      .then((note) => note?.path)
+      .then((note) => (note ? { path: note.path, title: note.title } : undefined))
       .catch(() => undefined)
-    notePathLookupRef.current = { noteId: id, path: lookup }
+    noteLookupRef.current = { noteId: id, note: lookup }
     return lookup
   }, [])
+  const fetchNotePath = useCallback(
+    async (): Promise<string | undefined> => (await fetchNote())?.path,
+    [fetchNote]
+  )
 
   const resolveFileUrl = useRef(
     createNoteFileUrlResolver(
@@ -1465,6 +1479,65 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     setAttachmentPicker({ kind })
   }, [])
 
+  const { templates: templateList, getTemplate } = useTemplates()
+  const [templateAnchorBlockId, setTemplateAnchorBlockId] = useState<string | null>(null)
+
+  const insertTemplate = useCallback(
+    async (templateId: string, referenceBlockId: string): Promise<void> => {
+      try {
+        const template = await getTemplate(templateId)
+        if (!template) {
+          toast.error(tRef.current('editor.slashMenu.insertTemplate.failed'))
+          return
+        }
+        const note = await fetchNote()
+        const result = await insertTemplateBlocks({
+          editor,
+          content: template.content,
+          noteTitle: note?.title ?? '',
+          referenceBlockId,
+          consumeEmptyReference: true,
+          notePath: note?.path
+        })
+        if (!result.ok) {
+          toast.error(
+            tRef.current(
+              result.reason === 'empty'
+                ? 'editor.slashMenu.insertTemplate.empty'
+                : 'editor.slashMenu.insertTemplate.failed'
+            )
+          )
+        }
+      } catch (err) {
+        log.error('Failed to insert template', err)
+        toast.error(
+          extractErrorMessage(err, tRef.current('editor.slashMenu.insertTemplate.failed'))
+        )
+      }
+    },
+    [editor, fetchNote, getTemplate]
+  )
+
+  // The note's overflow menu opens the same picker `/insert template` does, at
+  // the caret. When the editor was never focused there is no text cursor, so
+  // the last block anchors the insert and the template lands at the end.
+  useEffect(() => {
+    if (!openTemplateInsertRef) return
+    openTemplateInsertRef.current = () => {
+      const blocks = editor.document
+      let anchorId: string | undefined
+      try {
+        anchorId = editor.getTextCursorPosition().block.id
+      } catch {
+        anchorId = blocks[blocks.length - 1]?.id
+      }
+      if (anchorId) setTemplateAnchorBlockId(anchorId)
+    }
+    return () => {
+      openTemplateInsertRef.current = null
+    }
+  }, [editor, openTemplateInsertRef])
+
   /**
    * BlockNote's file panel, replaced outright.
    *
@@ -1807,6 +1880,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               }}
             />
           )}
+          {templateAnchorBlockId && (
+            <TemplateSelector
+              isOpen
+              applyMode
+              onClose={() => setTemplateAnchorBlockId(null)}
+              onSelect={(templateId) => {
+                setTemplateAnchorBlockId(null)
+                if (templateId) void insertTemplate(templateId, templateAnchorBlockId)
+              }}
+            />
+          )}
           {attachmentPicker && noteId && (
             <AttachmentPickerDialog
               open
@@ -2095,6 +2179,28 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   group: 'Basic blocks',
                   subtext: t('editor.slashMenu.linkToNote.subtext')
                 }
+                // A template is a block insert. Inside a table cell it lands
+                // after the whole table and takes the caret with it (#1640), and
+                // unlike image and check there is no inline form to fall back to.
+                const insertTemplateItem = {
+                  title: t('editor.slashMenu.insertTemplate.title'),
+                  onItemClick: () =>
+                    setTemplateAnchorBlockId(editor.getTextCursorPosition().block.id),
+                  aliases: ['template', 'templates', 'snippet', 'insert'],
+                  group: 'Basic blocks',
+                  subtext: t('editor.slashMenu.insertTemplate.subtext')
+                }
+                const templateItems =
+                  query && !inCell
+                    ? templateList.map((template) => ({
+                        title: template.name,
+                        onItemClick: () =>
+                          void insertTemplate(template.id, editor.getTextCursorPosition().block.id),
+                        aliases: [] as string[],
+                        group: t('editor.slashMenu.insertTemplate.group'),
+                        subtext: template.description
+                      }))
+                    : []
                 const all = orderSlashMenuItemsByGroup([
                   ...defaults,
                   ...kindItems,
@@ -2102,7 +2208,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   ...(taskItem ? [taskItem] : []),
                   ...dateItems,
                   linkToNoteItem,
-                  ...aiItems
+                  ...(inCell ? [] : [insertTemplateItem]),
+                  ...aiItems,
+                  ...templateItems
                 ])
                 if (!query) return all
                 const lower = query.toLowerCase()
