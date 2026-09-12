@@ -471,7 +471,8 @@ export class PushCoordinator {
    * `attempts = 0` row, so a failed push leaves the next edit to open a second
    * row for the same `(type, itemId)`.
    *
-   * The retained row must be the NEWEST one. `dequeue` orders
+   * The retained row must be the NEWEST one, unless the fold resolves to an
+   * older row's delete. `dequeue` orders
    * `desc(priority), asc(createdAt)`, so at equal priority the batch arrives
    * oldest-first; keeping the first row seen would keep the stale payload.
    * That only looked harmless because `resolvePushPayload` rebuilds from the
@@ -494,14 +495,15 @@ export class PushCoordinator {
         seen.set(key, item)
         continue
       }
-      // Fold the operation with the same precedence `enqueue` uses, or a
-      // create that was never acked would be downgraded to the newer row's
-      // update and pushed for an id the server has never seen.
-      seen.set(key, {
-        ...item,
-        operation: coalesceSyncOperations(older.operation, item.operation)
-      })
-      superseded.push({ id: older.id, payload: older.payload })
+      // Fold with the same precedence `enqueue` uses, or a create that was
+      // never acked would be downgraded to the newer row's update and pushed
+      // for an id the server has never seen. The fold also picks the row whose
+      // payload survives, so a tombstone keeps its own clock instead of the
+      // newer row's.
+      const folded = coalesceSyncOperations(older.operation, item.operation)
+      const [retained, dropped] = folded.payload === 'existing' ? [older, item] : [item, older]
+      seen.set(key, { ...retained, operation: folded.operation })
+      superseded.push({ id: dropped.id, payload: dropped.payload })
     }
 
     if (superseded.length > 0) {

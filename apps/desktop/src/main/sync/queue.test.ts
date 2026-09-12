@@ -97,6 +97,39 @@ describe('SyncQueueManager', () => {
       expect(items[0].payload).toBe('{"deleted":true}')
     })
 
+    it('keeps the queued delete when a later update arrives', () => {
+      // #given pending delete carrying the tombstone clock
+      queue.enqueue({
+        type: 'note',
+        itemId: 'item-1',
+        operation: 'delete',
+        payload: '{"deleted":true,"clock":{"device-1":4}}'
+      })
+
+      // #when an update for the same item arrives
+      queue.enqueue(makeInput({ operation: 'update', payload: '{"v":2}' }))
+
+      // #then the tombstone survives, payload and all
+      expect(queue.getSize()).toBe(1)
+      const items = queue.peek(1)
+      expect(items[0].operation).toBe('delete')
+      expect(items[0].payload).toBe('{"deleted":true,"clock":{"device-1":4}}')
+    })
+
+    it('coalesces delete+create into create', () => {
+      // #given pending delete
+      queue.enqueue(makeInput({ operation: 'delete', payload: '{"deleted":true}' }))
+
+      // #when the item is recreated under the same id
+      queue.enqueue(makeInput({ operation: 'create', payload: '{"v":2}' }))
+
+      // #then the live item wins, with its own payload
+      expect(queue.getSize()).toBe(1)
+      const items = queue.peek(1)
+      expect(items[0].operation).toBe('create')
+      expect(items[0].payload).toBe('{"v":2}')
+    })
+
     it('coalesces update+update keeping update operation', () => {
       // #given pending update
       queue.enqueue(makeInput({ operation: 'update', payload: '{"v":1}' }))

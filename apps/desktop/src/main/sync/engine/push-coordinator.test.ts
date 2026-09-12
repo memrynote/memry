@@ -443,6 +443,116 @@ describe('PushCoordinator', () => {
       expect(queue.getSize()).toBe(0)
       expect(markPushSynced).toHaveBeenCalledWith(expect.anything(), 'task-1')
     })
+
+    it('#then a server-side rejection of the item keeps the row instead of deleting it', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      const markPushSynced = vi.fn()
+      getHandlerMock.mockReturnValue({ markPushSynced })
+      rejectAllWith('SYNC_VALIDATION_FAILED')
+
+      const payload = JSON.stringify({ title: 'Rejected edit' })
+      queue.enqueue({ type: 'task', itemId: 'task-1', operation: 'update', payload })
+
+      await coordinator.push()
+
+      // Never deleted, never marked synced — the user's edit is still on disk.
+      expect(queue.getSize()).toBe(1)
+      expect(queue.peek()[0].payload).toBe(payload)
+      expect(markPushSynced).not.toHaveBeenCalled()
+      // One cycle costs exactly one attempt. The push loop has no backoff, so a
+      // row re-pushed inside the same call would burn the whole budget against a
+      // single burst of requests and dead-letter a transiently rejected edit for
+      // good; the row is deferred to the next cycle instead.
+      expect(postToServerMock).toHaveBeenCalledTimes(1)
+      expect(queue.peek()[0].attempts).toBe(1)
+      expect(queue.getPendingCount()).toBe(1)
+    })
+
+    it('#then the attempt budget still dead-letters the row, but only after one cycle each', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      rejectAllWith('SYNC_VALIDATION_FAILED')
+
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Doomed edit' })
+      })
+
+      for (let cycle = 1; cycle <= DEFAULT_MAX_ATTEMPTS; cycle++) {
+        await coordinator.push()
+        expect(queue.peek()[0].attempts).toBe(cycle)
+      }
+
+      // The brake is intact: the budget is spent, just spread over cycles.
+      expect(postToServerMock).toHaveBeenCalledTimes(DEFAULT_MAX_ATTEMPTS)
+      expect(queue.getPendingCount()).toBe(0)
+
+      // And a spent budget really does stop the pushing.
+      await coordinator.push()
+      expect(postToServerMock).toHaveBeenCalledTimes(DEFAULT_MAX_ATTEMPTS)
+    })
+
+    it('#then a rejected row does not block the rows queued behind it in the same cycle', async () => {
+      const { coordinator, queue, ctx } = createHarness(getDb())
+      // One row per request, so the rejected row is at the head of every dequeue.
+      ctx.options.pushBatchSize = 1
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        const rejected = body.items.filter((i) => i.id === 'task-1')
+        return {
+          accepted: body.items.filter((i) => i.id !== 'task-1').map((i) => i.id),
+          rejected: rejected.map((i) => ({ id: i.id, reason: 'SYNC_VALIDATION_FAILED' })),
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Rejected' })
+      })
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-2',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Fine' })
+      })
+
+      await coordinator.push()
+
+      // Two requests: the rejected row is skipped for the rest of the cycle
+      // rather than re-sent, and the healthy row behind it still goes out.
+      expect(postToServerMock).toHaveBeenCalledTimes(2)
+      expect(queue.peek()).toHaveLength(1)
+      expect(queue.peek()[0].itemId).toBe('task-1')
+      expect(queue.peek()[0].attempts).toBe(1)
+    })
+
+    it('#then a replay rejection is treated as already-synced and drops the row', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      const markPushSynced = vi.fn()
+      getHandlerMock.mockReturnValue({ markPushSynced })
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => ({
+        accepted: [],
+        rejected: body.items.map((i) => ({ id: i.id, reason: 'SYNC_REPLAY_DETECTED' })),
+        serverTime: Math.floor(Date.now() / 1000),
+        maxCursor: 0
+      }))
+
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Already on server' })
+      })
+
+      await coordinator.push()
+
+      expect(queue.getSize()).toBe(0)
+      expect(markPushSynced).toHaveBeenCalledWith(expect.anything(), 'task-1')
+    })
   })
 
   describe('#given the edge kills an oversized push batch with 503', () => {
@@ -727,6 +837,76 @@ describe('PushCoordinator', () => {
       expect(body.items).toHaveLength(1)
       expect(body.items[0].operation).toBe('create')
       expect(JSON.parse(body.items[0].encryptedData)).toMatchObject({ title: 'second' })
+      expect(queue.getSize()).toBe(0)
+    })
+
+    // A tombstone downgraded to an update clears `deleted_at` on the server and
+    // the item comes back on every device. The delete's payload has to survive
+    // too: it carries the clock that keeps the deletion authoritative.
+    it('#then a queued delete survives a newer update row', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+      getHandlerMock.mockReturnValue({ markPushSynced: vi.fn() })
+
+      const tombstone = JSON.stringify({ id: 'cal-ev-9', clock: { 'device-1': 7 } })
+      const stale = JSON.stringify({ id: 'cal-ev-9', title: 'Retro', clock: { 'device-1': 6 } })
+      queue.enqueue({
+        type: 'calendar_external_event',
+        itemId: 'cal-ev-9',
+        operation: 'delete',
+        payload: tombstone
+      })
+      queue.markFailed(queue.peek()[0].id, 'transient')
+      queue.enqueue({
+        type: 'calendar_external_event',
+        itemId: 'cal-ev-9',
+        operation: 'update',
+        payload: stale
+      })
+      expect(queue.getSize()).toBe(2)
+
+      await coordinator.push()
+
+      const body = postToServerMock.mock.calls[0][1] as PushBody
+      expect(body.items).toHaveLength(1)
+      expect(body.items[0].operation).toBe('delete')
+      expect(body.items[0].encryptedData).toBe(tombstone)
+      expect(queue.getSize()).toBe(0)
+    })
+
+    // The mirror case: the row exists locally again, so the last mutation is a
+    // create and the push must converge on "exists", not on the older delete.
+    it('#then a newer create row supersedes an older delete', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+      getHandlerMock.mockReturnValue({ markPushSynced: vi.fn() })
+
+      const tombstone = JSON.stringify({ id: 'cal-ev-10', clock: { 'device-1': 2 } })
+      const recreated = JSON.stringify({
+        id: 'cal-ev-10',
+        title: 'Standup',
+        clock: { 'device-1': 3 }
+      })
+      queue.enqueue({
+        type: 'calendar_external_event',
+        itemId: 'cal-ev-10',
+        operation: 'delete',
+        payload: tombstone
+      })
+      queue.markFailed(queue.peek()[0].id, 'transient')
+      queue.enqueue({
+        type: 'calendar_external_event',
+        itemId: 'cal-ev-10',
+        operation: 'create',
+        payload: recreated
+      })
+
+      await coordinator.push()
+
+      const body = postToServerMock.mock.calls[0][1] as PushBody
+      expect(body.items).toHaveLength(1)
+      expect(body.items[0].operation).toBe('create')
+      expect(body.items[0].encryptedData).toBe(recreated)
       expect(queue.getSize()).toBe(0)
     })
   })
