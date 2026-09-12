@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Odstrániť {count} položky",
       "bookmark": "Záložka",
       "removeFromBookmarks": "Odstrániť zo záložiek",
-      "applyTemplate": "Použiť šablónu"
+      "applyTemplate": "Použiť šablónu",
+      "saveAsTemplate": "Uložiť ako šablónu"
     },
     "deleteDialog": {
       "noteTitle": "Odstrániť poznámku",
@@ -103,6 +104,7 @@
       "disableLocalOnly": "Zakázať iba lokálne",
       "setLocalOnly": "Nastaviť iba lokálne",
       "applyTemplate": "Použiť šablónu",
+      "saveAsTemplate": "Uložiť ako šablónu",
       "copyPath": "Kopírovať cestu",
       "delete": "Vymazať poznámku",
       "find": "Hľadať…",
@@ -790,6 +792,19 @@
     "full": "Nahradiť obsah a pridať detaily šablóny",
     "success": "Šablóna použitá",
     "title": "Nahradiť obsah poznámky?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Uložiť poznámku ako šablónu",
+    "description": "Vytvorte z tejto poznámky šablónu na opakované použitie. Samotná poznámka zostane nezmenená.",
+    "nameLabel": "Názov šablóny",
+    "loading": "Načítava sa poznámka…",
+    "summary": "Uloží text poznámky, {tagCount, plural, one {# značku} few {# značky} many {# značky} other {# značiek}} a {propertyCount, plural, one {# vlastnosť} few {# vlastnosti} many {# vlastnosti} other {# vlastností}}.",
+    "save": "Uložiť šablónu",
+    "cancel": "Zrušiť",
+    "success": "Šablóna uložená",
+    "edit": "Upraviť šablónu",
+    "failed": "Nepodarilo sa uložiť šablónu",
+    "loadFailed": "Nepodarilo sa načítať poznámku"
   },
   "tagView": {
     "moreActions": "Ďalšie akcie",

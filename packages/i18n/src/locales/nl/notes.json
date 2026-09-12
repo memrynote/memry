@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Verwijder {count}-items",
       "bookmark": "Bladwijzer",
       "removeFromBookmarks": "Verwijderen uit bladwijzers",
-      "applyTemplate": "Sjabloon toepassen"
+      "applyTemplate": "Sjabloon toepassen",
+      "saveAsTemplate": "Opslaan als sjabloon"
     },
     "deleteDialog": {
       "noteTitle": "Notitie verwijderen",
@@ -103,6 +104,7 @@
       "disableLocalOnly": "Schakel alleen lokaal uit",
       "setLocalOnly": "Alleen lokaal instellen",
       "applyTemplate": "Sjabloon toepassen",
+      "saveAsTemplate": "Opslaan als sjabloon",
       "copyPath": "Pad kopiëren",
       "delete": "Notitie verwijderen",
       "find": "Zoeken…",
@@ -790,6 +792,19 @@
     "full": "Inhoud vervangen en sjabloondetails toevoegen",
     "success": "Sjabloon toegepast",
     "title": "Notitie-inhoud vervangen?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Notitie opslaan als sjabloon",
+    "description": "Maak van deze notitie een herbruikbaar sjabloon. De notitie zelf blijft ongewijzigd.",
+    "nameLabel": "Sjabloonnaam",
+    "loading": "Notitie wordt gelezen…",
+    "summary": "Slaat de inhoud van de notitie op, samen met {tagCount, plural, one {# label} other {# labels}} en {propertyCount, plural, one {# eigenschap} other {# eigenschappen}}.",
+    "save": "Sjabloon opslaan",
+    "cancel": "Annuleren",
+    "success": "Sjabloon opgeslagen",
+    "edit": "Sjabloon bewerken",
+    "failed": "Kan sjabloon niet opslaan",
+    "loadFailed": "Kan deze notitie niet lezen"
   },
   "tagView": {
     "moreActions": "Meer acties",

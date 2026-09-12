@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Smazat položky {count}",
       "bookmark": "Přidat do záložek",
       "removeFromBookmarks": "Odebrat ze záložek",
-      "applyTemplate": "Použít šablonu"
+      "applyTemplate": "Použít šablonu",
+      "saveAsTemplate": "Uložit jako šablonu"
     },
     "deleteDialog": {
       "noteTitle": "Smazat poznámku",
@@ -103,6 +104,7 @@
       "disableLocalOnly": "Zakázat pouze místní",
       "setLocalOnly": "Nastavit pouze místní",
       "applyTemplate": "Použít šablonu",
+      "saveAsTemplate": "Uložit jako šablonu",
       "copyPath": "Kopírovat cestu",
       "delete": "Smazat poznámku",
       "find": "Najít…",
@@ -790,6 +792,19 @@
     "full": "Nahradit obsah a přidat údaje ze šablony",
     "success": "Šablona použita",
     "title": "Nahradit obsah poznámky?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Uložit poznámku jako šablonu",
+    "description": "Vytvořte z této poznámky šablonu k opakovanému použití. Samotná poznámka zůstane beze změny.",
+    "nameLabel": "Název šablony",
+    "loading": "Načítání poznámky…",
+    "summary": "Uloží text poznámky, {tagCount, plural, one {# značku} few {# značky} many {# značky} other {# značek}} a {propertyCount, plural, one {# vlastnost} few {# vlastnosti} many {# vlastnosti} other {# vlastností}}.",
+    "save": "Uložit šablonu",
+    "cancel": "Zrušit",
+    "success": "Šablona uložena",
+    "edit": "Upravit šablonu",
+    "failed": "Šablonu se nepodařilo uložit",
+    "loadFailed": "Poznámku se nepodařilo načíst"
   },
   "tagView": {
     "moreActions": "Další akce",

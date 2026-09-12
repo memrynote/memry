@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Poista {count} kohteet",
       "bookmark": "Kirjanmerkki",
       "removeFromBookmarks": "Poista kirjanmerkeistä",
-      "applyTemplate": "Käytä mallia"
+      "applyTemplate": "Käytä mallia",
+      "saveAsTemplate": "Tallenna mallina"
     },
     "deleteDialog": {
       "noteTitle": "Poista huomautus",
@@ -103,6 +104,7 @@
       "disableLocalOnly": "Poista vain paikallinen käytöstä",
       "setLocalOnly": "Aseta vain paikallinen",
       "applyTemplate": "Käytä mallia",
+      "saveAsTemplate": "Tallenna mallina",
       "copyPath": "Kopioi polku",
       "delete": "Poista muistiinpano",
       "find": "Etsi…",
@@ -790,6 +792,19 @@
     "full": "Korvaa sisältö ja lisää mallin tiedot",
     "success": "Malli otettu käyttöön",
     "title": "Korvataanko muistiinpanon sisältö?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Tallenna muistiinpano mallina",
+    "description": "Luo tästä muistiinpanosta malli, jota voit käyttää uudelleen. Itse muistiinpano säilyy ennallaan.",
+    "nameLabel": "Mallin nimi",
+    "loading": "Luetaan muistiinpanoa…",
+    "summary": "Tallentaa muistiinpanon sisällön, {tagCount, plural, one {# tunnisteen} other {# tunnistetta}} ja {propertyCount, plural, one {# ominaisuuden} other {# ominaisuutta}}.",
+    "save": "Tallenna malli",
+    "cancel": "Peruuta",
+    "success": "Malli tallennettu",
+    "edit": "Muokkaa mallia",
+    "failed": "Mallin tallentaminen epäonnistui",
+    "loadFailed": "Muistiinpanoa ei voitu lukea"
   },
   "tagView": {
     "moreActions": "Lisää toimintoja",

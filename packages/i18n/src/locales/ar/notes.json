@@ -62,7 +62,8 @@
       "deleteSelectedItems": "حذف عناصر {count}",
       "bookmark": "إشارة مرجعية",
       "removeFromBookmarks": "إزالة من الإشارات المرجعية",
-      "applyTemplate": "تطبيق قالب"
+      "applyTemplate": "تطبيق قالب",
+      "saveAsTemplate": "حفظ كقالب"
     },
     "deleteDialog": {
       "noteTitle": "حذف الملاحظة",
@@ -103,6 +104,7 @@
       "disableLocalOnly": "تعطيل المحلية فقط",
       "setLocalOnly": "تعيين محلي فقط",
       "applyTemplate": "تطبيق قالب",
+      "saveAsTemplate": "حفظ كقالب",
       "copyPath": "نسخ المسار",
       "delete": "حذف الملاحظة",
       "find": "بحث…",
@@ -790,6 +792,19 @@
     "full": "استبدال المحتوى وإضافة تفاصيل القالب",
     "success": "تم تطبيق القالب",
     "title": "استبدال محتوى الملاحظة؟"
+  },
+  "saveNoteAsTemplate": {
+    "title": "حفظ الملاحظة كقالب",
+    "description": "أنشئ قالبًا قابلًا لإعادة الاستخدام من هذه الملاحظة. تبقى الملاحظة نفسها كما هي.",
+    "nameLabel": "اسم القالب",
+    "loading": "جارٍ قراءة هذه الملاحظة…",
+    "summary": "يحفظ نص الملاحظة و{tagCount, plural, zero {بدون علامات} one {علامة واحدة} two {علامتين} few {# علامات} many {# علامة} other {# علامة}} و{propertyCount, plural, zero {بدون خصائص} one {خاصية واحدة} two {خاصيتين} few {# خصائص} many {# خاصية} other {# خاصية}}.",
+    "save": "حفظ القالب",
+    "cancel": "إلغاء",
+    "success": "تم حفظ القالب",
+    "edit": "تحرير القالب",
+    "failed": "فشل حفظ القالب",
+    "loadFailed": "تعذّرت قراءة هذه الملاحظة"
   },
   "tagView": {
     "moreActions": "المزيد من الإجراءات",

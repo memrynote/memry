@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Ștergeți elementele {count}",
       "bookmark": "Marchează",
       "removeFromBookmarks": "Elimină din marcaje",
-      "applyTemplate": "Aplică șablonul"
+      "applyTemplate": "Aplică șablonul",
+      "saveAsTemplate": "Salvează ca șablon"
     },
     "deleteDialog": {
       "noteTitle": "Ștergeți nota",
@@ -103,6 +104,7 @@
       "disableLocalOnly": "Dezactivați numai local",
       "setLocalOnly": "Setați numai local",
       "applyTemplate": "Aplică șablonul",
+      "saveAsTemplate": "Salvează ca șablon",
       "copyPath": "Copiază calea",
       "delete": "Șterge nota",
       "find": "Caută…",
@@ -790,6 +792,19 @@
     "full": "Înlocuiește conținutul și adaugă detaliile șablonului",
     "success": "Șablon aplicat",
     "title": "Înlocuiești conținutul notei?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Salvează nota ca șablon",
+    "description": "Creează un șablon reutilizabil din această notă. Nota rămâne neschimbată.",
+    "nameLabel": "Numele șablonului",
+    "loading": "Se citește nota…",
+    "summary": "Salvează conținutul notei, {tagCount, plural, one {# etichetă} few {# etichete} other {# de etichete}} și {propertyCount, plural, one {# proprietate} few {# proprietăți} other {# de proprietăți}}.",
+    "save": "Salvează șablonul",
+    "cancel": "Anulează",
+    "success": "Șablon salvat",
+    "edit": "Editează șablonul",
+    "failed": "Nu s-a putut salva șablonul",
+    "loadFailed": "Nota nu a putut fi citită"
   },
   "tagView": {
     "moreActions": "Mai multe acțiuni",

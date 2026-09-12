@@ -62,7 +62,8 @@
       "deleteSelectedItems": "删除 {count} 项目",
       "bookmark": "添加书签",
       "removeFromBookmarks": "从书签中移除",
-      "applyTemplate": "应用模板"
+      "applyTemplate": "应用模板",
+      "saveAsTemplate": "保存为模板"
     },
     "deleteDialog": {
       "noteTitle": "删除笔记",
@@ -103,6 +104,7 @@
       "disableLocalOnly": "仅禁用本地",
       "setLocalOnly": "仅设置本地",
       "applyTemplate": "应用模板",
+      "saveAsTemplate": "保存为模板",
       "copyPath": "复制路径",
       "delete": "删除笔记",
       "find": "查找…",
@@ -790,6 +792,19 @@
     "full": "替换内容并添加模板详情",
     "success": "模板已应用",
     "title": "替换笔记内容？"
+  },
+  "saveNoteAsTemplate": {
+    "title": "将笔记保存为模板",
+    "description": "用这则笔记创建可重复使用的模板。笔记本身保持不变。",
+    "nameLabel": "模板名称",
+    "loading": "正在读取此笔记…",
+    "summary": "将保存笔记正文、{tagCount, plural, other {# 个标签}}和{propertyCount, plural, other {# 个属性}}。",
+    "save": "保存模板",
+    "cancel": "取消",
+    "success": "模板已保存",
+    "edit": "编辑模板",
+    "failed": "保存模板失败",
+    "loadFailed": "无法读取此笔记"
   },
   "tagView": {
     "moreActions": "更多操作",
