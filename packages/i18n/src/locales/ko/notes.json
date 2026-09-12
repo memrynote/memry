@@ -256,6 +256,14 @@
       "todo": "할 일"
     }
   },
+  "cover": {
+    "add": "커버 추가",
+    "change": "커버 변경",
+    "remove": "커버 제거",
+    "alt": "커버 이미지",
+    "setFailed": "커버 이미지를 설정할 수 없습니다",
+    "removeFailed": "커버 이미지를 제거할 수 없습니다"
+  },
   "templateSelector": {
     "title": "캔버스를 선택하세요",
     "description": "메모를 시작하려면 템플릿을 선택하세요.",

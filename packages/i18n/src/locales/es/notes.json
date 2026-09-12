@@ -256,6 +256,14 @@
       "todo": "Pendiente"
     }
   },
+  "cover": {
+    "add": "Añadir portada",
+    "change": "Cambiar portada",
+    "remove": "Quitar portada",
+    "alt": "Imagen de portada",
+    "setFailed": "No se pudo establecer la imagen de portada",
+    "removeFailed": "No se pudo quitar la imagen de portada"
+  },
   "templateSelector": {
     "title": "Elige tu lienzo",
     "description": "Seleccione una plantilla para comenzar su nota",

@@ -256,6 +256,14 @@
       "todo": "Å gjøre"
     }
   },
+  "cover": {
+    "add": "Legg til omslag",
+    "change": "Endre omslag",
+    "remove": "Fjern omslag",
+    "alt": "Omslagsbilde",
+    "setFailed": "Kunne ikke angi omslagsbildet",
+    "removeFailed": "Kunne ikke fjerne omslagsbildet"
+  },
   "templateSelector": {
     "title": "Velg ditt lerret",
     "description": "Velg en mal for å starte notatet",

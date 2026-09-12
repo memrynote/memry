@@ -256,6 +256,14 @@
       "todo": "Yapılacak"
     }
   },
+  "cover": {
+    "add": "Kapak ekle",
+    "change": "Kapağı değiştir",
+    "remove": "Kapağı kaldır",
+    "alt": "Kapak görseli",
+    "setFailed": "Kapak görseli ayarlanamadı",
+    "removeFailed": "Kapak görseli kaldırılamadı"
+  },
   "templateSelector": {
     "title": "Kanvasınızı Seçin",
     "description": "Notunuza başlamak için bir şablon seçin",

@@ -534,6 +534,14 @@
     "projectEmpty": "No projects",
     "projectRemove": "Remove from {name}"
   },
+  "cover": {
+    "add": "Add cover",
+    "change": "Change cover",
+    "remove": "Remove cover",
+    "alt": "Cover image",
+    "setFailed": "Could not set the cover image",
+    "removeFailed": "Could not remove the cover image"
+  },
   "templateSelector": {
     "title": "Choose Your Canvas",
     "description": "Select a template to begin your note",

@@ -256,6 +256,14 @@
       "todo": "Por fazer"
     }
   },
+  "cover": {
+    "add": "Adicionar capa",
+    "change": "Alterar capa",
+    "remove": "Remover capa",
+    "alt": "Imagem de capa",
+    "setFailed": "Não foi possível definir a imagem de capa",
+    "removeFailed": "Não foi possível remover a imagem de capa"
+  },
   "templateSelector": {
     "title": "Escolha sua tela",
     "description": "Selecione um modelo para começar sua nota",

@@ -256,6 +256,14 @@
       "todo": "Tekemättä"
     }
   },
+  "cover": {
+    "add": "Lisää kansikuva",
+    "change": "Vaihda kansikuva",
+    "remove": "Poista kansikuva",
+    "alt": "Kansikuva",
+    "setFailed": "Kansikuvaa ei voitu asettaa",
+    "removeFailed": "Kansikuvaa ei voitu poistaa"
+  },
   "templateSelector": {
     "title": "Valitse oma kangas",
     "description": "Aloita muistiinpano valitsemalla malli",

@@ -256,6 +256,14 @@
       "todo": "Gagawin"
     }
   },
+  "cover": {
+    "add": "Magdagdag ng cover",
+    "change": "Palitan ang cover",
+    "remove": "Alisin ang cover",
+    "alt": "Larawang pabalat",
+    "setFailed": "Hindi maitakda ang larawang pabalat",
+    "removeFailed": "Hindi maalis ang larawang pabalat"
+  },
   "templateSelector": {
     "title": "Piliin ang Iyong Canvas",
     "description": "Pumili ng template upang simulan ang iyong tala",

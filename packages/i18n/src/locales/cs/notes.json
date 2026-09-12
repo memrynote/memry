@@ -256,6 +256,14 @@
       "todo": "K udělání"
     }
   },
+  "cover": {
+    "add": "Přidat obálku",
+    "change": "Změnit obálku",
+    "remove": "Odebrat obálku",
+    "alt": "Obrázek obálky",
+    "setFailed": "Obrázek obálky se nepodařilo nastavit",
+    "removeFailed": "Obrázek obálky se nepodařilo odebrat"
+  },
   "templateSelector": {
     "title": "Vyberte si své plátno",
     "description": "Chcete-li začít s poznámkou, vyberte šablonu",

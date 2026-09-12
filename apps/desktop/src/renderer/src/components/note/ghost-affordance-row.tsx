@@ -14,6 +14,7 @@ export interface GhostAffordanceRowProps {
   onAddTag: (tagId: string) => void
   onCreateTag: (name: string, color: string) => void
   onAddProperty: (property: NewProperty) => void
+  onAddCover?: () => void
   /** Property types this surface cannot store; hidden from the picker rather than degraded on save. */
   excludeTypes?: PropertyType[]
   /** Property names already on the entity — a second `project` is shown but disabled. */
@@ -29,6 +30,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   onAddTag,
   onCreateTag,
   onAddProperty,
+  onAddCover,
   excludeTypes,
   existingNames,
   disabled = false,
@@ -108,6 +110,26 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
           {t('tagsRow.add')}
         </button>
       </TagInputPopup>
+
+      {onAddCover && (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onAddCover}
+          className={cn(
+            'flex items-center gap-1.5',
+            'rounded-md px-2 py-1',
+            'border border-dashed border-border',
+            'text-[12px] text-text-tertiary',
+            'transition-colors duration-150',
+            'hover:border-muted-foreground hover:text-muted-foreground',
+            'disabled:pointer-events-none disabled:opacity-50'
+          )}
+        >
+          <Plus className="h-3 w-3" strokeWidth={2} />
+          {t('cover.add')}
+        </button>
+      )}
     </div>
   )
 })

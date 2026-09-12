@@ -256,6 +256,14 @@
       "todo": "Na urobenie"
     }
   },
+  "cover": {
+    "add": "Pridať obálku",
+    "change": "Zmeniť obálku",
+    "remove": "Odstrániť obálku",
+    "alt": "Obrázok obálky",
+    "setFailed": "Obrázok obálky sa nepodarilo nastaviť",
+    "removeFailed": "Obrázok obálky sa nepodarilo odstrániť"
+  },
   "templateSelector": {
     "title": "Vyberte svoje plátno",
     "description": "Vyberte šablónu na začatie poznámky",

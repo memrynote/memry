@@ -256,6 +256,14 @@
       "todo": "Do zrobienia"
     }
   },
+  "cover": {
+    "add": "Dodaj okładkę",
+    "change": "Zmień okładkę",
+    "remove": "Usuń okładkę",
+    "alt": "Obraz okładki",
+    "setFailed": "Nie udało się ustawić obrazu okładki",
+    "removeFailed": "Nie udało się usunąć obrazu okładki"
+  },
   "templateSelector": {
     "title": "Wybierz swoje płótno",
     "description": "Wybierz szablon, aby rozpocząć notatkę",

@@ -256,6 +256,14 @@
       "todo": "Att göra"
     }
   },
+  "cover": {
+    "add": "Lägg till omslag",
+    "change": "Ändra omslag",
+    "remove": "Ta bort omslag",
+    "alt": "Omslagsbild",
+    "setFailed": "Det gick inte att ange omslagsbilden",
+    "removeFailed": "Det gick inte att ta bort omslagsbilden"
+  },
   "templateSelector": {
     "title": "Välj din duk",
     "description": "Välj en mall för att börja din anteckning",

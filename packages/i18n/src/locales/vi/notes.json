@@ -256,6 +256,14 @@
       "todo": "Cần làm"
     }
   },
+  "cover": {
+    "add": "Thêm ảnh bìa",
+    "change": "Đổi ảnh bìa",
+    "remove": "Xóa ảnh bìa",
+    "alt": "Ảnh bìa",
+    "setFailed": "Không thể đặt ảnh bìa",
+    "removeFailed": "Không thể xóa ảnh bìa"
+  },
   "templateSelector": {
     "title": "Chọn Bảng vẽ của bạn",
     "description": "Chọn một mẫu để bắt đầu ghi chú của bạn",

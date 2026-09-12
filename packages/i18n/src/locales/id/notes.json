@@ -256,6 +256,14 @@
       "todo": "Perlu dikerjakan"
     }
   },
+  "cover": {
+    "add": "Tambah sampul",
+    "change": "Ubah sampul",
+    "remove": "Hapus sampul",
+    "alt": "Gambar sampul",
+    "setFailed": "Tidak dapat menyetel gambar sampul",
+    "removeFailed": "Tidak dapat menghapus gambar sampul"
+  },
   "templateSelector": {
     "title": "Pilih Kanvas Anda",
     "description": "Pilih templat untuk memulai catatan Anda",

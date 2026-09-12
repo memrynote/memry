@@ -256,6 +256,14 @@
       "todo": "À faire"
     }
   },
+  "cover": {
+    "add": "Ajouter une couverture",
+    "change": "Modifier la couverture",
+    "remove": "Supprimer la couverture",
+    "alt": "Image de couverture",
+    "setFailed": "Impossible de definir l'image de couverture",
+    "removeFailed": "Impossible de supprimer l'image de couverture"
+  },
   "templateSelector": {
     "title": "Choisissez votre toile",
     "description": "Sélectionnez un modèle pour commencer votre note",

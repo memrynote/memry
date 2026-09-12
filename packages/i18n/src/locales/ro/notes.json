@@ -256,6 +256,14 @@
       "todo": "De făcut"
     }
   },
+  "cover": {
+    "add": "Adaugă copertă",
+    "change": "Schimbă coperta",
+    "remove": "Elimină coperta",
+    "alt": "Imagine de copertă",
+    "setFailed": "Imaginea de copertă nu a putut fi setată",
+    "removeFailed": "Imaginea de copertă nu a putut fi eliminată"
+  },
   "templateSelector": {
     "title": "Alegeți-vă pânza",
     "description": "Selectați un șablon pentru a începe nota",

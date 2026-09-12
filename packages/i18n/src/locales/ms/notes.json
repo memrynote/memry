@@ -256,6 +256,14 @@
       "todo": "Untuk dilakukan"
     }
   },
+  "cover": {
+    "add": "Tambah kulit",
+    "change": "Tukar kulit",
+    "remove": "Alih keluar kulit",
+    "alt": "Imej kulit",
+    "setFailed": "Tidak dapat menetapkan imej kulit",
+    "removeFailed": "Tidak dapat mengalih keluar imej kulit"
+  },
   "templateSelector": {
     "title": "Pilih Kanvas Anda",
     "description": "Pilih templat untuk memulakan nota anda",

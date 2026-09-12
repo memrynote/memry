@@ -256,6 +256,14 @@
       "todo": "Teendő"
     }
   },
+  "cover": {
+    "add": "Borítókép hozzáadása",
+    "change": "Borítókép módosítása",
+    "remove": "Borítókép eltávolítása",
+    "alt": "Borítókép",
+    "setFailed": "Nem sikerült beállítani a borítóképet",
+    "removeFailed": "Nem sikerült eltávolítani a borítóképet"
+  },
   "templateSelector": {
     "title": "Válassza ki a vásznat",
     "description": "A jegyzet megkezdéséhez válasszon sablont",

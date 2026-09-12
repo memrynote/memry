@@ -256,6 +256,14 @@
       "todo": "Te doen"
     }
   },
+  "cover": {
+    "add": "Omslag toevoegen",
+    "change": "Omslag wijzigen",
+    "remove": "Omslag verwijderen",
+    "alt": "Omslagafbeelding",
+    "setFailed": "Kan de omslagafbeelding niet instellen",
+    "removeFailed": "Kan de omslagafbeelding niet verwijderen"
+  },
   "templateSelector": {
     "title": "Kies uw canvas",
     "description": "Selecteer een sjabloon om uw notitie te beginnen",

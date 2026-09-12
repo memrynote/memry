@@ -256,6 +256,14 @@
       "todo": "At gøre"
     }
   },
+  "cover": {
+    "add": "Tilføj cover",
+    "change": "Skift cover",
+    "remove": "Fjern cover",
+    "alt": "Coverbillede",
+    "setFailed": "Coverbilledet kunne ikke angives",
+    "removeFailed": "Coverbilledet kunne ikke fjernes"
+  },
   "templateSelector": {
     "title": "Vælg dit lærred",
     "description": "Vælg en skabelon for at starte din note",

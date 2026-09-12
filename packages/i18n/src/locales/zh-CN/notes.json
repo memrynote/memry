@@ -256,6 +256,14 @@
       "todo": "待办"
     }
   },
+  "cover": {
+    "add": "添加封面",
+    "change": "更换封面",
+    "remove": "移除封面",
+    "alt": "封面图片",
+    "setFailed": "无法设置封面图片",
+    "removeFailed": "无法移除封面图片"
+  },
   "templateSelector": {
     "title": "选择你的画布",
     "description": "选择模板以开始您的笔记",

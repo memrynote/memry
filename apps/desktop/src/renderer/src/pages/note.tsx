@@ -37,6 +37,9 @@ import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
+import { NoteCover } from '@/components/note/note-cover'
+import { useNoteCover } from '@/components/note/use-note-cover'
+import { AttachmentPickerDialog } from '@/components/note/content-area/attachment-picker-dialog'
 import { BacklinksSection, Backlink, Mention, backlinkId } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import {
@@ -109,6 +112,7 @@ import { markLaunchNoteReadable } from '@/lib/launch-restore'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
 import { graphKeys } from '@/hooks/use-graph-data'
 import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
+import { isCoverImageValue } from '@memry/shared/cover-image'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
@@ -235,6 +239,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false)
   const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false)
+  const [isCoverPickerOpen, setIsCoverPickerOpen] = useState(false)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   // External ref to the inline title textarea so the "Rename" menu item can focus it
@@ -1027,6 +1032,9 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, queryClient, t]
   )
 
+  const { setCover, removeCover } = useNoteCover(noteId ?? null, refetchNote)
+  const cover = note && isCoverImageValue(note.frontmatter.cover) ? note.frontmatter.cover : null
+
   const handleToggleFullWidth = useCallback(
     async (value: boolean) => {
       if (!noteId || isDeleted) return
@@ -1678,6 +1686,17 @@ export function NotePage({ noteId }: NotePageProps) {
         )}
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
+        {cover && (
+          <NoteCover
+            cover={cover}
+            noteId={noteId}
+            notePath={note.path}
+            onChange={() => setIsCoverPickerOpen(true)}
+            onRemove={() => void removeCover()}
+            disabled={isDeleted}
+          />
+        )}
+
         {/* Title + Metadata zone — ghost affordance appears on hover */}
         <div className="group/metadata flex flex-col gap-2.5 pb-[15px]" data-marquee-ignore>
           <NoteTitle
@@ -1736,6 +1755,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onCreateTag={(...args) => void handleCreateTag(...args)}
             onAddProperty={handleAddPropertyWithExpand}
             existingNames={properties.map((p) => p.name)}
+            onAddCover={cover ? undefined : () => setIsCoverPickerOpen(true)}
             disabled={isDeleted}
           />
         </div>
@@ -1881,6 +1901,14 @@ export function NotePage({ noteId }: NotePageProps) {
         onOpenChange={setIsAttachmentsOpen}
         noteId={noteId}
         getOriginalNames={getAttachmentOriginalNames}
+      />
+
+      <AttachmentPickerDialog
+        open={isCoverPickerOpen}
+        onOpenChange={setIsCoverPickerOpen}
+        noteId={noteId}
+        kind="image"
+        onInsert={(result) => void setCover(result.url)}
       />
 
       {/* Apply Template Dialog */}

@@ -256,6 +256,14 @@
       "todo": "Da fare"
     }
   },
+  "cover": {
+    "add": "Aggiungi copertina",
+    "change": "Cambia copertina",
+    "remove": "Rimuovi copertina",
+    "alt": "Immagine di copertina",
+    "setFailed": "Impossibile impostare l'immagine di copertina",
+    "removeFailed": "Impossibile rimuovere l'immagine di copertina"
+  },
   "templateSelector": {
     "title": "Scegli la tua tela",
     "description": "Seleziona un modello per iniziare la nota",

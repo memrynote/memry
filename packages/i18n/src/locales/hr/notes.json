@@ -256,6 +256,14 @@
       "todo": "Za napraviti"
     }
   },
+  "cover": {
+    "add": "Dodaj naslovnu sliku",
+    "change": "Promijeni naslovnu sliku",
+    "remove": "Ukloni naslovnu sliku",
+    "alt": "Naslovna slika",
+    "setFailed": "Nije moguće postaviti naslovnu sliku",
+    "removeFailed": "Nije moguće ukloniti naslovnu sliku"
+  },
   "templateSelector": {
     "title": "Odaberite svoje platno",
     "description": "Odaberite predložak za početak svoje bilješke",

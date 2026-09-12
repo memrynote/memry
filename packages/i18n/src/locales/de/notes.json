@@ -256,6 +256,14 @@
       "todo": "Zu erledigen"
     }
   },
+  "cover": {
+    "add": "Titelbild hinzufügen",
+    "change": "Titelbild ändern",
+    "remove": "Titelbild entfernen",
+    "alt": "Titelbild",
+    "setFailed": "Titelbild konnte nicht festgelegt werden",
+    "removeFailed": "Titelbild konnte nicht entfernt werden"
+  },
   "templateSelector": {
     "title": "Wählen Sie Ihre Leinwand",
     "description": "Wählen Sie eine Vorlage aus, um mit Ihrer Notiz zu beginnen",
