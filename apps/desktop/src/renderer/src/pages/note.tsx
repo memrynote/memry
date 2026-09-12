@@ -1718,7 +1718,11 @@ export function NotePage({ noteId }: NotePageProps) {
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
         {/* Title + Metadata zone — ghost affordance appears on hover */}
-        <div className="group/metadata flex flex-col gap-2.5 pb-[15px]" data-marquee-ignore>
+        <div
+          className="group/metadata flex flex-col gap-2.5 pb-[15px]"
+          data-testid="note-metadata"
+          data-marquee-ignore
+        >
           <NoteTitle
             emoji={null}
             title={note.title}

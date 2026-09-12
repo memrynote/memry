@@ -90,7 +90,9 @@ test.describe('Note cover image', () => {
     }, noteId)
     const noteFile = path.join(testVaultPath, notePath)
 
-    await page.getByTestId('note-body').hover()
+    // The chips only take pointer events while the metadata block is hovered,
+    // so the hover has to land inside that block rather than on the body.
+    await page.getByTestId('note-metadata').hover()
     await page.getByTestId('ghost-add-cover').click()
 
     const picker = page.getByTestId('cover-picker-dialog')
@@ -103,9 +105,11 @@ test.describe('Note cover image', () => {
     // A wash is pigment, not a file: nothing may be fetched for it.
     await expect(cover.locator('img')).toHaveCount(0)
 
+    // YAML quotes a scalar holding a colon, so the written line is
+    // `cover: 'wash:sage'`. Pin the value, not one serialiser's quoting.
     await expect
       .poll(() => fs.readFileSync(noteFile, 'utf-8'), { timeout: 20_000 })
-      .toContain('cover: wash:sage')
+      .toMatch(/^cover: ['"]?wash:sage['"]?$/m)
     expect(fs.readFileSync(noteFile, 'utf-8')).not.toContain('memry-file://')
   })
 })
