@@ -3,7 +3,7 @@
  *
  * What it hands `notesService.update` is what lands in the vault file, so the
  * tests watch the exact payload: the ref verbatim on set, and `null` — not
- * `undefined`, which a spread merge would swallow — on remove.
+ * `undefined`, which a spread merge would swallow — on every key it clears.
  */
 
 import { renderHook, act } from '@testing-library/react'
@@ -32,6 +32,9 @@ import { useNoteCover } from './use-note-cover'
 
 const NOTE_ID = 'nte_9f2c1a'
 const COVER_REF = `../attachments/${NOTE_ID}/abc123-photo.jpg`
+const IMAGE_COVER = { kind: 'image', ref: COVER_REF } as const
+/** Set and remove both clear the framing and attribution of the outgoing photo. */
+const CLEARED = { coverFocus: null, coverCredit: null, coverCreditUrl: null }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -48,11 +51,33 @@ describe('useNoteCover', () => {
   it('writes the ref verbatim and refreshes the note', async () => {
     const { result, onSaved } = renderUseNoteCover()
 
-    await act(() => result.current.setCover(COVER_REF))
+    await act(() => result.current.setCover(IMAGE_COVER))
 
-    expect(mocks.update).toHaveBeenCalledWith({ id: NOTE_ID, frontmatter: { cover: COVER_REF } })
+    expect(mocks.update).toHaveBeenCalledWith({
+      id: NOTE_ID,
+      frontmatter: { cover: COVER_REF, ...CLEARED }
+    })
     expect(onSaved).toHaveBeenCalledTimes(1)
     expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
+  it('writes a wash as its wash:<id> ref', async () => {
+    const { result } = renderUseNoteCover()
+
+    await act(() => result.current.setCover({ kind: 'wash', id: 'sage' }))
+
+    expect(mocks.update).toHaveBeenCalledWith({
+      id: NOTE_ID,
+      frontmatter: { cover: 'wash:sage', ...CLEARED }
+    })
+  })
+
+  it('clamps the focus before it reaches the vault', async () => {
+    const { result } = renderUseNoteCover()
+
+    await act(() => result.current.setCoverFocus(140.6))
+
+    expect(mocks.update).toHaveBeenCalledWith({ id: NOTE_ID, frontmatter: { coverFocus: 100 } })
   })
 
   it('removes with the null delete sentinel rather than undefined', async () => {
@@ -60,7 +85,10 @@ describe('useNoteCover', () => {
 
     await act(() => result.current.removeCover())
 
-    expect(mocks.update).toHaveBeenCalledWith({ id: NOTE_ID, frontmatter: { cover: null } })
+    expect(mocks.update).toHaveBeenCalledWith({
+      id: NOTE_ID,
+      frontmatter: { cover: null, ...CLEARED }
+    })
     const [payload] = mocks.update.mock.calls[0] as [{ frontmatter: Record<string, unknown> }]
     expect('cover' in payload.frontmatter).toBe(true)
     expect(payload.frontmatter.cover).not.toBeUndefined()
@@ -71,7 +99,7 @@ describe('useNoteCover', () => {
     mocks.update.mockRejectedValue(new Error('disk full'))
     const { result, onSaved } = renderUseNoteCover()
 
-    await act(() => result.current.setCover(COVER_REF))
+    await act(() => result.current.setCover(IMAGE_COVER))
 
     expect(mocks.toastError).toHaveBeenCalledTimes(1)
     expect(mocks.toastError.mock.calls[0][0]).toBe('disk full')
@@ -91,7 +119,8 @@ describe('useNoteCover', () => {
   it('does nothing at all without a note id', async () => {
     const { result, onSaved } = renderUseNoteCover(null)
 
-    await act(() => result.current.setCover(COVER_REF))
+    await act(() => result.current.setCover(IMAGE_COVER))
+    await act(() => result.current.setCoverFocus(20))
     await act(() => result.current.removeCover())
 
     expect(mocks.update).not.toHaveBeenCalled()
