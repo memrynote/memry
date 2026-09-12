@@ -257,6 +257,69 @@
       "todo": "Perlu dikerjakan"
     }
   },
+  "cover": {
+    "add": "Tambah sampul",
+    "change": "Ubah sampul",
+    "remove": "Hapus sampul",
+    "alt": "Gambar sampul",
+    "setFailed": "Tidak dapat menyetel gambar sampul",
+    "removeFailed": "Tidak dapat menghapus gambar sampul",
+    "reposition": "Ubah posisi",
+    "repositionHint": "Seret untuk mengubah posisi",
+    "repositionSave": "simpan",
+    "repositionCancel": "batal",
+    "credit": "Foto oleh {name} di Unsplash",
+    "focusFailed": "Tidak dapat menyimpan posisi sampul",
+    "picker": {
+      "title": "Sampul catatan",
+      "placeholder": "Cari sampul",
+      "tab": {
+        "washes": "Warna",
+        "photos": "Unsplash",
+        "fromNote": "Dari catatan",
+        "upload": "Unggah"
+      },
+      "photos": {
+        "searching": "Mencari di Unsplash…",
+        "noResults": "Tidak ada foto yang cocok dengan pencarian itu",
+        "remaining": "Tersisa {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Foto Unsplash tidak tersedia di build ini",
+          "offline": "Tidak ada koneksi ke Unsplash",
+          "rateLimited": "Unsplash dibatasi kecepatannya, coba lagi sebentar lagi",
+          "failed": "Unsplash tidak dapat dijangkau",
+          "writeFailed": "Foto itu tidak dapat disimpan ke gudang"
+        }
+      },
+      "upload": "Unggah",
+      "uploading": "Mengunggah…",
+      "uploadFailed": "Tidak dapat mengunggah gambar sampul",
+      "loadFailed": "Tidak dapat memuat gambar dari gudang",
+      "insertFailed": "Tidak dapat menggunakan gambar itu sebagai sampul",
+      "noMatches": "Tidak ada yang cocok",
+      "empty": "Belum ada gambar di gudang ini",
+      "hint": {
+        "apply": "Terapkan",
+        "applyReposition": "Terapkan & ubah posisi",
+        "close": "Tutup"
+      },
+      "wash": {
+        "sage": "Salvia",
+        "sand": "Pasir",
+        "lilac": "Lila",
+        "clay": "Tanah Liat",
+        "ash": "Abu",
+        "fog": "Kabut",
+        "wheat": "Gandum",
+        "moss": "Lumut",
+        "slate": "Batu Tulis",
+        "bark": "Kulit Kayu",
+        "mist": "Halimun",
+        "plum": "Prem"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Pilih Kanvas Anda",
     "description": "Pilih templat untuk memulai catatan Anda",

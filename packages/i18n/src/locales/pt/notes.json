@@ -257,6 +257,69 @@
       "todo": "Por fazer"
     }
   },
+  "cover": {
+    "add": "Adicionar capa",
+    "change": "Alterar capa",
+    "remove": "Remover capa",
+    "alt": "Imagem de capa",
+    "setFailed": "Não foi possível definir a imagem de capa",
+    "removeFailed": "Não foi possível remover a imagem de capa",
+    "reposition": "Reposicionar",
+    "repositionHint": "Arraste para reposicionar",
+    "repositionSave": "guardar",
+    "repositionCancel": "cancelar",
+    "credit": "Fotografia de {name} no Unsplash",
+    "focusFailed": "Não foi possível guardar a posição da capa",
+    "picker": {
+      "title": "Capa da nota",
+      "placeholder": "Pesquisar capas",
+      "tab": {
+        "washes": "Tons",
+        "photos": "Unsplash",
+        "fromNote": "Da nota",
+        "upload": "Carregar"
+      },
+      "photos": {
+        "searching": "A pesquisar no Unsplash…",
+        "noResults": "Nenhuma foto corresponde a essa pesquisa",
+        "remaining": "Faltam {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "As fotos do Unsplash não estão disponíveis nesta compilação",
+          "offline": "Sem ligação ao Unsplash",
+          "rateLimited": "O Unsplash está com limite de pedidos atingido, tente novamente em breve",
+          "failed": "Não foi possível contactar o Unsplash",
+          "writeFailed": "Não foi possível guardar essa foto no cofre"
+        }
+      },
+      "upload": "Carregar",
+      "uploading": "A carregar…",
+      "uploadFailed": "Não foi possível carregar a imagem de capa",
+      "loadFailed": "Não foi possível carregar as imagens do cofre",
+      "insertFailed": "Não foi possível usar essa imagem como capa",
+      "noMatches": "Sem resultados",
+      "empty": "Ainda não há imagens neste cofre",
+      "hint": {
+        "apply": "Aplicar",
+        "applyReposition": "Aplicar e reposicionar",
+        "close": "Fechar"
+      },
+      "wash": {
+        "sage": "Salva",
+        "sand": "Areia",
+        "lilac": "Lilás",
+        "clay": "Argila",
+        "ash": "Cinza",
+        "fog": "Nevoeiro",
+        "wheat": "Trigo",
+        "moss": "Musgo",
+        "slate": "Ardósia",
+        "bark": "Casca",
+        "mist": "Bruma",
+        "plum": "Ameixa"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Escolha sua tela",
     "description": "Selecione um modelo para começar sua nota",

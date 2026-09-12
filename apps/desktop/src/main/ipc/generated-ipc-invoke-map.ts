@@ -210,6 +210,7 @@ export interface MainIpcInvokeHandlers {
   "notes:delete-folder": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "notes:delete-property-definition": (...args: [{ name: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:delete-version": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "notes:download-attachment-from-url": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").DownloadAttachmentFromUrlResult>>
   "notes:ensure-property-definition": (...args: [{ name: string; type: "select" | "status" | "multiselect"; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:exists": (...args: [string]) => Awaited<Promise<boolean>>
   "notes:export-html": (...args: [{ noteId: string; includeMetadata?: boolean | undefined; pageSize?: "A4" | "Letter" | "Legal" | undefined; outputPath?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; path?: undefined; } | { success: true; path: string; error?: undefined; }> | { success: false; error: string }>
@@ -454,6 +455,8 @@ export interface MainIpcInvokeHandlers {
   "templates:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/templates-api").Template | null>>
   "templates:list": (...args: []) => Awaited<Promise<{ templates: import("../../../../../packages/contracts/src/templates-api").TemplateListItem[]; }>>
   "templates:update": (...args: [{ id: string; name?: string | undefined; description?: string | undefined; icon?: string | null | undefined; tags?: string[] | undefined; properties?: { name: string; type: "number" | "date" | "text" | "select" | "url" | "checkbox" | "multiselect" | "project" | "rating"; value: unknown; options?: string[] | undefined; }[] | undefined; content?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; template: import("../../../../../packages/contracts/src/templates-api").Template; }>>
+  "unsplash:download": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/unsplash-api").UnsplashDownloadResult>>
+  "unsplash:search": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/unsplash-api").UnsplashSearchResult>>
   "updater:check-for-updates": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
   "updater:download-update": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
   "updater:get-state": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>

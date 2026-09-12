@@ -257,6 +257,69 @@
       "todo": "Do zrobienia"
     }
   },
+  "cover": {
+    "add": "Dodaj okładkę",
+    "change": "Zmień okładkę",
+    "remove": "Usuń okładkę",
+    "alt": "Obraz okładki",
+    "setFailed": "Nie udało się ustawić obrazu okładki",
+    "removeFailed": "Nie udało się usunąć obrazu okładki",
+    "reposition": "Zmień położenie",
+    "repositionHint": "Przeciągnij, aby zmienić położenie",
+    "repositionSave": "zapisz",
+    "repositionCancel": "anuluj",
+    "credit": "Zdjęcie autorstwa {name} w serwisie Unsplash",
+    "focusFailed": "Nie udało się zapisać położenia okładki",
+    "picker": {
+      "title": "Okładka notatki",
+      "placeholder": "Szukaj okładek",
+      "tab": {
+        "washes": "Odcienie",
+        "photos": "Unsplash",
+        "fromNote": "Z notatki",
+        "upload": "Prześlij"
+      },
+      "photos": {
+        "searching": "Wyszukiwanie w Unsplash…",
+        "noResults": "Żadne zdjęcie nie pasuje do tego wyszukiwania",
+        "remaining": "Pozostało {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Zdjęcia Unsplash nie są dostępne w tej wersji",
+          "offline": "Brak połączenia z Unsplash",
+          "rateLimited": "Unsplash ograniczył liczbę żądań, spróbuj ponownie za chwilę",
+          "failed": "Nie udało się połączyć z Unsplash",
+          "writeFailed": "Nie udało się zapisać tego zdjęcia w sejfie"
+        }
+      },
+      "upload": "Prześlij",
+      "uploading": "Przesyłanie…",
+      "uploadFailed": "Nie udało się przesłać obrazu okładki",
+      "loadFailed": "Nie udało się wczytać obrazów z sejfu",
+      "insertFailed": "Nie udało się użyć tego obrazu jako okładki",
+      "noMatches": "Brak wyników",
+      "empty": "W tym sejfie nie ma jeszcze obrazów",
+      "hint": {
+        "apply": "Zastosuj",
+        "applyReposition": "Zastosuj i zmień położenie",
+        "close": "Zamknij"
+      },
+      "wash": {
+        "sage": "Szałwia",
+        "sand": "Piasek",
+        "lilac": "Liliowy",
+        "clay": "Glina",
+        "ash": "Popiół",
+        "fog": "Mgła",
+        "wheat": "Pszenica",
+        "moss": "Mech",
+        "slate": "Łupek",
+        "bark": "Kora",
+        "mist": "Mgiełka",
+        "plum": "Śliwka"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Wybierz swoje płótno",
     "description": "Wybierz szablon, aby rozpocząć notatkę",

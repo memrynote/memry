@@ -89,6 +89,8 @@ export const NotesChannels = {
     LIST_VAULT_ATTACHMENTS: 'notes:list-vault-attachments',
     /** Block props for embedding an attachment another note already stores */
     INSERT_EXISTING_ATTACHMENT: 'notes:insert-existing-attachment',
+    /** Copy an image at an http(s) URL into a note's attachments folder */
+    DOWNLOAD_ATTACHMENT_FROM_URL: 'notes:download-attachment-from-url',
     /** Get folder config (template settings) */
     GET_FOLDER_CONFIG: 'notes:get-folder-config',
     /** Set folder config (template settings) */

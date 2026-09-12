@@ -257,6 +257,69 @@
       "todo": "K udělání"
     }
   },
+  "cover": {
+    "add": "Přidat obálku",
+    "change": "Změnit obálku",
+    "remove": "Odebrat obálku",
+    "alt": "Obrázek obálky",
+    "setFailed": "Obrázek obálky se nepodařilo nastavit",
+    "removeFailed": "Obrázek obálky se nepodařilo odebrat",
+    "reposition": "Upravit pozici",
+    "repositionHint": "Přetažením upravte pozici",
+    "repositionSave": "uložit",
+    "repositionCancel": "zrušit",
+    "credit": "Foto od {name} na Unsplashi",
+    "focusFailed": "Pozici obálky se nepodařilo uložit",
+    "picker": {
+      "title": "Obálka poznámky",
+      "placeholder": "Hledat obálky",
+      "tab": {
+        "washes": "Odstíny",
+        "photos": "Unsplash",
+        "fromNote": "Z poznámky",
+        "upload": "Nahrát"
+      },
+      "photos": {
+        "searching": "Hledání na Unsplash…",
+        "noResults": "Žádné fotky neodpovídají hledání",
+        "remaining": "Zbývá {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Fotky Unsplash nejsou v této verzi k dispozici",
+          "offline": "Žádné připojení k Unsplash",
+          "rateLimited": "Unsplash má omezenou rychlost, zkuste to za chvíli znovu",
+          "failed": "Unsplash se nepodařilo kontaktovat",
+          "writeFailed": "Tuto fotku se nepodařilo uložit do trezoru"
+        }
+      },
+      "upload": "Nahrát",
+      "uploading": "Nahrávání…",
+      "uploadFailed": "Obrázek obálky se nepodařilo nahrát",
+      "loadFailed": "Obrázky z trezoru se nepodařilo načíst",
+      "insertFailed": "Tento obrázek nelze použít jako obálku",
+      "noMatches": "Žádné shody",
+      "empty": "V tomto trezoru zatím nejsou žádné obrázky",
+      "hint": {
+        "apply": "Použít",
+        "applyReposition": "Použít a upravit pozici",
+        "close": "Zavřít"
+      },
+      "wash": {
+        "sage": "Šalvěj",
+        "sand": "Písek",
+        "lilac": "Šeřík",
+        "clay": "Hlína",
+        "ash": "Popel",
+        "fog": "Mlha",
+        "wheat": "Pšenice",
+        "moss": "Mech",
+        "slate": "Břidlice",
+        "bark": "Kůra",
+        "mist": "Opar",
+        "plum": "Švestka"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Vyberte si své plátno",
     "description": "Chcete-li začít s poznámkou, vyberte šablonu",

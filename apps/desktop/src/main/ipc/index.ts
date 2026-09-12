@@ -36,6 +36,7 @@ import { registerCrdtIpcHandlers } from './crdt-handlers'
 import { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 import { registerFeedbackHandlers, unregisterFeedbackHandlers } from './feedback-handlers'
 import { registerDiagnosticsHandlers, unregisterDiagnosticsHandlers } from './diagnostics-handlers'
+import { registerUnsplashHandlers, unregisterUnsplashHandlers } from './unsplash-handlers'
 import { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 import { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
 import { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
@@ -172,6 +173,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register diagnostics handlers (anonymous-safe, no auth required)
   registerDiagnosticsHandlers()
 
+  // Register Unsplash cover source handlers
+  registerUnsplashHandlers()
+
   // Register Agent MCP settings/status handlers
   registerAgentMcpHandlers()
 
@@ -222,6 +226,7 @@ export function unregisterAllHandlers(): void {
   unregisterTelemetryHandlers()
   unregisterFeedbackHandlers()
   unregisterDiagnosticsHandlers()
+  unregisterUnsplashHandlers()
   unregisterAgentMcpHandlers()
   unregisterImportHandlers()
   unregisterHomePageHandlers()

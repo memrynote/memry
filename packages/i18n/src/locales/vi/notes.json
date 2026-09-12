@@ -257,6 +257,69 @@
       "todo": "Cần làm"
     }
   },
+  "cover": {
+    "add": "Thêm ảnh bìa",
+    "change": "Đổi ảnh bìa",
+    "remove": "Xóa ảnh bìa",
+    "alt": "Ảnh bìa",
+    "setFailed": "Không thể đặt ảnh bìa",
+    "removeFailed": "Không thể xóa ảnh bìa",
+    "reposition": "Đặt lại vị trí",
+    "repositionHint": "Kéo để đặt lại vị trí",
+    "repositionSave": "lưu",
+    "repositionCancel": "hủy",
+    "credit": "Ảnh của {name} trên Unsplash",
+    "focusFailed": "Không thể lưu vị trí ảnh bìa",
+    "picker": {
+      "title": "Ảnh bìa ghi chú",
+      "placeholder": "Tìm ảnh bìa",
+      "tab": {
+        "washes": "Màu nền",
+        "photos": "Unsplash",
+        "fromNote": "Từ ghi chú",
+        "upload": "Tải lên"
+      },
+      "photos": {
+        "searching": "Đang tìm trên Unsplash…",
+        "noResults": "Không có ảnh nào khớp với tìm kiếm đó",
+        "remaining": "Còn lại {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Ảnh Unsplash không khả dụng trong bản dựng này",
+          "offline": "Không có kết nối với Unsplash",
+          "rateLimited": "Unsplash đang bị giới hạn tốc độ, hãy thử lại sau ít phút",
+          "failed": "Không thể kết nối với Unsplash",
+          "writeFailed": "Không thể lưu ảnh đó vào kho lưu trữ"
+        }
+      },
+      "upload": "Tải lên",
+      "uploading": "Đang tải lên…",
+      "uploadFailed": "Không thể tải lên ảnh bìa",
+      "loadFailed": "Không thể tải hình ảnh trong kho lưu trữ",
+      "insertFailed": "Không thể dùng hình ảnh đó làm ảnh bìa",
+      "noMatches": "Không có kết quả phù hợp",
+      "empty": "Kho lưu trữ này chưa có hình ảnh nào",
+      "hint": {
+        "apply": "Áp dụng",
+        "applyReposition": "Áp dụng và đặt lại vị trí",
+        "close": "Đóng"
+      },
+      "wash": {
+        "sage": "Xanh xô thơm",
+        "sand": "Cát",
+        "lilac": "Tử đinh hương",
+        "clay": "Đất sét",
+        "ash": "Tro",
+        "fog": "Sương mù",
+        "wheat": "Lúa mì",
+        "moss": "Rêu",
+        "slate": "Đá phiến",
+        "bark": "Vỏ cây",
+        "mist": "Sương mỏng",
+        "plum": "Mận"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Chọn Bảng vẽ của bạn",
     "description": "Chọn một mẫu để bắt đầu ghi chú của bạn",

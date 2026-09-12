@@ -257,6 +257,69 @@
       "todo": "לביצוע"
     }
   },
+  "cover": {
+    "add": "הוספת תמונת שער",
+    "change": "שינוי תמונת השער",
+    "remove": "הסרת תמונת השער",
+    "alt": "תמונת שער",
+    "setFailed": "לא ניתן היה להגדיר את תמונת השער",
+    "removeFailed": "לא ניתן היה להסיר את תמונת השער",
+    "reposition": "מיקום מחדש",
+    "repositionHint": "גררו כדי למקם מחדש",
+    "repositionSave": "שמירה",
+    "repositionCancel": "ביטול",
+    "credit": "צילום של {name} ב-Unsplash",
+    "focusFailed": "לא ניתן היה לשמור את מיקום תמונת השער",
+    "picker": {
+      "title": "שער ההערה",
+      "placeholder": "חיפוש תמונות שער",
+      "tab": {
+        "washes": "גוונים",
+        "photos": "Unsplash",
+        "fromNote": "מההערה",
+        "upload": "העלאה"
+      },
+      "photos": {
+        "searching": "מחפש ב-Unsplash…",
+        "noResults": "אין תמונות התואמות לחיפוש זה",
+        "remaining": "נותרו {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "תמונות Unsplash אינן זמינות בגרסה זו",
+          "offline": "אין חיבור ל-Unsplash",
+          "rateLimited": "יש הגבלת קצב ב-Unsplash, נסו שוב בקרוב",
+          "failed": "לא ניתן היה להתחבר ל-Unsplash",
+          "writeFailed": "לא ניתן היה לשמור את התמונה הזו בכספת"
+        }
+      },
+      "upload": "העלאה",
+      "uploading": "מעלה…",
+      "uploadFailed": "לא ניתן היה להעלות את תמונת השער",
+      "loadFailed": "לא ניתן היה לטעון את התמונות מהכספת",
+      "insertFailed": "לא ניתן היה להשתמש בתמונה הזו כתמונת שער",
+      "noMatches": "אין תוצאות",
+      "empty": "אין עדיין תמונות בכספת הזו",
+      "hint": {
+        "apply": "החלה",
+        "applyReposition": "החלה ומיקום מחדש",
+        "close": "סגירה"
+      },
+      "wash": {
+        "sage": "מרווה",
+        "sand": "חול",
+        "lilac": "לילך",
+        "clay": "חימר",
+        "ash": "אפר",
+        "fog": "ערפל",
+        "wheat": "חיטה",
+        "moss": "טחב",
+        "slate": "צפחה",
+        "bark": "קליפת עץ",
+        "mist": "אובך",
+        "plum": "שזיף"
+      }
+    }
+  },
   "templateSelector": {
     "title": "בחר את הקנבס שלך",
     "description": "בחר תבנית כדי להתחיל את ההערה",

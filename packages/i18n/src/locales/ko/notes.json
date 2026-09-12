@@ -257,6 +257,69 @@
       "todo": "할 일"
     }
   },
+  "cover": {
+    "add": "커버 추가",
+    "change": "커버 변경",
+    "remove": "커버 제거",
+    "alt": "커버 이미지",
+    "setFailed": "커버 이미지를 설정할 수 없습니다",
+    "removeFailed": "커버 이미지를 제거할 수 없습니다",
+    "reposition": "위치 조정",
+    "repositionHint": "드래그하여 위치 조정",
+    "repositionSave": "저장",
+    "repositionCancel": "취소",
+    "credit": "{name}님의 사진 (Unsplash)",
+    "focusFailed": "커버 이미지 위치를 저장할 수 없습니다",
+    "picker": {
+      "title": "메모 커버",
+      "placeholder": "커버 검색",
+      "tab": {
+        "washes": "색상",
+        "photos": "Unsplash",
+        "fromNote": "메모에서",
+        "upload": "업로드"
+      },
+      "photos": {
+        "searching": "Unsplash에서 검색 중…",
+        "noResults": "해당 검색과 일치하는 사진이 없습니다",
+        "remaining": "{count}개 남음",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "이 빌드에서는 Unsplash 사진을 사용할 수 없습니다",
+          "offline": "Unsplash에 연결할 수 없습니다",
+          "rateLimited": "Unsplash 요청이 제한되었습니다. 잠시 후 다시 시도하세요",
+          "failed": "Unsplash에 연결할 수 없습니다",
+          "writeFailed": "해당 사진을 금고에 저장할 수 없습니다"
+        }
+      },
+      "upload": "업로드",
+      "uploading": "업로드 중…",
+      "uploadFailed": "커버 이미지를 업로드할 수 없습니다",
+      "loadFailed": "금고의 이미지를 불러올 수 없습니다",
+      "insertFailed": "해당 이미지를 커버로 사용할 수 없습니다",
+      "noMatches": "일치하는 항목 없음",
+      "empty": "이 금고에는 아직 이미지가 없습니다",
+      "hint": {
+        "apply": "적용",
+        "applyReposition": "적용 후 위치 조정",
+        "close": "닫기"
+      },
+      "wash": {
+        "sage": "세이지",
+        "sand": "모래",
+        "lilac": "라일락",
+        "clay": "점토",
+        "ash": "재",
+        "fog": "안개",
+        "wheat": "밀",
+        "moss": "이끼",
+        "slate": "슬레이트",
+        "bark": "나무껍질",
+        "mist": "물안개",
+        "plum": "자두"
+      }
+    }
+  },
   "templateSelector": {
     "title": "캔버스를 선택하세요",
     "description": "메모를 시작하려면 템플릿을 선택하세요.",

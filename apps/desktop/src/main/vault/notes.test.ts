@@ -667,6 +667,32 @@ describe('notes operations', () => {
 
       expect(updated.content).toBe('Same content.')
     })
+
+    it('deletes a frontmatter key whose patch value is null, leaving siblings alone', async () => {
+      // `null` is the delete sentinel: a spread merge can add and overwrite but
+      // never remove, so `{ cover: undefined }` would be a silent no-op and the
+      // `cover:` line would survive every "Remove cover" click.
+      const created = await notes.createNote({ title: 'Cover Note', content: 'Body text.' })
+      const coverRef = `../attachments/${created.id}/abc123-photo.jpg`
+
+      await notes.updateNote({
+        id: created.id,
+        frontmatter: { cover: coverRef, status: 'reading' }
+      })
+      const filePath = path.join(tempVault.path, created.path)
+      expect(fs.readFileSync(filePath, 'utf-8')).toContain(coverRef)
+
+      const cleared = await notes.updateNote({ id: created.id, frontmatter: { cover: null } })
+
+      expect(cleared.frontmatter.cover).toBeUndefined()
+      expect(cleared.frontmatter.status).toBe('reading')
+
+      const raw = fs.readFileSync(filePath, 'utf-8')
+      expect(raw).not.toContain('cover:')
+      expect(raw).not.toContain(coverRef)
+      expect(raw).toContain('status: reading')
+      expect(raw).toContain('Body text.')
+    })
   })
 
   // ==========================================================================

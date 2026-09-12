@@ -5,7 +5,7 @@
  * @module ipc/notes-handlers
  */
 
-import { ipcMain, dialog, BrowserWindow, app } from 'electron'
+import { ipcMain, dialog, BrowserWindow, app, net } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { randomUUID } from 'crypto'
@@ -26,7 +26,8 @@ import {
   LargeFileSearchSchema,
   AttachmentActionSchema,
   AttachmentRenameSchema,
-  InsertExistingAttachmentSchema
+  InsertExistingAttachmentSchema,
+  DownloadAttachmentFromUrlSchema
 } from '@memry/contracts/notes-api'
 import {
   resolveAttachment,
@@ -88,6 +89,7 @@ import { applyTemplateToNote } from '../notes/apply-template'
 import { appendBlocksToNote } from '../vault/append-blocks'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
+import { downloadAttachmentFromUrl } from '../vault/remote-attachment'
 import { getStatus as getVaultStatus } from '../vault/index'
 import { inlineExportImages } from '../lib/export-image-inliner'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
@@ -887,6 +889,18 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.INSERT_EXISTING_ATTACHMENT,
     createValidatedHandler(InsertExistingAttachmentSchema, (input) =>
       buildExistingAttachmentReference(input.noteId, input.ownerNoteId, input.filename)
+    )
+  )
+
+  // notes:download-attachment-from-url - Copy an image at a public URL into the
+  // note's own attachments folder. The renderer's CSP lets it show a remote
+  // image but never read one, so the fetch belongs here.
+  ipcMain.handle(
+    NotesChannels.invoke.DOWNLOAD_ATTACHMENT_FROM_URL,
+    createValidatedHandler(DownloadAttachmentFromUrlSchema, (input) =>
+      // `net.fetch` rather than global fetch: it honours the system proxy and
+      // the app's session, like every other outbound call in main.
+      downloadAttachmentFromUrl(input, { fetch: (url) => net.fetch(url) })
     )
   )
 

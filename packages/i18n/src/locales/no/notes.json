@@ -257,6 +257,69 @@
       "todo": "Å gjøre"
     }
   },
+  "cover": {
+    "add": "Legg til omslag",
+    "change": "Endre omslag",
+    "remove": "Fjern omslag",
+    "alt": "Omslagsbilde",
+    "setFailed": "Kunne ikke angi omslagsbildet",
+    "removeFailed": "Kunne ikke fjerne omslagsbildet",
+    "reposition": "Flytt",
+    "repositionHint": "Dra for å flytte",
+    "repositionSave": "lagre",
+    "repositionCancel": "avbryt",
+    "credit": "Foto av {name} på Unsplash",
+    "focusFailed": "Kunne ikke lagre omslagsplasseringen",
+    "picker": {
+      "title": "Notatomslag",
+      "placeholder": "Søk i omslag",
+      "tab": {
+        "washes": "Fargetoner",
+        "photos": "Unsplash",
+        "fromNote": "Fra notatet",
+        "upload": "Last opp"
+      },
+      "photos": {
+        "searching": "Søker på Unsplash…",
+        "noResults": "Ingen bilder samsvarer med søket",
+        "remaining": "{count} igjen",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash-bilder er ikke tilgjengelige i denne versjonen",
+          "offline": "Ingen tilkobling til Unsplash",
+          "rateLimited": "Unsplash har satt en fartsgrense, prøv igjen om litt",
+          "failed": "Fikk ikke kontakt med Unsplash",
+          "writeFailed": "Det bildet kunne ikke lagres i hvelvet"
+        }
+      },
+      "upload": "Last opp",
+      "uploading": "Laster opp…",
+      "uploadFailed": "Kunne ikke laste opp omslagsbildet",
+      "loadFailed": "Kunne ikke laste bildene fra hvelvet",
+      "insertFailed": "Kunne ikke bruke det bildet som omslag",
+      "noMatches": "Ingen treff",
+      "empty": "Ingen bilder i dette hvelvet ennå",
+      "hint": {
+        "apply": "Bruk",
+        "applyReposition": "Bruk og flytt",
+        "close": "Lukk"
+      },
+      "wash": {
+        "sage": "Salvie",
+        "sand": "Sand",
+        "lilac": "Lilla",
+        "clay": "Leire",
+        "ash": "Aske",
+        "fog": "Tåke",
+        "wheat": "Hvete",
+        "moss": "Mose",
+        "slate": "Skifer",
+        "bark": "Bark",
+        "mist": "Dis",
+        "plum": "Plomme"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Velg ditt lerret",
     "description": "Velg en mal for å starte notatet",

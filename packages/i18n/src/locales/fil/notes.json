@@ -257,6 +257,69 @@
       "todo": "Gagawin"
     }
   },
+  "cover": {
+    "add": "Magdagdag ng cover",
+    "change": "Palitan ang cover",
+    "remove": "Alisin ang cover",
+    "alt": "Larawang pabalat",
+    "setFailed": "Hindi maitakda ang larawang pabalat",
+    "removeFailed": "Hindi maalis ang larawang pabalat",
+    "reposition": "Iayos ang posisyon",
+    "repositionHint": "I-drag para iayos ang posisyon",
+    "repositionSave": "i-save",
+    "repositionCancel": "kanselahin",
+    "credit": "Larawan ni {name} sa Unsplash",
+    "focusFailed": "Hindi ma-save ang posisyon ng pabalat",
+    "picker": {
+      "title": "Cover ng tala",
+      "placeholder": "Maghanap ng mga cover",
+      "tab": {
+        "washes": "Mga kulay",
+        "photos": "Unsplash",
+        "fromNote": "Mula sa tala",
+        "upload": "Mag-upload"
+      },
+      "photos": {
+        "searching": "Naghahanap sa Unsplash…",
+        "noResults": "Walang larawang tumutugma sa paghahanap na iyon",
+        "remaining": "{count} na natitira",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Hindi available ang mga larawan ng Unsplash sa build na ito",
+          "offline": "Walang koneksyon sa Unsplash",
+          "rateLimited": "Na-rate limit ang Unsplash, subukan ulit sandali",
+          "failed": "Hindi ma-reach ang Unsplash",
+          "writeFailed": "Hindi ma-save ang larawang iyon sa vault"
+        }
+      },
+      "upload": "Mag-upload",
+      "uploading": "Ina-upload…",
+      "uploadFailed": "Hindi ma-upload ang larawang pabalat",
+      "loadFailed": "Hindi ma-load ang mga larawan sa vault",
+      "insertFailed": "Hindi magamit ang larawang iyon bilang pabalat",
+      "noMatches": "Walang tugma",
+      "empty": "Wala pang larawan sa vault na ito",
+      "hint": {
+        "apply": "Ilapat",
+        "applyReposition": "Ilapat at iayos",
+        "close": "Isara"
+      },
+      "wash": {
+        "sage": "Salbiya",
+        "sand": "Buhangin",
+        "lilac": "Lila",
+        "clay": "Luwad",
+        "ash": "Abo",
+        "fog": "Hamog",
+        "wheat": "Trigo",
+        "moss": "Lumot",
+        "slate": "Pisara",
+        "bark": "Balat-kahoy",
+        "mist": "Alapaap",
+        "plum": "Siruelas"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Piliin ang Iyong Canvas",
     "description": "Pumili ng template upang simulan ang iyong tala",

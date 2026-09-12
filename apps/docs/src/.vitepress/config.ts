@@ -71,6 +71,7 @@ function unifiedSidebar() {
             { text: 'Properties & Tags', link: '/user-guide/notes/properties-tags' },
             { text: 'Attachments', link: '/user-guide/notes/attachments' },
             { text: 'Custom Icons', link: '/user-guide/notes/custom-icons' },
+            { text: 'Cover Image', link: '/user-guide/notes/cover-image' },
             { text: 'Bookmarks & Reminders', link: '/user-guide/notes/bookmarks-reminders' },
             { text: 'Find in Page', link: '/user-guide/notes/find-in-page' },
             { text: 'Mind Map', link: '/user-guide/notes/mind-map' },

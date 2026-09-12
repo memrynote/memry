@@ -257,6 +257,69 @@
       "todo": "At gøre"
     }
   },
+  "cover": {
+    "add": "Tilføj cover",
+    "change": "Skift cover",
+    "remove": "Fjern cover",
+    "alt": "Coverbillede",
+    "setFailed": "Coverbilledet kunne ikke angives",
+    "removeFailed": "Coverbilledet kunne ikke fjernes",
+    "reposition": "Justér placering",
+    "repositionHint": "Træk for at justere placeringen",
+    "repositionSave": "gem",
+    "repositionCancel": "annullér",
+    "credit": "Foto af {name} på Unsplash",
+    "focusFailed": "Coverets placering kunne ikke gemmes",
+    "picker": {
+      "title": "Notens cover",
+      "placeholder": "Søg covers",
+      "tab": {
+        "washes": "Nuancer",
+        "photos": "Unsplash",
+        "fromNote": "Fra noten",
+        "upload": "Upload"
+      },
+      "photos": {
+        "searching": "Søger på Unsplash…",
+        "noResults": "Ingen fotos matcher den søgning",
+        "remaining": "{count} tilbage",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash-fotos er ikke tilgængelige i denne build",
+          "offline": "Ingen forbindelse til Unsplash",
+          "rateLimited": "Unsplash er hastighedsbegrænset, prøv igen om lidt",
+          "failed": "Unsplash kunne ikke nås",
+          "writeFailed": "Det foto kunne ikke gemmes i boksen"
+        }
+      },
+      "upload": "Upload",
+      "uploading": "Uploader…",
+      "uploadFailed": "Coverbilledet kunne ikke uploades",
+      "loadFailed": "Billederne i boksen kunne ikke indlæses",
+      "insertFailed": "Billedet kunne ikke bruges som cover",
+      "noMatches": "Ingen resultater",
+      "empty": "Der er ingen billeder i denne boks endnu",
+      "hint": {
+        "apply": "Anvend",
+        "applyReposition": "Anvend og justér",
+        "close": "Luk"
+      },
+      "wash": {
+        "sage": "Salvie",
+        "sand": "Sand",
+        "lilac": "Syren",
+        "clay": "Ler",
+        "ash": "Aske",
+        "fog": "Tåge",
+        "wheat": "Hvede",
+        "moss": "Mos",
+        "slate": "Skifer",
+        "bark": "Bark",
+        "mist": "Dis",
+        "plum": "Blomme"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Vælg dit lærred",
     "description": "Vælg en skabelon for at starte din note",

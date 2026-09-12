@@ -257,6 +257,69 @@
       "todo": "Pendiente"
     }
   },
+  "cover": {
+    "add": "Añadir portada",
+    "change": "Cambiar portada",
+    "remove": "Quitar portada",
+    "alt": "Imagen de portada",
+    "setFailed": "No se pudo establecer la imagen de portada",
+    "removeFailed": "No se pudo quitar la imagen de portada",
+    "reposition": "Reposicionar",
+    "repositionHint": "Arrastra para reposicionar",
+    "repositionSave": "guardar",
+    "repositionCancel": "cancelar",
+    "credit": "Foto de {name} en Unsplash",
+    "focusFailed": "No se pudo guardar la posición de la portada",
+    "picker": {
+      "title": "Portada de la nota",
+      "placeholder": "Buscar portadas",
+      "tab": {
+        "washes": "Tonos",
+        "photos": "Unsplash",
+        "fromNote": "De la nota",
+        "upload": "Subir"
+      },
+      "photos": {
+        "searching": "Buscando en Unsplash…",
+        "noResults": "Ninguna foto coincide con esa búsqueda",
+        "remaining": "Quedan {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Las fotos de Unsplash no están disponibles en esta versión",
+          "offline": "Sin conexión con Unsplash",
+          "rateLimited": "Unsplash tiene un límite de solicitudes, inténtalo de nuevo en breve",
+          "failed": "No se pudo contactar con Unsplash",
+          "writeFailed": "Esa foto no se pudo guardar en la bóveda"
+        }
+      },
+      "upload": "Subir",
+      "uploading": "Subiendo…",
+      "uploadFailed": "No se pudo subir la imagen de portada",
+      "loadFailed": "No se pudieron cargar las imágenes de la bóveda",
+      "insertFailed": "No se pudo usar esa imagen como portada",
+      "noMatches": "No hay coincidencias",
+      "empty": "Aún no hay imágenes en esta bóveda",
+      "hint": {
+        "apply": "Aplicar",
+        "applyReposition": "Aplicar y reposicionar",
+        "close": "Cerrar"
+      },
+      "wash": {
+        "sage": "Salvia",
+        "sand": "Arena",
+        "lilac": "Lila",
+        "clay": "Arcilla",
+        "ash": "Ceniza",
+        "fog": "Niebla",
+        "wheat": "Trigo",
+        "moss": "Musgo",
+        "slate": "Pizarra",
+        "bark": "Corteza",
+        "mist": "Bruma",
+        "plum": "Ciruela"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Elige tu lienzo",
     "description": "Seleccione una plantilla para comenzar su nota",

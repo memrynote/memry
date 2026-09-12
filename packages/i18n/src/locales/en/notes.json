@@ -542,6 +542,83 @@
     "projectEmpty": "No projects",
     "projectRemove": "Remove from {name}"
   },
+  "cover": {
+    "add": "Add cover",
+    "change": "Change cover",
+    "remove": "Remove cover",
+    "alt": "Cover image",
+    "setFailed": "Could not set the cover image",
+    "removeFailed": "Could not remove the cover image",
+    "reposition": "Reposition",
+    "repositionHint": "Drag to reposition",
+    "repositionSave": "save",
+    "repositionCancel": "cancel",
+    "credit": "Photo by {name} on Unsplash",
+    "focusFailed": "Could not save the cover position",
+    "picker": {
+      "title": "Note cover",
+      "placeholder": "Search covers",
+      "tab": {
+        "washes": "Washes",
+        "photos": "Unsplash",
+        "fromNote": "From note",
+        "upload": "Upload",
+        "link": "Link"
+      },
+      "photos": {
+        "searching": "Searching Unsplash…",
+        "noResults": "No photos match that search",
+        "remaining": "{count} left",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash photos are not available in this build",
+          "offline": "No connection to Unsplash",
+          "rateLimited": "Unsplash is rate limited, try again shortly",
+          "failed": "Unsplash could not be reached",
+          "writeFailed": "That photo could not be saved to the vault"
+        }
+      },
+      "upload": "Upload",
+      "uploading": "Uploading…",
+      "uploadFailed": "Could not upload the cover image",
+      "loadFailed": "Could not load the vault images",
+      "insertFailed": "Could not use that image as a cover",
+      "noMatches": "No matches",
+      "empty": "No images in this vault yet",
+      "hint": {
+        "apply": "Apply",
+        "applyReposition": "Apply & reposition",
+        "close": "Close"
+      },
+      "wash": {
+        "sage": "Sage",
+        "sand": "Sand",
+        "lilac": "Lilac",
+        "clay": "Clay",
+        "ash": "Ash",
+        "fog": "Fog",
+        "wheat": "Wheat",
+        "moss": "Moss",
+        "slate": "Slate",
+        "bark": "Bark",
+        "mist": "Mist",
+        "plum": "Plum"
+      },
+      "link": {
+        "prompt": "Paste a link to an image",
+        "invalid": "That is not a link Memry can open",
+        "use": "Use this image",
+        "saving": "Saving the image…",
+        "error": {
+          "notAnImage": "That link does not point at an image",
+          "tooLarge": "That image is too large to store",
+          "offline": "That link could not be reached",
+          "failed": "That image could not be downloaded",
+          "writeFailed": "That image could not be saved to the vault"
+        }
+      }
+    }
+  },
   "templateSelector": {
     "title": "Choose Your Canvas",
     "description": "Select a template to begin your note",

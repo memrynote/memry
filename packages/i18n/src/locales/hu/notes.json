@@ -257,6 +257,69 @@
       "todo": "Teendő"
     }
   },
+  "cover": {
+    "add": "Borítókép hozzáadása",
+    "change": "Borítókép módosítása",
+    "remove": "Borítókép eltávolítása",
+    "alt": "Borítókép",
+    "setFailed": "Nem sikerült beállítani a borítóképet",
+    "removeFailed": "Nem sikerült eltávolítani a borítóképet",
+    "reposition": "Áthelyezés",
+    "repositionHint": "Húzza az áthelyezéshez",
+    "repositionSave": "mentés",
+    "repositionCancel": "mégsem",
+    "credit": "Fotó: {name} az Unsplash oldalon",
+    "focusFailed": "Nem sikerült menteni a borítókép pozícióját",
+    "picker": {
+      "title": "Jegyzet borítóképe",
+      "placeholder": "Borítóképek keresése",
+      "tab": {
+        "washes": "Színek",
+        "photos": "Unsplash",
+        "fromNote": "A jegyzetből",
+        "upload": "Feltöltés"
+      },
+      "photos": {
+        "searching": "Keresés az Unsplashon…",
+        "noResults": "Egyetlen fotó sem felel meg a keresésnek",
+        "remaining": "{count} van hátra",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Az Unsplash fotók nem érhetők el ebben a verzióban",
+          "offline": "Nincs kapcsolat az Unsplash-sel",
+          "rateLimited": "Az Unsplash korlátozza a kéréseket, próbálja újra kicsit később",
+          "failed": "Nem sikerült elérni az Unsplash-t",
+          "writeFailed": "Ezt a fotót nem sikerült elmenteni a széfbe"
+        }
+      },
+      "upload": "Feltöltés",
+      "uploading": "Feltöltés…",
+      "uploadFailed": "Nem sikerült feltölteni a borítóképet",
+      "loadFailed": "Nem sikerült betölteni a széf képeit",
+      "insertFailed": "Nem sikerült borítóképként használni ezt a képet",
+      "noMatches": "Nincs találat",
+      "empty": "Még nincs kép ebben a széfben",
+      "hint": {
+        "apply": "Alkalmaz",
+        "applyReposition": "Alkalmaz és áthelyez",
+        "close": "Bezárás"
+      },
+      "wash": {
+        "sage": "Zsálya",
+        "sand": "Homok",
+        "lilac": "Orgona",
+        "clay": "Agyag",
+        "ash": "Hamu",
+        "fog": "Köd",
+        "wheat": "Búza",
+        "moss": "Moha",
+        "slate": "Pala",
+        "bark": "Fakéreg",
+        "mist": "Pára",
+        "plum": "Szilva"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Válassza ki a vásznat",
     "description": "A jegyzet megkezdéséhez válasszon sablont",

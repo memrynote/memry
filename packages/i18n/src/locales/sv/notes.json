@@ -257,6 +257,69 @@
       "todo": "Att göra"
     }
   },
+  "cover": {
+    "add": "Lägg till omslag",
+    "change": "Ändra omslag",
+    "remove": "Ta bort omslag",
+    "alt": "Omslagsbild",
+    "setFailed": "Det gick inte att ange omslagsbilden",
+    "removeFailed": "Det gick inte att ta bort omslagsbilden",
+    "reposition": "Placera om",
+    "repositionHint": "Dra för att placera om",
+    "repositionSave": "spara",
+    "repositionCancel": "avbryt",
+    "credit": "Foto av {name} på Unsplash",
+    "focusFailed": "Det gick inte att spara omslagets position",
+    "picker": {
+      "title": "Anteckningsomslag",
+      "placeholder": "Sök omslag",
+      "tab": {
+        "washes": "Toner",
+        "photos": "Unsplash",
+        "fromNote": "Från anteckningen",
+        "upload": "Ladda upp"
+      },
+      "photos": {
+        "searching": "Söker på Unsplash…",
+        "noResults": "Inga foton matchar den sökningen",
+        "remaining": "{count} kvar",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash-foton är inte tillgängliga i den här versionen",
+          "offline": "Ingen anslutning till Unsplash",
+          "rateLimited": "Unsplash har nått sin gräns för förfrågningar, försök igen om en liten stund",
+          "failed": "Det gick inte att nå Unsplash",
+          "writeFailed": "Det fotot kunde inte sparas i valvet"
+        }
+      },
+      "upload": "Ladda upp",
+      "uploading": "Laddar upp…",
+      "uploadFailed": "Det gick inte att ladda upp omslagsbilden",
+      "loadFailed": "Det gick inte att läsa in bilderna i valvet",
+      "insertFailed": "Det gick inte att använda bilden som omslag",
+      "noMatches": "Inga matchningar",
+      "empty": "Inga bilder i det här valvet ännu",
+      "hint": {
+        "apply": "Använd",
+        "applyReposition": "Använd och placera om",
+        "close": "Stäng"
+      },
+      "wash": {
+        "sage": "Salvia",
+        "sand": "Sand",
+        "lilac": "Syren",
+        "clay": "Lera",
+        "ash": "Aska",
+        "fog": "Dimma",
+        "wheat": "Vete",
+        "moss": "Mossa",
+        "slate": "Skiffer",
+        "bark": "Bark",
+        "mist": "Dis",
+        "plum": "Plommon"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Välj din duk",
     "description": "Välj en mall för att börja din anteckning",

@@ -257,6 +257,69 @@
       "todo": "Na urobenie"
     }
   },
+  "cover": {
+    "add": "Pridať obálku",
+    "change": "Zmeniť obálku",
+    "remove": "Odstrániť obálku",
+    "alt": "Obrázok obálky",
+    "setFailed": "Obrázok obálky sa nepodarilo nastaviť",
+    "removeFailed": "Obrázok obálky sa nepodarilo odstrániť",
+    "reposition": "Zmeniť polohu",
+    "repositionHint": "Potiahnutím zmeníte polohu",
+    "repositionSave": "uložiť",
+    "repositionCancel": "zrušiť",
+    "credit": "Fotografia od {name} na Unsplash",
+    "focusFailed": "Polohu obálky sa nepodarilo uložiť",
+    "picker": {
+      "title": "Obálka poznámky",
+      "placeholder": "Hľadať obálky",
+      "tab": {
+        "washes": "Odtiene",
+        "photos": "Unsplash",
+        "fromNote": "Z poznámky",
+        "upload": "Nahrať"
+      },
+      "photos": {
+        "searching": "Vyhľadávanie na Unsplash…",
+        "noResults": "Žiadne fotky nezodpovedajú tomuto vyhľadávaniu",
+        "remaining": "Zostáva {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Fotky Unsplash nie sú v tejto verzii k dispozícii",
+          "offline": "Žiadne pripojenie k Unsplash",
+          "rateLimited": "Unsplash má obmedzenú rýchlosť požiadaviek, skúste to čoskoro znova",
+          "failed": "Unsplash sa nepodarilo kontaktovať",
+          "writeFailed": "Túto fotku sa nepodarilo uložiť do trezora"
+        }
+      },
+      "upload": "Nahrať",
+      "uploading": "Nahráva sa…",
+      "uploadFailed": "Obrázok obálky sa nepodarilo nahrať",
+      "loadFailed": "Obrázky z trezora sa nepodarilo načítať",
+      "insertFailed": "Tento obrázok sa nepodarilo použiť ako obálku",
+      "noMatches": "Žiadne zhody",
+      "empty": "V tomto trezore zatiaľ nie sú žiadne obrázky",
+      "hint": {
+        "apply": "Použiť",
+        "applyReposition": "Použiť a zmeniť polohu",
+        "close": "Zavrieť"
+      },
+      "wash": {
+        "sage": "Šalvia",
+        "sand": "Piesok",
+        "lilac": "Orgován",
+        "clay": "Hlina",
+        "ash": "Popol",
+        "fog": "Hmla",
+        "wheat": "Pšenica",
+        "moss": "Mach",
+        "slate": "Bridlica",
+        "bark": "Kôra",
+        "mist": "Opar",
+        "plum": "Slivka"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Vyberte svoje plátno",
     "description": "Vyberte šablónu na začatie poznámky",

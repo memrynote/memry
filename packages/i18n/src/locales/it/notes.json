@@ -257,6 +257,69 @@
       "todo": "Da fare"
     }
   },
+  "cover": {
+    "add": "Aggiungi copertina",
+    "change": "Cambia copertina",
+    "remove": "Rimuovi copertina",
+    "alt": "Immagine di copertina",
+    "setFailed": "Impossibile impostare l'immagine di copertina",
+    "removeFailed": "Impossibile rimuovere l'immagine di copertina",
+    "reposition": "Riposiziona",
+    "repositionHint": "Trascina per riposizionare",
+    "repositionSave": "salva",
+    "repositionCancel": "annulla",
+    "credit": "Foto di {name} su Unsplash",
+    "focusFailed": "Impossibile salvare la posizione della copertina",
+    "picker": {
+      "title": "Copertina della nota",
+      "placeholder": "Cerca copertine",
+      "tab": {
+        "washes": "Tinte",
+        "photos": "Unsplash",
+        "fromNote": "Dalla nota",
+        "upload": "Carica"
+      },
+      "photos": {
+        "searching": "Ricerca su Unsplash…",
+        "noResults": "Nessuna foto corrisponde a quella ricerca",
+        "remaining": "{count} rimanenti",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Le foto di Unsplash non sono disponibili in questa build",
+          "offline": "Nessuna connessione a Unsplash",
+          "rateLimited": "Unsplash ha limitato le richieste, riprova tra poco",
+          "failed": "Impossibile raggiungere Unsplash",
+          "writeFailed": "Impossibile salvare quella foto nella volta"
+        }
+      },
+      "upload": "Carica",
+      "uploading": "Caricamento…",
+      "uploadFailed": "Impossibile caricare l'immagine di copertina",
+      "loadFailed": "Impossibile caricare le immagini della volta",
+      "insertFailed": "Impossibile usare quell'immagine come copertina",
+      "noMatches": "Nessun risultato",
+      "empty": "Nessuna immagine in questa volta",
+      "hint": {
+        "apply": "Applica",
+        "applyReposition": "Applica e riposiziona",
+        "close": "Chiudi"
+      },
+      "wash": {
+        "sage": "Salvia",
+        "sand": "Sabbia",
+        "lilac": "Lilla",
+        "clay": "Argilla",
+        "ash": "Cenere",
+        "fog": "Nebbia",
+        "wheat": "Grano",
+        "moss": "Muschio",
+        "slate": "Ardesia",
+        "bark": "Corteccia",
+        "mist": "Foschia",
+        "plum": "Prugna"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Scegli la tua tela",
     "description": "Seleziona un modello per iniziare la nota",

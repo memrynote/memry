@@ -257,6 +257,69 @@
       "todo": "Yapılacak"
     }
   },
+  "cover": {
+    "add": "Kapak ekle",
+    "change": "Kapağı değiştir",
+    "remove": "Kapağı kaldır",
+    "alt": "Kapak görseli",
+    "setFailed": "Kapak görseli ayarlanamadı",
+    "removeFailed": "Kapak görseli kaldırılamadı",
+    "reposition": "Yeniden konumlandır",
+    "repositionHint": "Konumlandırmak için sürükleyin",
+    "repositionSave": "kaydet",
+    "repositionCancel": "iptal",
+    "credit": "Fotoğraf: {name}, Unsplash",
+    "focusFailed": "Kapak konumu kaydedilemedi",
+    "picker": {
+      "title": "Not kapağı",
+      "placeholder": "Kapak ara",
+      "tab": {
+        "washes": "Tonlar",
+        "photos": "Unsplash",
+        "fromNote": "Nottan",
+        "upload": "Yükle"
+      },
+      "photos": {
+        "searching": "Unsplash'te aranıyor…",
+        "noResults": "Bu aramayla eşleşen fotoğraf yok",
+        "remaining": "{count} kaldı",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash fotoğrafları bu sürümde kullanılamıyor",
+          "offline": "Unsplash bağlantısı yok",
+          "rateLimited": "Unsplash istek sınırına ulaştı, kısa süre sonra tekrar deneyin",
+          "failed": "Unsplash'e ulaşılamadı",
+          "writeFailed": "Bu fotoğraf kasaya kaydedilemedi"
+        }
+      },
+      "upload": "Yükle",
+      "uploading": "Yükleniyor…",
+      "uploadFailed": "Kapak görseli yüklenemedi",
+      "loadFailed": "Kasadaki görseller yüklenemedi",
+      "insertFailed": "Bu görsel kapak olarak kullanılamadı",
+      "noMatches": "Eşleşme yok",
+      "empty": "Bu kasada henüz görsel yok",
+      "hint": {
+        "apply": "Uygula",
+        "applyReposition": "Uygula ve konumlandır",
+        "close": "Kapat"
+      },
+      "wash": {
+        "sage": "Adaçayı",
+        "sand": "Kum",
+        "lilac": "Leylak",
+        "clay": "Kil",
+        "ash": "Kül",
+        "fog": "Sis",
+        "wheat": "Buğday",
+        "moss": "Yosun",
+        "slate": "Arduvaz",
+        "bark": "Ağaç kabuğu",
+        "mist": "Pus",
+        "plum": "Erik"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Kanvasınızı Seçin",
     "description": "Notunuza başlamak için bir şablon seçin",

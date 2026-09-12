@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import matter from 'gray-matter'
 import type { PropertyType } from '@memry/contracts/property-types'
+import { COVER_FRONTMATTER_KEY } from '@memry/shared/cover-image'
 import {
   parseNote,
   serializeNote,
@@ -511,5 +512,117 @@ describe('createSnippet wiki links (issue #1556)', () => {
 
   it('reads an aliased link as its alias, not alias-welded-to-target', () => {
     expect(createSnippet('see [[Sprint Notes|retro]] today')).toBe('see retro today')
+  })
+})
+
+describe('the cover frontmatter key', () => {
+  const COVER_REF = '../attachments/n1/abc123-photo.jpg'
+
+  it('round-trips a note-relative ref byte-identically through parse and serialize', () => {
+    const raw = `---
+cover: ${COVER_REF}
+status: reading
+---
+
+Body text
+`
+
+    const parsed = parseNote(raw, 'notes/Books/Dune.md')
+    expect(parsed.frontmatter.cover).toBe(COVER_REF)
+
+    const serialized = serializeNote(parsed.frontmatter, parsed.content)
+    expect(serialized).toContain(COVER_REF)
+    expect(serialized).not.toContain('memry-file://')
+
+    const reparsed = parseNote(serialized, 'notes/Books/Dune.md')
+    expect(reparsed.frontmatter.cover).toBe(COVER_REF)
+    expect(serializeNote(reparsed.frontmatter, reparsed.content)).toBe(serialized)
+  })
+
+  it('hides an image-valued cover from extractProperties', () => {
+    expect(extractProperties({ cover: COVER_REF, status: 'reading' })).toEqual({
+      status: 'reading'
+    })
+    expect(COVER_FRONTMATTER_KEY).toBe('cover')
+  })
+
+  it('leaves a text-valued cover as an ordinary user property', () => {
+    // `cover: Hardback` exists in real book notes written long before the key
+    // meant anything. Reserving by name alone would drop the row.
+    expect(extractProperties({ cover: 'Hardback', status: 'reading' })).toEqual({
+      cover: 'Hardback',
+      status: 'reading'
+    })
+  })
+
+  it('REGRESSION: a property rewrite preserves the cover but still rewrites a text cover', () => {
+    // `replacePropertiesOnRoot` deletes every key `extractProperties` returns
+    // before rewriting, so without the value-aware reserve the cover vanishes
+    // the first time the user edits any property.
+    expect(
+      replacePropertiesOnRoot(
+        { tags: ['reading'], cover: COVER_REF, status: 'todo' },
+        { status: 'done' }
+      )
+    ).toEqual({ tags: ['reading'], cover: COVER_REF, status: 'done' })
+
+    expect(
+      replacePropertiesOnRoot({ cover: 'Hardback', status: 'todo' }, { status: 'done' })
+    ).toEqual({ status: 'done' })
+  })
+})
+
+describe('value-gated cover keys', () => {
+  const COVER_REF = '../attachments/n1/abc123-photo.jpg'
+
+  it('hides a wash cover from extractProperties the way an image cover is hidden', () => {
+    expect(extractProperties({ cover: 'wash:sage', status: 'reading' })).toEqual({
+      status: 'reading'
+    })
+  })
+
+  it('reserves coverFocus, coverCredit and coverCreditUrl only when the value fits', () => {
+    expect(
+      extractProperties({
+        coverFocus: 24,
+        coverCredit: 'Ana Ruiz',
+        coverCreditUrl: 'https://unsplash.com/@ana',
+        status: 'reading'
+      })
+    ).toEqual({ status: 'reading' })
+
+    // Written by a user long before these keys meant anything.
+    expect(
+      extractProperties({
+        coverFocus: 'top of the shelf',
+        coverCredit: '',
+        coverCreditUrl: 'unsplash.com/@ana'
+      })
+    ).toEqual({
+      coverFocus: 'top of the shelf',
+      coverCredit: '',
+      coverCreditUrl: 'unsplash.com/@ana'
+    })
+  })
+
+  it('REGRESSION: a property rewrite preserves focus and credit alongside the cover', () => {
+    expect(
+      replacePropertiesOnRoot(
+        {
+          cover: COVER_REF,
+          coverFocus: 24,
+          coverCredit: 'Ana Ruiz',
+          coverCreditUrl: 'https://unsplash.com/@ana',
+          status: 'todo'
+        },
+        { status: 'done' }
+      )
+    ).toEqual({
+      cover: COVER_REF,
+      coverFocus: 24,
+      coverCredit: 'Ana Ruiz',
+      coverCreditUrl: 'https://unsplash.com/@ana',
+      status: 'done'
+    })
   })
 })

@@ -68,6 +68,7 @@
     "./templates-api": "./src/templates-api.ts",
     "./ai-inline-channels": "./src/ai-inline-channels.ts",
     "./agent-mcp-channels": "./src/agent-mcp-channels.ts",
+    "./unsplash-api": "./src/unsplash-api.ts",
     "./vault-api": "./src/vault-api.ts",
     "./capture-api": "./src/capture-api.ts",
     "./webview-bridge": "./src/webview-bridge.ts",

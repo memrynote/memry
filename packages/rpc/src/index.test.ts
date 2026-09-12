@@ -13,10 +13,11 @@ import {
   rpcDomains,
   settingsRpc,
   tasksRpc,
-  telemetryRpc
+  telemetryRpc,
+  unsplashRpc
 } from './index.ts'
 
-const DOMAINS_WITHOUT_EVENTS = new Set(['telemetry', 'feedback', 'diagnostics'])
+const DOMAINS_WITHOUT_EVENTS = new Set(['telemetry', 'feedback', 'diagnostics', 'unsplash'])
 
 describe('@memry/rpc public surface', () => {
   it('re-exports the schema factories', () => {
@@ -36,12 +37,13 @@ describe('@memry/rpc public surface', () => {
     expect(telemetryRpc.name).toBe('telemetry')
     expect(feedbackRpc.name).toBe('feedback')
     expect(diagnosticsRpc.name).toBe('diagnostics')
+    expect(unsplashRpc.name).toBe('unsplash')
   })
 })
 
 describe('rpcDomains aggregate', () => {
-  it('contains exactly the ten known domains in declaration order', () => {
-    expect(rpcDomains).toHaveLength(10)
+  it('contains exactly the eleven known domains in declaration order', () => {
+    expect(rpcDomains).toHaveLength(11)
     expect(rpcDomains.map((d) => d.name)).toEqual([
       'notes',
       'tasks',
@@ -52,7 +54,8 @@ describe('rpcDomains aggregate', () => {
       'canvasFolder',
       'telemetry',
       'feedback',
-      'diagnostics'
+      'diagnostics',
+      'unsplash'
     ])
   })
 

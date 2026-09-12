@@ -16,6 +16,16 @@ import {
 import { generateNoteId, isValidNoteId } from '../lib/id'
 import { isRelationValue } from '@memry/contracts/relation-uri'
 import { replaceWikiLinks, splitWikiTarget } from '@memry/shared/wiki-target'
+import {
+  COVER_CREDIT_FRONTMATTER_KEY,
+  COVER_CREDIT_URL_FRONTMATTER_KEY,
+  COVER_FOCUS_FRONTMATTER_KEY,
+  COVER_FRONTMATTER_KEY,
+  isCoverCreditUrlValue,
+  isCoverCreditValue,
+  isCoverFocusValue,
+  isCoverValue
+} from '@memry/shared/cover-image'
 
 // ============================================================================
 // Types
@@ -368,6 +378,22 @@ import { PROJECT_PROPERTY_KEY, type PropertyType } from '@memry/contracts/proper
  */
 const RESERVED_FRONTMATTER_KEYS = new Set(['tags', 'aliases', 'properties'])
 
+/**
+ * Each cover key is gated on its value, never on its name alone: a vault that
+ * already carries `coverCredit: TBD` keeps it as a user property.
+ */
+const VALUE_GATED_FRONTMATTER_KEYS: ReadonlyMap<string, (value: unknown) => boolean> = new Map([
+  [COVER_FRONTMATTER_KEY, isCoverValue as (value: unknown) => boolean],
+  [COVER_FOCUS_FRONTMATTER_KEY, isCoverFocusValue as (value: unknown) => boolean],
+  [COVER_CREDIT_FRONTMATTER_KEY, isCoverCreditValue as (value: unknown) => boolean],
+  [COVER_CREDIT_URL_FRONTMATTER_KEY, isCoverCreditUrlValue as (value: unknown) => boolean]
+])
+
+function isReservedFrontmatterKey(name: string, value: unknown): boolean {
+  if (RESERVED_FRONTMATTER_KEYS.has(name)) return true
+  return VALUE_GATED_FRONTMATTER_KEYS.get(name)?.(value) ?? false
+}
+
 export interface NormalizedPropertiesResult {
   frontmatter: NoteFrontmatter
   changed: boolean
@@ -397,7 +423,7 @@ export function normalizePropertiesToRoot(
 
   const conflicts: string[] = []
   for (const [name, value] of Object.entries(frontmatter.properties)) {
-    if (RESERVED_FRONTMATTER_KEYS.has(name)) continue
+    if (isReservedFrontmatterKey(name, value)) continue
     if (Object.prototype.hasOwnProperty.call(normalized, name)) {
       conflicts.push(name)
       continue
@@ -415,7 +441,7 @@ export function writePropertiesToRoot(
 ): NoteFrontmatter {
   const next = { ...frontmatter }
   for (const [name, value] of Object.entries(properties)) {
-    if (RESERVED_FRONTMATTER_KEYS.has(name)) continue
+    if (isReservedFrontmatterKey(name, value)) continue
     if (value === undefined) delete next[name]
     else next[name] = value
   }
@@ -449,12 +475,12 @@ export function extractProperties(frontmatter: NoteFrontmatter): Record<string, 
   // overlay top-level keys so an Obsidian edit wins a stale nested value.
   if (isRecord(frontmatter.properties)) {
     for (const [key, value] of Object.entries(frontmatter.properties)) {
-      if (!RESERVED_FRONTMATTER_KEYS.has(key) && value !== undefined) properties[key] = value
+      if (!isReservedFrontmatterKey(key, value) && value !== undefined) properties[key] = value
     }
   }
 
   for (const [key, value] of Object.entries(frontmatter)) {
-    if (!RESERVED_FRONTMATTER_KEYS.has(key) && value !== undefined) {
+    if (!isReservedFrontmatterKey(key, value) && value !== undefined) {
       properties[key] = value
     }
   }

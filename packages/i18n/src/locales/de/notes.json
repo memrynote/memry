@@ -257,6 +257,69 @@
       "todo": "Zu erledigen"
     }
   },
+  "cover": {
+    "add": "Titelbild hinzufügen",
+    "change": "Titelbild ändern",
+    "remove": "Titelbild entfernen",
+    "alt": "Titelbild",
+    "setFailed": "Titelbild konnte nicht festgelegt werden",
+    "removeFailed": "Titelbild konnte nicht entfernt werden",
+    "reposition": "Neu positionieren",
+    "repositionHint": "Zum Verschieben ziehen",
+    "repositionSave": "speichern",
+    "repositionCancel": "abbrechen",
+    "credit": "Foto von {name} auf Unsplash",
+    "focusFailed": "Position des Titelbilds konnte nicht gespeichert werden",
+    "picker": {
+      "title": "Titelbild der Notiz",
+      "placeholder": "Titelbilder suchen",
+      "tab": {
+        "washes": "Farbtöne",
+        "photos": "Unsplash",
+        "fromNote": "Aus der Notiz",
+        "upload": "Hochladen"
+      },
+      "photos": {
+        "searching": "Unsplash wird durchsucht…",
+        "noResults": "Keine Fotos entsprechen dieser Suche",
+        "remaining": "Noch {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Unsplash-Fotos sind in dieser Version nicht verfügbar",
+          "offline": "Keine Verbindung zu Unsplash",
+          "rateLimited": "Unsplash ist ratenbegrenzt, versuche es gleich noch einmal",
+          "failed": "Unsplash konnte nicht erreicht werden",
+          "writeFailed": "Dieses Foto konnte nicht im Tresor gespeichert werden"
+        }
+      },
+      "upload": "Hochladen",
+      "uploading": "Wird hochgeladen…",
+      "uploadFailed": "Titelbild konnte nicht hochgeladen werden",
+      "loadFailed": "Bilder aus dem Tresor konnten nicht geladen werden",
+      "insertFailed": "Dieses Bild konnte nicht als Titelbild verwendet werden",
+      "noMatches": "Keine Übereinstimmungen",
+      "empty": "Noch keine Bilder in diesem Tresor",
+      "hint": {
+        "apply": "Anwenden",
+        "applyReposition": "Anwenden und positionieren",
+        "close": "Schließen"
+      },
+      "wash": {
+        "sage": "Salbei",
+        "sand": "Sand",
+        "lilac": "Flieder",
+        "clay": "Ton",
+        "ash": "Asche",
+        "fog": "Nebel",
+        "wheat": "Weizen",
+        "moss": "Moos",
+        "slate": "Schiefer",
+        "bark": "Rinde",
+        "mist": "Dunst",
+        "plum": "Pflaume"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Wählen Sie Ihre Leinwand",
     "description": "Wählen Sie eine Vorlage aus, um mit Ihrer Notiz zu beginnen",

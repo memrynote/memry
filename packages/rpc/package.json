@@ -12,7 +12,8 @@
     "./tasks": "./src/tasks.ts",
     "./notes": "./src/notes.ts",
     "./inbox": "./src/inbox.ts",
-    "./settings": "./src/settings.ts"
+    "./settings": "./src/settings.ts",
+    "./unsplash": "./src/unsplash.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

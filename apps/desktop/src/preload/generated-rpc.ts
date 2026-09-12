@@ -119,6 +119,7 @@ export function createGeneratedRpcApi({
       "deleteAttachment": ((noteId, filename) => invoke("notes:delete-attachment", { noteId, filename })) as GeneratedRpcApi["notes"]["deleteAttachment"],
       "listVaultAttachments": (() => invoke("notes:list-vault-attachments")) as GeneratedRpcApi["notes"]["listVaultAttachments"],
       "insertExistingAttachment": ((noteId, ownerNoteId, filename) => invoke("notes:insert-existing-attachment", { noteId, ownerNoteId, filename })) as GeneratedRpcApi["notes"]["insertExistingAttachment"],
+      "downloadAttachmentFromUrl": ((noteId, url) => invoke("notes:download-attachment-from-url", { noteId, url })) as GeneratedRpcApi["notes"]["downloadAttachmentFromUrl"],
       "getFolderConfig": ((folderPath) => invoke("notes:get-folder-config", folderPath)) as GeneratedRpcApi["notes"]["getFolderConfig"],
       "setFolderConfig": ((folderPath, config) => invoke("notes:set-folder-config", { folderPath, config })) as GeneratedRpcApi["notes"]["setFolderConfig"],
       "getFolderTemplate": ((folderPath) => invoke("notes:get-folder-template", folderPath)) as GeneratedRpcApi["notes"]["getFolderTemplate"],
@@ -376,6 +377,10 @@ export function createGeneratedRpcApi({
     "diagnostics": {
       "previewReport": ((trigger) => invoke("diagnostics:previewReport", trigger)) as GeneratedRpcApi["diagnostics"]["previewReport"],
       "sendReport": ((report) => invoke("diagnostics:sendReport", report)) as GeneratedRpcApi["diagnostics"]["sendReport"],
+    },
+    "unsplash": {
+      "search": ((input) => invoke("unsplash:search", input)) as GeneratedRpcApi["unsplash"]["search"],
+      "download": ((input) => invoke("unsplash:download", input)) as GeneratedRpcApi["unsplash"]["download"],
     },
   }
 

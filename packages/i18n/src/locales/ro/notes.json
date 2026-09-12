@@ -257,6 +257,69 @@
       "todo": "De făcut"
     }
   },
+  "cover": {
+    "add": "Adaugă copertă",
+    "change": "Schimbă coperta",
+    "remove": "Elimină coperta",
+    "alt": "Imagine de copertă",
+    "setFailed": "Imaginea de copertă nu a putut fi setată",
+    "removeFailed": "Imaginea de copertă nu a putut fi eliminată",
+    "reposition": "Repoziționați",
+    "repositionHint": "Trageți pentru a repoziționa",
+    "repositionSave": "salvați",
+    "repositionCancel": "anulați",
+    "credit": "Fotografie de {name} pe Unsplash",
+    "focusFailed": "Poziția copertei nu a putut fi salvată",
+    "picker": {
+      "title": "Coperta notei",
+      "placeholder": "Căutați coperte",
+      "tab": {
+        "washes": "Nuanțe",
+        "photos": "Unsplash",
+        "fromNote": "Din notă",
+        "upload": "Încărcați"
+      },
+      "photos": {
+        "searching": "Se caută pe Unsplash…",
+        "noResults": "Nicio fotografie nu corespunde acestei căutări",
+        "remaining": "Au mai rămas {count}",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Fotografiile Unsplash nu sunt disponibile în această versiune",
+          "offline": "Nicio conexiune la Unsplash",
+          "rateLimited": "Unsplash a limitat numărul de cereri, încercați din nou peste puțin timp",
+          "failed": "Unsplash nu a putut fi contactat",
+          "writeFailed": "Acea fotografie nu a putut fi salvată în seif"
+        }
+      },
+      "upload": "Încărcați",
+      "uploading": "Se încarcă…",
+      "uploadFailed": "Imaginea de copertă nu a putut fi încărcată",
+      "loadFailed": "Imaginile din seif nu au putut fi încărcate",
+      "insertFailed": "Acea imagine nu a putut fi folosită drept copertă",
+      "noMatches": "Nicio potrivire",
+      "empty": "Încă nu există imagini în acest seif",
+      "hint": {
+        "apply": "Aplicați",
+        "applyReposition": "Aplicați și repoziționați",
+        "close": "Închide"
+      },
+      "wash": {
+        "sage": "Salvie",
+        "sand": "Nisip",
+        "lilac": "Liliac",
+        "clay": "Lut",
+        "ash": "Cenușă",
+        "fog": "Ceață",
+        "wheat": "Grâu",
+        "moss": "Mușchi",
+        "slate": "Ardezie",
+        "bark": "Scoarță",
+        "mist": "Pâclă",
+        "plum": "Prună"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Alegeți-vă pânza",
     "description": "Selectați un șablon pentru a începe nota",

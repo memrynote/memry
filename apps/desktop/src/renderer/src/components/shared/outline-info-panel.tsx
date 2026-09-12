@@ -25,6 +25,12 @@ export interface OutlineInfoPanelProps {
   className?: string
   activeHeadingId?: string
   stats?: DocumentStats
+  /**
+   * Starts the panel below a full-bleed cover band rather than over it, level
+   * with the note title. The panel is absolute against the whole layout, so
+   * without this it lands on the image and takes the clicks meant for it.
+   */
+  belowCover?: boolean
 }
 
 function getLineWidth(level: number): number {
@@ -65,7 +71,8 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
   onHeadingClick,
   className,
   activeHeadingId,
-  stats
+  stats,
+  belowCover = false
 }: OutlineInfoPanelProps) {
   const { t } = useT('notes')
   const dateFormat = useDateFormat()
@@ -146,7 +153,9 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
       ref={containerRef}
       className={cn(
         'outline-indicator',
-        'absolute end-4 top-32',
+        'absolute end-4',
+        // 36px chrome + the 200px band + the canvas's 24px top padding.
+        belowCover ? 'top-[260px]' : 'top-32',
         'hidden md:block z-40',
         className
       )}

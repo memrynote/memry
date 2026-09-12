@@ -257,6 +257,69 @@
       "todo": "À faire"
     }
   },
+  "cover": {
+    "add": "Ajouter une couverture",
+    "change": "Modifier la couverture",
+    "remove": "Supprimer la couverture",
+    "alt": "Image de couverture",
+    "setFailed": "Impossible de definir l'image de couverture",
+    "removeFailed": "Impossible de supprimer l'image de couverture",
+    "reposition": "Repositionner",
+    "repositionHint": "Faites glisser pour repositionner",
+    "repositionSave": "enregistrer",
+    "repositionCancel": "annuler",
+    "credit": "Photo de {name} sur Unsplash",
+    "focusFailed": "Impossible d'enregistrer la position de la couverture",
+    "picker": {
+      "title": "Couverture de la note",
+      "placeholder": "Rechercher des couvertures",
+      "tab": {
+        "washes": "Teintes",
+        "photos": "Unsplash",
+        "fromNote": "Depuis la note",
+        "upload": "Importer"
+      },
+      "photos": {
+        "searching": "Recherche sur Unsplash…",
+        "noResults": "Aucune photo ne correspond à cette recherche",
+        "remaining": "{count} restantes",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "Les photos Unsplash ne sont pas disponibles dans cette version",
+          "offline": "Aucune connexion à Unsplash",
+          "rateLimited": "Unsplash limite les requêtes, réessayez dans un instant",
+          "failed": "Impossible de joindre Unsplash",
+          "writeFailed": "Cette photo n'a pas pu être enregistrée dans le coffre-fort"
+        }
+      },
+      "upload": "Importer",
+      "uploading": "Import en cours…",
+      "uploadFailed": "Impossible d'importer l'image de couverture",
+      "loadFailed": "Impossible de charger les images du coffre-fort",
+      "insertFailed": "Impossible d'utiliser cette image comme couverture",
+      "noMatches": "Aucun résultat",
+      "empty": "Aucune image dans ce coffre-fort pour l'instant",
+      "hint": {
+        "apply": "Appliquer",
+        "applyReposition": "Appliquer et repositionner",
+        "close": "Fermer"
+      },
+      "wash": {
+        "sage": "Sauge",
+        "sand": "Sable",
+        "lilac": "Lilas",
+        "clay": "Argile",
+        "ash": "Cendre",
+        "fog": "Brouillard",
+        "wheat": "Blé",
+        "moss": "Mousse",
+        "slate": "Ardoise",
+        "bark": "Écorce",
+        "mist": "Brume",
+        "plum": "Prune"
+      }
+    }
+  },
   "templateSelector": {
     "title": "Choisissez votre toile",
     "description": "Sélectionnez un modèle pour commencer votre note",

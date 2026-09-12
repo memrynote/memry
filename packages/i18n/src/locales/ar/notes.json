@@ -257,6 +257,69 @@
       "todo": "قيد الانتظار"
     }
   },
+  "cover": {
+    "add": "إضافة صورة غلاف",
+    "change": "تغيير صورة الغلاف",
+    "remove": "إزالة صورة الغلاف",
+    "alt": "صورة الغلاف",
+    "setFailed": "تعذّر تعيين صورة الغلاف",
+    "removeFailed": "تعذّرت إزالة صورة الغلاف",
+    "reposition": "تغيير الموضع",
+    "repositionHint": "اسحب لتغيير الموضع",
+    "repositionSave": "حفظ",
+    "repositionCancel": "إلغاء",
+    "credit": "صورة بواسطة {name} على Unsplash",
+    "focusFailed": "تعذّر حفظ موضع صورة الغلاف",
+    "picker": {
+      "title": "غلاف الملاحظة",
+      "placeholder": "ابحث في الأغلفة",
+      "tab": {
+        "washes": "درجات لونية",
+        "photos": "Unsplash",
+        "fromNote": "من الملاحظة",
+        "upload": "رفع"
+      },
+      "photos": {
+        "searching": "جارٍ البحث في Unsplash…",
+        "noResults": "لا توجد صور مطابقة لهذا البحث",
+        "remaining": "{count} متبقٍ",
+        "tileCredit": "{name} · Unsplash",
+        "error": {
+          "notConfigured": "صور Unsplash غير متاحة في هذا الإصدار",
+          "offline": "لا يوجد اتصال بـ Unsplash",
+          "rateLimited": "تم تقييد معدل الطلبات على Unsplash، حاول مرة أخرى بعد قليل",
+          "failed": "تعذّر الوصول إلى Unsplash",
+          "writeFailed": "تعذّر حفظ هذه الصورة في الخزنة"
+        }
+      },
+      "upload": "رفع",
+      "uploading": "جارٍ الرفع…",
+      "uploadFailed": "تعذّر رفع صورة الغلاف",
+      "loadFailed": "تعذّر تحميل صور الخزنة",
+      "insertFailed": "تعذّر استخدام هذه الصورة كغلاف",
+      "noMatches": "لا توجد تطابقات",
+      "empty": "لا توجد صور في هذه الخزنة بعد",
+      "hint": {
+        "apply": "تطبيق",
+        "applyReposition": "تطبيق وتغيير الموضع",
+        "close": "إغلاق"
+      },
+      "wash": {
+        "sage": "مريمي",
+        "sand": "رملي",
+        "lilac": "ليلكي",
+        "clay": "طيني",
+        "ash": "رمادي",
+        "fog": "ضبابي",
+        "wheat": "قمحي",
+        "moss": "طحلبي",
+        "slate": "أردوازي",
+        "bark": "لحائي",
+        "mist": "سديمي",
+        "plum": "برقوقي"
+      }
+    }
+  },
   "templateSelector": {
     "title": "اختر قماشك",
     "description": "حدد قالبًا لبدء ملاحظتك",
