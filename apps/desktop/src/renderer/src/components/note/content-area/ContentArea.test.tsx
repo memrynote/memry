@@ -26,8 +26,14 @@ const contentAreaMocks = vi.hoisted(() => ({
     delete: vi.fn()
   },
   notesService: {
-    uploadAttachment: vi.fn()
+    uploadAttachment: vi.fn(),
+    get: vi.fn()
   },
+  templatesService: {
+    list: vi.fn(),
+    get: vi.fn()
+  },
+  insertTemplateBlocks: vi.fn(),
   fetchLinkPreview: vi.fn(),
   toastError: vi.fn(),
   defaultFileItemClick: vi.fn(),
@@ -209,6 +215,17 @@ vi.mock('next-themes', () => ({
 
 vi.mock('@/services/notes-service', () => ({
   notesService: contentAreaMocks.notesService
+}))
+
+vi.mock('@/services/templates-service', () => ({
+  templatesService: contentAreaMocks.templatesService,
+  onTemplateCreated: vi.fn(() => vi.fn()),
+  onTemplateUpdated: vi.fn(() => vi.fn()),
+  onTemplateDeleted: vi.fn(() => vi.fn())
+}))
+
+vi.mock('./insert-template', () => ({
+  insertTemplateBlocks: contentAreaMocks.insertTemplateBlocks
 }))
 
 vi.mock('@/services/tasks-service', () => ({
@@ -539,6 +556,22 @@ describe('ContentArea', () => {
       success: true,
       path: 'attachments/file.png'
     })
+    contentAreaMocks.notesService.get.mockResolvedValue({
+      id: 'note-1',
+      path: 'Notes/My note.md',
+      title: 'My note'
+    })
+    contentAreaMocks.templatesService.list.mockResolvedValue({
+      templates: [
+        { id: 'meeting', name: 'Meeting Notes', description: 'Agenda and actions', isBuiltIn: true }
+      ]
+    })
+    contentAreaMocks.templatesService.get.mockResolvedValue({
+      id: 'meeting',
+      name: 'Meeting Notes',
+      content: '# {{title}}\n\nAgenda'
+    })
+    contentAreaMocks.insertTemplateBlocks.mockResolvedValue({ ok: true, insertedBlockIds: ['b1'] })
     resetEditor()
   })
 
@@ -1218,6 +1251,205 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.openSuggestionMenu).toHaveBeenCalledWith('[[', {
       deleteTriggerCharacter: true
     })
+  })
+
+  const latestSlashController = (): any => {
+    const controllers = contentAreaMocks.suggestionControllers.filter(
+      (candidate) => candidate.triggerCharacter === '/'
+    )
+    return controllers[controllers.length - 1]
+  }
+
+  const slashItems = async (query: string): Promise<any[]> =>
+    latestSlashController().getItems(query)
+
+  const templateRowTitles = async (query: string): Promise<string[]> =>
+    (await slashItems(query)).filter((item) => item.group === 'Templates').map((item) => item.title)
+
+  it('keeps the per-template rows out of the cold menu and offers one row to open the picker', async () => {
+    render(<ContentArea noteId="note-1" />)
+    await waitFor(async () => expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes']))
+
+    const cold = await slashItems('')
+
+    expect(cold).toContainEqual(expect.objectContaining({ title: 'Insert template…' }))
+    expect(cold.some((item) => item.group === 'Templates')).toBe(false)
+  })
+
+  it('describes each per-template row with the template it inserts', async () => {
+    render(<ContentArea noteId="note-1" />)
+
+    await waitFor(async () =>
+      expect(await slashItems('meeting')).toEqual([
+        expect.objectContaining({
+          title: 'Meeting Notes',
+          group: 'Templates',
+          subtext: 'Agenda and actions'
+        })
+      ])
+    )
+  })
+
+  it('inserts the template named by its own row at the block the caret was on', async () => {
+    render(<ContentArea noteId="note-1" />)
+    await waitFor(async () => expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes']))
+
+    const [row] = await slashItems('meeting')
+    await act(async () => {
+      row.onItemClick()
+    })
+
+    await waitFor(() =>
+      expect(contentAreaMocks.insertTemplateBlocks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: '# {{title}}\n\nAgenda',
+          noteTitle: 'My note',
+          notePath: 'Notes/My note.md',
+          referenceBlockId: 'url-block',
+          consumeEmptyReference: true
+        })
+      )
+    )
+  })
+
+  it('opens the picker from the slash row and inserts the template it returns', async () => {
+    contentAreaMocks.templatesService.list.mockResolvedValue({
+      templates: [{ id: 'review', name: 'Weekly Review', isBuiltIn: false }]
+    })
+    contentAreaMocks.templatesService.get.mockResolvedValue({
+      id: 'review',
+      name: 'Weekly Review',
+      content: 'Wins'
+    })
+    render(<ContentArea noteId="note-1" />)
+    await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
+
+    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template…')
+    await act(async () => {
+      row.onItemClick()
+    })
+    fireEvent.click(await screen.findByText('Weekly Review'))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Apply Template/i }))
+    })
+
+    await waitFor(() =>
+      expect(contentAreaMocks.insertTemplateBlocks).toHaveBeenCalledWith(
+        expect.objectContaining({ content: 'Wins', referenceBlockId: 'url-block' })
+      )
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('closes the picker without inserting when it is dismissed', async () => {
+    render(<ContentArea noteId="note-1" />)
+    await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
+
+    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template…')
+    await act(async () => {
+      row.onItemClick()
+    })
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('button', { name: /Cancel/i }))
+    })
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(contentAreaMocks.insertTemplateBlocks).not.toHaveBeenCalled()
+  })
+
+  it('reports a template that cannot be read, inserts nothing, and keeps the note intact', async () => {
+    contentAreaMocks.templatesService.get.mockResolvedValue(null)
+    render(<ContentArea noteId="note-1" />)
+    await waitFor(async () => expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes']))
+
+    const [row] = await slashItems('meeting')
+    await act(async () => {
+      row.onItemClick()
+    })
+
+    await waitFor(() => expect(contentAreaMocks.toastError).toHaveBeenCalled())
+    expect(contentAreaMocks.insertTemplateBlocks).not.toHaveBeenCalled()
+  })
+
+  it('reports a template whose body has nothing to insert', async () => {
+    contentAreaMocks.insertTemplateBlocks.mockResolvedValue({ ok: false, reason: 'empty' })
+    render(<ContentArea noteId="note-1" />)
+    await waitFor(async () => expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes']))
+
+    const [row] = await slashItems('meeting')
+    await act(async () => {
+      row.onItemClick()
+    })
+
+    await waitFor(() => expect(contentAreaMocks.toastError).toHaveBeenCalled())
+  })
+
+  it('reports an insert that throws instead of leaving the caret in a half-applied note', async () => {
+    contentAreaMocks.insertTemplateBlocks.mockRejectedValue(new Error('parse blew up'))
+    render(<ContentArea noteId="note-1" />)
+    await waitFor(async () => expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes']))
+
+    const [row] = await slashItems('meeting')
+    await act(async () => {
+      row.onItemClick()
+    })
+
+    await waitFor(() => expect(contentAreaMocks.toastError).toHaveBeenCalled())
+  })
+
+  it('opens the template picker at the caret when the note menu asks for it', async () => {
+    const openTemplateInsert = { current: null } as React.RefObject<(() => void) | null>
+    render(<ContentArea noteId="note-1" openTemplateInsertRef={openTemplateInsert} />)
+    await waitFor(() => expect(openTemplateInsert.current).toBeTypeOf('function'))
+
+    await act(async () => {
+      openTemplateInsert.current?.()
+    })
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(contentAreaMocks.editor.getTextCursorPosition).toHaveBeenCalled()
+  })
+
+  it('still opens the picker when the editor has no text cursor to read', async () => {
+    // The menu is reachable without ever putting a caret in the body. With no
+    // cursor, the last block anchors the insert instead of the call throwing.
+    contentAreaMocks.editor.getTextCursorPosition.mockImplementation(() => {
+      throw new Error('no text cursor')
+    })
+    const openTemplateInsert = { current: null } as React.RefObject<(() => void) | null>
+    render(<ContentArea noteId="note-1" openTemplateInsertRef={openTemplateInsert} />)
+    await waitFor(() => expect(openTemplateInsert.current).toBeTypeOf('function'))
+
+    await act(async () => {
+      openTemplateInsert.current?.()
+    })
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('hides both template surfaces while the caret is in a table cell', async () => {
+    // A template is a block insert, and a cell cannot hold one: it lands after
+    // the whole table and takes the caret with it (#1640).
+    contentAreaMocks.editor.transact = (run: (tr: unknown) => unknown) =>
+      run({
+        selection: {
+          $from: {
+            depth: 3,
+            node: (depth: number) => ({
+              type: { name: ['table', 'tableRow', 'tableCell'][depth - 1] }
+            })
+          }
+        }
+      })
+    render(<ContentArea noteId="note-1" />)
+    await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const cold = await slashItems('')
+    expect(cold.some((item) => item.title === 'Insert template…')).toBe(false)
+    await expect(slashItems('meeting')).resolves.toEqual([])
   })
 
   it('debounces standalone checkbox conversion and clears pending conversion on unmount', async () => {

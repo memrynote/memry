@@ -148,6 +148,12 @@ normally. Text styles need no such line: markdown carries them itself.
 
 Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> to confirm.
 
+## Inserting a Template
+
+`/` and **Insert template…**, or the <kbd>⋯</kbd> menu's **Insert template…**, drops a [template](/user-guide/templates)'s body in at the cursor. Choosing the row opens the picker. Type a query instead and matching templates appear as their own rows under **Templates**, so `/meeting` then <kbd>Enter</kbd> inserts Meeting Notes straight away.
+
+Nothing already in the note is touched: the text before and after the cursor stays as it was. See [Inserting a Template at the Cursor](/user-guide/templates#inserting-a-template-at-the-cursor) for how it differs from **Apply Template**.
+
 ## Markdown Shortcuts
 
 Common markdown shortcuts work inline:
@@ -237,7 +243,7 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 - **Find…** — open in-note search (also <kbd>⌘</kbd>+<kbd>F</kbd>)
 - **Version history** — browse and restore past versions
 - **Export** — export the note to PDF or HTML. Both formats embed the note's images in the exported file itself, so the PDF prints them and an exported `.html` keeps them after you move or send it
-- **Apply template** — insert a template into the note
+- **Insert template…** — insert a template's body at the cursor, leaving the rest of the note untouched
 - **Full width** — toggle the wide editor layout
 
 **File actions**

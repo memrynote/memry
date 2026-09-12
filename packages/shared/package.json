@@ -24,7 +24,8 @@
     "./rewrite-wiki-links": "./src/rewrite-wiki-links.ts",
     "./markdown-headings": "./src/markdown-headings.ts",
     "./markdown-source": "./src/markdown-source.ts",
-    "./cover-image": "./src/cover-image.ts"
+    "./cover-image": "./src/cover-image.ts",
+    "./template-placeholders": "./src/template-placeholders.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

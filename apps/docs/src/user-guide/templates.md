@@ -90,12 +90,11 @@ When creating a note, the create dialog has a template picker. Choose a template
 
 Templates aren't just for new notes — you can apply one to a note you already have.
 
-Open the picker from either:
+Applying **replaces** the note's body, and can write the template's tags and properties too. To drop a template into a note without touching what's already there, use [Inserting a Template at the Cursor](#inserting-a-template-at-the-cursor) instead.
 
-- The sidebar tree — right-click a note → **Apply Template**
-- The note page's <kbd>⋯</kbd> menu → **Apply Template**
+Open the picker from the sidebar tree — right-click a note → **Apply Template**. Pick a template and confirm with **Apply Template**.
 
-Pick a template and confirm with **Apply Template**.
+The note page's <kbd>⋯</kbd> menu no longer applies a template over the body; its **Insert template…** item inserts at the cursor instead.
 
 - If the note is **empty**, the template's content is applied right away.
 - If the note **already has content**, you're warned that applying will replace it, with two choices:
@@ -103,6 +102,18 @@ Pick a template and confirm with **Apply Template**.
   - **Replace content only** — replaces the body and leaves your existing tags and properties untouched.
 
 `{{title}}` resolves to the note's current title. If the note is open in the editor, the update shows up live.
+
+## Inserting a Template at the Cursor
+
+In a [note you are writing](/user-guide/notes/editing#inserting-a-template), type `/` and pick **Insert template…**, or use the note page's <kbd>⋯</kbd> menu → **Insert template…**. Either opens the same picker; choose a template and its body is inserted where the cursor was. There is no overwrite prompt — a template from these surfaces is always added, never a replacement.
+
+Type a query after the slash and matching templates also appear as their own rows under **Templates**, so `/meeting` then <kbd>Enter</kbd> inserts Meeting Notes directly. Those rows show up only once you have typed a query.
+
+Inserting never replaces anything. Everything before and after the cursor stays exactly as it was. If the cursor sits on an empty paragraph, the template takes that paragraph's place, so no blank line is left behind. A single undo removes the whole insertion.
+
+Only the template's **body** is inserted. Its tags and properties are not applied to the note — use **Apply Template** above if you want those.
+
+`{{title}}` resolves to the note's title. The row is hidden while the cursor is inside a table cell.
 
 ## Deleting a Template
 
