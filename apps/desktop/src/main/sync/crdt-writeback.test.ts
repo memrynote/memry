@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   deleteNoteFromCache: vi.fn(),
   flushProjectionEvents: vi.fn(),
   closeDoc: vi.fn(),
+  purgeDoc: vi.fn(),
   getDoc: vi.fn(),
   syncNoteDateReminders: vi.fn(),
   getVaultRoot: vi.fn(),
@@ -63,7 +64,11 @@ vi.mock('../lib/logger', () => ({
 }))
 
 vi.mock('./crdt-provider', () => ({
-  getCrdtProvider: () => ({ close: mocks.closeDoc, getDoc: mocks.getDoc })
+  getCrdtProvider: () => ({
+    close: mocks.closeDoc,
+    purge: mocks.purgeDoc,
+    getDoc: mocks.getDoc
+  })
 }))
 
 vi.mock('./blocknote-converter', () => ({
@@ -148,7 +153,9 @@ vi.mock('../notes/note-date-reminders', () => ({
 
 import {
   cancelPendingWritebacks,
+  cancelWriteback,
   flushPendingWritebacks,
+  hasPendingWriteback,
   getWritebackDebugState,
   getWritebackStateSizes,
   handleSyncDeletion,
@@ -221,6 +228,7 @@ describe('crdt writeback', () => {
     mocks.deleteFile.mockResolvedValue(undefined)
     mocks.ensureDirectory.mockResolvedValue(undefined)
     mocks.closeDoc.mockResolvedValue(undefined)
+    mocks.purgeDoc.mockResolvedValue(undefined)
     // Default: the note is not in the provider's map (closed, or never opened
     // through the provider), so a pending write-back falls back to the doc it
     // captured — the behaviour every case below except the reopen ones wants.
@@ -585,6 +593,46 @@ describe('crdt writeback', () => {
     })
   })
 
+  it('writes nothing back for a note whose armed pass was cancelled', async () => {
+    // #given the user deletes a note inside the debounce window. The index row
+    // goes first, so a pass that still fired would find no cache row, take the
+    // new-note branch, and re-create the note it just deleted.
+    scheduleWriteback('note-deleted', makeDoc('Deleted Note'))
+    mocks.getNoteCacheById.mockReturnValue(undefined)
+
+    cancelWriteback('note-deleted')
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+    expect(mocks.syncNoteToCache).not.toHaveBeenCalled()
+    expect(hasPendingWriteback('note-deleted')).toBe(false)
+  })
+
+  it('cancels a note with nothing armed, and cancels twice, without complaint', async () => {
+    cancelWriteback('never-scheduled')
+
+    scheduleWriteback('note-deleted', makeDoc('Deleted Note'))
+    cancelWriteback('note-deleted')
+    cancelWriteback('note-deleted')
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+  })
+
+  it('leaves other notes armed when one note is cancelled', async () => {
+    scheduleWriteback('note-deleted', makeDoc('Deleted Note'))
+    scheduleWriteback('note-1', makeDoc('Kept Note'))
+
+    cancelWriteback('note-deleted')
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Existing.md',
+      expect.stringContaining('updated markdown')
+    )
+  })
+
   it('writes journal entries and emits a journal-created event for uncached journals', async () => {
     mocks.getNoteCacheById.mockReturnValue(undefined)
 
@@ -635,12 +683,12 @@ describe('crdt writeback', () => {
     })
   })
 
-  it('deletes synced note files, closes CRDT docs, and emits note or journal deletion events', async () => {
+  it('deletes synced note files, purges CRDT docs, and emits note or journal deletion events', async () => {
     await handleSyncDeletion('note-1')
 
     expect(mocks.deleteNoteFromCache).toHaveBeenCalledWith({ kind: 'index-db' }, 'note-1')
     expect(mocks.deleteFile).toHaveBeenCalledWith('/vault/notes/Existing.md')
-    expect(mocks.closeDoc).toHaveBeenCalledWith('note-1')
+    expect(mocks.purgeDoc).toHaveBeenCalledWith('note-1')
     expect(mocks.sent).toContainEqual({
       channel: NotesChannels.events.DELETED,
       payload: {
@@ -669,6 +717,27 @@ describe('crdt writeback', () => {
         source: 'sync'
       }
     })
+  })
+
+  it('purges a note deleted on a peer even when this device kept no row for it', async () => {
+    // #given the local delete already ran here and took the index row with it.
+    // The doc is the part no row is left to point at, so the arriving delete is
+    // the last chance to be rid of it.
+    mocks.getNoteCacheById.mockReturnValue(undefined)
+
+    await handleSyncDeletion('note-1')
+
+    expect(mocks.purgeDoc).toHaveBeenCalledWith('note-1')
+    expect(mocks.deleteFile).not.toHaveBeenCalled()
+  })
+
+  it('applies the same remote delete twice to the same end state', async () => {
+    await handleSyncDeletion('note-1')
+    mocks.getNoteCacheById.mockReturnValue(undefined)
+    await handleSyncDeletion('note-1')
+
+    expect(mocks.purgeDoc).toHaveBeenCalledTimes(2)
+    expect(mocks.deleteFile).toHaveBeenCalledTimes(1)
   })
 
   it('flushPendingWritebacks runs a scheduled write-back without advancing the debounce timer', async () => {

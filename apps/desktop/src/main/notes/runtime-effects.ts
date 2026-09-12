@@ -58,8 +58,26 @@ export function syncNoteUpdate(noteId: string, title?: string): void {
   }
 }
 
+/**
+ * The tombstone goes first, because `enqueueLocalSyncDelete` reads the note's
+ * vector clock out of the cache the caller is about to drop.
+ *
+ * Everything after it exists because a deleted note used to keep its Y.Doc.
+ * The doc stayed in the provider's open map, so the inactive-doc sweep kept
+ * pulling it every five minutes, and each pull's network-origin apply schedules
+ * a write-back that finds no index row and re-creates the note in the default
+ * folder. The pending-CRDT store is the second route into that same write-back:
+ * the replay merges remote state per id it holds. Both are closed here.
+ */
 export function syncNoteDelete(noteId: string): void {
   enqueueLocalSyncDelete('note', noteId)
+  clearPendingCrdtNotes([noteId])
+  void getCrdtProvider()
+    ?.purge(noteId)
+    .catch((error) => {
+      logger.error('CRDT purge failed for deleted note', { noteId, error })
+      trackMainError('notes', 'crdt_purge_for_deleted_note', error)
+    })
 }
 
 /**

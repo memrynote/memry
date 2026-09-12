@@ -346,7 +346,7 @@ describe('Sync Harness — Conflict Resolution', () => {
     console.log(`[seed=${chaos.getSeed()}] Delete-vs-update race (delete last): PASS`)
   })
 
-  it('update-after-delete — update pushed last resurrects item on server', async () => {
+  it('update-after-delete — a concurrent update loses to the tombstone', async () => {
     const chaos = new ChaosController({ seed: 700 })
     const setup = await setupPair(chaos)()
     const { deviceA, deviceB } = setup
@@ -359,20 +359,21 @@ describe('Sync Harness — Conflict Resolution', () => {
     await deviceB.pull()
     expect(deviceB.getItem(taskId)).toBeDefined()
 
-    // #when — A deletes, pushes; B updates, pushes (update is last on server)
+    // #when — A deletes, pushes; B updates without having seen the delete
     await deviceA.deleteItem(taskId)
     await deviceA.push()
 
     await deviceB.updateItem(taskId, { title: 'Resurrected by B' })
     await deviceB.push()
 
-    // #then — A pulls the resurrected item
+    // #then — the tombstone holds on both devices
     await deviceA.pull()
-    const item = deviceA.getItem(taskId)
-    expect(item).toBeDefined()
-    expect(item!.content.title).toBe('Resurrected by B')
+    expect(deviceA.getItem(taskId)).toBeUndefined()
 
-    console.log(`[seed=${chaos.getSeed()}] Update-after-delete (resurrect): PASS`)
+    await deviceB.pull()
+    expect(deviceB.getItem(taskId)).toBeUndefined()
+
+    console.log(`[seed=${chaos.getSeed()}] Update-after-delete (tombstone holds): PASS`)
   })
 
   it('delete on both devices — both see item removed', async () => {

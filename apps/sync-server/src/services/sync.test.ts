@@ -45,6 +45,7 @@ import {
   verifyItemSignature,
   detectReplay,
   shouldRejectRecordReplay,
+  shouldRejectResurrection,
   computeContentHash,
   serializePayload,
   getSyncStatus,
@@ -183,6 +184,16 @@ const payloadBytesOf = (item: PushItemInput): number =>
 // ============================================================================
 // Test data helpers
 // ============================================================================
+
+const tombstoneRow = (): Record<string, unknown> => ({
+  item_type: 'note',
+  item_id: '550e8400-e29b-41d4-a716-446655440000',
+  version: 4,
+  clock: '{"device-1":4}',
+  created_at: 1000,
+  size_bytes: 10,
+  deleted_at: 1_700_000_000
+})
 
 const createValidPushItem = (overrides?: Partial<PushItemInput>): PushItemInput => ({
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -535,6 +546,56 @@ describe('shouldRejectRecordReplay', () => {
 
   it('should reject clock-required records when the incoming clock is not newer', () => {
     expect(shouldRejectRecordReplay('note', { 'device-1': 1 }, { 'device-1': 1 })).toBe(true)
+  })
+})
+
+describe('shouldRejectResurrection', () => {
+  const tombstone: VectorClock = { 'device-1': 5 }
+
+  it('should reject a non-delete write that is merely concurrent with the tombstone', () => {
+    expect(shouldRejectResurrection('note', 'update', 1700, { 'device-2': 1 }, tombstone)).toBe(
+      true
+    )
+  })
+
+  it('should reject a write that dominates only part of the tombstone clock', () => {
+    expect(
+      shouldRejectResurrection(
+        'note',
+        'update',
+        1700,
+        { 'device-1': 4, 'device-2': 9 },
+        { 'device-1': 5, 'device-3': 1 }
+      )
+    ).toBe(true)
+  })
+
+  it('should allow a write whose clock strictly dominates the tombstone', () => {
+    expect(
+      shouldRejectResurrection('note', 'create', 1700, { 'device-1': 5, 'device-2': 1 }, tombstone)
+    ).toBe(false)
+  })
+
+  it('should never reject a delete', () => {
+    expect(shouldRejectResurrection('note', 'delete', 1700, { 'device-2': 1 }, tombstone)).toBe(
+      false
+    )
+  })
+
+  it('should not apply to a live row', () => {
+    expect(shouldRejectResurrection('note', 'update', null, { 'device-2': 1 }, tombstone)).toBe(
+      false
+    )
+  })
+
+  it('should not apply to clock-free types or to an unclocked legacy tombstone', () => {
+    expect(shouldRejectResurrection('settings', 'update', 1700, { 'device-2': 1 }, tombstone)).toBe(
+      false
+    )
+    expect(shouldRejectResurrection('note', 'update', 1700, { 'device-2': 1 }, undefined)).toBe(
+      false
+    )
+    expect(shouldRejectResurrection('note', 'update', 1700, undefined, tombstone)).toBe(false)
   })
 })
 
@@ -2372,6 +2433,77 @@ describe('processPushItem', () => {
     expect(result.accepted).toBe(true)
     const [upsert] = upsertStatements(batches)
     expect(upsert.binds[18]).toEqual(expect.any(Number))
+  })
+
+  it('should reject a concurrent write that would resurrect a tombstoned row', async () => {
+    const { db, batches } = createPushDb({ existing: [tombstoneRow()] })
+
+    const result = await processPushItem(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      createValidPushItem({ operation: 'update', clock: { 'device-2': 1 } })
+    )
+
+    expect(result).toEqual({ accepted: false, reason: ErrorCodes.SYNC_DELETE_WINS })
+    expect(upsertStatements(batches)).toHaveLength(0)
+  })
+
+  it('should reject the same resurrection identically on retry', async () => {
+    const first = createPushDb({ existing: [tombstoneRow()] })
+    const second = createPushDb({ existing: [tombstoneRow()] })
+    const item = createValidPushItem({ operation: 'update', clock: { 'device-2': 1 } })
+
+    const firstResult = await processPushItem(
+      first.db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      item
+    )
+    const secondResult = await processPushItem(
+      second.db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      item
+    )
+
+    expect(secondResult).toEqual(firstResult)
+    expect(upsertStatements(second.batches)).toHaveLength(0)
+  })
+
+  it('should accept a re-create whose clock dominates the tombstone and clear deleted_at', async () => {
+    const { db, batches } = createPushDb({ existing: [tombstoneRow()] })
+
+    const result = await processPushItem(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      createValidPushItem({ operation: 'create', clock: { 'device-1': 4, 'device-2': 1 } })
+    )
+
+    expect(result.accepted).toBe(true)
+    const [upsert] = upsertStatements(batches)
+    expect(upsert.binds[18]).toBeNull()
+  })
+
+  it('should still resurrect an unclocked legacy tombstone so old rows never wedge', async () => {
+    const { db, batches } = createPushDb({ existing: [{ ...tombstoneRow(), clock: null }] })
+
+    const result = await processPushItem(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      createValidPushItem({ operation: 'update', clock: { 'device-2': 1 } })
+    )
+
+    expect(result.accepted).toBe(true)
+    const [upsert] = upsertStatements(batches)
+    expect(upsert.binds[18]).toBeNull()
   })
 
   it('should return AppError and unknown error codes from failed processing', async () => {

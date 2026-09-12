@@ -175,6 +175,18 @@ A **plain checkbox with no `{task:…}` suffix** — the shape Obsidian and most
 
 A **`{task:…}` suffix naming a task that is not in this vault** — usually a note copied out of another install, where the ids belong to that install's tasks — shows as "Task deleted", with a button to take the line out of the note. Its text and its tick are left exactly as they are in the file; nothing is rewritten and nothing is deleted until you ask.
 
+## Deleting a Task You Wrote in a Note
+
+Deleting a task that came from a checklist line takes that line out of the note as well, so the note
+does not keep showing a checkbox for a task that no longer exists. Only the task's own line is
+removed. Anything you nested under it — a sub-bullet, a paragraph, a child task — stays where it is,
+and every other byte of the file is left untouched.
+
+One exception: if the note is open in an editor at that moment, the line is left alone, because
+rewriting the file underneath you could discard what you were typing. Deleting the task block from
+inside the editor removes the line directly, so this only shows up when you delete from the task
+list while the note happens to be open.
+
 While a task is still loading, its row shows but its controls are inert for that moment. A control you can click is a control that works.
 
 ## Rich Descriptions

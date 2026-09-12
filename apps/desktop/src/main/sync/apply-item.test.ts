@@ -10,6 +10,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
+import { syncPendingDeletes } from '@memry/db-schema/schema/sync-pending-deletes'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { ItemApplier, type ApplyItemInput, type EmitToWindows } from './apply-item'
 import { SyncQueueManager } from '@memry/sync-client/queue'
@@ -552,7 +553,8 @@ describe('ItemApplier', () => {
 
   describe('#given settings manager initialized #when settings applied', () => {
     it('#then delegates to mergeRemote', async () => {
-      const { initSettingsSyncManager, resetSettingsSyncManager } = await import('@memry/sync-client/settings-sync')
+      const { initSettingsSyncManager, resetSettingsSyncManager } =
+        await import('@memry/sync-client/settings-sync')
       initSettingsSyncManager({
         db: asSyncDb(testDb.db),
         getDeviceId: () => 'device-1',
@@ -938,6 +940,109 @@ describe('ItemApplier', () => {
 
       expect(results).toEqual(['parse_error', 'applied'])
       expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeDefined()
+    })
+  })
+
+  describe('#given the item was deleted locally #when a remote upsert arrives', () => {
+    function tombstone(type: string, itemId: string, clock: VectorClock = {}): void {
+      testDb.db
+        .insert(syncPendingDeletes)
+        .values({
+          type,
+          itemId,
+          payload: JSON.stringify({ id: itemId, clock }),
+          createdAt: new Date()
+        })
+        .run()
+    }
+
+    it('#then refuses to resurrect the task', () => {
+      // #given — a task the user deleted locally. The row is hard-deleted, so
+      // the tombstone is the only record the delete ever happened.
+      tombstone('task', 'task-1', { 'device-A': 4 })
+
+      // #when — the server replays its history, which still ends at the create
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: 'task',
+        operation: 'create',
+        content: makeTaskPayload(),
+        clock: { 'device-B': 1 }
+      })
+
+      // #then
+      expect(result).toBe('skipped')
+      expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeUndefined()
+      expect(emitToWindows).not.toHaveBeenCalled()
+    })
+
+    it('#then refuses an update for the deleted id too', () => {
+      tombstone('task', 'task-1')
+
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: 'task',
+        operation: 'update',
+        content: makeTaskPayload({ title: 'Edited elsewhere' }),
+        clock: { 'device-B': 2 }
+      })
+
+      expect(result).toBe('skipped')
+      expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeUndefined()
+    })
+
+    it('#then still applies a remote delete for the same id', () => {
+      // #given — the peer's own tombstone arriving is not a resurrection and
+      // must keep flowing through applyDelete
+      testDb.db
+        .insert(tasks)
+        .values({ id: 'task-1', projectId: 'proj-1', title: 'To Delete', priority: 0, position: 0 })
+        .run()
+      tombstone('task', 'task-1')
+
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: 'task',
+        operation: 'delete',
+        content: new Uint8Array(),
+        deletedAt: Date.now()
+      })
+
+      expect(result).toBe('applied')
+      expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeUndefined()
+    })
+
+    it('#then leaves an untombstoned sibling id alone', () => {
+      // #given — the guard must be per-id, not per-type
+      tombstone('task', 'task-other')
+
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: 'task',
+        operation: 'create',
+        content: makeTaskPayload(),
+        clock: { 'device-B': 1 }
+      })
+
+      expect(result).toBe('applied')
+      expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeDefined()
+    })
+
+    it('#then refuses an inbox upsert for a deleted inbox id', () => {
+      tombstone('inbox', 'inbox-1')
+
+      const result = applier.apply({
+        itemId: 'inbox-1',
+        type: 'inbox',
+        operation: 'create',
+        content: makeInboxPayload(),
+        clock: { 'device-B': 1 }
+      })
+
+      expect(result).toBe('skipped')
+      expect(
+        testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'inbox-1')).get()
+      ).toBeUndefined()
     })
   })
 })

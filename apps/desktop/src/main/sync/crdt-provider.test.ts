@@ -95,6 +95,7 @@ const mocks = vi.hoisted(() => {
     repairEmptyBlockIds: vi.fn((..._args: unknown[]) => 0),
     compactYDoc: vi.fn(),
     scheduleWriteback: vi.fn(),
+    cancelWriteback: vi.fn(),
     flushPendingWritebacks: vi.fn(),
     recordNetworkUpdate: vi.fn(),
     resetWritebackState: vi.fn(),
@@ -233,6 +234,7 @@ vi.mock('@memry/sync-client/crdt-compact-utils', () => ({
 
 vi.mock('./crdt-writeback', () => ({
   scheduleWriteback: (...args: unknown[]) => mocks.scheduleWriteback(...args),
+  cancelWriteback: (...args: unknown[]) => mocks.cancelWriteback(...args),
   flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args),
   recordNetworkUpdate: (...args: unknown[]) => mocks.recordNetworkUpdate(...args),
   resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args)
@@ -688,6 +690,51 @@ describe('CrdtProvider', () => {
     pushSnapshot.mockClear()
     await expect(provider.pushAllSnapshots()).resolves.toBe(0)
     expect(pushSnapshot).not.toHaveBeenCalled()
+  })
+
+  describe('purging the doc of a note the user deleted', () => {
+    beforeEach(async () => {
+      await provider.open('note-1', undefined, { skipSeed: true })
+      provider.updateMeta('note-1', { title: 'Typed before the delete' })
+    })
+
+    it('pushes no snapshot, so the deleted body is never re-uploaded', async () => {
+      await provider.purge('note-1')
+
+      expect(pushSnapshot).not.toHaveBeenCalled()
+    })
+
+    it('leaves the note in neither the open map nor the local store', async () => {
+      await provider.purge('note-1')
+
+      expect(provider.getDoc('note-1')).toBeUndefined()
+      expect(provider.getOpenNoteIds()).not.toContain('note-1')
+      expect(mocks.persistenceInstances[0].clearDocument).toHaveBeenCalledWith('note-1')
+    })
+
+    it('cancels the armed write-back, which holds its own reference to the doc', async () => {
+      await provider.purge('note-1')
+
+      expect(mocks.cancelWriteback).toHaveBeenCalledWith('note-1')
+    })
+
+    it('drops the updates the queue still has buffered for it', async () => {
+      await provider.purge('note-1')
+
+      expect(queue.dropNote).toHaveBeenCalledWith('note-1')
+    })
+
+    it('purges the same note twice to the same end state', async () => {
+      await provider.purge('note-1')
+      await provider.purge('note-1')
+
+      expect(pushSnapshot).not.toHaveBeenCalled()
+      expect(provider.getDoc('note-1')).toBeUndefined()
+      const cleared = mocks.persistenceInstances[0].clearDocument.mock.calls.filter(
+        (call) => call[0] === 'note-1'
+      )
+      expect(cleared).toHaveLength(2)
+    })
   })
 
   it('applies IPC sync step 2 diffs without echoing back to renderer window -1', async () => {

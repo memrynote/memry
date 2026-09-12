@@ -114,6 +114,11 @@ vi.mock('../crdt-writeback', () => ({
   markWritebackIgnored: (...args: unknown[]) => mockMarkWritebackIgnored(...args)
 }))
 
+const mockPurgeCrdtDoc = vi.fn(() => Promise.resolve())
+vi.mock('../crdt-provider', () => ({
+  getCrdtProvider: () => ({ purge: mockPurgeCrdtDoc })
+}))
+
 const mockApplyPinnedTags = vi.fn()
 vi.mock('@memry/sync-client/item-handlers/note-pin-helpers', () => ({
   applyPinnedTags: (...args: unknown[]) => mockApplyPinnedTags(...args)
@@ -627,6 +632,33 @@ describe('noteHandler.applyUpsert — path collision', () => {
     expect(noteHandler.applyDelete(ctx, 'note-1', { dev1: 2 })).toBe('skipped')
     expect(deleteNoteFromCache).not.toHaveBeenCalled()
     expect(mockCleanupProjectLinksForDeletedNote).not.toHaveBeenCalled()
+  })
+
+  it('purges the CRDT doc of a note deleted on a peer', async () => {
+    // #given a doc left in the provider's map outlives the note. The
+    // inactive-doc sweep re-pulls exactly that map, and the write-back it
+    // schedules finds no index row and re-creates the note.
+    mockGetNoteMetadataById.mockReturnValueOnce({
+      id: 'note-1',
+      title: 'a1',
+      path: path.join('a1', 'a1.md'),
+      fileType: 'markdown',
+      clock: { dev1: 1 }
+    })
+
+    expect(noteHandler.applyDelete(ctx, 'note-1', { dev1: 2 })).toBe('applied')
+    expect(mockPurgeCrdtDoc).toHaveBeenCalledWith('note-1')
+  })
+
+  it('purges no doc for a remote delete it refuses', async () => {
+    mockGetNoteMetadataById.mockReturnValueOnce({
+      id: 'note-1',
+      path: path.join('a1', 'a1.md'),
+      clock: { dev1: 3 }
+    })
+
+    expect(noteHandler.applyDelete(ctx, 'note-1', { dev1: 2 })).toBe('skipped')
+    expect(mockPurgeCrdtDoc).not.toHaveBeenCalled()
   })
 
   it('skips delete for missing notes and deletes without a remote clock', () => {

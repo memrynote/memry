@@ -21,6 +21,7 @@ import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteMetadata } from '@memry/db-schema/data-schema'
+import { syncPendingDeletes } from '@memry/db-schema/schema/sync-pending-deletes'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 
@@ -1002,6 +1003,110 @@ describe('checkManifestIntegrity', () => {
       expect(queued.get('settings:synced_settings')).toBe(JSON.stringify(settingsRow))
       expect(queued.get('note:note-1')).toBe('')
       expect(queued.get('journal:journal-1')).toBe('')
+    })
+  })
+  describe('#given an item deleted locally but still held by the server', () => {
+    function tombstone(type: string, itemId: string): void {
+      testDb.db
+        .insert(syncPendingDeletes)
+        .values({
+          type,
+          itemId,
+          payload: JSON.stringify({ id: itemId, clock: {} }),
+          createdAt: new Date()
+        })
+        .run()
+    }
+
+    it('#then does not count it server-only, so no full re-pull replays it back', async () => {
+      // #given — the user deleted task-1; the row is gone locally and the
+      // delete has not reached the server yet, so the manifest still lists it
+      tombstone('task', 'task-1')
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then — a server-only count here resets LAST_CURSOR to '0' and replays
+      // the whole server history through applyUpsert, re-inserting the task
+      expect(result.serverOnlyCount).toBe(0)
+      expect(result.rePullNeeded).toBe(false)
+
+      // #then — and the tombstone stays: the server still holds the item
+      expect(testDb.db.select().from(syncPendingDeletes).all()).toHaveLength(1)
+    })
+
+    it('#then never re-uploads a tombstoned id whose local ref lingers', async () => {
+      // #given — a note deleted locally whose index-DB cache row is still
+      // present. Without the guard the manifest sees a local ref the server
+      // does not list and re-enqueues it as a `create`.
+      tombstone('note', 'note-1')
+      testIndexDb.db
+        .insert(noteCache)
+        .values({
+          id: 'note-1',
+          path: 'note-1.md',
+          title: 'Gone',
+          createdAt: '2026-08-01T00:00:00Z',
+          modifiedAt: '2026-08-02T00:00:00Z',
+          clock: { 'device-A': 2 }
+        })
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then
+      expect(queue.getPendingCount()).toBe(0)
+    })
+
+    it('#then retires the tombstone once the server no longer lists the id', async () => {
+      // #given — the delete landed: the server manifest omits soft-deleted rows
+      tombstone('task', 'task-1')
+      tombstone('task', 'task-2')
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'task-2', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then — task-1 is confirmed gone server-side and stops blocking a
+      // future re-create of that id; task-2 is still owed and stays
+      const remaining = testDb.db.select().from(syncPendingDeletes).all()
+      expect(remaining.map((r) => r.itemId)).toEqual(['task-2'])
     })
   })
 })

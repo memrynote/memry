@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { syncPendingDeletes } from '@memry/db-schema/data-schema'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { incrementClock } from '@memry/sync-core'
@@ -52,10 +52,18 @@ export function buildContentDeletePayload(db: DataDb, itemId: string): string | 
 }
 
 /**
- * Remember a delete the sync runtime was not up to take.
+ * Remember that this device deleted an item, and what the delete still owes the
+ * server.
  *
- * Upserts on (type, itemId): deleting the same item twice before the runtime
- * returns is one tombstone. The payload is refreshed so the newest capture wins.
+ * Upserts on (type, itemId): deleting the same item twice is one tombstone. The
+ * payload is refreshed so the newest capture wins.
+ *
+ * RETENTION — the row is removed only by `checkManifestIntegrity`, when a
+ * complete server manifest no longer lists that (type, id). That is the one
+ * place this client observes that the server is rid of the item. Until then the
+ * row also blocks the pull path from re-inserting the id (`ItemApplier.apply`)
+ * and keeps it out of the manifest's local refs, because notes and tasks are
+ * hard-deleted locally and nothing else records that the user deleted them.
  */
 export function recordPendingDelete(
   db: DataDb,
@@ -84,6 +92,21 @@ export function listPendingDeletes(db: DrizzleDb): PendingDelete[] {
     .from(syncPendingDeletes)
     .all()
     .map((row) => ({ ...row, type: row.type as SyncItemType }))
+}
+
+/**
+ * Notes and journals share one tombstone family: the classification is derived
+ * from the row, so a note deleted as `note` can be served back as `journal`.
+ */
+export function hasPendingDelete(db: DrizzleDb, type: SyncItemType, itemId: string): boolean {
+  const types = type === 'note' || type === 'journal' ? ['note', 'journal'] : [type]
+  const row = db
+    .select({ itemId: syncPendingDeletes.itemId })
+    .from(syncPendingDeletes)
+    .where(and(inArray(syncPendingDeletes.type, types), eq(syncPendingDeletes.itemId, itemId)))
+    .get()
+
+  return row !== undefined
 }
 
 export function clearPendingDelete(db: DrizzleDb, type: SyncItemType, itemId: string): void {
