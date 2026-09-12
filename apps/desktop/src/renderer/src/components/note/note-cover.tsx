@@ -222,7 +222,7 @@ export const NoteCover = memo(function NoteCover({
         />
       )}
 
-      {credit && creditUrl && !isRepositioning && (
+      {credit && creditUrl && (
         <a
           href={creditUrl}
           target="_blank"
@@ -247,7 +247,7 @@ export const NoteCover = memo(function NoteCover({
           // lands on save or cancel must not also move the focal point.
           onPointerDown={(event) => event.stopPropagation()}
           className={cn(
-            'absolute bottom-3 start-3 flex items-center gap-0.5',
+            'absolute bottom-3 end-3 flex items-center gap-0.5',
             'rounded-lg border border-border bg-background/92 p-0.5'
           )}
         >
