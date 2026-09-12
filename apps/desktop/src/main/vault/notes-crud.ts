@@ -676,6 +676,9 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     ...existing.frontmatter,
     ...input.frontmatter
   }
+  for (const [name, value] of Object.entries(input.frontmatter ?? {})) {
+    if (value === null) delete mergedFrontmatter[name]
+  }
   let newFrontmatter = normalizePropertiesToRoot(mergedFrontmatter).frontmatter
 
   const newProperties = input.properties ?? extractProperties(newFrontmatter)

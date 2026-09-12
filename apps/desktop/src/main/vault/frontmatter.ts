@@ -16,6 +16,7 @@ import {
 import { generateNoteId, isValidNoteId } from '../lib/id'
 import { isRelationValue } from '@memry/contracts/relation-uri'
 import { replaceWikiLinks, splitWikiTarget } from '@memry/shared/wiki-target'
+import { COVER_FRONTMATTER_KEY, isCoverImageValue } from '@memry/shared/cover-image'
 
 // ============================================================================
 // Types
@@ -368,6 +369,13 @@ import { PROJECT_PROPERTY_KEY, type PropertyType } from '@memry/contracts/proper
  */
 const RESERVED_FRONTMATTER_KEYS = new Set(['tags', 'aliases', 'properties'])
 
+function isReservedFrontmatterKey(name: string, value: unknown): boolean {
+  return (
+    RESERVED_FRONTMATTER_KEYS.has(name) ||
+    (name === COVER_FRONTMATTER_KEY && isCoverImageValue(value))
+  )
+}
+
 export interface NormalizedPropertiesResult {
   frontmatter: NoteFrontmatter
   changed: boolean
@@ -397,7 +405,7 @@ export function normalizePropertiesToRoot(
 
   const conflicts: string[] = []
   for (const [name, value] of Object.entries(frontmatter.properties)) {
-    if (RESERVED_FRONTMATTER_KEYS.has(name)) continue
+    if (isReservedFrontmatterKey(name, value)) continue
     if (Object.prototype.hasOwnProperty.call(normalized, name)) {
       conflicts.push(name)
       continue
@@ -415,7 +423,7 @@ export function writePropertiesToRoot(
 ): NoteFrontmatter {
   const next = { ...frontmatter }
   for (const [name, value] of Object.entries(properties)) {
-    if (RESERVED_FRONTMATTER_KEYS.has(name)) continue
+    if (isReservedFrontmatterKey(name, value)) continue
     if (value === undefined) delete next[name]
     else next[name] = value
   }
@@ -449,12 +457,12 @@ export function extractProperties(frontmatter: NoteFrontmatter): Record<string, 
   // overlay top-level keys so an Obsidian edit wins a stale nested value.
   if (isRecord(frontmatter.properties)) {
     for (const [key, value] of Object.entries(frontmatter.properties)) {
-      if (!RESERVED_FRONTMATTER_KEYS.has(key) && value !== undefined) properties[key] = value
+      if (!isReservedFrontmatterKey(key, value) && value !== undefined) properties[key] = value
     }
   }
 
   for (const [key, value] of Object.entries(frontmatter)) {
-    if (!RESERVED_FRONTMATTER_KEYS.has(key) && value !== undefined) {
+    if (!isReservedFrontmatterKey(key, value) && value !== undefined) {
       properties[key] = value
     }
   }
