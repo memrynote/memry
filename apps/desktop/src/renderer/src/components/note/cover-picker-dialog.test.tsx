@@ -14,11 +14,21 @@ import { coverWashGradient } from '@memry/shared/cover-image'
 const listVaultAttachments = vi.hoisted(() => vi.fn())
 const insertExistingAttachment = vi.hoisted(() => vi.fn())
 const uploadAttachment = vi.hoisted(() => vi.fn())
+const downloadAttachmentFromUrl = vi.hoisted(() => vi.fn())
 const unsplashSearch = vi.hoisted(() => vi.fn())
 const unsplashDownload = vi.hoisted(() => vi.fn())
 
 vi.mock('@/services/notes-service', () => ({
-  notesService: { listVaultAttachments, insertExistingAttachment, uploadAttachment }
+  notesService: {
+    listVaultAttachments,
+    insertExistingAttachment,
+    uploadAttachment,
+    downloadAttachmentFromUrl
+  }
+}))
+
+vi.mock('@/hooks/use-vault', () => ({
+  useVault: () => ({ vaultPath: '/vault' })
 }))
 
 vi.mock('@/services/unsplash-service', () => ({
@@ -111,6 +121,9 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ url: '../attachments/nte_other/beach.png' })
   uploadAttachment.mockReset()
+  downloadAttachmentFromUrl
+    .mockReset()
+    .mockResolvedValue({ ok: true, ref: '../attachments/nte_9f2c1a/linked.jpg' })
   unsplashSearch
     .mockReset()
     .mockImplementation(({ query }: { query: string }) =>
@@ -147,7 +160,13 @@ describe('CoverPickerDialog tabs', () => {
     expect(screen.queryByTestId('cover-picker-wash')).not.toBeInTheDocument()
     const rows = screen.getAllByTestId('cover-picker-row')
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toHaveTextContent('beach.png')
+    // A card like the Unsplash tiles: the image itself, captioned with the note
+    // that owns it rather than the stored filename.
+    expect(rows[0].querySelector('img')).toHaveAttribute(
+      'src',
+      'memry-file://local/vault/attachments/nte_other/beach.png'
+    )
+    expect(rows[0]).toHaveTextContent('Trips')
 
     await user.click(screen.getByRole('tab', { name: 'Washes' }))
     expect(panel()).toHaveAttribute('data-tab', 'washes')
@@ -177,11 +196,52 @@ describe('CoverPickerDialog tabs', () => {
     const tabs = screen.getAllByRole('tab')
     expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual([
       'true',
-      'false',
-      'false',
-      'false'
+      ...tabs.slice(1).map(() => 'false')
     ])
     expect(screen.getAllByTestId('cover-picker-wash')[0]).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('offers a pasted link as a cover and saves it into the vault', async () => {
+    const user = userEvent.setup()
+    const { onApply, onOpenChange } = renderPicker()
+
+    await user.click(screen.getByRole('tab', { name: 'Link' }))
+    expect(screen.getByTestId('cover-picker-link-prompt')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByTestId('cover-picker-search'), {
+      target: { value: 'https://example.com/harbour.jpg' }
+    })
+    await user.click(screen.getByTestId('cover-picker-link'))
+
+    expect(downloadAttachmentFromUrl).toHaveBeenCalledWith(
+      NOTE_ID,
+      'https://example.com/harbour.jpg'
+    )
+    await waitFor(() =>
+      expect(onApply).toHaveBeenCalledWith(
+        { kind: 'image', ref: '../attachments/nte_9f2c1a/linked.jpg' },
+        { reposition: false }
+      )
+    )
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('keeps the dialog open and names the reason when a link cannot be saved', async () => {
+    const user = userEvent.setup()
+    downloadAttachmentFromUrl.mockResolvedValue({ ok: false, reason: 'not-an-image' })
+    const { onApply, onOpenChange } = renderPicker()
+
+    await user.click(screen.getByRole('tab', { name: 'Link' }))
+    fireEvent.change(screen.getByTestId('cover-picker-search'), {
+      target: { value: 'https://example.com/photo-page' }
+    })
+    await user.click(screen.getByTestId('cover-picker-link'))
+
+    const message = await screen.findByTestId('cover-picker-link-error')
+    expect(message).toHaveAttribute('data-reason', 'not-an-image')
+    expect(message).not.toBeEmptyDOMElement()
+    expect(onApply).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
   })
 
   it('keeps the rendered tab row in step with the exported table', () => {

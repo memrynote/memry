@@ -215,6 +215,48 @@ export interface VaultAttachmentEntry {
   modifiedAt: string
 }
 
+/**
+ * Copy an image at a public URL into a note's own attachments folder.
+ *
+ * The renderer cannot do this itself: its CSP allows `img-src https:` but not
+ * `connect-src https:`, so it can display a remote image and never read its
+ * bytes. Main fetches, and only main ever holds the URL.
+ */
+export const DownloadAttachmentFromUrlSchema = z.object({
+  noteId: z.string().min(1),
+  url: z
+    .string()
+    .url()
+    .max(2048)
+    .refine((value) => {
+      try {
+        const parsed = new URL(value)
+        return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+      } catch {
+        return false
+      }
+    }, 'Expected an http(s) URL')
+})
+
+export type DownloadAttachmentFromUrlInput = z.infer<typeof DownloadAttachmentFromUrlSchema>
+
+/**
+ * Why a link produced no attachment.
+ *
+ * `not-an-image` covers the common paste: a link to a page that shows a photo
+ * rather than to the photo itself, which answers with HTML.
+ */
+export type DownloadAttachmentFromUrlFailure =
+  'not-an-image' | 'too-large' | 'offline' | 'failed' | 'write-failed'
+
+export type DownloadAttachmentFromUrlResult =
+  | {
+      ok: true
+      /** Note-relative attachment path, the same shape an upload produces. */
+      ref: string
+    }
+  | { ok: false; reason: DownloadAttachmentFromUrlFailure }
+
 /** Block props for an embed that points at an already-stored attachment. */
 export interface InsertExistingAttachmentResult {
   /** Ref for the block's `url` prop, relative to the receiving note. */

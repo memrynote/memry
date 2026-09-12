@@ -560,7 +560,8 @@
         "washes": "Washes",
         "photos": "Unsplash",
         "fromNote": "From note",
-        "upload": "Upload"
+        "upload": "Upload",
+        "link": "Link"
       },
       "photos": {
         "searching": "Searching Unsplash…",
@@ -600,6 +601,19 @@
         "bark": "Bark",
         "mist": "Mist",
         "plum": "Plum"
+      },
+      "link": {
+        "prompt": "Paste a link to an image",
+        "invalid": "That is not a link Memry can open",
+        "use": "Use this image",
+        "saving": "Saving the image…",
+        "error": {
+          "notAnImage": "That link does not point at an image",
+          "tooLarge": "That image is too large to store",
+          "offline": "That link could not be reached",
+          "failed": "That image could not be downloaded",
+          "writeFailed": "That image could not be saved to the vault"
+        }
       }
     }
   },

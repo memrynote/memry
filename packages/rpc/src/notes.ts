@@ -8,6 +8,7 @@ import type {
   AttachmentRenameResult,
   AttachmentResolveResult,
   InsertExistingAttachmentResult,
+  DownloadAttachmentFromUrlResult,
   VaultAttachmentEntry,
   NoteSizeClass,
   NoteLargeFileInfo,
@@ -202,7 +203,11 @@ export interface AttachmentUploadFile {
   arrayBuffer(): Promise<ArrayBuffer>
 }
 
-export type { InsertExistingAttachmentResult, VaultAttachmentEntry }
+export type {
+  DownloadAttachmentFromUrlResult,
+  InsertExistingAttachmentResult,
+  VaultAttachmentEntry
+}
 
 export interface DeleteAttachmentResponse {
   success: boolean
@@ -711,6 +716,15 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.INSERT_EXISTING_ATTACHMENT,
       params: ['noteId', 'ownerNoteId', 'filename'],
       invokeArgs: ['{ noteId, ownerNoteId, filename }']
+    }),
+    // The renderer's CSP allows `img-src https:` but not `connect-src https:`,
+    // so a linked image can only be read by main.
+    downloadAttachmentFromUrl: defineMethod<
+      (noteId: string, url: string) => Promise<DownloadAttachmentFromUrlResult>
+    >({
+      channel: NotesChannels.invoke.DOWNLOAD_ATTACHMENT_FROM_URL,
+      params: ['noteId', 'url'],
+      invokeArgs: ['{ noteId, url }']
     }),
     getFolderConfig: defineMethod<(folderPath: string) => Promise<FolderConfig | null>>({
       channel: NotesChannels.invoke.GET_FOLDER_CONFIG,

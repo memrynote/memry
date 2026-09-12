@@ -25,6 +25,7 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 import type { VaultAttachmentEntry } from '@memry/rpc/notes'
+import type { DownloadAttachmentFromUrlFailure } from '@memry/contracts/notes-api'
 import type {
   UnsplashDownloadFailureReason,
   UnsplashFailureReason,
@@ -41,9 +42,11 @@ import { notesService } from '@/services/notes-service'
 import { unsplashService } from '@/services/unsplash-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { useVault } from '@/hooks/use-vault'
+import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Kbd } from '@/components/ui/kbd'
-import { Image, Loader2, Search, Upload } from '@/lib/icons'
+import { Link as LinkIcon, Loader2, Search, Upload } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
   attachmentKey,
@@ -86,7 +89,7 @@ function randomDefaultPhotoQuery(): string {
   return PHOTO_DEFAULT_QUERIES[Math.floor(Math.random() * PHOTO_DEFAULT_QUERIES.length)]
 }
 
-export type CoverPickerTabId = 'washes' | 'photos' | 'fromNote' | 'upload'
+export type CoverPickerTabId = 'washes' | 'photos' | 'fromNote' | 'link' | 'upload'
 
 interface CoverPickerTab {
   id: CoverPickerTabId
@@ -98,7 +101,8 @@ interface CoverPickerTab {
 export const COVER_PICKER_TABS: readonly CoverPickerTab[] = [
   { id: 'washes', columns: 4 },
   { id: 'photos', columns: 3 },
-  { id: 'fromNote', columns: 1 },
+  { id: 'fromNote', columns: 3 },
+  { id: 'link', columns: 1 },
   { id: 'upload', columns: 1 }
 ]
 
@@ -130,6 +134,7 @@ type CoverPickerItem =
   | { kind: 'upload' }
   | { kind: 'attachment'; entry: VaultAttachmentEntry }
   | { kind: 'photo'; photo: UnsplashPhoto }
+  | { kind: 'link'; url: string }
 
 function itemKey(item: CoverPickerItem): string {
   switch (item.kind) {
@@ -141,7 +146,37 @@ function itemKey(item: CoverPickerItem): string {
       return attachmentKey(item.entry)
     case 'photo':
       return `photo:${item.photo.id}`
+    case 'link':
+      return `link:${item.url}`
   }
+}
+
+/**
+ * Where a listed vault attachment's bytes sit, as a URL the picker can show.
+ * The layout is the one `saveAttachment` writes: `attachments/<owner>/<file>`.
+ */
+function vaultAttachmentUrl(entry: VaultAttachmentEntry, vaultPath: string | null): string | null {
+  if (!vaultPath) return null
+  return toMemryFileUrl(`${vaultPath}/attachments/${entry.ownerNoteId}/${entry.filename}`)
+}
+
+/** A link is only offered once it is one Memry can actually fetch. */
+function imageLinkFrom(query: string): string | null {
+  try {
+    const parsed = new URL(query.trim())
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.toString() : null
+  } catch {
+    return null
+  }
+}
+
+/** Every way a linked image can come up empty gets its own line. */
+const LINK_ERROR_KEYS: Record<DownloadAttachmentFromUrlFailure, string> = {
+  'not-an-image': 'cover.picker.link.error.notAnImage',
+  'too-large': 'cover.picker.link.error.tooLarge',
+  offline: 'cover.picker.link.error.offline',
+  failed: 'cover.picker.link.error.failed',
+  'write-failed': 'cover.picker.link.error.writeFailed'
 }
 
 /** Where the picker opens: the click's viewport coordinates, not a boolean. */
@@ -179,6 +214,7 @@ export function CoverPickerDialog({
 }: CoverPickerDialogProps) {
   const open = anchor !== null
   const { t } = useT('notes')
+  const { vaultPath } = useVault()
   const [requestedTab, setTab] = useState<CoverPickerTabId>('washes')
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(0)
@@ -187,6 +223,11 @@ export function CoverPickerDialog({
   const [uploading, setUploading] = useState(false)
   const [photoFetch, setPhotoFetch] = useState<{ query: string; result: PhotoSearch } | null>(null)
   const [photoDownload, setPhotoDownload] = useState<PhotoDownload>({ kind: 'none' })
+  const [linkDownload, setLinkDownload] = useState<
+    | { kind: 'none' }
+    | { kind: 'running' }
+    | { kind: 'failed'; reason: DownloadAttachmentFromUrlFailure }
+  >({ kind: 'none' })
   const [photosConfigured, setPhotosConfigured] = useState(true)
   const [defaultPhotoQuery, setDefaultPhotoQuery] = useState(randomDefaultPhotoQuery)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -205,6 +246,7 @@ export function CoverPickerDialog({
       setSelected(0)
       setPhotoFetch(null)
       setPhotoDownload({ kind: 'none' })
+      setLinkDownload({ kind: 'none' })
       setPhotosConfigured(true)
       setDefaultPhotoQuery(randomDefaultPhotoQuery())
       photoCache.current.clear()
@@ -334,6 +376,10 @@ export function CoverPickerDialog({
         return photoSearch.kind === 'photos'
           ? photoSearch.photos.map((photo): CoverPickerItem => ({ kind: 'photo', photo }))
           : []
+      case 'link': {
+        const url = imageLinkFrom(query)
+        return url === null ? [] : [{ kind: 'link', url }]
+      }
       case 'upload':
         return [{ kind: 'upload' }]
     }
@@ -367,6 +413,23 @@ export function CoverPickerDialog({
         } catch (err) {
           logger.error('Failed to download an Unsplash cover', err)
           setPhotoDownload({ kind: 'failed', reason: 'failed' })
+        }
+        return
+      }
+      if (item.kind === 'link') {
+        setLinkDownload({ kind: 'running' })
+        try {
+          const result = await notesService.downloadAttachmentFromUrl(noteId, item.url)
+          if (!result.ok) {
+            setLinkDownload({ kind: 'failed', reason: result.reason })
+            return
+          }
+          setLinkDownload({ kind: 'none' })
+          onApply({ kind: 'image', ref: result.ref }, { reposition })
+          onOpenChange(false)
+        } catch (err) {
+          logger.error('Failed to save a linked image as a cover', err)
+          setLinkDownload({ kind: 'failed', reason: 'failed' })
         }
         return
       }
@@ -650,8 +713,8 @@ export function CoverPickerDialog({
                 )}
               </div>
             </div>
-          ) : (
-            <div className="flex flex-col">
+          ) : tab === 'fromNote' ? (
+            <div className="grid grid-cols-3 gap-2">
               {items.map((item, index) =>
                 item.kind === 'attachment' ? (
                   <button
@@ -660,46 +723,108 @@ export function CoverPickerDialog({
                     onClick={() => void apply(item, false)}
                     aria-selected={index === activeIndex}
                     className={cn(
-                      'flex h-9 items-center gap-2.5 rounded-md px-2 text-start text-sm',
+                      'flex flex-col gap-1 rounded-lg p-0.5 text-start',
                       'focus-visible:outline-none',
-                      index === activeIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
+                      index === activeIndex && 'ring-2 ring-ring'
                     )}
                     data-testid="cover-picker-row"
                   >
-                    <Image className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="truncate">{item.entry.displayName}</span>
+                    <img
+                      src={vaultAttachmentUrl(item.entry, vaultPath) ?? undefined}
+                      alt=""
+                      loading="lazy"
+                      className="h-[76px] w-full rounded-md bg-muted object-cover"
+                    />
+                    <span
+                      className="truncate px-1 pb-0.5 text-[11px] text-muted-foreground"
+                      title={item.entry.ownerNoteTitle ?? item.entry.displayName}
+                    >
+                      {item.entry.ownerNoteTitle ?? item.entry.displayName}
+                    </span>
                   </button>
-                ) : (
-                  <button
-                    key={itemKey(item)}
-                    type="button"
-                    onClick={() => void apply(item, false)}
-                    aria-selected={index === activeIndex}
-                    className={cn(
-                      'flex h-9 items-center gap-2.5 rounded-md px-2 text-start text-sm',
-                      'focus-visible:outline-none',
-                      index === activeIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
-                    )}
-                    data-testid="cover-picker-upload"
-                  >
-                    {uploading ? (
-                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
-                    ) : (
-                      <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    )}
-                    {uploading ? t('cover.picker.uploading') : t('cover.picker.upload')}
-                  </button>
-                )
+                ) : null
               )}
 
               {!loading && items.length === 0 && (
                 <p
-                  className="px-2 py-5 text-center text-sm text-muted-foreground"
+                  className="col-span-3 px-2 py-5 text-center text-sm text-muted-foreground"
                   data-testid="cover-picker-empty"
                 >
                   {query ? t('cover.picker.noMatches') : t('cover.picker.empty')}
                 </p>
               )}
+            </div>
+          ) : tab === 'link' ? (
+            <div className="flex flex-col gap-2">
+              {linkDownload.kind === 'failed' && (
+                <p
+                  className="px-2 py-2 text-center text-sm text-muted-foreground"
+                  data-testid="cover-picker-link-error"
+                  data-reason={linkDownload.reason}
+                >
+                  {t(LINK_ERROR_KEYS[linkDownload.reason])}
+                </p>
+              )}
+
+              {items.map((item, index) =>
+                item.kind === 'link' ? (
+                  <button
+                    key={itemKey(item)}
+                    type="button"
+                    onClick={() => void apply(item, false)}
+                    aria-selected={index === activeIndex}
+                    disabled={linkDownload.kind === 'running'}
+                    className={cn(
+                      'flex h-9 items-center gap-2.5 rounded-md px-2 text-start text-sm',
+                      'focus-visible:outline-none disabled:opacity-60',
+                      index === activeIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
+                    )}
+                    data-testid="cover-picker-link"
+                  >
+                    {linkDownload.kind === 'running' ? (
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                    ) : (
+                      <LinkIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <span className="truncate">
+                      {linkDownload.kind === 'running'
+                        ? t('cover.picker.link.saving')
+                        : t('cover.picker.link.use')}
+                    </span>
+                  </button>
+                ) : null
+              )}
+
+              {items.length === 0 && (
+                <p
+                  className="px-2 py-5 text-center text-sm text-muted-foreground"
+                  data-testid="cover-picker-link-prompt"
+                >
+                  {query ? t('cover.picker.link.invalid') : t('cover.picker.link.prompt')}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {items.map((item) => (
+                <button
+                  key={itemKey(item)}
+                  type="button"
+                  onClick={() => void apply(item, false)}
+                  className={cn(
+                    'flex h-9 items-center gap-2.5 rounded-md px-2 text-start text-sm',
+                    'focus-visible:outline-none hover:bg-muted'
+                  )}
+                  data-testid="cover-picker-upload"
+                >
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                  ) : (
+                    <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
+                  {uploading ? t('cover.picker.uploading') : t('cover.picker.upload')}
+                </button>
+              ))}
             </div>
           )}
         </div>
