@@ -241,6 +241,13 @@
       "media": {
         "title": "Media",
         "subtext": "Attach an image, video, or audio file"
+      },
+      "insertTemplate": {
+        "title": "Insert template…",
+        "subtext": "Add a template's content at the cursor",
+        "group": "Templates",
+        "empty": "That template has no content to insert",
+        "failed": "Could not insert that template"
       }
     },
     "filePanel": {
