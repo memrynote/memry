@@ -303,6 +303,19 @@ export class PushCoordinator {
                 })
                 this.ctx.deps.queue.markSuccess(queueId, payloadAtDequeue.get(queueId))
                 this.markItemSynced(pushItem.id, pushItem.type)
+              } else if (reason === 'SYNC_DELETE_WINS') {
+                // The server holds a tombstone that outranks this upsert and
+                // wrote nothing, so a retry is refused identically every time.
+                // Deliberately no local delete and no markItemSynced: this
+                // device's pull cursor is still behind the tombstone, so the
+                // next pull applies the delete through the handler that owns
+                // the type's delete semantics.
+                log.info('Push: item refused, a delete already won for this id', {
+                  queueId: queueId.slice(0, 8),
+                  itemId: pushItem.id.slice(0, 8),
+                  type: pushItem.type
+                })
+                this.ctx.deps.queue.markSuccess(queueId, payloadAtDequeue.get(queueId))
               } else if (reason === 'STORAGE_QUOTA_EXCEEDED') {
                 log.warn('Push: storage quota exceeded', { itemId: pushItem.id.slice(0, 8) })
                 // Ends the run via `break`, never a throw — engine.push() records
