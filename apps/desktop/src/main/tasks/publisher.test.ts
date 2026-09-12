@@ -33,7 +33,12 @@ vi.mock('../telemetry/track', () => ({
   trackMainEvent: vi.fn()
 }))
 
+vi.mock('./remove-task-line-from-note', () => ({
+  removeTaskLineFromSourceNote: vi.fn(async () => {})
+}))
+
 import { createTasksPublisher } from './publisher'
+import { removeTaskLineFromSourceNote } from './remove-task-line-from-note'
 
 const TAGS_CHANGED = 'notes:tags-changed'
 
@@ -112,5 +117,32 @@ describe('createTasksPublisher tags-changed broadcast', () => {
     const publisher = createTasksPublisher()
     publisher.taskDeleted({ id: 'task-1', snapshot: makeTask({ tags: [] }) })
     expect(mockSend).not.toHaveBeenCalledWith(TAGS_CHANGED, {})
+  })
+})
+
+describe('createTasksPublisher source-note cleanup', () => {
+  beforeEach(() => {
+    vi.mocked(removeTaskLineFromSourceNote).mockClear()
+  })
+
+  it('removes the checkbox line from the note a deleted task came from', async () => {
+    const publisher = createTasksPublisher()
+    await publisher.taskDeleted({
+      id: 'task-1',
+      snapshot: makeTask({ sourceNoteId: 'note-1' })
+    })
+    expect(removeTaskLineFromSourceNote).toHaveBeenCalledWith('task-1', 'note-1')
+  })
+
+  it('touches no note when the deleted task did not come from one', async () => {
+    const publisher = createTasksPublisher()
+    await publisher.taskDeleted({ id: 'task-1', snapshot: makeTask({ sourceNoteId: null }) })
+    expect(removeTaskLineFromSourceNote).not.toHaveBeenCalled()
+  })
+
+  it('touches no note when the delete carries no snapshot', async () => {
+    const publisher = createTasksPublisher()
+    await publisher.taskDeleted({ id: 'task-1' })
+    expect(removeTaskLineFromSourceNote).not.toHaveBeenCalled()
   })
 })
