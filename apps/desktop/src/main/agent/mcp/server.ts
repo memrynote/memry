@@ -22,7 +22,7 @@ export interface ToolRegistration {
   inputSchema: ZodTypeAny
   handler: (
     input: unknown,
-    ctx: { conversationId: string | null; windowId: string | null }
+    ctx: { writeGrant: string | null; windowId: string | null }
   ) => Promise<unknown>
 }
 

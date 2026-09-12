@@ -8,7 +8,8 @@ import type { AgentMcpDesktopWriteOperation } from '@memry/contracts/agent-mcp-c
 import type { CanvasDrawElement, CanvasElementEdit } from '@memry/contracts/canvas-draw'
 
 export interface GateContext {
-  conversationId: string
+  /** Opaque per-turn capability presented by the caller; the gate verifies it. */
+  writeGrant: string
   windowId: string | null
   toolName: ToolName
   parsedArgs: unknown
@@ -35,10 +36,10 @@ async function gateOrDeny(gate: WriteToolGate | null, ctx: GateContext): Promise
       'Write tools require an active memrynote Agent conversation with an approval gate.'
     )
   }
-  if (!ctx.conversationId) {
+  if (!ctx.writeGrant) {
     throw new AgentToolError(
       'PERMISSION_DENIED',
-      'Write tools require X-Memry-Conversation header.'
+      'Write tools require an in-flight memrynote Agent turn; no X-Memry-Turn capability was presented.'
     )
   }
   const decision = await gate(ctx)
@@ -55,7 +56,7 @@ async function approvedArgs<T>(
   ctx: ToolHandlerContext
 ): Promise<T> {
   return (await gateOrDeny(gate, {
-    conversationId: ctx.conversationId ?? '',
+    writeGrant: ctx.writeGrant ?? '',
     windowId: ctx.windowId,
     toolName,
     parsedArgs
@@ -79,7 +80,7 @@ export function buildWriteTools(
           tags?: string[]
         }>(TOOL_SCHEMAS.vault_create_note.input, input)
         const args = (await gateOrDeny(gate, {
-          conversationId: ctx.conversationId ?? '',
+          writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
           toolName: 'vault_create_note',
           parsedArgs: parsed
@@ -389,7 +390,7 @@ export function buildWriteTools(
           input
         )
         const args = (await gateOrDeny(gate, {
-          conversationId: ctx.conversationId ?? '',
+          writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
           toolName: 'vault_create_journal_entry',
           parsedArgs: parsed
@@ -430,7 +431,7 @@ export function buildWriteTools(
           input
         )
         const args = (await gateOrDeny(gate, {
-          conversationId: ctx.conversationId ?? '',
+          writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
           toolName: 'vault_add_to_inbox',
           parsedArgs: parsed
@@ -531,7 +532,7 @@ export function buildWriteTools(
           content_markdown: string
         }>(TOOL_SCHEMAS.vault_update_note.input, input)
         const args = (await gateOrDeny(gate, {
-          conversationId: ctx.conversationId ?? '',
+          writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
           toolName: 'vault_update_note',
           parsedArgs: parsed
@@ -564,7 +565,7 @@ export function buildWriteTools(
           input
         )
         const args = (await gateOrDeny(gate, {
-          conversationId: ctx.conversationId ?? '',
+          writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
           toolName: 'vault_add_tag',
           parsedArgs: parsed
@@ -584,7 +585,7 @@ export function buildWriteTools(
           input
         )
         const args = (await gateOrDeny(gate, {
-          conversationId: ctx.conversationId ?? '',
+          writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
           toolName: 'vault_remove_tag',
           parsedArgs: parsed
@@ -604,7 +605,7 @@ export function buildWriteTools(
           input
         )
         const args = (await gateOrDeny(gate, {
-          conversationId: ctx.conversationId ?? '',
+          writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
           toolName: 'vault_move_to_folder',
           parsedArgs: parsed

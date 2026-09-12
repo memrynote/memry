@@ -23,6 +23,30 @@ import type { ConversationStore } from '../../storage/conversation-store'
 import { createConversationStore } from '../../storage/conversation-store'
 import type { MessageStore } from '../../storage/message-store'
 import { AgentRuntime } from '../runtime'
+import {
+  mintTurnWriteGrant,
+  revokeAllTurnWriteGrants,
+  type TurnWriteGrant
+} from '../../turn-grants'
+
+/**
+ * One capability per conversation per test. Minting twice for the same
+ * conversation revokes the first, which would invalidate a call still awaiting
+ * its approval.
+ */
+const grants = new Map<string, TurnWriteGrant>()
+function grantFor(conversationId: string): TurnWriteGrant {
+  const existing = grants.get(conversationId)
+  if (existing) return existing
+  const grant = mintTurnWriteGrant(conversationId)
+  grants.set(conversationId, grant)
+  return grant
+}
+
+beforeEach(() => {
+  grants.clear()
+  revokeAllTurnWriteGrants()
+})
 
 /** Drains every queued microtask so an already-settled promise wins a race. */
 function flushMicrotasks(): Promise<void> {
@@ -145,7 +169,7 @@ describe('AgentRuntime approval gate', () => {
     runtime.install()
     const gate = installedGate()
     const write = {
-      conversationId: conversation.id,
+      writeGrant: grantFor(conversation.id),
       toolName: 'vault_create_task',
       parsedArgs: { title: 'Task' }
     }
@@ -161,6 +185,59 @@ describe('AgentRuntime approval gate', () => {
     })
   })
 
+  it('denies a write whose only credential is a real conversation id', async () => {
+    const { runtime, conversations } = createRuntime()
+    conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
+
+    runtime.install()
+
+    await expect(
+      installedGate()({
+        writeGrant: 'conversation-1',
+        toolName: 'vault_delete_note',
+        parsedArgs: { id: 'note-1' }
+      })
+    ).resolves.toEqual({
+      approved: false,
+      reason:
+        'Vault writes are only available to a tool call inside a running memrynote Agent turn.'
+    })
+    expect(conversations.getById).not.toHaveBeenCalled()
+  })
+
+  it('denies a write presenting a capability from a turn that already ended', async () => {
+    const { runtime, conversations } = createRuntime()
+    conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
+
+    runtime.install()
+    const gate = installedGate()
+    const grant = grantFor('conversation-1')
+    await expect(
+      gate({ writeGrant: grant, toolName: 'vault_create_task', parsedArgs: { title: 'T' } })
+    ).resolves.toEqual({ approved: true })
+
+    runtime.releaseTurnLock('conversation-1')
+
+    await expect(
+      gate({ writeGrant: grant, toolName: 'vault_create_task', parsedArgs: { title: 'T' } })
+    ).resolves.toMatchObject({ approved: false })
+  })
+
+  it('revokes every live capability at shutdown', async () => {
+    const { runtime, conversations } = createRuntime()
+    conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
+
+    runtime.install()
+    const gate = installedGate()
+    const grant = grantFor('conversation-1')
+
+    await runtime.killAll()
+
+    await expect(
+      gate({ writeGrant: grant, toolName: 'vault_create_task', parsedArgs: { title: 'T' } })
+    ).resolves.toMatchObject({ approved: false })
+  })
+
   it('rejects writes for unknown conversations', async () => {
     const { runtime, conversations } = createRuntime()
     conversations.getById.mockReturnValue(null)
@@ -169,7 +246,7 @@ describe('AgentRuntime approval gate', () => {
 
     await expect(
       installedGate()({
-        conversationId: 'missing',
+        writeGrant: grantFor('missing'),
         toolName: 'vault_create_task',
         parsedArgs: { title: 'Task' }
       })
@@ -185,7 +262,7 @@ describe('AgentRuntime approval gate', () => {
 
     await expect(
       gate({
-        conversationId: 'conversation-1',
+        writeGrant: grantFor('conversation-1'),
         toolName: 'vault_update_note',
         parsedArgs: { id: 'note-1', content_markdown: 'Draft' }
       })
@@ -205,11 +282,11 @@ describe('AgentRuntime approval gate', () => {
     const gate = installedGate()
 
     await expect(
-      gate({ conversationId: 'conversation-1', toolName: 'vault_read_note', parsedArgs: {} })
+      gate({ writeGrant: grantFor('conversation-1'), toolName: 'vault_read_note', parsedArgs: {} })
     ).resolves.toEqual({ approved: true })
     await expect(
       gate({
-        conversationId: 'conversation-1',
+        writeGrant: grantFor('conversation-1'),
         toolName: 'vault_create_task',
         parsedArgs: { title: 'Task' }
       })
@@ -223,7 +300,7 @@ describe('AgentRuntime approval gate', () => {
 
     runtime.install()
     const pending = installedGate()({
-      conversationId: 'conversation-1',
+      writeGrant: grantFor('conversation-1'),
       toolName: 'vault_create_task',
       parsedArgs: { title: 'Task' }
     })
@@ -259,7 +336,7 @@ describe('AgentRuntime approval gate', () => {
     const gate = installedGate()
 
     const edited = gate({
-      conversationId: 'conversation-1',
+      writeGrant: grantFor('conversation-1'),
       toolName: 'vault_update_note',
       parsedArgs: { id: 'note-1', content_markdown: 'Original' }
     })
@@ -273,7 +350,7 @@ describe('AgentRuntime approval gate', () => {
     })
 
     const denied = gate({
-      conversationId: 'conversation-1',
+      writeGrant: grantFor('conversation-1'),
       toolName: 'vault_add_tag',
       parsedArgs: { id: 'note-1', tag: 'focus' }
     })
@@ -292,12 +369,12 @@ describe('AgentRuntime approval gate', () => {
     runtime.install()
     const gate = installedGate()
     const cancelled = gate({
-      conversationId: 'conversation-1',
+      writeGrant: grantFor('conversation-1'),
       toolName: 'vault_create_task',
       parsedArgs: { title: 'Task' }
     })
     const untouched = gate({
-      conversationId: 'conversation-2',
+      writeGrant: grantFor('conversation-2'),
       toolName: 'vault_create_task',
       parsedArgs: { title: 'Other task' }
     })
@@ -338,7 +415,7 @@ describe('AgentRuntime approval gate', () => {
 
     const call = createNote.handler(
       { title: 'Notes', content_markdown: 'body' },
-      { conversationId: 'conversation-1', windowId: null }
+      { writeGrant: grantFor('conversation-1'), windowId: null }
     )
     const settled = call.then(
       () => 'resolved-as-approved' as const,
@@ -361,7 +438,7 @@ describe('AgentRuntime approval gate', () => {
 
     runtime.install()
     const pending = installedGate()({
-      conversationId: 'conversation-1',
+      writeGrant: grantFor('conversation-1'),
       toolName: 'vault_create_task',
       parsedArgs: { title: 'Task' }
     })
@@ -405,7 +482,7 @@ describe('AgentRuntime approval gate', () => {
     const settled = createNote
       .handler(
         { title: 'Notes', content_markdown: 'body' },
-        { conversationId: 'conversation-1', windowId: null }
+        { writeGrant: grantFor('conversation-1'), windowId: null }
       )
       .then(
         () => 'resolved-as-approved' as const,
@@ -427,7 +504,7 @@ describe('AgentRuntime approval gate', () => {
 
     runtime.install()
     const pending = installedGate()({
-      conversationId: 'conversation-1',
+      writeGrant: grantFor('conversation-1'),
       toolName: 'vault_create_task',
       parsedArgs: { title: 'Task' }
     })
@@ -457,7 +534,7 @@ describe('AgentRuntime approval gate', () => {
     runtime.install()
     const args = { id: 'note-1', content_markdown: 'x'.repeat(64 * 1024) }
     void installedGate()({
-      conversationId: 'conversation-1',
+      writeGrant: grantFor('conversation-1'),
       toolName: 'vault_update_note',
       parsedArgs: args
     })
@@ -473,7 +550,7 @@ describe('AgentRuntime approval gate', () => {
 
     runtime.install()
     const pending = installedGate()({
-      conversationId: 'conversation-1',
+      writeGrant: grantFor('conversation-1'),
       toolName: 'vault_create_task',
       parsedArgs: { title: 'Task' }
     })

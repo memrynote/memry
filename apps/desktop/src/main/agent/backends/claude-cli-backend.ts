@@ -3,9 +3,11 @@ import { DEFAULT_CLAUDE_EFFORT } from '@memry/contracts/ipc-agent'
 import { detectClaudeBinary } from '../cli/claude-binary'
 import { createStreamParser } from '../cli/stream-parser'
 import type { BackendEvent } from '../cli/types'
+import type { TurnWriteGrant } from '../turn-grants'
 import type {
   AgentBackend,
   AgentBackendRunInput,
+  AgentBackendTurnInput,
   BackendRunHandle,
   ClaudeCliSpawnInput,
   RawSubprocessHandle
@@ -18,7 +20,7 @@ export class ClaudeCliBackend implements AgentBackend {
     private readonly deps: { spawn: (input: ClaudeCliSpawnInput) => Promise<RawSubprocessHandle> }
   ) {}
 
-  async runTurn(input: AgentBackendRunInput): Promise<BackendRunHandle> {
+  async runTurn(input: AgentBackendTurnInput): Promise<BackendRunHandle> {
     return this.run(input, 'turn')
   }
 
@@ -42,13 +44,16 @@ export class ClaudeCliBackend implements AgentBackend {
     }
   }
 
-  private async run(input: AgentBackendRunInput, purpose: 'turn' | 'summary' | 'title') {
+  private async run(
+    input: AgentBackendRunInput & { writeGrant?: TurnWriteGrant },
+    purpose: 'turn' | 'summary' | 'title'
+  ) {
     const effort =
       input.options.backend === 'claude_cli' ? input.options.claudeEffort : DEFAULT_CLAUDE_EFFORT
     const model = input.options.backend === 'claude_cli' ? input.options.model : undefined
     const subprocess = await this.deps.spawn({
       prompt: input.prompt,
-      conversationId: input.conversationId,
+      ...(input.writeGrant ? { writeGrant: input.writeGrant } : {}),
       windowId: input.windowId,
       effort,
       model,

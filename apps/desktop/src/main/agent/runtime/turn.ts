@@ -19,6 +19,7 @@ import { assemblePrompt, type PromptContext } from './prompt-assembler'
 import { COMPACTION_THRESHOLD, estimateTokens } from './token-estimator'
 import { persistToolActivity } from './tool-activity'
 import { extractAgentSourceRefs } from '../source-refs'
+import { mintTurnWriteGrant, revokeTurnWriteGrantsFor } from '../turn-grants'
 import type { AgentSourceRef } from '@memry/contracts/ipc-agent'
 
 const logger = createLogger('AgentRuntime:Turn')
@@ -162,14 +163,26 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     trackMainError('agent', 'compact_summarize', error)
   }
 
-  const rawSub = await backend.runTurn({
-    prompt: compactedPrompt,
-    conversationId: input.conversationId,
-    windowId: input.sourceWindowId,
-    options: input.backendOptions,
-    permissions,
-    purpose: 'turn'
-  })
+  // The turn's write capability. It exists only for as long as this turn runs:
+  // every path out of the function below revokes it, and the runtime revokes it
+  // again when the turn lock is released, so a backend that outlives its turn
+  // holds a capability the gate no longer recognises.
+  const writeGrant = mintTurnWriteGrant(input.conversationId)
+  let rawSub: BackendRunHandle
+  try {
+    rawSub = await backend.runTurn({
+      prompt: compactedPrompt,
+      conversationId: input.conversationId,
+      windowId: input.sourceWindowId,
+      writeGrant,
+      options: input.backendOptions,
+      permissions,
+      purpose: 'turn'
+    })
+  } catch (error) {
+    revokeTurnWriteGrantsFor(input.conversationId)
+    throw error
+  }
   const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub
 
   // The child is spawned and tracked, but the turn's own try/finally below has
@@ -194,6 +207,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
       message: assistant
     })
   } catch (error) {
+    revokeTurnWriteGrantsFor(input.conversationId)
     await discardStrandedSubprocess(sub)
     throw error
   }
@@ -326,6 +340,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     // resolved (exitObserved) or the event loop above threw and abandoned a
     // child that is still running. A slow turn is still inside the loop, so it
     // is never touched here.
+    revokeTurnWriteGrantsFor(input.conversationId)
     if (!exitObserved) await killAbandonedChild(sub)
     await sub.cleanup()
     await titlePromise

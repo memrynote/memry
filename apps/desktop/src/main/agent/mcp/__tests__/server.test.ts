@@ -371,16 +371,16 @@ describe('Agent MCP server registration reuse', () => {
     }
   })
 
-  it('derives conversation identity per request on a reused server', async () => {
-    const seen: Array<{ conversationId: string | null; windowId: string | null }> = []
+  it('derives the turn write capability per request on a reused server', async () => {
+    const seen: Array<{ writeGrant: string | null; windowId: string | null }> = []
     const handle = await startAgentMcpServer({
       toolRegistrations: [
         buildTool('ctx_probe', async (_input, ctx) => {
-          seen.push({ conversationId: ctx.conversationId, windowId: ctx.windowId })
-          if (!ctx.conversationId) {
+          seen.push({ writeGrant: ctx.writeGrant, windowId: ctx.windowId })
+          if (!ctx.writeGrant) {
             throw new AgentToolError('PERMISSION_DENIED', 'Write tools require a conversation.')
           }
-          return { conversationId: ctx.conversationId }
+          return { writeGrant: ctx.writeGrant }
         })
       ]
     })
@@ -390,9 +390,9 @@ describe('Agent MCP server registration reuse', () => {
         handle,
         'ctx_probe',
         {},
-        { 'x-memry-conversation': 'conv-a', 'x-memry-window': 'win-a' }
+        { 'x-memry-turn': 'grant-a', 'x-memry-window': 'win-a' }
       )
-      expect(await approved.text()).toContain('"conversationId":"conv-a"')
+      expect(await approved.text()).toContain('"writeGrant":"grant-a"')
 
       // Same reused McpServer, different caller: identity must not carry over.
       const denied = await callTool(handle, 'ctx_probe', {})
@@ -402,14 +402,14 @@ describe('Agent MCP server registration reuse', () => {
         handle,
         'ctx_probe',
         {},
-        { 'x-memry-conversation': 'conv-b', 'x-memry-window': 'win-b' }
+        { 'x-memry-turn': 'grant-b', 'x-memry-window': 'win-b' }
       )
-      expect(await other.text()).toContain('"conversationId":"conv-b"')
+      expect(await other.text()).toContain('"writeGrant":"grant-b"')
 
       expect(seen).toEqual([
-        { conversationId: 'conv-a', windowId: 'win-a' },
-        { conversationId: null, windowId: null },
-        { conversationId: 'conv-b', windowId: 'win-b' }
+        { writeGrant: 'grant-a', windowId: 'win-a' },
+        { writeGrant: null, windowId: null },
+        { writeGrant: 'grant-b', windowId: 'win-b' }
       ])
     } finally {
       await handle.stop()
@@ -457,7 +457,7 @@ function buildTool(
   name: string,
   handler: (
     input: unknown,
-    ctx: { conversationId: string | null; windowId: string | null }
+    ctx: { writeGrant: string | null; windowId: string | null }
   ) => Promise<unknown>
 ) {
   return {
