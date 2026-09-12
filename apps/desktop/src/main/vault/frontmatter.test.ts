@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import matter from 'gray-matter'
 import type { PropertyType } from '@memry/contracts/property-types'
+import { COVER_FRONTMATTER_KEY, isCoverImageValue } from '@memry/shared/cover-image'
 import {
   parseNote,
   serializeNote,
@@ -511,5 +512,86 @@ describe('createSnippet wiki links (issue #1556)', () => {
 
   it('reads an aliased link as its alias, not alias-welded-to-target', () => {
     expect(createSnippet('see [[Sprint Notes|retro]] today')).toBe('see retro today')
+  })
+})
+
+describe('the cover frontmatter key', () => {
+  const COVER_REF = '../attachments/n1/abc123-photo.jpg'
+
+  it('round-trips a note-relative ref byte-identically through parse and serialize', () => {
+    const raw = `---
+cover: ${COVER_REF}
+status: reading
+---
+
+Body text
+`
+
+    const parsed = parseNote(raw, 'notes/Books/Dune.md')
+    expect(parsed.frontmatter.cover).toBe(COVER_REF)
+
+    const serialized = serializeNote(parsed.frontmatter, parsed.content)
+    expect(serialized).toContain(COVER_REF)
+    expect(serialized).not.toContain('memry-file://')
+
+    const reparsed = parseNote(serialized, 'notes/Books/Dune.md')
+    expect(reparsed.frontmatter.cover).toBe(COVER_REF)
+    expect(serializeNote(reparsed.frontmatter, reparsed.content)).toBe(serialized)
+  })
+
+  it('hides an image-valued cover from extractProperties', () => {
+    expect(extractProperties({ cover: COVER_REF, status: 'reading' })).toEqual({
+      status: 'reading'
+    })
+    expect(COVER_FRONTMATTER_KEY).toBe('cover')
+  })
+
+  it('leaves a text-valued cover as an ordinary user property', () => {
+    // `cover: Hardback` exists in real book notes written long before the key
+    // meant anything. Reserving by name alone would drop the row.
+    expect(extractProperties({ cover: 'Hardback', status: 'reading' })).toEqual({
+      cover: 'Hardback',
+      status: 'reading'
+    })
+  })
+
+  it('REGRESSION: a property rewrite preserves the cover but still rewrites a text cover', () => {
+    // `replacePropertiesOnRoot` deletes every key `extractProperties` returns
+    // before rewriting, so without the value-aware reserve the cover vanishes
+    // the first time the user edits any property.
+    expect(
+      replacePropertiesOnRoot(
+        { tags: ['reading'], cover: COVER_REF, status: 'todo' },
+        { status: 'done' }
+      )
+    ).toEqual({ tags: ['reading'], cover: COVER_REF, status: 'done' })
+
+    expect(
+      replacePropertiesOnRoot({ cover: 'Hardback', status: 'todo' }, { status: 'done' })
+    ).toEqual({ status: 'done' })
+  })
+})
+
+describe('isCoverImageValue', () => {
+  it('accepts http(s) URLs whatever the case of the scheme', () => {
+    expect(isCoverImageValue('https://example.com/x')).toBe(true)
+    expect(isCoverImageValue('HTTP://EXAMPLE.COM/x')).toBe(true)
+  })
+
+  it('accepts an image path, including a query string or fragment after it', () => {
+    expect(isCoverImageValue('../attachments/n1/a.JPG')).toBe(true)
+    expect(isCoverImageValue('a.png?v=2')).toBe(true)
+    expect(isCoverImageValue('a.webp#frag')).toBe(true)
+    expect(isCoverImageValue('x.avif')).toBe(true)
+  })
+
+  it('rejects prose, non-image paths, emptiness and non-strings', () => {
+    expect(isCoverImageValue('')).toBe(false)
+    expect(isCoverImageValue('Hardback')).toBe(false)
+    expect(isCoverImageValue(null)).toBe(false)
+    expect(isCoverImageValue(undefined)).toBe(false)
+    expect(isCoverImageValue(42)).toBe(false)
+    expect(isCoverImageValue('notes/readme.md')).toBe(false)
+    expect(isCoverImageValue('https')).toBe(false)
   })
 })
