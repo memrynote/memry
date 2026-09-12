@@ -262,7 +262,48 @@
     "remove": "Omslag verwijderen",
     "alt": "Omslagafbeelding",
     "setFailed": "Kan de omslagafbeelding niet instellen",
-    "removeFailed": "Kan de omslagafbeelding niet verwijderen"
+    "removeFailed": "Kan de omslagafbeelding niet verwijderen",
+    "reposition": "Verplaatsen",
+    "repositionHint": "Sleep om te verplaatsen",
+    "repositionSave": "opslaan",
+    "repositionCancel": "annuleren",
+    "credit": "Foto van {name} op Unsplash",
+    "focusFailed": "Kan de omslagpositie niet opslaan",
+    "picker": {
+      "title": "Notitieomslag",
+      "placeholder": "Omslagen zoeken",
+      "tab": {
+        "washes": "Tinten",
+        "fromNote": "Uit notitie",
+        "upload": "Uploaden"
+      },
+      "upload": "Uploaden",
+      "uploading": "Uploaden…",
+      "uploadFailed": "Kan de omslagafbeelding niet uploaden",
+      "loadFailed": "Kan de afbeeldingen uit de kluis niet laden",
+      "insertFailed": "Kan die afbeelding niet als omslag gebruiken",
+      "noMatches": "Geen resultaten",
+      "empty": "Nog geen afbeeldingen in deze kluis",
+      "hint": {
+        "apply": "Toepassen",
+        "applyReposition": "Toepassen en verplaatsen",
+        "close": "Sluiten"
+      },
+      "wash": {
+        "sage": "Salie",
+        "sand": "Zand",
+        "lilac": "Lila",
+        "clay": "Klei",
+        "ash": "As",
+        "fog": "Mist",
+        "wheat": "Tarwe",
+        "moss": "Mos",
+        "slate": "Leisteen",
+        "bark": "Schors",
+        "mist": "Nevel",
+        "plum": "Pruim"
+      }
+    }
   },
   "templateSelector": {
     "title": "Kies uw canvas",

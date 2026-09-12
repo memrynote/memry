@@ -262,7 +262,48 @@
     "remove": "Quitar portada",
     "alt": "Imagen de portada",
     "setFailed": "No se pudo establecer la imagen de portada",
-    "removeFailed": "No se pudo quitar la imagen de portada"
+    "removeFailed": "No se pudo quitar la imagen de portada",
+    "reposition": "Reposicionar",
+    "repositionHint": "Arrastra para reposicionar",
+    "repositionSave": "guardar",
+    "repositionCancel": "cancelar",
+    "credit": "Foto de {name} en Unsplash",
+    "focusFailed": "No se pudo guardar la posición de la portada",
+    "picker": {
+      "title": "Portada de la nota",
+      "placeholder": "Buscar portadas",
+      "tab": {
+        "washes": "Tonos",
+        "fromNote": "De la nota",
+        "upload": "Subir"
+      },
+      "upload": "Subir",
+      "uploading": "Subiendo…",
+      "uploadFailed": "No se pudo subir la imagen de portada",
+      "loadFailed": "No se pudieron cargar las imágenes de la bóveda",
+      "insertFailed": "No se pudo usar esa imagen como portada",
+      "noMatches": "No hay coincidencias",
+      "empty": "Aún no hay imágenes en esta bóveda",
+      "hint": {
+        "apply": "Aplicar",
+        "applyReposition": "Aplicar y reposicionar",
+        "close": "Cerrar"
+      },
+      "wash": {
+        "sage": "Salvia",
+        "sand": "Arena",
+        "lilac": "Lila",
+        "clay": "Arcilla",
+        "ash": "Ceniza",
+        "fog": "Niebla",
+        "wheat": "Trigo",
+        "moss": "Musgo",
+        "slate": "Pizarra",
+        "bark": "Corteza",
+        "mist": "Bruma",
+        "plum": "Ciruela"
+      }
+    }
   },
   "templateSelector": {
     "title": "Elige tu lienzo",

@@ -262,7 +262,48 @@
     "remove": "Ta bort omslag",
     "alt": "Omslagsbild",
     "setFailed": "Det gick inte att ange omslagsbilden",
-    "removeFailed": "Det gick inte att ta bort omslagsbilden"
+    "removeFailed": "Det gick inte att ta bort omslagsbilden",
+    "reposition": "Placera om",
+    "repositionHint": "Dra för att placera om",
+    "repositionSave": "spara",
+    "repositionCancel": "avbryt",
+    "credit": "Foto av {name} på Unsplash",
+    "focusFailed": "Det gick inte att spara omslagets position",
+    "picker": {
+      "title": "Anteckningsomslag",
+      "placeholder": "Sök omslag",
+      "tab": {
+        "washes": "Toner",
+        "fromNote": "Från anteckningen",
+        "upload": "Ladda upp"
+      },
+      "upload": "Ladda upp",
+      "uploading": "Laddar upp…",
+      "uploadFailed": "Det gick inte att ladda upp omslagsbilden",
+      "loadFailed": "Det gick inte att läsa in bilderna i valvet",
+      "insertFailed": "Det gick inte att använda bilden som omslag",
+      "noMatches": "Inga matchningar",
+      "empty": "Inga bilder i det här valvet ännu",
+      "hint": {
+        "apply": "Använd",
+        "applyReposition": "Använd och placera om",
+        "close": "Stäng"
+      },
+      "wash": {
+        "sage": "Salvia",
+        "sand": "Sand",
+        "lilac": "Syren",
+        "clay": "Lera",
+        "ash": "Aska",
+        "fog": "Dimma",
+        "wheat": "Vete",
+        "moss": "Mossa",
+        "slate": "Skiffer",
+        "bark": "Bark",
+        "mist": "Dis",
+        "plum": "Plommon"
+      }
+    }
   },
   "templateSelector": {
     "title": "Välj din duk",

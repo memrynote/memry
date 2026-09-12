@@ -262,7 +262,48 @@
     "remove": "Elimină coperta",
     "alt": "Imagine de copertă",
     "setFailed": "Imaginea de copertă nu a putut fi setată",
-    "removeFailed": "Imaginea de copertă nu a putut fi eliminată"
+    "removeFailed": "Imaginea de copertă nu a putut fi eliminată",
+    "reposition": "Repoziționați",
+    "repositionHint": "Trageți pentru a repoziționa",
+    "repositionSave": "salvați",
+    "repositionCancel": "anulați",
+    "credit": "Fotografie de {name} pe Unsplash",
+    "focusFailed": "Poziția copertei nu a putut fi salvată",
+    "picker": {
+      "title": "Coperta notei",
+      "placeholder": "Căutați coperte",
+      "tab": {
+        "washes": "Nuanțe",
+        "fromNote": "Din notă",
+        "upload": "Încărcați"
+      },
+      "upload": "Încărcați",
+      "uploading": "Se încarcă…",
+      "uploadFailed": "Imaginea de copertă nu a putut fi încărcată",
+      "loadFailed": "Imaginile din seif nu au putut fi încărcate",
+      "insertFailed": "Acea imagine nu a putut fi folosită drept copertă",
+      "noMatches": "Nicio potrivire",
+      "empty": "Încă nu există imagini în acest seif",
+      "hint": {
+        "apply": "Aplicați",
+        "applyReposition": "Aplicați și repoziționați",
+        "close": "Închide"
+      },
+      "wash": {
+        "sage": "Salvie",
+        "sand": "Nisip",
+        "lilac": "Liliac",
+        "clay": "Lut",
+        "ash": "Cenușă",
+        "fog": "Ceață",
+        "wheat": "Grâu",
+        "moss": "Mușchi",
+        "slate": "Ardezie",
+        "bark": "Scoarță",
+        "mist": "Pâclă",
+        "plum": "Prună"
+      }
+    }
   },
   "templateSelector": {
     "title": "Alegeți-vă pânza",

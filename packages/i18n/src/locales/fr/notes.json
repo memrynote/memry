@@ -262,7 +262,48 @@
     "remove": "Supprimer la couverture",
     "alt": "Image de couverture",
     "setFailed": "Impossible de definir l'image de couverture",
-    "removeFailed": "Impossible de supprimer l'image de couverture"
+    "removeFailed": "Impossible de supprimer l'image de couverture",
+    "reposition": "Repositionner",
+    "repositionHint": "Faites glisser pour repositionner",
+    "repositionSave": "enregistrer",
+    "repositionCancel": "annuler",
+    "credit": "Photo de {name} sur Unsplash",
+    "focusFailed": "Impossible d'enregistrer la position de la couverture",
+    "picker": {
+      "title": "Couverture de la note",
+      "placeholder": "Rechercher des couvertures",
+      "tab": {
+        "washes": "Teintes",
+        "fromNote": "Depuis la note",
+        "upload": "Importer"
+      },
+      "upload": "Importer",
+      "uploading": "Import en cours…",
+      "uploadFailed": "Impossible d'importer l'image de couverture",
+      "loadFailed": "Impossible de charger les images du coffre-fort",
+      "insertFailed": "Impossible d'utiliser cette image comme couverture",
+      "noMatches": "Aucun résultat",
+      "empty": "Aucune image dans ce coffre-fort pour l'instant",
+      "hint": {
+        "apply": "Appliquer",
+        "applyReposition": "Appliquer et repositionner",
+        "close": "Fermer"
+      },
+      "wash": {
+        "sage": "Sauge",
+        "sand": "Sable",
+        "lilac": "Lilas",
+        "clay": "Argile",
+        "ash": "Cendre",
+        "fog": "Brouillard",
+        "wheat": "Blé",
+        "moss": "Mousse",
+        "slate": "Ardoise",
+        "bark": "Écorce",
+        "mist": "Brume",
+        "plum": "Prune"
+      }
+    }
   },
   "templateSelector": {
     "title": "Choisissez votre toile",

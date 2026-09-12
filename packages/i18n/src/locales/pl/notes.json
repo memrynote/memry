@@ -262,7 +262,48 @@
     "remove": "Usuń okładkę",
     "alt": "Obraz okładki",
     "setFailed": "Nie udało się ustawić obrazu okładki",
-    "removeFailed": "Nie udało się usunąć obrazu okładki"
+    "removeFailed": "Nie udało się usunąć obrazu okładki",
+    "reposition": "Zmień położenie",
+    "repositionHint": "Przeciągnij, aby zmienić położenie",
+    "repositionSave": "zapisz",
+    "repositionCancel": "anuluj",
+    "credit": "Zdjęcie autorstwa {name} w serwisie Unsplash",
+    "focusFailed": "Nie udało się zapisać położenia okładki",
+    "picker": {
+      "title": "Okładka notatki",
+      "placeholder": "Szukaj okładek",
+      "tab": {
+        "washes": "Odcienie",
+        "fromNote": "Z notatki",
+        "upload": "Prześlij"
+      },
+      "upload": "Prześlij",
+      "uploading": "Przesyłanie…",
+      "uploadFailed": "Nie udało się przesłać obrazu okładki",
+      "loadFailed": "Nie udało się wczytać obrazów z sejfu",
+      "insertFailed": "Nie udało się użyć tego obrazu jako okładki",
+      "noMatches": "Brak wyników",
+      "empty": "W tym sejfie nie ma jeszcze obrazów",
+      "hint": {
+        "apply": "Zastosuj",
+        "applyReposition": "Zastosuj i zmień położenie",
+        "close": "Zamknij"
+      },
+      "wash": {
+        "sage": "Szałwia",
+        "sand": "Piasek",
+        "lilac": "Liliowy",
+        "clay": "Glina",
+        "ash": "Popiół",
+        "fog": "Mgła",
+        "wheat": "Pszenica",
+        "moss": "Mech",
+        "slate": "Łupek",
+        "bark": "Kora",
+        "mist": "Mgiełka",
+        "plum": "Śliwka"
+      }
+    }
   },
   "templateSelector": {
     "title": "Wybierz swoje płótno",

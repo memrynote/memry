@@ -262,7 +262,48 @@
     "remove": "Odebrat obálku",
     "alt": "Obrázek obálky",
     "setFailed": "Obrázek obálky se nepodařilo nastavit",
-    "removeFailed": "Obrázek obálky se nepodařilo odebrat"
+    "removeFailed": "Obrázek obálky se nepodařilo odebrat",
+    "reposition": "Upravit pozici",
+    "repositionHint": "Přetažením upravte pozici",
+    "repositionSave": "uložit",
+    "repositionCancel": "zrušit",
+    "credit": "Foto od {name} na Unsplashi",
+    "focusFailed": "Pozici obálky se nepodařilo uložit",
+    "picker": {
+      "title": "Obálka poznámky",
+      "placeholder": "Hledat obálky",
+      "tab": {
+        "washes": "Odstíny",
+        "fromNote": "Z poznámky",
+        "upload": "Nahrát"
+      },
+      "upload": "Nahrát",
+      "uploading": "Nahrávání…",
+      "uploadFailed": "Obrázek obálky se nepodařilo nahrát",
+      "loadFailed": "Obrázky z trezoru se nepodařilo načíst",
+      "insertFailed": "Tento obrázek nelze použít jako obálku",
+      "noMatches": "Žádné shody",
+      "empty": "V tomto trezoru zatím nejsou žádné obrázky",
+      "hint": {
+        "apply": "Použít",
+        "applyReposition": "Použít a upravit pozici",
+        "close": "Zavřít"
+      },
+      "wash": {
+        "sage": "Šalvěj",
+        "sand": "Písek",
+        "lilac": "Šeřík",
+        "clay": "Hlína",
+        "ash": "Popel",
+        "fog": "Mlha",
+        "wheat": "Pšenice",
+        "moss": "Mech",
+        "slate": "Břidlice",
+        "bark": "Kůra",
+        "mist": "Opar",
+        "plum": "Švestka"
+      }
+    }
   },
   "templateSelector": {
     "title": "Vyberte si své plátno",

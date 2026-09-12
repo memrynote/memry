@@ -262,7 +262,48 @@
     "remove": "Borítókép eltávolítása",
     "alt": "Borítókép",
     "setFailed": "Nem sikerült beállítani a borítóképet",
-    "removeFailed": "Nem sikerült eltávolítani a borítóképet"
+    "removeFailed": "Nem sikerült eltávolítani a borítóképet",
+    "reposition": "Áthelyezés",
+    "repositionHint": "Húzza az áthelyezéshez",
+    "repositionSave": "mentés",
+    "repositionCancel": "mégsem",
+    "credit": "Fotó: {name} az Unsplash oldalon",
+    "focusFailed": "Nem sikerült menteni a borítókép pozícióját",
+    "picker": {
+      "title": "Jegyzet borítóképe",
+      "placeholder": "Borítóképek keresése",
+      "tab": {
+        "washes": "Színek",
+        "fromNote": "A jegyzetből",
+        "upload": "Feltöltés"
+      },
+      "upload": "Feltöltés",
+      "uploading": "Feltöltés…",
+      "uploadFailed": "Nem sikerült feltölteni a borítóképet",
+      "loadFailed": "Nem sikerült betölteni a széf képeit",
+      "insertFailed": "Nem sikerült borítóképként használni ezt a képet",
+      "noMatches": "Nincs találat",
+      "empty": "Még nincs kép ebben a széfben",
+      "hint": {
+        "apply": "Alkalmaz",
+        "applyReposition": "Alkalmaz és áthelyez",
+        "close": "Bezárás"
+      },
+      "wash": {
+        "sage": "Zsálya",
+        "sand": "Homok",
+        "lilac": "Orgona",
+        "clay": "Agyag",
+        "ash": "Hamu",
+        "fog": "Köd",
+        "wheat": "Búza",
+        "moss": "Moha",
+        "slate": "Pala",
+        "bark": "Fakéreg",
+        "mist": "Pára",
+        "plum": "Szilva"
+      }
+    }
   },
   "templateSelector": {
     "title": "Válassza ki a vásznat",

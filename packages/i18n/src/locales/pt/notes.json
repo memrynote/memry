@@ -262,7 +262,48 @@
     "remove": "Remover capa",
     "alt": "Imagem de capa",
     "setFailed": "Não foi possível definir a imagem de capa",
-    "removeFailed": "Não foi possível remover a imagem de capa"
+    "removeFailed": "Não foi possível remover a imagem de capa",
+    "reposition": "Reposicionar",
+    "repositionHint": "Arraste para reposicionar",
+    "repositionSave": "guardar",
+    "repositionCancel": "cancelar",
+    "credit": "Fotografia de {name} no Unsplash",
+    "focusFailed": "Não foi possível guardar a posição da capa",
+    "picker": {
+      "title": "Capa da nota",
+      "placeholder": "Pesquisar capas",
+      "tab": {
+        "washes": "Tons",
+        "fromNote": "Da nota",
+        "upload": "Carregar"
+      },
+      "upload": "Carregar",
+      "uploading": "A carregar…",
+      "uploadFailed": "Não foi possível carregar a imagem de capa",
+      "loadFailed": "Não foi possível carregar as imagens do cofre",
+      "insertFailed": "Não foi possível usar essa imagem como capa",
+      "noMatches": "Sem resultados",
+      "empty": "Ainda não há imagens neste cofre",
+      "hint": {
+        "apply": "Aplicar",
+        "applyReposition": "Aplicar e reposicionar",
+        "close": "Fechar"
+      },
+      "wash": {
+        "sage": "Salva",
+        "sand": "Areia",
+        "lilac": "Lilás",
+        "clay": "Argila",
+        "ash": "Cinza",
+        "fog": "Nevoeiro",
+        "wheat": "Trigo",
+        "moss": "Musgo",
+        "slate": "Ardósia",
+        "bark": "Casca",
+        "mist": "Bruma",
+        "plum": "Ameixa"
+      }
+    }
   },
   "templateSelector": {
     "title": "Escolha sua tela",

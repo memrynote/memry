@@ -262,7 +262,48 @@
     "remove": "Poista kansikuva",
     "alt": "Kansikuva",
     "setFailed": "Kansikuvaa ei voitu asettaa",
-    "removeFailed": "Kansikuvaa ei voitu poistaa"
+    "removeFailed": "Kansikuvaa ei voitu poistaa",
+    "reposition": "Siirrä",
+    "repositionHint": "Siirrä vetämällä",
+    "repositionSave": "tallenna",
+    "repositionCancel": "peruuta",
+    "credit": "Kuva: {name} (Unsplash)",
+    "focusFailed": "Kansikuvan sijaintia ei voitu tallentaa",
+    "picker": {
+      "title": "Muistiinpanon kansikuva",
+      "placeholder": "Hae kansikuvia",
+      "tab": {
+        "washes": "Sävyt",
+        "fromNote": "Muistiinpanosta",
+        "upload": "Lataa"
+      },
+      "upload": "Lataa",
+      "uploading": "Ladataan…",
+      "uploadFailed": "Kansikuvaa ei voitu ladata",
+      "loadFailed": "Holvin kuvia ei voitu ladata",
+      "insertFailed": "Kuvaa ei voitu käyttää kansikuvana",
+      "noMatches": "Ei osumia",
+      "empty": "Tässä holvissa ei ole vielä kuvia",
+      "hint": {
+        "apply": "Käytä",
+        "applyReposition": "Käytä ja siirrä",
+        "close": "Sulje"
+      },
+      "wash": {
+        "sage": "Salvia",
+        "sand": "Hiekka",
+        "lilac": "Syreeni",
+        "clay": "Savi",
+        "ash": "Tuhka",
+        "fog": "Sumu",
+        "wheat": "Vehnä",
+        "moss": "Sammal",
+        "slate": "Liuske",
+        "bark": "Kaarna",
+        "mist": "Utu",
+        "plum": "Luumu"
+      }
+    }
   },
   "templateSelector": {
     "title": "Valitse oma kangas",

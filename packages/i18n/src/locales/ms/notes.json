@@ -262,7 +262,48 @@
     "remove": "Alih keluar kulit",
     "alt": "Imej kulit",
     "setFailed": "Tidak dapat menetapkan imej kulit",
-    "removeFailed": "Tidak dapat mengalih keluar imej kulit"
+    "removeFailed": "Tidak dapat mengalih keluar imej kulit",
+    "reposition": "Ubah kedudukan",
+    "repositionHint": "Seret untuk ubah kedudukan",
+    "repositionSave": "simpan",
+    "repositionCancel": "batal",
+    "credit": "Foto oleh {name} di Unsplash",
+    "focusFailed": "Tidak dapat menyimpan kedudukan kulit",
+    "picker": {
+      "title": "Kulit nota",
+      "placeholder": "Cari kulit",
+      "tab": {
+        "washes": "Sapuan warna",
+        "fromNote": "Daripada nota",
+        "upload": "Muat naik"
+      },
+      "upload": "Muat naik",
+      "uploading": "Memuat naik…",
+      "uploadFailed": "Tidak dapat memuat naik imej kulit",
+      "loadFailed": "Tidak dapat memuatkan imej dalam peti besi",
+      "insertFailed": "Tidak dapat menggunakan imej itu sebagai kulit",
+      "noMatches": "Tiada padanan",
+      "empty": "Belum ada imej dalam peti besi ini",
+      "hint": {
+        "apply": "Guna",
+        "applyReposition": "Guna & ubah kedudukan",
+        "close": "Tutup"
+      },
+      "wash": {
+        "sage": "Hijau sage",
+        "sand": "Pasir",
+        "lilac": "Lilak",
+        "clay": "Tanah liat",
+        "ash": "Abu",
+        "fog": "Kabus",
+        "wheat": "Gandum",
+        "moss": "Lumut",
+        "slate": "Batu tulis",
+        "bark": "Kulit kayu",
+        "mist": "Kabut",
+        "plum": "Plum"
+      }
+    }
   },
   "templateSelector": {
     "title": "Pilih Kanvas Anda",

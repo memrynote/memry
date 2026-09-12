@@ -262,7 +262,48 @@
     "remove": "Ukloni naslovnu sliku",
     "alt": "Naslovna slika",
     "setFailed": "Nije moguće postaviti naslovnu sliku",
-    "removeFailed": "Nije moguće ukloniti naslovnu sliku"
+    "removeFailed": "Nije moguće ukloniti naslovnu sliku",
+    "reposition": "Premjesti",
+    "repositionHint": "Povuci za premještanje",
+    "repositionSave": "spremi",
+    "repositionCancel": "odustani",
+    "credit": "Fotografija: {name} na Unsplash",
+    "focusFailed": "Nije moguće spremiti položaj naslovne slike",
+    "picker": {
+      "title": "Naslovna slika bilješke",
+      "placeholder": "Traži naslovne slike",
+      "tab": {
+        "washes": "Tonovi",
+        "fromNote": "Iz bilješke",
+        "upload": "Prijenos"
+      },
+      "upload": "Prenesi",
+      "uploading": "Prijenos u tijeku…",
+      "uploadFailed": "Nije moguće prenijeti naslovnu sliku",
+      "loadFailed": "Nije moguće učitati slike iz trezora",
+      "insertFailed": "Nije moguće upotrijebiti tu sliku kao naslovnu",
+      "noMatches": "Nema podudaranja",
+      "empty": "U ovom trezoru još nema slika",
+      "hint": {
+        "apply": "Primijeni",
+        "applyReposition": "Primijeni i premjesti",
+        "close": "Zatvori"
+      },
+      "wash": {
+        "sage": "Kadulja",
+        "sand": "Pijesak",
+        "lilac": "Lila",
+        "clay": "Glina",
+        "ash": "Pepeo",
+        "fog": "Magla",
+        "wheat": "Pšenica",
+        "moss": "Mahovina",
+        "slate": "Škriljevac",
+        "bark": "Kora",
+        "mist": "Izmaglica",
+        "plum": "Šljiva"
+      }
+    }
   },
   "templateSelector": {
     "title": "Odaberite svoje platno",

@@ -262,7 +262,48 @@
     "remove": "Kapağı kaldır",
     "alt": "Kapak görseli",
     "setFailed": "Kapak görseli ayarlanamadı",
-    "removeFailed": "Kapak görseli kaldırılamadı"
+    "removeFailed": "Kapak görseli kaldırılamadı",
+    "reposition": "Yeniden konumlandır",
+    "repositionHint": "Konumlandırmak için sürükleyin",
+    "repositionSave": "kaydet",
+    "repositionCancel": "iptal",
+    "credit": "Fotoğraf: {name}, Unsplash",
+    "focusFailed": "Kapak konumu kaydedilemedi",
+    "picker": {
+      "title": "Not kapağı",
+      "placeholder": "Kapak ara",
+      "tab": {
+        "washes": "Tonlar",
+        "fromNote": "Nottan",
+        "upload": "Yükle"
+      },
+      "upload": "Yükle",
+      "uploading": "Yükleniyor…",
+      "uploadFailed": "Kapak görseli yüklenemedi",
+      "loadFailed": "Kasadaki görseller yüklenemedi",
+      "insertFailed": "Bu görsel kapak olarak kullanılamadı",
+      "noMatches": "Eşleşme yok",
+      "empty": "Bu kasada henüz görsel yok",
+      "hint": {
+        "apply": "Uygula",
+        "applyReposition": "Uygula ve konumlandır",
+        "close": "Kapat"
+      },
+      "wash": {
+        "sage": "Adaçayı",
+        "sand": "Kum",
+        "lilac": "Leylak",
+        "clay": "Kil",
+        "ash": "Kül",
+        "fog": "Sis",
+        "wheat": "Buğday",
+        "moss": "Yosun",
+        "slate": "Arduvaz",
+        "bark": "Ağaç kabuğu",
+        "mist": "Pus",
+        "plum": "Erik"
+      }
+    }
   },
   "templateSelector": {
     "title": "Kanvasınızı Seçin",

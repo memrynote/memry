@@ -262,7 +262,48 @@
     "remove": "カバー画像を削除",
     "alt": "カバー画像",
     "setFailed": "カバー画像を設定できませんでした",
-    "removeFailed": "カバー画像を削除できませんでした"
+    "removeFailed": "カバー画像を削除できませんでした",
+    "reposition": "位置を調整",
+    "repositionHint": "ドラッグして位置を調整",
+    "repositionSave": "保存",
+    "repositionCancel": "キャンセル",
+    "credit": "{name} さんによる写真（Unsplash）",
+    "focusFailed": "カバー画像の位置を保存できませんでした",
+    "picker": {
+      "title": "メモのカバー画像",
+      "placeholder": "カバー画像を検索",
+      "tab": {
+        "washes": "カラー",
+        "fromNote": "メモから",
+        "upload": "アップロード"
+      },
+      "upload": "アップロード",
+      "uploading": "アップロード中…",
+      "uploadFailed": "カバー画像をアップロードできませんでした",
+      "loadFailed": "保管庫の画像を読み込めませんでした",
+      "insertFailed": "その画像をカバー画像として使用できませんでした",
+      "noMatches": "一致するものがありません",
+      "empty": "この保管庫にはまだ画像がありません",
+      "hint": {
+        "apply": "適用",
+        "applyReposition": "適用して位置を調整",
+        "close": "閉じる"
+      },
+      "wash": {
+        "sage": "セージ",
+        "sand": "砂",
+        "lilac": "ライラック",
+        "clay": "粘土",
+        "ash": "灰",
+        "fog": "霧",
+        "wheat": "小麦",
+        "moss": "苔",
+        "slate": "スレート",
+        "bark": "樹皮",
+        "mist": "靄",
+        "plum": "プラム"
+      }
+    }
   },
   "templateSelector": {
     "title": "キャンバスを選択してください",

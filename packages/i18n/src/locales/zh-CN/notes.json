@@ -262,7 +262,48 @@
     "remove": "移除封面",
     "alt": "封面图片",
     "setFailed": "无法设置封面图片",
-    "removeFailed": "无法移除封面图片"
+    "removeFailed": "无法移除封面图片",
+    "reposition": "调整位置",
+    "repositionHint": "拖动以调整位置",
+    "repositionSave": "保存",
+    "repositionCancel": "取消",
+    "credit": "照片由 {name} 拍摄，来自 Unsplash",
+    "focusFailed": "无法保存封面位置",
+    "picker": {
+      "title": "笔记封面",
+      "placeholder": "搜索封面",
+      "tab": {
+        "washes": "纯色",
+        "fromNote": "来自笔记",
+        "upload": "上传"
+      },
+      "upload": "上传",
+      "uploading": "正在上传…",
+      "uploadFailed": "无法上传封面图片",
+      "loadFailed": "无法加载保险库中的图片",
+      "insertFailed": "无法将该图片用作封面",
+      "noMatches": "无匹配结果",
+      "empty": "此保险库中暂无图片",
+      "hint": {
+        "apply": "应用",
+        "applyReposition": "应用并调整位置",
+        "close": "关闭"
+      },
+      "wash": {
+        "sage": "鼠尾草绿",
+        "sand": "沙色",
+        "lilac": "丁香紫",
+        "clay": "陶土色",
+        "ash": "灰烬色",
+        "fog": "雾灰",
+        "wheat": "麦色",
+        "moss": "苔藓绿",
+        "slate": "石板灰",
+        "bark": "树皮棕",
+        "mist": "薄雾",
+        "plum": "李子紫"
+      }
+    }
   },
   "templateSelector": {
     "title": "选择你的画布",

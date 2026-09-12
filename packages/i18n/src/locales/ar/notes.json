@@ -262,7 +262,48 @@
     "remove": "إزالة صورة الغلاف",
     "alt": "صورة الغلاف",
     "setFailed": "تعذّر تعيين صورة الغلاف",
-    "removeFailed": "تعذّرت إزالة صورة الغلاف"
+    "removeFailed": "تعذّرت إزالة صورة الغلاف",
+    "reposition": "تغيير الموضع",
+    "repositionHint": "اسحب لتغيير الموضع",
+    "repositionSave": "حفظ",
+    "repositionCancel": "إلغاء",
+    "credit": "صورة بواسطة {name} على Unsplash",
+    "focusFailed": "تعذّر حفظ موضع صورة الغلاف",
+    "picker": {
+      "title": "غلاف الملاحظة",
+      "placeholder": "ابحث في الأغلفة",
+      "tab": {
+        "washes": "درجات لونية",
+        "fromNote": "من الملاحظة",
+        "upload": "رفع"
+      },
+      "upload": "رفع",
+      "uploading": "جارٍ الرفع…",
+      "uploadFailed": "تعذّر رفع صورة الغلاف",
+      "loadFailed": "تعذّر تحميل صور الخزنة",
+      "insertFailed": "تعذّر استخدام هذه الصورة كغلاف",
+      "noMatches": "لا توجد تطابقات",
+      "empty": "لا توجد صور في هذه الخزنة بعد",
+      "hint": {
+        "apply": "تطبيق",
+        "applyReposition": "تطبيق وتغيير الموضع",
+        "close": "إغلاق"
+      },
+      "wash": {
+        "sage": "مريمي",
+        "sand": "رملي",
+        "lilac": "ليلكي",
+        "clay": "طيني",
+        "ash": "رمادي",
+        "fog": "ضبابي",
+        "wheat": "قمحي",
+        "moss": "طحلبي",
+        "slate": "أردوازي",
+        "bark": "لحائي",
+        "mist": "سديمي",
+        "plum": "برقوقي"
+      }
+    }
   },
   "templateSelector": {
     "title": "اختر قماشك",

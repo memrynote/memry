@@ -262,7 +262,48 @@
     "remove": "Rimuovi copertina",
     "alt": "Immagine di copertina",
     "setFailed": "Impossibile impostare l'immagine di copertina",
-    "removeFailed": "Impossibile rimuovere l'immagine di copertina"
+    "removeFailed": "Impossibile rimuovere l'immagine di copertina",
+    "reposition": "Riposiziona",
+    "repositionHint": "Trascina per riposizionare",
+    "repositionSave": "salva",
+    "repositionCancel": "annulla",
+    "credit": "Foto di {name} su Unsplash",
+    "focusFailed": "Impossibile salvare la posizione della copertina",
+    "picker": {
+      "title": "Copertina della nota",
+      "placeholder": "Cerca copertine",
+      "tab": {
+        "washes": "Tinte",
+        "fromNote": "Dalla nota",
+        "upload": "Carica"
+      },
+      "upload": "Carica",
+      "uploading": "Caricamento…",
+      "uploadFailed": "Impossibile caricare l'immagine di copertina",
+      "loadFailed": "Impossibile caricare le immagini della volta",
+      "insertFailed": "Impossibile usare quell'immagine come copertina",
+      "noMatches": "Nessun risultato",
+      "empty": "Nessuna immagine in questa volta",
+      "hint": {
+        "apply": "Applica",
+        "applyReposition": "Applica e riposiziona",
+        "close": "Chiudi"
+      },
+      "wash": {
+        "sage": "Salvia",
+        "sand": "Sabbia",
+        "lilac": "Lilla",
+        "clay": "Argilla",
+        "ash": "Cenere",
+        "fog": "Nebbia",
+        "wheat": "Grano",
+        "moss": "Muschio",
+        "slate": "Ardesia",
+        "bark": "Corteccia",
+        "mist": "Foschia",
+        "plum": "Prugna"
+      }
+    }
   },
   "templateSelector": {
     "title": "Scegli la tua tela",

@@ -57,6 +57,7 @@ test.describe('Note cover image', () => {
 
     const cover = page.getByTestId('note-cover')
     await expect(cover).toBeVisible()
+    await expect(cover).toHaveAttribute('data-cover-kind', 'image')
     await expect(cover.locator('img')).toHaveAttribute('src', /^memry-file:\/\//)
 
     await cover.hover()
@@ -72,5 +73,39 @@ test.describe('Note cover image', () => {
     expect(withoutCover).not.toContain('memry-file://')
     expect(withoutCover).not.toContain(testVaultPath)
     expect(withoutCover).toContain('Cover body text')
+  })
+
+  test('picks a wash from the ghost chip and writes it as wash:<id>', async ({
+    page,
+    testVaultPath
+  }) => {
+    const title = `Wash Note ${Date.now()}`
+    const noteId = await seedNote(page, title, 'Wash body text')
+    await openNoteByHandle(page, await waitForNoteById(page, noteId, title))
+
+    const notePath = await page.evaluate(async (id) => {
+      const note = await window.api.notes.get(id)
+      if (!note?.path) throw new Error('note has no path')
+      return note.path
+    }, noteId)
+    const noteFile = path.join(testVaultPath, notePath)
+
+    await page.getByTestId('note-body').hover()
+    await page.getByTestId('ghost-add-cover').click()
+
+    const picker = page.getByTestId('cover-picker-dialog')
+    await expect(picker).toBeVisible()
+    await picker.getByTestId('cover-picker-wash').first().click()
+    await expect(picker).toBeHidden()
+
+    const cover = page.getByTestId('note-cover')
+    await expect(cover).toHaveAttribute('data-cover-kind', 'wash')
+    // A wash is pigment, not a file: nothing may be fetched for it.
+    await expect(cover.locator('img')).toHaveCount(0)
+
+    await expect
+      .poll(() => fs.readFileSync(noteFile, 'utf-8'), { timeout: 20_000 })
+      .toContain('cover: wash:sage')
+    expect(fs.readFileSync(noteFile, 'utf-8')).not.toContain('memry-file://')
   })
 })

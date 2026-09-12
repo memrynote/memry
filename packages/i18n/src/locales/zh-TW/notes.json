@@ -262,7 +262,48 @@
     "remove": "移除封面",
     "alt": "封面圖片",
     "setFailed": "無法設定封面圖片",
-    "removeFailed": "無法移除封面圖片"
+    "removeFailed": "無法移除封面圖片",
+    "reposition": "調整位置",
+    "repositionHint": "拖曳以調整位置",
+    "repositionSave": "儲存",
+    "repositionCancel": "取消",
+    "credit": "照片由 {name} 拍攝，來自 Unsplash",
+    "focusFailed": "無法儲存封面位置",
+    "picker": {
+      "title": "筆記封面",
+      "placeholder": "搜尋封面",
+      "tab": {
+        "washes": "純色",
+        "fromNote": "來自筆記",
+        "upload": "上傳"
+      },
+      "upload": "上傳",
+      "uploading": "正在上傳…",
+      "uploadFailed": "無法上傳封面圖片",
+      "loadFailed": "無法載入保險庫中的圖片",
+      "insertFailed": "無法將該圖片用作封面",
+      "noMatches": "沒有符合的結果",
+      "empty": "此保險庫中尚無圖片",
+      "hint": {
+        "apply": "套用",
+        "applyReposition": "套用並調整位置",
+        "close": "關閉"
+      },
+      "wash": {
+        "sage": "鼠尾草綠",
+        "sand": "沙色",
+        "lilac": "丁香紫",
+        "clay": "陶土色",
+        "ash": "灰燼色",
+        "fog": "霧灰",
+        "wheat": "麥色",
+        "moss": "苔蘚綠",
+        "slate": "石板灰",
+        "bark": "樹皮棕",
+        "mist": "薄霧",
+        "plum": "李子紫"
+      }
+    }
   },
   "templateSelector": {
     "title": "選擇你的畫布",
