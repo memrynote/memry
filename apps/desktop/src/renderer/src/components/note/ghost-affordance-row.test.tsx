@@ -33,6 +33,44 @@ const defaultProps = {
   onAddProperty: vi.fn()
 }
 
+describe('GhostAffordanceRow - chips', () => {
+  it('orders the chips cover, tag, properties and drops the cover chip without a handler', () => {
+    const { rerender } = renderWithI18n(
+      <GhostAffordanceRow {...defaultProps} onAddCover={vi.fn()} />
+    )
+
+    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+      'Add cover',
+      'Add tag',
+      'Add property'
+    ])
+
+    rerender(
+      <I18nextProvider i18n={i18nEn}>
+        <GhostAffordanceRow {...defaultProps} />
+      </I18nextProvider>
+    )
+    expect(screen.queryByTestId('ghost-add-cover')).not.toBeInTheDocument()
+  })
+
+  it('fires the cover handler and carries no border', async () => {
+    const user = userEvent.setup()
+    const onAddCover = vi.fn()
+    renderWithI18n(<GhostAffordanceRow {...defaultProps} onAddCover={onAddCover} />)
+
+    const chip = screen.getByTestId('ghost-add-cover')
+    expect(chip.className).not.toMatch(/\bborder\b|border-dashed/)
+    await user.click(chip)
+    expect(onAddCover).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps every chip disabled when the row is disabled', () => {
+    renderWithI18n(<GhostAffordanceRow {...defaultProps} onAddCover={vi.fn()} disabled />)
+
+    for (const button of screen.getAllByRole('button')) expect(button).toBeDisabled()
+  })
+})
+
 describe('GhostAffordanceRow - project type guard', () => {
   it('disables the project entry when the note already has one', async () => {
     const user = userEvent.setup()

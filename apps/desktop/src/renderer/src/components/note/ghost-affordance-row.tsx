@@ -1,15 +1,15 @@
 import { useState, memo } from 'react'
-import { Plus } from '@/lib/icons'
+import { Image, List, Tag } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { TagInputPopup } from './tags-row/TagInputPopup'
 import { AddPropertyPopup } from './info-section/AddPropertyPopup'
-import type { Tag } from './tags-row/TagChip'
+import type { Tag as TagEntity } from './tags-row/TagChip'
 import type { NewProperty, PropertyType } from './info-section/types'
 import { useT } from '@memry/i18n/renderer'
 
 export interface GhostAffordanceRowProps {
-  availableTags: Tag[]
-  recentTags: Tag[]
+  availableTags: TagEntity[]
+  recentTags: TagEntity[]
   currentTagIds: string[]
   onAddTag: (tagId: string) => void
   onCreateTag: (name: string, color: string) => void
@@ -22,6 +22,19 @@ export interface GhostAffordanceRowProps {
   disabled?: boolean
   className?: string
 }
+
+const CHIP_CLASS = cn(
+  'flex h-[26px] items-center gap-1.5',
+  'rounded-md px-2',
+  'bg-muted/60 text-muted-foreground',
+  'text-[12.5px] font-medium',
+  'transition-colors duration-150 motion-reduce:transition-none',
+  'hover:bg-muted hover:text-foreground',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+  'disabled:pointer-events-none disabled:opacity-50'
+)
+
+const CHIP_ICON_CLASS = 'h-3.5 w-3.5 shrink-0'
 
 export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   availableTags,
@@ -45,7 +58,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   return (
     <div
       className={cn(
-        'flex items-center gap-3',
+        'flex items-center gap-2',
         'transition-opacity duration-200',
         isAnyPopupOpen
           ? 'opacity-100 pointer-events-auto'
@@ -57,31 +70,18 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         className
       )}
     >
-      <AddPropertyPopup
-        onAdd={onAddProperty}
-        open={isPropertyPopupOpen}
-        onOpenChange={setIsPropertyPopupOpen}
-        excludeTypes={excludeTypes}
-        disabled={disabled}
-        existingNames={existingNames}
-      >
+      {onAddCover && (
         <button
           type="button"
           disabled={disabled}
-          className={cn(
-            'flex items-center gap-1.5',
-            'rounded-md px-2 py-1',
-            'border border-dashed border-border',
-            'text-[12px] text-text-tertiary',
-            'transition-colors duration-150',
-            'hover:border-muted-foreground hover:text-muted-foreground',
-            'disabled:pointer-events-none disabled:opacity-50'
-          )}
+          onClick={onAddCover}
+          className={CHIP_CLASS}
+          data-testid="ghost-add-cover"
         >
-          <Plus className="h-3 w-3" strokeWidth={2} />
-          {t('properties.add')}
+          <Image className={CHIP_ICON_CLASS} strokeWidth={2} />
+          {t('cover.add')}
         </button>
-      </AddPropertyPopup>
+      )}
 
       <TagInputPopup
         availableTags={availableTags}
@@ -93,43 +93,25 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         onOpenChange={setIsTagPopupOpen}
         disabled={disabled}
       >
-        <button
-          type="button"
-          disabled={disabled}
-          className={cn(
-            'flex items-center gap-1.5',
-            'rounded-md px-2 py-1',
-            'border border-dashed border-border',
-            'text-[12px] text-text-tertiary',
-            'transition-colors duration-150',
-            'hover:border-muted-foreground hover:text-muted-foreground',
-            'disabled:pointer-events-none disabled:opacity-50'
-          )}
-        >
-          <Plus className="h-3 w-3" strokeWidth={2} />
+        <button type="button" disabled={disabled} className={CHIP_CLASS}>
+          <Tag className={CHIP_ICON_CLASS} strokeWidth={2} />
           {t('tagsRow.add')}
         </button>
       </TagInputPopup>
 
-      {onAddCover && (
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={onAddCover}
-          className={cn(
-            'flex items-center gap-1.5',
-            'rounded-md px-2 py-1',
-            'border border-dashed border-border',
-            'text-[12px] text-text-tertiary',
-            'transition-colors duration-150',
-            'hover:border-muted-foreground hover:text-muted-foreground',
-            'disabled:pointer-events-none disabled:opacity-50'
-          )}
-        >
-          <Plus className="h-3 w-3" strokeWidth={2} />
-          {t('cover.add')}
+      <AddPropertyPopup
+        onAdd={onAddProperty}
+        open={isPropertyPopupOpen}
+        onOpenChange={setIsPropertyPopupOpen}
+        excludeTypes={excludeTypes}
+        disabled={disabled}
+        existingNames={existingNames}
+      >
+        <button type="button" disabled={disabled} className={CHIP_CLASS}>
+          <List className={CHIP_ICON_CLASS} strokeWidth={2} />
+          {t('properties.add')}
         </button>
-      )}
+      </AddPropertyPopup>
     </div>
   )
 })
