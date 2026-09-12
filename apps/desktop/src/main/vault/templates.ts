@@ -18,6 +18,7 @@ import { existsSync, unlinkSync } from 'fs'
 import { eq } from 'drizzle-orm'
 import { templates as templatesTable, type TemplateRow } from '@memry/db-schema/schema/templates'
 import { TemplatesChannels } from '@memry/contracts/ipc-channels'
+import { substituteTemplatePlaceholders } from '@memry/shared/template-placeholders'
 import type {
   Template,
   TemplateListItem,
@@ -342,8 +343,7 @@ export function applyTemplate(
   tags: string[]
   properties: Record<string, unknown>
 } {
-  // Replace {{title}} placeholder
-  const content = template.content.replace(/\{\{title\}\}/g, title)
+  const content = substituteTemplatePlaceholders(template.content, title)
 
   // Convert properties array to record
   const properties: Record<string, unknown> = {}
