@@ -540,7 +540,13 @@
     "remove": "Remove cover",
     "alt": "Cover image",
     "setFailed": "Could not set the cover image",
-    "removeFailed": "Could not remove the cover image"
+    "removeFailed": "Could not remove the cover image",
+    "reposition": "Reposition",
+    "repositionHint": "Drag to reposition",
+    "repositionSave": "save",
+    "repositionCancel": "cancel",
+    "credit": "Photo by {name} on Unsplash",
+    "focusFailed": "Could not save the cover position"
   },
   "templateSelector": {
     "title": "Choose Your Canvas",

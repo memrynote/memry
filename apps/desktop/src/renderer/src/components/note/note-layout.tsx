@@ -30,6 +30,12 @@ interface NoteLayoutProps {
   topBar?: ReactNode
   stats?: OutlineInfoPanelProps['stats']
   fullWidth?: boolean
+  /**
+   * Full-bleed strip above the content column. It sits inside the scroll area
+   * rather than the content column so it can span the whole width; the canvas
+   * drops its top padding to meet it.
+   */
+  cover?: ReactNode
   sideRail?: ReactNode
   /**
    * Covers the scrolling content, leaving the chrome and the outline panel
@@ -69,6 +75,7 @@ export function NoteLayout({
   topBar,
   stats,
   fullWidth = false,
+  cover,
   sideRail,
   overlay,
   contentWidth,
@@ -161,11 +168,16 @@ export function NoteLayout({
         className="flex-1 overflow-y-auto overflow-x-visible"
       >
         <div ref={marqueeZoneRef} className="marquee-zone relative min-h-full w-full flex flex-col">
+          {cover && (
+            <div data-note-layout-cover data-marquee-ignore className={cn(hasChrome && 'pt-9')}>
+              {cover}
+            </div>
+          )}
           <div
             data-note-layout-canvas
             className={cn(
               'mx-auto w-full pb-10 min-h-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-              hasChrome ? 'pt-15' : 'pt-6',
+              cover ? 'pt-6' : hasChrome ? 'pt-15' : 'pt-6',
               showGridRail
                 ? 'grid items-start gap-x-12 px-24 [grid-template-columns:minmax(0,var(--note-layout-content-track))_20rem] max-[920px]:max-w-[var(--note-layout-content-max)] max-[920px]:grid-cols-1 max-[920px]:px-8'
                 : 'px-24 flex flex-col'

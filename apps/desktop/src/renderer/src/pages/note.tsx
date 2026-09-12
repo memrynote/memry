@@ -112,7 +112,12 @@ import { markLaunchNoteReadable } from '@/lib/launch-restore'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
 import { graphKeys } from '@/hooks/use-graph-data'
 import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
-import { isCoverValue } from '@memry/shared/cover-image'
+import {
+  isCoverCreditUrlValue,
+  isCoverCreditValue,
+  parseCoverFocus,
+  parseCoverValue
+} from '@memry/shared/cover-image'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
@@ -1032,8 +1037,16 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, queryClient, t]
   )
 
-  const { setCover, removeCover } = useNoteCover(noteId ?? null, refetchNote)
-  const cover = note && isCoverValue(note.frontmatter.cover) ? note.frontmatter.cover : null
+  const { setCover, setCoverFocus, removeCover } = useNoteCover(noteId ?? null, refetchNote)
+  const cover = note ? parseCoverValue(note.frontmatter.cover) : null
+  const coverFocus = parseCoverFocus(note?.frontmatter.coverFocus)
+  const coverCredit = isCoverCreditValue(note?.frontmatter.coverCredit)
+    ? note.frontmatter.coverCredit
+    : null
+  const coverCreditUrl = isCoverCreditUrlValue(note?.frontmatter.coverCreditUrl)
+    ? note.frontmatter.coverCreditUrl
+    : null
+  const [isRepositioningCover, setIsRepositioningCover] = useState(false)
 
   const handleToggleFullWidth = useCallback(
     async (value: boolean) => {
@@ -1667,6 +1680,24 @@ export function NotePage({ noteId }: NotePageProps) {
       }
       breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
       stats={documentStats}
+      cover={
+        cover && (
+          <NoteCover
+            cover={cover}
+            noteId={noteId}
+            notePath={note.path}
+            focus={coverFocus}
+            credit={coverCredit}
+            creditUrl={coverCreditUrl}
+            onChange={() => setIsCoverPickerOpen(true)}
+            onRemove={() => void removeCover()}
+            onFocusChange={(next) => void setCoverFocus(next)}
+            repositioning={isRepositioningCover}
+            onRepositioningChange={setIsRepositioningCover}
+            disabled={isDeleted}
+          />
+        )
+      }
     >
       {/* Note content — no entrance animation: a note switch paints immediately */}
       <div
@@ -1686,17 +1717,6 @@ export function NotePage({ noteId }: NotePageProps) {
         )}
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
-        {cover && (
-          <NoteCover
-            cover={cover}
-            noteId={noteId}
-            notePath={note.path}
-            onChange={() => setIsCoverPickerOpen(true)}
-            onRemove={() => void removeCover()}
-            disabled={isDeleted}
-          />
-        )}
-
         {/* Title + Metadata zone — ghost affordance appears on hover */}
         <div className="group/metadata flex flex-col gap-2.5 pb-[15px]" data-marquee-ignore>
           <NoteTitle
@@ -1908,7 +1928,7 @@ export function NotePage({ noteId }: NotePageProps) {
         onOpenChange={setIsCoverPickerOpen}
         noteId={noteId}
         kind="image"
-        onInsert={(result) => void setCover(result.url)}
+        onInsert={(result) => void setCover({ kind: 'image', ref: result.url })}
       />
 
       {/* Apply Template Dialog */}
