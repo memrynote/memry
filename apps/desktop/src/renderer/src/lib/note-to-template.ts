@@ -11,7 +11,7 @@ import { TEMPLATE_PROPERTY_TYPE_BY_UI_TYPE } from '@/lib/template-properties'
 import type { TemplateCreateInput, TemplateProperty } from '@/services/templates-service'
 
 /** `TemplateCreateSchema` caps the name at 200; note titles are uncapped. */
-const MAX_TEMPLATE_NAME_LENGTH = 200
+export const MAX_TEMPLATE_NAME_LENGTH = 200
 
 export interface NoteTemplateSource {
   title: string
