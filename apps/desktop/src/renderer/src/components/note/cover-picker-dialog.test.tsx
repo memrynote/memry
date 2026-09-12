@@ -71,6 +71,13 @@ const panel = () => screen.getByTestId('cover-picker-panel')
 
 const PHOTO_SEARCH_DEBOUNCE_MS = 400
 
+/**
+ * The empty-query probe the dialog fires on open is free and sends nothing, so
+ * the tests count real searches separately from it.
+ */
+const realSearches = () =>
+  unsplashSearch.mock.calls.filter((call) => (call[0] as { query: string }).query !== '')
+
 /** Types into the palette's one search input and lets the debounce elapse. */
 async function searchFor(text: string) {
   fireEvent.change(screen.getByTestId('cover-picker-search'), { target: { value: text } })
@@ -79,17 +86,29 @@ async function searchFor(text: string) {
   })
 }
 
+async function openPhotosTab(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('tab', { name: 'Photos' }))
+}
+
+function photosUser() {
+  return userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+}
+
 beforeEach(() => {
   listVaultAttachments.mockReset().mockResolvedValue([PHOTO, NOT_AN_IMAGE])
   insertExistingAttachment
     .mockReset()
     .mockResolvedValue({ url: '../attachments/nte_other/beach.png' })
   uploadAttachment.mockReset()
-  unsplashSearch.mockReset().mockResolvedValue({
-    ok: true,
-    photos: [UNSPLASH_PHOTO],
-    rateLimitRemaining: 42
-  })
+  unsplashSearch
+    .mockReset()
+    .mockImplementation(({ query }: { query: string }) =>
+      Promise.resolve(
+        query
+          ? { ok: true, photos: [UNSPLASH_PHOTO], rateLimitRemaining: 42 }
+          : { ok: true, photos: [], rateLimitRemaining: null }
+      )
+    )
   unsplashDownload.mockReset().mockResolvedValue({
     ok: true,
     ref: '../attachments/nte_9f2c1a/ph_1.jpg',
@@ -225,54 +244,94 @@ describe('CoverPickerDialog photos', () => {
     vi.useRealTimers()
   })
 
-  it('never opens on photos and asks nothing of Unsplash until a query is typed', () => {
+  it('opens on washes and probes availability with a query that sends nothing', async () => {
     renderPicker()
 
     expect(panel()).toHaveAttribute('data-tab', 'washes')
+    await waitFor(() => expect(unsplashSearch).toHaveBeenCalledWith({ query: '' }))
     expect(screen.getByRole('tab', { name: 'Photos' })).toBeInTheDocument()
-    expect(unsplashSearch).not.toHaveBeenCalled()
+    expect(realSearches()).toHaveLength(0)
   })
 
-  it('hides the photos tab for a build with no access key', async () => {
+  it('keeps a local filter local, searching nothing while washes is the open tab', async () => {
+    renderPicker()
+
+    await searchFor('sage')
+    await searchFor('sand')
+
+    expect(realSearches()).toHaveLength(0)
+    expect(screen.getAllByTestId('cover-picker-wash')).toHaveLength(1)
+  })
+
+  it('hides the photos tab for a build with no access key, before it can be reached', async () => {
     unsplashSearch.mockResolvedValue({ ok: false, reason: 'not-configured' })
     renderPicker()
-    expect(screen.getByRole('tab', { name: 'Photos' })).toBeInTheDocument()
-
-    await searchFor('sunset')
 
     await waitFor(() => expect(screen.queryByRole('tab', { name: 'Photos' })).toBeNull())
     expect(screen.getAllByRole('tab')).toHaveLength(COVER_PICKER_TABS.length - 1)
   })
 
-  it('searches once per settled query and serves a repeat from the cache', async () => {
+  it('falls back off photos when a late probe says the tab does not exist', async () => {
+    let answerProbe: (result: { ok: false; reason: 'not-configured' }) => void = () => {}
+    unsplashSearch.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answerProbe = resolve
+        })
+    )
+    const user = photosUser()
     renderPicker()
+
+    await openPhotosTab(user)
+    expect(panel()).toHaveAttribute('data-tab', 'photos')
+
+    await act(async () => {
+      answerProbe({ ok: false, reason: 'not-configured' })
+    })
+
+    expect(panel()).toHaveAttribute('data-tab', 'washes')
+    expect(screen.queryByRole('tab', { name: 'Photos' })).toBeNull()
+  })
+
+  it('searches once per settled query and serves a repeat from the cache', async () => {
+    const user = photosUser()
+    renderPicker()
+    await openPhotosTab(user)
 
     fireEvent.change(screen.getByTestId('cover-picker-search'), { target: { value: 's' } })
     fireEvent.change(screen.getByTestId('cover-picker-search'), { target: { value: 'su' } })
     await searchFor('sunset')
 
-    await waitFor(() => expect(unsplashSearch).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(realSearches()).toHaveLength(1))
     expect(unsplashSearch).toHaveBeenCalledWith({ query: 'sunset', page: 1 })
 
     await searchFor('')
     await searchFor('sunset')
-    expect(unsplashSearch).toHaveBeenCalledTimes(1)
+    expect(realSearches()).toHaveLength(1)
   })
 
   it('hotlinks the thumbnail and counts the remaining rate limit', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = photosUser()
     renderPicker()
+    await openPhotosTab(user)
     await searchFor('sunset')
 
-    await user.click(screen.getByRole('tab', { name: 'Photos' }))
     const tile = await screen.findByTestId('cover-picker-photo')
     expect(tile.querySelector('img')).toHaveAttribute('src', UNSPLASH_PHOTO.thumbUrl)
     expect(screen.getByTestId('cover-picker-rate-limit')).toHaveTextContent('42')
   })
 
   it('marks a spent rate limit without hiding the tab', async () => {
-    unsplashSearch.mockResolvedValue({ ok: true, photos: [UNSPLASH_PHOTO], rateLimitRemaining: 0 })
+    unsplashSearch.mockImplementation(({ query }: { query: string }) =>
+      Promise.resolve(
+        query
+          ? { ok: true, photos: [UNSPLASH_PHOTO], rateLimitRemaining: 0 }
+          : { ok: true, photos: [], rateLimitRemaining: null }
+      )
+    )
+    const user = photosUser()
     renderPicker()
+    await openPhotosTab(user)
     await searchFor('sunset')
 
     const counter = await screen.findByTestId('cover-picker-rate-limit')
@@ -281,11 +340,11 @@ describe('CoverPickerDialog photos', () => {
   })
 
   it('downloads the picked photo and applies its ref and credit', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = photosUser()
     const { onApply, onOpenChange } = renderPicker()
+    await openPhotosTab(user)
     await searchFor('sunset')
 
-    await user.click(screen.getByRole('tab', { name: 'Photos' }))
     await user.click(await screen.findByTestId('cover-picker-photo'))
 
     await waitFor(() =>
@@ -302,12 +361,12 @@ describe('CoverPickerDialog photos', () => {
   })
 
   it('keeps the dialog open and names the reason when a download fails', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = photosUser()
     unsplashDownload.mockResolvedValue({ ok: false, reason: 'write-failed' })
     const { onApply, onOpenChange } = renderPicker()
+    await openPhotosTab(user)
     await searchFor('sunset')
 
-    await user.click(screen.getByRole('tab', { name: 'Photos' }))
     await user.click(await screen.findByTestId('cover-picker-photo'))
 
     const message = await screen.findByTestId('cover-picker-photos-error')
@@ -318,16 +377,20 @@ describe('CoverPickerDialog photos', () => {
   })
 
   it('gives every failure reason its own line rather than one spinner', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = photosUser()
     const seen = new Map<string, string>()
 
     for (const reason of ['offline', 'rate-limited', 'failed'] as const) {
-      unsplashSearch.mockResolvedValue({ ok: false, reason })
+      unsplashSearch.mockImplementation(({ query }: { query: string }) =>
+        Promise.resolve(
+          query ? { ok: false, reason } : { ok: true, photos: [], rateLimitRemaining: null }
+        )
+      )
       const { unmount } = render(
         <CoverPickerDialog open onOpenChange={vi.fn()} noteId={NOTE_ID} onApply={vi.fn()} />
       )
+      await openPhotosTab(user)
       await searchFor('sunset')
-      await user.click(screen.getByRole('tab', { name: 'Photos' }))
 
       const message = await screen.findByTestId('cover-picker-photos-error')
       expect(message).toHaveAttribute('data-reason', reason)

@@ -119,7 +119,7 @@ export interface CoverPickerDialogProps {
 
 export function CoverPickerDialog({ open, onOpenChange, noteId, onApply }: CoverPickerDialogProps) {
   const { t } = useT('notes')
-  const [tab, setTab] = useState<CoverPickerTabId>('washes')
+  const [requestedTab, setTab] = useState<CoverPickerTabId>('washes')
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(0)
   const [entries, setEntries] = useState<VaultAttachmentEntry[]>([])
@@ -173,6 +173,10 @@ export function CoverPickerDialog({ open, onOpenChange, noteId, onApply }: Cover
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
+  // The probe can land while the Photos tab is already selected, so the shown tab
+  // is derived rather than corrected after the fact.
+  const tab = !photosConfigured && requestedTab === 'photos' ? 'washes' : requestedTab
+
   const trimmedQuery = query.trim()
 
   const photoSearch = useMemo<PhotoSearch>(() => {
@@ -182,10 +186,33 @@ export function CoverPickerDialog({ open, onOpenChange, noteId, onApply }: Cover
     return photoFetch?.query === trimmedQuery ? photoFetch.result : { kind: 'searching' }
   }, [photoFetch, trimmedQuery])
 
-  // Unsplash is probed by the first real query, never on open: an empty search is
-  // a wasted request, and a build with no key must cost none at all.
+  // An empty query is answered from the key alone, with no network call and
+  // nothing to send, so it is a free capability probe. Asking on open is what
+  // lets the real search wait for the Photos tab: the tab's existence is settled
+  // before the user can reach it.
   useEffect(() => {
-    if (!open || !photosConfigured || !trimmedQuery) return
+    if (!open) return
+    let cancelled = false
+    void unsplashService
+      .search({ query: '' })
+      .then((result) => {
+        if (!cancelled) setPhotosConfigured(result.ok)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        logger.error('Unsplash availability probe failed', err)
+        setPhotosConfigured(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
+  // Typing only reaches Unsplash while the Photos tab is open. On any other tab
+  // the query is a local filter, and a local filter has no business leaving the
+  // device or spending the hourly quota.
+  useEffect(() => {
+    if (!open || !photosConfigured || tab !== 'photos' || !trimmedQuery) return
     if (photoCache.current.has(trimmedQuery)) return
     let cancelled = false
     const timer = setTimeout(() => {
@@ -196,7 +223,6 @@ export function CoverPickerDialog({ open, onOpenChange, noteId, onApply }: Cover
           if (!result.ok) {
             if (result.reason === 'not-configured') {
               setPhotosConfigured(false)
-              setTab((current) => (current === 'photos' ? 'washes' : current))
               return
             }
             setPhotoFetch({
@@ -223,7 +249,7 @@ export function CoverPickerDialog({ open, onOpenChange, noteId, onApply }: Cover
       cancelled = true
       clearTimeout(timer)
     }
-  }, [open, photosConfigured, trimmedQuery])
+  }, [open, photosConfigured, tab, trimmedQuery])
 
   const washName = useCallback((id: CoverWashId) => t(`cover.picker.wash.${id}`), [t])
 
