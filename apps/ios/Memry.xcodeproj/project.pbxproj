@@ -1,0 +1,459 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B1000001 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000000 /* MemryCore */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A0000010 /* Memry.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memry.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A0000011 /* MemryTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A0000012 /* MemryUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemryUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A0000013 /* MemryConformanceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemryConformanceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A0000020 /* MemryCore */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = MemryCore; path = ../../packages/swift/MemryCore; sourceTree = SOURCE_ROOT; };
+		A0000030 /* .swiftlint.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = .swiftlint.yml; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C1000001 /* Exceptions for "Memry" folder in "Memry" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Core/.gitkeep,
+				Design/.gitkeep,
+				Editor/.gitkeep,
+				Features/.gitkeep,
+				Generated/.gitkeep,
+				Memry.entitlements,
+				Resources/Info.plist,
+				Scripts/.gitkeep,
+				Seams/.gitkeep,
+			);
+			target = F0000001 /* Memry */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		C0000001 /* Memry */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (C1000001 /* Exceptions for "Memry" folder in "Memry" target */,); explicitFileTypes = {}; explicitFolders = (); path = Memry; sourceTree = "<group>"; };
+		C0000002 /* MemryTests */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (); explicitFileTypes = {}; explicitFolders = (); path = MemryTests; sourceTree = "<group>"; };
+		C0000003 /* MemryUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (); explicitFileTypes = {}; explicitFolders = (); path = MemryUITests; sourceTree = "<group>"; };
+		C0000005 /* MemryConformanceTests */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (); explicitFileTypes = {}; explicitFolders = (); path = MemryConformanceTests; sourceTree = "<group>"; };
+		C0000004 /* TestPlans */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (); explicitFileTypes = {}; explicitFolders = (); path = TestPlans; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D0000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1000001 /* MemryCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0000002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D0000003 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D0000004 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		E0000000 = {
+			isa = PBXGroup;
+			children = (
+				A0000030 /* .swiftlint.yml */,
+				C0000001 /* Memry */,
+				C0000002 /* MemryTests */,
+				C0000003 /* MemryUITests */,
+				C0000005 /* MemryConformanceTests */,
+				C0000004 /* TestPlans */,
+				E0000001 /* Packages */,
+				E0000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E0000001 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				A0000020 /* MemryCore */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		E0000002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A0000010 /* Memry.app */,
+				A0000011 /* MemryTests.xctest */,
+				A0000012 /* MemryUITests.xctest */,
+				A0000013 /* MemryConformanceTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F0000001 /* Memry */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10000001 /* Build configuration list for PBXNativeTarget "Memry" */;
+			buildPhases = (
+				D1000001 /* Sources */,
+				D0000001 /* Frameworks */,
+				D2000001 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			fileSystemSynchronizedGroups = (
+				C0000001 /* Memry */,
+			);
+			name = Memry;
+			packageProductDependencies = (
+				B1000000 /* MemryCore */,
+			);
+			productName = Memry;
+			productReference = A0000010 /* Memry.app */;
+			productType = "com.apple.product-type.application";
+		};
+		F0000002 /* MemryTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10000002 /* Build configuration list for PBXNativeTarget "MemryTests" */;
+			buildPhases = (
+				D1000002 /* Sources */,
+				D0000002 /* Frameworks */,
+				D2000002 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = (
+				11000001 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C0000002 /* MemryTests */,
+			);
+			name = MemryTests;
+			packageProductDependencies = ();
+			productName = MemryTests;
+			productReference = A0000011 /* MemryTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		F0000003 /* MemryUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10000003 /* Build configuration list for PBXNativeTarget "MemryUITests" */;
+			buildPhases = (
+				D1000003 /* Sources */,
+				D0000003 /* Frameworks */,
+				D2000003 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = (
+				11000002 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C0000003 /* MemryUITests */,
+			);
+			name = MemryUITests;
+			packageProductDependencies = ();
+			productName = MemryUITests;
+			productReference = A0000012 /* MemryUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		F0000004 /* MemryConformanceTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10000004 /* Build configuration list for PBXNativeTarget "MemryConformanceTests" */;
+			buildPhases = (
+				D1000004 /* Sources */,
+				D0000004 /* Frameworks */,
+				D2000004 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = (
+				11000003 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C0000005 /* MemryConformanceTests */,
+			);
+			name = MemryConformanceTests;
+			packageProductDependencies = ();
+			productName = MemryConformanceTests;
+			productReference = A0000013 /* MemryConformanceTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		12000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					F0000002 = {TestTargetID = F0000001;};
+					F0000003 = {TestTargetID = F0000001;};
+					F0000004 = {TestTargetID = F0000001;};
+				};
+			};
+			buildConfigurationList = 10000000 /* Build configuration list for PBXProject "Memry" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = E0000000;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				13000001 /* XCLocalSwiftPackageReference "../../packages/swift/MemryCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = E0000002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F0000001 /* Memry */,
+				F0000002 /* MemryTests */,
+				F0000003 /* MemryUITests */,
+				F0000004 /* MemryConformanceTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D2000001 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D2000002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D2000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D2000004 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D1000001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D1000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D1000003 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D1000004 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		11000001 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = F0000001 /* Memry */; };
+		11000002 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = F0000001 /* Memry */; };
+		11000003 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = F0000001 /* Memry */; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		14000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		14000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		14000011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Memry/Memry.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Memry/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		14000012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Memry/Memry.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Memry/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		14000021 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Memry.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Memry";
+			};
+			name = Debug;
+		};
+		14000022 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Memry.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Memry";
+			};
+			name = Release;
+		};
+		14000031 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Memry;
+			};
+			name = Debug;
+		};
+		14000032 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Memry;
+			};
+			name = Release;
+		};
+		14000041 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.conformance;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Memry.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Memry";
+			};
+			name = Debug;
+		};
+		14000042 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.conformance;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Memry.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Memry";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		10000000 /* Build configuration list for PBXProject "Memry" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (14000001 /* Debug */, 14000002 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		10000001 /* Build configuration list for PBXNativeTarget "Memry" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (14000011 /* Debug */, 14000012 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		10000002 /* Build configuration list for PBXNativeTarget "MemryTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (14000021 /* Debug */, 14000022 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		10000003 /* Build configuration list for PBXNativeTarget "MemryUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (14000031 /* Debug */, 14000032 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		10000004 /* Build configuration list for PBXNativeTarget "MemryConformanceTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (14000041 /* Debug */, 14000042 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		13000001 /* XCLocalSwiftPackageReference "../../packages/swift/MemryCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../packages/swift/MemryCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B1000000 /* MemryCore */ = {isa = XCSwiftPackageProductDependency; productName = MemryCore; };
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 12000001 /* Project object */;
+}

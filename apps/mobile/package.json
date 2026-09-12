@@ -82,8 +82,6 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run --passWithNoTests",
-    "editor:build": "node ./scripts/build-editor-web.mjs",
-    "editor:check": "node ./scripts/build-editor-web.mjs --check",
     "test:offline-matrix": "node ./scripts/us2-offline-matrix.mjs"
   },
   "private": true

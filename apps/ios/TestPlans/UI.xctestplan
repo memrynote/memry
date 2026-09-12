@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "id": "1F5C3097-4105-4940-907A-8C5B50FD7159",
+      "name": "Default",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "targetForVariableExpansion": {
+      "containerPath": "container:Memry.xcodeproj",
+      "identifier": "F0000001",
+      "name": "Memry"
+    }
+  },
+  "testTargets": [
+    {
+      "target": {
+        "containerPath": "container:Memry.xcodeproj",
+        "identifier": "F0000003",
+        "name": "MemryUITests"
+      }
+    }
+  ],
+  "version": 1
+}

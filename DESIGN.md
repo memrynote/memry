@@ -18,7 +18,7 @@ The landing page is a separate brand surface. Do not copy layout, typography, ma
 | Platform            | Status                        | Design role                                                                |
 | ------------------- | ----------------------------- | -------------------------------------------------------------------------- |
 | Desktop             | Current product reference     | Resolves unanswered product design questions and proves the system in use  |
-| Mobile              | In development and unreleased | Adapts the global system to touch and native mobile conventions            |
+| Mobile (`apps/ios`) | In development and unreleased | Adapts the global system to touch and native iOS conventions               |
 | Future product apps | Not defined yet               | Start from this file and the desktop reference, then adapt to the platform |
 | Landing             | Separate brand surface        | Shares the Memry brand, but does not define product UI                     |
 
@@ -75,15 +75,13 @@ For desktop work, also read:
 
 For mobile work, also read:
 
-- `apps/mobile/AGENTS.md` for the Expo version and project rules.
-- `apps/mobile/src/theme/` for the current mobile token implementation.
-- `apps/mobile/src/components/ui/` for mobile components.
-- `apps/mobile/docs/ui-foundation-design.md` and `apps/mobile/docs/figma-foundation-spec.md` for measured implementation detail.
-- The Expo documentation pinned to the version in `apps/mobile/package.json`.
+- `apps/ios/Memry/Design/` for the iOS token implementation.
+- `apps/ios/Memry/Features/` for the shipped screen structure.
+- The iOS Human Interface Guidelines for the version in `apps/ios/Memry.xcodeproj` (deployment target iOS 26).
 
-`docs/DESIGN_TOKENS.md` is the desktop implementation catalog. `base.css` remains the exact desktop code source. Mobile owns its exact values under `apps/mobile/src/theme/`, but those values must implement the meanings in this file.
+`docs/DESIGN_TOKENS.md` is the desktop implementation catalog. `base.css` remains the exact desktop code source. Mobile owns its exact values under `apps/ios/Memry/Design/`, but those values must implement the meanings in this file.
 
-Mobile currently has a legacy theme layer under `src/constants/theme.ts` and a newer system under `src/theme/`. Do not add a third system. New product UI uses `src/theme/` and `src/components/ui/`. Migrate legacy consumers as their screens are redesigned.
+`apps/mobile` is the frozen React Native shell. Read it for history if you must, never as the design source: it is superseded by `apps/ios` and takes no new product UI.
 
 Do not begin from `apps/landing/src/index.css`, `assets/brand/memry/DESIGN.md`, a generic shadcn example, or a new visual framework.
 
@@ -208,7 +206,7 @@ Mobile preserves the same roles instead of copying desktop pixels:
 - Editorial serif: journal, reflective copy, and selected content titles. The current mapping uses Crimson Pro.
 - Mono: code, recovery material, keyboard-like tokens, paths, and aligned technical values. The current mapping uses JetBrains Mono.
 
-Mobile uses its named type ramp under `apps/mobile/src/theme/text-styles.ts`. Respect Dynamic Type and platform text metrics. Do not scale desktop sizes mechanically or invent screen-local font sizes.
+Mobile uses its named type ramp under `apps/ios/Memry/Design/`. Respect Dynamic Type and platform text metrics. Do not scale desktop sizes mechanically or invent screen-local font sizes.
 
 Desktop base headings use weight `600`, line height `1.3`, and letter spacing `-0.01em`. Use the desktop scale below before inventing a desktop value:
 
@@ -273,7 +271,7 @@ A future watch app starts from the same semantics, not from a scaled-down phone 
 
 Memry uses a shared `4px` base and an `8px` grouping rhythm. Each platform exposes that rhythm through its own token API. Small controls may use established half steps.
 
-Desktop uses Tailwind spacing. Mobile uses `space` from `apps/mobile/src/theme/primitives.ts`. Do not copy Tailwind class values into React Native screens or scatter numeric equivalents outside the mobile theme.
+Desktop uses Tailwind spacing. Mobile uses the spacing scale in `apps/ios/Memry/Design/`. Do not copy Tailwind class values into React Native screens or scatter numeric equivalents outside the mobile theme.
 
 `useDisplayDensity()` provides two density modes for supported list and page surfaces:
 
@@ -385,7 +383,7 @@ Split panes are peer workspaces. Do not make the secondary pane visually disable
 
 #### Mobile component mapping
 
-Mobile reuses `apps/mobile/src/components/ui/`. A mobile component follows these rules:
+Mobile reuses the shared views in `apps/ios/Memry/Design/`. A mobile component follows these rules:
 
 - Variants keep the same intent as desktop even when the native control shape differs.
 - Sizes come from mobile theme tokens. Interactive controls keep a `44pt` hit area.
@@ -456,7 +454,7 @@ Mobile keeps the same fast, restrained character through native or Reanimated ti
 
 ### Icons and media
 
-Desktop imports application icons through `@/lib/icons` or its feature-specific maps. Mobile uses `apps/mobile/src/components/ui/icon.tsx`. Future platforms add one platform icon adapter. Keep the semantic icon name and meaning stable even when the platform glyph differs.
+Desktop imports application icons through `@/lib/icons` or its feature-specific maps. Mobile uses the icon adapter in `apps/ios/Memry/Design/`. Future platforms add one platform icon adapter. Keep the semantic icon name and meaning stable even when the platform glyph differs.
 
 Desktop interface icons are normally `16px`; dense controls use `12px` to `14px`. Mobile icons use the sizes and stroke rules in its theme and component library. Keep one icon style within a control group.
 
@@ -469,6 +467,13 @@ Product empty states use type, a small icon, and a direct action. Do not bring l
 Use concise sentence-case labels. Name the action with a verb. Explain destructive or privacy-sensitive effects before confirmation. Keep sync and local-data language factual.
 
 Do not use hype, celebration, streaks, achievements, fake scarcity, or manufactured urgency. Empty states explain what is absent and give the next useful action. Error copy says what failed and what the user can do next.
+
+## Liquid Glass on iOS
+
+<!-- Filled in by spec 002-native-foundation-ios T228, after the S3 spike's
+on-device screenshot of the keyboard toolbar under Reduce Transparency. Until
+then: Liquid Glass comes from system components only; the editor keyboard
+toolbar is the single hand-applied surface. -->
 
 ## Reject product design drift
 
@@ -531,11 +536,8 @@ Do not redeclare semantic variables inside a page. Add a token to `base.css` onl
 
 New mobile product UI uses:
 
-- `apps/mobile/src/theme/colors/` for semantic colors.
-- `apps/mobile/src/theme/primitives.ts` for spacing, radius, and platform sizes.
-- `apps/mobile/src/theme/text-styles.ts` and `fonts.ts` for type roles.
-- `apps/mobile/src/theme/use-colors.ts` as the reactive color entry point.
-- `apps/mobile/src/components/ui/` for shared component structure and states.
+- `apps/ios/Memry/Design/` for semantic colors, spacing, radius, platform sizes and type roles.
+- `apps/ios/Memry/Design/` for shared component structure and states.
 
 Screens import the mobile theme and shared components. They do not introduce hex colors, repeated spacing values, or private button variants. The legacy `src/constants/theme.ts`, `use-theme.ts`, `themed-text.tsx`, and `themed-view.tsx` remain migration code only. Do not use them for new product screens.
 

@@ -21,35 +21,21 @@ import { fileURLToPath } from 'node:url'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { ARGON2_PARAMS, XCHACHA20_PARAMS } from '../src/crypto'
-
-// Mirrors apps/desktop/src/main/crypto/keys.ts KDF_CONTEXT_MAP — the mobile
-// binding must reproduce these exact (ctx, id) pairs.
-const KDF_CONTEXTS = [
-  { name: 'memry-vault-key-v1', ctx: 'memryvlt', id: 1 },
-  { name: 'memry-signing-key-v1', ctx: 'memrysgn', id: 2 },
-  { name: 'memry-verify-key-v1', ctx: 'memryvrf', id: 3 },
-  { name: 'memry-key-verifier-v1', ctx: 'memrykve', id: 4 },
-  { name: 'memry-linking-enc-v1', ctx: 'memrylnk', id: 5 },
-  { name: 'memry-linking-mac-v1', ctx: 'memrymac', id: 6 },
-  { name: 'memry-linking-sas-v1', ctx: 'memrysas', id: 7 }
-] as const
+import {
+  KDF_CONTEXTS,
+  KEY_32_A,
+  KEY_32_B,
+  NONCE_24_A,
+  NONCE_24_B,
+  PARITY_PASSPHRASE_PROD,
+  PARITY_PASSPHRASE_SMOKE,
+  SEED_A,
+  SEED_B
+} from './vector-fixtures'
 
 const hex = (bytes: Uint8Array): string => sodium.to_hex(bytes)
 const fromHex = (value: string): Uint8Array => sodium.from_hex(value)
 const utf8 = (value: string): Uint8Array => sodium.from_string(value)
-
-// Fixed, arbitrary test material (never reuse in production).
-// Public parity fixtures, not secrets — committed on purpose so both shells
-// can byte-compare against them.
-const PARITY_PASSPHRASE_PROD = 'correct horse battery staple — memry parity'
-const PARITY_PASSPHRASE_SMOKE = 'memry-smoke'
-
-const SEED_A = 'a0'.repeat(32)
-const SEED_B = '5c'.repeat(32)
-const KEY_32_A = '0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0'
-const KEY_32_B = 'fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef'
-const NONCE_24_A = '000102030405060708090a0b0c0d0e0f1011121314151617'
-const NONCE_24_B = '17161514131211100f0e0d0c0b0a09080706050403020100'
 
 const main = async (): Promise<void> => {
   await sodium.ready

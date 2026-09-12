@@ -81,3 +81,9 @@ agents/
 .feedback
 
 .release-state/
+# Built by crates/memry-core/build-xcframework.sh; the generated Swift next to it
+# IS committed, the binary is not (rust-ci rebuilds it).
+packages/swift/MemryCore/MemryCoreFFI.xcframework/
+crates/target/
+apps/ios/**/xcuserdata/
+apps/ios/**/*.xcuserdatad/

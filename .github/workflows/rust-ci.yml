@@ -1,0 +1,116 @@
+# Rust CI (spec 002-native-foundation-ios, train A0 / gate G2b).
+#
+# The regenerate-and-diff step over the generated Swift is this boundary's
+# `pnpm ipc:check`: a change to the UniFFI surface that ships without rerunning
+# build-xcframework.sh leaves Swift calling yesterday's ABI, which fails at
+# runtime rather than at review.
+name: Rust CI
+
+on:
+  pull_request:
+    paths:
+      - 'crates/**'
+      - 'packages/swift/**'
+      - 'scripts/check-line-ceilings.mjs'
+      - '.github/workflows/rust-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'crates/**'
+      - 'packages/swift/**'
+      - 'scripts/check-line-ceilings.mjs'
+      - '.github/workflows/rust-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  lint-and-test:
+    name: fmt, clippy, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: crates
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.89'
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test -p memry-core
+
+      - name: Line ceilings
+        working-directory: .
+        run: node scripts/check-line-ceilings.mjs
+
+  swift-bindings-fresh:
+    name: Generated Swift bindings are current
+    # macOS: the XCFramework needs the iOS SDK, and the bindings are generated
+    # from the same build. Anything less proves nothing about what ships.
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.89'
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.app
+
+      - name: Build XCFramework and regenerate bindings
+        run: crates/memry-core/build-xcframework.sh
+
+      # The binary is gitignored; the Swift beside it is committed. Only the
+      # Swift is diffed.
+      - name: Fail if the committed bindings drifted
+        run: |
+          if ! git diff --exit-code -- packages/swift/MemryCore/Sources/MemryCore/Generated/; then
+            echo "::error::Generated Swift bindings are stale. Run crates/memry-core/build-xcframework.sh and commit the result."
+            exit 1
+          fi
+
+      - name: Upload XCFramework
+        uses: actions/upload-artifact@v4
+        with:
+          name: MemryCoreFFI-xcframework
+          path: packages/swift/MemryCore/MemryCoreFFI.xcframework
+          retention-days: 7

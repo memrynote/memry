@@ -22,3 +22,6 @@ apps/mobile/src/editor/generated/
 # Golden byte-preservation fixtures: bytes (CRLF, BOM, missing final newline)
 # ARE the test contract — formatting them destroys what they assert.
 apps/desktop/src/main/vault/__fixtures__/golden-vault/
+
+# Checked-in vite output: a 1.19 MB inlined document, not source.
+packages/editor-web/dist/

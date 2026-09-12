@@ -1,0 +1,71 @@
+# SwiftLint for the iOS shell (spec 002, Constitution II).
+# `swiftlint --strict` is a gate: every warning fails the build.
+
+included:
+  - Memry
+  - MemryTests
+  - MemryConformanceTests
+  - MemryUITests
+
+excluded:
+  - Memry/Generated
+
+opt_in_rules:
+  - empty_count
+  - force_unwrapping
+  - explicit_init
+  - first_where
+  - last_where
+  - redundant_nil_coalescing
+  - unneeded_parentheses_in_closure_argument
+
+disabled_rules:
+  - todo
+
+# The shell logs through OSLog `Logger`, never `print`. The ios-ci grep gate
+# catches it too; this makes it visible in the editor.
+# Tests may force-unwrap and force-try: a nil there fails the test, it does not
+# crash a user's app.
+force_unwrapping: &test_exempt
+  excluded:
+    - MemryTests
+    - MemryConformanceTests
+    - MemryUITests
+
+force_try: *test_exempt
+
+custom_rules:
+  no_print:
+    name: 'print() is not a logger'
+    regex: '(^|[^A-Za-z0-9_.])print\('
+    message: 'Use an OSLog Logger for the subsystem, not print().'
+    severity: error
+
+force_cast:
+  severity: error
+
+# The plan's per-directory ceilings live in scripts/check-line-ceilings.mjs,
+# which is the gate. These warn earlier, in the editor.
+file_length:
+  warning: 400
+  error: 600
+  ignore_comment_only_lines: true
+
+type_body_length:
+  warning: 300
+  error: 400
+
+function_body_length:
+  warning: 60
+  error: 100
+
+line_length:
+  warning: 120
+  error: 160
+  ignores_comments: true
+
+identifier_name:
+  excluded:
+    - id
+    - db
+    - to

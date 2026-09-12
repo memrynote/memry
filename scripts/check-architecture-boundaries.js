@@ -100,7 +100,9 @@ function isSourceFile(filePath) {
 // real SQLite is the entire point of it.
 function isTestFile(filePath) {
   if (/\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/.test(filePath)) return true
-  return filePath.split(path.sep).some((segment) => segment === '__tests__' || segment === '__mocks__')
+  return filePath
+    .split(path.sep)
+    .some((segment) => segment === '__tests__' || segment === '__mocks__')
 }
 
 function stripSourceExtension(filePath) {
@@ -486,6 +488,58 @@ async function checkMobileReachability(blockingViolations) {
   }
 }
 
+// --- iOS shell reachability (spec 002, Constitution I, data-model §D.4) ------
+//
+// The Swift shell owns no networking of its own: the Rust core drives every
+// request through the Transport foreign trait, and the ONE implementation of
+// that trait lives in apps/ios/Memry/Seams/. A URLSession anywhere else is a
+// second network path the core cannot see, cannot retry and cannot kill-switch.
+const iosAppRoot = path.resolve(repoRoot, 'apps/ios/Memry')
+const iosTransportSeamRoot = path.resolve(iosAppRoot, 'Seams')
+const iosNetworkSymbols = ['URLSessionWebSocketTask', 'URLSession']
+
+async function collectSwiftFiles(root, out = []) {
+  let entries
+  try {
+    entries = await fs.readdir(root, { withFileTypes: true })
+  } catch (error) {
+    if (error.code === 'ENOENT') return out
+    throw error
+  }
+
+  for (const entry of entries) {
+    const full = path.join(root, entry.name)
+    if (entry.isDirectory()) {
+      if (entry.name === 'Generated') continue
+      await collectSwiftFiles(full, out)
+    } else if (entry.name.endsWith('.swift')) {
+      out.push(full)
+    }
+  }
+  return out
+}
+
+async function findIosTransportViolations() {
+  const violations = []
+  for (const filePath of await collectSwiftFiles(iosAppRoot)) {
+    if (filePath.startsWith(`${iosTransportSeamRoot}${path.sep}`)) continue
+
+    const lines = (await fs.readFile(filePath, 'utf8')).split('\n')
+    lines.forEach((line, index) => {
+      const symbol = iosNetworkSymbols.find((candidate) => line.includes(candidate))
+      if (!symbol) return
+      violations.push(
+        formatViolation(
+          `${filePath}:${index + 1}`,
+          symbol,
+          'network access outside apps/ios/Memry/Seams/'
+        )
+      )
+    })
+  }
+  return violations
+}
+
 async function main() {
   const blockingViolations = new Set()
 
@@ -638,6 +692,10 @@ async function main() {
         blockingViolations.add(formatViolation(filePath, specifier, 'getDatabase import'))
       }
     }
+  }
+
+  for (const violation of await findIosTransportViolations()) {
+    blockingViolations.add(violation)
   }
 
   if (blockingViolations.size === 0) {

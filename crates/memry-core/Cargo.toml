@@ -1,0 +1,30 @@
+[package]
+name = "memry-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "memry_core"
+# staticlib for the iOS XCFramework, cdylib for host-side binding tests,
+# lib so `memry-cli` and the integration tests can depend on it normally.
+crate-type = ["staticlib", "cdylib", "lib"]
+
+[features]
+default = []
+# Pulls in a real HTTP/WebSocket transport implementation. The iOS shell never
+# enables it: on device the transport is a foreign trait the Swift side fills in
+# (Constitution I, no Rust networking on device).
+native-transport = []
+
+[dependencies]
+# Library mode: the proc-macro attributes are the only interface. `tokio` lets
+# UniFFI export async functions driven by the core's runtime.
+uniffi = { workspace = true, features = ["tokio"] }
+
+[dev-dependencies]
+dryoc = "1.0.0"
+proptest = "1"
+insta = "1"

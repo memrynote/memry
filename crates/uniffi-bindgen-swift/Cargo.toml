@@ -1,0 +1,12 @@
+[package]
+name = "uniffi-bindgen-swift"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+# Pinned to the workspace `uniffi` so the generator and the metadata compiled
+# into `memry-core` can never be different versions (research R1).
+uniffi = { workspace = true, features = ["cli"] }

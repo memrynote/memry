@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Vault files must be readable by background sync after a reboot but before
+	     the user unlocks the device, so Complete is too strict and None is too
+	     weak. Keychain entries use the matching AfterFirstUnlockThisDeviceOnly. -->
+	<key>com.apple.developer.default-data-protection</key>
+	<string>NSFileProtectionCompleteUntilFirstUserAuthentication</string>
+
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.memry.app</string>
+	</array>
+</dict>
+</plist>

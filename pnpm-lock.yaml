@@ -1170,40 +1170,6 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(@edge-runtime/vm@3.2.0)(@opentelemetry/api@1.9.1)(@types/node@25.9.5)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(happy-dom@20.8.9)(jsdom@27.4.0(@noble/hashes@2.2.0))(msw@2.12.9(@types/node@25.9.5)(typescript@6.0.3))(vite@7.3.6(@types/node@25.9.5)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.21.0)(yaml@2.9.0))
 
-  apps/mobile/editor-web:
-    dependencies:
-      '@blocknote/code-block':
-        specifier: ^0.47.1
-        version: 0.47.1(@blocknote/core@0.47.1(patch_hash=3449fe80e8250449972daaa5e90945cc40086f945ac0ed30c6a3f0d8d89a9848)(@types/hast@3.0.4))
-      '@blocknote/core':
-        specifier: ^0.47.1
-        version: 0.47.1(patch_hash=3449fe80e8250449972daaa5e90945cc40086f945ac0ed30c6a3f0d8d89a9848)(@types/hast@3.0.4)
-      '@memry/contracts':
-        specifier: workspace:*
-        version: link:../../../packages/contracts
-      '@memry/editor-schema':
-        specifier: workspace:*
-        version: link:../../../packages/editor-schema
-      '@memry/shared':
-        specifier: workspace:*
-        version: link:../../../packages/shared
-      prosemirror-state:
-        specifier: ^1.4.4
-        version: 1.4.4
-      yjs:
-        specifier: ^13.6.29
-        version: 13.6.29
-    devDependencies:
-      '@memry/typescript-config':
-        specifier: workspace:*
-        version: link:../../../packages/typescript-config
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vite:
-        specifier: ^7.3.6
-        version: 7.3.6(@types/node@25.9.5)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.21.0)(yaml@2.9.0)
-
   apps/sync-server:
     dependencies:
       '@memry/contracts':
@@ -1372,6 +1338,40 @@ importers:
       '@memry/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+
+  packages/editor-web:
+    dependencies:
+      '@blocknote/code-block':
+        specifier: ^0.47.1
+        version: 0.47.1(@blocknote/core@0.47.1(patch_hash=3449fe80e8250449972daaa5e90945cc40086f945ac0ed30c6a3f0d8d89a9848)(@types/hast@3.0.4))
+      '@blocknote/core':
+        specifier: ^0.47.1
+        version: 0.47.1(patch_hash=3449fe80e8250449972daaa5e90945cc40086f945ac0ed30c6a3f0d8d89a9848)(@types/hast@3.0.4)
+      '@memry/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@memry/editor-schema':
+        specifier: workspace:*
+        version: link:../editor-schema
+      '@memry/shared':
+        specifier: workspace:*
+        version: link:../shared
+      prosemirror-state:
+        specifier: ^1.4.4
+        version: 1.4.4
+      yjs:
+        specifier: ^13.6.29
+        version: 13.6.29
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.3.6
+        version: 7.3.6(@types/node@25.9.5)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.21.0)(yaml@2.9.0)
 
   packages/i18n:
     dependencies:
