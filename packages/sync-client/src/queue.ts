@@ -41,21 +41,39 @@ export interface QueueStats {
   total: number
 }
 
+export interface CoalescedMutation {
+  operation: string
+  /** Which of the two rows' payloads the folded operation must carry. */
+  payload: 'existing' | 'incoming'
+}
+
 /**
  * Fold two mutations for the same item into the single operation that has to
- * reach the server. A later delete wins outright; otherwise an unacked create
- * survives, because the server has never seen the item and an `update` for an
- * id it does not know is not the same request.
+ * reach the server, and say which payload goes with it.
+ *
+ * A delete is terminal for its id: the local row is gone, so a later `update`
+ * can only carry stale state, and folding it to `update` clears `deleted_at`
+ * server-side and resurrects the item on every device. A later `create` is the
+ * one mutation that outranks it — the row exists locally again, so the queue
+ * has to converge on "exists" rather than on the superseded tombstone.
+ * Otherwise an unacked create survives, because the server has never seen the
+ * item and an `update` for an id it does not know is not the same request.
+ *
+ * The payload side matters as much as the operation: a surviving tombstone
+ * keeps the delete's own payload, which carries the clock that makes the
+ * deletion authoritative.
  *
  * Exported because two call sites collapse rows for the same `(type, itemId)`:
  * `enqueue` (into an `attempts = 0` row) and the push coordinator's batch
  * dedupe (rows that could not coalesce because the older one had already
  * failed). They must agree, or the precedence depends on which path ran.
  */
-export function coalesceSyncOperations(existing: string, incoming: string): string {
-  if (incoming === 'delete') return 'delete'
-  if (existing === 'create' || incoming === 'create') return 'create'
-  return incoming
+export function coalesceSyncOperations(existing: string, incoming: string): CoalescedMutation {
+  if (incoming === 'delete') return { operation: 'delete', payload: 'incoming' }
+  if (incoming === 'create') return { operation: 'create', payload: 'incoming' }
+  if (existing === 'delete') return { operation: 'delete', payload: 'existing' }
+  if (existing === 'create') return { operation: 'create', payload: 'incoming' }
+  return { operation: incoming, payload: 'incoming' }
 }
 
 export class SyncQueueManager {
@@ -77,7 +95,7 @@ export class SyncQueueManager {
 
     const id = this.db.transaction((tx) => {
       const existing = tx
-        .select({ id: syncQueue.id, operation: syncQueue.operation })
+        .select({ id: syncQueue.id, operation: syncQueue.operation, payload: syncQueue.payload })
         .from(syncQueue)
         .where(
           and(eq(syncQueue.itemId, itemId), eq(syncQueue.type, type), eq(syncQueue.attempts, 0))
@@ -85,9 +103,13 @@ export class SyncQueueManager {
         .get()
 
       if (existing) {
-        const coalescedOp = coalesceSyncOperations(existing.operation, operation)
+        const folded = coalesceSyncOperations(existing.operation, operation)
         tx.update(syncQueue)
-          .set({ payload, priority, operation: coalescedOp })
+          .set({
+            payload: folded.payload === 'existing' ? existing.payload : payload,
+            priority,
+            operation: folded.operation
+          })
           .where(eq(syncQueue.id, existing.id))
           .run()
         return existing.id
