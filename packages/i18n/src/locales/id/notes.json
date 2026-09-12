@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Hapus item {count}",
       "bookmark": "Bookmark",
       "removeFromBookmarks": "Hapus dari Bookmark",
-      "applyTemplate": "Terapkan Templat"
+      "applyTemplate": "Terapkan Templat",
+      "saveAsTemplate": "Simpan sebagai Templat"
     },
     "deleteDialog": {
       "noteTitle": "Hapus Catatan",
@@ -102,6 +103,7 @@
       "fullWidth": "Lebar penuh",
       "disableLocalOnly": "Nonaktifkan hanya lokal",
       "setLocalOnly": "Tetapkan hanya lokal",
+      "saveAsTemplate": "Simpan sebagai Templat",
       "copyPath": "Salin jalur",
       "delete": "Hapus catatan",
       "find": "Cari…",
@@ -789,6 +791,19 @@
     "full": "Ganti konten & tambahkan detail templat",
     "success": "Templat diterapkan",
     "title": "Ganti konten catatan?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Simpan catatan sebagai templat",
+    "description": "Buat templat yang dapat digunakan kembali dari catatan ini. Catatan itu sendiri tetap seperti semula.",
+    "nameLabel": "Nama templat",
+    "loading": "Membaca catatan ini…",
+    "summary": "Menyimpan isi catatan, {tagCount, plural, other {# tanda}} dan {propertyCount, plural, other {# properti}}.",
+    "save": "Simpan templat",
+    "cancel": "Batalkan",
+    "success": "Templat disimpan",
+    "edit": "Edit templat",
+    "failed": "Gagal menyimpan templat",
+    "loadFailed": "Tidak dapat membaca catatan ini"
   },
   "tagView": {
     "moreActions": "Tindakan lainnya",

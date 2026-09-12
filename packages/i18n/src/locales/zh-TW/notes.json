@@ -62,7 +62,8 @@
       "deleteSelectedItems": "刪除 {count} 項目(複數)",
       "bookmark": "加入書籤",
       "removeFromBookmarks": "從書籤移除",
-      "applyTemplate": "套用範本"
+      "applyTemplate": "套用範本",
+      "saveAsTemplate": "另存為範本"
     },
     "deleteDialog": {
       "noteTitle": "刪除筆記",
@@ -102,6 +103,7 @@
       "fullWidth": "全寬",
       "disableLocalOnly": "僅停用本地",
       "setLocalOnly": "設為僅本地",
+      "saveAsTemplate": "另存為範本",
       "copyPath": "複製路徑",
       "delete": "刪除筆記",
       "find": "尋找…",
@@ -789,6 +791,19 @@
     "full": "取代內容並加入範本詳細資料",
     "success": "已套用範本",
     "title": "要取代筆記內容嗎？"
+  },
+  "saveNoteAsTemplate": {
+    "title": "將筆記另存為範本",
+    "description": "從這則筆記建立可重複使用的範本。筆記本身維持不變。",
+    "nameLabel": "範本名稱",
+    "loading": "正在讀取這則筆記…",
+    "summary": "將儲存筆記內容、{tagCount, plural, other {# 個標籤}}和{propertyCount, plural, other {# 個屬性}}。",
+    "save": "儲存範本",
+    "cancel": "取消",
+    "success": "已儲存範本",
+    "edit": "編輯範本",
+    "failed": "儲存範本失敗",
+    "loadFailed": "無法讀取這則筆記"
   },
   "tagView": {
     "moreActions": "更多操作",

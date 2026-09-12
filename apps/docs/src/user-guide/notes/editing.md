@@ -244,6 +244,7 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 - **Version history** — browse and restore past versions
 - **Export** — export the note to PDF or HTML. Both formats embed the note's images in the exported file itself, so the PDF prints them and an exported `.html` keeps them after you move or send it
 - **Insert template…** — insert a template's body at the cursor, leaving the rest of the note untouched
+- **Save as template** — create a new custom template from this note's body, tags, and properties (see [Templates](/user-guide/templates#saving-a-note-as-a-template))
 - **Full width** — toggle the wide editor layout
 
 **File actions**

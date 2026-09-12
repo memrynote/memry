@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Slet {count} elementer",
       "bookmark": "Bogmærk",
       "removeFromBookmarks": "Fjern fra bogmærker",
-      "applyTemplate": "Anvend skabelon"
+      "applyTemplate": "Anvend skabelon",
+      "saveAsTemplate": "Gem som skabelon"
     },
     "deleteDialog": {
       "noteTitle": "Slet note",
@@ -102,6 +103,7 @@
       "fullWidth": "Fuld bredde",
       "disableLocalOnly": "Deaktiver kun lokalt",
       "setLocalOnly": "Indstil kun lokalt",
+      "saveAsTemplate": "Gem som skabelon",
       "copyPath": "Kopiér sti",
       "delete": "Slet note",
       "find": "Find…",
@@ -789,6 +791,19 @@
     "full": "Erstat indhold og tilføj skabelondetaljer",
     "success": "Skabelonen er anvendt",
     "title": "Vil du erstatte notens indhold?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Gem noten som skabelon",
+    "description": "Opret en skabelon fra denne note, som du kan bruge igen. Selve noten forbliver, som den er.",
+    "nameLabel": "Skabelonnavn",
+    "loading": "Læser noten…",
+    "summary": "Gemmer notens indhold, {tagCount, plural, one {# tag} other {# tags}} og {propertyCount, plural, one {# egenskab} other {# egenskaber}}.",
+    "save": "Gem skabelon",
+    "cancel": "Annuller",
+    "success": "Skabelonen er gemt",
+    "edit": "Rediger skabelon",
+    "failed": "Skabelonen kunne ikke gemmes",
+    "loadFailed": "Noten kunne ikke læses"
   },
   "tagView": {
     "moreActions": "Flere handlinger",

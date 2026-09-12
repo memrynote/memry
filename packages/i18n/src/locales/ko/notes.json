@@ -62,7 +62,8 @@
       "deleteSelectedItems": "{count} 항목 삭제",
       "bookmark": "북마크",
       "removeFromBookmarks": "북마크에서 제거",
-      "applyTemplate": "템플릿 적용"
+      "applyTemplate": "템플릿 적용",
+      "saveAsTemplate": "템플릿으로 저장"
     },
     "deleteDialog": {
       "noteTitle": "메모 삭제",
@@ -102,6 +103,7 @@
       "fullWidth": "전폭",
       "disableLocalOnly": "로컬만 비활성화",
       "setLocalOnly": "로컬만 설정",
+      "saveAsTemplate": "템플릿으로 저장",
       "copyPath": "경로 복사",
       "delete": "메모 삭제",
       "find": "찾기…",
@@ -789,6 +791,19 @@
     "full": "내용 바꾸고 템플릿 세부정보 추가",
     "success": "템플릿을 적용했습니다",
     "title": "메모 내용을 바꾸시겠습니까?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "메모를 템플릿으로 저장",
+    "description": "이 메모로 다시 사용할 수 있는 템플릿을 만듭니다. 메모 자체는 그대로 유지됩니다.",
+    "nameLabel": "템플릿 이름",
+    "loading": "메모를 읽는 중…",
+    "summary": "메모 본문과 태그 {tagCount, plural, other {#개}}, 속성 {propertyCount, plural, other {#개}}를 저장합니다.",
+    "save": "템플릿 저장",
+    "cancel": "취소",
+    "success": "템플릿을 저장했습니다",
+    "edit": "템플릿 편집",
+    "failed": "템플릿을 저장하지 못했습니다",
+    "loadFailed": "메모를 읽지 못했습니다"
   },
   "tagView": {
     "moreActions": "더 보기",

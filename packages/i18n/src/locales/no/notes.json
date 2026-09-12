@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Slett {count}-elementer",
       "bookmark": "Bokmerke",
       "removeFromBookmarks": "Fjern fra bokmerker",
-      "applyTemplate": "Bruk mal"
+      "applyTemplate": "Bruk mal",
+      "saveAsTemplate": "Lagre som mal"
     },
     "deleteDialog": {
       "noteTitle": "Slett notat",
@@ -102,6 +103,7 @@
       "fullWidth": "Full bredde",
       "disableLocalOnly": "Deaktiver kun lokalt",
       "setLocalOnly": "Sett kun lokalt",
+      "saveAsTemplate": "Lagre som mal",
       "copyPath": "Kopier bane",
       "delete": "Slett notat",
       "find": "Finn…",
@@ -789,6 +791,19 @@
     "full": "Erstatt innholdet og legg til maldetaljer",
     "success": "Malen er brukt",
     "title": "Erstatte innholdet i notatet?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Lagre notatet som mal",
+    "description": "Lag en gjenbrukbar mal fra dette notatet. Selve notatet forblir som det er.",
+    "nameLabel": "Malnavn",
+    "loading": "Leser notatet…",
+    "summary": "Lagrer innholdet i notatet, {tagCount, plural, one {# tag} other {# tagger}} og {propertyCount, plural, one {# egenskap} other {# egenskaper}}.",
+    "save": "Lagre mal",
+    "cancel": "Avbryt",
+    "success": "Malen er lagret",
+    "edit": "Rediger mal",
+    "failed": "Kunne ikke lagre malen",
+    "loadFailed": "Kunne ikke lese notatet"
   },
   "tagView": {
     "moreActions": "Flere handlinger",

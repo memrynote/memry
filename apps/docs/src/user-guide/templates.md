@@ -31,10 +31,11 @@ Built-ins are **read-only**. Opening one shows it in the editor with every field
 
 ## Custom Templates
 
-Two ways to create:
+Three ways to create:
 
 - **From scratch** — Settings → Templates → **New**
 - **Duplicate** — a built-in's **Duplicate & Edit** button, or any custom row's <kbd>⋯</kbd> → **Duplicate**
+- **From an existing note**, with [Save as Template](#saving-a-note-as-a-template)
 
 ## Template Editor
 
@@ -114,6 +115,37 @@ Inserting never replaces anything. Everything before and after the cursor stays 
 Only the template's **body** is inserted. Its tags and properties are not applied to the note — use **Apply Template** above if you want those.
 
 `{{title}}` resolves to the note's title. The row is hidden while the cursor is inside a table cell.
+
+## Saving a Note as a Template
+
+A note you already wrote can become a custom template.
+
+Open the action from either:
+
+- The sidebar tree, right-click a note and choose **Save as Template**
+- The note page's <kbd>⋯</kbd> menu, **Save as Template**
+
+In the sidebar it sits directly under **Apply Template**; in the <kbd>⋯</kbd> menu, under **Insert template…**.
+
+The dialog has a single field, the template name. It arrives pre-filled with the note's title and already selected, so you can type over it or press <kbd>Enter</kbd> to save at once. Under the field is a one-line summary of how many tags and properties the template will carry.
+
+What gets copied:
+
+- The note's body, exactly as it is written
+- The note's tags
+- The note's properties, with the two exceptions below
+
+`Relation` properties cannot be stored in a template, so they are dropped. `Status` properties are saved as `Select`. The summary counts only what is actually saved, so a dropped relation property shows up as a smaller count instead of disappearing quietly.
+
+<div v-pre>
+
+Nothing in the body is turned into a placeholder. The note's title does not become `{{title}}`, and no heading is added. To use [template variables](#template-variables), add them yourself in the template editor afterwards.
+
+</div>
+
+Saving does not navigate away, so you stay on the note. A toast confirms the save and offers **Edit template**, which opens the new template in the [template editor](#template-editor).
+
+The result is an ordinary custom template. It appears in Settings → Templates under **My Templates**, in the create dialog's template picker, and in **Apply Template**.
 
 ## Deleting a Template
 

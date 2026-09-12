@@ -62,7 +62,8 @@
       "deleteSelectedItems": "{count} アイテムを削除する",
       "bookmark": "ブックマーク",
       "removeFromBookmarks": "ブックマークから削除",
-      "applyTemplate": "テンプレートを適用"
+      "applyTemplate": "テンプレートを適用",
+      "saveAsTemplate": "テンプレートとして保存"
     },
     "deleteDialog": {
       "noteTitle": "メモの削除",
@@ -102,6 +103,7 @@
       "fullWidth": "全幅",
       "disableLocalOnly": "ローカルのみを無効にする",
       "setLocalOnly": "ローカルのみに設定",
+      "saveAsTemplate": "テンプレートとして保存",
       "copyPath": "パスをコピー",
       "delete": "メモを削除",
       "find": "検索…",
@@ -789,6 +791,19 @@
     "full": "本文を置き換えてテンプレートの詳細も追加する",
     "success": "テンプレートを適用しました",
     "title": "メモの内容を置き換えますか？"
+  },
+  "saveNoteAsTemplate": {
+    "title": "メモをテンプレートとして保存",
+    "description": "このメモから再利用できるテンプレートを作成します。メモ自体はそのまま残ります。",
+    "nameLabel": "テンプレート名",
+    "loading": "メモを読み込んでいます…",
+    "summary": "メモの本文、{tagCount, plural, other {#個のタグ}}、{propertyCount, plural, other {#個のプロパティ}}を保存します。",
+    "save": "テンプレートを保存",
+    "cancel": "キャンセル",
+    "success": "テンプレートを保存しました",
+    "edit": "テンプレートを編集",
+    "failed": "テンプレートを保存できませんでした",
+    "loadFailed": "メモを読み込めませんでした"
   },
   "tagView": {
     "moreActions": "その他の操作",

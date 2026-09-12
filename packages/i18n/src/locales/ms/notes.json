@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Padamkan item {count}",
       "bookmark": "Penanda buku",
       "removeFromBookmarks": "Alih Keluar dari Penanda Buku",
-      "applyTemplate": "Gunakan Templat"
+      "applyTemplate": "Gunakan Templat",
+      "saveAsTemplate": "Simpan sebagai Templat"
     },
     "deleteDialog": {
       "noteTitle": "Padam Nota",
@@ -102,6 +103,7 @@
       "fullWidth": "Lebar penuh",
       "disableLocalOnly": "Lumpuhkan tempatan sahaja",
       "setLocalOnly": "Tetapkan tempatan sahaja",
+      "saveAsTemplate": "Simpan sebagai Templat",
       "copyPath": "Salin laluan",
       "delete": "Padam nota",
       "find": "Cari…",
@@ -789,6 +791,19 @@
     "full": "Ganti kandungan & tambah butiran templat",
     "success": "Templat digunakan",
     "title": "Ganti kandungan nota?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Simpan nota sebagai templat",
+    "description": "Cipta templat yang boleh digunakan semula daripada nota ini. Nota itu sendiri kekal seperti sedia ada.",
+    "nameLabel": "Nama templat",
+    "loading": "Membaca nota ini…",
+    "summary": "Menyimpan kandungan nota, {tagCount, plural, other {# tag}} dan {propertyCount, plural, other {# sifat}}.",
+    "save": "Simpan templat",
+    "cancel": "Batal",
+    "success": "Templat disimpan",
+    "edit": "Edit templat",
+    "failed": "Gagal menyimpan templat",
+    "loadFailed": "Tidak dapat membaca nota ini"
   },
   "tagView": {
     "moreActions": "Tindakan lain",

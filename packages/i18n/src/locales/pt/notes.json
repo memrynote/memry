@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Excluir itens {count}",
       "bookmark": "Marcador",
       "removeFromBookmarks": "Remover dos marcadores",
-      "applyTemplate": "Aplicar modelo"
+      "applyTemplate": "Aplicar modelo",
+      "saveAsTemplate": "Guardar como modelo"
     },
     "deleteDialog": {
       "noteTitle": "Excluir nota",
@@ -102,6 +103,7 @@
       "fullWidth": "Largura total",
       "disableLocalOnly": "Desativar apenas local",
       "setLocalOnly": "Definir apenas local",
+      "saveAsTemplate": "Guardar como modelo",
       "copyPath": "Copiar caminho",
       "delete": "Eliminar nota",
       "find": "Localizar…",
@@ -789,6 +791,19 @@
     "full": "Substituir conteúdo e adicionar detalhes do modelo",
     "success": "Modelo aplicado",
     "title": "Substituir o conteúdo da nota?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Guardar a nota como modelo",
+    "description": "Crie um modelo reutilizável a partir desta nota. A própria nota permanece como está.",
+    "nameLabel": "Nome do modelo",
+    "loading": "A ler esta nota…",
+    "summary": "Guarda o conteúdo da nota, {tagCount, plural, one {# etiqueta} other {# etiquetas}} e {propertyCount, plural, one {# propriedade} other {# propriedades}}.",
+    "save": "Guardar modelo",
+    "cancel": "Cancelar",
+    "success": "Modelo guardado",
+    "edit": "Editar modelo",
+    "failed": "Falha ao guardar o modelo",
+    "loadFailed": "Não foi possível ler esta nota"
   },
   "tagView": {
     "moreActions": "Mais ações",

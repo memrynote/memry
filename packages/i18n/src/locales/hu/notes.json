@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Törölje az {count} elemeket",
       "bookmark": "Könyvjelző",
       "removeFromBookmarks": "Eltávolítás a könyvjelzők közül",
-      "applyTemplate": "Sablon alkalmazása"
+      "applyTemplate": "Sablon alkalmazása",
+      "saveAsTemplate": "Mentés sablonként"
     },
     "deleteDialog": {
       "noteTitle": "Jegyzet törlése",
@@ -102,6 +103,7 @@
       "fullWidth": "Teljes szélességben",
       "disableLocalOnly": "Csak helyi letiltása",
       "setLocalOnly": "Csak helyi beállítás",
+      "saveAsTemplate": "Mentés sablonként",
       "copyPath": "Útvonal másolása",
       "delete": "Jegyzet törlése",
       "find": "Keresés…",
@@ -789,6 +791,19 @@
     "full": "Tartalom cseréje és sablonadatok hozzáadása",
     "success": "Sablon alkalmazva",
     "title": "Lecseréled a jegyzet tartalmát?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Jegyzet mentése sablonként",
+    "description": "Készíts ebből a jegyzetből újrafelhasználható sablont. Maga a jegyzet változatlan marad.",
+    "nameLabel": "Sablon neve",
+    "loading": "Jegyzet beolvasása…",
+    "summary": "Menti a jegyzet tartalmát, {tagCount, plural, one {# címkét} other {# címkét}} és {propertyCount, plural, one {# tulajdonságot} other {# tulajdonságot}}.",
+    "save": "Sablon mentése",
+    "cancel": "Mégsem",
+    "success": "Sablon mentve",
+    "edit": "Sablon szerkesztése",
+    "failed": "Nem sikerült menteni a sablont",
+    "loadFailed": "Nem sikerült beolvasni a jegyzetet"
   },
   "tagView": {
     "moreActions": "További műveletek",

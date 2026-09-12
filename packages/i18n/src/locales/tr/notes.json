@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Sil {count} öğeler",
       "bookmark": "Yer imi ekle",
       "removeFromBookmarks": "Yer imlerinden Kaldır",
-      "applyTemplate": "Şablon Uygula"
+      "applyTemplate": "Şablon Uygula",
+      "saveAsTemplate": "Şablon Olarak Kaydet"
     },
     "deleteDialog": {
       "noteTitle": "Notu Sil",
@@ -102,6 +103,7 @@
       "fullWidth": "Tam genişlik",
       "disableLocalOnly": "Yalnızca yereli devre dışı bırak",
       "setLocalOnly": "Yalnızca yerel olarak ayarla",
+      "saveAsTemplate": "Şablon olarak kaydet",
       "copyPath": "Yolu kopyala",
       "delete": "Notu sil",
       "find": "Bul…",
@@ -789,6 +791,19 @@
     "full": "İçeriği değiştir ve şablon ayrıntılarını ekle",
     "success": "Şablon uygulandı",
     "title": "Not içeriği değiştirilsin mi?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Notu şablon olarak kaydet",
+    "description": "Bu nottan yeniden kullanılabilir bir şablon oluşturun. Notun kendisi olduğu gibi kalır.",
+    "nameLabel": "Şablon adı",
+    "loading": "Not okunuyor…",
+    "summary": "Not içeriğini, {tagCount, plural, one {# etiketi} other {# etiketi}} ve {propertyCount, plural, one {# özelliği} other {# özelliği}} kaydeder.",
+    "save": "Şablonu kaydet",
+    "cancel": "İptal",
+    "success": "Şablon kaydedildi",
+    "edit": "Şablonu düzenle",
+    "failed": "Şablon kaydedilemedi",
+    "loadFailed": "Bu not okunamadı"
   },
   "tagView": {
     "moreActions": "Daha fazla işlem",

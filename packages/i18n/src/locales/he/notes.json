@@ -62,7 +62,8 @@
       "deleteSelectedItems": "מחק פריטי {count}",
       "bookmark": "סימנייה",
       "removeFromBookmarks": "הסר מהסימניות",
-      "applyTemplate": "החל תבנית"
+      "applyTemplate": "החל תבנית",
+      "saveAsTemplate": "שמור כתבנית"
     },
     "deleteDialog": {
       "noteTitle": "מחק הערה",
@@ -102,6 +103,7 @@
       "fullWidth": "רוחב מלא",
       "disableLocalOnly": "השבת מקומי בלבד",
       "setLocalOnly": "הגדר מקומי בלבד",
+      "saveAsTemplate": "שמור כתבנית",
       "copyPath": "העתק נתיב",
       "delete": "מחק הערה",
       "find": "מצא…",
@@ -789,6 +791,19 @@
     "full": "החלף תוכן והוסף פרטי תבנית",
     "success": "התבנית הוחלה",
     "title": "להחליף את תוכן ההערה?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "שמירת ההערה כתבנית",
+    "description": "צור מההערה הזו תבנית לשימוש חוזר. ההערה עצמה נשארת כפי שהיא.",
+    "nameLabel": "שם התבנית",
+    "loading": "קורא את ההערה…",
+    "summary": "שומר את תוכן ההערה, {tagCount, plural, one {תג אחד} other {# תגים}} ו-{propertyCount, plural, one {נכס אחד} other {# נכסים}}.",
+    "save": "שמור תבנית",
+    "cancel": "בטל",
+    "success": "התבנית נשמרה",
+    "edit": "ערוך תבנית",
+    "failed": "שמירת התבנית נכשלה",
+    "loadFailed": "לא ניתן לקרוא את ההערה"
   },
   "tagView": {
     "moreActions": "פעולות נוספות",

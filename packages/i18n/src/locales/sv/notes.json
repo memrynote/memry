@@ -62,7 +62,8 @@
       "deleteSelectedItems": "Ta bort {count} objekt",
       "bookmark": "Bokmärk",
       "removeFromBookmarks": "Ta bort från bokmärken",
-      "applyTemplate": "Använd mall"
+      "applyTemplate": "Använd mall",
+      "saveAsTemplate": "Spara som mall"
     },
     "deleteDialog": {
       "noteTitle": "Radera anteckning",
@@ -102,6 +103,7 @@
       "fullWidth": "Helskärmsläge",
       "disableLocalOnly": "Inaktivera endast lokalt",
       "setLocalOnly": "Ange endast lokalt",
+      "saveAsTemplate": "Spara som mall",
       "copyPath": "Kopiera sökväg",
       "delete": "Ta bort anteckning",
       "find": "Sök…",
@@ -789,6 +791,19 @@
     "full": "Ersätt innehållet och lägg till mallens detaljer",
     "success": "Mall använd",
     "title": "Ersätt anteckningens innehåll?"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Spara anteckningen som mall",
+    "description": "Skapa en återanvändbar mall från den här anteckningen. Själva anteckningen förblir oförändrad.",
+    "nameLabel": "Mallens namn",
+    "loading": "Läser anteckningen…",
+    "summary": "Sparar anteckningens innehåll, {tagCount, plural, one {# tagg} other {# taggar}} och {propertyCount, plural, one {# egenskap} other {# egenskaper}}.",
+    "save": "Spara mall",
+    "cancel": "Avbryt",
+    "success": "Mallen har sparats",
+    "edit": "Redigera mall",
+    "failed": "Det gick inte att spara mallen",
+    "loadFailed": "Det gick inte att läsa anteckningen"
   },
   "tagView": {
     "moreActions": "Fler åtgärder",

@@ -101,6 +101,7 @@
       "newFolder": "New Folder",
       "rename": "Rename",
       "applyTemplate": "Apply Template",
+      "saveAsTemplate": "Save as Template",
       "openExternal": "Open in External Editor",
       "setDefaultTemplate": "Set Default Template",
       "clearDefaultTemplate": "Clear Default Template",
@@ -172,6 +173,7 @@
       "find": "Find…",
       "versionHistory": "Version history",
       "export": "Export",
+      "saveAsTemplate": "Save as Template",
       "fullWidth": "Full width",
       "rename": "Rename…",
       "moveToFolder": "Move to folder…",
@@ -1045,6 +1047,19 @@
     "cancel": "Cancel",
     "success": "Template applied",
     "failed": "Failed to apply template"
+  },
+  "saveNoteAsTemplate": {
+    "title": "Save note as template",
+    "description": "Create a reusable template from this note. The note itself stays as it is.",
+    "nameLabel": "Template name",
+    "loading": "Reading this note…",
+    "summary": "Saves the note body, {tagCount, plural, one {# tag} other {# tags}} and {propertyCount, plural, one {# property} other {# properties}}.",
+    "save": "Save template",
+    "cancel": "Cancel",
+    "success": "Template saved",
+    "edit": "Edit template",
+    "failed": "Failed to save template",
+    "loadFailed": "Couldn't read this note"
   },
   "tags": {
     "hubTitle": "Tags",
