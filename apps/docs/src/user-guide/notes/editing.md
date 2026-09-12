@@ -152,7 +152,9 @@ Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` ju
 
 `/` and **Insert template…** drops a [template](/user-guide/templates)'s body in at the cursor. Choosing the row opens the picker. Type a query instead and matching templates appear as their own rows under **Templates**, so `/meeting` then <kbd>Enter</kbd> inserts Meeting Notes straight away.
 
-Nothing already in the note is touched: the text before and after the cursor stays as it was. See [Inserting a Template at the Cursor](/user-guide/templates#inserting-a-template-at-the-cursor) for how it differs from **Apply Template**.
+The block handle offers the same thing: hover a block, click its <kbd>⋮⋮</kbd> handle, and **Insert template…** puts the template directly below that block.
+
+Nothing already in the note is touched: the text before and after the insertion point stays as it was. See [Inserting a Template at the Cursor](/user-guide/templates#inserting-a-template-at-the-cursor) for how it differs from **Apply Template**.
 
 ## Markdown Shortcuts
 
