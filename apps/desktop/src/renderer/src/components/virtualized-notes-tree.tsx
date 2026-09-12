@@ -26,6 +26,7 @@ import {
   Pencil,
   Trash2,
   LayoutTemplate,
+  Save,
   X,
   ExternalLink,
   Smile
@@ -119,6 +120,7 @@ interface VirtualizedNotesTreeProps {
   onRenameNote?: (note: NoteListItem) => void
   /** Callback when a template should be applied to a note */
   onApplyTemplateToNote?: (note: NoteListItem) => void
+  onSaveNoteAsTemplate?: (note: NoteListItem) => void
   /** Callback when a note should be deleted */
   onDeleteNote?: (note: NoteListItem) => void
   /** Callback when opening a note externally */
@@ -637,6 +639,7 @@ interface NoteRowProps {
   onRenameCancel?: (noteId: string) => void
   isRenaming?: boolean
   onApplyTemplateToNote?: (note: NoteListItem) => void
+  onSaveNoteAsTemplate?: (note: NoteListItem) => void
   onDeleteNote?: (note: NoteListItem) => void
   onOpenExternal?: (note: NoteListItem) => void
   onRevealInFinder?: (note: NoteListItem) => void
@@ -672,6 +675,7 @@ function NoteRow({
   onRenameCancel,
   isRenaming,
   onApplyTemplateToNote,
+  onSaveNoteAsTemplate,
   onDeleteNote,
   onOpenExternal,
   onRevealInFinder,
@@ -874,6 +878,10 @@ function NoteRow({
               <LayoutTemplate className="me-2 h-4 w-4" />
               {t('tree.actions.applyTemplate')}
             </ContextMenuItem>
+            <ContextMenuItem onClick={() => onSaveNoteAsTemplate?.(item.note)}>
+              <Save className="me-2 h-4 w-4" />
+              {t('tree.actions.saveAsTemplate')}
+            </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onIconPickerOpenChange?.(item.note.id)}>
               <Smile className="me-2 h-4 w-4" />
@@ -924,6 +932,7 @@ export function VirtualizedNotesTree({
   onBulkDelete,
   onRenameNote,
   onApplyTemplateToNote,
+  onSaveNoteAsTemplate,
   onDeleteNote,
   onOpenExternal,
   onRevealInFinder,
@@ -1489,6 +1498,7 @@ export function VirtualizedNotesTree({
                   onRenameCancel={onRenameCancel}
                   isRenaming={isRenaming}
                   onApplyTemplateToNote={onApplyTemplateToNote}
+                  onSaveNoteAsTemplate={onSaveNoteAsTemplate}
                   onDeleteNote={onDeleteNote}
                   onOpenExternal={onOpenExternal}
                   onRevealInFinder={onRevealInFinder}

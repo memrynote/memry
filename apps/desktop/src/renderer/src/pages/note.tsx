@@ -21,6 +21,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
+import { SaveNoteAsTemplateDialog } from '@/components/note/save-note-as-template-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { LargeFileViewer } from '@/components/note/large-file-viewer'
 import {
@@ -71,6 +72,7 @@ import {
   Hierarchy,
   PenLine,
   Pencil,
+  Save,
   Search,
   FolderInput,
   Copy,
@@ -228,6 +230,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false)
+  const [isSaveAsTemplateOpen, setIsSaveAsTemplateOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
@@ -1491,6 +1494,7 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'version-history') setIsVersionHistoryOpen(true)
           if (action === 'export') setIsExportDialogOpen(true)
           if (action === 'apply-template') setIsApplyTemplateOpen(true)
+          if (action === 'save-as-template') setIsSaveAsTemplateOpen(true)
           if (action === 'rename') handleRename()
           if (action === 'move-to-folder') setIsMoveDialogOpen(true)
           if (action === 'copy-path') void handleCopyPath()
@@ -1547,6 +1551,11 @@ export function NotePage({ noteId }: NotePageProps) {
               value="apply-template"
               label={t('editor.toolbar.applyTemplate')}
               icon={<PenLine className="size-4" />}
+            />
+            <Picker.Item
+              value="save-as-template"
+              label={t('editor.toolbar.saveAsTemplate')}
+              icon={<Save className="size-4" />}
             />
             <Picker.Item
               value="full-width"
@@ -1888,6 +1897,12 @@ export function NotePage({ noteId }: NotePageProps) {
         noteId={noteId}
         isOpen={isApplyTemplateOpen}
         onClose={() => setIsApplyTemplateOpen(false)}
+      />
+
+      <SaveNoteAsTemplateDialog
+        noteId={noteId}
+        isOpen={isSaveAsTemplateOpen}
+        onClose={() => setIsSaveAsTemplateOpen(false)}
       />
 
       {/* Version History Panel */}
