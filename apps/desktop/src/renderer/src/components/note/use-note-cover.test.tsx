@@ -72,6 +72,38 @@ describe('useNoteCover', () => {
     })
   })
 
+  it('writes the attribution in the same call that sets the cover', async () => {
+    const { result } = renderUseNoteCover()
+
+    await act(() =>
+      result.current.setCover(IMAGE_COVER, {
+        name: 'Ada Lovelace',
+        url: 'https://unsplash.com/photos/ph_1'
+      })
+    )
+
+    expect(mocks.update).toHaveBeenCalledTimes(1)
+    expect(mocks.update).toHaveBeenCalledWith({
+      id: NOTE_ID,
+      frontmatter: {
+        cover: COVER_REF,
+        coverFocus: null,
+        coverCredit: 'Ada Lovelace',
+        coverCreditUrl: 'https://unsplash.com/photos/ph_1'
+      }
+    })
+  })
+
+  it('clears the previous photographer when the new cover has no credit', async () => {
+    const { result } = renderUseNoteCover()
+
+    await act(() => result.current.setCover({ kind: 'wash', id: 'sage' }))
+
+    const [payload] = mocks.update.mock.calls[0] as [{ frontmatter: Record<string, unknown> }]
+    expect(payload.frontmatter.coverCredit).toBeNull()
+    expect(payload.frontmatter.coverCreditUrl).toBeNull()
+  })
+
   it('clamps the focus before it reaches the vault', async () => {
     const { result } = renderUseNoteCover()
 

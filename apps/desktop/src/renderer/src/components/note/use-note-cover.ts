@@ -8,8 +8,13 @@ import { createLogger } from '@/lib/logger'
 
 const logger = createLogger('NoteCover')
 
+export interface CoverCredit {
+  name: string
+  url: string
+}
+
 export interface UseNoteCoverResult {
-  setCover: (value: CoverValue) => Promise<void>
+  setCover: (value: CoverValue, credit?: CoverCredit) => Promise<void>
   setCoverFocus: (focus: number) => Promise<void>
   removeCover: () => Promise<void>
 }
@@ -18,14 +23,21 @@ export function useNoteCover(noteId: string | null, onSaved: () => void): UseNot
   const { t } = useT('notes')
 
   const setCover = useCallback(
-    async (value: CoverValue) => {
+    async (value: CoverValue, credit?: CoverCredit) => {
       if (!noteId) return
       const ref = value.kind === 'wash' ? coverWashRef(value.id) : value.ref
       try {
-        // A new cover invalidates the old photo's framing and attribution.
+        // A new cover invalidates the old photo's framing, and carries either its
+        // own attribution or none. Both land in the one write that sets the cover,
+        // so the note is never briefly credited to the wrong photographer.
         await notesService.update({
           id: noteId,
-          frontmatter: { cover: ref, coverFocus: null, coverCredit: null, coverCreditUrl: null }
+          frontmatter: {
+            cover: ref,
+            coverFocus: null,
+            coverCredit: credit?.name ?? null,
+            coverCreditUrl: credit?.url ?? null
+          }
         })
         onSaved()
       } catch (err) {

@@ -1927,8 +1927,8 @@ export function NotePage({ noteId }: NotePageProps) {
         open={isCoverPickerOpen}
         onOpenChange={setIsCoverPickerOpen}
         noteId={noteId}
-        onApply={(value, { reposition }) => {
-          void setCover(value)
+        onApply={(value, { reposition, credit }) => {
+          void setCover(value, credit)
           setIsRepositioningCover(reposition)
         }}
       />
