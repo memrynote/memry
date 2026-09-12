@@ -273,7 +273,7 @@
       "placeholder": "커버 검색",
       "tab": {
         "washes": "색상",
-        "photos": "사진",
+        "photos": "Unsplash",
         "fromNote": "메모에서",
         "upload": "업로드"
       },

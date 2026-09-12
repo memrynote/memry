@@ -273,7 +273,7 @@
       "placeholder": "カバー画像を検索",
       "tab": {
         "washes": "カラー",
-        "photos": "写真",
+        "photos": "Unsplash",
         "fromNote": "メモから",
         "upload": "アップロード"
       },

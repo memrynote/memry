@@ -273,7 +273,7 @@
       "placeholder": "Поиск обложек",
       "tab": {
         "washes": "Оттенки",
-        "photos": "Фото",
+        "photos": "Unsplash",
         "fromNote": "Из заметки",
         "upload": "Загрузить"
       },
