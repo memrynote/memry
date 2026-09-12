@@ -24,6 +24,9 @@ note a face. Typing in the search field filters the washes by name and never lea
 Search Unsplash and use a photo as the cover. This tab only appears in builds configured with an
 Unsplash access key.
 
+Opening the tab fills it with a set of photos before you type anything, so there is always something
+to pick. The set is chosen fresh each time the picker opens.
+
 Typing searches Unsplash while this tab is selected, and only while it is selected. On every other
 tab the search field is a local filter, so the words you type stay on your machine.
 
@@ -37,9 +40,22 @@ cached for as long as the picker is open, so browsing a term costs a single requ
 
 ### From note
 
-Images the vault already holds. Picking one references the existing file rather than copying it, so
-the same picture can head two notes without a second copy. See
+Images the vault already holds, shown as a grid of the pictures themselves, each captioned with the
+note that stores it. Picking one references the existing file rather than copying it, so the same
+picture can head two notes without a second copy. See
 [Attachments](/user-guide/notes/attachments#the-attachment-picker) for how vault attachments work.
+
+### Link
+
+A picture somewhere on the web. Paste its address into the search field and the tab offers to use it.
+
+memrynote downloads the image into this note's attachments folder rather than pointing the note at
+the address. The note keeps a vault path like every other cover, so the picture works offline, on
+your other devices, and after the page behind the link goes away. Nothing is fetched from that site
+again.
+
+A link that answers with a web page rather than an image — the common case when you copy the address
+of a photo's page instead of the photo — is refused and says so, as is an image larger than 25 MB.
 
 ### Upload
 
@@ -49,8 +65,11 @@ A picture from your computer, stored in this note's attachments folder.
 
 A photo is cropped to the band, so a tall image has to lose something. Hover the cover and choose
 **Reposition**, or use `⌘↵` when applying it, then drag up and down to choose which part of the
-picture the band keeps. `↑` and `↓` nudge it two percent at a time. `↵` saves the framing, `esc`
-leaves it as it was.
+picture the band keeps. `↑` and `↓` nudge it two percent at a time.
+
+**save** and **cancel** sit in the cover's lower corner while you are repositioning, in place of the
+usual toolbar; `↵` and `esc` do the same. Clicking anywhere else on the page also saves the framing,
+so you are never stuck in reposition.
 
 Washes have no reposition control. A gradient has nothing to reframe.
 
