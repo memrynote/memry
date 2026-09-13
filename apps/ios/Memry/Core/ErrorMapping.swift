@@ -116,6 +116,11 @@ enum ErrorMapping {
         if let error = error as? CrdtError { return userFacing(error) }
         if let error = error as? ApiError { return userFacing(error) }
         if let error = error as? AuthError { return userFacing(error) }
+        // T153/T154. `LinkingError` is newer than `core-api.md`'s list of
+        // seven and was uncovered until the two linking screens landed: a
+        // caught `LinkingError` fell through to `unrecognised`, which is
+        // honest but says nothing about a QR code.
+        if let error = error as? LinkingError { return userFacing(error) }
         return nil
     }
 
@@ -511,6 +516,84 @@ extension ErrorMapping {
         case .Failed:
             copy("editor.failed", "The editor could not complete that.",
                  "Try again.", .retry)
+        }
+    }
+}
+
+// MARK: - Device linking
+//
+// T153/T154. Chapter 03's fourteen variants, and the four distinctions the
+// flow turns on: a code that was never a Memry code, a code whose secret was
+// the wrong size, a window that closed, and a peer that did not hold the
+// shared secret. They are four sentences because they are four next actions.
+//
+// **Nothing here echoes a payload.** `InvalidQrPayload` and `InvalidLength`
+// both carry a `what` naming the field, and none of it reaches a sentence: the
+// QR carries a 256-bit one-time secret and a session id, and a string that
+// reaches an alert can reach a screenshot.
+extension ErrorMapping {
+    // Fourteen `case`s and no other branch, so the measured complexity is the
+    // size of the enum. Same argument as `ApiError` above: a `default:` is
+    // what the contract forbids, and splitting the switch leaves unreachable
+    // arms in each half. Scoped here, with the reason.
+    // swiftlint:disable:next cyclomatic_complexity
+    static func userFacing(_ error: LinkingError) -> UserFacingError {
+        switch error {
+        case .InvalidQrPayload:
+            copy("linking.invalidQrPayload", "That is not a Memry linking code.",
+                 "Scan the code your computer is showing, or paste it exactly as it appears.", .retry)
+        // §3.3: the decoded `linkingSecret` must be exactly 32 bytes, and the
+        // server's schema is only `min(1)`, so this is the client's refusal of
+        // a code that looked well-formed and was not.
+        case .InvalidLength:
+            copy("linking.invalidLength", "That linking code is not the right size.",
+                 "Part of it is missing or was altered. Show a new code on your computer and scan it.", .retry)
+        case .InvalidBase64:
+            copy("linking.invalidBase64", "Memry could not read part of that linking code.",
+                 "It may have been copied incompletely. Show a new code on your computer and scan it.", .retry)
+        // §3.12's `LINKING_SECRET_INVALID`: the QR was wrong.
+        case .ScanMacInvalid:
+            copy("linking.scanMacInvalid", "That code is not the one your computer is showing.",
+                 "Show a new code on your computer and scan it.", .retry)
+        // §3.9: raised before the master key is touched, so nothing was
+        // decrypted and nothing was stored. Never described as a retry of the
+        // same code, which cannot work.
+        case .ConfirmMacInvalid:
+            copy("linking.confirmMacInvalid", "Memry could not verify that computer.",
+                 "The two devices did not agree on a key, so nothing was transferred. " +
+                 "Start the link again on your computer.")
+        // §3.10 makes this block hard-fail, and it came from the peer rather
+        // than from the camera, so it is not "scan more carefully".
+        case .InvalidVaultTransfer:
+            copy("linking.invalidVaultTransfer", "Your computer's vault list did not arrive intact.",
+                 "Nothing was unlocked on this phone. Start the link again on your computer.")
+        // §3.4: 300 s, absolute, and neither the scan nor the approval extends
+        // it. The duration is not rendered — the recourse is a new code.
+        case .SessionExpired:
+            copy("linking.sessionExpired", "That linking code has expired.",
+                 "Codes are only good for a few minutes. Show a new one on your computer and scan it.", .retry)
+        case .NotScanned:
+            copy("linking.notScanned", "Memry has no linking code to check yet.",
+                 "Scan the code your computer is showing to start.", .retry)
+        // Refused rather than silently replacing the first session: a client
+        // that dropped its own would be reporting the wrong one.
+        case .AlreadyScanned:
+            copy("linking.alreadyScanned", "Memry is already linking with a code you scanned.",
+                 "Finish that link on your computer, or stop it here and scan a new code.")
+        // §3.4's budget, refused **before** a request is spent. Transient by
+        // construction: the core says how long to wait and the poll resumes.
+        // No duration in the copy (`DESIGN.md`).
+        case .PollBudgetExhausted:
+            copy("linking.pollBudgetExhausted", "Memry is checking with the server too often.",
+                 "It will check again shortly. Nothing has been lost.", .retryLater)
+        case let .Crypto(source):
+            userFacing(source)
+        case let .Cbor(source):
+            userFacing(source)
+        case let .Api(source):
+            userFacing(source)
+        case let .SecureStore(source):
+            userFacing(source)
         }
     }
 }

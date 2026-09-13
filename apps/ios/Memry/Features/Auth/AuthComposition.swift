@@ -27,6 +27,16 @@ struct AuthGraph {
     /// Held so a second consumer of the **same** session can be built over it.
     /// See `AuthComposition.googleSignIn`.
     let transport: URLSessionTransport
+    /// T153/T154, and the caller spec-defect 114 was waiting for.
+    ///
+    /// A **separate core object** rather than a method on `AuthSession`: both
+    /// of chapter 03's phone-side routes are unauthenticated (§3.1), so the
+    /// linking client deliberately carries no token provider, and a second
+    /// `AuthSession` over the same keychain entries would be a chapter 02 §2.9
+    /// device revocation. It shares the transport and the keychain, because
+    /// one `URLSession` and one `Keychain` in the process is the rule the rest
+    /// of this file exists to keep.
+    let deviceLink: DeviceLink
 }
 
 /// Builds the production object graph.
@@ -72,14 +82,25 @@ enum AuthComposition {
         keychainItems: any KeychainItemStore = SystemKeychainItemStore()
     ) throws -> AuthGraph {
         let transport = URLSessionTransport(emitter: emitter, configuration: transportConfiguration)
+        let store = Keychain(emitter: emitter, items: keychainItems)
         let session = try AuthSession(
             transport: transport,
-            secureStore: Keychain(emitter: emitter, items: keychainItems),
+            secureStore: store,
             baseUrl: environment.baseURL,
             clientPlatform: clientPlatform,
             device: device
         )
-        return AuthGraph(session: session, transport: transport)
+        // Blocking and does no I/O at all (spec-defect 90), so building it
+        // beside the session costs nothing and keeps the whole graph on one
+        // trip through `CoreExecutor`.
+        let deviceLink = try DeviceLink(
+            transport: transport,
+            secureStore: store,
+            baseUrl: environment.baseURL,
+            clientPlatform: clientPlatform,
+            appVersion: device.appVersion
+        )
+        return AuthGraph(session: session, transport: transport, deviceLink: deviceLink)
     }
 
     /// T165. The production Google flow, or `nil` when this build carries no

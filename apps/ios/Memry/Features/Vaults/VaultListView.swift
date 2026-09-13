@@ -21,7 +21,27 @@ import SwiftUI
 struct VaultListView: View {
     let model: VaultSelectionViewModel
 
+    /// T156's hand-off, and the only edge out of this screen.
+    ///
+    /// An opened vault stops being a notice and becomes the browse surface.
+    /// It replaces this view rather than nesting inside it: `NotesListView`
+    /// owns a `NavigationStack`, and a stack inside this `ScrollView` would be
+    /// a scroll view inside a scroll view with no bounded height. The switch
+    /// is handed on so it stays reachable from there (FR-021).
     var body: some View {
+        if case let .opened(summary) = model.phase, let vault = model.vault {
+            NotesListView(
+                vault: vault,
+                title: VaultLabel(summary).text,
+                executor: .shared,
+                switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil
+            )
+        } else {
+            selection
+        }
+    }
+
+    private var selection: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
                 switch model.phase {

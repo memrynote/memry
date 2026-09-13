@@ -59,6 +59,11 @@ final class AuthStartup {
     /// list is a second consumer of the **same** session — a second one would
     /// be a second device registration (chapter 02 §2.9).
     private(set) var session: (any AuthSessionProtocol)?
+
+    /// T153/T154's dependency, and the production call site spec-defect 114
+    /// stayed open for. Built in `start(in:)` beside the session, over the
+    /// same transport and the same keychain.
+    private(set) var deviceLink: (any DeviceLinkProtocol)?
     private let transportConfiguration: URLSessionConfiguration
     private let keychainItems: any KeychainItemStore
 
@@ -97,6 +102,27 @@ final class AuthStartup {
             executor: executor,
             source: keyMaterial,
             secureStore: Keychain(emitter: events.emitter, items: keychainItems)
+        )
+    }
+
+    /// T153/T154. The device-linking flow, for a registered device that has
+    /// no master key yet — the same moment ``unlockModel(for:)`` answers, and
+    /// the other way through it.
+    ///
+    /// `nil` before the core object exists, which is the rule the two screens
+    /// above follow: `UnlockRouteView` then offers only the phrase, because an
+    /// affordance leading nowhere is worse than its absence.
+    ///
+    /// The camera is the shell's (spec-defect 107: nothing exported accepts a
+    /// `CodeCapture`), so the scanner is constructed here and the view model
+    /// drives it, handing the decoded string to the core unread.
+    func linkModel(for state: AuthState) -> DeviceLinkingViewModel? {
+        guard state == .registered, let deviceLink else { return nil }
+        return DeviceLinkingViewModel(
+            link: deviceLink,
+            capture: QRCodeScanner(emitter: events.emitter),
+            secureStore: Keychain(emitter: events.emitter, items: keychainItems),
+            executor: executor
         )
     }
 
@@ -175,6 +201,7 @@ final class AuthStartup {
             }
             let session = graph.session
             self.session = session
+            deviceLink = graph.deviceLink
             // **T165, spec-defect 121.** `AuthSession::new` builds the machine
             // in `SignedOut` whatever the keychain holds, so before this line a
             // registered user who quit the app was shown the sign-in screen
@@ -224,6 +251,7 @@ final class AuthStartup {
 struct AuthRootView: View {
     @State private var startup = AuthStartup()
     @State private var unlock: RecoveryPhraseViewModel?
+    @State private var link: DeviceLinkingViewModel?
     @State private var vaults: VaultSelectionViewModel?
 
     var body: some View {
@@ -242,7 +270,10 @@ struct AuthRootView: View {
                     if let vaults {
                         VaultListView(model: vaults)
                     } else if let unlock {
-                        RecoveryPhraseView(model: unlock)
+                        // T153/T154. The phrase and the nearby computer are
+                        // the two ways into the same locked vault, offered
+                        // together rather than one behind the other.
+                        UnlockRouteView(phrase: unlock, link: link)
                     } else {
                         SignInView(model: model)
                     }
@@ -254,6 +285,13 @@ struct AuthRootView: View {
                 // key is in the store, so §C.2's `Unlocking -> Unlocked` has
                 // happened and the next question is which vault.
                 .onChange(of: unlock?.isUnlocked ?? false) { _, _ in
+                    route(for: model.state)
+                }
+                // T153/T154. A completed link ends the unlock step exactly as
+                // a correct phrase does: the master key is in the store, so
+                // §C.2's `Unlocking -> Unlocked` has happened by the other
+                // road and the next question is still which vault.
+                .onChange(of: link?.isLinked ?? false) { _, _ in
                     route(for: model.state)
                 }
             case let .unavailable(error):
@@ -273,13 +311,16 @@ struct AuthRootView: View {
     private func route(for state: AuthState) {
         guard state == .registered else {
             unlock = nil
+            link = nil
             vaults = nil
             return
         }
-        if unlock?.isUnlocked == true || startup.isAlreadyUnlocked() {
+        if unlock?.isUnlocked == true || link?.isLinked == true || startup.isAlreadyUnlocked() {
             unlock = nil
+            link = nil
         } else if unlock == nil {
             unlock = startup.unlockModel(for: state)
+            link = startup.linkModel(for: state)
         }
         if unlock == nil, vaults == nil {
             vaults = startup.vaultModel(for: state)
