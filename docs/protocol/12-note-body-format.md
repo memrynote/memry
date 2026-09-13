@@ -19,23 +19,65 @@ Electron main process on desktop**
 
 The two directions:
 
-| Direction             | Mechanism                                                                                                                                                                                                                      |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| markdown → document   | the optional `seedMarkdown` field on the `doc-load` message (`packages/contracts/src/webview-bridge.ts:41-59`), applied by the guest **only when the document is genuinely empty** (`packages/editor-web/src/main.ts:446-453`) |
-| document → markdown   | the `export-markdown` message (`packages/contracts/src/webview-bridge.ts:224-228`, handled at `packages/editor-web/src/main.ts:234-238`)                                                                                       |
-| document → plain text | `extract_text`, the **only** text operation a non-editor client owns: a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity             |
+| Direction                                  | Mechanism                                                                                                                                                                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| markdown → document, **verbatim**          | the optional `seedMarkdown` field on the `doc-load` message, applied by the guest **only when the document is genuinely empty**                                                                                    |
+| markdown → document, **frontmatter split** | the `seed-from-markdown` message, answered by `markdown-seed`                                                                                                                                                      |
+| document → markdown                        | the `export-markdown` message, answered by `markdown-export`                                                                                                                                                       |
+| document → plain text                      | `extract_text`, the **only** text operation a non-editor client owns: a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity |
 
-**There is no `seed-from-markdown` message.** That name appears in planning
-documents and is a proposed rename; the production field is `doc-load.seedMarkdown`.
+#### 12.1.0 There are two markdown → document paths, and they differ deliberately
+
+An earlier revision of this chapter said "**there is no `seed-from-markdown`
+message** … that name is a proposed rename". That was true when it was written
+and is **no longer true**: the message exists, and it is not a rename of
+`doc-load.seedMarkdown` — both paths are live and they behave differently on
+purpose.
+
+|             | `doc-load.seedMarkdown`                      | `seed-from-markdown`                   |
+| ----------- | -------------------------------------------- | -------------------------------------- |
+| frontmatter | **not split** — the input is parsed verbatim | **split off and discarded**            |
+| when        | a document is opened and is genuinely empty  | note creation and template application |
+| answered by | nothing; it rides on `doc-load`              | `markdown-seed`                        |
+
+**Why the new path discards frontmatter rather than reading it.** A new note's
+`tags` and `properties` come from the note record, which the core has already
+written (chapter 13 §13.7.1, §13.7.6). A guest that re-derived them from the
+frontmatter block would be a second source of truth for the same two fields,
+disagreeing with the record the moment the two were written from different
+inputs. The core still does no markdown handling at all — **frontmatter
+included** — because the split happens in the bundle.
+
+**Both messages are additive at `BRIDGE_PROTOCOL_VERSION` 1.** Adding a member
+to a discriminated union cannot change how an existing message parses, so a host
+that never sends `seed-from-markdown` behaves exactly as it did.
+
+**A parse failure MUST NOT be reported as an empty document.** `markdown-seed`
+carries a three-way result — `seeded`, `skipped` with a reason, or `error` with a
+non-empty detail — and the document is left untouched on either throw. The
+distinction is load-bearing rather than cosmetic: the host clears
+`note_bodies.seed_markdown` on `seeded` and `skipped` and **keeps** it on
+`error`, and until a seed lands that column is the only copy of what the user
+asked for (data-model §A.3). A request naming a document that is not mounted is
+**answered** with an error rather than met with silence, because silence strands
+that lifecycle with no way to tell "not yet" from "never".
 
 ### 12.1.1 The guest does not run desktop's pipeline
 
 **Normative, and a client MUST NOT assume otherwise.** The guest calls
-BlockNote's `tryParseMarkdownToBlocks`
-(`packages/editor-web/src/main.ts:448`) and `blocksToMarkdownLossy`
-(`packages/editor-web/src/main.ts:238`) and **nothing else**: no frontmatter
-split, no critic-markup strip, no link-reference strip, no inline-colour masking,
-no source record.
+BlockNote's `tryParseMarkdownToBlocks` and `blocksToMarkdownLossy`
+(`packages/editor-web/src/markdown-bridge.ts`) and **nothing else**: no
+critic-markup strip, no link-reference strip, no inline-colour masking, no
+source record.
+
+**The one exception is the frontmatter split, and only on `seed-from-markdown`.**
+That path calls the shared splitter (`packages/shared/src/frontmatter-split.ts`)
+before handing the body to BlockNote. `doc-load.seedMarkdown` still splits
+nothing — it parses its input verbatim — and §12.1.0 tabulates the difference.
+The splitter is shared rather than reimplemented: it moved to `@memry/shared`
+unchanged so the bundle can import it without pulling in gray-matter, and
+`@memry/app-core` re-exports it, so there is exactly one implementation in the
+tree.
 
 Desktop additionally runs, inbound, `prepareFragmentSeed` → `applyFragmentSeed`
 (`apps/desktop/src/main/sync/blocknote-converter.ts:462-475`) and
@@ -129,7 +171,7 @@ desktop is the only writer; and desktop writes from the Y.Doc
 `restoreMarkdownSource` returns the source untouched when `ours === base`
 (`packages/shared/src/markdown-source.ts:68`),
 `serializeParsedMarkdownNote` re-emits the raw frontmatter block and the body
-verbatim when unedited (`packages/app-core/src/markdown.ts:86-92`), and
+verbatim when unedited (`packages/app-core/src/markdown.ts:62-68`), and
 `writebackExisting` skips the write entirely when the bytes match
 (`apps/desktop/src/main/sync/crdt-writeback.ts:563-566`).
 
@@ -194,7 +236,7 @@ local storage layout.
 
 ### 12.4.1 The split is byte-exact by construction
 
-**Normative** (`packages/app-core/src/markdown.ts:21-40`):
+**Normative** (`packages/shared/src/frontmatter-split.ts:17-60`, re-exported by `packages/app-core/src/markdown.ts:15-16`):
 
 - `splitFrontmatterBlock` slices the block by hand using the same `---`
   delimiters gray-matter uses, so that **`block + body === raw` holds byte-exact**
@@ -207,11 +249,11 @@ local storage layout.
 
 `parseMarkdownNote` records `eol` — `\r\n` if the file contains one anywhere,
 else `\n` — and `hadTrailingNewline`, and **never trims the body**
-(`packages/app-core/src/markdown.ts:51-62`).
+(`packages/app-core/src/markdown.ts:27-39`).
 
 ### 12.4.2 The preservation rule
 
-**Normative** (`packages/app-core/src/markdown.ts:78-97`):
+**Normative** (`packages/app-core/src/markdown.ts:54-74`):
 
 - unless the frontmatter was edited, **the original raw block is re-emitted
   verbatim** (`:86-88`), which is what preserves comments, key order, quoting, CR
@@ -223,7 +265,7 @@ else `\n` — and `hadTrailingNewline`, and **never trims the body**
 
 New files are written **LF only with a single trailing newline**, and user
 content never flows through `matter.stringify`
-(`packages/app-core/src/markdown.ts:128-139`).
+(`packages/app-core/src/markdown.ts:104-115`).
 
 ### 12.4.3 The decision: the only guarantee is the verbatim path
 
@@ -231,7 +273,7 @@ content never flows through `matter.stringify`
 
 **A frontmatter block that the CRDT tag array, remote tags and remote properties
 all left alone is re-emitted byte for byte
-(`packages/app-core/src/markdown.ts:86-88`). When any of those alters it, the
+(`packages/app-core/src/markdown.ts:62-64`). When any of those alters it, the
 block is regenerated and clients MUST NOT depend on key order, quoting style,
 comment survival, or scalar spelling. A non-desktop client MUST NOT emit YAML at
 all.**
@@ -239,7 +281,7 @@ all.**
 The regenerated order is a composition of JavaScript semantics and js-yaml
 defaults, **not a policy**: `stringifyFrontmatterBlock` drops `undefined`, emits
 `''` for zero keys, and hands the object to `matter.stringify`
-(`packages/app-core/src/markdown.ts:126-135`); gray-matter 4.0.3 does
+(`packages/app-core/src/markdown.ts:102-111`); gray-matter 4.0.3 does
 `Object.assign({}, file.data, data)` and calls `yaml.safeDump`; js-yaml 3.15.1
 defaults are `sortKeys: false`, `lineWidth: 80`, `noCompatMode: false`.
 
@@ -250,7 +292,7 @@ Per path:
 | CRDT write-back   | `{ ...existing }` then `merged.tags = yjsTags` (`apps/desktop/src/main/sync/crdt-writeback.ts:949-953`) — existing keys hold position, `tags` is **appended only if absent**. Journal `{ ...existing, date }` (`:966`) behaves the same                                                                                     |
 | remote tags       | assignment or `delete` in place (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:357-361`, `:404-408`)                                                                                                                                                                                                            |
 | remote properties | `replacePropertiesOnRoot` normalises, deletes every property key, then re-adds them in the **record's** order (`apps/desktop/src/main/vault/frontmatter.ts:414-434`, `:438-449`, `:452-461`). **Editing one property moves every property to the end of the block.**                                                        |
-| new file          | `serializeNote` → `normalizePropertiesToRoot` → `writeMarkdownNote` (`apps/desktop/src/main/vault/frontmatter.ts:186-188`, `packages/app-core/src/markdown.ts:131-139`); a remote create builds `{tags?, aliases?, properties?}` in that literal order (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:601-607`) |
+| new file          | `serializeNote` → `normalizePropertiesToRoot` → `writeMarkdownNote` (`apps/desktop/src/main/vault/frontmatter.ts:186-188`, `packages/app-core/src/markdown.ts:107-115`); a remote create builds `{tags?, aliases?, properties?}` in that literal order (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:601-607`) |
 
 **Value re-spelling is part of the same loss.** `parseNote` uses js-yaml
 `safeLoad`, so `date: 2026-07-05` becomes a `Date`
@@ -258,7 +300,7 @@ Per path:
 dumper re-emits it as `toISOString()`, i.e.
 `2026-07-05T00:00:00.000Z`. **Any frontmatter edit rewrites every bare date.**
 Comments, quoting style and blank lines survive only on the verbatim path
-(`packages/app-core/src/markdown.ts:16-19`).
+(`packages/app-core/src/markdown.ts:5-13`).
 
 **Rationale for B.** A real ordering policy would change bytes for every existing
 user on their next tag edit, which the mandatory-backward-compatibility rule
