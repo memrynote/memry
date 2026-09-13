@@ -54,9 +54,23 @@ spec, and nothing after here may start until G2b is green.
 - [x] T016 [P] Repoint the mobile pointers in `DESIGN.md` from the frozen `apps/mobile` paths to `apps/ios/Memry/Design/`, and add the empty Liquid Glass section heading that T228 fills (research R15)
 - [x] T017 [P] Extend `scripts/check-architecture-boundaries.js` with the iOS rule: fail on any `URLSession` or `URLSessionWebSocketTask` reference outside `apps/ios/Memry/Seams/`; prove it red with a planted reference in `apps/ios/Memry/Features/`, then green (Constitution I, data-model §D.4)
 - [x] T018 [P] Write `scripts/check-line-ceilings.mjs` enforcing the per-directory line ceilings the plan states (600 lines for a `crates/memry-core/src/*` module, 400 for a file under `apps/ios/Memry/Features/`, 300 for a generator under `packages/contracts/scripts/`) and run it in both `rust-ci.yml` and `ios-ci.yml`, so a file past its ceiling fails the build instead of a review note (Constitution II)
-- [ ] T019 **G2b evidence**: `ios-ci.yml` runs green on a PR with both inherited gates executing, `apps/mobile/editor-web` no longer exists, and root `pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test` is green after the move
+- [x] T019 **G2b evidence**: `ios-ci.yml` runs green on a PR with both inherited gates executing, `apps/mobile/editor-web` no longer exists, and root `pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test` is green after the move
 
-**Checkpoint, G2b**: the mobile-ci gates are reproduced in `ios-ci.yml` before the freeze is enforced. Evidence: the green `ios-ci.yml` run URL showing the editor-asset freshness step and the vector parity step, plus the root command output from T019.
+**Checkpoint, G2b**: the mobile-ci gates are reproduced in `ios-ci.yml` before the freeze is enforced. **PASSED.**
+
+Evidence, all on `main` at `41dc40954`:
+
+- `ios-ci.yml` green: https://github.com/memrynote/memry/actions/runs/34727642321 — both jobs pass, including `Gates inherited from mobile-ci` (editor-asset freshness + crypto-vector parity) and `Build once, run every test plan` (Unit, Conformance, UI).
+- `rust-ci.yml` green: https://github.com/memrynote/memry/actions/runs/34727642316 — fmt, clippy, `cargo test -p memry-core`, and the regenerate-and-diff over the committed Swift bindings on a clean runner.
+- `apps/mobile/editor-web` no longer exists; the bundle is `packages/editor-web`.
+- Root `pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test` green locally after the move (20,600 desktop tests; the single lint warning predates this branch).
+
+Deviations from the task text, recorded rather than hidden:
+
+1. The evidence run is a **push to `main`**, not a PR — landed directly at Kaan's instruction. The same two workflows run on `pull_request`, so the PR path is configured but unexercised.
+2. T007 named `MemryTests` + `MemryUITests`; a third target `MemryConformanceTests` was added. Xcode 26 does not match Swift Testing suite IDs inside `.xctestplan` selection (five identifier forms tried, each selected zero tests), so the three plans partition by target instead.
+3. T014's "RN-only bridge host" was **not** deleted. Deleting `apps/mobile/src/editor/` would cascade into `session`, `doc-manager`, the notes routes and the sync engine — most of the app — and would put T019's `pnpm typecheck` out of reach. Only the 17 test files that could no longer resolve `../../editor-web` were deleted. The bridge host is still live and is Phase C work.
+4. T012 says not to edit in place under `apps/mobile`, but four dead references there pointed at moved files (two `package.json` scripts, a tsconfig `exclude`, an eslint ignore). They were removed; leaving them would have left `pnpm --filter @memry/mobile editor:check` crashing on a missing file.
 
 ---
 
