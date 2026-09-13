@@ -9,38 +9,30 @@ Branch `native-core-phase-3` in `.worktrees/native-core-phase-3`,
 fast-forwarded with `origin/main` and pushed straight to main, no PR, per
 Kaan's standing instruction.
 
-## STOP HERE FIRST: nothing is blocked on a decision any more
+## STOP HERE FIRST: defect 114 is closed; five tasks remain
 
-The defect log is **128 logged, 126 closed, 2 open**. Neither open entry blocks
-the next wave.
+The defect log is **130 logged, 128 closed, 2 open**. **Neither open entry
+blocks the checkpoint.**
 
-| #       | State                                                                                                                                                                           |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **114** | Device-linking exports **landed** (T235). Stays open until **T153/T154** give them a production call site — by this phase's own standard, an export with no caller is not done. |
-| **128** | The local vault key verifier has **nowhere to live on iOS**, so data-model §C.2's "both verifiers are checked" is false there. **Not checkpoint-blocking.**                     |
+| #       | State                                                                                                                                                                                                                                                                                                             |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **128** | The local vault key verifier has **nowhere to live on iOS** — `SecureStoreKey` is a closed five-entry enum and the core exports no settings surface — so data-model §C.2's "both verifiers are checked" is false there. The account verifier still catches a wrong phrase.                                        |
+| **130** | The `CodeCapture` seam exposes **no camera preview**, so scanning is blind: the screen can say the camera is running but not show what it is pointed at, and the failure is silent. The paste fallback is a complete path, so T161 is unaffected. **Decide before the camera path goes in front of a real user.** |
 
-Kaan settled the three that were blocking: **124** show only configured folders,
-**125** preview rather than render, and **T235** for device linking, which has
-landed. **The next wave is T153 (QR) and T154 (SAS)** — the screens that close
-114 by becoming `DeviceLink`'s callers.
+**114 closed on 2026-09-14** and it is the entry worth reading once more. It
+began as "the core exports nothing the rest of Phase 4 needs" and ended with
+every capability exported **and called** — the standard the entry itself
+insisted on, which is why T235 deliberately left it open until T153/T154 landed.
 
-**128 is the one to keep in view.** `derive_vault_key` and
-`local_vault_key_verifier` are both exported, but there is nowhere to persist
-the result: chapter 01 §1.4.2 keeps it in desktop's settings table, the core
-exports no settings surface, and `SecureStoreKey` is a **closed five-entry
-enum**. The account verifier (§1.4.1) still catches a wrong recovery phrase, so
-this is not urgent — but a sentence in the data model is currently false in the
-shipping client, which is precisely what this log exists to surface. The honest
-fixes are a sixth `SecureStoreKey` entry (additive, needs a migration story) or
-a settings export (band B3's remainder).
+**The pattern it exposed is the thing to carry forward.** Work was specified
+against a capability nobody had checked existed **five times in one phase**:
+114, 124, 125, 127, and the cut T156a. Every one would have been caught by a
+`grep` over
+`packages/swift/MemryCore/Sources/MemryCore/Generated/memry_core.swift`
+**before the brief was written**. The fifth was caught that way. Do it first,
+every time.
 
-**The pattern worth carrying forward.** Defects 114, 124, 125 and 127 are all
-the same shape: **work specified against a capability nobody had checked
-existed.** Four times in one phase. A `grep` over the generated Swift costs five
-seconds and would have caught every one of them before a wave was dispatched.
-Do that before writing a brief, not after an agent hits the wall.
-
-## State: **Phase 4 at 16 of 24 ticked.** Phase 3 closed 64/64.
+## State: **Phase 4 at 19 of 24 ticked.** Phase 3 closed 64/64.
 
 T149, T150, T151 and **T156a** are **CUT**; T163, T164, T165 and T235 were
 **added**. **T156a was cut today**: `Notes` exports only `folders`/`list`/`read`,
@@ -60,7 +52,7 @@ the outbox and the push path. Cut, not deleted; nothing depends on it. Read the 
 | W8   | **T235 device-linking exports (new-device half)**              | **NEXT**         |
 | W9+  | T155, T156, T156a, T157, T158, T159, then T161/T162 with Kaan  | partly unblocked |
 
-**Open: T153, T154, T156, T157, T158, T159, T161, T162** — eight, and none blocked on a decision.
+**Open: T157, T158, T159, T161, T162** — five, none blocked on a decision.
 
 ## What this session actually changed
 
@@ -138,15 +130,15 @@ The per-file `swiftlint` every brief prescribes is not the gate CI runs.
 | `cargo fmt --all --check`                              | clean                                          |
 | `cargo clippy --all-targets -- -D warnings`            | clean                                          |
 | `cargo test`                                           | **577 passed, 0 failed, 1 ignored**            |
-| `node scripts/check-line-ceilings.mjs`                 | passed (132 files)                             |
+| `node scripts/check-line-ceilings.mjs`                 | passed (140 files)                             |
 | `pnpm --filter @memry/contracts vectors:check`         | passed (11 classes)                            |
 | `pnpm check:architecture`                              | passed                                         |
-| `swiftlint lint --strict` (project-wide, bare)         | **0 violations, 0 serious, 57 files**          |
-| xcodebuild `Unit`, **whole plan**, iPhone 17 simulator | **247 total, 245 passed, 0 failed, 2 skipped** |
+| `swiftlint lint --strict` (project-wide, bare)         | **0 violations, 0 serious, 70 files**          |
+| xcodebuild `Unit`, **whole plan**, iPhone 17 simulator | **284 total, 282 passed, 0 failed, 2 skipped** |
 | generated Swift diff vs HEAD                           | **0 deleted lines**                            |
 | **iOS CI on `main`**                                   | **GREEN**, both jobs, verified job-by-job      |
 
-The 247 was **precomputed before the result was read**.
+The 284 was **precomputed before the result was read**.
 The 2 skips are exactly the device-gated tests from defect 115(a), which
 previously failed. The xcodebuild run used the **same signing flags the
 workflow now passes**, and the keychain suite passed under them with an empty
@@ -304,23 +296,28 @@ The entry now carries the real reason.
 
 ## Checkpoint status
 
-**NOT MET, but nothing is blocked on a decision and both unlock paths now have
-a core to call.**
+**NOT MET — but both unlock paths are now built, and five tasks remain.**
 
-- **Recovery phrase**: buildable and wired. T163 exports the key material, T165
-  restores the session across a relaunch, T155 picks a vault and opens it
-  through `VaultFiles.openingVault`.
-- **Device link**: the exports landed in T235 (`DeviceLink.scan` / `pollOnce`).
-  **T153 and T154 are the missing screens**, and they are the next wave.
+- **Recovery phrase**: built and wired (T163, T165, T155).
+- **Device link**: built and wired (T235 exports, T153/T154 screens). The
+  manual path is a **paste** field, not typing — the QR payload is ~200
+  characters of JSON, which is spec-defect 129.
+- **Browse**: built (T156), read-only by decision, with unconfigured folders
+  hidden and their notes still visible under a named section.
 
-After those: T156/T156a (notes and folders — Kaan decided the tree shows only
-configured folders), T157 (a **text preview**, not a render), T158 (which owns
-`CoreEvents.consume()`, §7.15.1's runtime half and the `snapshot_is_due` poll),
-T159, then **T161/T162 with Kaan and the phone, about half an hour together**.
+Remaining: **T157** (a text preview — T156's report lists exactly what it needs,
+including that `NoteRowLabel` is deliberately not yet a `NavigationLink` and
+that `BrowseSourceTests` asserts one `navigationDestination` and must be updated
+to two in the same change), **T158** (which owns three runtime obligations:
+`CoreEvents.consume()`, §7.15.1's `purged_documents`/`advanced_documents`, and
+the `snapshot_is_due` poll), **T159**, then **T161/T162 with Kaan and the phone,
+about half an hour together**.
 
-Before T161, two config keys must land in `Info.plist` or the app cannot reach a
+**Before T161, two keys must reach `Info.plist`** or the app cannot reach a
 server or authenticate as the right OAuth client: **`MemrySyncEnvironment`**
 (defect 110) and **`MemryGoogleClientID`** (defect 117). A release build is
-deliberately `notConfigured` until then.
+deliberately `notConfigured` until then. Also confirm the **staging recovery
+phrase still works** — it was pasted into a Phase 3 transcript and Kaan was
+asked to rotate it; still unconfirmed.
 
 No vault has been opened on a phone yet.
