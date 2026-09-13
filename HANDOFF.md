@@ -35,6 +35,18 @@ Then W5 `{T112, T113}`, which is where staging first becomes reachable.
 
 ## What went wrong, so it is not repeated
 
+**Never `git add -A` while a subagent is live.** Doing exactly that swept W3a's in-flight
+`src/api/runtime.rs` into the T232 commit `ed72ed87e` and pushed it to main. The file was
+not declared in `api/mod.rs`, so it was not compiled and no gate had ever touched it — 292
+unverified lines on main inside a commit whose message did not mention them. Backed out in
+the commit that follows; the file stays on disk for W3a to finish and land properly. Stage
+explicit paths, always.
+
+**The docs gate fires on `packages/contracts` changes.** `docs/protocol/` is not part of the
+user-facing docs site (`apps/docs/src`), so a vectors-only change reports `missing-docs`.
+`MEMRY_DOCS_IMPACT_SKIP=1` is correct there _when_ the governing protocol chapter changed in
+the same commit, which rule 3 of the vectors README requires anyway. Say why, every time.
+
 Three subagents dispatched into one worktree at once all died without writing a file.
 They each started a cold `cargo` build against the shared `crates/target`, and cargo
 serialises on that lock. Two concurrent agents worked fine afterwards. **Cap at two in this
