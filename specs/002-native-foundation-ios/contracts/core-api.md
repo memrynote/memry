@@ -105,10 +105,10 @@ Two exist. Both are `#[uniffi::export]`ed objects with interior mutability,
 because a UniFFI object crosses as a reference and the shell holds it for the
 app's lifetime. Neither exposes a key.
 
-| Object        | Methods                                                                                                                                                       | Chapter |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `RuntimeHost` | `new`, `on_background`, `on_foreground`, `on_expiring`, `phase`, `resume_settled`                                                                             | plan R5 |
-| `AuthSession` | `new`, `state`, `request_email_code`, `resend_email_code`, `verify_email_code`, `register_device`, `renew_setup_token`, `refresh`, `mark_revoked`, `sign_out` | 02      |
+| Object        | Methods                                                                                                                                                                                                  | Chapter |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `RuntimeHost` | `new`, `on_background`, `on_foreground`, `on_expiring`, `phase`, `resume_settled`                                                                                                                        | plan R5 |
+| `AuthSession` | `new`, `state`, `mark_revoked` are **synchronous**; `request_email_code`, `resend_email_code`, `verify_email_code`, `register_device`, `renew_setup_token`, `refresh`, `sign_out` are **`async throws`** | 02      |
 
 Two data enums cross with them: `AuthState`, the nine states of data-model
 §C.1 — `SignedOut`, `AwaitingOtp`, `AwaitingProviderToken`, `SetupPending`,
@@ -118,6 +118,17 @@ Two data enums cross with them: `AuthState`, the nine states of data-model
 
 `RuntimeHost` also implements the `LifecycleObserver` seam in plain Rust, so
 the shell supplies phase transitions rather than a whole observer.
+
+**Which methods are async is contract, not an implementation detail**
+(spec-defect 90). Research R15 says the core exposes synchronous blocking
+functions, and that is true of every exported free function and of
+`RuntimeHost` — but **seven of `AuthSession`'s nine methods suspend**. The
+distinction decides how a shell calls them: a blocking call must be moved off
+the main thread onto the shell's serial core queue, while an async one is
+awaited directly, because pushing a suspending call through that queue parks a
+queue thread on a semaphore and stalls every other core call behind a network
+round trip. A table that did not say which was which left each caller to
+discover it from the generated Swift, and to answer differently.
 
 ## Planned objects — band B3
 

@@ -330,6 +330,50 @@ in [plan.md](./plan.md) under Technical Context.
 - **Gotchas**: `navigationDestination` not inside lazy containers.
   `DESIGN.md` mobile pointers reference frozen `apps/mobile` paths and have
   no Liquid Glass guidance; update in this feature.
+- **The executor fronts the blocking surface, not literally every call**
+  (spec-defect 90). "Core exposes synchronous blocking functions" above is
+  true of the ten exported free functions and of `RuntimeHost`, and **false of
+  `AuthSession`**: seven of its nine methods are `async throws` in the
+  generated Swift — `refresh`, `registerDevice`, `renewSetupToken`,
+  `requestEmailCode`, `resendEmailCode`, `signOut`, `verifyEmailCode`. Only
+  `state` and `markRevoked` are synchronous. Those seven are **awaited
+  directly**, never routed through the queue: they suspend rather than block,
+  so there is no thread to move them off, and forcing one through a serial
+  queue parks a queue thread on a semaphore and stalls every other core call
+  behind a network round trip. `contracts/core-api.md` marks which is which.
+- **Cancellation is settled here** (spec-defect 90), because
+  `withCheckedThrowingContinuation` is not cancellable and a blocking core
+  call cannot be interrupted — Rust is inside libsodium or SQLite and there is
+  nothing to poll. Cancelled **before the work starts**, including while it
+  waits its turn behind another call: it never runs, `run` throws
+  `CancellationError`, the core is never entered. Cancelled **after the work
+  starts**: it runs to completion and the result is delivered, because
+  resuming early leaves the call in flight with nobody holding it and discards
+  an answer the core already paid for. The claim must be made atomically by a
+  bit shared between the cancellation handler and the queued block, so a late
+  cancel is a no-op by construction rather than by timing.
+- **A main-thread assertion does not evidence the executor, and asserting one
+  produces a false green** (spec-defect 91). The SE-0461 rationale above is
+  written in the present tense and **is not in force on this toolchain**:
+  `-swift-version 6` here does not enable `NonisolatedNonsendingByDefault`, so
+  a `nonisolated async` function still hops to the global concurrent executor.
+  Deleting the `queue.async` hop entirely therefore leaves `isMainThread()`
+  returning `false` — the work runs on
+  `com.apple.root.user-initiated-qos.cooperative`, off the main thread and on
+  no queue of ours. Observed by breaking the code and watching the test stay
+  green. A test must assert **queue identity**
+  (`__dispatch_queue_get_label(nil)` against the label the executor was built
+  with), because the guarantee was always "this serial queue" and never "some
+  other thread". Note also that `Thread.isMainThread` and `Thread.current` are
+  unavailable from an asynchronous context under Swift 6; use
+  `pthread_main_np()`.
+- **The `Unit` test plan is not hermetic** (spec-defect 93). `SpikeTests`'
+  S2 case makes a **live staging HTTP call** through `URLSession`, and it has
+  no time limit: when staging is slow or unreachable it hangs the whole plan
+  with no error, which cost two runs in the first Phase 4 wave and looks
+  exactly like a deadlock in the code under test. Scope an evidence run with
+  `-only-testing:` rather than running the bare plan, and read a hang there as
+  the network before suspecting the change.
 
 ### R16. Keyboard toolbar
 
