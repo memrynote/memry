@@ -5398,6 +5398,21 @@ enum ApiError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     case Transport(source: TransportError
     )
     /**
+     * A local storage failure, surfaced across a boundary whose other arms
+     * are all server answers.
+     *
+     * It exists because the alternative lies. `PushWave::pending` and `drain`
+     * return `ApiError`, so before this variant a failed SQLite read crossed
+     * as `Transport { Failed { "local storage: …" } }` — which lands in the
+     * right state, because the engine's `is_offline` matches only
+     * [`TransportError::Offline`], but tells every reader that the network
+     * failed when the disk did. A caller cannot tell "the server is
+     * unreachable" from "this device cannot read its own database", and those
+     * want different things said to the user.
+     */
+    case Storage(what: String
+    )
+    /**
      * A 401. The token is unusable and a refresh either did not happen or did
      * not help.
      */
@@ -5485,35 +5500,38 @@ public struct FfiConverterTypeApiError: FfiConverterRustBuffer {
         case 1: return .Transport(
             source: try FfiConverterTypeTransportError.read(from: &buf)
             )
-        case 2: return .Unauthorized(
+        case 2: return .Storage(
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 3: return .Unauthorized(
             code: try FfiConverterString.read(from: &buf), 
             message: try FfiConverterString.read(from: &buf)
             )
-        case 3: return .DeviceRevoked(
+        case 4: return .DeviceRevoked(
             message: try FfiConverterString.read(from: &buf)
             )
-        case 4: return .RateLimited(
+        case 5: return .RateLimited(
             retryAfterS: try FfiConverterOptionUInt64.read(from: &buf), 
             message: try FfiConverterString.read(from: &buf)
             )
-        case 5: return .WritesDisabled(
+        case 6: return .WritesDisabled(
             message: try FfiConverterString.read(from: &buf)
             )
-        case 6: return .UpgradeRequired(
+        case 7: return .UpgradeRequired(
             minVersion: try FfiConverterOptionString.read(from: &buf), 
             message: try FfiConverterString.read(from: &buf)
             )
-        case 7: return .BootstrapUnavailable
-        case 8: return .Status(
+        case 8: return .BootstrapUnavailable
+        case 9: return .Status(
             status: try FfiConverterUInt16.read(from: &buf), 
             code: try FfiConverterOptionString.read(from: &buf), 
             message: try FfiConverterString.read(from: &buf)
             )
-        case 9: return .MalformedResponse(
+        case 10: return .MalformedResponse(
             path: try FfiConverterString.read(from: &buf), 
             what: try FfiConverterString.read(from: &buf)
             )
-        case 10: return .InvalidClientIdentity(
+        case 11: return .InvalidClientIdentity(
             what: try FfiConverterString.read(from: &buf)
             )
 
@@ -5533,53 +5551,58 @@ public struct FfiConverterTypeApiError: FfiConverterRustBuffer {
             FfiConverterTypeTransportError.write(source, into: &buf)
             
         
-        case let .Unauthorized(code,message):
+        case let .Storage(what):
             writeInt(&buf, Int32(2))
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case let .Unauthorized(code,message):
+            writeInt(&buf, Int32(3))
             FfiConverterString.write(code, into: &buf)
             FfiConverterString.write(message, into: &buf)
             
         
         case let .DeviceRevoked(message):
-            writeInt(&buf, Int32(3))
+            writeInt(&buf, Int32(4))
             FfiConverterString.write(message, into: &buf)
             
         
         case let .RateLimited(retryAfterS,message):
-            writeInt(&buf, Int32(4))
+            writeInt(&buf, Int32(5))
             FfiConverterOptionUInt64.write(retryAfterS, into: &buf)
             FfiConverterString.write(message, into: &buf)
             
         
         case let .WritesDisabled(message):
-            writeInt(&buf, Int32(5))
+            writeInt(&buf, Int32(6))
             FfiConverterString.write(message, into: &buf)
             
         
         case let .UpgradeRequired(minVersion,message):
-            writeInt(&buf, Int32(6))
+            writeInt(&buf, Int32(7))
             FfiConverterOptionString.write(minVersion, into: &buf)
             FfiConverterString.write(message, into: &buf)
             
         
         case .BootstrapUnavailable:
-            writeInt(&buf, Int32(7))
+            writeInt(&buf, Int32(8))
         
         
         case let .Status(status,code,message):
-            writeInt(&buf, Int32(8))
+            writeInt(&buf, Int32(9))
             FfiConverterUInt16.write(status, into: &buf)
             FfiConverterOptionString.write(code, into: &buf)
             FfiConverterString.write(message, into: &buf)
             
         
         case let .MalformedResponse(path,what):
-            writeInt(&buf, Int32(9))
+            writeInt(&buf, Int32(10))
             FfiConverterString.write(path, into: &buf)
             FfiConverterString.write(what, into: &buf)
             
         
         case let .InvalidClientIdentity(what):
-            writeInt(&buf, Int32(10))
+            writeInt(&buf, Int32(11))
             FfiConverterString.write(what, into: &buf)
             
         }

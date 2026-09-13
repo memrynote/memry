@@ -34,15 +34,15 @@ here that drifts from the generated one is a bug in this document.
 
 ## Error surfaces
 
-| Enum            | Raised by                            | Variants                                                                                                                                                                         |
-| --------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CryptoError`   | primitives and derivations           | `InvalidLength`, `InvalidParameter`, `DecryptionFailed`, `EncryptionFailed`, `OutOfMemory`, `InvalidBase64`, `InvalidHex`                                                        |
-| `RecoveryError` | the recovery-phrase path             | `UnknownWord`, `BadChecksum`, `WrongWordCount`, `NonAscii`, `VerifierMismatch`, `Crypto`                                                                                         |
-| `CborError`     | the canonical encoder                | `FieldNotInOrdering`, `Unencodable`, `Malformed`                                                                                                                                 |
-| `CompressError` | the compression frame                | `IncompleteDeflateStream`, `Corrupt`                                                                                                                                             |
-| `CrdtError`     | the document registry and update log | `DocumentBusy`, `Undecodable`, `NotApplicable`, `Storage`                                                                                                                        |
-| `ApiError`      | every HTTP call                      | `Transport`, `Unauthorized`, `DeviceRevoked`, `RateLimited`, `WritesDisabled`, `UpgradeRequired`, `BootstrapUnavailable`, `Status`, `MalformedResponse`, `InvalidClientIdentity` |
-| `AuthError`     | the session                          | `Api`, `SecureStore`, `Crypto`, `InvalidState`, `MalformedToken`, `RefreshBlocked`, `SessionExpired`, `NoSetupToken`                                                             |
+| Enum            | Raised by                            | Variants                                                                                                                                                                                    |
+| --------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CryptoError`   | primitives and derivations           | `InvalidLength`, `InvalidParameter`, `DecryptionFailed`, `EncryptionFailed`, `OutOfMemory`, `InvalidBase64`, `InvalidHex`                                                                   |
+| `RecoveryError` | the recovery-phrase path             | `UnknownWord`, `BadChecksum`, `WrongWordCount`, `NonAscii`, `VerifierMismatch`, `Crypto`                                                                                                    |
+| `CborError`     | the canonical encoder                | `FieldNotInOrdering`, `Unencodable`, `Malformed`                                                                                                                                            |
+| `CompressError` | the compression frame                | `IncompleteDeflateStream`, `Corrupt`                                                                                                                                                        |
+| `CrdtError`     | the document registry and update log | `DocumentBusy`, `Undecodable`, `NotApplicable`, `Storage`                                                                                                                                   |
+| `ApiError`      | every HTTP call                      | `Transport`, `Storage`, `Unauthorized`, `DeviceRevoked`, `RateLimited`, `WritesDisabled`, `UpgradeRequired`, `BootstrapUnavailable`, `Status`, `MalformedResponse`, `InvalidClientIdentity` |
+| `AuthError`     | the session                          | `Api`, `SecureStore`, `Crypto`, `InvalidState`, `MalformedToken`, `RefreshBlocked`, `SessionExpired`, `NoSetupToken`                                                                        |
 
 Three of these carry a distinction that a flattened error would lose, and each
 one exists because collapsing it produces a specific wrong behaviour:
@@ -57,6 +57,13 @@ one exists because collapsing it produces a specific wrong behaviour:
 - **`CompressError::IncompleteDeflateStream`** is an error rather than an empty
   result, because an empty result reaches the applier as a content wipe
   (chapter 04 §4.1).
+- **`ApiError::Storage`** is the one arm of this enum that is not a server
+  answer. `PushWave::pending` and `drain` return `ApiError`, so without it a
+  failed local SQLite read crossed as `Transport { Failed { … } }` — the right
+  state, and a lie: a shell could not tell "the server is unreachable" from
+  "this device cannot read its own database", and those want different things
+  said to the user.
+
 - **`ApiError::BootstrapUnavailable`** is separate from `Status` because a `501`
   from `/sync/bootstrap` means the deployment has no bootstrap key configured
   (chapter 10 §10.12). Folded into a generic 5xx it would be retried forever and
