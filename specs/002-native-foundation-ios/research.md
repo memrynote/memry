@@ -378,6 +378,14 @@ in [plan.md](./plan.md) under Technical Context.
   compare the **whole** history — then a missing element, a duplicated element
   and a wrong payload are three distinct failures rather than one timeout. Carry
   a `.timeLimit` as the backstop, never as the mechanism.
+- **`-only-testing:` with a name that matches nothing runs nothing and reports
+  `TEST SUCCEEDED`** (spec-defect 106). Swift Testing suite names are **struct
+  names, not file names**, and the two diverge freely. A run scoped by file name
+  selected none of the intended suites and reported 64 passed where the truth was
+  102 — 38 tests never executed, no warning about the unmatched filter. Derive
+  the suite names from the source and **precompute the expected total before
+  reading the result**: a scoped run's failure mode is a plausible smaller number,
+  not an error.
 - **The `Unit` test plan is not hermetic** (spec-defect 93). `SpikeTests`'
   S2 case makes a **live staging HTTP call** through `URLSession`, and it has
   no time limit: when staging is slow or unreachable it hangs the whole plan

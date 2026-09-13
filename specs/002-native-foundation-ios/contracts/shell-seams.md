@@ -102,6 +102,23 @@ The socket is **never a data path** (chapter 09). A message is a hint that cause
 a pull; nothing is applied from it. `on_message` carries bytes rather than a
 parsed type precisely so the shell cannot grow an opinion about the frame.
 
+**The one thing the shell must nonetheless choose is the frame's opcode**
+(spec-defect 102). `SocketHandle::send` carries bytes, but a WebSocket wire frame
+is typed, and chapter 09 §9.6 requires the keepalive `ping` as a **text** frame —
+sent as binary it is not the frame Cloudflare's request-response pair matches.
+The rule: **text when the payload is valid UTF-8, binary otherwise.** That is a
+framing decision, not a parse — it inspects encoding and never content — and it
+satisfies §9.6's keepalive and §9.4's JSON envelope by one rule, with neither
+special-cased.
+
+**`open_socket` is currently unreachable from the core** (spec-defect 103).
+`RealtimeClient` is not exported and appears zero times in the generated Swift,
+so nothing on the Rust side can call it, and §9.1's "MUST close when
+backgrounded" has no driver on either side. A shell should implement the method
+anyway — it is part of the one seam — but must not record the socket half as
+wired. Exporting a `Sync` object is band B3's, and the socket cannot be driven
+before it.
+
 ## Why these particular enums have the variants they do
 
 A seam error that collapses two cases produces a specific wrong behaviour, and
