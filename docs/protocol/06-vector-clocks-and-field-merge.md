@@ -429,6 +429,44 @@ malformed or future key cannot stall every other synced setting
 (`packages/contracts/src/settings-sync.ts:83-86`, `:99-100`). This is chapter 13
 §13.2 applied to settings.
 
+### 6.9.0 The winner rule, and what an absent winner means here
+
+§6.9 gives settings a key space and §6.9.1 gives the write rules; neither gave
+the **arbitration** rule, so a port had to infer one.
+
+**Normative: a settings path is arbitrated by §6.3's rule, unchanged.** They are
+called field clocks because they are field clocks — the tick sum, the asymmetric
+`_offline` key-presence tie-break of row 8, and §6.4.2's canonical comparison all
+apply per path exactly as they apply per field. The merge unit set is the
+**union of both payloads' `fieldClocks` keys**, which is also what makes the
+single-clocked sub-objects work without a table: the unit is whatever key the
+writer declared, so `sidebar.sectionOrder` arrives as one key holding the whole
+list and `journal.weekdayTemplates.3` as a key per day. A port that derived the
+unit from a hard-coded list of paths instead would drift from the writer the
+first time a new setting was added.
+
+**Normative, and it diverges from §6.3.2 row 10 on purpose: when the winning
+side has no value at that path, the path is REMOVED from the merged settings.**
+Row 10 leaves a column untouched when the winner is `undefined`, because for a
+task field an absent value means "the sender does not model this" (§13.4) and
+overwriting would let an older build delete a newer build's data. **Settings are
+not like that.** §13.2 makes a settings payload carry every preference its sender
+holds, so an absent path is the sender saying the preference is gone, not that it
+cannot see it.
+
+The consequence of getting this wrong is not subtle. §6.9.1 requires a removal to
+tick its clock precisely so it can beat the peer still holding the old value; if
+a ticked removal then failed to remove, the peer's value would win on the next
+pull, the clearing device would re-clear, and the two would **diverge
+permanently** under FR-002. The tick and the removal are one mechanism and a port
+MUST implement both halves.
+
+**A `fieldClocks` key that is not an addressable path** — `""`, or one with an
+empty segment such as `general.` — **rides along as a clock and arbitrates
+nothing.** §6.9 already requires a key outside the modelled set to ride along
+rather than fail the payload; an unaddressable key is that rule's limiting case,
+and refusing the payload over one would stall every other synced setting.
+
 ### 6.9.1 Every clocked path is a leaf, including a removal
 
 Every example above is a leaf, and that left two questions a writer has to
