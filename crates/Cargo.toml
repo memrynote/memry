@@ -4,7 +4,7 @@ members = ["memry-core", "memry-cli", "uniffi-bindgen-swift"]
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.89"
+rust-version = "1.98"
 license = "AGPL-3.0-only"
 
 # Every version the plan's Technical Context pins lives here, so a member crate

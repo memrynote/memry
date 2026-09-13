@@ -2,6 +2,6 @@
 # and "green in CI" mean the same thing. Entering crates/ is enough; no
 # `rustup default` and no effect on other projects on this machine.
 [toolchain]
-channel = "1.89"
+channel = "1.98.1"
 components = ["rustfmt", "clippy"]
 targets = ["aarch64-apple-ios", "aarch64-apple-ios-sim", "x86_64-apple-ios"]

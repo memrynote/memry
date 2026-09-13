@@ -155,10 +155,9 @@ mod tests {
     #[test]
     fn versions_are_strictly_ascending_from_one() {
         for migrations in [DATA_MIGRATIONS, INDEX_MIGRATIONS] {
-            let mut expected = 1;
-            for migration in migrations {
+            for (index, migration) in migrations.iter().enumerate() {
+                let expected = u32::try_from(index + 1).expect("migration count fits u32");
                 assert_eq!(migration.version, expected, "{}", migration.name);
-                expected += 1;
             }
         }
     }
