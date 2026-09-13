@@ -110,7 +110,11 @@ Not done, and not doable headlessly:
   desktop wrote back to its vault markdown file on disk, so it covers the yrs
   append, the seal, the push, the server, the desktop's receive, apply, render
   and write-back. Under the 5 s bar. Recorded in `g4-evidence.md`.
-- **Desktop edit to `memry-cli`: DIRECTION WORKS, 5 s bar unmeasurable.**
+- **Desktop edit to `memry-cli`: PASS, 1.86 s.** Measured with `notes fetch`,
+  the single-document probe added for this. Both timing halves of T139 now
+  pass: CLI → desktop **2.16 s**, desktop → CLI **1.86 s**, against a 5 s bar.
+  Superseded detail below, kept for its correction.
+- ~~**Desktop edit to `memry-cli`: DIRECTION WORKS, 5 s bar unmeasurable.**~~
   Re-run with the desktop alive and a PID liveness check inside the loop:
   **reached the CLI in 41.10 s**. The desktop ingested the external vault-file
   edit, replaced the body in its Y.Doc, pushed, and the CLI read it back — so

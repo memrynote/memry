@@ -199,6 +199,49 @@ pub fn notes_text(cli: &Cli, note: &str, vault: Option<&str>) -> Result<(), CliE
     Ok(())
 }
 
+/// `notes fetch <id>`: pull **one** document's body from the server.
+///
+/// The cheap probe. `pull` walks the record feed and then every live
+/// document's body — 32 to 36 s on a vault of 94 notes even when there is
+/// nothing to fetch — which makes it useless for measuring propagation
+/// latency: the instrument costs six times the bar T139 asks about. This
+/// fetches one document and nothing else, so the number a harness reads is
+/// the latency rather than the probe.
+///
+/// It is a read. It does not touch the record feed, so a note whose metadata
+/// this client has not pulled is refused rather than half-materialised.
+pub async fn notes_fetch(cli: &Cli, note: &str, vault: Option<&str>) -> Result<(), CliError> {
+    let vault = resolve_vault(cli, vault)?;
+    let vault_key = derive_vault_key(cli.master_key()?)?;
+    let http = cli.http()?;
+    let directory = account::device_directory(&http).await?;
+    let cipher = Arc::new(AccountCipher::new(vault_key, directory));
+    let db = cli.open_vault(&vault)?;
+
+    // Refuse rather than fetch a body for a record this client has never seen:
+    // the body would land with no row to hang it on, and `notes list` would
+    // keep saying the note does not exist while its updates accumulated.
+    let known = live_document_ids(&db)?.into_iter().any(|id| id == note);
+    if !known {
+        return Err(CliError::Refused(format!(
+            "no live note `{note}` in this vault: run `pull` first, because a body with no record              is a document nothing can name"
+        )));
+    }
+
+    let report = BodyPull::new(http, db, Declaration::subscribed(), cipher)
+        .with_vault(&vault)
+        .pull_document(note)
+        .await?;
+    println!(
+        "updates {}\nreplays {}\nbaselines {}\nstopped {}",
+        report.updates,
+        report.replays,
+        report.baselines,
+        if report.stopped.is_empty() { "-" } else { note }
+    );
+    Ok(())
+}
+
 /// `notes digest <id>`: chapter 12 §12.11's cross-shell digest, the thing
 /// SC-010 compares between two shells.
 ///

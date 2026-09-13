@@ -199,7 +199,31 @@ write-back to `projects/Conference Talk.md`. **Under the 5 s bar.**
 An earlier CLI write, `G5 blocked-write probe`, was already present in the same
 file before this run — so the direction was proven twice, once incidentally.
 
-### Desktop edit to `memry-cli`: **DIRECTION WORKS; the 5 s bar is unmeasurable with this probe**
+### Desktop edit to `memry-cli`: **PASS, 1.86 s**
+
+Measured with `notes fetch`, a single-document body pull added because the 5 s
+bar could not be evaluated without one. The probe's own cost, with nothing to
+fetch, is **0.44–1.84 s** against the full pull's **31.9–36.4 s**.
+
+```
+marker: d2c 143816
+DESKTOP -> CLI in 1.86s
+```
+
+Desktop PID liveness was checked inside the loop, so a dead desktop reports
+itself instead of looking like a timeout — the failure mode that made the first
+attempt worthless.
+
+**Both directions of T139's timing now pass**: `memry-cli` → desktop **2.16 s**,
+desktop → `memry-cli` **1.86 s**, against a 5 s bar.
+
+The edit is made by writing to the vault's markdown file, which the desktop
+watcher ingests through `feedExternalEditToCrdt` — the desktop performs the
+Y.Doc replace and the push. It is a desktop-side write, not a UI gesture; an
+edit typed into the editor exercises the same path from `replaceNoteBodyInCrdt`
+onward. The file was restored and verified identical after every run.
+
+### Superseded measurement, kept because its correction matters
 
 Re-run with the desktop confirmed alive and a liveness check on its PID **inside**
 the poll loop, exactly as the first attempt's correction prescribed.
