@@ -424,3 +424,36 @@ interleaving, to be checked before SC-010 trusts the note. **They are in the
 vault file on disk**, so they are the note's own content and not an
 `extract_text` artifact. The suspicion is withdrawn; `extract_text` is not
 implicated.
+
+## SC-010 — the cross-shell digest: **PASS**
+
+Two _different implementations_ over the _same real documents_ from the staging
+account: `memry-core` (Rust, `notes digest`) and the TypeScript reference
+extractor that generates the `text-extract` vector class
+(`packages/contracts/scripts/extract-text.ts`), driven by
+`scripts/sc010-probe.ts`.
+
+| note           | title                  | digest                                                             |
+| -------------- | ---------------------- | ------------------------------------------------------------------ |
+| `dzxnhc9p3gk3` | memrynote Architecture | `d28470cb8c0f4b9100ae3dae924bdb15def3295ebaab39b9b24f3cf418fd1f92` |
+| `z01wzfmf44ka` | Conference Talk        | `90b14fbd33d53d5adfafdea5a575ec33d77643afcbbce58813ec51fc8208292f` |
+| `n6t4tk1ykzi9` | memrynote Mobile       | `d3a3359d0ed60c1b474816f97fa283da4b223d2720c8972e8213210698df0ab4` |
+
+**Identical on all three, both ports.**
+
+Two things the harness had to get right, both of which failed loudly first and
+are worth recording because a future harness will hit them:
+
+1. **The vault markdown file is not the input.** §12.11 digests
+   `title + "\n" + extract_text(doc)`, and `extract_text` walks the Y.Doc, not
+   the file. Hashing the file would compare two different things and pass or
+   fail for the wrong reason.
+2. **The update log alone yields an empty document.** `load_plan` starts each
+   namespace from its snapshot and applies only the updates **above** that
+   snapshot's `last_seq`; the base state lives in the snapshot row. The first
+   run applied 35 updates and extracted **0 bytes**, which was the harness being
+   wrong, not the extractors disagreeing.
+
+The 481 vs 480 byte difference between `notes text` output and the digested text
+is the `println!` newline — exactly the trap `cross_shell_digest` exists to
+avoid, observed in the wild.
