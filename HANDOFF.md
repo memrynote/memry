@@ -23,7 +23,7 @@ none is fixable by trying harder — each needs a decision.
 **114 is the one that stops the checkpoint.** The Independent Test Kaan approved
 requires unlocking every vault **by scanning the desktop's code** on a phone
 cleared of all state — that is T153 and T154, and they have nothing to call.
-Someone must scope a **T166** for the linking exports against chapter 03. It is
+**T235** now covers the linking exports (Kaan, 2026-09-13). It is
 the largest remaining unknown between here and T161.
 
 **124 and 125 share a shape with 114 and are worth reading together**: three
@@ -36,17 +36,17 @@ discover mid-wave.
 T149, T150 and T151 are **CUT**; T163, T164 and T165 were **added** by Kaan's
 band-B3 decision. Read the Scope decisions block at the top of Phase 4 first.
 
-| Wave | Tasks                                                             | Status           |
-| ---- | ----------------------------------------------------------------- | ---------------- |
-| W1   | T140 `CoreExecutor`, T141 `CoreEvents`                            | **DONE**         |
-| W2   | T142 `ErrorMapping` + `Log`, T143 `Keychain`                      | **DONE**         |
-| W3   | T144 `FileProtection`, T145 `Transport`                           | **DONE**         |
-| W4   | T146 `Reachability` + `Camera`, T147 `SignInView` + the wiring    | **DONE**         |
-| W5   | T148 Google, T152 `RecoveryPhraseView`                            | **DONE**         |
-| W6   | T160 design tokens, T163 B3 account exports                       | **DONE**         |
-| W7   | T164 `Vault`/`Notes` read, T165 restore + shell wiring            | **DONE**         |
-| W8   | **T166 device-linking exports — NOT SCOPED, checkpoint needs it** | **NEXT**         |
-| W9+  | T155, T156, T156a, T157, T158, T159, then T161/T162 with Kaan     | partly unblocked |
+| Wave | Tasks                                                          | Status           |
+| ---- | -------------------------------------------------------------- | ---------------- |
+| W1   | T140 `CoreExecutor`, T141 `CoreEvents`                         | **DONE**         |
+| W2   | T142 `ErrorMapping` + `Log`, T143 `Keychain`                   | **DONE**         |
+| W3   | T144 `FileProtection`, T145 `Transport`                        | **DONE**         |
+| W4   | T146 `Reachability` + `Camera`, T147 `SignInView` + the wiring | **DONE**         |
+| W5   | T148 Google, T152 `RecoveryPhraseView`                         | **DONE**         |
+| W6   | T160 design tokens, T163 B3 account exports                    | **DONE**         |
+| W7   | T164 `Vault`/`Notes` read, T165 restore + shell wiring         | **DONE**         |
+| W8   | **T235 device-linking exports (new-device half)**              | **NEXT**         |
+| W9+  | T155, T156, T156a, T157, T158, T159, then T161/T162 with Kaan  | partly unblocked |
 
 **Open: T153, T154, T155, T156, T156a, T157, T158, T159, T161, T162.**
 
@@ -268,7 +268,7 @@ The entry now carries the real reason.
    blocked as everything was this morning, and no task covers it. The
    checkpoint needs it: the replacement Independent Test requires unlocking
    every vault **by scanning the desktop's code** on a phone cleared of all
-   state, which is exactly T153/T154. Someone must scope a T166 for the linking
+   state, which is exactly T153/T154. T235 now covers the linking
    exports against chapter 03, and it is the largest remaining unknown.
 2. **`MemrySyncEnvironment` and `MemryGoogleClientID` are both absent from
    `Info.plist`** (defects 110, 117). A release build is deliberately
