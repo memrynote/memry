@@ -32,15 +32,15 @@ vault.
 
 **So seven of the eleven remaining tasks have no call site that can be built:**
 
-| Task                        | Against the real core surface                                      |
-| --------------------------- | ------------------------------------------------------------------ |
-| T148 Google                 | **blocked** — no method accepts a provider token                   |
-| T152 recovery phrase        | screen is real; the `{kdf_salt, key_verifier}` fetch has no export |
-| T153 QR / T154 SAS          | **blocked** — zero device-linking exports                          |
-| T155, T156, T156a, T157     | **blocked** — `Vault` and `Notes` are band B3                      |
-| T158, T159                  | **blocked** — `Sync` and `Client` are band B3                      |
-| T160 design tokens          | **reachable** — pure shell, no core surface needed                 |
-| T161 / T162 device evidence | **unreachable** — nothing can open a vault                         |
+| Task                        | Against the real core surface                                  |
+| --------------------------- | -------------------------------------------------------------- |
+| T148 Google                 | export **landed** (T163); shell wiring is T165, in flight      |
+| T152 recovery phrase        | export **landed** (T163); shell wiring is T165, in flight      |
+| T153 QR / T154 SAS          | **blocked** — zero device-linking exports                      |
+| T155, T156, T156a, T157     | **blocked** — `Vault`/`Notes` read exports are T164, in flight |
+| T158, T159                  | **blocked** — `Sync` and `Client` are band B3                  |
+| T160 design tokens          | **DONE** — landed, with both screens migrated onto it          |
+| T161 / T162 device evidence | **unreachable** — nothing can open a vault                     |
 
 `contracts/core-api.md` already said `Client`, `Vault`, `Sync` and `Notes` were
 band B3, "named here so the shape is agreed before the code exists". Phase 4's
@@ -53,10 +53,16 @@ seam with no call site. 114 is the same thing generalised to the whole feature:
 the shell tier can be implemented perfectly and stay unwireable, because there
 is nothing on the other side.
 
-**It needs Kaan, and it needs him before the next wave** — see "Blocked on
-Kaan" below. Do **not** dispatch W2 onward without that answer: doing so builds
-six more dark tiers, which is precisely the failure the whole brief exists to
-prevent.
+**KAAN ANSWERED: build band B3's minimum first.** Not the whole band — only
+what US3's checkpoint needs. That was the cheap answer, and the reason it was
+cheap is the thing to carry forward: **the behaviour already existed.**
+`protocol/account.rs` had `GET /auth/key-verifier` and `GET /sync/vaults`
+implemented and tested; `domain/notes.rs`, `domain/folders.rs`, the storage
+repositories and `sync/engine.rs` are what the `memry` CLI already drives. Only
+the UniFFI layer was missing. **T163 has since landed the account half**, so
+the first two bullets of the list above are closed. If the export layer ever
+turns out to need behaviour that is not already there, **reopen 114** — the
+whole basis of the narrow choice is that it does not.
 
 ## State: **Phase 4 at 8 of 21 ticked.** Phase 3 closed 64/64.
 
@@ -70,7 +76,9 @@ Scope decisions block at the top of Phase 4 in `tasks.md` first.
 | W3   | T144 `FileProtection`, T145 `Transport`                            | **DONE**                 |
 | W4   | T146 `Reachability` + `Camera`, T147 `SignInView` + **the wiring** | **DONE**                 |
 | W5   | T148 Google, T152 `RecoveryPhraseView`                             | **LANDED, NOT TICKED**   |
-| W6+  | T153–T159                                                          | **BLOCKED** (defect 114) |
+| W6   | T160 tokens, T163 B3 account exports                               | **DONE**                 |
+| W7   | T164 `Vault`/`Notes` read, T165 restore + wiring                   | **IN FLIGHT**            |
+| W8+  | T153, T154 (device linking — **still no export**), T155–T159       | **BLOCKED** (defect 114) |
 
 ## W5 landed and is deliberately NOT ticked
 
@@ -155,9 +163,9 @@ The per-file `swiftlint` every brief prescribes is not the gate CI runs.
 | `pnpm --filter @memry/contracts vectors:check`         | passed (11 classes)                            |
 | `pnpm check:architecture`                              | passed                                         |
 | `swiftlint lint --strict` (project-wide, bare)         | **0 violations, 0 serious, 42 files**          |
-| xcodebuild `Unit`, **whole plan**, iPhone 17 simulator | **196 total, 194 passed, 0 failed, 2 skipped** |
+| xcodebuild `Unit`, **whole plan**, iPhone 17 simulator | **215 total, 213 passed, 0 failed, 2 skipped** |
 
-The 196 was **precomputed from the `@Test` count before the result was read**.
+The 215 was **precomputed before the result was read**.
 The 2 skips are exactly the device-gated tests from defect 115(a), which
 previously failed. The xcodebuild run used the **same signing flags the
 workflow now passes**, and the keychain suite passed under them with an empty
@@ -235,36 +243,52 @@ command line — it applies to the embedded `MemryCore` framework too and iOS
 refuses the install. Back up `project.pbxproj` and `Memry.entitlements` to
 `/tmp`, `sed`, run, restore, **and confirm the revert with `git status`.**
 
-## The defect log: 117 logged, 116 closed, **1 open**
+## The defect log: 122 logged, 120 closed, **2 open**
 
-Four opened this session. **114 is the open one and it is the whole story**
-(above). The other three are closed:
+**Two open, and both block the checkpoint:**
 
-- **115** — iOS CI red on every run; `#require` is not a skip, and CI ran
-  unsigned so the real-keychain tests had never executed.
-- **116** — chapter 02 documented the native OAuth endpoint nowhere, so the one
-  task that had to call it read `apps/sync-server`. Closed by writing the shape
-  into new chapter 02 §2.13, together with the fact that matters: **two of its
-  three request fields are core-private**, so "the shell posts the ID token"
-  was never a possible reading. The route's own comment — "the app signs in
-  with Google's own iOS SDK" — is inaccurate under R14 and is recorded as such
-  rather than fixed, since `apps/sync-server` is out of Phase 4's scope.
-- **117** — nothing said where the iOS OAuth client id lives, so T148 had to
-  invent a name. Now normative: **`MemryGoogleClientID` in `Info.plist`**, on
-  `MemrySyncEnvironment`'s terms (defect 110) — no default, no fallback, an
-  absent key is a loud `notConfigured` and never a silent fall back to the web
-  client.
+- **114** — the core exported nothing the rest of Phase 4 needed. **In
+  progress**: T163 closed the account half, T164 is closing the vault/notes
+  half. **Device linking is still not exported at all** — `link`, `pair` and
+  `sas` return zero hits — so T153 and T154 remain fully blocked and nobody has
+  scoped that export yet. That is the next hole.
+- **121** — **a session cannot be restored on cold launch.**
+  `api/auth.rs:274` sets `SignedOut` unconditionally while the keychain holds a
+  valid refresh token, and §C.1 has no edge from "process started, tokens on
+  disk" to `Registered`. A registered user who quits and reopens is shown the
+  sign-in screen. T165 is fixing it. **This one would have survived every test
+  in the suite**: evidence gathered in a single continuous session cannot see
+  it, which is precisely what T161's "on a phone holding no prior state" is
+  for. Verified by reading the line, not taken on report.
+
+Closed this session: **115** (CI red on every run — `#require` is not a skip,
+and CI ran unsigned so the real-keychain tests had never executed), **116**
+(chapter 02 documented the native OAuth route nowhere), **117** (nothing said
+where the iOS OAuth client id lives), **118** (`DESIGN.md` mandated the tint for
+focus emphasis, which is 2.80:1 on white against a 3:1 floor — **desktop is
+affected and NOT fixed**), **119** (four mobile font families iOS does not
+bundle), **120** (colour roles named with no values, `--surface-active` being
+the binding constraint), **122** (**an exported type's Rust module path is part
+of its ABI** — moving one churns the FFI checksum of every method that mentions
+it).
+
+**The check that 122 leaves behind is worth more than the entry.** After any
+change to the exported surface: regenerate, then
+`git show HEAD:<generated.swift> > /tmp/old.swift && diff /tmp/old.swift <generated.swift> | grep -c '^<'`
+must be **0**. An additive change deletes nothing. Anything deleted means an
+existing binding moved, and that is the moment to stop rather than commit.
+Nothing else catches it — Phase 3 ended with a stale binding.
 
 ## Blocked on Kaan
 
-1. **THE DECISION, and it gates everything: spec-defect 114.** Phase 4 assumes
-   a core surface that band B3 supplies. Either the B3 exports come first
-   (`Client`'s non-auth half, `Vault`, `Notes`, `Sync` — a `crates/memry-core`
-   change), or Phase 4 lands its remaining shell tiers **dark** and US3's
-   evidence defers with them. **Nothing useful happens until this is answered.**
-   A third option exists and is narrower than it sounds: build only the exports
-   the checkpoint needs — recovery-info fetch, a provider-token method, vault
-   list, note read — and leave the rest of B3 for its own train.
+1. **ANSWERED (build B3's minimum) — but a new hole is open and unscoped:
+   device linking has no export of any kind.** `link`, `pair` and `sas` return
+   **zero** hits in the generated bindings, so T153 (QR) and T154 (SAS) are as
+   blocked as everything was this morning, and no task covers it. The
+   checkpoint needs it: the replacement Independent Test requires unlocking
+   every vault **by scanning the desktop's code** on a phone cleared of all
+   state, which is exactly T153/T154. Someone must scope a T166 for the linking
+   exports against chapter 03, and it is the largest remaining unknown.
 2. **`MemrySyncEnvironment` and `MemryGoogleClientID` are both absent from
    `Info.plist`** (defects 110, 117). A release build is deliberately
    `notConfigured` until both land. Required before any release or TestFlight
