@@ -144,16 +144,41 @@ The rest becomes object-oriented as state arrives. `Client`'s auth half is now
 `AuthSession`; the remainder is named here so the shape is agreed before the
 code exists:
 
-| Object   | Owns                                                       |
-| -------- | ---------------------------------------------------------- |
-| `Client` | account identity, tokens, device registration, the runtime |
-| `Vault`  | the unlocked vault key, vault selection, vault metadata    |
-| `Sync`   | the pass state machine, cursors, outbox, policy            |
-| `Notes`  | notes, folders, journals, templates, tags, properties      |
-| `Tasks`  | tasks, projects, task views                                |
+| Object   | Owns                                                       | Phase 4 tasks it blocks      |
+| -------- | ---------------------------------------------------------- | ---------------------------- |
+| `Client` | account identity, tokens, device registration, the runtime | T148, T152, T153, T154, T159 |
+| `Vault`  | the unlocked vault key, vault selection, vault metadata    | T155, T161, T162             |
+| `Sync`   | the pass state machine, cursors, outbox, policy            | T158                         |
+| `Notes`  | notes, folders, journals, templates, tags, properties      | T156, T156a, T157            |
+| `Tasks`  | tasks, projects, task views                                | — (not in this feature)      |
 
 Each will be a `#[uniffi::export]`ed object on the same terms as the two
 above. None of them exposes a key.
+
+**The blocking column is spec-defect 114, and it is the reason this table is
+no longer only forward-looking.** Phase 4's task list was written against a
+core surface that band B3 supplies, so seven of its tasks have no call site
+that any amount of Swift can build. The specific missing capabilities, each
+confirmed by `grep` over the generated bindings rather than inferred:
+
+- **no method accepts a provider token** — `AuthState::AwaitingProviderToken`
+  and `AuthEvent::ProviderSheetOpened` are variants nothing exported can reach,
+  so T148's Google flow ends holding an ID token it cannot spend (chapter 02
+  §2.13);
+- **no way to fetch `{kdf_salt, key_verifier}`** — chapter 02 §2.7 defines
+  `GET /auth/recovery-info` and `GET /auth/key-verifier`, and neither is a B1
+  function or an `AuthSession` method, so T152's unlock screen is wired to a
+  dead input;
+- **no device-linking surface at all** — `link`, `pair` and `sas` return zero
+  hits, so T153 and T154 have nothing to drive;
+- **no vault, note or folder API** — the only `Vault`-shaped exports are
+  `derive_vault_key` and `local_vault_key_verifier`, which are functions over
+  bytes, not a vault.
+
+The shell must not close any of these gaps itself. Each needs an access token,
+a `401`, and a refresh, and all three belong to the core — a shell that fetched
+them would be a second protocol client the core cannot see, which is the same
+rule the transport boundary already enforces.
 
 **Current generated surface**: 10 exported functions, 14 protocols and 2
 objects in `packages/swift/MemryCore/Sources/MemryCore/Generated`. The two

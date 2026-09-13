@@ -426,3 +426,54 @@ gate in chapter 11, is `ios | android | desktop`
 phone registers as `ios` and identifies itself as `ios`, so they coincide for
 this feature, but a client MUST NOT model them as one enum: a desktop registers
 as `macos`, `windows` or `linux` and identifies itself as `desktop`.
+
+## 2.13 Native OAuth, and why a shell cannot post it
+
+**Normative.** Added to close spec-defects 116 and 117: this endpoint existed,
+was the terminal step of an iOS task, and was described nowhere in this
+document — so the one task that had to call it read `apps/sync-server` instead,
+which is exactly the failure this log exists to prevent.
+
+`POST /auth/oauth/:provider/native` is the mobile counterpart of the browser
+callback. It skips the authorization-code exchange and picks the flow up at ID
+token validation; everything after that — user lookup, entitlement, setup
+token, analytics — is the same path the browser flow takes, deliberately, so
+that two ways in do not become two account models.
+
+|                                                |                                                  |
+| ---------------------------------------------- | ------------------------------------------------ |
+| Request                                        | `{ idToken, sessionNonce, devicePublicKey }`     |
+| Response                                       | `{ success, isNewUser, needsSetup, setupToken }` |
+| `needsSetup`                                   | true when the account has no `kdf_salt` yet      |
+| Any provider but `google`                      | `400 AUTH_INVALID_PROVIDER`                      |
+| `GOOGLE_IOS_CLIENT_ID` unset on the deployment | `501`                                            |
+
+The `501` is **not** a fallback to the web OAuth client, and a client MUST NOT
+treat it as one: validating an ID token against the wrong audience would accept
+a token minted for a different app.
+
+**Two of the three request fields are core-private, so the shell cannot
+assemble this request.** `sessionNonce` is minted into the core's own pending
+state; `devicePublicKey` derives from the device signing key held inside the
+core's `SecureStore`; and the `setupToken` that comes back is signed **over
+that nonce** and has to land in the core's token manager. "The app posts the ID
+token" was therefore never a possible reading — the shell's half of native
+OAuth ends when it holds an ID token, and a core method has to take it from
+there. See spec-defect 114: no such method is exported today, which is why
+iOS ships no Google button rather than a button that cannot finish.
+
+Note for whoever next reads the route: its own comment says the app "signs in
+with Google's own iOS SDK". **That is inaccurate** — research R14 forbids that
+SDK on iOS, and the shell uses `ASWebAuthenticationSession` with PKCE. The
+comment is not corrected here because `apps/sync-server` is out of scope for
+this feature by Kaan's scope decision.
+
+### 2.13.1 Where the client's OAuth client id lives
+
+**Normative.** The iOS OAuth client id is read from **`MemryGoogleClientID` in
+`Info.plist`**, and the redirect URI scheme is derived from it as the reversed
+client id. It follows `MemrySyncEnvironment`'s discipline exactly
+(spec-defect 110): **no default and no fallback.** An absent key is a
+`notConfigured` failure, loud at launch, never a silent fall back to the web
+client. Both keys must be present in `Info.plist` and in the release build
+settings before any release or TestFlight build.
