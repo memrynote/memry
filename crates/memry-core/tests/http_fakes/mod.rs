@@ -52,6 +52,16 @@ impl FakeTransport {
         })
     }
 
+    /// Appends to the script after construction.
+    ///
+    /// Needed by any flow whose later response depends on what the core sent
+    /// earlier — device linking's `complete` body is sealed under a shared
+    /// secret that only exists once the core has generated its ephemeral key
+    /// and posted the public half, so it cannot be written before the run.
+    pub fn push(&self, item: Result<HttpResponse, TransportError>) {
+        self.script.lock().unwrap().push_back(item);
+    }
+
     pub fn calls(&self) -> Vec<HttpRequest> {
         self.calls.lock().unwrap().clone()
     }

@@ -1963,6 +1963,300 @@ public func FfiConverterTypeCodeCapture_lower(_ value: CodeCapture) -> UInt64 {
 
 
 
+/**
+ * The new device's side of chapter 03.
+ *
+ * **Which methods suspend is contract** (spec-defect 90). `new`, `cancel` and
+ * `is_pending` **block** and do no I/O at all; `scan` and `poll_once` are
+ * **`async`** and each makes **exactly one** HTTP request. Nothing here loops,
+ * and nothing here sleeps.
+ *
+ * That shape is the direct answer to spec-defect 108: an async core call
+ * cannot be cancelled from Swift, because `rust_future_cancel` does not appear
+ * in the bindings. A linking flow has a human in the middle and a 300 s
+ * window, so a poll loop *inside* one async call would be unabandonable — the
+ * user who walks away could not stop it, and the shell could not either. The
+ * loop therefore belongs to the shell's timer, where a cancelled `Task` is an
+ * ordinary thing, and each core call is one round trip the shell can simply
+ * stop repeating.
+ */
+public protocol DeviceLinkProtocol: AnyObject, Sendable {
+    
+    /**
+     * Abandons a pending link, zeroing the shared secret's three subkeys.
+     *
+     * Blocking, and safe to call with nothing pending: a user who backs out of
+     * the screen is not an error.
+     */
+    func cancel() 
+    
+    /**
+     * Whether a scanned session is still pending. Blocking.
+     */
+    func isPending()  -> Bool
+    
+    /**
+     * **One** `POST /auth/linking/complete`. The shell repeats it; this makes
+     * no second request and never sleeps.
+     *
+     * Three things happen before a request is sent, in this order: there must
+     * be a pending session, §3.4's window must still be open against the
+     * server's own `expiresAt`, and §3.4's 30-per-60-s budget must have room.
+     * Each refusal is its own variant and costs no request.
+     *
+     * On approval, §3.9's ordering is enforced structurally rather than
+     * remembered: `keyConfirm` is verified **before** the master key is
+     * decrypted, and §3.10's vault transfer is verified and decrypted before
+     * anything is stored. A failure of either wipes the subkeys and clears the
+     * session, so the next poll says [`LinkingError::NotScanned`] rather than
+     * retrying against a secret that did not agree.
+     */
+    func pollOnce() async throws  -> LinkingPoll
+    
+    /**
+     * Scans the desktop's QR payload and posts `POST /auth/linking/scan`.
+     *
+     * The order is §3.8's and it is load-bearing: parse and **refuse an
+     * expired session before doing any crypto**, because an X25519 agreement
+     * against a dead session spends a phone's battery to produce a code the
+     * user would then compare for nothing.
+     *
+     * One request. §3.7's three tags all ride in that one body — `scanProof`
+     * and `scanConfirm` on the scan channel under the decoded `linkingSecret`,
+     * and `newDeviceConfirm` on the confirm channel under `memrymac` — and
+     * `scanProof` and `newDeviceConfirm` cover **identical** CBOR bytes.
+     */
+    func scan(qrPayload: String) async throws  -> LinkingScan
+    
+}
+/**
+ * The new device's side of chapter 03.
+ *
+ * **Which methods suspend is contract** (spec-defect 90). `new`, `cancel` and
+ * `is_pending` **block** and do no I/O at all; `scan` and `poll_once` are
+ * **`async`** and each makes **exactly one** HTTP request. Nothing here loops,
+ * and nothing here sleeps.
+ *
+ * That shape is the direct answer to spec-defect 108: an async core call
+ * cannot be cancelled from Swift, because `rust_future_cancel` does not appear
+ * in the bindings. A linking flow has a human in the middle and a 300 s
+ * window, so a poll loop *inside* one async call would be unabandonable — the
+ * user who walks away could not stop it, and the shell could not either. The
+ * loop therefore belongs to the shell's timer, where a cancelled `Task` is an
+ * ordinary thing, and each core call is one round trip the shell can simply
+ * stop repeating.
+ */
+open class DeviceLink: DeviceLinkProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_devicelink(self.handle, $0) }
+    }
+    /**
+     * Builds the linking client over the shell's seams.
+     *
+     * The `HttpClient` carries **no token provider**, deliberately: both
+     * routes are unauthenticated (§3.1) and the phone has no session to
+     * refresh. A client with one would spend a refresh on every poll of a
+     * device whose whole problem is that it is not yet a device.
+     */
+public convenience init(transport: Transport, secureStore: SecureStore, baseUrl: String, clientPlatform: String, appVersion: String)throws  {
+    let handle =
+        try rustCallWithError(FfiConverterTypeApiError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_constructor_devicelink_new(
+        FfiConverterTypeTransport_lower(transport),
+        FfiConverterTypeSecureStore_lower(secureStore),
+        FfiConverterString.lower(baseUrl),
+        FfiConverterString.lower(clientPlatform),
+        FfiConverterString.lower(appVersion),uniffiCallStatus
+    )
+}
+    self.init(unsafeFromHandle: handle)
+}
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_devicelink(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Abandons a pending link, zeroing the shared secret's three subkeys.
+     *
+     * Blocking, and safe to call with nothing pending: a user who backs out of
+     * the screen is not an error.
+     */
+open func cancel()  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_devicelink_cancel(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Whether a scanned session is still pending. Blocking.
+     */
+open func isPending() -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_devicelink_is_pending(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * **One** `POST /auth/linking/complete`. The shell repeats it; this makes
+     * no second request and never sleeps.
+     *
+     * Three things happen before a request is sent, in this order: there must
+     * be a pending session, §3.4's window must still be open against the
+     * server's own `expiresAt`, and §3.4's 30-per-60-s budget must have room.
+     * Each refusal is its own variant and costs no request.
+     *
+     * On approval, §3.9's ordering is enforced structurally rather than
+     * remembered: `keyConfirm` is verified **before** the master key is
+     * decrypted, and §3.10's vault transfer is verified and decrypted before
+     * anything is stored. A failure of either wipes the subkeys and clears the
+     * session, so the next poll says [`LinkingError::NotScanned`] rather than
+     * retrying against a secret that did not agree.
+     */
+open func pollOnce()async throws  -> LinkingPoll  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_devicelink_poll_once(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeLinkingPoll_lift,
+            errorHandler: FfiConverterTypeLinkingError_lift
+        )
+}
+    
+    /**
+     * Scans the desktop's QR payload and posts `POST /auth/linking/scan`.
+     *
+     * The order is §3.8's and it is load-bearing: parse and **refuse an
+     * expired session before doing any crypto**, because an X25519 agreement
+     * against a dead session spends a phone's battery to produce a code the
+     * user would then compare for nothing.
+     *
+     * One request. §3.7's three tags all ride in that one body — `scanProof`
+     * and `scanConfirm` on the scan channel under the decoded `linkingSecret`,
+     * and `newDeviceConfirm` on the confirm channel under `memrymac` — and
+     * `scanProof` and `newDeviceConfirm` cover **identical** CBOR bytes.
+     */
+open func scan(qrPayload: String)async throws  -> LinkingScan  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_devicelink_scan(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(qrPayload)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeLinkingScan_lift,
+            errorHandler: FfiConverterTypeLinkingError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDeviceLink: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = DeviceLink
+
+    public static func lift(_ handle: UInt64) throws -> DeviceLink {
+        return DeviceLink(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: DeviceLink) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DeviceLink {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: DeviceLink, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceLink_lift(_ handle: UInt64) throws -> DeviceLink {
+    return try FfiConverterTypeDeviceLink.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceLink_lower(_ value: DeviceLink) -> UInt64 {
+    return FfiConverterTypeDeviceLink.lower(value)
+}
+
+
+
+
+
+
 public protocol EditorHost: AnyObject, Sendable {
     
     /**
@@ -6029,6 +6323,89 @@ public func FfiConverterTypeKeyMaterial_lower(_ value: KeyMaterial) -> RustBuffe
 
 
 /**
+ * What a successful scan gives the user to check, §3.6 and §3.4.
+ */
+public struct LinkingScan: Equatable, Hashable {
+    public var sessionId: String
+    /**
+     * The six-digit short verification code. **Six decimal digits, not
+     * words**, and both devices compute it independently from the raw
+     * scalarmult output, so the user comparing them is comparing the key
+     * agreement itself.
+     */
+    public var sasCode: String
+    /**
+     * The server's `expiresAt`, epoch **seconds** (§3.4). Absolute from
+     * `initiate`, and neither `scan` nor `approve` extends it, so a shell
+     * renders the countdown from this rather than from 300.
+     */
+    public var expiresAt: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sessionId: String, 
+        /**
+         * The six-digit short verification code. **Six decimal digits, not
+         * words**, and both devices compute it independently from the raw
+         * scalarmult output, so the user comparing them is comparing the key
+         * agreement itself.
+         */sasCode: String, 
+        /**
+         * The server's `expiresAt`, epoch **seconds** (§3.4). Absolute from
+         * `initiate`, and neither `scan` nor `approve` extends it, so a shell
+         * renders the countdown from this rather than from 300.
+         */expiresAt: Int64) {
+        self.sessionId = sessionId
+        self.sasCode = sasCode
+        self.expiresAt = expiresAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension LinkingScan: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLinkingScan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LinkingScan {
+        return
+            try LinkingScan(
+                sessionId: FfiConverterString.read(from: &buf), 
+                sasCode: FfiConverterString.read(from: &buf), 
+                expiresAt: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LinkingScan, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sessionId, into: &buf)
+        FfiConverterString.write(value.sasCode, into: &buf)
+        FfiConverterInt64.write(value.expiresAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkingScan_lift(_ buf: RustBuffer) throws -> LinkingScan {
+    return try FfiConverterTypeLinkingScan.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkingScan_lower(_ value: LinkingScan) -> RustBuffer {
+    return FfiConverterTypeLinkingScan.lower(value)
+}
+
+
+/**
  * One scheduled local notification.
  *
  * `fire_at_epoch_ms` is an instant the core orders by, so it is an integer
@@ -8387,6 +8764,337 @@ public func FfiConverterTypeEditorError_lower(_ value: EditorError) -> RustBuffe
 
 
 /**
+ * Failures of the device-linking crypto, chapter 03.
+ *
+ * The scan and confirm channels get their own rejection variants because a
+ * caller does different things with them: a scan-channel failure is the
+ * server's `LINKING_SECRET_INVALID` (§3.12) and means the QR was wrong, while
+ * a confirm-channel failure means the peer does not hold the shared secret and
+ * MUST wipe the session (§3.9). Distinguishing them by variant rather than by
+ * an English message is what makes that portable.
+ */
+public 
+enum LinkingError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    /**
+     * A key, nonce or public point arrived at the wrong size.
+     */
+    case InvalidLength(what: String, expected: UInt64, actual: UInt64
+    )
+    /**
+     * A field the protocol spells as standard-alphabet base64 did not decode.
+     */
+    case InvalidBase64(what: String
+    )
+    /**
+     * A scan-channel tag did not verify under the decoded `linkingSecret`.
+     */
+    case ScanMacInvalid
+    /**
+     * A confirm-channel tag did not verify under the `memrymac` subkey.
+     *
+     * §3.9: raised **before** the master key is touched, so an item that fails
+     * here is never decrypted.
+     */
+    case ConfirmMacInvalid
+    case Crypto(source: CryptoError
+    )
+    case Cbor(source: CborError
+    )
+    /**
+     * The QR payload of §3.8 could not be read, naming which part of it.
+     *
+     * Never a benign empty answer: §3.8's four fields, the UUID `sessionId` of
+     * §3.1 and the base64 of §3.3 each fail here with their own `what`, so a
+     * user is told to rescan rather than left watching a poll that can never
+     * complete.
+     */
+    case InvalidQrPayload(what: String
+    )
+    /**
+     * §3.10's `encryptedVaultTransfer` decrypted and then did not say what it
+     * promised. Separate from [`LinkingError::InvalidQrPayload`] because the
+     * bytes came from the *peer* rather than from the camera, and separate
+     * from an empty vault list because §3.10 makes this block hard-fail.
+     */
+    case InvalidVaultTransfer(what: String
+    )
+    /**
+     * §3.4's window closed. Raised locally, before a request, whenever the
+     * server's `expiresAt` is already behind the clock; the server's own
+     * `LINKING_SESSION_EXPIRED` (410) arrives as [`LinkingError::Api`].
+     */
+    case SessionExpired
+    /**
+     * A poll was asked for before a QR was scanned. Distinct from
+     * [`LinkingError::SessionExpired`] because nothing has been started, and
+     * distinct from [`LinkingError::AlreadyScanned`] so that each break in the
+     * state guard produces exactly one distinct failure.
+     */
+    case NotScanned
+    /**
+     * A second QR was scanned while a session was already pending. Refused
+     * rather than silently replacing it: §3.10's `LINKING_CONCURRENT_ATTEMPT`
+     * is what the server says about two links at once, and a client that
+     * dropped its own first session would be reporting the wrong one.
+     */
+    case AlreadyScanned
+    /**
+     * §3.4's budget — 30 requests per 60 seconds per session — would have been
+     * exceeded, so **no request was made**. The window is the client's to
+     * respect; exceeding it is a 429 that spends the session's remaining time.
+     */
+    case PollBudgetExhausted(retryInMs: UInt64
+    )
+    case Api(source: ApiError
+    )
+    case SecureStore(source: SecureStoreError
+    )
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension LinkingError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLinkingError: FfiConverterRustBuffer {
+    typealias SwiftType = LinkingError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LinkingError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .InvalidLength(
+            what: try FfiConverterString.read(from: &buf), 
+            expected: try FfiConverterUInt64.read(from: &buf), 
+            actual: try FfiConverterUInt64.read(from: &buf)
+            )
+        case 2: return .InvalidBase64(
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 3: return .ScanMacInvalid
+        case 4: return .ConfirmMacInvalid
+        case 5: return .Crypto(
+            source: try FfiConverterTypeCryptoError.read(from: &buf)
+            )
+        case 6: return .Cbor(
+            source: try FfiConverterTypeCborError.read(from: &buf)
+            )
+        case 7: return .InvalidQrPayload(
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 8: return .InvalidVaultTransfer(
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 9: return .SessionExpired
+        case 10: return .NotScanned
+        case 11: return .AlreadyScanned
+        case 12: return .PollBudgetExhausted(
+            retryInMs: try FfiConverterUInt64.read(from: &buf)
+            )
+        case 13: return .Api(
+            source: try FfiConverterTypeApiError.read(from: &buf)
+            )
+        case 14: return .SecureStore(
+            source: try FfiConverterTypeSecureStoreError.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LinkingError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case let .InvalidLength(what,expected,actual):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(what, into: &buf)
+            FfiConverterUInt64.write(expected, into: &buf)
+            FfiConverterUInt64.write(actual, into: &buf)
+            
+        
+        case let .InvalidBase64(what):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case .ScanMacInvalid:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .ConfirmMacInvalid:
+            writeInt(&buf, Int32(4))
+        
+        
+        case let .Crypto(source):
+            writeInt(&buf, Int32(5))
+            FfiConverterTypeCryptoError.write(source, into: &buf)
+            
+        
+        case let .Cbor(source):
+            writeInt(&buf, Int32(6))
+            FfiConverterTypeCborError.write(source, into: &buf)
+            
+        
+        case let .InvalidQrPayload(what):
+            writeInt(&buf, Int32(7))
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case let .InvalidVaultTransfer(what):
+            writeInt(&buf, Int32(8))
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case .SessionExpired:
+            writeInt(&buf, Int32(9))
+        
+        
+        case .NotScanned:
+            writeInt(&buf, Int32(10))
+        
+        
+        case .AlreadyScanned:
+            writeInt(&buf, Int32(11))
+        
+        
+        case let .PollBudgetExhausted(retryInMs):
+            writeInt(&buf, Int32(12))
+            FfiConverterUInt64.write(retryInMs, into: &buf)
+            
+        
+        case let .Api(source):
+            writeInt(&buf, Int32(13))
+            FfiConverterTypeApiError.write(source, into: &buf)
+            
+        
+        case let .SecureStore(source):
+            writeInt(&buf, Int32(14))
+            FfiConverterTypeSecureStoreError.write(source, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkingError_lift(_ buf: RustBuffer) throws -> LinkingError {
+    return try FfiConverterTypeLinkingError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkingError_lower(_ value: LinkingError) -> RustBuffer {
+    return FfiConverterTypeLinkingError.lower(value)
+}
+
+
+/**
+ * The answer to one poll.
+ */
+
+public enum LinkingPoll: Equatable, Hashable {
+    
+    /**
+     * The desktop has not approved yet. Poll again.
+     */
+    case awaitingApproval
+    /**
+     * The master key is in the secure store. `vaults` is §3.10's transferred
+     * list, and is **empty** when the initiator sent no block — which is not a
+     * failure, and not "this account has no vaults": the client fetches
+     * `GET /sync/vaults` after it registers.
+     */
+    case linked(vaults: [VaultSummary]
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LinkingPoll: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLinkingPoll: FfiConverterRustBuffer {
+    typealias SwiftType = LinkingPoll
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LinkingPoll {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .awaitingApproval
+        
+        case 2: return .linked(vaults: try FfiConverterSequenceTypeVaultSummary.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LinkingPoll, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .awaitingApproval:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .linked(vaults):
+            writeInt(&buf, Int32(2))
+            FfiConverterSequenceTypeVaultSummary.write(vaults, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkingPoll_lift(_ buf: RustBuffer) throws -> LinkingPoll {
+    return try FfiConverterTypeLinkingPoll.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkingPoll_lower(_ value: LinkingPoll) -> RustBuffer {
+    return FfiConverterTypeLinkingPoll.lower(value)
+}
+
+
+
+/**
  * Failures of the `Notifications` seam.
  */
 public 
@@ -9970,6 +10678,18 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_authsession_restore() != 38013) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_devicelink_cancel() != 46216) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_devicelink_is_pending() != 24754) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_devicelink_poll_once() != 25938) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_devicelink_scan() != 64888) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -10115,6 +10835,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_constructor_authsession_new() != 11309) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_constructor_devicelink_new() != 48739) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_constructor_runtimehost_new() != 10694) {

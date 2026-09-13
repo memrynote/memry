@@ -34,7 +34,7 @@ use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use thiserror::Error;
 use zeroize::Zeroizing;
 
-use crate::api::errors::{CborError, CryptoError};
+use crate::api::errors::{ApiError, CborError, CryptoError, SecureStoreError};
 use crate::crypto::keys::SUBKEY_LEN;
 use crate::crypto::sodium;
 
@@ -74,11 +74,20 @@ pub const SAS_MODULUS: u32 = 1_000_000;
 /// `protocol::linking::scan_mac`, not `protocol::linking::mac::scan_mac`.
 pub mod mac;
 
+/// §3.8's QR payload and §3.4's expiry predicate, before any crypto runs.
+pub mod qr;
+/// The two of §3.1's five routes that belong to the new device.
+pub mod routes;
+/// §3.10's `encryptedVaultTransfer` block, the hard-fail one.
+pub mod transfer;
+
 pub use mac::{
     confirm_mac, key_confirm_message, linking_proof_message, provider_auth_confirm_message,
     scan_confirm_message, scan_mac, vault_transfer_confirm_message, verify_confirm_mac,
     verify_scan_mac,
 };
+pub use qr::{LinkingInvitation, assert_not_expired, parse_invitation};
+pub use transfer::open_vault_transfer;
 
 /// Failures of the device-linking crypto, chapter 03.
 ///
@@ -88,7 +97,7 @@ pub use mac::{
 /// a confirm-channel failure means the peer does not hold the shared secret and
 /// MUST wipe the session (§3.9). Distinguishing them by variant rather than by
 /// an English message is what makes that portable.
-#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
 pub enum LinkingError {
     /// A key, nonce or public point arrived at the wrong size.
     #[error("{what} is {actual} bytes, expected {expected}")]
@@ -123,6 +132,64 @@ pub enum LinkingError {
     Cbor {
         #[from]
         source: CborError,
+    },
+
+    // Everything below is appended, and is appended **last** on purpose: this
+    // enum became part of the FFI surface with the new-device half, and a
+    // variant inserted among the ones above would renumber every discriminant
+    // a shell already lifts.
+    /// The QR payload of §3.8 could not be read, naming which part of it.
+    ///
+    /// Never a benign empty answer: §3.8's four fields, the UUID `sessionId` of
+    /// §3.1 and the base64 of §3.3 each fail here with their own `what`, so a
+    /// user is told to rescan rather than left watching a poll that can never
+    /// complete.
+    #[error("QR payload rejected: {what}")]
+    InvalidQrPayload { what: String },
+
+    /// §3.10's `encryptedVaultTransfer` decrypted and then did not say what it
+    /// promised. Separate from [`LinkingError::InvalidQrPayload`] because the
+    /// bytes came from the *peer* rather than from the camera, and separate
+    /// from an empty vault list because §3.10 makes this block hard-fail.
+    #[error("vault transfer rejected: {what}")]
+    InvalidVaultTransfer { what: String },
+
+    /// §3.4's window closed. Raised locally, before a request, whenever the
+    /// server's `expiresAt` is already behind the clock; the server's own
+    /// `LINKING_SESSION_EXPIRED` (410) arrives as [`LinkingError::Api`].
+    #[error("the linking session has expired")]
+    SessionExpired,
+
+    /// A poll was asked for before a QR was scanned. Distinct from
+    /// [`LinkingError::SessionExpired`] because nothing has been started, and
+    /// distinct from [`LinkingError::AlreadyScanned`] so that each break in the
+    /// state guard produces exactly one distinct failure.
+    #[error("no linking session has been scanned")]
+    NotScanned,
+
+    /// A second QR was scanned while a session was already pending. Refused
+    /// rather than silently replacing it: §3.10's `LINKING_CONCURRENT_ATTEMPT`
+    /// is what the server says about two links at once, and a client that
+    /// dropped its own first session would be reporting the wrong one.
+    #[error("a linking session is already pending")]
+    AlreadyScanned,
+
+    /// §3.4's budget — 30 requests per 60 seconds per session — would have been
+    /// exceeded, so **no request was made**. The window is the client's to
+    /// respect; exceeding it is a 429 that spends the session's remaining time.
+    #[error("the per-session poll budget is spent for another {retry_in_ms} ms")]
+    PollBudgetExhausted { retry_in_ms: u64 },
+
+    #[error("{source}")]
+    Api {
+        #[from]
+        source: ApiError,
+    },
+
+    #[error("{source}")]
+    SecureStore {
+        #[from]
+        source: SecureStoreError,
     },
 }
 

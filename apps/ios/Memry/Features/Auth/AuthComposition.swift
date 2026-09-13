@@ -138,8 +138,19 @@ enum AuthComposition {
             platform: .ios,
             osVersion: phone.systemVersion,
             appVersion: appVersion,
-            // Chapter 02 §2.3: absent means the server's `default`. Picking a
-            // vault is T155's, and it happens after registration.
+            // Chapter 02 §2.3: absent means the server's `default`.
+            //
+            // **T155 decided: picking a vault does not update this, ever.**
+            // The registration field is a 128-character label the server
+            // sanitises and stores; routing a read to a vault is the
+            // `X-Memry-Vault-Id` header on each request (chapter 05 §5.2),
+            // which the core owns, so rewriting the registration would change
+            // no routing. Nor is there a way to: the exported surface has one
+            // `registerDevice`, and re-registering to carry a new label mints a
+            // second device against the account's 50-device budget. Chapter 01
+            // §1.7 removes the last reason to want it — one vault key per
+            // account, no vault id in the derivation — so the device record
+            // does not need to know which vault is on screen.
             vaultId: nil
         )
     }

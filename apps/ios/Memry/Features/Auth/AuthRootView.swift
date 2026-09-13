@@ -52,6 +52,13 @@ final class AuthStartup {
     /// one, so the production path is what runs unless a test says otherwise.
     private(set) var keyMaterial: (any AccountKeyMaterialSource)?
     private let keyMaterialOverride: (any AccountKeyMaterialSource)?
+
+    /// T155's dependency: the session the vault registry is read through.
+    ///
+    /// Held rather than handed only to `SignInViewModel`, because the vault
+    /// list is a second consumer of the **same** session — a second one would
+    /// be a second device registration (chapter 02 §2.9).
+    private(set) var session: (any AuthSessionProtocol)?
     private let transportConfiguration: URLSessionConfiguration
     private let keychainItems: any KeychainItemStore
 
@@ -81,17 +88,58 @@ final class AuthStartup {
 
     /// The unlock screen for a device the core reports as registered.
     ///
-    /// `nil` when there is nothing to unlock with. Whether an **already**
-    /// unlocked account should skip this screen — the master key is in the
-    /// keychain, so the phrase is not needed again — is the vault-selection
-    /// question and belongs with T155, which is the task that opens a vault.
+    /// `nil` when there is nothing to unlock with. Whether the screen is
+    /// **needed** is a separate question and a separate call — see
+    /// ``isAlreadyUnlocked()``, which is T155's half of it.
     func unlockModel(for state: AuthState) -> RecoveryPhraseViewModel? {
         guard state == .registered, let keyMaterial else { return nil }
         return RecoveryPhraseViewModel(
             executor: executor,
             source: keyMaterial,
-            secureStore: Keychain(emitter: events.emitter)
+            secureStore: Keychain(emitter: events.emitter, items: keychainItems)
         )
+    }
+
+    /// T155. The vault picker for an account that is unlocked.
+    ///
+    /// `nil` before the session exists, which is the same rule
+    /// ``unlockModel(for:)`` follows: no session, no account, nothing to list.
+    /// The opener is built here rather than inside the view model so that the
+    /// production graph — the real `VaultFiles`, the process's one executor,
+    /// the core's own registry read — is what the screen runs on.
+    func vaultModel(for state: AuthState) -> VaultSelectionViewModel? {
+        guard state == .registered, let session else { return nil }
+        return VaultSelectionViewModel(
+            registry: CoreVaultRegistry(session: session),
+            opener: CoreVaultOpener(
+                files: VaultFiles(emitter: events.emitter),
+                executor: executor
+            )
+        )
+    }
+
+    /// Whether this device has nothing left to unlock — T155's half of the
+    /// question T152 left open.
+    ///
+    /// Chapter 01 §1.6 stores exactly one master key per account, and §1.7
+    /// derives every vault's key from it with **no** per-vault input. So a
+    /// device that already holds the master key is unlocked for every vault on
+    /// the account, and asking for the 24 words again would be a screen with
+    /// nothing to do.
+    ///
+    /// A keychain read that **throws** is not "no key":
+    /// `errSecInteractionNotAllowed` is a phone that has not been unlocked since
+    /// boot, and `Keychain` already surfaces that as locked rather than absent.
+    /// Reading it as "unlocked" would skip the only screen that could recover,
+    /// so "could not tell" answers `false` and the phrase screen stays.
+    func isAlreadyUnlocked() -> Bool {
+        do {
+            return try Keychain(emitter: events.emitter, items: keychainItems).get(key: .masterKey) != nil
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.secureStore.error("could not tell whether the master key is present", .code(mapped.code))
+            return false
+        }
     }
 
     func begin() async {
@@ -126,6 +174,7 @@ final class AuthStartup {
                 )
             }
             let session = graph.session
+            self.session = session
             // **T165, spec-defect 121.** `AuthSession::new` builds the machine
             // in `SignedOut` whatever the keychain holds, so before this line a
             // registered user who quit the app was shown the sign-in screen
@@ -175,6 +224,7 @@ final class AuthStartup {
 struct AuthRootView: View {
     @State private var startup = AuthStartup()
     @State private var unlock: RecoveryPhraseViewModel?
+    @State private var vaults: VaultSelectionViewModel?
 
     var body: some View {
         Group {
@@ -189,20 +239,51 @@ struct AuthRootView: View {
                 // a model minted per render would throw away what the user had
                 // typed on every keystroke.
                 Group {
-                    if let unlock {
+                    if let vaults {
+                        VaultListView(model: vaults)
+                    } else if let unlock {
                         RecoveryPhraseView(model: unlock)
                     } else {
                         SignInView(model: model)
                     }
                 }
                 .onChange(of: model.state, initial: true) { _, state in
-                    unlock = startup.unlockModel(for: state)
+                    route(for: state)
+                }
+                // T155. The phrase screen's success is what ends it: the master
+                // key is in the store, so §C.2's `Unlocking -> Unlocked` has
+                // happened and the next question is which vault.
+                .onChange(of: unlock?.isUnlocked ?? false) { _, _ in
+                    route(for: model.state)
                 }
             case let .unavailable(error):
                 AuthUnavailableView(error: error)
             }
         }
         .task { await startup.begin() }
+    }
+
+    /// Which of the three screens this state means.
+    ///
+    /// Models are held rather than re-minted, because both of them own work in
+    /// progress: a phrase half-typed, a vault half-opened. The only two moments
+    /// that discard one are leaving `registered` — a sign-out or a revocation,
+    /// where keeping a vault list alive would be showing an account nobody is
+    /// signed into — and an unlock completing.
+    private func route(for state: AuthState) {
+        guard state == .registered else {
+            unlock = nil
+            vaults = nil
+            return
+        }
+        if unlock?.isUnlocked == true || startup.isAlreadyUnlocked() {
+            unlock = nil
+        } else if unlock == nil {
+            unlock = startup.unlockModel(for: state)
+        }
+        if unlock == nil, vaults == nil {
+            vaults = startup.vaultModel(for: state)
+        }
     }
 }
 
