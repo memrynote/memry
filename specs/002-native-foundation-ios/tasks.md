@@ -275,6 +275,49 @@ desktop-created vault, sign in, unlock by recovery phrase, then unlock a second 
 by scanning the desktop's code; verify recent content is browsable. Repeat on an
 account holding two vaults.
 
+### Scope decisions — Kaan, 2026-09-13
+
+Recorded here because each changes what "Phase 4 is done" means. Three tasks are
+**cut**, so Phase 4 is **21 tasks, not 24**.
+
+**Sign in with Apple is cut: T149, T150, T151.** iOS ships **email OTP plus
+Google**. Research R14 offered exactly two safe shapes — OTP-only, where App
+Review 4.8 does not apply at all, or Google plus Apple, where 4.8 is satisfied —
+and this is neither. **The risk is named rather than smoothed over**: 4.8
+requires an equivalent private-email option whenever a third-party login is
+offered, and email OTP cannot promise a private address, so this combination
+triggers 4.8 without meeting it. Kaan was told this and chose it. The three tasks
+are cut, not deleted, and can be restored without rework: nothing else in Phase 4
+depends on them, and `apps/sync-server` is therefore **untouched by Phase 4** —
+no `apple` provider, no `0003_*.sql`, no route change, no staging deploy.
+
+**T148 Google stays, and needs `GOOGLE_IOS_CLIENT_ID` configured in staging.**
+It is an optional field in `apps/sync-server/src/types.ts`; whether it is set is
+not readable from here. Confirm before T148 is dispatched or the task cannot be
+verified.
+
+**Localization is out of scope for Phase 4** (spec-defect 98). `DESIGN.md` still
+states the rule, because it is right for the product; Phase 4 ships literals and
+the conversion is a later, bounded pass. Do not treat a hard-coded string as a
+defect in this phase.
+
+**There is no iOS support or feedback channel, and none is invented**
+(spec-defect 94). No error copy tells a user to report a problem. If one is ever
+created, `ErrorMapping.swift` is the single file that changes.
+
+**T161/T162 run on ONE phone plus a desktop** — an iPhone 12 Pro
+(`8025C79A-F257-500F-8BA1-A14122135B2D`) and Kaan's desktop are the whole
+hardware budget. The Independent Test above says "unlock a second phone"; that
+bar is not reachable and is **replaced**, not quietly reinterpreted. The
+replacement: on the single phone, unlock every test vault by recovery phrase;
+then **clear the app's data so the device has no vault, no keys and no
+registration**, and unlock the same vaults again by scanning the desktop's code
+through T153/T154. Repeated on an account holding two vaults. What this proves is
+the same thing for each of the two paths on a phone that has not seen the vault.
+What it does **not** prove is two phones registered against one account at once —
+that is a multi-device concern the evidence must say it did not cover, rather
+than letting "second phone" read as covered.
+
 - [x] T140 [US3] Implement `apps/ios/Memry/Core/CoreExecutor.swift`: one serial `DispatchQueue` fronting every core call through `withCheckedThrowingContinuation`, since UniFFI objects are `@unchecked Sendable` and a Swift actor would double-serialize (research R15)
 - [x] T141 [US3] Implement `apps/ios/Memry/Core/CoreEvents.swift`: the shell's single event hub, an `AsyncStream` with `.bufferingNewest(256)` that every Swift implementation of a core-called seam yields into and **never** re-enters the core from, because a foreign-trait method runs synchronously on the calling Rust thread while core locks may be held. **The core exports no core-to-shell event trait and the eight-seam list is closed** (spec-defect 89, `contracts/shell-seams.md` §There is no event seam): the producers are the nine Swift-implemented traits and the shell's own sources, and a core-originated emitter arriving with band B3 joins this hub rather than adding a ninth seam
 - [x] T142 [P] [US3] Implement `apps/ios/Memry/Core/ErrorMapping.swift`: each core error enum rendered to user-facing copy in the shell, with no raw error object ever shown (Constitution II); the same change adds `apps/ios/Memry/Core/Log.swift`, an OSLog `Logger` per subsystem as the shell's only logging path, with no `print` in the target and no key material, token, or note text ever passed to it (Constitution II, FR-023)
@@ -284,9 +327,9 @@ account holding two vaults.
 - [ ] T146 [P] [US3] Implement the two small seams: `apps/ios/Memry/Seams/Reachability.swift` over `NWPathMonitor`, reporting online and whether the path is expensive with no interpretation of either, and `apps/ios/Memry/Seams/Camera.swift`, `AVCaptureMetadataOutput` with `.qr`, output added **before** `metadataObjectTypes` is set and debounced to the first valid hit then `stopRunning()` (research R13)
 - [ ] T147 [US3] Implement `apps/ios/Memry/Features/Auth/SignInView.swift`: email one-time code entry with `.textContentType(.oneTimeCode)`, paste and typing as the real mechanism, with autofill treated as a bonus that may arrive 10 to 15 s late. **First renderer through T142's `ErrorMapping`, and therefore the task that ratifies `UserFacingError`'s shape** (spec-defect 95): T148 through T159 all inherit it, so if the title/guidance/recourse/code/visibility shape does not serve a real screen, change it here rather than working around it eleven times. Also the first production construction of `AuthSession`, which means the first real wiring of T143's `Keychain` and T145's `Transport` into the core
 - [ ] T148 [US3] Implement `apps/ios/Memry/Features/Auth/GoogleSignIn.swift`: `ASWebAuthenticationSession` with authorization code plus PKCE against the iOS OAuth client, `prefersEphemeralWebBrowserSession = true`, `state` and verifier validated, the ID token posted to the existing `POST /auth/oauth/google/native`, `canceledLogin` treated as a non-error, and no GoogleSignIn-iOS SDK anywhere in the target (research R14)
-- [ ] T149 [US3] Implement `apps/ios/Memry/Features/Auth/AppleSignIn.swift`: `AuthenticationServices` Sign in with Apple, persisting the name and email delivered on the **first** authorization because the platform never delivers them again, and accepting a private relay address (FR-018)
-- [ ] T150 [US3] Add the additive `apple` provider server-side in `apps/sync-server/src/routes/auth.ts`: Apple identity token verification on the same native endpoint, with the sync-server suite green in the same change and header-less legacy clients byte-identical (plan Decision Record Fidelity)
-- [ ] T151 [US3] Implement the Apple account-link step in `apps/ios/Memry/Features/Auth/AppleAccountLink.swift` plus its server counterpart: a relay address cannot be matched to an existing account by email, so the flow offers an explicit link-to-existing-account path that verifies the real address with a one-time code before linking (spec Assumptions, App Review 4.8)
+- [ ] **CUT — see Scope decisions at the top of Phase 4.** T149 [US3] Implement `apps/ios/Memry/Features/Auth/AppleSignIn.swift`: `AuthenticationServices` Sign in with Apple, persisting the name and email delivered on the **first** authorization because the platform never delivers them again, and accepting a private relay address (FR-018)
+- [ ] **CUT — see Scope decisions at the top of Phase 4.** T150 [US3] Add the additive `apple` provider server-side in `apps/sync-server/src/routes/auth.ts`: Apple identity token verification on the same native endpoint, with the sync-server suite green in the same change and header-less legacy clients byte-identical (plan Decision Record Fidelity)
+- [ ] **CUT — see Scope decisions at the top of Phase 4.** T151 [US3] Implement the Apple account-link step in `apps/ios/Memry/Features/Auth/AppleAccountLink.swift` plus its server counterpart: a relay address cannot be matched to an existing account by email, so the flow offers an explicit link-to-existing-account path that verifies the real address with a one-time code before linking (spec Assumptions, App Review 4.8)
 - [ ] T152 [US3] Implement `apps/ios/Memry/Features/Unlock/RecoveryPhraseView.swift`: 24-word entry, the verifier checked **before** any key is stored so a wrong phrase leaves nothing partially unlocked, and errors that distinguish an unknown word from a checksum failure and from an Argon2id OOM (FR-019, FR-027)
 - [ ] T153 [US3] Implement `apps/ios/Memry/Features/Unlock/QRLinkView.swift`: scan through the `CodeCapture` seam, with manual code entry as the real fallback and not a nicety, since the camera does not exist in CI (research R13)
 - [ ] T154 [US3] Implement `apps/ios/Memry/Features/Unlock/SASConfirmView.swift`: the short verification code displayed on both screens, with the desktop confirming before any key material transfers, and a scan by an already-linked device resolving to the existing registration rather than minting a duplicate (FR-020, spec edge case)
@@ -294,7 +337,7 @@ account holding two vaults.
 - [ ] T156 [US3] Implement `apps/ios/Memry/Features/Notes/NotesListView.swift` and `apps/ios/Memry/Features/Folders/FolderTreeView.swift`: the same hierarchy as desktop, rendered from core snapshots, with `navigationDestination` kept out of lazy containers (research R15)
 - [ ] T156a [US3] Implement the notes and folders CRUD surface in `apps/ios/Memry/Features/Notes/NoteActions.swift` and `apps/ios/Memry/Features/Folders/FolderActions.swift`: create (empty and from a template), rename, move and delete, offered through system context menus and swipe actions, each action a call into the T126 core APIs with no logic of its own (FR-039)
 - [ ] T157 [US3] Implement `apps/ios/Memry/Features/Notes/NoteReadView.swift`: read-only markdown rendering as the pre-editor surface, explicitly labelled as the placeholder T176 replaces
-- [ ] T158 [US3] Implement `apps/ios/Memry/Features/Sync/SyncStatusView.swift`: the degraded-state vocabulary shared with desktop (offline, syncing, locked, read-only, unentitled) plus determinate first-sync progress, each state a value the core computed (FR-075, FR-028). **This task also owns T141's consumer** (spec-defect 92): the single `CoreEvents.consume()` call site lives in the app root (`apps/ios/Memry/App/`), which iterates the hub and re-reads snapshots through `CoreExecutor` into `@Observable` state every view reads. The hub is single-consumer, so a second `consume()` returns `nil`; a view must read the root's state, never the stream
+- [ ] T158 [US3] Implement `apps/ios/Memry/Features/Sync/SyncStatusView.swift`: the degraded-state vocabulary shared with desktop (offline, syncing, locked, read-only, unentitled) plus determinate first-sync progress, each state a value the core computed (FR-075, FR-028). **This task also owns T141's consumer** (spec-defect 92): the single `CoreEvents.consume()` call site lives in the app root (`apps/ios/Memry/App/`), which iterates the hub and re-reads snapshots through `CoreExecutor` into `@Observable` state every view reads. The hub is single-consumer, so a second `consume()` returns `nil`; a view must read the root's state, never the stream. **The same app root owns the two runtime obligations nothing calls today** (spec-defect 100): it must act on `PullReport::purged_documents` and `BodyPullReport::advanced_documents` by releasing or refreshing those resident documents (§7.15.1's runtime half, which the core can only report), and it must poll `snapshot_is_due` (§7.13.3). Both are the registry holder's job and the app root is the only thing that holds one
 - [ ] T159 [US3] Implement sign-out and revocation in `apps/ios/Memry/Features/Account/SignOutService.swift`: sign-out deletes all five keychain entries, both database files and `images/`, and zeroes in-memory keys; a revocation detected on next contact does the same and records why so the locked screen can explain itself (FR-025, FR-026)
 - [ ] T160 [P] [US3] Implement `apps/ios/Memry/Design/Tokens.swift`: the tokens mirrored from `DESIGN.md`, with logical leading/trailing properties only, dynamic type, and reduce-transparency and reduce-motion branched at the modifier level (FR-077)
 - [ ] T161 [US3] Device test `apps/ios/MemryTests/UnlockTests.swift` plus a scripted device run: every real desktop-created test vault unlocks by recovery phrase and, separately, by device linking, on a physical iPhone against staging (SC-003)
