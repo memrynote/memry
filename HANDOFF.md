@@ -17,7 +17,7 @@ Branch `native-core-phase-3` in `.worktrees/native-core-phase-3`, fast-forwarded
 | W3b  | T104 repositories + thirteen per-type projectors              | done, on main |
 
 Ticked this session: T096, T097, T098, T099, T100, T101, T102, T103, T104, T105,
-T106, T109, T110, T111, T232.
+T106, T107, T108, T109, T110, T111, T123, T232.
 
 ## Waves in flight
 
@@ -25,15 +25,20 @@ None. Nothing is half-applied; the tree is clean.
 
 ## The exact next wave to dispatch
 
-**W4 `{T107, T108}`** — the pull loop (`sync/pull.rs`) and the sync engine state
-machine (`sync/engine.rs`, exactly as data-model §C.3 draws it, every pass serialised
-through one gate). W1, W2 and W3 are all in, so nothing blocks it. `field-merge` is the
-vector class it should bring with it: the class exercises chapter 06's `mergeFields`,
-which does not exist yet and belongs in the engine's neighbourhood, not in the
-projectors.
+**W6 `{T116, T117, T118}`** — outbox, push wave, client policy. The engine already
+owns _when_ and calls a `PushWave` trait (`pending`/`drain`) that T117 fills in;
+`RetryPolicy::push()` exists for chapter 05 §5.6's halving ladder, and
+`repositories::push_payload` already rebuilds from the live row, so §6.5.2's P2 is
+structural rather than a rule to remember.
 
-After it: **W5 `{T112, T113}`**, the `memry-cli` transport and commands. That is where
-staging first becomes reachable and where the T114 checks below run.
+**T118 carries a known gap**: spec defect 29 closed chapter 11 with a new §11.7.1
+saying `Unentitled` is entered reactively on a `402 SYNC_PAYMENT_REQUIRED`. The engine
+currently takes entitlement as an explicit input defaulting to entitled — the right
+default, not yet wired to the 402. Wire it in T118.
+
+Then **W5 `{T112, T113}`**, the `memry-cli` transport and commands, which is where
+staging first becomes reachable and the T114 checks below run. W5 and W6 are
+independent; W5 is what unblocks G4, so prefer it if only one can run.
 
 ## What went wrong, so it is not repeated
 
@@ -57,7 +62,7 @@ before assuming it is working.
 
 ## Open spec-defect entries
 
-**Zero.** 22 logged, 22 closed. Five of the twenty-two required reading TypeScript;
+**Zero.** 31 logged, 31 closed. Nine of the thirty-one required reading TypeScript;
 the rest were internal contradictions or gaps found without leaving `docs/protocol/`. G3's defect-log condition is met as of this session; G5
 re-checks it.
 
@@ -121,17 +126,17 @@ function or an exported error enum changes.
 
 ## Current gate baseline — re-run and observed at the end of this session
 
-| Gate                                           | Result                                                                                                    |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `cargo fmt --all --check`                      | clean                                                                                                     |
-| `cargo clippy --all-targets -- -D warnings`    | clean                                                                                                     |
-| `cargo test`                                   | 141 passed, 0 failed (88 lib, 19 http_client, 18 auth_session, 7 dryoc_parity, 7 vectors, 2 crdt_vectors) |
-| `node scripts/check-line-ceilings.mjs`         | passed                                                                                                    |
-| `pnpm lint`                                    | 1 pre-existing warning, `vault-switcher.tsx:96`                                                           |
-| `pnpm typecheck`                               | 19/19                                                                                                     |
-| `pnpm test`                                    | 20936 passed, 3 expected fail, 13 skipped, 1517 files                                                     |
-| `pnpm --filter @memry/contracts vectors:check` | 11 classes                                                                                                |
-| `pnpm docs:build`                              | complete                                                                                                  |
+| Gate                                           | Result                                                                                                                                                    |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cargo fmt --all --check`                      | clean                                                                                                                                                     |
+| `cargo clippy --all-targets -- -D warnings`    | clean                                                                                                                                                     |
+| `cargo test`                                   | 203 passed, 0 failed (131 lib, 19 http_client, 18 auth_session, 12 sync_engine, 7 dryoc_parity, 7 vectors, 4 field_merge, 3 text_extract, 2 crdt_vectors) |
+| `node scripts/check-line-ceilings.mjs`         | passed                                                                                                                                                    |
+| `pnpm lint`                                    | 1 pre-existing warning, `vault-switcher.tsx:96`                                                                                                           |
+| `pnpm typecheck`                               | 19/19                                                                                                                                                     |
+| `pnpm test`                                    | 20936 passed, 3 expected fail, 13 skipped, 1517 files                                                                                                     |
+| `pnpm --filter @memry/contracts vectors:check` | 11 classes                                                                                                                                                |
+| `pnpm docs:build`                              | complete                                                                                                                                                  |
 
 Anything worse than this is the next session's to fix, not to inherit.
 
@@ -143,22 +148,29 @@ run the root suite alongside a Rust release build, because the result is not evi
 
 ## Vector tier — SC-001
 
-**Seven of eleven classes pass byte for byte**: `crypto-vectors`, `bip39-unlock`,
-`cbor-canonical`, `compression`, `record-envelope` (all 14 cases), `payload-schemas`
-(the subscribed-type header and all 52 payload cases), and `crdt-update` (all 8 cases,
-T232, in its own `tests/crdt_vectors.rs`).
+**Nine of eleven classes pass**: `crypto-vectors`, `bip39-unlock`, `cbor-canonical`,
+`compression`, `record-envelope`, `payload-schemas`, `crdt-update`, `text-extract`,
+`field-merge`.
 
-Count classes, not test functions: `payload-schemas` has two test functions and
-`crdt-update` has two, so the function count runs ahead of the class count and an earlier
-revision of this file miscounted because of it.
+Count classes, not test functions: `payload-schemas`, `crdt-update` and `text-extract`
+have more than one test function each, so the function count runs ahead of the class
+count and an earlier revision of this file miscounted because of it.
 
-Remaining four: `field-merge` (needs chapter 06's `mergeFields`, due in W4),
-`pack-container`, `device-linking`, `text-extract` (T123).
+**`field-merge` is exact on 31 of its 32 cases and intentionally divergent on one.**
+`object-values-same-content-different-key-order` records pre-#2185 TypeScript
+(`hadConflicts: true`); chapter 06 §6.4.2 is the dated decision mandating canonical
+comparison, so the core reports `false`. The test asserts **both** values with the
+citation rather than skipping, and the winner, merged value and merged clock are still
+asserted from the file. When #2185 lands and the generator re-runs, the override
+deletes with no Rust change. Do not "fix" this by making the core match the file.
+
+Remaining two: `pack-container` and `device-linking`. T089 closes when both land.
 
 ## Gate exit status
 
 - **G3** — defect log at zero ✅; cargo fmt/clippy/test and line ceilings green ✅; vector
-  tier **not** green across all eleven ❌ (seven of eleven). Device-tier item recorded as
-  BLOCKED, not passed ✅. G3 is not closed.
+  tier **not** green across all eleven ❌ (nine of eleven; `pack-container` and
+  `device-linking` remain). Device-tier item recorded as BLOCKED, not passed ✅.
+  G3 is not closed.
 - **G4** — not started. Needs W5.
 - **G5** — not started.

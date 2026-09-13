@@ -110,6 +110,28 @@ Only `writes_enabled === 0` (`:43`) and a strictly-below comparison (`:50`) deny
 **An unreadable policy table degrades to today's behaviour, never to a lockout**
 (`specs/001-mobile-app/contracts/sync-protocol-additions.md:48-50`).
 
+## 11.7.1 `Unentitled` does not come from the policy
+
+**Normative.** The three write-blocked states are not read from one place, and
+conflating them is how a client ends up polling `clientPolicy` for an answer it
+will never contain.
+
+| State            | Source                                                                                  |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| `ReadOnly`       | `clientPolicy.writesEnabled === false` (§11.8)                                          |
+| `BlockedUpgrade` | `clientPolicy.minWriteVersion` above this build (§11.8)                                 |
+| `Unentitled`     | **a `402` carrying `SYNC_PAYMENT_REQUIRED`** from any `/sync/*` route (chapter 00 §0.5) |
+
+`clientPolicy` carries `platform`, `writesEnabled` and `minWriteVersion` and
+**no entitlement field**, so entitlement is only ever learned by being told
+`402`. A client therefore enters `Unentitled` reactively and must not try to
+predict it.
+
+Consistent with §11.3, an entitlement that has never been contradicted is
+treated as **present**: a client starts entitled and is demoted by a `402`,
+never the reverse. Starting from "unentitled until proven otherwise" locks a
+paying user out of writes whenever the first status call fails.
+
 ## 11.8 Policy is discoverable without attempting a write
 
 **Normative.** `GET /sync/status` echoes

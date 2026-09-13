@@ -154,6 +154,13 @@ Consequently `{a:1,b:2}` and `{b:2,a:1}` are **equal**, and `null` and
 `packages/sync-client/src/field-merge.ts:100` changes to match. Tracked as
 **#2185**. This chapter states the canonical form, not `JSON.stringify`.
 
+**Negative zero canonicalises to `0`.** IEEE 754 has two spellings of zero and
+the three rules above do not choose between them, which leaves the one hole a
+port can fall into silently: `-0` and `0` are `==` in every language here, so a
+naive comparison calls them equal while a naive serialiser writes `-0` and
+makes the canonical forms differ. Normalise both to `0` before comparing or
+emitting, which is also what `JSON.stringify(-0)` already does.
+
 ### 6.4.3 Blast radius of the decision, exhaustive
 
 `differ` flips true → false **only** for pairs that are JSON-equal modulo key

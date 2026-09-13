@@ -133,6 +133,21 @@ before the verifier passes.
 
 There are two verifiers and they MUST NOT be confused.
 
+### 1.4.0 Where a client gets a peer's public key
+
+**Normative.** Chapter 04 §4.8 has the verifier "resolve a public key by
+`signerDeviceId`", which presumes a directory that no chapter named.
+
+It is **`GET /auth/devices`**. The response's `devices[]` each carry
+`signingPublicKey` — the same Ed25519 key the device committed at registration
+(chapter 02 §2.3) — alongside the device id. That list is the only source; a
+client caches it, and a `signerDeviceId` it cannot resolve means refetching the
+list before treating the record as unverifiable.
+
+A record whose signer cannot be resolved is **unverified, not invalid**: it is
+recorded as unapplied rather than dropped, because a device registered after
+this client last fetched the list is the ordinary case, not an attack.
+
 ### 1.4.1 Account key verifier (server-visible)
 
 **Normative.** The account key verifier is literally

@@ -288,6 +288,43 @@ items were applied** (`packages/sync-client/src/pull/engine.ts:25-26`, `:358`).
 A client MUST NOT advance the cursor before applying, and MUST NOT keep a
 per-type cursor: the feed is one ordered stream.
 
+## 5.11.1 The response shapes
+
+**Normative.** The chapters describe these routes' _behaviour_ at length and
+never wrote down what comes back, so a port had to read the TypeScript to
+deserialise a single page. Written out here; `?` marks optional, meaning
+absent, never `null`.
+
+**A ref row** — the unit `items[]` carries on every record route:
+
+| Field          | Type                           |
+| -------------- | ------------------------------ |
+| `id`           | string                         |
+| `type`         | `SyncItemType`                 |
+| `version`      | non-negative integer           |
+| `modifiedAt`   | non-negative integer, epoch ms |
+| `size`         | non-negative integer, bytes    |
+| `stateVector?` | string                         |
+
+A ref row is metadata only. It carries **no ciphertext**: the envelope of
+§4.8 arrives from `POST /sync/pull`, which answers `{ items: [<envelope>] }`.
+
+**`GET /sync/changes`** → `{ items: <ref row>[], deleted: string[], hasMore: boolean, nextCursor: integer }`.
+
+All four are **required**. `nextCursor` is an **integer, not a string** — a
+port that types it as string-or-number will serialise the wrong thing back.
+
+**`GET /sync/manifest`** → `{ items: <ref row>[], serverTime: integer, nextCursor?: integer }`.
+
+Here `nextCursor` **is** optional: it appears only on a paginated call
+(`?limit=N`) that has more rows, and is absent on the final page and on the
+param-less everything-at-once call.
+
+**`POST /sync/push`** → `{ accepted: string[], rejected: [{ id, reason }], serverTime: integer, maxCursor: integer }`.
+
+`rejected` is per item, so a partially accepted batch is normal and a client
+must read it rather than infer success from the status code.
+
 ## 5.12 Tombstones
 
 **Normative.** `GET /sync/changes` returns
@@ -355,6 +392,23 @@ every item sharing a chunk with one bad row.
 A conforming client MUST implement all three behaviours. Advancing the cursor
 without reporting the refusal loses data silently; refusing without advancing the
 cursor wedges the device on one poisoned page forever.
+
+### 5.12.2 How a bare tombstone is stored
+
+**Normative.** §5.12.1 establishes that a `deleted[]` entry is an **id with no
+type**, while every other piece of client bookkeeping is keyed `(type, id)`.
+The two were never reconciled, which left "where does this row go" unanswered.
+
+A bare tombstone is recorded **keyed by id alone**, in a set consulted by id
+before any apply. It is not stored as a row of the typed projection it might
+have belonged to, because the type is exactly what the server did not send and
+guessing it would resurrect the item under the wrong one.
+
+The ordering matters and is the reason the rule exists: the tombstone check runs
+**before** an apply, so an item that arrives on a later page — a re-delivery, or
+a stale write from a device that had not seen the delete — does not resurrect
+locally. A client that recorded the tombstone only against a typed row it
+already had would lose the guarantee for any id it had never seen.
 
 ## 5.15 The manifest, and the absence of a digest
 
