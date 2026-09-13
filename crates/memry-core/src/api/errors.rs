@@ -312,6 +312,20 @@ pub enum ApiError {
         source: TransportError,
     },
 
+    /// A local storage failure, surfaced across a boundary whose other arms
+    /// are all server answers.
+    ///
+    /// It exists because the alternative lies. `PushWave::pending` and `drain`
+    /// return `ApiError`, so before this variant a failed SQLite read crossed
+    /// as `Transport { Failed { "local storage: …" } }` — which lands in the
+    /// right state, because the engine's `is_offline` matches only
+    /// [`TransportError::Offline`], but tells every reader that the network
+    /// failed when the disk did. A caller cannot tell "the server is
+    /// unreachable" from "this device cannot read its own database", and those
+    /// want different things said to the user.
+    #[error("local storage failure: {what}")]
+    Storage { what: String },
+
     /// A 401. The token is unusable and a refresh either did not happen or did
     /// not help.
     #[error("not authenticated ({code}): {message}")]

@@ -361,6 +361,42 @@ fn the_wave_leads_with_crdt_rows_grouped_by_document() {
 
 // -------------------------------------------- T117, the payload at send time
 
+/// A disk failure must not cross the `PushWave` boundary dressed as a network
+/// one.
+///
+/// Before `ApiError::Storage` existed, `pending` and `drain` reported a failed
+/// SQLite read as `Transport { Failed { "local storage: …" } }`. It landed in
+/// the right state — the engine's `is_offline` matches only
+/// `TransportError::Offline` — but it told every reader the network failed when
+/// the disk did, and a caller could not tell "the server is unreachable" from
+/// "this device cannot read its own database". Those want different things said
+/// to the user.
+#[tokio::test]
+async fn a_local_storage_failure_is_reported_as_storage_and_not_as_transport() {
+    let db = scratch_db("push-local-storage-error");
+    // A table the outbox needs, removed underneath it: the same `rusqlite`
+    // error path a constraint or a full disk produces.
+    db.call_blocking(|conn| {
+        conn.execute("DROP TABLE outbox", []).expect("drop outbox");
+        Ok(())
+    })
+    .expect("drop");
+
+    let coordinator = coordinator(db, FakeTransport::new(vec![]), RecordingSealer::new());
+    let error = memry_core::sync::engine::PushWave::pending(&coordinator)
+        .await
+        .expect_err("a missing table must not read as an empty queue");
+
+    assert!(
+        matches!(error, ApiError::Storage { .. }),
+        "a disk failure must be ApiError::Storage, got {error:?}"
+    );
+    assert!(
+        !matches!(error, ApiError::Transport { .. }),
+        "and must not be a transport error"
+    );
+}
+
 #[tokio::test]
 async fn the_wave_sends_the_live_row_not_the_row_as_it_stood_at_enqueue() {
     let db = scratch_db("live-row");

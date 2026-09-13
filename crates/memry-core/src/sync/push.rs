@@ -37,7 +37,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use serde_json::{Value as Json, json};
 
-use crate::api::errors::{ApiError, StorageError, TransportError};
+use crate::api::errors::{ApiError, StorageError};
 use crate::protocol::envelope::{EnvelopeError, SyncOperation};
 use crate::protocol::http::{
     ApiRequest, Auth, DEFAULT_BASE_DELAY_MS, HttpClient, RetryPolicy, SYNC_TYPES_HEADER,
@@ -398,19 +398,19 @@ impl PushWave for PushCoordinator {
     }
 }
 
-/// The lossy half of the [`PushWave`] boundary.
+/// A local failure crossing the [`PushWave`] boundary, whose other arms are
+/// all server answers.
 ///
-/// `ApiError` has no storage variant and `crates/memry-core/src/api/errors.rs`
-/// is not this module's to widen, so a local failure crosses as a transport
-/// failure. It lands in the right state — the engine's `is_offline` matches
-/// only [`TransportError::Offline`], so this reaches `Failed` and not
-/// `Offline` — and the prefix keeps the log honest. [`PushError`] is the
-/// undamaged type and is what a non-engine caller should use.
+/// It reports [`ApiError::Storage`] and no longer dresses a disk failure as a
+/// transport one. The state it reaches is unchanged — the engine's
+/// `is_offline` matches only [`TransportError::Offline`], so this was already
+/// landing in `Failed` rather than `Offline` — but a reader can now tell "the
+/// server is unreachable" from "this device cannot read its own database".
+/// [`PushError`] remains the undamaged type and is what a non-engine caller
+/// should use.
 fn local_failure(error: StorageError) -> ApiError {
-    ApiError::Transport {
-        source: TransportError::Failed {
-            what: format!("local storage: {error}"),
-        },
+    ApiError::Storage {
+        what: error.to_string(),
     }
 }
 
