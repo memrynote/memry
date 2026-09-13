@@ -87,3 +87,9 @@ packages/swift/MemryCore/MemryCoreFFI.xcframework/
 crates/target/
 apps/ios/**/xcuserdata/
 apps/ios/**/*.xcuserdatad/
+
+# xcodebuild's DerivedData. `-derivedDataPath build` is what ios-ci.yml passes
+# and what every local run copies, so this directory appears in the worktree
+# the first time anyone runs the test plans. Hundreds of megabytes of build
+# products; never a source file.
+apps/ios/build/

@@ -29,44 +29,49 @@ import SwiftUI
 // semantic fonts so dynamic type works with no fixed frame, mono for recovery
 // material (`DESIGN.md` §Typography), and reduce-motion branched at the
 // modifier that would otherwise ignore it.
+//
+// **T160.** Every colour, spacing, radius, duration and font on this screen now
+// comes from `Memry/Design`. The private `UnlockErrorNotice` this file carried,
+// and the comment saying its home was `Memry/Design` once T160 existed, are
+// both gone: it is `ErrorNotice` now, and there is one of it.
 
 struct RecoveryPhraseView: View {
     @Bindable var model: RecoveryPhraseViewModel
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var focused: Bool
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: Tokens.Space.section) {
                 header
                 field
                 if model.highlightedWord != nil {
                     WordReview(words: model.typedWords, highlighted: model.highlightedWord)
                 }
                 if let error = model.error {
-                    UnlockErrorNotice(error: error, code: model.visibleErrorCode)
+                    ErrorNotice(error: error, code: model.visibleErrorCode)
                 }
                 actions
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 32)
+            .padding(.horizontal, Tokens.Space.screenInline)
+            .padding(.vertical, Tokens.Space.screenBlock)
         }
         .scrollDismissesKeyboard(.interactively)
-        .animation(reduceMotion ? nil : .default, value: model.error)
-        .animation(reduceMotion ? nil : .default, value: model.highlightedWord)
+        .background(Tokens.Canvas.background.color)
+        .calmAnimation(.normal, value: model.error)
+        .calmAnimation(.normal, value: model.highlightedWord)
         .task { focused = true }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
             Text("Enter your recovery phrase")
-                .font(.largeTitle)
-                .fontWeight(.semibold)
+                .font(Tokens.Typography.screenTitle.font)
+                .foregroundStyle(Tokens.Text.primary.color)
             Text("The 24 words you saved when you created this account. Memry unlocks on this phone only.")
-                .font(.body)
-                .foregroundStyle(.secondary)
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
         }
         .multilineTextAlignment(.leading)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -76,9 +81,9 @@ struct RecoveryPhraseView: View {
     }
 
     private var field: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
             TextField("Recovery phrase", text: $model.phrase, axis: .vertical)
-                .font(.body.monospaced())
+                .font(Tokens.Typography.recoveryMaterial.font)
                 .lineLimit(4...8)
                 .keyboardType(.asciiCapable)
                 .textInputAutocapitalization(.never)
@@ -91,8 +96,8 @@ struct RecoveryPhraseView: View {
                 .accessibilityLabel("Recovery phrase")
                 .accessibilityHint("Twenty-four words, separated by spaces. Pasting the whole phrase works.")
             Text(counter)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .font(Tokens.Typography.label.font)
+                .foregroundStyle(Tokens.Text.tertiary.color)
                 .accessibilityLabel(counterLabel)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -110,16 +115,18 @@ struct RecoveryPhraseView: View {
 
     @ViewBuilder
     private var actions: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Tokens.Space.medium) {
             if model.isWorking {
                 // Words, not a bare spinner. The 64 MiB derivation takes about a
                 // second on a phone and cannot be interrupted, so the screen says
                 // what is happening and promises no duration.
                 ProgressView { Text("Unlocking your vault") }
                     .progressViewStyle(.circular)
+                    .font(Tokens.Typography.supporting.font)
+                    .tint(Tokens.Text.secondary.color)
             } else {
                 Button("Unlock") { submit() }
-                    .buttonStyle(.borderedProminent)
+                    .memryPrimaryAction()
                     .disabled(!model.canSubmit)
             }
         }
@@ -146,25 +153,27 @@ private struct WordReview: View {
     private let columns = [GridItem(.adaptive(minimum: 104), alignment: .leading)]
 
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: Tokens.Space.small) {
             ForEach(Array(words.enumerated()), id: \.offset) { index, word in
                 let isMarked = index == highlighted
-                HStack(spacing: 6) {
+                HStack(spacing: Tokens.Space.tight) {
                     Text("\(index + 1)")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        .font(Tokens.Typography.technicalCaption.font.monospacedDigit())
+                        .foregroundStyle(Tokens.Text.tertiary.color)
                     Text(word)
-                        .font(.callout.monospaced())
+                        .font(Tokens.Typography.recoveryMaterial.font)
                         .fontWeight(isMarked ? .semibold : .regular)
+                        .foregroundStyle(Tokens.Text.primary.color)
                     if isMarked {
                         // Not colour alone: `DESIGN.md` rejects colour as the
                         // only state cue.
                         Image(systemName: "exclamationmark.circle.fill")
-                            .font(.caption)
+                            .font(Tokens.Typography.caption.font)
+                            .foregroundStyle(Tokens.Interaction.destructive.color)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, Tokens.Space.small)
+                .padding(.vertical, Tokens.Space.tight)
                 .overlay(marker(isMarked))
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(label(for: index, word, isMarked))
@@ -181,58 +190,8 @@ private struct WordReview: View {
     @ViewBuilder
     private func marker(_ isMarked: Bool) -> some View {
         if isMarked {
-            RoundedRectangle(cornerRadius: 8).strokeBorder(.tint, lineWidth: 2)
-        }
-    }
-}
-
-/// One failure, rendered.
-///
-/// A near-twin of `SignInView`'s private `ErrorNotice`, deliberately duplicated
-/// rather than shared from another feature's file: the shared component belongs
-/// in `Memry/Design` and that file is T160's. Both render `UserFacingError` and
-/// nothing else, which is the part that is not allowed to diverge.
-private struct UnlockErrorNotice: View {
-    let error: UserFacingError
-    /// Non-`nil` only for an error with no mapping, which `DESIGN.md` requires
-    /// to render an identifying code. Every other message keeps its code in the
-    /// log, where it is useful, and off the screen, where it is clutter.
-    let code: String?
-
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(error.title, systemImage: symbol)
-                .font(.headline)
-            if let guidance = error.guidance {
-                Text(guidance)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            if let code {
-                Text(code)
-                    .font(.footnote.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .multilineTextAlignment(.leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(fill, in: .rect(cornerRadius: 12))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(error.text)
-    }
-
-    private var fill: AnyShapeStyle {
-        reduceTransparency ? AnyShapeStyle(.background.secondary) : AnyShapeStyle(.regularMaterial)
-    }
-
-    private var symbol: String {
-        switch error.recourse {
-        case .retry: "arrow.clockwise"
-        case .retryLater: "clock"
-        case .blocked: "exclamationmark.triangle"
+            RoundedRectangle(cornerRadius: Tokens.Radius.control)
+                .strokeBorder(Tokens.Line.focus.color, lineWidth: 2)
         }
     }
 }

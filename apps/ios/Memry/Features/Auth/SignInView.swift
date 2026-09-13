@@ -22,16 +22,21 @@ import SwiftUI
 // semantic fonts so dynamic type works without a fixed frame anywhere, and
 // reduce-motion and reduce-transparency branched at the modifier that would
 // otherwise ignore them.
+//
+// **T160.** Every colour, spacing, radius, duration and font on this screen now
+// comes from `Memry/Design`. The private `ErrorNotice` this file used to carry
+// is the shared one, and the reduce-motion branch that was written out inline
+// here is `calmAnimation`, which takes it inside its own `body` — same
+// behaviour, one place.
 
 struct SignInView: View {
     @Bindable var model: SignInViewModel
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var focus: SignInStep.Field?
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: Tokens.Space.section) {
                 header
                 field
                 if let error = model.error {
@@ -40,14 +45,13 @@ struct SignInView: View {
                 actions
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 32)
+            .padding(.horizontal, Tokens.Space.screenInline)
+            .padding(.vertical, Tokens.Space.screenBlock)
         }
         .scrollDismissesKeyboard(.interactively)
-        // Reduce-motion branches here rather than inside the animation, so the
-        // transition is genuinely absent rather than shortened.
-        .animation(reduceMotion ? nil : .default, value: model.step)
-        .animation(reduceMotion ? nil : .default, value: model.error)
+        .background(Tokens.Canvas.background.color)
+        .calmAnimation(.normal, value: model.step)
+        .calmAnimation(.normal, value: model.error)
         .task { focus = focusTarget }
         .onChange(of: model.step.field) { focus = focusTarget }
     }
@@ -57,13 +61,13 @@ struct SignInView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
             Text(model.step.title)
-                .font(.largeTitle)
-                .fontWeight(.semibold)
+                .font(Tokens.Typography.screenTitle.font)
+                .foregroundStyle(Tokens.Text.primary.color)
             Text(model.step.detail)
-                .font(.body)
-                .foregroundStyle(.secondary)
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
         }
         .multilineTextAlignment(.leading)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -101,21 +105,23 @@ struct SignInView: View {
 
     @ViewBuilder
     private var actions: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Tokens.Space.medium) {
             if let running = model.runningAction {
                 // Words, not a bare spinner: this wait can run into minutes
                 // behind the server's rate limiter and cannot be cancelled.
                 ProgressView { Text(running.progressLabel) }
                     .progressViewStyle(.circular)
+                    .font(Tokens.Typography.supporting.font)
+                    .tint(Tokens.Text.secondary.color)
             } else {
                 if let primary = model.step.primary {
                     Button(primary.label) { act(primary) }
-                        .buttonStyle(.borderedProminent)
+                        .memryPrimaryAction()
                         .disabled(!model.isEnabled(primary))
                 }
                 if let secondary = model.step.secondary {
                     Button(secondary.label) { act(secondary) }
-                        .buttonStyle(.bordered)
+                        .memrySecondaryAction()
                         .disabled(!model.isEnabled(secondary))
                 }
             }
@@ -126,59 +132,5 @@ struct SignInView: View {
     private func act(_ action: SignInAction) {
         guard model.isEnabled(action) else { return }
         Task { await model.run(action) }
-    }
-}
-
-/// One failure, rendered.
-///
-/// The icon carries the recourse as well as the colour would, which is the
-/// point: `DESIGN.md` rejects colour as the only state cue.
-private struct ErrorNotice: View {
-    let error: UserFacingError
-    /// Non-`nil` only for an error with no mapping, which `DESIGN.md` requires
-    /// to render an identifying code. Every other message keeps its code in the
-    /// log, where it is useful, and off the screen, where it is clutter.
-    let code: String?
-
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(error.title, systemImage: symbol)
-                .font(.headline)
-            if let guidance = error.guidance {
-                Text(guidance)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            if let code {
-                Text(code)
-                    .font(.footnote.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .multilineTextAlignment(.leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(fill, in: .rect(cornerRadius: 12))
-        .accessibilityElement(children: .combine)
-        // `text` is title and guidance as one sentence, which is what this type
-        // has it for: an alert read as two unrelated fragments loses the half
-        // that matters.
-        .accessibilityLabel(error.text)
-    }
-
-    /// Branched at the modifier, not at a theme: a translucent surface under
-    /// reduce-transparency is the setting being ignored.
-    private var fill: AnyShapeStyle {
-        reduceTransparency ? AnyShapeStyle(.background.secondary) : AnyShapeStyle(.regularMaterial)
-    }
-
-    private var symbol: String {
-        switch error.recourse {
-        case .retry: "arrow.clockwise"
-        case .retryLater: "clock"
-        case .blocked: "exclamationmark.triangle"
-        }
     }
 }
