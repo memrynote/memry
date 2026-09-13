@@ -126,6 +126,33 @@ update takes `COALESCE(MAX(sequence_num), 0) + 1` over the **union** of
 for the current maximum), so **a snapshot consumes a sequence number in the same
 space**.
 
+### 7.4.1 The request and response shapes
+
+**Normative.** §7.2's table names these routes and §7.3 bounds them, but the
+bodies were never written down — the same gap chapter 05 §5.11.1 was written to
+close. A port must not have to read the server to send a page request.
+
+**`GET /sync/crdt/updates`** — query `note_id`, `since`, `limit`.
+Response: `{ updates: [...], hasMore: boolean }`, **at the top level**. There is
+no `notes` wrapper on the single-document form; that belongs to the batch.
+
+**`POST /sync/crdt/updates/batch`** — request
+`{ notes: [{ noteId, since }], limit }`. At most **100** entries, duplicate
+`noteId`s **rejected outright** rather than de-duplicated, `since` defaulting to
+0 and `limit` an integer 1 to 100 defaulting to 100.
+Response: `{ notes: { <noteId>: { updates, hasMore } } }`, keyed by id — which
+is why the single form's flat shape above is worth stating separately.
+
+**`POST /sync/crdt/snapshot`** — request `{ noteId, snapshot }`, the snapshot
+being the base64 packed envelope. Response `{ sequenceNum }` (§7.13.4 — not
+`revision`).
+
+**`POST /sync/crdt/snapshot/batch`** — request
+`{ snapshots: [{ noteId, snapshot }] }`, at most **50**, the lower cap because
+a snapshot may be 5 MiB decoded and roughly 6.7 MiB as base64. `snapshot` is
+deliberately unbounded per entry: an oversized payload is a per-note rejection,
+not a malformed batch.
+
 `POST /sync/crdt/updates` takes
 `{ noteId: string, updates: string[] }` — the updates being base64 packed
 envelopes (chapter 04 §4.11), **at most 100 per call**, each capped at twice

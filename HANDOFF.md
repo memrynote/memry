@@ -17,7 +17,7 @@ Branch `native-core-phase-3` in `.worktrees/native-core-phase-3`, fast-forwarded
 | W3b  | T104 repositories + thirteen per-type projectors              | done, on main |
 
 Ticked this session: T096, T097, T098, T099, T100, T101, T102, T103, T104, T105,
-T106, T107, T108, T109, T110, T111, T112, T113, T116, T117, T118, T123, T232, T233, T234, **T089**.
+T106, T107, T108, T109, T110, T111, T112, T113, T116–T122, T123, T232, T233, T234, **T089**.
 
 ## Waves in flight
 
@@ -25,19 +25,28 @@ None. Nothing is half-applied; the tree is clean.
 
 ## The exact next wave to dispatch
 
-**T122 must land before T115, and this is the sequencing that matters most.**
-`memry-cli notes text` prints empty against staging today: the record feed carries
-note _metadata_, and nothing in the core yet pulls `/sync/crdt/updates` downward, so
-`yjs_updates` never fills from the server. T122's "bodies for the recent window" is
-that missing piece. G4's evidence — extracted text equal to desktop's, state vectors
-matching — is blocked on it, not on the CLI.
+**T114 and T115 — the staging round trip. This is the orchestrator's, not a
+subagent's**, because it needs the credentials and a decision from Kaan. Everything
+it depends on is now in: `notes text` returns real text (proved end to end in
+`sync_first_sync.rs`), and state vectors are available.
 
-So: **W7 `{T119, T120, T121, T122}`** — snapshots, bootstrap, the realtime hint
-socket, and the first-sync sub-sequence. T122 is the one G4 waits on; T119–T121 can
-ride along or follow.
+Before dialling staging, run T114's preconditions in this order and stop if one
+fails: `BOOTSTRAP_SESSION_HMAC_KEY` present — probe `/sync/bootstrap` and read for a
+**501**, do not try to read the secret, it is encrypted and Kaan does not know it —
+and a `client_policies` row for platform `ios` with writes enabled, readable through
+the Cloudflare MCP. Kaan has **authorised rotating** the bootstrap key if it is
+genuinely absent; tell him before doing it, because rotation invalidates in-flight
+bootstrap sessions.
 
-Then **T114/T115**, the staging round trip, which is the orchestrator's to run — see
-Staging below. Then W8's domain modules, W9, W10.
+**Blocking G3, and not on Kaan: the generated Swift does not compile.** See
+`research.md` §Addenda. `xcodebuild` fails on `memry_core.swift` with Swift 6's
+`sending`-parameter rule, so the simulator conformance run produces no evidence
+either. The Rust and the xcframework build are green and the binding diff is clean,
+which is precisely why nothing caught it. Fix before claiming any iOS-side evidence.
+
+Then W8's domain modules `{T126..T130}` — five `[P]` tasks in separate files, the one
+place to fan out wide — W9 `{T131}` search and `{T124, T125}`, and W10's five
+real-adapter seam tests.
 
 ## Implementation follow-ups recorded rather than silently carried
 
@@ -81,7 +90,7 @@ before assuming it is working.
 
 ## Open spec-defect entries
 
-**Zero.** 45 logged, 45 closed. Eighteen of the forty-five required reading TypeScript;
+**Zero.** 48 logged, 48 closed. Twenty-one of the forty-eight required reading TypeScript;
 the rest were internal contradictions or gaps found without leaving `docs/protocol/`. G3's defect-log condition is met as of this session; G5
 re-checks it.
 
@@ -198,13 +207,11 @@ the class count — count classes.
 
 ## Gate exit status
 
-- **G3** — vector tier green across **all eleven** committed classes ✅; `spec-defects.md`
-  at zero open ✅; cargo fmt, clippy, test and line ceilings green ✅; device-tier item
-  (T082, T093, T094) recorded as explicitly **BLOCKED**, never silently passed ✅.
-  **G3's conditions hold on host.** What it still needs is the paperwork half of T094:
-  the `build-xcframework.sh` re-run with a clean
-  `git diff --exit-code packages/swift/.../Generated/`, and the G3 evidence written up
-  in `research.md` §Addenda naming the simulator-only decision as open. T083's four
-  spike notes (T079–T082) are also unwritten.
+- **G3** — vector tier green across **all eleven** ✅; `spec-defects.md` at zero open ✅;
+  cargo fmt, clippy, test and line ceilings green ✅; T094's binding diff clean, verified
+  ✅; G3 evidence written up in `research.md` §Addenda with the device tier named open ✅.
+  **Still open**: the generated Swift does not compile under the app's Swift 6 settings,
+  so no iOS-side evidence exists at all; the physical-device item is BLOCKED by decision;
+  and T083's four spike notes (T079–T082) are unwritten. G3 is **not** closed.
 - **G4** — not started. Needs W5.
 - **G5** — not started.

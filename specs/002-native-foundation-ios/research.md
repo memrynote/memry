@@ -417,14 +417,71 @@ in [plan.md](./plan.md) under Technical Context.
 Each spike is pass or fail with a written note here. No product code comes
 out of B0 and nothing in phase A or B depends on its artifacts.
 
-| Spike | Passes when |
-|---|---|
+| Spike                                                 | Passes when                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | S1 UniFFI XCFramework hello-world in an empty iOS app | the app calls a Rust function and gets a typed error back; **and** a UniFFI foreign-trait callback logs `Thread.current`, recording which thread Rust calls back on; **and** a test asserts the callback does not re-enter the core while a core lock is held, which is the failure mode `@unchecked Sendable` hides |
-| S2 async foreign-trait HTTP adapter | a round trip to staging `/health` completes through the `Transport` trait, with the cancellation path exercised |
-| S3 WKWebView opaque origin and keyboard toolbar | `window.isSecureContext && !!crypto.subtle` is true on `about:blank`; the `inputAccessoryView` override shows the SwiftUI toolbar; **and** a device screenshot of that toolbar with Reduce Transparency on, which is the only evidence that settles the Liquid Glass uncertainty in section E |
-| S4 Argon2id 64 MiB on iPhone 15 | unlock completes in the foreground under memory pressure, and the OOM return of `crypto_pwhash` is reproduced at least once and surfaces as its own error rather than "wrong phrase" |
+| S2 async foreign-trait HTTP adapter                   | a round trip to staging `/health` completes through the `Transport` trait, with the cancellation path exercised                                                                                                                                                                                                      |
+| S3 WKWebView opaque origin and keyboard toolbar       | `window.isSecureContext && !!crypto.subtle` is true on `about:blank`; the `inputAccessoryView` override shows the SwiftUI toolbar; **and** a device screenshot of that toolbar with Reduce Transparency on, which is the only evidence that settles the Liquid Glass uncertainty in section E                        |
+| S4 Argon2id 64 MiB on iPhone 15                       | unlock completes in the foreground under memory pressure, and the OOM return of `crypto_pwhash` is reproduced at least once and surfaces as its own error rather than "wrong phrase"                                                                                                                                 |
 
 ## Resolution status
 
 All Technical Context unknowns resolved. Items in section E are risks with
 named verification tasks, not open decisions.
+
+## Addenda — G3 evidence
+
+Written as the evidence was observed, not reconstructed afterwards. Each line
+is a command that was run and its result.
+
+### T094, the three G3 evidence items
+
+| Item                                                                                                            | Result                                                                 |
+| --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `cargo test -p memry-core` green on host, 100% of committed vectors passing                                     | **PASS** — 314 tests, 0 failed; all eleven classes green byte for byte |
+| `build-xcframework.sh`, then `git diff --exit-code packages/swift/MemryCore/Sources/MemryCore/Generated/`       | **PASS** — clean, exit 0                                               |
+| `xcodebuild test … -destination 'platform=iOS,name=<iPhone 15>' -testPlan Conformance` on a **physical device** | **BLOCKED — not passed, not waived**                                   |
+
+The clean binding diff is the item that could have failed silently: it proves
+the committed Swift matches what the current Rust generates, rather than being
+an artefact someone forgot to regenerate after changing the FFI surface.
+
+### The device tier is BLOCKED by decision, and G3 closes with it named
+
+Kaan chose simulator-only; no physical iPhone 15 is attached to this machine.
+**T082, T093 and T094's third item are therefore open, not satisfied.**
+
+T093 says so itself, and it is restated here because it is the kind of thing a
+later reader assumes was covered: **a simulator run is NOT evidence for the
+`aarch64-apple-ios` crypto build.** The simulator target is
+`aarch64-apple-ios-sim`, it runs on the host's own CPU, and it exercises
+neither the device's memory pressure nor the device's libsodium build. In
+particular T082's question — whether Argon2id at 64 MiB with ops 3 OOMs on a
+real iPhone 15, and whether `crypto_pwhash`'s `-1` is distinguishable from a
+wrong passphrase — cannot be answered anywhere but on the device.
+
+**What was attempted here.** `xcodebuild test -scheme Memry -testPlan
+Conformance` was run against an **iPhone 17 simulator**, under
+`~/.memry/xcodebuild.lock` because xcodebuild and DerivedData are shared across
+worktrees. It **did not run the tests**: the build failed compiling the
+generated bindings.
+
+```
+SwiftCompile normal arm64 packages/swift/MemryCore/Sources/MemryCore/Generated/memry_core.swift
+  Passing closure as a 'sending' parameter risks causing data races between
+  code in the current task and concurrent execution of the closure
+** TEST FAILED **
+```
+
+This is a real finding and is recorded rather than retried away: **the
+generated Swift does not compile under the iOS app's Swift 6 strict-concurrency
+settings.** The Rust side and the xcframework build are green, and
+`uniffi-bindgen-swift` emits the file happily, which is exactly why nothing
+caught it — "the generated Swift is committed and the diff is clean" says
+nothing about whether it compiles in the app that consumes it. The surface grew
+async objects (`AuthSession`, `RuntimeHost`) in the auth wave, and Swift 6's
+`sending` rules are stricter than the generator's output assumes.
+
+Until it is resolved, the simulator conformance run cannot produce evidence
+either, so the device tier is blocked twice over: once by the absent hardware
+and once by this. Carried as an open item.
