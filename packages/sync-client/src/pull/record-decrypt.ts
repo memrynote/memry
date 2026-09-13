@@ -69,9 +69,11 @@ export async function decryptRecordItem(
     signaturePayload.deletedAt = input.deletedAt
   }
 
-  // Nested object construction matches desktop's decrypt-item.ts exactly:
-  // clock first, then stateVector, and the key is absent (not undefined) when
-  // neither exists — CBOR encodes the nested object's own key order.
+  // The `metadata` key must be ABSENT, not undefined and not an empty map,
+  // when neither exists: an empty map is a different byte string from no key
+  // at all. The clock-then-stateVector construction order is cosmetic — cborg
+  // sorts every map, nested ones included, length-first then bytewise
+  // (RFC 8949 §4.2.3). See docs/protocol/04-record-envelope.md §4.7.
   if (input.clock || input.stateVector) {
     signaturePayload.metadata = {
       ...(input.clock ? { clock: input.clock } : {}),

@@ -32,7 +32,8 @@ export function encryptCrdtUpdate(
     packed.set(dataNonce, 0)
     packed.set(keyNonce, NONCE_LEN)
     packed.set(wrappedKey, NONCE_LEN + NONCE_LEN)
-    // signature slot at offset 72, filled below
+    // signature slot at offset 96 (NONCE_LEN + NONCE_LEN + WRAPPED_KEY_LEN),
+    // filled below — see docs/protocol/04-record-envelope.md §4.11
     packed.set(ciphertext, HEADER_LEN)
 
     const bodyToSign = buildSignedPayload(noteIdBytes, packed)

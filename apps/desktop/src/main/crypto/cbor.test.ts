@@ -65,8 +65,9 @@ describe('encodeCbor', () => {
     const decoded = decode(encoded)
 
     // #then all SYNC_ITEM keys are present. cborg canonicalizes Map key
-    // order per RFC 8949 §4.2.1 (length-first bytewise), so the decoded
-    // order differs from CBOR_FIELD_ORDER — compare as sets.
+    // order per RFC 8949 §4.2.3, Length-First Map Key Ordering (length first,
+    // then bytewise) — NOT §4.2.1, which is plain bytewise — so the decoded
+    // order differs from CBOR_FIELD_ORDER. Compare as sets.
     expect(new Set(decoded.keys())).toEqual(new Set(CBOR_FIELD_ORDER.SYNC_ITEM))
   })
 
