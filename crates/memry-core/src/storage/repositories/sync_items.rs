@@ -164,6 +164,11 @@ pub fn apply_remote(
 /// Returns the payload string the push will carry, which is also the string now
 /// in the column: there is one set of bytes, and the projection is downstream
 /// of it rather than upstream.
+///
+/// Opens its own transaction, so it cannot be composed with anything else. A
+/// caller that must commit the edit **and** its outbox row together — which is
+/// every domain write, because FR-030 and data-model §A.2 require exactly that
+/// — calls [`apply_local_edit_in`] inside a transaction it owns.
 pub fn apply_local_edit(
     conn: &Connection,
     item_type: &str,
@@ -171,6 +176,35 @@ pub fn apply_local_edit(
     changes: &[(&str, Change)],
     now_ms: i64,
 ) -> Result<String, StorageError> {
+    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let merged = apply_local_edit_in(&transaction, item_type, item_id, changes, now_ms)?;
+    transaction.commit().map_err(failed)?;
+    Ok(merged)
+}
+
+/// [`apply_local_edit`] without the transaction, so a caller can commit the
+/// merged payload and its outbox row as one unit.
+///
+/// Refuses autocommit for the same reason [`crate::sync::outbox::enqueue`]
+/// does: a merged payload written without the outbox row that publishes it is
+/// a local edit no peer will ever see, and the failure is silent. SQLite has
+/// no nested `BEGIN`, so this cannot open one defensively — the caller's
+/// transaction is the only one there is.
+pub fn apply_local_edit_in(
+    tx: &Connection,
+    item_type: &str,
+    item_id: &str,
+    changes: &[(&str, Change)],
+    now_ms: i64,
+) -> Result<String, StorageError> {
+    if tx.is_autocommit() {
+        return Err(StorageError::Failed {
+            what: "a local edit must be merged in the same transaction as its outbox row \
+                   (FR-030, data-model §A.2, chapter 13 §13.2)"
+                .to_owned(),
+        });
+    }
+    let conn = tx;
     let Some(row) = load(conn, item_type, item_id)? else {
         return Err(StorageError::Failed {
             what: format!("no sync item {item_type}/{item_id} to edit"),
@@ -189,7 +223,7 @@ pub fn apply_local_edit(
     let view =
         projectors::read(item_type, reparsed.object()).map_err(refuse(item_type, item_id))?;
 
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = conn;
     transaction
         .execute(
             "UPDATE sync_items SET
@@ -213,7 +247,7 @@ pub fn apply_local_edit(
         )
         .map_err(failed)?;
     projectors::project(
-        &transaction,
+        transaction,
         item_type,
         ItemContext {
             item_id,
@@ -222,7 +256,6 @@ pub fn apply_local_edit(
         },
         &view,
     )?;
-    transaction.commit().map_err(failed)?;
 
     Ok(merged)
 }

@@ -46,7 +46,7 @@ pub use sync_items::{ApplyOutcome, InboundRecord, SyncItemRow};
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::{Db, open_data, test_support::temp_dir};
+    use crate::storage::{Db, StorageError, open_data, test_support::temp_dir};
     use rusqlite::{Connection, params};
     use serde_json::{Value, json};
 
@@ -163,6 +163,69 @@ mod tests {
             Ok(())
         })
         .expect("edit");
+    }
+
+    #[test]
+    fn a_local_edit_composes_with_its_outbox_row_in_one_transaction() {
+        use crate::sync::outbox;
+
+        let (db, _dir) = open("repo-local-edit-compose");
+        db.call_blocking(|conn| {
+            sync_items::apply_remote(conn, &note_record(NEWER_NOTE), NOW)?;
+
+            // The composition follow-up: the merged payload and the outbox row
+            // that publishes it commit together, or neither does (FR-030,
+            // data-model §A.2).
+            let tx = conn.unchecked_transaction().expect("begin");
+            let pushed = sync_items::apply_local_edit_in(
+                &tx,
+                "note",
+                "note-1",
+                &[("title", Change::set("Composed"))],
+                NOW + 1,
+            )?;
+            outbox::enqueue(&tx, &outbox::Change::upsert("note", "note-1"), NOW + 1)?;
+            tx.commit().expect("commit");
+
+            let parsed: Value = serde_json::from_str(&pushed).expect("valid JSON");
+            assert_eq!(parsed["title"], json!("Composed"));
+            assert_eq!(stored_payload(conn, "note", "note-1"), pushed);
+
+            let queued: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM outbox WHERE item_type = 'note' AND item_id = 'note-1'",
+                    [],
+                    |row| row.get(0),
+                )
+                .expect("the outbox row");
+            assert_eq!(queued, 1);
+            Ok(())
+        })
+        .expect("compose");
+    }
+
+    #[test]
+    fn a_local_edit_outside_a_transaction_is_refused_rather_than_half_written() {
+        let (db, _dir) = open("repo-local-edit-autocommit");
+        db.call_blocking(|conn| {
+            sync_items::apply_remote(conn, &note_record(NEWER_NOTE), NOW)?;
+
+            let refused = sync_items::apply_local_edit_in(
+                conn,
+                "note",
+                "note-1",
+                &[("title", Change::set("Unpublished"))],
+                NOW + 1,
+            );
+            assert!(
+                matches!(refused, Err(StorageError::Failed { .. })),
+                "autocommit must be refused, not merged without an outbox row"
+            );
+            // And nothing was written.
+            assert_eq!(stored_payload(conn, "note", "note-1"), NEWER_NOTE);
+            Ok(())
+        })
+        .expect("refuse");
     }
 
     #[test]

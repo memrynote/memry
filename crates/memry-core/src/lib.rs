@@ -12,6 +12,7 @@
 pub mod api;
 pub mod crdt;
 pub mod crypto;
+pub mod domain;
 pub mod protocol;
 pub mod seams;
 pub mod storage;
