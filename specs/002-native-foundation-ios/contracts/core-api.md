@@ -168,10 +168,13 @@ confirmed by `grep` over the generated bindings rather than inferred:
 - ~~no way to fetch `{kdf_salt, key_verifier}`~~ — **closed by T163**:
   `AuthSession::key_material`;
 - **no device-linking surface at all** — `link`, `pair` and `sas` return zero
-  hits, so T153 and T154 have nothing to drive;
-- **no vault, note or folder API** — the only `Vault`-shaped exports are
-  `derive_vault_key` and `local_vault_key_verifier`, which are functions over
-  bytes, not a vault.
+  hits, so T153 and T154 have nothing to drive. **This is the one that is
+  still open, and no task covers it**: the checkpoint's Independent Test
+  requires unlocking every vault by scanning the desktop's code on a phone
+  cleared of all state, which is exactly T153 and T154;
+- ~~no vault, note or folder API~~ — **read half closed by T164**:
+  `Vault.open/id/notes` and `Notes.folders/list/read`. Writes and `Sync`
+  (T158, T159) remain.
 
 The shell must not close any of these gaps itself. Each needs an access token,
 a `401`, and a refresh, and all three belong to the core — a shell that fetched
@@ -246,3 +249,55 @@ When updating such a fake, the new method's default must **not** be a benign
 success. A fake that behaves correctly is how this project shipped five bugs
 behind a green suite in Phase 3; `FakeAuthSession`'s four new methods record the
 call and then throw.
+
+## The read slice of `Vault` and `Notes`
+
+Landed by T164 over `memry_core::domain::reads`. **That module path is now ABI**
+and must not move — see the module-path rule above.
+
+| Method                                     | Errors         |
+| ------------------------------------------ | -------------- |
+| `Vault.open(vault_id:directory:) -> Vault` | `StorageError` |
+| `vault.id() -> String`                     | —              |
+| `vault.notes() -> Notes`                   | —              |
+| `notes.folders() -> [FolderSummary]`       | `StorageError` |
+| `notes.list() -> [NoteSummary]`            | `StorageError` |
+| `notes.read(id:) -> NoteDetail?`           | `CrdtError`    |
+
+Records: `FolderSummary`, `NoteSummary`, `NoteBody`, `NoteDetail`. **No new
+error variant was needed.**
+
+**Every method blocks. None is `async`.** They are local SQLite reads plus a
+`yrs` apply; nothing touches the network. This is the first exported object
+whose entire surface is synchronous **by design** rather than by accident, and
+it is worth saying because the consequence is pleasant: defect 108 — an async
+core call cannot be cancelled from Swift — cannot bite here at all, since a
+blocking call never needed cancelling. `Vault.open` is the one that is not free,
+because it runs migrations; its cost is a disk write, not a round trip, so it
+stays synchronous and goes on the shell's serial core queue like the rest.
+
+**Two objects rather than one**, because the split survives the write half:
+everything that writes lands on `Notes`, and folded into `Vault` that becomes a
+single object owning the database handle, the vault key and every content
+mutation in the product — past the 600-line ceiling before the first journal
+method. `AuthSession`'s reason for refusing a sibling does **not** transfer: a
+second `TokenManager` is a chapter 02 §2.9 device revocation, whereas `Db` is
+one connection behind one mutex and `Vault::notes()` hands out a clone.
+
+**The read surface holds no vault key at all**, which is why it satisfies "none
+of the B3 objects exposes a key" trivially: reading local projections and the
+local update log needs no key, because decryption happened at pull time. The
+write half will have to satisfy the same rule the hard way, and that is the
+reason to keep `Vault` as the key's owner rather than letting it drift onto
+`Notes`.
+
+**Two things this surface deliberately does not do**, each an open spec defect
+rather than an omission:
+
+- **`folders()` is the `folder_config` projection and nothing else** — a folder
+  holding notes but carrying no config record has no row (spec-defect 124,
+  blocks T156).
+- **`NoteBody.text` is `extract_text` output**, chapter 12 §12.1's only text
+  operation — a preview, not a render. `Document::encode_state()` is **not**
+  exported, so a shell cannot feed the editor bundle (spec-defect 125, blocks
+  T157).
