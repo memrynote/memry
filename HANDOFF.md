@@ -1,335 +1,203 @@
-# Phase 3 handoff — specs/002-native-foundation-ios
+# Phase 4 handoff — specs/002-native-foundation-ios
 
-Overwritten each session. Everything below was observed, not reported by a subagent.
+Overwritten each session. Everything below was observed by the orchestrator, not
+reported by a subagent. Where a number came from a subagent it says so.
 
 ## Where the work is
 
 Branch `native-core-phase-3` in `.worktrees/native-core-phase-3`, fast-forwarded
-with `origin/main`. Straight to main, no PR, per Kaan's standing instruction.
+with `origin/main` and pushed straight to main, no PR, per Kaan's standing
+instruction.
 
-## State: **Phase 3 complete — 64 of 64 ticked, 0 open**
+## State: **Phase 4 at 4 of 24.** Phase 3 closed 64/64.
 
-All three gates hold.
-
-| Gate   | Status                                                                                                                                                                                                                                                                                                                                                                                         |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **G3** | **CLOSED.** Eleven vector classes green; `spec-defects.md` at 0 open, 88 closed; fmt/clippy/test/line-ceilings green; T094's binding diff clean; all four spike notes carry an explicit verdict.                                                                                                                                                                                               |
-| **G4** | **CLOSED.** T115's transcript in `g4-evidence.md`: login, unlock, four vaults, a pull with **0 corrupt**, 94 notes, real extracted text and a non-empty state vector from a desktop-authored note.                                                                                                                                                                                             |
-| **G5** | **CLOSED.** T137's kill-switch drill; T138 at zero; T139's round trip — CLI→desktop **2.16 s**, desktop→CLI **1.86 s**, concurrent note edits converging across three implementations, concurrent **task** field edits converging with all four fields surviving, SC-010's digest identical between `memry-core` and the TypeScript reference port on three real notes, SC-014 run on staging. |
-
-T082 and T094 ran on a **physical iPhone 12 Pro**, arm64, iOS 27.0 — not the
-iPhone 15 the tasks name, and the S4 note says so in the sentence that presents
-the result.
-
-## Current gate baseline — re-run and observed at the end of this session
-
-| Gate                                           | Result                                           |
-| ---------------------------------------------- | ------------------------------------------------ |
-| `cargo fmt --all --check`                      | clean                                            |
-| `cargo clippy --all-targets -- -D warnings`    | clean                                            |
-| `cargo test`                                   | **526 passed, 0 failed, 1 ignored, 35 binaries** |
-| `node scripts/check-line-ceilings.mjs`         | passed (104 files)                               |
-| `pnpm --filter @memry/contracts vectors:check` | **11 classes**                                   |
-| `pnpm typecheck`                               | 19/19                                            |
-| `pnpm lint`                                    | 1 pre-existing warning, `vault-switcher.tsx:96`  |
-| `pnpm docs:build`                              | complete                                         |
-| `git diff --exit-code` on generated Swift      | clean                                            |
-| xcodebuild Unit / UI (iPhone 17)               | 6 / 4 tests, TEST SUCCEEDED                      |
-
-The single ignored test is deliberate: `outbox_durability.rs`'s child process,
-re-invoked by its parent to simulate SIGKILL.
-
-Anything worse than this is the next session's to fix, not to inherit.
-
-## The pattern this session found, five times
-
-**A tier can be fully implemented, well tested behind fakes, and never wired.**
-Every one of these passed the whole unit suite and every vector class:
-
-1. **The field merge was unreachable.** `pull.rs` routed every type through
-   `sync_items::apply_remote`, which applies wholesale. A concurrent `title` /
-   `dueDate` edit silently lost one. FR-002 and FR-059 were not met end to end.
-2. **§6.3.1's document gate was never implemented** for the other eleven types.
-   A stale remote record overwrote a newer local one — rename a note here,
-   receive an older record, lose the rename.
-3. **§6.9's settings merge stored wholesale inbound.** A remote push reverted a
-   local preference change whose path clock dominated.
-4. **§7.15's purge and projection delete had no call site.** A deleted note
-   stayed visible in every projection-driven read, and the next first sync
-   re-pulled its body.
-5. **`PushSealer` had no production implementation.** Every impl was a test
-   fake, `PushCoordinator` could not be constructed outside a test, and
-   `memry-cli` had never pushed anything to a server.
-
-**Treat "it is implemented" as unproven until you find the call site.** A
-`grep` for the production caller is a five-second check that would have caught
-all five.
-
-## The second pattern: break-tests caught five weak assertions
-
-Each of these **passed under the very bug it was written for**, and was only
-found by deliberately breaking the code and watching which tests stayed green:
-
-- T133's convergence test passed with the desktop appending a `blockContainer`
-  beside the `blockGroup` — both devices converged byte-identically and
-  `extract_text` returned the same string. Only the §12.5.0 **layout**
-  assertion caught it. **Byte identity is necessary and not sufficient.**
-- T134's delete/edit equality held at `(None, None)` with `projectors::delete`
-  removed — it agreed the note was undeleted.
-- The settings removal test covered only the clearing seat, where local wins
-  and the value is already gone.
-- Two more in the seam-test wave.
-
-**Break every new assertion, watch it fail, restore.** It is the only thing
-that found these.
-
-## What is left
-
-**T082 — BLOCKED by decision.** Kaan chose simulator-only; no physical iPhone.
-A simulator run is **not** evidence: `aarch64-apple-ios-sim` runs on the host
-CPU with host memory, so Argon2id always succeeds and that says nothing, and it
-links a different libsodium from the device slice. Never record this as
-"PASS (simulator)". Recorded BLOCKED in `research.md` §Addenda.
-
-**T094 — two of three evidence items pass.** `cargo test -p memry-core` green
-with 100% of committed vectors; `build-xcframework.sh` then
-`git diff --exit-code` on the generated Swift **clean**. The third item, the
-physical-device `.xcresult`, is blocked with T082.
-
-**T138 — verified at zero.** 87 defects logged, 87 closed, 0 open. Re-checked
-by counting the rows, not by trusting the footer: the numbering runs 1–87 with
-no gaps and no duplicates. (Entry 1 uses padded `| 1   |` formatting, so a
-naive `^\| [0-9]+ \|` grep undercounts by one — that is why the count is done
-against `seq`.)
-
-**T139 — the only real blocker, and it needs a desktop.**
-
-Done and recorded in `g4-evidence.md`:
-
-- the kill-switch drill (T137) in full, staging restored to `writes_enabled=1`;
-- the first real headless write: append → `push` → `pull` → `notes text`
-  showing the paragraph survive the round trip through the server.
-
-Not done, and not doable headlessly:
-
-- **`memry-cli` edit to desktop: DONE, 2.16 s.** Measured against what the
-  desktop wrote back to its vault markdown file on disk, so it covers the yrs
-  append, the seal, the push, the server, the desktop's receive, apply, render
-  and write-back. Under the 5 s bar. Recorded in `g4-evidence.md`.
-- **Desktop edit to `memry-cli`: PASS, 1.86 s.** Measured with `notes fetch`,
-  the single-document probe added for this. Both timing halves of T139 now
-  pass: CLI → desktop **2.16 s**, desktop → CLI **1.86 s**, against a 5 s bar.
-  Superseded detail below, kept for its correction.
-- ~~**Desktop edit to `memry-cli`: DIRECTION WORKS, 5 s bar unmeasurable.**~~
-  Re-run with the desktop alive and a PID liveness check inside the loop:
-  **reached the CLI in 41.10 s**. The desktop ingested the external vault-file
-  edit, replaced the body in its Y.Doc, pushed, and the CLI read it back — so
-  the first attempt's failure was the dead desktop, as the correction predicted.
-  **The 41.10 s is the instrument**: a bare `pull` with nothing to fetch costs
-  **31.9 s and 36.4 s** on this vault, because the probe walks the record feed
-  and all 136 bodies every iteration. Real propagation was under ~9 s and is not
-  resolvable further. **T139's 5 s bar cannot be evaluated until `memry-cli` has
-  a single-document fetch** (`pull --document <id>` or equivalent). That is a
-  measurability gap in the task, not a protocol property. A no-op pull costing
-  32–36 s on a 94-note vault is also worth attention on its own.
-- ~~**Desktop edit to `memry-cli`: NOT DEMONSTRATED.**~~ Appending to the vault's
-  markdown file directly did not reach the CLI within 90 s. The file was
-  restored byte-identically.
-
-  **An earlier version of this file said the unchanged mtime proved the desktop
-  never ingested it. Withdrawn — the inference is wrong.**
-  `apps/desktop/src/main/vault/watcher.ts` hands changes to
-  `feedExternalEditToCrdt`, which replaces the note body in the Y.Doc and
-  pushes; it does **not** rewrite the file. An unchanged mtime is exactly what a
-  successful ingest also looks like. Only this is established: the edit did not
-  reach the CLI in 90 s. Where it stopped needs the desktop's logs.
-
-  Worth knowing before re-running: `feedExternalEditToCrdt` has a
-  `wasRecentNetworkUpdate` branch broadcasting `sync:concurrent-edit`, and a CLI
-  write had landed seconds earlier, so that branch was live.
-
-  **And the desktop process was later found dead.** Every Electron PID from the
-  `dev:a:staging` run had exited by the end of the session. It was demonstrably
-  alive at 14:18:20 — the CLI→desktop marker reached its vault file in 2.16 s —
-  and the external-edit attempt began at 14:18:27, but **nothing establishes it
-  was still running through the 90 s poll.** A dev build exiting mid-experiment
-  is the simplest explanation of all and was not ruled out.
-
-  So the attempt is inconclusive for three independent reasons: the mtime proves
-  nothing, the concurrent-edit branch was live, and the desktop's liveness
-  across the window is unknown. **Do not carry "the desktop ignored it" forward
-  as a finding.** Re-run it with a liveness check on the Electron PID inside the
-  poll loop, so the run either produces evidence or says why it could not.
-
-  Either way it is a failed _method_, not a failed requirement: an external file
-  edit is not an edit made in the desktop app, which is what T139 asks for.
-
-- **concurrent edits converging: PASS**, via two `memry-cli` devices (a second
-  profile, `HOME`-scoped), so both sides take the incremental append path — the
-  same one a UI edit takes. Both held an edit, both pushed, **both edits
-  survived**, and all three implementations agree: device A, device B and the
-  desktop read from its vault file. §12.11's digest matches byte for byte
-  between the two cores. Superseded failure below, kept for defect 88.
-- ~~**concurrent edits converging: FAILED via the external-edit path, and the
-  method is the cause.**~~ A held `memry-cli` edit plus a concurrent desktop
-  vault-file edit lost the CLI's paragraph from both sides.
-  `replaceNoteBodyInCrdt` does `fragment.delete(0, fragment.length)` then
-  re-seeds, so the peer's update merges into tombstoned content — applied,
-  converged, invisible. **A real data-loss path** (spec-defect 88, chapter 12
-  §12.5.0.1), and **not** a demonstration that normal editing loses edits: a
-  UI edit takes the incremental path. Closing T139's convergence half needs an
-  edit made in the desktop **editor**, not in the file.
-- ~~**concurrent edits converging with both field changes surviving** against a
-  real desktop.~~ Note that T133 already proves byte-identical convergence with
-  real `yrs` and a real database, including the layout check; what is missing
-  is the _desktop_ half.
-- **SC-014: run on staging (Kaan authorised staging only; prod untouched).**
-  A type in **no** server enum is rejected with a batch-level `400`, so it
-  cannot be placed on the server at all — **and the rejected row wedges every
-  record push**, see follow-up 8. A type the server knows but this core does not
-  declare (`bookmark`) pushes fine and is then **filtered by the server**:
-  device B, declaring only the subscribed thirteen, never received it and held
-  its cursor below the item. A client cannot mishandle an undeclared item
-  because it never sees one; T135's defensive handling stays correct for a page
-  that does carry one. The synthetic item was tombstoned off staging.
-- **SC-010: PASS.** `memry-core` and the TypeScript reference extractor produce
-  **identical digests on three real notes** from the staging account
-  (`packages/contracts/scripts/sc010-probe.ts`). Two harness traps recorded
-  there: the vault markdown file is not the input, and the update log alone
-  yields an empty document because `load_plan` starts from the snapshot.
-- ~~superseded, kept for its detail:~~
-- **SC-010: two-device digest match achieved; cross-SHELL still open.** Two
-  independent `memry-core` devices produced the identical digest
-  `c0716414…b60c042` for the same note. Both are the same implementation, so
-  this is necessary and not sufficient — **desktop computing its own digest is
-  what remains.**
-- **SC-010's cross-shell digest — the core half is DONE.**
-  `cross_shell_digest` is in `memry-core` (not the shell, because SC-010
-  compares two shells' values and a digest each assembles itself is two chances
-  to disagree). `memry notes digest <id> --vault <id>` prints it; three values
-  for the staging vault are in `g4-evidence.md`. **The comparison is not made**:
-  it needs desktop's digest for the same note at the same state.
-
-**A second CLI profile is not a substitute.** `HOME` scopes the profile, so a
-second device is possible in principle — but it costs another device
-registration and T139 asks for a _desktop_, not a second headless client. An
-attempt this session hung with zero output, almost certainly OTP rate limiting
-after three requests in quick succession; it was abandoned and cleaned up.
-
-### Routes already tried for the desktop half — do not re-investigate
-
-1. **Appending to the vault markdown file directly.** Did not reach the CLI in
-   90 s; the file was restored byte-identically. **Not** evidence that the
-   desktop ignored it — see the correction above.
-2. **The localhost Vault MCP server**, which would have made a genuine
-   desktop-side write through a designed API. **Not listening.** Checked every
-   Electron PID with `lsof -nP -iTCP -sTCP:LISTEN`; the only local node
-   listeners belong to other tooling. Consistent with `CLAUDE.md` describing
-   MCP-first as the current _direction_ rather than something this build ships.
-3. **A second `memry-cli` profile** (`HOME` scopes it). Possible in principle
-   and **not a substitute** — T139 asks for a desktop, not a second headless
-   client. The attempt also hit what looks like OTP rate limiting.
-
-What is left is driving the desktop UI, which is intrusive on a live app
-holding real data and is Kaan's call, or Kaan making one edit by hand.
-
-## Cleanup — the account is back to its pre-session content
-
-Every marker written this session was removed and the removal verified to
-propagate to both CLI devices: `G5 blocked-write probe`, `cli-to-desktop …`,
-`conv-A-…`, `conv-B-…` from "Conference Talk", and `T137 kill-switch drill`
-from "memrynote Architecture". `diff` against the pre-cleanup backups shows only
-those lines removed.
-
-**A second `memry-cli` device was registered** for the convergence test
-(profile at `/tmp/g5b`, which is temporary). It is a real device row on the
-account and is worth revoking with the other stale ones.
-
-## Superseded — two writes that landed in Kaan's real notes (now removed)
-
-`notes edit --append` can only append; there is no CLI path to remove a block.
-
-- `dzxnhc9p3gk3` ("memrynote Architecture") gained `T137 kill-switch drill`
-- `z01wzfmf44ka` ("Conference Talk") gained `G5 blocked-write probe`
-
-Both were needed to exercise the write path and the kill switch. Remove them
-from a desktop when convenient.
-
-## Staging facts
-
-- Base URLs: staging `https://sync-staging.memrynote.com`, prod
-  `https://sync.memrynote.com`, local `http://localhost:8787`. Not hardcoded —
-  `SYNC_SERVER_URL` comes from a gitignored `.env.<environment>`, so a worktree
-  missing it falls back to localhost **silently**. `pnpm env:check` → 10 items.
-- The staging D1 is **`memry-sync-staging`** (the quickstart said `memry-staging`
-  and every invocation would have failed — spec-defect 54).
-- `client_policies` has one row, `ios`, **`writes_enabled = 1`**, restored after
-  the T137 drill and read back to confirm.
-- **28 devices active of the 50 cap** (20 ios, 8 macos). Worth revoking the
-  stale ones, but note the cause is **not** repeated CLI logins: `login` on a
-  profile that already holds a registered device re-authenticates it rather
-  than registering a new one. Verified — the newest `ios` row is 2026-09-09,
-  unchanged by this session's login. A _fresh profile_ does cost a slot.
-- **OTP requests are rate limited.** Three in quick succession and the fourth
-  hangs with no output rather than erroring. Budget one login per session.
-- Credentials live outside the repo, mode 600:
-  `~/.memry/staging/account-email.txt`, `~/.memry/staging/recovery-phrase.txt`.
-  **The phrase was pasted into a chat transcript this session — Kaan should
-  rotate it.**
-
-## Implementation follow-ups still open
-
-1. ~~**`ApiError` has no `Storage` variant.**~~ **Fixed this session.**
-   `ApiError::Storage` exists and `PushWave` reports a disk failure as itself
-   rather than as a transport failure. `ApiError::PaymentRequired` is still
-   worth considering: a 402 is recognised by matching
-   `Status { status: 402, code: Some("SYNC_PAYMENT_REQUIRED") }`.
-2. **No CLI command enqueues a _record_ outbox row.** `notes edit` queues only
-   CRDT rows, so the staging drills exercise `/sync/crdt/updates` end to end and
-   the `/sync/push` record half is proven by vectors and a fake transport, not
-   by a live command.
-3. ~~**§7.13.3's snapshot cadence is unimplemented.**~~ **The core half landed
-   this session**: `snapshot_is_due` with the chapter's 30 s quiet / 120 s cap,
-   constants pinned by test. The remaining triggers — document close, shutdown,
-   no-editor-open — are shell facts the core cannot see, so **wiring a caller
-   that polls it is a shell task**. `SnapshotGate`, the MUST, is untouched.
-4. **The socket has no self-driving `run()` loop**; the reconnect policy is
-   implemented and tested.
-5. **A pulled update does not advance an already-resident `Document`**; it lands
-   on the next `load_plan` replay. **Now reported rather than silent**:
-   `BodyPullReport::advanced_documents` names the ids, the same shape as
-   `purged_documents`. Acting on them is still the registry holder's job, so
-   this stays open as a _shell_ task rather than a core one.
-6. ~~**`Reachability::observe` is never called** and the seam doc overclaims.~~
-   **Doc fixed this session.** `observe` still has no caller — that is correct
-   and deliberate, the shell owns _when_ to run a pass — and the module doc now
-   separates the shell's obligation from the core's guarantee instead of
-   asserting both. Wiring `observe` remains a shell task.
-7. **The §7.15 runtime obligation is reported, not performed.** `PullReport`
-   gained `purged_documents`; a caller holding a registry must release those.
-
-## Gate exit status — G3 and G4 HOLD; G5 does not
-
-Checked item by item against `phase3close.txt`'s exit criteria, not asserted.
-
-## Gate exit status
-
-- **G3** — vector tier green across all eleven ✅; `spec-defects.md` at zero ✅;
-  fmt/clippy/test/line-ceilings green ✅; T094's binding diff clean ✅; T083's
-  four spike notes written with explicit verdicts ✅; the device tier recorded
-  explicitly BLOCKED rather than passed ✅. **G3 closes with T082 named open.**
-- **G4** — closed. T115's transcript recorded in `g4-evidence.md`: login, unlock,
-  four vaults, a pull with 0 corrupt, 94 notes listed, real extracted text and a
-  non-empty state vector from a desktop-authored note.
-- **G5** — **not closed.** T137 ✅ and T138 ✅. T139 needs the desktop halves
-  above, plus SC-014's injection and SC-010's digest.
+| Wave | Tasks                                        | Status                   |
+| ---- | -------------------------------------------- | ------------------------ |
+| W1   | T140 `CoreExecutor`, T141 `CoreEvents`       | **DONE**, ticked, pushed |
+| W2   | T142 `ErrorMapping` + `Log`, T143 `Keychain` | **DONE**, ticked, pushed |
+| W3   | T144 `FileProtection` [P], T145 `Transport`  | **NEXT**                 |
 
 ## The exact next wave
 
-1. **Ask Kaan to run, or authorise, the T139 desktop round trip.** A staging
-   desktop is already running. The CLI side is ready:
-   `memry --server staging notes edit <id> --append "from cli" --vault <v>`
-   then `memry --server staging push --vault <v>`; for the other direction,
-   edit on desktop and `memry ... pull --vault <v>` then `notes text`.
-2. **SC-010's digest** once desktop's extracted text for one note is in hand.
-3. **SC-014** needs a decision on injecting an unknown item type into staging.
+**W3: T144 and T145, two agents, cap at two.**
+
+- **T144** `apps/ios/Memry/Seams/FileProtection.swift` — `Application Support/<bundle>/vault/<vaultId>/` at `completeUntilFirstUserAuthentication`, `isExcludedFromBackup` on the directory, the class **re-asserted on the `-wal` and `-shm` sidecars after first open** because they do not inherit it reliably. The test must assert the **effective** class read back from the database file _and_ both sidecars.
+- **T145** `apps/ios/Memry/Seams/Transport.swift` — the single `Transport` seam. `send` over `URLSession` (large blob fetches return a **file path**, not `Data`), `open_socket` over `URLSessionWebSocketTask`, closed on background and reopened on foreground. **Zero retry, auth or reconnect logic** — all of it stays in Rust. Header keys lowercase in both directions. A non-2xx is a **response**, not an error.
+
+T145 is the bigger of the two and the one the core has waited for since Phase 3.
+It is also the second half of T147's wiring.
+
+Then W4 = T146 (`Reachability` + `CodeCapture`), W5 = T147 + T148.
+
+## Gate baseline — re-run and observed at the end of this session
+
+| Gate                                                        | Result                                           |
+| ----------------------------------------------------------- | ------------------------------------------------ |
+| `cargo fmt --all --check`                                   | clean                                            |
+| `cargo clippy --all-targets -- -D warnings`                 | clean                                            |
+| `cargo test`                                                | **526 passed, 0 failed, 1 ignored, 35 binaries** |
+| `node scripts/check-line-ceilings.mjs`                      | passed (105 files)                               |
+| `pnpm --filter @memry/contracts vectors:check`              | **11 classes**                                   |
+| `swiftlint lint --strict`, all 10 new Swift files           | **0 violations, 0 serious**                      |
+| xcodebuild `Unit`, 6 suites scoped, iPhone 17 **simulator** | **58 passed, 0 failed, 0 skipped**               |
+
+The single ignored Rust test is deliberate: `outbox_durability.rs`'s child
+process, re-invoked by its parent to simulate SIGKILL.
+
+No Rust changed this session. `git diff --exit-code` on the generated Swift is
+clean because the UniFFI surface was not touched.
+
+Anything worse than this is the next session's to fix, not to inherit.
+
+## Things that will cost you a run if you do not know them
+
+1. **`swiftlint --strict --path <file>` does not exist** on SwiftLint 0.65.1.
+   The working form is `cd apps/ios && swiftlint lint --strict <relative-path>`,
+   run from `apps/ios` so the config and the nested `MemryTests/.swiftlint.yml`
+   are found. The W1 brief had the wrong form and both agents hit it.
+2. **Never run the bare `Unit` test plan.** Spec-defect 93: `SpikeTests`' S2
+   case makes a **live staging HTTP call with no time limit** and hangs the whole
+   plan when staging is slow. It cost two runs. Always scope with
+   `-only-testing:MemryTests/<Suite>`.
+3. **`SpikeS4Tests/pressureNeverLooksLikeAWrongPhrase()` fails on a simulator by
+   design** — it is the device-gated T082 test asserting `isDevice`. Not a
+   regression, not yours.
+4. **`xcodebuild` lies about the count.** Swift Testing suites are invisible to
+   the XCTest counter; a run that executed 58 tests prints `Executed 0 tests`.
+   Real numbers only from
+   `xcrun xcresulttool get test-results summary --path <bundle>.xcresult`.
+5. **Two agents' runs collide.** A concurrent break sweep poisoned one agent's
+   full-plan run — it saw the _other_ agent's deliberately-broken file and
+   reported two failures that were not its own. Scope every run, and run the
+   orchestrator's own verification only when no agent is mid-sweep.
+6. **No `project.pbxproj` edit is needed for a new file.** The project uses
+   `PBXFileSystemSynchronizedRootGroup` for `Memry`, `MemryTests`,
+   `MemryUITests` and `MemryConformanceTests`. A new `.swift` file in those
+   directories is picked up automatically. This removes the shared-file conflict
+   between concurrent agents; say so in every brief.
+
+## What landed, and what it is NOT
+
+`CoreExecutor` — one serial `DispatchQueue(qos: .userInitiated)` bridged with
+`withCheckedThrowingContinuation`. Fronts the **blocking** surface only;
+`AuthSession`'s seven `async throws` methods are awaited directly. Cancellation
+decided: before-start cancels and never enters the core, after-start completes.
+
+`CoreEvents` — one `AsyncStream`, `.bufferingNewest(256)`, single-consumer,
+`consume()` returns `nil` on the second call. An event is a `Topic` plus a
+`Scope`, and a `Scope` carries at most an identifier, so a producer that wants to
+send state **finds it cannot express one**. `CoreEventEmitter`'s whole surface is
+`emit(_:) -> Void`, which is what stops a Rust-called seam re-entering the core.
+
+`ErrorMapping` — all **14** generated enums, not the 7 in `core-api.md`'s table:
+the seam errors come back nested inside `AuthError.SecureStore`,
+`CrdtError.Storage` and `ApiError.Transport`. Exhaustive, no `default:`.
+
+`Log` — every message parameter is a `StaticString`, so
+`log.info("phrase \(phrase)")` **does not compile**. No entry point accepts a
+`String`.
+
+`Keychain` — data-model §B exactly, and the **event hub's first producer**:
+`secureStoreLocked` fires from the single `errSecInteractionNotAllowed` arm.
+
+**NONE OF IT IS CONSTRUCTED IN PRODUCTION YET, and that is the Phase 3 lesson
+live.** `grep` confirms zero non-test call sites for `CoreExecutor`,
+`CoreEvents`, `ErrorMapping`, `Log` and `Keychain`. Phase 3 shipped five tiers
+that were implemented, tested behind fakes, and never called — every one passed
+the whole unit suite. **T147 is where these become wired**, and until it lands
+they are unproven. T147's task text now says so, and also makes T147 the task
+that ratifies `UserFacingError`'s shape before eleven views inherit it.
+
+## The defect log: 99 logged, 99 closed, **0 open**
+
+Eleven closed this session, 89 to 99. The two most consequential:
+
+- **89** — T141 and research R15 both named "the Rust-to-Swift event foreign
+  trait" in the definite singular. **No such trait exists.** The core exports
+  twelve; nine are Swift-implemented and Rust-called, and every one of the nine
+  is request-shaped. The eight-seam list is closed, so a subagent following T141
+  literally would have invented a ninth seam or quietly built something else
+  under the task's name. Caught **before dispatch**, by reading the seams
+  directory rather than trusting the task text. New `shell-seams.md` §"There is
+  no event seam" replaces the missing trait with the rule that was the point: **a
+  Swift method Rust calls MUST NOT re-enter the core.**
+- **94** — `DESIGN.md` gave one sentence about error copy, so T142 wrote 64
+  user-facing sentences with no source. Now §"Error copy, in detail", seven
+  normative bullets, each tied to a failure already in this log.
+
+Also: **90** R15's premise contradicted by seven `async` `AuthSession` methods;
+**91** a main-thread assertion is a false-green generator on this toolchain;
+**92** nobody owned `CoreEvents.consume()`, now T158's; **93** the Unit plan is
+non-hermetic; **95** `UserFacingError`'s shape was unratified, now T147's;
+**96** a recovery-phrase word is not displayable; **97** `ApiError::Status`
+forces a 5xx/4xx split in the shell, recorded as deliberate and bounded;
+**98** nothing in the spec mentioned localization while FR-077 requires RTL;
+**99** an `AsyncStream` test that drains a fixed count **hangs** instead of
+failing.
+
+## Break-tests found three weak assertions this session
+
+The discipline that caught five in Phase 3 caught three more. All three were
+green under the exact bug they were written for.
+
+1. **A main-thread assertion passed with the entire `DispatchQueue` hop
+   deleted.** A `nonisolated async` function on this toolchain hops to the global
+   concurrent executor, so the work left the main thread with no queue at all.
+   Now asserts queue identity via `__dispatch_queue_get_label(nil)`. Defect 91.
+2. **A nested-error test compared two mapped values, and under the collapse
+   mutation both sides moved together** and it stayed green. Now asserts what the
+   user actually reads.
+3. **An `AsyncStream` test HUNG rather than failed** under a missing yield — 21
+   minutes of silence that looked exactly like a deadlock in the seam under test.
+   Defect 99.
+
+A fourth mutation **would not compile** (duplicate enum raw values), so that
+assertion's guarantee came from the language rather than the test; it was
+retargeted at something the test does catch. Worth imitating: when a break will
+not compile, the test was not carrying the weight you thought.
+
+**Make every subagent break every new assertion, watch it fail, restore, and
+report what it observed.** It is the highest-yield instruction in the brief.
+
+## Simulator evidence, and what it is not
+
+Every number above is from the **iPhone 17 simulator**, iOS 26.5, arm64.
+
+For the Keychain this caveat has teeth and is stated in the code: 9 of 18 tests
+make real `SecItem*` calls, but the simulator keychain has no Secure Enclave and
+no lock state, so `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` is stored
+there as an attribute that **gates nothing**. `errSecInteractionNotAllowed`
+cannot be produced on demand at all — that arm is covered only at the mapping
+layer, through a protocol that substitutes the platform rather than the store.
+Whether the device honours the class, and whether a background task can read the
+signing key before first unlock, is **device evidence and belongs to T161/T162**.
+
+The physical **iPhone 12 Pro** (`8025C79A-F257-500F-8BA1-A14122135B2D`, iOS 27.0,
+Developer Mode on) is available and was not needed this session. Signing recipe
+is unchanged and is in `phase4.txt`: team `TV343Q4W8A`, bundle id
+`com.memry.app.t094`, and **never** pass `PRODUCT_BUNDLE_IDENTIFIER=` on the
+command line — it applies to the embedded `MemryCore` framework too and iOS
+refuses the install.
+
+## Blocked on Kaan
+
+- **Nothing blocks W3.** Nothing was run against staging this session; no network
+  call was made by the orchestrator or by any subagent.
+- **The staging recovery phrase was pasted into a chat transcript in Phase 3 and
+  Kaan was asked to rotate it.** Still unconfirmed. Anything that unlocks against
+  staging should confirm the phrase works before assuming.
+- **Localization (defect 98) needs a decision before T160**, or the strings
+  landed in `ErrorMapping.swift` get rewritten. They are literals today.
+- **No iOS support/feedback channel is documented anywhere** in the spec or
+  `PRODUCT.md`, so no error copy tells a user to report a problem (defect 94).
+- Phase 3 left two markers in Kaan's real notes, since removed, and a second
+  `memry-cli` device registered at `/tmp/g5b` that is **worth revoking** with the
+  other stale ones. Account was at 21 of 50 devices.
+
+## Checkpoint status
+
+**NOT MET.** The checkpoint needs T162: the device `Conformance` `.xcresult`
+re-run against this build, plus T161 naming each test vault unlocked by **each**
+of the two paths — recovery phrase and device link — on a phone that had never
+seen it, repeated on an account holding two vaults. Twenty tasks remain, T144
+through T162, and no vault has been opened on a phone yet.
