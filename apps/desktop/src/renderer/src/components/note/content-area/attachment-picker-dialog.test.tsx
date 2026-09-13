@@ -14,7 +14,10 @@ import {
   attachmentKey,
   attachmentKindMatches,
   buildInsertedAttachmentBlock,
-  filterVaultAttachments
+  describeAttachmentRejection,
+  filterVaultAttachments,
+  ATTACHMENT_ACCEPT,
+  MAX_ATTACHMENT_BYTES
 } from './attachment-picker-dialog'
 import type { AttachmentKind } from './attachment-picker-dialog'
 
@@ -267,6 +270,81 @@ describe('AttachmentPickerDialog', () => {
 
     await waitFor(() => expect(toastError).toHaveBeenCalled())
     expect(onInsert).not.toHaveBeenCalled()
+  })
+
+  it('#2190: refuses an unplayable video at pick time, before any upload', async () => {
+    listVaultAttachments.mockResolvedValue([])
+    const { onInsert } = renderDialog('media')
+
+    fireEvent.change(screen.getByTestId('attachment-picker-file-input'), {
+      target: { files: [new File(['x'], 'holiday.avi', { type: 'video/x-msvideo' })] }
+    })
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith('editor.attachmentPicker.unsupportedVideo')
+    )
+    expect(uploadAttachment).not.toHaveBeenCalled()
+    expect(onInsert).not.toHaveBeenCalled()
+  })
+
+  it('#2190: accepts a playable video and uploads it once', async () => {
+    listVaultAttachments.mockResolvedValue([])
+    uploadAttachment.mockResolvedValue({
+      success: true,
+      path: '../attachments/note-b/aaaaaa-demo.mp4',
+      name: 'demo.mp4',
+      size: 12,
+      mimeType: 'video/mp4',
+      type: 'file'
+    })
+    const { onInsert } = renderDialog('media')
+
+    fireEvent.change(screen.getByTestId('attachment-picker-file-input'), {
+      target: { files: [new File(['x'], 'demo.mp4', { type: 'video/mp4' })] }
+    })
+
+    await waitFor(() => expect(onInsert).toHaveBeenCalled())
+    expect(uploadAttachment).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('describeAttachmentRejection (#2190)', () => {
+  const t = (key: string): string => key
+
+  function fileOfSize(name: string, type: string, size: number): File {
+    const file = new File(['x'], name, { type })
+    // jsdom sizes a File from its parts; the cap needs a file bigger than any
+    // buffer worth allocating in a test.
+    Object.defineProperty(file, 'size', { value: size })
+    return file
+  }
+
+  it('accepts the containers Chromium can play', () => {
+    for (const name of ['clip.mp4', 'clip.webm', 'clip.MOV']) {
+      expect(describeAttachmentRejection({ name, size: 10, type: 'video/mp4' }, t)).toBeNull()
+    }
+  })
+
+  it('names the supported formats when the container cannot play', () => {
+    expect(
+      describeAttachmentRejection({ name: 'clip.mkv', size: 10, type: 'video/x-matroska' }, t)
+    ).toBe('editor.attachmentPicker.unsupportedVideo')
+  })
+
+  it('rejects anything over the attachment size ceiling', () => {
+    expect(
+      describeAttachmentRejection(fileOfSize('big.mp4', 'video/mp4', MAX_ATTACHMENT_BYTES + 1), t)
+    ).toBe('editor.attachmentPicker.tooLarge')
+    expect(
+      describeAttachmentRejection(fileOfSize('ok.mp4', 'video/mp4', MAX_ATTACHMENT_BYTES), t)
+    ).toBeNull()
+  })
+
+  it('keeps the OS dialog filter in step with what is actually accepted', () => {
+    // `video/*` here would let the user pick a file the vault then refuses.
+    expect(ATTACHMENT_ACCEPT.media).toBe(
+      'image/*,audio/*,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov'
+    )
   })
 })
 

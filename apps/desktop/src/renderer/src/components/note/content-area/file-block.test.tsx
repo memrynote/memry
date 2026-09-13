@@ -160,7 +160,10 @@ describe('file block helpers', () => {
       '.xls',
       '.xlsx',
       '.txt',
-      '.md'
+      '.md',
+      '.mp4',
+      '.webm',
+      '.mov'
     ])
     // BlockNote's upload tab reads the accept list off the spec's meta.
     expect((createFileBlock as any).meta).toEqual({ fileBlockAccept: FILE_BLOCK_ACCEPT })
@@ -255,6 +258,28 @@ describe('file block helpers', () => {
     expect(screen.getByText('voice.wav')).toBeInTheDocument()
     expect(screen.queryByText('4.0 KB')).not.toBeInTheDocument()
     expect(container.querySelector('.file-audio a[download]')).toBeNull()
+
+    // #2190: a video attachment plays inline instead of offering a download.
+    rerender(
+      <Render
+        contentRef={contentRef}
+        block={{
+          props: {
+            url: 'memry-file://local/Users/kaan/vault/notes/demo.mp4',
+            name: 'demo.mp4',
+            size: 8192,
+            mimeType: 'video/mp4'
+          }
+        }}
+      />
+    )
+    const video = container.querySelector('video')
+    expect(video).toHaveAttribute('src', 'memry-file://local/Users/kaan/vault/notes/demo.mp4')
+    expect(video).toHaveAttribute('controls')
+    // Streamed through the Range-capable protocol handler, never preloaded whole.
+    expect(video).toHaveAttribute('preload', 'metadata')
+    expect(screen.getByText('demo.mp4')).toBeInTheDocument()
+    expect(container.querySelector('.file-video a[download]')).toBeNull()
 
     rerender(
       <Render
