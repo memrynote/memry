@@ -203,9 +203,16 @@ file before this run — so the direction was proven twice, once incidentally.
 
 Attempted by appending a line to the vault's markdown file directly, on the
 theory that the desktop watches the vault directory and would ingest it as its
-own edit. It did not: after 90 s the line had not reached the CLI, and the
-file's mtime was still the moment of the external write, meaning **the desktop
-never rewrote the file and never ingested the change.**
+own edit. After 90 s the line had not reached the CLI.
+
+**An earlier version of this note claimed the unchanged mtime proved the desktop
+never ingested the edit. That inference was wrong and is withdrawn.** The
+desktop watches the vault with chokidar and hands changes to
+`feedExternalEditToCrdt`, which replaces the note body in the Y.Doc and pushes;
+it does not rewrite the file. An unchanged mtime is therefore exactly what a
+**successful** ingest also looks like. What is established is only that the edit
+did not reach the CLI within 90 s; where it stopped was not determined, and
+determining it needs the desktop's logs.
 
 Recorded as a failed _method_, not a failed requirement. An external file edit
 is not the same thing as an edit made in the desktop app — T139 asks for the
