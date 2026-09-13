@@ -2,3 +2,5 @@
 //! surface above them.
 
 pub mod compress;
+pub mod envelope;
+pub mod types;

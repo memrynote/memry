@@ -34,6 +34,11 @@ tracing = "0.1"
 uuid = { version = "1", features = ["v4", "serde"] }
 base64 = "0.22"
 hex = "0.4"
+# Only for `contentHash`, chapter 05 §5.9 A: a digest over a canonical JSON
+# blob, not a protocol secret. libsodium carries a SHA-256 too, but every call
+# into it goes through `crypto::sodium` by design and this is not one of that
+# module's protocol primitives.
+sha2 = "0.11"
 time = "0.3"
 
 [profile.release]

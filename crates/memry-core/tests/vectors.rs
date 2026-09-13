@@ -7,14 +7,18 @@
 
 mod support;
 
+use std::collections::BTreeMap;
+
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use ciborium::value::Value;
 use memry_core::api::errors::{CborError, CompressError, RecoveryError};
 use memry_core::crypto::{cbor, keys, recovery, sodium};
-use memry_core::protocol::compress;
+use memry_core::protocol::envelope::EnvelopeError;
+use memry_core::protocol::{compress, envelope, types};
 use serde_json::Value as Json;
 use support::*;
+use zeroize::Zeroizing;
 
 /// `crypto-vectors.json` — the frozen primitive set.
 ///
@@ -558,4 +562,306 @@ fn compression_vectors() {
     }
 
     assert_eq!(checked, file["meta"]["caseCount"].as_u64().unwrap());
+}
+
+/// `record-envelope.json` — chapter 04, the signed record envelope.
+///
+/// The file carries its intermediates on purpose: when a second implementation
+/// fails the final signature, the useful question is which of the three stages
+/// diverged, so the compression frame and the ciphertext size are asserted
+/// before the envelope is.
+#[test]
+fn record_envelope_vectors() {
+    let file = vector_file("record-envelope");
+    let mut checked = 0;
+
+    // Chapter 04 §4.14 and §4.10, asserted against the file's own meta: a
+    // constant that moves under either side fails here rather than as a 400.
+    let ceiling = &file["meta"]["sizeCeiling"];
+    assert_eq!(
+        ceiling["SYNC_ITEM_MAX_ENCRYPT_BYTES"].as_u64().unwrap(),
+        envelope::SYNC_ITEM_MAX_ENCRYPT_BYTES as u64
+    );
+    assert_eq!(
+        ceiling["SYNC_ITEM_ENCRYPT_OVERHEAD"].as_f64().unwrap(),
+        envelope::SYNC_ITEM_ENCRYPT_OVERHEAD
+    );
+    assert_eq!(
+        ceiling["NOTE_SYNC_MAX_BYTES"].as_u64().unwrap(),
+        envelope::NOTE_SYNC_MAX_BYTES as u64
+    );
+    assert_eq!(
+        file["meta"]["cryptoVersion"].as_u64().unwrap(),
+        envelope::CRYPTO_VERSION
+    );
+
+    let vault_key = hex_field(&file["cases"][0]["input"], "vaultKeyHex");
+
+    for case in file["cases"].as_array().unwrap() {
+        check_record_envelope_case(case);
+        checked += 1;
+    }
+
+    for case in file["tamperCases"].as_array().unwrap() {
+        let name = str_field(case, "name");
+        let item = envelope::from_json(&case["pushItem"]).unwrap();
+        let signer = hex_field(case, "signerPublicKeyHex");
+
+        assert_eq!(str_field(case, "expectFailure"), "signature");
+        assert_eq!(
+            envelope::verify(&item, &signer),
+            Err(EnvelopeError::SignatureInvalid),
+            "{name}"
+        );
+        // §4.12: the signature is checked before the file key is unwrapped, so
+        // a tampered item never reaches the cipher at all.
+        assert_eq!(
+            envelope::decrypt(&item, &vault_key, &signer),
+            Err(EnvelopeError::SignatureInvalid),
+            "{name}"
+        );
+        checked += 1;
+    }
+
+    for case in file["sizeCeilingCases"].as_array().unwrap() {
+        check_size_ceiling_case(case);
+        checked += 1;
+    }
+
+    assert_eq!(checked, file["meta"]["caseCount"].as_u64().unwrap());
+}
+
+fn check_record_envelope_case(case: &Json) {
+    let name = str_field(case, "name");
+    let input = &case["input"];
+    let expected = &case["expected"];
+
+    let content = str_field(input, "contentUtf8").as_bytes().to_vec();
+    // Stage one: the compression frame, which sits inside the ciphertext.
+    assert_eq!(
+        hex::encode(compress::compress(&content)),
+        str_field(expected, "compressedHex"),
+        "{name}"
+    );
+
+    let (public_key, secret_key) =
+        sodium::sign_seed_keypair(&hex_field(input, "signingSeedHex")).unwrap();
+    let vault_key = hex_field(input, "vaultKeyHex");
+    let material = envelope::RecordMaterial {
+        file_key: Zeroizing::new(hex_field(input, "fileKeyHex")),
+        data_nonce: hex_field(input, "dataNonceHex"),
+        key_nonce: hex_field(input, "keyNonceHex"),
+    };
+
+    let sealed = envelope::encrypt(
+        &envelope::RecordRequest {
+            id: str_field(input, "id"),
+            item_type: str_field(input, "type"),
+            operation: envelope::SyncOperation::from_wire(Some(str_field(input, "operation")))
+                .unwrap(),
+            content: &content,
+            vault_key: &vault_key,
+            signing_secret_key: secret_key.as_slice(),
+            signer_device_id: str_field(&expected["pushItem"], "signerDeviceId"),
+            clock: clock_field(input),
+            state_vector: input["stateVector"].as_str().map(str::to_owned),
+            deleted_at: input["deletedAt"].as_i64(),
+        },
+        &material,
+    )
+    .unwrap_or_else(|error| panic!("{name}: {error}"));
+
+    // Stage two and three in one assertion: every base64 field and the
+    // signature over them, including which optional keys are present at all.
+    assert_eq!(
+        envelope::to_json(&sealed.envelope),
+        expected["pushItem"],
+        "{name}"
+    );
+    assert_eq!(
+        sealed.size_bytes,
+        expected["sizeBytes"].as_u64().unwrap(),
+        "{name}"
+    );
+
+    // The reader reproduces the writer's own struct from the wire object,
+    // which is what makes the §4.9 operation default testable at all.
+    assert_eq!(
+        envelope::from_json(&expected["pushItem"]).unwrap(),
+        sealed.envelope,
+        "{name}"
+    );
+
+    // §4.6: the record push omits `stateVector` even though the general
+    // PushItem shape and the signature payload both carry it.
+    let push_body = envelope::to_record_push_json(&sealed.envelope);
+    assert!(push_body.get("stateVector").is_none(), "{name}");
+    if input["stateVector"].is_string() {
+        assert!(
+            expected["pushItem"].get("stateVector").is_some(),
+            "{name}: the omission assertion above would otherwise be vacuous"
+        );
+    }
+
+    assert_eq!(
+        envelope::decrypt(&sealed.envelope, &vault_key, &public_key).unwrap(),
+        str_field(expected, "roundTripUtf8").as_bytes(),
+        "{name}"
+    );
+
+    check_dual_canonicalisation(&sealed.envelope, name);
+}
+
+/// Chapter 05 §5.9: the same four blob fields, canonicalised two different
+/// ways, and a client may assume neither.
+fn check_dual_canonicalisation(item: &memry_core::protocol::envelope::RecordEnvelope, name: &str) {
+    // A: plain JSON key sort, which is the R2 object byte for byte.
+    let blob = envelope::canonical_blob_json(item);
+    let json_order = ["dataNonce", "encryptedData", "encryptedKey", "keyNonce"];
+    let offsets: Vec<usize> = json_order
+        .iter()
+        .map(|key| {
+            blob.find(&format!("\"{key}\":"))
+                .unwrap_or_else(|| panic!("{name}: the blob has no `{key}`"))
+        })
+        .collect();
+    let mut sorted = offsets.clone();
+    sorted.sort_unstable();
+    assert_eq!(
+        offsets, sorted,
+        "{name}: the four blob keys are not in JSON sort order"
+    );
+    // Parseable JSON, and the values really are the envelope's own.
+    assert_eq!(
+        serde_json::from_str::<Json>(&blob).unwrap()["encryptedData"],
+        Json::String(item.encrypted_data.clone()),
+        "{name}"
+    );
+
+    // B: length-first CBOR, a different order over the same four fields.
+    let signed: Value = ciborium::from_reader(envelope::signing_bytes(item).unwrap().as_slice())
+        .expect("the signed payload is valid CBOR");
+    let cbor_order: Vec<String> = signed
+        .as_map()
+        .unwrap()
+        .iter()
+        .map(|(key, _)| key.as_text().unwrap().to_string())
+        .filter(|key| json_order.contains(&key.as_str()))
+        .collect();
+    assert_eq!(
+        cbor_order,
+        ["keyNonce", "dataNonce", "encryptedKey", "encryptedData"],
+        "{name}"
+    );
+
+    // `contentHash` is lowercase hex SHA-256 over A's bytes. No vector pins
+    // it, so the negative control is what makes the assertion mean anything.
+    let hash = envelope::content_hash(item);
+    assert_eq!(hash.len(), 64, "{name}");
+    assert!(
+        hash.chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    );
+    let mut moved = item.clone();
+    moved.data_nonce = format!("{}=", &item.data_nonce[..item.data_nonce.len() - 1]);
+    assert_ne!(envelope::content_hash(&moved), hash, "{name}");
+}
+
+fn check_size_ceiling_case(case: &Json) {
+    let name = str_field(case, "name");
+    let bytes = case["contentBytes"].as_u64().unwrap() as usize;
+    let result = envelope::check_size(bytes);
+
+    if !case["expectThrows"].as_bool().unwrap() {
+        assert!(result.is_ok(), "{name}");
+        return;
+    }
+
+    assert_eq!(
+        result,
+        Err(EnvelopeError::ItemTooLarge {
+            bytes: bytes as u64,
+            max_bytes: envelope::NOTE_SYNC_MAX_BYTES as u64,
+        }),
+        "{name}"
+    );
+    assert_eq!(str_field(case, "expectErrorName"), "ItemTooLargeError");
+
+    // §4.14: the check runs BEFORE any crypto. The key material here is
+    // deliberately invalid, so a writer that sized after encrypting would
+    // report a crypto failure instead and this assertion would catch it.
+    let error = envelope::encrypt(
+        &envelope::RecordRequest {
+            id: "too-large",
+            item_type: "note",
+            operation: envelope::SyncOperation::Update,
+            content: &vec![b'a'; bytes],
+            vault_key: &[],
+            signing_secret_key: &[],
+            signer_device_id: "device-a",
+            clock: None,
+            state_vector: None,
+            deleted_at: None,
+        },
+        &envelope::RecordMaterial {
+            file_key: Zeroizing::new(Vec::new()),
+            data_nonce: Vec::new(),
+            key_nonce: Vec::new(),
+        },
+    )
+    .expect_err(name);
+    assert!(
+        matches!(error, EnvelopeError::ItemTooLarge { .. }),
+        "{name}"
+    );
+}
+
+/// A vector's `clock`, which is either absent, `null`, or a map of ticks.
+fn clock_field(input: &Json) -> Option<BTreeMap<String, u64>> {
+    input["clock"].as_object().map(|ticks| {
+        ticks
+            .iter()
+            .map(|(device, tick)| (device.clone(), tick.as_u64().unwrap()))
+            .collect()
+    })
+}
+
+/// `payload-schemas.json` — the declared type set only (T106).
+///
+/// The file's 52 payload cases exercise the per-type projectors, which are not
+/// this module's: chapter 13 §13.2 requires them to read a preserved string
+/// rather than to be the storage shape, and they land with the repositories.
+/// What is assertable here is the half the negotiation owns — that the thirteen
+/// names this client declares are exactly the thirteen the vector was generated
+/// for, in the same order, and that every group in the file is one of them.
+#[test]
+fn payload_schemas_subscribed_types() {
+    let file = vector_file("payload-schemas");
+
+    let declared: Vec<&str> = file["meta"]["subscribedTypes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect();
+    assert_eq!(declared, types::SUBSCRIBED_ITEM_TYPES);
+
+    let declaration = types::Declaration::subscribed();
+    assert_eq!(declaration.header_value(), declared.join(","));
+
+    for group in file["groups"].as_array().unwrap() {
+        let item_type = str_field(group, "type");
+        assert_eq!(
+            declaration.classify(item_type),
+            types::ArrivingItemType::Subscribed,
+            "{item_type}"
+        );
+    }
+
+    // The negative control: a record type the server serves and this client
+    // deliberately does not ask for is not silently acceptable.
+    assert_eq!(
+        declaration.classify("canvas"),
+        types::ArrivingItemType::Undeclared
+    );
 }
