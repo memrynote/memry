@@ -132,3 +132,164 @@ pub enum CompressError {
     #[error("Failed to decompress payload: {what}")]
     Corrupt { what: String },
 }
+
+/// Failures of the `Transport` seam (research R5).
+///
+/// A non-2xx HTTP status is **not** one of these: it is a successful response
+/// whose body carries an error code (chapter 00 §0.4). These are the failures
+/// where no response exists at all, and the core's retry ladder branches on
+/// which one it got.
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
+pub enum TransportError {
+    /// No usable network path. Retryable, and the reachability transition is
+    /// what should drive the retry rather than a timer.
+    #[error("offline")]
+    Offline,
+
+    /// The per-request ceiling elapsed. Chapter 00 §0.6 requires that ceiling
+    /// to exist, because a socket frozen by an OS backgrounding the app
+    /// otherwise never resolves and latches the in-flight guard permanently.
+    #[error("request timed out after {elapsed_ms} ms")]
+    Timeout { elapsed_ms: u64 },
+
+    /// TLS refused the peer. **Not retryable**: retrying a certificate failure
+    /// turns a possible interception into a loop.
+    #[error("TLS failure: {what}")]
+    Tls { what: String },
+
+    /// The outer caller cancelled. Distinct from `Timeout` because a cancel is
+    /// the user's decision and must not count against a retry budget
+    /// (chapter 00 §0.6).
+    #[error("cancelled")]
+    Cancelled,
+
+    /// Any other transport-level failure, retryable.
+    #[error("transport failure: {what}")]
+    Failed { what: String },
+
+    /// The socket closed. Reconnect and backoff are the core's policy.
+    #[error("socket closed with code {code}: {reason}")]
+    SocketClosed { code: u16, reason: String },
+}
+
+/// Failures of the `SecureStore` seam (chapter 01 §1.8).
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
+pub enum SecureStoreError {
+    /// The device is locked and the entry's protection class does not permit
+    /// access yet. Retryable after unlock, and **never** a reason to re-register
+    /// the device: treating it as "no key" would throw away the master key.
+    #[error("secure store is locked")]
+    Locked,
+
+    /// The platform refused the operation.
+    #[error("secure store denied the operation: {what}")]
+    Denied { what: String },
+
+    #[error("secure store failure: {what}")]
+    Failed { what: String },
+}
+
+/// Failures of the storage layer and the `FileProtection` seam.
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
+pub enum StorageError {
+    #[error("database is not open")]
+    NotOpen,
+
+    /// A migration failed. The database is left at its previous `user_version`,
+    /// because the counter is written outside the migration's transaction and
+    /// only after it commits (data-model §A.0).
+    #[error("migration {version} failed: {what}")]
+    Migration { version: u32, what: String },
+
+    /// The SQLite build has no FTS5. Asserted at startup rather than discovered
+    /// on the first search, because a core without FTS5 cannot index anything
+    /// and should say so immediately (research R4).
+    #[error("this SQLite build has no fts5")]
+    MissingFts5,
+
+    /// `index.db` is missing, corrupt, or at an unexpected version. Not fatal:
+    /// the file is deleted and rebuilt from `data.db`, which is the whole
+    /// reason the index lives in its own file (data-model §A.0).
+    #[error("index database must be rebuilt: {what}")]
+    IndexRebuildRequired { what: String },
+
+    #[error("not enough space: {needed_bytes} bytes needed, {available_bytes} available")]
+    OutOfSpace {
+        needed_bytes: u64,
+        available_bytes: u64,
+    },
+
+    #[error("storage failure: {what}")]
+    Failed { what: String },
+}
+
+/// Failures of the `Notifications` seam.
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
+pub enum NotificationError {
+    /// The user has not granted permission. A distinct variant so the core can
+    /// keep the reminder row and reschedule if permission arrives later, rather
+    /// than dropping it.
+    #[error("notification permission not granted")]
+    NotPermitted,
+
+    /// iOS caps pending local notifications at 64. The core must choose which
+    /// reminders to hold, so it has to be told rather than silently truncated.
+    #[error("the platform's pending notification limit is full")]
+    LimitReached,
+
+    #[error("notification failure: {what}")]
+    Failed { what: String },
+}
+
+/// Failures of the `BackgroundExec` seam.
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
+pub enum BackgroundError {
+    /// Background App Refresh is off for this app or device-wide. Reported so
+    /// the shell can say so, per Constitution IV: an absent capability says it
+    /// is absent rather than failing quietly.
+    #[error("background refresh is unavailable")]
+    Unavailable,
+
+    #[error("background scheduling failed: {what}")]
+    Failed { what: String },
+}
+
+/// Failures of the `EditorHost` seam (chapter 12).
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
+pub enum EditorError {
+    /// No WebView is attached. The core queues rather than losing the message.
+    #[error("no editor host is attached")]
+    NotAttached,
+
+    /// The guest did not answer in time.
+    #[error("editor bridge timed out after {elapsed_ms} ms")]
+    Timeout { elapsed_ms: u64 },
+
+    /// The bundle's `BRIDGE_PROTOCOL_VERSION` is not the one this core speaks.
+    /// A hard failure, not a degraded mode: the bundle and the core ship
+    /// together, so a mismatch means the build pairing broke.
+    #[error("editor bridge speaks version {found}, core speaks {expected}")]
+    ProtocolMismatch { expected: u32, found: u32 },
+
+    #[error("editor bridge failure: {what}")]
+    Failed { what: String },
+}
+
+/// Failures of the `CodeCapture` seam (chapter 03).
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
+pub enum CaptureError {
+    #[error("camera permission not granted")]
+    NotPermitted,
+
+    /// Parental controls or an MDM profile. Distinct from `NotPermitted`
+    /// because the user cannot grant it from Settings, so sending them there
+    /// is the wrong instruction.
+    #[error("camera access is restricted by device policy")]
+    Restricted,
+
+    #[error("capture cancelled")]
+    Cancelled,
+
+    #[error("capture failure: {what}")]
+    Failed { what: String },
+}
