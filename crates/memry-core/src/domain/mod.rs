@@ -17,5 +17,7 @@ pub mod properties;
 pub mod search;
 pub mod settings;
 pub mod tags;
+pub mod task_merge;
+pub mod task_views;
 pub mod tasks;
 pub mod templates;
