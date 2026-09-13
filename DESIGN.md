@@ -159,7 +159,19 @@ The default accent is orange `#f97316`, but the user can select any valid six-di
 - `--tint-border`
 - `--tint-foreground`
 
-Use the tint for selection, active tabs, checked controls, focus emphasis, drag placeholders, primary creation actions, and links inside editable content. Never hardcode indigo, orange, or brand terracotta for those states.
+Use the tint for selection, active tabs, checked controls, drag placeholders, primary creation actions, and links inside editable content. Never hardcode indigo, orange, or brand terracotta for those states.
+
+**The tint fills; it does not carry contrast.** This rule used to name "focus emphasis" in the list above, and that was a contradiction with the accessibility floor this document also sets. The default tint `#f97316` is **2.80:1** against the white canvas. WCAG SC 1.4.11 requires **3:1** for a non-text boundary that carries state, so a tint-coloured focus ring fails AA on the default theme — measured, not estimated, while implementing iOS.
+
+The general form matters more than the instance: **a colour the user chooses can never be the thing a contrast requirement rests on.** Any hex is selectable, so some user will pick one that fails against some surface, and no amount of derivation from `--tint` repairs that. A state that must be perceivable is carried by an ink-derived value; the tint may accompany it as a fill.
+
+So:
+
+- **Focus rings, focus outlines and any state-bearing boundary derive from ink**, not from `--tint`, and must clear 3:1 against every surface they can appear on — including the pressed and selected fills, which are the hardest backgrounds and the ones most often forgotten.
+- The tint remains correct for **fills** — selection backgrounds, active-tab underlines, checked controls, drag placeholders — where the information is also carried by position, shape or an accompanying label.
+- `--tint-foreground` must be computed against the resolved tint rather than assumed white. White on `#f97316` is 2.80:1; the default's correct foreground is ink.
+
+**Desktop is affected too and has not been fixed.** `--tint-ring` and `--tint-border` exist precisely to paint boundaries from the tint, and the active-tab underline at line 234 is a `2px` tint rule. On iOS this is resolved — `Tint.base` is fill-only and `Line.focus` is ink-derived — and the same split is owed to the desktop implementation.
 
 The product accent is not the landing brand token. `#ff671a` belongs to brand assets, splash screens, and marketing. Interactive product controls use the tint role; the default resolves to `#f97316`.
 
