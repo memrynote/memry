@@ -485,3 +485,268 @@ async objects (`AuthSession`, `RuntimeHost`) in the auth wave, and Swift 6's
 Until it is resolved, the simulator conformance run cannot produce evidence
 either, so the device tier is blocked twice over: once by the absent hardware
 and once by this. Carried as an open item.
+
+## Addenda — B0 spike notes (T079–T083, gate G3a)
+
+Four notes, one per spike, each with an explicit verdict. Written from runs on
+this machine; every quoted line is copied out of the run's own output.
+
+**The rig, stated once.** Xcode 26.6 (17F113), iOS 26.5 simulator runtime
+(23F77), destination
+`platform=iOS Simulator,id=A7E3D181-58A5-4982-9899-4FD15F5666DC` — **iPhone 17**.
+Every `xcodebuild` invocation held `~/.memry/xcodebuild.lock`, because
+DerivedData is shared across worktrees. The spike scaffolding is
+`apps/ios/Memry/Spikes/`, `apps/ios/MemryTests/SpikeTests.swift` and
+`apps/ios/MemryUITests/SpikeS3*UITests.swift`; no `crates/memry-core/src` file
+was touched and the FFI surface is unchanged, so
+`packages/swift/MemryCore/Sources/MemryCore/Generated/` did not move.
+
+`xcodebuild test -scheme Memry -testPlan Unit` → **TEST SUCCEEDED**, 6 tests in
+4 suites. This is the first iOS-side evidence in this feature: the G3 addendum
+above records that the generated Swift did not compile under the app's Swift 6
+settings, and that is now fixed (`MemryCoreGenerated` is its own Swift 5
+target; `MemryCore` stays at Swift 6) — the app builds, links and runs.
+
+### S1 — UniFFI XCFramework hello-world and callback threading — **PASS**
+
+The easy half. `coreVersion()` returned `0.1.0` through
+`MemryCoreFFI.xcframework`, and a bad phrase came back as a **variant**, not a
+string:
+
+```
+[spike S1/hello]
+  coreVersion() = 0.1.0
+  typedError=MemryCoreGenerated.RecoveryError.WrongWordCount(actual: 4)
+```
+
+The half that was actually at risk. Section E carries "UniFFI callback
+threading guarantees" as uncertain, with the instruction to treat callbacks as
+_any thread, re-entrant_. The spike drives the real exported `AuthSession` to
+`Registered` over a stub `Transport`, then calls `refresh()` — the one exported
+path that reaches `TokenManager::refresh`, which holds its `flight` mutex
+across the `SecureStore` reads, the `Transport::send` await and the
+`store_session` writes (`protocol/auth.rs:423`). Eighteen callbacks, every one
+logging `Thread.current`:
+
+```
+states=SignedOut -> AwaitingOtp -> SetupPending -> Registered -> Registered
+refresh=refresh() returned Registered   elapsed=0.09s
+Transport.send(.../auth/otp/request) | thread=<NSThread: 0x108501bc0>{number = 10, name = (null)} main=false qos=25
+SecureStore.get(deviceSigningKey)     | thread=<NSThread: 0x108501bc0>{number = 10} main=false qos=25 reentrant=state()=AwaitingOtp
+Transport.send(.../auth/otp/verify)   | thread=<NSThread: 0x108501680>{number = 6}  main=false qos=25
+SecureStore.get(setupToken)           | thread=<NSThread: 0x108501680>{number = 6}  main=false qos=25 reentrant=state()=SetupPending
+Transport.send(.../auth/devices)      | thread=<NSThread: 0x10870d8c0>{number = 7}  main=false qos=25
+SecureStore.get(refreshToken)         | thread=<NSThread: 0x10870d8c0>{number = 7}  main=false qos=25 reentrant=state()=Refreshing; nested refresh() -> threw AuthError.InvalidState(action: "refresh", state: "Refreshing")
+Transport.send(.../auth/refresh)      | thread=<NSThread: 0x10870e9c0>{number = 8}  main=false qos=25
+SecureStore.set(refreshToken)         | thread=<NSThread: 0x10870e9c0>{number = 8}  main=false qos=25 reentrant=state()=Refreshing; nested refresh() -> threw AuthError.InvalidState
+```
+
+Four facts come out of that, and section E's guidance survives all four:
+
+1. **Never the main thread.** Every callback ran on an unnamed `NSThread` with
+   `qualityOfService = 25` — a tokio worker, not a Cocoa queue. A shell seam
+   that touches UIKit, or that assumes `@MainActor`, is wrong by construction.
+2. **Not one thread, and not a stable one.** Threads 5, 6, 7, 8, 9 and 10 all
+   appeared. The thread is stable _within_ one `await` chain and changes between
+   them, which is exactly the shape that lets a wrong assumption survive
+   testing and fail later. `@unchecked Sendable` on a seam implementation is
+   therefore an obligation, not a formality: the spike's own `SecureStore` is
+   `NSLock`-guarded for this reason.
+3. **A callback can re-enter the core, and it does not deadlock.**
+   `session.state()` called from inside `SecureStore.get` returned every time,
+   including from the callbacks that run with `flight` held — the
+   `reentrant=state()=Refreshing` lines. Nothing in UniFFI serialises or guards
+   the boundary.
+4. **The re-entrant call that would contend for the held lock is refused before
+   it can.** A nested `refresh()` issued from inside the callback threw
+   `AuthError.InvalidState(action: "refresh", state: "Refreshing")`. **This is
+   the state machine protecting the lock, not the lock protecting itself.** The
+   `flight` mutex is genuinely held across a foreign call; the only reason
+   today's surface cannot deadlock on it is that `AuthSession::refresh` refuses
+   any entry that is not `Registered` or `SessionExpired` (`api/auth.rs`), and
+   `Refreshing` is neither. A future exported method that reaches a held lock
+   without a state gate in front of it re-opens this. The watchdog that would
+   have caught a hang (5 s, on a detached task) never fired:
+   `reentrantRefreshTimedOut=false`.
+
+The rule for the shell, which the spike asserts rather than asserts about: a
+seam implementation does no work that calls back into the core. The spike
+violates it deliberately, under a watchdog, because that is the only way to
+know what happens.
+
+### S2 — async foreign-trait `Transport` over `URLSession` — **PASS**, with one leg recorded as unreachable
+
+R5 flags async foreign traits as the least-travelled UniFFI path. They work.
+`SpikeURLSessionTransport` implements the real `Transport` protocol over
+`URLSession`; the core built the request, called Swift, awaited it, and read
+the answer back into a typed error:
+
+```
+[spike S2]
+  GET /health (shell-driven) -> 200 {"status":"ok"}
+  core-driven url=https://sync-staging.memrynote.com/auth/otp/request requests=1
+  core-driven outcome=AuthError.Api(source: ApiError.Status(status: 400, code: Optional("VALIDATION_ERROR"), message: "Invalid request body"))
+  cancel outcome=AuthError.Api(source: ApiError.Transport(source: TransportError.Cancelled)) requests=1
+  Transport.send(GET  .../health)            | thread=<NSThread: 0x10870fd00>{number = 9}
+  Transport.send(POST .../auth/otp/request)  | thread=<NSThread: 0x108501200>{number = 5}
+  Transport.send(POST .../auth/otp/request)  | thread=<NSThread: 0x10870e9c0>{number = 8}
+```
+
+- **Cancellation is exercised and behaves.** The shell cancelled the in-flight
+  `URLSessionTask` after 1 ms; the seam mapped `URLError.cancelled` to
+  `TransportError.Cancelled`, and the core issued **exactly one** request.
+  Chapter 00 §0.6 says a cancel must not count against the retry budget, and
+  `retryable_transport` agrees (`protocol/http.rs:447`) — this is that rule
+  observed from the other side of the FFI rather than from a Rust unit test.
+- **A non-2xx crossed as a response, not an error**, as
+  `contracts/shell-seams.md` requires: staging's 400 became
+  `ApiError::Status { code: "VALIDATION_ERROR" }`, which means the core read the
+  body the shell handed it.
+
+**The `/health` leg is not Rust-driven, and saying so is the point of this
+paragraph.** No exported function or object method issues a request to
+`/health`. The only requests the current FFI surface causes Rust to make are
+`AuthSession`'s `/auth/*` routes; `GET /health` appears in the core solely in
+`crates/memry-core/tests/http_client.rs`, never on an exported path. The
+`/health` line above is the same `Transport` object called **directly from
+Swift**, so it is evidence about the `URLSession` adapter and about staging,
+not about the foreign-trait hop. The foreign-trait hop is evidenced by the
+other two lines, against the closest unauthenticated route the surface can
+reach. Inventing an exported `health_check(transport)` to close the gap would
+have been an FFI-surface change, which is a decision and not a spike.
+
+A malformed address was used deliberately: staging refuses it with
+`VALIDATION_ERROR` before any mail is sent. No credential under `~/.memry/staging/`
+was read.
+
+### S3 — `WKWebView` opaque origin and keyboard toolbar — **FAIL on R10's decision; the recorded fallback was taken and it passes**
+
+Section E asks "whether an opaque-origin document is a secure context". **It is
+not.** R10's decision — `loadHTMLString(html, baseURL: about:blank)` with
+`websiteDataStore = .nonPersistent()` — measured:
+
+```
+[spike S3 about:blank (R10 decision)]
+  origin=null
+  isSecureContext=false crypto.subtle=false
+  localStorage throws=true  sessionStorage throws=true  indexedDB unavailable=true
+```
+
+The privacy half of R10 holds completely: all three storage APIs are gone. The
+capability half does not: no secure context means **no `crypto.subtle`**, so
+the editor bundle cannot use WebCrypto on this origin.
+
+R10 names exactly one fallback, `WKURLSchemeHandler`, and it works:
+
+```
+[spike S3 memry:// (R10 fallback, WKURLSchemeHandler)]
+  origin=memry://editor
+  isSecureContext=true crypto.subtle=true
+  localStorage throws=false sessionStorage throws=false indexedDB unavailable=false
+```
+
+**R10's own admissibility condition is not satisfied by the fallback as
+configured.** R10: the fallback "is only admissible paired with
+`websiteDataStore = .nonPersistent()` **and** a startup assertion that
+`localStorage`, `sessionStorage` and `indexedDB` each throw or are
+unavailable". `.nonPersistent()` was set, and all three were still handed to
+the document — the real origin re-enables web storage exactly as R10's cost
+note predicted. The condition can be made to hold, and the spike shows the only
+way found to do it: remove the three APIs from `window` in a `WKUserScript` at
+`.atDocumentStart`, before any other script runs.
+
+```
+[spike S3 memry:// + storage denied at document start]
+  origin=memry://editor
+  isSecureContext=true crypto.subtle=true
+  localStorage throws=true  sessionStorage throws=true  indexedDB unavailable=true
+```
+
+That is a **JavaScript-level denial, not the platform-level guarantee the
+opaque origin gave for free**, and the difference should be stated wherever
+this decision is finally written down: the opaque origin made "the WebView
+persists nothing" true in WebKit; the shim makes it true in the guest, where a
+future frame, a `WKContentWorld` mistake or an injected script could reach
+around it. `.nonPersistent()` remains the backstop — nothing survives the data
+store either way — but the guarantee is now two mechanisms deep instead of one.
+
+**Verdict**: the decision as written **FAILS**; the fallback, plus the
+storage-denial user script, **PASSES** and is what the bridge should be built
+on. `apps/ios/Memry/Spikes/SpikeSchemeHandlerFallback.swift` is the measured
+configuration.
+
+**The toolbar.** R16's `inputAccessoryView` override works, is cached across
+getter calls, and returns `nil` on demand so WebKit's own bar can be hidden —
+asserted in `SpikeS3Tests`. Two screenshots, both from the iPhone 17 simulator
+with the **hardware keyboard disconnected** (the UI test asserts
+`app.keyboards.firstMatch` exists, so a reconnected hardware keyboard fails the
+test instead of quietly producing a picture with no toolbar in it):
+
+| File                                                                 | Shows                                                                                                                                                          |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/ios/SpikeEvidence/S3-keyboard-toolbar-default.png`             | the SwiftUI toolbar in the accessory view above the software keyboard; four `.glassEffect(.regular.interactive())` buttons and a `RT OFF` capsule              |
+| `apps/ios/SpikeEvidence/S3-keyboard-toolbar-reduce-transparency.png` | the same toolbar with Reduce Transparency on; the badge reads `RT ON` and the banner reads `ReduceTransparency=ON`, so the screenshot proves its own condition |
+
+Under Reduce Transparency the Liquid Glass capsules render as flat, opaque
+shapes: no blur, no translucency, contrast and legibility preserved, layout and
+hit targets unchanged. Nothing disappears and nothing needs a fallback style.
+
+**These are simulator screenshots, not device screenshots.** T081 asks for
+device ones; the device tier is blocked by decision, stated in the addendum
+above. The simulator renders the same UIKit and SwiftUI material stack, so it
+is real evidence about the accessory view and about the Reduce Transparency
+code path — it is **not** evidence about GPU-dependent Liquid Glass rendering
+on device hardware, and section E's Liquid Glass line should stay open until a
+device run exists.
+
+One thing worth recording because it cost a run: on a fresh simulator iOS shows
+the QuickPath introduction **over** the keyboard, which covers the accessory
+view entirely. The UI test dismisses it. `xcrun simctl spawn <udid> defaults
+write com.apple.Accessibility ReduceTransparencyEnabled -bool true` does **not**
+reach `UIAccessibility.isReduceTransparencyEnabled` — it was tried, it survived
+a device reboot in the plist, and the app still read `false`. Driving the real
+switch in Settings is the only route that worked.
+
+### S4 — Argon2id 64 MiB ops 3 on a real iPhone 15 — **BLOCKED. Not attempted, not passed, not waived.**
+
+**No run was made.** Kaan chose simulator-only and no physical iPhone is
+attached to this machine.
+
+**A simulator run would not have been evidence, and running one would have made
+the record worse rather than better.** The simulator target is
+`aarch64-apple-ios-sim`; it executes on the host's own CPU, against the host's
+memory, with the simulator slice of `MemryCoreFFI.xcframework` — a different
+binary from the `aarch64-apple-ios` device slice. S4 asks two questions and the
+simulator can answer neither:
+
+1. **Does Argon2id at 64 MiB with ops 3 OOM on an iPhone 15 under memory
+   pressure?** This is a question about a phone's jetsam limits and about how
+   much of a 6 GB device is available to a foreground app that has just been
+   resumed. A Mac with tens of gigabytes free will complete the derivation
+   every time, and that success says nothing at all.
+2. **Is `crypto_pwhash`'s `-1` distinguishable from a wrong passphrase?**
+   libsodium answers both with `-1`. The distinction the core draws —
+   `CryptoError::OutOfMemory` versus a verifier mismatch — can only be
+   confirmed by reproducing the allocation failure, which requires the
+   allocation to actually fail. It will not fail on the host.
+
+`contracts/core-api.md` records why the distinction matters: reporting an OOM
+as a wrong phrase tells the user to re-type a phrase that was correct. That
+reasoning is unverified on hardware and stays unverified.
+
+**T082 is open. It is not "PASS (simulator)" and must never be written that
+way.** It clears when an iPhone 15 is attached and
+`xcodebuild test -destination 'platform=iOS,name=<iPhone 15>'` runs the
+derivation under induced memory pressure.
+
+### G3a, as it stands
+
+| Spike                                                 | Verdict                   | Fallback taken                                                                                             |
+| ----------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| S1 UniFFI XCFramework hello-world, callback threading | **PASS**                  | none needed                                                                                                |
+| S2 async foreign-trait `Transport` over `URLSession`  | **PASS**                  | none needed; the `/health` leg is shell-driven because no exported path reaches `/health`                  |
+| S3 `WKWebView` opaque origin and keyboard toolbar     | **FAIL** on `about:blank` | R10's `WKURLSchemeHandler` fallback, plus a document-start storage-denial user script, which together pass |
+| S4 Argon2id 64 MiB ops 3 on iPhone 15                 | **BLOCKED**               | none available; the question is not answerable off-device                                                  |
+
+Three of four spikes have a result. The fourth is blocked by an absent device
+and is recorded as blocked, which is the honest state of gate G3a.
