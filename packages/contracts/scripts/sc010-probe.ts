@@ -3,11 +3,30 @@ import { createHash } from 'node:crypto'
 import * as Y from 'yjs'
 import { extractText } from './extract-text'
 
-const DB = '/Users/h4yfans/.memry-cli/staging/vault/692184c5-c51c-48b4-9fba-0771ed37e34e/data.db'
-const NOTE = process.argv[2] ?? 'dzxnhc9p3gk3'
+const [NOTE, DB] = [process.argv[2], process.argv[3]]
+if (!NOTE || !DB) {
+  console.error(
+    'usage: tsx scripts/sc010-probe.ts <noteId> <path/to/vault/data.db>\n' +
+      '\n' +
+      "SC-010's other half: runs THIS package's extractor — the one that generates\n" +
+      'the `text-extract` vector class — over a real document, and prints chapter 12\n' +
+      "§12.11's digest. Compare with `memry notes digest <noteId>`; they must match.\n" +
+      '\n' +
+      'The database is a memry-cli vault, e.g.\n' +
+      '  ~/.memry-cli/staging/vault/<vaultId>/data.db'
+  )
+  process.exit(2)
+}
 
 const db = new Database(DB, { readonly: true })
-const title = db.prepare('SELECT title FROM notes WHERE id = ?').get(NOTE) as { title: string }
+const title = db.prepare('SELECT title FROM notes WHERE id = ?').get(NOTE) as
+  { title: string } | undefined
+if (!title) {
+  // Never digest an absent title as "": it would produce a plausible hash that
+  // silently disagrees with every other shell.
+  console.error(`no note \`${NOTE}\` in ${DB}`)
+  process.exit(2)
+}
 // `load_plan`: each namespace starts from its snapshot, then the updates
 // ABOVE that snapshot's `last_seq`. Applying the log alone yields an empty
 // document, because the base state lives in the snapshot.
