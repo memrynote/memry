@@ -214,6 +214,15 @@ it does not rewrite the file. An unchanged mtime is therefore exactly what a
 did not reach the CLI within 90 s; where it stopped was not determined, and
 determining it needs the desktop's logs.
 
+**A third reason the run proves nothing**: every Electron PID from that desktop
+had exited by the end of the session. It was demonstrably alive at 14:18:20, when
+the CLI→desktop marker reached its vault file in 2.16 s, and the external-edit
+attempt began at 14:18:27 — but nothing establishes it was still running through
+the 90 s poll. A dev build exiting mid-experiment was not ruled out.
+
+Re-run this with a liveness check on the Electron PID **inside** the poll loop,
+so the run either produces evidence or says why it could not.
+
 Recorded as a failed _method_, not a failed requirement. An external file edit
 is not the same thing as an edit made in the desktop app — T139 asks for the
 latter, and the desktop's file-watch behaviour in a dev build is a separate

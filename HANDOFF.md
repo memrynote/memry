@@ -126,6 +126,19 @@ Not done, and not doable headlessly:
   `wasRecentNetworkUpdate` branch broadcasting `sync:concurrent-edit`, and a CLI
   write had landed seconds earlier, so that branch was live.
 
+  **And the desktop process was later found dead.** Every Electron PID from the
+  `dev:a:staging` run had exited by the end of the session. It was demonstrably
+  alive at 14:18:20 — the CLI→desktop marker reached its vault file in 2.16 s —
+  and the external-edit attempt began at 14:18:27, but **nothing establishes it
+  was still running through the 90 s poll.** A dev build exiting mid-experiment
+  is the simplest explanation of all and was not ruled out.
+
+  So the attempt is inconclusive for three independent reasons: the mtime proves
+  nothing, the concurrent-edit branch was live, and the desktop's liveness
+  across the window is unknown. **Do not carry "the desktop ignored it" forward
+  as a finding.** Re-run it with a liveness check on the Electron PID inside the
+  poll loop, so the run either produces evidence or says why it could not.
+
   Either way it is a failed _method_, not a failed requirement: an external file
   edit is not an edit made in the desktop app, which is what T139 asks for.
 
