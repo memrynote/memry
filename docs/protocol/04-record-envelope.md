@@ -91,6 +91,20 @@ reference for the same input.
   throws `Failed to decompress payload: incomplete deflate stream`
   (`packages/sync-client/src/compress.ts:26-43`).
 
+**Choosing stock zlib is a linking obligation on every shell.** `flate2`'s
+`zlib` feature binds to the _system_ zlib rather than carrying its own, which
+is the point — a vendored backend is what produced the valid-but-different
+streams above. The consequence travels: a host build links `-lz` automatically,
+and an application embedding the core as a static library **does not**, so the
+archive arrives with `_deflate`, `_deflateEnd`, `_deflateInit2_` and the rest
+undefined and the link fails.
+
+Apple ships `libz` in every SDK, so an iOS or macOS shell links it and the
+matter ends there; the Memry Swift package names it beside the binary target so
+no consumer has to rediscover it. A shell on a platform without a system zlib
+must supply one that is **stock zlib**, because the vectors pin its output, not
+merely any deflate.
+
 ## 4.2 Compression sits inside the ciphertext
 
 **Normative.** The compression byte is **inside** the ciphertext in both
