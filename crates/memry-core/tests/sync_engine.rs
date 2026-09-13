@@ -28,6 +28,7 @@ use std::sync::{Arc, Mutex};
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::ApiError;
 use memry_core::domain::notes::{self, NewNote};
+use memry_core::domain::settings;
 use memry_core::domain::tasks;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
@@ -1179,4 +1180,271 @@ async fn a_delete_for_a_locally_newer_note_is_still_applied() {
         Ok(())
     })
     .expect("read back");
+}
+
+// ------------------------------ §6.9's dotted-path field clocks, on the real pull path
+
+/// The one settings item (§13.6).
+const SETTINGS_ID: &str = "synced_settings";
+
+/// A vault whose only preference was written **here**: `general.theme` is
+/// `"light"` under `{device-a: 2}`, one tick per write (§6.9.1).
+fn seed_local_theme(db: &Db) {
+    db.call_blocking(|conn| {
+        settings::set(conn, "general.theme", json!("dark"), "device-a", MERGE_NOW)?;
+        settings::set(
+            conn,
+            "general.theme",
+            json!("light"),
+            "device-a",
+            MERGE_NOW + 1_000,
+        )?;
+        Ok(())
+    })
+    .expect("the local preference");
+}
+
+/// One `settings` payload, as §13.7.13 spells it.
+fn settings_payload(settings: Json, field_clocks: Json) -> String {
+    json!({"settings": settings, "fieldClocks": field_clocks}).to_string()
+}
+
+/// The closed ten-group read view, as rows (§13.10.1).
+fn projected_settings(db: &Db) -> Vec<(String, String, String)> {
+    db.call_blocking(|conn| {
+        let mut statement = conn
+            .prepare("SELECT \"group\", key, value FROM settings ORDER BY \"group\", key")
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })?;
+        let rows = statement
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })?;
+        Ok(rows.map(|row| row.expect("row")).collect::<Vec<_>>())
+    })
+    .expect("the settings projection")
+}
+
+/// **The data-loss case §6.9 exists to prevent**, end to end: change the theme
+/// here, then receive a settings payload from a peer that had not seen the
+/// change, and the theme **survives**.
+///
+/// Before §6.9 was wired inbound, `apply_settings` stored the remote payload
+/// wholesale and the preference silently reverted on the next pull. Driven
+/// through the real `/sync/changes` → `/sync/pull` → apply → advance sequence
+/// on purpose: the algorithm is chosen by the type dispatch (§6.8), so a test
+/// one layer down passes with the dispatch unwired.
+#[tokio::test]
+async fn a_stale_remote_settings_payload_does_not_clobber_a_newer_local_one() {
+    let db = scratch_db("pull-settings-skip");
+    seed_local_theme(&db);
+    let queued_before = outbox_rows(&db, SETTINGS_ID);
+
+    // {device-a: 1} against the local {device-a: 2}: the local path clock
+    // dominates, so every arbitrated path resolves to what is already here.
+    let remote = settings_payload(
+        json!({"general": {"theme": "dark"}}),
+        json!({"general.theme": {"device-a": 1}}),
+    );
+    let report = pull_one(&db, SETTINGS_ID, "settings", &remote, "61").await;
+
+    // §5.14: a skip is work, so the page yielded and the cursor advances.
+    assert_eq!(report.skipped, 1);
+    assert_eq!(report.applied, 0);
+    assert_eq!(report.corrupt, 0);
+    assert!(!report.refused, "a skip is not nothing");
+    assert_eq!(report.cursor.as_deref(), Some("61"));
+
+    let parsed = stored_payload(&db, "settings", SETTINGS_ID);
+    assert_eq!(
+        parsed["settings"]["general"]["theme"],
+        json!("light"),
+        "the newer local preference survives the older remote payload"
+    );
+    assert_eq!(
+        parsed["fieldClocks"]["general.theme"],
+        json!({"device-a": 2}),
+        "nothing was written, so the local path clock is untouched"
+    );
+    assert_eq!(
+        projected_settings(&db),
+        vec![(
+            "general".to_owned(),
+            "theme".to_owned(),
+            "\"light\"".to_owned()
+        )]
+    );
+    // §6.5.2 P3: an inbound apply never enqueues, and neither does a skip.
+    assert_eq!(outbox_rows(&db, SETTINGS_ID), queued_before);
+}
+
+/// **FR-059's §6.9 equivalent**: two devices changed two different paths, and
+/// one merge keeps both.
+///
+/// This is the whole reason the clocks are keyed by path rather than by
+/// payload. A wholesale store would have replaced the local theme with a
+/// payload that never carried one.
+#[tokio::test]
+async fn two_settings_paths_changed_on_two_devices_both_survive_one_merge() {
+    let db = scratch_db("pull-settings-merge");
+    seed_local_theme(&db);
+    let queued_before = outbox_rows(&db, SETTINGS_ID);
+
+    // Device B never saw `general.theme` and changed the editor font size.
+    let remote = settings_payload(
+        json!({"editor": {"fontSize": 16}}),
+        json!({"editor.fontSize": {"device-b": 1}}),
+    );
+    let report = pull_one(&db, SETTINGS_ID, "settings", &remote, "62").await;
+
+    assert_eq!(report.applied, 1);
+    assert_eq!(report.skipped, 0);
+    assert_eq!(report.corrupt, 0);
+
+    let parsed = stored_payload(&db, "settings", SETTINGS_ID);
+    assert_eq!(parsed["settings"]["general"]["theme"], json!("light"));
+    assert_eq!(parsed["settings"]["editor"]["fontSize"], json!(16));
+    assert_eq!(
+        parsed["fieldClocks"],
+        json!({
+            "general.theme": {"device-a": 2},
+            "editor.fontSize": {"device-b": 1}
+        }),
+        "§6.3 step 7: every arbitrated path carries merge(L, R)"
+    );
+    assert_eq!(
+        projected_settings(&db),
+        vec![
+            ("editor".to_owned(), "fontSize".to_owned(), "16".to_owned()),
+            (
+                "general".to_owned(),
+                "theme".to_owned(),
+                "\"light\"".to_owned()
+            ),
+        ]
+    );
+    assert_eq!(outbox_rows(&db, SETTINGS_ID), queued_before);
+}
+
+/// §13.10 and FR-063 through the merge branch: a group this build cannot model
+/// rides along instead of being stripped.
+///
+/// Stripping it is #2183's failure mode — a merge that rebuilt the payload from
+/// the closed ten-group read view would delete a preference a newer build
+/// wrote, on every device, permanently.
+#[tokio::test]
+async fn an_unmodelled_settings_group_rides_along_through_the_merge() {
+    let db = scratch_db("pull-settings-unmodelled");
+    seed_local_theme(&db);
+    let queued_before = outbox_rows(&db, SETTINGS_ID);
+
+    let remote = settings_payload(
+        json!({
+            "general": {"theme": "light"},
+            "experimental": {"agentSidebar": true}
+        }),
+        json!({
+            "general.theme": {"device-a": 1},
+            "experimental.agentSidebar": {"device-b": 1}
+        }),
+    );
+    let report = pull_one(&db, SETTINGS_ID, "settings", &remote, "63").await;
+
+    assert_eq!(report.applied, 1);
+    assert_eq!(report.corrupt, 0);
+
+    let parsed = stored_payload(&db, "settings", SETTINGS_ID);
+    assert_eq!(
+        parsed["settings"]["experimental"],
+        json!({"agentSidebar": true}),
+        "the unmodelled group is in the stored bytes a push would send"
+    );
+    assert_eq!(parsed["settings"]["general"]["theme"], json!("light"));
+    assert_eq!(
+        parsed["fieldClocks"]["experimental.agentSidebar"],
+        json!({"device-b": 1}),
+        "and so is its clock: §6.9.1 prunes nothing"
+    );
+    // The projection stays the closed ten-group read view (§13.10.1).
+    assert_eq!(
+        projected_settings(&db),
+        vec![(
+            "general".to_owned(),
+            "theme".to_owned(),
+            "\"light\"".to_owned()
+        )]
+    );
+    assert_eq!(outbox_rows(&db, SETTINGS_ID), queued_before);
+}
+
+/// §6.9.1's removal rule, from the seat that made the removal: a local clear
+/// that **ticked** beats a peer still holding the old value, rather than the
+/// setting resurrecting on the next pull.
+#[tokio::test]
+async fn a_local_settings_removal_that_ticked_beats_a_stale_remote_value() {
+    let db = scratch_db("pull-settings-removal");
+    db.call_blocking(|conn| {
+        settings::set(conn, "general.theme", json!("dark"), "device-a", MERGE_NOW)?;
+        // A removal is a write and ticks the path (§6.9.1): {device-a: 2}.
+        settings::remove(conn, "general.theme", "device-a", MERGE_NOW + 1_000)?;
+        Ok(())
+    })
+    .expect("the local removal");
+    let queued_before = outbox_rows(&db, SETTINGS_ID);
+
+    // The peer that never saw the removal, still holding the old value.
+    let remote = settings_payload(
+        json!({"general": {"theme": "dark"}}),
+        json!({"general.theme": {"device-a": 1}}),
+    );
+    let report = pull_one(&db, SETTINGS_ID, "settings", &remote, "64").await;
+
+    assert_eq!(report.skipped, 1);
+    assert_eq!(report.applied, 0);
+    assert_eq!(report.corrupt, 0);
+    assert_eq!(report.cursor.as_deref(), Some("64"));
+
+    let parsed = stored_payload(&db, "settings", SETTINGS_ID);
+    assert_eq!(
+        parsed["settings"]["general"].get("theme"),
+        None,
+        "the cleared preference must not come back on the next pull"
+    );
+    assert_eq!(
+        parsed["fieldClocks"]["general.theme"],
+        json!({"device-a": 2}),
+        "the removal's tick is what beat the stale value"
+    );
+    assert!(projected_settings(&db).is_empty());
+    assert_eq!(outbox_rows(&db, SETTINGS_ID), queued_before);
+
+    // And the other seat, which is where the removal has to actually land or
+    // the two devices diverge permanently: this device still holds the value,
+    // and the peer's ticked removal arrives.
+    let peer = scratch_db("pull-settings-removal-peer");
+    peer.call_blocking(|conn| {
+        settings::set(conn, "general.theme", json!("dark"), "device-a", MERGE_NOW)?;
+        Ok(())
+    })
+    .expect("the stale local value");
+    let queued_before = outbox_rows(&peer, SETTINGS_ID);
+
+    let removal = settings_payload(
+        json!({"general": {}}),
+        json!({"general.theme": {"device-a": 1, "device-b": 1}}),
+    );
+    let report = pull_one(&peer, SETTINGS_ID, "settings", &removal, "65").await;
+
+    assert_eq!(report.applied, 1);
+    assert_eq!(report.corrupt, 0);
+    let parsed = stored_payload(&peer, "settings", SETTINGS_ID);
+    assert_eq!(
+        parsed["settings"]["general"].get("theme"),
+        None,
+        "§6.9.1: a removal is a write, and a ticked one beats the old value"
+    );
+    assert!(projected_settings(&peer).is_empty());
+    assert_eq!(outbox_rows(&peer, SETTINGS_ID), queued_before);
 }

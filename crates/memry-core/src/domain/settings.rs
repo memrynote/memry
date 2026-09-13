@@ -209,7 +209,7 @@ fn ensure_item(tx: &Connection, now_ms: i64) -> Result<(), StorageError> {
 /// anything. Missing intermediate objects are created; a non-object in the way
 /// is refused rather than overwritten, because overwriting it would delete
 /// every sibling under it.
-fn apply_at(
+pub(crate) fn apply_at(
     node: &mut Map<String, Value>,
     segments: &[&str],
     change: &Change,
@@ -254,7 +254,7 @@ fn apply_at(
 }
 
 /// The value at a dotted path, or `None` when any segment is missing.
-fn value_at<'a>(node: &'a Map<String, Value>, segments: &[&str]) -> Option<&'a Value> {
+pub(crate) fn value_at<'a>(node: &'a Map<String, Value>, segments: &[&str]) -> Option<&'a Value> {
     let (head, rest) = segments.split_first()?;
     let value = node.get(*head)?;
     if rest.is_empty() {
@@ -265,7 +265,7 @@ fn value_at<'a>(node: &'a Map<String, Value>, segments: &[&str]) -> Option<&'a V
 
 /// Splits a dotted path. An empty path, or one with an empty segment, is
 /// refused: `general.` would write a `""` key that no peer could address.
-fn segments(path: &str) -> Result<Vec<&str>, StorageError> {
+pub(crate) fn segments(path: &str) -> Result<Vec<&str>, StorageError> {
     let parts: Vec<&str> = path.split('.').collect();
     if parts.iter().any(|part| part.is_empty()) {
         return Err(StorageError::Failed {
@@ -292,11 +292,13 @@ fn stored(conn: &Connection) -> Result<Option<StoredPayload>, StorageError> {
         })
 }
 
-fn settings_of(object: &Map<String, Value>) -> Result<Map<String, Value>, StorageError> {
+pub(crate) fn settings_of(object: &Map<String, Value>) -> Result<Map<String, Value>, StorageError> {
     object_at(object, "settings")
 }
 
-fn field_clocks_of(object: &Map<String, Value>) -> Result<Map<String, Value>, StorageError> {
+pub(crate) fn field_clocks_of(
+    object: &Map<String, Value>,
+) -> Result<Map<String, Value>, StorageError> {
     object_at(object, "fieldClocks")
 }
 
@@ -315,7 +317,7 @@ fn object_at(object: &Map<String, Value>, key: &str) -> Result<Map<String, Value
 /// A field clock as ticks. A clock that will not read is a hard error rather
 /// than an empty clock: an empty one lowers `clockTotal` and changes who wins
 /// the next merge (chapter 06 §6.10).
-fn read_clock(value: &Value, path: &str) -> Result<VectorClock, StorageError> {
+pub(crate) fn read_clock(value: &Value, path: &str) -> Result<VectorClock, StorageError> {
     let refuse = || StorageError::Failed {
         what: format!("settings `{path}`: field clock is not a vector clock"),
     };

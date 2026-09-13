@@ -45,7 +45,7 @@ use crate::domain::tasks::Inbound;
 use crate::domain::{projects, settings, tasks};
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
-use super::store;
+use super::{settings_merge, store};
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
 pub(crate) enum Pending {
@@ -151,10 +151,12 @@ pub(crate) fn apply_page(
 ///
 /// - `task` and `project` run §6.3.1's document gate followed by §6.3's
 ///   per-field rule;
-/// - `settings` is **excluded on purpose** — §6.9's dotted-path clocks are a
-///   third algorithm, not this one, and §6.8 forbids inferring an algorithm
-///   from the absence of a field list. It stays on the wholesale path until
-///   §6.9 is implemented inbound; see [`apply_settings`];
+/// - `settings` runs §6.9's dotted-path field clocks
+///   ([`crate::sync::settings_merge`]): the payload carries no document
+///   `clock` at all (§13.7.13, §13.9), so §6.3.1's first row would fire on
+///   every pull and the per-path clocks are the whole mechanism. §6.8 forbids
+///   inferring an algorithm from the absence of a field list, so it is named
+///   here rather than falling through `_`;
 /// - **every other subscribed type takes §6.3.1's document-level resolver**
 ///   ([`apply_document`]). It is *not* an unconditional wholesale store: a
 ///   stale remote `note` record used to overwrite a newer local one, and a
@@ -168,7 +170,7 @@ pub fn apply_inbound(
     let merged = match record.item_type.as_str() {
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms),
         projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
-        settings::SETTINGS_ITEM_TYPE => return apply_settings(conn, record, now_ms),
+        settings::SETTINGS_ITEM_TYPE => settings_merge::apply_remote_merged(conn, record, now_ms),
         _ => apply_document(conn, record, now_ms),
     };
     match merged {
@@ -210,25 +212,6 @@ fn apply_document(
             task_merge::wholesale(conn, &merged, now_ms)
         }
     }
-}
-
-/// `settings`, which §6.8 sends down a third path this core does not implement
-/// inbound yet.
-///
-/// §6.9's clocks are keyed by dotted path at arbitrary depth, so neither the
-/// per-field merge of §6.3 nor the document gate of §6.3.1 is the right
-/// algorithm for it — and the payload carries no document `clock` at all
-/// (§13.7.13, §13.9: `settings` is the one record type exempt from the clock
-/// requirement), so a document gate would find no local clock and apply
-/// wholesale on every pull regardless. Wholesale is therefore what it already
-/// does; naming it here rather than letting it fall through `_` is the point,
-/// so that implementing §6.9 is a change to this function and not a discovery.
-fn apply_settings(
-    conn: &Connection,
-    record: &InboundRecord,
-    now_ms: i64,
-) -> Result<ApplyOutcome, StorageError> {
-    sync_items::apply_remote(conn, record, now_ms)
 }
 
 /// The merge's own vocabulary, in the pull's.

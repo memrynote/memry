@@ -8,6 +8,7 @@
 //! | [`store`]         | 05 §5.11, §5.12        | the per-scope cursor and the tombstone            |
 //! | [`pull`]          | 05                     | one page: refs, bodies, apply, advance            |
 //! | [`apply`]         | 06 §6.8, 05 §5.12      | the apply step, and the one dispatch on item type |
+//! | [`settings_merge`] | 06 §6.9, 13 §13.7.13  | `settings` inbound: the dotted-path field clocks  |
 //! | [`state`]         | data-model §C.3        | the states and the edges drawn between them       |
 //! | [`engine`]        | data-model §C.3        | when each edge is taken, one pass at a time       |
 //! | [`outbox`]        | data-model §A.2, §C.4  | the durable write queue, one transaction at a time |
@@ -39,6 +40,7 @@ pub mod outbox;
 pub mod policy;
 pub mod pull;
 pub mod push;
+pub mod settings_merge;
 pub mod socket;
 pub mod state;
 pub mod store;
