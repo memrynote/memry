@@ -623,6 +623,382 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 
 
 
+/**
+ * The session. One per account on the device.
+ */
+public protocol AuthSessionProtocol: AnyObject, Sendable {
+    
+    /**
+     * The server says this device is revoked. Terminal until the user acts,
+     * and the caller removes local vault content **before** rendering it.
+     */
+    func markRevoked() throws  -> AuthState
+    
+    /**
+     * `Registered -> Refreshing -> Registered`, or to `SessionExpired`.
+     *
+     * Also the `SessionExpired -> Registered` edge: a later refresh that
+     * succeeds brings the session back without a new sign-in.
+     */
+    func refresh() async throws  -> AuthState
+    
+    /**
+     * `SetupPending -> Registered`, or `-> SetupExpired` when the grant aged
+     * out.
+     *
+     * The challenge is chapter 02 §2.3.1: Ed25519 over `nonce:jti`, standard
+     * base64, with the `jti` read out of the setup token the client holds. The
+     * nonce is minted here from the CSPRNG and never taken from a server
+     * (§2.3.2).
+     */
+    func registerDevice() async throws  -> AuthState
+    
+    /**
+     * `SetupExpired -> SetupPending`, or `-> SignedOut` when the chain is
+     * spent.
+     *
+     * Renewal signs the same `nonce:jti` challenge with the committed device
+     * key; the renewed token carries a **new** `jti`, so registration re-reads
+     * it rather than reusing the one it signed here.
+     */
+    func renewSetupToken() async throws  -> AuthState
+    
+    /**
+     * `SignedOut -> AwaitingOtp`. Mints the `sessionNonce` this attempt will
+     * carry on both calls (chapter 02 §2.6).
+     */
+    func requestEmailCode(email: String) async throws  -> AuthState
+    
+    /**
+     * Asks for the same code again. Not a state transition: chapter 02 §2.11
+     * caps it at three per ten minutes and the state is unchanged either way.
+     */
+    func resendEmailCode() async throws 
+    
+    /**
+     * FR-025. Every secure store entry goes; the databases and `images/` are
+     * the caller's to remove, because this type does not own them.
+     */
+    func signOut() async throws  -> AuthState
+    
+    func state()  -> AuthState
+    
+    /**
+     * `AwaitingOtp -> SetupPending`, or `-> SignedOut` when the code is
+     * rejected.
+     *
+     * Commits `devicePublicKey`, which is what makes `SetupExpired`
+     * recoverable: without it the grant is a single non-renewable five
+     * minutes (chapter 02 §2.5), and a user hunting for a 24-word phrase
+     * routinely outlasts that.
+     */
+    func verifyEmailCode(code: String) async throws  -> AuthState
+    
+}
+/**
+ * The session. One per account on the device.
+ */
+open class AuthSession: AuthSessionProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_authsession(self.handle, $0) }
+    }
+    /**
+     * Builds a session over the shell's seams.
+     *
+     * `client_platform` is `ios | android | desktop` (chapter 11 §11.2) and is
+     * validated here: chapter 11 §11.3 says a malformed header opts the client
+     * out of the write gate silently, so it never leaves this constructor.
+     */
+public convenience init(transport: Transport, secureStore: SecureStore, baseUrl: String, clientPlatform: String, device: DeviceDescriptor)throws  {
+    let handle =
+        try rustCallWithError(FfiConverterTypeApiError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_constructor_authsession_new(
+        FfiConverterTypeTransport_lower(transport),
+        FfiConverterTypeSecureStore_lower(secureStore),
+        FfiConverterString.lower(baseUrl),
+        FfiConverterString.lower(clientPlatform),
+        FfiConverterTypeDeviceDescriptor_lower(device),uniffiCallStatus
+    )
+}
+    self.init(unsafeFromHandle: handle)
+}
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_authsession(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * The server says this device is revoked. Terminal until the user acts,
+     * and the caller removes local vault content **before** rendering it.
+     */
+open func markRevoked()throws  -> AuthState  {
+    return try  FfiConverterTypeAuthState_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_authsession_mark_revoked(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `Registered -> Refreshing -> Registered`, or to `SessionExpired`.
+     *
+     * Also the `SessionExpired -> Registered` edge: a later refresh that
+     * succeeds brings the session back without a new sign-in.
+     */
+open func refresh()async throws  -> AuthState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_refresh(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAuthState_lift,
+            errorHandler: FfiConverterTypeAuthError_lift
+        )
+}
+    
+    /**
+     * `SetupPending -> Registered`, or `-> SetupExpired` when the grant aged
+     * out.
+     *
+     * The challenge is chapter 02 §2.3.1: Ed25519 over `nonce:jti`, standard
+     * base64, with the `jti` read out of the setup token the client holds. The
+     * nonce is minted here from the CSPRNG and never taken from a server
+     * (§2.3.2).
+     */
+open func registerDevice()async throws  -> AuthState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_register_device(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAuthState_lift,
+            errorHandler: FfiConverterTypeAuthError_lift
+        )
+}
+    
+    /**
+     * `SetupExpired -> SetupPending`, or `-> SignedOut` when the chain is
+     * spent.
+     *
+     * Renewal signs the same `nonce:jti` challenge with the committed device
+     * key; the renewed token carries a **new** `jti`, so registration re-reads
+     * it rather than reusing the one it signed here.
+     */
+open func renewSetupToken()async throws  -> AuthState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_renew_setup_token(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAuthState_lift,
+            errorHandler: FfiConverterTypeAuthError_lift
+        )
+}
+    
+    /**
+     * `SignedOut -> AwaitingOtp`. Mints the `sessionNonce` this attempt will
+     * carry on both calls (chapter 02 §2.6).
+     */
+open func requestEmailCode(email: String)async throws  -> AuthState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_request_email_code(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(email)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAuthState_lift,
+            errorHandler: FfiConverterTypeAuthError_lift
+        )
+}
+    
+    /**
+     * Asks for the same code again. Not a state transition: chapter 02 §2.11
+     * caps it at three per ten minutes and the state is unchanged either way.
+     */
+open func resendEmailCode()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_resend_email_code(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeAuthError_lift
+        )
+}
+    
+    /**
+     * FR-025. Every secure store entry goes; the databases and `images/` are
+     * the caller's to remove, because this type does not own them.
+     */
+open func signOut()async throws  -> AuthState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_sign_out(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAuthState_lift,
+            errorHandler: FfiConverterTypeAuthError_lift
+        )
+}
+    
+open func state() -> AuthState  {
+    return try!  FfiConverterTypeAuthState_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_authsession_state(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `AwaitingOtp -> SetupPending`, or `-> SignedOut` when the code is
+     * rejected.
+     *
+     * Commits `devicePublicKey`, which is what makes `SetupExpired`
+     * recoverable: without it the grant is a single non-renewable five
+     * minutes (chapter 02 §2.5), and a user hunting for a 24-word phrase
+     * routinely outlasts that.
+     */
+open func verifyEmailCode(code: String)async throws  -> AuthState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_verify_email_code(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(code)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAuthState_lift,
+            errorHandler: FfiConverterTypeAuthError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAuthSession: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = AuthSession
+
+    public static func lift(_ handle: UInt64) throws -> AuthSession {
+        return AuthSession(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: AuthSession) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AuthSession {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: AuthSession, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAuthSession_lift(_ handle: UInt64) throws -> AuthSession {
+    return try FfiConverterTypeAuthSession.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAuthSession_lower(_ value: AuthSession) -> UInt64 {
+    return FfiConverterTypeAuthSession.lower(value)
+}
+
+
+
+
+
+
 public protocol BackgroundExec: AnyObject, Sendable {
     
     /**
@@ -3167,6 +3543,216 @@ public func FfiConverterTypeReachabilityObserver_lower(_ value: ReachabilityObse
 
 
 /**
+ * The shell's handle on the runtime's lifecycle.
+ *
+ * The shell owns one and calls it from the platform's own lifecycle
+ * callbacks. It carries no runtime of its own: the runtime is the process's,
+ * this is only the state that says whether resumed work may run yet.
+ */
+public protocol RuntimeHostProtocol: AnyObject, Sendable {
+    
+    /**
+     * The platform moved the app out of the foreground.
+     */
+    func onBackground() 
+    
+    /**
+     * The platform is about to kill the current background task.
+     */
+    func onExpiring() 
+    
+    /**
+     * The platform brought the app back. Starts the debounce window.
+     */
+    func onForeground() 
+    
+    func phase()  -> AppPhase
+    
+    /**
+     * Whether resumed work may run now. The shell never has to compute this;
+     * it is here so a shell that wants to render "catching up" can.
+     */
+    func resumeSettled()  -> Bool
+    
+}
+/**
+ * The shell's handle on the runtime's lifecycle.
+ *
+ * The shell owns one and calls it from the platform's own lifecycle
+ * callbacks. It carries no runtime of its own: the runtime is the process's,
+ * this is only the state that says whether resumed work may run yet.
+ */
+open class RuntimeHost: RuntimeHostProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_runtimehost(self.handle, $0) }
+    }
+    /**
+     * Creates the host and, as a side effect, the runtime: doing it here
+     * means the first sync pass does not pay for thread creation.
+     */
+public convenience init() {
+    let handle =
+        try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_constructor_runtimehost_new(uniffiCallStatus
+    )
+}
+    self.init(unsafeFromHandle: handle)
+}
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_runtimehost(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * The platform moved the app out of the foreground.
+     */
+open func onBackground()  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_runtimehost_on_background(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * The platform is about to kill the current background task.
+     */
+open func onExpiring()  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_runtimehost_on_expiring(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * The platform brought the app back. Starts the debounce window.
+     */
+open func onForeground()  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_runtimehost_on_foreground(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+}
+}
+    
+open func phase() -> AppPhase  {
+    return try!  FfiConverterTypeAppPhase_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_runtimehost_phase(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Whether resumed work may run now. The shell never has to compute this;
+     * it is here so a shell that wants to render "catching up" can.
+     */
+open func resumeSettled() -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_runtimehost_resume_settled(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRuntimeHost: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = RuntimeHost
+
+    public static func lift(_ handle: UInt64) throws -> RuntimeHost {
+        return RuntimeHost(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: RuntimeHost) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RuntimeHost {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: RuntimeHost, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRuntimeHost_lift(_ handle: UInt64) throws -> RuntimeHost {
+    return try FfiConverterTypeRuntimeHost.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRuntimeHost_lower(_ value: RuntimeHost) -> UInt64 {
+    return FfiConverterTypeRuntimeHost.lower(value)
+}
+
+
+
+
+
+
+/**
  * Platform secure storage.
  *
  * The core specifies the access policy and the shell applies it: after first
@@ -4418,6 +5004,93 @@ public func FfiConverterTypeBridgeMessage_lower(_ value: BridgeMessage) -> RustB
 
 
 /**
+ * What `POST /auth/devices` needs that only the shell knows.
+ */
+public struct DeviceDescriptor: Equatable, Hashable {
+    /**
+     * 1 to 255 characters; the server sanitises and rejects an empty result.
+     */
+    public var name: String
+    /**
+     * Chapter 02 §2.12: the registration enum, not `CLIENT_PLATFORMS`.
+     */
+    public var platform: DevicePlatform
+    public var osVersion: String?
+    public var appVersion: String
+    /**
+     * Defaults to `default` server-side when absent.
+     */
+    public var vaultId: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 1 to 255 characters; the server sanitises and rejects an empty result.
+         */name: String, 
+        /**
+         * Chapter 02 §2.12: the registration enum, not `CLIENT_PLATFORMS`.
+         */platform: DevicePlatform, osVersion: String?, appVersion: String, 
+        /**
+         * Defaults to `default` server-side when absent.
+         */vaultId: String?) {
+        self.name = name
+        self.platform = platform
+        self.osVersion = osVersion
+        self.appVersion = appVersion
+        self.vaultId = vaultId
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension DeviceDescriptor: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDeviceDescriptor: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DeviceDescriptor {
+        return
+            try DeviceDescriptor(
+                name: FfiConverterString.read(from: &buf), 
+                platform: FfiConverterTypeDevicePlatform.read(from: &buf), 
+                osVersion: FfiConverterOptionString.read(from: &buf), 
+                appVersion: FfiConverterString.read(from: &buf), 
+                vaultId: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DeviceDescriptor, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterTypeDevicePlatform.write(value.platform, into: &buf)
+        FfiConverterOptionString.write(value.osVersion, into: &buf)
+        FfiConverterString.write(value.appVersion, into: &buf)
+        FfiConverterOptionString.write(value.vaultId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceDescriptor_lift(_ buf: RustBuffer) throws -> DeviceDescriptor {
+    return try FfiConverterTypeDeviceDescriptor.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceDescriptor_lower(_ value: DeviceDescriptor) -> RustBuffer {
+    return FfiConverterTypeDeviceDescriptor.lower(value)
+}
+
+
+/**
  * One outbound HTTP request.
  *
  * `headers` keys are **lowercase**. Chapter 00 §0.6 reads `retry-after` from a
@@ -4701,6 +5374,773 @@ public func FfiConverterTypeSocketRequest_lift(_ buf: RustBuffer) throws -> Sock
 public func FfiConverterTypeSocketRequest_lower(_ value: SocketRequest) -> RustBuffer {
     return FfiConverterTypeSocketRequest.lower(value)
 }
+
+
+/**
+ * Failures of one HTTP call to the sync server (chapters 00 §0.4, 00 §0.5).
+ *
+ * The split is by **what a caller must do**, not by status: a 429 waits, a 426
+ * parks the outbox and offers an update, a 501 from the bootstrap routes says
+ * this deployment never had the feature. Everything with no distinct response
+ * collapses into `Status`, which carries the status and whatever code the
+ * server sent, because §0.5.1 requires a client to accept a code it has never
+ * heard of without crashing.
+ */
+public 
+enum ApiError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    /**
+     * No response at all. The retry ladder already ran; this is what it gave
+     * up on.
+     */
+    case Transport(source: TransportError
+    )
+    /**
+     * A 401. The token is unusable and a refresh either did not happen or did
+     * not help.
+     */
+    case Unauthorized(code: String, message: String
+    )
+    /**
+     * `AUTH_DEVICE_REVOKED`, 403 or 409. Terminal for this device: data-model
+     * §C.1 sends the session to `Revoked`, which removes local vault content
+     * before it is shown.
+     */
+    case DeviceRevoked(message: String
+    )
+    /**
+     * A 429, where `retry_after_s` is the lowercase `retry-after` header the
+     * server sent, when it sent one (chapter 00 §0.6).
+     */
+    case RateLimited(retryAfterS: UInt64?, message: String
+    )
+    /**
+     * 403 `PLATFORM_WRITES_DISABLED`, chapter 11 §11.6. **Not a sync failure
+     * the user can retry** (§11.9): the outbox parks and accrues no backoff.
+     */
+    case WritesDisabled(message: String
+    )
+    /**
+     * 426 `CLIENT_UPGRADE_REQUIRED`, chapter 11 §11.6. `min_version` rides
+     * **inside** the error object on the wire, and is optional because a
+     * server that omits it still means the same thing.
+     */
+    case UpgradeRequired(minVersion: String?, message: String
+    )
+    /**
+     * 501 `BOOTSTRAP_UNAVAILABLE`, chapter 10 §10.12. A deployment
+     * configuration fact, not a client bug and not a 5xx to retry: the caller
+     * falls back to steady-state sync and says nothing to the user.
+     */
+    case BootstrapUnavailable
+    /**
+     * Any other non-2xx. `code` is absent when the body carried the bare
+     * string form or no JSON at all (chapter 00 §0.4).
+     */
+    case Status(status: UInt16, code: String?, message: String
+    )
+    /**
+     * A 2xx whose body was not the shape the route promises.
+     */
+    case MalformedResponse(path: String, what: String
+    )
+    /**
+     * The client's own `x-memry-client` value does not match the server's
+     * grammar. Chapter 11 §11.3: a malformed value silently opts the client
+     * out of the write gate, so it is refused here rather than sent.
+     */
+    case InvalidClientIdentity(what: String
+    )
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension ApiError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeApiError: FfiConverterRustBuffer {
+    typealias SwiftType = ApiError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ApiError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Transport(
+            source: try FfiConverterTypeTransportError.read(from: &buf)
+            )
+        case 2: return .Unauthorized(
+            code: try FfiConverterString.read(from: &buf), 
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 3: return .DeviceRevoked(
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 4: return .RateLimited(
+            retryAfterS: try FfiConverterOptionUInt64.read(from: &buf), 
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 5: return .WritesDisabled(
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 6: return .UpgradeRequired(
+            minVersion: try FfiConverterOptionString.read(from: &buf), 
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 7: return .BootstrapUnavailable
+        case 8: return .Status(
+            status: try FfiConverterUInt16.read(from: &buf), 
+            code: try FfiConverterOptionString.read(from: &buf), 
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 9: return .MalformedResponse(
+            path: try FfiConverterString.read(from: &buf), 
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 10: return .InvalidClientIdentity(
+            what: try FfiConverterString.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ApiError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case let .Transport(source):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeTransportError.write(source, into: &buf)
+            
+        
+        case let .Unauthorized(code,message):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(code, into: &buf)
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .DeviceRevoked(message):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .RateLimited(retryAfterS,message):
+            writeInt(&buf, Int32(4))
+            FfiConverterOptionUInt64.write(retryAfterS, into: &buf)
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .WritesDisabled(message):
+            writeInt(&buf, Int32(5))
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .UpgradeRequired(minVersion,message):
+            writeInt(&buf, Int32(6))
+            FfiConverterOptionString.write(minVersion, into: &buf)
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case .BootstrapUnavailable:
+            writeInt(&buf, Int32(7))
+        
+        
+        case let .Status(status,code,message):
+            writeInt(&buf, Int32(8))
+            FfiConverterUInt16.write(status, into: &buf)
+            FfiConverterOptionString.write(code, into: &buf)
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .MalformedResponse(path,what):
+            writeInt(&buf, Int32(9))
+            FfiConverterString.write(path, into: &buf)
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case let .InvalidClientIdentity(what):
+            writeInt(&buf, Int32(10))
+            FfiConverterString.write(what, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeApiError_lift(_ buf: RustBuffer) throws -> ApiError {
+    return try FfiConverterTypeApiError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeApiError_lower(_ value: ApiError) -> RustBuffer {
+    return FfiConverterTypeApiError.lower(value)
+}
+
+
+/**
+ * Which side of the lifecycle the process is on.
+ */
+
+public enum AppPhase: Equatable, Hashable {
+    
+    case foreground
+    case background
+    /**
+     * The platform warned that the current background task is about to be
+     * killed. Distinct from `Background` because the correct response is to
+     * finish the durable write in hand, not to start another one
+     * (data-model §D.6).
+     */
+    case expiring
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AppPhase: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppPhase: FfiConverterRustBuffer {
+    typealias SwiftType = AppPhase
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppPhase {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .foreground
+        
+        case 2: return .background
+        
+        case 3: return .expiring
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AppPhase, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .foreground:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .background:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .expiring:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppPhase_lift(_ buf: RustBuffer) throws -> AppPhase {
+    return try FfiConverterTypeAppPhase.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppPhase_lower(_ value: AppPhase) -> RustBuffer {
+    return FfiConverterTypeAppPhase.lower(value)
+}
+
+
+
+/**
+ * Failures of the authentication and session machine (chapter 02,
+ * data-model §C.1).
+ */
+public 
+enum AuthError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    case Api(source: ApiError
+    )
+    case SecureStore(source: SecureStoreError
+    )
+    case Crypto(source: CryptoError
+    )
+    /**
+     * The call is not an edge of the machine from the state it is in
+     * (data-model §C.1). A caller bug, surfaced rather than papered over,
+     * because the alternative is a silent second sign-in racing the first.
+     */
+    case InvalidState(action: String, state: String
+    )
+    /**
+     * A JWT this client holds is not decodable, or lacks a claim chapter 02
+     * §2.2 requires. Never a verification failure: the signing key is the
+     * server's and a client does not hold it.
+     */
+    case MalformedToken(what: String
+    )
+    /**
+     * Refresh is inside a rejection backoff window (chapter 02 §2.10). No
+     * network call was made, deliberately.
+     */
+    case RefreshBlocked(retryInMs: UInt64
+    )
+    /**
+     * Three 401s on refresh. Permanently blocked for this session; the user
+     * must sign in again (chapter 02 §2.10).
+     */
+    case SessionExpired
+    /**
+     * A sign-in response carried no setup token, so there is nothing to
+     * register a device with (data-model §C.1: the edge is to `SignedOut`).
+     */
+    case NoSetupToken
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension AuthError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAuthError: FfiConverterRustBuffer {
+    typealias SwiftType = AuthError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AuthError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Api(
+            source: try FfiConverterTypeApiError.read(from: &buf)
+            )
+        case 2: return .SecureStore(
+            source: try FfiConverterTypeSecureStoreError.read(from: &buf)
+            )
+        case 3: return .Crypto(
+            source: try FfiConverterTypeCryptoError.read(from: &buf)
+            )
+        case 4: return .InvalidState(
+            action: try FfiConverterString.read(from: &buf), 
+            state: try FfiConverterString.read(from: &buf)
+            )
+        case 5: return .MalformedToken(
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 6: return .RefreshBlocked(
+            retryInMs: try FfiConverterUInt64.read(from: &buf)
+            )
+        case 7: return .SessionExpired
+        case 8: return .NoSetupToken
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AuthError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case let .Api(source):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeApiError.write(source, into: &buf)
+            
+        
+        case let .SecureStore(source):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeSecureStoreError.write(source, into: &buf)
+            
+        
+        case let .Crypto(source):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeCryptoError.write(source, into: &buf)
+            
+        
+        case let .InvalidState(action,state):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(action, into: &buf)
+            FfiConverterString.write(state, into: &buf)
+            
+        
+        case let .MalformedToken(what):
+            writeInt(&buf, Int32(5))
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case let .RefreshBlocked(retryInMs):
+            writeInt(&buf, Int32(6))
+            FfiConverterUInt64.write(retryInMs, into: &buf)
+            
+        
+        case .SessionExpired:
+            writeInt(&buf, Int32(7))
+        
+        
+        case .NoSetupToken:
+            writeInt(&buf, Int32(8))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAuthError_lift(_ buf: RustBuffer) throws -> AuthError {
+    return try FfiConverterTypeAuthError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAuthError_lower(_ value: AuthError) -> RustBuffer {
+    return FfiConverterTypeAuthError.lower(value)
+}
+
+
+/**
+ * The events that drive it. One per labelled edge.
+ */
+
+public enum AuthEvent: Equatable, Hashable {
+    
+    case otpRequested(email: String
+    )
+    case providerSheetOpened(provider: String
+    )
+    case setupTokenIssued
+    /**
+     * Cancelled, expired, or rejected: §C.1 draws one edge for all three.
+     */
+    case signInFailed
+    case deviceRegistered
+    case setupTokenExpired
+    case setupTokenRenewed
+    case setupNotRenewable
+    case refreshStarted
+    case refreshSucceeded
+    case refreshRefused
+    case deviceRevoked
+    case signedOutByUser
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AuthEvent: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAuthEvent: FfiConverterRustBuffer {
+    typealias SwiftType = AuthEvent
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AuthEvent {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .otpRequested(email: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .providerSheetOpened(provider: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 3: return .setupTokenIssued
+        
+        case 4: return .signInFailed
+        
+        case 5: return .deviceRegistered
+        
+        case 6: return .setupTokenExpired
+        
+        case 7: return .setupTokenRenewed
+        
+        case 8: return .setupNotRenewable
+        
+        case 9: return .refreshStarted
+        
+        case 10: return .refreshSucceeded
+        
+        case 11: return .refreshRefused
+        
+        case 12: return .deviceRevoked
+        
+        case 13: return .signedOutByUser
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AuthEvent, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .otpRequested(email):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(email, into: &buf)
+            
+        
+        case let .providerSheetOpened(provider):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(provider, into: &buf)
+            
+        
+        case .setupTokenIssued:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .signInFailed:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .deviceRegistered:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .setupTokenExpired:
+            writeInt(&buf, Int32(6))
+        
+        
+        case .setupTokenRenewed:
+            writeInt(&buf, Int32(7))
+        
+        
+        case .setupNotRenewable:
+            writeInt(&buf, Int32(8))
+        
+        
+        case .refreshStarted:
+            writeInt(&buf, Int32(9))
+        
+        
+        case .refreshSucceeded:
+            writeInt(&buf, Int32(10))
+        
+        
+        case .refreshRefused:
+            writeInt(&buf, Int32(11))
+        
+        
+        case .deviceRevoked:
+            writeInt(&buf, Int32(12))
+        
+        
+        case .signedOutByUser:
+            writeInt(&buf, Int32(13))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAuthEvent_lift(_ buf: RustBuffer) throws -> AuthEvent {
+    return try FfiConverterTypeAuthEvent.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAuthEvent_lower(_ value: AuthEvent) -> RustBuffer {
+    return FfiConverterTypeAuthEvent.lower(value)
+}
+
+
+
+/**
+ * Data-model §C.1, one variant per drawn state.
+ */
+
+public enum AuthState: Equatable, Hashable {
+    
+    case signedOut
+    /**
+     * A code was requested. The email is carried so the shell can render
+     * "we sent a code to …" without holding its own copy.
+     */
+    case awaitingOtp(email: String
+    )
+    case awaitingProviderToken(provider: String
+    )
+    /**
+     * A setup token is held and no device is registered yet.
+     */
+    case setupPending
+    /**
+     * The setup token aged out. Recoverable **only** when a
+     * `devicePublicKey` was committed at sign-in (chapter 02 §2.5).
+     */
+    case setupExpired
+    case registered
+    case refreshing
+    case sessionExpired
+    /**
+     * Terminal until the user acts. Local vault content is removed **before**
+     * this is shown, not after (data-model §C.1).
+     */
+    case revoked
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AuthState: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAuthState: FfiConverterRustBuffer {
+    typealias SwiftType = AuthState
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AuthState {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .signedOut
+        
+        case 2: return .awaitingOtp(email: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 3: return .awaitingProviderToken(provider: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 4: return .setupPending
+        
+        case 5: return .setupExpired
+        
+        case 6: return .registered
+        
+        case 7: return .refreshing
+        
+        case 8: return .sessionExpired
+        
+        case 9: return .revoked
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AuthState, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .signedOut:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .awaitingOtp(email):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(email, into: &buf)
+            
+        
+        case let .awaitingProviderToken(provider):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(provider, into: &buf)
+            
+        
+        case .setupPending:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .setupExpired:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .registered:
+            writeInt(&buf, Int32(6))
+        
+        
+        case .refreshing:
+            writeInt(&buf, Int32(7))
+        
+        
+        case .sessionExpired:
+            writeInt(&buf, Int32(8))
+        
+        
+        case .revoked:
+            writeInt(&buf, Int32(9))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAuthState_lift(_ buf: RustBuffer) throws -> AuthState {
+    return try FfiConverterTypeAuthState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAuthState_lower(_ value: AuthState) -> RustBuffer {
+    return FfiConverterTypeAuthState.lower(value)
+}
+
 
 
 /**
@@ -5183,6 +6623,140 @@ public func FfiConverterTypeCompressError_lower(_ value: CompressError) -> RustB
 
 
 /**
+ * Failures of the CRDT tier (chapter 07, chapter 12 §12.5).
+ */
+public 
+enum CrdtError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    /**
+     * `yrs` could not hand out a transaction because another one is still
+     * alive on this document (`TransactionAcqError`).
+     *
+     * Every exported method here opens and closes its own transaction and none
+     * holds one across a call, so this means a concurrent caller, not a leak:
+     * it is transient and retryable (research R2).
+     */
+    case DocumentBusy(docId: String, what: String
+    )
+    /**
+     * Bytes that are not a decodable lib0 v1 update.
+     *
+     * Never the v2 codec: the protocol speaks v1 and only v1 (research R2).
+     */
+    case Undecodable(docId: String, what: String
+    )
+    /**
+     * A decodable update that `yrs` refused to integrate.
+     */
+    case NotApplicable(docId: String, what: String
+    )
+    /**
+     * The durable log failed. Carries the storage variant rather than
+     * flattening it, so an out-of-space does not surface as "bad document".
+     */
+    case Storage(source: StorageError
+    )
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension CrdtError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCrdtError: FfiConverterRustBuffer {
+    typealias SwiftType = CrdtError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CrdtError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .DocumentBusy(
+            docId: try FfiConverterString.read(from: &buf), 
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 2: return .Undecodable(
+            docId: try FfiConverterString.read(from: &buf), 
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 3: return .NotApplicable(
+            docId: try FfiConverterString.read(from: &buf), 
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 4: return .Storage(
+            source: try FfiConverterTypeStorageError.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CrdtError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case let .DocumentBusy(docId,what):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(docId, into: &buf)
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case let .Undecodable(docId,what):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(docId, into: &buf)
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case let .NotApplicable(docId,what):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(docId, into: &buf)
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case let .Storage(source):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeStorageError.write(source, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCrdtError_lift(_ buf: RustBuffer) throws -> CrdtError {
+    return try FfiConverterTypeCrdtError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCrdtError_lower(_ value: CrdtError) -> RustBuffer {
+    return FfiConverterTypeCrdtError.lower(value)
+}
+
+
+/**
  * Failures of the primitives in `crypto::sodium` and the derivations above them.
  */
 public 
@@ -5338,6 +6912,105 @@ public func FfiConverterTypeCryptoError_lift(_ buf: RustBuffer) throws -> Crypto
 public func FfiConverterTypeCryptoError_lower(_ value: CryptoError) -> RustBuffer {
     return FfiConverterTypeCryptoError.lower(value)
 }
+
+
+/**
+ * Chapter 02 §2.12: **not** `CLIENT_PLATFORMS`. A desktop registers as
+ * `macos`, `windows` or `linux` here and identifies itself as `desktop` in
+ * `x-memry-client`.
+ */
+
+public enum DevicePlatform: Equatable, Hashable {
+    
+    case macos
+    case windows
+    case linux
+    case ios
+    case android
+    case web
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DevicePlatform: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDevicePlatform: FfiConverterRustBuffer {
+    typealias SwiftType = DevicePlatform
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DevicePlatform {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .macos
+        
+        case 2: return .windows
+        
+        case 3: return .linux
+        
+        case 4: return .ios
+        
+        case 5: return .android
+        
+        case 6: return .web
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DevicePlatform, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .macos:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .windows:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .linux:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .ios:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .android:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .web:
+            writeInt(&buf, Int32(6))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDevicePlatform_lift(_ buf: RustBuffer) throws -> DevicePlatform {
+    return try FfiConverterTypeDevicePlatform.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDevicePlatform_lower(_ value: DevicePlatform) -> RustBuffer {
+    return FfiConverterTypeDevicePlatform.lower(value)
+}
+
 
 
 /**
@@ -6430,6 +8103,54 @@ public func FfiConverterTypeTransportError_lower(_ value: TransportError) -> Rus
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
+    typealias SwiftType = UInt64?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt64.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt64.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
+    typealias SwiftType = String?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterString.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionData: FfiConverterRustBuffer {
     typealias SwiftType = Data?
 
@@ -6825,6 +8546,48 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_authsession_mark_revoked() != 55264) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_refresh() != 10671) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_register_device() != 21520) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_renew_setup_token() != 6124) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_request_email_code() != 19227) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_resend_email_code() != 30425) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_sign_out() != 30253) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_state() != 9316) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_verify_email_code() != 61584) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_runtimehost_on_background() != 23225) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_runtimehost_on_expiring() != 33795) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_runtimehost_on_foreground() != 10496) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_runtimehost_phase() != 38109) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_runtimehost_resume_settled() != 37011) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_backgroundexec_schedule_refresh() != 7923) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -6937,6 +8700,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_transport_open_socket() != 58000) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_constructor_authsession_new() != 11309) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_constructor_runtimehost_new() != 10694) {
         return InitializationResult.apiChecksumMismatch
     }
 

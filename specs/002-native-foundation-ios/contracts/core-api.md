@@ -34,12 +34,15 @@ here that drifts from the generated one is a bug in this document.
 
 ## Error surfaces
 
-| Enum            | Raised by                  | Variants                                                                                                                  |
-| --------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `CryptoError`   | primitives and derivations | `InvalidLength`, `InvalidParameter`, `DecryptionFailed`, `EncryptionFailed`, `OutOfMemory`, `InvalidBase64`, `InvalidHex` |
-| `RecoveryError` | the recovery-phrase path   | `UnknownWord`, `BadChecksum`, `WrongWordCount`, `NonAscii`, `VerifierMismatch`, `Crypto`                                  |
-| `CborError`     | the canonical encoder      | `FieldNotInOrdering`, `Unencodable`, `Malformed`                                                                          |
-| `CompressError` | the compression frame      | `IncompleteDeflateStream`, `Corrupt`                                                                                      |
+| Enum            | Raised by                            | Variants                                                                                                                                                                         |
+| --------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CryptoError`   | primitives and derivations           | `InvalidLength`, `InvalidParameter`, `DecryptionFailed`, `EncryptionFailed`, `OutOfMemory`, `InvalidBase64`, `InvalidHex`                                                        |
+| `RecoveryError` | the recovery-phrase path             | `UnknownWord`, `BadChecksum`, `WrongWordCount`, `NonAscii`, `VerifierMismatch`, `Crypto`                                                                                         |
+| `CborError`     | the canonical encoder                | `FieldNotInOrdering`, `Unencodable`, `Malformed`                                                                                                                                 |
+| `CompressError` | the compression frame                | `IncompleteDeflateStream`, `Corrupt`                                                                                                                                             |
+| `CrdtError`     | the document registry and update log | `DocumentBusy`, `Undecodable`, `NotApplicable`, `Storage`                                                                                                                        |
+| `ApiError`      | every HTTP call                      | `Transport`, `Unauthorized`, `DeviceRevoked`, `RateLimited`, `WritesDisabled`, `UpgradeRequired`, `BootstrapUnavailable`, `Status`, `MalformedResponse`, `InvalidClientIdentity` |
+| `AuthError`     | the session                          | `Api`, `SecureStore`, `Crypto`, `InvalidState`, `MalformedToken`, `RefreshBlocked`, `SessionExpired`, `NoSetupToken`                                                             |
 
 Three of these carry a distinction that a flattened error would lose, and each
 one exists because collapsing it produces a specific wrong behaviour:
@@ -54,6 +57,17 @@ one exists because collapsing it produces a specific wrong behaviour:
 - **`CompressError::IncompleteDeflateStream`** is an error rather than an empty
   result, because an empty result reaches the applier as a content wipe
   (chapter 04 §4.1).
+- **`ApiError::BootstrapUnavailable`** is separate from `Status` because a `501`
+  from `/sync/bootstrap` means the deployment has no bootstrap key configured
+  (chapter 10 §10.12). Folded into a generic 5xx it would be retried forever and
+  would send the next reader hunting for a client bug that does not exist.
+- **`ApiError::WritesDisabled` versus `UpgradeRequired` versus `Unauthorized`**
+  stay three variants because chapter 11 makes them three distinct client
+  policies — read-only, blocked-pending-upgrade, and unentitled — that must
+  never collapse into one "you cannot write" message.
+- **`AuthError::RefreshBlocked` versus `SessionExpired`** separates "the latch
+  is holding, try later" from "this session is gone". Collapsing them either
+  signs the user out on a transient refusal or spins forever on a dead session.
 
 ## Exported functions — band B1
 
@@ -78,10 +92,31 @@ reason: it is the function a caller would otherwise write with `==` over decoded
 bytes, which accepts every correct input and fails to reject some incorrect
 ones.
 
-## Planned objects — bands B2 and B3
+## Exported objects — band B2
 
-The surface becomes object-oriented once there is state to hold. Five objects,
-named here so the shape is agreed before the code exists:
+Two exist. Both are `#[uniffi::export]`ed objects with interior mutability,
+because a UniFFI object crosses as a reference and the shell holds it for the
+app's lifetime. Neither exposes a key.
+
+| Object        | Methods                                                                                                                                                       | Chapter |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `RuntimeHost` | `new`, `on_background`, `on_foreground`, `on_expiring`, `phase`, `resume_settled`                                                                             | plan R5 |
+| `AuthSession` | `new`, `state`, `request_email_code`, `resend_email_code`, `verify_email_code`, `register_device`, `renew_setup_token`, `refresh`, `mark_revoked`, `sign_out` | 02      |
+
+Two data enums cross with them: `AuthState`, the nine states of data-model
+§C.1 — `SignedOut`, `AwaitingOtp`, `AwaitingProviderToken`, `SetupPending`,
+`SetupExpired`, `Registered`, `Refreshing`, `SessionExpired`, `Revoked` — and
+`AuthEvent`, the thirteen edges that drive it. `AppPhase` crosses with
+`RuntimeHost`.
+
+`RuntimeHost` also implements the `LifecycleObserver` seam in plain Rust, so
+the shell supplies phase transitions rather than a whole observer.
+
+## Planned objects — band B3
+
+The rest becomes object-oriented as state arrives. `Client`'s auth half is now
+`AuthSession`; the remainder is named here so the shape is agreed before the
+code exists:
 
 | Object   | Owns                                                       |
 | -------- | ---------------------------------------------------------- |
@@ -91,6 +126,12 @@ named here so the shape is agreed before the code exists:
 | `Notes`  | notes, folders, journals, templates, tags, properties      |
 | `Tasks`  | tasks, projects, task views                                |
 
-Each is a `#[uniffi::export]`ed object with interior mutability, because a
-UniFFI object crosses as a reference and the shell holds it for the app's
-lifetime. None of them exposes a key.
+Each will be a `#[uniffi::export]`ed object on the same terms as the two
+above. None of them exposes a key.
+
+**Current generated surface**: 10 exported functions, 14 protocols and 2
+objects in `packages/swift/MemryCore/Sources/MemryCore/Generated`. The two
+protocols added against the B1 count are `AuthSessionProtocol` and
+`RuntimeHostProtocol`, which UniFFI emits for the two objects; the eight
+foreign seams and their four companions are unchanged, so
+`contracts/shell-seams.md` needs no edit.
