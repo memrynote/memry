@@ -156,8 +156,11 @@ from a desktop when convenient.
   and every invocation would have failed — spec-defect 54).
 - `client_policies` has one row, `ios`, **`writes_enabled = 1`**, restored after
   the T137 drill and read back to confirm.
-- **28 devices active of the 50 cap** (20 ios, 8 macos), mostly accumulated
-  `memry-cli` logins across sessions. Worth revoking the stale ones.
+- **28 devices active of the 50 cap** (20 ios, 8 macos). Worth revoking the
+  stale ones, but note the cause is **not** repeated CLI logins: `login` on a
+  profile that already holds a registered device re-authenticates it rather
+  than registering a new one. Verified — the newest `ios` row is 2026-09-09,
+  unchanged by this session's login. A _fresh profile_ does cost a slot.
 - **OTP requests are rate limited.** Three in quick succession and the fourth
   hangs with no output rather than erroring. Budget one login per session.
 - Credentials live outside the repo, mode 600:
@@ -186,6 +189,10 @@ from a desktop when convenient.
    entirely the shell's business today. The doc overclaims.
 7. **The §7.15 runtime obligation is reported, not performed.** `PullReport`
    gained `purged_documents`; a caller holding a registry must release those.
+
+## Gate exit status — G3 and G4 HOLD; G5 does not
+
+Checked item by item against `phase3close.txt`'s exit criteria, not asserted.
 
 ## Gate exit status
 
