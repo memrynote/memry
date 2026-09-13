@@ -196,6 +196,21 @@ in [plan.md](./plan.md) under Technical Context.
   startup assertion that `localStorage`, `sessionStorage` and `indexedDB`
   each throw or are unavailable. If that assertion cannot be made to hold,
   the fallback is not available and the bridge needs a different answer.
+- **Measured, spike S3, iOS 26.5 — the condition above is NOT met by
+  `.nonPersistent()` alone, and the fallback is the one we are taking.**
+  `about:blank` is **not** a secure context (`isSecureContext=false`,
+  `crypto.subtle=false`), so the decision above is unavailable and the
+  `WKURLSchemeHandler` fallback is forced. Under the custom scheme with
+  `.nonPersistent()` set, all three storage APIs still **resolve**. The
+  condition holds only with a `WKUserScript` at `.atDocumentStart` that
+  removes them.
+  **That is a weaker guarantee and the difference is the whole point**: the
+  opaque origin denied storage as a **platform** guarantee that no script
+  could undo, whereas a document-start denial is **JavaScript-level** and is
+  defeated by anything running before it, outside it, or after a
+  same-document navigation re-creates the globals. Recorded here so the
+  security claim a later reader inherits is the true one rather than the one
+  this decision originally promised. See spec-defect 82 and the S3 note.
 - **Bridge port items**: rename the guest transport from
   `window.ReactNativeWebView.postMessage` to a host-agnostic
   `window.MemryHost.postMessage` with feature detection; replace the
@@ -336,6 +351,27 @@ in [plan.md](./plan.md) under Technical Context.
   device. "Keyboard up without a tap" has no public API; have the guest call
   `.focus()` inside a real touch handler. Turn off the simulator hardware
   keyboard before any toolbar test.
+- **Two more simulator gotchas, each of which cost a run in spike S3** —
+  both produce a _wrong-looking result with no error_, which is why they are
+  written down:
+  - **The QuickPath introduction overlay** covers the accessory view
+    entirely on a fresh simulator, so a correctly-rendered toolbar looks
+    absent. Dismiss it before capturing anything.
+  - **`defaults write com.apple.Accessibility ReduceTransparencyEnabled`
+    does not reach `UIAccessibility`.** The value persists in the plist
+    across a device reboot and the app still reads `false`. Only driving the
+    Settings switch works. This one is the dangerous half: it makes a run
+    taken with the setting _off_ look like a Reduce Transparency run, which
+    would put a wrong screenshot into G3a's evidence under a true caption.
+    Have the app render its own state badge so the screenshot proves itself.
+- **Device rendering is still open (U).** Spike S3's captures are
+  **simulator** images. They evidence the _layout_ contract — the accessory
+  view renders above the software keyboard, and contrast, legibility and hit
+  targets hold under Reduce Transparency — and they do **not** evidence
+  device rendering of Liquid Glass on a keyboard accessory view, which stays
+  open alongside T082's blocked device tier. A simulator capture is partial
+  evidence for layout and no evidence for material rendering; do not let one
+  close the other.
 
 ### R17. Editor bundle packaging
 
