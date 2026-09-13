@@ -108,12 +108,20 @@ at strict level.
 
 Preconditions on staging, checked before anything else. A missing secret
 makes bootstrap silently unavailable and a missing policy row makes the kill
-switch untestable, so both are gates on the gate:
+switch untestable, so both are gates on the gate.
+
+The staging D1 is named **`memry-sync-staging`**. It is written out here
+because the name is not derivable from the environment: the three databases
+are `memry-sync`, `memry-sync-staging` and `memry-sync-production`, so the
+obvious construction "`memry-` plus the environment" is wrong for two of the
+three, and `wrangler` answers a wrong name with a generic lookup failure that
+reads like a credentials problem. The authority is
+`apps/sync-server/wrangler.toml`.
 
 ```bash
 pnpm --filter @memry/sync-server exec wrangler secret list --env staging \
   | grep BOOTSTRAP_SESSION_HMAC_KEY
-pnpm --filter @memry/sync-server exec wrangler d1 execute memry-staging --env staging --remote \
+pnpm --filter @memry/sync-server exec wrangler d1 execute memry-sync-staging --env staging --remote \
   --command "SELECT platform, writes_enabled, min_write_version FROM client_policies WHERE platform = 'ios';"
 ```
 
@@ -212,13 +220,13 @@ right-to-left regression fails a build rather than waiting for the audit.
 
 ```bash
 # turn writes off for iOS
-pnpm --filter @memry/sync-server exec wrangler d1 execute memry-staging --env staging --remote \
+pnpm --filter @memry/sync-server exec wrangler d1 execute memry-sync-staging --env staging --remote \
   --command "UPDATE client_policies SET writes_enabled = 0 WHERE platform = 'ios';"
 # ... exercise the TestFlight build, then turn writes back on
-pnpm --filter @memry/sync-server exec wrangler d1 execute memry-staging --env staging --remote \
+pnpm --filter @memry/sync-server exec wrangler d1 execute memry-sync-staging --env staging --remote \
   --command "UPDATE client_policies SET writes_enabled = 1 WHERE platform = 'ios';"
 # who wrote what, and from which build
-pnpm --filter @memry/sync-server exec wrangler d1 execute memry-staging --env staging --remote \
+pnpm --filter @memry/sync-server exec wrangler d1 execute memry-sync-staging --env staging --remote \
   --command "SELECT item_id, client_platform, client_version, updated_at FROM sync_items ORDER BY updated_at DESC LIMIT 20;"
 ```
 

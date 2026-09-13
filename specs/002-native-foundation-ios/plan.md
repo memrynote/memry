@@ -302,7 +302,7 @@ mean anything. Check both first:
 ```bash
 pnpm --filter @memry/sync-server exec wrangler secret list --env staging \
   | grep BOOTSTRAP_SESSION_HMAC_KEY
-pnpm --filter @memry/sync-server exec wrangler d1 execute memry-staging --env staging --remote \
+pnpm --filter @memry/sync-server exec wrangler d1 execute memry-sync-staging --env staging --remote \
   --command "SELECT platform, writes_enabled, min_write_version FROM client_policies WHERE platform = 'ios';"
 ```
 
