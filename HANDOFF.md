@@ -21,7 +21,7 @@ orchestrator, never taken from a subagent's report.
 | ---------------------------------------------- | ------------------------------------------------ |
 | `cargo fmt --all --check`                      | clean                                            |
 | `cargo clippy --all-targets -- -D warnings`    | clean                                            |
-| `cargo test`                                   | **520 passed, 0 failed, 1 ignored, 35 binaries** |
+| `cargo test`                                   | **521 passed, 0 failed, 1 ignored, 35 binaries** |
 | `node scripts/check-line-ceilings.mjs`         | passed (104 files)                               |
 | `pnpm --filter @memry/contracts vectors:check` | **11 classes**                                   |
 | `pnpm typecheck`                               | 19/19                                            |
@@ -187,9 +187,11 @@ from a desktop when convenient.
 
 ## Implementation follow-ups still open
 
-1. **`ApiError` has no `Storage` variant.** A local SQLite failure crosses as
-   `ApiError::Transport { Failed { "local storage: …" } }`. Behaviour is right,
-   the typing lies. Consider `ApiError::PaymentRequired` too.
+1. ~~**`ApiError` has no `Storage` variant.**~~ **Fixed this session.**
+   `ApiError::Storage` exists and `PushWave` reports a disk failure as itself
+   rather than as a transport failure. `ApiError::PaymentRequired` is still
+   worth considering: a 402 is recognised by matching
+   `Status { status: 402, code: Some("SYNC_PAYMENT_REQUIRED") }`.
 2. **No CLI command enqueues a _record_ outbox row.** `notes edit` queues only
    CRDT rows, so the staging drills exercise `/sync/crdt/updates` end to end and
    the `/sync/push` record half is proven by vectors and a fake transport, not
