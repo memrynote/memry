@@ -423,6 +423,15 @@ async fn an_update_this_client_cannot_open_stops_the_document_at_that_update() {
     let report = bodies.pull_document(NOTE).await.expect("the pull");
     assert_eq!(report.updates, 1, "only the update before the gap");
     assert_eq!(report.stopped, vec![NOTE.to_owned()]);
+    // An update landed in the durable log, so a resident `Document` for this
+    // id is now behind it. The storage tier holds no registry and cannot fix
+    // that; naming the id is how a caller that owns one finds out. A document
+    // that stopped at its first update would not appear here.
+    assert_eq!(
+        report.advanced_documents,
+        vec![NOTE.to_owned()],
+        "a document whose log gained an update must be named for the registry holder"
+    );
 
     let cursor = db
         .call_blocking(|conn| store::read_cursor(conn, &crdt_cursor_scope(NOTE)))

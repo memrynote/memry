@@ -124,6 +124,19 @@ pub struct BodyPullReport {
     /// Documents whose pull stopped at an update this client could not open
     /// (§7.9). The cursor did **not** advance past it.
     pub stopped: Vec<String>,
+    /// Documents whose durable log gained at least one update on this pull, so
+    /// a **resident** `Document` for one of these is now behind its own log.
+    ///
+    /// The storage tier cannot fix that itself: it holds no
+    /// [`crate::crdt::registry::DocumentRegistry`], and an update lands in
+    /// `yjs_updates` rather than in whatever `Doc` a shell is currently
+    /// showing. Without this list the divergence is invisible — the next
+    /// `load_plan` replay quietly repairs it, so a shell that never reloads
+    /// shows a note that stopped receiving remote edits and reports nothing.
+    ///
+    /// The same shape as [`crate::sync::pull::PullReport::purged_documents`]:
+    /// name the ids, let the caller that owns the registry act.
+    pub advanced_documents: Vec<String>,
 }
 
 impl BodyPullReport {
@@ -133,6 +146,7 @@ impl BodyPullReport {
         self.updates += other.updates;
         self.replays += other.replays;
         self.stopped.extend(other.stopped);
+        self.advanced_documents.extend(other.advanced_documents);
     }
 }
 
@@ -238,6 +252,9 @@ impl BodyPull {
                     .await?;
                 cursor = entry.sequence_num;
                 report.updates += 1;
+                if report.advanced_documents.last().map(String::as_str) != Some(doc_id) {
+                    report.advanced_documents.push(doc_id.to_owned());
+                }
             }
 
             if stopped || !page.has_more {
