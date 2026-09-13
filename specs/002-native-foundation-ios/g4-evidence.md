@@ -371,3 +371,56 @@ Recorded as spec-defect 88 and written into chapter 12 as new §12.5.0.1.
 **T139's concurrent-convergence requirement is therefore still open**, and
 closing it needs an edit made **in the desktop editor**, not in the file. The
 note was restored and both sides verified identical to the pre-test backup.
+
+## T139 — concurrent edits converging: **PASS**, via two real devices
+
+The external-edit method was invalid (it replaces the fragment and eats the
+peer's edit). This run uses two `memry-cli` devices instead, so **both sides take
+the incremental append path** — which is the path a UI edit takes too.
+
+Device B is a second profile (`HOME` scopes it), registered and first-synced
+against the same account: **525 applied, 0 corrupt, 136 bodies.**
+
+```
+A appends conv-A-144427   (held, not pushed)
+B appends conv-B-144427   (held, not pushed)
+A pushes  → accepted 1, crdt-updates 1
+B pushes  → accepted 1, crdt-updates 1
+```
+
+After both fetch:
+
+| device               | tail                                 |
+| -------------------- | ------------------------------------ |
+| A                    | `conv-A-144427` then `conv-B-144427` |
+| B                    | `conv-A-144427` then `conv-B-144427` |
+| desktop (vault file) | `conv-A-144427` then `conv-B-144427` |
+
+**Both edits survive, and all three implementations agree** — two `memry-core`
+devices and the TypeScript/BlockNote desktop. `diff` over the two cores'
+extracted text is empty, and §12.11's digest matches byte for byte:
+
+```
+A  c0716414e5ed42fe879be774e179dc807fd6075e79c9bc79269d35689b60c042
+B  c0716414e5ed42fe879be774e179dc807fd6075e79c9bc79269d35689b60c042
+```
+
+That is a two-**device** digest match, not yet the cross-**shell** one SC-010
+wants: both sides are `memry-core`. Desktop computing its own digest for the
+same note is still outstanding. The desktop's agreement above is on rendered
+content, which is strong but is not the digest.
+
+## Cleanup, and a correction to an earlier observation
+
+Every marker this session wrote into the account was removed —
+`G5 blocked-write probe`, `cli-to-desktop …`, `conv-A-…`, `conv-B-…` from
+"Conference Talk" and `T137 kill-switch drill` from "memrynote Architecture" —
+and the removal was verified to have propagated to both CLI devices. `diff`
+against the pre-cleanup backups shows only those lines removed.
+
+**Correction.** This file earlier flagged `"Why Electronss"`,
+`"#projectsa/memry #architectur"` and similar as possible character-level CRDT
+interleaving, to be checked before SC-010 trusts the note. **They are in the
+vault file on disk**, so they are the note's own content and not an
+`extract_text` artifact. The suspicion is withdrawn; `extract_text` is not
+implicated.
