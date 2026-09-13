@@ -811,9 +811,12 @@ computes none of them (FR-037).
 SignedOut
   -> AwaitingOtp            request a code
   -> AwaitingProviderToken  Google or Apple, shell holds the native sheet
+  -> Registered             session restored: a refresh token is on disk
 AwaitingOtp / AwaitingProviderToken
   -> SetupPending           server returned a setup token; no device yet
-  -> SignedOut              cancelled, expired, or rejected
+  -> SignedOut              rejected        (complete_provider_sign_in / verify_email_code)
+  -> SignedOut              cancelled       (abandon_provider_sign_in)
+  -> SignedOut              expired         (the setup-token grant lapses)
 SetupPending
   -> Registered             device registered, access and refresh tokens held
   -> SetupExpired           setup token aged out
@@ -834,6 +837,39 @@ SessionExpired
 Revoked  (terminal until the user acts)
   -> SignedOut              local vault content removed, reason shown
 ```
+
+**The restore edge, and why it lands in `Registered`** (spec-defect 121). A
+cold launch with a refresh token on disk is not a new sign-in, and before this
+edge existed there was no way back in at all: `AuthSession::new` reported
+`SignedOut` while the keychain held a working session, so a registered user who
+quit and reopened the app was asked to sign in again every time. The target is
+`Registered` rather than a tenth "maybe signed in" state because **`SessionExpired`
+and `Revoked` are both edges out of `Registered`** — restoring anywhere else is
+what makes them unreachable. The state is therefore a **claim**, adjudicated by
+the server on the next `Auth::Session` call through §2.10's `401`-and-refresh,
+not at launch.
+
+`restore()` makes **no request**, deliberately: an async core call cannot be
+cancelled and §2.10's ladder honours a server `Retry-After` with no ceiling, so
+a restore that refreshed would be a launch that can suspend for up to an hour
+and cannot be interrupted.
+
+**A locked secure store is neither this edge nor its absence.** The five
+keychain entries are `AfterFirstUnlockThisDeviceOnly`, so a process starting
+after a reboot but before the phone's first unlock reads **`Locked`**, which is
+not "no session". `restore()` fails with `SecureStoreError::Locked` and leaves
+the state untouched, so calling it again on protected-data-available is a
+retry. Collapsing that into `SignedOut` reintroduces the defect the edge exists
+to fix, and invites a live user to register a second device.
+
+**One drawn edge may hide three unimplemented causes** (spec-defect 123). The
+`AwaitingOtp / AwaitingProviderToken -> SignedOut` transition above used to read
+"cancelled, expired, or rejected" as a single line, and only **rejected** had an
+implementation — a user who dismissed the Google consent sheet was stranded in
+`AwaitingProviderToken` with no exported way out and a screen offering no
+action. The three causes are now listed separately with the method that draws
+each, because a transition that names several causes on one line is a
+transition nobody checks has several call sites.
 
 Rules that belong to the machine rather than to a caller:
 

@@ -477,3 +477,63 @@ client id. It follows `MemrySyncEnvironment`'s discipline exactly
 `notConfigured` failure, loud at launch, never a silent fall back to the web
 client. Both keys must be present in `Info.plist` and in the release build
 settings before any release or TestFlight build.
+
+## 2.14 A client restores its session on cold launch, without a request
+
+**Normative.** Added to close spec-defect 121, which was a real bug and not a
+documentation gap: a client that starts with a refresh token on disk was
+reporting itself signed out, so a registered user who quit and reopened the app
+was asked to sign in again every single time. Nothing in this chapter or in
+`data-model.md` §C.1 drew the edge that would have allowed anything else.
+
+A client **MUST** restore from stored tokens at launch, and the restore **MUST
+NOT** make a request. The restored state is a **claim**: its validity is decided
+by the first `Auth::Session` call through §2.10's `401`-and-refresh path, which
+is machinery the HTTP layer already owns. Refreshing at launch instead is
+forbidden for a specific reason — §2.10's ladder honours a server-supplied
+`Retry-After` with no ceiling (spec-defect 109), and the per-IP limiter's window
+is 3600 s, so a refresh inside launch is a launch that can suspend for up to an
+hour. On iOS it also cannot be interrupted, because an async core call is
+uncancellable (spec-defect 108).
+
+Three outcomes, and they are distinguished by **shape**, not by three spellings
+of one state:
+
+| On disk                        | Result                                          |
+| ------------------------------ | ----------------------------------------------- |
+| No refresh token               | signed out; no edge applied                     |
+| A refresh token                | `Registered`, as a claim the server adjudicates |
+| The secure store is **locked** | a **failure**, with the state left unchanged    |
+
+The third row is the one that is easy to get wrong. Where the platform gates
+secret storage on the device having been unlocked once since boot — on iOS the
+five entries are `AfterFirstUnlockThisDeviceOnly` — a process that starts after
+a reboot and before the first unlock reads **locked**, which is not "absent".
+Reporting it as signed out reintroduces exactly the defect this section exists
+to fix, and invites a live user to register a second device against their
+account. It **MUST** surface as a retryable failure, so the client can call
+restore again once protected data becomes available.
+
+Restore is **idempotent**: it applies its edge only from the signed-out state
+and otherwise returns the state it found. A launch signal is driven by the
+process lifecycle rather than by a user, so it can legitimately arrive twice,
+and a client that treated the second one as an error would teach its callers to
+suppress it.
+
+### 2.14.1 A cancelled provider sheet is abandoned client-side
+
+**Normative**, closing spec-defect 123. §C.1 draws one transition out of the
+awaiting-provider-token state for "cancelled, expired, or rejected", and only
+**rejected** had an implementation — the server's refusal. **Cancellation is the
+client's fact**: the user dismissed the native consent sheet and the server never
+hears about it, so no response will ever arrive to move the state. A client that
+cannot apply that edge itself strands the user in a state with no way out.
+
+A client **MUST** be able to abandon a provider sign-in it started. This is the
+**same** failure edge a server refusal takes — not a new state and not a new
+event — and abandoning **MUST** clear the session nonce minted when the sheet
+was opened, so a late callback carrying a spent nonce cannot be honoured.
+
+Note the general lesson, which is why this is written out rather than left
+implied: a transition that names several causes on one line is a transition
+nobody checks has several call sites.
