@@ -49,10 +49,20 @@ static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 /// cannot run at all rather than a condition a shell can handle.
 pub fn runtime() -> &'static Runtime {
     RUNTIME.get_or_init(|| {
-        Builder::new_multi_thread()
+        let mut builder = Builder::new_multi_thread();
+        builder
             .worker_threads(worker_threads())
             .thread_name("memry-core")
-            .enable_time()
+            .enable_time();
+        // The IO driver exists only where a Rust socket does. With
+        // `native-transport` the shell's `Transport` runs its own sockets on
+        // this runtime and every one of them panics without the driver; on
+        // device the transport is `URLSession` and the core opens no socket at
+        // all, so starting a kqueue there would cost a thread wakeup for
+        // nothing.
+        #[cfg(feature = "native-transport")]
+        builder.enable_io();
+        builder
             .build()
             .expect("the core's tokio runtime could not be created")
     })

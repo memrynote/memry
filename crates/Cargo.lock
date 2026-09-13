@@ -1365,9 +1365,13 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 name = "memry-cli"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "futures-util",
  "memry-core",
  "reqwest",
+ "rusqlite",
  "rustls",
+ "thiserror",
  "tokio",
  "tokio-tungstenite",
 ]
@@ -2311,7 +2315,11 @@ checksum = "17a073bfed563fa236697a068031408a93cd9522e08abf9933ead3e73411bd71"
 dependencies = [
  "futures-util",
  "log",
+ "rustls",
+ "rustls-native-certs",
+ "rustls-pki-types",
  "tokio",
+ "tokio-rustls",
  "tungstenite",
 ]
 
@@ -2450,6 +2458,8 @@ dependencies = [
  "httparse",
  "log",
  "rand 0.10.2",
+ "rustls",
+ "rustls-pki-types",
  "sha1",
  "thiserror",
 ]

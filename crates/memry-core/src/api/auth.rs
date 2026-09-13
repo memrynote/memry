@@ -170,6 +170,17 @@ pub struct AuthSession {
 }
 
 impl AuthSession {
+    /// The session-authenticated HTTP client.
+    ///
+    /// Exposed so that a caller which already built a session reuses its token
+    /// manager instead of building a second one: two managers over the same
+    /// keychain entries would each refresh, and chapter 02 §2.9 revokes a
+    /// device whose refresh token is presented twice outside the grace window.
+    /// Not part of the FFI surface — `HttpClient` is internal to the core.
+    pub fn http(&self) -> Arc<HttpClient> {
+        self.http.clone()
+    }
+
     fn state_now(&self) -> AuthState {
         self.state.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }

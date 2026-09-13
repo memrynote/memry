@@ -9,10 +9,36 @@ publish = false
 [[bin]]
 name = "memry"
 path = "src/main.rs"
+# The binary is the native shell: without the transport there is nothing for it
+# to talk to, so it is not a build target without the feature.
+required-features = ["native-transport"]
+
+[features]
+# On by default so `cargo test` and `cargo clippy --all-targets` cover the
+# transport and the commands. A build that wants the crate without a network
+# stack asks for `--no-default-features`.
+default = ["native-transport"]
+native-transport = [
+    "memry-core/native-transport",
+    "dep:reqwest",
+    "dep:tokio-tungstenite",
+    "dep:rustls",
+    "dep:futures-util",
+]
 
 [dependencies]
-memry-core = { path = "../memry-core", features = ["native-transport"] }
-reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "json", "http2", "stream"] }
-tokio-tungstenite = "0.30.0"
-rustls = { version = "0.23", features = ["ring"] }
-tokio = { workspace = true }
+memry-core = { path = "../memry-core" }
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "json", "http2", "stream"], optional = true }
+# `rustls-tls-native-roots`: the seam is handed `wss://` URLs, and the default
+# feature set of this crate has no TLS at all.
+tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-native-roots"], optional = true }
+rustls = { version = "0.23", features = ["ring"], optional = true }
+# `Sink` and `Stream` for the socket halves; tokio-tungstenite exposes nothing else.
+futures-util = { version = "0.3", default-features = false, features = ["std", "sink"], optional = true }
+# `net` and `io-util` for the socket and for the fake server the tests run.
+tokio = { workspace = true, features = ["net", "io-util"] }
+async-trait = { workspace = true }
+# The shell reads its own projection tables; the same pin as the core, so one
+# SQLite is linked.
+rusqlite = { workspace = true }
+thiserror = { workspace = true }
