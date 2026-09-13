@@ -25,28 +25,35 @@ None. Nothing is half-applied; the tree is clean.
 
 ## The exact next wave to dispatch
 
-**T114 and T115 — the staging round trip. This is the orchestrator's, not a
-subagent's**, because it needs the credentials and a decision from Kaan. Everything
-it depends on is now in: `notes text` returns real text (proved end to end in
-`sync_first_sync.rs`), and state vectors are available.
+**T115 — record the G4 transcript.** The round trip _works_; what does not exist yet
+is the recorded evidence T115 names. Re-run the sequence and capture it:
 
-Before dialling staging, run T114's preconditions in this order and stop if one
-fails: `BOOTSTRAP_SESSION_HMAC_KEY` present — probe `/sync/bootstrap` and read for a
-**501**, do not try to read the secret, it is encrypted and Kaan does not know it —
-and a `client_policies` row for platform `ios` with writes enabled, readable through
-the Cloudflare MCP. Kaan has **authorised rotating** the bootstrap key if it is
-genuinely absent; tell him before doing it, because rotation invalidates in-flight
-bootstrap sessions.
+```
+memry --server staging --client-platform ios login --email <account>   # OTP on stdin, from Gmail
+memry unlock --recovery-phrase-file ~/.memry/staging/recovery-phrase.txt
+memry vaults
+memry pull --vault 692184c5-c51c-48b4-9fba-0771ed37e34e
+memry notes list
+memry notes text dzxnhc9p3gk3
+memry notes state-vector dzxnhc9p3gk3
+```
 
-**Blocking G3, and not on Kaan: the generated Swift does not compile.** See
-`research.md` §Addenda. `xcodebuild` fails on `memry_core.swift` with Swift 6's
-`sending`-parameter rule, so the simulator conformance run produces no evidence
-either. The Rust and the xcframework build are green and the binding diff is clean,
-which is precisely why nothing caught it. Fix before claiming any iOS-side evidence.
+Last observed: 524 applied, 31 deleted, **0 corrupt**, cursor 7598; then 136 bodies,
+11407 updates, 128 baselines; then real heading-and-list text out of a
+desktop-authored note and a non-empty state vector. T115 also wants the new device
+visible in the desktop device list — not yet checked.
 
-Then W8's domain modules `{T126..T130}` — five `[P]` tasks in separate files, the one
-place to fan out wide — W9 `{T131}` search and `{T124, T125}`, and W10's five
-real-adapter seam tests.
+**Then G5, which has not been started at all.** It needs the _write_ direction:
+T125 (`notes edit --append` through yrs), the concurrent-edit convergence proof, the
+injected unknown-item-type round trip (SC-014), and the SC-010 cross-shell digest
+over `title + "\n" + extract_text(doc)` compared against desktop. W8's domain
+modules `{T126..T130}`, W9 `{T131}` search and `{T124, T125}`, and W10's five
+real-adapter seam tests are all still open.
+
+**Blocked on Kaan**: `client_policies` is empty on staging, so **T137's kill-switch
+drill cannot run**. Inserting an `ios` row is a write to shared infrastructure and
+was not authorised. G4 itself is unaffected — chapter 11 §11.3 makes an absent
+policy full access.
 
 ## Implementation follow-ups recorded rather than silently carried
 
@@ -90,7 +97,7 @@ before assuming it is working.
 
 ## Open spec-defect entries
 
-**Zero.** 48 logged, 48 closed. Twenty-one of the forty-eight required reading TypeScript;
+**Zero.** 53 logged, 53 closed. Twenty-five of the fifty-three required reading TypeScript, and **five were found only by running the real round trip** — no amount of unit testing would have reached them;
 the rest were internal contradictions or gaps found without leaving `docs/protocol/`. G3's defect-log condition is met as of this session; G5
 re-checks it.
 
@@ -115,6 +122,11 @@ Kaan confirmed a staging app exists with a populated vault, which satisfies T115
 desktop-created-note precondition.
 
 Still to check at W5, in this order:
+
+0. **Both T114 preconditions have now been run.** `BOOTSTRAP_SESSION_HMAC_KEY` **is
+   present** — no rotation needed, and Kaan's standing authorisation went unused.
+   `client_policies` is **empty**, blocking T137 only. The staging D1 is
+   `memry-sync-staging`, not `memry-staging` as the quickstart said.
 
 1. `BOOTSTRAP_SESSION_HMAC_KEY` present. Kaan does not know the value and it cannot be read
    from Cloudflare — it is encrypted. **Do not try.** Presence is observable without the
@@ -213,5 +225,8 @@ the class count — count classes.
   **Still open**: the generated Swift does not compile under the app's Swift 6 settings,
   so no iOS-side evidence exists at all; the physical-device item is BLOCKED by decision;
   and T083's four spike notes (T079–T082) are unwritten. G3 is **not** closed.
-- **G4** — not started. Needs W5.
-- **G5** — not started.
+- **G4** — the round trip **works end to end against staging**: login, unlock, 4 vaults,
+  524 applied / 0 corrupt, 136 bodies, and real extracted text plus a non-empty state
+  vector from a desktop-authored note. **Not closed**: T115's recorded transcript does
+  not exist yet, and the new device has not been confirmed in the desktop device list.
+- **G5** — not started. Needs the write direction: T125, convergence, SC-014, and the SC-010 digest.
