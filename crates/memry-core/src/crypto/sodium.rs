@@ -458,6 +458,51 @@ pub fn auth(message: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
     Ok(out)
 }
 
+/// `crypto_auth_hmacsha256`, the scan channel's MAC (chapter 03 §3.7).
+///
+/// A separate function from [`auth`] rather than a parameter, because the two
+/// are different primitives serving different channels: `crypto_auth` is
+/// HMAC-SHA512-256 and this is HMAC-SHA-256. Conflating them would let a
+/// caller reach the wrong channel's tag by passing the wrong flag.
+///
+/// Unlike `crypto_auth`, libsodium's HMAC-SHA-256 accepts a key of any length
+/// and folds it per RFC 2104, so there is no length to check here.
+pub fn auth_hmacsha256(message: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
+    init();
+    let out_len = unsafe { libsodium_sys::crypto_auth_hmacsha256_bytes() };
+    let mut out = vec![0u8; out_len];
+    let mut state = std::mem::MaybeUninit::<libsodium_sys::crypto_auth_hmacsha256_state>::uninit();
+    // SAFETY: `out` is sized from libsodium's own constant, and the state is
+    // initialised by `_init` before either later call reads it. The keyed-init
+    // form is used rather than the one-shot `crypto_auth_hmacsha256`, because
+    // only this one accepts a key that is not exactly `KEYBYTES`.
+    let rc = unsafe {
+        let init_rc =
+            libsodium_sys::crypto_auth_hmacsha256_init(state.as_mut_ptr(), key.as_ptr(), key.len());
+        if init_rc != 0 {
+            init_rc
+        } else {
+            let mut state = state.assume_init();
+            let update_rc = libsodium_sys::crypto_auth_hmacsha256_update(
+                &mut state,
+                message.as_ptr(),
+                message.len() as u64,
+            );
+            if update_rc != 0 {
+                update_rc
+            } else {
+                libsodium_sys::crypto_auth_hmacsha256_final(&mut state, out.as_mut_ptr())
+            }
+        }
+    };
+    if rc != 0 {
+        return Err(CryptoError::InvalidParameter {
+            what: "crypto_auth_hmacsha256 failed".into(),
+        });
+    }
+    Ok(out)
+}
+
 /// X25519 public key from a scalar (chapter 03).
 pub fn scalarmult_base(scalar: &[u8]) -> Result<Vec<u8>, CryptoError> {
     init();
