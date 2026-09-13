@@ -524,3 +524,47 @@ written this session from a subagent's break-test; this is it observed in the
 wild, on a row hand-built to skip the domain layer that would have ticked for me.
 
 **Prod was not touched.**
+
+## T139 — concurrent **task** edits, both field changes surviving: **PASS**
+
+The note half is above; this is the field-merge half (FR-059), which is a
+different mechanism and had not been exercised against the real server.
+
+A synthetic task was seeded and pushed from device A rather than touching a real
+one, then pulled by device B, so both started from `{device-A: 1}`.
+
+**First attempt — and the failure is instructive.** Device A changed `title`,
+device B changed `priority`, neither having seen the other
+(`{A:2}` vs `{A:1,B:1}`). Both pushed, **push-only, with no pull first**:
+
+|          | title          | priority | clock        |
+| -------- | -------------- | -------- | ------------ |
+| device A | A's new title  | 3        | `{A:2, B:1}` |
+| device B | **base title** | 3        | `{A:1, B:1}` |
+| server   | —              | —        | `{A:1, B:1}` |
+
+A merged correctly; **B and the server lost A's title.** The server stores the
+pushed payload verbatim (§6.10) — it does not field-merge — so the later push
+discarded the earlier one's field, and §6.5.2 P3 forbids A from re-pushing its
+merged result, so nothing would ever repair it.
+
+**That is a flaw in the method, not the product.** A real pass is
+`SyncEngine::run_pass`: **pull, then push**. Repeating with that order — A
+changed `dueDate`, B changed `description`, each device pulled before pushing:
+
+|          | title               | priority | dueDate    | description             | clock        |
+| -------- | ------------------- | -------- | ---------- | ----------------------- | ------------ |
+| device A | A changed the title | 3        | 2027-03-01 | B wrote the description | `{A:3, B:2}` |
+| device B | A changed the title | 3        | 2027-03-01 | B wrote the description | `{A:3, B:2}` |
+
+**All four fields survive on both devices, and the clocks are identical.**
+FR-059 is met.
+
+**The lesson is worth keeping**, because it is a real operational constraint
+rather than a test artefact: a client that pushes a field-merged type **without
+pulling first** silently destroys a concurrent peer's field, and no later pass
+repairs it. The pull-then-push order is not a convenience — it is what makes
+field merge converge at all.
+
+The synthetic task and the SC-014 bookmark were both tombstoned off staging and
+verified deleted in D1.

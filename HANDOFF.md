@@ -7,13 +7,19 @@ Overwritten each session. Everything below was observed, not reported by a subag
 Branch `native-core-phase-3` in `.worktrees/native-core-phase-3`, fast-forwarded
 with `origin/main`. Straight to main, no PR, per Kaan's standing instruction.
 
-## State: 60 of 63 Phase 3 tasks ticked
+## State: **Phase 3 complete — 64 of 64 ticked, 0 open**
 
-Ticked this session: **T124, T125, T126, T127, T128, T129, T130, T131,
-T132–T136, T079, T080, T081, T083, T115, T137**. Each was gate-verified by the
-orchestrator, never taken from a subagent's report.
+All three gates hold.
 
-**Open: T082, T094, T138, T139.** See "What is left" below.
+| Gate   | Status                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **G3** | **CLOSED.** Eleven vector classes green; `spec-defects.md` at 0 open, 88 closed; fmt/clippy/test/line-ceilings green; T094's binding diff clean; all four spike notes carry an explicit verdict.                                                                                                                                                                                               |
+| **G4** | **CLOSED.** T115's transcript in `g4-evidence.md`: login, unlock, four vaults, a pull with **0 corrupt**, 94 notes, real extracted text and a non-empty state vector from a desktop-authored note.                                                                                                                                                                                             |
+| **G5** | **CLOSED.** T137's kill-switch drill; T138 at zero; T139's round trip — CLI→desktop **2.16 s**, desktop→CLI **1.86 s**, concurrent note edits converging across three implementations, concurrent **task** field edits converging with all four fields surviving, SC-010's digest identical between `memry-core` and the TypeScript reference port on three real notes, SC-014 run on staging. |
+
+T082 and T094 ran on a **physical iPhone 12 Pro**, arm64, iOS 27.0 — not the
+iPhone 15 the tasks name, and the S4 note says so in the sentence that presents
+the result.
 
 ## Current gate baseline — re-run and observed at the end of this session
 
