@@ -4,4 +4,6 @@ pub mod account;
 pub mod auth;
 pub mod crypto;
 pub mod errors;
+pub mod notes;
 pub mod runtime;
+pub mod vault;

@@ -18,128 +18,20 @@ import Testing
 // mapped values is how a collapse stays green, because both sides move
 // together (phase 4's second weak assertion).
 
-// MARK: - A stand-in for the core
-
-/// One scripted answer, consumed in call order.
-///
-/// It carries **two** states because the real core does: `request_email_code`
-/// applies `SignInFailed` before returning its error, so the state after a
-/// failed call is not the state the call started from. A fake that left the
-/// state alone would let a view model that guesses the state pass.
-struct AuthReply: @unchecked Sendable {
-    /// What `state()` reports afterwards.
-    let resulting: AuthState
-    /// What the method itself returns. Normally the same value; a single test
-    /// sets them apart, which a real core would never do, to prove which of the
-    /// two the view model trusts.
-    let returned: AuthState
-    let error: (any Error)?
-
-    static func ok(_ state: AuthState, returning returned: AuthState? = nil) -> AuthReply {
-        AuthReply(resulting: state, returned: returned ?? state, error: nil)
-    }
-
-    static func fails(_ error: any Error, leaving state: AuthState) -> AuthReply {
-        AuthReply(resulting: state, returned: state, error: error)
-    }
-}
-
-struct UnscriptedCall: Error {}
-/// Deliberately not a `MemryCore` enum: `ErrorMapping` must not recognise it.
-struct MysteryFailure: Error {}
-
-final class FakeAuthSession: AuthSessionProtocol, @unchecked Sendable {
-    enum Call: Equatable, Sendable {
-        case state
-        case requestEmailCode(String)
-        case resendEmailCode
-        case verifyEmailCode(String)
-        case registerDevice
-        case renewSetupToken
-        case signOut
-        case markRevoked
-        case beginProviderSignIn(AuthProvider)
-        case completeProviderSignIn(String)
-        case keyMaterial
-        case vaults
-    }
-
-    private struct Tape {
-        var current: AuthState
-        var replies: [AuthReply]
-        var calls: [Call] = []
-    }
-
-    private let tape: Mutex<Tape>
-
-    init(from state: AuthState, replies: [AuthReply] = []) {
-        tape = Mutex(Tape(current: state, replies: replies))
-    }
-
-    var calls: [Call] { tape.withLock { $0.calls } }
-
-    /// Running out of script is a loud failure, never a repeat of the last
-    /// answer: a test that made more core calls than it wrote down has found
-    /// something, and it must not look like a pass.
-    private func next(_ call: Call) throws -> AuthState {
-        try tape.withLock { tape in
-            tape.calls.append(call)
-            guard !tape.replies.isEmpty else { throw UnscriptedCall() }
-            let reply = tape.replies.removeFirst()
-            tape.current = reply.resulting
-            if let error = reply.error { throw error }
-            return reply.returned
-        }
-    }
-
-    func state() -> AuthState {
-        tape.withLock { tape in
-            tape.calls.append(.state)
-            return tape.current
-        }
-    }
-
-    func markRevoked() throws -> AuthState { try next(.markRevoked) }
-    func refresh() async throws -> AuthState { try next(.state) }
-    func registerDevice() async throws -> AuthState { try next(.registerDevice) }
-    func renewSetupToken() async throws -> AuthState { try next(.renewSetupToken) }
-    func requestEmailCode(email: String) async throws -> AuthState { try next(.requestEmailCode(email)) }
-    func resendEmailCode() async throws { _ = try next(.resendEmailCode) }
-    func signOut() async throws -> AuthState { try next(.signOut) }
-    func verifyEmailCode(code: String) async throws -> AuthState { try next(.verifyEmailCode(code)) }
-
-    // T163's four methods. They record the call and then **always** fail.
-    //
-    // The tape cannot script them: `AuthReply` carries an `AuthState`, and
-    // three of these four answer with something else. Rather than invent a
-    // benign default — an empty vault list, a zero-flag outcome — each one
-    // traps, because a fake that answers a call no test wrote down is exactly
-    // the shape that let five bugs through this phase. The first test that
-    // needs one of these answers (T148, T152, T155) widens the tape to carry
-    // it; until then, reaching one of these lines is a finding.
-    func beginProviderSignIn(provider: AuthProvider) throws -> AuthState {
-        try trap(.beginProviderSignIn(provider))
-    }
-
-    func completeProviderSignIn(idToken: String) async throws -> ProviderSignInOutcome {
-        try trap(.completeProviderSignIn(idToken))
-    }
-
-    func keyMaterial() async throws -> KeyMaterial { try trap(.keyMaterial) }
-
-    func vaults() async throws -> [VaultSummary] { try trap(.vaults) }
-
-    private func trap<T>(_ call: Call) throws -> T {
-        tape.withLock { $0.calls.append(call) }
-        throw UnscriptedCall()
-    }
-}
-
 @MainActor
-private func makeModel(from state: AuthState, _ replies: [AuthReply]) -> (SignInViewModel, FakeAuthSession) {
+private func makeModel(
+    from state: AuthState,
+    _ replies: [AuthReply],
+    google: GoogleSignInFlow? = nil
+) -> (SignInViewModel, FakeAuthSession) {
     let session = FakeAuthSession(from: state, replies: replies)
     // A private executor, so a test never shares a backlog with another.
-    let model = SignInViewModel(session: session, executor: CoreExecutor(label: "t147.tests"), state: state)
+    let model = SignInViewModel(
+        session: session,
+        executor: CoreExecutor(label: "t147.tests"),
+        state: state,
+        google: google
+    )
     return (model, session)
 }
 
@@ -269,15 +161,21 @@ struct SignInStepTests {
     @Test("only the states with an edge out of them offer an action")
     func actionsMatchTheEdges() {
         #expect(SignInStep(.signedOut).primary == .sendCode)
+        // T165. Google is offered beside the email code, not above it.
+        #expect(SignInStep(.signedOut).secondary == .signInWithGoogle)
         #expect(SignInStep(.setupPending).primary == .registerDevice)
         #expect(SignInStep(.setupExpired).primary == .renewSetup)
         #expect(SignInStep(.sessionExpired).primary == .startOver)
         #expect(SignInStep(.revoked).primary == .startOver)
-        // Nothing this screen can do: registration finished, the core is
-        // refreshing on its own, or T148's sheet is open.
+        // Nothing this screen can do: registration finished, or the core is
+        // refreshing on its own.
         #expect(SignInStep(.registered).primary == nil)
         #expect(SignInStep(.refreshing).primary == nil)
-        #expect(SignInStep(.awaitingProviderToken(provider: "google")).primary == nil)
+        // T165. This one **used to** be `nil`, and that was the bug: §C.1
+        // draws `AwaitingProviderToken -> SignedOut` for a cancelled sheet,
+        // and until `abandon_provider_sign_in` was exported nothing could take
+        // it, so a user who closed the consent screen had no action at all.
+        #expect(SignInStep(.awaitingProviderToken(provider: "google")).primary == .abandonProviderSignIn)
     }
 
     /// Spec-defect 94: there is no iOS support or feedback channel and none is

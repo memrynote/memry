@@ -32,6 +32,7 @@ use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::seams::transport::Transport;
 
 mod oauth;
+mod restore;
 
 pub use oauth::{AuthProvider, ProviderSignInOutcome};
 
@@ -81,6 +82,12 @@ pub enum AuthEvent {
     RefreshRefused,
     DeviceRevoked,
     SignedOutByUser,
+    /// The process restarted and the secure store still holds a refresh token
+    /// (spec-defect 121). **Appended last**, so every variant that existed
+    /// before keeps its discriminant and its meaning: nothing that used to be
+    /// `SignedOutByUser` is now this, and a shell built against the previous
+    /// binding still lifts every value it could lift before.
+    SessionRestored,
 }
 
 /// The transition table. `None` is "not an edge", which the caller reports
@@ -95,6 +102,18 @@ pub fn transition(state: &AuthState, event: &AuthEvent) -> Option<AuthState> {
         (S::SignedOut, E::ProviderSheetOpened { provider }) => S::AwaitingProviderToken {
             provider: provider.clone(),
         },
+        // spec-defect 121. The third and last edge out of `SignedOut`, and the
+        // only one that is not a user action: the other two need an OTP or a
+        // consent sheet, so before this a registered user who quit the app was
+        // shown the sign-in screen with a working session in their keychain.
+        //
+        // It lands in `Registered` rather than in a tenth "maybe signed in"
+        // state because `Registered` is a *claim* the server adjudicates, not
+        // an assertion that the token is good: `SessionExpired` and `Revoked`
+        // are both edges **out of** `Registered`, so restoring here is what
+        // makes them reachable at all. Restoring into `SignedOut` — today's
+        // behaviour — is what collapses the three.
+        (S::SignedOut, E::SessionRestored) => S::Registered,
 
         (S::AwaitingOtp { .. } | S::AwaitingProviderToken { .. }, E::SetupTokenIssued) => {
             S::SetupPending

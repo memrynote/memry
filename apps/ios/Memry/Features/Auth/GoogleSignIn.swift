@@ -15,29 +15,22 @@ import UIKit
 // Google session that signs the next person straight back in, and the first
 // sign-in on a shared phone silently offers the previous owner's account.
 //
-// ## What this file does NOT do, and cannot
+// ## Where this stops, and who spends what it produces
 //
-// **Nothing here reaches `POST /auth/oauth/google/native`, and nothing can.**
-// The task text and R14 both end with "the ID token posted to the existing
-// native endpoint", and that half has **no call site in the core**:
+// This file stops at the ID token, which is the shell's whole share of the
+// work. **Nothing here reaches `POST /auth/oauth/google/native`, and nothing
+// here should**: that request needs a `sessionNonce` the core mints and holds
+// privately and a `devicePublicKey` derived from the signing key inside the
+// core's `SecureStore`, and the `setupToken` it answers with has to land in
+// the core's own token store (chapter 02 §2.13). There is no arrangement of
+// the exported surface in which a shell assembles it.
 //
-//   * `AuthSession` exports nine methods and not one of them accepts a
-//     provider token. `AuthState.awaitingProviderToken` and
-//     `AuthEvent.providerSheetOpened` exist in the generated enums, but no
-//     exported method applies that event, so the state is unreachable too.
-//   * The shell cannot post it instead. That request needs a `sessionNonce`
-//     the core mints and holds privately, and a `devicePublicKey` derived from
-//     the signing key inside the core's `SecureStore`; and the `setupToken` it
-//     answers with has to reach the core's token store, which is private.
-//     There is no arrangement of the exported surface that completes this.
-//
-// So this file stops at the ID token, which is the shell's whole share of the
-// work, and **no Google button is wired into `SignInView`**: a button that
-// runs a real Google consent screen and then cannot sign anyone in is worse
-// for a production user than no button. Recorded as a spec defect; the call
-// site needs a core method — `AuthSession.sign_in_with_provider(provider:,
-// idToken:)`, applying `ProviderSheetOpened` then `SetupTokenIssued` — which
-// is a `crates/memry-core` change and not in scope for T148.
+// T148 shipped with no Google button on purpose, because no exported method
+// accepted a provider token and a button that runs a real consent screen and
+// then cannot sign anyone in is worse than no button. T163 exported
+// `begin_provider_sign_in` and `complete_provider_sign_in`; **T165 wires the
+// button**, in `SignInViewModel.signInWithGoogle()`, and supplies this flow's
+// `exchange` through the one `Transport` seam (`GoogleTokenExchange`).
 
 /// How this app opens the system's web-authentication sheet.
 ///
@@ -123,6 +116,14 @@ enum GoogleSignInOutcome: Sendable, Equatable {
     case idToken(String)
     case cancelled
 }
+
+/// T165. The shell's whole share of a Google sign-in, as one call.
+///
+/// A closure rather than a protocol so `SignInViewModel` can be handed a
+/// scripted one without a second conformance, and so the production value is
+/// literally `GoogleSignIn.signIn` rather than a wrapper that could drift from
+/// it.
+typealias GoogleSignInFlow = @MainActor @Sendable () async throws -> GoogleSignInOutcome
 
 /// The flow: build the request, run the sheet, read the callback, exchange the
 /// code.

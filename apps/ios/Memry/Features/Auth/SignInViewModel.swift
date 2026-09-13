@@ -55,13 +55,25 @@ final class SignInViewModel {
 
     private let session: any AuthSessionProtocol
     private let executor: CoreExecutor
+    /// T165. The shell's half of a Google sign-in: the consent sheet and the
+    /// PKCE exchange, ending in an ID token or a cancellation.
+    ///
+    /// `nil` when this build carries no `MemryGoogleClientID` (spec-defect
+    /// 117). The button is still offered — see `signInWithGoogle()`.
+    private let google: GoogleSignInFlow?
 
     /// - Parameter state: read from the core before this object exists, so
     ///   there is no instant at which the view shows a state nobody reported.
-    init(session: any AuthSessionProtocol, executor: CoreExecutor, state: AuthState) {
+    init(
+        session: any AuthSessionProtocol,
+        executor: CoreExecutor,
+        state: AuthState,
+        google: GoogleSignInFlow? = nil
+    ) {
         self.session = session
         self.executor = executor
         self.state = state
+        self.google = google
     }
 
     // MARK: - What the screen shows
@@ -85,6 +97,9 @@ final class SignInViewModel {
         case .sendCode: return !trimmedEmail.isEmpty
         case .verify: return !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .resend, .registerDevice, .renewSetup, .startOver: return true
+        // Offered whether or not this build is configured: pressing it says so,
+        // which is more than a disabled button ever says.
+        case .signInWithGoogle, .abandonProviderSignIn: return true
         }
     }
 
@@ -98,6 +113,8 @@ final class SignInViewModel {
         case .registerDevice: await registerDevice()
         case .renewSetup: await renewSetup()
         case .startOver: await startOver()
+        case .signInWithGoogle: await signInWithGoogle()
+        case .abandonProviderSignIn: await abandonProviderSignIn()
         }
     }
 
@@ -183,6 +200,117 @@ final class SignInViewModel {
     private func startOver() async {
         await perform(.startOver) { _ = try await $0.signOut() }
         code = ""
+    }
+
+    // MARK: - Google, T148's other half
+
+    /// `begin_provider_sign_in` → the consent sheet → `complete_provider_sign_in`.
+    ///
+    /// **The two core calls are reached differently, and that is contract
+    /// rather than detail** (spec-defect 90). `beginProviderSignIn` blocks — it
+    /// opens nothing and requests nothing — so it goes through `CoreExecutor`.
+    /// `completeProviderSignIn` suspends over a network round trip, so it is
+    /// awaited directly; through the queue it would park a queue thread on a
+    /// semaphore and stall every other core call behind Google's latency.
+    ///
+    /// **Every way out of the sheet moves the machine.** A cancelled or failed
+    /// attempt leaves the core in `AwaitingProviderToken`, and §C.1 draws
+    /// exactly one edge out of it for all three of "cancelled, expired, or
+    /// rejected". `complete_provider_sign_in` applies it for *rejected*; this
+    /// method applies it for the other two, through
+    /// `abandon_provider_sign_in`. Without that the user is stranded in a
+    /// state whose only other exit is a successful Google sign-in they just
+    /// declined.
+    private func signInWithGoogle() async {
+        guard !isWorking else { return }
+        runningAction = .signInWithGoogle
+        error = nil
+        let signedIn = await runGoogleSignIn()
+        await readState()
+        runningAction = nil
+        // `SetupPending -> Registered` follows without asking, exactly as it
+        // does after an email code: the user has nothing left to decide and the
+        // grant is five minutes long.
+        if signedIn { await registerIfPending() }
+    }
+
+    /// - Returns: `true` when a setup token landed in the core's token store.
+    ///
+    /// Written out rather than routed through `perform`, because `perform`
+    /// refuses to start while an action is running and this **is** that action:
+    /// the sheet is part of the same wait the spinner is already describing.
+    private func runGoogleSignIn() async -> Bool {
+        guard let google else {
+            // No client id in this build. Said out loud, before anything opens.
+            record(GoogleSignInFailure.notConfigured.userFacing)
+            return false
+        }
+
+        do {
+            // Blocking — it opens nothing and requests nothing — so it goes
+            // through the executor (spec-defect 90).
+            state = try await executor.run { [session] in
+                try session.beginProviderSignIn(provider: .google)
+            }
+        } catch {
+            record(ErrorMapping.userFacing(error))
+            return false
+        }
+
+        let outcome: GoogleSignInOutcome
+        do {
+            outcome = try await google()
+        } catch let failure as GoogleSignInFailure {
+            // Typed, so it never reaches `ErrorMapping`'s funnel as an
+            // unrecognised value: `GoogleSignInCopy` owns these sentences.
+            record(failure.userFacing)
+            await abandon()
+            return false
+        } catch {
+            record(ErrorMapping.userFacing(error))
+            await abandon()
+            return false
+        }
+
+        switch outcome {
+        case .cancelled:
+            // `DESIGN.md`: the user's own cancellation is silent. Silent means
+            // not alerted, never not known — `GoogleSignIn` has already logged
+            // it, and the machine still has to move.
+            await abandon()
+            return false
+        case let .idToken(token):
+            do {
+                // Suspends over a network round trip, so it is awaited
+                // directly: through the serial queue it would park a queue
+                // thread on a semaphore behind Google's latency.
+                _ = try await session.completeProviderSignIn(idToken: token)
+                return true
+            } catch {
+                // `complete_provider_sign_in` applies §C.1's failure edge
+                // itself on a refusal, so nothing is abandoned here.
+                record(ErrorMapping.userFacing(error))
+                return false
+            }
+        }
+    }
+
+    private func abandonProviderSignIn() async {
+        await perform(.abandonProviderSignIn) { _ = try await $0.abandonProviderSignIn() }
+    }
+
+    /// Takes §C.1's failure edge without reporting a second error over the one
+    /// the user is already being shown.
+    private func abandon() async {
+        do {
+            state = try await executor.run { [session] in try session.abandonProviderSignIn() }
+        } catch {
+            // The machine refused the edge, which means it was not where this
+            // thought it was. Logged, never rendered: the sentence already on
+            // screen is the one that explains what happened.
+            Log.auth.error("a provider sign-in could not be abandoned", .code(ErrorMapping.userFacing(error).code))
+            await readState()
+        }
     }
 
     // MARK: - The one path into the core

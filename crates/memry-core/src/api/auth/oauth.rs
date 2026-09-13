@@ -87,6 +87,46 @@ impl AuthSession {
         Ok(next)
     }
 
+    /// `AwaitingProviderToken -> SignedOut`. The sheet closed without a token.
+    ///
+    /// **Nothing exported could draw this edge, and the shell needs it.**
+    /// §C.1 draws "cancelled, expired, or rejected" as one edge out of either
+    /// awaiting state, and `complete_provider_sign_in` applies it for
+    /// *rejected*. Cancelled is the shell's fact, not the server's: research
+    /// R14 makes `canceledLogin` and `error=access_denied` an outcome rather
+    /// than an error precisely because a user closing the consent sheet is a
+    /// normal thing to do — and before this there was no method that moved the
+    /// machine afterwards. `sign_out` is not it: §C.1 draws no
+    /// `AwaitingProviderToken -> SignedOut` for `SignedOutByUser`, so the one
+    /// call a shell would reach for answers `InvalidState` and leaves the
+    /// session stranded in a state whose own screen offers no way out.
+    ///
+    /// No new state and no new event: this applies `SignInFailed`, the edge
+    /// that was already drawn and already reachable for the other two thirds
+    /// of its meaning.
+    ///
+    /// **Synchronous**: it makes no request. From any other state it is
+    /// `InvalidState`, because abandoning a sheet that was never opened is a
+    /// caller bug rather than a no-op — unlike `restore`, which the process
+    /// lifecycle drives rather than the user.
+    pub fn abandon_provider_sign_in(&self) -> Result<AuthState, AuthError> {
+        let state = self.state_now();
+        if !matches!(state, AuthState::AwaitingProviderToken { .. }) {
+            return Err(AuthError::InvalidState {
+                action: "abandon a provider sign-in".to_string(),
+                state: state_name(&state),
+            });
+        }
+        {
+            // The nonce belongs to the attempt that just ended. Leaving it in
+            // place would let a later registration present a nonce no setup
+            // token was signed over (chapter 02 §2.6).
+            let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+            pending.session_nonce = None;
+        }
+        self.apply(AuthEvent::SignInFailed, "abandon a provider sign-in")
+    }
+
     /// `AwaitingProviderToken -> SetupPending`, or `-> SignedOut` when the
     /// provider token is refused.
     ///

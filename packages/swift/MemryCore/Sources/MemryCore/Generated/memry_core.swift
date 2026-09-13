@@ -722,6 +722,32 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
     func verifyEmailCode(code: String) async throws  -> AuthState
     
     /**
+     * `AwaitingProviderToken -> SignedOut`. The sheet closed without a token.
+     *
+     * **Nothing exported could draw this edge, and the shell needs it.**
+     * §C.1 draws "cancelled, expired, or rejected" as one edge out of either
+     * awaiting state, and `complete_provider_sign_in` applies it for
+     * *rejected*. Cancelled is the shell's fact, not the server's: research
+     * R14 makes `canceledLogin` and `error=access_denied` an outcome rather
+     * than an error precisely because a user closing the consent sheet is a
+     * normal thing to do — and before this there was no method that moved the
+     * machine afterwards. `sign_out` is not it: §C.1 draws no
+     * `AwaitingProviderToken -> SignedOut` for `SignedOutByUser`, so the one
+     * call a shell would reach for answers `InvalidState` and leaves the
+     * session stranded in a state whose own screen offers no way out.
+     *
+     * No new state and no new event: this applies `SignInFailed`, the edge
+     * that was already drawn and already reachable for the other two thirds
+     * of its meaning.
+     *
+     * **Synchronous**: it makes no request. From any other state it is
+     * `InvalidState`, because abandoning a sheet that was never opened is a
+     * caller bug rather than a no-op — unlike `restore`, which the process
+     * lifecycle drives rather than the user.
+     */
+    func abandonProviderSignIn() throws  -> AuthState
+    
+    /**
      * `SignedOut -> AwaitingProviderToken`. Mints this attempt's
      * `sessionNonce` (chapter 02 §2.6), exactly as `request_email_code` does.
      *
@@ -743,6 +769,29 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
      * skipped the sheet.
      */
     func completeProviderSignIn(idToken: String) async throws  -> ProviderSignInOutcome
+    
+    /**
+     * Reads the secure store and applies §C.1's restore edge if there is a
+     * session to restore.
+     *
+     * **Synchronous**: it makes no request, so it is a blocking call and
+     * belongs on the shell's serial core queue rather than being awaited
+     * (spec-defect 90).
+     *
+     * Idempotent, and deliberately not `InvalidState` from another state. The
+     * machine's rule is that a call which is not an edge is reported rather
+     * than swallowed, and that rule is about *user actions*: a second sign-in
+     * racing the first is a bug worth naming. This is driven by the process
+     * lifecycle instead — a launch, a return from protected-data-unavailable —
+     * and a lifecycle signal that arrives twice must not be an error the shell
+     * has to learn to suppress. From anything but `SignedOut` it reports the
+     * state it found and touches nothing.
+     *
+     * - Returns: the state after the probe.
+     * - Throws: `SecureStore` when the store could not be read at all. That is
+     * **not** "no session": call it again once the device is unlocked.
+     */
+    func restore() throws  -> AuthState
     
 }
 /**
@@ -1055,6 +1104,39 @@ open func verifyEmailCode(code: String)async throws  -> AuthState  {
 }
     
     /**
+     * `AwaitingProviderToken -> SignedOut`. The sheet closed without a token.
+     *
+     * **Nothing exported could draw this edge, and the shell needs it.**
+     * §C.1 draws "cancelled, expired, or rejected" as one edge out of either
+     * awaiting state, and `complete_provider_sign_in` applies it for
+     * *rejected*. Cancelled is the shell's fact, not the server's: research
+     * R14 makes `canceledLogin` and `error=access_denied` an outcome rather
+     * than an error precisely because a user closing the consent sheet is a
+     * normal thing to do — and before this there was no method that moved the
+     * machine afterwards. `sign_out` is not it: §C.1 draws no
+     * `AwaitingProviderToken -> SignedOut` for `SignedOutByUser`, so the one
+     * call a shell would reach for answers `InvalidState` and leaves the
+     * session stranded in a state whose own screen offers no way out.
+     *
+     * No new state and no new event: this applies `SignInFailed`, the edge
+     * that was already drawn and already reachable for the other two thirds
+     * of its meaning.
+     *
+     * **Synchronous**: it makes no request. From any other state it is
+     * `InvalidState`, because abandoning a sheet that was never opened is a
+     * caller bug rather than a no-op — unlike `restore`, which the process
+     * lifecycle drives rather than the user.
+     */
+open func abandonProviderSignIn()throws  -> AuthState  {
+    return try  FfiConverterTypeAuthState_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_authsession_abandon_provider_sign_in(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * `SignedOut -> AwaitingProviderToken`. Mints this attempt's
      * `sessionNonce` (chapter 02 §2.6), exactly as `request_email_code` does.
      *
@@ -1097,6 +1179,36 @@ open func completeProviderSignIn(idToken: String)async throws  -> ProviderSignIn
             liftFunc: FfiConverterTypeProviderSignInOutcome_lift,
             errorHandler: FfiConverterTypeAuthError_lift
         )
+}
+    
+    /**
+     * Reads the secure store and applies §C.1's restore edge if there is a
+     * session to restore.
+     *
+     * **Synchronous**: it makes no request, so it is a blocking call and
+     * belongs on the shell's serial core queue rather than being awaited
+     * (spec-defect 90).
+     *
+     * Idempotent, and deliberately not `InvalidState` from another state. The
+     * machine's rule is that a call which is not an edge is reported rather
+     * than swallowed, and that rule is about *user actions*: a second sign-in
+     * racing the first is a bug worth naming. This is driven by the process
+     * lifecycle instead — a launch, a return from protected-data-unavailable —
+     * and a lifecycle signal that arrives twice must not be an error the shell
+     * has to learn to suppress. From anything but `SignedOut` it reports the
+     * state it found and touches nothing.
+     *
+     * - Returns: the state after the probe.
+     * - Throws: `SecureStore` when the store could not be read at all. That is
+     * **not** "no session": call it again once the device is unlocked.
+     */
+open func restore()throws  -> AuthState  {
+    return try  FfiConverterTypeAuthState_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_authsession_restore(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
 }
     
 
@@ -2782,6 +2894,202 @@ public func FfiConverterTypeLifecycleObserver_lift(_ handle: UInt64) throws -> L
 #endif
 public func FfiConverterTypeLifecycleObserver_lower(_ value: LifecycleObserver) -> UInt64 {
     return FfiConverterTypeLifecycleObserver.lower(value)
+}
+
+
+
+
+
+
+/**
+ * The read-only content surface over one opened vault.
+ *
+ * Every method **blocks** (spec-defect 90). Nothing here touches the network,
+ * so there is nothing to suspend on; the shell runs them on its serial core
+ * queue.
+ */
+public protocol NotesProtocol: AnyObject, Sendable {
+    
+    /**
+     * Every live folder, parent before child.
+     */
+    func folders() throws  -> [FolderSummary]
+    
+    /**
+     * Every live note, newest first. No folder filter — [`reads::notes`] says
+     * why one cannot be given an honest signature.
+     */
+    func list() throws  -> [NoteSummary]
+    
+    /**
+     * One note and its body, or `nil` when this vault holds no live note by
+     * that id.
+     *
+     * `nil` means "no such note". A note that exists and cannot be read
+     * **throws**, and the two must never be rendered the same way.
+     *
+     * The error is `CrdtError` rather than `StorageError` because a body is a
+     * CRDT document: a log row that will not decode is
+     * `CrdtError::Undecodable`, which is a permanently unreadable body and a
+     * different sentence from a failed disk read — and a failed disk read
+     * still crosses intact, as `CrdtError::Storage`, carrying the
+     * `StorageError` rather than flattening it.
+     */
+    func read(id: String) throws  -> NoteDetail?
+    
+}
+/**
+ * The read-only content surface over one opened vault.
+ *
+ * Every method **blocks** (spec-defect 90). Nothing here touches the network,
+ * so there is nothing to suspend on; the shell runs them on its serial core
+ * queue.
+ */
+open class Notes: NotesProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_notes(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_notes(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Every live folder, parent before child.
+     */
+open func folders()throws  -> [FolderSummary]  {
+    return try  FfiConverterSequenceTypeFolderSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_folders(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every live note, newest first. No folder filter — [`reads::notes`] says
+     * why one cannot be given an honest signature.
+     */
+open func list()throws  -> [NoteSummary]  {
+    return try  FfiConverterSequenceTypeNoteSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_list(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * One note and its body, or `nil` when this vault holds no live note by
+     * that id.
+     *
+     * `nil` means "no such note". A note that exists and cannot be read
+     * **throws**, and the two must never be rendered the same way.
+     *
+     * The error is `CrdtError` rather than `StorageError` because a body is a
+     * CRDT document: a log row that will not decode is
+     * `CrdtError::Undecodable`, which is a permanently unreadable body and a
+     * different sentence from a failed disk read — and a failed disk read
+     * still crosses intact, as `CrdtError::Storage`, carrying the
+     * `StorageError` rather than flattening it.
+     */
+open func read(id: String)throws  -> NoteDetail?  {
+    return try  FfiConverterOptionTypeNoteDetail.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_read(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNotes: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Notes
+
+    public static func lift(_ handle: UInt64) throws -> Notes {
+        return Notes(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Notes) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Notes {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Notes, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNotes_lift(_ handle: UInt64) throws -> Notes {
+    return try FfiConverterTypeNotes.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNotes_lower(_ value: Notes) -> UInt64 {
+    return FfiConverterTypeNotes.lower(value)
 }
 
 
@@ -5092,6 +5400,196 @@ public func FfiConverterTypeTransport_lower(_ value: Transport) -> UInt64 {
 
 
 
+
+
+/**
+ * One vault's local database, opened.
+ *
+ * Every method blocks (spec-defect 90): these are local SQLite reads, so the
+ * shell moves them onto its serial core queue rather than awaiting them. None
+ * of them suspends, which also means none of them can be left uncancellable —
+ * `rust_future_cancel` does not appear in the bindings at all (defect 108),
+ * and a blocking call never needed it.
+ */
+public protocol VaultProtocol: AnyObject, Sendable {
+    
+    /**
+     * The id this vault was opened under, so a handle passed around the shell
+     * says which vault it is rather than relying on the caller to remember.
+     */
+    func id()  -> String
+    
+    /**
+     * The note and folder reads over **this** vault's database.
+     *
+     * A clone of the same handle, not a second connection: see the module doc.
+     */
+    func notes()  -> Notes
+    
+}
+/**
+ * One vault's local database, opened.
+ *
+ * Every method blocks (spec-defect 90): these are local SQLite reads, so the
+ * shell moves them onto its serial core queue rather than awaiting them. None
+ * of them suspends, which also means none of them can be left uncancellable —
+ * `rust_future_cancel` does not appear in the bindings at all (defect 108),
+ * and a blocking call never needed it.
+ */
+open class Vault: VaultProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_vault(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_vault(handle, $0) }
+    }
+
+    
+    /**
+     * Opens `data.db` under `directory`, creating and migrating it on first
+     * use.
+     *
+     * The shell supplies the directory because only the shell knows its
+     * sandbox; the **file name inside it** stays the core's, because the
+     * two-database layout of data-model §A.0 is core-owned and a shell that
+     * named the file could point two vaults at one database.
+     *
+     * Migrations are forward only and keep every row they find (§A.0). This is
+     * the call that runs them, which is why it is not free.
+     *
+     * `vault_id` is recorded rather than derived from the path. A directory
+     * name is a shell convention; the id is chapter 05 §5.1's, and it is what
+     * `X-Memry-Vault-Id` will carry.
+     */
+public static func `open`(vaultId: String, directory: String)throws  -> Vault  {
+    return try  FfiConverterTypeVault_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_constructor_vault_open(
+        FfiConverterString.lower(vaultId),
+        FfiConverterString.lower(directory),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+    /**
+     * The id this vault was opened under, so a handle passed around the shell
+     * says which vault it is rather than relying on the caller to remember.
+     */
+open func id() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_id(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The note and folder reads over **this** vault's database.
+     *
+     * A clone of the same handle, not a second connection: see the module doc.
+     */
+open func notes() -> Notes  {
+    return try!  FfiConverterTypeNotes_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_notes(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeVault: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Vault
+
+    public static func lift(_ handle: UInt64) throws -> Vault {
+        return Vault(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Vault) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Vault {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Vault, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVault_lift(_ handle: UInt64) throws -> Vault {
+    return try FfiConverterTypeVault.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVault_lower(_ value: Vault) -> UInt64 {
+    return FfiConverterTypeVault.lower(value)
+}
+
+
+
+
 /**
  * A message crossing the host-to-guest bridge.
  *
@@ -5237,6 +5735,87 @@ public func FfiConverterTypeDeviceDescriptor_lift(_ buf: RustBuffer) throws -> D
 #endif
 public func FfiConverterTypeDeviceDescriptor_lower(_ value: DeviceDescriptor) -> RustBuffer {
     return FfiConverterTypeDeviceDescriptor.lower(value)
+}
+
+
+/**
+ * One row of the `folders` projection (data-model §A.4, chapter 13 §13.7.10).
+ *
+ * `parent_path` and `name` are the projector's split of `path`, carried rather
+ * than re-derived so a shell building a tree does not string-split on every
+ * row — and so that it splits the same way the core does.
+ *
+ * **This is the `folder_config` projection and nothing else.** A folder that
+ * holds notes but has never had a `folder_config` record written for it has no
+ * row here; §13.7.10 makes such folders legal, and no chapter says whether a
+ * folder tree must show them. Inventing them in the core would be inventing
+ * policy, so the list is the records, honestly.
+ */
+public struct FolderSummary: Equatable, Hashable {
+    public var path: String
+    /**
+     * `None` is a folder at the vault root.
+     */
+    public var parentPath: String?
+    public var name: String
+    public var icon: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(path: String, 
+        /**
+         * `None` is a folder at the vault root.
+         */parentPath: String?, name: String, icon: String?) {
+        self.path = path
+        self.parentPath = parentPath
+        self.name = name
+        self.icon = icon
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension FolderSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFolderSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FolderSummary {
+        return
+            try FolderSummary(
+                path: FfiConverterString.read(from: &buf), 
+                parentPath: FfiConverterOptionString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                icon: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FolderSummary, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.path, into: &buf)
+        FfiConverterOptionString.write(value.parentPath, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.icon, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFolderSummary_lift(_ buf: RustBuffer) throws -> FolderSummary {
+    return try FfiConverterTypeFolderSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFolderSummary_lower(_ value: FolderSummary) -> RustBuffer {
+    return FfiConverterTypeFolderSummary.lower(value)
 }
 
 
@@ -5524,6 +6103,232 @@ public func FfiConverterTypeLocalNotification_lift(_ buf: RustBuffer) throws -> 
 #endif
 public func FfiConverterTypeLocalNotification_lower(_ value: LocalNotification) -> RustBuffer {
     return FfiConverterTypeLocalNotification.lower(value)
+}
+
+
+/**
+ * A note's body as the core can express it.
+ */
+public struct NoteBody: Equatable, Hashable {
+    /**
+     * `extract_text` output (chapter 12 §12.1). Plain text, not markdown.
+     */
+    public var text: String
+    /**
+     * Whether this device holds **any** body state for the note at all.
+     *
+     * `false` with an empty `text` is "the body has not been pulled here";
+     * `true` with an empty `text` is "the user left this note empty". A shell
+     * that renders them identically is reporting an unread note as an empty
+     * one, which is the failure this whole module is written against.
+     */
+    public var present: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `extract_text` output (chapter 12 §12.1). Plain text, not markdown.
+         */text: String, 
+        /**
+         * Whether this device holds **any** body state for the note at all.
+         *
+         * `false` with an empty `text` is "the body has not been pulled here";
+         * `true` with an empty `text` is "the user left this note empty". A shell
+         * that renders them identically is reporting an unread note as an empty
+         * one, which is the failure this whole module is written against.
+         */present: Bool) {
+        self.text = text
+        self.present = present
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NoteBody: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteBody: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteBody {
+        return
+            try NoteBody(
+                text: FfiConverterString.read(from: &buf), 
+                present: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteBody, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterBool.write(value.present, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteBody_lift(_ buf: RustBuffer) throws -> NoteBody {
+    return try FfiConverterTypeNoteBody.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteBody_lower(_ value: NoteBody) -> RustBuffer {
+    return FfiConverterTypeNoteBody.lower(value)
+}
+
+
+/**
+ * A note and its body.
+ */
+public struct NoteDetail: Equatable, Hashable {
+    public var summary: NoteSummary
+    public var body: NoteBody
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(summary: NoteSummary, body: NoteBody) {
+        self.summary = summary
+        self.body = body
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NoteDetail: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteDetail: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteDetail {
+        return
+            try NoteDetail(
+                summary: FfiConverterTypeNoteSummary.read(from: &buf), 
+                body: FfiConverterTypeNoteBody.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteDetail, into buf: inout [UInt8]) {
+        FfiConverterTypeNoteSummary.write(value.summary, into: &buf)
+        FfiConverterTypeNoteBody.write(value.body, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteDetail_lift(_ buf: RustBuffer) throws -> NoteDetail {
+    return try FfiConverterTypeNoteDetail.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteDetail_lower(_ value: NoteDetail) -> RustBuffer {
+    return FfiConverterTypeNoteDetail.lower(value)
+}
+
+
+/**
+ * One row of the `notes` projection.
+ *
+ * `content` is deliberately absent, as it is from the table: the body lives in
+ * the CRDT log and crosses through [`note`].
+ */
+public struct NoteSummary: Equatable, Hashable {
+    public var id: String
+    public var title: String
+    /**
+     * `None` is the vault root (chapter 13 §13.4's explicit null).
+     */
+    public var folderPath: String?
+    public var emoji: String?
+    /**
+     * Epoch milliseconds (data-model §A.6). `None` means the payload carried
+     * no such instant, never "zero".
+     */
+    public var createdAt: Int64?
+    public var modifiedAt: Int64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String, 
+        /**
+         * `None` is the vault root (chapter 13 §13.4's explicit null).
+         */folderPath: String?, emoji: String?, 
+        /**
+         * Epoch milliseconds (data-model §A.6). `None` means the payload carried
+         * no such instant, never "zero".
+         */createdAt: Int64?, modifiedAt: Int64?) {
+        self.id = id
+        self.title = title
+        self.folderPath = folderPath
+        self.emoji = emoji
+        self.createdAt = createdAt
+        self.modifiedAt = modifiedAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NoteSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteSummary {
+        return
+            try NoteSummary(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                folderPath: FfiConverterOptionString.read(from: &buf), 
+                emoji: FfiConverterOptionString.read(from: &buf), 
+                createdAt: FfiConverterOptionInt64.read(from: &buf), 
+                modifiedAt: FfiConverterOptionInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteSummary, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.folderPath, into: &buf)
+        FfiConverterOptionString.write(value.emoji, into: &buf)
+        FfiConverterOptionInt64.write(value.createdAt, into: &buf)
+        FfiConverterOptionInt64.write(value.modifiedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteSummary_lift(_ buf: RustBuffer) throws -> NoteSummary {
+    return try FfiConverterTypeNoteSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteSummary_lower(_ value: NoteSummary) -> RustBuffer {
+    return FfiConverterTypeNoteSummary.lower(value)
 }
 
 
@@ -6241,6 +7046,14 @@ public enum AuthEvent: Equatable, Hashable {
     case refreshRefused
     case deviceRevoked
     case signedOutByUser
+    /**
+     * The process restarted and the secure store still holds a refresh token
+     * (spec-defect 121). **Appended last**, so every variant that existed
+     * before keeps its discriminant and its meaning: nothing that used to be
+     * `SignedOutByUser` is now this, and a shell built against the previous
+     * binding still lifts every value it could lift before.
+     */
+    case sessionRestored
 
 
 
@@ -6289,6 +7102,8 @@ public struct FfiConverterTypeAuthEvent: FfiConverterRustBuffer {
         case 12: return .deviceRevoked
         
         case 13: return .signedOutByUser
+        
+        case 14: return .sessionRestored
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -6350,6 +7165,10 @@ public struct FfiConverterTypeAuthEvent: FfiConverterRustBuffer {
         
         case .signedOutByUser:
             writeInt(&buf, Int32(13))
+        
+        
+        case .sessionRestored:
+            writeInt(&buf, Int32(14))
         
         }
     }
@@ -8564,6 +9383,30 @@ fileprivate struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
+    typealias SwiftType = Int64?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterInt64.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterInt64.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -8612,6 +9455,30 @@ fileprivate struct FfiConverterOptionData: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeNoteDetail: FfiConverterRustBuffer {
+    typealias SwiftType = NoteDetail?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNoteDetail.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNoteDetail.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
     typealias SwiftType = [String]
 
@@ -8629,6 +9496,56 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFolderSummary: FfiConverterRustBuffer {
+    typealias SwiftType = [FolderSummary]
+
+    public static func write(_ value: [FolderSummary], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFolderSummary.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FolderSummary] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FolderSummary]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFolderSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeNoteSummary: FfiConverterRustBuffer {
+    typealias SwiftType = [NoteSummary]
+
+    public static func write(_ value: [NoteSummary], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeNoteSummary.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NoteSummary] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [NoteSummary]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeNoteSummary.read(from: &buf))
         }
         return seq
     }
@@ -9041,10 +9958,25 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_authsession_verify_email_code() != 61584) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_authsession_abandon_provider_sign_in() != 37794) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_authsession_begin_provider_sign_in() != 64838) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_complete_provider_sign_in() != 33561) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_restore() != 38013) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_list() != 25457) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_read() != 37060) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_runtimehost_on_background() != 23225) {
@@ -9060,6 +9992,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_runtimehost_resume_settled() != 37011) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_id() != 63291) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_notes() != 15357) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_backgroundexec_schedule_refresh() != 7923) {
@@ -9180,6 +10118,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_constructor_runtimehost_new() != 10694) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_constructor_vault_open() != 12310) {
         return InitializationResult.apiChecksumMismatch
     }
 

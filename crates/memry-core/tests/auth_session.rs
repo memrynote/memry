@@ -200,6 +200,12 @@ fn every_drawn_edge_exists() {
             AuthEvent::SignedOutByUser,
             AuthState::SignedOut,
         ),
+        // spec-defect 121: the restore edge.
+        (
+            AuthState::SignedOut,
+            AuthEvent::SessionRestored,
+            AuthState::Registered,
+        ),
     ];
     for (from, event, expected) in edges {
         assert_eq!(
@@ -233,6 +239,14 @@ fn nothing_the_chapter_does_not_draw_is_an_edge() {
         // Revocation is drawn from `Registered` only.
         (AuthState::SessionExpired, AuthEvent::DeviceRevoked),
         (AuthState::SignedOut, AuthEvent::SetupTokenIssued),
+        // spec-defect 121: restore is drawn from `SignedOut` only. In
+        // particular it does **not** resurrect a revoked or an expired
+        // session, which are the two states a restore that collapsed them
+        // would quietly overwrite.
+        (AuthState::Revoked, AuthEvent::SessionRestored),
+        (AuthState::SessionExpired, AuthEvent::SessionRestored),
+        (AuthState::SetupPending, AuthEvent::SessionRestored),
+        (AuthState::Refreshing, AuthEvent::SessionRestored),
     ];
     for (from, event) in undrawn {
         assert_eq!(
@@ -966,4 +980,146 @@ async fn an_unreadable_vault_row_is_never_reported_as_an_empty_account() {
 async fn an_empty_registry_means_empty() {
     let (session, _transport, _store) = registered(vec![response(200, r#"{"vaults":[]}"#)]).await;
     assert_eq!(session.vaults().await.expect("a registry").len(), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Cold-launch restore, spec-defect 121
+// ---------------------------------------------------------------------------
+
+/// The defect itself, end to end: sign in, throw the session away as a process
+/// exit would, build a second one over the **same** secure store, and reopen.
+///
+/// The second session is built by `session()` — the same constructor the shell
+/// calls — so nothing here is a special "restored" object. Before `restore()`
+/// existed this test's second assertion read `SignedOut`, which is the bug: a
+/// working refresh token on disk and a sign-in screen in front of it.
+#[tokio::test]
+async fn a_relaunch_over_the_same_store_reopens_the_session() {
+    let (first, _transport, store) = registered(vec![]).await;
+    assert_eq!(first.state(), AuthState::Registered);
+    drop(first);
+
+    let next = session(FakeTransport::new(vec![]), store.clone());
+    // The process just started. This is what every launch saw before.
+    assert_eq!(next.state(), AuthState::SignedOut);
+
+    assert_eq!(next.restore().unwrap(), AuthState::Registered);
+    assert_eq!(next.state(), AuthState::Registered);
+}
+
+/// The restored session spends the **stored** refresh token rather than a
+/// remembered one: a restore that produced the right state over a token it
+/// could not use would pass every assertion above and fail on the first call.
+#[tokio::test]
+async fn a_restored_session_refreshes_with_the_token_from_the_store() {
+    let (first, _transport, store) = registered(vec![]).await;
+    drop(first);
+
+    let transport = FakeTransport::new(vec![response(
+        200,
+        r#"{"accessToken":"access-2","refreshToken":"refresh-2","expiresIn":900}"#,
+    )]);
+    let next = session(transport.clone(), store.clone());
+    next.restore().unwrap();
+
+    assert_eq!(next.refresh().await.unwrap(), AuthState::Registered);
+    let sent = transport.calls_to("/auth/refresh");
+    assert_eq!(sent.len(), 1);
+    assert_eq!(body_json(&sent[0])["refreshToken"], "refresh-1");
+    assert_eq!(
+        store.text(SecureStoreKey::RefreshToken).as_deref(),
+        Some("refresh-2")
+    );
+}
+
+/// No token is `SignedOut`, and nothing is asked of the network to find that
+/// out. A restore that probed the server would be a launch that can suspend
+/// for an hour and cannot be cancelled (spec-defects 108 and 109).
+#[tokio::test]
+async fn a_first_launch_stays_signed_out_and_makes_no_request() {
+    let transport = FakeTransport::new(vec![]);
+    let fresh = session(transport.clone(), FakeSecureStore::new());
+
+    assert_eq!(fresh.restore().unwrap(), AuthState::SignedOut);
+    assert_eq!(fresh.state(), AuthState::SignedOut);
+    assert_eq!(transport.call_count(), 0);
+}
+
+/// data-model §B's distinction, at the one place it decides what a user sees.
+///
+/// A locked keychain is neither "signed out" nor "signed in": the two arms
+/// return **different shapes**, not two spellings of the same state, so a
+/// caller cannot confuse them and the state is left where a later call can try
+/// again. The `Ok`/`Err` pair is asserted together on purpose — the previous
+/// phase lost a bug to two branches that returned the same value.
+#[tokio::test]
+async fn a_locked_store_is_neither_signed_out_nor_restored() {
+    let (first, _transport, store) = registered(vec![]).await;
+    drop(first);
+    store.lock_device();
+
+    let next = session(FakeTransport::new(vec![]), store.clone());
+    let error = next.restore().unwrap_err();
+    assert!(
+        matches!(error, AuthError::SecureStore { .. }),
+        "a locked store must not read as an absent token: {error:?}"
+    );
+    // Unchanged, so the retry below is a retry and not a second first attempt.
+    assert_eq!(next.state(), AuthState::SignedOut);
+
+    store.unlock_device();
+    assert_eq!(next.restore().unwrap(), AuthState::Registered);
+}
+
+/// `SignedOut`, `SessionExpired` and `Revoked` stay three different states
+/// across a relaunch, which is the whole reason the edge lands in `Registered`
+/// rather than in a state of its own: both of the other two are edges **out
+/// of** `Registered`, so before the restore existed a relaunched app could
+/// reach neither.
+#[tokio::test]
+async fn the_three_signed_out_shaped_states_stay_distinct_after_a_restore() {
+    // Expired: one refusal is enough — §2.10's first 401 already moves the
+    // machine. Reached only because the restore put it somewhere that has a
+    // `RefreshRefused` edge; from `SignedOut` there is no such edge and
+    // `refresh` is `InvalidState`.
+    let (first, _t, store) = registered(vec![]).await;
+    drop(first);
+    let expired = session(
+        FakeTransport::new(vec![error_response(401, "AUTH_INVALID_TOKEN", "no")]),
+        store.clone(),
+    );
+    expired.restore().unwrap();
+    let _ = expired.refresh().await.unwrap_err();
+    assert_eq!(expired.state(), AuthState::SessionExpired);
+
+    // Revoked: terminal, and it clears the store, so the next launch of the
+    // same app is genuinely signed out rather than restored into a session
+    // that no longer exists.
+    let (second, _t2, store2) = registered(vec![]).await;
+    drop(second);
+    let revoked = session(FakeTransport::new(vec![]), store2.clone());
+    revoked.restore().unwrap();
+    assert_eq!(revoked.mark_revoked().unwrap(), AuthState::Revoked);
+    drop(revoked);
+
+    let after = session(FakeTransport::new(vec![]), store2);
+    assert_eq!(after.restore().unwrap(), AuthState::SignedOut);
+}
+
+/// Called twice, or from a state that is not `SignedOut`, it reports what it
+/// found and changes nothing. A launch signal that arrives twice must not be
+/// an error the shell learns to suppress.
+#[tokio::test]
+async fn restoring_twice_is_not_a_second_sign_in() {
+    let (first, _transport, store) = registered(vec![]).await;
+    drop(first);
+
+    let next = session(FakeTransport::new(vec![]), store);
+    assert_eq!(next.restore().unwrap(), AuthState::Registered);
+    assert_eq!(next.restore().unwrap(), AuthState::Registered);
+
+    // And from a state that is emphatically not a restorable one.
+    let (live, _t, _s) = registered(vec![]).await;
+    assert_eq!(live.mark_revoked().unwrap(), AuthState::Revoked);
+    assert_eq!(live.restore().unwrap(), AuthState::Revoked);
 }

@@ -20,6 +20,15 @@ import UIKit
 // a test drive the genuine `Keychain` and the genuine `URLSessionTransport`
 // with no network and no keychain, rather than drive a fake and learn nothing.
 
+/// What one production object graph is: the core's session, and the one
+/// network seam underneath it.
+struct AuthGraph {
+    let session: AuthSession
+    /// Held so a second consumer of the **same** session can be built over it.
+    /// See `AuthComposition.googleSignIn`.
+    let transport: URLSessionTransport
+}
+
 /// Builds the production object graph.
 enum AuthComposition {
     /// Chapter 11 §11.2's `CLIENT_PLATFORMS`, not chapter 02 §2.12's
@@ -40,12 +49,60 @@ enum AuthComposition {
         transportConfiguration: URLSessionConfiguration = URLSessionTransport.defaultConfiguration(),
         keychainItems: any KeychainItemStore = SystemKeychainItemStore()
     ) throws -> AuthSession {
-        try AuthSession(
-            transport: URLSessionTransport(emitter: emitter, configuration: transportConfiguration),
+        try makeGraph(
+            environment: environment,
+            device: device,
+            emitter: emitter,
+            transportConfiguration: transportConfiguration,
+            keychainItems: keychainItems
+        ).session
+    }
+
+    /// The session **and** the transport under it.
+    ///
+    /// T165. The transport is returned rather than kept private because the
+    /// Google token exchange goes through it (`GoogleTokenExchange`): one
+    /// `URLSession` in the process, not two. `makeSession` above stays as the
+    /// narrower entry point for every caller that does not need the seam.
+    static func makeGraph(
+        environment: SyncEnvironment,
+        device: DeviceDescriptor,
+        emitter: CoreEventEmitter,
+        transportConfiguration: URLSessionConfiguration = URLSessionTransport.defaultConfiguration(),
+        keychainItems: any KeychainItemStore = SystemKeychainItemStore()
+    ) throws -> AuthGraph {
+        let transport = URLSessionTransport(emitter: emitter, configuration: transportConfiguration)
+        let session = try AuthSession(
+            transport: transport,
             secureStore: Keychain(emitter: emitter, items: keychainItems),
             baseUrl: environment.baseURL,
             clientPlatform: clientPlatform,
             device: device
+        )
+        return AuthGraph(session: session, transport: transport)
+    }
+
+    /// T165. The production Google flow, or `nil` when this build carries no
+    /// iOS OAuth client id.
+    ///
+    /// `nil` is **not** "Google is off": the button is offered either way and
+    /// pressing it renders `GoogleSignInFailure.notConfigured`'s sentence,
+    /// which says the build cannot do it and points at the email code. A
+    /// button that disappears tells the user nothing; `Info.plist` is missing
+    /// `MemryGoogleClientID` on every build today (spec-defect 117), so the
+    /// silent version of this would be a Google button nobody has ever seen.
+    @MainActor
+    static func googleSignIn(
+        transport: any Transport,
+        bundle: Bundle = .main
+    ) -> GoogleSignIn? {
+        guard let configuration = try? GoogleSignInConfiguration.fromBundle(bundle) else {
+            return nil
+        }
+        return GoogleSignIn(
+            configuration: configuration,
+            authenticator: SystemWebAuthenticator(),
+            exchange: GoogleTokenExchange.through(transport)
         )
     }
 

@@ -40,6 +40,20 @@ enum SignInAction: Equatable, Sendable {
     /// first "user re-authenticates", and `sign_out` is the only method that
     /// draws it.
     case startOver
+    /// T165. `SignedOut -> AwaitingProviderToken`, then the consent sheet,
+    /// then `AwaitingProviderToken -> SetupPending`. One action because the
+    /// user makes one decision; the three core calls behind it are the view
+    /// model's.
+    case signInWithGoogle
+    /// T165. `AwaitingProviderToken -> SignedOut`, §C.1's "cancelled, expired,
+    /// or rejected" edge.
+    ///
+    /// **Not a Cancel over a core call.** `begin_provider_sign_in` is
+    /// synchronous and the consent sheet is the system's own; there is no
+    /// suspended Rust future here to interrupt, and there could not be
+    /// (spec-defect 108). This is the way out of a state the user is *left*
+    /// in, which before T165 had no exported edge and no button at all.
+    case abandonProviderSignIn
 
     var label: String {
         switch self {
@@ -49,6 +63,8 @@ enum SignInAction: Equatable, Sendable {
         case .registerDevice: "Finish setup"
         case .renewSetup: "Continue"
         case .startOver: "Sign in again"
+        case .signInWithGoogle: "Continue with Google"
+        case .abandonProviderSignIn: "Use an email code instead"
         }
     }
 
@@ -68,6 +84,8 @@ enum SignInAction: Equatable, Sendable {
         case .registerDevice: "Setting up this phone"
         case .renewSetup: "Carrying on"
         case .startOver: "Signing out"
+        case .signInWithGoogle: "Signing in with Google"
+        case .abandonProviderSignIn: "Going back"
         }
     }
 }
@@ -102,7 +120,10 @@ struct SignInStep: Equatable, Sendable {
             self.init(
                 title: "Sign in to Memry",
                 detail: "Memry emails you a six-digit code. There is no password to remember.",
-                field: .email, primary: .sendCode, secondary: nil
+                // T165. The email code stays primary: it is the path that works
+                // in every build, and Google is offered beside it rather than
+                // above it.
+                field: .email, primary: .sendCode, secondary: .signInWithGoogle
             )
         case let .awaitingOtp(email):
             // The state carries the address precisely so the shell can say this
@@ -112,14 +133,15 @@ struct SignInStep: Equatable, Sendable {
                 detail: "Memry sent a six-digit code to \(email). Paste it or type it in.",
                 field: .code, primary: .verify, secondary: .resend
             )
-        // T148's. This screen cannot reach it — it opens no provider sheet —
-        // but it must render the state honestly if it is ever handed one,
-        // rather than fall through to a branch that means something else.
+        // T165: this screen reaches it now. The action is the way **out** —
+        // the sheet is the system's and it is already closed by the time this
+        // step can be rendered, so leaving it with no button is what stranded
+        // a cancelled sign-in before `abandon_provider_sign_in` existed.
         case let .awaitingProviderToken(provider):
             self.init(
                 title: "Waiting for \(provider)",
-                detail: "Finish signing in in the window that opened.",
-                field: .absent, primary: nil, secondary: nil
+                detail: "Finish signing in in the window that opened, or go back and use an email code.",
+                field: .absent, primary: .abandonProviderSignIn, secondary: nil
             )
         case .setupPending:
             self.init(

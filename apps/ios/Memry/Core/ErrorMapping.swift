@@ -280,9 +280,16 @@ enum ErrorMapping {
         case .DeviceRevoked:
             copy("api.deviceRevoked", "This phone's access to your account was revoked.",
                  "Its copy of your vault has been removed. Sign in again to use Memry here.")
+        // spec-defect 111. The old second sentence promised that "syncing will
+        // resume on its own", and the screen this error is met on most often is
+        // the sign-in screen, where there is no sync to resume and nothing
+        // resumes by itself. `DESIGN.md` §"Error copy, in detail": a sentence
+        // must be true on every screen that can show it, so this one now states
+        // the outcome — nothing was lost — and promises no mechanism. The
+        // recourse, not the prose, is what says when to come back.
         case .RateLimited:
             copy("api.rateLimited", "Memry is being asked to slow down.",
-                 "Syncing will resume on its own shortly.", .retryLater)
+                 "Nothing has been lost. Try again in a little while.", .retryLater)
         // Chapter 11 §11.6 and §11.9. Read-only: the outbox parks, accrues no
         // backoff, and this is not a failure the user retries.
         case .WritesDisabled:
@@ -342,9 +349,14 @@ enum ErrorMapping {
             userFacing(source)
         case let .Crypto(source):
             userFacing(source)
+        // spec-defect 111. "Close this screen" is false wherever the screen is
+        // the root — which the sign-in screen is, and it is the screen that
+        // reaches this error most. Same rule as `RateLimited` above: say what
+        // happened and that nothing is lost, and name no affordance that may
+        // not exist where the sentence is read.
         case .InvalidState:
             copy("auth.invalidState", "Memry could not do that from where it is.",
-                 "Close this screen and start again.", .retry)
+                 "Nothing has changed and nothing is lost. Start that step again.", .retry)
         case .MalformedToken:
             copy("auth.malformedToken", "Memry's stored sign-in details are unreadable.",
                  "Sign in again to replace them.")

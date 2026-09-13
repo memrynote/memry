@@ -164,6 +164,13 @@ impl FakeSecureStore {
         *self.locked.lock().unwrap() = true;
     }
 
+    /// The other half of `lock_device`. A locked store is a *transient* answer
+    /// — the device gets unlocked — so a test that only ever locks cannot
+    /// assert the retry that fact exists for.
+    pub fn unlock_device(&self) {
+        *self.locked.lock().unwrap() = false;
+    }
+
     pub fn text(&self, key: SecureStoreKey) -> Option<String> {
         self.entries
             .lock()
