@@ -42,14 +42,24 @@ const MS_PER_DAY: i64 = 86_400_000;
 /// The 15 entries of `TASK_SYNCABLE_FIELDS` in order (§6.7), then the fields
 /// outside the merge: `tags`, `linkedNoteIds`, `linkedCanvasIds`, `clock`,
 /// `fieldClocks`, `createdAt`, `modifiedAt` (§13.7.3).
+///
+/// **Every entry is `opt_null`, and that is the same lesson
+/// `tag_definition.icon` cost 146 corrupt rows to learn.** §13.3's forward
+/// tolerance and data-model §A.4 both say a projector **substitutes** and
+/// never refuses, so a field is `opt` only where a `null` has no substitute.
+/// None of these has that problem: the four writers below all absorb
+/// `Value::Null` — `text_or_default` and `number_or_default` fall back to the
+/// column's declared default, `json` and `instant` write SQL NULL into a
+/// nullable column. No committed vector carries a null in any of them, which
+/// is exactly why only real data would have found it.
 const TASK_FIELDS: &[Field] = &[
-    Field::opt("title", Kind::Text),
+    Field::opt_null("title", Kind::Text),
     Field::opt_null("description", Kind::Text),
-    Field::opt("projectId", Kind::Text),
+    Field::opt_null("projectId", Kind::Text),
     Field::opt_null("statusId", Kind::Text),
     Field::opt_null("parentId", Kind::Text),
-    Field::opt("priority", Kind::Number),
-    Field::opt("position", Kind::Number),
+    Field::opt_null("priority", Kind::Number),
+    Field::opt_null("position", Kind::Number),
     Field::opt_null("dueDate", Kind::Text),
     Field::opt_null("dueTime", Kind::Text),
     Field::opt_null("startDate", Kind::Text),
@@ -58,13 +68,20 @@ const TASK_FIELDS: &[Field] = &[
     Field::opt_null("sourceNoteId", Kind::Text),
     Field::opt_null("completedAt", Kind::Text),
     Field::opt_null("archivedAt", Kind::Text),
-    Field::opt("tags", Kind::TextArray),
-    Field::opt("linkedNoteIds", Kind::TextArray),
-    Field::opt("linkedCanvasIds", Kind::TextArray),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("fieldClocks", Kind::ClockMap),
-    Field::opt("createdAt", Kind::Text),
-    Field::opt("modifiedAt", Kind::Text),
+    // §13.4: `undefined` keeps the local rows, an explicit `null` — like an
+    // explicit `[]` — is a clear, and the column takes it.
+    Field::opt_null("tags", Kind::TextArray),
+    Field::opt_null("linkedNoteIds", Kind::TextArray),
+    // No column at all, by design (see the module comment), so a null here
+    // reaches nothing but the verbatim payload.
+    Field::opt_null("linkedCanvasIds", Kind::TextArray),
+    // `task_merge` already reads both as `None` when they are null (§6.7,
+    // §6.10), so refusing the payload here contradicted the merge that was
+    // about to consume it.
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("fieldClocks", Kind::ClockMap),
+    Field::opt_null("createdAt", Kind::Text),
+    Field::opt_null("modifiedAt", Kind::Text),
 ];
 
 /// §13.7.5. Append-only and immutable, hence no `fieldClocks` and no

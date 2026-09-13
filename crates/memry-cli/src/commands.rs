@@ -281,10 +281,11 @@ pub fn format_notes(notes: &[NoteRow]) -> String {
 
 pub fn format_pull(report: &PullReport) -> String {
     format!(
-        "pages {}\napplied {}\ndeleted {}\ncorrupt {}\nexpired {}\ndropped-pages {}\ncursor {}\nhas-more {}\nrefused {}\n",
+        "pages {}\napplied {}\ndeleted {}\nskipped {}\ncorrupt {}\nexpired {}\ndropped-pages {}\ncursor {}\nhas-more {}\nrefused {}\n",
         report.pages,
         report.applied,
         report.deleted,
+        report.skipped,
         report.corrupt,
         report.expired,
         report.dropped_pages,
@@ -338,6 +339,7 @@ mod tests {
             pages: 2,
             applied: 7,
             deleted: 1,
+            skipped: 2,
             corrupt: 3,
             expired: 0,
             dropped_pages: 0,
@@ -347,6 +349,10 @@ mod tests {
         };
         let rendered = format_pull(&report);
         assert!(rendered.contains("applied 7"), "{rendered}");
+        // §6.3.1's skip is its own count: a merged type whose local clock
+        // dominated was neither applied nor corrupt, and a transcript that
+        // folded it into either would misreport the run.
+        assert!(rendered.contains("skipped 2"), "{rendered}");
         assert!(rendered.contains("corrupt 3"), "{rendered}");
         assert!(rendered.contains("cursor 42"), "{rendered}");
         assert!(rendered.contains("refused true"), "{rendered}");

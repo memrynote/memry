@@ -440,3 +440,72 @@ fn a_remote_payload_that_will_not_parse_is_recorded_corrupt_and_never_skipped() 
     })
     .expect("the corrupt apply");
 }
+
+/// **Spec defect 53's shape, on `task`.** A payload carrying an explicit
+/// `null` in every field the projector once marked non-nullable projects
+/// successfully rather than landing corrupt.
+///
+/// §13.3's forward tolerance and data-model §A.4 both oblige a projector to
+/// **substitute** the column default and never to refuse the item. The
+/// identical mistake on `tag_definition.icon` made 146 of 524 real rows
+/// corrupt on the first pull of a real account, and no committed vector
+/// carries a null in any of these — which is why only real data would have
+/// found it.
+#[test]
+fn an_explicit_null_in_every_task_field_projects_instead_of_landing_corrupt() {
+    let db = open("tasks-null-tolerance");
+    db.call_blocking(|conn| {
+        let outcome = sync_items::apply_remote(
+            conn,
+            &inbound(
+                "task",
+                "task-null",
+                json!({
+                    "title": Value::Null,
+                    "projectId": Value::Null,
+                    "priority": Value::Null,
+                    "position": Value::Null,
+                    "tags": Value::Null,
+                    "linkedNoteIds": Value::Null,
+                    "linkedCanvasIds": Value::Null,
+                    "clock": Value::Null,
+                    "fieldClocks": Value::Null,
+                    "createdAt": Value::Null,
+                    "modifiedAt": Value::Null
+                }),
+            ),
+            NOW,
+        )?;
+        assert_eq!(
+            outcome,
+            sync_items::ApplyOutcome::Applied,
+            "a substituted default, never a corrupt row"
+        );
+
+        // The `NOT NULL` columns took their declared defaults; the nullable
+        // ones took NULL. Either way the payload is stored verbatim, so a
+        // later build that models the field rebuilds the column from it.
+        let (title, project_id, priority, position): (String, String, i64, i64) = conn
+            .query_row(
+                "SELECT title, project_id, priority, position FROM tasks WHERE id = 'task-null'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .expect("the task projection");
+        assert_eq!(
+            (title.as_str(), project_id.as_str(), priority, position),
+            ("", "", 0, 0)
+        );
+
+        let (tags, clock, created): (Option<String>, Option<String>, Option<i64>) = conn
+            .query_row(
+                "SELECT tags, clock, created_at FROM tasks WHERE id = 'task-null'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .expect("the task projection");
+        assert_eq!((tags, clock, created), (None, None, None));
+        Ok(())
+    })
+    .expect("the null-tolerant apply");
+}

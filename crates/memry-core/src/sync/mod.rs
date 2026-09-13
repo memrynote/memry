@@ -7,6 +7,7 @@
 //! | [`field_merge`]   | 06 §6.3 – §6.8         | the winner rule, the conflict set, the field lists |
 //! | [`store`]         | 05 §5.11, §5.12        | the per-scope cursor and the tombstone            |
 //! | [`pull`]          | 05                     | one page: refs, bodies, apply, advance            |
+//! | [`apply`]         | 06 §6.8, 05 §5.12      | the apply step, and the one dispatch on item type |
 //! | [`state`]         | data-model §C.3        | the states and the edges drawn between them       |
 //! | [`engine`]        | data-model §C.3        | when each edge is taken, one pass at a time       |
 //! | [`outbox`]        | data-model §A.2, §C.4  | the durable write queue, one transaction at a time |
@@ -25,6 +26,7 @@
 //! and a reviewer should treat one appearing as a constitution violation
 //! rather than a convenience.
 
+pub mod apply;
 pub mod body_pull;
 pub mod bootstrap;
 pub mod clock;

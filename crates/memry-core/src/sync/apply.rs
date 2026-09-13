@@ -1,0 +1,241 @@
+//! The apply step of an inbound page, and **the one place an item's type
+//! chooses its merge algorithm** (chapter 06 §6.8, chapter 05 §5.12, §5.14).
+//!
+//! Every route that brings a record into this device ends here: the
+//! steady-state page ([`super::pull::PullLoop::pull_page`]) and the first
+//! sync's metadata pass ([`super::pull::PullLoop::fetch_ids`], driven by
+//! [`super::first_sync`]) both hand their decoded items to [`apply_page`].
+//! That is deliberate. Chapter 06 §6.8 is a table over item types, and a table
+//! consulted at each call site is a table the next call site forgets:
+//! `task` and `project` are field-merged and everything else is stored
+//! wholesale, so the choice is made **once**, in [`apply_inbound`], and a
+//! third inbound path gets it by construction rather than by review.
+//!
+//! Four rules shape the branches below.
+//!
+//! - **A tombstone never reaches a parser** (§5.12, §13.7.2, §6.9.2). The
+//!   delete is recorded and the body is never decoded, so a delete cannot
+//!   reach the field merge at all.
+//! - **A bare tombstone outranks the item that follows it** (§5.12.1), which
+//!   is checked before the type is dispatched on: a deleted row has no fields
+//!   to merge.
+//! - **A failure is [`ApplyOutcome::Corrupt`], never a skip.** The merge path
+//!   can fail in ways the wholesale path cannot — an unparseable stored clock,
+//!   a `fieldClocks` map that is not one (chapter 06 §6.10 forbids reading
+//!   either as empty) — and letting one of those propagate would abort the
+//!   page with the cursor unmoved, wedging the device on a single poisoned
+//!   row forever. The row is kept, the reason is recorded against it, and the
+//!   page carries on (§13.2 rule 5).
+//! - **One vocabulary.** The pull loop counts applied, deleted, skipped,
+//!   corrupt and expired; the field-merged path reports through the same
+//!   [`ApplyOutcome`] so the counters and the cursor cannot drift apart from
+//!   what actually happened (FR-032).
+//!
+//! **Nothing here enqueues.** §6.5.2's P3 — the merging device stores the
+//! union clock and does not re-push — is upheld by
+//! [`crate::domain::task_merge`], and a [`crate::sync::outbox::enqueue`]
+//! appearing anywhere on this path is that regression, not a convenience.
+
+use rusqlite::Connection;
+
+use crate::api::errors::StorageError;
+use crate::domain::tasks::Inbound;
+use crate::domain::{projects, tasks};
+use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
+
+use super::store;
+
+/// One decoded item, waiting for its turn in the apply order (§5.13).
+pub(crate) enum Pending {
+    Record(InboundRecord),
+    Tombstone {
+        item_type: String,
+        item_id: String,
+        deleted_at: i64,
+        server_cursor: Option<i64>,
+    },
+}
+
+impl Pending {
+    pub(crate) fn item_type(&self) -> &str {
+        match self {
+            Pending::Record(record) => &record.item_type,
+            Pending::Tombstone { item_type, .. } => item_type,
+        }
+    }
+
+    pub(crate) fn item_id(&self) -> &str {
+        match self {
+            Pending::Record(record) => &record.item_id,
+            Pending::Tombstone { item_id, .. } => item_id,
+        }
+    }
+}
+
+/// What one page's apply step did, in the five outcomes the pull reports.
+#[derive(Default)]
+pub(crate) struct ApplyTotals {
+    pub(crate) applied: usize,
+    pub(crate) deleted: usize,
+    /// §6.3.1: the local clock dominates. Work, not a failure.
+    pub(crate) skipped: usize,
+    pub(crate) corrupt: usize,
+    pub(crate) expired: usize,
+}
+
+/// Applies one page's decoded items, in the order they were handed over, plus
+/// the ids §5.12.1 leaves with no type on the wire.
+pub(crate) fn apply_page(
+    conn: &Connection,
+    pending: Vec<Pending>,
+    untyped: Vec<String>,
+    now_ms: i64,
+) -> Result<ApplyTotals, StorageError> {
+    let mut totals = ApplyTotals::default();
+    for item in pending {
+        match item {
+            Pending::Tombstone {
+                item_type,
+                item_id,
+                deleted_at,
+                server_cursor,
+            } => {
+                store::mark_deleted(
+                    conn,
+                    &item_type,
+                    &item_id,
+                    deleted_at,
+                    server_cursor,
+                    now_ms,
+                )?;
+                totals.deleted += 1;
+            }
+            Pending::Record(record) => {
+                // §5.12.1: a bare tombstone outranks the item that arrives
+                // after it, or the "does not resurrect it locally" guarantee
+                // holds only until the next page.
+                if store::has_bare_tombstone(conn, &record.item_id)? {
+                    store::mark_deleted(
+                        conn,
+                        &record.item_type,
+                        &record.item_id,
+                        now_ms,
+                        record.server_cursor,
+                        now_ms,
+                    )?;
+                    totals.deleted += 1;
+                    continue;
+                }
+                match apply_inbound(conn, &record, now_ms)? {
+                    ApplyOutcome::Applied => totals.applied += 1,
+                    ApplyOutcome::Skipped => totals.skipped += 1,
+                    ApplyOutcome::Corrupt { .. } => totals.corrupt += 1,
+                    ApplyOutcome::Expired => totals.expired += 1,
+                }
+            }
+        }
+    }
+    for item_id in untyped {
+        store::apply_untyped_tombstone(conn, &item_id, now_ms, now_ms)?;
+        totals.deleted += 1;
+    }
+    Ok(totals)
+}
+
+/// Chapter 06 §6.8's table, as the one `match` this core makes on it.
+///
+/// `task` and `project` run §6.3.1's document gate followed by §6.3's
+/// per-field rule; **every other subscribed type is stored wholesale**, which
+/// is what [`sync_items::apply_remote`] does. §6.8 also says a client MUST NOT
+/// infer the algorithm from the absence of a field list — the enumeration
+/// below is the table, not a heuristic over `fieldClocks`.
+pub fn apply_inbound(
+    conn: &Connection,
+    record: &InboundRecord,
+    now_ms: i64,
+) -> Result<ApplyOutcome, StorageError> {
+    let merged = match record.item_type.as_str() {
+        tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms),
+        projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
+        _ => return sync_items::apply_remote(conn, record, now_ms),
+    };
+    match merged {
+        Ok(inbound) => Ok(outcome(inbound)),
+        Err(error) => refuse(conn, record, &error.to_string(), now_ms),
+    }
+}
+
+/// The merge's own vocabulary, in the pull's.
+///
+/// `Merged`'s conflict set is deliberately dropped here. §6.5.3 and §6.5.4
+/// make the conflicts something a *caller* may show a user; §6.3.1's core
+/// obligation is that the core writes them nowhere, because desktop's
+/// `superseded` rows sync to every device as `task_activity`.
+fn outcome(inbound: Inbound) -> ApplyOutcome {
+    match inbound {
+        Inbound::Applied | Inbound::Merged { .. } => ApplyOutcome::Applied,
+        Inbound::Skipped => ApplyOutcome::Skipped,
+        Inbound::Corrupt { reason } => ApplyOutcome::Corrupt { reason },
+    }
+}
+
+/// A merge that could not proceed: the row stays, flagged, and the page goes
+/// on (§13.2 rule 5).
+///
+/// The merge branch rolled its transaction back before returning, so nothing
+/// half-written survives. Writing the flag through the same connection is also
+/// the honest test of *why* the merge failed: a payload this build cannot read
+/// leaves the flag; a disk or lock failure fails here too and propagates,
+/// rather than being recorded as a corrupt payload it never was.
+fn refuse(
+    conn: &Connection,
+    record: &InboundRecord,
+    reason: &str,
+    now_ms: i64,
+) -> Result<ApplyOutcome, StorageError> {
+    sync_items::upsert_metadata_only(
+        conn,
+        &record.item_type,
+        &record.item_id,
+        now_ms,
+        record.server_cursor,
+    )?;
+    sync_items::mark_corrupt(conn, &record.item_type, &record.item_id, reason, now_ms)?;
+    Ok(ApplyOutcome::Corrupt {
+        reason: reason.to_owned(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_two_field_merged_types_are_the_two_chapter_06_names() {
+        // §6.8 is an enumeration, not a heuristic. If either constant ever
+        // drifts, the dispatch silently stops merging and the last writer
+        // wins the whole payload again.
+        assert_eq!(tasks::ITEM_TYPE, "task");
+        assert_eq!(projects::ITEM_TYPE, "project");
+    }
+
+    #[test]
+    fn a_merge_outcome_maps_onto_the_pull_vocabulary_without_a_silent_skip() {
+        assert_eq!(outcome(Inbound::Applied), ApplyOutcome::Applied);
+        assert_eq!(
+            outcome(Inbound::Merged {
+                conflicted_fields: vec!["title".to_owned()],
+            }),
+            ApplyOutcome::Applied
+        );
+        assert_eq!(outcome(Inbound::Skipped), ApplyOutcome::Skipped);
+        assert_eq!(
+            outcome(Inbound::Corrupt {
+                reason: "bad".to_owned(),
+            }),
+            ApplyOutcome::Corrupt {
+                reason: "bad".to_owned(),
+            }
+        );
+    }
+}

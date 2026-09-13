@@ -159,6 +159,9 @@ fn wholesale(
     Ok(match sync_items::apply_remote(conn, record, now_ms)? {
         sync_items::ApplyOutcome::Applied => Inbound::Applied,
         sync_items::ApplyOutcome::Corrupt { reason } => Inbound::Corrupt { reason },
+        // The wholesale path runs no document gate, so it has no skip of its
+        // own to report; the §6.3.1 skip is decided above, before this call.
+        sync_items::ApplyOutcome::Skipped => Inbound::Skipped,
         // `task_activity` is the only expiring type (§13.12) and it is neither
         // of the two field-merged ones, so this arm is unreachable here.
         sync_items::ApplyOutcome::Expired => Inbound::Skipped,

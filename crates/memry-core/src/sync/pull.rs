@@ -25,8 +25,10 @@
 //!   has no type on the wire at all (§5.12.1).
 //!
 //! The loop never parses a payload into a typed struct: it hands the decrypted
-//! bytes to [`crate::storage::repositories::sync_items::apply_remote`], which
-//! stores them verbatim (chapter 13 §13.2).
+//! bytes to [`super::apply::apply_page`], which chooses the item's merge
+//! algorithm once (chapter 06 §6.8) and stores the bytes verbatim either way
+//! (chapter 13 §13.2). **This file must not learn an item type's name**: the
+//! one dispatch lives there, so that a route added later cannot forget it.
 
 use std::sync::Arc;
 
@@ -37,8 +39,9 @@ use crate::protocol::envelope::{self, EnvelopeError, RecordEnvelope, SyncOperati
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAULT_ID_HEADER};
 use crate::protocol::types::{ArrivingItemType, Declaration};
 use crate::storage::Db;
-use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
+use crate::storage::repositories::sync_items::{self, InboundRecord};
 
+use super::apply::{self, ApplyTotals, Pending};
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
 /// §5.10.2: a new client SHOULD request the server's ceiling. Five times fewer
@@ -85,6 +88,12 @@ pub struct PullReport {
     pub pages: u32,
     pub applied: usize,
     pub deleted: usize,
+    /// Chapter 06 §6.3.1: the local clock dominated, so the remote was not
+    /// applied. **Not corrupt and not nothing**: the item was processed, the
+    /// cursor advances past it, and it counts as the page having yielded —
+    /// or one legitimately skipped item on a page with one bad one would trip
+    /// §5.14's breaker and refuse a run that did its work.
+    pub skipped: usize,
     pub corrupt: usize,
     /// Past the 90-day `task_activity` horizon (chapter 13 §13.12). **Not
     /// corrupt**: the row is expired and the cursor still advances past it.
@@ -110,26 +119,6 @@ struct ChangesPage {
     deleted: Vec<String>,
     has_more: bool,
     next_cursor: Option<String>,
-}
-
-/// One decoded item, waiting for its turn in the apply order.
-enum Pending {
-    Record(InboundRecord),
-    Tombstone {
-        item_type: String,
-        item_id: String,
-        deleted_at: i64,
-        server_cursor: Option<i64>,
-    },
-}
-
-impl Pending {
-    fn item_type(&self) -> &str {
-        match self {
-            Pending::Record(record) => &record.item_type,
-            Pending::Tombstone { item_type, .. } => item_type,
-        }
-    }
 }
 
 /// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
@@ -183,6 +172,7 @@ impl PullLoop {
             total.pages += page.pages;
             total.applied += page.applied;
             total.deleted += page.deleted;
+            total.skipped += page.skipped;
             total.corrupt += page.corrupt;
             total.expired += page.expired;
             total.dropped_pages += page.dropped_pages;
@@ -253,6 +243,7 @@ impl PullLoop {
         let outcomes = self.apply_all(pending, untyped).await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
+        report.skipped += outcomes.skipped;
         report.corrupt += outcomes.corrupt;
         report.expired += outcomes.expired;
 
@@ -268,7 +259,7 @@ impl PullLoop {
         report.cursor = advanced;
 
         // §5.14's breaker, all three conditions or none.
-        let yielded = report.applied + report.deleted + report.expired;
+        let yielded = report.applied + report.deleted + report.skipped + report.expired;
         report.refused = yielded == 0 && report.corrupt > 0 && !ids.is_empty();
 
         Ok(report)
@@ -308,6 +299,7 @@ impl PullLoop {
         let outcomes = self.apply_all(pending, Vec::new()).await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
+        report.skipped += outcomes.skipped;
         report.corrupt += outcomes.corrupt;
         report.expired += outcomes.expired;
         Ok(report)
@@ -415,6 +407,9 @@ impl PullLoop {
         Ok(())
     }
 
+    /// Hands the page to [`apply`], which owns every decision about what an
+    /// item's type means. The loop's only remaining job is the clock it is
+    /// applied at.
     async fn apply_all(
         &self,
         pending: Vec<Pending>,
@@ -423,66 +418,9 @@ impl PullLoop {
         let now = now_ms();
         Ok(self
             .db
-            .call(move |conn| {
-                let mut totals = ApplyTotals::default();
-                for item in pending {
-                    match item {
-                        Pending::Tombstone {
-                            item_type,
-                            item_id,
-                            deleted_at,
-                            server_cursor,
-                        } => {
-                            store::mark_deleted(
-                                conn,
-                                &item_type,
-                                &item_id,
-                                deleted_at,
-                                server_cursor,
-                                now,
-                            )?;
-                            totals.deleted += 1;
-                        }
-                        Pending::Record(record) => {
-                            // §5.12.1: a bare tombstone outranks the item that
-                            // arrives after it, or the "does not resurrect it
-                            // locally" guarantee holds only until the next page.
-                            if store::has_bare_tombstone(conn, &record.item_id)? {
-                                store::mark_deleted(
-                                    conn,
-                                    &record.item_type,
-                                    &record.item_id,
-                                    now,
-                                    record.server_cursor,
-                                    now,
-                                )?;
-                                totals.deleted += 1;
-                                continue;
-                            }
-                            match sync_items::apply_remote(conn, &record, now)? {
-                                ApplyOutcome::Applied => totals.applied += 1,
-                                ApplyOutcome::Corrupt { .. } => totals.corrupt += 1,
-                                ApplyOutcome::Expired => totals.expired += 1,
-                            }
-                        }
-                    }
-                }
-                for item_id in untyped {
-                    store::apply_untyped_tombstone(conn, &item_id, now, now)?;
-                    totals.deleted += 1;
-                }
-                Ok(totals)
-            })
+            .call(move |conn| apply::apply_page(conn, pending, untyped, now))
             .await?)
     }
-}
-
-#[derive(Default)]
-struct ApplyTotals {
-    applied: usize,
-    deleted: usize,
-    corrupt: usize,
-    expired: usize,
 }
 
 /// §5.13's `PULL_APPLY_ORDER`. **Everything unlisted is rank 1.**
@@ -509,10 +447,7 @@ fn requested_ids(page: &ChangesPage) -> Vec<String> {
 }
 
 fn typed_covers(pending: &[Pending], id: &str) -> bool {
-    pending.iter().any(|item| match item {
-        Pending::Record(record) => record.item_id == id,
-        Pending::Tombstone { item_id, .. } => item_id == id,
-    })
+    pending.iter().any(|item| item.item_id() == id)
 }
 
 /// Reads the page shape tolerantly: chapter 13 §13.2.2 permits ignoring an

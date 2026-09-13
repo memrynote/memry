@@ -185,3 +185,120 @@ fn there_is_no_project_write_to_call_and_the_refusal_names_the_operation() {
     assert!(message.contains("delete"), "{message}");
     assert!(message.contains("read-only"), "{message}");
 }
+
+/// **Spec defect 53's shape, on `project`.** The same substitute-never-refuse
+/// obligation (§13.3, data-model §A.4), over the ten fields the projector once
+/// marked non-nullable — including the two nested arrays, where §13.4 makes an
+/// explicit `null` a clear exactly as an explicit `[]` is.
+#[test]
+fn an_explicit_null_in_every_project_field_projects_instead_of_landing_corrupt() {
+    let db = open("projects-null-tolerance");
+    db.call_blocking(|conn| {
+        // A first version with a status, so the clear below has something to
+        // clear rather than passing vacuously.
+        apply(
+            conn,
+            "proj-null",
+            json!({
+                "name": "Native iOS",
+                "color": "#0ea5e9",
+                "statuses": [{"id": "todo", "name": "Todo", "color": "#888", "position": 0}]
+            }),
+        );
+        let seeded: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM project_statuses WHERE project_id = 'proj-null'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("count the statuses");
+        assert_eq!(seeded, 1);
+
+        let outcome = sync_items::apply_remote(
+            conn,
+            &record(
+                "proj-null",
+                json!({
+                    "name": Value::Null,
+                    "color": Value::Null,
+                    "position": Value::Null,
+                    "isInbox": Value::Null,
+                    "statuses": Value::Null,
+                    "links": Value::Null,
+                    "clock": Value::Null,
+                    "fieldClocks": Value::Null,
+                    "createdAt": Value::Null,
+                    "modifiedAt": Value::Null
+                }),
+            ),
+            NOW + 1_000,
+        )?;
+        assert_eq!(
+            outcome,
+            sync_items::ApplyOutcome::Applied,
+            "a substituted default, never a corrupt row"
+        );
+
+        let (name, color, position, is_inbox): (String, String, i64, i64) = conn
+            .query_row(
+                "SELECT name, color, position, is_inbox FROM projects WHERE id = 'proj-null'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .expect("the project projection");
+        assert_eq!(
+            (name.as_str(), color.as_str(), position, is_inbox),
+            ("", "", 0, 0)
+        );
+
+        let (clock, created): (Option<String>, Option<i64>) = conn
+            .query_row(
+                "SELECT clock, created_at FROM projects WHERE id = 'proj-null'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("the project projection");
+        assert_eq!((clock, created), (None, None));
+
+        // §13.4: an explicit null is a clear, not an absent key.
+        let left: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM project_statuses WHERE project_id = 'proj-null'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("count the statuses");
+        assert_eq!(left, 0, "an explicit null clears the nested rows");
+        Ok(())
+    })
+    .expect("the null-tolerant apply");
+}
+
+/// The other half of §13.4, and the reason the clear above cannot be widened
+/// into "any non-array clears": an **absent** array keeps the local rows.
+#[test]
+fn an_absent_nested_array_keeps_the_projected_rows() {
+    let db = open("projects-absent-array");
+    db.call_blocking(|conn| {
+        apply(
+            conn,
+            "proj-keep",
+            json!({
+                "name": "Native iOS",
+                "statuses": [{"id": "todo", "name": "Todo", "color": "#888", "position": 0}]
+            }),
+        );
+        apply(conn, "proj-keep", json!({"name": "Renamed"}));
+
+        let left: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM project_statuses WHERE project_id = 'proj-keep'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("count the statuses");
+        assert_eq!(left, 1, "absent means the sender does not know the field");
+        Ok(())
+    })
+    .expect("the absent array");
+}

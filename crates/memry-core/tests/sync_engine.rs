@@ -27,6 +27,7 @@ use std::sync::{Arc, Mutex};
 
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::ApiError;
+use memry_core::domain::tasks;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
@@ -35,7 +36,7 @@ use memry_core::storage::repositories::Change;
 use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::engine::{PassReport, PushWave, SyncEngine};
-use memry_core::sync::pull::{PullLoop, RecordCipher};
+use memry_core::sync::pull::{PullLoop, PullReport, RecordCipher};
 use memry_core::sync::state::{PassTrigger, SyncState, WriteGate, is_drawn};
 use memry_core::sync::store::{self, RECORD_CURSOR_SCOPE};
 use serde_json::{Value as Json, json};
@@ -699,4 +700,319 @@ async fn the_push_payload_is_rebuilt_from_the_live_row_and_a_pull_apply_enqueues
         Ok(())
     })
     .expect("read back");
+}
+
+// -------------------------------- the field merge, on the real pull path
+
+/// The moment the two local edits below were made, and the ancestor every
+/// remote payload in this section is built from.
+const MERGE_NOW: i64 = 1_760_000_000_000;
+
+fn new_task(id: &str) -> memry_core::domain::tasks::NewTask<'_> {
+    memry_core::domain::tasks::NewTask {
+        id,
+        title: "Ship the spec",
+        project_id: "proj-1",
+        due_date: Some("2026-04-20"),
+        due_time: None,
+        priority: 2,
+        repeat_config: None,
+        tags: &[],
+    }
+}
+
+/// A task created here and retitled here: `clock` reaches `{device-a: 2}` and
+/// `title`'s field clock with it, while the other fourteen stay at
+/// `{device-a: 1}` (chapter 06 §6.7).
+fn seed_locally_edited_task(db: &Db, id: &str) {
+    let id = id.to_owned();
+    db.call_blocking(move |conn| {
+        tasks::create(conn, &new_task(&id), "device-a", MERGE_NOW)?;
+        tasks::set_title(conn, &id, "Local title", "device-a", MERGE_NOW + 1_000)?;
+        Ok(())
+    })
+    .expect("the local edits");
+}
+
+fn outbox_rows(db: &Db, item_id: &str) -> i64 {
+    let item_id = item_id.to_owned();
+    db.call_blocking(move |conn| {
+        conn.query_row(
+            "SELECT count(*) FROM outbox WHERE item_id = ?1",
+            [&item_id],
+            |row| row.get(0),
+        )
+        .map_err(|error| memry_core::api::errors::StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("count the queue")
+}
+
+fn stored_payload(db: &Db, item_type: &str, item_id: &str) -> Json {
+    let item_type = item_type.to_owned();
+    let item_id = item_id.to_owned();
+    let raw = db
+        .call_blocking(move |conn| sync_items::push_payload(conn, &item_type, &item_id))
+        .expect("read the row")
+        .expect("a payload");
+    serde_json::from_str(&raw).expect("valid JSON")
+}
+
+/// One page carrying exactly one record, opened to `payload`.
+async fn pull_one(db: &Db, id: &str, item_type: &str, payload: &str, cursor: &str) -> PullReport {
+    let transport = FakeTransport::new(vec![
+        response(200, &changes(&[(id, item_type)], &[], cursor)),
+        response(
+            200,
+            &json!({"items": [envelope(id, item_type)]}).to_string(),
+        ),
+    ]);
+    let cipher = ScriptedCipher::new(&[(id, payload)]);
+    loop_for(transport, db.clone(), cipher)
+        .pull_page()
+        .await
+        .expect("the page")
+}
+
+/// **FR-002 and FR-059, end to end**, and the thing G5 checks against a real
+/// desktop: device A changed `title`, device B changed `dueDate`, and both
+/// changes are in the row when the pull is done.
+///
+/// The value of driving the real `/sync/changes` → `/sync/pull` → apply →
+/// advance sequence rather than calling `tasks::apply_remote` is the whole
+/// point of this test: the merge was written, unit tested and **unreachable**,
+/// because the loop routed every type through the wholesale apply. A test one
+/// layer down passes either way.
+#[tokio::test]
+async fn a_concurrent_task_edit_keeps_both_field_changes_through_the_real_pull() {
+    let db = scratch_db("pull-task-merge");
+    seed_locally_edited_task(&db, "task-1");
+    let queued_before = outbox_rows(&db, "task-1");
+
+    // Device B moved the due date from the create's own state, so `dueDate`
+    // reaches {device-a: 1, device-b: 1} and `title` stays at {device-a: 1}.
+    // The document clocks are concurrent, so §6.3.1 says merge.
+    let remote = json!({
+        "title": "Ship the spec",
+        "dueDate": "2026-05-01",
+        "projectId": "proj-1",
+        "clock": {"device-a": 1, "device-b": 1},
+        "fieldClocks": {
+            "title": {"device-a": 1},
+            "dueDate": {"device-a": 1, "device-b": 1}
+        }
+    })
+    .to_string();
+
+    let report = pull_one(&db, "task-1", "task", &remote, "21").await;
+
+    assert_eq!(report.applied, 1);
+    assert_eq!(report.corrupt, 0);
+    assert_eq!(report.skipped, 0);
+    assert!(!report.refused);
+    assert_eq!(report.cursor.as_deref(), Some("21"));
+
+    let parsed = stored_payload(&db, "task", "task-1");
+    // FR-059's acceptance: neither edit was lost.
+    assert_eq!(
+        parsed["title"],
+        json!("Local title"),
+        "the local title outweighs the remote's older field clock"
+    );
+    assert_eq!(
+        parsed["dueDate"],
+        json!("2026-05-01"),
+        "the remote due date outweighs the local's older field clock"
+    );
+    // §6.3 step 7 and §6.3.1: the union, on the document and on the field.
+    assert_eq!(parsed["clock"], json!({"device-a": 2, "device-b": 1}));
+    assert_eq!(parsed["fieldClocks"]["title"], json!({"device-a": 2}));
+    assert_eq!(
+        parsed["fieldClocks"]["dueDate"],
+        json!({"device-a": 1, "device-b": 1})
+    );
+
+    // §6.5.2 P3: the merging device stores the union clock and does **not**
+    // re-push. A queue row here is the §6.5.1 case-3c divergence coming back.
+    assert_eq!(outbox_rows(&db, "task-1"), queued_before);
+
+    db.call_blocking(|conn| {
+        // The projection followed the merge, which is what a UI reads.
+        let (title, due): (String, Option<String>) = conn
+            .query_row(
+                "SELECT title, due_date FROM tasks WHERE id = 'task-1'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("the task projection");
+        assert_eq!(title, "Local title");
+        assert_eq!(due.as_deref(), Some("2026-05-01"));
+        Ok(())
+    })
+    .expect("read back");
+}
+
+/// The second field-merged type takes the same route (§6.8), through the same
+/// dispatch, on the same page.
+#[tokio::test]
+async fn a_concurrent_project_edit_merges_on_the_same_pull_path() {
+    let db = scratch_db("pull-project-merge");
+
+    // A project as it arrives the first time: no local clock, so §6.3.1
+    // applies it wholesale.
+    let first = json!({
+        "name": "Native iOS",
+        "color": "#0ea5e9",
+        "clock": {"device-a": 1},
+        "fieldClocks": {"name": {"device-a": 1}, "color": {"device-a": 1}}
+    })
+    .to_string();
+    assert_eq!(
+        pull_one(&db, "proj-1", "project", &first, "1")
+            .await
+            .applied,
+        1
+    );
+
+    // Then two devices edit different fields of it concurrently: this device
+    // renamed it — ticking the document clock and `name`'s field clock, which
+    // is what §6.6 says a local edit does — and the remote recoloured it.
+    db.call_blocking(|conn| {
+        sync_items::apply_local_edit(
+            conn,
+            "project",
+            "proj-1",
+            &[
+                ("name", Change::set("Renamed here")),
+                ("clock", Change::Set(json!({"device-a": 2}))),
+                (
+                    "fieldClocks",
+                    Change::Set(json!({
+                        "name": {"device-a": 2},
+                        "color": {"device-a": 1}
+                    })),
+                ),
+            ],
+            MERGE_NOW,
+        )
+        .map(|_| ())
+    })
+    .expect("the local rename");
+
+    let remote = json!({
+        "name": "Native iOS",
+        "color": "#f97316",
+        "clock": {"device-a": 1, "device-b": 1},
+        "fieldClocks": {
+            "name": {"device-a": 1},
+            "color": {"device-a": 1, "device-b": 1}
+        }
+    })
+    .to_string();
+    let report = pull_one(&db, "proj-1", "project", &remote, "2").await;
+
+    assert_eq!(report.applied, 1);
+    assert_eq!(report.corrupt, 0);
+    let parsed = stored_payload(&db, "project", "proj-1");
+    assert_eq!(parsed["name"], json!("Renamed here"));
+    assert_eq!(parsed["color"], json!("#f97316"));
+}
+
+/// §6.3.1's skip is **work**, and the page that did it has yielded.
+///
+/// Counting it as nothing would let one legitimately skipped item on a page
+/// with one corrupt one trip §5.14's breaker and refuse a run that processed
+/// everything it was given.
+#[tokio::test]
+async fn a_dominating_local_clock_is_a_skip_and_not_a_refusal() {
+    let db = scratch_db("pull-skip");
+    seed_locally_edited_task(&db, "task-1");
+
+    // {device-a: 1} against the local {device-a: 2}: the local clock is
+    // strictly `after`, so the remote is skipped entirely.
+    let remote = json!({
+        "title": "Stale remote title",
+        "clock": {"device-a": 1},
+        "fieldClocks": {"title": {"device-a": 1}}
+    })
+    .to_string();
+    let report = pull_one(&db, "task-1", "task", &remote, "31").await;
+
+    assert_eq!(report.skipped, 1);
+    assert_eq!(report.applied, 0);
+    assert_eq!(report.corrupt, 0);
+    assert!(!report.refused, "a skip is not nothing");
+    assert_eq!(report.cursor.as_deref(), Some("31"));
+    assert_eq!(
+        stored_payload(&db, "task", "task-1")["title"],
+        json!("Local title")
+    );
+}
+
+/// A merge that cannot proceed is **corrupt with the row kept**, never a
+/// silent skip and never an aborted page.
+///
+/// Letting the error out of the apply would leave the cursor unmoved and wedge
+/// the device on this one row forever, which is the failure §5.14's second
+/// half exists to prevent.
+#[tokio::test]
+async fn a_merge_that_cannot_proceed_is_corrupt_and_keeps_the_row() {
+    let db = scratch_db("pull-merge-corrupt");
+    seed_locally_edited_task(&db, "task-1");
+
+    // A stored `fieldClocks` that will not parse. §6.10: reading it as empty
+    // would lower `clockTotal` and hand the next peer every field, so
+    // `task_merge` refuses — and that refusal has to land somewhere.
+    let local_before = db
+        .call_blocking(|conn| {
+            let mut payload = stored_json(conn, "task", "task-1");
+            payload["fieldClocks"] = json!({"title": {"device-a": "two"}});
+            let raw = payload.to_string();
+            conn.execute(
+                "UPDATE sync_items SET payload = ?1 WHERE item_type = 'task' AND item_id = 'task-1'",
+                [&raw],
+            )
+            .expect("inject the unreadable field clocks");
+            Ok(raw)
+        })
+        .expect("the injected row");
+
+    let remote = json!({
+        "title": "Remote title",
+        "clock": {"device-b": 1},
+        "fieldClocks": {"title": {"device-b": 1}}
+    })
+    .to_string();
+    let report = pull_one(&db, "task-1", "task", &remote, "41").await;
+
+    assert_eq!(report.corrupt, 1);
+    assert_eq!(report.applied, 0);
+    assert_eq!(report.skipped, 0);
+    // §5.14, both halves: the page produced only corruption, so the run is
+    // refused **and** the cursor still advanced past it.
+    assert!(report.refused);
+    assert_eq!(report.cursor.as_deref(), Some("41"));
+
+    db.call_blocking(move |conn| {
+        let row = sync_items::load(conn, "task", "task-1")?.expect("the row is still there");
+        assert_eq!(
+            row.payload.as_deref(),
+            Some(local_before.as_str()),
+            "§13.2 rule 5: the bytes are kept, not overwritten by a merge that failed"
+        );
+        assert!(
+            row.corrupt_reason.is_some(),
+            "flagged, never a silent skip: {row:?}"
+        );
+        Ok(())
+    })
+    .expect("read back");
+}
+
+fn stored_json(conn: &rusqlite::Connection, item_type: &str, item_id: &str) -> Json {
+    let raw = sync_items::push_payload(conn, item_type, item_id)
+        .expect("read the row")
+        .expect("a payload");
+    serde_json::from_str(&raw).expect("valid JSON")
 }

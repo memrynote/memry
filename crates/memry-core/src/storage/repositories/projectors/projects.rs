@@ -22,21 +22,28 @@ use super::{
     text_or_default,
 };
 
+/// **Every entry is `opt_null`**, for the reason `TASK_FIELDS` in the sibling
+/// `tasks` module gives at length: §13.3 and §A.4
+/// oblige a projector to substitute rather than refuse, and every writer below
+/// absorbs `Value::Null` — `text_or_default`, `number_or_default` and `flag`
+/// fall back to the column's declared default, `json` and `instant` write SQL
+/// NULL into a nullable column, and the two nested arrays treat an explicit
+/// null as the clear §13.4 says it is.
 const PROJECT_FIELDS: &[Field] = &[
-    Field::opt("name", Kind::Text),
+    Field::opt_null("name", Kind::Text),
     Field::opt_null("description", Kind::Text),
-    Field::opt("color", Kind::Text),
+    Field::opt_null("color", Kind::Text),
     Field::opt_null("icon", Kind::Text),
-    Field::opt("position", Kind::Number),
-    Field::opt("isInbox", Kind::Bool),
+    Field::opt_null("position", Kind::Number),
+    Field::opt_null("isInbox", Kind::Bool),
     Field::opt_null("archivedAt", Kind::Text),
     Field::opt_null("homeNoteId", Kind::Text),
-    Field::opt("statuses", Kind::Array),
-    Field::opt("links", Kind::Array),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("fieldClocks", Kind::ClockMap),
-    Field::opt("createdAt", Kind::Text),
-    Field::opt("modifiedAt", Kind::Text),
+    Field::opt_null("statuses", Kind::Array),
+    Field::opt_null("links", Kind::Array),
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("fieldClocks", Kind::ClockMap),
+    Field::opt_null("createdAt", Kind::Text),
+    Field::opt_null("modifiedAt", Kind::Text),
 ];
 
 pub fn read_project(parsed: &Object) -> Result<Object, ProjectionError> {
@@ -95,6 +102,22 @@ pub fn project_project(
     project_links(conn, item, view)
 }
 
+/// One of the two nested arrays, with §13.4 applied to it.
+///
+/// Absent is `None` — "the sender does not know this field", so the projected
+/// rows stay. An explicit `null` is a **clear**, exactly as an explicit `[]`
+/// is, and reads as the empty array that replaces them. Anything else that is
+/// not an array is left alone rather than treated as a clear: the schema let
+/// it through as `Kind::Array`, so it cannot be reached, and guessing at a
+/// shape is how a projector loses rows it was only asked to cache.
+fn nested<'a>(view: &'a Object, key: &str) -> Option<&'a [Value]> {
+    match view.get(key)? {
+        Value::Null => Some(&[]),
+        Value::Array(items) => Some(items),
+        _ => None,
+    }
+}
+
 /// The nested `statuses` array (`StatusSyncSchema`).
 ///
 /// Replaced wholesale: the array is the whole truth for this project, so a
@@ -104,7 +127,7 @@ fn project_statuses(
     item: ItemContext<'_>,
     view: &Object,
 ) -> Result<(), StorageError> {
-    let Some(statuses) = view.get("statuses").and_then(Value::as_array) else {
+    let Some(statuses) = nested(view, "statuses") else {
         return Ok(());
     };
 
@@ -164,7 +187,7 @@ fn project_links(
     item: ItemContext<'_>,
     view: &Object,
 ) -> Result<(), StorageError> {
-    let Some(links) = view.get("links").and_then(Value::as_array) else {
+    let Some(links) = nested(view, "links") else {
         return Ok(());
     };
 

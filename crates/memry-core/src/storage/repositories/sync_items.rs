@@ -79,6 +79,17 @@ pub struct InboundRecord {
 pub enum ApplyOutcome {
     /// Stored and projected.
     Applied,
+    /// Chapter 06 §6.3.1: the local clock **dominates** the remote's, so the
+    /// remote is not applied at all and nothing is written.
+    ///
+    /// Work, not a failure, and not the same thing as desktop's `'skipped'`
+    /// (§13.2.1): the item was read, its fate was decided, and the caller
+    /// advances its cursor past it with the local copy intact.
+    /// [`apply_remote`] never returns it — the wholesale path has no document
+    /// gate — but the vocabulary is shared with the field-merged path at
+    /// [`crate::sync::apply::apply_inbound`], so the pull counts one set of
+    /// outcomes rather than two.
+    Skipped,
     /// Stored, not projected, and flagged. §13.2 rule 5: never a silent skip.
     Corrupt { reason: String },
     /// A `task_activity` row past the 90-day horizon (§13.12). **Not corrupt**:
