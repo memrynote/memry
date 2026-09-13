@@ -19,6 +19,10 @@ export function isForMountedDoc(msg: HostMsg, mountedDocId: string | null): bool
     case 'y-update':
     case 'export-markdown':
     case 'export-html':
+    // A seed REPLACES the whole document, so it is strict for the same reason
+    // `y-update` is: applied to the wrong note it wipes a body that was never
+    // being created (T124).
+    case 'seed-from-markdown':
     // A block move's answer DELETES the block it names, so it is strict for the
     // same reason `y-update` is: applied to the wrong note it reads as a note
     // that lost a paragraph on its own (#2100).

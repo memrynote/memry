@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "test": "vitest run",
     "editor:build": "node ./scripts/build-editor-web.mjs",
     "editor:check": "node ./scripts/build-editor-web.mjs --check",
     "typecheck": "tsc --noEmit -p tsconfig.json"

@@ -29,6 +29,7 @@ import { bindAssetBridge } from './assets.ts'
 import { TextSelection } from 'prosemirror-state'
 import { installExternalLinks } from './external-links.ts'
 import { installImageResolver } from './images.ts'
+import { exportMarkdown, seedFromDocLoad, seedFromMarkdown } from './markdown-bridge.ts'
 import { isForMountedDoc } from './routing.ts'
 import { createMobileEditorSchema } from './schema.ts'
 import {
@@ -233,26 +234,38 @@ bridge.onHostMsg((msg) => {
 
     case 'export-markdown': {
       if (!mounted || !isForMountedDoc(msg, mounted.docId)) return
-      const editor = mounted.editor
-      try {
-        const markdown = editor.blocksToMarkdownLossy(editor.document)
+      bridge.send({
+        type: 'markdown-export',
+        reqId: msg.reqId,
+        docId: mounted.docId,
+        result: exportMarkdown(mounted.editor)
+      })
+      bridge.flush()
+      break
+    }
+
+    case 'seed-from-markdown': {
+      // Answered even when the request names a note that is not mounted, the
+      // way `export-html` is and for a sharper reason: the host is holding the
+      // ONLY copy of the user's requested content and clears it on a seed that
+      // lands (data-model §A.3). Silence would leave that copy waiting on an
+      // answer that never comes.
+      if (!mounted || !isForMountedDoc(msg, mounted.docId)) {
         bridge.send({
-          type: 'markdown-export',
+          type: 'markdown-seed',
           reqId: msg.reqId,
-          docId: mounted.docId,
-          result: { status: 'ok', markdown }
+          docId: msg.docId,
+          result: { status: 'error', detail: 'That note is not open here' }
         })
-      } catch (error) {
-        bridge.send({
-          type: 'markdown-export',
-          reqId: msg.reqId,
-          docId: mounted.docId,
-          result: {
-            status: 'error',
-            detail: error instanceof Error ? error.message : String(error)
-          }
-        })
+        bridge.flush()
+        return
       }
+      bridge.send({
+        type: 'markdown-seed',
+        reqId: msg.reqId,
+        docId: mounted.docId,
+        result: seedFromMarkdown(mounted.editor, msg.content)
+      })
       bridge.flush()
       break
     }
@@ -443,12 +456,10 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   // Seeding is deliberately AFTER the doc is wired up: the parsed blocks then
   // travel the ordinary local-update path, so the seed is persisted and queued
   // like anything the user typed rather than living only in this replica.
-  if (seedMarkdown && seedMarkdown.trim().length > 0 && isEditorEmpty(editor)) {
-    try {
-      const blocks = editor.tryParseMarkdownToBlocks(seedMarkdown)
-      if (blocks.length > 0) editor.replaceBlocks(editor.document, blocks)
-    } catch (err) {
-      bridge.send({ type: 'err', code: 'SEED_PARSE_FAILED', detail: String(err) })
+  if (seedMarkdown) {
+    const outcome = seedFromDocLoad(editor, seedMarkdown)
+    if (outcome.status === 'error') {
+      bridge.send({ type: 'err', code: 'SEED_PARSE_FAILED', detail: outcome.detail })
       bridge.flush()
     }
   }
@@ -566,21 +577,6 @@ function stripEditingAffordances(element: HTMLElement): void {
       if (attribute.name.startsWith('aria-')) node.removeAttribute(attribute.name)
     }
   }
-}
-
-/**
- * Whether the document holds nothing but its trailing empty paragraph.
- *
- * BlockNote always keeps one block, so "no blocks" is never the answer; an
- * empty doc is a single block with no content.
- */
-function isEditorEmpty(editor: MobileEditor): boolean {
-  const blocks = editor.document
-  if (blocks.length > 1) return false
-  const only = blocks[0]
-  if (!only) return true
-  const content = only.content
-  return !Array.isArray(content) || content.length === 0
 }
 
 /**

@@ -1,43 +1,19 @@
 import matter from 'gray-matter'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
+import { splitFrontmatterBlock } from '@memry/shared/frontmatter-split'
 
 export type Eol = '\n' | '\r\n'
 
-export interface FrontmatterSplit {
-  /**
-   * Exact original substring from byte 0 (BOM included) through the closing
-   * `---` line and its EOL, or null when the file has no frontmatter.
-   * `block + body === raw` always holds, byte-exact.
-   */
-  block: string | null
-  body: string
-}
-
 /**
- * Slice the raw frontmatter block ourselves (same `---` delimiters gray-matter
- * uses) so re-emitting it is byte-exact by construction — comments, key order,
- * quoting, CR bytes and BOM all survive. An unclosed block is not frontmatter.
+ * The splitter moved to `@memry/shared/frontmatter-split` (T124) so the WebView
+ * editor bundle can use the SAME one — it splits a note's create-time `content`
+ * itself, and this module cannot travel there because gray-matter is Node-only.
+ * Re-exported unchanged: every caller here still imports it from `@memry/app-core`,
+ * and chapter 12 §12.4.1's byte-exactness is a property of the function, not of
+ * the file it sits in.
  */
-export function splitFrontmatterBlock(raw: string): FrontmatterSplit {
-  const bom = raw.charCodeAt(0) === 0xfeff ? 1 : 0
-  const rest = bom ? raw.slice(1) : raw
-  const firstNl = rest.indexOf('\n')
-  if (firstNl === -1) return { block: null, body: raw }
-  if (rest.slice(0, firstNl).replace(/\r$/, '') !== '---') return { block: null, body: raw }
-
-  let from = firstNl + 1
-  while (from <= rest.length) {
-    const nl = rest.indexOf('\n', from)
-    const lineEnd = nl === -1 ? rest.length : nl
-    if (rest.slice(from, lineEnd).replace(/\r$/, '') === '---') {
-      const blockEnd = nl === -1 ? rest.length : nl + 1
-      return { block: raw.slice(0, bom + blockEnd), body: rest.slice(blockEnd) }
-    }
-    if (nl === -1) break
-    from = nl + 1
-  }
-  return { block: null, body: raw }
-}
+export { splitFrontmatterBlock }
+export type { FrontmatterSplit } from '@memry/shared/frontmatter-split'
 
 export interface ParsedMarkdownNote {
   frontmatter: Record<string, unknown>

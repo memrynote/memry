@@ -228,6 +228,37 @@ export const HostExportMarkdownSchema = z.object({
 })
 
 /**
+ * The other half of the markdown pair: turn markdown INTO the mounted document,
+ * on note creation and on template application (T124). Answered by
+ * `markdown-seed`, always.
+ *
+ * Added AT `BRIDGE_PROTOCOL_VERSION` 1, on the argument `insert-attachment`
+ * sets out above: the guest is a prebuilt asset shipping inside the app that
+ * speaks to it, so there is no older peer on this boundary. A host that never
+ * sends this — every shipped build today — behaves exactly as it does now,
+ * because `doc-load.seedMarkdown` is untouched and still the only seed such a
+ * host knows how to ask for.
+ *
+ * `content` is the note record's create-time `content` payload VERBATIM,
+ * frontmatter included. The core never interprets those bytes (data-model
+ * §A.3); the guest splits the frontmatter block off with the shared splitter
+ * (`@memry/shared/frontmatter-split`) and parses only the body, which is what
+ * keeps markdown — frontmatter and all — out of every non-editor client.
+ *
+ * The frontmatter is then DISCARDED rather than read. A new note's tags and
+ * properties come from the note record, which the core has already written
+ * (`crates/memry-core/src/domain/notes.rs`, `templates.rs`); a guest that
+ * re-derived them here would be a second source of truth that can disagree
+ * with the record over the same note.
+ */
+export const HostSeedFromMarkdownSchema = z.object({
+  type: z.literal('seed-from-markdown'),
+  reqId: z.string().min(1),
+  docId: z.string().min(1),
+  content: z.string()
+})
+
+/**
  * Request the mounted document as a standalone HTML page, for export. Additive
  * within v1 for the reason `insert-attachment` sets out above.
  *
@@ -534,6 +565,7 @@ export const HostMsgSchema = z.discriminatedUnion('type', [
   HostExecSchema,
   HostInsertAttachmentSchema,
   HostExportMarkdownSchema,
+  HostSeedFromMarkdownSchema,
   HostExportHtmlSchema,
   HostLinkPreviewSchema,
   HostProbeSchema,
@@ -636,6 +668,39 @@ export const GuestMarkdownExportSchema = z.object({
   result: z.discriminatedUnion('status', [
     z.object({ status: z.literal('ok'), markdown: z.string() }),
     z.object({ status: z.literal('error'), detail: z.string() })
+  ])
+})
+
+/**
+ * Answer to `seed-from-markdown`. ALWAYS sent, every outcome included.
+ *
+ * The host holds the create-time `content` in `note_bodies.seed_markdown` and
+ * clears it only once the seeding has actually landed (data-model §A.3), so
+ * this message is what makes that lifecycle real — silence would leave the one
+ * remaining copy of the user's requested content with nothing to resolve it.
+ *
+ * Three outcomes rather than an ok/error pair, because the host does different
+ * things with them:
+ *
+ * - `seeded` — the blocks are in the document and travelled the ordinary local
+ *   update path, so the seed is spent and may be cleared.
+ * - `skipped` — nothing to do and nothing wrong. `not-empty` means the document
+ *   already had content, so the seed has been superseded; `no-body` means the
+ *   payload was blank or frontmatter-only, which is the ordinary
+ *   `content: ''` create. Both are spent.
+ * - `error` — the markdown could not be parsed. The document is left UNTOUCHED
+ *   and the seed MUST NOT be cleared. A silent empty document here would
+ *   destroy the content the user asked for and read as their own doing, which
+ *   is why a parse failure is a reported outcome and never an empty seed.
+ */
+export const GuestMarkdownSeedSchema = z.object({
+  type: z.literal('markdown-seed'),
+  reqId: z.string().min(1),
+  docId: z.string().min(1),
+  result: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('seeded') }),
+    z.object({ status: z.literal('skipped'), reason: z.enum(['not-empty', 'no-body']) }),
+    z.object({ status: z.literal('error'), detail: z.string().min(1) })
   ])
 })
 
@@ -857,6 +922,7 @@ export const GuestMsgSchema = z.discriminatedUnion('type', [
   GuestEditorFocusSchema,
   GuestToolbarSelectionSchema,
   GuestMarkdownExportSchema,
+  GuestMarkdownSeedSchema,
   GuestHtmlExportSchema,
   GuestNavSchema,
   GuestOpenExternalSchema,
@@ -893,6 +959,9 @@ export type GuestMsg = z.infer<typeof GuestMsgSchema>
 export type HostEnvelope = z.infer<typeof HostEnvelopeSchema>
 export type GuestEnvelope = z.infer<typeof GuestEnvelopeSchema>
 export type BridgeCfg = z.infer<typeof BridgeCfgSchema>
+/** Outcome halves of the markdown pair, so the guest states one type, not two. */
+export type MarkdownExportResult = z.infer<typeof GuestMarkdownExportSchema>['result']
+export type MarkdownSeedResult = z.infer<typeof GuestMarkdownSeedSchema>['result']
 export type WikiCandidate = z.infer<typeof WikiCandidateSchema>
 export type LinkPreview = z.infer<typeof LinkPreviewSchema>
 
