@@ -132,3 +132,53 @@ describe('check-staged-secrets TypeScript non-null assertions', () => {
     assert.deepEqual(rules('  refreshToken: hunter2secretvalue!'), ['high-risk-secret-assignment'])
   })
 })
+
+describe('check-staged-secrets Rust declarations', () => {
+  const rustRules = (text) =>
+    scanTextForSecrets('crates/memry-core/src/crypto/sodium.rs', text).map((f) => f.rule)
+
+  it('ignores a secret-named Rust parameter whose value is its type', () => {
+    assert.deepEqual(rustRules('    password: &[u8],'), [])
+    assert.deepEqual(rustRules('    password: Option<&[u8]>,'), [])
+    assert.deepEqual(rustRules('    secret_key: &mut Vec<u8>,'), [])
+  })
+
+  it('ignores a Rust path expression whose head carries a secret keyword', () => {
+    assert.deepEqual(rustRules('        PasswordHashAlgorithm::Argon2id13,'), [])
+  })
+
+  it('ignores primitive and generic Rust types', () => {
+    assert.deepEqual(rustRules('    token_bytes: usize,'), [])
+    assert.deepEqual(rustRules('    refresh_token: String,'), [])
+    assert.deepEqual(rustRules('    api_key: crate::keys::Material,'), [])
+  })
+
+  it('still flags a Rust field whose value is a bare quoted literal', () => {
+    // The assignment pattern eats the opening quote, so this arrives looking
+    // like an identifier. A type rule that accepted a bare lowercase word
+    // would exempt it.
+    assert.deepEqual(rustRules('    password: "hunter2secretvalue",'), [
+      'high-risk-secret-assignment'
+    ])
+  })
+
+  it('still flags a Rust value that interpolates into a string', () => {
+    assert.deepEqual(rustRules('    password: format!("{secret}"),'), [
+      'high-risk-secret-assignment'
+    ])
+  })
+
+  it('still detects a real credential format inside a Rust file', () => {
+    // Assembled at runtime so this file does not trip the very scanner it
+    // tests. The pieces are meaningless apart; only the joined form matches.
+    const shaped = ['sk', 'proj', 'abc123def456ghi789jkl012mno345'].join('-')
+    assert.deepEqual(rustRules(`    api_key: "${shaped}",`), ['openai-key'])
+  })
+
+  it('does not extend the Rust exemption to other file types', () => {
+    assert.deepEqual(
+      scanTextForSecrets('deploy/service.env', 'PASSWORD: &[u8]').map((f) => f.rule),
+      ['high-risk-secret-assignment']
+    )
+  })
+})

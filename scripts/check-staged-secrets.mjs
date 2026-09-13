@@ -14,6 +14,8 @@ const binaryPathPattern =
   /\.(?:avif|br|dmg|eot|flac|gif|gz|icns|ico|jpe?g|m4v|mov|mp3|mp4|ogg|otf|pdf|png|tgz|ttf|wav|webm|webp|woff2?|zip)$/i
 const sourceCodePathPattern = /\.[cm]?[jt]sx?$/i
 
+const rustPathPattern = /\.rs$/i
+
 const testPathPattern = /(?:\.test|\.spec)\.[cm]?[jt]sx?$/
 
 const markdownPathPattern = /\.md$/i
@@ -137,6 +139,37 @@ function isSourceCodeReferenceValue(filePath, value) {
   )
 }
 
+const rustPrimitiveTypes =
+  '(?:u8|u16|u32|u64|u128|usize|i8|i16|i32|i64|i128|isize|f32|f64|bool|char|str|String)'
+
+function isRustDeclarationValue(filePath, value) {
+  if (!rustPathPattern.test(filePath) || isQuotedValue(value)) {
+    return false
+  }
+
+  const normalized = normalizeValue(value)
+
+  return (
+    // A typed parameter or field: `password: &[u8]`, `key: Option<&[u8]>`,
+    // `secret: String`. The type is a declaration, not a value, and a quoted
+    // initialiser anywhere in it is already excluded by the guard above.
+    //
+    // A *bare lowercase word* is deliberately not a type here. `&`, a
+    // CamelCase head, a `::` path or a named primitive are all required,
+    // because `password: "hunter2secretvalue"` reaches this function with its
+    // opening quote already consumed by the assignment pattern and would
+    // otherwise read as an ordinary identifier.
+    /^&(?:mut\s+)?(?:dyn\s+)?[A-Za-z_[][\w:<>[\], ;]*$/.test(normalized) ||
+    new RegExp(
+      `^(?:[A-Z]\\w*(?:::[A-Za-z_]\\w*)*(?:<[^;"'\`]*>)?|${rustPrimitiveTypes}|[a-z_]\\w*::[A-Za-z_][\\w:]*(?:<[^;"'\`]*>)?)$`
+    ).test(normalized) ||
+    // The tail of a Rust path expression. `PasswordHashAlgorithm::Argon2id13`
+    // is split by the assignment pattern as if the first `:` were a separator,
+    // leaving `:Argon2id13` as the apparent value.
+    /^:[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*(?:\([^;"'`]*\))?$/.test(normalized)
+  )
+}
+
 function isCodeDeclarationValue(filePath, value) {
   const normalized = normalizeValue(value)
 
@@ -149,7 +182,8 @@ function isCodeDeclarationValue(filePath, value) {
     // keep an embedded string literal flagged.
     /^\([^)'"`]*\)\s*=>[^'"`]*$/.test(normalized) ||
     /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(normalized) ||
-    isSourceCodeReferenceValue(filePath, value)
+    isSourceCodeReferenceValue(filePath, value) ||
+    isRustDeclarationValue(filePath, value)
   )
 }
 
