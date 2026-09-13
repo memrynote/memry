@@ -9,11 +9,22 @@ import type { Project, SavedFilter } from '@/data/tasks-data'
 /** The scope the task list is showing: every open task, or one due-date window. */
 export type TasksInternalTab = 'all' | TaskDueWindow
 
-export type TasksTabCounts = Record<TasksInternalTab, number>
+/**
+ * Counts per scope shown in the dropdown. `archived` is not a `TasksInternalTab`
+ * — it is the archived filter scope — but it renders in the same list, so it
+ * carries its count in the same record.
+ */
+export type TasksTabCounts = Record<TasksInternalTab | 'archived', number>
+
+/** The scope dropdown value that means "archived tasks only", not a due window. */
+export const ARCHIVED_SCOPE_VALUE = 'archived'
 
 interface TasksTabBarProps {
   activeTab: TasksInternalTab
   onTabChange: (tab: TasksInternalTab) => void
+  /** Archived scope is on: the list shows archived tasks instead of a due window. */
+  isArchivedScope?: boolean
+  onArchivedScopeChange?: (isArchived: boolean) => void
   counts: TasksTabCounts
   projects?: Project[]
   selectedProjectId?: string | null
@@ -31,6 +42,8 @@ const TABS: TasksInternalTab[] = ['all', 'today', 'tomorrow', 'next7']
 export const TasksTabBar = ({
   activeTab,
   onTabChange,
+  isArchivedScope = false,
+  onArchivedScopeChange,
   counts,
   projects = [],
   selectedProjectId,
@@ -48,9 +61,20 @@ export const TasksTabBar = ({
   const getTabLabel = (tab: TasksInternalTab): string => t(`page.tabs.${tab}`)
 
   const handleTabChange = (value: string): void => {
+    if (value === ARCHIVED_SCOPE_VALUE) {
+      onArchivedScopeChange?.(true)
+      return
+    }
     const next = TABS.find((tab) => tab === value)
-    if (next && next !== activeTab) onTabChange(next)
+    if (!next) return
+    if (isArchivedScope) onArchivedScopeChange?.(false)
+    if (next !== activeTab) onTabChange(next)
   }
+
+  const scopeValue = isArchivedScope ? ARCHIVED_SCOPE_VALUE : activeTab
+  const scopeLabel = isArchivedScope ? t('page.tabs.archived') : getTabLabel(activeTab)
+  const archivedCount = counts.archived
+  const scopeCount = isArchivedScope ? archivedCount : counts[activeTab]
 
   return (
     <div
@@ -60,7 +84,7 @@ export const TasksTabBar = ({
       )}
     >
       {/* Due-window scope dropdown */}
-      <Picker value={activeSavedFilterId ? null : activeTab} onValueChange={handleTabChange}>
+      <Picker value={activeSavedFilterId ? null : scopeValue} onValueChange={handleTabChange}>
         <Picker.Trigger
           variant="button"
           chevron
@@ -68,15 +92,15 @@ export const TasksTabBar = ({
           className="h-auto rounded-[5px] px-2.5 py-1 text-[12px] leading-4 font-medium shadow-none"
         >
           <span className="flex items-baseline gap-1">
-            <span>{getTabLabel(activeTab)}</span>
+            <span>{scopeLabel}</span>
             <span
               className={cn(
                 'text-[9px] font-[family-name:var(--font-mono)] leading-3 tabular-nums',
                 'text-muted-foreground/60',
-                counts[activeTab] === 0 && 'invisible'
+                scopeCount === 0 && 'invisible'
               )}
             >
-              {counts[activeTab]}
+              {scopeCount}
             </span>
           </span>
         </Picker.Trigger>
@@ -97,6 +121,20 @@ export const TasksTabBar = ({
                 }
               />
             ))}
+            {onArchivedScopeChange && (
+              <Picker.Item
+                value={ARCHIVED_SCOPE_VALUE}
+                label={t('page.tabs.archived')}
+                indicator="check"
+                trailing={
+                  archivedCount > 0 ? (
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {archivedCount}
+                    </span>
+                  ) : undefined
+                }
+              />
+            )}
           </Picker.List>
         </Picker.Content>
       </Picker>

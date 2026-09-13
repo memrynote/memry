@@ -212,7 +212,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             isPreview: false,
             isDeleted: false,
             viewState: {
-              focusTaskId: item.id,
+              // `openTaskId` is the key the tasks page actually reads, and the
+              // detail drawer opens off the resolved task — including an
+              // archived one, which the list itself hides. `focusTaskId` was
+              // read by nothing, so archived hits landed on an empty overview.
+              openTaskId: item.id,
+              activeInternalTab: 'all',
+              activeTab: 'all',
               projectId: item.metadata?.type === 'task' ? item.metadata.projectId : undefined
             }
           })
@@ -280,8 +286,11 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
     <Command.Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) handleClose()
-        else onOpenChange(true)
+        if (v) {
+          onOpenChange(true)
+        } else {
+          handleClose()
+        }
       }}
       label={tPhaseF('phaseF.componentsSearchCommandPalette.search')}
       shouldFilter={false}

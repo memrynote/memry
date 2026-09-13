@@ -259,13 +259,16 @@ export const validateProject = (name: string, statuses: Status[]): ProjectValida
   return errors
 }
 
+/** Whether a status may be removed from a project, and why not when it may not. */
+export interface StatusDeletability {
+  canDelete: boolean
+  reason?: string
+}
+
 /**
  * Check if a status can be deleted
  */
-export const canDeleteStatus = (
-  statuses: Status[],
-  statusId: string
-): { canDelete: boolean; reason?: string } => {
+export const canDeleteStatus = (statuses: Status[], statusId: string): StatusDeletability => {
   if (statuses.length <= 2) {
     return {
       canDelete: false,
@@ -324,7 +327,12 @@ export type DueDateFilterType =
   | 'this-month'
   | 'custom'
 
-export type CompletionFilterType = 'active' | 'completed' | 'all'
+/**
+ * `archived` is a scope, not a completion state: it shows archived tasks only,
+ * which every other value hides. Persisted filter rows written by older builds
+ * never carry it, so reading it back stays backwards compatible.
+ */
+export type CompletionFilterType = 'active' | 'completed' | 'all' | 'archived'
 
 export type RepeatFilterType = 'all' | 'repeating' | 'one-time'
 
@@ -428,7 +436,7 @@ export const defaultSort: TaskSort = {
  * `DueDateFilterType` reads it from here instead of keeping its own table.
  * Declaration order is also the order the options are offered in.
  */
-const dueDateFilterLabels: Record<DueDateFilterType, () => string> = {
+const dueDateFilterLabels = {
   any: () => tasksT()?.('filters.dueDate.any') ?? 'Any due date',
   none: () => tasksT()?.('filters.dueDate.none') ?? 'No due date',
   overdue: () => tasksT()?.('filters.dueDate.overdue') ?? 'Overdue',
@@ -438,7 +446,7 @@ const dueDateFilterLabels: Record<DueDateFilterType, () => string> = {
   'next-week': () => tasksT()?.('filters.dueDate.nextWeek') ?? 'Next week',
   'this-month': () => tasksT()?.('filters.dueDate.thisMonth') ?? 'This month',
   custom: () => tasksT()?.('filters.dueDate.custom') ?? 'Custom range...'
-}
+} satisfies Record<DueDateFilterType, () => string>
 
 /**
  * `type` reaches this function from persisted + synced saved filters, so it can
@@ -446,18 +454,22 @@ const dueDateFilterLabels: Record<DueDateFilterType, () => string> = {
  * than throwing, which is what the previous `.find()` lookup effectively did.
  */
 export const dueDateFilterLabel = (type: DueDateFilterType): string => {
+  // SAFETY: `type` can be a value written by a newer build, so the indexed read
+  // can miss even though the key type says otherwise; the assertion only widens
+  // the result to admit that `undefined`, which the next line handles.
   const label = dueDateFilterLabels[type] as (() => string) | undefined
   return label ? label() : type
 }
 
-export const dueDateFilterOptions: { value: DueDateFilterType; label: string }[] = (
-  Object.keys(dueDateFilterLabels) as DueDateFilterType[]
-).map((value) => ({
-  value,
-  get label() {
-    return dueDateFilterLabel(value)
-  }
-}))
+export const dueDateFilterOptions: { value: DueDateFilterType; label: string }[] =
+  // SAFETY: `dueDateFilterLabels` is declared with exactly the `DueDateFilterType`
+  // keys (enforced by its `satisfies`), so its own key list is that union.
+  (Object.keys(dueDateFilterLabels) as DueDateFilterType[]).map((value) => ({
+    value,
+    get label() {
+      return dueDateFilterLabel(value)
+    }
+  }))
 
 export const sortFieldOptions: { value: SortField; label: string }[] = [
   { value: 'dueDate', label: 'Due Date' },

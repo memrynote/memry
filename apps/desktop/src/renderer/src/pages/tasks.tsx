@@ -401,11 +401,23 @@ export const TasksPage = ({
     return null
   }, [selectedId, selectedType, projects])
 
+  // The archived scope is the one view that must NOT go through
+  // `getFilteredTasks`: that helper drops archived tasks before anything else
+  // runs, so the archived list would always come back empty. Feed the raw list
+  // instead and let `filterByCompletion('archived')` do the selecting.
+  const isArchivedScope = filters.completion === 'archived'
+
+  // Kanban groups by status, which the archived list has no use for. The stored
+  // view is left untouched so leaving the scope restores the user's choice.
+  const effectiveView: ViewMode = isArchivedScope ? 'list' : activeView
+
   // Derived: filtered tasks for current selection, scoped by dropdown project
   const baseFilteredTasks = useMemo(() => {
-    const base = getFilteredTasks(tasks, selectedId, selectedType, projects, false, currentDay)
+    const base = isArchivedScope
+      ? tasks
+      : getFilteredTasks(tasks, selectedId, selectedType, projects, false, currentDay)
     return scopeTasksByProject(base, selectedProjectId)
-  }, [tasks, selectedId, selectedType, projects, selectedProjectId, currentDay])
+  }, [isArchivedScope, tasks, selectedId, selectedType, projects, selectedProjectId, currentDay])
 
   // Apply advanced filters and sort to base filtered tasks
   const { filteredTasks, totalCount, filteredCount } = useFilteredAndSortedTasks({
@@ -417,18 +429,18 @@ export const TasksPage = ({
 
   // Kanban needs completed tasks for the Done column — filteredTasks excludes them
   const kanbanTasks = useMemo(() => {
-    if (activeView !== 'kanban') return filteredTasks
+    if (effectiveView !== 'kanban') return filteredTasks
     const nonArchived = tasks.filter((t) => !t.archivedAt)
     const scoped = scopeTasksByProject(nonArchived, selectedProjectId)
     return applyFiltersAndSort(scoped, { ...filters, completion: 'all' }, sort, projects)
-  }, [activeView, filteredTasks, tasks, selectedProjectId, filters, sort, projects])
+  }, [effectiveView, filteredTasks, tasks, selectedProjectId, filters, sort, projects])
 
   // Derived: the tasks of the selected due-date window (flat, overdue first).
   // Null on the "all" tab, which has no window.
   const windowFilteredTasks = useMemo(() => {
-    if (activeInternalTab === 'all') return null
+    if (activeInternalTab === 'all' || isArchivedScope) return null
     return getTasksInDueWindow(filteredTasks, projects, activeInternalTab, currentDay)
-  }, [activeInternalTab, filteredTasks, projects, currentDay])
+  }, [activeInternalTab, isArchivedScope, filteredTasks, projects, currentDay])
 
   // Counted off what is actually on screen, so a window empties for the same
   // reason the "all" list does. A filter and a window can contradict each other
@@ -509,6 +521,7 @@ export const TasksPage = ({
 
     return {
       all: getFilteredTasks(scopedTasks, 'all', 'view', projects).length,
+      archived: scopedTasks.filter((t) => t.archivedAt && t.parentId === null).length,
       today: countWindow('today'),
       tomorrow: countWindow('tomorrow'),
       next7: countWindow('next7')
@@ -519,6 +532,9 @@ export const TasksPage = ({
   // day's progress, and it is what the celebration counts. The other windows
   // show what is already done *in* the window, by due date.
   const doneTasks = useMemo(() => {
+    // The archived list is complete on its own: a Done section under it would
+    // show non-archived tasks the scope is meant to be hiding.
+    if (isArchivedScope) return []
     const completed =
       activeInternalTab === 'all'
         ? getCompletedTasks(tasks)
@@ -526,7 +542,7 @@ export const TasksPage = ({
           ? getCompletedTodayTasks(tasks)
           : getCompletedTasksInDueWindow(tasks, activeInternalTab)
     return scopeTasksByProject(completed, selectedProjectId)
-  }, [activeInternalTab, tasks, selectedProjectId])
+  }, [isArchivedScope, activeInternalTab, tasks, selectedProjectId])
 
   // Visibility constants
   const showFilterBar = true
@@ -538,6 +554,18 @@ export const TasksPage = ({
       setDetailTaskId(detailTaskId === taskId ? null : taskId)
     },
     [detailTaskId, setDetailTaskId]
+  )
+
+  /**
+   * Archived is a scope on the completion filter, not a due window, so the tab
+   * stays where it was and only the filter moves. Leaving the scope puts the
+   * completion filter back on its default rather than guessing a previous one.
+   */
+  const handleArchivedScopeChange = useCallback(
+    (isArchived: boolean) => {
+      updateFiltersAndClearSaved({ completion: isArchived ? 'archived' : 'active' })
+    },
+    [updateFiltersAndClearSaved]
   )
 
   const handleCloseDetail = useCallback(() => {
@@ -982,6 +1010,8 @@ export const TasksPage = ({
             <TasksTabBar
               activeTab={activeInternalTab}
               onTabChange={handleTabChange}
+              isArchivedScope={isArchivedScope}
+              onArchivedScopeChange={handleArchivedScopeChange}
               counts={tabCounts}
               projects={projects}
               selectedProjectId={selectedProjectId}
@@ -1061,7 +1091,7 @@ export const TasksPage = ({
             <GroupByDropdown sort={sort} onChange={updateSort} />
 
             {/* View Mode Switcher */}
-            {availableViews.length > 1 && (
+            {availableViews.length > 1 && !isArchivedScope && (
               <LayoutGroup id={viewModeGroupId}>
                 <div
                   className="flex items-center shrink-0 rounded-[5px] overflow-clip border border-border"
@@ -1199,6 +1229,8 @@ export const TasksPage = ({
                 onMoveToProject={handleBulkMoveToProject}
                 onChangeStatus={handleBulkChangeStatus}
                 onArchive={(...args) => void bulkActions.bulkArchive(...args)}
+                onUnarchive={(...args) => void bulkActions.bulkUnarchive(...args)}
+                isArchivedScope={isArchivedScope}
                 onDelete={() => setIsBulkDeleteDialogOpen(true)}
                 onCancel={deselectAll}
                 projects={projects}
@@ -1210,7 +1242,7 @@ export const TasksPage = ({
 
           {/* No entrance animation: a tab/view switch paints immediately */}
           <div
-            key={`${activeInternalTab}:${activeView}`}
+            key={`${activeInternalTab}:${isArchivedScope ? 'archived' : ''}:${effectiveView}`}
             className="flex flex-1 min-h-0 flex-col overflow-hidden"
           >
             {/* Content Body - due-date window (flat listing, overdue first) */}
@@ -1254,8 +1286,8 @@ export const TasksPage = ({
               </div>
             )}
 
-            {/* Content Body - All Tab (List View) */}
-            {activeInternalTab === 'all' && activeView === 'list' && (
+            {/* Content Body - All Tab (List View), and the archived scope */}
+            {(activeInternalTab === 'all' || isArchivedScope) && effectiveView === 'list' && (
               <div className="flex flex-1 flex-col overflow-hidden">
                 {showFilterEmptyState ? (
                   <FilterEmptyState
@@ -1294,7 +1326,7 @@ export const TasksPage = ({
             )}
 
             {/* Kanban View - All Tab */}
-            {activeInternalTab === 'all' && activeView === 'kanban' && (
+            {activeInternalTab === 'all' && !isArchivedScope && effectiveView === 'kanban' && (
               <div className="flex flex-1 flex-col overflow-hidden">
                 <KanbanBoard
                   tasks={kanbanTasks}

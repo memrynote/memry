@@ -26,6 +26,7 @@ import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { TaskReminderButton } from '@/components/tasks/task-reminder-button'
 import { StatusIcon } from '@/components/tasks/status-icon'
 import { FileAudio, FileImage, FilePdf, FileVideo, PenTool, X, Plus, Trash } from '@/lib/icons'
+import { TaskUnarchiveButton } from './task-unarchive-button'
 import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
 import { TaskActivitySection } from '@/components/tasks/task-activity-section'
 import type { FileType } from '@memry/shared/file-types'
@@ -844,6 +845,11 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
 
             {/* ── Footer ── */}
             <div className="flex flex-col py-3 px-5 gap-3 mt-auto">
+              {task.archivedAt !== null && onUpdateTask && (
+                <TaskUnarchiveButton
+                  onUnarchive={() => onUpdateTask(task.id, { archivedAt: null })}
+                />
+              )}
               {onDeleteTask && (
                 <button
                   type="button"

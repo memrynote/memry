@@ -1,4 +1,14 @@
-import { Check, Flag, Calendar, FolderOpen, Columns3, Archive, Trash2, X } from '@/lib/icons'
+import {
+  Check,
+  Flag,
+  Calendar,
+  FolderOpen,
+  Columns3,
+  Archive,
+  RotateCcw,
+  Trash2,
+  X
+} from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { BulkActionButton } from './bulk-action-button'
@@ -26,6 +36,10 @@ interface BulkActionToolbarProps {
   onChangeStatus?: (statusId: string) => void
   /** Archive selected tasks */
   onArchive: () => void
+  /** Unarchive selected tasks — replaces Archive while the archived scope is shown */
+  onUnarchive?: () => void
+  /** The list currently shows archived tasks, so archiving again is meaningless */
+  isArchivedScope?: boolean
   /** Delete selected tasks */
   onDelete: () => void
   /** Cancel/clear selection */
@@ -119,6 +133,8 @@ export const BulkActionToolbar = ({
   onMoveToProject,
   onChangeStatus,
   onArchive,
+  onUnarchive,
+  isArchivedScope = false,
   onDelete,
   onCancel,
   projects,
@@ -211,13 +227,22 @@ export const BulkActionToolbar = ({
 
       <div className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 
-      {/* Archive */}
-      <BulkActionButton
-        icon={<Archive className="size-3.5 shrink-0" />}
-        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.archive')}
-        onClick={onArchive}
-        variant="secondary"
-      />
+      {/* Archive / Unarchive */}
+      {isArchivedScope && onUnarchive ? (
+        <BulkActionButton
+          icon={<RotateCcw className="size-3.5 shrink-0" />}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.unarchive')}
+          onClick={onUnarchive}
+          variant="secondary"
+        />
+      ) : (
+        <BulkActionButton
+          icon={<Archive className="size-3.5 shrink-0" />}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.archive')}
+          onClick={onArchive}
+          variant="secondary"
+        />
+      )}
 
       {/* Delete */}
       <BulkActionButton

@@ -1215,6 +1215,38 @@ describe('TasksPage', () => {
     expect(screen.getByTestId('delete-subtasks-dialog')).toHaveTextContent('2')
   })
 
+  // `useFilteredAndSortedTasks` is stubbed to a pass-through here, so these two
+  // cover the base set the page hands it: `getFilteredTasks` drops archived
+  // tasks before any filter runs, which is why the archived scope has to bypass
+  // it. The archived-only narrowing itself is covered in task-utils.test.ts.
+  it('feeds archived tasks to the list in the archived scope', () => {
+    const archived: Task = {
+      ...task,
+      id: 'task-archived',
+      title: 'Filed away',
+      archivedAt: new Date('2026-05-11')
+    }
+    mocks.filterState.filters = { ...mocks.filterState.filters, completion: 'archived' }
+
+    renderPage({ tasks: [task, archived] })
+
+    expect(screen.getByText('Filed away')).toBeInTheDocument()
+  })
+
+  it('hides archived tasks in every other scope', () => {
+    const archived: Task = {
+      ...task,
+      id: 'task-archived',
+      title: 'Filed away',
+      archivedAt: new Date('2026-05-11')
+    }
+
+    renderPage({ tasks: [task, archived] })
+
+    expect(screen.getByText('Ship coverage')).toBeInTheDocument()
+    expect(screen.queryByText('Filed away')).not.toBeInTheDocument()
+  })
+
   it('renders the filter empty state when active filters remove all tasks', async () => {
     const user = userEvent.setup()
     mocks.filterState.hasActiveFilters = true

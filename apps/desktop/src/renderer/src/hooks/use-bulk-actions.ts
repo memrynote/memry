@@ -36,6 +36,7 @@ export interface UseBulkActionsReturn {
   bulkMoveToProject: (projectId: string) => void | Promise<void>
   bulkChangeStatus: (statusId: string) => void
   bulkArchive: () => void | Promise<void>
+  bulkUnarchive: () => void | Promise<void>
   bulkDelete: () => void | Promise<void>
   getSelectedTasks: () => Task[]
 }
@@ -459,6 +460,53 @@ export const useBulkActions = ({
     onComplete()
   }, [selectedIds, onUpdateTask, onComplete, isVaultOpen, registerUndo, t])
 
+  /**
+   * Restores archived tasks. Only `archivedAt` is touched, so the task comes
+   * back on the status and project it was archived with.
+   */
+  const bulkUnarchive = useCallback(async (): Promise<void> => {
+    const count = selectedIds.length
+    if (count === 0) return
+
+    const restoredIds = [...selectedIds]
+
+    if (isVaultOpen) {
+      try {
+        const results = await Promise.all(restoredIds.map((id) => tasksService.unarchive(id)))
+        const failed = results.find((result) => !result.success)
+        if (failed) {
+          toast.error(
+            extractErrorMessage(
+              failed.error,
+              getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToArchiveTasks')
+            )
+          )
+          return
+        }
+      } catch (error) {
+        log.error('bulkUnarchive backend error:', error)
+        toast.error(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.failedToArchiveTasks'))
+        return
+      }
+    }
+
+    for (const taskId of restoredIds) {
+      onUpdateTask(taskId, { archivedAt: null })
+    }
+
+    if (registerUndo) {
+      registerUndo(t('toasts.bulk.undoUnarchive', { count }), () => {
+        const now = new Date()
+        for (const taskId of restoredIds) {
+          onUpdateTask(taskId, { archivedAt: now })
+        }
+      })
+    }
+
+    toast.success(t('toasts.bulk.unarchived', { count }))
+    onComplete()
+  }, [selectedIds, onUpdateTask, onComplete, isVaultOpen, registerUndo, t])
+
   const bulkDelete = useCallback(async (): Promise<void> => {
     const count = selectedIds.length
     if (count === 0) return
@@ -511,6 +559,7 @@ export const useBulkActions = ({
     bulkMoveToProject,
     bulkChangeStatus,
     bulkArchive,
+    bulkUnarchive,
     bulkDelete,
     getSelectedTasks
   }

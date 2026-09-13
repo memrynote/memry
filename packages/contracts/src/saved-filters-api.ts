@@ -39,7 +39,8 @@ export interface TaskFilters {
   tags: string[]
   dueDate: DueDateFilter
   statusIds: string[]
-  completion: 'active' | 'completed' | 'all'
+  /** `archived` is the archived-only scope; older builds never write it. */
+  completion: 'active' | 'completed' | 'all' | 'archived'
   repeatType: 'all' | 'repeating' | 'one-time'
   hasTime: 'all' | 'with-time' | 'without-time'
 }
@@ -99,7 +100,9 @@ export const TaskFiltersSchema = z.object({
   tags: z.array(z.string()).default([]),
   dueDate: DueDateFilterSchema.default({ type: 'any', customStart: null, customEnd: null }),
   statusIds: z.array(z.string()).default([]),
-  completion: z.enum(['active', 'completed', 'all']).default('active'),
+  // Additive: rows written before `archived` existed still parse, and a row
+  // carrying it degrades to the default on builds that predate it.
+  completion: z.enum(['active', 'completed', 'all', 'archived']).default('active'),
   repeatType: z.enum(['all', 'repeating', 'one-time']).default('all'),
   hasTime: z.enum(['all', 'with-time', 'without-time']).default('all')
 })
