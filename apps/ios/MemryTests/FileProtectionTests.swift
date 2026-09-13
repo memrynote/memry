@@ -103,12 +103,39 @@ struct VaultFilesRealFilesystemTests {
         return urls
     }
 
-    /// The measurement this file is built around. If it ever fails, the
-    /// simulator has started implementing data protection and the sidecar
-    /// evidence can move back onto the real filesystem — so it is written to
-    /// fail loudly rather than to be quietly right forever.
-    @Test("this simulator ignores data protection entirely, so a read-back proves nothing here")
-    func simulatorIgnoresDataProtectionEntirely() throws {
+    /// Whether this build is running on real hardware. A simulator and a phone
+    /// disagree about data protection in a way that decides what the rest of
+    /// this file can claim, so the platform is read rather than assumed.
+    private static let isDevice: Bool = {
+        #if targetEnvironment(simulator)
+        return false
+        #else
+        return true
+        #endif
+    }()
+
+    /// The measurement this file is built around, and it asserts a **different
+    /// thing on each platform** — because the platforms really do differ, and a
+    /// single assertion would have to be either a simulator claim that fails on
+    /// a phone or a device claim that passes vacuously on a simulator. It was
+    /// the first for one session (spec-defect 104) and failed the moment the
+    /// suite first ran on hardware, which is the correct outcome for a test
+    /// written about an environment.
+    ///
+    /// On a **simulator**: data protection is not implemented at all, and the
+    /// read-back is one constant for a file set to `.complete`, a file set to
+    /// `.none`, and a file nothing was ever asked about. That is why the sidecar
+    /// evidence here is an ordered history of what the seam **asked for** rather
+    /// than what the filesystem reports.
+    ///
+    /// On a **device**: the effective class is real, and this is where
+    /// defect 104 sent T144's original clause. `data.db` and both sidecars must
+    /// read back `NSFileProtectionCompleteUntilFirstUserAuthentication` — the
+    /// class `Memry.entitlements` declares, and **not** Complete Protection,
+    /// which would lock the database against the background refresh that runs
+    /// before the first unlock after a reboot.
+    @Test("data protection: the simulator ignores it, a device enforces it")
+    func dataProtectionBehavesAsThePlatformAllows() throws {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let requests: [(String, FileProtectionType?)] = [
             ("untouched", nil), ("complete", .complete), ("none", .none)
@@ -120,16 +147,70 @@ struct VaultFilesRealFilesystemTests {
             if let requested {
                 try FileManager.default.setAttributes([.protectionKey: requested], ofItemAtPath: url.path)
             }
-            // Not reported at all by the attributes API.
-            #expect(try FileManager.default.attributesOfItem(atPath: url.path)[.protectionKey] == nil, "\(name)")
+            if !Self.isDevice {
+                // Not reported at all by the attributes API on a simulator.
+                #expect(try FileManager.default.attributesOfItem(atPath: url.path)[.protectionKey] == nil, "\(name)")
+            }
             readBack.append(try url.resourceValues(forKeys: [.fileProtectionKey]).fileProtection?.rawValue)
         }
 
-        // One constant for all three, so the value carries no information about
-        // what was asked for — including for the file nothing was asked about.
-        #expect(readBack == Array(repeating: "NSURLFileProtectionCompleteUntilFirstUserAuthentication", count: 3))
-        // And nothing at all for a directory.
-        #expect(try root.resourceValues(forKeys: [.fileProtectionKey]).fileProtection == nil)
+        if Self.isDevice {
+            // Measured on an iPhone 12 Pro, iOS 27.0, and neither half was
+            // obvious enough to assume — the first draft asserted both wrongly.
+            //
+            // 1. The two APIs use different prefixes. `URL.resourceValues`
+            //    answers `NSURLFileProtection*`; `FileProtectionType.rawValue`
+            //    is `NSFileProtection*`. Comparing the strings across them
+            //    fails on a correctly protected file, so compare the typed
+            //    values.
+            // 2. **The entitlement is a floor, not a default.** A file
+            //    explicitly set to `.none` still reads back as
+            //    `completeUntilFirstUserAuthentication`, because
+            //    `com.apple.developer.default-data-protection` applies to the
+            //    whole container. So the app cannot lower protection below the
+            //    declared class even by asking — which is a stronger guarantee
+            //    than the entitlement being merely what unmarked files get.
+            //    Raising it still works: `.complete` is honoured.
+            let typed = try requests.map { name, _ in
+                try root.appendingPathComponent(name)
+                    .resourceValues(forKeys: [.fileProtectionKey]).fileProtection
+            }
+            #expect(typed[1] == .complete, "an explicit .complete is honoured")
+            #expect(
+                typed[2] == .completeUntilFirstUserAuthentication,
+                "the entitlement floors .none at the container's class"
+            )
+            #expect(typed[0] == .completeUntilFirstUserAuthentication, "an untouched file inherits the floor")
+        } else {
+            // One constant for all three, so the value carries no information
+            // about what was asked — including for the untouched file.
+            #expect(readBack == Array(repeating: "NSURLFileProtectionCompleteUntilFirstUserAuthentication", count: 3))
+            #expect(try root.resourceValues(forKeys: [.fileProtectionKey]).fileProtection == nil)
+        }
+    }
+
+    /// T144's original clause, which defect 104 moved here because a simulator
+    /// cannot evidence it: the **effective** class on the database and on both
+    /// sidecars, read back after the open. Skipped rather than vacuously passed
+    /// off-device, so a green simulator run never reads as this having held.
+    @Test("on device the database and both sidecars are protected until first unlock")
+    func effectiveClassOnDeviceIsUntilFirstUnlock() async throws {
+        try #require(Self.isDevice, "the effective class is only observable on hardware")
+
+        let opened = try await files.openingVault(vaultId) { directory in
+            makeOpenedDatabase(in: directory)
+        }
+
+        for url in opened {
+            let effective = try url.resourceValues(forKeys: [.fileProtectionKey]).fileProtection
+            #expect(
+                effective == .completeUntilFirstUserAuthentication,
+                "\(url.lastPathComponent) is \(effective?.rawValue ?? "nil")"
+            )
+            // Complete Protection would lock the database against the
+            // background refresh that runs before the first unlock.
+            #expect(effective != .complete, "\(url.lastPathComponent)")
+        }
     }
 
     @Test("the application support directory is created and excluded from backup")
