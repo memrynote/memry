@@ -132,6 +132,22 @@ treated as **present**: a client starts entitled and is demoted by a `402`,
 never the reverse. Starting from "unentitled until proven otherwise" locks a
 paying user out of writes whenever the first status call fails.
 
+**Leaving `Unentitled` is not a sync-tier event.** The state is reached
+reactively and there is no polled field that clears it: `clientPolicy` carries
+no entitlement, and a client whose outbox is parked attempts no write that
+could earn a 2xx and prove the plan is back. So the sync tier cannot recover on
+its own, and a client MUST NOT invent a probe write to find out.
+
+It is cleared by the **account tier** — the layer that knows about
+subscriptions — telling the sync tier the plan is active again, after a
+purchase or a billing refresh. Data-model §C.3's `Unentitled -> Idle` edge is
+that, not a status poll.
+
+**Only `SYNC_PAYMENT_REQUIRED` demotes.** `SYNC_VAULT_LIMIT_EXCEEDED` is also a
+`402` (chapter 00 §0.5) and means the opposite thing: the plan is active and a
+limit inside it was hit. Treating it as an entitlement failure tells a paying
+user to buy a plan they already have.
+
 ## 11.8 Policy is discoverable without attempting a write
 
 **Normative.** `GET /sync/status` echoes

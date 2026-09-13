@@ -69,6 +69,13 @@ Request: `setupToken` (string), `challengeNonce` (string, 1 to 128),
 Response: `success` (bool), `setupToken` (string, **required** here, unlike the
 verify response).
 
+**`GET /auth/devices`**
+
+Response: `{ devices: [{ id, name, platform, signingPublicKey, revokedAt }] }`.
+The device id field is spelled **`id`**, not `deviceId`. `signingPublicKey` is
+the Ed25519 key committed at registration and is what chapter 01 §1.4.0's
+signer lookup resolves. `revokedAt` is null for a live device.
+
 **`POST /auth/refresh`**
 
 Request: `refreshToken` (string).

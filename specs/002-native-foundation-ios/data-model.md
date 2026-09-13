@@ -214,10 +214,23 @@ loss loses a user's work.
 | `payload`         | BLOB                              | the encrypted-ready payload, or the raw Yjs update bytes |
 | `enqueued_at`     | INTEGER NOT NULL                  |                                                          |
 | `attempt_count`   | INTEGER NOT NULL DEFAULT 0        |                                                          |
-| `last_error`      | TEXT                              | truncated                                                |
+| `last_error`      | TEXT                              | **truncated to 500 characters**                          |
 | `next_attempt_at` | INTEGER                           | NULL means claimable now                                 |
 
 Index on `next_attempt_at`.
+
+`last_error` is capped at **500 characters** so a server error body cannot turn
+a queue row into a log sink. The cap is stated because "truncated" without a
+number is not reproducible: two clients would disagree about the stored value
+of the same failure.
+
+**"Acknowledged locally with a recorded reason" is one transaction, not an
+archive.** A row the client retires without the server accepting it — a payload
+the server will never take, say — has `last_error` written and is then deleted,
+both in the same transaction, and the reason is reported to the caller in the
+wave's result. There is no dead-letter table and this document defines none:
+the row's purpose is to make a pending write durable, and once the client has
+decided not to send it, keeping it would mean a queue that never drains.
 
 Idempotency rules, which are the difference between a converging vault and a
 silently diverging one:
@@ -806,10 +819,11 @@ Pushing
   -> Idle               wave drained or iteration cap reached
   -> ReadOnly           403 PLATFORM_WRITES_DISABLED mid-wave
   -> BlockedUpgrade     426 CLIENT_UPGRADE_REQUIRED mid-wave
+  -> Unentitled         402 SYNC_PAYMENT_REQUIRED mid-wave
   -> Failed             transport or server error after the batch-halving ladder
 ReadOnly / BlockedUpgrade / Unentitled
   -> Pulling            reads continue, always
-  -> Idle               reads continue; or the policy cleared on the next status poll
+  -> Idle               reads continue; or the block cleared (see below)
 Offline
   -> Idle               reachability returned
 Failed
@@ -820,6 +834,14 @@ Refused
 
 Rules:
 
+- **The three write-blocked states do not clear the same way**, and chapter 11
+  §11.7.1 is the authority. `ReadOnly` and `BlockedUpgrade` are polled facts on
+  `clientPolicy` and clear on the next status poll. `Unentitled` is not: it is
+  reached reactively on a `402 SYNC_PAYMENT_REQUIRED`, `clientPolicy` carries no
+  entitlement field, and a parked outbox attempts no write that could earn a 2xx
+  — so the sync tier cannot recover on its own and must not invent a probe
+  write. The `Unentitled -> Idle` edge above is the **account tier** telling the
+  sync tier the plan is active again, after a purchase or a billing refresh.
 - **Reads are never gated.** `ReadOnly`, `BlockedUpgrade` and `Unentitled` all keep
   pulling. The server does not gate `GET`, `HEAD` or `OPTIONS` either
   (`apps/sync-server/src/middleware/client-gate.ts:9-13`), so this is the client

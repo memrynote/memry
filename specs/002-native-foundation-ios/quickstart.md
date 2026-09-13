@@ -11,6 +11,15 @@ proves the feature works.
 - Rust 1.89+ with targets `aarch64-apple-ios`, `aarch64-apple-ios-sim`,
   `x86_64-apple-ios`.
 - Node 22 and pnpm; `pnpm install --frozen-lockfile` at the repo root.
+- **Server base URLs.** `--server staging` resolves to
+  `https://sync-staging.memrynote.com` and `--server prod` to
+  `https://sync.memrynote.com`; `--server local` is `http://localhost:8787`.
+  These are not hardcoded anywhere in the product: the desktop reads
+  `SYNC_SERVER_URL` from a **gitignored** `.env.<environment>` file
+  (`packages/sync-client/src/sync-server-url.ts`), which is why the value is
+  written here rather than left to be discovered. A worktree without those
+  files silently falls back to localhost, so `pnpm env:check` below is not
+  optional.
 - Staging credentials: `apps/desktop/.env.staging` linked (`pnpm env:check`),
   a staging test account, and a desktop build pointed at staging
   (`pnpm --filter @memry/desktop dev:staging`).

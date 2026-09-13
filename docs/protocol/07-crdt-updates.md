@@ -126,7 +126,11 @@ update takes `COALESCE(MAX(sequence_num), 0) + 1` over the **union** of
 for the current maximum), so **a snapshot consumes a sequence number in the same
 space**.
 
-`POST /sync/crdt/updates` answers `{ sequences: number[] }`
+`POST /sync/crdt/updates` takes
+`{ noteId: string, updates: string[] }` — the updates being base64 packed
+envelopes (chapter 04 §4.11), **at most 100 per call**, each capped at twice
+`MAX_UPDATE_BYTES` in its base64 form because base64 inflates by four thirds
+and the cap is applied to the encoded string. It answers `{ sequences: number[] }`
 (`apps/sync-server/src/routes/sync.ts:748`).
 
 ## 7.5 Snapshot revision

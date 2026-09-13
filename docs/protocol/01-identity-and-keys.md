@@ -140,13 +140,20 @@ There are two verifiers and they MUST NOT be confused.
 
 It is **`GET /auth/devices`**. The response's `devices[]` each carry
 `signingPublicKey` — the same Ed25519 key the device committed at registration
-(chapter 02 §2.3) — alongside the device id. That list is the only source; a
+(chapter 02 §2.3) — alongside the device id, whose field is spelled `id`. The
+full shape is in chapter 02 §2.1.1. That list is the only source; a
 client caches it, and a `signerDeviceId` it cannot resolve means refetching the
 list before treating the record as unverifiable.
 
 A record whose signer cannot be resolved is **unverified, not invalid**: it is
 recorded as unapplied rather than dropped, because a device registered after
 this client last fetched the list is the ordinary case, not an attack.
+
+**It is therefore its own outcome, not a signature failure.** A client MUST NOT
+report an unresolvable signer as `signature-invalid` (chapter 04 §4.11.1): that
+code means the bytes were tampered with, and using it here would turn "we have
+not refetched the device list yet" into a security incident in the logs, and
+would tell a user their data is corrupt when it is merely new.
 
 ### 1.4.1 Account key verifier (server-visible)
 

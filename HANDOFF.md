@@ -17,7 +17,7 @@ Branch `native-core-phase-3` in `.worktrees/native-core-phase-3`, fast-forwarded
 | W3b  | T104 repositories + thirteen per-type projectors              | done, on main |
 
 Ticked this session: T096, T097, T098, T099, T100, T101, T102, T103, T104, T105,
-T106, T107, T108, T109, T110, T111, T123, T232, T233, T234, **T089**.
+T106, T107, T108, T109, T110, T111, T112, T113, T116, T117, T118, T123, T232, T233, T234, **T089**.
 
 ## Waves in flight
 
@@ -25,24 +25,41 @@ None. Nothing is half-applied; the tree is clean.
 
 ## The exact next wave to dispatch
 
-**W5 `{T112, T113}`** — the `memry-cli` transport (`reqwest` + `tokio-tungstenite`
-behind the `Transport` seam; the core still owns no networking) and the CLI commands.
-This is the one that unblocks G4, and every core piece it needs is now in.
+**T122 must land before T115, and this is the sequencing that matters most.**
+`memry-cli notes text` prints empty against staging today: the record feed carries
+note _metadata_, and nothing in the core yet pulls `/sync/crdt/updates` downward, so
+`yjs_updates` never fills from the server. T122's "bodies for the recent window" is
+that missing piece. G4's evidence — extracted text equal to desktop's, state vectors
+matching — is blocked on it, not on the CLI.
 
-Then **W6 `{T116, T117, T118}`** — outbox, push wave, client policy. The engine
-already owns _when_ and calls a `PushWave` trait (`pending`/`drain`);
-`RetryPolicy::push()` exists for chapter 05 §5.6's halving ladder, and
-`repositories::push_payload` rebuilds from the live row, so §6.5.2's P2 is structural.
+So: **W7 `{T119, T120, T121, T122}`** — snapshots, bootstrap, the realtime hint
+socket, and the first-sync sub-sequence. T122 is the one G4 waits on; T119–T121 can
+ride along or follow.
 
-**T118 carries a known gap**: spec defect 29 closed chapter 11 with §11.7.1 saying
-`Unentitled` is entered reactively on a `402 SYNC_PAYMENT_REQUIRED`. The engine
-currently takes entitlement as an explicit input defaulting to entitled — right
-default, not yet wired to the 402. Wire it in T118.
+Then **T114/T115**, the staging round trip, which is the orchestrator's to run — see
+Staging below. Then W8's domain modules, W9, W10.
 
-Also still open and independent: **W11 `{T079, T080, T081, T083}`** iOS spikes, which
-T094's G3 write-up depends on.
+## Implementation follow-ups recorded rather than silently carried
 
-## What went wrong, so it is not repeated
+Both came from W6 and neither is a spec defect; they are places the code is worse
+than it should be and a later task should fix:
+
+1. **`ApiError` has no storage variant.** `PushWave::pending/drain` return
+   `ApiError`, so a local SQLite failure crosses the trait boundary as
+   `ApiError::Transport { Failed { "local storage: …" } }`. Behaviour is right — it
+   lands in `Failed`, not `Offline` — and it is documented at `push.rs::local_failure`,
+   but the typing lies. Add `ApiError::Storage`. Consider `ApiError::PaymentRequired`
+   too: a 402 is currently recognised by matching
+   `Status { status: 402, code: Some("SYNC_PAYMENT_REQUIRED") }`.
+2. **`apply_local_edit` and `apply_remote` cannot compose into one transaction.**
+   Both call `conn.unchecked_transaction()`, and SQLite refuses a nested `BEGIN`, so
+   neither can run inside `outbox::commit`'s transaction. A caller wanting the §13.2
+   rule-3 local-edit merge _and_ its outbox row committed together needs an
+   `apply_local_edit_in(&Transaction, …)` variant. Nothing can regress quietly in the
+   meantime — `outbox::enqueue` refuses autocommit, so the unsafe path is a runtime
+   error rather than a silent divergence — but the composition is missing.
+
+## What went wrong## What went wrong, so it is not repeated
 
 **Never `git add -A` while a subagent is live.** Doing exactly that swept W3a's in-flight
 `src/api/runtime.rs` into the T232 commit `ed72ed87e` and pushed it to main. The file was
@@ -64,7 +81,7 @@ before assuming it is working.
 
 ## Open spec-defect entries
 
-**Zero.** 34 logged, 34 closed. Twelve of the thirty-four required reading TypeScript;
+**Zero.** 45 logged, 45 closed. Eighteen of the forty-five required reading TypeScript;
 the rest were internal contradictions or gaps found without leaving `docs/protocol/`. G3's defect-log condition is met as of this session; G5
 re-checks it.
 
@@ -98,7 +115,15 @@ Still to check at W5, in this order:
    bootstrap sessions.
 2. A `client_policies` row for platform `ios` with writes enabled. Readable through the
    Cloudflare MCP.
-3. OTP at login: read it from Gmail via the Gmail MCP.
+3. OTP at login: read it from Gmail via the Gmail MCP. `memry login` reads the code
+   from **stdin** — §G4 gives no flag for it.
+
+Base URLs, now written into quickstart preconditions because they were nowhere:
+`staging` is `https://sync-staging.memrynote.com`, `prod` is
+`https://sync.memrynote.com`, `local` is `http://localhost:8787`. None is hardcoded
+in the product — the desktop reads `SYNC_SERVER_URL` from a gitignored
+`.env.<environment>`, so a worktree missing it falls back to localhost **silently**.
+`pnpm env:check` currently reports 10 items in place.
 
 A 501 is a deployment gap, not a client bug. Size timing against the steady-state
 arithmetic in §10.6.1 before blaming the client.

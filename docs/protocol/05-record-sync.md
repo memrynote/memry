@@ -320,10 +320,19 @@ Here `nextCursor` **is** optional: it appears only on a paginated call
 (`?limit=N`) that has more rows, and is absent on the final page and on the
 param-less everything-at-once call.
 
-**`POST /sync/push`** → `{ accepted: string[], rejected: [{ id, reason }], serverTime: integer, maxCursor: integer }`.
+**`POST /sync/push`** — request `{ items: <push item>[] }`, **1 to 100 items**;
+fewer than one or more than a hundred is rejected before anything is applied.
+The push item is chapter 04 §4.8's shape minus `stateVector` (§4.6).
+
+Response: `{ accepted: string[], rejected: [{ id, reason }], serverTime: integer, maxCursor: integer }`.
 
 `rejected` is per item, so a partially accepted batch is normal and a client
 must read it rather than infer success from the status code.
+
+**`GET /sync/vaults`** → `{ vaults: [...] }`. The envelope is an object with a
+`vaults` key, not a bare array; a reader that accepts only an array fails on
+every account. This route is account-scoped and sits **above** the vault
+middleware, so it takes no `X-Memry-Vault-Id`.
 
 ## 5.12 Tombstones
 
