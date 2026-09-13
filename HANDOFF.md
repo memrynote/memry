@@ -111,11 +111,24 @@ Not done, and not doable headlessly:
   append, the seal, the push, the server, the desktop's receive, apply, render
   and write-back. Under the 5 s bar. Recorded in `g4-evidence.md`.
 - **Desktop edit to `memry-cli`: NOT DEMONSTRATED.** Appending to the vault's
-  markdown file directly did not work — after 90 s the line had not reached the
-  CLI and the file's mtime was unchanged, so the desktop never ingested it. The
-  file was restored byte-identically. That is a failed _method_, not a failed
-  requirement: an external file edit is not an edit made in the desktop app.
-  This half needs the desktop UI driven, which is Kaan's to do or authorise.
+  markdown file directly did not reach the CLI within 90 s. The file was
+  restored byte-identically.
+
+  **An earlier version of this file said the unchanged mtime proved the desktop
+  never ingested it. Withdrawn — the inference is wrong.**
+  `apps/desktop/src/main/vault/watcher.ts` hands changes to
+  `feedExternalEditToCrdt`, which replaces the note body in the Y.Doc and
+  pushes; it does **not** rewrite the file. An unchanged mtime is exactly what a
+  successful ingest also looks like. Only this is established: the edit did not
+  reach the CLI in 90 s. Where it stopped needs the desktop's logs.
+
+  Worth knowing before re-running: `feedExternalEditToCrdt` has a
+  `wasRecentNetworkUpdate` branch broadcasting `sync:concurrent-edit`, and a CLI
+  write had landed seconds earlier, so that branch was live.
+
+  Either way it is a failed _method_, not a failed requirement: an external file
+  edit is not an edit made in the desktop app, which is what T139 asks for.
+
 - **concurrent edits converging with both field changes surviving** against a
   real desktop. Note that T133 already proves byte-identical convergence with
   real `yrs` and a real database, including the layout check; what is missing
@@ -138,9 +151,9 @@ after three requests in quick succession; it was abandoned and cleaned up.
 
 ### Routes already tried for the desktop half — do not re-investigate
 
-1. **Appending to the vault markdown file directly.** Not ingested: after 90 s
-   the line had not reached the CLI and the file's mtime was unchanged. The file
-   was restored byte-identically.
+1. **Appending to the vault markdown file directly.** Did not reach the CLI in
+   90 s; the file was restored byte-identically. **Not** evidence that the
+   desktop ignored it — see the correction above.
 2. **The localhost Vault MCP server**, which would have made a genuine
    desktop-side write through a designed API. **Not listening.** Checked every
    Electron PID with `lsof -nP -iTCP -sTCP:LISTEN`; the only local node
