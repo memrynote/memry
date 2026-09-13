@@ -151,6 +151,10 @@ describe('check-staged-secrets Rust declarations', () => {
     assert.deepEqual(rustRules('    token_bytes: usize,'), [])
     assert.deepEqual(rustRules('    refresh_token: String,'), [])
     assert.deepEqual(rustRules('    api_key: crate::keys::Material,'), [])
+    assert.deepEqual(rustRules('    signing_secret_key: secret_key.as_slice(),'), [])
+    assert.deepEqual(rustRules('    vault_key: material.vault_key,'), [])
+    assert.deepEqual(rustRules('    api_key: self.keys.signing.as_ref(),'), [])
+    assert.deepEqual(rustRules('    secret: derive_key(seed),'), [])
   })
 
   it('still flags a Rust field whose value is a bare quoted literal', () => {

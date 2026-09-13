@@ -166,7 +166,20 @@ function isRustDeclarationValue(filePath, value) {
     // The tail of a Rust path expression. `PasswordHashAlgorithm::Argon2id13`
     // is split by the assignment pattern as if the first `:` were a separator,
     // leaving `:Argon2id13` as the apparent value.
-    /^:[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*(?:\([^;"'`]*\))?$/.test(normalized)
+    /^:[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*(?:\([^;"'`]*\))?$/.test(normalized) ||
+    // A field or method-chain expression: `signing_secret_key:
+    // secret_key.as_slice()`, `vault_key: material.vault_key`. The value names
+    // code that already exists elsewhere, so there is nothing to leak here.
+    // `.rs` never reaches `isSourceCodeReferenceValue`, which handles the same
+    // shape for JavaScript and TypeScript, so Rust needs its own arm.
+    //
+    // A quote character anywhere keeps an embedded literal flagged, which is
+    // what holds `password: format!("{secret}")` red. At least one `.` segment
+    // or a trailing call is required, so a bare `hunter2secretvalue` — which
+    // arrives here with its opening quote already consumed by the assignment
+    // pattern — still reads as a literal rather than as an identifier.
+    /^[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*(?:\.[A-Za-z_]\w*(?:\([^;"'`]*\))?)+$/.test(normalized) ||
+    /^[a-z_]\w*(?:::[A-Za-z_]\w*)*\([^;"'`]*\)$/.test(normalized)
   )
 }
 
