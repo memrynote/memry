@@ -72,17 +72,39 @@
     "./vault-api": "./src/vault-api.ts",
     "./capture-api": "./src/capture-api.ts",
     "./webview-bridge": "./src/webview-bridge.ts",
-    "./test-vectors/crypto-vectors.json": "./test-vectors/crypto-vectors.json"
+    "./test-vectors/crypto-vectors.json": "./test-vectors/crypto-vectors.json",
+    "./test-vectors/bip39-unlock.json": "./test-vectors/bip39-unlock.json",
+    "./test-vectors/record-envelope.json": "./test-vectors/record-envelope.json",
+    "./test-vectors/crdt-update.json": "./test-vectors/crdt-update.json",
+    "./test-vectors/cbor-canonical.json": "./test-vectors/cbor-canonical.json",
+    "./test-vectors/compression.json": "./test-vectors/compression.json",
+    "./test-vectors/field-merge.json": "./test-vectors/field-merge.json",
+    "./test-vectors/pack-container.json": "./test-vectors/pack-container.json",
+    "./test-vectors/payload-schemas.json": "./test-vectors/payload-schemas.json",
+    "./test-vectors/device-linking.json": "./test-vectors/device-linking.json",
+    "./test-vectors/text-extract.json": "./test-vectors/text-extract.json",
+    "./test-vectors/markdown-roundtrip/cases.json": "./test-vectors/markdown-roundtrip/cases.json",
+    "./test-vectors/markdown-roundtrip/fuzz-families.json": "./test-vectors/markdown-roundtrip/fuzz-families.json"
   },
   "types": "./src/index.ts",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "vectors:generate": "tsx scripts/gen-crypto-vectors.ts && tsx scripts/gen-protocol-vectors.ts",
+    "vectors:check": "tsx scripts/gen-protocol-vectors.ts --check",
+    "vectors:digest": "tsx scripts/print-chapter-digest.ts"
   },
   "devDependencies": {
+    "@memry/editor-schema": "workspace:*",
     "@memry/typescript-config": "workspace:*",
+    "@types/libsodium-wrappers-sumo": "^0.8.2",
+    "@types/pako": "^2.0.4",
+    "bip39": "^3.1.0",
+    "cborg": "^4.5.8",
     "libsodium-wrappers-sumo": "^0.8.2",
-    "@types/libsodium-wrappers-sumo": "^0.8.2"
+    "pako": "^2.1.0",
+    "tsx": "^4.21.0",
+    "yjs": "^13.6.29"
   },
   "dependencies": {
     "@memry/domain-tasks": "workspace:*",

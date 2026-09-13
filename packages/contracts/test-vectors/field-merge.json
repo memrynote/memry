@@ -1,0 +1,1371 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "field-merge",
+    "chapter": "docs/protocol/06-vector-clocks-and-field-merge.md",
+    "implementation": "packages/sync-client/src/field-merge.ts",
+    "offlineDeviceId": "_offline",
+    "TASK_SYNCABLE_FIELDS": [
+      "title",
+      "description",
+      "projectId",
+      "statusId",
+      "parentId",
+      "priority",
+      "position",
+      "dueDate",
+      "dueTime",
+      "startDate",
+      "repeatConfig",
+      "repeatFrom",
+      "sourceNoteId",
+      "completedAt",
+      "archivedAt"
+    ],
+    "PROJECT_SYNCABLE_FIELDS": [
+      "name",
+      "description",
+      "color",
+      "icon",
+      "position",
+      "isInbox",
+      "archivedAt",
+      "modifiedAt",
+      "homeNoteId"
+    ],
+    "valueEqualityToday": "JSON.stringify, key-order sensitive",
+    "valueEqualityDecided": "recursive key sort; null distinct from absent (#2185)",
+    "caseCount": 32
+  },
+  "cases": [
+    {
+      "name": "remote-total-greater",
+      "pins": "rule 1: the larger tick sum wins outright",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 2,
+          "device-b": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-c": 5
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "remote"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 2,
+            "device-b": 1,
+            "device-c": 5
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
+      }
+    },
+    {
+      "name": "local-total-greater",
+      "pins": "rule 2",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 4
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "local"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 4,
+            "device-b": 1
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
+      }
+    },
+    {
+      "name": "totals-equal-values-equal",
+      "pins": "rule 4 default, no conflict because the values match",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "same"
+      },
+      "remoteData": {
+        "title": "same"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 3,
+          "device-b": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-a": 3,
+          "device-b": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "same"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 3,
+            "device-b": 1
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
+      }
+    },
+    {
+      "name": "totals-equal-values-differ-no-offline",
+      "pins": "rule 4: REMOTE wins a plain tie",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "remote"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 1,
+            "device-b": 1
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": true,
+        "conflictedFields": ["title"],
+        "conflicts": [
+          {
+            "field": "title",
+            "localValue": "local",
+            "remoteValue": "remote",
+            "mergedValue": "remote",
+            "mergedClock": {
+              "device-a": 1,
+              "device-b": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "totals-equal-local-has-offline",
+      "pins": "rule 3: the side carrying _offline wins",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 1,
+          "_offline": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 2
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "local"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 1,
+            "_offline": 1,
+            "device-b": 2
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": true,
+        "conflictedFields": ["title"],
+        "conflicts": [
+          {
+            "field": "title",
+            "localValue": "local",
+            "remoteValue": "remote",
+            "mergedValue": "local",
+            "mergedClock": {
+              "device-a": 1,
+              "_offline": 1,
+              "device-b": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "totals-equal-remote-has-offline",
+      "pins": "THE ASYMMETRY: remote already wins by rule 4, so this looks identical to the plain tie. Named separately because it is the case an implementer assumes is symmetric",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-b": 2
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-a": 1,
+          "_offline": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "remote"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-b": 2,
+            "device-a": 1,
+            "_offline": 1
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": true,
+        "conflictedFields": ["title"],
+        "conflicts": [
+          {
+            "field": "title",
+            "localValue": "local",
+            "remoteValue": "remote",
+            "mergedValue": "remote",
+            "mergedClock": {
+              "device-b": 2,
+              "device-a": 1,
+              "_offline": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "totals-equal-both-have-offline",
+      "pins": "rule 3 requires _offline ABSENT on the remote side, so it does not fire",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 1,
+          "_offline": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 1,
+          "_offline": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "remote"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 1,
+            "_offline": 1,
+            "device-b": 1
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": true,
+        "conflictedFields": ["title"],
+        "conflicts": [
+          {
+            "field": "title",
+            "localValue": "local",
+            "remoteValue": "remote",
+            "mergedValue": "remote",
+            "mergedClock": {
+              "device-a": 1,
+              "_offline": 1,
+              "device-b": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "totals-equal-local-offline-but-values-equal",
+      "pins": "rule 3 also requires the values to differ",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "same"
+      },
+      "remoteData": {
+        "title": "same"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 1,
+          "_offline": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 2
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "same"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 1,
+            "_offline": 1,
+            "device-b": 2
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
+      }
+    },
+    {
+      "name": "totals-equal-local-offline-zero-tick",
+      "pins": "KEY PRESENCE, not tick value: {_offline: 0} still wins the tie",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 2,
+          "_offline": 0
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 2
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "local"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 2,
+            "_offline": 0,
+            "device-b": 2
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": true,
+        "conflictedFields": ["title"],
+        "conflicts": [
+          {
+            "field": "title",
+            "localValue": "local",
+            "remoteValue": "remote",
+            "mergedValue": "local",
+            "mergedClock": {
+              "device-a": 2,
+              "_offline": 0,
+              "device-b": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "clock-total-beats-causality",
+      "pins": "local total 5 beats remote total 4 though the clocks are concurrent. This is the case that shows clockTotal is not a causal rule",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 5
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 2,
+          "device-c": 2
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "local"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 5,
+            "device-b": 2,
+            "device-c": 2
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
+      }
+    },
+    {
+      "name": "concurrent-equal-totals-values-differ",
+      "pins": "the ONLY shape that reports a conflict: equal totals, concurrent, values differ",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "remote"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 1,
+            "device-b": 1
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": true,
+        "conflictedFields": ["title"],
+        "conflicts": [
+          {
+            "field": "title",
+            "localValue": "local",
+            "remoteValue": "remote",
+            "mergedValue": "remote",
+            "mergedClock": {
+              "device-a": 1,
+              "device-b": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "concurrent-unequal-totals-values-differ",
+      "pins": "concurrent but SILENTLY resolved: hadConflicts stays false and an edit is lost with nothing surfaced",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 3
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 1,
+          "device-c": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "local"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 3,
+            "device-b": 1,
+            "device-c": 1
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
+      }
+    },
+    {
+      "name": "missing-local-field-clock",
+      "pins": "an absent field clock reads as {}, total 0",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {},
+      "remoteFieldClocks": {
+        "title": {
+          "device-a": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "remote"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 1
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
+      }
+    },
+    {
+      "name": "missing-both-field-clocks",
+      "pins": "both {}, so a tie, so remote",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local"
+      },
+      "remoteData": {
+        "title": "remote"
+      },
+      "localFieldClocks": {},
+      "remoteFieldClocks": {},
+      "expected": {
+        "merged": {
+          "title": "remote"
+        },
+        "mergedFieldClocks": {
+          "title": {},
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
+      }
+    },
+    {
+      "name": "field-absent-from-syncable-list",
+      "pins": "a field not in the list is not merged at all and does not appear in `merged`",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": "local",
+        "notSyncable": "kept locally"
+      },
+      "remoteData": {
+        "title": "remote",
+        "notSyncable": "ignored"
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-a": 2
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": "remote"
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 2
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
+      }
+    },
+    {
+      "name": "null-versus-undefined",
+      "pins": "null and undefined MUST count as differing",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": null
+      },
+      "remoteData": {},
+      "localFieldClocks": {
+        "title": {
+          "device-a": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 1
+        }
+      },
+      "expected": {
+        "merged": {},
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 1,
+            "device-b": 1
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": true,
+        "conflictedFields": ["title"],
+        "conflicts": [
+          {
+            "field": "title",
+            "localValue": null,
+            "mergedClock": {
+              "device-a": 1,
+              "device-b": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "object-values-same-content-different-key-order",
+      "pins": "THE SINGLE LIKELIEST DIVERGENCE. Recorded as the implementation behaves today (JSON.stringify, key-order sensitive); the canonical comparison decision (#2185) makes these EQUAL, and this case is what measures that change",
+      "syncableFields": "TASK",
+      "localData": {
+        "repeatConfig": {
+          "a": 1,
+          "b": 2
+        }
+      },
+      "remoteData": {
+        "repeatConfig": {
+          "b": 2,
+          "a": 1
+        }
+      },
+      "localFieldClocks": {
+        "repeatConfig": {
+          "device-a": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "repeatConfig": {
+          "device-b": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "repeatConfig": {
+            "b": 2,
+            "a": 1
+          }
+        },
+        "mergedFieldClocks": {
+          "title": {},
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {
+            "device-a": 1,
+            "device-b": 1
+          },
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": true,
+        "conflictedFields": ["repeatConfig"],
+        "conflicts": [
+          {
+            "field": "repeatConfig",
+            "localValue": {
+              "a": 1,
+              "b": 2
+            },
+            "remoteValue": {
+              "b": 2,
+              "a": 1
+            },
+            "mergedValue": {
+              "b": 2,
+              "a": 1
+            },
+            "mergedClock": {
+              "device-a": 1,
+              "device-b": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "number-formatting",
+      "pins": "1 and 1.0 stringify identically, so they do not differ",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": 1
+      },
+      "remoteData": {
+        "title": 1
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": 1
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 1,
+            "device-b": 1
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
+      }
+    },
+    {
+      "name": "float-accumulation",
+      "pins": "0.1 + 0.2 !== 0.3, so these DO differ",
+      "syncableFields": "TASK",
+      "localData": {
+        "title": 0.30000000000000004
+      },
+      "remoteData": {
+        "title": 0.3
+      },
+      "localFieldClocks": {
+        "title": {
+          "device-a": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "title": {
+          "device-b": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "title": 0.3
+        },
+        "mergedFieldClocks": {
+          "title": {
+            "device-a": 1,
+            "device-b": 1
+          },
+          "description": {},
+          "projectId": {},
+          "statusId": {},
+          "parentId": {},
+          "priority": {},
+          "position": {},
+          "dueDate": {},
+          "dueTime": {},
+          "startDate": {},
+          "repeatConfig": {},
+          "repeatFrom": {},
+          "sourceNoteId": {},
+          "completedAt": {},
+          "archivedAt": {}
+        },
+        "hadConflicts": true,
+        "conflictedFields": ["title"],
+        "conflicts": [
+          {
+            "field": "title",
+            "localValue": 0.30000000000000004,
+            "remoteValue": 0.3,
+            "mergedValue": 0.3,
+            "mergedClock": {
+              "device-a": 1,
+              "device-b": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "project-fields",
+      "pins": "the second field list, and a multi-field merge where the two fields take different branches",
+      "syncableFields": "PROJECT",
+      "localData": {
+        "name": "Local project",
+        "color": "#ff0000"
+      },
+      "remoteData": {
+        "name": "Remote project",
+        "color": "#ff0000"
+      },
+      "localFieldClocks": {
+        "name": {
+          "device-a": 2
+        },
+        "color": {
+          "device-a": 1
+        }
+      },
+      "remoteFieldClocks": {
+        "name": {
+          "device-b": 1
+        },
+        "color": {
+          "device-a": 1
+        }
+      },
+      "expected": {
+        "merged": {
+          "name": "Local project",
+          "color": "#ff0000"
+        },
+        "mergedFieldClocks": {
+          "name": {
+            "device-a": 2,
+            "device-b": 1
+          },
+          "description": {},
+          "color": {
+            "device-a": 1
+          },
+          "icon": {},
+          "position": {},
+          "isInbox": {},
+          "archivedAt": {},
+          "modifiedAt": {},
+          "homeNoteId": {}
+        },
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
+      }
+    }
+  ],
+  "clockAlgebra": [
+    {
+      "name": "equal",
+      "pins": "identical clocks",
+      "op": "compare",
+      "a": {
+        "device-a": 1
+      },
+      "b": {
+        "device-a": 1
+      },
+      "deviceId": null,
+      "expected": "equal"
+    },
+    {
+      "name": "before",
+      "pins": "a happened-before b",
+      "op": "compare",
+      "a": {
+        "device-a": 1
+      },
+      "b": {
+        "device-a": 2
+      },
+      "deviceId": null,
+      "expected": "before"
+    },
+    {
+      "name": "after",
+      "pins": "a dominates b",
+      "op": "compare",
+      "a": {
+        "device-a": 2
+      },
+      "b": {
+        "device-a": 1
+      },
+      "deviceId": null,
+      "expected": "after"
+    },
+    {
+      "name": "concurrent",
+      "pins": "disjoint keys",
+      "op": "compare",
+      "a": {
+        "device-a": 1
+      },
+      "b": {
+        "device-b": 1
+      },
+      "deviceId": null,
+      "expected": "concurrent"
+    },
+    {
+      "name": "concurrent-detected-early",
+      "pins": "both directions seen, so the loop short-circuits",
+      "op": "compare",
+      "a": {
+        "device-a": 2,
+        "device-b": 1
+      },
+      "b": {
+        "device-a": 1,
+        "device-b": 2
+      },
+      "deviceId": null,
+      "expected": "concurrent"
+    },
+    {
+      "name": "merge-commutativity-ab",
+      "pins": "pointwise maximum",
+      "op": "merge",
+      "a": {
+        "device-a": 2,
+        "device-b": 1
+      },
+      "b": {
+        "device-b": 3,
+        "device-c": 1
+      },
+      "deviceId": null,
+      "expected": {
+        "forward": {
+          "device-a": 2,
+          "device-b": 3,
+          "device-c": 1
+        },
+        "reversed": {
+          "device-b": 3,
+          "device-c": 1,
+          "device-a": 2
+        }
+      }
+    },
+    {
+      "name": "increment-from-absent",
+      "pins": "a missing key reads as 0, so the first tick is 1",
+      "op": "increment",
+      "a": {},
+      "b": null,
+      "deviceId": "device-a",
+      "expected": {
+        "device-a": 1
+      }
+    },
+    {
+      "name": "offline-compared-against-plain",
+      "pins": "_offline gets NO special treatment in the algebra: it is an ordinary key, so a is after b",
+      "op": "compare",
+      "a": {
+        "device-a": 1,
+        "_offline": 1
+      },
+      "b": {
+        "device-a": 1
+      },
+      "deviceId": null,
+      "expected": "after"
+    }
+  ],
+  "offlineRebind": [
+    {
+      "name": "offline-only clock",
+      "pins": "the key is deleted and its ticks move to the target device",
+      "clock": {
+        "_offline": 3
+      },
+      "fieldClocks": {
+        "title": {
+          "_offline": 3
+        }
+      },
+      "targetDeviceId": "device-a",
+      "expected": {
+        "clock": {
+          "device-a": 3
+        },
+        "fieldClocks": {
+          "title": {
+            "device-a": 3
+          }
+        }
+      }
+    },
+    {
+      "name": "offline plus the target already present",
+      "pins": "the tick counts ADD, they do not max",
+      "clock": {
+        "_offline": 2,
+        "device-a": 5
+      },
+      "fieldClocks": {
+        "title": {
+          "_offline": 2,
+          "device-a": 5
+        }
+      },
+      "targetDeviceId": "device-a",
+      "expected": {
+        "clock": {
+          "device-a": 7
+        },
+        "fieldClocks": {
+          "title": {
+            "device-a": 7
+          }
+        }
+      }
+    },
+    {
+      "name": "no offline key",
+      "pins": "unchanged",
+      "clock": {
+        "device-a": 1
+      },
+      "fieldClocks": {
+        "title": {
+          "device-a": 1
+        }
+      },
+      "targetDeviceId": "device-a",
+      "expected": {
+        "clock": {
+          "device-a": 1
+        },
+        "fieldClocks": {
+          "title": {
+            "device-a": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "only some fields carry offline",
+      "pins": "per-field, and a zero-tick key is left in place",
+      "clock": {
+        "_offline": 1,
+        "device-a": 1
+      },
+      "fieldClocks": {
+        "title": {
+          "_offline": 1
+        },
+        "priority": {
+          "device-a": 2
+        }
+      },
+      "targetDeviceId": "device-a",
+      "expected": {
+        "clock": {
+          "device-a": 2
+        },
+        "fieldClocks": {
+          "title": {
+            "device-a": 1
+          },
+          "priority": {
+            "device-a": 2
+          }
+        }
+      }
+    }
+  ]
+}

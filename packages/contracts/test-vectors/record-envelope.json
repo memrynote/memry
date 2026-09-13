@@ -1,0 +1,446 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "record-envelope",
+    "chapter": "docs/protocol/04-record-envelope.md",
+    "writer": "packages/sync-client/src/push/record-encrypt.ts",
+    "reader": "packages/sync-client/src/pull/record-decrypt.ts",
+    "desktopParityAssertedIn": "apps/desktop/src/main/sync/vector-parity.test.ts",
+    "cryptoVersion": 1,
+    "sizeCeiling": {
+      "SYNC_ITEM_MAX_ENCRYPT_BYTES": 5242880,
+      "SYNC_ITEM_ENCRYPT_OVERHEAD": 1.37,
+      "NOTE_SYNC_MAX_BYTES": 3826919
+    },
+    "caseCount": 14,
+    "vaultNameCasesLiveIn": "apps/desktop/src/main/sync/vector-parity.test.ts"
+  },
+  "cases": [
+    {
+      "name": "note create, body over 64 bytes and compressible",
+      "pins": "the 0x01 compression branch and the happy path",
+      "input": {
+        "id": "abc123def456",
+        "type": "note",
+        "operation": "create",
+        "contentUtf8": "# Title\n\nThe quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. ",
+        "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+        "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "fileKeyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+        "dataNonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "keyNonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+        "clock": {
+          "device-a": 1
+        },
+        "stateVector": null,
+        "deletedAt": null
+      },
+      "expected": {
+        "compressedHex": "01789c535608c92cc949e5e20ac94855282ccd4cce56482aca2fcf5348cbafd053182182003f975ae6",
+        "pushItem": {
+          "id": "abc123def456",
+          "type": "note",
+          "operation": "create",
+          "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+          "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+          "encryptedData": "MmTStaDS7Kq/TDXo3ozUiyIsJf+dLlHgK+XTgzTK2dqEnqLw7zw9N29iaLdXr2JfsJyg1dRZ7zGf",
+          "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "signature": "5C318j9lRahL9N+h7mLmOzdA8Yk3as8gsisRhBXKlVzijJtN5L9TFI8QlXfiO9B9XC8XAIuEG2Qt4KlAhfNTAQ==",
+          "signerDeviceId": "device-a",
+          "clock": {
+            "device-a": 1
+          }
+        },
+        "sizeBytes": 57,
+        "roundTripUtf8": "# Title\n\nThe quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. "
+      }
+    },
+    {
+      "name": "note create, body under 64 bytes",
+      "pins": "the always-stored rule: under 64 bytes never compresses",
+      "input": {
+        "id": "abc123def456",
+        "type": "note",
+        "operation": "create",
+        "contentUtf8": "# Short",
+        "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+        "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "fileKeyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+        "dataNonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "keyNonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+        "clock": {
+          "device-a": 1
+        },
+        "stateVector": null,
+        "deletedAt": null
+      },
+      "expected": {
+        "compressedHex": "00232053686f7274",
+        "pushItem": {
+          "id": "abc123def456",
+          "type": "note",
+          "operation": "create",
+          "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+          "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+          "encryptedData": "Mz9utZ61V/LiMfbTJAyUvzFMJ9kECIB0",
+          "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "signature": "Krk2eFS/gtWn/ZCzcrwKzyNEqA1j67NB2AHid2XjGX2nw7E/9F5O+Zk35w0erwqnizZXaF9RwJaGmt39Bo5+Bg==",
+          "signerDeviceId": "device-a",
+          "clock": {
+            "device-a": 1
+          }
+        },
+        "sizeBytes": 24,
+        "roundTripUtf8": "# Short"
+      }
+    },
+    {
+      "name": "note update, over 64 bytes but incompressible",
+      "pins": "the >= fallback to 0x00 when deflate does not shrink the input",
+      "input": {
+        "id": "abc123def456",
+        "type": "note",
+        "operation": "update",
+        "contentUtf8": "IBZI:oFF!Fb..[!QAuruaGU7j1e0_(1:,?\\ET+ne`KoIl*`5OHdRdw5EsdA~0J35MYX9'#1&!oH+JVFLNJF+rF<#JC/w1*b[V-]3=2uH$kF?@<8F'A=?:pTT)\"l:v)1yV8R2*2/jE~!bF\"]K1b\\,i!LFgZYX)f%SI.Y%:IC\\u*n$_iT8}\"G8;G7L2$*#{aWZdW.rt?05$4Z'n++8S$]'JUky\"DG6<\"@9Au$Wi>-Q5a'G5F<'`9e0Zt'!D_[#+2<JdnMDiW19,$!M$c-*>oe8h/b>>RO0D[h:YW-=h4%G>lO8EKq~}HY%#:'6mW3WcV.1]s=4(@m2@2d|i?|H|V%]qu9eX.<Fq5OKe(h6]^m=z.9#Q}rzzy*Ge#Eu@<>]3t^pDZYA+B8bW=Fg/1$;\\Q9!p:9w=gvW{-F^G8OjX`]-+@)\\&u@~'k^t/5G2s<bYWM<TM<'[R,M;\\!a`Ta|~EiIDvU,%<'-A>m;,8%T&'ccl1Fy2\"@9s$)P@,Gx34\"3@C$xk",
+        "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+        "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "fileKeyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+        "dataNonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "keyNonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+        "clock": {
+          "device-a": 2
+        },
+        "stateVector": null,
+        "deletedAt": null
+      },
+      "expected": {
+        "compressedHex": "01789c0dd08982a1600000e067e9125d14994aa586fe84d63291224734e4be62183cfbeef7089ff5e95bd21e0008840c3380da7a724aa666f763c546b9719a95a8f2d070c85d3469ecad0d31e15bb579677ee38df35c7fe7ea79def6fa228eb029685f23eb3dd0fc5307e409c848bd92bdb14438e8d1415ee1921aba06654d1600ae2b65e9e0381978235d33ecbd27743882cbae8c3714023868b0e1908aa12658f85e3ff38d7d598c8749566598103b741c3bc20b368592f9d1e45002f99dbafedc654e97728e470b3ebe2349e10b0df07a777d87ab66518635514f503756e9363fc54d1ec8f8448c72fe0587aae3014272727dbeb3abb1cb8a140ad9e88c26d47d242cb3a1aa765ab9ea6029792ead2c0b98a96e5a82d138be5f350f4324bcb875f3eeacc7b0c15929a4b52da771f3675c7ed69e3d2c382662d4676470e45b8d28bd2c06a3adf26044a4fd3a3d1e77c28c1023d16435c85f4687aaefe9e4a710ba0a586459b4346c8bd041126fcae2eafed260640aad557f12d0a49619a612ed8daf47972c6f726739f45c5b766c191f7428bb3484a61367fa7c1bb155bd76294cc6695ddd9628017352f86cb661c19dfbdf7146337f35cafcc917e0bc56417fd6ff0065c992fa",
+        "pushItem": {
+          "id": "abc123def456",
+          "type": "note",
+          "operation": "update",
+          "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+          "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+          "encryptedData": "MmTS6yZTpycWBdDqs6yOgx6ZohbVhp0c01s+l0jlyGjPunicGAs1mGC3YCzIXS//nqWvz2JCGAZwcCuC7HukUGEtlJsENfqdCXHt1W0AK4MSMNhspuwxoOzm1d3capLYTNxjVF1RD69PEzpAEPYt1gTDN0fw1YYiKJa2GG9j1y8PaYA55ySoABY+7enJbXVZYww8aRNeCPiatPhrdW56yDTbd8qL9bSA/CSGr0Gsie5sPiRzzBAvbJx+8RfzTfTgMt1Urr1o+nsWaqJG4+ccW4hy+qJuuNUjZDbYzZ9QWzudvkWqRSdbVQb3IaFREWsMHPG2E/n+EMNyDuZBCAoDehHUbT9B4dxbi37IZB+GDtTspLIP4HwjJdBtn3EDujThNCklBp6b2t5JujgUOYHIZ4c8BCoeow4z7DVgRhoSOj1J9Am3ztphAT5SA2doon4njE6pZRwQaJwDvC3SnwBv5isTlRXr7ylyiZrLYsStQAMzkQsbhvuA9xdyI9jnzZyVU6f+8K36t8uXZaQk1oP0tjSJW0XYvJXIdh2GtnxGsk+daWaYnRRy3C6515/MWUOkhwEVudYezx0vkJfrKY97jR6/NbPhu4pyWfiuNbM2+mW/NbURyi6G1w==",
+          "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "signature": "o/uy1AoEYxxUP9vr2/eWrJ9sBD1BY9tWwj0fwYv7sDQ/XUtQ8fgBbakbxMxyaW4e966AxFYvaniGEcigR89HDA==",
+          "signerDeviceId": "device-a",
+          "clock": {
+            "device-a": 2
+          }
+        },
+        "sizeBytes": 472,
+        "roundTripUtf8": "IBZI:oFF!Fb..[!QAuruaGU7j1e0_(1:,?\\ET+ne`KoIl*`5OHdRdw5EsdA~0J35MYX9'#1&!oH+JVFLNJF+rF<#JC/w1*b[V-]3=2uH$kF?@<8F'A=?:pTT)\"l:v)1yV8R2*2/jE~!bF\"]K1b\\,i!LFgZYX)f%SI.Y%:IC\\u*n$_iT8}\"G8;G7L2$*#{aWZdW.rt?05$4Z'n++8S$]'JUky\"DG6<\"@9Au$Wi>-Q5a'G5F<'`9e0Zt'!D_[#+2<JdnMDiW19,$!M$c-*>oe8h/b>>RO0D[h:YW-=h4%G>lO8EKq~}HY%#:'6mW3WcV.1]s=4(@m2@2d|i?|H|V%]qu9eX.<Fq5OKe(h6]^m=z.9#Q}rzzy*Ge#Eu@<>]3t^pDZYA+B8bW=Fg/1$;\\Q9!p:9w=gvW{-F^G8OjX`]-+@)\\&u@~'k^t/5G2s<bYWM<TM<'[R,M;\\!a`Ta|~EiIDvU,%<'-A>m;,8%T&'ccl1Fy2\"@9s$)P@,Gx34\"3@C$xk"
+      }
+    },
+    {
+      "name": "note delete with deletedAt",
+      "pins": "deletedAt inside the signed CBOR",
+      "input": {
+        "id": "abc123def456",
+        "type": "note",
+        "operation": "delete",
+        "contentUtf8": "",
+        "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+        "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "fileKeyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+        "dataNonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "keyNonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+        "clock": {
+          "device-a": 3
+        },
+        "stateVector": null,
+        "deletedAt": 1760000000000
+      },
+      "expected": {
+        "compressedHex": "00",
+        "pushItem": {
+          "id": "abc123def456",
+          "type": "note",
+          "operation": "delete",
+          "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+          "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+          "encryptedData": "M0SWFUbb8hSU8VQiFzqlL70=",
+          "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "signature": "bYuipL+a9jYKgK+pQ0t4jtNzJeKZXgyZzNqfvw+BVZ1a+8hrgq3+JjgoNJ5ma38e9HI6FwTKZD1RlhrcQMd+CQ==",
+          "signerDeviceId": "device-a",
+          "clock": {
+            "device-a": 3
+          },
+          "deletedAt": 1760000000000
+        },
+        "sizeBytes": 17,
+        "roundTripUtf8": ""
+      }
+    },
+    {
+      "name": "task update with clock",
+      "pins": "metadata.clock on a field-merged type",
+      "input": {
+        "id": "V1StGXR8Z5jdHi6BmyT12",
+        "type": "task",
+        "operation": "update",
+        "contentUtf8": "{\"title\":\"Ship the spec\",\"clock\":{\"device-a\":4}}",
+        "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+        "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "fileKeyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+        "dataNonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "keyNonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+        "clock": {
+          "device-a": 4
+        },
+        "stateVector": null,
+        "deletedAt": null
+      },
+      "expected": {
+        "compressedHex": "007b227469746c65223a2253686970207468652073706563222c22636c6f636b223a7b226465766963652d61223a347d7d",
+        "pushItem": {
+          "id": "V1StGXR8Z5jdHi6BmyT12",
+          "type": "task",
+          "operation": "update",
+          "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+          "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+          "encryptedData": "M2dskp+uSeNUP/JZvCzs/n5ojZMgCHypw+Y+sxBuFWH1vPhQi2bcBOqJn1Pqb5+O0LZE6SIhllxzE3iSapBAFxc=",
+          "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "signature": "4IU1uNTn2zJ+KCeeXnkCklcGU3sZDCTZDyyrwy3F8QUtsLXmd1B+ruIqS2BamcpgsbOVDtyR/Oia78FbNeC8Cw==",
+          "signerDeviceId": "device-a",
+          "clock": {
+            "device-a": 4
+          }
+        },
+        "sizeBytes": 65,
+        "roundTripUtf8": "{\"title\":\"Ship the spec\",\"clock\":{\"device-a\":4}}"
+      }
+    },
+    {
+      "name": "note with clock and stateVector",
+      "pins": "both metadata keys, and that CBOR sorts clock before stateVector by length",
+      "input": {
+        "id": "abc123def456",
+        "type": "note",
+        "operation": "update",
+        "contentUtf8": "body with both metadata keys present",
+        "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+        "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "fileKeyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+        "dataNonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "keyNonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+        "clock": {
+          "device-a": 5,
+          "device-b": 1
+        },
+        "stateVector": "AQIDBA==",
+        "deletedAt": null
+      },
+      "expected": {
+        "compressedHex": "00626f6479207769746820626f7468206d65746164617461206b6579732070726573656e74",
+        "pushItem": {
+          "id": "abc123def456",
+          "type": "note",
+          "operation": "update",
+          "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+          "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+          "encryptedData": "M34hgo/6Uu8CbfBouzH0/mdlnNI3GW2rwaF5qQ8hBniy9eYcm7j4lJw8l/sm5wQYIpKT6/M=",
+          "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "signature": "SeD29kGvc32mw1ftvZ6qkqMYZnMRXIPqAL5qcpNS0CqTAO1uJUCDjGHSpWMaXXzXlCn+TivmaeZUvD4edQlTBg==",
+          "signerDeviceId": "device-a",
+          "clock": {
+            "device-a": 5,
+            "device-b": 1
+          },
+          "stateVector": "AQIDBA=="
+        },
+        "sizeBytes": 53,
+        "roundTripUtf8": "body with both metadata keys present"
+      }
+    },
+    {
+      "name": "settings update with no clock",
+      "pins": "the one record type exempt from the clock requirement",
+      "input": {
+        "id": "synced_settings",
+        "type": "settings",
+        "operation": "update",
+        "contentUtf8": "{\"settings\":{\"general\":{\"theme\":\"dark\"}},\"fieldClocks\":{}}",
+        "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+        "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "fileKeyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+        "dataNonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "keyNonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+        "clock": null,
+        "stateVector": null,
+        "deletedAt": null
+      },
+      "expected": {
+        "compressedHex": "007b2273657474696e6773223a7b2267656e6572616c223a7b227468656d65223a226461726b227d7d2c226669656c64436c6f636b73223a7b7d7d",
+        "pushItem": {
+          "id": "synced_settings",
+          "type": "settings",
+          "operation": "update",
+          "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+          "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+          "encryptedData": "M2dslZOuUe8YYqMo7j6+uW9ujcEyFDvwmuhouBlsEyjtpOcTnWiIEPTAkFShMMeX7kka1nt7nFr8bpPSuqNPHbID1wLF8u5Hfgj7",
+          "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "signature": "dS0y/glPZDDWv6/rwpDJm8tYwJ8BXsCROYHiz3KFInzk0apo/odFeF+R5I8TGtemuY5ul6UI0O89Vn7hSNSpCQ==",
+          "signerDeviceId": "device-a"
+        },
+        "sizeBytes": 75,
+        "roundTripUtf8": "{\"settings\":{\"general\":{\"theme\":\"dark\"}},\"fieldClocks\":{}}"
+      }
+    },
+    {
+      "name": "journal update",
+      "pins": "the journal type string: a record for metadata, a CRDT document for its body",
+      "input": {
+        "id": "j2026-04-16",
+        "type": "journal",
+        "operation": "update",
+        "contentUtf8": "{\"date\":\"2026-04-16\",\"tags\":[\"daily\"]}",
+        "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+        "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "fileKeyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+        "dataNonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "keyNonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+        "clock": {
+          "device-a": 1
+        },
+        "stateVector": null,
+        "deletedAt": null
+      },
+      "expected": {
+        "compressedHex": "007b2264617465223a22323032362d30342d3136222c2274616773223a5b226461696c79225d7d",
+        "pushItem": {
+          "id": "j2026-04-16",
+          "type": "journal",
+          "operation": "update",
+          "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+          "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+          "encryptedData": "M2dsgpeuQKRMJ+I65nOx7j4t2YVxVDu+gK1v8kZaVG627+8LzV7Xx/4ZxZP2RqEEMuzi5FtLVg==",
+          "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "signature": "VOk9Y6X9aKi9uNUF76HqGTtdzOGii4kBY6TgrR5kYdYyXhrtPz198DFu459Ihd+/blYTMFbr+amZnbXCaCkZAQ==",
+          "signerDeviceId": "device-a",
+          "clock": {
+            "device-a": 1
+          }
+        },
+        "sizeBytes": 55,
+        "roundTripUtf8": "{\"date\":\"2026-04-16\",\"tags\":[\"daily\"]}"
+      }
+    },
+    {
+      "name": "note create with a second data nonce",
+      "pins": "two items in one push differ in dataNonce, not in key material",
+      "input": {
+        "id": "zzz999aaa111",
+        "type": "note",
+        "operation": "create",
+        "contentUtf8": "a second item in the same batch, distinguished only by its nonce",
+        "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+        "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "fileKeyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+        "dataNonceHex": "ffffffffffffffffffffffffffffffffffffffffffffffff",
+        "keyNonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+        "clock": {
+          "device-b": 1
+        },
+        "stateVector": null,
+        "deletedAt": null
+      },
+      "expected": {
+        "compressedHex": "0061207365636f6e64206974656d20696e207468652073616d652062617463682c2064697374696e67756973686564206f6e6c7920627920697473206e6f6e6365",
+        "pushItem": {
+          "id": "zzz999aaa111",
+          "type": "note",
+          "operation": "create",
+          "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+          "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+          "encryptedData": "QcNM4iHk7/DMJTsJVddJl9KI5nGM2QILjPukn2yTBGJlsGAr1suwVzLWi3wIy/l37lJsJavjMwqsabGBaYrUu1Kf8clQpyRIj+Oex7mBwhID",
+          "dataNonce": "////////////////////////////////",
+          "signature": "ap0m9uBRNvGyJKQA42CFK8sEXEg8U0xTD5zbUcHi3jyLHY+h8uqpNLNjNIEY/vQyMVA4lLao4RjUWwb53x1UCg==",
+          "signerDeviceId": "device-a",
+          "clock": {
+            "device-b": 1
+          }
+        },
+        "sizeBytes": 81,
+        "roundTripUtf8": "a second item in the same batch, distinguished only by its nonce"
+      }
+    }
+  ],
+  "tamperCases": [
+    {
+      "name": "tamper: clock removed after signing",
+      "pushItem": {
+        "id": "abc123def456",
+        "type": "note",
+        "operation": "create",
+        "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+        "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+        "encryptedData": "MmTStaDS7Kq/TDXo3ozUiyIsJf+dLlHgK+XTgzTK2dqEnqLw7zw9N29iaLdXr2JfsJyg1dRZ7zGf",
+        "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+        "signature": "5C318j9lRahL9N+h7mLmOzdA8Yk3as8gsisRhBXKlVzijJtN5L9TFI8QlXfiO9B9XC8XAIuEG2Qt4KlAhfNTAQ==",
+        "signerDeviceId": "device-a"
+      },
+      "signerPublicKeyHex": "b533d8ad9fcfbdde0b481c1b334ddc3c53412fd614564e7e5afd020368d382c3",
+      "expectFailure": "signature",
+      "pins": "the signature covers metadata; stripping it must not verify"
+    },
+    {
+      "name": "tamper: one ciphertext byte flipped",
+      "pushItem": {
+        "id": "abc123def456",
+        "type": "note",
+        "operation": "create",
+        "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+        "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+        "encryptedData": "MmTStaDS7Kq/TDXo3ozUiyIsJf+dLlHgK+XTgzTK2dqEnqLw7zw9N29iaLdXr2JfsJyg1dRZ7zGe",
+        "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+        "signature": "5C318j9lRahL9N+h7mLmOzdA8Yk3as8gsisRhBXKlVzijJtN5L9TFI8QlXfiO9B9XC8XAIuEG2Qt4KlAhfNTAQ==",
+        "signerDeviceId": "device-a",
+        "clock": {
+          "device-a": 1
+        }
+      },
+      "signerPublicKeyHex": "b533d8ad9fcfbdde0b481c1b334ddc3c53412fd614564e7e5afd020368d382c3",
+      "expectFailure": "signature",
+      "pins": "the signature covers the base64 ciphertext string, so a flip fails there first"
+    },
+    {
+      "name": "tamper: verified against the wrong signer",
+      "pushItem": {
+        "id": "abc123def456",
+        "type": "note",
+        "operation": "create",
+        "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+        "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+        "encryptedData": "MmTStaDS7Kq/TDXo3ozUiyIsJf+dLlHgK+XTgzTK2dqEnqLw7zw9N29iaLdXr2JfsJyg1dRZ7zGf",
+        "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+        "signature": "5C318j9lRahL9N+h7mLmOzdA8Yk3as8gsisRhBXKlVzijJtN5L9TFI8QlXfiO9B9XC8XAIuEG2Qt4KlAhfNTAQ==",
+        "signerDeviceId": "device-a",
+        "clock": {
+          "device-a": 1
+        }
+      },
+      "signerPublicKeyHex": "f95c6a5dff031fac7b1a6a54b6610caeb83b39f7e8a66be16ff5faa4a511ed2d",
+      "expectFailure": "signature",
+      "pins": "SEED_A signed it; SEED_C must not verify it"
+    }
+  ],
+  "sizeCeilingCases": [
+    {
+      "name": "payload one byte under the ceiling",
+      "contentBytes": 3826919,
+      "expectThrows": false,
+      "pins": "estimated size is 3826919 * 1.37, still <= 5242880"
+    },
+    {
+      "name": "payload one byte over the ceiling",
+      "contentBytes": 3826920,
+      "expectThrows": true,
+      "expectErrorName": "ItemTooLargeError",
+      "pins": "the check runs BEFORE any crypto and is non-retryable"
+    }
+  ]
+}

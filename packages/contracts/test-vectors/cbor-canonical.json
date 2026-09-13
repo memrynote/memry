@@ -1,0 +1,378 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "cbor-canonical",
+    "chapter": "docs/protocol/04-record-envelope.md §4.7",
+    "ordering": "RFC 8949 §4.2.3, Length-First Map Key Ordering",
+    "encoder": "packages/sync-client/src/pull/cbor.ts (twin: apps/desktop/src/main/crypto/cbor.ts)",
+    "caseCount": 14
+  },
+  "cases": [
+    {
+      "name": "sync-item, all ten keys",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "id": "abc123def456",
+        "type": "note",
+        "operation": "create",
+        "cryptoVersion": 1,
+        "encryptedKey": "ZW5jcnlwdGVkS2V5",
+        "keyNonce": "a2V5Tm9uY2U=",
+        "encryptedData": "ZW5jcnlwdGVkRGF0YQ==",
+        "dataNonce": "ZGF0YU5vbmNl",
+        "deletedAt": 1760000000000,
+        "metadata": {
+          "clock": {
+            "device-a": 3
+          }
+        }
+      },
+      "expectedHex": "aa6269646c6162633132336465663435366474797065646e6f7465686b65794e6f6e63656c61325635546d39755932553d686d65746164617461a165636c6f636ba1686465766963652d610369646174614e6f6e63656c5a47463059553576626d4e6c6964656c6574656441741b00000199c82cc000696f7065726174696f6e666372656174656c656e637279707465644b6579705a57356a636e6c776447566b533256356d63727970746f56657273696f6e016d656e6372797074656444617461745a57356a636e6c776447566b5247463059513d3d",
+      "expectedDecodedKeyOrder": [
+        "id",
+        "type",
+        "keyNonce",
+        "metadata",
+        "dataNonce",
+        "deletedAt",
+        "operation",
+        "encryptedKey",
+        "cryptoVersion",
+        "encryptedData"
+      ],
+      "pins": "the real payload; the encoded order is length-first, not the field-list order"
+    },
+    {
+      "name": "sync-item, keys inserted in reverse",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "metadata": {
+          "clock": {
+            "device-a": 3
+          }
+        },
+        "deletedAt": 1760000000000,
+        "dataNonce": "ZGF0YU5vbmNl",
+        "encryptedData": "ZW5jcnlwdGVkRGF0YQ==",
+        "keyNonce": "a2V5Tm9uY2U=",
+        "encryptedKey": "ZW5jcnlwdGVkS2V5",
+        "cryptoVersion": 1,
+        "operation": "create",
+        "type": "note",
+        "id": "abc123def456"
+      },
+      "expectedHex": "aa6269646c6162633132336465663435366474797065646e6f7465686b65794e6f6e63656c61325635546d39755932553d686d65746164617461a165636c6f636ba1686465766963652d610369646174614e6f6e63656c5a47463059553576626d4e6c6964656c6574656441741b00000199c82cc000696f7065726174696f6e666372656174656c656e637279707465644b6579705a57356a636e6c776447566b533256356d63727970746f56657273696f6e016d656e6372797074656444617461745a57356a636e6c776447566b5247463059513d3d",
+      "expectedDecodedKeyOrder": [
+        "id",
+        "type",
+        "keyNonce",
+        "metadata",
+        "dataNonce",
+        "deletedAt",
+        "operation",
+        "encryptedKey",
+        "cryptoVersion",
+        "encryptedData"
+      ],
+      "pins": "identical bytes; input insertion order is irrelevant"
+    },
+    {
+      "name": "length-first versus lexicographic disagreement",
+      "fieldOrderName": "LENGTH_FIRST_PROBE",
+      "fieldOrder": ["aa", "z"],
+      "input": {
+        "aa": 1,
+        "z": 2
+      },
+      "expectedHex": "a2617a0262616101",
+      "expectedDecodedKeyOrder": ["z", "aa"],
+      "pins": "RFC 8949 §4.2.3: `z` (1 byte) sorts before `aa` (2 bytes). A §4.2.1 encoder fails here and nowhere else"
+    },
+    {
+      "name": "nested metadata sorts recursively",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "id": "i",
+        "type": "note",
+        "metadata": {
+          "stateVector": "c3Y=",
+          "clock": {
+            "device-a": 1
+          }
+        }
+      },
+      "expectedHex": "a362696461696474797065646e6f7465686d65746164617461a265636c6f636ba1686465766963652d61016b7374617465566563746f72646333593d",
+      "expectedDecodedKeyOrder": ["id", "type", "metadata"],
+      "pins": "`clock` (5) before `stateVector` (11) inside a nested map"
+    },
+    {
+      "name": "equal-length nested keys sort bytewise",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "id": "i",
+        "type": "note",
+        "metadata": {
+          "clock": {
+            "d1": 1,
+            "aa": 2
+          }
+        }
+      },
+      "expectedHex": "a362696461696474797065646e6f7465686d65746164617461a165636c6f636ba26261610262643101",
+      "expectedDecodedKeyOrder": ["id", "type", "metadata"],
+      "pins": "`aa` before `d1`: equal length falls through to bytewise"
+    },
+    {
+      "name": "three-level nesting",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "id": "i",
+        "metadata": {
+          "stateVector": "c3Y=",
+          "clock": {
+            "zzz": 1,
+            "a": 2,
+            "bb": 3
+          }
+        }
+      },
+      "expectedHex": "a26269646169686d65746164617461a265636c6f636ba361610262626203637a7a7a016b7374617465566563746f72646333593d",
+      "expectedDecodedKeyOrder": ["id", "metadata"],
+      "pins": "recursion does not stop at depth two"
+    },
+    {
+      "name": "integer 1",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "cryptoVersion": 1
+      },
+      "expectedHex": "a16d63727970746f56657273696f6e01",
+      "expectedDecodedKeyOrder": ["cryptoVersion"],
+      "pins": "shortest-form unsigned integer, `01`"
+    },
+    {
+      "name": "integer 1000000",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "deletedAt": 1000000
+      },
+      "expectedHex": "a16964656c6574656441741a000f4240",
+      "expectedDecodedKeyOrder": ["deletedAt"],
+      "pins": "shortest form with a 4-byte argument, `1a 000f4240`"
+    },
+    {
+      "name": "integer -1",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "deletedAt": -1
+      },
+      "expectedHex": "a16964656c65746564417420",
+      "expectedDecodedKeyOrder": ["deletedAt"],
+      "pins": "shortest-form negative integer, `20`"
+    },
+    {
+      "name": "float 1.5 narrows to float16",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "deletedAt": 1.5
+      },
+      "expectedHex": "a16964656c657465644174f93e00",
+      "expectedDecodedKeyOrder": ["deletedAt"],
+      "pins": "`f9 3e00`. An encoder that always emits float64 signs different bytes"
+    },
+    {
+      "name": "float 0.1 stays float64",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "deletedAt": 0.1
+      },
+      "expectedHex": "a16964656c657465644174fb3fb999999999999a",
+      "expectedDecodedKeyOrder": ["deletedAt"],
+      "pins": "`fb 3fb999999999999a`: narrowing is lossy, so it does not happen"
+    },
+    {
+      "name": "byte string value",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "encryptedData": {
+          "$bytesHex": "010203"
+        }
+      },
+      "expectedHex": "a16d656e637279707465644461746143010203",
+      "expectedDecodedKeyOrder": ["encryptedData"],
+      "pins": "major type 2, `43 010203` — not an array of integers"
+    },
+    {
+      "name": "null is encoded, undefined is dropped",
+      "fieldOrderName": "SYNC_ITEM",
+      "fieldOrder": [
+        "id",
+        "type",
+        "operation",
+        "cryptoVersion",
+        "encryptedKey",
+        "keyNonce",
+        "encryptedData",
+        "dataNonce",
+        "deletedAt",
+        "metadata"
+      ],
+      "input": {
+        "id": null,
+        "type": {
+          "$undefined": true
+        },
+        "operation": "create"
+      },
+      "expectedHex": "a2626964f6696f7065726174696f6e66637265617465",
+      "expectedDecodedKeyOrder": ["id", "operation"],
+      "pins": "`null` encodes as `f6`; an `undefined` value omits the key entirely"
+    }
+  ],
+  "rejectCases": [
+    {
+      "name": "a key outside the field order throws",
+      "fieldOrderName": "SYNC_ITEM",
+      "input": {
+        "id": "i",
+        "notInTheList": 1
+      },
+      "expectErrorContains": "CBOR encoding rejected: fields not in ordering would be excluded",
+      "pins": "rejection is a hard throw, never a silent exclusion"
+    }
+  ]
+}

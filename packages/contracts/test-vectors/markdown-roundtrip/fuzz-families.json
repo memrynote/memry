@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "markdown-roundtrip-fuzz",
+    "source": "packages/editor-schema/src/conformance.ts",
+    "seed": "0x1848",
+    "casesPerFamily": 48,
+    "familyCount": 5
+  },
+  "families": [
+    {
+      "name": "link mention urls",
+      "pending": null
+    },
+    {
+      "name": "date pill payloads",
+      "pending": null
+    },
+    {
+      "name": "callout bodies",
+      "pending": null
+    },
+    {
+      "name": "toggle summaries and bodies",
+      "pending": null
+    },
+    {
+      "name": "mixed documents",
+      "pending": {
+        "renderer": 1892
+      }
+    }
+  ]
+}

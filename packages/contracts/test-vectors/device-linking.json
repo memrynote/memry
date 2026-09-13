@@ -1,0 +1,103 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "device-linking",
+    "chapter": "docs/protocol/03-device-linking.md",
+    "sessionId": "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+    "linkingSecretB64": "ERERERERERERERERERERERERERERERERERERERERERE=",
+    "linkingSecretBytes": 32,
+    "ecdh": {
+      "initiatorPublicB64": "07r1bLAL/LtBpFm9ZA8Fp37WEQgJv18hvhoI5R3/dAk=",
+      "newDevicePublicB64": "FrfvAm43rIRbeA6yrtojCOC2PLNrKelHi+8SQt/YRTI=",
+      "sharedSecretsAgree": true
+    },
+    "subkeys": {
+      "encryption": "memrylnk/5",
+      "mac": "memrymac/6",
+      "sas": "memrysas/7"
+    },
+    "desktopParityAssertedIn": "apps/desktop/src/main/sync/vector-parity.test.ts",
+    "sessionTtlSeconds": 300,
+    "caseCount": 8
+  },
+  "cases": [
+    {
+      "name": "scanProof — the scan channel MAC",
+      "channel": "scan",
+      "algorithm": "HMAC-SHA-256",
+      "keyHex": "1111111111111111111111111111111111111111111111111111111111111111",
+      "keySource": "the DECODED 32 bytes of linkingSecret, not the base64 string",
+      "cborOrdering": "LINKING_PROOF",
+      "messageHex": "a26973657373696f6e4964782433663235303465302d346638392d343164332d396130632d3033303565383263333330316f6465766963655075626c69634b6579782c46726676416d3433724952626541367972746f6a434f4332504c4e724b656c48692b385351742f595254493d",
+      "expectedMacB64": "Ad9EXtsyfGQ0aoAdktyUmuja/lxqsvZJ9t1bKbZqkDc=",
+      "pins": "WebCrypto HMAC-SHA-256 keyed by the linking secret, and the exact CBOR message"
+    },
+    {
+      "name": "scanConfirm — the scan channel, three-field ordering",
+      "channel": "scan",
+      "algorithm": "HMAC-SHA-256",
+      "keyHex": "1111111111111111111111111111111111111111111111111111111111111111",
+      "cborOrdering": "SCAN_CONFIRM",
+      "messageHex": "a36973657373696f6e4964782433663235303465302d346638392d343164332d396130632d3033303565383263333330316f6465766963655075626c69634b6579782c46726676416d3433724952626541367972746f6a434f4332504c4e724b656c48692b385351742f595254493d72696e69746961746f725075626c69634b6579782c30377231624c414c2f4c744270466d395a413846703337574551674a7631386876686f493552332f64416b3d",
+      "expectedMacB64": "PiMMak3h41eLpH3WOpjCin6DBqbn0bRXouZMAcMSyOU=",
+      "pins": "the only ordering carrying initiatorPublicKey"
+    },
+    {
+      "name": "newDeviceConfirm — the SAME message on the confirm channel",
+      "channel": "confirm",
+      "algorithm": "crypto_auth (HMAC-SHA512-256)",
+      "keyHex": "7b11f3abf112ebc17be91034149b7630062752232d61fedf0de84f22d6e4b5f5",
+      "cborOrdering": "LINKING_PROOF",
+      "messageHex": "a26973657373696f6e4964782433663235303465302d346638392d343164332d396130632d3033303565383263333330316f6465766963655075626c69634b6579782c46726676416d3433724952626541367972746f6a434f4332504c4e724b656c48692b385351742f595254493d",
+      "expectedMacB64": "ecndPmwwZz0AWAxGVWhXZLYiF29sGH3O2My0SXFVkd8=",
+      "pins": "LINKING_PROOF is used by BOTH families over identical bytes with different keys and different primitives. Both tags ride in the same /scan body"
+    },
+    {
+      "name": "keyConfirm — the confirm channel over the master key block",
+      "channel": "confirm",
+      "algorithm": "crypto_auth (HMAC-SHA512-256)",
+      "keyHex": "7b11f3abf112ebc17be91034149b7630062752232d61fedf0de84f22d6e4b5f5",
+      "cborOrdering": "KEY_CONFIRM",
+      "messageHex": "a26973657373696f6e4964782433663235303465302d346638392d343164332d396130632d30333035653832633333303172656e637279707465644d61737465724b657978405631716e734d43465a424841466a324146543255453170412b6f4f7750714843593653312f58435a6a565a76592b35306e30615848797a72437735714b633261",
+      "expectedMacB64": "3F4JMm6/kg4UEx4GDHNZW+3bOrmljGWUe7IrCygiCF0=",
+      "pins": "the value MACd is the base64 STRING of the ciphertext, not its raw bytes"
+    },
+    {
+      "name": "the master key block",
+      "encKeyHex": "f7cc6bcef915c525e105a3ad20d82683cad471ed5829636684ef0d7bbbbdb5a4",
+      "keyNonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+      "masterKeyHex": "2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+      "encryptedMasterKeyB64": "V1qnsMCFZBHAFj2AFT2UE1pA+oOwPqHCY6S1/XCZjVZvY+50n0aXHyzrCw5qKc2a",
+      "associatedData": null,
+      "pins": "NO associated data on this block, unlike the two optional blocks"
+    },
+    {
+      "name": "the SAS derivation",
+      "sharedSecretHex": "41bcfa7095550ef630d069fda9128604505da65c455c8525effede48c81e430e",
+      "sasKeyHex": "e4e5fd48ee775379bf7a5cb558d12fec6cccf3c13e08cd16fc8098d0bae4936b",
+      "generichash4Hex": "9eb6515d",
+      "uint32BigEndian": 2662748509,
+      "expectedCode": "748509",
+      "pins": "six decimal digits, big-endian uint32 % 10^6, zero padded. The 2^32 mod 10^6 bias MUST be reproduced, not corrected: rejection sampling produces a different code and breaks linking"
+    }
+  ],
+  "failureCases": [
+    {
+      "name": "a confirm MAC verified with the wrong subkey",
+      "messageHex": "a26973657373696f6e4964782433663235303465302d346638392d343164332d396130632d30333035653832633333303172656e637279707465644d61737465724b657978405631716e734d43465a424841466a324146543255453170412b6f4f7750714843593653312f58435a6a565a76592b35306e30615848797a72437735714b633261",
+      "macB64": "3F4JMm6/kg4UEx4GDHNZW+3bOrmljGWUe7IrCygiCF0=",
+      "verifyWithKeyHex": "071c5068777d36413247f6a247ebdd45db3f95995a134457f6d5a8d3e5d1243c",
+      "expectValid": false,
+      "pins": "a MAC from a different shared secret must not verify"
+    },
+    {
+      "name": "a SAS from a transcript with one byte changed",
+      "alteredSharedSecretHex": "40bcfa7095550ef630d069fda9128604505da65c455c8525effede48c81e430e",
+      "expectedCode": "651931",
+      "mustDifferFrom": "748509",
+      "pins": "the whole point of the SAS: a changed transcript shows a different code"
+    }
+  ]
+}

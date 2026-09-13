@@ -1,0 +1,657 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "markdown-roundtrip",
+    "chapter": "docs/protocol/12-note-body-format.md",
+    "source": "packages/editor-schema/src/conformance.ts",
+    "exportedCaseCount": 80,
+    "storageCaseCount": 4,
+    "outOfBandCaseCount": 6,
+    "caseCount": 90,
+    "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
+  },
+  "cases": [
+    {
+      "name": "link mention url https://example.com/a_b_c",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%5Fb%5Fc)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "bf1b639e598ba09416b6c9aa0bbbc85e2b3a6a7531798d0929750ae2717ef76f"
+    },
+    {
+      "name": "link mention url https://example.com/a*b*c",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%2Ab%2Ac)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7bc59ade99bb24720a2b5f8e61d80186b61e95d7bf43ca58db24561642908848"
+    },
+    {
+      "name": "link mention url https://example.com/a!b",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%21b)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "6ac77068a9855a9f12f57ed067e7b48b42f65a9b5f0b34083598d3b6cc974a9a"
+    },
+    {
+      "name": "link mention url https://example.com/~user",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2F%7Euser)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "164a45751f3951f52452e2fc461e4d94c138bca94541d65a32490566f2e7f987"
+    },
+    {
+      "name": "link mention url https://example.com/it's",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fit%27s)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "f93d709ca539bec835c12b951e3305e3c26339f6939047c55fab792429685260"
+    },
+    {
+      "name": "link mention url https://en.wikipedia.org/wiki/Rust_(programming_language)",
+      "markdown": "Intro ((mention:https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FRust%5F%28programming%5Flanguage%29)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "6a284602656ae0c7130a9a22da64df499fcd8b2930f0ab5138bbb60f5b98cb3f"
+    },
+    {
+      "name": "link mention url https://example.com/100%25",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2F100%2525)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e85e1ef9acc88927aad20b8449414f267a3abb1bb4bfd83b445efca6bf85ecb4"
+    },
+    {
+      "name": "link mention url https://example.com/?a=1&b=2&c=x_y",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2F%3Fa%3D1%26b%3D2%26c%3Dx%5Fy)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "aafa8387a2dbb229fb6e772620f6b2f266dc7fb7ce6510cb76b88f36d5b0462e"
+    },
+    {
+      "name": "link mention url https://example.com/page#section",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fpage%23section)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b215bf26abf9a9fb88d86f3f1d66f77254fa54b06a269d6c5412939faafc5ed9"
+    },
+    {
+      "name": "link mention url https://example.com/a b",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%20b)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "daffbcf57af0b7ee076e478ce822ec7da991a993aa333d251dc13f3edcf29465"
+    },
+    {
+      "name": "link mention url https://example.com/日本語/ünïcode",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2F%E6%97%A5%E6%9C%AC%E8%AA%9E%2F%C3%BCn%C3%AFcode)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "538b19394539e0de69b198b8aea47abf3c4d8e39a35c836559e7291755cc7cf2"
+    },
+    {
+      "name": "link mention url https://example.com/x_(y)*z!~'&=#%20 end)",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fx%5F%28y%29%2Az%21%7E%27%26%3D%23%2520%20end%29)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "280a09dc1e5038b50f455fb4f0fece4594ebafeb7de5838a44c768a14591ff38"
+    },
+    {
+      "name": "link mention url with underscore next to punctuation",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2F%21%5Fbang%2Fx.y%5F%7Ez)) outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "0972a1bee7e26b3e49631d958a473270c6fdec9c0461e219994c3571d06a6be9"
+    },
+    {
+      "name": "date pill in body text",
+      "markdown": "Before ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) after.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5650820ed69235d3796af18d610fe9a5826972823ddfa9a1bc2b597315fefcc0"
+    },
+    {
+      "name": "date pill whose payload forced emphasis runs pre-#1845",
+      "markdown": "Before ((date:eyJhbmNob3JJZCI6Inj;;;;;,,,,,,,,,,,,IiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) after.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "feb4eb6fd70afd0b926b048aad69cb57ef5d0f757d44c40661da7f56892d1e01"
+    },
+    {
+      "name": "date pill with a reminder, whole paragraph",
+      "markdown": "((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOmZhbHNlLCJkYXRlRm9ybWF0IjoiZnVsbCIsInJlbWluZCI6IjFkIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e83a46005d09a8436470a54b30e9cb05196c31047e2c40c0e3c0a33abb166e88"
+    },
+    {
+      "name": "two date pills in one line",
+      "markdown": "((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) and ((date:eyJhbmNob3JJZCI6ImIyIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8c35e16828f8294b63e8ee6d7847f8448495fcfb85fbef11cba243d39769ae94"
+    },
+    {
+      "name": "info callout",
+      "markdown": "> [!info]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "affc9e6261c8ea0db9979d83649584e177bd5d3b2d4c800b043f6c7ca11e427c"
+    },
+    {
+      "name": "warning callout",
+      "markdown": "> [!warning]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "68c2541e119d66025037673b6fff4c6128b01e404ee02eeecc5390b7c7e991a5"
+    },
+    {
+      "name": "error callout",
+      "markdown": "> [!error]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ecdb4bb680d3957487f1954a1bf800a425a551b4a365a73e73abfe06d313d96f"
+    },
+    {
+      "name": "success callout",
+      "markdown": "> [!success]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "364342a7670b6118a683cbafef674863828e340a00eee0b5c4b2403c4cb671e1"
+    },
+    {
+      "name": "callout with a multi-line body",
+      "markdown": "> [!info]\n> One\n> Two",
+      "canonical": null,
+      "pending": null,
+      "sha256": "12661c8d5427ce4d8c05903114de0e5ec98ed3a49fd01ddd44d7dc39e6977724"
+    },
+    {
+      "name": "foreign > [!note] callout passes through untouched",
+      "markdown": "> [!note]\n> An Obsidian note callout",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1800a0c894b1b78d00b7ebb6ef507014f145f4f6d88da1811b1ffbad79468d18"
+    },
+    {
+      "name": "foreign > [!tip] callout passes through untouched",
+      "markdown": "> [!tip]\n> An Obsidian tip callout",
+      "canonical": null,
+      "pending": null,
+      "sha256": "6d093e7086a1de68536ad5ce9e6343804d63e82e9bd5c611501e35244f42eca7"
+    },
+    {
+      "name": "callout with a title after the marker",
+      "markdown": "> [!info] Title here\n> Body",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9557eea7d3ad13de41ab7af4ee87c86770cf7cf0a22e25c551be6ce92add8b8f"
+    },
+    {
+      "name": "callout with a multi-paragraph body",
+      "markdown": "> [!info]\n> One\n>\n> Two",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e16d2bca4e95e613e8d6e10beb9b5b9a9cc163c21dec709642ed82d0801bcd1e"
+    },
+    {
+      "name": "nested foreign callouts pass through untouched",
+      "markdown": "> [!note] Outer callout\n> Outer body text\n>\n> > [!warning] Inner callout\n> > Inner body text",
+      "canonical": null,
+      "pending": null,
+      "sha256": "38bd85020ee1a4dccd61eb20efe524b5d6fb2548b377fe2ea954f7180a5fc6a9"
+    },
+    {
+      "name": "plain quote with a blank separator line",
+      "markdown": "> One\n>\n> Two",
+      "canonical": null,
+      "pending": null,
+      "sha256": "6b97a75e3405a21fcc80fbb3f07fdf15cf7f29c28c3e8c3b6e0faf7abaa0cfb7"
+    },
+    {
+      "name": "quote with a fenced code block after a blank line",
+      "markdown": "> Intro\n>\n> ```ts\n> const x = 1\n> ```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4263cfece0248f9c2c25d12ea91435c515bdf0690187af26d4898f5788a023c6"
+    },
+    {
+      "name": "quote with a list after a blank line",
+      "markdown": "> Intro\n>\n> - one\n> - two",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8cb19b8a2702d0a0c993f959bf71f5cde5289044a547ace04b4b7c84d792d05e"
+    },
+    {
+      "name": "extra blank line next to a callout survives",
+      "markdown": "Before\n\n\n> [!info]\n> Body\n\n\nAfter",
+      "canonical": null,
+      "pending": {
+        "renderer": 1892
+      },
+      "sha256": "0c5eb1f1d3e88dbfaafa69b9b49e347af8e7faa911e1fbb7833d63bf81141bee"
+    },
+    {
+      "name": "lazily continued nested quote normalizes onto the separator form",
+      "markdown": "> Outer\n> > Inner",
+      "canonical": "> Outer\n>\n> > Inner",
+      "pending": null,
+      "sha256": "1a7a0dfe727b3ab30f4407b18e142f637a11df2d65eb25f0594e20dca5df3ede"
+    },
+    {
+      "name": "lazily continued nested callout keeps its nesting",
+      "markdown": "> Outer\n> > [!warning] Inner\n> > Inner body",
+      "canonical": "> Outer\n>\n> > [!warning] Inner\n> > Inner body",
+      "pending": null,
+      "sha256": "fa2dfd5e20b0bd5b6af17f6090dda50ec60baad0ca878a6bfd661bcecbf428ec"
+    },
+    {
+      "name": "empty toggle",
+      "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "2db9883ed4c651e551d84f55685f5bbe3021fe265fa96c425df6474de2f3d0b3"
+    },
+    {
+      "name": "toggle with a body",
+      "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n\nBody line\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "dd1c88813dfefafd75f71d6759c3d75a3bb31c912d87c0330b99c092cdc75a80"
+    },
+    {
+      "name": "nested toggles",
+      "markdown": "<details data-memry-toggle>\n<summary>Outer</summary>\n\n<details data-memry-toggle>\n<summary>Inner</summary>\n\nDeep body\n\n</details>\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b991520d5e6a36d8e7636794c56442dbfbdbdd639bc5c1a5f8836765cd302ad4"
+    },
+    {
+      "name": "toggle body with blank lines",
+      "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n\nOne\n\nTwo\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b8545f74e88d7217a4dcbe3ab68d227c41db23da261c292f4071c33892af2ba1"
+    },
+    {
+      "name": "toggle body with a code fence",
+      "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n\n```ts\nconst x = 1\n```\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "49a9b68d534e55da3ab55226b5e379a098eb5593ccba53b89750565f13684795"
+    },
+    {
+      "name": "toggle body with an image",
+      "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n\n![pic.png](memry-file://local/v/attachments/n/pic.png)\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "23d992077880798c34b0bfda5b36f883f951f231256d89b33197765f156d1a48"
+    },
+    {
+      "name": "unterminated toggle stays literal markdown",
+      "markdown": "<details data-memry-toggle>\n<summary>Unterminated</summary>\n\nBody",
+      "canonical": null,
+      "pending": null,
+      "sha256": "80c2c021c144a1c55335dda1276b7daf1bb21fa5bea2cd8acbc0e539a508d403"
+    },
+    {
+      "name": "expanded toggle keeps its open attribute",
+      "markdown": "<details data-memry-toggle open>\n<summary>Summary</summary>\n\nBody line\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5eadcee80902216e1420aff40d6e28e39b2b03819f5f4f72ea24eb942b2f1553"
+    },
+    {
+      "name": "expanded toggle nested in a collapsed one",
+      "markdown": "<details data-memry-toggle>\n<summary>Outer</summary>\n\n<details data-memry-toggle open>\n<summary>Inner</summary>\n\nDeep body\n\n</details>\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7a2d1f3a07799b347e7c2dee2b8fc63494f8ff3f7ea76a786a08e72e4d98257b"
+    },
+    {
+      "name": "extra blank line next to a toggle survives",
+      "markdown": "Before\n\n\n<details data-memry-toggle>\n<summary>Summary</summary>\n\nBody line\n\n</details>\n\n\nAfter",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c1d0a0c5ebe294b163b095564394acc37b382036ea8ca115b8c79a623d872771"
+    },
+    {
+      "name": "extra blank line between two toggles survives",
+      "markdown": "<details data-memry-toggle>\n<summary>A</summary>\n\na\n\n</details>\n\n\n<details data-memry-toggle>\n<summary>B</summary>\n\nb\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "90464e619cd23d8c80b5bc4cdef640c5dbcabac0b49b11361709321b8f1ca564"
+    },
+    {
+      "name": "two extra blank lines before a toggle survive",
+      "markdown": "Before\n\n\n\n<details data-memry-toggle>\n<summary>Summary</summary>\n\nBody line\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d93da2c32e9fa407006d28d8d232f010d1b6fc5e27f0866b05aabe9d23a8cb7e"
+    },
+    {
+      "name": "extra blank line before a colored toggle survives",
+      "markdown": "Before\n\n\n<!-- colors:{\"backgroundColor\":\"blue\"} -->\n<details data-memry-toggle>\n<summary>Summary</summary>\n\nBody line\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "262ae2db48d4e556d2e1caba21ecce72b56f7841c190a92dfc99f8185542ddf6"
+    },
+    {
+      "name": "unterminated toggle with no summary keeps its open line",
+      "markdown": "<details data-memry-toggle>\n\nBody",
+      "canonical": null,
+      "pending": null,
+      "sha256": "95865ef8cf51139501cb334d66566ac75ed1138eb752b0308dd4a6fb6ac9c2cb"
+    },
+    {
+      "name": "unterminated expanded toggle keeps its open and summary lines",
+      "markdown": "<details data-memry-toggle open>\n<summary>Unterminated</summary>\n\nBody",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d5d51bf51dece1ed677234dc061332bdac0aa73bb490280e46c13624feafa2fd"
+    },
+    {
+      "name": "foreign details block stays the bytes its author wrote",
+      "markdown": "<details>\n<summary>Foreign</summary>\n\nBody\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "bc1f349fa5f3fb70a861a1ab4cf86468a79aa183cca59510c0cee0f5c9fa3210"
+    },
+    {
+      "name": "orphan closing details tag stays literal markdown",
+      "markdown": "Body\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b6ae6ad0e8ba0e86fcc49a76a8c9c1599021a63a29e22ccdb3e503a51a9884c2"
+    },
+    {
+      "name": "declined details markup keeps a backslash next to its bracket",
+      "markdown": "<details data-memry-toggle>\n<summary>C:\\<path></summary>\n\nBody",
+      "canonical": null,
+      "pending": null,
+      "sha256": "61d77c0633bb3399478ef36d265791a16e7bec3e0b4b6abdadc5534e2b23a33d"
+    },
+    {
+      "name": "declined details markup keeps a backslash that ends the line",
+      "markdown": "<details data-memry-toggle>\n<summary>ends\\</summary>\n\nBody",
+      "canonical": null,
+      "pending": null,
+      "sha256": "737e97f588b74140ecb336be46a29827bf8b700b98d002baa8f15f53a5b9f7f9"
+    },
+    {
+      "name": "declined details markup keeps a backslash away from its bracket",
+      "markdown": "<details>\n<summary>C:\\Users\\me</summary>\n\nBody\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "2bcc11f0dce249aeaa97314b32ff80a6b62dba3e64f4f7c9f5de347e5f4746cb"
+    },
+    {
+      "name": "mention and date tokens in table cells",
+      "markdown": "| a                                             | b                                                                                                                                                                                        |\n| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| ((mention:https%3A%2F%2Fexample.com%2Fplain)) | ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "901c1d444235ee283fd7666964a87eef5e4e5f76a5c5f5d384eee30327d1ff13"
+    },
+    {
+      "name": "wiki link and hash tag in table cells",
+      "markdown": "| a           | b     |\n| ----------- | ----- |\n| [[Roadmap]] | #work |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ebbad0916b2f5693c4bdb6c812897e9bd9da97860243a08bb091bec42cae2902"
+    },
+    {
+      "name": "mention and date tokens in list items",
+      "markdown": "- ((mention:https%3A%2F%2Fexample.com%2Fplain))\n- ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1b0a02a05c2a64b641517230973409b9be143cd409067e7f42e94900fabe9043"
+    },
+    {
+      "name": "mention and date tokens in a toggle body",
+      "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n\n((mention:https%3A%2F%2Fexample.com%2Fplain)) and ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ffe298e46354485b80b63ad4bdd158bb2d8a4ffc630938e4ad6b19f349355366"
+    },
+    {
+      "name": "wiki link, hash tag and mention in a sentence",
+      "markdown": "See [[Roadmap]] and #tag and ((mention:https%3A%2F%2Fx.com)) inline.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "fc9a6339962b5a0e2a87880b7ae249ab38e49d0134c2d6079866064102967b7b"
+    },
+    {
+      "name": "callout inside a toggle body",
+      "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n\n> [!warning]\n> Inside\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "01f30ec62785a289818a84601b12189cf01c3976a9f790c9746489d7f36f0b99"
+    },
+    {
+      "name": "youtube embed marker",
+      "markdown": "![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "f1f6557065adc95c6f6828b463a70a81c242a6161a9611f152453b7d0f190ab3"
+    },
+    {
+      "name": "bookmark marker",
+      "markdown": "![bookmark](https://example.com/a)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "2b6f5aa5007d0309ed9fd813c67f49fdad70ed1d49f436ab4a18d77170a2a0d4"
+    },
+    {
+      "name": "file marker",
+      "markdown": "<!-- file:{\"url\":\"memry-file://local/v/a/x.pdf\",\"name\":\"x.pdf\",\"size\":1234,\"mimeType\":\"application/pdf\"} -->",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8f36ec78616beb58b4cee09d4f533e89db554619e734533dc8233b765f1521ee"
+    },
+    {
+      "name": "task block line",
+      "markdown": "- [ ] a task {task:t1}",
+      "canonical": null,
+      "pending": null,
+      "sha256": "82a48fab307969b38001c78060026d356f6e4960534a581ce72d9b8ffc8945e0"
+    },
+    {
+      "name": "centred paragraph",
+      "markdown": "<!-- align:center -->\nCentred",
+      "canonical": null,
+      "pending": null,
+      "sha256": "f54bb41c5137041313d81aa85550ba014f8687fff560bf2d7729e4aba6d62997"
+    },
+    {
+      "name": "right-aligned heading",
+      "markdown": "<!-- align:right -->\n## Title",
+      "canonical": null,
+      "pending": null,
+      "sha256": "076f8f326959c5f1df4028c0272fa02ac904f193a5322f2cdfb12e896f96626e"
+    },
+    {
+      "name": "justified paragraph",
+      "markdown": "<!-- align:justify -->\nJustified",
+      "canonical": null,
+      "pending": null,
+      "sha256": "280a6bf5dccf39c61d74734f6006282d1bd04dca333d6c8722f03dfeada89b39"
+    },
+    {
+      "name": "centred callout",
+      "markdown": "<!-- align:center -->\n> [!info]\n> Heads up",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9dd01762d881bf8a4ace65c2d0e19cb4068b0dede1bc6bb33a632808de2aecd6"
+    },
+    {
+      "name": "coloured callout",
+      "markdown": "<!-- colors:{\"textColor\":\"red\"} -->\n> [!warning]\n> Careful",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7ec05c3b0e773e83b8865e4fc95dcec3055ca8f1641fbb57427fbc888d6a6bfe"
+    },
+    {
+      "name": "table with a dragged column width",
+      "markdown": "<!-- table-layout:{\"columnWidths\":[120,null]} -->\n| Name | Status |\n| ---- | ------ |\n| Ship | Done   |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4f7e6552bdb15eb28639ef9e0dc2b464ce7472269b06002772a892744623215d"
+    },
+    {
+      "name": "table with cell colours and a dragged column width",
+      "markdown": "<!-- table-colors:{\"0:0\":{\"textColor\":\"red\"}} -->\n<!-- table-layout:{\"columnWidths\":[120,null]} -->\n| Name | Status |\n| ---- | ------ |\n| Ship | Done   |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "0dd6752076d0c5cbceeaa7c9ef205cb042a9e2267d91b444b0c4867de7cc9e92"
+    },
+    {
+      "name": "asterisk bullets",
+      "markdown": "* One\n* Two",
+      "canonical": "- One\n- Two",
+      "pending": null,
+      "sha256": "6903c44a41ad14e2b476fd676629c97c5580f2a3d12eb2456f0141597c513836"
+    },
+    {
+      "name": "plus bullets",
+      "markdown": "+ One\n+ Two",
+      "canonical": "- One\n- Two",
+      "pending": null,
+      "sha256": "0289ff295be03c54d47dc5e2f3a9d3cc763559aefef2b0b3bf3f0fab3a9293cb"
+    },
+    {
+      "name": "underscore emphasis and strong",
+      "markdown": "This is _em_ and __strong__.",
+      "canonical": "This is *em* and **strong**.",
+      "pending": null,
+      "sha256": "f26d60f7fd96b0f7c3434870671c5fb8f85c480c936ec886d03a7bb27417dc4c"
+    },
+    {
+      "name": "setext heading",
+      "markdown": "My Title\n========\n\nBody.",
+      "canonical": "# My Title\n\nBody.",
+      "pending": null,
+      "sha256": "d0147c0b86c0befc210675bed8333dcb0cd2cbaf6d98032ac8e891f2f15a10d1"
+    },
+    {
+      "name": "setext level-two heading",
+      "markdown": "Sub\n---\n\nBody.",
+      "canonical": "## Sub\n\nBody.",
+      "pending": null,
+      "sha256": "75fd3985a89c9c807294a586e582979954b367204d25830626b17d1fe49ed595"
+    },
+    {
+      "name": "dash thematic break",
+      "markdown": "Above\n\n---\n\nBelow",
+      "canonical": "Above\n\n***\n\nBelow",
+      "pending": null,
+      "sha256": "6b14c90c52419952d5fb6be0bd67799169c2fc104ce63a3db6613363c4db56e5"
+    },
+    {
+      "name": "list glued to its paragraph",
+      "markdown": "Text:\n- Item",
+      "canonical": "Text:\n\n- Item",
+      "pending": null,
+      "sha256": "2962d12a710727707307ee7d873d28c54f4256dc5706a26fc4f1dc33cc5f99ab"
+    },
+    {
+      "name": "four-space nested list indent",
+      "markdown": "- a\n    - b",
+      "canonical": "- a\n  - b",
+      "pending": null,
+      "sha256": "bde4f915db2a86cc0840daa88213a4fe449bb70b23e8ccc38033558477fd002c"
+    },
+    {
+      "name": "trailing space after a heading",
+      "markdown": "# Title ",
+      "canonical": "# Title",
+      "pending": null,
+      "sha256": "99ccd6a2ef05536fe101c590a9d598a98ae32ab2ed2b3ae58312c97a945fbbbf"
+    },
+    {
+      "name": "list glued to a bold line",
+      "markdown": "**Bold**\n- Item",
+      "canonical": "**Bold**\n\n- Item",
+      "pending": null,
+      "sha256": "fb94fb9c48869655fce839cb21d7eef2e4b2d495a547a46e027a6055e6473a67"
+    }
+  ],
+  "storageCases": [
+    {
+      "name": "storage: a file with a BOM",
+      "markdown": "﻿---\ntitle: With a BOM\n---\n\nBody.\n",
+      "canonical": null,
+      "pending": null,
+      "sha256": "0c759303929081802b9bffc2ab6635db5d7af4fc491db73f05ed290f75abdff7",
+      "pins": "splitFrontmatterBlock INCLUDES the BOM in the block, so block + body === raw stays byte-exact"
+    },
+    {
+      "name": "storage: CRLF line endings throughout",
+      "markdown": "---\r\ntitle: CRLF\r\n---\r\n\r\nBody line one.\r\nBody line two.\r\n",
+      "canonical": null,
+      "pending": null,
+      "sha256": "89716216c1627e71ed77c59a6d904c8309fa3e19ae2a7bfd57ad5c3f1abccc10",
+      "pins": "eol detection is \"contains \\r\\n anywhere\", and an edited body has its EOLs re-applied"
+    },
+    {
+      "name": "storage: an unclosed --- block",
+      "markdown": "---\ntitle: never closed\n\nThis is all body.\n",
+      "canonical": null,
+      "pending": null,
+      "sha256": "09827d58a60029432f2ccb9d126611ce3e0d9d673c0166a3d55f074d2a2d5eb9",
+      "pins": "an unclosed block is NOT frontmatter; the whole file is body"
+    },
+    {
+      "name": "storage: no trailing newline",
+      "markdown": "---\ntitle: No trailing newline\n---\n\nBody with no final newline.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "265c2bf586de09bbc293c93fe284330aa1a86d4d9ebd96a0d8b5a2f4be6b2bf4",
+      "pins": "hadTrailingNewline is false, and an edited save must not invent one"
+    }
+  ],
+  "outOfBandCases": [
+    {
+      "name": "out-of-band: inline colours",
+      "pins": "MEMRYICO<n>: / :MEMRYICC; tokens mask a <span style=...> INSIDE the prosemirror fragment. An in-fragment encoding, not a sibling root",
+      "updateHex": "0106f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e87f2da95eb060003097061726167726170680700f2da95eb0624060400f2da95eb06251c4d454d525949434f303a636f6c6f757265643a4d454d52594943433b00",
+      "expectedRoots": ["prosemirror"],
+      "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
+    },
+    {
+      "name": "out-of-band: block markers",
+      "pins": "block markers are HTML comments inside the fragment, again in-fragment rather than a root",
+      "updateHex": "0107f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e87f2da95eb060003097061726167726170680700f2da95eb0624060400f2da95eb0625153c212d2d20616c69676e3a63656e746572202d2d3e2800f2da95eb06240d74657874416c69676e6d656e7401770663656e74657200",
+      "expectedRoots": ["prosemirror"],
+      "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
+    },
+    {
+      "name": "out-of-band: suggestion marks",
+      "pins": "the criticMarkupMarks root. Dropping it deletes every suggestion from the file on the next write-back AND re-enables source restoration, so the body is additionally re-spelled",
+      "updateHex": "0104f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e0801116372697469634d61726b75704d61726b7301760502696477026d31046b696e647709696e73657274696f6e0b76697369626c6554657874770561646465640573746172747d0003656e647d0500",
+      "expectedRoots": ["prosemirror", "criticMarkupMarks"],
+      "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
+    },
+    {
+      "name": "out-of-band: link references",
+      "pins": "both linkReference roots. Dropping them deletes the definitions and inlines [docs][d]",
+      "updateHex": "0105f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e0801186c696e6b5265666572656e6365446566696e6974696f6e73017602056c6162656c7701640375726c771768747470733a2f2f6578616d706c652e696e76616c69640801136c696e6b5265666572656e6365557361676573017602056c6162656c77016404746578747704646f637300",
+      "expectedRoots": ["prosemirror", "linkReferenceDefinitions", "linkReferenceUsages"],
+      "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
+    },
+    {
+      "name": "out-of-band: the preserved markdown source",
+      "pins": "the markdownSource root. Dropping it re-spells foreign-vault bytes to house style on the next write-back: a git diff across the user files",
+      "updateHex": "0104f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e28010e6d61726b646f776e536f75726365067265636f726401760106736f7572636577252320466f726569676e207370656c6c696e675c6e5c6e2a20206f64642062756c6c65745c6e00",
+      "expectedRoots": ["prosemirror", "markdownSource"],
+      "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
+    },
+    {
+      "name": "out-of-band: a FOREIGN root no client knows",
+      "pins": "THE CASE THAT PINS \"including unnamed roots\". A root this specification does not name must survive a decode and a full-state re-encode untouched (FR-033)",
+      "updateHex": "0105f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e280119736f6d65467574757265526f6f744e6f626f64794b6e6f7773016b0177017608010a616e6f746865724f6e65037d017d027d0300",
+      "expectedRoots": ["prosemirror", "someFutureRootNobodyKnows", "anotherOne"],
+      "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
+    }
+  ]
+}
