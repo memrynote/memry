@@ -159,7 +159,7 @@ export function buildDeviceLinking(): Record<string, unknown> {
       generichash4Hex: hex(sasHash),
       uint32BigEndian: sasU32,
       expectedCode: sasCode,
-      pins: 'six decimal digits, big-endian uint32 % 10^6, zero padded. The 2^32 mod 10^6 bias MUST be reproduced, not corrected: rejection sampling produces a different code and breaks linking'
+      pins: 'six decimal digits, big-endian uint32 % 10^6, zero padded. The modular bias (2^32 mod 10^6 = 967_296, so codes under 967296 are reachable from 4295 values and the rest from 4294) MUST be reproduced, not corrected: rejection sampling produces a different code and breaks linking'
     }
   ]
 

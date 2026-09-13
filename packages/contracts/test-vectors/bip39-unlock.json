@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "bip39-unlock",
+    "chapter": "docs/protocol/01-identity-and-keys.md",
+    "bip39Version": "3.1.0",
+    "wordlist": "english",
+    "argon2": {
+      "MEMORY_LIMIT": 67108864,
+      "OPS_LIMIT": 3,
+      "SALT_LENGTH": 16
+    },
+    "caseCount": 9
+  },
+  "bip39": [
+    {
+      "name": "a known 24-word English mnemonic to its 64-byte seed",
+      "entropyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+      "mnemonic": "audit vapor excuse note pledge rough bundle start regular burden reveal theme bachelor bag speed print guess session grit first smoke urge save bicycle",
+      "wordCount": 24,
+      "kdf": {
+        "algorithm": "PBKDF2-HMAC-SHA512",
+        "iterations": 2048,
+        "dkLen": 64,
+        "salt": "mnemonic"
+      },
+      "passphrase": "",
+      "expectedValid": true,
+      "expectedSeedHex": "d388f1a3fda2e78cddec853f8e4ced977183655224cbeafa705a41caecfee1edf95fad3c01a922717dc353c7d0fb4d33bf7217e239bdff75e06f47fbf68a8829",
+      "pins": "the literal salt is the ASCII string `mnemonic` with NO passphrase appended"
+    },
+    {
+      "name": "the same mnemonic with mixed case, doubled spaces and outer padding",
+      "mnemonic": "  AUDIT  vapor  excuse  NOTE  pledge  rough  BUNDLE  start  regular  BURDEN  reveal  theme  BACHELOR  bag  speed  PRINT  guess  session  GRIT  first  smoke  URGE  save  bicycle  ",
+      "canonicalised": "audit vapor excuse note pledge rough bundle start regular burden reveal theme bachelor bag speed print guess session grit first smoke urge save bicycle",
+      "expectedCanonicalEqualsPhrase": true,
+      "expectedValidBeforeCanonicalisation": false,
+      "expectedValidAfterCanonicalisation": true,
+      "expectedSeedHexAfterCanonicalisation": "d388f1a3fda2e78cddec853f8e4ced977183655224cbeafa705a41caecfee1edf95fad3c01a922717dc353c7d0fb4d33bf7217e239bdff75e06f47fbf68a8829",
+      "pins": "the five normalisation steps of chapter 01 §1.3, and that they change nothing for an already-canonical phrase"
+    },
+    {
+      "name": "a mnemonic with a deliberately invalid checksum",
+      "mnemonic": "audit vapor excuse note pledge rough bundle start regular burden reveal theme bachelor bag speed print guess session grit first smoke urge save zoo",
+      "expectedValid": false,
+      "pins": "validation MUST gate derivation: no seed may be derived from this"
+    },
+    {
+      "name": "a 12-word mnemonic",
+      "entropyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+      "mnemonic": "audit vapor excuse note pledge rough bundle start regular burden reveal they",
+      "wordCount": 12,
+      "expectedValid": true,
+      "expectedSeedHex": "56ff3b02eb33272a26bb104cb71017df47340358883c0a9569b6cd6656092c70fd8cae7491bcc691a124c6803c2d7ea89f080349790ae63aef26ca81fc231c76",
+      "pins": "a 12-word phrase is VALID BIP39 and MUST still be rejected: the product generates 24 words, and accepting 12 halves the entropy silently"
+    }
+  ],
+  "verifiers": [
+    {
+      "name": "recoveryPhraseUnlock — the whole chain FR-019 ships",
+      "mnemonic": "audit vapor excuse note pledge rough bundle start regular burden reveal theme bachelor bag speed print guess session grit first smoke urge save bicycle",
+      "kdfSaltHex": "9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+      "argon2": {
+        "opsLimit": 3,
+        "memLimit": 67108864
+      },
+      "expectedSeedHex": "d388f1a3fda2e78cddec853f8e4ced977183655224cbeafa705a41caecfee1edf95fad3c01a922717dc353c7d0fb4d33bf7217e239bdff75e06f47fbf68a8829",
+      "expectedMasterKeyHex": "9508efd8ccfc879b7623f660224240cc5aa0d70f430a476ef3340eb402cc7241",
+      "expectedVaultKeyHex": "317a554426080c20e50f346f89d51386078c934e6c52afb62bdbc5d5fb5291f9",
+      "expectedAccountKeyVerifierB64": "zidsjTTFT3OGK2WuYyaxWK69NnM+jXwjEeML6buhrII=",
+      "pins": "phrase → seed → master key → vault key → verifier, in one case"
+    },
+    {
+      "name": "accountKeyVerifier — no hash wrapper, and a STRING comparison",
+      "masterKeyHex": "9508efd8ccfc879b7623f660224240cc5aa0d70f430a476ef3340eb402cc7241",
+      "expectedB64": "zidsjTTFT3OGK2WuYyaxWK69NnM+jXwjEeML6buhrII=",
+      "construction": "base64(crypto_kdf_derive_from_key(32, 4, 'memrykve', masterKey))",
+      "comparison": "constant-time over the base64 STRINGS re-encoded as UTF-8, not over the decoded bytes",
+      "pins": "an implementation that compares decoded bytes accepts every correct input and fails to reject some incorrect ones"
+    },
+    {
+      "name": "localVaultKeyVerifier — keyed BLAKE2b, never sent to the server",
+      "vaultKeyHex": "317a554426080c20e50f346f89d51386078c934e6c52afb62bdbc5d5fb5291f9",
+      "vaultId": "7f1d2c3b-4a59-4687-9d0e-1f2a3b4c5d6e",
+      "messageUtf8": "memry/vault-key-verifier/v1/7f1d2c3b-4a59-4687-9d0e-1f2a3b4c5d6e",
+      "expectedB64": "FRv6l/GjAzn3vXnbe++WaD210OmRIOoXtQ4ExgGEaYs=",
+      "pins": "the vault key is the KEY and the context string is the MESSAGE — the one place a vaultId touches key material"
+    },
+    {
+      "name": "wrongPhrase — valid BIP39, wrong account",
+      "mnemonic": "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo vote",
+      "kdfSaltHex": "9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+      "expectedAccountKeyVerifierB64": "ozi715DCrVOEA/LiSzzUpe1FwXaf8v0unqS7toi5Ofw=",
+      "serverVerifierB64": "zidsjTTFT3OGK2WuYyaxWK69NnM+jXwjEeML6buhrII=",
+      "expectedMatch": false,
+      "pins": "FR-027: the failure path. Nothing is persisted before the verifier passes"
+    },
+    {
+      "name": "deviceId — the locally derived form",
+      "ed25519PublicKeyHex": "d1890ecc5facb40434b4cd6f683a28c66cb176f5b85c17fec42715cd45ffacef",
+      "expectedDeviceIdHex": "5a15f9033265c769738c5046271c6081",
+      "construction": "hex(crypto_generichash(16, ed25519PublicKey, key = null))",
+      "pins": "32 lowercase hex characters. The WIRE identity is the server-assigned id, not this one (chapter 01 §1.5)"
+    }
+  ]
+}

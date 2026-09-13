@@ -31,6 +31,7 @@ import { join } from 'node:path'
 
 import sodium from 'libsodium-wrappers-sumo'
 
+import { buildBip39Unlock } from './vectors/bip39-unlock'
 import { buildCborCanonical } from './vectors/cbor-canonical'
 import { buildCompression } from './vectors/compression'
 import { buildCrdtUpdate } from './vectors/crdt-update'
@@ -54,6 +55,7 @@ interface VectorClass {
 }
 
 const CLASSES: readonly VectorClass[] = [
+  { name: 'bip39-unlock', files: [{ path: 'bip39-unlock.json', build: buildBip39Unlock }] },
   {
     name: 'record-envelope',
     files: [{ path: 'record-envelope.json', build: buildRecordEnvelope }]

@@ -12,7 +12,12 @@ import { readFileSync } from 'node:fs'
 import sodium from 'libsodium-wrappers-sumo'
 import { beforeAll, describe, expect, it } from 'vitest'
 
-import { ARGON2_PARAMS, XCHACHA20_PARAMS } from '../crypto'
+import {
+  ARGON2_PARAMS,
+  KEY_DERIVATION_CONTEXTS,
+  LINKING_HKDF_CONTEXTS,
+  XCHACHA20_PARAMS
+} from '../crypto'
 
 type Vectors = ReturnType<typeof loadVectors>
 
@@ -256,5 +261,91 @@ describe('crypto parity vectors', () => {
     expect(createHash('sha256').update(Buffer.from(plaintext)).digest('hex')).toBe(
       v.plaintextSha256Hex
     )
+  })
+})
+
+/**
+ * T054: the KDF table is IMPORTED-BY-PARSE, not copied.
+ *
+ * `packages/contracts/scripts/vector-fixtures.ts` hard-codes the seven
+ * (context, subkey id) pairs with a comment saying it mirrors
+ * `apps/desktop/src/main/crypto/keys.ts`. A comment is not a check: a change to
+ * one does not fail the other, and the vectors would go on pinning a table
+ * production no longer uses.
+ *
+ * The production map cannot be IMPORTED here — `keys.ts` reaches the keychain
+ * and from there into Electron, which is the boundary
+ * `packages/contracts` exists on the right side of. So the assertion reads the
+ * production source and extracts the map from it. That is coarser than an
+ * import and strictly better than a copy: it fails the moment the table moves.
+ *
+ * Both production copies are checked, because two implementations that disagree
+ * about a subkey id produce master keys that derive different vault keys, and
+ * nothing else in the tree compares them.
+ */
+const KDF_MAP_SOURCES = [
+  { label: 'desktop', path: '../../../../apps/desktop/src/main/crypto/keys.ts' },
+  { label: 'mobile', path: '../../../../apps/mobile/src/crypto/libsodium.ts' }
+] as const
+
+/** `'memry-vault-key-v1': { ctx: 'memryvlt', id: 1 }`, in either source. */
+const KDF_ROW = /'([a-z0-9-]+)':\s*\{\s*ctx:\s*'([a-z]+)',\s*id:\s*(\d+)\s*\}/g
+
+/**
+ * Both files spell some names through the contracts constants, so those rows
+ * carry a computed key rather than a literal. Resolve them from the SAME
+ * constants the source resolves them from, rather than from a second hardcoded
+ * table — a hardcoded table here would be the very copy this test exists to
+ * eliminate.
+ */
+const COMPUTED_KEYS: Record<string, string> = {
+  'KEY_DERIVATION_CONTEXTS.VAULT_KEY': KEY_DERIVATION_CONTEXTS.VAULT_KEY,
+  'KEY_DERIVATION_CONTEXTS.KEY_VERIFIER': KEY_DERIVATION_CONTEXTS.KEY_VERIFIER,
+  'LINKING_HKDF_CONTEXTS.ENCRYPTION': LINKING_HKDF_CONTEXTS.ENCRYPTION,
+  'LINKING_HKDF_CONTEXTS.MAC': LINKING_HKDF_CONTEXTS.MAC,
+  'LINKING_HKDF_CONTEXTS.SAS': LINKING_HKDF_CONTEXTS.SAS
+}
+
+const COMPUTED_ROW =
+  /\[((?:KEY_DERIVATION_CONTEXTS|LINKING_HKDF_CONTEXTS)\.[A-Z_]+)\]:\s*\{\s*ctx:\s*'([a-z]+)',\s*id:\s*(\d+)\s*\}/g
+
+function productionKdfMap(relativePath: string): Array<{ name: string; ctx: string; id: number }> {
+  const source = readFileSync(new URL(relativePath, import.meta.url), 'utf8')
+  const rows: Array<{ name: string; ctx: string; id: number }> = []
+  for (const m of source.matchAll(KDF_ROW)) {
+    rows.push({ name: m[1], ctx: m[2], id: Number(m[3]) })
+  }
+  for (const m of source.matchAll(COMPUTED_ROW)) {
+    const name = COMPUTED_KEYS[m[1]]
+    if (name) rows.push({ name, ctx: m[2], id: Number(m[3]) })
+  }
+  return rows.sort((a, b) => a.id - b.id)
+}
+
+describe('KDF context table parity (T054)', () => {
+  beforeAll(async () => {
+    await sodium.ready
+  })
+
+  for (const source of KDF_MAP_SOURCES) {
+    it(`the committed vectors match the ${source.label} production map`, () => {
+      const production = productionKdfMap(source.path)
+      expect(
+        production,
+        `no KDF_CONTEXT_MAP rows found in ${source.path}. If the map moved, move this assertion with it — do not delete it.`
+      ).toHaveLength(7)
+
+      const vectors = loadVectors()
+      const fromVectors = vectors.kdfDeriveFromKey
+        .map((v) => ({ name: v.contextName, ctx: v.ctx, id: v.subkeyId }))
+        .sort((a, b) => a.id - b.id)
+
+      expect(fromVectors).toEqual(production)
+    })
+  }
+
+  it('subkey ids 1 to 7 are used exactly once each', () => {
+    const ids = productionKdfMap(KDF_MAP_SOURCES[0].path).map((row) => row.id)
+    expect(ids).toEqual([1, 2, 3, 4, 5, 6, 7])
   })
 })

@@ -143,9 +143,10 @@ It is **six decimal digits, not words**. Both sides compute it independently fro
 the raw scalarmult output
 (`apps/desktop/src/main/sync/linking-service.ts:279`, `:781`).
 
-**The modular bias MUST be reproduced, not corrected.** `2^32 mod 10^6 =
-4_967_296`, so codes below that value are marginally more likely; the code
-carries about 19.9 bits. A Rust implementation that substitutes rejection
+**The modular bias MUST be reproduced, not corrected.** `2^32 = 4_294_967_296`,
+so `2^32 mod 10^6 = 967_296`: each code below `967296` is reachable from 4295
+`u32` values and each code at or above it from 4294, a difference of about one
+part in 4295. The code carries about 19.93 bits. A Rust implementation that substitutes rejection
 sampling produces a **different code** and breaks linking against desktop.
 
 ## 3.7 Two MAC families — Q03.5

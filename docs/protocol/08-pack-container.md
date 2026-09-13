@@ -79,6 +79,15 @@ the writer would prove the generator rather than the implementation.
 
 The `offset` interpretation is the off-by-eight a reader gets wrong first.
 
+**A negative `sortKey` does not survive the reference reader.** `ByteReader.i64`
+reconstructs the 64-bit value through doubles
+(`packages/contracts/src/pack-format.ts:189-196`), so `-1` decodes as `0`. Every
+`sortKey` a writer emits today is a non-negative `server_cursor` or epoch second
+(§8.4), so the loss is unreachable in practice. **Normative: a writer MUST NOT
+emit a negative `sortKey`, and a reader MUST NOT be given one.** The behaviour is
+pinned by the `pack-container.json` case that carries one, recorded as the reader
+actually behaves rather than as it ought to.
+
 ## 8.4 Kinds and identity semantics
 
 **Normative.** `PackKindCode` is `record = 0`, `crdt_snapshot = 1`,

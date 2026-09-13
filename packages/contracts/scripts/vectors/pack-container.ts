@@ -29,7 +29,8 @@ import {
   PACK_MAGIC,
   PACK_MAX_ENTRIES,
   PACK_VERSION,
-  PackKindCode
+  PackKindCode,
+  parsePack
 } from '../../src/pack-format'
 import { meta } from './shared'
 
@@ -66,6 +67,18 @@ class Writer {
     const low = value >>> 0
     this.u32(high)
     this.u32(low)
+  }
+  /**
+   * Signed int64, two's complement big-endian, written through BigInt.
+   *
+   * A negative `sortKey` cannot go through `u64`: 2^64 - 1 is past the integer
+   * precision of a double, so the arithmetic silently rounds and the reader
+   * decodes 0 instead of -1.
+   */
+  i64(value: number): void {
+    const masked = BigInt.asUintN(64, BigInt(value))
+    this.u32(Number(masked >> 32n))
+    this.u32(Number(masked & 0xffffffffn))
   }
   u32(value: number): void {
     this.parts.push(
@@ -116,10 +129,7 @@ function assemble(entries: EntryInput[], overrides: PackOverrides = {}): Uint8Ar
     const key = utf8(entry.sourceKey)
     index.u16(key.length)
     index.bytes(key)
-    // int64 sortKey, two's complement big-endian.
-    const negative = entry.sortKey < 0
-    const magnitude = negative ? 2 ** 64 + entry.sortKey : entry.sortKey
-    index.u64(magnitude)
+    index.i64(entry.sortKey)
     const metaJson = entry.meta ? utf8(JSON.stringify(entry.meta)) : new Uint8Array(0)
     index.u16(metaJson.length)
     index.bytes(metaJson)
@@ -188,24 +198,21 @@ const threeKinds: EntryInput[] = [
   }
 ]
 
-function expectedEntries(entries: EntryInput[]): unknown[] {
-  let offset = 0
-  return entries.map((entry) => {
-    const row: Record<string, unknown> = {
-      kind: entry.kind,
-      id: entry.id,
-      sourceKey: entry.sourceKey,
-      sortKey: entry.sortKey,
-      offset,
-      length: entry.payload.length
-    }
-    if (entry.meta) row.meta = entry.meta
-    offset += entry.payload.length
-    return row
-  })
+/**
+ * The expected block is the READER'S OWN OUTPUT, not a prediction.
+ *
+ * A generator that wrote down what it believed `parsePack` should return would
+ * encode the author's belief; running the reader records the behaviour. It also
+ * captures a real limitation honestly: `ByteReader.i64` reconstructs a 64-bit
+ * value through doubles, so a negative `sortKey` does not survive
+ * (`-1` decodes as `0`). Chapter 08 §8.3 states that; this file pins it.
+ */
+async function readBack(packBytes: Uint8Array): Promise<unknown> {
+  const parsed = await parsePack(packBytes)
+  return { version: parsed.version, entries: parsed.entries, integrityVerified: true }
 }
 
-export function buildPackContainer(): Record<string, unknown> {
+export async function buildPackContainer(): Promise<Record<string, unknown>> {
   const utf8Id: EntryInput[] = [
     {
       kind: 'record',
@@ -225,7 +232,7 @@ export function buildPackContainer(): Record<string, unknown> {
     }
   ]
 
-  const cases = [
+  const specs = [
     {
       name: 'one record entry',
       entries: oneRecord,
@@ -251,16 +258,18 @@ export function buildPackContainer(): Record<string, unknown> {
       entries: utf8Id,
       pins: 'idLen counts BYTES, not characters'
     }
-  ].map((entry) => ({
-    name: entry.name,
-    pins: entry.pins,
-    packHex: hex(assemble(entry.entries)),
-    expected: {
-      version: PACK_VERSION,
-      entries: expectedEntries(entry.entries),
-      integrityVerified: true
-    }
-  }))
+  ]
+
+  const cases = []
+  for (const spec of specs) {
+    const packBytes = assemble(spec.entries)
+    cases.push({
+      name: spec.name,
+      pins: spec.pins,
+      packHex: hex(packBytes),
+      expected: await readBack(packBytes)
+    })
+  }
 
   const errorCases = [
     {
