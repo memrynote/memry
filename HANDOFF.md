@@ -21,7 +21,7 @@ orchestrator, never taken from a subagent's report.
 | ---------------------------------------------- | ------------------------------------------------ |
 | `cargo fmt --all --check`                      | clean                                            |
 | `cargo clippy --all-targets -- -D warnings`    | clean                                            |
-| `cargo test`                                   | **519 passed, 0 failed, 1 ignored, 35 binaries** |
+| `cargo test`                                   | **520 passed, 0 failed, 1 ignored, 35 binaries** |
 | `node scripts/check-line-ceilings.mjs`         | passed (104 files)                               |
 | `pnpm --filter @memry/contracts vectors:check` | **11 classes**                                   |
 | `pnpm typecheck`                               | 19/19                                            |
@@ -123,8 +123,12 @@ Not done, and not doable headlessly:
 - **SC-014's injected synthetic unknown item type** round-tripping verbatim.
   T135 proves it against the real pull path with a fake transport; injecting
   one into staging needs a direct D1 write, which was not authorised.
-- **SC-010's cross-shell digest**, `title + "\n" + extract_text(doc)` per §12.11,
-  compared against desktop's extractor with `text-extract.json` as the contract.
+- **SC-010's cross-shell digest — the core half is DONE.**
+  `cross_shell_digest` is in `memry-core` (not the shell, because SC-010
+  compares two shells' values and a digest each assembles itself is two chances
+  to disagree). `memry notes digest <id> --vault <id>` prints it; three values
+  for the staging vault are in `g4-evidence.md`. **The comparison is not made**:
+  it needs desktop's digest for the same note at the same state.
 
 **A second CLI profile is not a substitute.** `HOME` scopes the profile, so a
 second device is possible in principle — but it costs another device
