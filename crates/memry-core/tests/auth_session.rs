@@ -9,7 +9,9 @@ use std::time::Duration;
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use http_fakes::*;
-use memry_core::api::auth::{AuthEvent, AuthSession, AuthState, DeviceDescriptor, transition};
+use memry_core::api::auth::{
+    AuthEvent, AuthProvider, AuthSession, AuthState, DeviceDescriptor, transition,
+};
 use memry_core::api::errors::AuthError;
 use memry_core::crypto::sodium;
 use memry_core::protocol::auth::{
@@ -17,7 +19,7 @@ use memry_core::protocol::auth::{
     fallback_retry_worthwhile, refresh_delay_ms, refresh_delay_ms_with,
 };
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
-use memry_core::seams::secure_store::SecureStoreKey;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use serde_json::json;
 
 const BASE: &str = "https://sync.example.com";
@@ -668,4 +670,300 @@ fn a_token_that_is_not_a_jwt_is_reported_rather_than_guessed() {
             .require_jti()
             .is_err()
     );
+}
+
+// ---------------------------------------------------------------------------
+// Native provider sign-in, chapter 02 §2.13 (T163)
+// ---------------------------------------------------------------------------
+
+/// Walks `SignedOut -> AwaitingProviderToken -> SetupPending` over a scripted
+/// native-OAuth answer.
+async fn provider_signed_in(
+    answer: Result<
+        memry_core::seams::transport::HttpResponse,
+        memry_core::api::errors::TransportError,
+    >,
+) -> (
+    AuthSession,
+    Arc<FakeTransport>,
+    Arc<FakeSecureStore>,
+    Result<memry_core::api::auth::ProviderSignInOutcome, AuthError>,
+) {
+    let transport = FakeTransport::new(vec![answer]);
+    let store = FakeSecureStore::new();
+    let session = session(transport.clone(), store.clone());
+    session
+        .begin_provider_sign_in(AuthProvider::Google)
+        .unwrap();
+    let outcome = session
+        .complete_provider_sign_in("google-id-token".to_string())
+        .await;
+    (session, transport, store, outcome)
+}
+
+fn native_oauth_ok(jti: &str, is_new_user: bool, needs_setup: bool) -> String {
+    format!(
+        r#"{{"success":true,"isNewUser":{is_new_user},"needsSetup":{needs_setup},"setupToken":"{}"}}"#,
+        setup_token(jti)
+    )
+}
+
+#[tokio::test]
+async fn a_provider_sheet_opens_the_awaiting_state_and_makes_no_request() {
+    let transport = FakeTransport::new(vec![]);
+    let session = session(transport.clone(), FakeSecureStore::new());
+
+    let state = session
+        .begin_provider_sign_in(AuthProvider::Google)
+        .unwrap();
+
+    // The provider slug is the core's, never the caller's: it is a path
+    // segment of `/auth/oauth/:provider/native`.
+    assert_eq!(
+        state,
+        AuthState::AwaitingProviderToken {
+            provider: "google".to_string()
+        }
+    );
+    // §2.13's shell half — the web authentication session — happens after this
+    // call, so this one talks to nobody.
+    assert_eq!(transport.call_count(), 0);
+}
+
+#[tokio::test]
+async fn completing_a_provider_sign_in_posts_the_three_core_private_fields() {
+    let (session, transport, store, outcome) =
+        provider_signed_in(response(200, &native_oauth_ok("jti-oauth", true, true))).await;
+    let outcome = outcome.expect("a provider sign-in");
+
+    assert_eq!(outcome.state, AuthState::SetupPending);
+    assert_eq!(session.state(), AuthState::SetupPending);
+    // §2.13: `needsSetup` is "this account has no kdf_salt yet", which is the
+    // difference between creating a recovery phrase and unlocking with one.
+    assert!(outcome.is_new_user);
+    assert!(outcome.needs_setup);
+
+    let calls = transport.calls();
+    assert_eq!(calls.len(), 1);
+    assert!(
+        calls[0].url.ends_with("/auth/oauth/google/native"),
+        "posted to {}",
+        calls[0].url
+    );
+
+    let body = body_json(&calls[0]);
+    assert_eq!(body["idToken"], "google-id-token");
+    // The two fields the shell cannot supply. The public key is the tail of
+    // the signing key the core holds in its own secure store, standard base64.
+    let committed = body["devicePublicKey"].as_str().unwrap();
+    let committed = BASE64_STANDARD.decode(committed).unwrap();
+    let secret = store
+        .get(SecureStoreKey::DeviceSigningKey)
+        .unwrap()
+        .expect("the core minted a signing key");
+    assert_eq!(committed, secret[32..64]);
+    assert!(!body["sessionNonce"].as_str().unwrap().is_empty());
+
+    // §2.13: the setup token lands in the token manager, on the same path
+    // `verify_email_code` uses — not in the caller's hands.
+    assert_eq!(
+        store.text(SecureStoreKey::SetupToken).as_deref(),
+        Some(setup_token("jti-oauth").as_str())
+    );
+}
+
+#[tokio::test]
+async fn the_provider_nonce_is_the_one_registration_presents() {
+    let transport = FakeTransport::new(vec![
+        response(200, &native_oauth_ok("jti-oauth", false, false)),
+        response(
+            200,
+            r#"{"success":true,"deviceId":"device-1","accessToken":"access-1","refreshToken":"refresh-1"}"#,
+        ),
+    ]);
+    let session = session(transport.clone(), FakeSecureStore::new());
+    session
+        .begin_provider_sign_in(AuthProvider::Google)
+        .unwrap();
+    session
+        .complete_provider_sign_in("google-id-token".to_string())
+        .await
+        .unwrap();
+    session.register_device().await.unwrap();
+
+    let calls = transport.calls();
+    // §2.6: one nonce per attempt, sent on the sign-in call **and** on
+    // registration. A setup token that carries a nonce rejects a registration
+    // that presents a different one, so the OAuth path mints it exactly where
+    // the OTP path does.
+    assert_eq!(
+        body_json(&calls[0])["sessionNonce"],
+        body_json(&calls[1])["sessionNonce"]
+    );
+    assert_eq!(session.state(), AuthState::Registered);
+}
+
+#[tokio::test]
+async fn a_rejected_provider_token_takes_the_failure_edge_back_to_signed_out() {
+    let (session, _transport, store, outcome) = provider_signed_in(error_response(
+        401,
+        "AUTH_INVALID_TOKEN",
+        "id token rejected",
+    ))
+    .await;
+
+    assert!(
+        matches!(
+            outcome,
+            Err(AuthError::Api {
+                source: memry_core::api::errors::ApiError::Unauthorized { .. }
+            })
+        ),
+        "expected an unauthorized, got {outcome:?}"
+    );
+    // §C.1 draws one edge for cancelled, expired and rejected.
+    assert_eq!(session.state(), AuthState::SignedOut);
+    assert_eq!(store.text(SecureStoreKey::SetupToken), None);
+}
+
+#[tokio::test]
+async fn a_provider_answer_without_a_setup_token_is_not_a_sign_in() {
+    let (session, _transport, store, outcome) = provider_signed_in(response(
+        200,
+        r#"{"success":true,"isNewUser":false,"needsSetup":false}"#,
+    ))
+    .await;
+
+    assert!(
+        matches!(outcome, Err(AuthError::NoSetupToken)),
+        "expected NoSetupToken, got {outcome:?}"
+    );
+    assert_eq!(session.state(), AuthState::SignedOut);
+    assert_eq!(store.text(SecureStoreKey::SetupToken), None);
+}
+
+#[tokio::test]
+async fn a_deployment_without_the_ios_client_id_is_refused_once_and_not_retried() {
+    // §2.13: a 501 means `GOOGLE_IOS_CLIENT_ID` is unset. It is **not** a
+    // fallback to the web OAuth client, and it cannot change within a
+    // deployment — so a retry ladder spent on it is a ladder spent on nothing.
+    let (session, transport, _store, outcome) =
+        provider_signed_in(error_response(501, "NOT_CONFIGURED", "no ios client id")).await;
+
+    match outcome {
+        Err(AuthError::Api {
+            source: memry_core::api::errors::ApiError::Status { status, .. },
+        }) => assert_eq!(status, 501),
+        other => panic!("expected a 501 status, got {other:?}"),
+    }
+    assert_eq!(transport.call_count(), 1, "the 501 was retried");
+    assert_eq!(session.state(), AuthState::SignedOut);
+}
+
+#[tokio::test]
+async fn a_provider_token_cannot_be_spent_without_a_sheet() {
+    let transport = FakeTransport::new(vec![]);
+    let session = session(transport.clone(), FakeSecureStore::new());
+
+    let error = session
+        .complete_provider_sign_in("google-id-token".to_string())
+        .await
+        .expect_err("a sign-in from SignedOut");
+
+    // The **action** is asserted, not just the state: the only other refusal
+    // this method can produce reports a different one. Asserting the state
+    // alone let the state guard be deleted with every test still green.
+    assert!(
+        matches!(
+            error,
+            AuthError::InvalidState { ref action, ref state }
+                if action == "complete a provider sign-in" && state == "SignedOut"
+        ),
+        "expected InvalidState from the state guard, got {error:?}"
+    );
+    assert_eq!(transport.call_count(), 0);
+}
+
+// ---------------------------------------------------------------------------
+// The account reads, chapter 02 §2.1.1 and chapter 05 §5.1 (T163)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn key_material_reads_the_salt_and_verifier_over_the_session() {
+    let (session, transport, _store) = registered(vec![response(
+        200,
+        r#"{"kdfSalt":"c2FsdHNhbHRzYWx0c2FsdA==","keyVerifier":"dmVyaWZpZXI="}"#,
+    )])
+    .await;
+
+    let material = session.key_material().await.expect("key material");
+    // Chapter 01 §1.1 and §1.4.1: both cross as the base64 strings the
+    // comparison is defined over, never as decoded bytes.
+    assert_eq!(material.kdf_salt, "c2FsdHNhbHRzYWx0c2FsdA==");
+    assert_eq!(material.key_verifier, "dmVyaWZpZXI=");
+
+    let call = transport.calls().pop().unwrap();
+    assert!(call.url.ends_with("/auth/key-verifier"), "{}", call.url);
+    assert_eq!(call.method, "GET");
+    // §2.7.1: the account is known because the session says so.
+    assert_eq!(
+        call.headers.get("authorization").map(String::as_str),
+        Some("Bearer access-1")
+    );
+}
+
+#[tokio::test]
+async fn half_a_key_material_is_a_malformed_response_and_not_a_default() {
+    let (session, _transport, _store) =
+        registered(vec![response(200, r#"{"kdfSalt":"c2FsdA=="}"#)]).await;
+
+    match session.key_material().await {
+        Err(memry_core::api::errors::ApiError::MalformedResponse { path, .. }) => {
+            assert_eq!(path, "/auth/key-verifier");
+        }
+        other => panic!("expected a malformed response, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn the_vault_registry_crosses_with_its_rows_intact() {
+    let (session, transport, _store) = registered(vec![response(
+        200,
+        r#"{"vaults":[{"vaultUuid":"v1","name":"Work"},{"vaultUuid":"v2"}]}"#,
+    )])
+    .await;
+
+    let vaults = session.vaults().await.expect("a registry");
+    assert_eq!(vaults.len(), 2);
+    assert_eq!(vaults[0].id, "v1");
+    assert_eq!(vaults[0].name.as_deref(), Some("Work"));
+    assert_eq!(vaults[1].id, "v2");
+    assert_eq!(vaults[1].name, None);
+
+    let call = transport.calls().pop().unwrap();
+    assert!(call.url.ends_with("/sync/vaults"), "{}", call.url);
+}
+
+#[tokio::test]
+async fn an_unreadable_vault_row_is_never_reported_as_an_empty_account() {
+    // The incident this rule exists for: a reader that filtered the row out
+    // told an account holding four vaults that it held none.
+    let (session, _transport, _store) = registered(vec![response(
+        200,
+        r#"{"vaults":[{"vaultUuid":"v1"},{"name":"nameless"}]}"#,
+    )])
+    .await;
+
+    match session.vaults().await {
+        Err(memry_core::api::errors::ApiError::MalformedResponse { path, .. }) => {
+            assert_eq!(path, "/sync/vaults");
+        }
+        other => panic!("expected a malformed response, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn an_empty_registry_means_empty() {
+    let (session, _transport, _store) = registered(vec![response(200, r#"{"vaults":[]}"#)]).await;
+    assert_eq!(session.vaults().await.expect("a registry").len(), 0);
 }

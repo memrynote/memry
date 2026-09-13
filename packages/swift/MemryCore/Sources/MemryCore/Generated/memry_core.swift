@@ -629,6 +629,33 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 public protocol AuthSessionProtocol: AnyObject, Sendable {
     
     /**
+     * `GET /auth/key-verifier`, chapter 02 §2.1.1: `{ kdfSalt, keyVerifier }`.
+     *
+     * The salt is base64 per chapter 01 §1.1 and the verifier is base64 per
+     * §1.4.1, and both cross as `String` rather than as `Data` because §1.4.1
+     * requires the verifier comparison to happen over the encoded strings —
+     * handing Swift decoded bytes would make the wrong comparison the easy one
+     * to write (`core-api.md` rule 1). Neither value is a key.
+     *
+     * §2.7.1: on **this** route the account is already known, so a verifier
+     * mismatch does mean "wrong recovery phrase" — unlike `GET /auth/recovery`,
+     * whose dummy answer makes a wrong email indistinguishable from one.
+     */
+    func keyMaterial() async throws  -> KeyMaterial
+    
+    /**
+     * `GET /sync/vaults`, chapter 05 §5.1. FR-021's "choose one and route to
+     * it" is this list plus the `X-Memry-Vault-Id` header.
+     *
+     * An empty list means the account holds no vaults and never "the rows
+     * could not be read": a row whose id does not parse fails the whole read
+     * with `MalformedResponse`. That rule is not decoration — the reader this
+     * one calls once used `filter_map` and reported "this account has no
+     * vaults" against an account holding four.
+     */
+    func vaults() async throws  -> [VaultSummary]
+    
+    /**
      * The server says this device is revoked. Terminal until the user acts,
      * and the caller removes local vault content **before** rendering it.
      */
@@ -693,6 +720,29 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
      * routinely outlasts that.
      */
     func verifyEmailCode(code: String) async throws  -> AuthState
+    
+    /**
+     * `SignedOut -> AwaitingProviderToken`. Mints this attempt's
+     * `sessionNonce` (chapter 02 §2.6), exactly as `request_email_code` does.
+     *
+     * **Synchronous**: it makes no request. The shell's own half — the
+     * `ASWebAuthenticationSession` that ends holding an ID token — happens
+     * between this call and the next, and the core neither opens nor sees it
+     * (research R14 forbids the Google iOS SDK).
+     */
+    func beginProviderSignIn(provider: AuthProvider) throws  -> AuthState
+    
+    /**
+     * `AwaitingProviderToken -> SetupPending`, or `-> SignedOut` when the
+     * provider token is refused.
+     *
+     * The provider is read from the state rather than taken as an argument:
+     * the nonce this posts belongs to the attempt `begin_provider_sign_in`
+     * opened, and a second provider spent on it would be a different attempt.
+     * Calling this from any other state is `InvalidState`, not a sign-in that
+     * skipped the sheet.
+     */
+    func completeProviderSignIn(idToken: String) async throws  -> ProviderSignInOutcome
     
 }
 /**
@@ -770,6 +820,61 @@ public convenience init(transport: Transport, secureStore: SecureStore, baseUrl:
 
     
 
+    
+    /**
+     * `GET /auth/key-verifier`, chapter 02 §2.1.1: `{ kdfSalt, keyVerifier }`.
+     *
+     * The salt is base64 per chapter 01 §1.1 and the verifier is base64 per
+     * §1.4.1, and both cross as `String` rather than as `Data` because §1.4.1
+     * requires the verifier comparison to happen over the encoded strings —
+     * handing Swift decoded bytes would make the wrong comparison the easy one
+     * to write (`core-api.md` rule 1). Neither value is a key.
+     *
+     * §2.7.1: on **this** route the account is already known, so a verifier
+     * mismatch does mean "wrong recovery phrase" — unlike `GET /auth/recovery`,
+     * whose dummy answer makes a wrong email indistinguishable from one.
+     */
+open func keyMaterial()async throws  -> KeyMaterial  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_key_material(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeKeyMaterial_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * `GET /sync/vaults`, chapter 05 §5.1. FR-021's "choose one and route to
+     * it" is this list plus the `X-Memry-Vault-Id` header.
+     *
+     * An empty list means the account holds no vaults and never "the rows
+     * could not be read": a row whose id does not parse fails the whole read
+     * with `MalformedResponse`. That rule is not decoration — the reader this
+     * one calls once used `filter_map` and reported "this account has no
+     * vaults" against an account holding four.
+     */
+open func vaults()async throws  -> [VaultSummary]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_vaults(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeVaultSummary.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
     
     /**
      * The server says this device is revoked. Terminal until the user acts,
@@ -945,6 +1050,51 @@ open func verifyEmailCode(code: String)async throws  -> AuthState  {
             completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeAuthState_lift,
+            errorHandler: FfiConverterTypeAuthError_lift
+        )
+}
+    
+    /**
+     * `SignedOut -> AwaitingProviderToken`. Mints this attempt's
+     * `sessionNonce` (chapter 02 §2.6), exactly as `request_email_code` does.
+     *
+     * **Synchronous**: it makes no request. The shell's own half — the
+     * `ASWebAuthenticationSession` that ends holding an ID token — happens
+     * between this call and the next, and the core neither opens nor sees it
+     * (research R14 forbids the Google iOS SDK).
+     */
+open func beginProviderSignIn(provider: AuthProvider)throws  -> AuthState  {
+    return try  FfiConverterTypeAuthState_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_authsession_begin_provider_sign_in(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeAuthProvider_lower(provider),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `AwaitingProviderToken -> SetupPending`, or `-> SignedOut` when the
+     * provider token is refused.
+     *
+     * The provider is read from the state rather than taken as an argument:
+     * the nonce this posts belongs to the attempt `begin_provider_sign_in`
+     * opened, and a second provider spent on it would be a different attempt.
+     * Calling this from any other state is `InvalidState`, not a sign-in that
+     * skipped the sheet.
+     */
+open func completeProviderSignIn(idToken: String)async throws  -> ProviderSignInOutcome  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_complete_provider_sign_in(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(idToken)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeProviderSignInOutcome_lift,
             errorHandler: FfiConverterTypeAuthError_lift
         )
 }
@@ -5242,6 +5392,64 @@ public func FfiConverterTypeHttpResponse_lower(_ value: HttpResponse) -> RustBuf
 
 
 /**
+ * `{ kdfSalt, keyVerifier }`, chapter 02 §2.1.1: both required, and the salt
+ * is base64 with the standard alphabet and padding (chapter 01 §1.1).
+ */
+public struct KeyMaterial: Equatable, Hashable {
+    public var kdfSalt: String
+    public var keyVerifier: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(kdfSalt: String, keyVerifier: String) {
+        self.kdfSalt = kdfSalt
+        self.keyVerifier = keyVerifier
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension KeyMaterial: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeKeyMaterial: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> KeyMaterial {
+        return
+            try KeyMaterial(
+                kdfSalt: FfiConverterString.read(from: &buf), 
+                keyVerifier: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: KeyMaterial, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.kdfSalt, into: &buf)
+        FfiConverterString.write(value.keyVerifier, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeKeyMaterial_lift(_ buf: RustBuffer) throws -> KeyMaterial {
+    return try FfiConverterTypeKeyMaterial.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeKeyMaterial_lower(_ value: KeyMaterial) -> RustBuffer {
+    return FfiConverterTypeKeyMaterial.lower(value)
+}
+
+
+/**
  * One scheduled local notification.
  *
  * `fire_at_epoch_ms` is an instant the core orders by, so it is an integer
@@ -5320,6 +5528,80 @@ public func FfiConverterTypeLocalNotification_lower(_ value: LocalNotification) 
 
 
 /**
+ * What `POST /auth/oauth/:provider/native` answered, minus the parts the core
+ * keeps.
+ *
+ * `state` is the machine's new state, so a caller that only renders state can
+ * ignore the rest. The other two are §2.13's `isNewUser` and `needsSetup`, and
+ * they are carried across rather than dropped because they decide the next
+ * screen: `needs_setup` true is "this account has no `kdf_salt` yet, create a
+ * recovery phrase", false is "unlock with the phrase you have". A caller that
+ * had to infer that from a later failing read would be guessing.
+ *
+ * Absent flags read as `false`, which is the conservative direction for
+ * `needs_setup`: it sends the user to unlock, where a real mismatch is
+ * reported, rather than to setup, where it would overwrite account key
+ * material.
+ */
+public struct ProviderSignInOutcome: Equatable, Hashable {
+    public var state: AuthState
+    public var isNewUser: Bool
+    public var needsSetup: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(state: AuthState, isNewUser: Bool, needsSetup: Bool) {
+        self.state = state
+        self.isNewUser = isNewUser
+        self.needsSetup = needsSetup
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ProviderSignInOutcome: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProviderSignInOutcome: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProviderSignInOutcome {
+        return
+            try ProviderSignInOutcome(
+                state: FfiConverterTypeAuthState.read(from: &buf), 
+                isNewUser: FfiConverterBool.read(from: &buf), 
+                needsSetup: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProviderSignInOutcome, into buf: inout [UInt8]) {
+        FfiConverterTypeAuthState.write(value.state, into: &buf)
+        FfiConverterBool.write(value.isNewUser, into: &buf)
+        FfiConverterBool.write(value.needsSetup, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProviderSignInOutcome_lift(_ buf: RustBuffer) throws -> ProviderSignInOutcome {
+    return try FfiConverterTypeProviderSignInOutcome.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProviderSignInOutcome_lower(_ value: ProviderSignInOutcome) -> RustBuffer {
+    return FfiConverterTypeProviderSignInOutcome.lower(value)
+}
+
+
+/**
  * What the shell opens a realtime socket with.
  */
 public struct SocketRequest: Equatable, Hashable {
@@ -5373,6 +5655,69 @@ public func FfiConverterTypeSocketRequest_lift(_ buf: RustBuffer) throws -> Sock
 #endif
 public func FfiConverterTypeSocketRequest_lower(_ value: SocketRequest) -> RustBuffer {
     return FfiConverterTypeSocketRequest.lower(value)
+}
+
+
+/**
+ * One row of the vault registry.
+ */
+public struct VaultSummary: Equatable, Hashable {
+    public var id: String
+    /**
+     * Absent rather than empty when the registry row carries no name.
+     */
+    public var name: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, 
+        /**
+         * Absent rather than empty when the registry row carries no name.
+         */name: String?) {
+        self.id = id
+        self.name = name
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension VaultSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeVaultSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> VaultSummary {
+        return
+            try VaultSummary(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: VaultSummary, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.name, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVaultSummary_lift(_ buf: RustBuffer) throws -> VaultSummary {
+    return try FfiConverterTypeVaultSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVaultSummary_lower(_ value: VaultSummary) -> RustBuffer {
+    return FfiConverterTypeVaultSummary.lower(value)
 }
 
 
@@ -6023,6 +6368,75 @@ public func FfiConverterTypeAuthEvent_lift(_ buf: RustBuffer) throws -> AuthEven
 #endif
 public func FfiConverterTypeAuthEvent_lower(_ value: AuthEvent) -> RustBuffer {
     return FfiConverterTypeAuthEvent.lower(value)
+}
+
+
+
+/**
+ * The providers this core will post an ID token for.
+ *
+ * An enum rather than the free string the state carries, because the value
+ * becomes a path segment of `/auth/oauth/:provider/native`: a caller-supplied
+ * string there is a caller-supplied URL. It also means the core never walks
+ * into the `400 AUTH_INVALID_PROVIDER` §2.13 defines, since the only value it
+ * can send is the only value the server accepts. A second provider is an
+ * added variant, here and on the server, in that order.
+ */
+
+public enum AuthProvider: Equatable, Hashable {
+    
+    case google
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AuthProvider: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAuthProvider: FfiConverterRustBuffer {
+    typealias SwiftType = AuthProvider
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AuthProvider {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .google
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AuthProvider, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .google:
+            writeInt(&buf, Int32(1))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAuthProvider_lift(_ buf: RustBuffer) throws -> AuthProvider {
+    return try FfiConverterTypeAuthProvider.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAuthProvider_lower(_ value: AuthProvider) -> RustBuffer {
+    return FfiConverterTypeAuthProvider.lower(value)
 }
 
 
@@ -8223,6 +8637,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeVaultSummary: FfiConverterRustBuffer {
+    typealias SwiftType = [VaultSummary]
+
+    public static func write(_ value: [VaultSummary], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeVaultSummary.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [VaultSummary] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [VaultSummary]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeVaultSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterDictionaryStringString: FfiConverterRustBuffer {
     public static func write(_ value: [String: String], into buf: inout [UInt8]) {
         let len = Int32(value.count)
@@ -8569,6 +9008,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_authsession_key_material() != 7564) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_vaults() != 41946) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_authsession_mark_revoked() != 55264) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -8594,6 +9039,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_verify_email_code() != 61584) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_begin_provider_sign_in() != 64838) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_complete_provider_sign_in() != 33561) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_runtimehost_on_background() != 23225) {

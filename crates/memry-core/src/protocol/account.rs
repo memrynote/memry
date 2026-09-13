@@ -46,14 +46,14 @@ const DEVICES_PATH: &str = "/auth/devices";
 
 /// `{ kdfSalt, keyVerifier }`, chapter 02 §2.1.1: both required, and the salt
 /// is base64 with the standard alphabet and padding (chapter 01 §1.1).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct KeyMaterial {
     pub kdf_salt: String,
     pub key_verifier: String,
 }
 
 /// One row of the vault registry.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct VaultSummary {
     pub id: String,
     /// Absent rather than empty when the registry row carries no name.

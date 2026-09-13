@@ -58,6 +58,10 @@ final class FakeAuthSession: AuthSessionProtocol, @unchecked Sendable {
         case renewSetupToken
         case signOut
         case markRevoked
+        case beginProviderSignIn(AuthProvider)
+        case completeProviderSignIn(String)
+        case keyMaterial
+        case vaults
     }
 
     private struct Tape {
@@ -103,6 +107,32 @@ final class FakeAuthSession: AuthSessionProtocol, @unchecked Sendable {
     func resendEmailCode() async throws { _ = try next(.resendEmailCode) }
     func signOut() async throws -> AuthState { try next(.signOut) }
     func verifyEmailCode(code: String) async throws -> AuthState { try next(.verifyEmailCode(code)) }
+
+    // T163's four methods. They record the call and then **always** fail.
+    //
+    // The tape cannot script them: `AuthReply` carries an `AuthState`, and
+    // three of these four answer with something else. Rather than invent a
+    // benign default — an empty vault list, a zero-flag outcome — each one
+    // traps, because a fake that answers a call no test wrote down is exactly
+    // the shape that let five bugs through this phase. The first test that
+    // needs one of these answers (T148, T152, T155) widens the tape to carry
+    // it; until then, reaching one of these lines is a finding.
+    func beginProviderSignIn(provider: AuthProvider) throws -> AuthState {
+        try trap(.beginProviderSignIn(provider))
+    }
+
+    func completeProviderSignIn(idToken: String) async throws -> ProviderSignInOutcome {
+        try trap(.completeProviderSignIn(idToken))
+    }
+
+    func keyMaterial() async throws -> KeyMaterial { try trap(.keyMaterial) }
+
+    func vaults() async throws -> [VaultSummary] { try trap(.vaults) }
+
+    private func trap<T>(_ call: Call) throws -> T {
+        tape.withLock { $0.calls.append(call) }
+        throw UnscriptedCall()
+    }
 }
 
 @MainActor

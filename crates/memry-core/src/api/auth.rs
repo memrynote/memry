@@ -31,6 +31,10 @@ use crate::protocol::http::{ClientIdentity, HttpClient};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::seams::transport::Transport;
 
+mod oauth;
+
+pub use oauth::{AuthProvider, ProviderSignInOutcome};
+
 /// Data-model §C.1, one variant per drawn state.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum AuthState {

@@ -29,6 +29,10 @@ use crate::crypto::sodium;
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy, TokenProvider};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 
+mod oauth;
+
+pub use oauth::{NativeOAuthRequest, NativeOAuthResponse};
+
 /// Chapter 02 §2.10 and §2.11, verbatim.
 pub const ACCESS_TOKEN_EXPIRY_SECONDS: u64 = 900;
 pub const EXPIRY_SAFETY_MARGIN_SECONDS: u64 = 60;
