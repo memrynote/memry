@@ -18,6 +18,7 @@ mod support;
 use std::sync::Arc;
 
 use memry_core::crdt::registry::UpdateSink;
+use memry_core::crdt::text_extract::cross_shell_digest;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, extract_text};
 use support::{hex_field, str_field, vector_file};
 
@@ -79,6 +80,57 @@ fn text_extract_vectors() {
 /// The negative control the README asks for: without heading and list markers
 /// the class still has to fail, or the byte-for-byte assertion above is
 /// asserting nothing that a bare text dump would not also pass.
+/// Chapter 12 §12.11's digest, pinned against the class that pins its input.
+///
+/// The vectors carry no title — §12.11 is explicit that `text-extract.json`
+/// holds the two ports to the same **text** and the digest is defined on top of
+/// that. So this asserts the formula: for every committed case, the digest over
+/// a fixed title equals SHA-256 of `title + "\n" + expectedText`, computed
+/// independently here rather than by calling the function under test.
+///
+/// The separator and the absence of a trailing newline are the whole point. A
+/// shell that hashed `notes text`'s printed output would include the trailing
+/// `\n` that `println!` adds and mismatch a shell that hashed the bytes, and
+/// SC-010 would report a content difference between two shells that agree.
+#[test]
+fn the_cross_shell_digest_is_sha256_of_title_newline_text() {
+    use sha2::{Digest as _, Sha256};
+
+    const TITLE: &str = "A note";
+    let vectors = vector_file("text-extract");
+    let cases = vectors["cases"].as_array().expect("cases");
+    assert!(!cases.is_empty(), "the class must not be empty");
+
+    for case in cases {
+        let name = str_field(case, "name");
+        let expected_text = str_field(case, "expectedText");
+        let update = hex_field(case, "updateHex");
+        let extracted = extracted(name, &update);
+        assert_eq!(extracted, expected_text, "{name}: the class's own claim");
+
+        let mut independent = Sha256::new();
+        independent.update(TITLE.as_bytes());
+        independent.update(b"\n");
+        independent.update(expected_text.as_bytes());
+        let expected: [u8; 32] = independent.finalize().into();
+
+        assert_eq!(
+            cross_shell_digest(TITLE, &extracted),
+            expected,
+            "{name}: the digest must be SHA-256 over title + \"\\n\" + text"
+        );
+
+        // The trailing-newline trap, asserted rather than described: a shell
+        // that digested the printed form gets a different value.
+        let printed = format!("{extracted}\n");
+        assert_ne!(
+            cross_shell_digest(TITLE, &printed),
+            expected,
+            "{name}: a trailing newline must change the digest, or the trap is silent"
+        );
+    }
+}
+
 #[test]
 fn a_marker_dropping_extractor_would_fail_this_class() {
     let vectors = vector_file("text-extract");

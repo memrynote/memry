@@ -14,7 +14,7 @@ use memry_core::api::crypto::{
 };
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::registry::{DocumentRegistry, UpdateSink};
-use memry_core::crdt::text_extract::extract_text;
+use memry_core::crdt::text_extract::{cross_shell_digest, extract_text};
 use memry_core::crdt::update_log;
 use memry_core::crypto::keys::base64_decode;
 use memry_core::protocol::account::{self, AccountCipher, VaultSummary};
@@ -23,6 +23,8 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::Db;
 use memry_core::sync::body_pull::BodyPull;
 use memry_core::sync::pull::{PullLoop, PullReport};
+
+use rusqlite::OptionalExtension as _;
 
 use crate::session::{Cli, CliError};
 
@@ -195,6 +197,53 @@ pub fn notes_text(cli: &Cli, note: &str, vault: Option<&str>) -> Result<(), CliE
     let text = extract_text(&*open_body(&db, note)?)?;
     println!("{text}");
     Ok(())
+}
+
+/// `notes digest <id>`: chapter 12 §12.11's cross-shell digest, the thing
+/// SC-010 compares between two shells.
+///
+/// SHA-256 over the UTF-8 bytes of `title + "\n" + extract_text(doc)`.
+/// Computed here rather than reconstructed from `notes text` in a shell
+/// pipeline, because `notes text` prints a trailing newline that is not part
+/// of the digested bytes — the two differ, and a harness that got that wrong
+/// would report a content mismatch between shells that agree.
+///
+/// §12.11's warning carries: the extractors agree on dropping literal angle
+/// brackets (§12.1.3.1), so a match proves both shells produced the same text,
+/// not that the note's text survived intact.
+pub fn notes_digest(cli: &Cli, note: &str, vault: Option<&str>) -> Result<(), CliError> {
+    let vault = resolve_vault(cli, vault)?;
+    let db = cli.open_vault(&vault)?;
+    let title = note_title(&db, note)?;
+    let text = extract_text(&*open_body(&db, note)?)?;
+
+    println!("{}", format_hex(&cross_shell_digest(&title, &text)));
+    Ok(())
+}
+
+/// The `notes` projection's title for one id.
+///
+/// A missing row is an error, never an empty title: digesting `"" + "\n" +
+/// text` for a note this vault has not pulled would produce a plausible-looking
+/// hash that silently disagrees with every other shell.
+fn note_title(db: &Db, note: &str) -> Result<String, CliError> {
+    let id = note.to_owned();
+    let title: Option<String> = db.call_blocking(move |conn| {
+        conn.query_row(
+            "SELECT title FROM notes WHERE id = ?1 AND deleted_at IS NULL",
+            rusqlite::params![id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+    })?;
+    title.ok_or_else(|| {
+        CliError::Refused(format!(
+            "no live note `{note}` in this vault: pull it first, and never digest a title this              client has not seen"
+        ))
+    })
 }
 
 /// `notes state-vector <id>`: the body's Y.Doc state vector, hex, for the §G4

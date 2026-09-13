@@ -37,6 +37,7 @@ Commands:
   notes list [--vault <id>]              print the pulled notes, newest first
   notes text <id> [--vault <id>]         print the note body's extracted text
   notes state-vector <id> [--vault <id>] print the note body's Y.Doc state vector, in hex
+  notes digest <id> [--vault <id>]       print chapter 12 §12.11's cross-shell digest (SC-010)
   notes edit <id> --append <text> [--vault <id>]
                                          append one paragraph block to the note body
 
@@ -80,6 +81,11 @@ pub enum Command {
         vault: Option<String>,
     },
     NotesStateVector {
+        note: String,
+        vault: Option<String>,
+    },
+    /// Chapter 12 §12.11's cross-shell digest, the value SC-010 compares.
+    NotesDigest {
         note: String,
         vault: Option<String>,
     },
@@ -226,7 +232,7 @@ fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
 
 fn parse_notes(args: &mut Args) -> Result<Command, UsageError> {
     let Some(subcommand) = args.next() else {
-        return usage("notes needs a subcommand: list, text, state-vector, or edit");
+        return usage("notes needs a subcommand: list, text, state-vector, digest, or edit");
     };
     match subcommand.as_str() {
         "list" => Ok(Command::NotesList {
@@ -241,6 +247,13 @@ fn parse_notes(args: &mut Args) -> Result<Command, UsageError> {
         "text" => {
             let note = positional(args, "notes text", "a note id")?;
             Ok(Command::NotesText {
+                note,
+                vault: optional(args, "--vault")?,
+            })
+        }
+        "digest" => {
+            let note = positional(args, "notes digest", "a note id")?;
+            Ok(Command::NotesDigest {
                 note,
                 vault: optional(args, "--vault")?,
             })

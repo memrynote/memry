@@ -52,6 +52,9 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
         Command::NotesStateVector { note, vault } => {
             commands::notes_state_vector(&cli, &note, vault.as_deref())
         }
+        Command::NotesDigest { note, vault } => {
+            commands::notes_digest(&cli, &note, vault.as_deref())
+        }
         Command::NotesEdit {
             note,
             append,

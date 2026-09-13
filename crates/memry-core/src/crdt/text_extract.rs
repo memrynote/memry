@@ -24,6 +24,7 @@
 //! forbids rebuilding a document through named accessors, and a reader that
 //! cannot hold a `Doc` cannot be tempted to.
 
+use sha2::{Digest as _, Sha256};
 use yrs::{GetString as _, ReadTxn, Xml as _, XmlElementRef, XmlFragment, XmlOut};
 
 use super::errors::CrdtError;
@@ -275,6 +276,28 @@ fn visible_text(rendered: &str) -> String {
 fn trim_end_js(line: &str) -> String {
     line.trim_end_matches(|c: char| c.is_whitespace() || c == '\u{feff}')
         .to_owned()
+}
+
+/// Chapter 12 §12.11's cross-shell digest for a **note**: SHA-256 over the
+/// UTF-8 bytes of `title + "\n" + extract_text(doc)`.
+///
+/// In the core rather than in a shell, because SC-010 compares the value
+/// produced by two different shells and a digest each one assembles itself is
+/// two chances to disagree about something neither is testing. The separator
+/// is one `\n` byte and there is no trailing newline: a shell that printed the
+/// text and hashed the printed form would include the `println!`'s newline and
+/// mismatch a shell that did not.
+///
+/// §12.11's own caveat carries and is worth repeating at the call site: the
+/// extractors agree on dropping literal angle brackets (§12.1.3.1), so a match
+/// proves both shells produced the same text — **not** that the note's text
+/// survived intact.
+pub fn cross_shell_digest(title: &str, text: &str) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(title.as_bytes());
+    hasher.update(b"\n");
+    hasher.update(text.as_bytes());
+    hasher.finalize().into()
 }
 
 #[cfg(test)]

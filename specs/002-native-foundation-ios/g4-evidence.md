@@ -224,3 +224,34 @@ make or to authorise automating.
   check — the _desktop_ half is what is missing);
 - SC-014's injected synthetic unknown item type, which needs a direct D1 write;
 - SC-010's cross-shell digest, which needs desktop's extracted text for one note.
+
+## SC-010 — the cross-shell digest, core side
+
+`cross_shell_digest` lives in `memry-core` (`crdt/text_extract.rs`), not in the
+shell: SC-010 compares a value produced by **two** shells, and a digest each one
+assembles itself is two chances to disagree about something neither is testing.
+
+`memry notes digest <id> [--vault <id>]` prints it. Computed inside the core over
+the extracted bytes — **not** reconstructed from `notes text`, whose `println!`
+appends a newline that is not part of the digested input. A harness that hashed
+the printed form would report a content mismatch between two shells that agree,
+and the test asserts that trap rather than describing it.
+
+Core-side values for three notes in `692184c5-…`, at the state recorded above:
+
+| note           | title                  | digest                                                             |
+| -------------- | ---------------------- | ------------------------------------------------------------------ |
+| `dzxnhc9p3gk3` | memrynote Architecture | `1930ae6ab6947e6726d98728caeda0fc1764b84d48a2f0209e0c5f45d532c3c0` |
+| `z01wzfmf44ka` | Conference Talk        | `751cdf473f74d5508494ad02eb422d332444248a1c0abbbebfd079704808d95e` |
+| `n6t4tk1ykzi9` | memrynote Mobile       | `d3a3359d0ed60c1b474816f97fa283da4b223d2720c8972e8213210698df0ab4` |
+
+**The comparison is not made yet.** These are one side. SC-010 closes when
+desktop produces its own digest for the same note at the same state and the two
+match. `text-extract.json` is the contract that makes a mismatch meaningful:
+both ports are already held to the same extracted bytes by the vector class, so
+a digest mismatch means the **content** differs, not the extractors — which is
+§12.11's whole point.
+
+§12.11's caveat carries: the extractors agree on dropping literal angle brackets
+(§12.1.3.1), so a match proves both shells produced the same text, not that the
+note's text survived intact.
