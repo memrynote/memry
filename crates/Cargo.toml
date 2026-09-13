@@ -18,7 +18,12 @@ zeroize = "1.8"
 bip39 = { version = "2.2.2", default-features = false, features = ["std"] }
 rusqlite = { version = "0.40.2", features = ["bundled", "backup", "functions", "trace", "limits"] }
 ciborium = "0.2.2"
-flate2 = "1.1.10"
+# Stock zlib, not the default `miniz_oxide` and not `zlib-rs`. Chapter 04 §4.1
+# pins the frame's bytes to `pako.deflate`, and pako is a port of stock zlib.
+# `miniz_oxide` and `zlib-rs` (a zlib-ng port) both choose a different deflate
+# strategy at level 6 and produce a longer, non-identical stream for the same
+# input, which fails the committed compression vectors.
+flate2 = { version = "1.1.10", default-features = false, features = ["zlib"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1.53.1", features = ["rt-multi-thread", "sync", "time", "macros"] }

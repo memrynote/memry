@@ -23,6 +23,42 @@ level. It is **not** gzip (`1f 8b 08`) and **not** headerless raw DEFLATE
 (RFC 1951). A Rust implementation MUST use a zlib wrapper — `flate2::ZlibEncoder`,
 not `DeflateEncoder`.
 
+### 4.1.1 The deflate implementation is part of the format
+
+**Normative.** The writer's output is pinned byte for byte by
+`packages/contracts/test-vectors/compression.json`, so the deflate
+implementation is not an implementation detail a client may choose. Two
+parameters, both load-bearing:
+
+| Parameter              | Value                                                           |
+| ---------------------- | --------------------------------------------------------------- |
+| compression level      | **6**, `pako`'s default (`Z_DEFAULT_COMPRESSION` resolves to 6) |
+| deflate implementation | **stock zlib**                                                  |
+
+`pako` is a direct port of stock zlib (`packages/sync-client/src/compress.ts:11`
+calls `pako.deflate` with no options), and stock zlib's level-6 block and
+Huffman choices are what the vectors record.
+
+**A "zlib wrapper" is not sufficient on its own.** Three Rust backends produce a
+valid RFC 1950 stream that inflates to the right bytes and still fails the
+committed vectors, because deflate is free to choose among many valid encodings
+of the same input:
+
+- `miniz_oxide`, which is **`flate2`'s default backend**, emits a longer
+  dynamic-Huffman stream at level 6;
+- `zlib-rs` and `zlib-ng` are zlib-**ng** derivatives, which deliberately trade
+  ratio for speed and diverge from stock zlib at the same level;
+- any backend at a level other than 6.
+
+A conforming Rust client therefore selects the stock-zlib backend explicitly,
+`flate2 = { default-features = false, features = ["zlib"] }`, and uses level 6.
+`default-features = false` is required: leaving it on keeps `miniz_oxide`
+compiled in alongside the requested backend.
+
+Round-tripping is **not** a sufficient test. All three backends decompress each
+other's output, so a suite that only asserts `decompress(compress(x)) == x`
+passes on every one of them; only the committed frame bytes catch it.
+
 The only gzip in the product is unrelated: the embedded editor bundle asset,
 packed with `node:zlib` `gzipSync` and unpacked with `pako.ungzip`
 (`apps/mobile/scripts/build-editor-web.mjs:28`, `:144`,
