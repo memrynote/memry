@@ -136,6 +136,23 @@ registration and T139 asks for a _desktop_, not a second headless client. An
 attempt this session hung with zero output, almost certainly OTP rate limiting
 after three requests in quick succession; it was abandoned and cleaned up.
 
+### Routes already tried for the desktop half — do not re-investigate
+
+1. **Appending to the vault markdown file directly.** Not ingested: after 90 s
+   the line had not reached the CLI and the file's mtime was unchanged. The file
+   was restored byte-identically.
+2. **The localhost Vault MCP server**, which would have made a genuine
+   desktop-side write through a designed API. **Not listening.** Checked every
+   Electron PID with `lsof -nP -iTCP -sTCP:LISTEN`; the only local node
+   listeners belong to other tooling. Consistent with `CLAUDE.md` describing
+   MCP-first as the current _direction_ rather than something this build ships.
+3. **A second `memry-cli` profile** (`HOME` scopes it). Possible in principle
+   and **not a substitute** — T139 asks for a desktop, not a second headless
+   client. The attempt also hit what looks like OTP rate limiting.
+
+What is left is driving the desktop UI, which is intrusive on a live app
+holding real data and is Kaan's call, or Kaan making one edit by hand.
+
 ## Two writes landed in Kaan's real notes
 
 `notes edit --append` can only append; there is no CLI path to remove a block.
