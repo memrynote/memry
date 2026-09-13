@@ -67,12 +67,17 @@ const tokenPatterns = [
 ]
 
 function normalizeValue(value) {
-  return value
-    .trim()
-    .replace(/,$/, '')
-    .trim()
-    .replace(/^['"]|['"]$/g, '')
-    .trim()
+  return (
+    value
+      .trim()
+      // A trailing separator is syntax, never secret material. The semicolon
+      // matters for Rust statements (`sent_token = Some(token);`), which the
+      // comma alone left looking like an unterminated expression.
+      .replace(/[,;]$/, '')
+      .trim()
+      .replace(/^['"]|['"]$/g, '')
+      .trim()
+  )
 }
 
 function isQuotedValue(value) {
@@ -139,6 +144,11 @@ function isSourceCodeReferenceValue(filePath, value) {
   )
 }
 
+/// Escapes a captured key so it can be embedded in a `RegExp` literal.
+function escapeForRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 const rustPrimitiveTypes =
   '(?:u8|u16|u32|u64|u128|usize|i8|i16|i32|i64|i128|isize|f32|f64|bool|char|str|String)'
 
@@ -179,7 +189,11 @@ function isRustDeclarationValue(filePath, value) {
     // arrives here with its opening quote already consumed by the assignment
     // pattern — still reads as a literal rather than as an identifier.
     /^[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*(?:\.[A-Za-z_]\w*(?:\([^;"'`]*\))?)+$/.test(normalized) ||
-    /^[a-z_]\w*(?:::[A-Za-z_]\w*)*\([^;"'`]*\)$/.test(normalized)
+    /^[a-z_]\w*(?:::[A-Za-z_]\w*)*\([^;"'`]*\)$/.test(normalized) ||
+    // A variant or tuple-struct call wrapping a code reference:
+    // `Some(token)`, `Ok(secret_key)`, `Zeroizing::new(bytes)`. Quotes are
+    // still excluded, so `Secret("hunter2secretvalue")` stays flagged.
+    /^[A-Z]\w*(?:::[A-Za-z_]\w*)*\([^;"'`]*\)$/.test(normalized)
   )
 }
 
@@ -288,6 +302,17 @@ export function scanTextForSecrets(filePath, text) {
     }
 
     const [, key, value] = match
+
+    // `Foo::bar(...)` is a path expression, not a `key: value` assignment: the
+    // pattern splits it as if the first `:` were the separator. Only `.rs`
+    // has `::`, and a JSON or YAML key can never be followed by one, so this
+    // cannot exempt an assignment in a config file.
+    if (
+      rustPathPattern.test(filePath) &&
+      new RegExp(`\\b${escapeForRegExp(key)}::`).test(lineText)
+    ) {
+      return
+    }
 
     if (
       tokenLines.has(index + 1) ||

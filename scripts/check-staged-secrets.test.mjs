@@ -155,6 +155,13 @@ describe('check-staged-secrets Rust declarations', () => {
     assert.deepEqual(rustRules('    vault_key: material.vault_key,'), [])
     assert.deepEqual(rustRules('    api_key: self.keys.signing.as_ref(),'), [])
     assert.deepEqual(rustRules('    secret: derive_key(seed),'), [])
+    assert.deepEqual(rustRules('                    sent_token = Some(token);'), [])
+    assert.deepEqual(rustRules('    api_key: Ok(material),'), [])
+    // A path expression, not an assignment: the pattern splits `Foo::bar` as
+    // if the first colon were a separator, so the quoted argument looked like
+    // a literal assigned to a key containing `Token`.
+    assert.deepEqual(rustRules('        TokenClaims::parse(\"not-a-jwt\"),'), [])
+    assert.deepEqual(rustRules('    TokenClaims::parse(&jwt(json!({ \"sub\": \"u\" }))),'), [])
   })
 
   it('still flags a Rust field whose value is a bare quoted literal', () => {
@@ -162,6 +169,20 @@ describe('check-staged-secrets Rust declarations', () => {
     // like an identifier. A type rule that accepted a bare lowercase word
     // would exempt it.
     assert.deepEqual(rustRules('    password: "hunter2secretvalue",'), [
+      'high-risk-secret-assignment'
+    ])
+  })
+
+  it('still flags a quoted literal wrapped in a tuple-struct call', () => {
+    // The variant exemption must not extend to a literal inside the call.
+    assert.deepEqual(rustRules('    password: Secret("hunter2secretvalue"),'), [
+      'high-risk-secret-assignment'
+    ])
+  })
+
+  it('does not extend the path-expression exemption to a real assignment', () => {
+    // No `key::` anywhere on the line, so the guard must not fire.
+    assert.deepEqual(rustRules('    api_token: "hunter2secretvalue",'), [
       'high-risk-secret-assignment'
     ])
   })
