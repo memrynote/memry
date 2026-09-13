@@ -38,6 +38,36 @@ final class AuthStartup {
     private let events = CoreEvents()
     private let executor = CoreExecutor.shared
 
+    /// T152's dependency, and the honest shape of a gap.
+    ///
+    /// Unlocking by recovery phrase needs the account's `{kdfSalt,
+    /// keyVerifier}` (chapter 02 §2.7), and **nothing in this build can supply
+    /// them**: the two routes that answer them are not exported by band B1 and
+    /// are not methods on `AuthSession`, and the account tier is band B3. So
+    /// the routing below is written, and it is dark until a source exists —
+    /// which is a stated absence rather than a screen that opens and cannot
+    /// finish. A test injects one to prove the branch is real.
+    private let keyMaterial: (any AccountKeyMaterialSource)?
+
+    init(keyMaterial: (any AccountKeyMaterialSource)? = nil) {
+        self.keyMaterial = keyMaterial
+    }
+
+    /// The unlock screen for a device the core reports as registered.
+    ///
+    /// `nil` when there is nothing to unlock with. Whether an **already**
+    /// unlocked account should skip this screen — the master key is in the
+    /// keychain, so the phrase is not needed again — is the vault-selection
+    /// question and belongs with T155, which is the task that opens a vault.
+    func unlockModel(for state: AuthState) -> RecoveryPhraseViewModel? {
+        guard state == .registered, let keyMaterial else { return nil }
+        return RecoveryPhraseViewModel(
+            executor: executor,
+            source: keyMaterial,
+            secureStore: Keychain(emitter: events.emitter)
+        )
+    }
+
     func begin() async {
         guard case .starting = phase else { return }
         switch SyncEnvironment.current {
@@ -83,6 +113,7 @@ final class AuthStartup {
 
 struct AuthRootView: View {
     @State private var startup = AuthStartup()
+    @State private var unlock: RecoveryPhraseViewModel?
 
     var body: some View {
         Group {
@@ -91,7 +122,21 @@ struct AuthRootView: View {
                 ProgressView()
                     .controlSize(.large)
             case let .ready(model):
-                SignInView(model: model)
+                // T152. A registered device with no master key is a locked
+                // vault, and the phrase is one of its two ways in (T153/T154
+                // is the other). Built in `onChange` rather than in the body:
+                // a model minted per render would throw away what the user had
+                // typed on every keystroke.
+                Group {
+                    if let unlock {
+                        RecoveryPhraseView(model: unlock)
+                    } else {
+                        SignInView(model: model)
+                    }
+                }
+                .onChange(of: model.state, initial: true) { _, state in
+                    unlock = startup.unlockModel(for: state)
+                }
             case let .unavailable(error):
                 AuthUnavailableView(error: error)
             }
