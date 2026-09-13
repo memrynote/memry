@@ -1,0 +1,363 @@
+# 13 — Payload schemas
+
+**Status**: normative. Every normative sentence carries a `path:line` citation
+(chapter 00 §0.1).
+
+The payload is the plaintext inside the record envelope of chapter 04: UTF-8
+JSON. This chapter specifies what it contains per type, and — more importantly —
+how a client is required to store it.
+
+## 13.1 The thirteen subscribed types
+
+**Normative.** This feature's client declares exactly these thirteen in
+`X-Memry-Sync-Types` (chapter 05 §5.3):
+
+`note`, `journal`, `folder_config`, `custom_icon`, `tag_definition`,
+`tag_category`, `property_definition`, `template`, `task`, `project`,
+`task_activity`, `reminder`, `settings`.
+
+Twelve more are served by the server and **not** subscribed to here:
+`attachment` (which never travels as a record at all, §13.8), `inbox`, `filter`,
+`calendar_event`, `calendar_source`, `calendar_binding`,
+`calendar_external_event`, `agent_conversation`, `agent_message`, `canvas`,
+`canvas_folder`, `bookmark`, `home_page`. **A conforming client omits them from
+the header and never sees them** (chapter 05 §5.3.1).
+
+## 13.2 Verbatim payload preservation — Q13.2
+
+**This is the whole of FR-033 and it binds every other chapter that describes a
+payload.**
+
+**Normative.** A conforming client MUST:
+
+1. **persist the decrypted payload bytes exactly as received**;
+2. treat every payload schema in this chapter as a **reader over a copy**, never
+   as the storage shape;
+3. on a local edit, parse a copy, merge the changed keys into it, serialise that
+   merged object **with unknown keys intact**, and push the result;
+4. **never re-serialise a projection row as the payload**;
+5. record a payload that fails its schema as **corrupt or unapplied**, rather
+   than skipping it and advancing the cursor.
+
+The platform-free engine establishes rules 1 and 2: it decrypts to
+`payloadJson: new TextDecoder().decode(content)`
+(`packages/sync-client/src/pull/engine.ts:281`) and parses only a throwaway
+copy for `fileType` (`:307-308`), with the contract stated at
+`packages/sync-client/src/pull/store.ts:5-9`, `:17`. The reference phone obeys
+it: the raw string goes into `sync_items.payload`
+(`apps/mobile/src/db/pull-store.ts:128-136`, `:163`), projections come from a
+parsed copy (`:207`), and a push sends the whole stored object with only the
+changed keys mutated (`apps/mobile/src/sync/outbox.ts:66-71`).
+
+### 13.2.1 Desktop is the NON-reference for this obligation (#2183)
+
+Desktop violates rules 1 to 4 today. `apply-item.ts` parses and then runs
+`handler.schema.parse(parsed)`
+(`apps/desktop/src/main/sync/apply-item.ts:93-95`); **every handler schema is a
+plain `z.object`** — there is no `passthrough`, `loose` or `catchall` anywhere in
+`packages/contracts/src/sync-payloads.ts` — and Zod strips unknown keys at every
+level. The parsed data is projected into columns
+(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:272-288`) and pushed
+back by **re-serialising the projection row**
+(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:373-378`); the
+verbatim string is kept nowhere.
+
+`task-handler.ts:278-284` already documents exactly this loss for
+`linkedCanvasIds`, and works around it with a presence guard rather than a fix.
+
+It also violates rule 5: an item whose payload fails `parse` is marked
+`'skipped'` **with the cursor advanced and no retry**
+(`apps/desktop/src/main/sync/apply-item.ts:96-109`, and the comment at `:98-101`
+naming it a mixed-version tripwire).
+
+Tracked as **#2183**. **This chapter states the obligation; desktop does not meet
+it.**
+
+### 13.2.2 The wire envelope is a different matter
+
+**Normative, and harmless.** `RecordPullItemResponseSchema`
+(`packages/sync-client/src/pull/engine.ts:209`) and
+`EncryptedItemPayloadSchema` (`packages/contracts/src/sync-api.ts:311-316`)
+strip unknown **envelope** keys, not payload keys, and the signature covers only
+the ten allowlisted keys (chapter 04 §4.7.3). A client MAY reject an unknown
+envelope key; it MUST NOT reject an unknown payload key.
+
+### 13.2.3 Core obligation
+
+Store the payload verbatim as `TEXT` or `BLOB`. Project through an untyped JSON
+value, or a struct carrying a flattened `extra` map. **A plain derived
+deserialise-then-reserialise reproduces desktop's bug exactly.**
+
+**Disposition of Q13.2: answered** (this section).
+
+## 13.3 The forward-tolerance convention
+
+**Normative.** Almost every field on almost every payload is optional **on
+purpose**: a payload written by a newer client must still parse on an older one,
+so a missing or renamed field degrades to a skip rather than a whole-page parse
+failure that advances the cursor past good data.
+
+A client MUST NOT add a required field to an existing payload type.
+
+## 13.4 Absent versus null
+
+**Normative, and load-bearing.** It is stated in three separate schema comments
+(`packages/contracts/src/sync-payloads.ts:125-126`, `:293-295`, `:300-301`):
+
+- **`undefined` (key absent)** means the sender does not know the field; **the
+  local value MUST be kept**.
+- **`null`** is an **explicit clear**.
+
+**Receiving handlers MUST gate on key presence, not on `?? existing`.** A `??`
+treats an absent key as a clear, which silently erases a field every time an
+older peer round-trips a row it could not model. Desktop's own junction-write
+guard exists for exactly this reason
+(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:278-288`): an absent
+key preserves the local rows, and **an explicit empty array still clears**, which
+is how a real unlink travels.
+
+## 13.5 `SyncTimestampSchema` — the cautionary fact
+
+**Normative, and reproduced here in full because it is the most important
+cautionary fact in this specification.**
+
+`createdAt` and `modifiedAt` on `note` and `journal` accept **either a string or
+a number**, normalising a number through `new Date(value).toISOString()`
+(`packages/contracts/src/sync-payloads.ts:21-23`, applied at `:269-270` and
+`:286-287`).
+
+Why it exists (`packages/contracts/src/sync-payloads.ts:6-19`): the React Native
+client wrote `Date.now()` — a number — where the schema said string. Every note a
+phone edited failed `safeParse` on desktop, and the applier skipped the item and
+advanced the cursor without retry: **the edit was accepted by the server, counted
+as synced by the phone, and silently never applied anywhere else.** Six notes in
+one staging vault were in that state before it was noticed.
+
+**Fixing the writer alone is not enough**: those payloads are already on the
+server, so a client that only accepts strings keeps rejecting them forever, on
+every device that ever syncs the vault. **The union is permanent** and is
+strictly a widening — a string still parses to itself.
+
+A conforming client MUST accept both shapes and MUST emit the string shape.
+
+## 13.6 Item id conventions
+
+**Normative.** Some ids are not UUIDs:
+
+- `tag_definition` ids are **tag names**;
+- `folder_config` ids are **folder paths**;
+- `settings` has exactly **one** item, `synced_settings`
+  (`packages/sync-client/src/settings-sync.ts:196`,
+  `packages/sync-client/src/settings-sync-keys.ts:12`).
+
+**The sync bookkeeping key MUST therefore be `(type, id)` and never `id`
+alone.** An id-only key made a project and a tag both named `inbox` share one
+entry and corrupt each other's state
+(`apps/desktop/src/main/sync/engine/sync-context.ts:118-124`).
+
+## 13.7 Per-type field lists
+
+Every schema below is a **reader** (§13.2). `clock` is `VectorClockSchema`
+optional on every type; `fieldClocks` appears only where §13.9 says so.
+
+### 13.7.1 `note` — `packages/contracts/src/sync-payloads.ts:255-271`
+
+| Field                                                            | Type                                          | Rule                                                                                                                                   |
+| ---------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`                                                          | string?                                       |                                                                                                                                        |
+| `content`                                                        | string, nullable?                             | **a CRDT update push carries `content: null`** (chapter 07); non-null only on `create` and `duplicate` (chapter 12 §12.2, carve-out A) |
+| `tags`                                                           | string[]?                                     | see chapter 12 §12.5.2 for the unresolved two-writer case                                                                              |
+| `pinnedTags`                                                     | string[]?                                     |                                                                                                                                        |
+| `emoji`                                                          | string, nullable?                             |                                                                                                                                        |
+| `properties`                                                     | record, nullable?                             | **free-form: values only, never definitions** (`property_definition` carries those)                                                    |
+| `aliases`                                                        | string[], nullable?                           |                                                                                                                                        |
+| `fileType`                                                       | `markdown \| pdf \| image \| audio \| video`? | **binary types have no CRDT body**                                                                                                     |
+| `mimeType`, `attachmentId`, `attachmentReferences`, `folderPath` | nullable?                                     |                                                                                                                                        |
+| `createdAt`, `modifiedAt`                                        | `SyncTimestampSchema`?                        | §13.5                                                                                                                                  |
+
+### 13.7.2 `journal` — `:273-288`
+
+Same shape as `note` minus the file fields, plus `date`.
+
+**`date` is optional ONLY so a delete tombstone can omit it** (`:274-280`). A
+create or update without it is rejected by **an explicit guard in the handler,
+not by the schema**. Deletes never reach any parser at all: the applier
+short-circuits `operation === 'delete'` before decoding the body.
+
+### 13.7.3 `task` — `:25-48`
+
+15 syncable fields (chapter 06 §6.7) plus `tags`, `linkedNoteIds`,
+`linkedCanvasIds`, `clock`, **`fieldClocks`**, `createdAt`, `modifiedAt`.
+
+`repeatConfig` is `z.unknown().nullable().optional()` (`:36`) — **opaque**, and
+the only object-valued field in any field-merged list (chapter 06 §6.4.1).
+
+### 13.7.4 `project` — `:239-253`
+
+`name`, `description`, `color`, `icon`, `position`, `isInbox`, `archivedAt`,
+`homeNoteId`, `createdAt`, `modifiedAt`, `clock`, **`fieldClocks`**, plus two
+nested arrays with their own schemas: `statuses` (`StatusSyncSchema`,
+`:216-223`) and `links` (`ProjectLinkSyncSchema`).
+
+### 13.7.5 `task_activity` — `:85-95`
+
+`taskId`, `action`, `field`, `oldValue`, `newValue`, `actor`, `deviceId`,
+`clock`, `createdAt`.
+
+**Append-only and immutable**, hence **no `fieldClocks` and no `modifiedAt`**.
+`oldValue` and `newValue` are JSON-encoded scalars and are always `null` for
+`description`, because the body can be note-sized.
+
+### 13.7.6 `template` — `:97-111`
+
+`name`, `description`, `icon`, `tags`, `properties`, `content`, `clock`,
+`createdAt`, `modifiedAt`.
+
+**`properties` must stay an array** (`TemplatePropertySchema[]`, `:106`) or note
+creation from the template throws.
+
+### 13.7.7 `tag_definition` — `:290-305`
+
+`name` and `color` are **required**; `icon`, `categoryId`, `sortOrder`,
+`colorAuthored`, `views`, `clock`, `createdAt`.
+
+- **`colorAuthored` absent means "cannot tell" and the receiver honours the
+  colour**; only a sender that knows the field can say `false` (`:293-295`).
+- **`views`: `undefined` keeps the local value, `null` is an explicit clear**
+  (`:300-301`).
+
+### 13.7.8 `tag_category` — `:332-339`
+
+`name` and `sortOrder` **required**; `clock`, `createdAt`, `updatedAt`,
+`deletedAt`.
+
+### 13.7.9 `property_definition` — `:322-330`
+
+`name` and `type` **required**; `options`, `defaultValue`, `color`, `clock`,
+`createdAt`.
+
+**`options` is opaque JSON _text_, deliberately not re-declared** (`:317-320`),
+so a newer client's per-option field is not parsed away on a round trip. This is
+§13.2 applied inside one field.
+
+### 13.7.10 `folder_config` — `:341-346`
+
+**`icon` is `z.string().nullable()` — the only non-optional field on any
+subscribed type** (`:342`). Plus `clock`, `createdAt`, `modifiedAt`.
+
+### 13.7.11 `custom_icon` — `:355-363`
+
+`name`, `ext`, **`data` (base64 image bytes carried inline)**, `clock`,
+`createdAt`, `updatedAt`.
+
+The bytes ride in the record payload rather than the attachment pipeline because
+a normalised icon is a few KB, and this keeps every device's icon directory
+self-healing from the row (`:348-354`).
+
+### 13.7.12 `reminder` — `:154-170`
+
+`targetType`, `targetId`, `remindAt`, `anchorId`, `highlightText`,
+`highlightStart`, `highlightEnd`, `title`, `note`, `status`, `dismissedAt`,
+`snoozedUntil`, `clock`, `createdAt`, `modifiedAt`.
+
+**`triggeredAt` is deliberately absent from the payload** (`:149-153`): each
+device shows its own notification, so a synced value would suppress it on a
+device that never displayed it. **Dismiss and snooze state does sync.**
+
+### 13.7.13 `settings`
+
+`{ settings, fieldClocks }` where `fieldClocks` is keyed by **dotted path**
+(`packages/contracts/src/settings-sync.ts:113-116`; chapter 06 §6.9).
+
+## 13.8 `attachment` is not a record type
+
+**Normative.** `attachment` is in `SYNC_ITEM_TYPES`
+(`packages/contracts/src/sync-api.ts:12`) but **not** in
+`RECORD_SYNC_ITEM_TYPES` and **not** in `ENCRYPTABLE_ITEM_TYPES` (chapter 00
+§0.7). **Attachments do not travel as record envelopes at all**; see chapter 14.
+
+## 13.9 Which merge algorithm each type uses
+
+**Normative** (the enumeration is chapter 06 §6.8):
+
+| Type                        | Algorithm                | Carries `fieldClocks`                              |
+| --------------------------- | ------------------------ | -------------------------------------------------- |
+| `task`                      | field-level              | yes (`packages/contracts/src/sync-payloads.ts:45`) |
+| `project`                   | field-level              | yes (`:247`)                                       |
+| `settings`                  | dotted-path field clocks | yes, its own key space                             |
+| every other subscribed type | document-level resolver  | no                                                 |
+
+`settings` is also the one record type **exempt from the clock requirement**
+(chapter 00 §0.7, `packages/contracts/src/sync-api.ts:64-89`).
+
+## 13.10 The `settings` payload merges rather than replaces — Q13.1
+
+**Normative.** A client MUST round-trip settings groups it does not model,
+without stripping them.
+
+`SyncedSettingsSchema` is a closed Zod object
+(`packages/contracts/src/settings-sync.ts:113-116`), so **a parse strips an
+unknown group** exactly as §13.2.1 describes for every other type. **The verbatim
+copy is therefore §13.2's stored payload string, and nowhere else**: there is no
+settings-specific preservation mechanism, and none is needed, because §13.2 is
+type-agnostic.
+
+**A client that implements §13.2 satisfies Q13.1 automatically. A client that
+does not — desktop today, #2183 — violates FR-033 for settings as it does for
+everything else.** Note that the individual key spaces inside settings _are_
+tolerant by design: unconstrained string keys so one malformed or future key
+cannot stall every other synced setting
+(`packages/contracts/src/settings-sync.ts:83-86`, `:99-100`). That tolerance is
+about keys **inside** a modelled group; §13.2 is what protects an **unmodelled
+group**.
+
+**Disposition of Q13.1: answered (the verbatim stored payload is the copy; there
+is no settings-specific mechanism).**
+
+## 13.11 `home_page` — Q13.3
+
+`home_page` is in `RECORD_SYNC_ITEM_TYPES`
+(`packages/contracts/src/sync-api.ts:61`) and this feature does not subscribe to
+it (§13.1). Its payload is `{ name, icon, position, widgets, clock, createdAt,
+updatedAt }` (`packages/contracts/src/sync-payloads.ts:128-136`), where
+`widgets` is an opaque string.
+
+**Normative — not subscribing to it orphans nothing.** Nothing in any subscribed
+payload references a `home_page` id: `note` carries `folderPath` and
+`attachmentReferences` (§13.7.1), `project` carries `homeNoteId` — **a note id,
+not a home page id** (`packages/contracts/src/sync-payloads.ts:251`) — and no
+subscribed type has a `homePageId`. The type is a leaf in the reference graph.
+
+Because the server serves only the declared set (chapter 05 §5.3), a
+non-subscribing client never receives one, never applies one, and never pushes
+one, so no row is written that a subscribing desktop would then find dangling.
+
+**Disposition of Q13.3: answered (out of scope, and orphans nothing).**
+
+## 13.12 `task_activity` retention — Q13.4
+
+**Normative.** Retention is **90 days**, as an **age rule, never a per-device row
+count** (`TASK_ACTIVITY_RETENTION_DAYS = 90`,
+`packages/db-schema/src/schema/task-activity.ts:36`;
+`taskActivityRetentionCutoff` at
+`packages/sync-client/src/task-activity-retention.ts:15-17`).
+
+**Retention MUST be enforced on apply as well as on write**
+(`packages/sync-client/src/task-activity-retention.ts:9-13`). This is the answer
+to "does deleting local rows cause a re-pull loop": **it does not, provided the
+rule is an age rule applied on both sides.** With a row-count rule, a device that
+pruned row X would keep re-accepting it from a peer that had not yet pruned, and
+X would resurrect on every pull. With the age rule every device computes the same
+cutoff and refuses the same rows.
+
+Comparison is **lexicographic over ISO-8601 UTC strings**, which is chronological
+because `created_at` and the cutoff share a shape
+(`packages/sync-client/src/task-activity-retention.ts:19-29`). A conforming
+client MUST produce `created_at` in that same shape.
+
+**A conforming client MUST apply `isBeyondTaskActivityRetention` before applying
+an inbound `task_activity` item**, and MUST still advance its cursor past a
+refused row — the row is not corrupt, it is expired.
+
+**Disposition of Q13.4: answered (a 90-day age rule enforced on apply and on
+write; no re-pull loop).**
