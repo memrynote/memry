@@ -12,10 +12,12 @@ use std::collections::BTreeMap;
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use ciborium::value::Value;
-use memry_core::api::errors::{CborError, CompressError, RecoveryError};
+use memry_core::api::errors::{CborError, CompressError, RecoveryError, StorageError};
 use memry_core::crypto::{cbor, keys, recovery, sodium};
 use memry_core::protocol::envelope::EnvelopeError;
 use memry_core::protocol::{compress, envelope, types};
+use memry_core::storage::migrations;
+use memry_core::storage::repositories::{ApplyOutcome, InboundRecord, projectors, sync_items};
 use serde_json::Value as Json;
 use support::*;
 use zeroize::Zeroizing;
@@ -864,4 +866,150 @@ fn payload_schemas_subscribed_types() {
         declaration.classify("canvas"),
         types::ArrivingItemType::Undeclared
     );
+}
+
+/// `payload-schemas.json` — chapter 13, all 52 payload cases (T089, T104).
+///
+/// Every group is four cases and the four are one argument:
+///
+/// 1. **valid** pins the reader's field list against the payload's;
+/// 2. **boundary** pins that absent and empty stay distinct across the round
+///    trip, which is §13.4's "`undefined` keeps the local value, `null` is an
+///    explicit clear";
+/// 3. **unknown field** — the SC-014 case — pins that the key is gone from the
+///    *parsed* view, because a closed schema strips it;
+/// 4. **verbatim round trip** pins that the same key is still in the *stored
+///    string*, byte for byte, after the whole apply-and-push path.
+///
+/// Cases 3 and 4 together are FR-033: the parse is allowed to lose the key
+/// precisely because the parse is not the storage. An implementation that
+/// deserialises into a struct and re-serialises passes 3 and fails 4, which is
+/// desktop today (#2183), so case 4 runs against a real SQLite database rather
+/// than against a function's return value.
+#[test]
+fn payload_schemas_vectors() {
+    let file = vector_file("payload-schemas");
+    let mut checked = 0;
+
+    for group in file["groups"].as_array().unwrap() {
+        let item_type = str_field(group, "type");
+        for case in group["cases"].as_array().unwrap() {
+            let name = str_field(case, "name");
+            match case.get("storedPayloadJson").and_then(Json::as_str) {
+                Some(stored) => check_verbatim_round_trip(
+                    item_type,
+                    name,
+                    stored,
+                    str_field(case, "expectedPushedPayloadJson"),
+                ),
+                None => check_payload_reader(item_type, name, case),
+            }
+            checked += 1;
+        }
+    }
+
+    assert_eq!(
+        checked,
+        file["meta"]["caseCount"].as_u64().unwrap() as usize
+    );
+}
+
+/// Cases 1 to 3: the reader over a copy (§13.2 rule 2).
+fn check_payload_reader(item_type: &str, name: &str, case: &Json) {
+    let payload = case["payload"]
+        .as_object()
+        .unwrap_or_else(|| panic!("{name}: `payload` is not an object"));
+
+    let view = projectors::read(item_type, payload)
+        .unwrap_or_else(|error| panic!("{name}: the payload must read: {error}"));
+
+    let expected = case["expectedParsed"]
+        .as_object()
+        .unwrap_or_else(|| panic!("{name}: `expectedParsed` is not an object"));
+    assert_eq!(&view, expected, "{name}");
+
+    // The read view is what a projection column caches, so every key the
+    // schema strips has to be absent from it — including a nested one, which
+    // the vector spells as a dotted path.
+    let as_value = Json::Object(view);
+    for path in case
+        .get("strippedByParse")
+        .and_then(Json::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+    {
+        let path = path.as_str().expect("a stripped path is a string");
+        assert!(
+            value_at(&as_value, path).is_none(),
+            "{name}: `{path}` must not survive the parse"
+        );
+    }
+}
+
+/// Case 4: the whole apply-and-push path, against a real database.
+///
+/// Chapter 06 §6.5.2 P2 is in here too — `push_payload` rebuilds from the live
+/// row rather than from anything frozen at enqueue — because the two
+/// obligations share one implementation: there is exactly one copy of the
+/// bytes, and it is the column.
+fn check_verbatim_round_trip(item_type: &str, name: &str, stored: &str, expected_pushed: &str) {
+    // 2026-04-16T00:00:00Z, the day the vectors' payloads are dated. A
+    // `task_activity` case has to be applied inside its 90-day retention
+    // window (§13.12) or it is refused as expired rather than stored.
+    const NOW_MS: i64 = 1_776_297_600_000;
+
+    let item_id = match item_type {
+        "settings" => "synced_settings",
+        "folder_config" => "Notes",
+        "tag_definition" => "protocol",
+        other => other,
+    };
+
+    let db = memry_core::storage::Db::open_in_memory().expect("an in-memory database");
+    db.call_blocking(|conn| migrations::run(conn, migrations::DATA_MIGRATIONS))
+        .expect("migrate");
+
+    let record = InboundRecord {
+        item_type: item_type.to_owned(),
+        item_id: item_id.to_owned(),
+        payload_json: stored.to_owned(),
+        server_cursor: Some(1),
+        signer_device_id: Some("device-a".to_owned()),
+        updated_at: NOW_MS,
+        deleted_at: None,
+    };
+
+    let pushed = db
+        .call_blocking(|conn| {
+            let outcome = sync_items::apply_remote(conn, &record, NOW_MS)?;
+            assert_eq!(outcome, ApplyOutcome::Applied, "{name}");
+            sync_items::push_payload(conn, item_type, item_id)?.ok_or(StorageError::Failed {
+                what: "the stored payload vanished".to_owned(),
+            })
+        })
+        .unwrap_or_else(|error| panic!("{name}: {error}"));
+
+    assert_eq!(pushed, expected_pushed, "{name}");
+
+    // The negative control the README asks for. Without it the assertion above
+    // only proves that *something* came back: a client that pushed its parsed
+    // view instead would still be storing a note, just one missing the key a
+    // newer build wrote.
+    let parsed: Json = serde_json::from_str(stored).expect("the vector's own JSON");
+    let view = projectors::read(item_type, parsed.as_object().unwrap()).expect("it reads");
+    assert_ne!(
+        serde_json::to_string(&Json::Object(view)).unwrap(),
+        expected_pushed,
+        "{name}: re-serialising the parsed view must NOT reproduce the payload, \
+         or this case proves nothing"
+    );
+}
+
+/// Walks a dotted path such as `settings.experimental`.
+fn value_at<'a>(value: &'a Json, path: &str) -> Option<&'a Json> {
+    let mut cursor = value;
+    for segment in path.split('.') {
+        cursor = cursor.get(segment)?;
+    }
+    Some(cursor)
 }

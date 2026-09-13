@@ -20,6 +20,7 @@
 pub mod connection;
 pub mod index_db;
 pub mod migrations;
+pub mod repositories;
 
 use std::path::Path;
 
