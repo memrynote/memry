@@ -9,37 +9,53 @@ Branch `native-core-phase-3` in `.worktrees/native-core-phase-3`, fast-forwarded
 with `origin/main` and pushed straight to main, no PR, per Kaan's standing
 instruction.
 
-## State: **Phase 4 at 4 of 24.** Phase 3 closed 64/64.
+## State: **Phase 4 at 6 of 21.** Phase 3 closed 64/64.
+
+**21, not 24** — T149, T150 and T151 are **CUT** by Kaan's decision. See the
+Scope decisions block at the top of Phase 4 in `tasks.md`; it is the first thing
+to read.
 
 | Wave | Tasks                                        | Status                   |
 | ---- | -------------------------------------------- | ------------------------ |
 | W1   | T140 `CoreExecutor`, T141 `CoreEvents`       | **DONE**, ticked, pushed |
 | W2   | T142 `ErrorMapping` + `Log`, T143 `Keychain` | **DONE**, ticked, pushed |
-| W3   | T144 `FileProtection` [P], T145 `Transport`  | **NEXT**                 |
+| W3   | T144 `FileProtection`, T145 `Transport`      | **DONE**, ticked, pushed |
+| W4   | T146 `Reachability` + `CodeCapture`          | **NEXT**                 |
 
 ## The exact next wave
 
-**W3: T144 and T145, two agents, cap at two.**
+**W4: T146, both seams. It is one task, so dispatch ONE agent** — the second
+slot is free for T147 if you want the pair, but T147 is the wiring task and is
+better run alone with everything else green.
 
-- **T144** `apps/ios/Memry/Seams/FileProtection.swift` — `Application Support/<bundle>/vault/<vaultId>/` at `completeUntilFirstUserAuthentication`, `isExcludedFromBackup` on the directory, the class **re-asserted on the `-wal` and `-shm` sidecars after first open** because they do not inherit it reliably. The test must assert the **effective** class read back from the database file _and_ both sidecars.
-- **T145** `apps/ios/Memry/Seams/Transport.swift` — the single `Transport` seam. `send` over `URLSession` (large blob fetches return a **file path**, not `Data`), `open_socket` over `URLSessionWebSocketTask`, closed on background and reopened on foreground. **Zero retry, auth or reconnect logic** — all of it stays in Rust. Header keys lowercase in both directions. A non-2xx is a **response**, not an error.
+- **T146** `apps/ios/Memry/Seams/Reachability.swift` over `NWPathMonitor`,
+  reporting online and whether the path is expensive **with no interpretation of
+  either**; and `apps/ios/Memry/Seams/Camera.swift`, `AVCaptureMetadataOutput`
+  with `.qr`, **output added before `metadataObjectTypes` is set** (research
+  R13), debounced to the first valid hit then `stopRunning()`.
+- T146 is also where **`Reachability::observe` finally gets a caller** — known
+  bug 6. The seam doc is explicit that draining on the transition is the shell's
+  obligation, not a guarantee the core meets. Wire it or it stays unwired and the
+  queue waits for a timer.
 
-T145 is the bigger of the two and the one the core has waited for since Phase 3.
-It is also the second half of T147's wiring.
-
-Then W4 = T146 (`Reachability` + `CodeCapture`), W5 = T147 + T148.
+Then **W5 = T147**, which is the most important task in the phase: the first
+production `AuthSession`, and therefore the first real wiring of `Keychain` and
+`Transport`. It also ratifies `UserFacingError`'s shape before eleven views
+inherit it (defect 95). **Confirm `GOOGLE_IOS_CLIENT_ID` is set in staging before
+dispatching T148** — it is optional in the server's types and cannot be read from
+here.
 
 ## Gate baseline — re-run and observed at the end of this session
 
-| Gate                                                        | Result                                           |
-| ----------------------------------------------------------- | ------------------------------------------------ |
-| `cargo fmt --all --check`                                   | clean                                            |
-| `cargo clippy --all-targets -- -D warnings`                 | clean                                            |
-| `cargo test`                                                | **526 passed, 0 failed, 1 ignored, 35 binaries** |
-| `node scripts/check-line-ceilings.mjs`                      | passed (105 files)                               |
-| `pnpm --filter @memry/contracts vectors:check`              | **11 classes**                                   |
-| `swiftlint lint --strict`, all 10 new Swift files           | **0 violations, 0 serious**                      |
-| xcodebuild `Unit`, 6 suites scoped, iPhone 17 **simulator** | **58 passed, 0 failed, 0 skipped**               |
+| Gate                                                         | Result                                           |
+| ------------------------------------------------------------ | ------------------------------------------------ |
+| `cargo fmt --all --check`                                    | clean                                            |
+| `cargo clippy --all-targets -- -D warnings`                  | clean                                            |
+| `cargo test`                                                 | **526 passed, 0 failed, 1 ignored, 35 binaries** |
+| `node scripts/check-line-ceilings.mjs`                       | passed (105 files)                               |
+| `pnpm --filter @memry/contracts vectors:check`               | **11 classes**                                   |
+| `swiftlint lint --strict`, all 17 new Swift files            | **0 violations, 0 serious**                      |
+| xcodebuild `Unit`, 11 suites scoped, iPhone 17 **simulator** | **102 passed, 0 failed, 0 skipped**              |
 
 The single ignored Rust test is deliberate: `outbox_durability.rs`'s child
 process, re-invoked by its parent to simulate SIGKILL.
@@ -70,7 +86,24 @@ Anything worse than this is the next session's to fix, not to inherit.
    full-plan run — it saw the _other_ agent's deliberately-broken file and
    reported two failures that were not its own. Scope every run, and run the
    orchestrator's own verification only when no agent is mid-sweep.
-6. **No `project.pbxproj` edit is needed for a new file.** The project uses
+6. **`-only-testing:` with a name that matches nothing runs nothing and still
+   prints `TEST SUCCEEDED`** (spec-defect 106). Swift Testing suite names are
+   **struct names, not file names**, and here they diverge:
+   `TransportTests.swift` holds `TransportHTTPTests` and `ResponseBodyTests`;
+   `FileProtectionTests.swift` holds `VaultFilesRealFilesystemTests` and
+   `VaultFilesSubstitutedPlatformTests`. My own verification run reported **64
+   passed** where the truth was **102**. Derive the names from the source
+   (`grep -hoE '^(struct|final class) [A-Za-z0-9_]+' apps/ios/MemryTests/*.swift`)
+   and **precompute the expected total before reading the result** — the failure
+   mode is a plausible smaller number, not an error.
+7. **The simulator does not implement data protection at all**, measured rather
+   than assumed. `URL.resourceValues(.fileProtectionKey)` returns
+   `NSFileProtectionCompleteUntilFirstUserAuthentication` for a file set to
+   `.complete`, one set to `.none`, and one never touched — the target
+   entitlement's default echoed back. **Any assertion on the effective class
+   passes with the code under test deleted.** Spec-defect 104. Same family as the
+   simulator keychain, which has no lock state.
+8. **No `project.pbxproj` edit is needed for a new file.** The project uses
    `PBXFileSystemSynchronizedRootGroup` for `Memry`, `MemryTests`,
    `MemryUITests` and `MemryConformanceTests`. A new `.swift` file in those
    directories is picked up automatically. This removes the shared-file conflict
@@ -100,15 +133,37 @@ the seam errors come back nested inside `AuthError.SecureStore`,
 `Keychain` — data-model §B exactly, and the **event hub's first producer**:
 `secureStoreLocked` fires from the single `errSecInteractionNotAllowed` arm.
 
-**NONE OF IT IS CONSTRUCTED IN PRODUCTION YET, and that is the Phase 3 lesson
-live.** `grep` confirms zero non-test call sites for `CoreExecutor`,
+**NONE OF IT IS CONSTRUCTED IN PRODUCTION YET, and W3 made that worse rather
+than better.** Two of the three gaps W3 found are call sites that did not exist:
+nothing called the `FileProtection` seam at all (defect 105, now T155's), and
+**nothing can call `open_socket`** — `RealtimeClient` is not exported and appears
+**zero times** in the generated Swift, so T145's socket half is unreachable from
+the core by construction until band B3 exports a `Sync` object (defect 103). The
+checkpoint does not need the socket: US3 is sign in, unlock, browse, and a
+realtime hint only shortens a pull the shell can drive itself.
+
+**That is the Phase 3 lesson live.** `grep` confirms zero non-test call sites for `CoreExecutor`,
 `CoreEvents`, `ErrorMapping`, `Log` and `Keychain`. Phase 3 shipped five tiers
 that were implemented, tested behind fakes, and never called — every one passed
 the whole unit suite. **T147 is where these become wired**, and until it lands
 they are unproven. T147's task text now says so, and also makes T147 the task
 that ratifies `UserFacingError`'s shape before eleven views inherit it.
 
-## The defect log: 99 logged, 99 closed, **0 open**
+`VaultFiles` implements `FileProtection` — named for the platform noun because
+the generated protocol owns `FileProtection` and the clash **cannot be
+qualified past** (`MemryCore` is also a public enum in its own module). Its
+`openingVault(_:open:)` makes the sidecar sweep structural: prepare, the caller's
+own open closure, then the sweep, so a caller cannot skip it. The sweep refuses
+to report success when no database exists, and runs on **every** open.
+
+`URLSessionTransport` implements `Transport`. **HTTP half only is ticked.** A
+non-2xx crosses as a response with its body, which is what keeps the
+outbox-wedging 400 diagnosable. Bodies past 1 MiB stream to a file and cross
+memory-mapped, unlinked on map. `waitsForConnectivity` off and redirects not
+followed, both because either is an invisible retry the core cannot see or
+cancel.
+
+## The defect log: 106 logged, 106 closed, **0 open**
 
 Eleven closed this session, 89 to 99. The two most consequential:
 
