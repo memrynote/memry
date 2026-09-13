@@ -133,6 +133,23 @@ link to the note, which is what desktop's mention menu writes. `trigger`
 defaults to `wiki`, so an older prebuilt asset that omits it behaves exactly as
 it did before.
 
+Seeding a note runs the other way, and there are two paths rather than one.
+`doc-load` carries an optional `seedMarkdown` the guest applies **verbatim**,
+and only when the document is genuinely empty. `seed-from-markdown` is the
+newer one, used on note creation and template application: it takes the
+create-time content exactly as the host sends it, splits off the frontmatter
+block, and parses only the body. The frontmatter is **discarded** — a new note's
+tags and properties come from the note record, and a guest that re-derived them
+from frontmatter would be a second source of truth that disagrees the moment
+the two were written from different inputs.
+
+The guest answers with `markdown-seed`, and the three-way result is
+load-bearing rather than decorative. `seeded` and `skipped` tell the host it
+may clear its stored seed; `error` tells it to keep it. Until a seed lands, the
+host's copy is the only copy of what the user asked for, so a parse failure is
+reported rather than swallowed and a request naming a document that is not
+mounted is answered rather than met with silence.
+
 Exporting a note asks the guest for the document twice over, in two different
 shapes. `export-markdown` returns it re-serialized through the schema, which is
 what a copy or a duplicate wants. `export-html` returns the guest's OWN rendered
