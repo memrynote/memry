@@ -100,7 +100,11 @@ fn creating_a_note_from_a_template_copies_the_body_verbatim_and_parses_none_of_i
                     "name": "Daily",
                     "content": BODY,
                     "tags": ["journal", "daily"],
-                    "properties": [{"name": "mood", "type": "text"}],
+                    "properties": [
+                        {"name": "mood", "type": "text", "value": "calm"},
+                        {"name": "rating", "type": "rating", "value": 4, "options": ["a"]},
+                        {"name": "done", "type": "checkbox"},
+                    ],
                     "coverImage": {"url": "memry://cover/1"},
                 })
                 .to_string(),
@@ -132,9 +136,14 @@ fn creating_a_note_from_a_template_copies_the_body_verbatim_and_parses_none_of_i
         // the core neither parsed nor re-emitted a single character of it.
         assert_eq!(note["content"], json!(BODY));
         assert_eq!(note["tags"], json!(["journal", "daily"]));
-        assert!(
-            note.get("properties").is_none(),
-            "a TemplateProperty's shape is unstated; applying it would be a guess"
+        // §13.7.6: the array becomes the note's free-form record by `name` and
+        // `value` only. `type` and `options` are dropped — a
+        // `property_definition` carries the type, and §13.7.9 forbids deriving
+        // a JSON type from a type name. `value: z.unknown()`, so a number is
+        // as legal as a string, and an absent `value` is an explicit null.
+        assert_eq!(
+            note["properties"],
+            json!({"mood": "calm", "rating": 4, "done": null})
         );
 
         // §A.3: the seed is the only copy of what the user asked for until the

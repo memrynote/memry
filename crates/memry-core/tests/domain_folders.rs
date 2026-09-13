@@ -45,6 +45,7 @@ fn note_in(
             folder_path: Some(folder),
             content: "",
             tags: &[],
+            properties: None,
         },
         DEVICE,
         NOW,

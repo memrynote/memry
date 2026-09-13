@@ -39,6 +39,7 @@ fn note(id: &str) -> NewNote<'_> {
         folder_path: Some("Notes"),
         content: "",
         tags: &[],
+        properties: None,
     }
 }
 

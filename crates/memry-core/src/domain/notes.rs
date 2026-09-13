@@ -72,6 +72,10 @@ pub struct NewNote<'a> {
     pub folder_path: Option<&'a str>,
     pub content: &'a str,
     pub tags: &'a [String],
+    /// §13.7.1's free-form values record. Empty means the key is **absent**
+    /// rather than an empty object: §13.4 makes those different writes, and a
+    /// note that has never had a property has not cleared one.
+    pub properties: Option<&'a Object>,
 }
 
 /// Creates a note, its payload and its body row.
@@ -169,6 +173,9 @@ pub(crate) fn create_in(
     }));
     if !note.tags.is_empty() {
         payload.insert("tags".to_owned(), json!(note.tags));
+    }
+    if let Some(properties) = note.properties.filter(|values| !values.is_empty()) {
+        payload.insert("properties".to_owned(), Value::Object(properties.clone()));
     }
     let stored = insert_local(tx, ITEM_TYPE, note.id, payload, now_ms)?;
     seed_body(tx, note.id, note.content, now_ms)?;

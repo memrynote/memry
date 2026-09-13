@@ -26,6 +26,7 @@ use rusqlite::Connection;
 use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
+use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::{self, Durable};
 
@@ -142,6 +143,7 @@ pub fn create_note(
                     folder_path: request.folder_path,
                     content: &seed.content,
                     tags: &seed.tags,
+                    properties: Some(&seed.properties),
                 },
                 device_id,
                 now_ms,
@@ -150,10 +152,11 @@ pub fn create_note(
     )
 }
 
-/// The two fields a template contributes to a note.
+/// The three fields a template contributes to a note.
 struct Seed {
     content: String,
     tags: Vec<String>,
+    properties: Object,
 }
 
 /// Reads them from the template's **stored payload**, never from its
@@ -204,5 +207,53 @@ fn seed_of(tx: &Connection, template_id: &str) -> Result<Seed, StorageError> {
             });
         }
     };
-    Ok(Seed { content, tags })
+    Ok(Seed {
+        content,
+        tags,
+        properties: properties_of(template_id, stored.object())?,
+    })
+}
+
+/// Chapter 13 §13.7.6: a template's `properties` array becomes the note's
+/// free-form `properties` **record**, by `name` and `value` only.
+///
+/// `type` and `options` are dropped on purpose. They are not lost — a
+/// vault-wide `property_definition` carries the type (§13.7.9) — but nothing a
+/// template says about a type reaches the note it creates, and §13.7.9 forbids
+/// deriving a JSON type from a type name anyway.
+///
+/// A later entry with a name already seen wins, which is what assigning into a
+/// record does. Every malformed shape is an error rather than a skip: a
+/// template whose properties silently vanished would look like the user's own
+/// doing, and this is the `GET /sync/vaults` lesson applied to a local read.
+fn properties_of(template_id: &str, template: &Object) -> Result<Object, StorageError> {
+    let refuse = |what: String| StorageError::Failed { what };
+    let entries = match template.get("properties") {
+        None | Some(Value::Null) => return Ok(Object::new()),
+        Some(Value::Array(entries)) => entries,
+        Some(_) => {
+            return Err(refuse(format!(
+                "template {template_id}: `properties` is not an array"
+            )));
+        }
+    };
+
+    let mut properties = Object::new();
+    for entry in entries {
+        let Some(entry) = entry.as_object() else {
+            return Err(refuse(format!(
+                "template {template_id}: a `properties` element is not an object"
+            )));
+        };
+        let Some(Value::String(name)) = entry.get("name") else {
+            return Err(refuse(format!(
+                "template {template_id}: a `properties` element has no string `name`"
+            )));
+        };
+        // `value` is `z.unknown()`, so any JSON is legal — including an
+        // explicit null, and including absent, which §13.4 keeps distinct.
+        let value = entry.get("value").cloned().unwrap_or(Value::Null);
+        properties.insert(name.clone(), value);
+    }
+    Ok(properties)
 }
