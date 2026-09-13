@@ -1,7 +1,7 @@
 # Attachments
 
-Drop files onto a note to attach them. PDFs preview inline, audio files render with playback
-controls, and other file types appear as download blocks.
+Drop files onto a note to attach them. PDFs preview inline, audio and video files render with
+playback controls, and other file types appear as download blocks.
 
 <!-- screenshot: PDF preview block inside a note -->
 
@@ -129,6 +129,23 @@ The progress bar follows playback continuously, and only the scrubber and the ti
 as the track plays — so leaving a long recording running in a background tab costs nothing beyond
 the audio itself. Copying the transcript shows a checkmark for a couple of seconds; closing the
 file page before it clears cancels it cleanly.
+
+## Video Attachments
+
+Video files render as an inline player with the standard playback controls — press play in the note
+rather than downloading the file and opening it elsewhere.
+
+Three formats are accepted: **`.mp4`**, **`.webm`** and **`.mov`**. These are the ones Memry can
+play back directly. Anything else — `.avi`, `.mkv`, `.wmv` and the rest — is refused when you pick
+it, with a message naming the formats that do work. The refusal happens at pick time on purpose: a
+file that attached and then would not play is worse than one that never attached.
+
+Attachments are capped at **100 MB**, video included. A file over the cap is refused when you pick
+it, and the message names both the file's size and the limit.
+
+The player only loads what it needs to show the first frame and the duration, and fetches the rest
+as you watch, so a note with several videos opens as quickly as any other note, and seeking does
+not wait for the whole file.
 
 ## Image Attachments
 
