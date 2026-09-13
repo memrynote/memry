@@ -457,3 +457,70 @@ are worth recording because a future harness will hit them:
 The 481 vs 480 byte difference between `notes text` output and the digested text
 is the `println!` newline — exactly the trap `cross_shell_digest` exists to
 avoid, observed in the wild.
+
+## SC-014 — injected synthetic item type, on staging (authorised; prod untouched)
+
+Two attempts, and the first one is the finding.
+
+### A type the server does not know is **rejected**, and wedges the outbox
+
+Injecting `synthetic_probe` — a type in no server enum — and pushing:
+
+```
+accepted 0   rejected 0   retired 0   queued 1
+refused  server returned 400: Invalid push request: Invalid option:
+         expected one of "note"|"task"|…|"home_page"
+```
+
+The item type is a **closed enum server-side**, so a genuinely unknown type
+cannot be placed on the server at all.
+
+**And the rejected row wedges every record push.** A legitimate `note` record was
+queued alongside it and pushed:
+
+```
+accepted 0   queued 2
+refused  server returned 400: Invalid push request: Invalid option: …
+```
+
+Both rows stayed at `attempt_count 0` with **no backoff**, so the batch is
+retried immediately and forever and no record can ever leave the device. The
+400 is batch-level and permanent; data-model §A.2's "acknowledged locally with a
+recorded reason" is exactly the arm that should fire here and does not.
+Removing the poison row restored the queue immediately (`queued 0, refused -`).
+
+Reachable in practice: ship a client that writes a new item type before the
+server accepts it, and every user's record outbox stops draining. Recorded as an
+implementation follow-up; see HANDOFF.
+
+### A type the server knows but this core does not declare is **filtered**
+
+`bookmark` is in the server enum and in `UNSUBSCRIBED_RECORD_ITEM_TYPES`. Pushed
+from device A: `accepted 1`, and the row is on the server at
+`server_cursor 7602`, confirmed in D1.
+
+Device B, which declares only the subscribed thirteen, pulled twice and **never
+received it**: `applied 0, skipped 0, corrupt 0`, cursor held at **7601** — below
+the item's 7602 — and no row for it exists in B's database.
+
+So the server honours `X-Memry-Sync-Types` and an undeclared type never reaches
+the client. **The consequence for SC-014 is worth stating plainly: a client
+cannot clobber, mis-store, or lose an undeclared item, because it never sees
+one.** The defensive handling T135 pins — metadata-only row, reason recorded,
+`serverCursor` kept, page not failed, cipher never invoked — remains the right
+behaviour for a page that does carry one, and is not routinely reachable while
+the server filters.
+
+### Cleanup, and a rule proving itself
+
+The synthetic item was tombstoned off staging. The **first** tombstone attempt
+reported `accepted 1` and changed nothing: it carried the same clock
+`{"sc014":1}` as the row it was deleting. Ticking to `{"sc014":2}` deleted it
+(`operation: delete`, `version 2`, tombstoned).
+
+That is §6.9.1 — _a removal is a write and must tick its clock_ — failing in
+exactly the way the chapter says it will, against the real server. The rule was
+written this session from a subagent's break-test; this is it observed in the
+wild, on a row hand-built to skip the domain layer that would have ticked for me.
+
+**Prod was not touched.**
