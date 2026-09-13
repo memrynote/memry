@@ -306,8 +306,28 @@ absent, never `null`.
 | `size`         | non-negative integer, bytes    |
 | `stateVector?` | string                         |
 
-A ref row is metadata only. It carries **no ciphertext**: the envelope of
-§4.8 arrives from `POST /sync/pull`, which answers `{ items: [<envelope>] }`.
+A ref row is metadata only. It carries **no ciphertext**.
+
+**`POST /sync/pull`** — request `{ itemIds: string[] }`, **1 to 100**. The
+field is `itemIds`, not `ids`.
+
+Its response is `{ items: [...] }`, and **the item is not the §4.8 push
+shape.** This asymmetry is the single costliest thing this chapter failed to
+say: a port that assumes one envelope reads five hundred items in a row as
+malformed, which is exactly what happened on the first staging run.
+
+|                                                          | write (`POST /sync/push`)  | read (`POST /sync/pull`) |
+| -------------------------------------------------------- | -------------------------- | ------------------------ |
+| `encryptedKey`, `keyNonce`, `encryptedData`, `dataNonce` | **flat**, at the top level | **nested** under `blob`  |
+| `id`, `type`, `operation`, `signature`, `signerDeviceId` | top level                  | top level                |
+| `clock`, `deletedAt`, `cryptoVersion`                    | top level, optional        | top level, optional      |
+| `stateVector`                                            | omitted (§4.6)             | omitted                  |
+
+So a read item is
+`{ id, type, operation, signature, signerDeviceId, cryptoVersion?, clock?, deletedAt?, blob: { encryptedKey, keyNonce, encryptedData, dataNonce } }`.
+The four ciphertext fields are identical in both spellings; only their nesting
+differs. A conforming reader accepts the nested form, and `record-envelope.json`
+pins the flat one because the vectors are written from the writer's side.
 
 **`GET /sync/changes`** → `{ items: <ref row>[], deleted: string[], hasMore: boolean, nextCursor: integer }`.
 
@@ -329,7 +349,16 @@ Response: `{ accepted: string[], rejected: [{ id, reason }], serverTime: integer
 `rejected` is per item, so a partially accepted batch is normal and a client
 must read it rather than infer success from the status code.
 
-**`GET /sync/vaults`** → `{ vaults: [...] }`. The envelope is an object with a
+**`GET /sync/vaults`** → `{ vaults: [{ vaultUuid, itemCount, createdAt, encryptedName, nameNonce }] }`.
+
+**The id field is `vaultUuid`**, not `id` and not `vaultId`. `encryptedName`
+and `nameNonce` are exactly that — the server never sees a vault's name — and
+`createdAt`, `encryptedName` and `nameNonce` may each be null.
+
+A reader that cannot find the id field MUST report a malformed response rather
+than skip the row: skipping turns a field-name mismatch into "this account has
+no vaults" against an account holding four, which is the same failure FR-032
+names for a zero-row first page. The envelope is an object with a
 `vaults` key, not a bare array; a reader that accepts only an array fails on
 every account. This route is account-scoped and sits **above** the vault
 middleware, so it takes no `X-Memry-Vault-Id`.

@@ -379,9 +379,11 @@ async fn a_kill_mid_first_sync_resumes_without_re_pulling_or_skipping() {
     // two outstanding ids and for nothing it had already applied.
     assert_eq!(resumed_transport.calls_to("/sync/pull").len(), 1);
     let asked = http_fakes::body_json(&resumed_transport.calls_to("/sync/pull")[0]);
-    let mut ids: Vec<String> = asked["ids"]
+    // `itemIds` is the field the server actually reads; staging answered
+    // `400 expected array, received undefined` to `ids` (spec defect 50).
+    let mut ids: Vec<String> = asked["itemIds"]
         .as_array()
-        .expect("ids")
+        .expect("itemIds")
         .iter()
         .map(|id| id.as_str().expect("a string id").to_owned())
         .collect();

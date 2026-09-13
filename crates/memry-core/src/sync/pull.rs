@@ -326,7 +326,7 @@ impl PullLoop {
     async fn fetch_bodies(&self, ids: &[String]) -> Result<Json, PullError> {
         let request = self
             .request("POST", "/sync/pull")
-            .json(&json!({ "ids": ids }));
+            .json(&json!({ "itemIds": ids })); // §5.11.1, defect 50
         Ok(self.http.send_json(request).await?)
     }
 

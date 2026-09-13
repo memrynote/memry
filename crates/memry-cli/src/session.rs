@@ -50,6 +50,8 @@ pub enum CliError {
     #[error("{0}")]
     Storage(#[from] StorageError),
     #[error("{0}")]
+    BodyPull(#[from] memry_core::sync::body_pull::BodyPullError),
+    #[error("{0}")]
     Pull(#[from] PullError),
     #[error("{0}")]
     Io(#[from] std::io::Error),

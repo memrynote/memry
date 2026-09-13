@@ -21,6 +21,7 @@ use memry_core::protocol::account::{self, AccountCipher, VaultSummary};
 use memry_core::protocol::types::Declaration;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::Db;
+use memry_core::sync::body_pull::BodyPull;
 use memry_core::sync::pull::{PullLoop, PullReport};
 
 use crate::session::{Cli, CliError};
@@ -105,12 +106,33 @@ pub async fn pull(cli: &Cli, vault: &str) -> Result<(), CliError> {
     let cipher = Arc::new(AccountCipher::new(vault_key, directory));
 
     let db = cli.open_vault(vault)?;
-    let report = PullLoop::new(http, db, Declaration::subscribed(), cipher)
+    let report = PullLoop::new(http, db.clone(), Declaration::subscribed(), cipher.clone())
         .with_vault(vault)
         .run(MAX_PULL_PAGES)
         .await?;
 
     print!("{}", format_pull(&report));
+
+    // The record feed carries note *metadata*; the body is a separate
+    // downward feed (chapter 07). Without this the projection fills, `notes
+    // list` looks complete, and `notes text` prints nothing — which is exactly
+    // what G4 is meant to catch, so the pull runs both.
+    //
+    // Tombstoned documents are excluded per §7.15: the server still answers
+    // with the surviving log, and re-applying it resurrects body state for a
+    // document the record feed just said is deleted.
+    let doc_ids = live_document_ids(&db)?;
+    if !doc_ids.is_empty() {
+        let bodies = BodyPull::new(cli.http()?, db, Declaration::subscribed(), cipher)
+            .with_vault(vault)
+            .pull_documents(&doc_ids)
+            .await?;
+        println!(
+            "bodies {}\nupdates {}\nbaselines {}",
+            bodies.documents, bodies.updates, bodies.baselines
+        );
+    }
+
     if report.refused {
         // §5.14: the cursor advanced and the run is still unsuccessful. Saying
         // so is the whole point of the breaker.
@@ -119,6 +141,28 @@ pub async fn pull(cli: &Cli, vault: &str) -> Result<(), CliError> {
         ));
     }
     Ok(())
+}
+
+/// Every note and journal that still exists, for the body pass.
+///
+/// `deleted_at IS NULL` is §7.15's rule made a query rather than a comment.
+fn live_document_ids(db: &Db) -> Result<Vec<String>, CliError> {
+    let ids = db.call_blocking(|conn| {
+        let query = |conn: &mut rusqlite::Connection| -> Result<Vec<String>, rusqlite::Error> {
+            let mut stmt = conn.prepare(
+                "SELECT item_id FROM sync_items \
+                 WHERE item_type IN ('note', 'journal') AND deleted_at IS NULL \
+                   AND corrupt_reason IS NULL \
+                 ORDER BY item_id",
+            )?;
+            stmt.query_map([], |row| row.get::<_, String>(0))?
+                .collect::<Result<Vec<_>, _>>()
+        };
+        query(conn).map_err(|error| StorageError::Failed {
+            what: format!("listing live documents: {error}"),
+        })
+    })?;
+    Ok(ids)
 }
 
 /// `notes list [--vault <id>]`: the projection, newest first.

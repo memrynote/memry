@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		B1000001 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000000 /* MemryCore */; };
+		B1000003 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000002 /* MemryCore */; };
+		B1000005 /* test-vectors in Resources */ = {isa = PBXBuildFile; fileRef = A0000040 /* test-vectors */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -17,6 +19,7 @@
 		A0000013 /* MemryConformanceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemryConformanceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0000020 /* MemryCore */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = MemryCore; path = ../../packages/swift/MemryCore; sourceTree = SOURCE_ROOT; };
 		A0000030 /* .swiftlint.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = .swiftlint.yml; sourceTree = "<group>"; };
+		A0000040 /* test-vectors */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "test-vectors"; path = "../../packages/contracts/test-vectors"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -56,7 +59,14 @@
 		};
 		D0000002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		D0000003 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		D0000004 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D0000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1000003 /* MemryCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +88,7 @@
 			isa = PBXGroup;
 			children = (
 				A0000020 /* MemryCore */,
+				A0000040 /* test-vectors */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -175,7 +186,9 @@
 				C0000005 /* MemryConformanceTests */,
 			);
 			name = MemryConformanceTests;
-			packageProductDependencies = ();
+			packageProductDependencies = (
+				B1000002 /* MemryCore */,
+			);
 			productName = MemryConformanceTests;
 			productReference = A0000013 /* MemryConformanceTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -221,7 +234,14 @@
 		D2000001 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		D2000002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		D2000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		D2000004 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D2000004 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1000005 /* test-vectors in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -453,6 +473,7 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		B1000000 /* MemryCore */ = {isa = XCSwiftPackageProductDependency; productName = MemryCore; };
+		B1000002 /* MemryCore */ = {isa = XCSwiftPackageProductDependency; productName = MemryCore; };
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 12000001 /* Project object */;

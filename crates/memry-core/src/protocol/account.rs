@@ -129,17 +129,27 @@ fn rows<'a>(body: &'a Json, key: &str) -> Option<&'a Vec<Json>> {
 }
 
 fn read_vaults(body: &Json) -> Option<Vec<VaultSummary>> {
-    Some(
-        rows(body, "vaults")?
-            .iter()
-            .filter_map(|row| {
-                Some(VaultSummary {
-                    id: text(row, &["id", "vaultId"])?,
-                    name: text(row, &["name"]),
-                })
-            })
-            .collect(),
-    )
+    let mut vaults = Vec::new();
+    for row in rows(body, "vaults")? {
+        // `vaultUuid` first, because that is what the server actually sends
+        // (chapter 05 §5.11.1). The other two are tolerated rather than
+        // expected.
+        //
+        // A row whose id cannot be read is a **malformed response**, not a
+        // vault that does not exist: returning `None` here propagates to
+        // `ApiError::MalformedResponse`. Filtering it out instead — which this
+        // function used to do — turned a field-name mismatch into "this
+        // account has no vaults" against an account holding four of them, and
+        // the CLI reported it as cheerfully as if it were true. It is the same
+        // rule FR-032 states for a zero-row first page: an empty result on an
+        // account known to hold data is a failure to report, never an empty
+        // account.
+        vaults.push(VaultSummary {
+            id: text(row, &["vaultUuid", "vaultId", "id"])?,
+            name: text(row, &["name", "encryptedName"]),
+        });
+    }
+    Some(vaults)
 }
 
 fn read_directory(body: &Json) -> Option<DeviceDirectory> {
@@ -202,6 +212,35 @@ impl RecordCipher for AccountCipher {
                 ),
             })?;
         envelope::decrypt(envelope, &self.vault_key, signer)
+    }
+}
+
+impl crate::sync::body_pull::CrdtCipher for AccountCipher {
+    fn open(
+        &self,
+        update: &crate::sync::body_pull::PackedUpdate<'_>,
+    ) -> Result<Vec<u8>, EnvelopeError> {
+        // Same directory, same §1.4.0 rule as the record path: an
+        // unresolvable signer is unverified, not invalid.
+        let device_id = update
+            .signer_device_id
+            .ok_or_else(|| EnvelopeError::Malformed {
+                what: format!("update for `{}` advertised no signer", update.doc_id),
+            })?;
+        let signer =
+            self.directory
+                .signing_key(device_id)
+                .ok_or_else(|| EnvelopeError::Malformed {
+                    what: format!(
+                        "signer device `{device_id}` is not in the directory from GET /auth/devices"
+                    ),
+                })?;
+        crate::protocol::crdt_envelope::unpack(
+            update.packed,
+            update.doc_id,
+            &self.vault_key,
+            signer,
+        )
     }
 }
 

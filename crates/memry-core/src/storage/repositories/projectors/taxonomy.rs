@@ -41,7 +41,13 @@ const CUSTOM_ICON_FIELDS: &[Field] = &[
 const TAG_DEFINITION_FIELDS: &[Field] = &[
     Field::req("name", Kind::Text),
     Field::req("color", Kind::Text),
-    Field::opt("icon", Kind::Text),
+    // `opt_null`, not `opt`: real desktop data writes `icon: null`, and 146
+    // of 524 tag_definitions on the staging account did. Refusing them made
+    // every one "corrupt" — which §13.3's forward tolerance and data-model
+    // §A.4 both forbid: a projector substitutes the column default and never
+    // refuses the item. No committed vector case carries a null `icon`, which
+    // is why only real data found it.
+    Field::opt_null("icon", Kind::Text),
     Field::opt_null("categoryId", Kind::Text),
     Field::opt("sortOrder", Kind::Number),
     Field::opt("colorAuthored", Kind::Bool),

@@ -505,9 +505,17 @@ pub fn from_json(value: &Json) -> Result<RecordEnvelope, EnvelopeError> {
         what: "not a JSON object".to_owned(),
     })?;
 
+    // **The read envelope is not the write envelope**, and nothing said so
+    // until staging answered 500 corrupt items in a row. `POST /sync/push`
+    // takes the four ciphertext fields flat (§4.8); `POST /sync/pull` returns
+    // them nested under `blob`. Both spellings are accepted here, flat first,
+    // because the vectors pin the flat form and the wire uses the nested one.
+    // Chapter 05 §5.11.1 now carries the asymmetry.
+    let blob = fields.get("blob").and_then(Json::as_object);
     let text = |key: &str| -> Result<String, EnvelopeError> {
         fields
             .get(key)
+            .or_else(|| blob.and_then(|blob| blob.get(key)))
             .and_then(Json::as_str)
             .map(str::to_owned)
             .ok_or_else(|| EnvelopeError::Malformed {
