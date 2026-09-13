@@ -14,7 +14,7 @@ import { z } from 'zod'
  * (`apps/mobile/editor-web/src/*`). Hand-written `any` at this boundary is a
  * defect (Constitution II), and the drift risk is not the types — both halves
  * import this file — but the PREBUILT WebView asset going stale against it.
- * `pnpm --filter @memry/mobile editor:check` is the gate for that; the `ready`
+ * `pnpm --filter @memry/editor-web editor:check` is the gate for that; the `ready`
  * handshake carries the same hash so a stale asset also fails at runtime.
  */
 

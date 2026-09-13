@@ -600,4 +600,4 @@ npx -y react-doctor@latest .
 git diff --check
 ```
 
-Run only the platform checks that match the change. For a focused component change, run its nearest test first. For a mobile editor change, also run `pnpm --filter @memry/mobile editor:check`. For shell, editor, IPC, or contract changes, also run the repository checks required by `CLAUDE.md` and the platform's `AGENTS.md`.
+Run only the platform checks that match the change. For a focused component change, run its nearest test first. For a mobile editor change, also run `pnpm --filter @memry/editor-web editor:check`. For shell, editor, IPC, or contract changes, also run the repository checks required by `CLAUDE.md` and the platform's `AGENTS.md`.
