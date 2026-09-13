@@ -203,9 +203,11 @@ from a desktop when convenient.
    implemented and tested.
 5. **A pulled update does not advance an already-resident `Document`**; it lands
    on the next `load_plan` replay.
-6. **`Reachability::observe` is never called.** `seams/reachability.rs`'s module
-   doc claims the core drains on the transition; whether that happens is
-   entirely the shell's business today. The doc overclaims.
+6. ~~**`Reachability::observe` is never called** and the seam doc overclaims.~~
+   **Doc fixed this session.** `observe` still has no caller — that is correct
+   and deliberate, the shell owns _when_ to run a pass — and the module doc now
+   separates the shell's obligation from the core's guarantee instead of
+   asserting both. Wiring `observe` remains a shell task.
 7. **The §7.15 runtime obligation is reported, not performed.** `PullReport`
    gained `purged_documents`; a caller holding a registry must release those.
 
