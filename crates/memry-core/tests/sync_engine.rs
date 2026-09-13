@@ -1058,6 +1058,55 @@ fn projected_note_title(db: &Db, id: &str) -> String {
     .expect("the note projection")
 }
 
+/// The engine's own totals, not the pull loop's.
+///
+/// `PullLoop::run` accumulated `skipped` correctly and `SyncEngine::pull_pages`
+/// did not, so `PassReport.pull.skipped` read 0 no matter how many items
+/// §6.3.1's document gate had skipped. Nothing lost data — the cursor and the
+/// §5.14 breaker are computed per page inside `pull_page` — but a counter that
+/// silently reads zero is how a real skip goes unnoticed in a transcript, and
+/// FR-032's vocabulary is the whole point of having four counters.
+#[tokio::test]
+async fn the_engine_reports_a_skip_rather_than_losing_it_between_pages() {
+    let db = scratch_db("engine-skip-total");
+    seed_locally_renamed_note(&db, "abc123def456");
+
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({"clientPolicy": {"writesEnabled": true}}).to_string(),
+        ),
+        response(200, &changes(&[("abc123def456", "note")], &[], "51")),
+        response(
+            200,
+            &json!({"items": [envelope("abc123def456", "note")]}).to_string(),
+        ),
+    ]);
+    let http = Arc::new(HttpClient::new(
+        transport.clone(),
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").unwrap(),
+    ));
+    let pull = Arc::new(PullLoop::new(
+        Arc::clone(&http),
+        db,
+        Declaration::subscribed(),
+        ScriptedCipher::new(&[(
+            "abc123def456",
+            r#"{"title":"Stale remote title","fileType":"markdown","folderPath":"Notes","clock":{"device-a":1}}"#,
+        )]),
+    ));
+    let engine = SyncEngine::new(pull, http, Arc::new(FixedReachability(Reachable::Wifi)));
+
+    let report = engine.run_pass(PassTrigger::Foreground).await;
+    assert_eq!(
+        report.pull.skipped, 1,
+        "the engine must carry the page's skip into its own totals"
+    );
+    assert_eq!(report.pull.applied, 0);
+    assert_eq!(report.pull.corrupt, 0);
+}
+
 /// **The data-loss case chapter 06 §6.8 and §6.3.1 exist to prevent**, end to
 /// end: rename a note here, then receive a `note` record from a peer that had
 /// not seen the rename, and the rename **survives**.

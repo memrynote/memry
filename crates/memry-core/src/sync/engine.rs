@@ -229,6 +229,7 @@ impl SyncEngine {
             total.applied += page.applied;
             total.deleted += page.deleted;
             total.corrupt += page.corrupt;
+            total.skipped += page.skipped;
             total.expired += page.expired;
             total.dropped_pages += page.dropped_pages;
             total.cursor = page.cursor.clone();
