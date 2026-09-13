@@ -168,6 +168,15 @@ Saving is held until the stored session has been read back. Before that, a slow 
 
 The launches most likely to hit it were the slow ones: a large vault, the first open after an update, a cold start on a busy machine. That is also why it tended to show up more often over time rather than all at once. Nothing about your stored layout was ever corrupted, so no cleanup is needed — the first launch after updating restores the session you last quit with.
 
+### What a restore deliberately forgets
+
+A restored tab comes back with your preferences, not with the moment you left. Two kinds of thing are dropped on purpose:
+
+- **One-shot actions.** Clicking **New event**, or a link that focuses an inbox item, is an instruction for right now. It is never replayed at the next launch.
+- **Where you had navigated to.** Calendar's date is one of these. Opening Calendar on a fresh start lands on today, in the view mode — Day, Week, Month or Year — you last used. A date you navigated to is kept while that session is alive, so switching tabs and coming back leaves you where you were.
+
+This is also the fix for a reported bug: Calendar used to reopen on whatever day you had last looked at, with the event-creation dialog already up, on every single launch — a click you had made weeks earlier being carried out again. Old stored sessions are cleaned up on the first launch after updating; nothing needs to be reset by hand.
+
 ### Scroll Position
 
 Note tabs — including the template editor and release-notes tabs — remember where you were reading. Switch to another tab and back, or restart with **Restore Session** on, and the note returns to the same place.

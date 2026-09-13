@@ -511,6 +511,39 @@ describe('CalendarPage', () => {
     expect(screen.getByDisplayValue('Planning block')).toBeInTheDocument()
   })
 
+  it('opens the create dialog for a create-event click made just now', async () => {
+    mockUseActiveTab.mockReturnValue({ viewState: { createEventAt: Date.now() } })
+
+    renderWithProviders(<CalendarPage />)
+
+    expect(await screen.findByRole('dialog', { name: 'Create calendar event' })).toBeInTheDocument()
+  })
+
+  it('opens no dialog on mount for a create-event nonce from a previous run', async () => {
+    // The reported bug: a stale persisted `createEventAt` meant navigating to
+    // Calendar always landed with the event-creation dialog already open.
+    mockUseActiveTab.mockReturnValue({ viewState: { createEventAt: Date.now() - 86_400_000 } })
+
+    renderWithProviders(<CalendarPage />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Create event' })).toBeInTheDocument()
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('lands on today when nothing is stored', async () => {
+    renderWithProviders(<CalendarPage />)
+
+    await waitFor(() => expect(mockUseCalendarRange).toHaveBeenCalled())
+    const today = localDateString()
+    const lastRange = mockUseCalendarRange.mock.lastCall?.[0]
+    // The fetched window must contain today, whatever view is showing.
+    expect(`${lastRange?.startAt ?? ''}`.slice(0, 10) <= today).toBe(true)
+    expect(`${lastRange?.endAt ?? ''}`.slice(0, 10) >= today).toBe(true)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('saves a newly created all-day event from the editor', async () => {
     const user = userEvent.setup()
     mockCreateEvent.mockResolvedValue({ success: true })

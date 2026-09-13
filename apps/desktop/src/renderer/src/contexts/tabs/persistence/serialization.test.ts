@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { isRestorableTabType, serializeTabState } from './serialization'
+import { deserializeTabState, isRestorableTabType, serializeTabState } from './serialization'
+import { STORAGE_VERSION } from './types'
+import type { PersistedTabState } from './types'
 import type { FeaturesSettings } from '@memry/contracts/settings-schemas'
 import type { Tab, TabGroup, TabSystemState } from '../types'
 import { generateId } from '../helpers'
@@ -78,5 +80,67 @@ describe('serializeTabState', () => {
 
     expect(persistedTabs.map((tab) => tab.type)).toEqual(['note'])
     expect(persistedTabs.some((tab) => tab.type === 'virtual-note')).toBe(false)
+  })
+
+  it('never persists the calendar anchor date or a create-event nonce', () => {
+    // Both replayed on the next launch: Calendar opened on a day in August with
+    // the event-creation dialog already up, on every start.
+    const calendar = makeTab({
+      type: 'calendar',
+      entityId: undefined,
+      viewState: {
+        calendarView: 'day',
+        calendarAnchorDate: '2026-08-08',
+        createEventAt: 1_700_000_000_000
+      }
+    })
+
+    const persisted = serializeTabState(makeState([calendar]))
+
+    expect(persisted.tabGroups.g1?.tabs[0]?.viewState).toEqual({ calendarView: 'day' })
+  })
+})
+
+describe('deserializeTabState', () => {
+  const persistedWithViewState = (viewState: Record<string, unknown>): PersistedTabState => ({
+    version: STORAGE_VERSION,
+    tabGroups: {
+      g1: {
+        id: 'g1',
+        activeTabId: 'tab-1',
+        tabs: [
+          {
+            id: 'tab-1',
+            type: 'calendar',
+            title: 'Calendar',
+            isPinned: false,
+            viewState
+          }
+        ]
+      }
+    },
+    layout: { type: 'leaf', tabGroupId: 'g1' },
+    activeGroupId: 'g1',
+    settings: { restoreSessionOnStart: true, tabCloseButton: 'hover' },
+    savedAt: Date.now()
+  })
+
+  it('strips transient keys written by an older build', () => {
+    // Real users are sitting on session files that already contain these.
+    const restored = deserializeTabState(
+      persistedWithViewState({
+        calendarView: 'day',
+        calendarAnchorDate: '2026-08-08',
+        createEventAt: 1_700_000_000_000
+      })
+    )
+
+    expect(restored.tabGroups?.g1.tabs[0].viewState).toEqual({ calendarView: 'day' })
+  })
+
+  it('keeps the last view mode, which is a real preference', () => {
+    const restored = deserializeTabState(persistedWithViewState({ calendarView: 'week' }))
+
+    expect(restored.tabGroups?.g1.tabs[0].viewState).toEqual({ calendarView: 'week' })
   })
 })

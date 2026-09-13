@@ -9,6 +9,7 @@ import { getGroupIdsFromLayout } from '@/components/split-view/layout-helpers'
 import type { PersistedTabState, PersistedTabGroup, PersistedTab } from './types'
 import { STORAGE_VERSION } from './types'
 import { migratePersistedState } from './migrations'
+import { stripTransientViewState } from './transient-view-state'
 import { featureForTabType } from '@memry/contracts/feature-flags'
 import type { FeaturesSettings } from '@memry/contracts/settings-schemas'
 
@@ -55,7 +56,10 @@ export const serializeTabState = (state: TabSystemState): PersistedTabState => {
         scrollPosition: tab.scrollPosition,
         scrollState: tab.scrollState,
         scrollPanes: tab.scrollPanes,
-        viewState: tab.viewState
+        // One-shot intents ("open the new-event popover") and session-scoped
+        // positions (the calendar anchor date) must not outlive the run that
+        // produced them.
+        viewState: stripTransientViewState(tab.viewState)
       }))
 
     // Only persist groups that have tabs
@@ -105,6 +109,9 @@ export const deserializeTabState = (
     // Convert persisted tabs to full tabs
     const tabs: Tab[] = source.map((tab: PersistedTab) => ({
       ...tab,
+      // Also stripped on read: the session files real users are sitting on were
+      // written by a build that persisted these keys.
+      viewState: stripTransientViewState(tab.viewState),
       isModified: false,
       isPreview: false,
       isDeleted: false,
@@ -184,6 +191,7 @@ export const extractPinnedTabs = (
       if (tab.isPinned && (flags ? isRestorableTabType(tab.type, flags) : true)) {
         pinnedTabs.push({
           ...tab,
+          viewState: stripTransientViewState(tab.viewState),
           isModified: false,
           isPreview: false,
           isDeleted: false,
