@@ -113,10 +113,10 @@ Two exist. Both are `#[uniffi::export]`ed objects with interior mutability,
 because a UniFFI object crosses as a reference and the shell holds it for the
 app's lifetime. Neither exposes a key.
 
-| Object        | Methods                                                                                                                                                                                                  | Chapter |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `RuntimeHost` | `new`, `on_background`, `on_foreground`, `on_expiring`, `phase`, `resume_settled`                                                                                                                        | plan R5 |
-| `AuthSession` | `new`, `state`, `mark_revoked` are **synchronous**; `request_email_code`, `resend_email_code`, `verify_email_code`, `register_device`, `renew_setup_token`, `refresh`, `sign_out` are **`async throws`** | 02      |
+| Object        | Methods                                                                                                                                                                                                                                                                                   | Chapter |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `RuntimeHost` | `new`, `on_background`, `on_foreground`, `on_expiring`, `phase`, `resume_settled`                                                                                                                                                                                                         | plan R5 |
+| `AuthSession` | `new`, `state`, `mark_revoked`, `begin_provider_sign_in` are **synchronous**; `request_email_code`, `resend_email_code`, `verify_email_code`, `register_device`, `renew_setup_token`, `refresh`, `sign_out`, `key_material`, `vaults`, `complete_provider_sign_in` are **`async throws`** | 02      |
 
 Two data enums cross with them: `AuthState`, the nine states of data-model
 §C.1 — `SignedOut`, `AwaitingOtp`, `AwaitingProviderToken`, `SetupPending`,
@@ -161,14 +161,12 @@ core surface that band B3 supplies, so seven of its tasks have no call site
 that any amount of Swift can build. The specific missing capabilities, each
 confirmed by `grep` over the generated bindings rather than inferred:
 
-- **no method accepts a provider token** — `AuthState::AwaitingProviderToken`
-  and `AuthEvent::ProviderSheetOpened` are variants nothing exported can reach,
-  so T148's Google flow ends holding an ID token it cannot spend (chapter 02
-  §2.13);
-- **no way to fetch `{kdf_salt, key_verifier}`** — chapter 02 §2.7 defines
-  `GET /auth/recovery-info` and `GET /auth/key-verifier`, and neither is a B1
-  function or an `AuthSession` method, so T152's unlock screen is wired to a
-  dead input;
+- ~~no method accepts a provider token~~ — **closed by T163**:
+  `begin_provider_sign_in` and `complete_provider_sign_in` make
+  `AuthState::AwaitingProviderToken` and `AuthEvent::ProviderSheetOpened`
+  reachable for the first time;
+- ~~no way to fetch `{kdf_salt, key_verifier}`~~ — **closed by T163**:
+  `AuthSession::key_material`;
 - **no device-linking surface at all** — `link`, `pair` and `sas` return zero
   hits, so T153 and T154 have nothing to drive;
 - **no vault, note or folder API** — the only `Vault`-shaped exports are
@@ -186,3 +184,65 @@ protocols added against the B1 count are `AuthSessionProtocol` and
 `RuntimeHostProtocol`, which UniFFI emits for the two objects; the eight
 foreign seams and their four companions are unchanged, so
 `contracts/shell-seams.md` needs no edit.
+
+## Records and enums that cross with band B3's account minimum
+
+Added by T163. All are `uniffi::Record`/`uniffi::Enum` on the **existing**
+`protocol::` structs rather than duplicates in `api/`, following the precedent
+`protocol::auth::DevicePlatform` already set.
+
+| Type                    | Shape                                        | Chapter   |
+| ----------------------- | -------------------------------------------- | --------- |
+| `KeyMaterial`           | `{ kdf_salt: String, key_verifier: String }` | 02 §2.1.1 |
+| `VaultSummary`          | `{ id: String, name: Option<String> }`       | 05 §5.1   |
+| `ProviderSignInOutcome` | the native-OAuth answer                      | 02 §2.13  |
+| `AuthProvider`          | `google`                                     | 02 §2.13  |
+
+The **error surfaces table above is unchanged** — none of these needed a new
+variant. A provider refusal is `ApiError::Unauthorized` or `Status`, a missing
+setup token is the existing `AuthError::NoSetupToken`, and a call made from the
+wrong state is `InvalidState`.
+
+`AuthProvider` is an enum rather than the state machine's free `String` because
+the value becomes a path segment of `/auth/oauth/:provider/native`, and a
+caller-supplied string in a path is a caller-supplied URL. A consequence worth
+knowing: the core can therefore never reach §2.13's `400 AUTH_INVALID_PROVIDER`.
+
+**Rule 1's verifier exception extends to `kdf_salt`.** It crosses as the base64
+`String` of chapter 01 §1.1, for the same reason the two verifiers do — the
+format _is_ the string, and handing Swift decoded bytes would make the wrong
+comparison the easy one to write.
+
+## An exported type's Rust module path is part of its ABI
+
+**Normative, and it cost a revert to learn** (spec-defect 122). UniFFI folds a
+type's module path into its metadata checksum. Moving an exported type between
+Rust modules therefore rewrites the FFI checksum of **every method that
+mentions it**, even when no signature changes at all — lifting `AuthState` into
+a new module churned all eight `AuthSession` methods that return it and deleted
+nine lines from the generated Swift, for what looked like tidying.
+
+So: **moving an exported type is a breaking change, and is never done as part
+of a refactor.** The check that catches it is cheap and should be run after any
+change to the exported surface — regenerate, then diff the generated Swift
+against its previous version and confirm **zero deleted lines**. A purely
+additive change deletes nothing. Anything deleted means an existing binding
+moved, and that is the moment to stop rather than to commit.
+
+This matters more here than it would elsewhere, because **no gate catches a
+stale or churned binding** — Phase 3 ended with one.
+
+## Widening an exported protocol breaks every Swift conformance to it
+
+Adding a method to an exported object widens the generated
+`…Protocol`, and **every Swift type conforming to it stops compiling** — test
+fakes included. T163's four additions broke `FakeAuthSession` and took the iOS
+`Unit` target red until it was updated. This is not a defect; it is what a
+protocol is. It is written down because the breakage surfaces as a Swift
+compile error in a file the Rust author is not looking at, and in a worktree
+where someone else may be mid-task.
+
+When updating such a fake, the new method's default must **not** be a benign
+success. A fake that behaves correctly is how this project shipped five bugs
+behind a green suite in Phase 3; `FakeAuthSession`'s four new methods record the
+call and then throw.
