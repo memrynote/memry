@@ -158,8 +158,14 @@ Not done, and not doable headlessly:
   Either way it is a failed _method_, not a failed requirement: an external file
   edit is not an edit made in the desktop app, which is what T139 asks for.
 
-- **concurrent edits converging: FAILED via the external-edit path, and the
-  method is the cause.** A held `memry-cli` edit plus a concurrent desktop
+- **concurrent edits converging: PASS**, via two `memry-cli` devices (a second
+  profile, `HOME`-scoped), so both sides take the incremental append path — the
+  same one a UI edit takes. Both held an edit, both pushed, **both edits
+  survived**, and all three implementations agree: device A, device B and the
+  desktop read from its vault file. §12.11's digest matches byte for byte
+  between the two cores. Superseded failure below, kept for defect 88.
+- ~~**concurrent edits converging: FAILED via the external-edit path, and the
+  method is the cause.**~~ A held `memry-cli` edit plus a concurrent desktop
   vault-file edit lost the CLI's paragraph from both sides.
   `replaceNoteBodyInCrdt` does `fragment.delete(0, fragment.length)` then
   re-seeds, so the peer's update merges into tombstoned content — applied,
@@ -174,6 +180,11 @@ Not done, and not doable headlessly:
 - **SC-014's injected synthetic unknown item type** round-tripping verbatim.
   T135 proves it against the real pull path with a fake transport; injecting
   one into staging needs a direct D1 write, which was not authorised.
+- **SC-010: two-device digest match achieved; cross-SHELL still open.** Two
+  independent `memry-core` devices produced the identical digest
+  `c0716414…b60c042` for the same note. Both are the same implementation, so
+  this is necessary and not sufficient — **desktop computing its own digest is
+  what remains.**
 - **SC-010's cross-shell digest — the core half is DONE.**
   `cross_shell_digest` is in `memry-core` (not the shell, because SC-010
   compares two shells' values and a digest each assembles itself is two chances
@@ -204,7 +215,19 @@ after three requests in quick succession; it was abandoned and cleaned up.
 What is left is driving the desktop UI, which is intrusive on a live app
 holding real data and is Kaan's call, or Kaan making one edit by hand.
 
-## Two writes landed in Kaan's real notes
+## Cleanup — the account is back to its pre-session content
+
+Every marker written this session was removed and the removal verified to
+propagate to both CLI devices: `G5 blocked-write probe`, `cli-to-desktop …`,
+`conv-A-…`, `conv-B-…` from "Conference Talk", and `T137 kill-switch drill`
+from "memrynote Architecture". `diff` against the pre-cleanup backups shows only
+those lines removed.
+
+**A second `memry-cli` device was registered** for the convergence test
+(profile at `/tmp/g5b`, which is temporary). It is a real device row on the
+account and is worth revoking with the other stale ones.
+
+## Superseded — two writes that landed in Kaan's real notes (now removed)
 
 `notes edit --append` can only append; there is no CLI path to remove a block.
 
