@@ -177,9 +177,21 @@ Not done, and not doable headlessly:
   real desktop.~~ Note that T133 already proves byte-identical convergence with
   real `yrs` and a real database, including the layout check; what is missing
   is the _desktop_ half.
-- **SC-014's injected synthetic unknown item type** round-tripping verbatim.
-  T135 proves it against the real pull path with a fake transport; injecting
-  one into staging needs a direct D1 write, which was not authorised.
+- **SC-014: run on staging (Kaan authorised staging only; prod untouched).**
+  A type in **no** server enum is rejected with a batch-level `400`, so it
+  cannot be placed on the server at all — **and the rejected row wedges every
+  record push**, see follow-up 8. A type the server knows but this core does not
+  declare (`bookmark`) pushes fine and is then **filtered by the server**:
+  device B, declaring only the subscribed thirteen, never received it and held
+  its cursor below the item. A client cannot mishandle an undeclared item
+  because it never sees one; T135's defensive handling stays correct for a page
+  that does carry one. The synthetic item was tombstoned off staging.
+- **SC-010: PASS.** `memry-core` and the TypeScript reference extractor produce
+  **identical digests on three real notes** from the staging account
+  (`packages/contracts/scripts/sc010-probe.ts`). Two harness traps recorded
+  there: the vault markdown file is not the input, and the update log alone
+  yields an empty document because `load_plan` starts from the snapshot.
+- ~~superseded, kept for its detail:~~
 - **SC-010: two-device digest match achieved; cross-SHELL still open.** Two
   independent `memry-core` devices produced the identical digest
   `c0716414…b60c042` for the same note. Both are the same implementation, so
