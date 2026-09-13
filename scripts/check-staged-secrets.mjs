@@ -32,7 +32,7 @@ const secretKeywords = [
 ]
 
 const secretAssignmentPattern = new RegExp(
-  `^\\s*(?:export\\s+)?([A-Z0-9_]*(?:${secretKeywords.join('|')})[A-Z0-9_]*)\\s*[:=]\\s*["']?([^"'\\s#][^#\\n]*)`,
+  `^\\s*(?:export\\s+)?([A-Z0-9_]*(?:${secretKeywords.join('|')})[A-Z0-9_]*)\\s*[:=]\\s*(["']?)([^"'\\s#][^#\\n]*)`,
   'i'
 )
 
@@ -227,6 +227,19 @@ function isSecretKeywordKey(key) {
   return secretKeywordWordPattern.test(words)
 }
 
+/**
+ * A quoted literal of three characters or fewer, in any file type.
+ *
+ * There is no such thing as a three-character credential, and test fixtures
+ * are full of them — `token: "t".into()`, `key: "a"`. The literal body is read
+ * up to the closing quote, so a suffix like `.into()` does not hide it.
+ */
+function isShortLiteral(openingQuote, value) {
+  if (!openingQuote) return false
+  const body = value.split(openingQuote)[0]
+  return body.length <= 3
+}
+
 function isPlaceholderValue(value) {
   const normalized = normalizeValue(value).toLowerCase()
 
@@ -301,7 +314,7 @@ export function scanTextForSecrets(filePath, text) {
       return
     }
 
-    const [, key, value] = match
+    const [, key, openingQuote, value] = match
 
     // `Foo::bar(...)` is a path expression, not a `key: value` assignment: the
     // pattern splits it as if the first `:` were the separator. Only `.rs`
@@ -314,9 +327,26 @@ export function scanTextForSecrets(filePath, text) {
       return
     }
 
+    // A Rust value that never opened a quote and contains no quote character
+    // cannot be a string literal — it is an expression, and the identifier it
+    // names lives somewhere else in the file. This is what tells
+    // `secret_key: secret_key` and `signing_secret_key: &self.secret_key`
+    // apart from `password: "hunter2secretvalue"`, which arrives here with its
+    // opening quote already eaten by the pattern above and therefore has
+    // `openingQuote` set.
+    if (
+      rustPathPattern.test(filePath) &&
+      openingQuote === '' &&
+      !/["'`]/.test(value) &&
+      /^[&*]*\s*[A-Za-z_]/.test(value.trim())
+    ) {
+      return
+    }
+
     if (
       tokenLines.has(index + 1) ||
       !isSecretKeywordKey(key) ||
+      isShortLiteral(openingQuote, value) ||
       key.toUpperCase().includes('PUBLIC_KEY') ||
       isCodeDeclarationValue(filePath, value) ||
       isPlaceholderValue(value)

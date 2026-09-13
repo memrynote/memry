@@ -155,6 +155,14 @@ describe('check-staged-secrets Rust declarations', () => {
     assert.deepEqual(rustRules('    vault_key: material.vault_key,'), [])
     assert.deepEqual(rustRules('    api_key: self.keys.signing.as_ref(),'), [])
     assert.deepEqual(rustRules('    secret: derive_key(seed),'), [])
+    // No opening quote and no quote character anywhere: a Rust expression,
+    // not a literal. This is the pair the pattern cannot tell apart on the
+    // captured value alone, only on whether a quote was consumed.
+    assert.deepEqual(rustRules('    signing_secret_key: secret_key,'), [])
+    assert.deepEqual(rustRules('    signing_secret_key: &self.secret_key,'), [])
+    assert.deepEqual(rustRules('    api_key: &mut material,'), [])
+    // A three-character literal is not a credential in any language.
+    assert.deepEqual(rustRules('    token: \"t\".into(),'), [])
     assert.deepEqual(rustRules('                    sent_token = Some(token);'), [])
     assert.deepEqual(rustRules('    api_key: Ok(material),'), [])
     // A path expression, not an assignment: the pattern splits `Foo::bar` as
@@ -169,6 +177,21 @@ describe('check-staged-secrets Rust declarations', () => {
     // like an identifier. A type rule that accepted a bare lowercase word
     // would exempt it.
     assert.deepEqual(rustRules('    password: "hunter2secretvalue",'), [
+      'high-risk-secret-assignment'
+    ])
+  })
+
+  it('still flags a bare quoted literal, which is the shape the identifier rule must not swallow', () => {
+    // `password: "hunter2secretvalue"` reaches the exemption above with the
+    // same *captured value* as a bare identifier. Only the consumed opening
+    // quote separates them, so this is the test that pins the distinction.
+    assert.deepEqual(rustRules('    password: "hunter2secretvalue",'), [
+      'high-risk-secret-assignment'
+    ])
+  })
+
+  it('does not treat a long literal as short just because it is converted', () => {
+    assert.deepEqual(rustRules('    token: "hunter2secretvalue".into(),'), [
       'high-risk-secret-assignment'
     ])
   })
