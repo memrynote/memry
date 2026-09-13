@@ -316,6 +316,63 @@ issue, not a protocol question.
 
 ## 12.5 The Y.Doc roots — Q12.5
 
+### 12.5.0 The XML layout inside `prosemirror`
+
+**This chapter described the markdown spelling of blocks (§12.6, §12.7) and
+never the XML layout inside the `prosemirror` fragment.** A client that only
+reads a body does not need it. A client that **writes** into one does, and
+getting it wrong destroys content silently, so it is normative here.
+
+```
+prosemirror (XmlFragment)
+└── blockGroup (XmlElement)          ← exactly one, always
+    └── blockContainer (XmlElement)  ← one per block, id attribute
+        └── <block type> (XmlElement)
+            └── XmlText
+```
+
+**Normative: the fragment's single top-level child is a `blockGroup`.**
+BlockNote's own writer builds the fragment with `topNode:
+schema.nodes.blockGroup.create()`, and the `doc` node's content expression is
+`blockGroup`.
+
+**A `blockContainer` placed as a direct child of `prosemirror`, beside an
+existing `blockGroup`, is silently DELETED — not rejected.** y-prosemirror's
+repair heuristic answers a node its schema cannot construct by removing the
+element (`createNodeFromYElement`), and a `doc` holding two top-level children
+is not constructible. The damage is invisible at every layer a naive client can
+see: the update applies, the document encodes, `extract_text` may even return
+the text — and the next desktop to open the note renders it without the block.
+This is the single most dangerous thing a writing client can get wrong, which is
+why it is stated rather than left to be inferred from a fixture.
+
+**A writer MUST therefore locate its parent rather than assume one**: append
+inside the existing `blockGroup`; create the `blockGroup` first if the fragment
+is empty; and **refuse** a top-level layout it does not recognise rather than
+guess. Refusing is correct because the alternatives are a deletion the user
+never sees and a document a peer cannot construct.
+
+**Each `blockContainer` carries an `id` attribute, a v4 UUID.** BlockNote's
+writer stamps one on every block; its reader tolerates a missing id by
+generating one, and desktop separately repairs containers lacking one on note
+open — that repair exists because empty-string ids produced an editor error. A
+writer SHOULD write a v4-shaped id; a reader MUST NOT fail on a block without
+one.
+
+**A block's `props` are omitted when they equal their declared defaults.**
+`textColor`, `backgroundColor` and `textAlignment` are declared with defaults,
+so a node carrying no attributes reads identically to one carrying the defaults.
+Omitting them is what keeps a minimally-written block byte-comparable with the
+committed fixtures.
+
+**The committed fixtures are deliberately smaller than this, and two of them
+disagree with it.** `text-extract.json`'s `a plain paragraph document` is
+`prosemirror > blockContainer > paragraph`, and `crdt-update.json`'s real-update
+case is `prosemirror > paragraph` with no container at all. Both are hand-built
+and correct for what they pin — `extract_text`'s walk, and that the transport
+does not inspect the bytes — and neither is the layout above. **This section,
+not a fixture, is the authority on what a writer produces.**
+
 **Normative, and stronger than the question assumes: a conforming client MUST
 preserve every root present in the update stream, including roots this
 specification does not name.** FR-033 says unrecognised fields are preserved and

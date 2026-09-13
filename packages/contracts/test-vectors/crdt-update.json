@@ -73,8 +73,8 @@
       }
     },
     {
-      "name": "a real Yjs update over a BlockNote-shaped document",
-      "pins": "the transport does not inspect the bytes, and a second implementation gets something real to apply",
+      "name": "a real Yjs update, shape-agnostic",
+      "pins": "the transport does not inspect the bytes, and a second implementation gets something real to apply; the node shape is NOT the real note layout, see chapter 12 §12.5.2",
       "input": {
         "noteId": "abc123def456",
         "updateHex": "0105f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb06011b54686520626f647920612070686f6e6520776f756c64207365652e2801046d657461057469746c6501770b566563746f72206e6f74650801047461677301770870726f746f636f6c00",

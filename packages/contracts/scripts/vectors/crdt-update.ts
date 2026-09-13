@@ -46,7 +46,18 @@ function fixedDoc(): Y.Doc {
 const HEADER_LEN = 160
 const SIG_OFFSET = 96
 
-/** A real Yjs update over a small BlockNote-shaped document. */
+/**
+ * A real Yjs update over a small document.
+ *
+ * **Deliberately NOT the shape a real note has.** BlockNote builds
+ * `prosemirror > blockGroup > blockContainer > paragraph > text` (its
+ * `topNode` is a `blockGroup`); this fixture is a bare `paragraph` under the
+ * fragment. That is fine for what this case pins — the transport does not
+ * inspect the bytes — but the case used to be named "BlockNote-shaped", which
+ * told a port reading it that this was the real layout. It is not. Chapter 12
+ * §12.5.0 is the authority on the Y.Doc layout; a client that writes into a
+ * document MUST read that, not this fixture.
+ */
 function realYjsUpdate(): Uint8Array {
   const doc = fixedDoc()
   const fragment = doc.getXmlFragment('prosemirror')
@@ -86,10 +97,10 @@ const SPECS = (): Spec[] => [
     pins: 'the stored branch: under 64 bytes never compresses'
   },
   {
-    name: 'a real Yjs update over a BlockNote-shaped document',
+    name: 'a real Yjs update, shape-agnostic',
     noteId: FIXED.NOTE_ID,
     update: realYjsUpdate(),
-    pins: 'the transport does not inspect the bytes, and a second implementation gets something real to apply'
+    pins: 'the transport does not inspect the bytes, and a second implementation gets something real to apply; the node shape is NOT the real note layout, see chapter 12 §12.5.2'
   },
   {
     name: 'the same update for a journal id',
