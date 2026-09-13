@@ -6,4 +6,6 @@ pub mod compress;
 pub mod crdt_envelope;
 pub mod envelope;
 pub mod http;
+pub mod linking;
+pub mod pack;
 pub mod types;
