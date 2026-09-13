@@ -202,7 +202,10 @@ from a desktop when convenient.
 4. **The socket has no self-driving `run()` loop**; the reconnect policy is
    implemented and tested.
 5. **A pulled update does not advance an already-resident `Document`**; it lands
-   on the next `load_plan` replay.
+   on the next `load_plan` replay. **Now reported rather than silent**:
+   `BodyPullReport::advanced_documents` names the ids, the same shape as
+   `purged_documents`. Acting on them is still the registry holder's job, so
+   this stays open as a _shell_ task rather than a core one.
 6. ~~**`Reachability::observe` is never called** and the seam doc overclaims.~~
    **Doc fixed this session.** `observe` still has no caller — that is correct
    and deliberate, the shell owns _when_ to run a pass — and the module doc now
