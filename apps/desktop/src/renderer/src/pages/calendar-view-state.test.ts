@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CALENDAR_SCROLL_KEYS,
   CALENDAR_VIEW_STATE_KEYS,
+  isLiveNavigationToken,
   parseAnchorDate,
   parseCalendarBoolean,
   parseCalendarView,
@@ -59,6 +60,31 @@ describe('parseAnchorDate', () => {
   it('keeps `null`, which means "this tab has no anchor yet"', () => {
     expect(parseAnchorDate(null)).toBeNull()
     expect(parseAnchorDate(undefined)).toBeUndefined()
+  })
+})
+
+describe('isLiveNavigationToken', () => {
+  const mountedAt = 1_700_000_000_000
+
+  it('rejects a nonce from a previous app run', () => {
+    // The reported bug: a persisted `createEventAt` opened the event dialog on a
+    // page the user had only navigated to.
+    expect(isLiveNavigationToken(mountedAt - 86_400_000, mountedAt)).toBe(false)
+  })
+
+  it('accepts the click that opened this page', () => {
+    // The intent is written just before the tab renders, so the token is a shade
+    // older than mount.
+    expect(isLiveNavigationToken(mountedAt - 40, mountedAt)).toBe(true)
+  })
+
+  it('accepts a click made while the page is already open', () => {
+    expect(isLiveNavigationToken(mountedAt + 90_000, mountedAt)).toBe(true)
+  })
+
+  it('treats nothing-stored and garbage as no intent', () => {
+    expect(isLiveNavigationToken(null, mountedAt)).toBe(false)
+    expect(isLiveNavigationToken(Number.NaN, mountedAt)).toBe(false)
   })
 })
 

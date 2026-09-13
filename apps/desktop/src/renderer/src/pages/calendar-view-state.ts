@@ -96,6 +96,31 @@ export const parseAnchorDate = (raw: unknown): string | null | undefined => {
   return raw
 }
 
+/**
+ * How long after the page mounts a navigation nonce can still be the click
+ * that opened it. The intent is written just before the tab renders, so the
+ * token is always a shade older than mount.
+ */
+export const NAVIGATION_TOKEN_GRACE_MS = 10_000
+
+/**
+ * Whether a navigation nonce belongs to something the user just did.
+ *
+ * `createEventAt` used to be persisted with the tab, so every launch replayed a
+ * weeks-old "New event" click and opened the creation dialog on a page the user
+ * had only navigated to. Persistence no longer writes it, but a token that
+ * predates this page instance by more than the mount grace cannot be a live
+ * click either, whatever wrote it — so it is never acted on.
+ */
+export function isLiveNavigationToken(
+  token: number | null,
+  mountedAt: number,
+  graceMs: number = NAVIGATION_TOKEN_GRACE_MS
+): boolean {
+  if (token === null || !Number.isFinite(token)) return false
+  return token >= mountedAt - graceMs
+}
+
 export const parseCalendarBoolean = (raw: unknown): boolean | undefined =>
   typeof raw === 'boolean' ? raw : undefined
 

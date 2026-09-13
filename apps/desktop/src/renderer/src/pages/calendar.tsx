@@ -46,6 +46,7 @@ import { useTabIdentity } from '@/contexts/tabs/tab-identity'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
 import {
   CALENDAR_VIEW_STATE_KEYS,
+  isLiveNavigationToken,
   parseAnchorDate,
   parseCalendarBoolean,
   parseCalendarView,
@@ -272,6 +273,14 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   const consumedCalendarNavigationRef = useRef<number | null>(null)
   const openedCalendarFocusRef = useRef<number | null>(null)
   const consumedCreateEventRef = useRef<number | null>(null)
+  // When this page instance appeared. A create-event nonce older than this (by
+  // more than the mount grace) is a replay, not a click — see
+  // `isLiveNavigationToken`.
+  const mountedAtRef = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    // Layout effect, so it is set before the passive effect below reads it.
+    mountedAtRef.current ??= Date.now()
+  }, [])
   const [isSaving, setIsSaving] = useState(false)
   const [pendingPromote, setPendingPromote] = useState<{
     item: CalendarProjectionItem
@@ -478,6 +487,12 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   useEffect(() => {
     if (calendarCreateEventToken === null) return
     if (consumedCreateEventRef.current === calendarCreateEventToken) return
+    if (!isLiveNavigationToken(calendarCreateEventToken, mountedAtRef.current ?? Date.now())) {
+      // A stale nonce from a previous run: mark it consumed so it cannot fire
+      // later in this session either, and leave the page with no dialog open.
+      consumedCreateEventRef.current = calendarCreateEventToken
+      return
+    }
 
     consumedCreateEventRef.current = calendarCreateEventToken
     setPopoverState({
