@@ -6,6 +6,10 @@
 //! the id rather than on the payload's own `name`, because the id is the half
 //! of `(type, id)` the rest of the sync bookkeeping uses, and a payload whose
 //! `name` disagreed with its id would otherwise fork into two rows.
+//!
+//! Null tolerance in the field table below follows [`super`]'s rule: an
+//! optional field is `opt_null`, because a projector substitutes and never
+//! refuses (§13.3, §A.4, spec-defect 53).
 
 use rusqlite::{Connection, params};
 
@@ -16,25 +20,27 @@ use super::{
     ItemContext, clock_text, failed, flag, instant, number_or_default, text, text_or_default,
 };
 
-/// §13.7.10. `icon` is `z.string().nullable()` — the only non-optional field on
-/// any subscribed type.
+/// §13.7.10. `icon` is `z.string().nullable()`: the key is always present and
+/// its value may be `null`. Required is the claim, not uniqueness — §13.7.7 to
+/// §13.7.9 mark `name`, `color`, `sortOrder` and `type` required on their own
+/// types, and §13.7.10 says the per-type section wins.
 const FOLDER_CONFIG_FIELDS: &[Field] = &[
     Field::req_null("icon", Kind::Text),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("createdAt", Kind::Text),
-    Field::opt("modifiedAt", Kind::Text),
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("createdAt", Kind::Text),
+    Field::opt_null("modifiedAt", Kind::Text),
 ];
 
 /// §13.7.11. `data` is base64 image bytes carried inline: a normalised icon is
 /// a few KB, and keeping it in the record is what makes every device's icon
 /// directory self-healing from the row.
 const CUSTOM_ICON_FIELDS: &[Field] = &[
-    Field::opt("name", Kind::Text),
-    Field::opt("ext", Kind::Text),
-    Field::opt("data", Kind::Text),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("createdAt", Kind::Text),
-    Field::opt("updatedAt", Kind::Text),
+    Field::opt_null("name", Kind::Text),
+    Field::opt_null("ext", Kind::Text),
+    Field::opt_null("data", Kind::Text),
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("createdAt", Kind::Text),
+    Field::opt_null("updatedAt", Kind::Text),
 ];
 
 /// §13.7.7. `name` and `color` are required.
@@ -49,21 +55,21 @@ const TAG_DEFINITION_FIELDS: &[Field] = &[
     // is why only real data found it.
     Field::opt_null("icon", Kind::Text),
     Field::opt_null("categoryId", Kind::Text),
-    Field::opt("sortOrder", Kind::Number),
-    Field::opt("colorAuthored", Kind::Bool),
+    Field::opt_null("sortOrder", Kind::Number),
+    Field::opt_null("colorAuthored", Kind::Bool),
     // `undefined` keeps the local value, `null` is an explicit clear (§13.4).
     Field::opt_null("views", Kind::Array),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("createdAt", Kind::Text),
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("createdAt", Kind::Text),
 ];
 
 /// §13.7.8. `name` and `sortOrder` are required.
 const TAG_CATEGORY_FIELDS: &[Field] = &[
     Field::req("name", Kind::Text),
     Field::req("sortOrder", Kind::Number),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("createdAt", Kind::Text),
-    Field::opt("updatedAt", Kind::Text),
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("createdAt", Kind::Text),
+    Field::opt_null("updatedAt", Kind::Text),
     Field::opt_null("deletedAt", Kind::Text),
 ];
 
@@ -76,8 +82,8 @@ const PROPERTY_DEFINITION_FIELDS: &[Field] = &[
     Field::opt_null("options", Kind::Text),
     Field::opt_null("defaultValue", Kind::Text),
     Field::opt_null("color", Kind::Text),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("createdAt", Kind::Text),
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("createdAt", Kind::Text),
 ];
 
 pub fn read_folder_config(parsed: &Object) -> Result<Object, ProjectionError> {

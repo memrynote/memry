@@ -18,6 +18,34 @@
 //! rebuilds all of it, which is what [`super::sync_items::rebuild_projections`]
 //! does.
 //!
+//! ## `Field::opt` versus `Field::opt_null`, and the 146 rows it cost
+//!
+//! **Every optional field on every table below is `opt_null`, with one named
+//! exception.** A `null` in a modelled field substitutes — `text_or_default`
+//! falls back to the column default, `number_or_default` and `flag` likewise,
+//! `json`, `instant` and `strings` to NULL or empty — so the item projects
+//! and the verbatim payload keeps the sender's `null` either way. **Refusing
+//! it instead is a projector overriding §13.3's forward tolerance and §A.4's
+//! substitute-never-refuse rule with a guess about what producers write.**
+//!
+//! That guess has already been wrong once, on real data. `tag_definition.icon`
+//! was declared optional-but-not-nullable; a producer wrote `icon: null`; the
+//! first real pull against a live account recorded **146 rows corrupt**
+//! (spec-defect 53). Fifty-two committed payload cases and eleven green vector
+//! classes all missed it, because no committed vector carries an explicit
+//! `null` in a field that is not already nullable — the bug is invisible until
+//! a real producer writes one.
+//!
+//! The exception is `journal`'s `date`, and its reason is
+//! written beside it: substituting there projects no row rather than a
+//! defaulted one, so the entry would disappear with nothing recorded.
+//! `folder_config.icon` stays `req_null` (§13.7.10) and the fields chapter 13
+//! marks **required** — `tag_definition.name` and `color`,
+//! `tag_category.name` and `sortOrder`, `property_definition.name` and `type`,
+//! `settings.settings` and `fieldClocks` — stay required: presence is a
+//! different axis from null tolerance, and widening one of those is a protocol
+//! question rather than a projector's call.
+//!
 //! `custom_icon` is the one subscribed type with a reader and no table. §A.4
 //! lists no projection for it and `0002` creates none: the icon bytes ride in
 //! the payload (§13.7.11) and the device's icon directory is re-derived from

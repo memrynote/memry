@@ -1,11 +1,19 @@
-//! The inbound half of the two field-merged types: §6.3.1's document gate,
-//! §6.3's per-field winner rule, and the clock bookkeeping a local edit needs
+//! The inbound half of a record apply: §6.3.1's document gate, §6.3's
+//! per-field winner rule, and the clock bookkeeping a local edit needs
 //! (T129, FR-002, FR-059).
 //!
 //! Split out of [`crate::domain::tasks`] only to stay under the 600-line
-//! ceiling. `task` and `project` share every line of it — the two differ by
+//! ceiling, and named for the field-merged pair it started as. `task` and
+//! `project` share every line of the per-field half — the two differ by
 //! nothing but their field list (§6.7) — so it is written once rather than
 //! twice, and the list is a parameter.
+//!
+//! **[`document_gate`] is not theirs alone.** §6.3.1 runs before `mergeFields`
+//! for those two *and* is the whole of the algorithm for §6.8's "every other
+//! subscribed type", so the gate lives here once and
+//! [`crate::sync::apply`] hands both rows of that table to it. A second copy
+//! of the comparison is a second thing to get wrong, and the failure mode of
+//! getting it wrong is a stale remote overwriting a newer local row.
 //!
 //! **The merge rule itself is [`crate::sync::field_merge`] and is not restated
 //! here**: it is pinned byte for byte by the `field-merge` vector class, and a
@@ -44,6 +52,88 @@ use crate::sync::field_merge::{
     DocumentResolution, init_all_field_clocks, merge_fields, resolve_clock_conflict,
 };
 
+/// What §6.3.1's document-level gate decided about one inbound record.
+///
+/// The gate is **both** rows of §6.8's table: the field-merged pair runs it
+/// before `mergeFields`, and every other subscribed type has nothing under it
+/// and stops here. One enum and one evaluation, so the two cannot drift — the
+/// prologue below is as load-bearing as the comparison itself.
+pub(crate) enum Gate {
+    /// §6.3.1 rows 1 and 4, plus the cases with nothing to compare: apply the
+    /// remote wholesale, its field clocks stored verbatim.
+    Wholesale,
+    /// §6.3.1 row 2 (`after`): the local clock dominates, so the remote is not
+    /// applied at all and nothing is written.
+    Skip,
+    /// §6.3.1 row 3 (`concurrent`): `merged_clock` is `merge(local, remote)`.
+    Merge {
+        local: StoredPayload,
+        remote: StoredPayload,
+        merged_clock: VectorClock,
+    },
+}
+
+/// Runs §6.3.1's gate for one inbound record.
+///
+/// Three short-circuits come before the comparison, and each is a rule rather
+/// than an optimisation:
+///
+/// - **A tombstone bypasses the gate entirely** (§6.9.2, §13.7.2). A deleted
+///   row has no fields and carries no clock, and gating one on a clock it does
+///   not have would record a delete as corrupt.
+/// - **Nothing local to compare against is §6.3.1's first row**: the local
+///   clock is absent, so the remote applies wholesale.
+/// - **A remote that will not parse is not this gate's to diagnose**: the
+///   wholesale path stores the bytes and records the reason against the row
+///   (§13.2 rule 5).
+///
+/// A stored **local** clock that will not parse is an `Err`, never an empty
+/// clock: an empty local clock reads as "local is absent", which hands a stale
+/// remote the win on every field (§6.10). The caller records it corrupt.
+pub(crate) fn document_gate(
+    conn: &Connection,
+    record: &InboundRecord,
+) -> Result<Gate, StorageError> {
+    if record.deleted_at.is_some() {
+        return Ok(Gate::Wholesale);
+    }
+    let Some(local) = live_payload(conn, record)? else {
+        return Ok(Gate::Wholesale);
+    };
+    let Ok(remote) = StoredPayload::parse(&record.payload_json) else {
+        return Ok(Gate::Wholesale);
+    };
+
+    let local_clock = stored_clock(local.object())?;
+    let remote_clock = stored_clock(remote.object())?.unwrap_or_default();
+    Ok(
+        match resolve_clock_conflict(local_clock.as_ref(), &remote_clock) {
+            DocumentResolution::Apply => Gate::Wholesale,
+            DocumentResolution::Skip => Gate::Skip,
+            DocumentResolution::Merge { merged_clock } => Gate::Merge {
+                local,
+                remote,
+                merged_clock,
+            },
+        },
+    )
+}
+
+/// The remote's payload with §6.3.1's union clock written into it.
+///
+/// §6.8's document-level resolver has no per-field decision to make, so its
+/// `concurrent` branch is exactly "the remote's payload, under the merged
+/// clock". It goes through [`StoredPayload::merge`] so a key this build does
+/// not model rides along (§13.2 rule 3), and the `clock` **column** follows
+/// the payload rather than being set beside it — a column that disagreed with
+/// the bytes would be overwritten by the next local edit and the union lost.
+pub(crate) fn with_clock(
+    payload: &StoredPayload,
+    clock: &VectorClock,
+) -> Result<String, StorageError> {
+    Ok(payload.merge(&[("clock", Change::Set(as_json(clock)?))]))
+}
+
 /// [`apply_remote`] for either field-merged type (§6.8).
 pub(crate) fn apply_remote_merged(
     conn: &Connection,
@@ -51,27 +141,14 @@ pub(crate) fn apply_remote_merged(
     fields: &[&str],
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
-    // A tombstone never reaches a parser at all — the applier short-circuits
-    // the delete before decoding the body (§13.7.2) — so it never reaches the
-    // merge either.
-    if record.deleted_at.is_some() {
-        return wholesale(conn, record, now_ms);
-    }
-    let Some(local) = live_payload(conn, record)? else {
-        return wholesale(conn, record, now_ms);
-    };
-    let Ok(remote) = StoredPayload::parse(&record.payload_json) else {
-        // Not this module's to diagnose: the generic path stores the bytes and
-        // records the reason against the row (§13.2 rule 5).
-        return wholesale(conn, record, now_ms);
-    };
-
-    let local_clock = stored_clock(local.object())?;
-    let remote_clock = stored_clock(remote.object())?.unwrap_or_default();
-    let merged_clock = match resolve_clock_conflict(local_clock.as_ref(), &remote_clock) {
-        DocumentResolution::Apply => return wholesale(conn, record, now_ms),
-        DocumentResolution::Skip => return Ok(Inbound::Skipped),
-        DocumentResolution::Merge { merged_clock } => merged_clock,
+    let (local, remote, merged_clock) = match document_gate(conn, record)? {
+        Gate::Wholesale => return wholesale(conn, record, now_ms),
+        Gate::Skip => return Ok(Inbound::Skipped),
+        Gate::Merge {
+            local,
+            remote,
+            merged_clock,
+        } => (local, remote, merged_clock),
     };
 
     let result = merge_fields(
@@ -151,7 +228,7 @@ fn live_payload(
 }
 
 /// §6.3.1's apply branch: the remote's bytes and its field clocks, verbatim.
-fn wholesale(
+pub(crate) fn wholesale(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,

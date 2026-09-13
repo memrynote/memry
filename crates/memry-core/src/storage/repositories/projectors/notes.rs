@@ -11,6 +11,10 @@
 //! wrote `Date.now()` where the schema said string; six notes in one staging
 //! vault were accepted by the server, counted as synced, and silently applied
 //! nowhere before it was noticed. It is permanent and strictly a widening.
+//!
+//! Null tolerance in the field table below follows [`super`]'s rule: an
+//! optional field is `opt_null`, because a projector substitutes and never
+//! refuses (§13.3, §A.4, spec-defect 53).
 
 use rusqlite::{Connection, params};
 
@@ -24,23 +28,23 @@ use super::{ItemContext, clock_text, failed, instant, json, strings, text, text_
 const FILE_TYPES: &[&str] = &["markdown", "pdf", "image", "audio", "video"];
 
 const NOTE_FIELDS: &[Field] = &[
-    Field::opt("title", Kind::Text),
+    Field::opt_null("title", Kind::Text),
     Field::opt_null("content", Kind::Text),
-    Field::opt("tags", Kind::TextArray),
-    Field::opt("pinnedTags", Kind::TextArray),
+    Field::opt_null("tags", Kind::TextArray),
+    Field::opt_null("pinnedTags", Kind::TextArray),
     Field::opt_null("emoji", Kind::Text),
     // Free-form: values only, never definitions. `property_definition` carries
     // those.
     Field::opt_null("properties", Kind::Object),
     Field::opt_null("aliases", Kind::TextArray),
-    Field::opt("fileType", Kind::Enum(FILE_TYPES)),
+    Field::opt_null("fileType", Kind::Enum(FILE_TYPES)),
     Field::opt_null("mimeType", Kind::Text),
     Field::opt_null("attachmentId", Kind::Text),
     Field::opt_null("attachmentReferences", Kind::TextArray),
     Field::opt_null("folderPath", Kind::Text),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("createdAt", Kind::SyncTimestamp),
-    Field::opt("modifiedAt", Kind::SyncTimestamp),
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("createdAt", Kind::SyncTimestamp),
+    Field::opt_null("modifiedAt", Kind::SyncTimestamp),
 ];
 
 /// §13.7.2: the same shape as `note` minus the file fields, plus `date`.
@@ -49,17 +53,24 @@ const NOTE_FIELDS: &[Field] = &[
 /// update without it is refused by the handler rather than by the schema, which
 /// is why it is not marked required here.
 const JOURNAL_FIELDS: &[Field] = &[
+    // The one field on any type deliberately left **not** null-tolerant. A
+    // `null` here is not a tombstone (a delete never reaches this reader,
+    // §13.7.2) and not a day either: `journal_entries.date` is NOT NULL
+    // UNIQUE, so substituting would project no row at all and the entry would
+    // vanish with nothing recorded. Refusing keeps the bytes and flags the
+    // row, which is the outcome §13.2 rule 5 asks for when substitution has no
+    // honest answer.
     Field::opt("date", Kind::Text),
-    Field::opt("title", Kind::Text),
+    Field::opt_null("title", Kind::Text),
     Field::opt_null("content", Kind::Text),
-    Field::opt("tags", Kind::TextArray),
-    Field::opt("pinnedTags", Kind::TextArray),
+    Field::opt_null("tags", Kind::TextArray),
+    Field::opt_null("pinnedTags", Kind::TextArray),
     Field::opt_null("emoji", Kind::Text),
     Field::opt_null("properties", Kind::Object),
     Field::opt_null("aliases", Kind::TextArray),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("createdAt", Kind::SyncTimestamp),
-    Field::opt("modifiedAt", Kind::SyncTimestamp),
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("createdAt", Kind::SyncTimestamp),
+    Field::opt_null("modifiedAt", Kind::SyncTimestamp),
 ];
 
 pub fn read_note(parsed: &Object) -> Result<Object, ProjectionError> {

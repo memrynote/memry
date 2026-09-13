@@ -7,15 +7,16 @@
 //! [`super::first_sync`]) both hand their decoded items to [`apply_page`].
 //! That is deliberate. Chapter 06 §6.8 is a table over item types, and a table
 //! consulted at each call site is a table the next call site forgets:
-//! `task` and `project` are field-merged and everything else is stored
-//! wholesale, so the choice is made **once**, in [`apply_inbound`], and a
-//! third inbound path gets it by construction rather than by review.
+//! `task` and `project` are field-merged, `settings` has its own dotted-path
+//! shape, and **everything else runs §6.3.1's document-level gate** before it
+//! is stored. The choice is made **once**, in [`apply_inbound`], and a third
+//! inbound path gets it by construction rather than by review.
 //!
 //! Four rules shape the branches below.
 //!
 //! - **A tombstone never reaches a parser** (§5.12, §13.7.2, §6.9.2). The
 //!   delete is recorded and the body is never decoded, so a delete cannot
-//!   reach the field merge at all.
+//!   reach the field merge — or the document gate — at all.
 //! - **A bare tombstone outranks the item that follows it** (§5.12.1), which
 //!   is checked before the type is dispatched on: a deleted row has no fields
 //!   to merge.
@@ -39,8 +40,9 @@
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
-use crate::domain::{projects, tasks};
+use crate::domain::{projects, settings, tasks};
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
 use super::store;
@@ -144,11 +146,20 @@ pub(crate) fn apply_page(
 
 /// Chapter 06 §6.8's table, as the one `match` this core makes on it.
 ///
-/// `task` and `project` run §6.3.1's document gate followed by §6.3's
-/// per-field rule; **every other subscribed type is stored wholesale**, which
-/// is what [`sync_items::apply_remote`] does. §6.8 also says a client MUST NOT
-/// infer the algorithm from the absence of a field list — the enumeration
-/// below is the table, not a heuristic over `fieldClocks`.
+/// Every one of the four rows is here, and the fourth is the one that cost a
+/// user their edit before it was:
+///
+/// - `task` and `project` run §6.3.1's document gate followed by §6.3's
+///   per-field rule;
+/// - `settings` is **excluded on purpose** — §6.9's dotted-path clocks are a
+///   third algorithm, not this one, and §6.8 forbids inferring an algorithm
+///   from the absence of a field list. It stays on the wholesale path until
+///   §6.9 is implemented inbound; see [`apply_settings`];
+/// - **every other subscribed type takes §6.3.1's document-level resolver**
+///   ([`apply_document`]). It is *not* an unconditional wholesale store: a
+///   stale remote `note` record used to overwrite a newer local one, and a
+///   rename made on this device vanished the moment a peer that had not seen
+///   it pushed anything.
 pub fn apply_inbound(
     conn: &Connection,
     record: &InboundRecord,
@@ -157,12 +168,67 @@ pub fn apply_inbound(
     let merged = match record.item_type.as_str() {
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms),
         projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
-        _ => return sync_items::apply_remote(conn, record, now_ms),
+        settings::SETTINGS_ITEM_TYPE => return apply_settings(conn, record, now_ms),
+        _ => apply_document(conn, record, now_ms),
     };
     match merged {
         Ok(inbound) => Ok(outcome(inbound)),
         Err(error) => refuse(conn, record, &error.to_string(), now_ms),
     }
+}
+
+/// §6.8's fourth row: §6.3.1's document-level resolver, with no per-field step
+/// under it.
+///
+/// The three actions are the chapter's, verbatim. `concurrent` is the one the
+/// table does not spell out for a type with no `fieldClocks`, and the answer
+/// falls out of what a merge *is* here: there are no fields to arbitrate, so
+/// the remote payload applies and the **merged** clock is what gets stored
+/// (§6.3.1, `mergedClock = merge(local, remote)`). Storing the remote's clock
+/// instead would drop the local's ticks, lower `clockTotal` and hand the next
+/// concurrent peer the win (§6.10).
+///
+/// **Nothing here enqueues** (§6.5.2 P3), including on the merge branch.
+fn apply_document(
+    conn: &Connection,
+    record: &InboundRecord,
+    now_ms: i64,
+) -> Result<Inbound, StorageError> {
+    match task_merge::document_gate(conn, record)? {
+        Gate::Wholesale => task_merge::wholesale(conn, record, now_ms),
+        Gate::Skip => Ok(Inbound::Skipped),
+        Gate::Merge {
+            remote,
+            merged_clock,
+            ..
+        } => {
+            let payload_json = task_merge::with_clock(&remote, &merged_clock)?;
+            let merged = InboundRecord {
+                payload_json,
+                ..record.clone()
+            };
+            task_merge::wholesale(conn, &merged, now_ms)
+        }
+    }
+}
+
+/// `settings`, which §6.8 sends down a third path this core does not implement
+/// inbound yet.
+///
+/// §6.9's clocks are keyed by dotted path at arbitrary depth, so neither the
+/// per-field merge of §6.3 nor the document gate of §6.3.1 is the right
+/// algorithm for it — and the payload carries no document `clock` at all
+/// (§13.7.13, §13.9: `settings` is the one record type exempt from the clock
+/// requirement), so a document gate would find no local clock and apply
+/// wholesale on every pull regardless. Wholesale is therefore what it already
+/// does; naming it here rather than letting it fall through `_` is the point,
+/// so that implementing §6.9 is a change to this function and not a discovery.
+fn apply_settings(
+    conn: &Connection,
+    record: &InboundRecord,
+    now_ms: i64,
+) -> Result<ApplyOutcome, StorageError> {
+    sync_items::apply_remote(conn, record, now_ms)
 }
 
 /// The merge's own vocabulary, in the pull's.
@@ -217,6 +283,10 @@ mod tests {
         // wins the whole payload again.
         assert_eq!(tasks::ITEM_TYPE, "task");
         assert_eq!(projects::ITEM_TYPE, "project");
+        // And the third row is named rather than falling through `_`: §6.9's
+        // dotted paths are a different algorithm from §6.3.1's document gate,
+        // and folding one into the other is what §6.8 forbids.
+        assert_eq!(settings::SETTINGS_ITEM_TYPE, "settings");
     }
 
     #[test]

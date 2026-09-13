@@ -9,6 +9,10 @@
 //! `remind_at`, `dismissed_at` and `snoozed_until` stay TEXT: they are
 //! wall-clock values on the wire and converting them would invent a timezone
 //! (§A.6).
+//!
+//! Null tolerance in the field table below follows [`super`]'s rule: an
+//! optional field is `opt_null`, because a projector substitutes and never
+//! refuses (§13.3, §A.4, spec-defect 53).
 
 use rusqlite::{Connection, params};
 
@@ -18,21 +22,21 @@ use super::super::schema::{Field, Kind, Object, ProjectionError, read_fields};
 use super::{ItemContext, clock_text, failed, instant, number, text, text_or_default};
 
 const REMINDER_FIELDS: &[Field] = &[
-    Field::opt("targetType", Kind::Text),
-    Field::opt("targetId", Kind::Text),
-    Field::opt("remindAt", Kind::Text),
+    Field::opt_null("targetType", Kind::Text),
+    Field::opt_null("targetId", Kind::Text),
+    Field::opt_null("remindAt", Kind::Text),
     Field::opt_null("anchorId", Kind::Text),
     Field::opt_null("highlightText", Kind::Text),
     Field::opt_null("highlightStart", Kind::Number),
     Field::opt_null("highlightEnd", Kind::Number),
     Field::opt_null("title", Kind::Text),
     Field::opt_null("note", Kind::Text),
-    Field::opt("status", Kind::Text),
+    Field::opt_null("status", Kind::Text),
     Field::opt_null("dismissedAt", Kind::Text),
     Field::opt_null("snoozedUntil", Kind::Text),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("createdAt", Kind::Text),
-    Field::opt("modifiedAt", Kind::Text),
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("createdAt", Kind::Text),
+    Field::opt_null("modifiedAt", Kind::Text),
 ];
 
 pub fn read_reminder(parsed: &Object) -> Result<Object, ProjectionError> {

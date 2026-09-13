@@ -19,6 +19,10 @@
 //! a subscribed type, and the ids survive in `sync_items.payload`. Desktop
 //! loses them on every round trip and works around it with a presence guard
 //! (§13.2.1); here the verbatim payload is the guard.
+//!
+//! Null tolerance in the field table below follows [`super`]'s rule: an
+//! optional field is `opt_null`, because a projector substitutes and never
+//! refuses (§13.3, §A.4, spec-defect 53).
 
 use rusqlite::{Connection, params};
 
@@ -87,15 +91,15 @@ const TASK_FIELDS: &[Field] = &[
 /// §13.7.5. Append-only and immutable, hence no `fieldClocks` and no
 /// `modifiedAt`.
 const TASK_ACTIVITY_FIELDS: &[Field] = &[
-    Field::opt("taskId", Kind::Text),
-    Field::opt("action", Kind::Text),
+    Field::opt_null("taskId", Kind::Text),
+    Field::opt_null("action", Kind::Text),
     Field::opt_null("field", Kind::Text),
     Field::opt_null("oldValue", Kind::Text),
     Field::opt_null("newValue", Kind::Text),
-    Field::opt("actor", Kind::Text),
-    Field::opt("deviceId", Kind::Text),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("createdAt", Kind::Text),
+    Field::opt_null("actor", Kind::Text),
+    Field::opt_null("deviceId", Kind::Text),
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("createdAt", Kind::Text),
 ];
 
 pub fn read_task(parsed: &Object) -> Result<Object, ProjectionError> {

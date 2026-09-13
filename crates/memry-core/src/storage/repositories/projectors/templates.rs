@@ -5,6 +5,10 @@
 //! peer is still stored verbatim in `sync_items.payload`; what the field table
 //! below does is refuse to *project* it, so the failure lands as a corrupt row
 //! at apply time rather than as a crash at note-creation time.
+//!
+//! Null tolerance in the field table below follows [`super`]'s rule: an
+//! optional field is `opt_null`, because a projector substitutes and never
+//! refuses (§13.3, §A.4, spec-defect 53).
 
 use rusqlite::{Connection, params};
 
@@ -14,15 +18,15 @@ use super::super::schema::{Field, Kind, Object, ProjectionError, read_fields};
 use super::{ItemContext, clock_text, failed, instant, json, text, text_or_default};
 
 const TEMPLATE_FIELDS: &[Field] = &[
-    Field::opt("name", Kind::Text),
+    Field::opt_null("name", Kind::Text),
     Field::opt_null("description", Kind::Text),
     Field::opt_null("icon", Kind::Text),
-    Field::opt("tags", Kind::TextArray),
-    Field::opt("properties", Kind::Array),
-    Field::opt("content", Kind::Text),
-    Field::opt("clock", Kind::Clock),
-    Field::opt("createdAt", Kind::Text),
-    Field::opt("modifiedAt", Kind::Text),
+    Field::opt_null("tags", Kind::TextArray),
+    Field::opt_null("properties", Kind::Array),
+    Field::opt_null("content", Kind::Text),
+    Field::opt_null("clock", Kind::Clock),
+    Field::opt_null("createdAt", Kind::Text),
+    Field::opt_null("modifiedAt", Kind::Text),
 ];
 
 pub fn read_template(parsed: &Object) -> Result<Object, ProjectionError> {

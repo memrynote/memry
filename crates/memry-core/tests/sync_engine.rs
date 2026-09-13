@@ -27,6 +27,7 @@ use std::sync::{Arc, Mutex};
 
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::ApiError;
+use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::tasks;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
@@ -1015,4 +1016,167 @@ fn stored_json(conn: &rusqlite::Connection, item_type: &str, item_id: &str) -> J
         .expect("read the row")
         .expect("a payload");
     serde_json::from_str(&raw).expect("valid JSON")
+}
+
+// ------------------------------------- the document-level gate, §6.8's fourth row
+
+/// A note as this device holds it after a local rename: `clock` is
+/// `{device-a: 2}`, one tick for the create and one for the rename.
+fn seed_locally_renamed_note(db: &Db, id: &str) {
+    let id = id.to_owned();
+    db.call_blocking(move |conn| {
+        notes::create(
+            conn,
+            &NewNote {
+                id: &id,
+                title: "A note",
+                folder_path: Some("Notes"),
+                content: "",
+                tags: &[],
+                properties: None,
+            },
+            "device-a",
+            MERGE_NOW,
+        )?;
+        notes::rename(conn, &id, "Local title", "device-a", MERGE_NOW + 1_000)?;
+        Ok(())
+    })
+    .expect("the local rename");
+}
+
+fn projected_note_title(db: &Db, id: &str) -> String {
+    let id = id.to_owned();
+    db.call_blocking(move |conn| {
+        conn.query_row("SELECT title FROM notes WHERE id = ?1", [&id], |row| {
+            row.get::<_, String>(0)
+        })
+        .map_err(|error| memry_core::api::errors::StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("the note projection")
+}
+
+/// **The data-loss case chapter 06 §6.8 and §6.3.1 exist to prevent**, end to
+/// end: rename a note here, then receive a `note` record from a peer that had
+/// not seen the rename, and the rename **survives**.
+///
+/// `note` is not field-merged (§6.8 has exactly two of those), so before the
+/// document gate was wired the applier wrote the remote payload
+/// unconditionally and the local title was gone. The same held for `template`,
+/// `tag_definition`, `tag_category`, `folder_config`, `custom_icon`, `journal`
+/// and every other subscribed type.
+///
+/// Driven through the real `/sync/changes` → `/sync/pull` → apply → advance
+/// sequence on purpose: the gate is chosen by the type dispatch, so a test that
+/// called the repository directly would pass with the dispatch unwired.
+#[tokio::test]
+async fn a_stale_remote_note_does_not_clobber_a_newer_local_one() {
+    let db = scratch_db("pull-note-skip");
+    seed_locally_renamed_note(&db, "abc123def456");
+    let queued_before = outbox_rows(&db, "abc123def456");
+
+    // {device-a: 1} against the local {device-a: 2}: `compare` is `after`, so
+    // §6.3.1 skips the remote entirely.
+    let remote = json!({
+        "title": "Stale remote title",
+        "fileType": "markdown",
+        "folderPath": "Notes",
+        "clock": {"device-a": 1}
+    })
+    .to_string();
+    let report = pull_one(&db, "abc123def456", "note", &remote, "51").await;
+
+    // §6.3.1 row 2, and §5.14: a skip is work, so the page yielded and the
+    // cursor advances past it.
+    assert_eq!(report.skipped, 1);
+    assert_eq!(report.applied, 0);
+    assert_eq!(report.corrupt, 0);
+    assert!(!report.refused, "a skip is not nothing");
+    assert_eq!(report.cursor.as_deref(), Some("51"));
+
+    let parsed = stored_payload(&db, "note", "abc123def456");
+    assert_eq!(
+        parsed["title"],
+        json!("Local title"),
+        "the newer local rename survives the older remote record"
+    );
+    assert_eq!(
+        parsed["clock"],
+        json!({"device-a": 2}),
+        "nothing was written, so the local clock is untouched"
+    );
+    assert_eq!(projected_note_title(&db, "abc123def456"), "Local title");
+    // §6.5.2 P3: an inbound apply never enqueues, and neither does a skip.
+    assert_eq!(outbox_rows(&db, "abc123def456"), queued_before);
+}
+
+/// §6.3.1's third row for a type with no per-field merge: the remote payload
+/// applies and the **merged** clock is stored.
+///
+/// Storing the remote's own clock instead would drop `device-a`'s two ticks,
+/// lower `clockTotal`, and hand the next concurrent peer a win it did not earn
+/// (§6.10).
+#[tokio::test]
+async fn a_concurrent_note_record_applies_under_the_union_clock() {
+    let db = scratch_db("pull-note-merge");
+    seed_locally_renamed_note(&db, "abc123def456");
+    let queued_before = outbox_rows(&db, "abc123def456");
+
+    // {device-b: 1} against {device-a: 2}: neither dominates, so `compare` is
+    // `concurrent`.
+    let remote = json!({
+        "title": "Remote title",
+        "fileType": "markdown",
+        "folderPath": "Notes",
+        "clock": {"device-b": 1},
+        "coverImage": {"url": "memry://cover/1"}
+    })
+    .to_string();
+    let report = pull_one(&db, "abc123def456", "note", &remote, "52").await;
+
+    assert_eq!(report.applied, 1);
+    assert_eq!(report.skipped, 0);
+    assert_eq!(report.corrupt, 0);
+
+    let parsed = stored_payload(&db, "note", "abc123def456");
+    assert_eq!(parsed["title"], json!("Remote title"));
+    assert_eq!(parsed["clock"], json!({"device-a": 2, "device-b": 1}));
+    // §13.2 rule 3: the clock was merged into a parsed copy, so a key this
+    // build does not model is still there.
+    assert_eq!(parsed["coverImage"], json!({"url": "memry://cover/1"}));
+    assert_eq!(projected_note_title(&db, "abc123def456"), "Remote title");
+    assert_eq!(outbox_rows(&db, "abc123def456"), queued_before);
+}
+
+/// A tombstone bypasses the gate (§6.9.2, §13.7.2): a delete carries no clock,
+/// and gating one on a clock it does not have would record it corrupt.
+#[tokio::test]
+async fn a_delete_for_a_locally_newer_note_is_still_applied() {
+    let db = scratch_db("pull-note-delete");
+    seed_locally_renamed_note(&db, "abc123def456");
+
+    let transport = FakeTransport::new(vec![
+        response(200, &changes(&[("abc123def456", "note")], &[], "53")),
+        response(
+            200,
+            &json!({"items": [tombstone("abc123def456", "note", MERGE_NOW + 2_000)]}).to_string(),
+        ),
+    ]);
+    // The body is never decoded (§5.12), so the cipher has nothing scripted.
+    let cipher = ScriptedCipher::new(&[]);
+    let report = loop_for(transport, db.clone(), cipher)
+        .pull_page()
+        .await
+        .expect("the page");
+
+    assert_eq!(report.deleted, 1);
+    assert_eq!(report.skipped, 0);
+    assert_eq!(report.corrupt, 0);
+    db.call_blocking(|conn| {
+        let row = sync_items::load(conn, "note", "abc123def456")?.expect("the row");
+        assert!(row.deleted_at.is_some(), "the delete landed: {row:?}");
+        Ok(())
+    })
+    .expect("read back");
 }
