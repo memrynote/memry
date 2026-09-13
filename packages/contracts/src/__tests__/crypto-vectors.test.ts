@@ -52,6 +52,7 @@ const loadVectors = () =>
       deviceIdHex: string
     }
     kdfDeriveFromKey: Array<{
+      contextName: string
       ctx: string
       subkeyId: number
       length: number

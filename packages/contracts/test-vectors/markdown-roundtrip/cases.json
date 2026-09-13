@@ -615,42 +615,60 @@
       "name": "out-of-band: inline colours",
       "pins": "MEMRYICO<n>: / :MEMRYICC; tokens mask a <span style=...> INSIDE the prosemirror fragment. An in-fragment encoding, not a sibling root",
       "updateHex": "0106f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e87f2da95eb060003097061726167726170680700f2da95eb0624060400f2da95eb06251c4d454d525949434f303a636f6c6f757265643a4d454d52594943433b00",
-      "expectedRoots": ["prosemirror"],
+      "expectedRoots": [
+        "prosemirror"
+      ],
       "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
     },
     {
       "name": "out-of-band: block markers",
       "pins": "block markers are HTML comments inside the fragment, again in-fragment rather than a root",
       "updateHex": "0107f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e87f2da95eb060003097061726167726170680700f2da95eb0624060400f2da95eb0625153c212d2d20616c69676e3a63656e746572202d2d3e2800f2da95eb06240d74657874416c69676e6d656e7401770663656e74657200",
-      "expectedRoots": ["prosemirror"],
+      "expectedRoots": [
+        "prosemirror"
+      ],
       "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
     },
     {
       "name": "out-of-band: suggestion marks",
       "pins": "the criticMarkupMarks root. Dropping it deletes every suggestion from the file on the next write-back AND re-enables source restoration, so the body is additionally re-spelled",
       "updateHex": "0104f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e0801116372697469634d61726b75704d61726b7301760502696477026d31046b696e647709696e73657274696f6e0b76697369626c6554657874770561646465640573746172747d0003656e647d0500",
-      "expectedRoots": ["prosemirror", "criticMarkupMarks"],
+      "expectedRoots": [
+        "prosemirror",
+        "criticMarkupMarks"
+      ],
       "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
     },
     {
       "name": "out-of-band: link references",
       "pins": "both linkReference roots. Dropping them deletes the definitions and inlines [docs][d]",
       "updateHex": "0105f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e0801186c696e6b5265666572656e6365446566696e6974696f6e73017602056c6162656c7701640375726c771768747470733a2f2f6578616d706c652e696e76616c69640801136c696e6b5265666572656e6365557361676573017602056c6162656c77016404746578747704646f637300",
-      "expectedRoots": ["prosemirror", "linkReferenceDefinitions", "linkReferenceUsages"],
+      "expectedRoots": [
+        "prosemirror",
+        "linkReferenceDefinitions",
+        "linkReferenceUsages"
+      ],
       "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
     },
     {
       "name": "out-of-band: the preserved markdown source",
       "pins": "the markdownSource root. Dropping it re-spells foreign-vault bytes to house style on the next write-back: a git diff across the user files",
       "updateHex": "0104f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e28010e6d61726b646f776e536f75726365067265636f726401760106736f7572636577252320466f726569676e207370656c6c696e675c6e5c6e2a20206f64642062756c6c65745c6e00",
-      "expectedRoots": ["prosemirror", "markdownSource"],
+      "expectedRoots": [
+        "prosemirror",
+        "markdownSource"
+      ],
       "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
     },
     {
       "name": "out-of-band: a FOREIGN root no client knows",
       "pins": "THE CASE THAT PINS \"including unnamed roots\". A root this specification does not name must survive a decode and a full-state re-encode untouched (FR-033)",
       "updateHex": "0105f2da95eb060007010b70726f73656d6972726f7203097061726167726170680700f2da95eb0600060400f2da95eb060122426f64792074686520656e636f64696e6720726964657320616c6f6e67736964652e280119736f6d65467574757265526f6f744e6f626f64794b6e6f7773016b0177017608010a616e6f746865724f6e65037d017d027d0300",
-      "expectedRoots": ["prosemirror", "someFutureRootNobodyKnows", "anotherOne"],
+      "expectedRoots": [
+        "prosemirror",
+        "someFutureRootNobodyKnows",
+        "anotherOne"
+      ],
       "assertion": "apply the update to a fresh document, encode the FULL state back out, and every root here must survive"
     }
   ]

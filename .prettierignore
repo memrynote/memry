@@ -25,3 +25,9 @@ apps/desktop/src/main/vault/__fixtures__/golden-vault/
 
 # Checked-in vite output: a 1.19 MB inlined document, not source.
 packages/editor-web/dist/
+
+# Generated conformance vectors: `vectors:check` regenerates them and does an
+# exact-string compare, so a formatter that reflows an array turns a clean tree
+# into a permanently red gate. The bytes are the contract, not the layout.
+packages/contracts/test-vectors/*.json
+packages/contracts/test-vectors/markdown-roundtrip/*.json

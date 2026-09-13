@@ -236,7 +236,9 @@
           "archivedAt": {}
         },
         "hadConflicts": true,
-        "conflictedFields": ["title"],
+        "conflictedFields": [
+          "title"
+        ],
         "conflicts": [
           {
             "field": "title",
@@ -298,7 +300,9 @@
           "archivedAt": {}
         },
         "hadConflicts": true,
-        "conflictedFields": ["title"],
+        "conflictedFields": [
+          "title"
+        ],
         "conflicts": [
           {
             "field": "title",
@@ -361,7 +365,9 @@
           "archivedAt": {}
         },
         "hadConflicts": true,
-        "conflictedFields": ["title"],
+        "conflictedFields": [
+          "title"
+        ],
         "conflicts": [
           {
             "field": "title",
@@ -425,7 +431,9 @@
           "archivedAt": {}
         },
         "hadConflicts": true,
-        "conflictedFields": ["title"],
+        "conflictedFields": [
+          "title"
+        ],
         "conflicts": [
           {
             "field": "title",
@@ -539,7 +547,9 @@
           "archivedAt": {}
         },
         "hadConflicts": true,
-        "conflictedFields": ["title"],
+        "conflictedFields": [
+          "title"
+        ],
         "conflicts": [
           {
             "field": "title",
@@ -651,7 +661,9 @@
           "archivedAt": {}
         },
         "hadConflicts": true,
-        "conflictedFields": ["title"],
+        "conflictedFields": [
+          "title"
+        ],
         "conflicts": [
           {
             "field": "title",
@@ -890,7 +902,9 @@
           "archivedAt": {}
         },
         "hadConflicts": true,
-        "conflictedFields": ["title"],
+        "conflictedFields": [
+          "title"
+        ],
         "conflicts": [
           {
             "field": "title",
@@ -957,7 +971,9 @@
           "archivedAt": {}
         },
         "hadConflicts": true,
-        "conflictedFields": ["repeatConfig"],
+        "conflictedFields": [
+          "repeatConfig"
+        ],
         "conflicts": [
           {
             "field": "repeatConfig",
@@ -1075,7 +1091,9 @@
           "archivedAt": {}
         },
         "hadConflicts": true,
-        "conflictedFields": ["title"],
+        "conflictedFields": [
+          "title"
+        ],
         "conflicts": [
           {
             "field": "title",

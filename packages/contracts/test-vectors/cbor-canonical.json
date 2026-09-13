@@ -105,13 +105,19 @@
     {
       "name": "length-first versus lexicographic disagreement",
       "fieldOrderName": "LENGTH_FIRST_PROBE",
-      "fieldOrder": ["aa", "z"],
+      "fieldOrder": [
+        "aa",
+        "z"
+      ],
       "input": {
         "aa": 1,
         "z": 2
       },
       "expectedHex": "a2617a0262616101",
-      "expectedDecodedKeyOrder": ["z", "aa"],
+      "expectedDecodedKeyOrder": [
+        "z",
+        "aa"
+      ],
       "pins": "RFC 8949 §4.2.3: `z` (1 byte) sorts before `aa` (2 bytes). A §4.2.1 encoder fails here and nowhere else"
     },
     {
@@ -140,7 +146,11 @@
         }
       },
       "expectedHex": "a362696461696474797065646e6f7465686d65746164617461a265636c6f636ba1686465766963652d61016b7374617465566563746f72646333593d",
-      "expectedDecodedKeyOrder": ["id", "type", "metadata"],
+      "expectedDecodedKeyOrder": [
+        "id",
+        "type",
+        "metadata"
+      ],
       "pins": "`clock` (5) before `stateVector` (11) inside a nested map"
     },
     {
@@ -169,7 +179,11 @@
         }
       },
       "expectedHex": "a362696461696474797065646e6f7465686d65746164617461a165636c6f636ba26261610262643101",
-      "expectedDecodedKeyOrder": ["id", "type", "metadata"],
+      "expectedDecodedKeyOrder": [
+        "id",
+        "type",
+        "metadata"
+      ],
       "pins": "`aa` before `d1`: equal length falls through to bytewise"
     },
     {
@@ -199,7 +213,10 @@
         }
       },
       "expectedHex": "a26269646169686d65746164617461a265636c6f636ba361610262626203637a7a7a016b7374617465566563746f72646333593d",
-      "expectedDecodedKeyOrder": ["id", "metadata"],
+      "expectedDecodedKeyOrder": [
+        "id",
+        "metadata"
+      ],
       "pins": "recursion does not stop at depth two"
     },
     {
@@ -221,7 +238,9 @@
         "cryptoVersion": 1
       },
       "expectedHex": "a16d63727970746f56657273696f6e01",
-      "expectedDecodedKeyOrder": ["cryptoVersion"],
+      "expectedDecodedKeyOrder": [
+        "cryptoVersion"
+      ],
       "pins": "shortest-form unsigned integer, `01`"
     },
     {
@@ -243,7 +262,9 @@
         "deletedAt": 1000000
       },
       "expectedHex": "a16964656c6574656441741a000f4240",
-      "expectedDecodedKeyOrder": ["deletedAt"],
+      "expectedDecodedKeyOrder": [
+        "deletedAt"
+      ],
       "pins": "shortest form with a 4-byte argument, `1a 000f4240`"
     },
     {
@@ -265,7 +286,9 @@
         "deletedAt": -1
       },
       "expectedHex": "a16964656c65746564417420",
-      "expectedDecodedKeyOrder": ["deletedAt"],
+      "expectedDecodedKeyOrder": [
+        "deletedAt"
+      ],
       "pins": "shortest-form negative integer, `20`"
     },
     {
@@ -287,7 +310,9 @@
         "deletedAt": 1.5
       },
       "expectedHex": "a16964656c657465644174f93e00",
-      "expectedDecodedKeyOrder": ["deletedAt"],
+      "expectedDecodedKeyOrder": [
+        "deletedAt"
+      ],
       "pins": "`f9 3e00`. An encoder that always emits float64 signs different bytes"
     },
     {
@@ -309,7 +334,9 @@
         "deletedAt": 0.1
       },
       "expectedHex": "a16964656c657465644174fb3fb999999999999a",
-      "expectedDecodedKeyOrder": ["deletedAt"],
+      "expectedDecodedKeyOrder": [
+        "deletedAt"
+      ],
       "pins": "`fb 3fb999999999999a`: narrowing is lossy, so it does not happen"
     },
     {
@@ -333,7 +360,9 @@
         }
       },
       "expectedHex": "a16d656e637279707465644461746143010203",
-      "expectedDecodedKeyOrder": ["encryptedData"],
+      "expectedDecodedKeyOrder": [
+        "encryptedData"
+      ],
       "pins": "major type 2, `43 010203` — not an array of integers"
     },
     {
@@ -359,7 +388,10 @@
         "operation": "create"
       },
       "expectedHex": "a2626964f6696f7065726174696f6e66637265617465",
-      "expectedDecodedKeyOrder": ["id", "operation"],
+      "expectedDecodedKeyOrder": [
+        "id",
+        "operation"
+      ],
       "pins": "`null` encodes as `f6`; an `undefined` value omits the key entirely"
     }
   ],

@@ -33,17 +33,25 @@
           "payload": {
             "title": "A note",
             "content": "# A note\n\nBody.\n",
-            "tags": ["protocol"],
-            "pinnedTags": ["protocol"],
+            "tags": [
+              "protocol"
+            ],
+            "pinnedTags": [
+              "protocol"
+            ],
             "emoji": "📓",
             "properties": {
               "area": "Work"
             },
-            "aliases": ["note"],
+            "aliases": [
+              "note"
+            ],
             "fileType": "markdown",
             "mimeType": "text/markdown",
             "attachmentId": null,
-            "attachmentReferences": ["att-1"],
+            "attachmentReferences": [
+              "att-1"
+            ],
             "folderPath": "Notes",
             "clock": {
               "device-a": 1
@@ -54,17 +62,25 @@
           "expectedParsed": {
             "title": "A note",
             "content": "# A note\n\nBody.\n",
-            "tags": ["protocol"],
-            "pinnedTags": ["protocol"],
+            "tags": [
+              "protocol"
+            ],
+            "pinnedTags": [
+              "protocol"
+            ],
             "emoji": "📓",
             "properties": {
               "area": "Work"
             },
-            "aliases": ["note"],
+            "aliases": [
+              "note"
+            ],
             "fileType": "markdown",
             "mimeType": "text/markdown",
             "attachmentId": null,
-            "attachmentReferences": ["att-1"],
+            "attachmentReferences": [
+              "att-1"
+            ],
             "folderPath": "Notes",
             "clock": {
               "device-a": 1
@@ -95,17 +111,25 @@
           "payload": {
             "title": "A note",
             "content": "# A note\n\nBody.\n",
-            "tags": ["protocol"],
-            "pinnedTags": ["protocol"],
+            "tags": [
+              "protocol"
+            ],
+            "pinnedTags": [
+              "protocol"
+            ],
             "emoji": "📓",
             "properties": {
               "area": "Work"
             },
-            "aliases": ["note"],
+            "aliases": [
+              "note"
+            ],
             "fileType": "markdown",
             "mimeType": "text/markdown",
             "attachmentId": null,
-            "attachmentReferences": ["att-1"],
+            "attachmentReferences": [
+              "att-1"
+            ],
             "folderPath": "Notes",
             "clock": {
               "device-a": 1
@@ -120,17 +144,25 @@
           "expectedParsed": {
             "title": "A note",
             "content": "# A note\n\nBody.\n",
-            "tags": ["protocol"],
-            "pinnedTags": ["protocol"],
+            "tags": [
+              "protocol"
+            ],
+            "pinnedTags": [
+              "protocol"
+            ],
             "emoji": "📓",
             "properties": {
               "area": "Work"
             },
-            "aliases": ["note"],
+            "aliases": [
+              "note"
+            ],
             "fileType": "markdown",
             "mimeType": "text/markdown",
             "attachmentId": null,
-            "attachmentReferences": ["att-1"],
+            "attachmentReferences": [
+              "att-1"
+            ],
             "folderPath": "Notes",
             "clock": {
               "device-a": 1
@@ -138,7 +170,9 @@
             "createdAt": "2026-04-16T00:00:00.000Z",
             "modifiedAt": "2025-10-09T08:53:20.000Z"
           },
-          "strippedByParse": ["coverImage"],
+          "strippedByParse": [
+            "coverImage"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -157,7 +191,9 @@
           "payload": {
             "date": "2026-04-16",
             "content": "Today.",
-            "tags": ["daily"],
+            "tags": [
+              "daily"
+            ],
             "properties": {
               "mood": "ok"
             },
@@ -169,7 +205,9 @@
           "expectedParsed": {
             "date": "2026-04-16",
             "content": "Today.",
-            "tags": ["daily"],
+            "tags": [
+              "daily"
+            ],
             "properties": {
               "mood": "ok"
             },
@@ -203,7 +241,9 @@
           "payload": {
             "date": "2026-04-16",
             "content": "Today.",
-            "tags": ["daily"],
+            "tags": [
+              "daily"
+            ],
             "properties": {
               "mood": "ok"
             },
@@ -216,7 +256,9 @@
           "expectedParsed": {
             "date": "2026-04-16",
             "content": "Today.",
-            "tags": ["daily"],
+            "tags": [
+              "daily"
+            ],
             "properties": {
               "mood": "ok"
             },
@@ -225,7 +267,9 @@
             },
             "createdAt": "2025-10-09T08:53:20.000Z"
           },
-          "strippedByParse": ["weather"],
+          "strippedByParse": [
+            "weather"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -290,7 +334,9 @@
             "createdAt": "2026-04-16T00:00:00.000Z",
             "modifiedAt": "2026-04-16T00:00:00.000Z"
           },
-          "strippedByParse": ["sortMode"],
+          "strippedByParse": [
+            "sortMode"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -367,7 +413,9 @@
             "createdAt": "2026-04-16T00:00:00.000Z",
             "updatedAt": "2026-04-16T00:00:00.000Z"
           },
-          "strippedByParse": ["sourceUrl"],
+          "strippedByParse": [
+            "sourceUrl"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -456,7 +504,9 @@
             },
             "createdAt": "2026-04-16T00:00:00.000Z"
           },
-          "strippedByParse": ["pinned"],
+          "strippedByParse": [
+            "pinned"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -531,7 +581,9 @@
             "updatedAt": "2026-04-16T00:00:00.000Z",
             "deletedAt": null
           },
-          "strippedByParse": ["icon"],
+          "strippedByParse": [
+            "icon"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -612,7 +664,9 @@
             },
             "createdAt": "2026-04-16T00:00:00.000Z"
           },
-          "strippedByParse": ["description"],
+          "strippedByParse": [
+            "description"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -632,7 +686,9 @@
             "name": "Daily",
             "description": "A daily note",
             "icon": "sun",
-            "tags": ["daily"],
+            "tags": [
+              "daily"
+            ],
             "properties": [],
             "content": "# {{date}}\n",
             "clock": {
@@ -645,7 +701,9 @@
             "name": "Daily",
             "description": "A daily note",
             "icon": "sun",
-            "tags": ["daily"],
+            "tags": [
+              "daily"
+            ],
             "properties": [],
             "content": "# {{date}}\n",
             "clock": {
@@ -680,7 +738,9 @@
             "name": "Daily",
             "description": "A daily note",
             "icon": "sun",
-            "tags": ["daily"],
+            "tags": [
+              "daily"
+            ],
             "properties": [],
             "content": "# {{date}}\n",
             "clock": {
@@ -694,7 +754,9 @@
             "name": "Daily",
             "description": "A daily note",
             "icon": "sun",
-            "tags": ["daily"],
+            "tags": [
+              "daily"
+            ],
             "properties": [],
             "content": "# {{date}}\n",
             "clock": {
@@ -703,7 +765,9 @@
             "createdAt": "2026-04-16T00:00:00.000Z",
             "modifiedAt": "2026-04-16T00:00:00.000Z"
           },
-          "strippedByParse": ["folderPath"],
+          "strippedByParse": [
+            "folderPath"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -732,14 +796,20 @@
             "startDate": "2026-04-16",
             "repeatConfig": {
               "every": "week",
-              "on": ["mon"]
+              "on": [
+                "mon"
+              ]
             },
             "repeatFrom": "dueDate",
             "sourceNoteId": "abc123def456",
             "completedAt": null,
             "archivedAt": null,
-            "tags": ["protocol"],
-            "linkedNoteIds": ["abc123def456"],
+            "tags": [
+              "protocol"
+            ],
+            "linkedNoteIds": [
+              "abc123def456"
+            ],
             "linkedCanvasIds": [],
             "clock": {
               "device-a": 1
@@ -765,14 +835,20 @@
             "startDate": "2026-04-16",
             "repeatConfig": {
               "every": "week",
-              "on": ["mon"]
+              "on": [
+                "mon"
+              ]
             },
             "repeatFrom": "dueDate",
             "sourceNoteId": "abc123def456",
             "completedAt": null,
             "archivedAt": null,
-            "tags": ["protocol"],
-            "linkedNoteIds": ["abc123def456"],
+            "tags": [
+              "protocol"
+            ],
+            "linkedNoteIds": [
+              "abc123def456"
+            ],
             "linkedCanvasIds": [],
             "clock": {
               "device-a": 1
@@ -822,14 +898,20 @@
             "startDate": "2026-04-16",
             "repeatConfig": {
               "every": "week",
-              "on": ["mon"]
+              "on": [
+                "mon"
+              ]
             },
             "repeatFrom": "dueDate",
             "sourceNoteId": "abc123def456",
             "completedAt": null,
             "archivedAt": null,
-            "tags": ["protocol"],
-            "linkedNoteIds": ["abc123def456"],
+            "tags": [
+              "protocol"
+            ],
+            "linkedNoteIds": [
+              "abc123def456"
+            ],
             "linkedCanvasIds": [],
             "clock": {
               "device-a": 1
@@ -856,14 +938,20 @@
             "startDate": "2026-04-16",
             "repeatConfig": {
               "every": "week",
-              "on": ["mon"]
+              "on": [
+                "mon"
+              ]
             },
             "repeatFrom": "dueDate",
             "sourceNoteId": "abc123def456",
             "completedAt": null,
             "archivedAt": null,
-            "tags": ["protocol"],
-            "linkedNoteIds": ["abc123def456"],
+            "tags": [
+              "protocol"
+            ],
+            "linkedNoteIds": [
+              "abc123def456"
+            ],
             "linkedCanvasIds": [],
             "clock": {
               "device-a": 1
@@ -876,7 +964,9 @@
             "createdAt": "2026-04-16T00:00:00.000Z",
             "modifiedAt": "2026-04-16T00:00:00.000Z"
           },
-          "strippedByParse": ["estimateMinutes"],
+          "strippedByParse": [
+            "estimateMinutes"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -1035,7 +1125,9 @@
             "homeNoteId": "abc123def456",
             "links": []
           },
-          "strippedByParse": ["defaultViewId"],
+          "strippedByParse": [
+            "defaultViewId"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -1128,7 +1220,9 @@
             },
             "createdAt": "2026-04-16T00:00:00.000Z"
           },
-          "strippedByParse": ["clientPlatform"],
+          "strippedByParse": [
+            "clientPlatform"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -1243,7 +1337,9 @@
             "createdAt": "2026-04-16T00:00:00.000Z",
             "modifiedAt": "2026-04-16T00:00:00.000Z"
           },
-          "strippedByParse": ["triggeredAt"],
+          "strippedByParse": [
+            "triggeredAt"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
@@ -1332,7 +1428,9 @@
               }
             }
           },
-          "strippedByParse": ["settings.experimental"],
+          "strippedByParse": [
+            "settings.experimental"
+          ],
           "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
         },
         {
