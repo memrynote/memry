@@ -58,7 +58,14 @@ final class LoopbackSocketServer: @unchecked Sendable {
             receive(on: connection)
         }
         listener.start(queue: .global())
-        guard ready.wait(timeout: .now() + 5) == .success, let bound = listener.port else {
+        // 20 s rather than 5. The bound still exists — a listener that never
+        // binds must fail here rather than hang the suite — but 5 s was a
+        // measurement of a warm laptop, and it flaked on a cold hosted runner
+        // where this is the first test in a `.serialized` suite and pays the
+        // whole Network.framework start-up. The failure this bound is for is a
+        // listener that cannot bind at all, which does not take 5 s to not
+        // happen.
+        guard ready.wait(timeout: .now() + 20) == .success, let bound = listener.port else {
             throw TransportError.Failed(what: "the loopback listener never became ready")
         }
         port = bound.rawValue

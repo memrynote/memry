@@ -165,6 +165,18 @@ jobs:
       # runs per plan because the .xctestrun it emits is plan-specific, but
       # every compile after the first is a cache hit against the same
       # derivedDataPath -- the expensive part happens once.
+      #
+      # **Ad-hoc signed, not unsigned.** `CODE_SIGNING_ALLOWED=NO` was the
+      # cause of seven `KeychainRealStoreTests` failures on every run since
+      # the suite landed: an unsigned simulator app carries no
+      # `keychain-access-groups` entitlement, so every `SecItem*` call returns
+      # `errSecMissingEntitlement` (-34018) and the nine tests that exercise
+      # the **real** keychain -- the only ones that prove data-model §B's
+      # identities are what the core actually writes -- could not run at all.
+      # An ad-hoc identity (`CODE_SIGN_IDENTITY=-`) is what Xcode itself uses
+      # for a simulator build: it embeds the entitlements without needing a
+      # development certificate, which a hosted runner does not have.
+      # Provisioning stays off, so no profile and no team are required.
       - name: Build for testing and run every plan
         working-directory: apps/ios
         run: |
@@ -176,7 +188,11 @@ jobs:
               -destination "$SIMULATOR" \
               -derivedDataPath build \
               -resultBundlePath "build/${plan}.xcresult" \
-              CODE_SIGNING_ALLOWED=NO
+              CODE_SIGN_IDENTITY=- \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=YES \
+              DEVELOPMENT_TEAM= \
+              PROVISIONING_PROFILE_SPECIFIER=
           done
 
       - name: Upload xcresult bundles

@@ -67,9 +67,20 @@ struct SpikeS4Tests {
         }
     }
 
-    @Test("under memory pressure the derivation either succeeds or fails as Crypto — never as a phrase error")
+    /// Gated with `.enabled(if:)` and **not** with `try #require(Self.isDevice)`.
+    /// They are not two spellings of the same thing: `#require` records an
+    /// *expectation failure* when its condition is false, so the off-device
+    /// form failed this test on every simulator run — which is what kept iOS CI
+    /// red on `main` after spec-defect 112 was believed closed. A trait removes
+    /// the test from the run and reports it as **skipped**, which is the
+    /// distinction the whole file rests on: a simulator must never be able to
+    /// read as this having held, and it must never read as this having failed
+    /// either.
+    @Test(
+        "under memory pressure the derivation either succeeds or fails as Crypto — never as a phrase error",
+        .enabled(if: SpikeS4Tests.isDevice, "S4 is only evidence on hardware; the simulator uses host memory")
+    )
     func pressureNeverLooksLikeAWrongPhrase() throws {
-        try #require(Self.isDevice, "S4 is only evidence on hardware; the simulator uses host memory")
 
         // Squeeze the process until the 64 MiB Argon2id arena is contended.
         // Touched, not merely reserved: iOS only commits a page that is written.

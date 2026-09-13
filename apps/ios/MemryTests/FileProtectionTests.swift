@@ -183,9 +183,20 @@ struct VaultFilesRealFilesystemTests {
             #expect(typed[0] == .completeUntilFirstUserAuthentication, "an untouched file inherits the floor")
         } else {
             // One constant for all three, so the value carries no information
-            // about what was asked — including for the untouched file.
-            #expect(readBack == Array(repeating: "NSURLFileProtectionCompleteUntilFirstUserAuthentication", count: 3))
-            #expect(try root.resourceValues(forKeys: [.fileProtectionKey]).fileProtection == nil)
+            // about what was asked — including for the untouched file. **That
+            // invariance is the whole claim**, and it is asserted as invariance
+            // rather than as a literal string: an earlier draft pinned the
+            // string and pinned a directory's read-back to `nil`, and both are
+            // properties of one simulator build rather than of simulators. The
+            // local simulator and the CI simulator disagreed about the
+            // directory, and the string is an OS-version detail. If a future
+            // simulator ever did honour data protection, these three would
+            // stop agreeing and this fails — which is the regression worth
+            // catching.
+            #expect(Set(readBack).count == 1, "\(readBack)")
+            // And it is a value, not an absence: "could not tell" must never be
+            // able to satisfy the invariance above by making all three `nil`.
+            #expect(readBack.allSatisfy { $0 != nil }, "\(readBack)")
         }
     }
 
@@ -193,9 +204,15 @@ struct VaultFilesRealFilesystemTests {
     /// cannot evidence it: the **effective** class on the database and on both
     /// sidecars, read back after the open. Skipped rather than vacuously passed
     /// off-device, so a green simulator run never reads as this having held.
-    @Test("on device the database and both sidecars are protected until first unlock")
+    /// The gate is `.enabled(if:)` and **not** `try #require(Self.isDevice)`:
+    /// `#require` records an expectation failure when its condition is false,
+    /// so the doc comment above said "skipped" while the code failed the test
+    /// on every simulator run. A trait skips; `#require` fails.
+    @Test(
+        "on device the database and both sidecars are protected until first unlock",
+        .enabled(if: VaultFilesRealFilesystemTests.isDevice, "the effective class is only observable on hardware")
+    )
     func effectiveClassOnDeviceIsUntilFirstUnlock() async throws {
-        try #require(Self.isDevice, "the effective class is only observable on hardware")
 
         let opened = try await files.openingVault(vaultId) { directory in
             makeOpenedDatabase(in: directory)
