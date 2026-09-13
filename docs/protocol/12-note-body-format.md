@@ -62,6 +62,65 @@ Block and inline **specs** are shared
 
 **Disposition of Q12.2: answered** (this section).
 
+### 12.1.3 What `extract_text` does, rule by rule
+
+**Normative.** §12.11 makes this function the basis of the cross-shell digest,
+and §12.1 described it in one sentence — "keeps headings and list markers,
+drops everything else" — which is true and reproduces nothing. Every rule below
+was previously recoverable only from `text-extract.json` and the reference
+port. The vectors still pin the bytes; this section is what lets a port be
+written before it reads them.
+
+It walks the `prosemirror` `XmlFragment` (§12.3). **It is not markdown**, does
+not parse markdown, and does not emit it: the markers below are a preview
+convention that happens to look like markdown.
+
+| Node class    | Nodes                                                                                                 | Contribution                              |
+| ------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Containers    | `blockContainer`, `blockGroup`, `table`, `tableRow`                                                   | no line of their own; children are walked |
+| Line blocks   | `heading`, `paragraph`, `quote`, `callout`, `codeBlock`, `toggleListItem`, `tableCell`, `tableHeader` | one line each                             |
+| List items    | `bulletListItem`, `checkListItem`, `taskBlock` → `- `; `numberedListItem` → `1. `                     | one line each, marker prefixed            |
+| Skipped       | `divider`                                                                                             | dropped entirely                          |
+| Anything else | —                                                                                                     | **walked, not dropped**                   |
+
+Because a block is identified by node name and never by depth, y-prosemirror's
+`blockContainer`/`blockGroup` nesting does not change the output, and nesting
+depth contributes no indentation.
+
+Rules that are easy to get wrong, each of which a vector case pins:
+
+- **A heading's level is clamped to 1..=6.** A level above six emits six `#`,
+  not seven. An absent or unparseable level is treated as level 1.
+- **Every `numberedListItem` emits `1. `.** Numbering is deliberately not
+  reconstructed: a preview does not need the count, and reconstructing it would
+  make a line's output depend on its siblings.
+- **A table cell is a line.** Rows and the table itself are containers, so an
+  n-cell table is n lines, not one row per line.
+- **A callout's type and a toggle's open state are dropped**; both contribute
+  only their text, as an ordinary line.
+- **An empty line block is dropped, but an empty list item is not.** The line is
+  trimmed at its end and dropped if nothing remains, and a list item's marker is
+  already non-empty — so an empty paragraph vanishes and an empty bullet
+  survives as a bare `- `.
+- **Trailing-whitespace trimming follows JavaScript's `trimEnd`**, which also
+  trims `U+FEFF`. Rust's `trim_end` does not, so a port must add it explicitly
+  or a note beginning with a byte-order mark digests differently on two shells.
+
+#### 12.1.3.1 Known defect: the tag strip eats literal angle brackets
+
+**Not normative — a defect, recorded so it is not rediscovered as a surprise.**
+
+The reference extractor renders an `XmlText` together with its formatting marks
+as XML tags, then removes them with `/<[^>]*>/g`. That expression cannot tell a
+formatting tag from text the user typed, so a note containing `a <b> c`
+extracts as `a  c`. The loss reaches the FTS index, the note preview and the
+SC-010 digest, and it is silent in all three.
+
+A conforming port **reproduces this**, because parity is what the digest
+measures and a port that fixed it would report a false mismatch against every
+other shell. Fixing it is a coordinated change to every port and its vectors at
+once, not a local correction.
+
 ## 12.2 FR-041 holds structurally, with three carve-outs
 
 **The structural argument.** A non-desktop client never writes a vault file;
@@ -487,6 +546,9 @@ not a protocol constant).**
 | a note                   | SHA-256 over the UTF-8 bytes of `title + "\n" + extract_text(doc)`                   |
 | a task or journal record | SHA-256 over the canonical JSON (chapter 06 §6.4.2) of that record's syncable fields |
 
-`extract_text` is specified by the `text-extract.json` vector class, so two ports
-are pinned to the same output before any digest is compared and **a mismatch
-means the content differs rather than the extractors differing**.
+`extract_text`'s rules are §12.1.3 and its bytes are pinned by the
+`text-extract.json` vector class, so two ports are held to the same output
+before any digest is compared and **a mismatch means the content differs rather
+than the extractors differing**. Note §12.1.3.1: the extractors agree on
+dropping literal angle brackets, so a digest match does not prove the note's
+text survived intact — only that both shells lost the same bytes.
