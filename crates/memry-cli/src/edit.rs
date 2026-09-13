@@ -36,7 +36,12 @@ mod node;
 use node::{append_paragraph, block_id};
 
 /// `notes edit <id> --append <text>`.
-pub fn notes_append(cli: &Cli, note: &str, text: &str) -> Result<(), CliError> {
+pub fn notes_append(
+    cli: &Cli,
+    note: &str,
+    text: &str,
+    vault: Option<&str>,
+) -> Result<(), CliError> {
     if text.is_empty() {
         return Err(CliError::Refused(
             "--append needs text: an empty paragraph is dropped by extract_text and renders as \
@@ -45,7 +50,7 @@ pub fn notes_append(cli: &Cli, note: &str, text: &str) -> Result<(), CliError> {
         ));
     }
 
-    let vault = cli.only_vault()?;
+    let vault = crate::commands::resolve_vault(cli, vault)?;
     let db = cli.open_vault(&vault)?;
     // The Yjs client id is derived from this device's id, so a second run of
     // this command is the same Yjs client rather than a new one on every

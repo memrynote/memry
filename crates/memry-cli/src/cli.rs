@@ -34,9 +34,10 @@ Commands:
   vaults                                 list the vaults on the account
   pull --vault <id>                      pull one vault's record feed into its local database
   notes list [--vault <id>]              print the pulled notes, newest first
-  notes text <id>                        print the note body's extracted text
-  notes state-vector <id>                print the note body's Y.Doc state vector, in hex
-  notes edit <id> --append <text>        append one paragraph block to the note body
+  notes text <id> [--vault <id>]         print the note body's extracted text
+  notes state-vector <id> [--vault <id>] print the note body's Y.Doc state vector, in hex
+  notes edit <id> --append <text> [--vault <id>]
+                                         append one paragraph block to the note body
 
 Options:
   --server <name|url>          staging (the default), prod, local, or a base URL
@@ -70,9 +71,11 @@ pub enum Command {
     },
     NotesText {
         note: String,
+        vault: Option<String>,
     },
     NotesStateVector {
         note: String,
+        vault: Option<String>,
     },
     /// Quickstart §G5's headless write: one `blockContainer > paragraph >
     /// text` node appended through yrs. Not a markdown path (chapter 12
@@ -80,6 +83,7 @@ pub enum Command {
     NotesEdit {
         note: String,
         append: String,
+        vault: Option<String>,
     },
 }
 
@@ -219,20 +223,36 @@ fn parse_notes(args: &mut Args) -> Result<Command, UsageError> {
         "list" => Ok(Command::NotesList {
             vault: optional(args, "--vault")?,
         }),
-        "text" => Ok(Command::NotesText {
-            note: positional(args, "notes text", "a note id")?,
-        }),
-        "state-vector" => Ok(Command::NotesStateVector {
-            note: positional(args, "notes state-vector", "a note id")?,
-        }),
+        // Every note subcommand takes `--vault`, because every one of them
+        // resolves a vault and refuses when a profile holds more than one.
+        // `notes text` used to print "say which one with --vault" and then
+        // reject `--vault` as an unexpected argument: an error message whose
+        // instruction does not exist is a dead end, and the only way out was
+        // to guess.
+        "text" => {
+            let note = positional(args, "notes text", "a note id")?;
+            Ok(Command::NotesText {
+                note,
+                vault: optional(args, "--vault")?,
+            })
+        }
+        "state-vector" => {
+            let note = positional(args, "notes state-vector", "a note id")?;
+            Ok(Command::NotesStateVector {
+                note,
+                vault: optional(args, "--vault")?,
+            })
+        }
         "edit" => {
             let note = positional(args, "notes edit", "a note id")?;
+            let append = required(args, "--append", "notes edit")?;
             Ok(Command::NotesEdit {
                 note,
                 // `--append` is required rather than optional: it is the only
                 // edit this client makes, and an `edit` that did nothing
                 // would be a successful command that changed no note.
-                append: required(args, "--append", "notes edit")?,
+                append,
+                vault: optional(args, "--vault")?,
             })
         }
         other => usage(format!("unknown notes subcommand `{other}`")),
@@ -320,13 +340,31 @@ mod tests {
         assert_eq!(
             invocation("notes text note-1").command,
             Command::NotesText {
-                note: "note-1".to_string()
+                note: "note-1".to_string(),
+                vault: None
+            }
+        );
+        // The dead end this closed: `notes text` printed "say which one with
+        // --vault" and then rejected `--vault` as an unexpected argument.
+        assert_eq!(
+            invocation("notes text note-1 --vault v-1").command,
+            Command::NotesText {
+                note: "note-1".to_string(),
+                vault: Some("v-1".to_string())
             }
         );
         assert_eq!(
             invocation("notes state-vector note-1").command,
             Command::NotesStateVector {
-                note: "note-1".to_string()
+                note: "note-1".to_string(),
+                vault: None
+            }
+        );
+        assert_eq!(
+            invocation("notes state-vector note-1 --vault v-1").command,
+            Command::NotesStateVector {
+                note: "note-1".to_string(),
+                vault: Some("v-1".to_string())
             }
         );
     }
@@ -350,6 +388,7 @@ mod tests {
             Command::NotesEdit {
                 note: "note-1".to_string(),
                 append: "from cli".to_string(),
+                vault: None,
             }
         );
     }

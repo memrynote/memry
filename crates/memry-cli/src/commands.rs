@@ -166,11 +166,19 @@ fn live_document_ids(db: &Db) -> Result<Vec<String>, CliError> {
 }
 
 /// `notes list [--vault <id>]`: the projection, newest first.
+/// A named vault wins; otherwise the profile must hold exactly one.
+///
+/// Shared by every note subcommand so the `--vault` flag and the "say which
+/// one with --vault" error can never disagree again.
+pub(crate) fn resolve_vault(cli: &Cli, vault: Option<&str>) -> Result<String, CliError> {
+    match vault {
+        Some(vault) => Ok(vault.to_string()),
+        None => cli.only_vault(),
+    }
+}
+
 pub fn notes_list(cli: &Cli, vault: Option<&str>) -> Result<(), CliError> {
-    let vault = match vault {
-        Some(vault) => vault.to_string(),
-        None => cli.only_vault()?,
-    };
+    let vault = resolve_vault(cli, vault)?;
     let notes = read_notes(&cli.open_vault(&vault)?)?;
     if notes.is_empty() {
         eprintln!("no notes in {vault}");
@@ -181,8 +189,8 @@ pub fn notes_list(cli: &Cli, vault: Option<&str>) -> Result<(), CliError> {
 }
 
 /// `notes text <id>`: `extract_text` over the body document (T123).
-pub fn notes_text(cli: &Cli, note: &str) -> Result<(), CliError> {
-    let vault = cli.only_vault()?;
+pub fn notes_text(cli: &Cli, note: &str, vault: Option<&str>) -> Result<(), CliError> {
+    let vault = resolve_vault(cli, vault)?;
     let db = cli.open_vault(&vault)?;
     let text = extract_text(&*open_body(&db, note)?)?;
     println!("{text}");
@@ -191,8 +199,8 @@ pub fn notes_text(cli: &Cli, note: &str) -> Result<(), CliError> {
 
 /// `notes state-vector <id>`: the body's Y.Doc state vector, hex, for the §G4
 /// comparison against desktop.
-pub fn notes_state_vector(cli: &Cli, note: &str) -> Result<(), CliError> {
-    let vault = cli.only_vault()?;
+pub fn notes_state_vector(cli: &Cli, note: &str, vault: Option<&str>) -> Result<(), CliError> {
+    let vault = resolve_vault(cli, vault)?;
     let db = cli.open_vault(&vault)?;
     println!("{}", format_hex(&open_body(&db, note)?.state_vector()?));
     Ok(())

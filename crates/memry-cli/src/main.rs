@@ -46,8 +46,14 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
         Command::Vaults => commands::vaults(&cli).await,
         Command::Pull { vault } => commands::pull(&cli, &vault).await,
         Command::NotesList { vault } => commands::notes_list(&cli, vault.as_deref()),
-        Command::NotesText { note } => commands::notes_text(&cli, &note),
-        Command::NotesStateVector { note } => commands::notes_state_vector(&cli, &note),
-        Command::NotesEdit { note, append } => edit::notes_append(&cli, &note, &append),
+        Command::NotesText { note, vault } => commands::notes_text(&cli, &note, vault.as_deref()),
+        Command::NotesStateVector { note, vault } => {
+            commands::notes_state_vector(&cli, &note, vault.as_deref())
+        }
+        Command::NotesEdit {
+            note,
+            append,
+            vault,
+        } => edit::notes_append(&cli, &note, &append, vault.as_deref()),
     }
 }
