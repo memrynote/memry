@@ -23,6 +23,11 @@ native-transport = []
 # Library mode: the proc-macro attributes are the only interface. `tokio` lets
 # UniFFI export async functions driven by the core's runtime.
 uniffi = { workspace = true, features = ["tokio"] }
+# The CRDT tier. v1 update codec only: it is the Yjs reference format and the
+# only one the protocol speaks (research R2, chapter 07). `sync` is what makes
+# `Subscription` `Send + Sync`, which a registry shared across the runtime's
+# threads needs; `Doc` is `Send + Sync` either way.
+yrs = { workspace = true, features = ["sync"] }
 libsodium-sys-stable = { workspace = true }
 zeroize = { workspace = true }
 bip39 = { workspace = true }

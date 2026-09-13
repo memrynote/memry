@@ -10,6 +10,7 @@
 //! which the shell fills in.
 
 pub mod api;
+pub mod crdt;
 pub mod crypto;
 pub mod protocol;
 pub mod seams;
