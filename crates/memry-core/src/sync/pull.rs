@@ -106,6 +106,17 @@ pub struct PullReport {
     /// The breaker tripped: the run is unsuccessful and **no success state may
     /// be written**, even though the cursor advanced.
     pub refused: bool,
+    /// The documents whose body log a tombstone on this pass actually emptied
+    /// (chapter 07 §7.15).
+    ///
+    /// §7.15's first consequence has two halves and this loop can only do one
+    /// of them. The local update log and both snapshot rows are gone by the
+    /// time this is read; the **in-memory** `Y.Doc` is not, because the pull
+    /// owns no [`crate::crdt::DocumentRegistry`]. A caller that holds one
+    /// releases each id here. Reporting them is the point: a purge that left
+    /// the caller believing the body was gone everywhere would be worse than
+    /// one that failed loudly.
+    pub purged_documents: Vec<String>,
 }
 
 /// One page of `GET /sync/changes`.
@@ -176,6 +187,9 @@ impl PullLoop {
             total.corrupt += page.corrupt;
             total.expired += page.expired;
             total.dropped_pages += page.dropped_pages;
+            total
+                .purged_documents
+                .extend(page.purged_documents.iter().cloned());
             total.cursor = page.cursor.clone();
             total.has_more = page.has_more;
             total.refused = page.refused;
@@ -246,6 +260,7 @@ impl PullLoop {
         report.skipped += outcomes.skipped;
         report.corrupt += outcomes.corrupt;
         report.expired += outcomes.expired;
+        report.purged_documents.extend(outcomes.purged_documents);
 
         // §5.11: only now.
         let now = now_ms();
@@ -302,6 +317,7 @@ impl PullLoop {
         report.skipped += outcomes.skipped;
         report.corrupt += outcomes.corrupt;
         report.expired += outcomes.expired;
+        report.purged_documents.extend(outcomes.purged_documents);
         Ok(report)
     }
 

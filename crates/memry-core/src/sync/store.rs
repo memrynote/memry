@@ -132,6 +132,30 @@ pub fn apply_untyped_tombstone(
     Ok(())
 }
 
+/// Every `item_type` this device holds a row for under one id (§5.12.1).
+///
+/// What an untyped tombstone needs before it can reach the projections: the
+/// types are what say which tables have a row to mark, and the wire did not
+/// carry one.
+///
+/// This is the opposite of the inference §5.12.1 forbids. A client MUST NOT
+/// guess a type from an id's shape — `tag_definition` ids are tag names,
+/// `folder_config` ids are folder paths, so the shapes are not disjoint — and
+/// what this answers is not a guess but the set of types this device actually
+/// stored under that id. An id with no local row answers empty, which is the
+/// bare tombstone's case and is not an error.
+pub fn item_types_for(conn: &Connection, item_id: &str) -> Result<Vec<String>, StorageError> {
+    let mut statement = conn
+        .prepare("SELECT item_type FROM sync_items WHERE item_id = ?1")
+        .map_err(failed)?;
+    let types = statement
+        .query_map(params![item_id], |row| row.get::<_, String>(0))
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    Ok(types)
+}
+
 /// Whether a bare tombstone was filed for this id (§5.12.1).
 ///
 /// Consulted before an apply, because the tombstone that arrived without a

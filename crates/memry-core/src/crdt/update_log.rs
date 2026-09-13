@@ -379,20 +379,39 @@ pub fn purge(conn: &mut Connection, doc_id: &str) -> Result<(), CrdtError> {
     let txn = conn
         .transaction()
         .map_err(failed("open the purge transaction"))?;
+    purge_in(&txn, doc_id)?;
+    txn.commit().map_err(failed("commit the purge"))?;
+    Ok(())
+}
+
+/// The purge's statements, inside a transaction the **caller** already holds.
+///
+/// [`purge`] is this plus a transaction of its own. The split is what lets the
+/// one production caller — `sync::apply`'s tombstone arm — take the record
+/// delete, the projection delete and this purge as a single atomic step. Three
+/// separate transactions would let a crash between them leave a deleted note
+/// with a live body, which is the state §7.15 exists to forbid.
+///
+/// Returns the number of rows removed, so a caller can tell a document that had
+/// a body from one that never did. **Zero is not a failure**: a delete for an id
+/// this device only ever saw metadata for legitimately removes nothing.
+pub fn purge_in(conn: &Connection, doc_id: &str) -> Result<usize, CrdtError> {
+    let mut removed = 0;
     for row_id in [
         Namespace::Server.row_id(doc_id),
         Namespace::Local.row_id(doc_id),
     ] {
-        txn.execute("DELETE FROM yjs_updates WHERE doc_id = ?1", params![row_id])
+        removed += conn
+            .execute("DELETE FROM yjs_updates WHERE doc_id = ?1", params![row_id])
             .map_err(failed("purge updates"))?;
-        txn.execute(
-            "DELETE FROM yjs_snapshots WHERE doc_id = ?1",
-            params![row_id],
-        )
-        .map_err(failed("purge a snapshot"))?;
+        removed += conn
+            .execute(
+                "DELETE FROM yjs_snapshots WHERE doc_id = ?1",
+                params![row_id],
+            )
+            .map_err(failed("purge a snapshot"))?;
     }
-    txn.commit().map_err(failed("commit the purge"))?;
-    Ok(())
+    Ok(removed)
 }
 
 fn failed(what: &'static str) -> impl Fn(rusqlite::Error) -> StorageError {

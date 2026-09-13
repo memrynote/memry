@@ -40,9 +40,12 @@
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::crdt::errors::CrdtError;
+use crate::crdt::update_log;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::domain::{projects, settings, tasks};
+use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
 use super::{settings_merge, store};
@@ -83,7 +86,27 @@ pub(crate) struct ApplyTotals {
     pub(crate) skipped: usize,
     pub(crate) corrupt: usize,
     pub(crate) expired: usize,
+    /// The documents whose body log this page actually emptied (§7.15).
+    ///
+    /// The durable half of §7.15's first consequence is done by the time this
+    /// is read; the **in-memory** half is not, because the apply path holds no
+    /// [`crate::crdt::DocumentRegistry`] and cannot drop a resident
+    /// [`crate::crdt::Document`]. Naming the ids is the difference between a
+    /// core that says "the body is gone" and one that says "the body is gone
+    /// from disk — release these". A caller holding a registry releases each;
+    /// a caller holding none has nothing resident to release.
+    pub(crate) purged_documents: Vec<String>,
 }
+
+/// The two item types whose bodies are CRDT documents (chapter 07, §12.3).
+///
+/// The list is closed and it is checked against the item's **type**, never
+/// against the shape of its id. A tag may legally be named the twelve
+/// characters a note id is made of (§5.12.1), and purging on a name collision
+/// would delete a live note's body for a deleted tag — unrecoverable, because
+/// §7.15 leaves the server rows in place but this device would no longer be
+/// asking for them.
+const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 
 /// Applies one page's decoded items, in the order they were handed over, plus
 /// the ids §5.12.1 leaves with no type on the wire.
@@ -102,30 +125,30 @@ pub(crate) fn apply_page(
                 deleted_at,
                 server_cursor,
             } => {
-                store::mark_deleted(
+                apply_tombstone(
                     conn,
                     &item_type,
                     &item_id,
                     deleted_at,
                     server_cursor,
                     now_ms,
+                    &mut totals,
                 )?;
-                totals.deleted += 1;
             }
             Pending::Record(record) => {
                 // §5.12.1: a bare tombstone outranks the item that arrives
                 // after it, or the "does not resurrect it locally" guarantee
                 // holds only until the next page.
                 if store::has_bare_tombstone(conn, &record.item_id)? {
-                    store::mark_deleted(
+                    apply_tombstone(
                         conn,
                         &record.item_type,
                         &record.item_id,
                         now_ms,
                         record.server_cursor,
                         now_ms,
+                        &mut totals,
                     )?;
-                    totals.deleted += 1;
                     continue;
                 }
                 match apply_inbound(conn, &record, now_ms)? {
@@ -138,10 +161,116 @@ pub(crate) fn apply_page(
         }
     }
     for item_id in untyped {
-        store::apply_untyped_tombstone(conn, &item_id, now_ms, now_ms)?;
-        totals.deleted += 1;
+        apply_untyped_tombstone(conn, &item_id, now_ms, &mut totals)?;
     }
     Ok(totals)
+}
+
+/// One typed delete, as §7.15's first two consequences require it: the record
+/// row, **its projection**, and the document's body log, in one transaction.
+///
+/// Three statements and one rule each.
+///
+/// - [`store::mark_deleted`] is the record tier, and it keeps the stored
+///   payload byte for byte (§5.12: the body is never decoded).
+/// - [`projectors::delete`] is the half that was missing, and the one with
+///   teeth. Nothing else writes `notes.deleted_at`, and until it did, a note
+///   deleted on another device stayed live in every projection-driven read on
+///   this one — and, worse, stayed inside
+///   [`super::first_sync_store::recent_document_ids`]'s `deleted_at IS NULL`
+///   window, so the next first sync handed a tombstoned id to
+///   [`super::body_pull::pull_document`] and re-applied the surviving server
+///   log over a deleted note's body.
+/// - [`update_log::purge_in`] is §7.15's first consequence, for a document
+///   type only.
+///
+/// **One transaction, not three.** A crash between the record delete and the
+/// purge would leave a deleted note with a live body, which is precisely the
+/// state §7.15 forbids; a failure in any statement rolls the delete back whole
+/// and propagates, so the page aborts with the cursor unmoved and the delete
+/// arrives again. A purge that quietly did nothing would be worse than one
+/// that errors: the caller would believe the body was gone.
+fn apply_tombstone(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    deleted_at: i64,
+    server_cursor: Option<i64>,
+    now_ms: i64,
+    totals: &mut ApplyTotals,
+) -> Result<(), StorageError> {
+    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+    store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
+    projectors::delete(&txn, item_type, item_id, deleted_at)?;
+    let purged = if DOCUMENT_TYPES.contains(&item_type) {
+        update_log::purge_in(&txn, item_id).map_err(crdt_failed)?
+    } else {
+        0
+    };
+    txn.commit().map_err(sqlite_failed)?;
+    totals.deleted += 1;
+    if purged > 0 {
+        totals.purged_documents.push(item_id.to_owned());
+    }
+    Ok(())
+}
+
+/// An id from `deleted` that arrived with **no type on the wire** (§5.12.1).
+///
+/// The untyped delete covers *every* row under that id, whatever its type, so
+/// the projection half reads the types this device actually stored
+/// ([`store::item_types_for`]) and marks the tables each one names. The wire
+/// carried no type and a client MUST NOT invent one from the id's shape, so
+/// the local rows are the only honest source for that list.
+///
+/// The purge runs **unconditionally** here, and that is not the id-shape
+/// inference §5.12.1 forbids. The typed arm above has to be careful because a
+/// tag named like a note id would otherwise take the note's body with it; here
+/// there is no such case to be careful about, because every row under the id —
+/// the note's included — is being deleted. Body rows under a purely local
+/// document this device never got a record for go with it, which is the same
+/// rule read from the other side (§5.12: a delete for an unseen item is still
+/// recorded).
+fn apply_untyped_tombstone(
+    conn: &Connection,
+    item_id: &str,
+    now_ms: i64,
+    totals: &mut ApplyTotals,
+) -> Result<(), StorageError> {
+    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+    let item_types = store::item_types_for(&txn, item_id)?;
+    store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
+    for item_type in &item_types {
+        projectors::delete(&txn, item_type, item_id, now_ms)?;
+    }
+    let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
+    txn.commit().map_err(sqlite_failed)?;
+    totals.deleted += 1;
+    if purged > 0 {
+        totals.purged_documents.push(item_id.to_owned());
+    }
+    Ok(())
+}
+
+fn sqlite_failed(error: rusqlite::Error) -> StorageError {
+    StorageError::Failed {
+        what: error.to_string(),
+    }
+}
+
+/// The CRDT tier's failure, back in the storage vocabulary this path speaks.
+///
+/// [`CrdtError::Storage`] is unwrapped rather than stringified: a purge cannot
+/// fail for any CRDT reason — it decodes nothing — so the only variant reachable
+/// here is a disk or lock failure, and flattening it would turn "out of space"
+/// into "bad document".
+fn crdt_failed(error: CrdtError) -> StorageError {
+    match error {
+        CrdtError::Storage { source } => source,
+        other => StorageError::Failed {
+            what: other.to_string(),
+        },
+    }
 }
 
 /// Chapter 06 §6.8's table, as the one `match` this core makes on it.

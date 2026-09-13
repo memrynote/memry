@@ -60,7 +60,7 @@ pub mod tasks;
 pub mod taxonomy;
 pub mod templates;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, params};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
@@ -133,6 +133,88 @@ pub fn project(
         other => Err(StorageError::Failed {
             what: format!("no projector for item type `{other}`"),
         }),
+    }
+}
+
+/// Marks one item's projection rows deleted, **without reading a payload**.
+///
+/// [`project`]'s sibling on the delete path, dispatching over the same table of
+/// types for the same reason it does. What it may *not* do is read a payload: a
+/// tombstone never reaches a parser (§13.7.2, §6.9.2), so there is no [`Object`]
+/// to project, and for a delete of an item this device never pulled there is no
+/// payload at all (§5.12). All that leaves is the `deleted_at` column §A.4 gives
+/// every projection table, written straight in.
+///
+/// **Total over `item_type`, deliberately.** Unlike [`project`] — which refuses
+/// an unknown type because [`read`] already accepted one — an unknown or
+/// unsubscribed type here has no projection table, so there is nothing to mark;
+/// the record tier still carries the tombstone either way. Erroring would abort
+/// the page over a type this build simply does not model, which is the one
+/// outcome §5.12 rules out for a delete.
+///
+/// Two types have no row to mark, for two different reasons. `custom_icon` has
+/// no table by design (see the module comment). `settings_field_clocks` has no
+/// `deleted_at` column: it is §A.4's one side table, keyed by dotted path, and
+/// the instant belongs to the single `settings` item rather than to a path
+/// inside it — so a `settings` delete marks every row of `settings` and leaves
+/// the per-path clocks alone.
+pub fn delete(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    deleted_at: i64,
+) -> Result<(), StorageError> {
+    for (table, key) in delete_targets(item_type) {
+        match key {
+            Some(column) => conn.execute(
+                &format!("UPDATE {table} SET deleted_at = ?2 WHERE {column} = ?1"),
+                params![item_id, deleted_at],
+            ),
+            // The one item whose projection is many rows under a fixed id.
+            None => conn.execute(
+                &format!("UPDATE {table} SET deleted_at = ?1"),
+                params![deleted_at],
+            ),
+        }
+        .map_err(failed)?;
+    }
+    Ok(())
+}
+
+/// The tables one item type's delete touches, and the column each is keyed by.
+///
+/// `None` means every row of the table belongs to the item. The child tables
+/// are keyed by their owner — `note_tags` by `note_id`, `project_statuses` and
+/// `project_links` by `project_id` — because §A.4 gives a child the same three
+/// common columns as its parent and a deleted note whose tag rows stayed live
+/// is a note that is half out of the tag views.
+///
+/// `project_links` is keyed by `project_id` and **not** by its `(item_type,
+/// item_id)` pair: those name the *linked* item, so keying on them would
+/// tombstone a live project's link because the note at the far end was deleted.
+fn delete_targets(item_type: &str) -> &'static [(&'static str, Option<&'static str>)] {
+    match item_type {
+        "note" => &[("notes", Some("id")), ("note_tags", Some("note_id"))],
+        "journal" => &[
+            ("journal_entries", Some("id")),
+            ("note_tags", Some("note_id")),
+        ],
+        "folder_config" => &[("folders", Some("path"))],
+        "custom_icon" => &[],
+        "tag_definition" => &[("tag_definitions", Some("name"))],
+        "tag_category" => &[("tag_categories", Some("id"))],
+        "property_definition" => &[("property_definitions", Some("name"))],
+        "template" => &[("templates", Some("id"))],
+        "task" => &[("tasks", Some("id"))],
+        "project" => &[
+            ("projects", Some("id")),
+            ("project_statuses", Some("project_id")),
+            ("project_links", Some("project_id")),
+        ],
+        "task_activity" => &[("task_activity", Some("id"))],
+        "reminder" => &[("reminders", Some("id"))],
+        "settings" => &[("settings", None)],
+        _ => &[],
     }
 }
 

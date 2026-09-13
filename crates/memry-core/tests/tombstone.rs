@@ -10,9 +10,13 @@
 //! | ----------------------------------------------- | ---------------------------- |
 //! | either order reaches the identical state        | §5.12, §6.9.2, §7.15         |
 //! | the body edit is orphaned, not a resurrection   | §7.15, §13.7.2               |
-//! | the purge empties both namespaces               | chapter 07 §7.15             |
+//! | the apply purges both namespaces itself         | chapter 07 §7.15             |
 //! | a delete for a body-only document is recorded   | chapter 05 §5.12             |
-//! | **a tripwire over the unimplemented half**      | §7.15, consequences 1 and 2  |
+//!
+//! §7.15's first two consequences are `sync::apply`'s as of this change, and
+//! the tripwire that used to pin their absence is gone with them. The rest of
+//! §7.15 — the ids whose resident `Y.Doc` a caller must still release — is in
+//! `tests/tombstone_purge.rs` along with the untyped delete and the rollback.
 //!
 //! ## The two tiers, and why the answer is deterministic at all
 //!
@@ -49,7 +53,7 @@ use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::outbox;
-use memry_core::sync::pull::{PullLoop, RecordCipher};
+use memry_core::sync::pull::{PullLoop, PullReport, RecordCipher};
 use serde_json::{Value as Json, json};
 use yrs::{ReadTxn as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
 
@@ -112,8 +116,9 @@ fn tombstone_item() -> Json {
     })
 }
 
-/// Runs one real pull page carrying the other device's delete.
-async fn deliver_the_delete(db: &Db) {
+/// Runs one real pull page carrying the other device's delete, and hands back
+/// what the pull reported.
+async fn deliver_the_delete(db: &Db) -> PullReport {
     let transport = FakeTransport::new(vec![
         response(
             200,
@@ -149,6 +154,7 @@ async fn deliver_the_delete(db: &Db) {
          corrupt for lacking a clock"
     );
     assert!(!report.refused);
+    report
 }
 
 // ------------------------------------------------------------------ fixtures
@@ -237,6 +243,24 @@ struct Resolution {
     outbox: Vec<(String, String)>,
 }
 
+impl Resolution {
+    /// The facts that **must not** depend on which feed arrived first.
+    ///
+    /// Existence is a record-tier fact, so the verdict and the projection that
+    /// mirrors it converge whatever the order. The body tier deliberately does
+    /// not: §7.15's purge is what a client does *on applying* a tombstone, and
+    /// an edit typed after that lands in an empty log as a fresh orphan. Both
+    /// orders agree the note is gone; only one of them still holds bytes for
+    /// it, and the server holds them either way.
+    fn existence(&self) -> (Option<i64>, bool, Option<i64>) {
+        (
+            self.record_deleted_at,
+            self.record_has_payload,
+            self.projected_deleted_at,
+        )
+    }
+}
+
 fn observe(db: &Db) -> Resolution {
     db.call_blocking(|conn| {
         let row = sync_items::load(conn, "note", NOTE)?.expect("the note's row");
@@ -303,14 +327,35 @@ async fn a_delete_and_a_concurrent_body_edit_resolve_identically_in_either_order
     let a_state = observe(&a);
     let b_state = observe(&b);
     assert_eq!(
-        a_state, b_state,
+        a_state.existence(),
+        b_state.existence(),
         "delete-versus-edit has one answer: the arrival order of the record \
-         feed and the body feed must not change the result"
+         feed and the body feed must not change whether the note exists"
     );
+    assert_eq!(
+        a_state.outbox, b_state.outbox,
+        "and neither order throws the edit away: both still owe the server \
+         the same push"
+    );
+
+    // The body tier is where the orders legitimately differ, and §7.15 is why.
+    // The purge is what a client does **on applying** a tombstone, so A's edit
+    // — typed before the delete arrived — is purged with the rest of the log,
+    // while B's, typed after, lands in an empty log as a fresh orphan. Neither
+    // is a resurrection: the record verdict above is identical and the server
+    // holds every byte either way (§7.15, third consequence).
+    assert_eq!((a_state.server_updates, a_state.local_updates), (0, 0));
+    assert_eq!((b_state.server_updates, b_state.local_updates), (0, 1));
 
     // And the answer is the delete, not the edit. §6.9.2: a tombstone bypasses
     // the merge entirely, so the concurrent edit never gets a vote.
     assert_eq!(a_state.record_deleted_at, Some(DELETED_AT));
+    assert_eq!(
+        a_state.projected_deleted_at,
+        Some(DELETED_AT),
+        "§7.15: and the projection the reads are driven from agrees, or the \
+         note is deleted everywhere except on screen"
+    );
     assert!(
         a_state.record_has_payload,
         "§5.12: the delete never decoded the body, so the stored payload is \
@@ -330,16 +375,17 @@ async fn the_concurrent_body_edit_is_orphaned_and_never_resurrects_the_note() {
     seed_note(&db);
     let registry = registry();
     let document = registry.get_or_open(NOTE).expect("open");
-    edit_the_body(&db, &document, "still typing");
+    let update = edit_the_body(&db, &document, "still typing");
 
     deliver_the_delete(&db).await;
 
     let after = observe(&db);
     assert_eq!(after.record_deleted_at, Some(DELETED_AT));
 
-    // The orphan: a local update row and a queued push under a document id no
-    // live record names.
-    assert_eq!(after.local_updates, 1, "the edit survived the delete");
+    // The orphan: a queued push under a document id no live record names. The
+    // **outbox** row is what survives §7.15 — the purge takes the local log,
+    // not the pending push, because the edit really happened and the server
+    // will keep it forever.
     assert!(
         after
             .outbox
@@ -349,20 +395,17 @@ async fn the_concurrent_body_edit_is_orphaned_and_never_resurrects_the_note() {
         after.outbox
     );
 
-    // Applying that orphan again — which is exactly what pulling bodies for a
+    // Applying those bytes again — which is exactly what pulling bodies for a
     // tombstoned id would do — reconstructs body state and creates **no**
     // record row. Body bytes are not evidence of existence (§7.15, third
-    // consequence).
+    // consequence). They are read from the update the edit returned rather
+    // than from the log, because §7.15's purge has already emptied the log:
+    // this is the server's surviving copy coming back, which is the case the
+    // rule is about.
     let reopened = DocumentRegistry::new("device-reader", Arc::new(|_, _| {}))
         .get_or_open(NOTE)
         .expect("open");
-    for blob in db
-        .call_blocking(|conn| update_log::load_plan(conn, NOTE).map_err(storage_failure))
-        .expect("plan")
-        .blobs()
-    {
-        reopened.apply_durable_update(blob).expect("replay");
-    }
+    reopened.apply_durable_update(&update).expect("replay");
     assert_eq!(extract_text(&reopened).expect("extract"), "still typing");
     assert_eq!(
         observe(&db).record_deleted_at,
@@ -371,13 +414,16 @@ async fn the_concurrent_body_edit_is_orphaned_and_never_resurrects_the_note() {
     );
 }
 
-/// §7.15's first consequence: on applying a tombstone, the local Y.Doc and the
-/// local update log go.
+/// §7.15's first consequence, done by the apply path itself: on applying a
+/// tombstone the local update log goes, both namespaces and both fold points.
 ///
 /// The purge is what makes the orphan stop being reachable on this device. It
 /// must take **both** namespaces — the server rows the pull left behind and
 /// the local rows the concurrent edit wrote — because either half alone
 /// re-materialises a body for a note the record feed says is gone.
+///
+/// This test used to drive `update_log::purge` by hand, because nothing in the
+/// crate did. Nothing is driven by hand here now: the only call is the pull.
 #[tokio::test]
 async fn the_tombstone_purge_empties_both_namespaces_and_the_document() {
     let db = scratch_db("purge");
@@ -391,20 +437,17 @@ async fn the_tombstone_purge_empties_both_namespaces_and_the_document() {
     })
     .expect("a server row");
 
-    deliver_the_delete(&db).await;
-
     let before = observe(&db);
-    assert_eq!((before.server_updates, before.local_updates), (1, 1));
+    assert_eq!(
+        (before.server_updates, before.local_updates),
+        (1, 1),
+        "both namespaces are loaded before the delete arrives"
+    );
 
-    // The obligation, performed as a tombstone handler must: purge the log,
-    // then drop the in-memory document.
-    db.call_blocking(|conn| update_log::purge(conn, NOTE).map_err(storage_failure))
-        .expect("purge");
-    assert!(registry.release(NOTE), "the Y.Doc is dropped too");
+    let report = deliver_the_delete(&db).await;
 
     let after = observe(&db);
     assert_eq!((after.server_updates, after.local_updates), (0, 0));
-    assert!(registry.peek(NOTE).is_none());
     db.call_blocking(|conn| {
         let plan = update_log::load_plan(conn, NOTE).map_err(storage_failure)?;
         assert!(plan.is_empty(), "neither a snapshot nor an update survives");
@@ -420,6 +463,18 @@ async fn the_tombstone_purge_empties_both_namespaces_and_the_document() {
         Ok(())
     })
     .expect("read back");
+
+    // The **other** half of §7.15's first consequence, and the half the apply
+    // path cannot do: it holds no registry, so a resident `Y.Doc` is still
+    // resident. The pull names the id rather than leaving the caller to
+    // believe the body is gone from memory too.
+    assert_eq!(report.purged_documents, vec![NOTE.to_owned()]);
+    assert!(
+        registry.peek(NOTE).is_some(),
+        "the core did not reach into the registry behind the caller's back"
+    );
+    assert!(registry.release(NOTE), "and the caller's half still works");
+    assert!(registry.peek(NOTE).is_none());
 
     // A document re-opened after the purge is empty: the body is gone from
     // this device even though the server still holds every byte of it.
@@ -454,53 +509,4 @@ async fn a_delete_for_a_note_this_device_only_ever_had_a_body_for_is_still_recor
         Ok(())
     })
     .expect("read back");
-}
-
-/// **A tripwire over today's gap, not an endorsement of it.** When this test
-/// fails, the gap has been closed — delete it and fold the two facts into the
-/// tests above.
-///
-/// §7.15 gives a client applying a tombstone three obligations. The core meets
-/// one of them today. `sync::apply::apply_page`'s tombstone arm calls
-/// `sync::store::mark_deleted` and stops, so:
-///
-/// 1. **The local update log is not purged.** `crdt::update_log::purge` exists
-///    and has **no production call site** anywhere in the crate;
-///    [`the_tombstone_purge_empties_both_namespaces_and_the_document`] drives
-///    it by hand because nothing else does.
-/// 2. **The projection row is not marked deleted.** `mark_deleted` writes
-///    `sync_items.deleted_at` and never reaches `projectors::project`, so the
-///    `notes` row keeps `deleted_at IS NULL`. That column is what
-///    `sync::first_sync_store::recent_document_ids` filters the bodies pass on
-///    (`WHERE deleted_at IS NULL`), so a tombstoned note is still handed to
-///    `body_pull::pull_document` — whose own contract says **callers must not
-///    pass a tombstoned id**, because the server still answers with the
-///    surviving log and applying it resurrects the body.
-///
-/// Together those are §7.15's first two consequences, unimplemented. The
-/// record tier is correct and the body tier is not yet wired to it.
-#[tokio::test]
-async fn todays_gap_a_remote_tombstone_neither_purges_the_body_nor_marks_the_projection() {
-    let db = scratch_db("gap");
-    seed_note(&db);
-    let registry = registry();
-    let document = registry.get_or_open(NOTE).expect("open");
-    edit_the_body(&db, &document, "still typing");
-
-    deliver_the_delete(&db).await;
-
-    let after = observe(&db);
-    assert_eq!(
-        after.record_deleted_at,
-        Some(DELETED_AT),
-        "the record tier is correct"
-    );
-    assert_eq!(
-        after.local_updates, 1,
-        "GAP 1 (§7.15): applying the tombstone left the local update log in          place. When the purge is wired in, this becomes 0 — delete this test."
-    );
-    assert_eq!(
-        after.projected_deleted_at, None,
-        "GAP 2 (§7.15): the `notes` projection is still live, so          `recent_document_ids` will hand this id to the bodies pass and the          surviving server log will be applied straight back. When the delete          reaches the projector, this becomes Some(DELETED_AT) — delete this          test."
-    );
 }

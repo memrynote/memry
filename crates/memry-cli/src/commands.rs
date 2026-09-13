@@ -346,6 +346,10 @@ mod tests {
             cursor: Some("42".to_string()),
             has_more: true,
             refused: true,
+            // §7.15's purged ids are not a count, so the transcript does not
+            // carry them; the field is listed rather than defaulted so a new
+            // count can never be added without this test seeing it.
+            purged_documents: Vec::new(),
         };
         let rendered = format_pull(&report);
         assert!(rendered.contains("applied 7"), "{rendered}");
