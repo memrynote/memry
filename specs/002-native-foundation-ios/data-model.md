@@ -360,6 +360,22 @@ So the rules are:
 - `text` is rebuildable at any time and a rebuild that changes `text_sha256` without a
   corresponding document change is a defect the core can detect by comparing before it
   writes. `source_seq` exists so a rebuild can be skipped when nothing moved.
+
+  **`source_seq` is the sum of the two update-log namespaces' high-water sequence
+  numbers** for that document — the remote `<id>` space and the local `local.<id>`
+  space of chapter 07. The sum rather than a maximum, because the two spaces advance
+  independently: a single maximum sits still while the lower half advances, and a
+  rebuild skipped on a stalled watermark is a note whose search text silently stops
+  tracking its content. Each half is non-decreasing, so the sum moves whenever either
+  does.
+
+- **The search index pass is what materialises `text`.** No other component writes it:
+  the core has no markdown, so `extract_text(doc)` is the only producer, and the only
+  place that walks every document is the incremental index maintenance of FR-053. It
+  writes `text`, `text_sha256`, `source_seq` and `materialised_at` together and leaves
+  `seed_markdown` alone. This is written down because "rebuildable" says when it may be
+  thrown away and never said who builds it, and a projection with no owner is one that
+  is simply never populated.
 - `seed_markdown` is written once at creation, held verbatim, and is the only copy of
   the user's requested content until the WebView has seeded the document. It is
   cleared after the first update from that seeding commits. A phone that creates a
@@ -611,6 +627,23 @@ two strings are not the same bytes, so identical result ordering is a testable c
 only for a corpus where the extracted text matches on both sides. Where it does not,
 the contract is the ranking function, not the ordering.
 
+**Notes and tasks are ranked separately and MUST NOT be merged into one list.** A
+bm25 score is relative to the table it was computed over — its IDF terms come from
+that table's corpus statistics — so a note's score and a task's score are not
+comparable numbers and interleaving them by score produces an order that means
+nothing. A search returns two ranked lists, and any single list a UI shows is a
+presentation decision made above this tier with its own stated rule, not a ranking
+claim.
+
+**A journal's `fts_notes.title`.** Journals are indexed in `fts_notes`, whose second
+column is `title`, and the `journal_entries` projection in §A.4 has no `title` column
+— so the indexer has nowhere obvious to read one. It reads the title from
+`sync_items.payload`, which is where §13.7.2 says a journal's `title` lives, and
+**falls back to the `date` when the key is absent**. Absent is the normal case:
+§13.7.2 states a newly created day carries no `title` at all, so a fallback is the
+common path rather than an error path, and a journal indexed with an empty title
+would be unfindable by name for every day the user never titled.
+
 **Link and graph projections:**
 
 `note_links`: `source_id` TEXT NOT NULL, `target_id` TEXT, `target_title` TEXT NOT
@@ -625,6 +658,15 @@ whose target does not exist yet, which is how a forward reference survives.
 `user_version` the index was built against and a per-table watermark, so an
 incremental reindex is possible and a full rebuild is only needed when the watermark
 is missing.
+
+**`sync_items.updated_at` MUST NOT be the watermark column.** It carries the
+_server's_ instant for a pulled record, so it is not monotone in this device's clock:
+pulling a record the server stamped earlier than the last index pass lands it below
+the watermark, where it is never indexed and the note is simply not findable. The
+columns compared are the ones this device's own clock writes — the projection's
+`synced_at`, `yjs_updates.created_at`, `yjs_snapshots.compacted_at`. The comparison is
+`>=` rather than `>`, so a row written inside the watermark's own millisecond is
+re-indexed rather than missed; re-indexing is idempotent and missing is not.
 
 **One FTS5 operational note carried over from the mobile baseline**: on that stack,
 closing a connection while an FTS5 virtual table is attached segfaults, and the code
