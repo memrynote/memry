@@ -455,6 +455,52 @@ Consequences a conforming client MUST implement:
   the record feed says is deleted.
 - **Do not treat surviving server rows as evidence the delete failed.**
 
+### 7.15.1 The three obligations are not all the same component's
+
+"Delete the local Y.Doc **and** the local update log" reads as one step because
+the cited desktop handler holds both. A port whose apply path holds only a
+database connection cannot do the first half, and that is not a defect in the
+port.
+
+**Normative, split by tier:**
+
+| Obligation                               | Tier    | If the component cannot do it |
+| ---------------------------------------- | ------- | ----------------------------- |
+| mark the record deleted                  | durable | fail the delete               |
+| mark every projection row deleted        | durable | fail the delete               |
+| purge the local update log and snapshots | durable | fail the delete               |
+| release the resident in-memory document  | runtime | **report the id**             |
+
+**The three durable obligations MUST commit as one transaction.** Done as
+separate statements, a crash between them leaves a record marked deleted with a
+live body log — which is precisely the state the second consequence above
+forbids, reached by a client that was trying to obey it. A component that
+cannot complete the purge MUST fail the whole delete rather than commit the
+part it managed: the delete is idempotent and arrives again on the next pass,
+whereas a half-applied one does not.
+
+**A component that holds no document registry MUST report the purged ids to its
+caller rather than skip the runtime obligation silently.** Releasing a resident
+`Y.Doc` is not something a storage tier can do, and a client that simply omitted
+it would keep serving an in-memory document whose durable log it had just
+erased.
+
+### 7.15.2 A purge is keyed by type, never by id shape
+
+**Normative: purge the update log only for a tombstone whose item type is a
+document type.** An id is not evidence of what it names — §5.12.1 already says a
+client MUST NOT infer a type from an id shape, because `tag_definition` ids are
+tag names and `folder_config` ids are folder paths, so the id spaces are not
+disjoint. A tag whose name happens to match a note id would otherwise purge that
+note's body, and the loss is **unrecoverable in practice**: this section leaves
+the server rows in place, so nothing reports an error and the device simply
+stops asking for them.
+
+**The untyped tombstone of §5.12.1 is the deliberate exception and purges
+unconditionally.** That is not id-shape inference either: an untyped delete
+marks _every_ row under that id whatever its type, so whatever owns the body
+rows is among the things being deleted.
+
 **Disposition of Q07.4: answered** (this section).
 
 ## 7.16 The Yjs client id is derived, not chosen
