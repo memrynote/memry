@@ -158,8 +158,17 @@ Not done, and not doable headlessly:
   Either way it is a failed _method_, not a failed requirement: an external file
   edit is not an edit made in the desktop app, which is what T139 asks for.
 
-- **concurrent edits converging with both field changes surviving** against a
-  real desktop. Note that T133 already proves byte-identical convergence with
+- **concurrent edits converging: FAILED via the external-edit path, and the
+  method is the cause.** A held `memry-cli` edit plus a concurrent desktop
+  vault-file edit lost the CLI's paragraph from both sides.
+  `replaceNoteBodyInCrdt` does `fragment.delete(0, fragment.length)` then
+  re-seeds, so the peer's update merges into tombstoned content — applied,
+  converged, invisible. **A real data-loss path** (spec-defect 88, chapter 12
+  §12.5.0.1), and **not** a demonstration that normal editing loses edits: a
+  UI edit takes the incremental path. Closing T139's convergence half needs an
+  edit made in the desktop **editor**, not in the file.
+- ~~**concurrent edits converging with both field changes surviving** against a
+  real desktop.~~ Note that T133 already proves byte-identical convergence with
   real `yrs` and a real database, including the layout check; what is missing
   is the _desktop_ half.
 - **SC-014's injected synthetic unknown item type** round-tripping verbatim.

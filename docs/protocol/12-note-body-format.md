@@ -404,6 +404,36 @@ Root name constants:
 `criticMarkupMarks` is the root that proves the rule: dropping it violates FR-033
 and destroys user data.
 
+#### 12.5.0.1 A whole-fragment replace is not a merge-safe operation
+
+**Normative, and it is a warning rather than a permission.** Deleting a
+fragment's entire contents and reinserting them —
+`fragment.delete(0, fragment.length)` followed by a fresh seed, in one
+transaction — **loses any concurrent edit another device made to the old
+contents.** The deleted items become tombstones, and a peer's update that
+targets them merges as an insert into deleted content: it applies without error,
+converges, and does not appear.
+
+Nothing else in this chapter says so, because everything else here is an
+incremental edit, for which Yjs's merge is exactly what it claims to be. The
+replace is the one shape where "the document converged" and "no edit was lost"
+come apart, and the two are easy to conflate — **both devices agree, and one
+device's work is gone.**
+
+A client MUST NOT use a whole-fragment replace as its merge path for remote
+input. Where a client uses one to re-seed a document from an external source of
+truth — a file on disk, say — it MUST treat that as an authoritative overwrite
+of the body, not as an edit, and a concurrent edit from another device is
+expected to be lost. **Recorded here so a port does not discover it by losing a
+user's paragraph.**
+
+Observed on desktop: an out-of-app edit to a vault markdown file is fed through
+`feedExternalEditToCrdt` → `replaceNoteBodyInCrdt`, which performs exactly this
+replace (`apps/desktop/src/main/sync/crdt-feed.ts`). Its comment calls the
+operation "lossy re Yjs history", which is true and understates it: the loss is
+of concurrent _content_, not only of history. An edit typed into the editor
+takes the incremental path and is not affected.
+
 ### 12.5.1 The mechanism, not just the rule
 
 **Normative.** Yjs materialises a root that arrives in an update but was never

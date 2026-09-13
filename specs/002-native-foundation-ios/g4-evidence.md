@@ -332,3 +332,42 @@ a digest mismatch means the **content** differs, not the extractors — which is
 §12.11's caveat carries: the extractors agree on dropping literal angle brackets
 (§12.1.3.1), so a match proves both shells produced the same text, not that the
 note's text survived intact.
+
+## T139 — concurrent edits: **FAILED via the external-edit path, and the method is the cause**
+
+Run on the real staging account, both devices live:
+
+1. `memry-cli` appended `concurrent-CLI …` and **did not push** — the edit was
+   held locally, which is what makes it concurrent.
+2. The desktop edited the same note, unaware of it.
+3. `memry-cli` pushed. `accepted 1, crdt-updates 1, queued 0`.
+
+Afterwards **the CLI's paragraph was absent from both sides.** The desktop's
+edit survived; the CLI's was gone, including from the CLI's own document.
+
+**The cause is the method, not the protocol.** The desktop edit was made by
+writing to the vault markdown file, which the watcher feeds through
+`feedExternalEditToCrdt` → `replaceNoteBodyInCrdt`, and that performs
+`fragment.delete(0, fragment.length)` followed by a fresh seed, in one
+transaction (`apps/desktop/src/main/sync/crdt-feed.ts`). The deleted items become
+tombstones; the CLI's concurrent update targeted them, so it merged as an insert
+into deleted content — applied without error, converged, invisible.
+
+So this run does **not** show that Memry loses concurrent edits in normal use.
+An edit typed into the editor takes the incremental path and never deletes the
+fragment. What it shows is:
+
+- **the external-file-edit path is not a valid method for a convergence test**,
+  because it introduces the loss it is meant to measure — the same lesson as the
+  timing probe, one level sharper;
+- **a real data-loss path exists**: editing a vault file outside the app while
+  another device has an unsynced edit to the same note loses that device's edit,
+  with both devices agreeing afterwards. `crdt-feed.ts`'s own comment calls the
+  operation "lossy re Yjs history", which understates it — the loss is of
+  concurrent content.
+
+Recorded as spec-defect 88 and written into chapter 12 as new §12.5.0.1.
+
+**T139's concurrent-convergence requirement is therefore still open**, and
+closing it needs an edit made **in the desktop editor**, not in the file. The
+note was restored and both sides verified identical to the pre-test backup.
