@@ -22,21 +22,28 @@ Rules the spec author inherits:
 Chapter files live at `docs/protocol/<nn>-<slug>.md`. Fifteen chapters, `00`
 through `14`.
 
+**Answers: [protocol-answers.md](./protocol-answers.md).** As of 2026-09-13, 24 of
+the questions below are answered from source with citations, including all 19
+must-answer ones. That file also carries an **Errata** table listing the facts in
+_this_ outline that turned out to be wrong; where the two disagree, the answers file
+is correct. Do not copy a fact out of this outline into a chapter without checking
+the errata table first.
+
 ---
 
 ## 00-overview-and-versioning.md
 
 ### Derived from
 
-| Source | What it supplies |
-|---|---|
-| `packages/contracts/src/crypto.ts:13-14` | `CryptoVersion`, `CRYPTO_VERSION` |
-| `packages/contracts/src/pack-format.ts:58-60` | `PACK_MAGIC`, `PACK_VERSION` |
-| `packages/contracts/src/webview-bridge.ts:22` | `BRIDGE_PROTOCOL_VERSION` |
-| `packages/contracts/src/linking-api.ts:3` | `ProviderAuthVersionSchema` |
-| `apps/sync-server/src/index.ts:216-226` | route mount table |
-| `apps/sync-server/src/lib/errors.ts:10-96` | the complete error code enum |
-| `packages/sync-client/src/pull/http.ts:98-121` | how a client reads an error body |
+| Source                                         | What it supplies                  |
+| ---------------------------------------------- | --------------------------------- |
+| `packages/contracts/src/crypto.ts:13-14`       | `CryptoVersion`, `CRYPTO_VERSION` |
+| `packages/contracts/src/pack-format.ts:58-60`  | `PACK_MAGIC`, `PACK_VERSION`      |
+| `packages/contracts/src/webview-bridge.ts:22`  | `BRIDGE_PROTOCOL_VERSION`         |
+| `packages/contracts/src/linking-api.ts:3`      | `ProviderAuthVersionSchema`       |
+| `apps/sync-server/src/index.ts:216-226`        | route mount table                 |
+| `apps/sync-server/src/lib/errors.ts:10-96`     | the complete error code enum      |
+| `packages/sync-client/src/pull/http.ts:98-121` | how a client reads an error body  |
 
 ### Normative facts this chapter must state
 
@@ -69,7 +76,7 @@ through `14`.
    code's HTTP status, reproduced as a table so an implementer can switch on codes
    without reading the server.
 7. Transport defaults a conforming client must adopt: JSON over HTTPS, `Accept:
-   application/json`, a 60 second per-request ceiling
+application/json`, a 60 second per-request ceiling
    (`packages/sync-client/src/pull/http.ts:39`), and `429` carrying `retry-after`
    read in lowercase (`packages/sync-client/src/pull/http.ts:98-100`).
 8. The 25 member `SYNC_ITEM_TYPES` list (`packages/contracts/src/sync-api.ts:7-34`)
@@ -98,38 +105,38 @@ through `14`.
 
 ### Derived from
 
-| Source | What it supplies |
-|---|---|
-| `apps/desktop/src/main/crypto/recovery.ts:11-55` | recovery phrase, seed, verifier comparison |
-| `apps/desktop/src/main/crypto/keys.ts:19-183` | KDF map, Argon2id call, device id, signing key, linking keys |
-| `apps/desktop/src/main/crypto/vault-key-state.ts:14-26` | the local vault key verifier |
-| `packages/contracts/src/crypto.ts:20-76` | context constants, algorithm params, keychain entries |
-| `apps/desktop/src/main/lib/id.ts:13-49` | note, journal, general id formats |
-| `apps/desktop/src/main/crypto/keychain-account.ts:17-32` | keychain account suffixing |
+| Source                                                   | What it supplies                                             |
+| -------------------------------------------------------- | ------------------------------------------------------------ |
+| `apps/desktop/src/main/crypto/recovery.ts:11-55`         | recovery phrase, seed, verifier comparison                   |
+| `apps/desktop/src/main/crypto/keys.ts:19-183`            | KDF map, Argon2id call, device id, signing key, linking keys |
+| `apps/desktop/src/main/crypto/vault-key-state.ts:14-26`  | the local vault key verifier                                 |
+| `packages/contracts/src/crypto.ts:20-76`                 | context constants, algorithm params, keychain entries        |
+| `apps/desktop/src/main/lib/id.ts:13-49`                  | note, journal, general id formats                            |
+| `apps/desktop/src/main/crypto/keychain-account.ts:17-32` | keychain account suffixing                                   |
 
 ### Normative facts this chapter must state
 
 1. The key chain, in order, with the exact libsodium call at each step:
 
-   | Step | Input | Function | Parameters | Output |
-   |---|---|---|---|---|
-   | Phrase to seed | 24 word BIP39 mnemonic | `bip39.mnemonicToSeed` (`recovery.ts:12`) | PBKDF2-HMAC-SHA512, 2048 iterations, salt is the ASCII string `mnemonic` with no passphrase appended | 64 bytes |
-   | Seed to master key | 64 byte seed | `crypto_pwhash` (`keys.ts:49`) | `ALG_ARGON2ID13`, opslimit 3, memlimit 67108864, 16 byte salt | 32 bytes |
-   | Master key to subkey | 32 byte master key | `crypto_kdf_derive_from_key` (`keys.ts:40`) | see the context table below | 32 bytes |
+   | Step                 | Input                  | Function                                    | Parameters                                                                                           | Output   |
+   | -------------------- | ---------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------- |
+   | Phrase to seed       | 24 word BIP39 mnemonic | `bip39.mnemonicToSeed` (`recovery.ts:12`)   | PBKDF2-HMAC-SHA512, 2048 iterations, salt is the ASCII string `mnemonic` with no passphrase appended | 64 bytes |
+   | Seed to master key   | 64 byte seed           | `crypto_pwhash` (`keys.ts:49`)              | `ALG_ARGON2ID13`, opslimit 3, memlimit 67108864, 16 byte salt                                        | 32 bytes |
+   | Master key to subkey | 32 byte master key     | `crypto_kdf_derive_from_key` (`keys.ts:40`) | see the context table below                                                                          | 32 bytes |
 
 2. The KDF context table, verbatim from `apps/desktop/src/main/crypto/keys.ts:19-27`.
    Note the two level naming: the logical context string is a lookup key, and the
    eight byte value fed to libsodium is the `ctx` column.
 
-   | Logical context | libsodium `ctx` | subkey id | length | Used for |
-   |---|---|---|---|---|
-   | `memry-vault-key-v1` | `memryvlt` | 1 | 32 | vault key |
-   | `memry-signing-key-v1` | `memrysgn` | 2 | 32 | no caller found |
-   | `memry-verify-key-v1` | `memryvrf` | 3 | 32 | no caller found |
-   | `memry-key-verifier-v1` | `memrykve` | 4 | 32 | account key verifier |
-   | `memry-linking-enc-v1` | `memrylnk` | 5 | 32 | linking transport key |
-   | `memry-linking-mac-v1` | `memrymac` | 6 | 32 | linking MAC key |
-   | `memry-linking-sas-v1` | `memrysas` | 7 | 32 | short verification code |
+   | Logical context         | libsodium `ctx` | subkey id | length | Used for                |
+   | ----------------------- | --------------- | --------- | ------ | ----------------------- |
+   | `memry-vault-key-v1`    | `memryvlt`      | 1         | 32     | vault key               |
+   | `memry-signing-key-v1`  | `memrysgn`      | 2         | 32     | no caller found         |
+   | `memry-verify-key-v1`   | `memryvrf`      | 3         | 32     | no caller found         |
+   | `memry-key-verifier-v1` | `memrykve`      | 4         | 32     | account key verifier    |
+   | `memry-linking-enc-v1`  | `memrylnk`      | 5         | 32     | linking transport key   |
+   | `memry-linking-mac-v1`  | `memrymac`      | 6         | 32     | linking MAC key         |
+   | `memry-linking-sas-v1`  | `memrysas`      | 7         | 32     | short verification code |
 
    The same seven rows are hard coded a second time in
    `packages/contracts/scripts/gen-crypto-vectors.ts:28-34` and committed as vectors
@@ -170,8 +177,8 @@ through `14`.
    - Server assigned: the `deviceId` returned by `POST /auth/devices`, which is what
      goes on the wire as `signerDeviceId`
      (`apps/desktop/src/main/sync/device-registration.ts:84`, `:189`).
-   The chapter must say which one a conforming client stores and sends. The answer
-   from the implementation is the server assigned one.
+     The chapter must say which one a conforming client stores and sends. The answer
+     from the implementation is the server assigned one.
 
 8. The device signing key is a **random** Ed25519 pair from `crypto_sign_keypair()`
    (`keys.ts:80`), not derived from the master key or the seed. Lengths from
@@ -189,11 +196,11 @@ through `14`.
 
 10. Identifier formats (`apps/desktop/src/main/lib/id.ts:13-49`):
 
-    | Kind | Format | Validator |
-    |---|---|---|
-    | Note id | 12 characters from `0-9a-z` | `/^[0-9a-z]{12}$/` |
-    | Journal id | `j` followed by `YYYY-MM-DD` | `/^j\d{4}-\d{2}-\d{2}$/` |
-    | General id (tasks, projects, ...) | 21 character nanoid | `/^[A-Za-z0-9_-]{21}$/` |
+    | Kind                              | Format                       | Validator                |
+    | --------------------------------- | ---------------------------- | ------------------------ |
+    | Note id                           | 12 characters from `0-9a-z`  | `/^[0-9a-z]{12}$/`       |
+    | Journal id                        | `j` followed by `YYYY-MM-DD` | `/^j\d{4}-\d{2}-\d{2}$/` |
+    | General id (tasks, projects, ...) | 21 character nanoid          | `/^[A-Za-z0-9_-]{21}$/`  |
 
     The server is looser: `NoteIdSchema` is `/^[a-zA-Z0-9_-]+$/` capped at 128
     characters (`apps/sync-server/src/routes/sync.ts:571-574`). Journal ids are the
@@ -229,43 +236,43 @@ through `14`.
 
 ### Derived from
 
-| Source | What it supplies |
-|---|---|
-| `apps/sync-server/src/routes/auth.ts:234-1015` | every auth route |
-| `packages/contracts/src/auth-api.ts` | request and response schemas |
-| `apps/sync-server/src/lib/jwt-verify.ts:5-47` | token claims and verification |
-| `apps/desktop/src/main/sync/token-manager.ts:14-237` | client side token lifecycle |
-| `apps/desktop/src/main/sync/device-registration.ts:51-236` | registration and challenge |
+| Source                                                     | What it supplies              |
+| ---------------------------------------------------------- | ----------------------------- |
+| `apps/sync-server/src/routes/auth.ts:234-1015`             | every auth route              |
+| `packages/contracts/src/auth-api.ts`                       | request and response schemas  |
+| `apps/sync-server/src/lib/jwt-verify.ts:5-47`              | token claims and verification |
+| `apps/desktop/src/main/sync/token-manager.ts:14-237`       | client side token lifecycle   |
+| `apps/desktop/src/main/sync/device-registration.ts:51-236` | registration and challenge    |
 
 ### Normative facts this chapter must state
 
 1. The route table, with method, path, auth requirement, and body schema:
 
-   | Method | Path | Auth | Body / response |
-   |---|---|---|---|
-   | POST | `/auth/otp/request` | none, IP rate limited | `RequestOtpRequestSchema` / `RequestOtpResponseSchema` |
-   | POST | `/auth/otp/resend` | none, IP rate limited | `ResendOtpRequestSchema` |
-   | POST | `/auth/otp/verify` | none, IP rate limited | `VerifyOtpRequestSchema` / `VerifyOtpResponseSchema` |
-   | GET | `/auth/oauth/:provider` | none | redirect to provider |
-   | POST | `/auth/oauth/:provider/callback` | none | `OAuthCallbackSchema` / `OAuthCallbackResponseSchema` |
-   | POST | `/auth/oauth/:provider/native` | none | `NativeOAuthSchema` |
-   | POST | `/auth/setup-token/renew` | proof of device key | `RenewSetupTokenRequestSchema` / `RenewSetupTokenResponseSchema` |
-   | POST | `/auth/devices` | setup token | `DeviceRegisterRequestSchema` / `DeviceRegisterResponseSchema` |
-   | GET | `/auth/recovery-info` | setup token | `RecoveryDataResponseSchema` |
-   | GET | `/auth/key-verifier` | access token | `RecoveryDataResponseSchema` |
-   | GET | `/auth/recovery` | none, IP rate limited | `RecoveryDataResponseSchema` |
-   | POST | `/auth/setup` | access token | `FirstDeviceSetupRequestSchema` |
-   | GET | `/auth/devices` | access token | device list |
-   | POST | `/auth/refresh` | refresh token in body | `RefreshTokenRequestSchema` / `RefreshTokenResponseSchema` |
-   | POST | `/auth/logout` | access token | |
-   | POST | `/auth/logout-all` | access token | |
-   | POST | `/auth/email/change` | access token | `EmailChangeRequestSchema` |
-   | POST | `/auth/email/change/verify` | access token | `EmailChangeVerifySchema` |
-   | DELETE | `/auth/account` | access token | `DeleteAccountRequestSchema` |
-   | GET/POST | `/auth/checkout-token`, `/auth/billing*` | access token | out of scope for this feature |
+   | Method   | Path                                     | Auth                  | Body / response                                                  |
+   | -------- | ---------------------------------------- | --------------------- | ---------------------------------------------------------------- |
+   | POST     | `/auth/otp/request`                      | none, IP rate limited | `RequestOtpRequestSchema` / `RequestOtpResponseSchema`           |
+   | POST     | `/auth/otp/resend`                       | none, IP rate limited | `ResendOtpRequestSchema`                                         |
+   | POST     | `/auth/otp/verify`                       | none, IP rate limited | `VerifyOtpRequestSchema` / `VerifyOtpResponseSchema`             |
+   | GET      | `/auth/oauth/:provider`                  | none                  | redirect to provider                                             |
+   | POST     | `/auth/oauth/:provider/callback`         | none                  | `OAuthCallbackSchema` / `OAuthCallbackResponseSchema`            |
+   | POST     | `/auth/oauth/:provider/native`           | none                  | `NativeOAuthSchema`                                              |
+   | POST     | `/auth/setup-token/renew`                | proof of device key   | `RenewSetupTokenRequestSchema` / `RenewSetupTokenResponseSchema` |
+   | POST     | `/auth/devices`                          | setup token           | `DeviceRegisterRequestSchema` / `DeviceRegisterResponseSchema`   |
+   | GET      | `/auth/recovery-info`                    | setup token           | `RecoveryDataResponseSchema`                                     |
+   | GET      | `/auth/key-verifier`                     | access token          | `RecoveryDataResponseSchema`                                     |
+   | GET      | `/auth/recovery`                         | none, IP rate limited | `RecoveryDataResponseSchema`                                     |
+   | POST     | `/auth/setup`                            | access token          | `FirstDeviceSetupRequestSchema`                                  |
+   | GET      | `/auth/devices`                          | access token          | device list                                                      |
+   | POST     | `/auth/refresh`                          | refresh token in body | `RefreshTokenRequestSchema` / `RefreshTokenResponseSchema`       |
+   | POST     | `/auth/logout`                           | access token          |                                                                  |
+   | POST     | `/auth/logout-all`                       | access token          |                                                                  |
+   | POST     | `/auth/email/change`                     | access token          | `EmailChangeRequestSchema`                                       |
+   | POST     | `/auth/email/change/verify`              | access token          | `EmailChangeVerifySchema`                                        |
+   | DELETE   | `/auth/account`                          | access token          | `DeleteAccountRequestSchema`                                     |
+   | GET/POST | `/auth/checkout-token`, `/auth/billing*` | access token          | out of scope for this feature                                    |
 
    Line anchors: `apps/sync-server/src/routes/auth.ts:234, 239, 272, 316, 353, 435,
-   508, 560, 681, 703, 746, 771, 805, 881, 925, 952, 982, 1000, 1015`.
+508, 560, 681, 703, 746, 771, 805, 881, 925, 952, 982, 1000, 1015`.
 
 2. Access tokens are JWTs signed with **EdDSA** (Ed25519). Required claims:
    `iss = "memry-sync"`, `aud = "memry-client"`, `type = "access"`, `sub` is the
@@ -324,16 +331,16 @@ through `14`.
 10. Client side token lifecycle
     (`apps/desktop/src/main/sync/token-manager.ts:14-237`):
 
-    | Constant | Value | Meaning |
-    |---|---|---|
-    | `ACCESS_TOKEN_EXPIRY_SECONDS` | 900 | assumed lifetime when the server does not say |
-    | `EXPIRY_SAFETY_MARGIN_SECONDS` | 60 | a token within 60s of `exp` counts as expired |
-    | refresh schedule | `floor(expiresIn * (0.5 + rand*0.2))` seconds | proactive refresh between 50% and 70% of life |
-    | `REFRESH_MAX_RETRIES` | 3 | non-401 failures |
-    | `REFRESH_BACKOFF_BASE_MS` | 1000 | `base * 2^attempt` |
-    | `FALLBACK_RETRY_THRESHOLD_S` | 60 | one late retry if this much life remains |
-    | `REFRESH_REJECT_TERMINAL_ATTEMPTS` | 3 | after three 401s, refresh is permanently blocked |
-    | `REFRESH_REJECT_BACKOFF_MS` | `[60_000, 300_000]` | backoff after the first and second 401 |
+    | Constant                           | Value                                         | Meaning                                          |
+    | ---------------------------------- | --------------------------------------------- | ------------------------------------------------ |
+    | `ACCESS_TOKEN_EXPIRY_SECONDS`      | 900                                           | assumed lifetime when the server does not say    |
+    | `EXPIRY_SAFETY_MARGIN_SECONDS`     | 60                                            | a token within 60s of `exp` counts as expired    |
+    | refresh schedule                   | `floor(expiresIn * (0.5 + rand*0.2))` seconds | proactive refresh between 50% and 70% of life    |
+    | `REFRESH_MAX_RETRIES`              | 3                                             | non-401 failures                                 |
+    | `REFRESH_BACKOFF_BASE_MS`          | 1000                                          | `base * 2^attempt`                               |
+    | `FALLBACK_RETRY_THRESHOLD_S`       | 60                                            | one late retry if this much life remains         |
+    | `REFRESH_REJECT_TERMINAL_ATTEMPTS` | 3                                             | after three 401s, refresh is permanently blocked |
+    | `REFRESH_REJECT_BACKOFF_MS`        | `[60_000, 300_000]`                           | backoff after the first and second 401           |
 
     A 401 on refresh is never retried inline. Refresh is single flighted across
     concurrent callers (`:216-223`).
@@ -346,20 +353,20 @@ through `14`.
 12. **Server side lifetimes and ceilings**, which a client must schedule against
     rather than guess:
 
-    | Constant | Value | Source |
-    |---|---|---|
-    | `OTP_LENGTH` | 6 | `apps/sync-server/src/services/otp.ts:3-7` |
-    | `OTP_EXPIRY_SECONDS` | 600 | same |
-    | OTP `MAX_ATTEMPTS` | 5 | same |
-    | OTP `MAX_EMAIL_REQUESTS` / window | 3 per 600 s | same |
-    | `ACCESS_TOKEN_EXPIRY` | `15m` | `apps/sync-server/src/services/auth.ts:8` |
-    | `REFRESH_TOKEN_EXPIRY` | `7d` | `apps/sync-server/src/services/auth.ts:9` |
-    | `SETUP_TOKEN_EXPIRY` | `5m` | `apps/sync-server/src/services/auth.ts:217` |
-    | `SETUP_TOKEN_RENEWAL_WINDOW_SECONDS` | 86400 | `apps/sync-server/src/services/auth.ts:231` |
-    | `ROTATION_GRACE_SECONDS` | 10 | `apps/sync-server/src/services/auth.ts:79` |
-    | `MAX_ROTATION_ATTEMPTS` | 3 | `apps/sync-server/src/services/auth.ts:80` |
-    | `MAX_DEVICES_PER_USER` | 50 | `apps/sync-server/src/routes/auth.ts:586` |
-    | `OAUTH_STATE_EXPIRY` | `5m` | `apps/sync-server/src/routes/auth.ts:171` |
+    | Constant                             | Value       | Source                                      |
+    | ------------------------------------ | ----------- | ------------------------------------------- |
+    | `OTP_LENGTH`                         | 6           | `apps/sync-server/src/services/otp.ts:3-7`  |
+    | `OTP_EXPIRY_SECONDS`                 | 600         | same                                        |
+    | OTP `MAX_ATTEMPTS`                   | 5           | same                                        |
+    | OTP `MAX_EMAIL_REQUESTS` / window    | 3 per 600 s | same                                        |
+    | `ACCESS_TOKEN_EXPIRY`                | `15m`       | `apps/sync-server/src/services/auth.ts:8`   |
+    | `REFRESH_TOKEN_EXPIRY`               | `7d`        | `apps/sync-server/src/services/auth.ts:9`   |
+    | `SETUP_TOKEN_EXPIRY`                 | `5m`        | `apps/sync-server/src/services/auth.ts:217` |
+    | `SETUP_TOKEN_RENEWAL_WINDOW_SECONDS` | 86400       | `apps/sync-server/src/services/auth.ts:231` |
+    | `ROTATION_GRACE_SECONDS`             | 10          | `apps/sync-server/src/services/auth.ts:79`  |
+    | `MAX_ROTATION_ATTEMPTS`              | 3           | `apps/sync-server/src/services/auth.ts:80`  |
+    | `MAX_DEVICES_PER_USER`               | 50          | `apps/sync-server/src/routes/auth.ts:586`   |
+    | `OAUTH_STATE_EXPIRY`                 | `5m`        | `apps/sync-server/src/routes/auth.ts:171`   |
 
     OTP codes are stored as a hex HMAC-SHA256 under `OTP_HMAC_KEY` and compared with
     `timingSafeEqual`; storing a new code marks every prior unused code for that
@@ -413,25 +420,25 @@ through `14`.
 
 ### Derived from
 
-| Source | What it supplies |
-|---|---|
-| `apps/sync-server/src/routes/linking.ts:82-276` | the five routes |
-| `packages/contracts/src/linking-api.ts` | request and response schemas, statuses |
-| `apps/desktop/src/main/crypto/keys.ts:143-229` | X25519, KDF, SAS, MACs |
-| `apps/desktop/src/main/sync/linking-service.ts:63-512, 654-732` | the flow and its ordering |
-| `packages/contracts/src/cbor-ordering.ts:15-19` | the four confirm orderings |
+| Source                                                          | What it supplies                       |
+| --------------------------------------------------------------- | -------------------------------------- |
+| `apps/sync-server/src/routes/linking.ts:82-276`                 | the five routes                        |
+| `packages/contracts/src/linking-api.ts`                         | request and response schemas, statuses |
+| `apps/desktop/src/main/crypto/keys.ts:143-229`                  | X25519, KDF, SAS, MACs                 |
+| `apps/desktop/src/main/sync/linking-service.ts:63-512, 654-732` | the flow and its ordering              |
+| `packages/contracts/src/cbor-ordering.ts:15-19`                 | the four confirm orderings             |
 
 ### Normative facts this chapter must state
 
 1. The five routes and their auth (`apps/sync-server/src/routes/linking.ts`):
 
-   | Method | Path | Auth | Who calls it |
-   |---|---|---|---|
-   | POST | `/auth/linking/initiate` | access token | the already unlocked device |
-   | POST | `/auth/linking/scan` | none | the new device |
-   | GET | `/auth/linking/session/:sessionId` | access token | the already unlocked device |
-   | POST | `/auth/linking/approve` | access token | the already unlocked device |
-   | POST | `/auth/linking/complete` | none | the new device |
+   | Method | Path                               | Auth         | Who calls it                |
+   | ------ | ---------------------------------- | ------------ | --------------------------- |
+   | POST   | `/auth/linking/initiate`           | access token | the already unlocked device |
+   | POST   | `/auth/linking/scan`               | none         | the new device              |
+   | GET    | `/auth/linking/session/:sessionId` | access token | the already unlocked device |
+   | POST   | `/auth/linking/approve`            | access token | the already unlocked device |
+   | POST   | `/auth/linking/complete`           | none         | the new device              |
 
    Lines `:82`, `:117`, `:172`, `:190`, `:276`. `scan` and `complete` are
    deliberately unauthenticated because the new device has no session yet; the
@@ -463,11 +470,11 @@ through `14`.
    bytes, keyed by the linking MAC key, over canonical CBOR in a fixed field order
    (`keys.ts:189-229`, orderings at `packages/contracts/src/cbor-ordering.ts:15-19`):
 
-   | MAC | CBOR ordering | Fields |
-   |---|---|---|
-   | linking proof | `LINKING_PROOF` | `sessionId`, `devicePublicKey` |
-   | key confirm | `KEY_CONFIRM` | `sessionId`, `encryptedMasterKey` |
-   | provider auth confirm | `PROVIDER_AUTH_CONFIRM` | `sessionId`, `encryptedProviderAuth` |
+   | MAC                    | CBOR ordering            | Fields                                |
+   | ---------------------- | ------------------------ | ------------------------------------- |
+   | linking proof          | `LINKING_PROOF`          | `sessionId`, `devicePublicKey`        |
+   | key confirm            | `KEY_CONFIRM`            | `sessionId`, `encryptedMasterKey`     |
+   | provider auth confirm  | `PROVIDER_AUTH_CONFIRM`  | `sessionId`, `encryptedProviderAuth`  |
    | vault transfer confirm | `VAULT_TRANSFER_CONFIRM` | `sessionId`, `encryptedVaultTransfer` |
 
    In every case the value MAC'd is the **base64 string** of the ciphertext, not the
@@ -483,7 +490,7 @@ through `14`.
    must make that impossible to miss.
 
 8. The QR payload is `JSON.stringify({ sessionId, ephemeralPublicKey, linkingSecret,
-   expiresAt })` (`linking-service.ts:181-205`). `expiresAt` is epoch **seconds**,
+expiresAt })` (`linking-service.ts:181-205`). `expiresAt` is epoch **seconds**,
    and the scanner refuses an expired session before doing any crypto (`:112`).
 
 9. Ordering is mandatory on both sides. The approving device verifies
@@ -497,7 +504,7 @@ through `14`.
     as `encryptedMasterKey` plus `encryptedKeyNonce`, both base64.
 
 11. `POST /auth/linking/complete` is polled with `{ maxRetries: 3, baseDelayMs: 2000,
-    retryOn429: false }`, because the poll cadence is itself the retry
+retryOn429: false }`, because the poll cadence is itself the retry
     (`linking-service.ts:313-334`).
 
 12. After completion the new device fetches `GET /auth/recovery-info` and registers
@@ -535,25 +542,25 @@ through `14`.
 
 ### Derived from
 
-| Source | What it supplies |
-|---|---|
-| `packages/sync-client/src/push/record-encrypt.ts:36-107` | the write side |
-| `packages/sync-client/src/pull/record-decrypt.ts:42-154` | the read side, both envelopes |
-| `apps/desktop/src/main/sync/encrypt.ts:35-109` | desktop's write side, the reference |
-| `apps/desktop/src/main/sync/crdt-encrypt.ts:11-94` | the packed CRDT layout |
-| `packages/sync-client/src/compress.ts` | the compression frame |
-| `packages/sync-client/src/pull/cbor.ts`, `apps/desktop/src/main/crypto/cbor.ts` | canonical CBOR |
-| `apps/sync-server/src/services/sync.ts:96-167` | what the server re-derives and verifies |
+| Source                                                                          | What it supplies                        |
+| ------------------------------------------------------------------------------- | --------------------------------------- |
+| `packages/sync-client/src/push/record-encrypt.ts:36-107`                        | the write side                          |
+| `packages/sync-client/src/pull/record-decrypt.ts:42-154`                        | the read side, both envelopes           |
+| `apps/desktop/src/main/sync/encrypt.ts:35-109`                                  | desktop's write side, the reference     |
+| `apps/desktop/src/main/sync/crdt-encrypt.ts:11-94`                              | the packed CRDT layout                  |
+| `packages/sync-client/src/compress.ts`                                          | the compression frame                   |
+| `packages/sync-client/src/pull/cbor.ts`, `apps/desktop/src/main/crypto/cbor.ts` | canonical CBOR                          |
+| `apps/sync-server/src/services/sync.ts:96-167`                                  | what the server re-derives and verifies |
 
 ### Normative facts this chapter must state
 
 1. **Compression frame.** One leading byte, then the payload
    (`packages/sync-client/src/compress.ts:50-55`).
 
-   | Flag | Name | Payload from offset 1 |
-   |---|---|---|
-   | `0x00` | stored | the plaintext verbatim |
-   | `0x01` | zlib | a **zlib-wrapped DEFLATE stream, RFC 1950**, as produced by `pako.deflate` |
+   | Flag   | Name   | Payload from offset 1                                                      |
+   | ------ | ------ | -------------------------------------------------------------------------- |
+   | `0x00` | stored | the plaintext verbatim                                                     |
+   | `0x01` | zlib   | a **zlib-wrapped DEFLATE stream, RFC 1950**, as produced by `pako.deflate` |
 
    The `0x01` payload therefore begins with the zlib header bytes `78 9c` at default
    compression level, verified empirically against the `pako` in this workspace. It
@@ -622,7 +629,7 @@ through `14`.
      value is not `undefined`. `null` is a value and is encoded as `f6`;
    - **rejection**: a defined key that is not in the list is a hard throw, never a
      silent exclusion, with the message `CBOR encoding rejected: fields not in
-     ordering would be excluded: <keys>. Update CBOR_FIELD_ORDER.`
+ordering would be excluded: <keys>. Update CBOR_FIELD_ORDER.`
 
    What the field list does **not** do is determine the output byte order. `cborg`
    canonicalises map keys itself, **length first then bytewise**, which is RFC 8949
@@ -636,12 +643,12 @@ through `14`.
    the behaviour; correcting it is part of A2. Confirmed empirically against the
    `cborg` in this workspace:
 
-   | Input | Encoded key order |
-   |---|---|
+   | Input                        | Encoded key order                                                                    |
+   | ---------------------------- | ------------------------------------------------------------------------------------ |
    | `SYNC_ITEM` field list order | `id`, `type`, `metadata`, `operation`, `cryptoVersion`, ... (lengths 2, 4, 8, 9, 13) |
-   | `{ stateVector, clock }` | `clock`, `stateVector` (lengths 5, 11) |
-   | `{ d1: 1, aa: 2 }` | `aa`, `d1` (equal length, bytewise) |
-   | `{ aa: 1, z: 2 }` | `z`, `aa`, encoding to `a2 61 7a 02 61 61 01` |
+   | `{ stateVector, clock }`     | `clock`, `stateVector` (lengths 5, 11)                                               |
+   | `{ d1: 1, aa: 2 }`           | `aa`, `d1` (equal length, bytewise)                                                  |
+   | `{ aa: 1, z: 2 }`            | `z`, `aa`, encoding to `a2 61 7a 02 61 61 01`                                        |
 
    The last row is the case where length-first and plain lexicographic order
    disagree, and it is why the chapter must state the rule rather than the field
@@ -661,16 +668,16 @@ through `14`.
 8. **Scalar encoding rules** a second implementation must match, verified
    empirically against this workspace's `cborg`:
 
-   | Value | Bytes | Rule |
-   |---|---|---|
-   | `1` | `01` | shortest-form unsigned integer |
-   | `1000000` | `1a 000f4240` | shortest form, 4 byte argument |
-   | `-1` | `20` | shortest-form negative integer |
-   | `1.5` | `f9 3e00` | **narrowed to float16** when exactly representable |
-   | `0.1` | `fb 3fb999999999999a` | float64 when narrowing is lossy |
-   | `Uint8Array([1,2,3])` | `43 010203` | major type 2, byte string, not an array of ints |
-   | `null` | `f6` | |
-   | `true` | `f5` | |
+   | Value                 | Bytes                 | Rule                                               |
+   | --------------------- | --------------------- | -------------------------------------------------- |
+   | `1`                   | `01`                  | shortest-form unsigned integer                     |
+   | `1000000`             | `1a 000f4240`         | shortest form, 4 byte argument                     |
+   | `-1`                  | `20`                  | shortest-form negative integer                     |
+   | `1.5`                 | `f9 3e00`             | **narrowed to float16** when exactly representable |
+   | `0.1`                 | `fb 3fb999999999999a` | float64 when narrowing is lossy                    |
+   | `Uint8Array([1,2,3])` | `43 010203`           | major type 2, byte string, not an array of ints    |
+   | `null`                | `f6`                  |                                                    |
+   | `true`                | `f5`                  |                                                    |
 
    Float narrowing is the trap: a Rust encoder that always emits float64 produces a
    different signature for the same input. Today no signed field is a non-integral
@@ -679,16 +686,16 @@ through `14`.
 9. **`CBOR_FIELD_ORDER.SYNC_ITEM`** as an allowlist, verbatim
    (`packages/contracts/src/cbor-ordering.ts:2-13`):
    `id, type, operation, cryptoVersion, encryptedKey, keyNonce, encryptedData,
-   dataNonce, deletedAt, metadata`. The same file holds seven more lists, each an
+dataNonce, deletedAt, metadata`. The same file holds seven more lists, each an
    allowlist for its own payload (`:14-25`).
 
 10. **Signature payload v1.** Assemble the field set, drop absent keys, encode as
-   canonical CBOR per fact 7, sign Ed25519 detached, base64 the 64 byte signature
-   (`push/record-encrypt.ts:59-84`, `apps/desktop/src/main/sync/encrypt.ts:59-85`,
-   schema `packages/contracts/src/crypto.ts:205-222`). The signed values are the
-   **base64 strings**, not the raw ciphertext bytes. `deletedAt` is included only
-   when defined; `metadata` only when `clock` or `stateVector` exists.
-   `cryptoVersion` is the literal `1` on the write side.
+    canonical CBOR per fact 7, sign Ed25519 detached, base64 the 64 byte signature
+    (`push/record-encrypt.ts:59-84`, `apps/desktop/src/main/sync/encrypt.ts:59-85`,
+    schema `packages/contracts/src/crypto.ts:205-222`). The signed values are the
+    **base64 strings**, not the raw ciphertext bytes. `deletedAt` is included only
+    when defined; `metadata` only when `clock` or `stateVector` exists.
+    `cryptoVersion` is the literal `1` on the write side.
 
 11. **Two divergences the chapter must resolve, not paper over:**
     - The read side defaults a missing `operation` to `'update'`
@@ -713,13 +720,13 @@ through `14`.
     so endianness does not apply (`pull/record-decrypt.ts:103-106`,
     `apps/desktop/src/main/sync/crdt-encrypt.ts:11-14`):
 
-    | Offset | Length | Field |
-    |---|---|---|
-    | 0 | 24 | data nonce |
-    | 24 | 24 | key nonce |
-    | 48 | 48 | wrapped file key |
-    | 96 | 64 | Ed25519 signature |
-    | 160 | rest | ciphertext |
+    | Offset | Length | Field             |
+    | ------ | ------ | ----------------- |
+    | 0      | 24     | data nonce        |
+    | 24     | 24     | key nonce         |
+    | 48     | 48     | wrapped file key  |
+    | 96     | 64     | Ed25519 signature |
+    | 160    | rest   | ciphertext        |
 
     Minimum accepted length is 161 bytes (`pull/record-decrypt.ts:122-124`).
 
@@ -798,32 +805,32 @@ through `14`.
 
 ### Derived from
 
-| Source | What it supplies |
-|---|---|
-| `apps/sync-server/src/routes/sync.ts:79-565` | routes, query params, page limits |
-| `apps/sync-server/src/services/sync.ts:30-233, 470-540` | replay, content hash, blob payload, limits |
-| `apps/sync-server/src/lib/sync-types.ts:34-46` | type negotiation |
-| `packages/contracts/src/sync-api.ts` | every request and response schema |
-| `packages/sync-client/src/pull/engine.ts` | the client's pull loop, apply order, breaker |
-| `packages/sync-client/src/pull/http.ts:18-121` | headers and error mapping |
-| `apps/desktop/src/main/sync/engine/sync-context.ts:126-140`, `engine/push-coordinator.ts:132-263` | the push wave |
+| Source                                                                                            | What it supplies                             |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `apps/sync-server/src/routes/sync.ts:79-565`                                                      | routes, query params, page limits            |
+| `apps/sync-server/src/services/sync.ts:30-233, 470-540`                                           | replay, content hash, blob payload, limits   |
+| `apps/sync-server/src/lib/sync-types.ts:34-46`                                                    | type negotiation                             |
+| `packages/contracts/src/sync-api.ts`                                                              | every request and response schema            |
+| `packages/sync-client/src/pull/engine.ts`                                                         | the client's pull loop, apply order, breaker |
+| `packages/sync-client/src/pull/http.ts:18-121`                                                    | headers and error mapping                    |
+| `apps/desktop/src/main/sync/engine/sync-context.ts:126-140`, `engine/push-coordinator.ts:132-263` | the push wave                                |
 
 ### Normative facts this chapter must state
 
 1. **Routes**, under both `/sync/*` and `/sync/records/*`
    (`apps/sync-server/src/routes/sync.ts:549-565`):
 
-   | Method | Path | Query / body |
-   |---|---|---|
-   | GET | `/sync/status` | none; returns `SyncStatusSchema` including `clientPolicy` |
-   | GET | `/sync/manifest` | optional `limit` (capped at 1000) and `cursor`; a cursor without a limit is malformed |
-   | GET | `/sync/changes` | `cursor`, optional `limit` |
-   | POST | `/sync/push` | `RecordPushRequestSchema`, 1 to 100 items |
-   | POST | `/sync/pull` | `PullRequestSchema`, 1 to 100 item ids |
-   | GET | `/sync/items/:id` | single item |
-   | GET | `/sync/packs` | keyset `cursor` |
-   | GET | `/sync/vaults`, POST `/sync/vaults`, DELETE `/sync/vaults/:vaultId` | vault registry, auth only, above the paid gate |
-   | GET | `/sync/storage` | quota |
+   | Method | Path                                                                | Query / body                                                                          |
+   | ------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+   | GET    | `/sync/status`                                                      | none; returns `SyncStatusSchema` including `clientPolicy`                             |
+   | GET    | `/sync/manifest`                                                    | optional `limit` (capped at 1000) and `cursor`; a cursor without a limit is malformed |
+   | GET    | `/sync/changes`                                                     | `cursor`, optional `limit`                                                            |
+   | POST   | `/sync/push`                                                        | `RecordPushRequestSchema`, 1 to 100 items                                             |
+   | POST   | `/sync/pull`                                                        | `PullRequestSchema`, 1 to 100 item ids                                                |
+   | GET    | `/sync/items/:id`                                                   | single item                                                                           |
+   | GET    | `/sync/packs`                                                       | keyset `cursor`                                                                       |
+   | GET    | `/sync/vaults`, POST `/sync/vaults`, DELETE `/sync/vaults/:vaultId` | vault registry, auth only, above the paid gate                                        |
+   | GET    | `/sync/storage`                                                     | quota                                                                                 |
 
 2. **Headers on every request** (`packages/sync-client/src/pull/http.ts:70-77`):
    `Authorization: Bearer <accessToken>`, `Content-Type: application/json`,
@@ -836,11 +843,11 @@ through `14`.
    separated list with no spaces (`packages/sync-client/src/pull/http.ts:74`). Server
    resolution (`apps/sync-server/src/lib/sync-types.ts:34-46`):
 
-   | Header state | Resolved set |
-   |---|---|
-   | absent | `LEGACY_RECORD_SYNC_ITEM_TYPES`, the frozen 15 |
+   | Header state                           | Resolved set                                           |
+   | -------------------------------------- | ------------------------------------------------------ |
+   | absent                                 | `LEGACY_RECORD_SYNC_ITEM_TYPES`, the frozen 15         |
    | present, at least one entry recognised | the recognised entries, deduplicated, first-seen order |
-   | present, nothing recognised | **the empty set**, serving zero rows |
+   | present, nothing recognised            | **the empty set**, serving zero rows                   |
 
    The empty-set rule is deliberate: falling back to legacy would hand a
    negotiating client 15 types it never asked for, which is the convergence loss the
@@ -854,7 +861,7 @@ through `14`.
    `superRefine` (`:378-386`); `settings` is the only record type exempt.
 
 5. **Push response** is `{ accepted: string[], rejected: [{id, reason}],
-   serverTime, maxCursor }` (`packages/contracts/src/sync-api.ts:392-402`). Acks are
+serverTime, maxCursor }` (`packages/contracts/src/sync-api.ts:392-402`). Acks are
    per item id. Two queued rows sharing an id cannot be told apart in a mixed
    response, so a client must collapse to one push item per id before sending
    (`apps/mobile/src/sync/outbox.ts:582-597`).
@@ -862,11 +869,11 @@ through `14`.
 6. **The push wave** (`apps/desktop/src/main/sync/engine/sync-context.ts:126-132`,
    `engine/push-coordinator.ts:132-263`):
 
-   | Constant | Value |
-   |---|---|
-   | `PUSH_BATCH_SIZE` | 100 |
-   | `MIN_PUSH_BATCH_SIZE` | 1 |
-   | `MAX_PUSH_ITERATIONS` | 50 |
+   | Constant              | Value |
+   | --------------------- | ----- |
+   | `PUSH_BATCH_SIZE`     | 100   |
+   | `MIN_PUSH_BATCH_SIZE` | 1     |
+   | `MAX_PUSH_ITERATIONS` | 50    |
 
    A 5xx on `/sync/push` is answered by **halving the batch**, not by resending the
    same one, and the reduced size becomes a ceiling for the rest of the run. The
@@ -913,7 +920,7 @@ through `14`.
     items were applied (`packages/sync-client/src/pull/engine.ts:24-27`, `:358`).
 
 12. **Tombstones.** `GET /sync/changes` returns `{items, deleted, hasMore,
-    nextCursor}`. The client unions `deleted` ids into the `/sync/pull` request for
+nextCursor}`. The client unions `deleted` ids into the `/sync/pull` request for
     the same page, because tombstones arrive as full signed items and a set
     `deletedAt` is the delete signal (`pull/engine.ts:28-29`, `:350`). A present
     `deletedAt` overrides the declared `operation` (`:229`), and tombstone bodies are
@@ -961,11 +968,11 @@ through `14`.
   What is it supposed to do?
 - **Q05.3** The same four blob fields are canonicalised **twice, differently**. The
   stored R2 object and `contentHash` use `JSON.stringify(payload,
-  Object.keys(payload).sort())`, which is JavaScript's default lexicographic string
+Object.keys(payload).sort())`, which is JavaScript's default lexicographic string
   sort giving `dataNonce, encryptedData, encryptedKey, keyNonce`
   (`apps/sync-server/src/services/sync.ts:211-233`). The signature uses canonical
   CBOR, which sorts length first then bytewise, giving `keyNonce, dataNonce,
-  encryptedKey, encryptedData`. A Rust implementation must reproduce both and must
+encryptedKey, encryptedData`. A Rust implementation must reproduce both and must
   not assume one sort. State both explicitly; this is the kind of near-miss that
   passes a unit test and fails on real data.
 - **Q05.4** `MAX_CHANGES_LIMIT` is 500 but the contract does not state what the
@@ -987,14 +994,14 @@ same inputs produce the same winner and the same conflict set, with no appeal to
 
 ### Derived from
 
-| Source | What it supplies |
-|---|---|
-| `packages/sync-client/src/vector-clock.ts` | the whole clock algebra, 43 lines |
-| `packages/sync-client/src/field-merge.ts:11-137` | field lists, `clockTotal`, the merge |
-| `packages/sync-client/src/offline-clock.ts:31-101` | `_offline` minting and rebinding |
-| `packages/sync-client/src/item-handlers/types.ts:53-68` | the document level resolver |
-| `packages/contracts/src/sync-api.ts:166-173` | `VectorClock`, `OFFLINE_CLOCK_DEVICE_ID` |
-| `packages/contracts/src/settings-sync.ts:78-108` | dotted-path field clocks |
+| Source                                                  | What it supplies                         |
+| ------------------------------------------------------- | ---------------------------------------- |
+| `packages/sync-client/src/vector-clock.ts`              | the whole clock algebra, 43 lines        |
+| `packages/sync-client/src/field-merge.ts:11-137`        | field lists, `clockTotal`, the merge     |
+| `packages/sync-client/src/offline-clock.ts:31-101`      | `_offline` minting and rebinding         |
+| `packages/sync-client/src/item-handlers/types.ts:53-68` | the document level resolver              |
+| `packages/contracts/src/sync-api.ts:166-173`            | `VectorClock`, `OFFLINE_CLOCK_DEVICE_ID` |
+| `packages/contracts/src/settings-sync.ts:78-108`        | dotted-path field clocks                 |
 
 ### Normative facts this chapter must state
 
@@ -1020,12 +1027,12 @@ same inputs produce the same winner and the same conflict set, with no appeal to
    `packages/sync-client/src/field-merge.ts:102-125`. Evaluate in this order and
    stop at the first match:
 
-   | # | Condition | Winner |
-   |---|---|---|
-   | 1 | `clockTotal(remoteFC) > clockTotal(localFC)` | remote |
-   | 2 | `clockTotal(localFC) > clockTotal(remoteFC)` | local |
-   | 3 | totals equal, `'_offline'` is a key of `localFC`, `'_offline'` is **not** a key of `remoteFC`, and the values differ | local |
-   | 4 | otherwise | **remote** |
+   | #   | Condition                                                                                                            | Winner     |
+   | --- | -------------------------------------------------------------------------------------------------------------------- | ---------- |
+   | 1   | `clockTotal(remoteFC) > clockTotal(localFC)`                                                                         | remote     |
+   | 2   | `clockTotal(localFC) > clockTotal(remoteFC)`                                                                         | local      |
+   | 3   | totals equal, `'_offline'` is a key of `localFC`, `'_offline'` is **not** a key of `remoteFC`, and the values differ | local      |
+   | 4   | otherwise                                                                                                            | **remote** |
 
    Three things a specification must say out loud:
    - The winner is chosen by **sum of ticks**, not by `compare`. `compare`'s result
@@ -1054,10 +1061,10 @@ same inputs produce the same winner and the same conflict set, with no appeal to
 
 9. **Field lists.** `TASK_SYNCABLE_FIELDS`, 15 entries in order
    (`field-merge.ts:11-27`): `title, description, projectId, statusId, parentId,
-   priority, position, dueDate, dueTime, startDate, repeatConfig, repeatFrom,
-   sourceNoteId, completedAt, archivedAt`. `PROJECT_SYNCABLE_FIELDS`, 9 entries
+priority, position, dueDate, dueTime, startDate, repeatConfig, repeatFrom,
+sourceNoteId, completedAt, archivedAt`. `PROJECT_SYNCABLE_FIELDS`, 9 entries
    (`:29-39`): `name, description, color, icon, position, isInbox, archivedAt,
-   modifiedAt, homeNoteId`. A field absent from the list is not merged at all.
+modifiedAt, homeNoteId`. A field absent from the list is not merged at all.
    `initAllFieldClocks` seeds every listed field with a copy of the document clock
    (`:41-45`).
 
@@ -1118,37 +1125,37 @@ same inputs produce the same winner and the same conflict set, with no appeal to
 
 ### Derived from
 
-| Source | What it supplies |
-|---|---|
-| `apps/sync-server/src/routes/sync.ts:571-1146` | the six CRDT routes and their schemas |
+| Source                                                           | What it supplies                      |
+| ---------------------------------------------------------------- | ------------------------------------- |
+| `apps/sync-server/src/routes/sync.ts:571-1146`                   | the six CRDT routes and their schemas |
 | `apps/sync-server/src/services/crdt.ts:86-146, 310-360, 690-770` | sequence, revision, snapshot, pruning |
-| `packages/sync-client/src/pull/crdt-pull.ts` | the client read algorithm |
-| `apps/desktop/src/main/sync/crdt-encrypt.ts` | the packed envelope (chapter 04) |
+| `packages/sync-client/src/pull/crdt-pull.ts`                     | the client read algorithm             |
+| `apps/desktop/src/main/sync/crdt-encrypt.ts`                     | the packed envelope (chapter 04)      |
 
 ### Normative facts this chapter must state
 
 1. **Routes** (`apps/sync-server/src/routes/sync.ts:1139-1144`), all under `/sync/crdt`:
 
-   | Method | Path | Purpose |
-   |---|---|---|
-   | POST | `/sync/crdt/updates` | append updates for one note |
-   | GET | `/sync/crdt/updates` | pull updates for one note, `note_id`, `since`, `limit` |
-   | POST | `/sync/crdt/updates/batch` | pull updates for up to 100 notes |
-   | POST | `/sync/crdt/snapshot` | write one snapshot |
-   | POST | `/sync/crdt/snapshot/batch` | write up to 50 snapshots |
-   | GET | `/sync/crdt/snapshot/:noteId` | read the snapshot |
+   | Method | Path                          | Purpose                                                |
+   | ------ | ----------------------------- | ------------------------------------------------------ |
+   | POST   | `/sync/crdt/updates`          | append updates for one note                            |
+   | GET    | `/sync/crdt/updates`          | pull updates for one note, `note_id`, `since`, `limit` |
+   | POST   | `/sync/crdt/updates/batch`    | pull updates for up to 100 notes                       |
+   | POST   | `/sync/crdt/snapshot`         | write one snapshot                                     |
+   | POST   | `/sync/crdt/snapshot/batch`   | write up to 50 snapshots                               |
+   | GET    | `/sync/crdt/snapshot/:noteId` | read the snapshot                                      |
 
 2. **Limits**:
 
-   | Limit | Value | Source |
-   |---|---|---|
-   | `MAX_UPDATE_BYTES` | 5 MiB decoded, per individual update | `routes/sync.ts:145` |
-   | updates per push | 100, each base64 string capped at `MAX_UPDATE_BYTES * 2` | `routes/sync.ts:642` |
-   | notes per batch pull | 1 to 100, duplicate note ids rejected | `routes/sync.ts:631-636` |
-   | updates per note in a batch pull | `limit`, 1 to 100, default 100 | `routes/sync.ts:637` |
-   | updates per single-note pull | `min(limit, 500)` | `routes/sync.ts:781` |
-   | snapshots per batch push | 1 to 50, duplicates rejected | `routes/sync.ts:660-673` |
-   | client batch size | `CRDT_BATCH_MAX_NOTES = 100`, `CRDT_UPDATES_PAGE_LIMIT = 100` | `pull/crdt-pull.ts:26-27` |
+   | Limit                            | Value                                                         | Source                    |
+   | -------------------------------- | ------------------------------------------------------------- | ------------------------- |
+   | `MAX_UPDATE_BYTES`               | 5 MiB decoded, per individual update                          | `routes/sync.ts:145`      |
+   | updates per push                 | 100, each base64 string capped at `MAX_UPDATE_BYTES * 2`      | `routes/sync.ts:642`      |
+   | notes per batch pull             | 1 to 100, duplicate note ids rejected                         | `routes/sync.ts:631-636`  |
+   | updates per note in a batch pull | `limit`, 1 to 100, default 100                                | `routes/sync.ts:637`      |
+   | updates per single-note pull     | `min(limit, 500)`                                             | `routes/sync.ts:781`      |
+   | snapshots per batch push         | 1 to 50, duplicates rejected                                  | `routes/sync.ts:660-673`  |
+   | client batch size                | `CRDT_BATCH_MAX_NOTES = 100`, `CRDT_UPDATES_PAGE_LIMIT = 100` | `pull/crdt-pull.ts:26-27` |
 
    The 50 note snapshot batch size is chosen because a snapshot is up to 5 MB
    decoded, roughly 6.7 MB of base64, and a full batch is the largest request the
@@ -1179,7 +1186,7 @@ same inputs produce the same winner and the same conflict set, with no appeal to
    (`apps/sync-server/src/services/crdt.ts:339-348`).
 
 6. **Pruning is server side.** `DELETE FROM crdt_updates WHERE ... AND sequence_num
-   <= <snapshot sequence_num>` (`apps/sync-server/src/services/crdt.ts:700-726`), with
+<= <snapshot sequence_num>` (`apps/sync-server/src/services/crdt.ts:700-726`), with
    a batch form that runs every SUM ahead of every DELETE inside one D1 transaction
    (`:730-770`). The client does no pruning of the server's log.
 
@@ -1205,7 +1212,7 @@ same inputs produce the same winner and the same conflict set, with no appeal to
     an update entry is `{sequenceNum, data, createdAt, signerDeviceId}` where `data`
     is base64 of the packed envelope; the batch response is
     `{notes: Record<noteId, {updates, hasMore}>, snapshotMeta?: Record<noteId,
-    {sequenceNum, revision, signerDeviceId}>}`; the snapshot response is
+{sequenceNum, revision, signerDeviceId}>}`; the snapshot response is
     `{snapshot, sequenceNum, signerDeviceId, revision?}` with `snapshot` null when
     absent. A note absent from `snapshotMeta` has no server snapshot at all
     (`apps/sync-server/src/services/crdt.ts:291`).
@@ -1286,19 +1293,19 @@ same inputs produce the same winner and the same conflict set, with no appeal to
    docstring (`pack-format.ts:16-56`) and verified against the reader
    (`:213-268`):
 
-   | Region | Offset | Size | Field |
-   |---|---|---|---|
-   | header | 0 | 4 | magic, ASCII `MPAK` |
-   | header | 4 | 1 | format version, `PACK_VERSION = 1` |
-   | header | 5 | 1 | reserved, 0 |
-   | header | 6 | 2 | flags uint16, currently 0 |
-   | payload | 8 | sum of entry lengths | opaque ciphertext, no padding or separators |
-   | index | `indexOffset` | `entryCount` records | see below |
-   | footer | end minus 53 | 32 | SHA-256 of the whole payload region |
-   | footer | | 8 | `entryCount` uint64 |
-   | footer | | 8 | `indexOffset` uint64, absolute file offset |
-   | footer | | 4 | magic `MPAK` |
-   | footer | | 1 | version echo |
+   | Region  | Offset        | Size                 | Field                                       |
+   | ------- | ------------- | -------------------- | ------------------------------------------- |
+   | header  | 0             | 4                    | magic, ASCII `MPAK`                         |
+   | header  | 4             | 1                    | format version, `PACK_VERSION = 1`          |
+   | header  | 5             | 1                    | reserved, 0                                 |
+   | header  | 6             | 2                    | flags uint16, currently 0                   |
+   | payload | 8             | sum of entry lengths | opaque ciphertext, no padding or separators |
+   | index   | `indexOffset` | `entryCount` records | see below                                   |
+   | footer  | end minus 53  | 32                   | SHA-256 of the whole payload region         |
+   | footer  |               | 8                    | `entryCount` uint64                         |
+   | footer  |               | 8                    | `indexOffset` uint64, absolute file offset  |
+   | footer  |               | 4                    | magic `MPAK`                                |
+   | footer  |               | 1                    | version echo                                |
 
    `PACK_HEADER_SIZE = 8`, `PACK_FOOTER_SIZE = 53` (`pack-format.ts:62-70`).
 
@@ -1380,10 +1387,10 @@ same inputs produce the same winner and the same conflict set, with no appeal to
    attached vault (`user-sync-state.ts:149`, `:189`).
 
 2. **Handshake failures** (`user-sync-state.ts:90-135`): invalid token is `401
-   AUTH_INVALID_TOKEN`; a missing `X-App-Version` is `426 SYNC_VERSION_INCOMPATIBLE`;
+AUTH_INVALID_TOKEN`; a missing `X-App-Version` is `426 SYNC_VERSION_INCOMPATIBLE`;
    a version below `MIN_APP_VERSION` is `426 SYNC_VERSION_INCOMPATIBLE` with
    `minVersion` in the error object; a revoked or unknown device is `403
-   AUTH_DEVICE_REVOKED`.
+AUTH_DEVICE_REVOKED`.
 
 3. **One socket per device.** An existing socket tagged `device:<deviceId>` is closed
    with code 4001 when a new one connects (`user-sync-state.ts:137-141`).
@@ -1470,7 +1477,7 @@ same inputs produce the same winner and the same conflict set, with no appeal to
 
 4. The open response (`packages/contracts/src/bootstrap-api.ts:45-74`) is
    `{session: {token, expiresAt, ttlSeconds}, manifest: {items, nextCursor?,
-   serverTime}, tailCursor, attachments?, packs}`. `manifest` is the **first page**
+serverTime}, tailCursor, attachments?, packs}`. `manifest` is the **first page**
    of the paginated manifest, never the whole vault. `tailCursor` is the current
    `MAX(server_cursor)` so the client knows when its pull has caught up. `packs` is
    reserved and always present, always empty until the pack pipeline lands.
@@ -1494,14 +1501,14 @@ same inputs produce the same winner and the same conflict set, with no appeal to
 
 7. **Constants** (`apps/sync-server/src/services/bootstrap-session.ts`):
 
-   | Constant | Value | Line |
-   |---|---|---|
-   | `BOOTSTRAP_SESSION_TTL_SECONDS` | 3600 | `:37` |
-   | `MAX_CONCURRENT_BOOTSTRAP_SESSIONS` | 2 | `:39` |
-   | `BOOTSTRAP_RENEW_LEAD_SECONDS` | 300 | `:41` |
-   | `MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS` | 21600 (6 hours) | `:53` |
-   | `CHUNK_HASH_PAGE_LIMIT` | 512 | `routes/bootstrap.ts:51` |
-   | session endpoint rate limit | 30 per 60 s, device keyed | `routes/bootstrap.ts:43-48` |
+   | Constant                                 | Value                     | Line                        |
+   | ---------------------------------------- | ------------------------- | --------------------------- |
+   | `BOOTSTRAP_SESSION_TTL_SECONDS`          | 3600                      | `:37`                       |
+   | `MAX_CONCURRENT_BOOTSTRAP_SESSIONS`      | 2                         | `:39`                       |
+   | `BOOTSTRAP_RENEW_LEAD_SECONDS`           | 300                       | `:41`                       |
+   | `MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS` | 21600 (6 hours)           | `:53`                       |
+   | `CHUNK_HASH_PAGE_LIMIT`                  | 512                       | `routes/bootstrap.ts:51`    |
+   | session endpoint rate limit              | 30 per 60 s, device keyed | `routes/bootstrap.ts:43-48` |
 
 8. **Elevation multipliers**, which are the whole point of the session
    (`apps/sync-server/src/services/bootstrap-session.ts:242-249`):
@@ -1550,13 +1557,13 @@ same inputs produce the same winner and the same conflict set, with no appeal to
 
 ### Derived from
 
-| Source | What it supplies |
-|---|---|
-| `apps/sync-server/src/lib/client-identity.ts:8-82` | header grammar, parsing, version comparison |
-| `apps/sync-server/src/middleware/client-gate.ts:9-66` | the gate |
-| `packages/contracts/src/sync-api.ts:262-287` | `ClientPolicy`, `SyncStatus` |
-| `packages/sync-client/src/pull/client-header.ts` | the client side builder |
-| `specs/001-mobile-app/contracts/sync-protocol-additions.md:11-85` | the reviewed contract text |
+| Source                                                            | What it supplies                            |
+| ----------------------------------------------------------------- | ------------------------------------------- |
+| `apps/sync-server/src/lib/client-identity.ts:8-82`                | header grammar, parsing, version comparison |
+| `apps/sync-server/src/middleware/client-gate.ts:9-66`             | the gate                                    |
+| `packages/contracts/src/sync-api.ts:262-287`                      | `ClientPolicy`, `SyncStatus`                |
+| `packages/sync-client/src/pull/client-header.ts`                  | the client side builder                     |
+| `specs/001-mobile-app/contracts/sync-protocol-additions.md:11-85` | the reviewed contract text                  |
 
 ### Normative facts this chapter must state
 
@@ -1592,10 +1599,10 @@ same inputs produce the same winner and the same conflict set, with no appeal to
 
 6. **Responses**:
 
-   | Condition | Status | Body |
-   |---|---|---|
-   | kill switch on for this platform | 403 | `{error:{code:"PLATFORM_WRITES_DISABLED", message}}` |
-   | client version below the floor | 426 | `{error:{code:"CLIENT_UPGRADE_REQUIRED", message, minVersion}}` |
+   | Condition                        | Status | Body                                                            |
+   | -------------------------------- | ------ | --------------------------------------------------------------- |
+   | kill switch on for this platform | 403    | `{error:{code:"PLATFORM_WRITES_DISABLED", message}}`            |
+   | client version below the floor   | 426    | `{error:{code:"CLIENT_UPGRADE_REQUIRED", message, minVersion}}` |
 
    `minVersion` rides **inside** the error object, not at the top level
    (`apps/sync-server/src/middleware/client-gate.ts:22-25`, `:56-65`).
@@ -1654,15 +1661,15 @@ byte-identical, which is FR-041 and SC-010.
 
 ### Derived from
 
-| Source | What it supplies |
-|---|---|
-| `packages/contracts/src/ipc-crdt.ts:57`, `packages/contracts/src/webview-bridge.ts:35` | the fragment name |
-| `packages/app-core/src/markdown.ts` | frontmatter split, parse, serialise |
-| `packages/shared/src/markdown-source.ts` | the three-way merge and byte-identity rules |
-| `packages/editor-schema/src/blocks/markdown.ts` | block grammar |
-| `packages/editor-schema/src/inline/*.ts`, `packages/shared/src/date-mention.ts` | inline grammar |
-| `packages/shared/src/{inline-colors,block-markers,block-colors,link-references}.ts`, `packages/shared/src/critic-markup/` | the out-of-band encodings |
-| `packages/editor-schema/src/conformance.ts` | the existing corpus |
+| Source                                                                                                                    | What it supplies                            |
+| ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `packages/contracts/src/ipc-crdt.ts:57`, `packages/contracts/src/webview-bridge.ts:35`                                    | the fragment name                           |
+| `packages/app-core/src/markdown.ts`                                                                                       | frontmatter split, parse, serialise         |
+| `packages/shared/src/markdown-source.ts`                                                                                  | the three-way merge and byte-identity rules |
+| `packages/editor-schema/src/blocks/markdown.ts`                                                                           | block grammar                               |
+| `packages/editor-schema/src/inline/*.ts`, `packages/shared/src/date-mention.ts`                                           | inline grammar                              |
+| `packages/shared/src/{inline-colors,block-markers,block-colors,link-references}.ts`, `packages/shared/src/critic-markup/` | the out-of-band encodings                   |
+| `packages/editor-schema/src/conformance.ts`                                                                               | the existing corpus                         |
 
 ### Normative facts this chapter must state
 
@@ -1674,16 +1681,16 @@ byte-identical, which is FR-041 and SC-010.
 
 2. **The other Y.Doc roots on the same note document**, all production:
 
-   | Root | Yjs type | Owner |
-   |---|---|---|
-   | `prosemirror` | XmlFragment | the body |
-   | `meta` | Map | `apps/desktop/src/main/sync/crdt-writeback.ts:666` |
-   | `tags` | Array | `apps/desktop/src/main/sync/crdt-feed.ts:93` |
-   | `markdownSource` | Map | `packages/shared/src/markdown-source.ts:142` |
-   | `linkReferenceDefinitions` | Array | `packages/shared/src/link-references.ts:158` |
-   | `linkReferenceUsages` | Array | `packages/shared/src/link-references.ts:159` |
-   | `criticMarkupMarks` | Array | `packages/shared/src/critic-markup/yjs.ts:9` |
-   | `probe` | Map | persistence probes only, `crdt-persistence.ts:230` |
+   | Root                       | Yjs type    | Owner                                              |
+   | -------------------------- | ----------- | -------------------------------------------------- |
+   | `prosemirror`              | XmlFragment | the body                                           |
+   | `meta`                     | Map         | `apps/desktop/src/main/sync/crdt-writeback.ts:666` |
+   | `tags`                     | Array       | `apps/desktop/src/main/sync/crdt-feed.ts:93`       |
+   | `markdownSource`           | Map         | `packages/shared/src/markdown-source.ts:142`       |
+   | `linkReferenceDefinitions` | Array       | `packages/shared/src/link-references.ts:158`       |
+   | `linkReferenceUsages`      | Array       | `packages/shared/src/link-references.ts:159`       |
+   | `criticMarkupMarks`        | Array       | `packages/shared/src/critic-markup/yjs.ts:9`       |
+   | `probe`                    | Map         | persistence probes only, `crdt-persistence.ts:230` |
 
    A client that replays only `prosemirror` loses tags, link references, suggestion
    marks and the preserved source.
@@ -1734,7 +1741,7 @@ byte-identical, which is FR-041 and SC-010.
      adjacent hunks with no stable base line between them coalesced into one region,
      then per region: ours-only wins ours, theirs-only wins theirs, and a genuine
      both-sides conflict resolves to **ours**, the house style. `MAX_EDIT_DISTANCE =
-     2000` aborts the whole merge with `null` (`:200`, `:97-100`).
+2000` aborts the whole merge with `null` (`:200`, `:97-100`).
    - Channel: Y.Map root `markdownSource` (`:142`), one key holding `{source}`. The
      write is skipped when the value is already identical, so no spurious Y update
      (`:165`). Recording is budgeted at
@@ -1744,14 +1751,14 @@ byte-identical, which is FR-041 and SC-010.
 6. **Block grammar** (`packages/editor-schema/src/blocks/markdown.ts`), the forms
    that are not plain CommonMark:
 
-   | Block | On-disk form | Anchor |
-   |---|---|---|
-   | callout | `> [!info\|warning\|error\|success]` alone on its line, then one `> ` per non-empty content line | `:26`, `:45-50` |
-   | structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks | `:165-170` |
-   | youtube embed | `![embed](videoUrl)` | `:307`, regex `:304` |
-   | bookmark | `![bookmark](url)` | `:311`, regex `:305` |
-   | file | `<!-- file:{...} --> `, an HTML comment with JSON props | `:358`, `:383`, regex `:349` |
-   | toggle | `<details data-memry-toggle>` / `<summary>...</summary>` / blank / body / blank / `</details>`; `open` variant adds ` open` | `:487-519`, constants `:439`, `:446`, `:447` |
+   | Block            | On-disk form                                                                                                                | Anchor                                       |
+   | ---------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+   | callout          | `> [!info\|warning\|error\|success]` alone on its line, then one `> ` per non-empty content line                            | `:26`, `:45-50`                              |
+   | structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                            | `:165-170`                                   |
+   | youtube embed    | `![embed](videoUrl)`                                                                                                        | `:307`, regex `:304`                         |
+   | bookmark         | `![bookmark](url)`                                                                                                          | `:311`, regex `:305`                         |
+   | file             | `<!-- file:{...} --> `, an HTML comment with JSON props                                                                     | `:358`, `:383`, regex `:349`                 |
+   | toggle           | `<details data-memry-toggle>` / `<summary>...</summary>` / blank / body / blank / `</details>`; `open` variant adds ` open` | `:487-519`, constants `:439`, `:446`, `:447` |
 
    Claiming rules matter as much as the forms. A callout marker regex is strict:
    `> [!note]` and `> [!info] A title` are deliberately not claimed (`:32-36`), a
@@ -1767,14 +1774,14 @@ byte-identical, which is FR-041 and SC-010.
 
 7. **Inline grammar**:
 
-   | Inline type | On-disk form | Anchor |
-   |---|---|---|
-   | `wikiLink` | `[[target]]`, or `[[target\|alias]]` when the alias differs | `packages/editor-schema/src/inline/wiki-link.ts:131-133` |
-   | `hashTag` | `#tag` as a bare span's text | `inline/hash-tag.ts:38-42` |
-   | `dateMention` | `((date:<payload>))`, payload alphabet `[A-Za-z0-9,;_-]` | `packages/shared/src/date-mention.ts:32`, `:103` |
-   | `linkMention` | `((mention:<encoded url>))` | `inline/link-mention.ts:25`, `:50` |
-   | `inlineImage` | `![alt](src)`, width carried in the alt as `alt\|300` with a purely numeric tail | `inline/inline-image.ts:84-92`, `:112` |
-   | `inlineCheckbox` | `<input type=checkbox>` DOM, table cells only | `inline/inline-checkbox.ts:79`, `:107-112` |
+   | Inline type      | On-disk form                                                                     | Anchor                                                   |
+   | ---------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------- |
+   | `wikiLink`       | `[[target]]`, or `[[target\|alias]]` when the alias differs                      | `packages/editor-schema/src/inline/wiki-link.ts:131-133` |
+   | `hashTag`        | `#tag` as a bare span's text                                                     | `inline/hash-tag.ts:38-42`                               |
+   | `dateMention`    | `((date:<payload>))`, payload alphabet `[A-Za-z0-9,;_-]`                         | `packages/shared/src/date-mention.ts:32`, `:103`         |
+   | `linkMention`    | `((mention:<encoded url>))`                                                      | `inline/link-mention.ts:25`, `:50`                       |
+   | `inlineImage`    | `![alt](src)`, width carried in the alt as `alt\|300` with a purely numeric tail | `inline/inline-image.ts:84-92`, `:112`                   |
+   | `inlineCheckbox` | `<input type=checkbox>` DOM, table cells only                                    | `inline/inline-checkbox.ts:79`, `:107-112`               |
 
    `linkMention` encodes seven characters beyond `encodeURIComponent`
    (`! ' ( ) * ~ _`) so the token alphabet closes to `[A-Za-z0-9.%-]`, with a wider
@@ -1786,13 +1793,13 @@ byte-identical, which is FR-041 and SC-010.
 8. **The five out-of-band encodings** named in spec.md FR-005, with their
    implementations:
 
-   | Encoding | Where it lives | Anchor |
-   |---|---|---|
-   | inline colours | `MEMRYICO<n>:` / `:MEMRYICC;` tokens masking `<span style=...>` | `packages/shared/src/inline-colors.ts:74`, `:310-311` |
-   | block markers | `<!-- align:... -->`, `<!-- table-layout:{...} -->`, `<!-- colors:{...} -->`, `<!-- table-colors:{...} -->` | `packages/shared/src/block-markers.ts:28`, `:62`, `:141`; `block-colors.ts:11`, `:79` |
-   | suggestion marks | CriticMarkup, Y.Array root `criticMarkupMarks` | `packages/shared/src/critic-markup/parser.ts:153`, `yjs.ts:9` |
-   | link references | stripped from the body, Y.Array roots `linkReferenceDefinitions` and `linkReferenceUsages` | `packages/shared/src/link-references.ts:65`, `:118`, `:158-159` |
-   | preserved source | Y.Map root `markdownSource` | `packages/shared/src/markdown-source.ts:142` |
+   | Encoding         | Where it lives                                                                                              | Anchor                                                                                |
+   | ---------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+   | inline colours   | `MEMRYICO<n>:` / `:MEMRYICC;` tokens masking `<span style=...>`                                             | `packages/shared/src/inline-colors.ts:74`, `:310-311`                                 |
+   | block markers    | `<!-- align:... -->`, `<!-- table-layout:{...} -->`, `<!-- colors:{...} -->`, `<!-- table-colors:{...} -->` | `packages/shared/src/block-markers.ts:28`, `:62`, `:141`; `block-colors.ts:11`, `:79` |
+   | suggestion marks | CriticMarkup, Y.Array root `criticMarkupMarks`                                                              | `packages/shared/src/critic-markup/parser.ts:153`, `yjs.ts:9`                         |
+   | link references  | stripped from the body, Y.Array roots `linkReferenceDefinitions` and `linkReferenceUsages`                  | `packages/shared/src/link-references.ts:65`, `:118`, `:158-159`                       |
+   | preserved source | Y.Map root `markdownSource`                                                                                 | `packages/shared/src/markdown-source.ts:142`                                          |
 
 9. **The registry FR-040 enumerates** must be stated here and cross-linked to the
    editor schema, so a build-time check can fail when the registry grows a type the
@@ -1803,11 +1810,11 @@ byte-identical, which is FR-041 and SC-010.
 10. **Markdown conversion belongs to the WebView bundle, in both directions. This
     answers Q12.2 and the chapter must state it as a normative division of labour.**
 
-    | Direction | Who | How |
-    |---|---|---|
-    | document to markdown | the WebView bundle, BlockNote plus `@memry/editor-schema` | the existing `export-markdown` bridge message |
-    | markdown to document | the WebView bundle, same code | a new `seed-from-markdown` bridge message, used on note creation and on template application |
-    | document to plain text | the core | `extract_text(doc)`, a plain-text walk of the `prosemirror` `XmlFragment` that keeps headings and list markers, drops everything else, and claims no markdown fidelity. It feeds FTS `content` and previews, nothing else |
+    | Direction              | Who                                                       | How                                                                                                                                                                                                                       |
+    | ---------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+    | document to markdown   | the WebView bundle, BlockNote plus `@memry/editor-schema` | the existing `export-markdown` bridge message                                                                                                                                                                             |
+    | markdown to document   | the WebView bundle, same code                             | a new `seed-from-markdown` bridge message, used on note creation and on template application                                                                                                                              |
+    | document to plain text | the core                                                  | `extract_text(doc)`, a plain-text walk of the `prosemirror` `XmlFragment` that keeps headings and list markers, drops everything else, and claims no markdown fidelity. It feeds FTS `content` and previews, nothing else |
 
     A conforming non-desktop client therefore needs **no markdown grammar and no
     BlockNote block model**. What it does need is exact preservation of the Y.Doc
@@ -1827,10 +1834,10 @@ byte-identical, which is FR-041 and SC-010.
 11. **The cross-shell digest SC-010 compares is defined here, not left to each
     harness.**
 
-    | Item | Digest |
-    |---|---|
-    | a note | SHA-256 over the UTF-8 bytes of `title + "\n" + extract_text(doc)` |
-    | a task or journal record | SHA-256 over the canonical JSON of that record's syncable fields |
+    | Item                     | Digest                                                             |
+    | ------------------------ | ------------------------------------------------------------------ |
+    | a note                   | SHA-256 over the UTF-8 bytes of `title + "\n" + extract_text(doc)` |
+    | a task or journal record | SHA-256 over the canonical JSON of that record's syncable fields   |
 
     Both shells compute it the same way: the core in
     `crates/memry-core/src/crdt/digest.rs`, desktop in
@@ -1912,24 +1919,24 @@ list at thirteen: `note`, `journal`, `folder_config`, `custom_icon`,
    A table per type with field name, type, optionality, and any special rule. The
    ones that carry a rule:
 
-   | Type | Field | Rule |
-   |---|---|---|
-   | `note` | `content` | nullable; a CRDT update push carries `content: null` |
-   | `note` | `fileType` | `markdown \| pdf \| image \| audio \| video`; binary types have no CRDT body |
-   | `note` | `properties` | free-form record; values only, not definitions |
-   | `journal` | `date` | optional **only** so a delete tombstone can omit it; a create or update without it is rejected by an explicit guard in the handler, not by the schema (`:274-281`) |
-   | `task` | `repeatConfig` | `z.unknown()`, opaque |
-   | `task` | `fieldClocks` | present; `task` is one of two field-merged types |
-   | `project` | `statuses`, `links` | nested arrays with their own schemas (`:216-236`) |
-   | `task_activity` | all | append-only and immutable, hence no `fieldClocks` and no `modifiedAt`; `oldValue`/`newValue` are JSON-encoded scalars and always `null` for `description` because the body can be note-sized (`:77-84`) |
-   | `template` | `properties` | must stay an array or `applyTemplate` throws at note-creation time (`:102-105`) |
-   | `tag_definition` | `colorAuthored` | absent means "cannot tell" and the receiver honours the colour; only a sender that knows the field can say `false` (`:293-296`) |
-   | `tag_definition` | `views` | `undefined` keeps the local value, `null` is an explicit clear (`:300-302`) |
-   | `property_definition` | `options` | opaque JSON **text**, deliberately not re-declared, so a newer client's per-option field is not parsed away on a round trip (`:307-321`) |
-   | `custom_icon` | `data` | base64 image bytes carried inline, because a normalised icon is a few KB and this keeps every device's icon directory self-healing (`:348-354`) |
-   | `folder_config` | `icon` | `z.string().nullable()`, the only non-optional field on the type |
-   | `reminder` | `triggeredAt` | **deliberately absent from the payload**: each device shows its own notification, so a synced value would suppress it on a device that never displayed it. Dismiss and snooze state does sync (`:146-153`) |
-   | `settings` | whole payload | `{settings, fieldClocks}` where `fieldClocks` is keyed by dotted path (`packages/contracts/src/settings-sync.ts:113-116`) |
+   | Type                  | Field               | Rule                                                                                                                                                                                                       |
+   | --------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `note`                | `content`           | nullable; a CRDT update push carries `content: null`                                                                                                                                                       |
+   | `note`                | `fileType`          | `markdown \| pdf \| image \| audio \| video`; binary types have no CRDT body                                                                                                                               |
+   | `note`                | `properties`        | free-form record; values only, not definitions                                                                                                                                                             |
+   | `journal`             | `date`              | optional **only** so a delete tombstone can omit it; a create or update without it is rejected by an explicit guard in the handler, not by the schema (`:274-281`)                                         |
+   | `task`                | `repeatConfig`      | `z.unknown()`, opaque                                                                                                                                                                                      |
+   | `task`                | `fieldClocks`       | present; `task` is one of two field-merged types                                                                                                                                                           |
+   | `project`             | `statuses`, `links` | nested arrays with their own schemas (`:216-236`)                                                                                                                                                          |
+   | `task_activity`       | all                 | append-only and immutable, hence no `fieldClocks` and no `modifiedAt`; `oldValue`/`newValue` are JSON-encoded scalars and always `null` for `description` because the body can be note-sized (`:77-84`)    |
+   | `template`            | `properties`        | must stay an array or `applyTemplate` throws at note-creation time (`:102-105`)                                                                                                                            |
+   | `tag_definition`      | `colorAuthored`     | absent means "cannot tell" and the receiver honours the colour; only a sender that knows the field can say `false` (`:293-296`)                                                                            |
+   | `tag_definition`      | `views`             | `undefined` keeps the local value, `null` is an explicit clear (`:300-302`)                                                                                                                                |
+   | `property_definition` | `options`           | opaque JSON **text**, deliberately not re-declared, so a newer client's per-option field is not parsed away on a round trip (`:307-321`)                                                                   |
+   | `custom_icon`         | `data`              | base64 image bytes carried inline, because a normalised icon is a few KB and this keeps every device's icon directory self-healing (`:348-354`)                                                            |
+   | `folder_config`       | `icon`              | `z.string().nullable()`, the only non-optional field on the type                                                                                                                                           |
+   | `reminder`            | `triggeredAt`       | **deliberately absent from the payload**: each device shows its own notification, so a synced value would suppress it on a device that never displayed it. Dismiss and snooze state does sync (`:146-153`) |
+   | `settings`            | whole payload       | `{settings, fieldClocks}` where `fieldClocks` is keyed by dotted path (`packages/contracts/src/settings-sync.ts:113-116`)                                                                                  |
 
 5. **Which merge algorithm each type uses.** `task` and `project` carry
    `fieldClocks` and use field-level merge; `settings` uses dotted-path field clocks
@@ -1987,12 +1994,12 @@ so a later feature does not re-derive it.
 
 ### Derived from
 
-| Source | What it supplies |
-|---|---|
-| `packages/contracts/src/blob-api.ts` | every request and response schema |
-| `apps/sync-server/src/routes/blob.ts:150-838` | the routes |
-| `apps/desktop/src/main/sync/attachments.ts:44, 220-243, 447-522, 808-810, 1363-1364` | chunking, framing, hashing |
-| `packages/sync-client/src/push/attachment-manifest.ts` | the manifest envelope |
+| Source                                                                               | What it supplies                  |
+| ------------------------------------------------------------------------------------ | --------------------------------- |
+| `packages/contracts/src/blob-api.ts`                                                 | every request and response schema |
+| `apps/sync-server/src/routes/blob.ts:150-838`                                        | the routes                        |
+| `apps/desktop/src/main/sync/attachments.ts:44, 220-243, 447-522, 808-810, 1363-1364` | chunking, framing, hashing        |
+| `packages/sync-client/src/push/attachment-manifest.ts`                               | the manifest envelope             |
 
 ### Normative facts this chapter must state
 
@@ -2032,17 +2039,17 @@ so a later feature does not re-derive it.
 
 6. **Routes** (`apps/sync-server/src/routes/blob.ts`):
 
-   | Method | Path |
-   |---|---|
-   | GET, DELETE | `/sync/blob/:blob_key` |
-   | POST | `/sync/attachments/upload/initiate` |
-   | PUT | `/sync/attachments/upload/:session_id/chunk/:chunk_index` |
-   | POST | `/sync/attachments/upload/:session_id/complete` |
-   | GET, DELETE | `/sync/attachments/upload/:session_id` |
-   | POST | `/sync/attachments/dereference` |
-   | POST | `/sync/attachments/presign-batch` |
-   | HEAD, GET | `/sync/attachments/chunks/:chunk_hash` |
-   | GET, PUT | `/sync/attachments/:attachment_id/manifest` |
+   | Method      | Path                                                      |
+   | ----------- | --------------------------------------------------------- |
+   | GET, DELETE | `/sync/blob/:blob_key`                                    |
+   | POST        | `/sync/attachments/upload/initiate`                       |
+   | PUT         | `/sync/attachments/upload/:session_id/chunk/:chunk_index` |
+   | POST        | `/sync/attachments/upload/:session_id/complete`           |
+   | GET, DELETE | `/sync/attachments/upload/:session_id`                    |
+   | POST        | `/sync/attachments/dereference`                           |
+   | POST        | `/sync/attachments/presign-batch`                         |
+   | HEAD, GET   | `/sync/attachments/chunks/:chunk_hash`                    |
+   | GET, PUT    | `/sync/attachments/:attachment_id/manifest`               |
 
 7. **Two transfer paths.** Proxied through the Worker, or direct to R2 with
    presigned URLs. Every presign field is optional on both request and response
