@@ -8,7 +8,9 @@
 //! - [`update_log`] owns the durable two-namespace log in `yjs_updates` and
 //!   `yjs_snapshots`, and knows nothing about yrs beyond "these are bytes";
 //! - [`lifecycle`] owns the state machine of data-model §C.4 and knows about
-//!   neither, so it can be driven and asserted without a document or a database.
+//!   neither, so it can be driven and asserted without a document or a database;
+//! - [`snapshots`] owns chapter 07 §7.13's client obligation: when a snapshot
+//!   may be pushed at all, and the local prune that follows one.
 //!
 //! **The core never parses or serialises markdown** (chapter 12 §12.1.2). Both
 //! directions live in the editor bundle. The only text operation this tier will
@@ -25,11 +27,13 @@
 pub mod errors;
 pub mod lifecycle;
 pub mod registry;
+pub mod snapshots;
 pub mod text_extract;
 pub mod update_log;
 
 pub use errors::CrdtError;
 pub use lifecycle::{DocumentLifecycle, DocumentState, LifecycleConfig};
 pub use registry::{Document, DocumentRegistry, NOTE_DOC_ROOTS, client_id_from_device_id};
+pub use snapshots::{Refusal, SnapshotGate, SnapshotOutcome, SnapshotPusher, SnapshotSealer};
 pub use text_extract::{BODY_FRAGMENT, extract_text};
 pub use update_log::{Namespace, SnapshotRow, UpdateRow};

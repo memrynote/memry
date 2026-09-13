@@ -157,6 +157,13 @@ impl PullLoop {
         }
     }
 
+    /// The client every record call goes out through. Public for the same
+    /// reason [`PullLoop::request`] is: the first-sync sub-sequence drives
+    /// `/sync/changes` itself and must not build a second client.
+    pub fn http(&self) -> &HttpClient {
+        &self.http
+    }
+
     /// The `X-Memry-Vault-Id` header's value, when a vault is selected (§5.2).
     pub fn with_vault(mut self, vault_id: &str) -> Self {
         self.vault_id = Some(vault_id.to_owned());
@@ -267,6 +274,45 @@ impl PullLoop {
         Ok(report)
     }
 
+    /// Fetches, decodes and applies a named set of ids, **without touching
+    /// the record cursor**.
+    ///
+    /// The first sync's metadata pass (T122) drives this: its work list is
+    /// the `payload_state = 'metadata-only'` rows the refs pass recorded, not
+    /// a position in the feed, so there is no cursor to move and §5.14's page
+    /// breaker — which is about a page of the feed — does not apply. Every
+    /// other rule does: per-item validation, the §5.13 apply order, and one
+    /// corrupt item never poisoning its chunk mates.
+    pub async fn fetch_ids(&self, ids: &[String]) -> Result<PullReport, PullError> {
+        let mut report = PullReport::default();
+        let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
+
+        for chunk in ids.chunks(MAX_PULL_IDS) {
+            let body = self.fetch_bodies(chunk).await?;
+            let Some(items) = body.get("items").and_then(Json::as_array) else {
+                report.dropped_pages += 1;
+                continue;
+            };
+            for item in items {
+                match self.decode(item) {
+                    Ok(decoded) => pending.push(decoded),
+                    Err(corrupt) => {
+                        report.corrupt += 1;
+                        self.record_corrupt(item, &corrupt).await?;
+                    }
+                }
+            }
+        }
+
+        pending.sort_by_key(|item| apply_rank(item.item_type()));
+        let outcomes = self.apply_all(pending, Vec::new()).await?;
+        report.applied += outcomes.applied;
+        report.deleted += outcomes.deleted;
+        report.corrupt += outcomes.corrupt;
+        report.expired += outcomes.expired;
+        Ok(report)
+    }
+
     async fn fetch_changes(&self, cursor: Option<&str>) -> Result<ChangesPage, PullError> {
         let mut path = format!("/sync/changes?limit={PULL_PAGE_LIMIT}");
         if let Some(cursor) = cursor {
@@ -284,7 +330,11 @@ impl PullLoop {
         Ok(self.http.send_json(request).await?)
     }
 
-    fn request(&self, method: &str, path: &str) -> ApiRequest {
+    /// The request every record call is built from: session auth plus §5.3's
+    /// negotiation header plus the vault. Public so the first-sync
+    /// sub-sequence ([`super::first_sync`]) drives `/sync/changes` with the
+    /// identical header set rather than a second, drifting copy of it.
+    pub fn request(&self, method: &str, path: &str) -> ApiRequest {
         let mut request = ApiRequest::new(method, path)
             .auth(Auth::Session)
             // §5.3: negotiation is a header, not a query parameter.

@@ -12,6 +12,12 @@
 //! | [`outbox`]        | data-model §A.2, §C.4  | the durable write queue, one transaction at a time |
 //! | [`push`]          | 05 §5.6, 07 §7.2       | one wave: order, seal, send, ack                  |
 //! | [`policy`]        | 11                     | the write gate and the entitlement, three states  |
+//! | [`body_pull`]     | 07 §7.8 – §7.11        | the downward CRDT feed: bodies into `yjs_updates` |
+//! | [`crdt_wire`]     | 07 §7.11               | that feed's wire shapes, read tolerantly          |
+//! | [`bootstrap`]     | 10                     | the elevated window, and the silent fallback      |
+//! | [`socket`]        | 09                     | the hint channel, which is never a data path      |
+//! | [`first_sync`]    | §C.3, FR-028           | refs, then metadata, then bodies for the window   |
+//! | [`first_sync_store`] | §A.2                | that run's two work lists and its two `meta` keys |
 //!
 //! **The core owns no networking.** Every call here goes out through
 //! [`crate::protocol::http`], which goes out through the `Transport` seam
@@ -19,12 +25,18 @@
 //! and a reviewer should treat one appearing as a constitution violation
 //! rather than a convenience.
 
+pub mod body_pull;
+pub mod bootstrap;
 pub mod clock;
+pub mod crdt_wire;
 pub mod engine;
 pub mod field_merge;
+pub mod first_sync;
+pub mod first_sync_store;
 pub mod outbox;
 pub mod policy;
 pub mod pull;
 pub mod push;
+pub mod socket;
 pub mod state;
 pub mod store;
