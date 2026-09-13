@@ -595,6 +595,52 @@ assert the wire guarantees a value. The payload remains the source of record and
 still distinguishes absent from empty; the projection does not, and does not
 need to.
 
+### A.4.1 Task-view membership, and which desktop it means
+
+FR-057 asks for "the same membership semantics as desktop". **Desktop has more
+than one answer**, so this section names the one every port reproduces. That the
+answers differ is recorded as a defect against desktop rather than resolved
+here; a port needs one rule, and needs it written down.
+
+The rules below are desktop's **renderer view helpers**
+(`apps/desktop/src/renderer/src/lib/task-utils/task-view-helpers.ts`) — the code
+behind the sidebar's task views, which is the surface FR-057 is about. Desktop's
+main-process SQL (`apps/desktop/src/main/database/queries/tasks.ts`) answers
+differently and feeds IPC and agent consumers rather than the views.
+
+**Normative for a port:**
+
+- Every view starts from **live, non-archived** tasks. An `archived_at` and a
+  tombstone are both out of every view, always.
+- **Completion is the task's status, not `completedAt`.** A task is complete iff
+  its `status_id` resolves, **within its own project**, to a `project_statuses`
+  row with `is_done`. **An unresolvable status counts as incomplete** — a task
+  whose project has not been pulled yet must still appear in the open views
+  rather than vanish, which is the substitute-never-refuse rule of §A.4 applied
+  to a view.
+- **Subtasks ride along with their parent.** `today`, `upcoming` and `completed`
+  match **top-level** tasks only, then re-admit every live subtask whose parent
+  matched, regardless of the subtask's own status or dates. `by-project` is the
+  exception: there a subtask is a first-class member.
+- **`today`** is overdue-or-due-today plus started-and-not-finished, and
+  **`upcoming`** is strictly tomorrow through today + 7. The window constant is
+  7 days.
+- **Order is `position`**, ties broken on `id` so two devices with equal
+  positions still agree.
+
+**The caller supplies today's date as `YYYY-MM-DD`; this tier does not derive
+it.** A calendar day is a fact about the user's time zone and the core has no
+access to one — deriving it from an instant files an evening task under tomorrow
+for half the planet. Comparison is lexicographic over the first ten characters,
+which is chronological because the wire carries date-only values (§A.6), and
+truncating to ten is what makes a peer that wrote a full timestamp into `dueDate`
+compare as the day it names rather than as strictly greater.
+
+**A row that will not read is an error, not an omission.** FR-032 says a reader
+must never report "none" for "could not tell"; a view is the same case with
+worse consequences, because a task silently dropped from every view is a task the
+user is told does not exist.
+
 ### A.5 `index.db`
 
 Everything here is derived from `data.db` and the whole file may be deleted and

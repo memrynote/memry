@@ -454,6 +454,29 @@ client that replaces a subtree leaves the descendant clocks where they are; they
 are keys outside the modelled set, and the paragraph above already says those
 ride along.
 
+## 6.9.2 Unknown keys on the merge branch, and the tombstone short-circuit
+
+Chapter 13 §13.2 rule 3 says what a **local edit** does with a key this build
+does not model: it keeps it. Nothing said what the **merge** branch does, and
+the two are not the same operation — a merge has two payloads and has to choose
+whose unmodelled keys survive.
+
+**Normative: a field merge keeps the local copy's unmodelled keys and does not
+carry the remote's.** This is the generalisation of §6.7's rule that a field
+absent from the syncable list is not merged at all: the merge writes exactly the
+listed fields it decided, and everything else in the stored payload is left
+where it was. A remote key this build does not model is not lost — it is in the
+remote payload, which the sender still holds, and it arrives through the listed
+fields the moment a build that models it adds them to the list. Carrying it
+instead would make a merge silently import state no clock arbitrated.
+
+**Normative: a tombstone bypasses the field merge entirely.** §13.7.2 already
+says deletes never reach any parser; the consequence for this chapter is that a
+delete is applied without reading `fieldClocks`, without the document gate, and
+without a per-field decision. There is nothing to merge — a deleted row has no
+fields — and a merge attempted on one would fail to parse a payload that is
+legitimately absent and record a delete as corrupt.
+
 ## 6.10 Clock growth — Q06.6
 
 **Normative: nothing prunes a vector clock, and this specification defines no
