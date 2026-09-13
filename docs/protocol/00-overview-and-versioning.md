@@ -261,6 +261,41 @@ unrecognised code as "an error with this HTTP status", never as a parse failure.
 The full per-request header set, including `X-Memry-Sync-Types`,
 `x-memry-client` and `X-Memry-Vault-Id`, is chapter 05 §5.2.
 
+### 0.6.1 The retry ladder
+
+**Normative.** Chapters 03 §3.9, 05 §5.6 and 07 §7.10 each set knobs —
+`maxRetries`, `baseDelayMs`, `retryOn429`, `retryOn5xx` — on a helper that no
+chapter defined. This section defines it, so a second implementation is
+configuring the same thing rather than inventing one.
+
+**Delay.** `baseDelayMs * 2 ^ attempt`, where `attempt` is zero-based, so a
+base of 2000 gives 2 s, 4 s, 8 s. **No jitter.** The client population is one
+device per account rather than a fleet, so the thundering-herd problem jitter
+solves does not arise, and a deterministic ladder is testable against a paused
+clock. A client that adds jitter is not non-conforming, but it is not required
+and MUST NOT be relied on by a server.
+
+**`retry-after` overrides the ladder.** When a `429` carries the header (§0.6,
+lowercase), its value replaces the computed delay for that attempt rather than
+adding to it. Without the header the ladder applies.
+
+**What retries by default**, before a chapter's knobs narrow it:
+
+| Outcome                        | Retried                                                                         |
+| ------------------------------ | ------------------------------------------------------------------------------- |
+| `429`                          | yes, unless `retryOn429: false`                                                 |
+| `500`, `502`, `503`            | yes, unless `retryOn5xx: false` — these are §0.5's `INTERNAL_ERROR` row         |
+| any other 5xx, including `501` | **no** — a `501` is a deployment gap, not a transient fault (chapter 10 §10.12) |
+| any 4xx other than `429`       | no                                                                              |
+| a transport failure            | yes, **except** a TLS failure and a caller-initiated cancellation               |
+
+A TLS failure is excluded because it is a configuration or interception
+problem that a second attempt reproduces exactly; a cancellation is excluded
+because retrying it defeats the caller that asked to stop.
+
+**A `401` is not part of this ladder.** It is handled by chapter 02 §2.10.1,
+outside the retry budget.
+
 ## 0.7 Item type lists
 
 `packages/contracts/src/sync-api.ts` declares six item-type lists. **The counts

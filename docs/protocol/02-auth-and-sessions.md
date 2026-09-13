@@ -33,6 +33,65 @@
 `/auth/checkout-token` (`:820`) and the `/auth/billing*` family (`:831`, `:842`,
 `:863`, `:868`, `:874`) exist and are **out of scope** for this feature.
 
+### 2.1.1 The request and response shapes this feature uses
+
+**Normative.** The table above names schemas; naming a TypeScript symbol is not
+a specification. A port that cannot open that file must still be able to
+serialise a request and deserialise a response, so the shapes are written out
+here. Every field is JSON; `?` marks optional, meaning **absent**, never `null`.
+
+**`POST /auth/otp/request`** and **`POST /auth/otp/resend`**
+
+Request: `email` (string, an email address).
+Response: `success` (bool), `expiresIn?` (number, seconds), `message?` (string).
+
+**`POST /auth/otp/verify`**
+
+Request: `email` (string), `code` (string, exactly six digits, `/^\d{6}$/`),
+`sessionNonce?` (string, non-empty — §2.6), `devicePublicKey?` (string, 1 to
+128 characters — §2.5).
+
+Response: `success` (bool), then all optional: `accessToken`, `refreshToken`,
+`setupToken`, `userId` (strings), `isNewUser`, `needsSetup` (bools). The token
+fields are optional **on the same response** because which ones arrive depends
+on whether the account exists and whether it still needs setup; a reader must
+branch on their presence rather than assume a shape.
+
+**`POST /auth/devices`** — request in §2.3.
+
+Response: `success` (bool), `deviceId?`, `accessToken?`, `refreshToken?`,
+`error?` (strings).
+
+**`POST /auth/setup-token/renew`** — see §2.5 for the signature construction.
+
+Request: `setupToken` (string), `challengeNonce` (string, 1 to 128),
+`challengeSignature` (string, 1 to 256).
+Response: `success` (bool), `setupToken` (string, **required** here, unlike the
+verify response).
+
+**`POST /auth/refresh`**
+
+Request: `refreshToken` (string).
+Response: `accessToken` (string), `refreshToken` (string), `expiresIn`
+(number, seconds) — all three **required**. This is the one auth response with
+no optional fields, and §2.9's rotation is why: a refresh that returned no new
+refresh token would strand the client.
+
+**`GET /auth/recovery-info`**, **`GET /auth/key-verifier`**, **`GET /auth/recovery`**
+
+Response: `kdfSalt` (string), `keyVerifier` (string), both required. §2.7
+covers when the values are dummies.
+
+**`POST /auth/setup`**
+
+Request: `kdfSalt` (string), `keyVerifier` (string).
+
+**`POST /auth/oauth/:provider/native`** (§2.4)
+
+Request: `idToken` (string, up to 4096), `sessionNonce?`, `devicePublicKey?`.
+Response: `success` (bool), `isNewUser?`, `needsSetup?` (bools),
+`setupToken?` (string).
+
 ## 2.2 Access tokens
 
 **Normative.** Access tokens are JWTs signed with **EdDSA** (Ed25519). Required
@@ -166,6 +225,31 @@ A client whose user has to find a 24-word recovery phrase SHOULD commit the key:
 finding the phrase routinely outlasts five minutes
 (`apps/desktop/src/main/ipc/auth-device-handlers.ts:425-428`).
 
+### 2.5.1 What renewal signs
+
+**Normative.** Renewal reuses §2.3.1's construction exactly. The signed message
+is
+
+```
+UTF-8(`${challengeNonce}:${jti}`)
+```
+
+where `jti` is the JWT id of the **setup token being presented**, and the
+signature is Ed25519 detached over those bytes, standard base64, no prefix and
+no CBOR — identical in every respect to the device-registration challenge. Only
+the token whose `jti` is signed can be renewed, which is what stops a leaked
+nonce from renewing an unrelated grant.
+
+Two consequences a client must handle, neither of which follows from the
+request shape alone:
+
+1. **The renewed token carries a new `jti`.** A client that cached the old
+   `jti` to sign its later `POST /auth/devices` challenge will fail that call.
+   Re-read `jti` from the renewed token every time.
+2. **Presenting a grant retires it.** The old token goes into the same
+   single-use ledger §2.3.3 describes, so renewal is a replacement, not an
+   extension, and the old token is dead the moment the new one is issued.
+
 ## 2.6 `sessionNonce` — Q02.1
 
 **Normative.** `sessionNonce` is optional on `VerifyOtpRequestSchema`
@@ -279,6 +363,28 @@ in 47 minutes from one install.
 **Refresh MUST be single-flighted across concurrent callers**
 (`apps/desktop/src/main/sync/token-manager.ts:216-222`). A conforming client that
 does not single-flight reproduces the storm above.
+
+### 2.10.1 What an ordinary authenticated request does on a 401
+
+**Normative.** §2.10 specifies the proactive schedule and the rejection latch,
+and motivates the latch with "roughly fifteen demand-driven callers" — which
+implies a reactive path without ever defining it. Defined here.
+
+A `401` on a request carrying an access token triggers **exactly one** refresh
+and one replay of the original request:
+
+- the refresh goes through the same single-flight as the proactive one, so
+  fifteen concurrent 401s cost one refresh, not fifteen;
+- the replay costs **no backoff** and does not consume a retry attempt, because
+  the first call failed on a stale credential rather than a transient fault;
+- if the replay also returns `401`, the request fails. There is no second
+  refresh and no second replay: two 401s across a fresh token mean the session
+  is gone, not that the timing was unlucky;
+- if the refresh itself fails, the rejection latch of §2.10 applies and the
+  original request fails with the latch's outcome.
+
+A `401` never enters the §0.6.1 ladder, in either direction: it is not
+retryable there, and the replay here is not an attempt there.
 
 ## 2.11 Server-side lifetimes and ceilings
 
