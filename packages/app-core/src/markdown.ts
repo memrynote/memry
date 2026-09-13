@@ -107,8 +107,18 @@ function stripTrailingNewlines(value: string): string {
 }
 
 /**
- * Interim Obsidian-style emitter for the edited-frontmatter path
- * (spec 05 owns the real one). No keys → no YAML block at all.
+ * Obsidian-style emitter for the EDITED-frontmatter path. No keys → no YAML
+ * block at all.
+ *
+ * Key order is JavaScript object insertion order and quoting, line width and
+ * scalar spelling are whatever js-yaml's defaults produce (gray-matter 4.0.3 →
+ * js-yaml 3.15.1: `sortKeys: false`, `lineWidth: 80`, `noCompatMode: false`).
+ * That is NOT a policy and callers MUST NOT depend on it: the only byte-level
+ * guarantee is the UNEDITED path, where `serializeParsedMarkdownNote` re-emits
+ * the original raw block verbatim. Any frontmatter edit may reorder keys, drop
+ * comments, re-quote scalars and re-spell a bare date as an ISO timestamp.
+ *
+ * Specified in docs/protocol/12-note-body-format.md §12.4.
  */
 export function stringifyFrontmatterBlock(
   frontmatter: Record<string, unknown>,

@@ -1,0 +1,34 @@
+{
+  "$comment": "The type registry spec FR-040 enumerates. Checked in so the requirement and the schema cannot drift: src/__tests__/registry-parity.test.ts fails when createMemrySchema produces a type this file does not name, or when this file names a type the schema does not produce. Adding a type to the schema is therefore also an edit to spec.md FR-040 and to docs/protocol/12-note-body-format.md 12.9.",
+  "blocks": [
+    "audio",
+    "bookmark",
+    "bulletListItem",
+    "callout",
+    "checkListItem",
+    "codeBlock",
+    "divider",
+    "file",
+    "heading",
+    "image",
+    "numberedListItem",
+    "paragraph",
+    "quote",
+    "table",
+    "taskBlock",
+    "toggleListItem",
+    "video",
+    "youtubeEmbed"
+  ],
+  "inline": [
+    "dateMention",
+    "hashTag",
+    "inlineCheckbox",
+    "inlineImage",
+    "link",
+    "linkMention",
+    "text",
+    "wikiLink"
+  ],
+  "styles": ["backgroundColor", "bold", "code", "italic", "strike", "textColor", "underline"]
+}
