@@ -34,6 +34,12 @@ thiserror = { workspace = true }
 base64 = { workspace = true }
 hex = { workspace = true }
 async-trait = { workspace = true }
+# Storage. `bundled` pins the engine across simulator, device and CLI and
+# compiles FTS5 in; there is no separate `fts5` feature flag (research R4).
+rusqlite = { workspace = true }
+# `spawn_blocking`: every statement runs on the blocking pool, so the connection
+# mutex is never held across an await (research R4).
+tokio = { workspace = true }
 
 [dev-dependencies]
 dryoc = "1.0.0"

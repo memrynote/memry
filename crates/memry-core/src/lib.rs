@@ -13,5 +13,6 @@ pub mod api;
 pub mod crypto;
 pub mod protocol;
 pub mod seams;
+pub mod storage;
 
 uniffi::setup_scaffolding!();
