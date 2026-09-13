@@ -17,6 +17,8 @@ Switch between Day, Week, Month, and Year from the calendar toolbar.
 
 The current view persists per tab.
 
+Opening Calendar always lands on today, in that view. The date you navigate to is kept for as long as the app stays open — switch to another tab and back and you return to it — but it is not carried over to the next launch, and no dialog is ever open for you when the page appears. Earlier versions restored the last date you had visited along with the last **New event** click, so Calendar could open on a day weeks in the past with the event-creation dialog already up.
+
 Day and week views show a current-time marker on today's grid; event chips remain the
 clickable target for opening or editing events.
 
