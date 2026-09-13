@@ -30,6 +30,47 @@ Three of these carry a companion trait the core implements and the shell calls
 back into: `LifecycleObserver`, `ReachabilityObserver`, and the socket pair
 `SocketListener` / `SocketHandle`.
 
+## There is no event seam
+
+The twelve exported traits split by **who implements which**, and that split is
+what tells a shell author where a callback can deadlock:
+
+| Implemented in Swift, called from Rust                                             | Implemented in Rust, called from Swift                        |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| the eight seams above, plus `SocketHandle`, which `Transport::open_socket` returns | `LifecycleObserver`, `ReachabilityObserver`, `SocketListener` |
+
+**None of the nine is an event channel.** Every one is request-shaped: the core
+asks, the shell answers. `EditorHost::post` and `Notifications` are the only
+push-shaped methods and each addresses one specific host, not the UI. A shell
+author looking for "the Rust-to-Swift event trait" will not find one, and **must
+not add it** — the list is closed, and growing a surface to satisfy a task's
+wording is how a contract changes without anyone deciding it should.
+
+What the shell needs instead is a rule about the nine, and it is absolute:
+
+> **A Swift method that Rust calls MUST NOT re-enter the core.**
+
+UniFFI dispatches a foreign-trait method **synchronously on the calling Rust
+thread**, and the core may hold a lock at the call site — the document
+registry's, or the connection's. A Swift implementation that answers by calling
+back into the core deadlocks against a lock its own caller is holding, and it
+does so only under the interleaving that produced the callback, which is exactly
+why it survives a test suite. Such an implementation's whole job is to do the
+platform thing and return, or to **enqueue** and return.
+
+`apps/ios/Memry/Core/CoreEvents.swift` is where the enqueue lands: one
+`AsyncStream` with `.bufferingNewest(256)`, the single path from anything
+asynchronous to SwiftUI. Dropping the oldest under pressure is correct here
+because every element is a **hint** — the UI re-reads a snapshot through the
+executor rather than reconstructing state from the stream — so a dropped element
+costs nothing, while an unbounded buffer costs memory on a device already under
+pressure. A stream whose elements were state deltas could not be lossy, and that
+is the reason this one carries hints.
+
+When band B3's `Sync` and `Notes` objects need to tell the shell something the
+shell did not ask for, that emitter is a **change to this closed list** and needs
+the written justification above. Its Swift side yields into the same hub.
+
 ## Transport is one trait, and it is dumb
 
 `send(request)` and `open_socket(...)` live on **one** trait. Both are the same
