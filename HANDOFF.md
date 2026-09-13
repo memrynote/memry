@@ -16,7 +16,8 @@ Branch `native-core-phase-3` in `.worktrees/native-core-phase-3`, fast-forwarded
 | W2b  | T109–T111 yrs registry, two-namespace update log, lifecycle   | done, on main |
 | W3b  | T104 repositories + thirteen per-type projectors              | done, on main |
 
-Ticked this session: T099, T100, T101, T102, T103, T104, T105, T106, T109, T110, T111.
+Ticked this session: T096, T097, T098, T099, T100, T101, T102, T103, T104, T105,
+T106, T109, T110, T111, T232.
 
 ## Waves in flight
 
@@ -24,14 +25,15 @@ None. Nothing is half-applied; the tree is clean.
 
 ## The exact next wave to dispatch
 
-**W3a `{T096, T097, T098}`** — runtime host, HTTP client over the `Transport` seam, auth.
-It was dispatched once and died before writing a file (see "What went wrong"), and is the
-only W3 unit still open. It owns `src/api/{runtime,auth,mod}.rs` and
-`src/protocol/{http,auth,mod}.rs`. Do **not** add `reqwest` to `memry-core`: the core owns
-no networking, the real transport is T112's in `memry-cli`, and W3a tests against a fake.
+**W4 `{T107, T108}`** — the pull loop (`sync/pull.rs`) and the sync engine state
+machine (`sync/engine.rs`, exactly as data-model §C.3 draws it, every pass serialised
+through one gate). W1, W2 and W3 are all in, so nothing blocks it. `field-merge` is the
+vector class it should bring with it: the class exercises chapter 06's `mergeFields`,
+which does not exist yet and belongs in the engine's neighbourhood, not in the
+projectors.
 
-After it: **W4 `{T107, T108}`** pull loop + engine state machine, which needs W1+W2+W3.
-Then W5 `{T112, T113}`, which is where staging first becomes reachable.
+After it: **W5 `{T112, T113}`**, the `memry-cli` transport and commands. That is where
+staging first becomes reachable and where the T114 checks below run.
 
 ## What went wrong, so it is not repeated
 
@@ -55,7 +57,8 @@ before assuming it is working.
 
 ## Open spec-defect entries
 
-**Zero.** 17 logged, 17 closed. G3's defect-log condition is met as of this session; G5
+**Zero.** 22 logged, 22 closed. Five of the twenty-two required reading TypeScript;
+the rest were internal contradictions or gaps found without leaving `docs/protocol/`. G3's defect-log condition is met as of this session; G5
 re-checks it.
 
 ## Blocked
@@ -104,21 +107,39 @@ current stable over the 1.95 floor. All three iOS targets are installed on 1.98.
 If a fresh machine builds red, `rustup toolchain install 1.98.1` with
 `aarch64-apple-ios`, `aarch64-apple-ios-sim`, `x86_64-apple-ios`.
 
+## FFI surface
+
+10 exported functions, **14 protocols, 2 objects** (`AuthSession`, `RuntimeHost`).
+`build-xcframework.sh` runs end to end; both slices emit; the generated Swift is
+committed and the `.xcframework` stays gitignored. `contracts/core-api.md` is current.
+`contracts/shell-seams.md` needed no edit — the eight foreign seams and their four
+companions are unchanged; the two extra protocols are the ones UniFFI emits for the two
+objects.
+
+Re-run `build-xcframework.sh` and update `core-api.md` whenever an object, an exported
+function or an exported error enum changes.
+
 ## Current gate baseline — re-run and observed at the end of this session
 
-| Gate                                           | Result                                                    |
-| ---------------------------------------------- | --------------------------------------------------------- |
-| `cargo fmt --all --check`                      | clean                                                     |
-| `cargo clippy --all-targets -- -D warnings`    | clean                                                     |
-| `cargo test`                                   | 80 passed, 0 failed (66 lib + 7 dryoc_parity + 7 vectors) |
-| `node scripts/check-line-ceilings.mjs`         | passed                                                    |
-| `pnpm lint`                                    | 1 pre-existing warning, `vault-switcher.tsx:96`           |
-| `pnpm typecheck`                               | 19/19                                                     |
-| `pnpm test`                                    | 20935 passed, 3 expected fail, 13 skipped                 |
-| `pnpm --filter @memry/contracts vectors:check` | 11 classes                                                |
-| `pnpm docs:build`                              | complete                                                  |
+| Gate                                           | Result                                                                                                    |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `cargo fmt --all --check`                      | clean                                                                                                     |
+| `cargo clippy --all-targets -- -D warnings`    | clean                                                                                                     |
+| `cargo test`                                   | 141 passed, 0 failed (88 lib, 19 http_client, 18 auth_session, 7 dryoc_parity, 7 vectors, 2 crdt_vectors) |
+| `node scripts/check-line-ceilings.mjs`         | passed                                                                                                    |
+| `pnpm lint`                                    | 1 pre-existing warning, `vault-switcher.tsx:96`                                                           |
+| `pnpm typecheck`                               | 19/19                                                                                                     |
+| `pnpm test`                                    | 20936 passed, 3 expected fail, 13 skipped, 1517 files                                                     |
+| `pnpm --filter @memry/contracts vectors:check` | 11 classes                                                                                                |
+| `pnpm docs:build`                              | complete                                                                                                  |
 
 Anything worse than this is the next session's to fix, not to inherit.
+
+**One flake seen, named rather than buried.** A `pnpm test` run that overlapped the
+`build-xcframework.sh` release builds reported 1 failed file and 20898 tests. Two clean
+re-runs with nothing else on the machine gave 1517 files and 20936 tests, 0 failures. It
+is CPU contention against a timing-sensitive desktop test, not a regression — but do not
+run the root suite alongside a Rust release build, because the result is not evidence.
 
 ## Vector tier — SC-001
 
