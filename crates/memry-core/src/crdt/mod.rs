@@ -12,7 +12,9 @@
 //!
 //! **The core never parses or serialises markdown** (chapter 12 §12.1.2). Both
 //! directions live in the editor bundle. The only text operation this tier will
-//! ever own is `extract_text`, and that arrives with its own task.
+//! ever own is [`text_extract::extract_text`], a plain-text walk of the
+//! `prosemirror` fragment that keeps heading and list markers and claims no
+//! markdown fidelity.
 //!
 //! **The wire carries no item type** (chapter 07 §7.1): a journal body is a
 //! document in the same feed as a note, keyed by the journal record's own id,
@@ -23,9 +25,11 @@
 pub mod errors;
 pub mod lifecycle;
 pub mod registry;
+pub mod text_extract;
 pub mod update_log;
 
 pub use errors::CrdtError;
 pub use lifecycle::{DocumentLifecycle, DocumentState, LifecycleConfig};
 pub use registry::{Document, DocumentRegistry, NOTE_DOC_ROOTS, client_id_from_device_id};
+pub use text_extract::{BODY_FRAGMENT, extract_text};
 pub use update_log::{Namespace, SnapshotRow, UpdateRow};
