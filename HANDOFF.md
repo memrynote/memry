@@ -106,11 +106,16 @@ Done and recorded in `g4-evidence.md`:
 
 Not done, and not doable headlessly:
 
-- **`memry-cli` edit to desktop under 5 s, and desktop edit to `memry-cli`
-  under 5 s.** A desktop was observed running against staging this session
-  (`pnpm --filter @memry/desktop dev:a:staging`). Driving it or reading its
-  live database was not done — that is intrusive on Kaan's running app and is
-  his call.
+- **`memry-cli` edit to desktop: DONE, 2.16 s.** Measured against what the
+  desktop wrote back to its vault markdown file on disk, so it covers the yrs
+  append, the seal, the push, the server, the desktop's receive, apply, render
+  and write-back. Under the 5 s bar. Recorded in `g4-evidence.md`.
+- **Desktop edit to `memry-cli`: NOT DEMONSTRATED.** Appending to the vault's
+  markdown file directly did not work — after 90 s the line had not reached the
+  CLI and the file's mtime was unchanged, so the desktop never ingested it. The
+  file was restored byte-identically. That is a failed _method_, not a failed
+  requirement: an external file edit is not an edit made in the desktop app.
+  This half needs the desktop UI driven, which is Kaan's to do or authorise.
 - **concurrent edits converging with both field changes surviving** against a
   real desktop. Note that T133 already proves byte-identical convergence with
   real `yrs` and a real database, including the layout check; what is missing

@@ -172,3 +172,55 @@ T139 also requires a **recorded round trip against a running desktop** —
 halves need a desktop app running against the same staging account and are not
 recordable from a headless session alone. SC-014's injected unknown item type
 and SC-010's cross-shell digest are likewise pending.
+
+## T139 — G5, partially closed
+
+### `memry-cli` edit to desktop: **PASS, 2.16 s**
+
+A desktop was running against the same staging account and the same vault
+(`pnpm --filter @memry/desktop dev:a:staging`, vault `692184c5-…`). Its vault
+is a real directory of markdown files, so the propagation was measured against
+**what the desktop wrote back to disk** — not against a database row, and not
+against a UI observation.
+
+```
+marker: cli-to-desktop 141820
+$ memry ... notes edit z01wzfmf44ka --append "cli-to-desktop 141820" --vault 692184c5-…
+$ memry ... push --vault 692184c5-…
+accepted 1   crdt-updates 1   queued 0
+elapsed: 2.16s
+PRESENT in the desktop vault file
+```
+
+That 2.16 s covers the whole path: the yrs append, the seal, the push, the
+server, the desktop's realtime receive, its CRDT apply, its render, and its
+write-back to `projects/Conference Talk.md`. **Under the 5 s bar.**
+
+An earlier CLI write, `G5 blocked-write probe`, was already present in the same
+file before this run — so the direction was proven twice, once incidentally.
+
+### Desktop edit to `memry-cli`: **NOT DEMONSTRATED**
+
+Attempted by appending a line to the vault's markdown file directly, on the
+theory that the desktop watches the vault directory and would ingest it as its
+own edit. It did not: after 90 s the line had not reached the CLI, and the
+file's mtime was still the moment of the external write, meaning **the desktop
+never rewrote the file and never ingested the change.**
+
+Recorded as a failed _method_, not a failed requirement. An external file edit
+is not the same thing as an edit made in the desktop app — T139 asks for the
+latter, and the desktop's file-watch behaviour in a dev build is a separate
+question from whether the core receives a desktop edit promptly. The file was
+**restored to its pre-attempt contents**, verified byte-identical against a
+backup taken before the write.
+
+Closing this half needs an edit made in the desktop UI, which is Kaan's to
+make or to authorise automating.
+
+### Still open in T139
+
+- concurrent edits converging against a real desktop (T133 proves byte-identical
+  convergence against real `yrs` and a real database, including §12.5.0's layout
+  check — the _desktop_ half is what is missing);
+- SC-014's injected synthetic unknown item type, which needs a direct D1 write;
+- SC-010's cross-shell digest, which needs desktop's extracted text for one note.
