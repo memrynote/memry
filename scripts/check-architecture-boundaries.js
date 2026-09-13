@@ -496,7 +496,80 @@ async function checkMobileReachability(blockingViolations) {
 // second network path the core cannot see, cannot retry and cannot kill-switch.
 const iosAppRoot = path.resolve(repoRoot, 'apps/ios/Memry')
 const iosTransportSeamRoot = path.resolve(iosAppRoot, 'Seams')
+// Matched as whole identifiers, longest first. A plain substring match is wrong
+// in one specific and recurring way: the ONE permitted implementation of the
+// Transport seam is a type whose own name begins with `URLSession`, so every
+// composition root that merely *names* it — which is exactly what a correctly
+// layered shell does — reported as a network path outside the seam. The rule is
+// about reaching the platform API, not about the letters in an identifier.
+// `URLSessionTransport` is a type from Seams/; `URLSession.shared` is the API.
 const iosNetworkSymbols = ['URLSessionWebSocketTask', 'URLSession']
+
+// `(?<![A-Za-z0-9_])SYMBOL(?![A-Za-z0-9_])` — a Swift identifier continuing
+// past the symbol is a different identifier. Longest candidate first so
+// `URLSessionWebSocketTask` is not shadowed by `URLSession`.
+const iosNetworkPatterns = [...iosNetworkSymbols]
+  .sort((a, b) => b.length - a.length)
+  .map((symbol) => ({ symbol, pattern: new RegExp(`(?<![A-Za-z0-9_])${symbol}(?![A-Za-z0-9_])`) }))
+
+// Both directions, asserted on every run. The matcher was loosened once, to
+// stop a composition root that merely NAMES the seam type from reporting as a
+// network path — and loosening a rule without proving it still catches the real
+// thing is how a gate quietly stops gating. These run here, rather than in a
+// test file, because nothing under scripts/ is wired into `pnpm test`: a test
+// nobody runs is worse than none.
+// A comment cannot make a network call, and prose about the seam is exactly
+// what a well-documented composition root contains. Strip the comment before
+// matching — but only when no string literal opens first, so a `//` inside a
+// URL string cannot truncate real code out of view. Erring toward scanning more
+// is the right direction for a rule about reaching the network.
+function codeOnly(line) {
+  const marker = line.indexOf('//')
+  if (marker === -1) return line
+  if (line.slice(0, marker).includes('"')) return line
+  return line.slice(0, marker)
+}
+
+function assertIosNetworkMatcher() {
+  const symbolFor = (line) =>
+    iosNetworkPatterns.find(({ pattern }) => pattern.test(codeOnly(line)))?.symbol ?? null
+
+  const mustCatch = [
+    ['let s = URLSession.shared', 'URLSession'],
+    ['URLSession(configuration: cfg)', 'URLSession'],
+    ['private let session: URLSession', 'URLSession'],
+    ['let t = session.webSocketTask(with: r) as URLSessionWebSocketTask', 'URLSessionWebSocketTask']
+  ]
+  const mustAllow = [
+    'URLSessionTransport(emitter: emitter)',
+    'private let transport: URLSessionTransport',
+    '// the seam is URLSessionTransport, defined in Seams/',
+    '/// substitutes the `URLSession` configuration under the real transport',
+    'makeURLSession()'
+  ]
+
+  for (const [line, expected] of mustCatch) {
+    if (symbolFor(line) !== expected) {
+      throw new Error(
+        `architecture checker self-test failed: expected ${expected} in ${JSON.stringify(line)}, got ${symbolFor(line)}`
+      )
+    }
+  }
+  const mustStillCatchPastAnInlineSlashSlash = 'let u = "http://x"; let s = URLSession.shared'
+  if (symbolFor(mustStillCatchPastAnInlineSlashSlash) !== 'URLSession') {
+    throw new Error(
+      'architecture checker self-test failed: a // inside a string literal must not hide real code'
+    )
+  }
+
+  for (const line of mustAllow) {
+    if (symbolFor(line) !== null) {
+      throw new Error(
+        `architecture checker self-test failed: ${JSON.stringify(line)} is not platform network access, got ${symbolFor(line)}`
+      )
+    }
+  }
+}
 
 async function collectSwiftFiles(root, out = []) {
   let entries
@@ -520,14 +593,16 @@ async function collectSwiftFiles(root, out = []) {
 }
 
 async function findIosTransportViolations() {
+  assertIosNetworkMatcher()
   const violations = []
   for (const filePath of await collectSwiftFiles(iosAppRoot)) {
     if (filePath.startsWith(`${iosTransportSeamRoot}${path.sep}`)) continue
 
     const lines = (await fs.readFile(filePath, 'utf8')).split('\n')
     lines.forEach((line, index) => {
-      const symbol = iosNetworkSymbols.find((candidate) => line.includes(candidate))
-      if (!symbol) return
+      const hit = iosNetworkPatterns.find(({ pattern }) => pattern.test(codeOnly(line)))
+      if (!hit) return
+      const { symbol } = hit
       violations.push(
         formatViolation(
           `${filePath}:${index + 1}`,

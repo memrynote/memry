@@ -22,6 +22,25 @@ opt_in_rules:
 disabled_rules:
   - todo
 
+# `master key` is the protocol's own term, not an incidental one: chapter 01
+# §1.1 names it, the Rust seam exports `SecureStoreKey::MasterKey`, and
+# `packages/contracts` ships `KEYCHAIN_ENTRIES.MASTER_KEY`. data-model §B
+# requires the five entries keep those names "so a future tool can read a
+# desktop and a phone with the same vocabulary" — so renaming in Swift alone
+# would break a stated cross-platform invariant to satisfy a lint. The rule
+# stays on for every other term it covers.
+inclusive_language:
+  override_allowed_terms:
+    - master
+
+# The committed vector fixtures nest `Input` and `Expected` inside their `Case`,
+# which mirrors the JSON in `packages/contracts/test-vectors/` one-for-one. That
+# shape is the point — it is what makes a fixture readable against the file it
+# pins — so the conformance tier gets one extra level rather than a flatter
+# model that no longer matches the bytes.
+nesting:
+  type_level: 2
+
 # The shell logs through OSLog `Logger`, never `print`. The ios-ci grep gate
 # catches it too; this makes it visible in the editor.
 # The test targets relax force_unwrapping / force_try through their own nested

@@ -44,7 +44,7 @@ struct SpikeS4Tests {
         #expect(key.count == 32)
         SpikeReport.emit("S4/baseline", [
             "device=\(Self.isDevice)",
-            "keyBytes=\(key.count)",
+            "keyBytes=\(key.count)"
         ])
     }
 
@@ -121,7 +121,21 @@ struct SpikeS4Tests {
         SpikeReport.emit("S4/pressure", [
             "ballastBlocks=\(ballast.count)",
             "ballastMiB=\(ballast.count * 64)",
-            "outcome=\(outcome)",
+            "outcome=\(outcome)"
         ])
+    }
+}
+
+/// Was in `SpikeTests.swift`, which went with the rest of the B0 scaffolding
+/// when phase C1 replaced it (`Memry/Spikes/README.md`'s own instruction). It
+/// lives here now because S4 is the one spike still outstanding: T082 is
+/// recorded BLOCKED only because no physical iPhone was available, and one is
+/// now. Keeping the harness makes closing T082 nearly free during the T161/T162
+/// device session; deleting it would have made a decision nobody took.
+enum SpikeReport {
+    static func emit(_ label: String, _ lines: [String]) {
+        FileHandle.standardError.write(Data(
+            (["[spike \(label)]"] + lines.map { "  \($0)" }).joined(separator: "\n").appending("\n").utf8
+        ))
     }
 }

@@ -10,17 +10,17 @@ struct MemryApp: App {
 }
 
 struct RootView: View {
-    /// B0 spike S3 only (`Memry/Spikes/`), reached with `--spike-s3`. The
-    /// scaffold is what the app shows otherwise, unchanged.
-    private let spikeS3 = ProcessInfo.processInfo.arguments.contains("--spike-s3")
-
     var body: some View {
-        if spikeS3 {
-            SpikeS3View()
-        } else {
-            // Replaced by the router in phase C1. The scaffold exists so the target
-            // builds, SwiftLint has something to lint, and the three test plans run.
-            ContentUnavailableView("Memry", systemImage: "book.closed")
-        }
+        // T147. The scaffold is gone, and so is the `--spike-s3` branch that
+        // stood beside it: this is the first build in which the app actually
+        // reaches the core. `AuthRootView` owns the composition — the event
+        // hub, the executor, the real `Keychain` and the real
+        // `URLSessionTransport` behind one `AuthSession`.
+        //
+        // The router that puts unlock, vaults and notes after sign-in is still
+        // phase C1's, and **T158 owns this root's event consumer**
+        // (`CoreEvents.consume()`, spec-defect 92) along with §7.15's runtime
+        // obligations.
+        AuthRootView()
     }
 }
