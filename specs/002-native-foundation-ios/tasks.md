@@ -305,6 +305,38 @@ defect in this phase.
 (spec-defect 94). No error copy tells a user to report a problem. If one is ever
 created, `ErrorMapping.swift` is the single file that changes.
 
+**Band B3's minimum comes first — Kaan, 2026-09-13, spec-defect 114.** Phase 4
+was written against a core surface that does not exist. The exported Swift is
+ten pure-crypto free functions, `AuthSession`'s nine auth methods,
+`RuntimeHost`'s five, and the seam protocols — no account key material, no
+vault registry, no note or folder read, and no method that accepts an OAuth
+provider token. Seven of the remaining tasks therefore have no call site that
+any amount of Swift can build, and the checkpoint is unreachable.
+
+Kaan's decision is the **narrow** one: build only the B3 exports US3's
+checkpoint needs, and leave the rest of `Client`, `Vault`, `Notes` and `Sync`
+for their own train. This is cheaper than it sounds, and that is why it was
+chosen — **the logic already exists and is already tested.**
+`protocol/account.rs` implements `GET /auth/key-verifier` and
+`GET /sync/vaults` today; `domain/notes.rs`, `domain/folders.rs`, the storage
+repositories and `sync/engine.rs` are what the `memry` CLI already drives. What
+is missing is the UniFFI layer over them, not the behaviour under it.
+
+Two new tasks carry it:
+
+- **T163** — account key material, the vault registry, and a native-OAuth
+  method that accepts a Google ID token (chapter 02 §2.13). Unblocks T148,
+  T152 and T155.
+- **T164** — read-only `Vault` and `Notes` exports: open a vault, list folders,
+  list notes, read one note. Unblocks T155, T156, T156a and T157.
+
+**T148 and T152 stay unticked** though both are committed and fully tested.
+A `[x]` means the verification was run and passed, and this phase's definition
+of done requires a **production call site**; neither has one until T163 lands.
+Leaving the boxes open is what keeps the checkbox meaning what it has meant
+since Phase 3, and it keeps the blocker visible in the task list rather than
+only in the defect log.
+
 **T161/T162 run on ONE phone plus a desktop** — an iPhone 12 Pro
 (`8025C79A-F257-500F-8BA1-A14122135B2D`) and Kaan's desktop are the whole
 hardware budget. The Independent Test above says "unlock a second phone"; that
@@ -340,6 +372,8 @@ than letting "second phone" read as covered.
 - [ ] T158 [US3] Implement `apps/ios/Memry/Features/Sync/SyncStatusView.swift`: the degraded-state vocabulary shared with desktop (offline, syncing, locked, read-only, unentitled) plus determinate first-sync progress, each state a value the core computed (FR-075, FR-028). **This task also owns T141's consumer** (spec-defect 92): the single `CoreEvents.consume()` call site lives in the app root (`apps/ios/Memry/App/`), which iterates the hub and re-reads snapshots through `CoreExecutor` into `@Observable` state every view reads. The hub is single-consumer, so a second `consume()` returns `nil`; a view must read the root's state, never the stream. **The same app root owns the two runtime obligations nothing calls today** (spec-defect 100): it must act on `PullReport::purged_documents` and `BodyPullReport::advanced_documents` by releasing or refreshing those resident documents (§7.15.1's runtime half, which the core can only report), and it must poll `snapshot_is_due` (§7.13.3). Both are the registry holder's job and the app root is the only thing that holds one
 - [ ] T159 [US3] Implement sign-out and revocation in `apps/ios/Memry/Features/Account/SignOutService.swift`: sign-out deletes all five keychain entries, both database files and `images/`, and zeroes in-memory keys; a revocation detected on next contact does the same and records why so the locked screen can explain itself (FR-025, FR-026)
 - [ ] T160 [P] [US3] Implement `apps/ios/Memry/Design/Tokens.swift`: the tokens mirrored from `DESIGN.md`, with logical leading/trailing properties only, dynamic type, and reduce-transparency and reduce-motion branched at the modifier level (FR-077)
+- [ ] T163 [US3] Export band B3's account minimum through UniFFI: `{kdf_salt, key_verifier}` from `protocol/account.rs::key_material` and the vault registry from `::vaults`, both already implemented and tested, plus a native-OAuth method that accepts a Google ID token and completes `POST /auth/oauth/:provider/native` (chapter 02 §2.13) — the shell cannot post it because `sessionNonce` and `devicePublicKey` are core-private. Regenerate the bindings and confirm each capability reaches the generated Swift; **no gate catches a stale binding** (spec-defect 114)
+- [ ] T164 [US3] Export read-only `Vault` and `Notes`: open a vault, list folders, list notes, read one note, over the existing `domain/notes.rs`, `domain/folders.rs` and the storage repositories the CLI already drives. Read-only — no write, no outbox, no sync pass. Pull-then-push stays the core's; the shell never drives a sync half (spec-defect 114)
 - [ ] T161 [US3] Device test `apps/ios/MemryTests/UnlockTests.swift` plus a scripted device run: every real desktop-created test vault unlocks by recovery phrase and, separately, by device linking, on a physical iPhone against staging (SC-003)
 - [ ] T162 [US3] **SC-001 and SC-003 evidence**: the T094 device `Conformance` `.xcresult` re-run against this build, plus the T161 device test output naming each vault unlocked by each of the two paths, recorded before any external testing
 
