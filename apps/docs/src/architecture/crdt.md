@@ -1261,6 +1261,17 @@ whose node name its schema does not know. A spec registered on only one side is 
 not a missing style — the same class of cross-process contract that [IPC](/architecture/ipc)
 gates with `ipc:check`.
 
+The same heuristic punishes a wrong _shape_, not just a wrong node name, and that trap is
+worth naming because nothing reports it. A note's fragment is
+`prosemirror > blockGroup > blockContainer > block > text` — exactly one `blockGroup` at
+the top, because that is the node BlockNote builds the fragment's root from. A writer that
+appends a `blockContainer` beside that group produces a document the schema cannot
+construct, and y-prosemirror answers a non-constructible node by removing it. Every check
+a naive writer can run still passes: the update applies, the document encodes, extracting
+the text may even return the new words. The block is simply gone the next time the note is
+opened. Any client writing into a body has to find the existing `blockGroup` and append
+inside it, and refuse a top-level layout it does not recognise rather than guess.
+
 The package owns each node's config, `parse` and `toExternalHTML` — the half that decides
 what reaches the vault file — and each process supplies its own presentation. The renderer
 gives the editor chip; the main process gives an implementation that emits the node's plain
