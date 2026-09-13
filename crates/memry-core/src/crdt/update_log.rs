@@ -159,14 +159,41 @@ pub fn append_local_update(
     let txn = conn
         .transaction()
         .map_err(failed("open the append transaction"))?;
+    let next = append_local_update_in(&txn, doc_id, update_blob, created_at)?;
+    txn.commit().map_err(failed("commit the append"))?;
+    Ok(next)
+}
+
+/// The same append, **inside a transaction the caller already holds**.
+///
+/// This is the form a local *edit* takes: FR-030 and data-model §A.2 require
+/// the update row and its `outbox` row to commit together or not at all, and
+/// [`crate::sync::outbox::commit`] owns that transaction. Refusing autocommit
+/// is the same structural guarantee [`crate::sync::outbox::enqueue`] makes
+/// from the other side — an update row written on its own is an edit that is
+/// durable locally and that no peer will ever be sent.
+pub fn append_local_update_in(
+    tx: &Connection,
+    doc_id: &str,
+    update_blob: &[u8],
+    created_at: i64,
+) -> Result<i64, CrdtError> {
+    if tx.is_autocommit() {
+        return Err(CrdtError::Storage {
+            source: StorageError::Failed {
+                what: "a local update must be written in the same transaction as its outbox row \
+                       (FR-030, data-model §A.2)"
+                    .to_owned(),
+            },
+        });
+    }
     let row_id = Namespace::Local.row_id(doc_id);
-    let next = next_local_seq(&txn, &row_id)?;
-    txn.execute(
+    let next = next_local_seq(tx, &row_id)?;
+    tx.execute(
         "INSERT INTO yjs_updates (doc_id, seq, update_blob, created_at) VALUES (?1, ?2, ?3, ?4)",
         params![row_id, next, update_blob, created_at],
     )
     .map_err(failed("append a local update"))?;
-    txn.commit().map_err(failed("commit the append"))?;
     Ok(next)
 }
 

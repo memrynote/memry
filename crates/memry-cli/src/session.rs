@@ -17,7 +17,7 @@ use memry_core::api::errors::{
     ApiError, AuthError, CryptoError, RecoveryError, SecureStoreError, StorageError,
 };
 use memry_core::crdt::errors::CrdtError;
-use memry_core::protocol::auth::DevicePlatform;
+use memry_core::protocol::auth::{DevicePlatform, TokenClaims};
 use memry_core::protocol::http::HttpClient;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::seams::transport::Transport;
@@ -122,6 +122,35 @@ impl Cli {
     /// The secure store, for the one command that writes an entry of its own.
     pub fn store(&self) -> Arc<FileSecureStore> {
         self.store.clone()
+    }
+
+    /// This device's registered id, read out of the access token's claims.
+    ///
+    /// A write needs it: the Yjs client id is derived from the device id so a
+    /// relaunch keeps writing under the same Yjs client instead of growing the
+    /// document's state vector on every run (chapter 07, research R2). The
+    /// token is read, never verified — the signing key is the server's
+    /// (chapter 02 §2.2) — and the claim is the one the server mints
+    /// (`device_id`).
+    ///
+    /// Absent is refused rather than substituted. A made-up device id is a
+    /// second Yjs client for one device, and a random one is a new client on
+    /// every command.
+    pub fn device_id(&self) -> Result<String, CliError> {
+        let refusal = || {
+            CliError::Refused(
+                "this profile has no registered device: run `memry login --email <address>` first"
+                    .to_string(),
+            )
+        };
+        let token = self
+            .store
+            .get(SecureStoreKey::AccessToken)?
+            .ok_or_else(refusal)?;
+        let token = String::from_utf8(token).map_err(|error| {
+            CliError::Refused(format!("the stored access token is not text: {error}"))
+        })?;
+        TokenClaims::parse(&token)?.device_id.ok_or_else(refusal)
     }
 
     pub fn master_key(&self) -> Result<Vec<u8>, CliError> {

@@ -1,13 +1,14 @@
 //! `memry`, the headless client quickstart §G4 drives.
 //!
-//! The shell is three files and nothing else: [`transport`] fills the network
-//! seam, [`session`] fills the secure-store seam and owns the profile
-//! directory, and [`commands`] calls the core. Every protocol decision — which
+//! The shell is a handful of files and nothing else: [`transport`] fills the
+//! network seam, [`session`] fills the secure-store seam and owns the profile
+//! directory, [`commands`] calls the core, and [`edit`] is §G5's one write. Every protocol decision — which
 //! route, which retry, when to refresh, which status means what — is the
 //! core's (Constitution I).
 
 mod cli;
 mod commands;
+mod edit;
 mod session;
 mod transport;
 
@@ -47,5 +48,6 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
         Command::NotesList { vault } => commands::notes_list(&cli, vault.as_deref()),
         Command::NotesText { note } => commands::notes_text(&cli, &note),
         Command::NotesStateVector { note } => commands::notes_state_vector(&cli, &note),
+        Command::NotesEdit { note, append } => edit::notes_append(&cli, &note, &append),
     }
 }

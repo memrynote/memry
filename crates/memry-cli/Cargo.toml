@@ -42,3 +42,7 @@ async-trait = { workspace = true }
 # SQLite is linked.
 rusqlite = { workspace = true }
 thiserror = { workspace = true }
+# The §G5 append builds one `blockContainer > paragraph > text` node with the
+# yrs API. The workspace pin, so the shell and the core link **one** yrs: two
+# would be two incompatible `Doc` types across the same document.
+yrs = { workspace = true }

@@ -29,7 +29,9 @@ use std::sync::{Arc, Mutex};
 
 use sha2::{Digest as _, Sha256};
 use yrs::updates::decoder::Decode as _;
-use yrs::{Doc, ReadTxn as _, StateVector, Subscription, Transact as _, Transaction};
+use yrs::{
+    Doc, ReadTxn as _, StateVector, Subscription, Transact as _, Transaction, TransactionMut,
+};
 use yrs::{Origin, TransactionAcqError, Update};
 
 use super::errors::CrdtError;
@@ -223,6 +225,29 @@ impl Document {
     {
         let txn = self.doc.try_transact().map_err(|err| busy(&self.id, err))?;
         Ok(f(&txn))
+    }
+
+    /// Runs `f` inside a write transaction this method opens and closes.
+    ///
+    /// The mirror of [`Document::read`], and the only door a local edit is
+    /// authored through. The update the commit produces reaches this
+    /// registry's [`UpdateSink`] exactly once, because the transaction this
+    /// method opens is the transaction it closes: the caller takes the bytes
+    /// from the sink rather than diffing a second document against this one,
+    /// which is what chapter 12 §12.5.1 forbids.
+    ///
+    /// It hands out a `TransactionMut` and never the `Doc`, so a caller can
+    /// neither keep one open nor reach `encode_state_as_update_v1` around the
+    /// unknown roots this document is carrying.
+    pub fn write<F, T>(&self, f: F) -> Result<T, CrdtError>
+    where
+        F: FnOnce(&mut TransactionMut<'_>) -> T,
+    {
+        let mut txn = self
+            .doc
+            .try_transact_mut()
+            .map_err(|err| busy(&self.id, err))?;
+        Ok(f(&mut txn))
     }
 }
 

@@ -36,6 +36,7 @@ Commands:
   notes list [--vault <id>]              print the pulled notes, newest first
   notes text <id>                        print the note body's extracted text
   notes state-vector <id>                print the note body's Y.Doc state vector, in hex
+  notes edit <id> --append <text>        append one paragraph block to the note body
 
 Options:
   --server <name|url>          staging (the default), prod, local, or a base URL
@@ -54,13 +55,32 @@ pub struct Server {
 /// One of quickstart §G4's invocations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
-    Login { email: String },
-    Unlock { recovery_phrase_file: PathBuf },
+    Login {
+        email: String,
+    },
+    Unlock {
+        recovery_phrase_file: PathBuf,
+    },
     Vaults,
-    Pull { vault: String },
-    NotesList { vault: Option<String> },
-    NotesText { note: String },
-    NotesStateVector { note: String },
+    Pull {
+        vault: String,
+    },
+    NotesList {
+        vault: Option<String>,
+    },
+    NotesText {
+        note: String,
+    },
+    NotesStateVector {
+        note: String,
+    },
+    /// Quickstart §G5's headless write: one `blockContainer > paragraph >
+    /// text` node appended through yrs. Not a markdown path (chapter 12
+    /// §12.1.2).
+    NotesEdit {
+        note: String,
+        append: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -193,7 +213,7 @@ fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
 
 fn parse_notes(args: &mut Args) -> Result<Command, UsageError> {
     let Some(subcommand) = args.next() else {
-        return usage("notes needs a subcommand: list, text, or state-vector");
+        return usage("notes needs a subcommand: list, text, state-vector, or edit");
     };
     match subcommand.as_str() {
         "list" => Ok(Command::NotesList {
@@ -205,6 +225,16 @@ fn parse_notes(args: &mut Args) -> Result<Command, UsageError> {
         "state-vector" => Ok(Command::NotesStateVector {
             note: positional(args, "notes state-vector", "a note id")?,
         }),
+        "edit" => {
+            let note = positional(args, "notes edit", "a note id")?;
+            Ok(Command::NotesEdit {
+                note,
+                // `--append` is required rather than optional: it is the only
+                // edit this client makes, and an `edit` that did nothing
+                // would be a successful command that changed no note.
+                append: required(args, "--append", "notes edit")?,
+            })
+        }
         other => usage(format!("unknown notes subcommand `{other}`")),
     }
 }
@@ -302,6 +332,29 @@ mod tests {
     }
 
     #[test]
+    fn the_quickstart_g5_append_parses_exactly_as_written() {
+        // §G5 writes it with a quoted value; the shell hands it over as one
+        // argument, so the parser must take a value with a space in it.
+        let parsed = parse(
+            ["notes", "edit", "note-1", "--append", "from cli"]
+                .iter()
+                .map(|part| part.to_string())
+                .collect(),
+        )
+        .expect("the line parses");
+        let Parsed::Run(invocation) = parsed else {
+            panic!("expected a command, got help");
+        };
+        assert_eq!(
+            invocation.command,
+            Command::NotesEdit {
+                note: "note-1".to_string(),
+                append: "from cli".to_string(),
+            }
+        );
+    }
+
+    #[test]
     fn the_environment_defaults_to_staging_and_the_platform_to_desktop() {
         let vaults = invocation("vaults");
         assert_eq!(vaults.server.label, "staging");
@@ -340,6 +393,10 @@ mod tests {
             "notes",
             "notes text",
             "notes sing note-1",
+            "notes edit",
+            "notes edit note-1",
+            "notes edit note-1 --append",
+            "notes edit --append text",
             "--server nowhere vaults",
             "--server",
             "sync --once",
@@ -362,6 +419,7 @@ mod tests {
             "notes list",
             "notes text",
             "notes state-vector",
+            "notes edit",
         ] {
             assert!(HELP.contains(command), "help omits `{command}`");
         }
