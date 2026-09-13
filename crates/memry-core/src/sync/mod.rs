@@ -9,6 +9,9 @@
 //! | [`pull`]          | 05                     | one page: refs, bodies, apply, advance            |
 //! | [`state`]         | data-model §C.3        | the states and the edges drawn between them       |
 //! | [`engine`]        | data-model §C.3        | when each edge is taken, one pass at a time       |
+//! | [`outbox`]        | data-model §A.2, §C.4  | the durable write queue, one transaction at a time |
+//! | [`push`]          | 05 §5.6, 07 §7.2       | one wave: order, seal, send, ack                  |
+//! | [`policy`]        | 11                     | the write gate and the entitlement, three states  |
 //!
 //! **The core owns no networking.** Every call here goes out through
 //! [`crate::protocol::http`], which goes out through the `Transport` seam
@@ -19,6 +22,9 @@
 pub mod clock;
 pub mod engine;
 pub mod field_merge;
+pub mod outbox;
+pub mod policy;
 pub mod pull;
+pub mod push;
 pub mod state;
 pub mod store;

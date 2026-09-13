@@ -33,7 +33,6 @@
 
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 
 use serde_json::Value as Json;
 
@@ -41,13 +40,11 @@ use crate::api::errors::{ApiError, TransportError};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
 use crate::seams::reachability::{Reachability, Reachable};
 
+use super::policy::PolicyTier;
 use super::pull::{PullLoop, PullReport};
-use super::state::{PassTrigger, SyncState, WriteGate, evaluate_gate, is_drawn};
+use super::state::{PassTrigger, SyncState, WriteGate, is_drawn};
 
-/// §11.8.1: at most 300 seconds in the foreground, chosen to match
-/// `CLOCK_SKEW_THRESHOLD_SECONDS` (chapter 05 §5.16) so a client that already
-/// polls status for skew gets policy for free.
-pub const POLICY_POLL_INTERVAL_MS: i64 = 300_000;
+pub use super::policy::POLICY_POLL_INTERVAL_MS;
 
 /// How many pages one pass will walk before yielding the gate.
 ///
@@ -95,15 +92,12 @@ pub struct SyncEngine {
     /// The exclusive queue. Held for a whole pass.
     gate: tokio::sync::Mutex<()>,
     state: Mutex<SyncState>,
-    policy: Mutex<WriteGate>,
-    /// Epoch milliseconds of the last successful `GET /sync/status`, or 0.
-    policy_checked_at: AtomicI64,
-    /// §C.3's `Unentitled`. Chapter 11 says nothing about where an
-    /// entitlement is read from and `GET /sync/status` does not carry one, so
-    /// it is an input the account tier sets rather than something inferred
-    /// here. Defaults to entitled: an unknown plan must never lock a paying
-    /// user out of their own vault (§11.3's reasoning, applied).
-    entitled: AtomicBool,
+    /// Chapter 11's three independent inputs and the one gate derived from
+    /// them ([`super::policy`]). `Unentitled` is entered **reactively on a
+    /// `402 SYNC_PAYMENT_REQUIRED`** from any `/sync/*` route (§11.7.1) and
+    /// starts present: an unknown plan must never lock a paying user out of
+    /// their own vault (§11.3's reasoning, applied).
+    policy: PolicyTier,
 }
 
 impl SyncEngine {
@@ -112,6 +106,7 @@ impl SyncEngine {
         http: Arc<HttpClient>,
         reachability: Arc<dyn Reachability>,
     ) -> Self {
+        let policy = PolicyTier::new(http.identity().app_version());
         Self {
             pull,
             http,
@@ -119,9 +114,7 @@ impl SyncEngine {
             push: None,
             gate: tokio::sync::Mutex::new(()),
             state: Mutex::new(SyncState::Idle),
-            policy: Mutex::new(WriteGate::Open),
-            policy_checked_at: AtomicI64::new(0),
-            entitled: AtomicBool::new(true),
+            policy,
         }
     }
 
@@ -138,15 +131,22 @@ impl SyncEngine {
     }
 
     pub fn write_gate(&self) -> WriteGate {
-        self.policy
-            .lock()
-            .expect("the policy mutex is never poisoned")
-            .clone()
+        self.policy.gate()
+    }
+
+    /// Chapter 11's three inputs, for a shell that wants to explain the gate
+    /// rather than just obey it.
+    pub fn policy(&self) -> &PolicyTier {
+        &self.policy
     }
 
     /// The account tier's answer to "does this account have an active plan".
+    ///
+    /// The **only** way out of `Unentitled`: §11.7.1 says `clientPolicy`
+    /// carries no entitlement field, and a parked outbox attempts no write
+    /// that could earn a 2xx.
     pub fn set_entitled(&self, entitled: bool) {
-        self.entitled.store(entitled, Ordering::Relaxed);
+        self.policy.set_entitled(entitled);
     }
 
     /// One pass, serialised against every other pass.
@@ -204,6 +204,14 @@ impl SyncEngine {
             let page = match self.pull.pull_page().await {
                 Ok(page) => page,
                 Err(error) => {
+                    // §11.7.1: `Unentitled` is entered reactively on a `402`
+                    // from **any** `/sync/*` route, and the pull routes are
+                    // some of them. Reads are not gated, so this does not
+                    // change the pull's own outcome — it parks the outbox on
+                    // the next pass.
+                    if let super::pull::PullError::Api { source } = &error {
+                        self.policy.observe(source);
+                    }
                     // A transport failure that says "offline" is `Offline`,
                     // not `Failed`: the exit is a reachability transition
                     // rather than a backoff timer.
@@ -261,23 +269,14 @@ impl SyncEngine {
                 trail.enter(SyncState::Idle);
                 true
             }
-            // §11.9: a mid-wave 403 or 426 is not a sync failure the user can
-            // retry. The gate is updated so the next pass parks instead of
-            // attempting again.
-            Err(ApiError::WritesDisabled { .. }) => {
-                self.set_gate(WriteGate::ReadOnly);
-                trail.enter(SyncState::ReadOnly);
-                false
-            }
-            Err(ApiError::UpgradeRequired { min_version, .. }) => {
-                self.set_gate(WriteGate::BlockedUpgrade {
-                    min_version: min_version.clone(),
-                });
-                trail.enter(SyncState::BlockedUpgrade);
-                false
-            }
-            Err(_) => {
-                trail.enter(SyncState::Failed);
+            // §11.9: a mid-wave 403, 426 or 402 is not a sync failure the
+            // user can retry. The policy tier records the fact so the next
+            // pass parks instead of attempting again, and **no attempt
+            // accrues backoff**: a parked queue must drain at full speed the
+            // moment the policy clears.
+            Err(error) => {
+                let blocked = self.policy.observe(&error);
+                trail.enter(blocked.unwrap_or(SyncState::Failed));
                 false
             }
         }
@@ -285,13 +284,17 @@ impl SyncEngine {
 
     /// §11.8.1's poll schedule. A failed poll keeps the last known gate: a
     /// status call that did not answer is not evidence that writes are off.
+    ///
+    /// It **is** evidence when the answer was a `402`: §11.7.1 makes every
+    /// `/sync/*` route a source of `Unentitled`, and `/sync/status` is one of
+    /// them, so the failure is offered to the policy tier before it is
+    /// discarded.
     async fn refresh_policy(&self, trigger: PassTrigger) -> WriteGate {
-        let known = self.write_gate();
-        let due = trigger == PassTrigger::Foreground
-            || known != WriteGate::Open
-            || now_ms() - self.policy_checked_at.load(Ordering::Relaxed) >= POLICY_POLL_INTERVAL_MS;
-        if !due {
-            return known;
+        if !self
+            .policy
+            .poll_due(now_ms(), trigger == PassTrigger::Foreground)
+        {
+            return self.write_gate();
         }
 
         // Chapter 07 §7.10's polled ladder: `retryOn429: false`, because for a
@@ -299,37 +302,13 @@ impl SyncEngine {
         let request = ApiRequest::get("/sync/status")
             .auth(Auth::Session)
             .retry(RetryPolicy::polled());
-        let Ok(body) = self.http.send_json::<Json>(request).await else {
-            return known;
-        };
-        self.policy_checked_at.store(now_ms(), Ordering::Relaxed);
-
-        // §11.8: `clientPolicy` is omitted entirely for a legacy client. This
-        // client always identifies itself, so an omitted block means the
-        // server had nothing to say, which §11.7 resolves to allowed.
-        let policy = body.get("clientPolicy");
-        let writes_enabled = policy
-            .and_then(|p| p.get("writesEnabled"))
-            .and_then(Json::as_bool)
-            .unwrap_or(true);
-        let min_write_version = policy
-            .and_then(|p| p.get("minWriteVersion"))
-            .and_then(Json::as_str);
-        let gate = evaluate_gate(
-            writes_enabled,
-            min_write_version,
-            self.http.identity().app_version(),
-            self.entitled.load(Ordering::Relaxed),
-        );
-        self.set_gate(gate.clone());
-        gate
-    }
-
-    fn set_gate(&self, gate: WriteGate) {
-        *self
-            .policy
-            .lock()
-            .expect("the policy mutex is never poisoned") = gate;
+        match self.http.send_json::<Json>(request).await {
+            Ok(body) => self.policy.learn(&body, now_ms()),
+            Err(error) => {
+                self.policy.observe(&error);
+                self.write_gate()
+            }
+        }
     }
 
     fn finish(

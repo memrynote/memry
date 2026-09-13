@@ -70,7 +70,14 @@ pub fn is_drawn(from: SyncState, to: SyncState) -> bool {
         ),
         Pulling => matches!(to, Applying | Idle | Offline | Failed),
         Applying => matches!(to, Pulling | Idle | Refused),
-        Pushing => matches!(to, Idle | ReadOnly | BlockedUpgrade | Failed),
+        // §C.3 draws `Pushing -> ReadOnly` and `Pushing -> BlockedUpgrade`
+        // for a mid-wave 403 and 426 but no `Pushing -> Unentitled`, which
+        // chapter 11 §11.7.1 makes reachable: a `402 SYNC_PAYMENT_REQUIRED`
+        // arrives from **any** `/sync/*` route, and `/sync/push` is one. The
+        // edge is drawn here because the alternative is reporting a billing
+        // fact as `Failed`, which accrues backoff against a condition the
+        // user cannot retry away (§11.9).
+        Pushing => matches!(to, Idle | ReadOnly | BlockedUpgrade | Unentitled | Failed),
         // Reads continue, always; or the policy cleared on the next status poll.
         ReadOnly | BlockedUpgrade | Unentitled => matches!(to, Pulling | Idle),
         Offline => to == Idle,
