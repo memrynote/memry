@@ -131,19 +131,19 @@ important classes from the `vectors:check` gate. Every generator injects.
 
 Fixed material, shared across every generator so a reader can correlate vectors:
 
-| Name | Value | Purpose |
-|---|---|---|
-| `SEED_A` | `a0` repeated 32 times | Ed25519 signer A, already in use (`gen-crypto-vectors.ts:46`) |
-| `SEED_B` | `5c` repeated 32 times | X25519 secret B, already in use (`:47`) |
-| `SEED_C` | `3e` repeated 32 times | new: Ed25519 signer B, for multi-signer cases |
-| `VAULT_KEY` | `vaultUnlockFlow.vaultKeyHex` from the existing file | binds the new classes to the existing unlock vector |
-| `FILE_KEY` | `fedcba98...` as already committed (`vaultUnlockFlow.fileKeyHex`) | same |
-| `NONCE_24_A` | `000102...1617` | data nonce, already in use (`:51`) |
-| `NONCE_24_B` | `NONCE_24_A` reversed | key nonce, already in use (`:52`) |
-| `NONCE_24_C` | `ff` repeated 24 times | new: second data nonce, for two-item cases |
-| `DEVICE_A` / `DEVICE_B` | `device-a` / `device-b` | clock keys, human readable on purpose |
-| `NOTE_ID` | `abc123def456` | a valid 12 character note id |
-| `JOURNAL_ID` | `j2026-04-16` | a valid journal id |
+| Name                    | Value                                                             | Purpose                                                       |
+| ----------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------- |
+| `SEED_A`                | `a0` repeated 32 times                                            | Ed25519 signer A, already in use (`gen-crypto-vectors.ts:46`) |
+| `SEED_B`                | `5c` repeated 32 times                                            | X25519 secret B, already in use (`:47`)                       |
+| `SEED_C`                | `3e` repeated 32 times                                            | new: Ed25519 signer B, for multi-signer cases                 |
+| `VAULT_KEY`             | `vaultUnlockFlow.vaultKeyHex` from the existing file              | binds the new classes to the existing unlock vector           |
+| `FILE_KEY`              | `fedcba98...` as already committed (`vaultUnlockFlow.fileKeyHex`) | same                                                          |
+| `NONCE_24_A`            | `000102...1617`                                                   | data nonce, already in use (`:51`)                            |
+| `NONCE_24_B`            | `NONCE_24_A` reversed                                             | key nonce, already in use (`:52`)                             |
+| `NONCE_24_C`            | `ff` repeated 24 times                                            | new: second data nonce, for two-item cases                    |
+| `DEVICE_A` / `DEVICE_B` | `device-a` / `device-b`                                           | clock keys, human readable on purpose                         |
+| `NOTE_ID`               | `abc123def456`                                                    | a valid 12 character note id                                  |
+| `JOURNAL_ID`            | `j2026-04-16`                                                     | a valid journal id                                            |
 
 Every generator writes `JSON.stringify(v, null, 2) + '\n'` and every file carries a
 `meta` block mirroring the existing one
@@ -241,12 +241,12 @@ does.
 
 `verifiers`, 4 cases:
 
-| Case | Why |
-|---|---|
-| `recoveryPhraseUnlock` | The phrase path end to end: mnemonic to seed to master key to vault key to verifier. This is the path FR-019 ships and the existing case does not cover it. |
-| `accountKeyVerifier` | Pin that the verifier is literally `base64(kdf(32, 4, 'memrykve', masterKey))` with no hash wrapper (`apps/desktop/src/main/crypto/keys.ts:110-117`), and that comparison is over the base64 **strings** re-encoded as UTF-8, not the decoded bytes (`recovery.ts:48-55`). A Rust implementation that compares decoded bytes still passes for correct input and fails to reject some wrong ones. |
-| `localVaultKeyVerifier` | `base64(crypto_generichash(32, "memry/vault-key-verifier/v1/<vaultId>", vaultKey))` (`apps/desktop/src/main/crypto/vault-key-state.ts:14-26`), including the exact message string with the vault id appended. |
-| `wrongPhrase` | A phrase that is valid BIP39 but not this vault's, with the expected verifier mismatch, so the failure path is pinned too (FR-027). |
+| Case                    | Why                                                                                                                                                                                                                                                                                                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `recoveryPhraseUnlock`  | The phrase path end to end: mnemonic to seed to master key to vault key to verifier. This is the path FR-019 ships and the existing case does not cover it.                                                                                                                                                                                                                                      |
+| `accountKeyVerifier`    | Pin that the verifier is literally `base64(kdf(32, 4, 'memrykve', masterKey))` with no hash wrapper (`apps/desktop/src/main/crypto/keys.ts:110-117`), and that comparison is over the base64 **strings** re-encoded as UTF-8, not the decoded bytes (`recovery.ts:48-55`). A Rust implementation that compares decoded bytes still passes for correct input and fails to reject some wrong ones. |
+| `localVaultKeyVerifier` | `base64(crypto_generichash(32, "memry/vault-key-verifier/v1/<vaultId>", vaultKey))` (`apps/desktop/src/main/crypto/vault-key-state.ts:14-26`), including the exact message string with the vault id appended.                                                                                                                                                                                    |
+| `wrongPhrase`           | A phrase that is valid BIP39 but not this vault's, with the expected verifier mismatch, so the failure path is pinned too (FR-027).                                                                                                                                                                                                                                                              |
 
 **Count target**: `crypto-vectors.json` keeps its 1 `vaultUnlockFlow` object;
 `bip39-unlock.json` is 8 new cases, 4 plus 4.
@@ -302,10 +302,15 @@ than recording the random values into the file.
     "compressedHex": "...",
     "signaturePayloadCborHex": "...",
     "pushItem": {
-      "id": "...", "type": "...", "operation": "...",
-      "encryptedKey": "...", "keyNonce": "...",
-      "encryptedData": "...", "dataNonce": "...",
-      "signature": "...", "signerDeviceId": "...",
+      "id": "...",
+      "type": "...",
+      "operation": "...",
+      "encryptedKey": "...",
+      "keyNonce": "...",
+      "encryptedData": "...",
+      "dataNonce": "...",
+      "signature": "...",
+      "signerDeviceId": "...",
       "clock": { "device-a": 3 }
     },
     "sizeBytes": 1234
@@ -320,22 +325,22 @@ final envelope forces a bisect by hand.
 
 **Cases** (14):
 
-| # | Case | Pins |
-|---|---|---|
-| 1 | `note` create, body over 64 bytes and compressible | the `0x01` branch, the happy path |
-| 2 | `note` create, body under 64 bytes | the always-stored rule |
-| 3 | `note` update, body over 64 bytes but incompressible (random bytes) | the "compression did not shrink" fallback to `0x00` |
-| 4 | `note` delete with `deletedAt` set | `deletedAt` inside the signed CBOR |
-| 5 | `task` update with `clock` present | `metadata.clock` |
-| 6 | `note` with `clock` and `stateVector` | both metadata keys, and that CBOR sorts `clock` before `stateVector` by length |
-| 7 | `settings` update with **no** clock | the one clock-exempt type |
-| 8 | `journal` update | the type string, since journals are records for metadata and CRDT for body |
-| 9 | tamper: case 1's envelope with `clock` removed after signing | verification must fail; mirrors `roundtrip.test.ts:118-134` |
-| 10 | tamper: case 1's envelope with one ciphertext byte flipped | decrypt must fail |
-| 11 | tamper: case 1's envelope signed by `SEED_A`, verified against `SEED_C`'s public key | verification must fail |
-| 12 | a payload whose encrypted size sits just under `SYNC_ITEM_MAX_ENCRYPT_BYTES / SYNC_ITEM_ENCRYPT_OVERHEAD` and one just over | the `ItemTooLargeError` boundary, `packages/sync-client/src/note-size.ts:16-31` |
-| 13 | a vault-name envelope, encrypt and decrypt | `vault-name-crypto.ts`: the name is its own envelope with its own context, not a record payload, and a client that reuses the item envelope for it produces the wrong bytes |
-| 14 | a vault-name envelope whose ciphertext is corrupted | must return `null` rather than throwing (`vault-name-crypto.ts:25-37`), which is a different failure contract from every other case in this file |
+| #   | Case                                                                                                                        | Pins                                                                                                                                                                        |
+| --- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `note` create, body over 64 bytes and compressible                                                                          | the `0x01` branch, the happy path                                                                                                                                           |
+| 2   | `note` create, body under 64 bytes                                                                                          | the always-stored rule                                                                                                                                                      |
+| 3   | `note` update, body over 64 bytes but incompressible (random bytes)                                                         | the "compression did not shrink" fallback to `0x00`                                                                                                                         |
+| 4   | `note` delete with `deletedAt` set                                                                                          | `deletedAt` inside the signed CBOR                                                                                                                                          |
+| 5   | `task` update with `clock` present                                                                                          | `metadata.clock`                                                                                                                                                            |
+| 6   | `note` with `clock` and `stateVector`                                                                                       | both metadata keys, and that CBOR sorts `clock` before `stateVector` by length                                                                                              |
+| 7   | `settings` update with **no** clock                                                                                         | the one clock-exempt type                                                                                                                                                   |
+| 8   | `journal` update                                                                                                            | the type string, since journals are records for metadata and CRDT for body                                                                                                  |
+| 9   | tamper: case 1's envelope with `clock` removed after signing                                                                | verification must fail; mirrors `roundtrip.test.ts:118-134`                                                                                                                 |
+| 10  | tamper: case 1's envelope with one ciphertext byte flipped                                                                  | decrypt must fail                                                                                                                                                           |
+| 11  | tamper: case 1's envelope signed by `SEED_A`, verified against `SEED_C`'s public key                                        | verification must fail                                                                                                                                                      |
+| 12  | a payload whose encrypted size sits just under `SYNC_ITEM_MAX_ENCRYPT_BYTES / SYNC_ITEM_ENCRYPT_OVERHEAD` and one just over | the `ItemTooLargeError` boundary, `packages/sync-client/src/note-size.ts:16-31`                                                                                             |
+| 13  | a vault-name envelope, encrypt and decrypt                                                                                  | `vault-name-crypto.ts`: the name is its own envelope with its own context, not a record payload, and a client that reuses the item envelope for it produces the wrong bytes |
+| 14  | a vault-name envelope whose ciphertext is corrupted                                                                         | must return `null` rather than throwing (`vault-name-crypto.ts:25-37`), which is a different failure contract from every other case in this file                            |
 
 Cases 9 through 11 carry `"expectFailure": "signature" | "decrypt"` instead of an
 `expected` block. Case 14 carries `"expectNull": true`.
@@ -379,16 +384,16 @@ diagnosis.
 
 **Cases** (8):
 
-| # | Case | Pins |
-|---|---|---|
-| 1 | a 512 byte Yjs update | the compressible branch; 512 is chosen because the existing test already established that a short fixture never reaches deflate (`roundtrip.test.ts:158-159`) |
-| 2 | a 40 byte update | the stored branch |
-| 3 | a real Yjs update produced by `Y.encodeStateAsUpdate` over a small BlockNote-shaped document | that the transport does not inspect the bytes, and gives `yrs` something real |
-| 4 | the same update for `JOURNAL_ID` | that a journal body uses the identical envelope, which is the concrete form of open question Q07.1 |
-| 5 | minimum length, exactly 161 bytes | the `HEADER_LEN + 1` guard (`record-decrypt.ts:122-124`) |
-| 6 | 160 bytes exactly | must fail: "CRDT update too short" |
-| 7 | case 1's packet decrypted as a different `noteId` | must fail as a **signature** error, not an AEAD error, because the note id is authenticated (`roundtrip.test.ts:173-188`) |
-| 8 | case 1 with the last ciphertext byte flipped | must fail |
+| #   | Case                                                                                         | Pins                                                                                                                                                          |
+| --- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | a 512 byte Yjs update                                                                        | the compressible branch; 512 is chosen because the existing test already established that a short fixture never reaches deflate (`roundtrip.test.ts:158-159`) |
+| 2   | a 40 byte update                                                                             | the stored branch                                                                                                                                             |
+| 3   | a real Yjs update produced by `Y.encodeStateAsUpdate` over a small BlockNote-shaped document | that the transport does not inspect the bytes, and gives `yrs` something real                                                                                 |
+| 4   | the same update for `JOURNAL_ID`                                                             | that a journal body uses the identical envelope, which is the concrete form of open question Q07.1                                                            |
+| 5   | minimum length, exactly 161 bytes                                                            | the `HEADER_LEN + 1` guard (`record-decrypt.ts:122-124`)                                                                                                      |
+| 6   | 160 bytes exactly                                                                            | must fail: "CRDT update too short"                                                                                                                            |
+| 7   | case 1's packet decrypted as a different `noteId`                                            | must fail as a **signature** error, not an AEAD error, because the note id is authenticated (`roundtrip.test.ts:173-188`)                                     |
+| 8   | case 1 with the last ciphertext byte flipped                                                 | must fail                                                                                                                                                     |
 
 **Desktop assertions**: byte equality of `packedHex`, plus each field of the
 decomposition sliced at the documented offsets, plus a round trip back to
@@ -436,22 +441,22 @@ expectedDecodedKeyOrder }` or `{ name, fieldOrderName, input, expectError }`.
 
 **Cases** (14):
 
-| # | Case | Pins |
-|---|---|---|
-| 1 | a full `SYNC_ITEM` payload, all ten keys | the real thing, and that the encoded order is `id, type, metadata, operation, cryptoVersion, ...` by length rather than the list order |
-| 2 | the same payload with keys inserted in reverse | identical bytes; input order is irrelevant |
-| 3 | `{ aa: 1, z: 2 }` under a two-entry field order | **the length-first versus lexicographic disagreement**. Expected bytes are `a2 61 7a 02 61 61 01`, key order `z` then `aa`. A lexicographic encoder produces `a2 61 61 01 61 7a 02` and fails here and nowhere else |
-| 4 | a nested `metadata` of `{ stateVector, clock }` | that nested maps are sorted **recursively**, giving `clock` then `stateVector` |
-| 5 | a nested `clock` of `{ d1: 1, aa: 2 }` | equal-length keys sorted bytewise, giving `aa` then `d1` |
-| 6 | a three-level nesting | that recursion does not stop at depth two |
-| 7 | integer `1` | shortest form, `01` |
-| 8 | integer `1000000` | shortest form, `1a 000f4240` |
-| 9 | integer `-1` | `20` |
-| 10 | float `1.5` | **float16 narrowing**, `f9 3e00` |
-| 11 | float `0.1` | float64 when narrowing is lossy, `fb 3fb999999999999a` |
-| 12 | a `Uint8Array` value | major type 2, `43 010203`, not an array of integers |
-| 13 | `null` and `true` values | `f6`, `f5`, and that `null` is encoded while `undefined` is dropped |
-| 14 | a payload with a key not in the field order | must throw `CBOR encoding rejected: ...` |
+| #   | Case                                            | Pins                                                                                                                                                                                                                |
+| --- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | a full `SYNC_ITEM` payload, all ten keys        | the real thing, and that the encoded order is `id, type, metadata, operation, cryptoVersion, ...` by length rather than the list order                                                                              |
+| 2   | the same payload with keys inserted in reverse  | identical bytes; input order is irrelevant                                                                                                                                                                          |
+| 3   | `{ aa: 1, z: 2 }` under a two-entry field order | **the length-first versus lexicographic disagreement**. Expected bytes are `a2 61 7a 02 61 61 01`, key order `z` then `aa`. A lexicographic encoder produces `a2 61 61 01 61 7a 02` and fails here and nowhere else |
+| 4   | a nested `metadata` of `{ stateVector, clock }` | that nested maps are sorted **recursively**, giving `clock` then `stateVector`                                                                                                                                      |
+| 5   | a nested `clock` of `{ d1: 1, aa: 2 }`          | equal-length keys sorted bytewise, giving `aa` then `d1`                                                                                                                                                            |
+| 6   | a three-level nesting                           | that recursion does not stop at depth two                                                                                                                                                                           |
+| 7   | integer `1`                                     | shortest form, `01`                                                                                                                                                                                                 |
+| 8   | integer `1000000`                               | shortest form, `1a 000f4240`                                                                                                                                                                                        |
+| 9   | integer `-1`                                    | `20`                                                                                                                                                                                                                |
+| 10  | float `1.5`                                     | **float16 narrowing**, `f9 3e00`                                                                                                                                                                                    |
+| 11  | float `0.1`                                     | float64 when narrowing is lossy, `fb 3fb999999999999a`                                                                                                                                                              |
+| 12  | a `Uint8Array` value                            | major type 2, `43 010203`, not an array of integers                                                                                                                                                                 |
+| 13  | `null` and `true` values                        | `f6`, `f5`, and that `null` is encoded while `undefined` is dropped                                                                                                                                                 |
+| 14  | a payload with a key not in the field order     | must throw `CBOR encoding rejected: ...`                                                                                                                                                                            |
 
 Cases 7 through 12 are scalars encoded as single-key maps so they exercise the same
 entry point rather than a hypothetical scalar API.
@@ -505,17 +510,17 @@ expectedInflatedHex }`, or `{ name, frameHex, expectError }`.
 
 **Cases** (9):
 
-| # | Case | Pins |
-|---|---|---|
-| 1 | 63 bytes of highly compressible text | flag `0x00`, stored, because the threshold is strict "under 64" |
-| 2 | 64 bytes of highly compressible text | flag `0x01`, the first byte that is allowed to compress |
-| 3 | 4 KiB of repeated text | flag `0x01`, and that the payload begins `78 9c` |
-| 4 | 4 KiB of cryptographically random bytes | flag `0x00`, because deflate does not shrink random data |
-| 5 | a payload where deflate output is exactly equal in length to the input | flag `0x00`, the `>=` boundary rather than `>` |
-| 6 | empty input | returned as-is, no flag prepended on decompress of an empty buffer (`compress.ts:20`) |
-| 7 | a frame with flag `0x02` | treated as **stored**, the payload returned verbatim; there is no unknown-flag rejection |
-| 8 | a valid `0x01` frame truncated to half its length | **must be a hard error**, `Failed to decompress payload: incomplete deflate stream`. This is the case that protects against a truncated body decoding as an empty content wipe (`compress.ts:26-44`) |
-| 9 | a `0x01` frame whose payload is gzip rather than zlib | must fail, and exists purely to catch a Rust implementation that reached for `GzEncoder` |
+| #   | Case                                                                   | Pins                                                                                                                                                                                                 |
+| --- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 63 bytes of highly compressible text                                   | flag `0x00`, stored, because the threshold is strict "under 64"                                                                                                                                      |
+| 2   | 64 bytes of highly compressible text                                   | flag `0x01`, the first byte that is allowed to compress                                                                                                                                              |
+| 3   | 4 KiB of repeated text                                                 | flag `0x01`, and that the payload begins `78 9c`                                                                                                                                                     |
+| 4   | 4 KiB of cryptographically random bytes                                | flag `0x00`, because deflate does not shrink random data                                                                                                                                             |
+| 5   | a payload where deflate output is exactly equal in length to the input | flag `0x00`, the `>=` boundary rather than `>`                                                                                                                                                       |
+| 6   | empty input                                                            | returned as-is, no flag prepended on decompress of an empty buffer (`compress.ts:20`)                                                                                                                |
+| 7   | a frame with flag `0x02`                                               | treated as **stored**, the payload returned verbatim; there is no unknown-flag rejection                                                                                                             |
+| 8   | a valid `0x01` frame truncated to half its length                      | **must be a hard error**, `Failed to decompress payload: incomplete deflate stream`. This is the case that protects against a truncated body decoding as an empty content wipe (`compress.ts:26-44`) |
+| 9   | a `0x01` frame whose payload is gzip rather than zlib                  | must fail, and exists purely to catch a Rust implementation that reached for `GzEncoder`                                                                                                             |
 
 **Desktop assertions**: `compressPayload(input)` equals `expectedFrameHex` and
 `decompressPayload(expectedFrameHex)` equals `inputHex`, plus the two error cases.
@@ -550,13 +555,16 @@ implementation's behaviour.
 {
   "name": "tie broken by local offline tick",
   "syncableFields": "TASK",
-  "localData":  { "title": "phone title", "priority": 2 },
+  "localData": { "title": "phone title", "priority": 2 },
   "remoteData": { "title": "desktop title", "priority": 2 },
-  "localFieldClocks":  { "title": { "_offline": 1, "device-a": 2 }, "priority": { "device-a": 3 } },
-  "remoteFieldClocks": { "title": { "device-a": 3 },                "priority": { "device-a": 3 } },
+  "localFieldClocks": { "title": { "_offline": 1, "device-a": 2 }, "priority": { "device-a": 3 } },
+  "remoteFieldClocks": { "title": { "device-a": 3 }, "priority": { "device-a": 3 } },
   "expected": {
     "merged": { "title": "phone title", "priority": 2 },
-    "mergedFieldClocks": { "title": { "_offline": 1, "device-a": 3 }, "priority": { "device-a": 3 } },
+    "mergedFieldClocks": {
+      "title": { "_offline": 1, "device-a": 3 },
+      "priority": { "device-a": 3 }
+    },
     "hadConflicts": false,
     "conflictedFields": [],
     "conflicts": []
@@ -570,26 +578,26 @@ has the same 15 and 9 entries in the same order.
 
 **Named cases, covering the clockTotal and `_offline` heuristics explicitly** (18):
 
-| # | Name | What it pins |
-|---|---|---|
-| 1 | `remote-total-greater` | rule 1, remote wins outright |
-| 2 | `local-total-greater` | rule 2, local wins outright |
-| 3 | `totals-equal-values-equal` | rule 4 default, remote wins, no conflict because values match |
-| 4 | `totals-equal-values-differ-no-offline` | rule 4 default, **remote wins a plain tie** |
-| 5 | `totals-equal-local-has-offline` | rule 3, local wins |
-| 6 | `totals-equal-remote-has-offline` | **the asymmetry**: remote already wins by rule 4, so this looks the same as case 4. Named separately because it is the case an implementer will assume is symmetric |
-| 7 | `totals-equal-both-have-offline` | rule 3 does not fire, remote wins |
-| 8 | `totals-equal-local-offline-but-values-equal` | rule 3 requires `valsDiffer`, so remote wins |
-| 9 | `clock-total-beats-causality` | local clock is `{a:5}`, remote is `{b:2, c:2}`; local total 5 beats remote total 4 even though the clocks are concurrent. **This is the case that shows `clockTotal` is not a causal rule** |
-| 10 | `concurrent-equal-totals-values-differ` | the only shape that reports a conflict: all three conditions hold |
-| 11 | `concurrent-unequal-totals-values-differ` | **concurrent but silently resolved**, `hadConflicts` false. The lost-edit case |
-| 12 | `missing-local-field-clock` | absent clock defaults to `{}`, total 0 |
-| 13 | `missing-both-field-clocks` | both `{}`, tie, remote wins |
-| 14 | `field-absent-from-syncable-list` | a field present in the data but not in the list is not merged at all and not present in `merged` |
-| 15 | `null-versus-undefined` | `JSON.stringify(null) !== JSON.stringify(undefined)`, so these count as differing |
-| 16 | `object-values-same-content-different-key-order` | **`JSON.stringify` equality is key-order sensitive**, so `{a:1,b:2}` and `{b:2,a:1}` count as differing. The single likeliest Rust divergence |
-| 17 | `number-formatting` | `1` versus `1.0` stringify identically; `0.1 + 0.2` does not equal `0.3` |
-| 18 | `project-fields` | one case over `PROJECT_SYNCABLE_FIELDS` so the second list is exercised |
+| #   | Name                                             | What it pins                                                                                                                                                                                |
+| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `remote-total-greater`                           | rule 1, remote wins outright                                                                                                                                                                |
+| 2   | `local-total-greater`                            | rule 2, local wins outright                                                                                                                                                                 |
+| 3   | `totals-equal-values-equal`                      | rule 4 default, remote wins, no conflict because values match                                                                                                                               |
+| 4   | `totals-equal-values-differ-no-offline`          | rule 4 default, **remote wins a plain tie**                                                                                                                                                 |
+| 5   | `totals-equal-local-has-offline`                 | rule 3, local wins                                                                                                                                                                          |
+| 6   | `totals-equal-remote-has-offline`                | **the asymmetry**: remote already wins by rule 4, so this looks the same as case 4. Named separately because it is the case an implementer will assume is symmetric                         |
+| 7   | `totals-equal-both-have-offline`                 | rule 3 does not fire, remote wins                                                                                                                                                           |
+| 8   | `totals-equal-local-offline-but-values-equal`    | rule 3 requires `valsDiffer`, so remote wins                                                                                                                                                |
+| 9   | `clock-total-beats-causality`                    | local clock is `{a:5}`, remote is `{b:2, c:2}`; local total 5 beats remote total 4 even though the clocks are concurrent. **This is the case that shows `clockTotal` is not a causal rule** |
+| 10  | `concurrent-equal-totals-values-differ`          | the only shape that reports a conflict: all three conditions hold                                                                                                                           |
+| 11  | `concurrent-unequal-totals-values-differ`        | **concurrent but silently resolved**, `hadConflicts` false. The lost-edit case                                                                                                              |
+| 12  | `missing-local-field-clock`                      | absent clock defaults to `{}`, total 0                                                                                                                                                      |
+| 13  | `missing-both-field-clocks`                      | both `{}`, tie, remote wins                                                                                                                                                                 |
+| 14  | `field-absent-from-syncable-list`                | a field present in the data but not in the list is not merged at all and not present in `merged`                                                                                            |
+| 15  | `null-versus-undefined`                          | `JSON.stringify(null) !== JSON.stringify(undefined)`, so these count as differing                                                                                                           |
+| 16  | `object-values-same-content-different-key-order` | **`JSON.stringify` equality is key-order sensitive**, so `{a:1,b:2}` and `{b:2,a:1}` count as differing. The single likeliest Rust divergence                                               |
+| 17  | `number-formatting`                              | `1` versus `1.0` stringify identically; `0.1 + 0.2` does not equal `0.3`                                                                                                                    |
+| 18  | `project-fields`                                 | one case over `PROJECT_SYNCABLE_FIELDS` so the second list is exercised                                                                                                                     |
 
 Plus a second group in the same file, `clockAlgebra`, 8 cases over
 `compare`, `merge` and `increment` from `packages/sync-client/src/vector-clock.ts`:
@@ -641,18 +649,18 @@ say so in `meta.encoding`.
 
 **Cases** (10):
 
-| # | Case | Pins |
-|---|---|---|
-| 1 | one `record` entry | the minimal valid pack, header, one index record, footer |
-| 2 | three entries, one of each kind | `PackKindCode` 0, 1, 2 and mixed `sortKey` semantics |
-| 3 | a `crdt_snapshot` entry with `{sequenceNum, revision}` meta | the JSON meta field and the freshness token |
-| 4 | an entry with an empty meta field | `metaLen` 0 and no `meta` key on the decoded entry |
-| 5 | a multi-byte UTF-8 identity, for example a folder path with non-ASCII | that `idLen` is **bytes**, not characters |
-| 6 | header magic corrupted | reject |
-| 7 | header version set to 2 | reject with `unsupported pack version 2` |
-| 8 | footer `payloadSha256` corrupted | reject with `pack payload checksum mismatch` |
-| 9 | one entry's `sha256` corrupted, payload digest still valid | reject with `pack entry checksum mismatch: <id>`, proving per-entry verification is not skipped when the whole-payload digest passes |
-| 10 | `entryCount` in the footer set above `PACK_MAX_ENTRIES` | reject, proving the bound is structural |
+| #   | Case                                                                  | Pins                                                                                                                                 |
+| --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | one `record` entry                                                    | the minimal valid pack, header, one index record, footer                                                                             |
+| 2   | three entries, one of each kind                                       | `PackKindCode` 0, 1, 2 and mixed `sortKey` semantics                                                                                 |
+| 3   | a `crdt_snapshot` entry with `{sequenceNum, revision}` meta           | the JSON meta field and the freshness token                                                                                          |
+| 4   | an entry with an empty meta field                                     | `metaLen` 0 and no `meta` key on the decoded entry                                                                                   |
+| 5   | a multi-byte UTF-8 identity, for example a folder path with non-ASCII | that `idLen` is **bytes**, not characters                                                                                            |
+| 6   | header magic corrupted                                                | reject                                                                                                                               |
+| 7   | header version set to 2                                               | reject with `unsupported pack version 2`                                                                                             |
+| 8   | footer `payloadSha256` corrupted                                      | reject with `pack payload checksum mismatch`                                                                                         |
+| 9   | one entry's `sha256` corrupted, payload digest still valid            | reject with `pack entry checksum mismatch: <id>`, proving per-entry verification is not skipped when the whole-payload digest passes |
+| 10  | `entryCount` in the footer set above `PACK_MAX_ENTRIES`               | reject, proving the bound is structural                                                                                              |
 
 **Desktop assertions**: `parsePack(bytes)` returns `integrityVerified: true` and the
 expected entry array for the good cases; throws the documented message for each bad
@@ -690,9 +698,15 @@ that exist so a Rust or Swift consumer can read them without importing TypeScrip
 
 ```json
 {
-  "meta": { "source": "packages/editor-schema/src/conformance.ts", "caseCount": 80, "fuzzSeed": "0x1848" },
-  "cases": [ { "name": "...", "markdown": "...", "canonical": null, "pending": null, "sha256": "..." } ],
-  "fuzzFamilies": [ { "name": "link mention urls", "casesPerFamily": 48, "pending": null } ]
+  "meta": {
+    "source": "packages/editor-schema/src/conformance.ts",
+    "caseCount": 80,
+    "fuzzSeed": "0x1848"
+  },
+  "cases": [
+    { "name": "...", "markdown": "...", "canonical": null, "pending": null, "sha256": "..." }
+  ],
+  "fuzzFamilies": [{ "name": "link mention urls", "casesPerFamily": 48, "pending": null }]
 }
 ```
 
@@ -712,12 +726,12 @@ markdown grammar in Rust, and no parse-and-serialise round trip on this side.
 Add four cases the existing corpus does not cover, because they are about the storage
 layer rather than the editor:
 
-| Case | Why |
-|---|---|
-| a file with a BOM | `splitFrontmatterBlock` includes it in the block (`packages/app-core/src/markdown.ts:22`, `:34`) |
-| a file with CRLF line endings throughout | `eol` detection and re-application (`:60`) |
-| a file with an unclosed `---` block | not frontmatter; the whole file is body (`:39`) |
-| a file with no trailing newline | `hadTrailingNewline` (`:61`) |
+| Case                                     | Why                                                                                              |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| a file with a BOM                        | `splitFrontmatterBlock` includes it in the block (`packages/app-core/src/markdown.ts:22`, `:34`) |
+| a file with CRLF line endings throughout | `eol` detection and re-application (`:60`)                                                       |
+| a file with an unclosed `---` block      | not frontmatter; the whole file is body (`:39`)                                                  |
+| a file with no trailing newline          | `hadTrailingNewline` (`:61`)                                                                     |
 
 **Count target**: 80 existing plus 4 equals 84 cases, plus 5 fuzz families at 48
 seeded cases each.
@@ -784,12 +798,12 @@ than predicted ones.
 
 **Cases**: 4 per type, 52 in total.
 
-| Case | Pins |
-|---|---|
-| a valid instance with every modelled field populated | the projector's field list against the payload's |
-| a boundary instance: empty strings, empty arrays, every optional absent | that "absent" and "empty" stay distinct on the round trip |
-| an instance carrying an unknown field a newer client wrote | **the SC-014 case**: the field must survive a store and push cycle untouched |
-| the expected verbatim round trip of the unknown-field instance | the exact bytes that must come back out |
+| Case                                                                    | Pins                                                                         |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| a valid instance with every modelled field populated                    | the projector's field list against the payload's                             |
+| a boundary instance: empty strings, empty arrays, every optional absent | that "absent" and "empty" stay distinct on the round trip                    |
+| an instance carrying an unknown field a newer client wrote              | **the SC-014 case**: the field must survive a store and push cycle untouched |
+| the expected verbatim round trip of the unknown-field instance          | the exact bytes that must come back out                                      |
 
 **Desktop assertions**: the Zod schema accepts the valid and boundary instances;
 parsing the unknown-field instance strips the unknown key from the parsed object
@@ -813,16 +827,16 @@ subkeys and the nonce are fixed constants.
 
 **Cases** (8):
 
-| # | Case | Pins |
-|---|---|---|
-| 1 | the scan-channel MAC | HMAC-SHA-256, and the exact message construction |
-| 2 | the confirm-channel MAC | the **different** primitive on this channel, which is Q03.5 |
-| 3 | the SAS derivation | the digits both devices show, and the truncation rule |
-| 4 | the proof the new device sends | field order and encoding |
-| 5 | the confirm payload | the same, on the other side |
-| 6 | a MAC verified with the wrong subkey | must fail |
-| 7 | an SAS computed from a transcript with one byte changed | must differ, which is the whole point of the SAS |
-| 8 | an expired session's proof | must be rejected on the TTL rather than on the MAC |
+| #   | Case                                                    | Pins                                                        |
+| --- | ------------------------------------------------------- | ----------------------------------------------------------- |
+| 1   | the scan-channel MAC                                    | HMAC-SHA-256, and the exact message construction            |
+| 2   | the confirm-channel MAC                                 | the **different** primitive on this channel, which is Q03.5 |
+| 3   | the SAS derivation                                      | the digits both devices show, and the truncation rule       |
+| 4   | the proof the new device sends                          | field order and encoding                                    |
+| 5   | the confirm payload                                     | the same, on the other side                                 |
+| 6   | a MAC verified with the wrong subkey                    | must fail                                                   |
+| 7   | an SAS computed from a transcript with one byte changed | must differ, which is the whole point of the SAS            |
+| 8   | an expired session's proof                              | must be rejected on the TTL rather than on the MAC          |
 
 **Rust assertions**: identical, both directions. This class is what makes Q03.1
 through Q03.5 answerable at G1 with something other than prose: each answer becomes
@@ -832,22 +846,43 @@ a case.
 
 ## 14. Totals and the gate
 
-| Class | File | Cases | Status |
-|---|---|---|---|
-| primitives | `crypto-vectors.json` | 20 | exists, unchanged |
-| password unlock | `crypto-vectors.json` | 1 | exists, unchanged |
-| recovery phrase unlock + verifiers | `bip39-unlock.json` | 8 | new |
-| signed record envelope | `record-envelope.json` | 14 | new |
-| packed CRDT update | `crdt-update.json` | 8 | new |
-| canonical CBOR | `cbor-canonical.json` | 14 | new |
-| compression framing | `compression.json` | 9 | new |
-| field merge | `field-merge.json` | 30 | new |
-| MPAK pack, reader only | `pack-container.json` | 10 | new |
-| payload schemas | `payload-schemas.json` | 52 | new |
-| device linking | `device-linking.json` | 8 | new |
-| text extraction | `text-extract.json` | 12 | new |
-| markdown corpus + out-of-band encodings | `markdown-roundtrip/` | 89 + 5 families | 80 exist, 9 new |
-| **Total** | | **275 cases plus 5 fuzz families** | |
+| Class                                   | File                   | Cases                              | Status            |
+| --------------------------------------- | ---------------------- | ---------------------------------- | ----------------- |
+| primitives                              | `crypto-vectors.json`  | 21                                 | exists, unchanged |
+| password unlock                         | `crypto-vectors.json`  | 1                                  | exists, unchanged |
+| recovery phrase unlock + verifiers      | `bip39-unlock.json`    | 9                                  | new               |
+| signed record envelope                  | `record-envelope.json` | 14                                 | new               |
+| packed CRDT update                      | `crdt-update.json`     | 8                                  | new               |
+| canonical CBOR                          | `cbor-canonical.json`  | 14                                 | new               |
+| compression framing                     | `compression.json`     | 9                                  | new               |
+| field merge                             | `field-merge.json`     | 32                                 | new               |
+| MPAK pack, reader only                  | `pack-container.json`  | 10                                 | new               |
+| payload schemas                         | `payload-schemas.json` | 52                                 | new               |
+| device linking                          | `device-linking.json`  | 8                                  | new               |
+| text extraction                         | `text-extract.json`    | 12                                 | new               |
+| markdown corpus + out-of-band encodings | `markdown-roundtrip/`  | 90 + 5 families                    | 80 exist, 10 new  |
+| **Total**                               |                        | **280 cases plus 5 fuzz families** |                   |
+
+**Amended 2026-09-13, when the classes were built.** The table above replaces
+the planned totals, which read 275. Five of the difference are real and one was
+an arithmetic slip in this document:
+
+- the primitives row read **20**; the groups in `crypto-vectors.json` sum to
+  **21** (2 + 2 + 1 + 7 + 3 + 1 + 2 + 2 + 1);
+- `bip39-unlock.json` carries **9**, not 8: the `deviceId` derivation became a
+  named case rather than a verifier-only assertion, so a second implementation
+  fails it directly;
+- `field-merge.json` carries **32**, not 30:
+  `totals-equal-local-offline-zero-tick` pins that the `_offline` tie-break is a
+  key-presence test rather than a tick-value test, which no other case reaches,
+  and `float-accumulation` pins the other half of the number-formatting case;
+- `markdown-roundtrip/cases.json` carries **90**, not 89: a sixth out-of-band
+  case carrying a **foreign root no client knows**, without which the class only
+  proves that roots someone remembered to list survive.
+
+`packages/contracts/test-vectors/README.md` carries the same reconciliation next
+to the files, along with the two other points where the built classes differ
+from this design record and why.
 
 SC-001 reads "100% of the committed conformance vectors pass in the second
 implementation, byte for byte, before any shell work begins". That is this table.
