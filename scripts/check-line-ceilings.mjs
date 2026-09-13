@@ -9,9 +9,16 @@
  *   node scripts/check-line-ceilings.mjs
  */
 import { readdir, readFile } from 'node:fs/promises'
-import { join, relative, sep } from 'node:path'
+import { dirname, join, relative, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const repoRoot = process.cwd()
+// Anchored to this file, never to the caller's cwd. `scripts/` sits at the
+// repo root, so this resolves the same from anywhere. With `process.cwd()`,
+// running the gate from `crates/` made every rule ENOENT — which the loop
+// below correctly treats as "not a violation" — so it scanned zero files and
+// printed "passed". A gate that reports success having inspected nothing is
+// worse than no gate, because it is believed.
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 /** Each rule: files directly matching `dir` + `extension`, capped at `max`. */
 const RULES = [
@@ -53,9 +60,11 @@ function lineCount(source) {
 }
 
 const violations = []
+let checked = 0
 
 for (const rule of RULES) {
   for (const file of await filesUnder(join(repoRoot, rule.dir), rule.extension, rule.recursive)) {
+    checked += 1
     const lines = lineCount(await readFile(file, 'utf8'))
     if (lines > rule.max) {
       violations.push(
@@ -65,8 +74,16 @@ for (const rule of RULES) {
   }
 }
 
+// The second half of the same lesson: an individual rule may legitimately
+// match nothing, but every rule matching nothing means the roots are wrong.
+if (checked === 0) {
+  console.error('line ceiling check found no files at all — the rule roots are wrong.')
+  console.error(`Resolved repo root: ${repoRoot}`)
+  process.exit(1)
+}
+
 if (violations.length === 0) {
-  console.log('line ceiling check passed')
+  console.log(`line ceiling check passed (${checked} files)`)
   process.exit(0)
 }
 
