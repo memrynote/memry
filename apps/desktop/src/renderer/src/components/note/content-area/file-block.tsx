@@ -26,6 +26,7 @@ import {
   FileText,
   File,
   FileAudio,
+  FileVideo,
   Download,
   Upload,
   Loader2,
@@ -76,6 +77,9 @@ function getFileIcon(mimeType: string): React.ReactNode {
   }
   if (mimeType === 'text/plain' || mimeType === 'text/markdown') {
     return <FileText className="h-5 w-5 text-gray-500" />
+  }
+  if (mimeType.startsWith('video/')) {
+    return <FileVideo className="h-5 w-5 text-purple-500" />
   }
   return <File className="h-5 w-5 text-gray-500" />
 }
@@ -684,6 +688,59 @@ function AudioPreview({ url, name, menu }: FilePreviewProps) {
   )
 }
 
+/**
+ * Inline video player (#2190).
+ *
+ * The element streams from the `memry-file://` protocol handler, which answers
+ * Range requests, so seeking never pulls the whole file into memory — which is
+ * the constraint that rules out a data URL for a 100MB attachment.
+ *
+ * `preload="metadata"` on purpose: a note with several videos should cost a few
+ * header reads on open, not a full download of each.
+ */
+function VideoPreview({ url, name, mimeType, menu }: FilePreviewProps) {
+  const { state } = useSync()
+
+  const uploadEntry = state.uploadProgress
+    ? Object.entries(state.uploadProgress).find(([key]) => name && key.includes(name))?.[1]
+    : null
+
+  const downloadEntry = state.downloadProgress
+    ? Object.entries(state.downloadProgress).find(([key]) => name && key.includes(name))?.[1]
+    : null
+
+  const activeTransfer = uploadEntry ?? downloadEntry
+  const transferDirection: 'upload' | 'download' = uploadEntry ? 'upload' : 'download'
+
+  return (
+    <div className="file-video relative rounded-md border border-border bg-muted/30 p-2">
+      <video
+        controls
+        preload="metadata"
+        src={url}
+        data-testid="video-embed"
+        aria-label={name}
+        className="max-h-[60vh] w-full rounded bg-black"
+      >
+        <source src={url} type={mimeType} />
+        <track kind="captions" />
+      </video>
+      <div className="mt-2 flex items-center gap-2">
+        <FileVideo className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{name}</p>
+        {menu}
+      </div>
+      {activeTransfer && activeTransfer.status !== 'completed' && (
+        <SyncProgressOverlay
+          progress={activeTransfer.progress}
+          status={activeTransfer.status}
+          direction={transferDirection}
+        />
+      )}
+    </div>
+  )
+}
+
 // ============================================================================
 // Missing Attachment Card (#1713)
 // ============================================================================
@@ -816,6 +873,7 @@ function FileBlockRender({
   const { url, name, size, mimeType, width, height, align } = block.props
   const isPdf = mimeType === 'application/pdf'
   const isAudio = mimeType.startsWith('audio/')
+  const isVideo = mimeType.startsWith('video/')
 
   // Attachments are stored as a note-relative ref (`../attachments/…`) or a
   // mobile root-relative ref (`attachments/<noteId>/…`), both of which the
@@ -914,6 +972,14 @@ function FileBlockRender({
             onAlign={handleAlign}
             menu={menuButton}
           />
+        ) : isVideo ? (
+          <VideoPreview
+            url={resolvedUrl}
+            name={name}
+            size={size}
+            mimeType={mimeType}
+            menu={menuButton}
+          />
         ) : isAudio ? (
           <AudioPreview
             url={resolvedUrl}
@@ -962,7 +1028,11 @@ export const FILE_BLOCK_ACCEPT = [
   '.xls',
   '.xlsx',
   '.txt',
-  '.md'
+  '.md',
+  // Video (#2190) — only the containers Chromium can actually play.
+  '.mp4',
+  '.webm',
+  '.mov'
 ]
 
 // Type/props/content come from the shared config so this block and the main

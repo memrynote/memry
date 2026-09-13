@@ -322,6 +322,8 @@
       "loadFailed": "Failed to load the vault's attachments",
       "insertFailed": "Failed to insert the attachment",
       "uploadFailed": "Failed to upload the file",
+      "unsupportedVideo": "That video format can't be played in Memry. Supported formats: {{formats}}.",
+      "tooLarge": "That file is {{size}}, over the {{limit}} attachment limit.",
       "hint": {
         "navigate": "Navigate",
         "insert": "Insert",

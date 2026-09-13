@@ -141,6 +141,18 @@ describe('isAllowedFileType', () => {
     }
   })
 
+  it('#2190: returns true for playable video containers', () => {
+    expect(isAllowedFileType('clip.mp4')).toBe(true)
+    expect(isAllowedFileType('clip.webm')).toBe(true)
+    expect(isAllowedFileType('clip.MOV')).toBe(true)
+  })
+
+  it('#2190: rejects video containers Chromium cannot play', () => {
+    expect(isAllowedFileType('clip.avi')).toBe(false)
+    expect(isAllowedFileType('clip.mkv')).toBe(false)
+    expect(isAllowedFileType('clip.wmv')).toBe(false)
+  })
+
   it('T395: returns false for disallowed extensions', () => {
     expect(isAllowedFileType('file.exe')).toBe(false)
     expect(isAllowedFileType('file.sh')).toBe(false)
@@ -158,6 +170,10 @@ describe('getFileType', () => {
   })
 
   it('T395: returns "file" for non-image extensions', () => {
+    // Video stays in the `file` category: older clients read the same two
+    // values, so a video block degrades to a file reference rather than an
+    // unknown type (#2190).
+    expect(getFileType('clip.mp4')).toBe('file')
     expect(getFileType('doc.pdf')).toBe('file')
     expect(getFileType('doc.docx')).toBe('file')
     expect(getFileType('doc.txt')).toBe('file')
@@ -176,6 +192,12 @@ describe('getMimeType', () => {
     expect(getMimeType('file.pdf')).toBe('application/pdf')
     expect(getMimeType('file.txt')).toBe('text/plain')
     expect(getMimeType('file.md')).toBe('text/markdown')
+  })
+
+  it('#2190: returns correct MIME type for videos', () => {
+    expect(getMimeType('clip.mp4')).toBe('video/mp4')
+    expect(getMimeType('clip.webm')).toBe('video/webm')
+    expect(getMimeType('clip.mov')).toBe('video/quicktime')
   })
 
   it('T395: returns octet-stream for unknown types', () => {

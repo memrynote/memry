@@ -68,12 +68,63 @@ export function buildInsertedAttachmentBlock(result: InsertedAttachment) {
   }
 }
 
+/**
+ * Video containers the app accepts (#2190). Mirrors `ALLOWED_VIDEO_EXTENSIONS`
+ * in `apps/desktop/src/main/vault/attachments.ts`, which is the source of truth
+ * — the renderer cannot import from main.
+ *
+ * Only what Chromium plays without a transcode; `video/*` in the OS dialog
+ * would let the user pick an `.avi` that attaches and then never plays.
+ */
+export const ALLOWED_VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov']
+
+const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov'
+
+/**
+ * Pick-time size ceiling, mirroring `MAX_FILE_SIZE` in main's attachments
+ * module. Checked here too so an oversize video is refused before the bytes are
+ * read into an upload, rather than after.
+ */
+export const MAX_ATTACHMENT_BYTES = 100 * 1024 * 1024
+
 /** The `accept` handed to the OS file dialog for each kind. */
 export const ATTACHMENT_ACCEPT: Record<AttachmentKind, string | undefined> = {
   image: 'image/*',
-  media: 'image/*,video/*,audio/*',
+  media: `image/*,audio/*,${VIDEO_ACCEPT}`,
   pdf: 'application/pdf,.pdf',
   file: undefined
+}
+
+function fileExtension(filename: string): string {
+  const dot = filename.lastIndexOf('.')
+  return dot === -1 ? '' : filename.slice(dot + 1).toLowerCase()
+}
+
+/**
+ * Why a picked file cannot be attached, or `null` when it can.
+ *
+ * The OS dialog's `accept` is a filter, not a gate — a user can always switch
+ * it to "All Files" — so the same rules are enforced here, where there is a
+ * place to say what went wrong.
+ */
+export function describeAttachmentRejection(
+  file: { name: string; size: number; type?: string },
+  t: (key: string, vars?: Record<string, unknown>) => string
+): string | null {
+  const ext = fileExtension(file.name)
+  const looksLikeVideo = (file.type ?? '').toLowerCase().startsWith('video/')
+  if (looksLikeVideo && !ALLOWED_VIDEO_EXTENSIONS.includes(ext)) {
+    return t('editor.attachmentPicker.unsupportedVideo', {
+      formats: ALLOWED_VIDEO_EXTENSIONS.map((e) => `.${e}`).join(', ')
+    })
+  }
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    return t('editor.attachmentPicker.tooLarge', {
+      limit: formatFileSize(MAX_ATTACHMENT_BYTES),
+      size: formatFileSize(file.size)
+    })
+  }
+  return null
 }
 
 /**
@@ -220,6 +271,11 @@ export function AttachmentPickerDialog({
 
   const upload = useCallback(
     async (file: File) => {
+      const rejection = describeAttachmentRejection(file, t)
+      if (rejection) {
+        toast.error(rejection)
+        return
+      }
       setUploading(true)
       try {
         const result = await notesService.uploadAttachment(noteId, file)

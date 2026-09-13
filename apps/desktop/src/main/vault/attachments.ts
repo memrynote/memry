@@ -78,9 +78,24 @@ export const ALLOWED_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 's
 export const ALLOWED_FILE_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'md']
 
 /**
+ * Video extensions the app accepts (#2190).
+ *
+ * Exactly the containers Chromium plays without a transcode we are not going to
+ * do: `.mp4` (H.264/AAC), `.webm` (VP8/VP9), and `.mov`, which is MP4's
+ * container twin and plays whenever its codecs are the MP4 ones. Anything else
+ * (`.avi`, `.mkv`, `.wmv`) would attach and then refuse to play, so it is
+ * rejected at pick time instead.
+ */
+export const ALLOWED_VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov']
+
+/**
  * All allowed extensions combined
  */
-export const ALLOWED_EXTENSIONS = [...ALLOWED_IMAGE_EXTENSIONS, ...ALLOWED_FILE_EXTENSIONS]
+export const ALLOWED_EXTENSIONS = [
+  ...ALLOWED_IMAGE_EXTENSIONS,
+  ...ALLOWED_FILE_EXTENSIONS,
+  ...ALLOWED_VIDEO_EXTENSIONS
+]
 
 /**
  * 6-character prefix generator for unique filenames
@@ -202,7 +217,11 @@ export function getMimeType(filename: string): string {
     xls: 'application/vnd.ms-excel',
     xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     txt: 'text/plain',
-    md: 'text/markdown'
+    md: 'text/markdown',
+    // Video
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    mov: 'video/quicktime'
   }
   return mimeTypes[ext] || 'application/octet-stream'
 }
