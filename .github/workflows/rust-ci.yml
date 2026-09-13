@@ -75,7 +75,7 @@ jobs:
     name: Generated Swift bindings are current
     # macOS: the XCFramework needs the iOS SDK, and the bindings are generated
     # from the same build. Anything less proves nothing about what ships.
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
 
     steps:
@@ -93,8 +93,18 @@ jobs:
         with:
           workspaces: crates
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_26.app
+      # Glob, not a fixed path: the runner image names it Xcode_26.x.app and the
+      # patch version moves. Failing loudly with the available list beats a bare
+      # "invalid developer directory".
+      - name: Select Xcode 26
+        run: |
+          app=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$app" ]; then
+            echo "::error::No Xcode 26 on this runner. Found: $(ls -d /Applications/Xcode*.app 2>/dev/null | tr '\n' ' ')"
+            exit 1
+          fi
+          sudo xcode-select -s "$app"
+          xcodebuild -version
 
       - name: Build XCFramework and regenerate bindings
         run: crates/memry-core/build-xcframework.sh
