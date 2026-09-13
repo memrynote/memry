@@ -20,7 +20,7 @@ beforeAll(async () => {
   i18nEn = await createRendererI18n({ locale: 'en' })
 })
 
-const defaultCounts: TasksTabCounts = { today: 3, tomorrow: 2, next7: 8, all: 15 }
+const defaultCounts: TasksTabCounts = { today: 3, tomorrow: 2, next7: 8, all: 15, archived: 4 }
 
 const openWindowPicker = (): void => {
   fireEvent.click(screen.getByRole('combobox', { name: 'Task views' }))
@@ -102,6 +102,46 @@ describe('TasksTabBar', () => {
     expect(screen.getByRole('option', { name: /next 7 days/i })).toBeInTheDocument()
   })
 
+  it('hides the archived scope when the page cannot handle it', () => {
+    renderTabBar()
+    openWindowPicker()
+    expect(screen.queryByRole('option', { name: /archived/i })).not.toBeInTheDocument()
+  })
+
+  it('offers the archived scope when the page handles it', () => {
+    renderTabBar({ onArchivedScopeChange: vi.fn() })
+    openWindowPicker()
+    expect(screen.getByRole('option', { name: /archived/i })).toBeInTheDocument()
+  })
+
+  it('turns the archived scope on without moving the due window', () => {
+    const onArchivedScopeChange = vi.fn()
+    const onTabChange = vi.fn()
+    renderTabBar({ onArchivedScopeChange, onTabChange })
+
+    openWindowPicker()
+    fireEvent.click(screen.getByRole('option', { name: /archived/i }))
+
+    expect(onArchivedScopeChange).toHaveBeenCalledWith(true)
+    expect(onTabChange).not.toHaveBeenCalled()
+  })
+
+  it('shows the archived scope and its count on the trigger, and leaves it when a window is picked', () => {
+    const onArchivedScopeChange = vi.fn()
+    const onTabChange = vi.fn()
+    renderTabBar({ isArchivedScope: true, onArchivedScopeChange, onTabChange })
+
+    const trigger = screen.getByRole('combobox', { name: 'Task views' })
+    expect(trigger).toHaveTextContent('Archived')
+    expect(trigger).toHaveTextContent('4')
+
+    openWindowPicker()
+    fireEvent.click(screen.getByRole('option', { name: /today/i }))
+
+    expect(onArchivedScopeChange).toHaveBeenLastCalledWith(false)
+    expect(onTabChange).toHaveBeenCalledWith('today')
+  })
+
   it('shows the active scope and its count on the trigger', () => {
     renderTabBar({ activeTab: 'tomorrow' })
     const trigger = screen.getByRole('combobox', { name: 'Task views' })
@@ -162,7 +202,7 @@ describe('TasksTabBar', () => {
   it('selects "All projects" to clear the project scope', () => {
     const onProjectChange = vi.fn()
     renderTabBar({
-      counts: { today: 0, tomorrow: 0, next7: 0, all: 0 },
+      counts: { today: 0, tomorrow: 0, next7: 0, all: 0, archived: 0 },
       projects: [makeProject()],
       selectedProjectId: 'project-1',
       onProjectChange

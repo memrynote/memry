@@ -5,6 +5,7 @@ import type {
   TaskSort,
   DueDateFilter,
   CompletionFilterType,
+  StatusType,
   RepeatFilterType,
   HasTimeFilterType
 } from '@/data/tasks-data'
@@ -143,6 +144,10 @@ export const filterByCompletion = (
     return status?.type === 'done'
   }
 
+  if (completion === 'archived') {
+    return tasks.filter((t) => !!t.archivedAt)
+  }
+
   const nonArchivedTasks = tasks.filter((t) => !t.archivedAt)
 
   switch (completion) {
@@ -180,40 +185,39 @@ export const filterByHasTime = (tasks: Task[], type: HasTimeFilterType): Task[] 
   }
 }
 
+/**
+ * Orders two optional values with "missing sorts last", which is what every
+ * date-ish sort field here wants.
+ */
+const compareNullable = <T>(
+  a: T | null | undefined,
+  b: T | null | undefined,
+  compare: (a: T, b: T) => number
+): number => {
+  if (a && b) return compare(a, b)
+  if (a) return -1
+  if (b) return 1
+  return 0
+}
+
 export const sortTasksAdvanced = (tasks: Task[], sort: TaskSort, projects: Project[]): Task[] => {
-  const priorityOrder: Record<Priority, number> = {
+  const priorityOrder = {
     urgent: 0,
     high: 1,
     medium: 2,
     low: 3,
     none: 4
-  }
+  } satisfies Record<Priority, number>
 
   const sorted = [...tasks].sort((a, b) => {
     let comparison = 0
 
     switch (sort.field) {
       case 'dueDate': {
-        if (!a.dueDate && !b.dueDate) {
-          comparison = 0
-        } else if (!a.dueDate) {
-          comparison = 1
-        } else if (!b.dueDate) {
-          comparison = -1
-        } else {
-          comparison = a.dueDate.getTime() - b.dueDate.getTime()
+        comparison = compareNullable(a.dueDate, b.dueDate, (x, y) => x.getTime() - y.getTime())
 
-          if (comparison === 0) {
-            if (!a.dueTime && !b.dueTime) {
-              comparison = 0
-            } else if (!a.dueTime) {
-              comparison = 1
-            } else if (!b.dueTime) {
-              comparison = -1
-            } else {
-              comparison = a.dueTime.localeCompare(b.dueTime)
-            }
-          }
+        if (comparison === 0 && a.dueDate && b.dueDate) {
+          comparison = compareNullable(a.dueTime, b.dueTime, (x, y) => x.localeCompare(y))
         }
         break
       }
@@ -231,7 +235,10 @@ export const sortTasksAdvanced = (tasks: Task[], sort: TaskSort, projects: Proje
         break
 
       case 'status': {
-        const statusTypeOrder: Record<string, number> = { todo: 0, in_progress: 1, done: 2 }
+        const statusTypeOrder = { todo: 0, in_progress: 1, done: 2 } satisfies Record<
+          StatusType,
+          number
+        >
         const getStatusOrder = (task: Task): number => {
           const proj = projects.find((p) => p.id === task.projectId)
           const status = proj?.statuses.find((s) => s.id === task.statusId)
@@ -250,10 +257,11 @@ export const sortTasksAdvanced = (tasks: Task[], sort: TaskSort, projects: Proje
       }
 
       case 'completedAt':
-        if (!a.completedAt && !b.completedAt) comparison = 0
-        else if (!a.completedAt) comparison = 1
-        else if (!b.completedAt) comparison = -1
-        else comparison = a.completedAt.getTime() - b.completedAt.getTime()
+        comparison = compareNullable(
+          a.completedAt,
+          b.completedAt,
+          (x, y) => x.getTime() - y.getTime()
+        )
         break
     }
 

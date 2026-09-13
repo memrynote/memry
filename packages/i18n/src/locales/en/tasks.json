@@ -5,7 +5,8 @@
       "today": "Today",
       "tomorrow": "Tomorrow",
       "next7": "Next 7 days",
-      "all": "All"
+      "all": "All",
+      "archived": "Archived"
     },
     "viewMode": {
       "label": "View mode",
@@ -46,7 +47,9 @@
       "medium": "Medium",
       "high": "High",
       "urgent": "Urgent"
-    }
+    },
+    "unarchive": "Unarchive task",
+    "archivedOn": "Archived {date}"
   },
   "reminders": {
     "summary": "Reminder: {date}",
@@ -226,7 +229,9 @@
       "archived": "{count, plural, one {# task archived} other {# tasks archived}}",
       "undoDelete": "{count, plural, one {Delete # task} other {Delete # tasks}}",
       "deleted": "{count, plural, one {# task deleted} other {# tasks deleted}}",
-      "deletedDescription": "This action can be undone for a short time."
+      "deletedDescription": "This action can be undone for a short time.",
+      "unarchived": "{count} tasks restored from archive",
+      "undoUnarchive": "Unarchive {count} tasks"
     },
     "drag": {
       "rescheduledTo": "Rescheduled to {target}",
@@ -276,7 +281,8 @@
       "archive": "Archive",
       "delete": "Delete",
       "cancelSelection": "Cancel selection",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "unarchive": "Unarchive"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
       "delete": "Delete ",

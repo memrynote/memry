@@ -42,6 +42,26 @@ Two things to know:
   undated work gets a permanent home on the dashboard — see
   [Home Dashboard](/user-guide/home-dashboard).
 
+### Seeing Archived Tasks
+
+Archived tasks are hidden from every ordinary view. To see them, open the scope dropdown —
+the one holding **All**, **Today**, **Tomorrow**, and **Next 7 days** — and pick
+**Archived**. The list then shows archived tasks only, with their count next to the scope
+name, and the project scope still applies.
+
+The archived scope is list-only; Kanban groups by status, which the archive has no use for.
+Your list-or-board choice is remembered, so leaving the scope puts the board back.
+
+To bring a task back:
+
+- **From the list** — select one or more tasks and click **Unarchive** in the bulk action
+  bar, where **Archive** normally sits.
+- **From the task** — open it and click **Unarchive** at the bottom of the detail panel.
+
+Unarchiving restores the task to the status and project it had when you archived it. A task
+opened from global search lands in the detail panel, so an archived task found that way can
+be restored without switching scope first.
+
 ## Quick Filter Chips
 
 Pre-built chips at the start of the bar for the most common scopes:

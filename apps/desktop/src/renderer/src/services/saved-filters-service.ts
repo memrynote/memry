@@ -31,7 +31,7 @@ export interface TaskFiltersConfig {
   tags: string[]
   dueDate: DueDateFilter
   statusIds: string[]
-  completion: 'active' | 'completed' | 'all'
+  completion: 'active' | 'completed' | 'all' | 'archived'
   repeatType: 'all' | 'repeating' | 'one-time'
   hasTime: 'all' | 'with-time' | 'without-time'
 }

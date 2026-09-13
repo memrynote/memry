@@ -2811,8 +2811,33 @@ describe('Task Utils', () => {
         expect(filterByCompletion(tasks, 'all', completionProjects)).toHaveLength(0)
       })
 
+      it('should return only archived tasks for "archived"', () => {
+        const tasks = [
+          createMockTask({ id: 't1', projectId: 'p1', statusId: 's-todo' }),
+          createMockTask({ id: 't2', projectId: 'p1', statusId: 's-done' }),
+          createMockTask({ id: 't3', projectId: 'p1', statusId: 's-todo', archivedAt: new Date() }),
+          createMockTask({ id: 't4', projectId: 'p1', statusId: 's-done', archivedAt: new Date() })
+        ]
+
+        const filtered = filterByCompletion(tasks, 'archived', completionProjects)
+
+        expect(filtered.map((t: Task) => t.id)).toEqual(['t3', 't4'])
+      })
+
+      it('should keep archived tasks on their own status for "archived"', () => {
+        const tasks = [
+          createMockTask({ id: 't1', projectId: 'p1', statusId: 's-done', archivedAt: new Date() })
+        ]
+
+        const filtered = filterByCompletion(tasks, 'archived', completionProjects)
+
+        expect(filtered).toHaveLength(1)
+        expect(filtered[0].statusId).toBe('s-done')
+      })
+
       it('should handle empty tasks array', () => {
         expect(filterByCompletion([], 'active', completionProjects)).toHaveLength(0)
+        expect(filterByCompletion([], 'archived', completionProjects)).toHaveLength(0)
       })
 
       it('should handle empty projects array', () => {
