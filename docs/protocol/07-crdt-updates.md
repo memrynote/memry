@@ -35,6 +35,29 @@ concurrent body merges to the CRDT
 (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:57-64`) and purges
 the Y.Doc on a remote delete (`:175-181`).
 
+### 7.1.0 Minting a note id
+
+§7.1 settles the journal id and the grammar, and stopped there: nothing said how
+a **note** id is minted, so a port had to invent a scheme and two ports would
+have invented different ones.
+
+Desktop mints a note id as **12 characters drawn from `0123456789` plus `a-z`**,
+lowercase only, via `nanoid`'s `customAlphabet`
+(`apps/desktop/src/main/lib/id.ts:13-14`). The observed ids on a real account —
+`dzxnhc9p3gk3` — are exactly that. Tasks and projects use a different generator:
+plain 21-character URL-safe `nanoid` (`:7`).
+
+**Normative, and narrower than it looks.** A note id MUST satisfy
+`NoteIdSchema`, `/^[a-zA-Z0-9_-]+$/` capped at 128 characters; that is the only
+constraint the wire enforces, and a client MUST accept any id meeting it. The
+12-character lowercase form is what desktop **writes**, and a client that mints
+its own note ids SHOULD match it so the two are indistinguishable in a vault —
+but a client MUST NOT reject an id that does not, because journal ids
+(`j2026-08-13`) do not, and neither would an id from any future shell.
+
+**A core that is handed an id MUST validate it against the grammar rather than
+mint a replacement.** Replacing a caller's id is how the same note becomes two.
+
 ### 7.1.1 The constants are wrong today (#2186)
 
 `CRDT_SYNC_ITEM_TYPES = ['note']`

@@ -429,6 +429,31 @@ malformed or future key cannot stall every other synced setting
 (`packages/contracts/src/settings-sync.ts:83-86`, `:99-100`). This is chapter 13
 §13.2 applied to settings.
 
+### 6.9.1 Every clocked path is a leaf, including a removal
+
+Every example above is a leaf, and that left two questions a writer has to
+answer on its first line of code.
+
+**A write MUST clock the path it wrote, and MUST NOT clock an ancestor of it.**
+Ticking `journal` because `journal.weekdayTemplates.3` changed would make an
+edit to Wednesday beat a concurrent edit to Thursday, which is exactly the
+interleaving the per-day clock exists to allow. The single-clocked sub-objects
+above are single-clocked because their **declared** path is the whole object,
+not because a writer chose to clock higher.
+
+**Removing a key MUST tick that key's clock.** This is the one that is silently
+wrong if you do not think about it: a removal that ticks nothing loses to the
+peer still holding the old value, and the setting the user cleared comes back on
+the next pull. A removal is a write.
+
+**This specification defines no rule for pruning the clocks under a path whose
+value is replaced by a non-object, and a client MUST NOT invent one.** Dropping
+a clock is not reversible and changes a future winner, so it falls under §6.10's
+reasoning: it would be a format change under chapter 00 §0.8 obligation 3. A
+client that replaces a subtree leaves the descendant clocks where they are; they
+are keys outside the modelled set, and the paragraph above already says those
+ride along.
+
 ## 6.10 Clock growth — Q06.6
 
 **Normative: nothing prunes a vector clock, and this specification defines no

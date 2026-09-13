@@ -192,6 +192,13 @@ this is a clarification of intent rather than a change: a client that guessed
 either way still passes today, and would have diverged the first time a journal
 with an alias crossed between two ports.
 
+**A newly created day carries no `title` at all — the key is absent, not
+`null`.** §13.4's distinction is the whole reason this has to be written down: a
+client that seeds `title: null` on create is making an explicit clear, and the
+first peer to merge it wipes a title another device had already set. A day's
+display name is derived from its `date` until someone titles it, and a derived
+name is not a payload field.
+
 **`date` is optional ONLY so a delete tombstone can omit it** (`:274-280`). A
 create or update without it is rejected by **an explicit guard in the handler,
 not by the schema**. Deletes never reach any parser at all: the applier
@@ -229,6 +236,26 @@ nested arrays with their own schemas: `statuses` (`StatusSyncSchema`,
 **`properties` must stay an array** (`TemplatePropertySchema[]`, `:106`) or note
 creation from the template throws.
 
+**The element shape**, from `packages/contracts/src/templates-api.ts:102-117`:
+`name` (non-empty string), `type`, `value` (**`z.unknown()`** — any JSON), and
+optional `options` (`string[]`).
+
+**Applying a template maps that array onto §13.7.1's free-form `properties`
+record by name and value only**: `properties[prop.name] = prop.value`. `type`
+and `options` are **discarded at note-creation time**. They are not lost — a
+vault-wide `property_definition` carries the type (§13.7.9) — but nothing a
+template says about a type reaches the note it creates. Where a caller supplies
+its own properties too, **the caller's value wins**: the record is built
+template-first and then overlaid.
+
+**A template's `type` enum and `property_definition`'s vocabulary are not the
+same list**, and a port MUST NOT treat either as the other's validator. The
+template enum is closed at nine values and includes `rating`; §13.7.9's
+enumeration includes `status` and `relation` and does not include `rating`. The
+two were written for different purposes and have drifted. This is recorded as
+an observation, not a rule to enforce — `type` is advisory on both sides and
+neither list is a wire constraint on the other.
+
 ### 13.7.7 `tag_definition` — `:290-305`
 
 `name` and `color` are **required**; `icon`, `categoryId`, `sortOrder`,
@@ -253,6 +280,40 @@ creation from the template throws.
 so a newer client's per-option field is not parsed away on a round trip. This is
 §13.2 applied inside one field.
 
+**`type` is an open string on the wire, and a port MUST NOT close it.** The
+payload schema declares it `z.string()`, not an enum, and that is deliberate for
+the same reason `options` is opaque: a definition whose type a newer desktop
+introduced must survive a round trip through this core rather than be refused.
+
+The values desktop writes today are the ten in `PropertyTypes`:
+
+| value         | note                                                                                                            |
+| ------------- | --------------------------------------------------------------------------------------------------------------- |
+| `text`        |                                                                                                                 |
+| `number`      |                                                                                                                 |
+| `checkbox`    |                                                                                                                 |
+| `date`        |                                                                                                                 |
+| `url`         |                                                                                                                 |
+| `status`      | carries `categories`, keyed `todo`, `in_progress`, `done`                                                       |
+| `select`      | carries `options`                                                                                               |
+| `multiselect` | carries `options`                                                                                               |
+| `relation`    | **never written to a definition store** — typed from its value every time, because its URIs are self-describing |
+| `project`     | reserved for the `project` frontmatter key, whose type is always `project` whatever inference would say         |
+
+That list is **informative, not normative**: it tells a port what it will see,
+and an eleventh value is a valid payload that this core stores verbatim and
+projects unchanged.
+
+**A port MUST NOT map a type name to a JSON type in order to validate a
+property _value_.** No such mapping exists in this specification, nothing on the
+wire carries one, and the enumeration above is the desktop's local vocabulary
+rather than a wire contract. A core that invented one would refuse a legitimate
+edit on real data the first time the two disagreed. Where a client needs to know
+that an edit does not retype a property — FR-048 — it compares the new value
+against the value **already stored on that note**, which is the only typing
+claim the payload actually makes. An explicit `null` is §13.4's clear and claims
+no type; a property with no value yet claims none either.
+
 ### 13.7.10 `folder_config` — `:341-346`
 
 **`icon` is `z.string().nullable()`** (`:342`). Plus `clock`, `createdAt`,
@@ -265,6 +326,40 @@ non-optional field on any subscribed type", which contradicted §13.7.7 to
 on their own types, and they are correct. **Where a per-type section marks a
 field required, that section wins**; there is no cross-type uniqueness claim
 about `icon` and none should be read into it.
+
+#### 13.7.10.1 A folder id is a path, and what that obliges
+
+`folder_config` is keyed by the folder's **path**, so a rename or a move changes
+the id rather than a field. Nothing above stated what that does to the subtree,
+and FR-051 requires the resulting hierarchy to match desktop's, so it is written
+down here.
+
+On desktop a folder **is a directory on disk**. `renameFolder` is a single
+`fs.rename` of that directory (`apps/desktop/src/main/vault/notes-crud.ts:885`)
+and `deleteFolder` is `rm -rf`
+(`apps/desktop/src/main/vault/notes-crud.ts:900`). Everything inside therefore
+follows implicitly, because a note's `folderPath` is where its file sits rather
+than an independent field.
+
+A core with no filesystem has to reproduce that explicitly:
+
+- **A rename or move is a re-key of the whole subtree.** Create at the new id
+  from the old row's **stored bytes**, so unknown keys ride along (§13.2);
+  tombstone the old id; rewrite every descendant `folder_config` id and every
+  `note.folderPath` under the prefix. All of it in one transaction, each row with
+  its own outbox row. Not rewriting the subtree orphans it and forks the folder
+  in two.
+- **A delete cascades on desktop and takes the notes with it.** `rm -rf` does not
+  ask.
+
+**Known divergence, recorded rather than hidden.** `memry-core` currently
+**refuses** to delete a folder that still holds a live note, where desktop would
+delete both. The asymmetry is deliberate: the prefix rewrite is reversible and a
+recursive delete is not, and the only caller today is a headless CLI operating
+on a real account. A port MUST NOT read this paragraph as permission to
+cascade silently, and MUST NOT read it as settled — it is an open product
+question for the shell that first exposes folder deletion in a UI, and the two
+behaviours are distinguishable by any user who tries it.
 
 ### 13.7.11 `custom_icon` — `:355-363`
 
