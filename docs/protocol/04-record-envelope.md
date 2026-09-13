@@ -165,6 +165,17 @@ decode, and throws `invalid base64 input` on a non-alphabet character
 | `stateVector`    | string                             | optional |
 | `deletedAt`      | non-negative int (epoch ms)        | optional |
 
+**`signerDeviceId` is the id of the device whose Ed25519 signing key produced
+`signature`, not the id of the device that authored the change and not the
+session's device id read from anywhere else.** The two coincide on every path
+this feature implements, because a client signs with its own key, so the field
+is read straight off the signing identity rather than passed in beside it. They
+are named separately because the verifier resolves a public key by this id
+(chapter 01 §1.4) and would silently accept a valid signature attributed to the
+wrong device if a client filled the field from its session state instead. A
+conforming client derives `signerDeviceId` from the same key material it signs
+with, in one step, so the two cannot drift.
+
 **`clock`, `stateVector` and `deletedAt` are omitted entirely when absent, never
 sent as `null`** (`apps/desktop/src/main/sync/encrypt.ts:100-102`,
 `packages/sync-client/src/push/record-encrypt.ts:98-100`). This matters: a

@@ -57,6 +57,16 @@ resolution (`apps/sync-server/src/lib/sync-types.ts:34-45`):
 | present, at least one entry recognised | the recognised entries, deduplicated, first-seen order (`:37-45`) |
 | present, **nothing** recognised        | **the empty set**, serving zero rows                              |
 
+**"Recognised" means a member of the twenty-five record types**, being the
+thirteen this feature subscribes to plus the twelve it does not, both enumerated
+in chapter 13 §13.1. `attachment` is in `SYNC_ITEM_TYPES` but is **not** a record
+type (§13.8) and is therefore not recognised in this header: declaring it is
+indistinguishable from declaring a typo. Anything outside those twenty-five is
+dropped from the resolved set, silently and individually — an unrecognised entry
+never fails the request and never invalidates the entries beside it. This only
+bites a client that declares something outside the fixed thirteen; a conforming
+client's header is recognised in full by construction.
+
 The empty-set rule is deliberate: falling back to legacy would hand a
 negotiating client 15 types it never asked for, which is the convergence loss
 the feature exists to prevent

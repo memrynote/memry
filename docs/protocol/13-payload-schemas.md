@@ -16,12 +16,16 @@ how a client is required to store it.
 `tag_category`, `property_definition`, `template`, `task`, `project`,
 `task_activity`, `reminder`, `settings`.
 
-Twelve more are served by the server and **not** subscribed to here:
-`attachment` (which never travels as a record at all, §13.8), `inbox`, `filter`,
-`calendar_event`, `calendar_source`, `calendar_binding`,
+Twelve more **record types** are served by the server and **not** subscribed to
+here: `inbox`, `filter`, `calendar_event`, `calendar_source`, `calendar_binding`,
 `calendar_external_event`, `agent_conversation`, `agent_message`, `canvas`,
 `canvas_folder`, `bookmark`, `home_page`. **A conforming client omits them from
 the header and never sees them** (chapter 05 §5.3.1).
+
+Thirteen plus twelve is the **twenty-five record types**, which is the set
+chapter 05 §5.3 calls recognised. `attachment` is the twenty-sixth member of
+`SYNC_ITEM_TYPES` and is **not** one of them: it never travels as a record at
+all (§13.8), so it is neither subscribed nor declarable.
 
 ## 13.2 Verbatim payload preservation — Q13.2
 

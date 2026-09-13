@@ -38,13 +38,13 @@ Application Support/<bundle>/vault/<vaultId>/
   images/        # downloaded inline image bytes, one file per chunk-assembled image
 ```
 
-| Property | Value | Reason |
-|---|---|---|
-| Journal mode | WAL on both databases | concurrent read during a write pass |
-| File protection | `completeUntilFirstUserAuthentication` | a background refresh task can run before the first unlock after reboot, and must still read the database |
-| Backup | excluded from off-device backup | FR-024, and the phone-restore edge case: the secure store does not survive a restore, so a restored database would be unreadable anyway |
-| Foreign keys | on | |
-| Migrations | `PRAGMA user_version`, hand written, forward only | matches the mobile baseline (`apps/mobile/src/db/index.ts:69-86`) and avoids a migrations table that itself needs migrating |
+| Property        | Value                                             | Reason                                                                                                                                  |
+| --------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Journal mode    | WAL on both databases                             | concurrent read during a write pass                                                                                                     |
+| File protection | `completeUntilFirstUserAuthentication`            | a background refresh task can run before the first unlock after reboot, and must still read the database                                |
+| Backup          | excluded from off-device backup                   | FR-024, and the phone-restore edge case: the secure store does not survive a restore, so a restored database would be unreadable anyway |
+| Foreign keys    | on                                                |                                                                                                                                         |
+| Migrations      | `PRAGMA user_version`, hand written, forward only | matches the mobile baseline (`apps/mobile/src/db/index.ts:69-86`) and avoids a migrations table that itself needs migrating             |
 
 The migration convention, restated normatively because it is easy to get subtly
 wrong: read `user_version`; for each migration whose version exceeds it, run the
@@ -53,6 +53,20 @@ migration's number **outside** that transaction, immediately after it commits. T
 two databases carry independent `user_version` counters. Migrations never run
 backwards and never drop a column; a removed concept leaves its column in place
 unread, because a rollback to an older build must still open the file.
+
+**Every migration statement must be idempotent**, because setting the counter
+outside the transaction opens a crash window the counter cannot describe: the
+migration commits, the process dies, `user_version` still names the previous
+version, and the migration runs a second time against a database that already has
+its objects. Write `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS` and
+`INSERT OR IGNORE`, so that re-running a committed migration is a clean no-op
+rather than a `table already exists` failure. Without this the crash window is not
+merely a retry, it is unrecoverable: the transaction is all-or-nothing, so on the
+re-run either every object the migration creates exists or none does, and the
+plain `CREATE TABLE` form can never make progress again. The counter stays outside
+the transaction anyway, because DDL and the `user_version` pragma do not share
+rollback semantics on every SQLite build; idempotency is what makes that ordering
+safe rather than merely conventional.
 
 `index.db` is deletable. If it is missing, corrupt, or at an unexpected
 `user_version`, the core deletes it and rebuilds it from `data.db` rather than
@@ -77,12 +91,12 @@ rebuild on a 10,000 item vault is a large write that should not contend with syn
 This distinction is the backbone of FR-033 and it must be encoded in the schema, not
 in a convention.
 
-| Class | Tables | Rule |
-|---|---|---|
-| **Source of record** | `meta`, `sync_items`, `yjs_updates`, `yjs_snapshots`, `outbox`, `sync_cursors`, `attachments`, `local_notifications` | Never derived. Losing a row loses user data or duplicates a write. |
-| **Rebuildable projection** | every typed domain table in `data.db` listed in A.4 | Derived from `sync_items.payload` by replaying every row through the per-type projector. Dropping and rebuilding them is a supported recovery. |
-| **Rebuildable index** | everything in `index.db` | Derived from `data.db`. Dropping the whole file is a supported recovery. |
-| **Materialised body** | `note_bodies` | `text` is derived from the Yjs log and is a pure projection. `seed_markdown` is **not** derived: until the WebView seeds the document it is the only copy of what the user asked for, so it is source of record for its short life. See A.3. |
+| Class                      | Tables                                                                                                               | Rule                                                                                                                                                                                                                                         |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Source of record**       | `meta`, `sync_items`, `yjs_updates`, `yjs_snapshots`, `outbox`, `sync_cursors`, `attachments`, `local_notifications` | Never derived. Losing a row loses user data or duplicates a write.                                                                                                                                                                           |
+| **Rebuildable projection** | every typed domain table in `data.db` listed in A.4                                                                  | Derived from `sync_items.payload` by replaying every row through the per-type projector. Dropping and rebuilding them is a supported recovery.                                                                                               |
+| **Rebuildable index**      | everything in `index.db`                                                                                             | Derived from `data.db`. Dropping the whole file is a supported recovery.                                                                                                                                                                     |
+| **Materialised body**      | `note_bodies`                                                                                                        | `text` is derived from the Yjs log and is a pure projection. `seed_markdown` is **not** derived: until the WebView seeds the document it is the only copy of what the user asked for, so it is source of record for its short life. See A.3. |
 
 `sync_items.payload` holds the decrypted payload **exactly as received**, as a text
 column, and is never re-serialised. That single rule is the whole of FR-033: a field
@@ -102,10 +116,10 @@ serialising the projection row.
 
 **`meta`**. Key-value scalars. Source of record.
 
-| Column | Type | Notes |
-|---|---|---|
-| `key` | TEXT PRIMARY KEY | |
-| `value` | TEXT NOT NULL | |
+| Column  | Type             | Notes |
+| ------- | ---------------- | ----- |
+| `key`   | TEXT PRIMARY KEY |       |
+| `value` | TEXT NOT NULL    |       |
 
 Reserved keys: `schema.vault_id`, `schema.account_id`, `device.id`,
 `first_sync.completed`, `first_sync.window_start`, `policy.writes_enabled`,
@@ -116,20 +130,20 @@ from `apps/desktop/src/main/crypto/vault-key-state.ts:14-26`).
 **`sync_items`**. One row per synced item of every type, including types this
 client does not model. Source of record.
 
-| Column | Type | Notes |
-|---|---|---|
-| `item_type` | TEXT NOT NULL | no CHECK constraint, deliberately: 25 types exist today and a newer desktop may add more |
-| `item_id` | TEXT NOT NULL | |
-| `payload` | TEXT | the decrypted payload verbatim; NULL while `payload_state` is `metadata-only` |
-| `payload_state` | TEXT NOT NULL | `metadata-only` or `full`, one-way |
-| `clock` | TEXT | JSON vector clock, extracted for indexing only; `payload` remains authoritative |
-| `field_clocks` | TEXT | JSON field clocks; NULL for types that do not carry them |
-| `server_cursor` | INTEGER | the cursor this row was last seen at |
-| `signer_device_id` | TEXT | |
-| `updated_at` | INTEGER NOT NULL | epoch milliseconds |
-| `deleted_at` | INTEGER | non-NULL means tombstone |
-| `corrupt_reason` | TEXT | set when decrypt, verify or parse failed; the row is skipped, not retried in a loop |
-| `corrupt_at` | INTEGER | |
+| Column             | Type             | Notes                                                                                    |
+| ------------------ | ---------------- | ---------------------------------------------------------------------------------------- |
+| `item_type`        | TEXT NOT NULL    | no CHECK constraint, deliberately: 25 types exist today and a newer desktop may add more |
+| `item_id`          | TEXT NOT NULL    |                                                                                          |
+| `payload`          | TEXT             | the decrypted payload verbatim; NULL while `payload_state` is `metadata-only`            |
+| `payload_state`    | TEXT NOT NULL    | `metadata-only` or `full`, one-way                                                       |
+| `clock`            | TEXT             | JSON vector clock, extracted for indexing only; `payload` remains authoritative          |
+| `field_clocks`     | TEXT             | JSON field clocks; NULL for types that do not carry them                                 |
+| `server_cursor`    | INTEGER          | the cursor this row was last seen at                                                     |
+| `signer_device_id` | TEXT             |                                                                                          |
+| `updated_at`       | INTEGER NOT NULL | epoch milliseconds                                                                       |
+| `deleted_at`       | INTEGER          | non-NULL means tombstone                                                                 |
+| `corrupt_reason`   | TEXT             | set when decrypt, verify or parse failed; the row is skipped, not retried in a loop      |
+| `corrupt_at`       | INTEGER          |                                                                                          |
 
 Primary key is `(item_type, item_id)`, **not `item_id` alone**. Tag definition ids
 are tag names and folder config ids are folder paths, so an id-only key makes a
@@ -146,32 +160,32 @@ journal bodies. That journal bodies belong here at all is **pending G1 ratificat
 of Q07.1**: if a journal body turns out to travel as a record rather than as a CRDT
 document, journal rows leave this table and live in `sync_items.payload` instead.
 
-| Column | Type | Notes |
-|---|---|---|
-| `doc_id` | TEXT NOT NULL | see the namespace rule below |
-| `seq` | INTEGER NOT NULL | |
-| `update_blob` | BLOB NOT NULL | named for the blob, because `update` is a reserved word |
-| `created_at` | INTEGER NOT NULL | |
+| Column        | Type             | Notes                                                   |
+| ------------- | ---------------- | ------------------------------------------------------- |
+| `doc_id`      | TEXT NOT NULL    | see the namespace rule below                            |
+| `seq`         | INTEGER NOT NULL |                                                         |
+| `update_blob` | BLOB NOT NULL    | named for the blob, because `update` is a reserved word |
+| `created_at`  | INTEGER NOT NULL |                                                         |
 
 Primary key `(doc_id, seq)`.
 
 **`yjs_snapshots`**. Compacted state per document. Source of record.
 
-| Column | Type | Notes |
-|---|---|---|
-| `doc_id` | TEXT PRIMARY KEY | |
-| `snapshot` | BLOB NOT NULL | |
-| `last_seq` | INTEGER NOT NULL | the fold point; every update at or below it was folded in |
-| `server_revision` | TEXT | the server's snapshot `revision` token, NULL for the local namespace |
-| `compacted_at` | INTEGER NOT NULL | |
+| Column            | Type             | Notes                                                                |
+| ----------------- | ---------------- | -------------------------------------------------------------------- |
+| `doc_id`          | TEXT PRIMARY KEY |                                                                      |
+| `snapshot`        | BLOB NOT NULL    |                                                                      |
+| `last_seq`        | INTEGER NOT NULL | the fold point; every update at or below it was folded in            |
+| `server_revision` | TEXT             | the server's snapshot `revision` token, NULL for the local namespace |
+| `compacted_at`    | INTEGER NOT NULL |                                                                      |
 
 **The two-namespace rule.** A document has two independent sequence spaces in the
 same two tables, distinguished by the `doc_id` prefix:
 
-| Namespace | `doc_id` | Sequence source |
-|---|---|---|
-| server | the bare document id, for example `abc123def456` or `j2026-04-16` | the server's `sequence_num` |
-| local | `local.` followed by the same id | a local counter, `MAX(seq) + 1` read inside the writing transaction |
+| Namespace | `doc_id`                                                          | Sequence source                                                     |
+| --------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
+| server    | the bare document id, for example `abc123def456` or `j2026-04-16` | the server's `sequence_num`                                         |
+| local     | `local.` followed by the same id                                  | a local counter, `MAX(seq) + 1` read inside the writing transaction |
 
 They must not share a space. A local append taking a sequence a later server row
 also claims would silently drop one of the two under an upsert
@@ -191,17 +205,17 @@ either.
 **`outbox`**. The durable write queue. Source of record, and the one table whose
 loss loses a user's work.
 
-| Column | Type | Notes |
-|---|---|---|
-| `id` | INTEGER PRIMARY KEY AUTOINCREMENT | the only rowid table; ordering is the ack key |
-| `item_type` | TEXT NOT NULL | |
-| `item_id` | TEXT NOT NULL | for a CRDT row, the document id |
-| `op` | TEXT NOT NULL | `upsert`, `delete`, or `crdt-update` |
-| `payload` | BLOB | the encrypted-ready payload, or the raw Yjs update bytes |
-| `enqueued_at` | INTEGER NOT NULL | |
-| `attempt_count` | INTEGER NOT NULL DEFAULT 0 | |
-| `last_error` | TEXT | truncated |
-| `next_attempt_at` | INTEGER | NULL means claimable now |
+| Column            | Type                              | Notes                                                    |
+| ----------------- | --------------------------------- | -------------------------------------------------------- |
+| `id`              | INTEGER PRIMARY KEY AUTOINCREMENT | the only rowid table; ordering is the ack key            |
+| `item_type`       | TEXT NOT NULL                     |                                                          |
+| `item_id`         | TEXT NOT NULL                     | for a CRDT row, the document id                          |
+| `op`              | TEXT NOT NULL                     | `upsert`, `delete`, or `crdt-update`                     |
+| `payload`         | BLOB                              | the encrypted-ready payload, or the raw Yjs update bytes |
+| `enqueued_at`     | INTEGER NOT NULL                  |                                                          |
+| `attempt_count`   | INTEGER NOT NULL DEFAULT 0        |                                                          |
+| `last_error`      | TEXT                              | truncated                                                |
+| `next_attempt_at` | INTEGER                           | NULL means claimable now                                 |
 
 Index on `next_attempt_at`.
 
@@ -227,7 +241,7 @@ silently diverging one:
   rows**, so a body edit can never land after its own note's delete
   (`apps/mobile/src/sync/outbox.ts:399-430`).
 - **Read-only mode parks; it never drains and never fails.** A `403
-  PLATFORM_WRITES_DISABLED` or `426 CLIENT_UPGRADE_REQUIRED` stops the pass without
+PLATFORM_WRITES_DISABLED` or `426 CLIENT_UPGRADE_REQUIRED` stops the pass without
   incrementing `attempt_count`, so no backoff accrues against a condition the user
   cannot fix (`apps/mobile/src/sync/outbox.ts:259`, `:706-733`).
 - **Two rows retire forever rather than retrying**: a row whose payload cannot be
@@ -236,12 +250,12 @@ silently diverging one:
 
 **`sync_cursors`**. Pull position per scope. Source of record.
 
-| Column | Type | Notes |
-|---|---|---|
-| `scope` | TEXT PRIMARY KEY | `record` for the global record cursor; `crdt:<docId>` for a per-document watermark |
-| `cursor` | TEXT | decimal string of the server cursor, or the CRDT `sequence_num` |
-| `revision` | TEXT | the server snapshot revision for a `crdt:` scope |
-| `updated_at` | INTEGER NOT NULL | |
+| Column       | Type             | Notes                                                                              |
+| ------------ | ---------------- | ---------------------------------------------------------------------------------- |
+| `scope`      | TEXT PRIMARY KEY | `record` for the global record cursor; `crdt:<docId>` for a per-document watermark |
+| `cursor`     | TEXT             | decimal string of the server cursor, or the CRDT `sequence_num`                    |
+| `revision`   | TEXT             | the server snapshot revision for a `crdt:` scope                                   |
+| `updated_at` | INTEGER NOT NULL |                                                                                    |
 
 The record cursor advances only after the page's items have been applied and
 committed (`packages/sync-client/src/pull/engine.ts:24-27`). A CRDT watermark
@@ -251,18 +265,18 @@ resolved (`packages/sync-client/src/pull/crdt-pull.ts:225-250`).
 **`attachments`**. Lazy download state for inline images. Source of record for the
 policy, not for the bytes.
 
-| Column | Type | Notes |
-|---|---|---|
-| `attachment_id` | TEXT PRIMARY KEY | |
-| `manifest` | TEXT | the decrypted manifest JSON verbatim |
-| `note_refs` | TEXT | JSON array of note ids referencing it |
-| `remote_size` | INTEGER | ciphertext size |
-| `local_path` | TEXT | relative to `images/`, NULL until downloaded |
-| `downloaded_at` | INTEGER | |
-| `unmetered_only` | INTEGER NOT NULL DEFAULT 1 | FR-045's default |
-| `pinned` | INTEGER NOT NULL DEFAULT 0 | exempt from eviction |
-| `filename` | TEXT | |
-| `mime_type` | TEXT | |
+| Column           | Type                       | Notes                                        |
+| ---------------- | -------------------------- | -------------------------------------------- |
+| `attachment_id`  | TEXT PRIMARY KEY           |                                              |
+| `manifest`       | TEXT                       | the decrypted manifest JSON verbatim         |
+| `note_refs`      | TEXT                       | JSON array of note ids referencing it        |
+| `remote_size`    | INTEGER                    | ciphertext size                              |
+| `local_path`     | TEXT                       | relative to `images/`, NULL until downloaded |
+| `downloaded_at`  | INTEGER                    |                                              |
+| `unmetered_only` | INTEGER NOT NULL DEFAULT 1 | FR-045's default                             |
+| `pinned`         | INTEGER NOT NULL DEFAULT 0 | exempt from eviction                         |
+| `filename`       | TEXT                       |                                              |
+| `mime_type`      | TEXT                       |                                              |
 
 Bytes live in `images/` as sandbox files under the same file protection class, never
 as blobs. Eviction removes files and clears `local_path`; it never removes rows, and
@@ -271,14 +285,14 @@ never touches a pinned row.
 **`local_notifications`**. Reminder scheduling bookkeeping. Source of record,
 device-local, never synced.
 
-| Column | Type | Notes |
-|---|---|---|
-| `reminder_id` | TEXT PRIMARY KEY | |
-| `target_type` | TEXT NOT NULL | |
-| `target_id` | TEXT NOT NULL | |
-| `fire_at` | INTEGER NOT NULL | |
-| `os_request_id` | TEXT | the platform's identifier for the scheduled notification |
-| `scheduled_at` | INTEGER | NULL means not currently inside the scheduling window |
+| Column          | Type             | Notes                                                    |
+| --------------- | ---------------- | -------------------------------------------------------- |
+| `reminder_id`   | TEXT PRIMARY KEY |                                                          |
+| `target_type`   | TEXT NOT NULL    |                                                          |
+| `target_id`     | TEXT NOT NULL    |                                                          |
+| `fire_at`       | INTEGER NOT NULL |                                                          |
+| `os_request_id` | TEXT             | the platform's identifier for the scheduled notification |
+| `scheduled_at`  | INTEGER          | NULL means not currently inside the scheduling window    |
 
 This table exists because the platform caps how many notifications may be pending at
 once (FR-062), so the core schedules a nearest window and refills it. It also exists
@@ -290,14 +304,14 @@ snooze state does sync, and lives in the `reminders` projection.
 
 **`note_bodies`**. Extracted plain text plus the create-time seed. See A.3.
 
-| Column | Type | Notes |
-|---|---|---|
-| `note_id` | TEXT PRIMARY KEY | note id or journal id |
-| `text` | TEXT NOT NULL | output of `extract_text(doc)`: a plain-text walk of the `prosemirror` `XmlFragment` that keeps headings and list markers and makes no markdown-fidelity claim. Feeds FTS `content` and previews. Fully rebuildable from the Yjs log |
-| `seed_markdown` | TEXT | the create-time `content` payload, from note creation or template application, held **verbatim** and **never interpreted by the core**, handed to the WebView by `seed-from-markdown` and cleared after the first document update lands; recorded as a Complexity Tracking exception in [plan.md](./plan.md) |
-| `text_sha256` | TEXT NOT NULL | of the exact bytes in `text`, so a rebuild that changes the extraction is visible |
-| `source_seq` | INTEGER | the combined log position this text was extracted from |
-| `materialised_at` | INTEGER NOT NULL | |
+| Column            | Type             | Notes                                                                                                                                                                                                                                                                                                        |
+| ----------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `note_id`         | TEXT PRIMARY KEY | note id or journal id                                                                                                                                                                                                                                                                                        |
+| `text`            | TEXT NOT NULL    | output of `extract_text(doc)`: a plain-text walk of the `prosemirror` `XmlFragment` that keeps headings and list markers and makes no markdown-fidelity claim. Feeds FTS `content` and previews. Fully rebuildable from the Yjs log                                                                          |
+| `seed_markdown`   | TEXT             | the create-time `content` payload, from note creation or template application, held **verbatim** and **never interpreted by the core**, handed to the WebView by `seed-from-markdown` and cleared after the first document update lands; recorded as a Complexity Tracking exception in [plan.md](./plan.md) |
+| `text_sha256`     | TEXT NOT NULL    | of the exact bytes in `text`, so a rebuild that changes the extraction is visible                                                                                                                                                                                                                            |
+| `source_seq`      | INTEGER          | the combined log position this text was extracted from                                                                                                                                                                                                                                                       |
+| `materialised_at` | INTEGER NOT NULL |                                                                                                                                                                                                                                                                                                              |
 
 ### A.3 Why `note_bodies` is its own category
 
@@ -339,6 +353,22 @@ snake case, so a reader can move between this table and
 Every projection table carries three columns not listed per table below:
 `clock` TEXT (JSON), `synced_at` INTEGER, and `deleted_at` INTEGER. The tables that
 merge field by field additionally carry `field_clocks` TEXT.
+
+The rule covers the tables that project one sync item to one row. It does not
+cover a **side table**, meaning a table that holds the repeated or per-path part
+of an item whose own row already carries the three columns. `settings_field_clocks`
+is the only side table in this section: it is keyed by dotted path, its `clock`
+column is the per-path clock the table exists for rather than the item clock, and
+a second `clock` column is not expressible. A side table carries exactly the
+columns listed for it below and nothing implied by this paragraph; sync state for
+the item it belongs to is read from that item's own projection row.
+
+**No indexes are specified for the projection tables**, and the baseline
+migrations create none. `sync_items` and `outbox` in §A.2 are the only tables whose
+index coverage this document fixes, because their access pattern is the protocol's
+rather than a query's. A projection index is additive, arrives in a later
+migration, and is justified by a measured query — not guessed at the schema's
+first write.
 
 **`folders`**. From `folder_config`. Item id is the folder path.
 
@@ -508,9 +538,9 @@ rebuilt.
 is fed by `extract_text(doc)` (A.3), not by markdown, because the core has no
 markdown:
 
-| Table | Columns | Tokenizer |
-|---|---|---|
-| `fts_notes` | `id UNINDEXED`, `title`, `content`, `tags` | `porter unicode61` |
+| Table       | Columns                                        | Tokenizer          |
+| ----------- | ---------------------------------------------- | ------------------ |
+| `fts_notes` | `id UNINDEXED`, `title`, `content`, `tags`     | `porter unicode61` |
 | `fts_tasks` | `id UNINDEXED`, `title`, `description`, `tags` | `porter unicode61` |
 
 Sources: `apps/desktop/src/main/database/fts.ts:26-33` and
@@ -564,11 +594,11 @@ milliseconds. The wire mostly carries ISO-8601 strings, and
 
 The decision for this core:
 
-| Kind | Storage | Reason |
-|---|---|---|
-| Instants the core orders by (`updated_at`, `created_at`, `modified_at`, `enqueued_at`, `fire_at`) | INTEGER epoch milliseconds | integer comparison, no collation surprises, no parse per row |
-| Wire-shaped date and time values (`due_date`, `due_time`, `start_date`, `remind_at`, `completed_at`, `archived_at`, journal `date`) | TEXT, exactly as the payload carries them | these are date-only or wall-clock values, not instants; converting them invents a timezone and breaks "today" across a date boundary |
-| Everything, always | preserved verbatim in `sync_items.payload` | the projection's representation is never what gets pushed back |
+| Kind                                                                                                                                | Storage                                    | Reason                                                                                                                               |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Instants the core orders by (`updated_at`, `created_at`, `modified_at`, `enqueued_at`, `fire_at`)                                   | INTEGER epoch milliseconds                 | integer comparison, no collation surprises, no parse per row                                                                         |
+| Wire-shaped date and time values (`due_date`, `due_time`, `start_date`, `remind_at`, `completed_at`, `archived_at`, journal `date`) | TEXT, exactly as the payload carries them  | these are date-only or wall-clock values, not instants; converting them invents a timezone and breaks "today" across a date boundary |
+| Everything, always                                                                                                                  | preserved verbatim in `sync_items.payload` | the projection's representation is never what gets pushed back                                                                       |
 
 The last row is what makes the first two safe. A projection that normalises a
 timestamp cannot corrupt the wire value, because the wire value is not read from the
@@ -586,13 +616,13 @@ Entry names are the five in `KEYCHAIN_ENTRIES`
 (`packages/contracts/src/crypto.ts:70-76`), unchanged, so a future tool can read a
 desktop and a phone with the same vocabulary:
 
-| Entry | Service | Account | Contents | Scope |
-|---|---|---|---|---|
-| `MASTER_KEY` | `com.memry.sync` | `master-key` | 32 raw bytes | per account |
-| `DEVICE_SIGNING_KEY` | `com.memry.sync` | `device-signing-key` | 64 byte Ed25519 secret key | per device |
-| `ACCESS_TOKEN` | `com.memry.sync` | `access-token` | JWT as UTF-8 bytes | per session |
-| `REFRESH_TOKEN` | `com.memry.sync` | `refresh-token` | opaque token as UTF-8 bytes | per session |
-| `SETUP_TOKEN` | `com.memry.sync` | `setup-token` | JWT as UTF-8 bytes | transient, five minutes |
+| Entry                | Service          | Account              | Contents                    | Scope                   |
+| -------------------- | ---------------- | -------------------- | --------------------------- | ----------------------- |
+| `MASTER_KEY`         | `com.memry.sync` | `master-key`         | 32 raw bytes                | per account             |
+| `DEVICE_SIGNING_KEY` | `com.memry.sync` | `device-signing-key` | 64 byte Ed25519 secret key  | per device              |
+| `ACCESS_TOKEN`       | `com.memry.sync` | `access-token`       | JWT as UTF-8 bytes          | per session             |
+| `REFRESH_TOKEN`      | `com.memry.sync` | `refresh-token`      | opaque token as UTF-8 bytes | per session             |
+| `SETUP_TOKEN`        | `com.memry.sync` | `setup-token`        | JWT as UTF-8 bytes          | transient, five minutes |
 
 `MASTER_KEY` is **one entry per account**, which is only correct if every vault on
 that account derives its vault key from that one master key. That is Q01.4 and it
@@ -611,13 +641,13 @@ FR-023 says must not carry key material.
 
 **Not in the secure store, deliberately:**
 
-| Value | Where it lives | Why |
-|---|---|---|
-| the vault key | memory only, derived on unlock from the master key | it is a pure function of the master key and a fixed context (`apps/desktop/src/main/crypto/keys.ts:123-137`), so persisting it would double the exposure for no gain |
-| per-item file keys | memory only, zeroed after use | |
-| the linking encryption, MAC and SAS subkeys | memory only, for the life of one linking session | |
-| the local vault key verifier | `meta` under `vault.crypto.verifier.v1` | it is a verifier, not a key |
-| `kdfSalt` and the account key verifier | `meta`, and re-fetchable from `GET /auth/recovery-info` | both are server-held already |
+| Value                                       | Where it lives                                          | Why                                                                                                                                                                  |
+| ------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the vault key                               | memory only, derived on unlock from the master key      | it is a pure function of the master key and a fixed context (`apps/desktop/src/main/crypto/keys.ts:123-137`), so persisting it would double the exposure for no gain |
+| per-item file keys                          | memory only, zeroed after use                           |                                                                                                                                                                      |
+| the linking encryption, MAC and SAS subkeys | memory only, for the life of one linking session        |                                                                                                                                                                      |
+| the local vault key verifier                | `meta` under `vault.crypto.verifier.v1`                 | it is a verifier, not a key                                                                                                                                          |
+| `kdfSalt` and the account key verifier      | `meta`, and re-fetchable from `GET /auth/recovery-info` | both are server-held already                                                                                                                                         |
 
 **Sign-out** (FR-025) deletes all five entries, deletes both database files and the
 `images/` directory, and zeroes every in-memory key. **Revocation detected on next
