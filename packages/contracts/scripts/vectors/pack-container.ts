@@ -276,31 +276,38 @@ export async function buildPackContainer(): Promise<Record<string, unknown>> {
       name: 'header magic corrupted',
       packHex: hex(assemble(oneRecord, { headerMagic: 'MPAX' })),
       expectErrorContains: 'pack header magic mismatch',
+      expectErrorCode: 'header-magic-mismatch',
       pins: 'rejected before any hashing'
     },
     {
       name: 'header version set to 2',
       packHex: hex(assemble(oneRecord, { headerVersion: 2 })),
       expectErrorContains: 'unsupported pack version 2',
+      expectErrorCode: 'unsupported-version',
       pins: 'a reader rejects any version but its own'
     },
     {
       name: 'footer payload digest corrupted',
       packHex: hex(assemble(oneRecord, { corruptPayloadDigest: true })),
       expectErrorContains: 'pack payload checksum mismatch',
+      expectErrorCode: 'payload-checksum-mismatch',
       pins: 'the whole-payload digest'
     },
     {
       name: 'one entry digest corrupted while the payload digest still passes',
       packHex: hex(assemble(threeKinds, { corruptEntryDigestIndex: 1 })),
       expectErrorContains: 'pack entry checksum mismatch: abc123def456',
+      expectErrorCode: 'entry-checksum-mismatch',
       pins: 'per-entry verification is NOT skipped when the whole-payload digest passes'
     },
     {
       name: 'entryCount above PACK_MAX_ENTRIES',
       packHex: hex(assemble(oneRecord, { entryCountOverride: PACK_MAX_ENTRIES + 1 })),
-      expectErrorContains: 'pack truncated',
-      pins: 'parsePack does not itself enforce PACK_MAX_ENTRIES — it runs out of index bytes first. A streaming reader MUST apply the cap before allocating (chapter 08 §8.6)'
+      // No expectErrorContains: the reference's message is unreachable for a
+      // conforming reader. See referenceOnlyMessage.
+      expectErrorCode: 'entry-count-too-large',
+      referenceOnlyMessage: 'pack truncated',
+      pins: 'parsePack does not itself enforce PACK_MAX_ENTRIES — it runs out of index bytes first and says "pack truncated". A conforming reader applies the cap BEFORE allocating (chapter 08 §8.6) and therefore fails earlier, with entry-count-too-large. Asserting the reference message here would require deleting the check the chapter mandates, so only the code is normative'
     }
   ]
 

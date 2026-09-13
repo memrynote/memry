@@ -81,7 +81,23 @@ The `offset` interpretation is the off-by-eight a reader gets wrong first.
 
 **A negative `sortKey` does not survive the reference reader.** `ByteReader.i64`
 reconstructs the 64-bit value through doubles
-(`packages/contracts/src/pack-format.ts:189-196`), so `-1` decodes as `0`. Every
+(`packages/contracts/src/pack-format.ts:189-196`), so `-1` decodes as `0`.
+
+The **mechanism** matters, because the stated outcome is not reproducible from
+a naive reading: a plain signed decode gives `-1`, and so does
+`hi_i32 * 2^32 + lo_u32`. The reference reads two **unsigned** 32-bit halves
+into a double as `u32 * 2^32 + u32`. At that magnitude doubles are spaced 2048
+apart, so `0xFFFF_FFFF_FFFF_FFFF` **rounds up to exactly `2^64`**, and the
+`v >= 2^63 ? v - 2^64 : v` branch then yields `0` rather than `-1`. A port that
+reproduces the rule without the rounding step disagrees with the reference
+about entry order on any pack that carries one, which is why the step is
+written down here rather than left in the vector.
+
+**Invalid UTF-8 in `idBytes` or `keyBytes` is replaced, not rejected.** The
+reference decodes non-fatally, substituting U+FFFD, and a reader MUST do the
+same: a corrupt byte in an identity makes one entry unaddressable, while
+rejecting makes the whole pack unreadable, and §8.10 already says coverage is
+not total. No committed case exercises this. Every
 `sortKey` a writer emits today is a non-negative `server_cursor` or epoch second
 (§8.4), so the loss is unreachable in practice. **Normative: a writer MUST NOT
 emit a negative `sortKey`, and a reader MUST NOT be given one.** The behaviour is
@@ -167,6 +183,30 @@ fails as `pack truncated` (`packages/contracts/src/pack-format.ts:169`) rather
 than as a bound violation. **A conforming reader MUST apply the caps above
 explicitly before allocating**, because the in-memory `parsePack` reference
 already holds the whole file and therefore cannot demonstrate the bound.
+
+### 8.6.1 The five rejection codes
+
+**Normative.** A pack is rejected for five distinct reasons and a caller has to
+tell them apart, so each carries a code. Chapter 04 §4.11.1 established the
+rule these follow: an English message is one implementation's, the code is the
+contract.
+
+| Code                        | Condition                                                       |
+| --------------------------- | --------------------------------------------------------------- |
+| `header-magic-mismatch`     | the header is not `MPAK`                                        |
+| `unsupported-version`       | a header or footer version this reader does not know            |
+| `payload-checksum-mismatch` | the whole-payload digest in the footer                          |
+| `entry-checksum-mismatch`   | one entry's digest, checked even when the payload digest passed |
+| `entry-count-too-large`     | `entryCount` above `PACK_MAX_ENTRIES`                           |
+
+**`entry-count-too-large` is the code with no fixed message**, and the reason
+is the note above: the in-memory reference never reaches it, because it runs
+out of index bytes first and says `pack truncated`. A conforming reader applies
+the cap **before allocating** and therefore fails earlier and differently.
+`pack-container.json` records the reference's string as `referenceOnlyMessage`
+rather than as `expectErrorContains`, so a port asserting the message would not
+be asserting conformance — it would be asserting that it had skipped the check
+this chapter requires.
 
 ## 8.7 `flags` — Q08.3
 

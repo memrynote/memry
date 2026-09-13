@@ -34,7 +34,18 @@ const vectors = loadVectorFile<{
     packHex: string
     expected: { version: number; entries: unknown[]; integrityVerified: boolean }
   }>
-  errorCases: Array<{ name: string; packHex: string; expectErrorContains: string; pins: string }>
+  errorCases: Array<{
+    name: string
+    packHex: string
+    // Absent when the reference's message is unreachable for a conforming
+    // reader; `referenceOnlyMessage` records it for the record instead.
+    expectErrorContains?: string
+    referenceOnlyMessage?: string
+    // The portable half. A second implementation asserts this, never the
+    // English message.
+    expectErrorCode: string
+    pins: string
+  }>
 }>('pack-container.json')
 
 describe('pack-container vectors', () => {
@@ -73,16 +84,28 @@ describe('pack-container vectors', () => {
 
   for (const entry of vectors.errorCases) {
     it(entry.name, async () => {
-      await expect(parsePack(fromHex(entry.packHex)), entry.pins).rejects.toThrow(
-        entry.expectErrorContains
-      )
+      const rejects = expect(parsePack(fromHex(entry.packHex)), entry.pins).rejects
+      // `entry-count-too-large` has no asserted message: the reference reaches
+      // "pack truncated" only because it does not apply §8.6's cap, and a
+      // conforming reader fails earlier. Assert that it still rejects.
+      await (entry.expectErrorContains
+        ? rejects.toThrow(entry.expectErrorContains)
+        : rejects.toThrow())
     })
   }
+
+  it('every error case carries a portable error code', () => {
+    // Without this, a second implementation can only assert this reader's
+    // English, which pins the phrasing rather than the behaviour.
+    for (const entry of vectors.errorCases) {
+      expect(entry.expectErrorCode, entry.name).toBeTruthy()
+    }
+  })
 
   it('a per-entry digest failure is caught even when the payload digest passes', () => {
     // Named explicitly so a refactor that short-circuits after the whole-payload
     // digest cannot quietly retire the per-entry check.
-    const entry = vectors.errorCases.find((c) => c.expectErrorContains.startsWith('pack entry'))
+    const entry = vectors.errorCases.find((c) => c.expectErrorCode === 'entry-checksum-mismatch')
     expect(entry, 'the per-entry digest case is missing').toBeDefined()
   })
 
