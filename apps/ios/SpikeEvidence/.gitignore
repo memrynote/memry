@@ -1,0 +1,4 @@
+
+# xcresult bundles are evidence, not source: T082 alone is 676 MB.
+# The run summaries beside them are committed instead.
+*.xcresult/

@@ -458,7 +458,7 @@ out of B0 and nothing in phase A or B depends on its artifacts.
 | S1 UniFFI XCFramework hello-world in an empty iOS app | the app calls a Rust function and gets a typed error back; **and** a UniFFI foreign-trait callback logs `Thread.current`, recording which thread Rust calls back on; **and** a test asserts the callback does not re-enter the core while a core lock is held, which is the failure mode `@unchecked Sendable` hides |
 | S2 async foreign-trait HTTP adapter                   | a round trip to staging `/health` completes through the `Transport` trait, with the cancellation path exercised                                                                                                                                                                                                      |
 | S3 WKWebView opaque origin and keyboard toolbar       | `window.isSecureContext && !!crypto.subtle` is true on `about:blank`; the `inputAccessoryView` override shows the SwiftUI toolbar; **and** a device screenshot of that toolbar with Reduce Transparency on, which is the only evidence that settles the Liquid Glass uncertainty in section E                        |
-| S4 Argon2id 64 MiB on iPhone 15                       | unlock completes in the foreground under memory pressure, and the OOM return of `crypto_pwhash` is reproduced at least once and surfaces as its own error rather than "wrong phrase"                                                                                                                                 |
+| S4 Argon2id 64 MiB on hardware                        | unlock completes in the foreground under memory pressure, and the OOM return of `crypto_pwhash` either surfaces as its own error rather than "wrong phrase" **or is shown unreachable** — the device answered the latter: jetsam kills the app before `malloc` refuses                                               |
 
 ## Resolution status
 
@@ -743,46 +743,76 @@ reach `UIAccessibility.isReduceTransparencyEnabled` — it was tried, it survive
 a device reboot in the plist, and the app still read `false`. Driving the real
 switch in Settings is the only route that worked.
 
-### S4 — Argon2id 64 MiB ops 3 on a real iPhone 15 — **BLOCKED. Not attempted, not passed, not waived.**
+### S4 — Argon2id 64 MiB ops 3 on real hardware — **RUN. Answered, and the answer is not the one the task expected.**
+
+Run on a physical **iPhone 12 Pro (iPhone13,3), arm64, iOS 27.0**, against the
+device slice `ios-arm64` and the device's own libsodium. `MemryTests` Unit plan,
+`apps/ios/SpikeEvidence/T082-device.xcresult`, **9 passed, 0 failed**.
+
+**Divergence from the task, stated rather than glossed**: T082 names an
+**iPhone 15** and this is an iPhone 12 Pro. Both carry 6 GB, and the substantive
+question — can the 64 MiB arena fail to allocate, and is that `-1` separable
+from a wrong phrase — is answered on real hardware with the real libsodium. It
+is not the device the task names.
+
+**T082's two questions, and what was observed:**
+
+1. **Does `crypto_pwhash` OOM at 64 MiB on a memory-pressured phone?**
+   **No — because the phone kills the app first.** An unbounded ballast run
+   (64 MiB blocks, written not merely reserved, so iOS commits them) ended with
+   the test process **killed by jetsam**: `Test crashed with signal kill`, taking
+   every other test in the process with it. `malloc` never refused. The failure
+   mode the task worries about is **not reachable on iOS through memory
+   pressure**: the process dies before `crypto_pwhash` can return `-1`.
+
+   At a bounded **1536 MiB** of touched ballast the derivation completed
+   normally (`outcome=succeeded`), so the arena is not fragile at ordinary
+   pressure either.
+
+2. **Is the `-1` distinguishable from a wrong passphrase?**
+   **Yes, structurally, and it does not depend on the pressure question.**
+   `sodium.rs` validates the Argon2id parameters _before_ the call, so a `-1`
+   that survives the check can only be an allocation failure, and it surfaces as
+   `RecoveryError::Crypto` — a different variant from `BadChecksum`,
+   `UnknownWord`, `WrongWordCount`, `NonAscii` and `VerifierMismatch`. The
+   device test asserts a bad checksum takes a phrase arm and **never** the crypto
+   arm, and asserts the pressure path is either success or `Crypto`, never a
+   phrase error. Both held.
+
+**Verdict: PASS**, with the first question answered in the negative — the risk
+R3 raised is real in principle and unreachable in practice on iOS, and the
+separation that would have mattered exists anyway. The bounded 1.5 GiB test is
+kept as the repeatable one; the jetsam run is recorded here and deliberately not
+repeated, because a suite that kills itself proves the point once and thereafter
+only destroys unrelated evidence.
 
 **No run was made.** Kaan chose simulator-only and no physical iPhone is
 attached to this machine.
 
-**A simulator run would not have been evidence, and running one would have made
-the record worse rather than better.** The simulator target is
-`aarch64-apple-ios-sim`; it executes on the host's own CPU, against the host's
-memory, with the simulator slice of `MemryCoreFFI.xcframework` — a different
-binary from the `aarch64-apple-ios` device slice. S4 asks two questions and the
-simulator can answer neither:
+**Superseded by the run above — kept because the reasoning still holds.** What
+follows was written while no device was attached. Its argument against a
+simulator run was correct and remains correct; only its conclusion ("T082 is
+open") is out of date, and the reason is worth keeping: the simulator executes
+on the host CPU against host memory with a _different_ libsodium binary, so it
+could answer neither of S4's questions. The device run answered both.
 
-1. **Does Argon2id at 64 MiB with ops 3 OOM on an iPhone 15 under memory
-   pressure?** This is a question about a phone's jetsam limits and about how
-   much of a 6 GB device is available to a foreground app that has just been
-   resumed. A Mac with tens of gigabytes free will complete the derivation
-   every time, and that success says nothing at all.
-2. **Is `crypto_pwhash`'s `-1` distinguishable from a wrong passphrase?**
-   libsodium answers both with `-1`. The distinction the core draws —
-   `CryptoError::OutOfMemory` versus a verifier mismatch — can only be
-   confirmed by reproducing the allocation failure, which requires the
-   allocation to actually fail. It will not fail on the host.
-
-`contracts/core-api.md` records why the distinction matters: reporting an OOM
-as a wrong phrase tells the user to re-type a phrase that was correct. That
-reasoning is unverified on hardware and stays unverified.
-
-**T082 is open. It is not "PASS (simulator)" and must never be written that
-way.** It clears when an iPhone 15 is attached and
-`xcodebuild test -destination 'platform=iOS,name=<iPhone 15>'` runs the
-derivation under induced memory pressure.
+One prediction in it was wrong and the device corrected it. It assumed the
+allocation failure could be reproduced by inducing pressure. **It cannot on
+iOS** — jetsam kills the process before `malloc` refuses. The distinction the
+core draws is real and structural, but it is reached by parameter validation
+before the call, not by ever observing the `-1`.
 
 ### G3a, as it stands
 
-| Spike                                                 | Verdict                   | Fallback taken                                                                                             |
-| ----------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| S1 UniFFI XCFramework hello-world, callback threading | **PASS**                  | none needed                                                                                                |
-| S2 async foreign-trait `Transport` over `URLSession`  | **PASS**                  | none needed; the `/health` leg is shell-driven because no exported path reaches `/health`                  |
-| S3 `WKWebView` opaque origin and keyboard toolbar     | **FAIL** on `about:blank` | R10's `WKURLSchemeHandler` fallback, plus a document-start storage-denial user script, which together pass |
-| S4 Argon2id 64 MiB ops 3 on iPhone 15                 | **BLOCKED**               | none available; the question is not answerable off-device                                                  |
+| Spike                                                             | Verdict                   | Fallback taken                                                                                                                |
+| ----------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| S1 UniFFI XCFramework hello-world, callback threading             | **PASS**                  | none needed                                                                                                                   |
+| S2 async foreign-trait `Transport` over `URLSession`              | **PASS**                  | none needed; the `/health` leg is shell-driven because no exported path reaches `/health`                                     |
+| S3 `WKWebView` opaque origin and keyboard toolbar                 | **FAIL** on `about:blank` | R10's `WKURLSchemeHandler` fallback, plus a document-start storage-denial user script, which together pass                    |
+| S4 Argon2id 64 MiB ops 3, iPhone 12 Pro (not the iPhone 15 named) | **PASS**                  | none needed; the OOM is unreachable on iOS — jetsam kills the app first — and the crypto/phrase separation holds structurally |
 
-Three of four spikes have a result. The fourth is blocked by an absent device
-and is recorded as blocked, which is the honest state of gate G3a.
+**All four spikes have a result.** S3 is a FAIL with its fallback taken and
+recorded; S4 ran on hardware and answered its first question in the negative.
+The device was an iPhone 12 Pro rather than the iPhone 15 the task names — same
+6 GB class, real libsodium, real jetsam — and that substitution is stated in the
+S4 note rather than left for a reader to notice.

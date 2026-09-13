@@ -1,0 +1,36 @@
+{
+  "devicesAndConfigurations": [
+    {
+      "device": {
+        "architecture": "arm64",
+        "deviceId": "00008101-00164CD02212001E",
+        "deviceName": "Kaan Karaca’s iPhone",
+        "modelName": "iPhone 12 Pro",
+        "osBuildNumber": "24A5390f",
+        "osVersion": "27.0",
+        "platform": "iOS"
+      },
+      "expectedFailures": 0,
+      "failedTests": 0,
+      "passedTests": 9,
+      "skippedTests": 0,
+      "testPlanConfiguration": {
+        "configurationId": "1",
+        "configurationName": "Default"
+      }
+    }
+  ],
+  "environmentDescription": "Unit · Built with macOS 26.6.2",
+  "expectedFailures": 0,
+  "failedTests": 0,
+  "finishTime": 1789303733.91,
+  "passedTests": 9,
+  "result": "Passed",
+  "skippedTests": 0,
+  "startTime": 1789303363.783,
+  "statistics": [],
+  "testFailures": [],
+  "title": "Test - Memry",
+  "topInsights": [],
+  "totalTestCount": 9
+}
