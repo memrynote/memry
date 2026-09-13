@@ -41,6 +41,7 @@ use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use serde_json::Value as Json;
 
 use crate::api::errors::ApiError;
+use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
 
 use super::state::{SyncState, WriteGate, evaluate_gate};
 
@@ -52,6 +53,10 @@ pub const SYNC_PAYMENT_REQUIRED: &str = "SYNC_PAYMENT_REQUIRED";
 /// `CLOCK_SKEW_THRESHOLD_SECONDS` (chapter 05 §5.16) so a client that already
 /// polls status for skew gets policy for free.
 pub const POLICY_POLL_INTERVAL_MS: i64 = 300_000;
+
+/// The route §11.8 makes a client learn the policy from, without attempting a
+/// write.
+pub const STATUS_PATH: &str = "/sync/status";
 
 /// `clientPolicy` as `GET /sync/status` echoes it (§11.8).
 ///
@@ -278,6 +283,32 @@ impl PolicyTier {
         self.refusal
             .lock()
             .expect("the refusal mutex is never poisoned")
+    }
+}
+
+/// One `GET /sync/status`, learned into `tier` (§11.8).
+///
+/// The shell never spells this route: the poll is a protocol decision — which
+/// path, which retry ladder, and what a failure means — and it lives here so
+/// that every caller (the engine's pass, and a headless `push`) refreshes the
+/// policy the same way.
+///
+/// **A failed poll keeps the last known gate.** A status call that did not
+/// answer is not evidence that writes are off. It *is* evidence when the
+/// answer was a `402`, `403` or `426`, so the failure is offered to the tier
+/// before it is discarded (§11.7.1).
+pub async fn poll(http: &HttpClient, tier: &PolicyTier, now_ms: i64) -> WriteGate {
+    // Chapter 07 §7.10's polled ladder: `retryOn429: false`, because for a
+    // polled call the poll cadence is itself the retry.
+    let request = ApiRequest::get(STATUS_PATH)
+        .auth(Auth::Session)
+        .retry(RetryPolicy::polled());
+    match http.send_json::<Json>(request).await {
+        Ok(body) => tier.learn(&body, now_ms),
+        Err(error) => {
+            tier.observe(&error);
+            tier.gate()
+        }
     }
 }
 

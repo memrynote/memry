@@ -33,6 +33,13 @@ use crate::protocol::envelope::{self, EnvelopeError, RecordEnvelope};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient};
 use crate::sync::pull::RecordCipher;
 
+mod seal;
+
+pub use seal::{
+    AccountSealer, DeviceSigner, MAX_UPDATE_BASE64_BYTES, MAX_UPDATE_BYTES, RandomEntropy,
+    SIGNING_SECRET_KEY_BYTES, SealEntropy,
+};
+
 const KEY_VERIFIER_PATH: &str = "/auth/key-verifier";
 const VAULTS_PATH: &str = "/sync/vaults";
 const DEVICES_PATH: &str = "/auth/devices";

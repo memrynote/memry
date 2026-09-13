@@ -2,13 +2,14 @@
 //!
 //! The shell is a handful of files and nothing else: [`transport`] fills the
 //! network seam, [`session`] fills the secure-store seam and owns the profile
-//! directory, [`commands`] calls the core, and [`edit`] is §G5's one write. Every protocol decision — which
+//! directory, [`commands`] calls the core, [`edit`] is §G5's one write and [`push`] sends it. Every protocol decision — which
 //! route, which retry, when to refresh, which status means what — is the
 //! core's (Constitution I).
 
 mod cli;
 mod commands;
 mod edit;
+mod push;
 mod session;
 mod transport;
 
@@ -45,6 +46,7 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
         } => commands::unlock(&cli, &recovery_phrase_file).await,
         Command::Vaults => commands::vaults(&cli).await,
         Command::Pull { vault } => commands::pull(&cli, &vault).await,
+        Command::Push { vault } => push::push(&cli, vault.as_deref()).await,
         Command::NotesList { vault } => commands::notes_list(&cli, vault.as_deref()),
         Command::NotesText { note, vault } => commands::notes_text(&cli, &note, vault.as_deref()),
         Command::NotesStateVector { note, vault } => {

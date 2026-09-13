@@ -33,6 +33,7 @@ Commands:
   unlock --recovery-phrase-file <path>   derive the account master key from a 24-word phrase
   vaults                                 list the vaults on the account
   pull --vault <id>                      pull one vault's record feed into its local database
+  push [--vault <id>]                    drain this vault's outbox: one push wave
   notes list [--vault <id>]              print the pulled notes, newest first
   notes text <id> [--vault <id>]         print the note body's extracted text
   notes state-vector <id> [--vault <id>] print the note body's Y.Doc state vector, in hex
@@ -65,6 +66,11 @@ pub enum Command {
     Vaults,
     Pull {
         vault: String,
+    },
+    /// Quickstart §G5's write direction: the §11.8 policy poll, then one push
+    /// wave over the outbox `notes edit` filled.
+    Push {
+        vault: Option<String>,
     },
     NotesList {
         vault: Option<String>,
@@ -210,6 +216,9 @@ fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
         "pull" => Ok(Command::Pull {
             vault: required(args, "--vault", "pull")?,
         }),
+        "push" => Ok(Command::Push {
+            vault: optional(args, "--vault")?,
+        }),
         "notes" => parse_notes(args),
         other => usage(format!("unknown command `{other}`")),
     }
@@ -331,6 +340,13 @@ mod tests {
                 vault: "v-1".to_string()
             }
         );
+        assert_eq!(invocation("push").command, Command::Push { vault: None });
+        assert_eq!(
+            invocation("push --vault v-1").command,
+            Command::Push {
+                vault: Some("v-1".to_string())
+            }
+        );
         assert_eq!(
             invocation("notes list --vault v-1").command,
             Command::NotesList {
@@ -436,6 +452,8 @@ mod tests {
             "notes edit note-1",
             "notes edit note-1 --append",
             "notes edit --append text",
+            "push --vault",
+            "push v-1",
             "--server nowhere vaults",
             "--server",
             "sync --once",
@@ -455,6 +473,7 @@ mod tests {
             "unlock --recovery-phrase-file",
             "vaults",
             "pull --vault",
+            "push",
             "notes list",
             "notes text",
             "notes state-vector",

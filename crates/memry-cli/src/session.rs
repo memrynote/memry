@@ -17,6 +17,7 @@ use memry_core::api::errors::{
     ApiError, AuthError, CryptoError, RecoveryError, SecureStoreError, StorageError,
 };
 use memry_core::crdt::errors::CrdtError;
+use memry_core::protocol::account::DeviceSigner;
 use memry_core::protocol::auth::{DevicePlatform, TokenClaims};
 use memry_core::protocol::http::HttpClient;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -151,6 +152,33 @@ impl Cli {
             CliError::Refused(format!("the stored access token is not text: {error}"))
         })?;
         TokenClaims::parse(&token)?.device_id.ok_or_else(refusal)
+    }
+
+    /// This device's signing identity: the registered device id and the
+    /// Ed25519 secret key that id was registered with.
+    ///
+    /// **Read as one step, here**, because chapter 04 §4.6 requires it: a
+    /// verifier resolves the signer's public key **by `signerDeviceId`**
+    /// (chapter 01 §1.4.0), so an id taken from session state and paired with
+    /// some other key produces items that verify cleanly and are attributed to
+    /// the wrong device. Two accessors would let the two drift; one cannot.
+    ///
+    /// The key is handed straight to the core and is never logged, printed or
+    /// written anywhere but the keychain entry it came from.
+    pub fn device_signer(&self) -> Result<DeviceSigner, CliError> {
+        let device_id = self.device_id()?;
+        let secret = self
+            .store
+            .get(SecureStoreKey::DeviceSigningKey)?
+            .ok_or_else(|| {
+                CliError::Refused(
+                    "this profile has no device signing key: run `memry login --email <address>` \
+                     first"
+                        .to_string(),
+                )
+            })?;
+        // The error names a length and never a byte.
+        DeviceSigner::new(&device_id, secret).map_err(|error| CliError::Refused(error.to_string()))
     }
 
     pub fn master_key(&self) -> Result<Vec<u8>, CliError> {

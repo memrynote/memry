@@ -34,10 +34,8 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use serde_json::Value as Json;
-
 use crate::api::errors::{ApiError, TransportError};
-use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
+use crate::protocol::http::HttpClient;
 use crate::seams::reachability::{Reachability, Reachable};
 
 use super::policy::PolicyTier;
@@ -301,18 +299,7 @@ impl SyncEngine {
             return self.write_gate();
         }
 
-        // Chapter 07 §7.10's polled ladder: `retryOn429: false`, because for a
-        // polled call the poll cadence is itself the retry.
-        let request = ApiRequest::get("/sync/status")
-            .auth(Auth::Session)
-            .retry(RetryPolicy::polled());
-        match self.http.send_json::<Json>(request).await {
-            Ok(body) => self.policy.learn(&body, now_ms()),
-            Err(error) => {
-                self.policy.observe(&error);
-                self.write_gate()
-            }
-        }
+        super::policy::poll(&self.http, &self.policy, now_ms()).await
     }
 
     fn finish(
