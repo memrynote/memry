@@ -40,10 +40,13 @@ existed.** Four times in one phase. A `grep` over the generated Swift costs five
 seconds and would have caught every one of them before a wave was dispatched.
 Do that before writing a brief, not after an agent hits the wall.
 
-## State: **Phase 4 at 16 of 25 ticked.** Phase 3 closed 64/64.
+## State: **Phase 4 at 16 of 24 ticked.** Phase 3 closed 64/64.
 
-T149, T150 and T151 are **CUT**; T163, T164 and T165 were **added** by Kaan's
-band-B3 decision. Read the Scope decisions block at the top of Phase 4 first.
+T149, T150, T151 and **T156a** are **CUT**; T163, T164, T165 and T235 were
+**added**. **T156a was cut today**: `Notes` exports only `folders`/`list`/`read`,
+T126 built the CRUD in Rust in Phase 3 and none of it reached the FFI — and it
+is write work in a read-only phase, needing the vault key on `Vault`, sealing,
+the outbox and the push path. Cut, not deleted; nothing depends on it. Read the Scope decisions block at the top of Phase 4 first.
 
 | Wave | Tasks                                                          | Status           |
 | ---- | -------------------------------------------------------------- | ---------------- |
@@ -57,7 +60,7 @@ band-B3 decision. Read the Scope decisions block at the top of Phase 4 first.
 | W8   | **T235 device-linking exports (new-device half)**              | **NEXT**         |
 | W9+  | T155, T156, T156a, T157, T158, T159, then T161/T162 with Kaan  | partly unblocked |
 
-**Open: T153, T154, T155, T156, T156a, T157, T158, T159, T161, T162.**
+**Open: T153, T154, T156, T157, T158, T159, T161, T162** — eight, and none blocked on a decision.
 
 ## What this session actually changed
 

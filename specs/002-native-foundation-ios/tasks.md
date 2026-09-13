@@ -337,6 +337,23 @@ Leaving the boxes open is what keeps the checkbox meaning what it has meant
 since Phase 3, and it keeps the blocker visible in the task list rather than
 only in the defect log.
 
+**T156a is cut — Kaan, 2026-09-13.** The notes and folders CRUD surface. The
+reason is the same one that cut T149–T151: it is not what this phase is for.
+US3's checkpoint says **read-only**, and CRUD needs the write half of band B3 —
+the vault key held on `Vault`, record sealing, the outbox and the push path.
+Squeezing that into a read-only phase is precisely the mistake this phase
+caught five times over (spec-defects 114, 124, 125, 127 and T156a itself).
+
+It was also **not buildable as written**: `Notes` exports `folders()`, `list()`
+and `read()` and nothing else. T126 implemented create, rename, move and delete
+in `domain/notes.rs` and `domain/folders.rs` in Phase 3 and is ticked — **the
+logic exists and none of it reached the FFI.** So the export, not the screen, is
+the missing piece, and it belongs with the rest of the write half.
+
+**Cut, not deleted.** Nothing in Phase 4 depends on it. Phase 4 is therefore
+**24 tasks**, and the note list T156 ships is deliberately read-only: no context
+menu, no swipe action, no create affordance.
+
 **T161/T162 run on ONE phone plus a desktop** — an iPhone 12 Pro
 (`8025C79A-F257-500F-8BA1-A14122135B2D`) and Kaan's desktop are the whole
 hardware budget. The Independent Test above says "unlock a second phone"; that
@@ -367,7 +384,7 @@ than letting "second phone" read as covered.
 - [ ] T154 [US3] Implement `apps/ios/Memry/Features/Unlock/SASConfirmView.swift`: the short verification code displayed on both screens, with the desktop confirming before any key material transfers, and a scan by an already-linked device resolving to the existing registration rather than minting a duplicate (FR-020, spec edge case)
 - [x] T155 [US3] Implement `apps/ios/Memry/Features/Vaults/VaultListView.swift`: every vault on the account listed at the unlock step and the switch reachable later from settings, **holding the selection phase in the shell** — `VaultChoice` is not exported and §C.2's vault-lock machine has no FFI surface (spec-defect 127); if it is ever exported this screen's logic is deleted rather than adapted, with queued writes for the previous vault preserved and never misattributed (FR-021, data-model §C.2, spec edge case). **This task owns T144's call site** (spec-defect 105): every vault is opened through `VaultFiles.openingVault(_:open:)`, which prepares the directories, runs the caller's open closure, then re-asserts the protection class on the `-wal`/`-shm` sidecars — on **every** open, not just the first, because a clean close deletes them and the next open makes new files with new attributes. Nothing else calls the `FileProtection` seam, and the write-ahead log holds recent note content in plaintext
 - [ ] T156 [US3] Implement `apps/ios/Memry/Features/Notes/NotesListView.swift` and `apps/ios/Memry/Features/Folders/FolderTreeView.swift`: the same hierarchy as desktop, rendered from core snapshots, with `navigationDestination` kept out of lazy containers (research R15)
-- [ ] T156a [US3] Implement the notes and folders CRUD surface in `apps/ios/Memry/Features/Notes/NoteActions.swift` and `apps/ios/Memry/Features/Folders/FolderActions.swift`: create (empty and from a template), rename, move and delete, offered through system context menus and swipe actions, each action a call into the T126 core APIs with no logic of its own (FR-039)
+- [ ] **CUT — see Scope decisions at the top of Phase 4.** T156a the notes and folders CRUD surface. `Notes` exports only `folders()`, `list()` and `read()`; T126 built create/rename/move/delete in Rust in Phase 3 and **none of it reached the FFI**, so this was the fifth task in one phase specified against a capability nobody had checked existed. It is also **write work in a read-only phase**: US3's checkpoint is "browse real notes and folders read-only", and the write half means the vault key on `Vault`, sealing, the outbox and the push path — a band-B3 remainder, not a UI task. **Cut, not deleted**: nothing else in Phase 4 depends on it, and it returns with its own train once the write exports exist
 - [ ] T157 [US3] Implement `apps/ios/Memry/Features/Notes/NoteReadView.swift`: a read-only **text preview** as the pre-editor surface, explicitly labelled as the placeholder T176 replaces. **Preview, not a render** (spec-defect 125, Kaan's decision): the body is `extract_text` output — chapter 12 §12.1's only text operation and what T164 exports — so headings, bold, links and code blocks appear as plain text. A faithful render would need `Document::encode_state()` exported **and** the editor bundle hosted through `EditorHost`, which per spec-defect 107 nothing in the core can be handed; that is T176's, not this phase's
 - [ ] T158 [US3] Implement `apps/ios/Memry/Features/Sync/SyncStatusView.swift`: the degraded-state vocabulary shared with desktop (offline, syncing, locked, read-only, unentitled) plus determinate first-sync progress, each state a value the core computed (FR-075, FR-028). **This task also owns T141's consumer** (spec-defect 92): the single `CoreEvents.consume()` call site lives in the app root (`apps/ios/Memry/App/`), which iterates the hub and re-reads snapshots through `CoreExecutor` into `@Observable` state every view reads. The hub is single-consumer, so a second `consume()` returns `nil`; a view must read the root's state, never the stream. **The same app root owns the two runtime obligations nothing calls today** (spec-defect 100): it must act on `PullReport::purged_documents` and `BodyPullReport::advanced_documents` by releasing or refreshing those resident documents (§7.15.1's runtime half, which the core can only report), and it must poll `snapshot_is_due` (§7.13.3). Both are the registry holder's job and the app root is the only thing that holds one
 - [ ] T159 [US3] Implement sign-out and revocation in `apps/ios/Memry/Features/Account/SignOutService.swift`: sign-out deletes all five keychain entries, both database files and `images/`, and zeroes in-memory keys; a revocation detected on next contact does the same and records why so the locked screen can explain itself (FR-025, FR-026)
