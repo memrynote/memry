@@ -340,6 +340,22 @@ Rules a second implementation MUST reproduce:
   carries only the ones that exist
   (`apps/desktop/src/main/sync/encrypt.ts:74-79`).
 
+**A record push MUST NOT sign `stateVector`, and this rule is not derivable
+from the bullet above.** §4.6 already says a record push must not _send_ it, and
+§4.10 says the server reconstructs the signature payload **from what it
+received** — so an item signed with a `stateVector` the server never sees
+produces a payload the server cannot rebuild, and the item fails with
+`403 SYNC_INVALID_SIGNATURE`. Not on a malformed item: on every item that
+happens to have a state vector.
+
+The bullet above is correct for the **general** writer, which is the case the
+committed `record-envelope` vectors pin. The push writer is a narrower one, and
+the difference is worth a sentence rather than an inference, because the failure
+it prevents is total and looks like a key problem rather than a payload-shape
+one. A client whose write path cannot reach a state vector at all — because the
+column does not exist on the row it pushes — satisfies this structurally, which
+is the safer construction.
+
 ### 4.8.1 `metadata.fieldClocks` — Q04.3
 
 `SignaturePayloadV1Schema.metadata` admits `fieldClocks`
