@@ -402,3 +402,25 @@ Consequences a conforming client MUST implement:
 - **Do not treat surviving server rows as evidence the delete failed.**
 
 **Disposition of Q07.4: answered** (this section).
+
+## 7.16 The Yjs client id is derived, not chosen
+
+**Normative.** The Yjs client id travels inside every update, and two devices
+that mint the same id corrupt a document that merges both. The derivation is
+therefore a protocol fact, not an implementation detail, and it must be stated
+here or two ports cannot interoperate.
+
+A client derives its client id as the **first 53 bits of the SHA-256 of its
+device id**, big-endian, read as an unsigned integer. Not a random number, not a
+counter, and not the device id itself.
+
+Fifty-three bits, because a JavaScript peer holds the client id in a `number`
+and 2^53 is where an integer stops being exactly representable there. A Rust or
+Swift port that used the full 64 bits would mint ids a browser peer could never
+have produced, and a document that merged updates from both would disagree with
+itself about ordering on exactly the ids that lost precision.
+
+SHA-256 of the device id, because the device id is already unique per device and
+already durable across relaunches. A random id per launch would make every
+relaunch look like a new peer and grow the document's state vector without
+bound; a counter would collide across devices immediately.

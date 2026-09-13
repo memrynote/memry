@@ -183,6 +183,15 @@ optional on every type; `fieldClocks` appears only where §13.9 says so.
 
 Same shape as `note` minus the file fields, plus `date`.
 
+Spelled out, because "same shape minus" left four fields ambiguous: a `journal`
+carries `title`, `emoji`, `aliases`, `properties`, `tags` and `pinnedTags`
+exactly as `note` does, and carries `date`. The file fields it does **not**
+carry are `fileType`, `mimeType`, `attachmentId`, `attachmentReferences` and
+`folderPath`. No committed vector exercises the four that were ambiguous, so
+this is a clarification of intent rather than a change: a client that guessed
+either way still passes today, and would have diverged the first time a journal
+with an alias crossed between two ports.
+
 **`date` is optional ONLY so a delete tombstone can omit it** (`:274-280`). A
 create or update without it is rejected by **an explicit guard in the handler,
 not by the schema**. Deletes never reach any parser at all: the applier
@@ -246,13 +255,30 @@ so a newer client's per-option field is not parsed away on a round trip. This is
 
 ### 13.7.10 `folder_config` — `:341-346`
 
-**`icon` is `z.string().nullable()` — the only non-optional field on any
-subscribed type** (`:342`). Plus `clock`, `createdAt`, `modifiedAt`.
+**`icon` is `z.string().nullable()`** (`:342`). Plus `clock`, `createdAt`,
+`modifiedAt`.
+
+`icon` is nullable rather than optional: the key is always present and its value
+may be `null`. That is a narrower claim than an earlier draft's "the only
+non-optional field on any subscribed type", which contradicted §13.7.7 to
+§13.7.9 — those sections mark `name`, `color`, `sortOrder` and `type` required
+on their own types, and they are correct. **Where a per-type section marks a
+field required, that section wins**; there is no cross-type uniqueness claim
+about `icon` and none should be read into it.
 
 ### 13.7.11 `custom_icon` — `:355-363`
 
 `name`, `ext`, **`data` (base64 image bytes carried inline)**, `clock`,
 `createdAt`, `updatedAt`.
+
+**Normative: `custom_icon` is a reader-only type with no projection table.**
+data-model §A.4 lists none and the baseline migrations create none, and that is
+deliberate rather than an omission. The payload is a single inline blob with no
+field a query would filter or sort on, and §13.7.11's self-healing rule already
+says a consumer reads it from the row on demand. A conforming client stores the
+item in `sync_items` like any other, projects nothing, and resolves an icon by
+reading the stored payload. Adding a projection table for it is allowed but buys
+nothing, and it must never be the _source_ — the row remains the record.
 
 The bytes ride in the record payload rather than the attachment pipeline because
 a normalised icon is a few KB, and this keeps every device's icon directory
@@ -314,6 +340,22 @@ cannot stall every other synced setting
 (`packages/contracts/src/settings-sync.ts:83-86`, `:99-100`). That tolerance is
 about keys **inside** a modelled group; §13.2 is what protects an **unmodelled
 group**.
+
+### 13.10.1 The ten modelled groups
+
+**Normative.** "Unmodelled group" is only meaningful against a list, so here it
+is. The modelled groups are exactly:
+
+`general`, `editor`, `tasks`, `calendar`, `keyboard`, `notes`, `sync`, `inbox`,
+`journal`, `sidebar`.
+
+Every other group — `experimental` among them — is **unmodelled**: it is absent
+from the parsed read view and present, byte for byte, in the stored payload.
+That split is what `payload-schemas.json` pins, so the list is part of the
+format and not an implementation's inventory. A client that models fewer groups
+than this is still conforming, because §13.2 preserves whatever it does not
+model; a client that models _more_ is not, because it would surface a group the
+vectors expect to be stripped.
 
 **Disposition of Q13.1: answered (the verbatim stored payload is the copy; there
 is no settings-specific mechanism).**

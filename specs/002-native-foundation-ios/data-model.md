@@ -182,10 +182,10 @@ Primary key `(doc_id, seq)`.
 **The two-namespace rule.** A document has two independent sequence spaces in the
 same two tables, distinguished by the `doc_id` prefix:
 
-| Namespace | `doc_id`                                                          | Sequence source                                                     |
-| --------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
-| server    | the bare document id, for example `abc123def456` or `j2026-04-16` | the server's `sequence_num`                                         |
-| local     | `local.` followed by the same id                                  | a local counter, `MAX(seq) + 1` read inside the writing transaction |
+| Namespace | `doc_id`                                                          | Sequence source                                                                                                                   |
+| --------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| server    | the bare document id, for example `abc123def456` or `j2026-04-16` | the server's `sequence_num`                                                                                                       |
+| local     | `local.` followed by the same id                                  | a local counter, read inside the writing transaction as one past the greatest sequence this namespace has ever issued — see below |
 
 They must not share a space. A local append taking a sequence a later server row
 also claims would silently drop one of the two under an upsert
@@ -313,6 +313,15 @@ snooze state does sync, and lives in the `reminders` projection.
 | `source_seq`      | INTEGER          | the combined log position this text was extracted from                                                                                                                                                                                                                                                       |
 | `materialised_at` | INTEGER NOT NULL |                                                                                                                                                                                                                                                                                                              |
 
+**The local counter is taken over the updates and the snapshot together**, as
+`MAX` of `yjs_updates.seq` and `yjs_snapshots.last_seq` for the namespace, not
+over `yjs_updates` alone. A fold deletes the rows it absorbed and records their
+high-water mark on the snapshot row, so an updates-only maximum walks backwards
+the moment a compaction lands and re-issues a sequence that was already used.
+This is the same union the read rule already requires — "a read of updates since
+N must also consult the snapshot row" — applied to the write side, where it was
+previously left implicit.
+
 ### A.3 Why `note_bodies` is its own category
 
 **The core never serialises or parses BlockNote markdown.** Both directions run
@@ -409,11 +418,28 @@ NOT NULL DEFAULT 0, `pinned_at` INTEGER. Primary key `(note_id, tag)`.
 in practice; desktop uses the same collation
 (`packages/db-schema/src/schema/notes-cache.ts:53`).
 
+`pinned_at` has **no source instant in the payload**: `pinnedTags` carries
+membership, not a time. The projector records the instant it applied the row,
+and that is the column's whole meaning — a local ordering hint for the pinned
+list, never a synced value and never compared across devices. Two devices will
+hold different `pinned_at` values for the same pinned tag, and that is correct,
+not drift.
+
 **`tag_definitions`**. From `tag_definition`. Item id is the tag name.
 
 `name` TEXT PRIMARY KEY COLLATE NOCASE, `color` TEXT NOT NULL,
 `color_authored` INTEGER NOT NULL DEFAULT 0, `icon` TEXT, `category_id` TEXT,
 `sort_order` INTEGER NOT NULL DEFAULT 0, `views` TEXT, `created_at` INTEGER.
+
+`color_authored` holds two states where the payload has three. Chapter 13
+§13.7.7 says an **absent** `colorAuthored` means "cannot tell, honour the
+colour", which is behaviourally identical to `true` and behaviourally different
+from `false`. The projection therefore maps **absent to 1**, collapsing absent
+and true into the same column value on purpose: the column exists to answer
+"may the palette overwrite this colour", and for both of those the answer is no.
+The absent-versus-true distinction is not lost from the vault — it survives
+verbatim in `sync_items.payload`, which is the source of record — only from the
+projection, which is rebuildable and answers a narrower question.
 
 `color_authored` is load bearing: `false` means the palette handed the colour out by
 local tag count, so it disagrees across devices and must not repaint another
@@ -528,6 +554,17 @@ named fields is the one shape that cannot work here: deserialising into it and
 re-serialising drops every group and key this build does not know about, which is
 exactly the data FR-063 requires to survive. The projection above is a flattened
 index for reading; the write path touches only the paths the user changed.
+
+**A NOT NULL projection column does not mean a required payload field.** Several
+columns here are NOT NULL for fields chapter 13 §13.7 marks optional —
+`notes.title`, `tasks.project_id`, `projects.color`, `reminders.remind_at`,
+`templates.name` among them. The projector substitutes the column's empty or
+zero default when the key is absent and **never refuses the item**, because
+§13.3's forward tolerance says an older client must keep applying what a newer
+one writes. The NOT NULL is there so a query never has to handle a null, not to
+assert the wire guarantees a value. The payload remains the source of record and
+still distinguishes absent from empty; the projection does not, and does not
+need to.
 
 ### A.5 `index.db`
 
@@ -852,6 +889,15 @@ Rules:
 - **Local compaction folds at a sequence read inside the transaction**, not at a
   count passed in. Using a count as a sequence prunes nothing after the first fold
   (`apps/mobile/src/editor/session.ts:104-129`).
+- **`Unreadable` is sticky, and the diagram's `-> Closed` edge does not clear it.**
+  The two annotations are not in conflict once the scope of each is named: the
+  edge is about the document's _residency_, so a document nobody holds is evicted
+  from memory like any other, while "terminal until the app restarts" is about the
+  _verdict_, which survives that eviction. A later `request` for the same id
+  therefore still walks `Closed -> Loading -> Unreadable` — the drawn edges, in
+  order — but reaches `Unreadable` from the remembered verdict without asking
+  anyone to replay a log that already failed. The verdict is in-memory only: a
+  relaunch re-attempts the replay, which is what "until the app restarts" means.
 - **`Unreadable` is a first-class state, not an error return.** FR-043 requires the
   app to refuse to open a body for editing when the loaded bundle cannot build every
   node type in the document, to say so, to keep reading available, and to remove no
