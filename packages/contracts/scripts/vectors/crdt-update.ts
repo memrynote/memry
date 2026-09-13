@@ -164,6 +164,7 @@ export async function buildCrdtUpdate(): Promise<Record<string, unknown>> {
       noteId: FIXED.NOTE_ID,
       packedHex: hex(firstBytes.subarray(0, HEADER_LEN)),
       expectErrorContains: 'CRDT update too short',
+      expectErrorCode: 'too-short',
       pins: 'the length guard, before any crypto'
     },
     {
@@ -171,6 +172,7 @@ export async function buildCrdtUpdate(): Promise<Record<string, unknown>> {
       noteId: 'ffffffffffff',
       packedHex: first,
       expectErrorContains: 'Signature verification failed',
+      expectErrorCode: 'signature-invalid',
       pins: 'the note id is AUTHENTICATED, not merely associated, so this is a signature error and not an AEAD error'
     },
     {
@@ -178,6 +180,7 @@ export async function buildCrdtUpdate(): Promise<Record<string, unknown>> {
       noteId: FIXED.NOTE_ID,
       packedHex: hex(flipLast(firstBytes)),
       expectErrorContains: 'Signature verification failed',
+      expectErrorCode: 'signature-invalid',
       pins: 'the ciphertext is inside the signed message, so tampering fails at the signature'
     }
   ]

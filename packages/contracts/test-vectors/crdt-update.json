@@ -138,6 +138,7 @@
       "noteId": "abc123def456",
       "packedHex": "000102030405060708090a0b0c0d0e0f101112131415161717161514131211100f0e0d0c0b0a09080706050403020100bd3e41e6f6875d4192f7d2be3a89855f20d8f612741a0ae8f07e22b34e0155350e4b3e98883dc2b298b3f67e9230ec8cb03b1be6c61c7ce77dbcaff254330643332a62d42193a9a1f7dcea522f7c715de7a3c1b4098d891e3c25d4d49d6278ab7ac9c463bf10a972cba264265025980e",
       "expectErrorContains": "CRDT update too short",
+      "expectErrorCode": "too-short",
       "pins": "the length guard, before any crypto"
     },
     {
@@ -145,6 +146,7 @@
       "noteId": "ffffffffffff",
       "packedHex": "000102030405060708090a0b0c0d0e0f101112131415161717161514131211100f0e0d0c0b0a09080706050403020100bd3e41e6f6875d4192f7d2be3a89855f20d8f612741a0ae8f07e22b34e0155350e4b3e98883dc2b298b3f67e9230ec8cb03b1be6c61c7ce77dbcaff254330643332a62d42193a9a1f7dcea522f7c715de7a3c1b4098d891e3c25d4d49d6278ab7ac9c463bf10a972cba264265025980e3264d28596c220a56f05d008d4459d64ed21117f9db1e28d12e1b9d89167e2",
       "expectErrorContains": "Signature verification failed",
+      "expectErrorCode": "signature-invalid",
       "pins": "the note id is AUTHENTICATED, not merely associated, so this is a signature error and not an AEAD error"
     },
     {
@@ -152,6 +154,7 @@
       "noteId": "abc123def456",
       "packedHex": "000102030405060708090a0b0c0d0e0f101112131415161717161514131211100f0e0d0c0b0a09080706050403020100bd3e41e6f6875d4192f7d2be3a89855f20d8f612741a0ae8f07e22b34e0155350e4b3e98883dc2b298b3f67e9230ec8cb03b1be6c61c7ce77dbcaff254330643332a62d42193a9a1f7dcea522f7c715de7a3c1b4098d891e3c25d4d49d6278ab7ac9c463bf10a972cba264265025980e3264d28596c220a56f05d008d4459d64ed21117f9db1e28d12e1b9d89167e3",
       "expectErrorContains": "Signature verification failed",
+      "expectErrorCode": "signature-invalid",
       "pins": "the ciphertext is inside the signed message, so tampering fails at the signature"
     }
   ]

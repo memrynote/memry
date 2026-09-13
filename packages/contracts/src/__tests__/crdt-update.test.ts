@@ -57,6 +57,9 @@ const vectors = loadVectorFile<{
     packedBytes?: number
     expectRejected?: boolean
     expectErrorContains?: string
+    // The portable half of the assertion. `expectErrorContains` is this
+    // writer's English message; a second implementation asserts the code.
+    expectErrorCode?: 'too-short' | 'signature-invalid'
     pins: string
   }>
 }>('crdt-update.json')
@@ -168,4 +171,13 @@ describe('crdt-update vectors', () => {
       ).rejects.toThrow(entry.expectErrorContains)
     })
   }
+
+  it('every message-asserting error case also carries a portable error code', () => {
+    // Without this, the only thing pinning these cases is an English string
+    // from one implementation, which a Rust or Swift port cannot reproduce
+    // without copying the phrasing rather than the behaviour.
+    for (const entry of vectors.errorCases.filter((c) => c.expectErrorContains)) {
+      expect(entry.expectErrorCode, entry.name).toBeDefined()
+    }
+  })
 })

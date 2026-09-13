@@ -48,10 +48,9 @@ re-checks it.
 
 ## Blocked
 
-- **T089** — blocked on **T232**, added this session. The `crdt-update` vector class pins
-  the packed CRDT envelope of chapter 04 §4.11 (160-byte header, signature at offset 96),
-  which is encryption rather than CRDT semantics. No Phase 3 task had assigned it. Seven of
-  eleven classes pass today; T089 cannot be ticked until T232 lands.
+- **T089** — still open, but no longer blocked on T232, which landed. Seven of eleven
+  classes pass. The remaining four are `field-merge` (W4), `pack-container`,
+  `device-linking` and `text-extract` (T123).
 - **T082, T093, T094 (device tier)** — blocked by decision. Kaan chose simulator-only; no
   physical iPhone 15 attached. G3 closes with this named as open, never silently.
 - **T114, T115, T137, T139** — staging. Mostly unblocked now, see below.
@@ -113,10 +112,15 @@ Anything worse than this is the next session's to fix, not to inherit.
 
 **Seven of eleven classes pass byte for byte**: `crypto-vectors`, `bip39-unlock`,
 `cbor-canonical`, `compression`, `record-envelope` (all 14 cases), `payload-schemas`
-(the subscribed-type header and all 52 payload cases).
+(the subscribed-type header and all 52 payload cases), and `crdt-update` (all 8 cases,
+T232, in its own `tests/crdt_vectors.rs`).
 
-Remaining four: `crdt-update` (needs T232), `field-merge` (needs chapter 06's `mergeFields`,
-due in W4), `pack-container`, `device-linking`, `text-extract` (T123).
+Count classes, not test functions: `payload-schemas` has two test functions and
+`crdt-update` has two, so the function count runs ahead of the class count and an earlier
+revision of this file miscounted because of it.
+
+Remaining four: `field-merge` (needs chapter 06's `mergeFields`, due in W4),
+`pack-container`, `device-linking`, `text-extract` (T123).
 
 ## Gate exit status
 

@@ -449,6 +449,28 @@ rejected with `CRDT update too short: 160 bytes`.
 **Core obligation.** `HEADER = 160`, `SIG_OFF = 96`, reject `len < 161`, and
 **verify the signature before unwrapping the key**.
 
+### 4.11.1 The two rejection codes
+
+**Normative.** A packet is rejected for exactly two reasons, and a conforming
+implementation must distinguish them, because they mean different things to a
+caller: one is a malformed packet to drop, the other is a trust failure to
+report.
+
+| Code                | Condition                                                  |
+| ------------------- | ---------------------------------------------------------- |
+| `too-short`         | `len < 161`, checked before any crypto                     |
+| `signature-invalid` | the detached signature did not verify over §4.12's message |
+
+Reading a packet under the wrong note id is `signature-invalid`, **not** an
+AEAD failure — the id is the first run of the signed message, so it never
+reaches the cipher. Tampering with the ciphertext is also `signature-invalid`,
+because the ciphertext is inside the signed message; a conforming reader never
+reports an AEAD tag failure for either.
+
+`crdt-update.json` carries these codes as `expectErrorCode` on every error case
+that also carries a message. The message is one implementation's English and a
+second port must not reproduce it; **the code is the contract**.
+
 **A stale comment at `apps/desktop/src/main/sync/crdt-encrypt.ts:35` says the
 signature slot is at offset 72.** It is at 96. The comment is corrected in the
 change that lands this chapter. No 168-byte figure survives anywhere in the tree.
