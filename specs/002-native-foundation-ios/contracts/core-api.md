@@ -72,6 +72,14 @@ one exists because collapsing it produces a specific wrong behaviour:
   stay three variants because chapter 11 makes them three distinct client
   policies — read-only, blocked-pending-upgrade, and unentitled — that must
   never collapse into one "you cannot write" message.
+- **`ApiError::Status` makes the shell re-derive retryability, and that is
+  deliberate** (spec-defect 97). Everything without a distinct variant collapses
+  into `Status { status, code }`, so a shell rendering it must split 5xx (and 408) from 4xx itself to avoid telling a user to retry something the server
+  will refuse every time — which matters because a permanently-rejected record
+  wedges the whole outbox, and "try again" then means "retry forever". The
+  status code is carried precisely so the shell _can_ make that split; what the
+  shell must not do is invent a policy beyond it, such as a retry schedule. The
+  core owns retry; the shell owns only the sentence.
 - **`AuthError::RefreshBlocked` versus `SessionExpired`** separates "the latch
   is holding, try later" from "this session is gone". Collapsing them either
   signs the user out on a transient refusal or spins forever on a dead session.

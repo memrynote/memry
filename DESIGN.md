@@ -468,6 +468,47 @@ Use concise sentence-case labels. Name the action with a verb. Explain destructi
 
 Do not use hype, celebration, streaks, achievements, fake scarcity, or manufactured urgency. Empty states explain what is absent and give the next useful action. Error copy says what failed and what the user can do next.
 
+#### Error copy, in detail
+
+"What failed and what the user can do next" was the whole of this rule, and it
+does not decide the cases that actually come up. These do (spec-defect 94):
+
+- **An error the user cannot act on still gets a second sentence.** Say what
+  happens next _without_ them — that the note is safe, that the sync will retry,
+  that nothing was lost. Omit the second sentence only when there is genuinely
+  neither an action nor a consequence worth stating. "Something went wrong" with
+  nothing after it is the failure this rule exists to prevent.
+- **Never describe a permanent refusal as a transient one.** A request the
+  server will refuse every time must not offer a retry. This is not cosmetic:
+  a permanently-rejected record wedges the whole outbox, so a user told to "try
+  again" retries forever against a queue that will never drain.
+- **An unrecognised error is loud, never blank.** "Could not tell" must not look
+  like "nothing is wrong". An error with no mapping still renders a title and an
+  identifying code.
+- **Copy never contains a payload.** No key material, no token, no note text, no
+  recovery-phrase word, and no raw error object (Constitution II, FR-023). A
+  sentence can reach a screenshot, a support thread, or a photo library.
+  **A recovery-phrase word specifically is not displayable**: it is eleven bits
+  of the seed, and an error may say a word is not in the list without repeating
+  it. A view may highlight the offending word in the field the user typed it
+  into, because that text is already on screen and under their control.
+- **Do not render a duration or a byte count the user cannot use.** A rate limit
+  says to try again shortly, not that 43 seconds remain; an out-of-space error
+  says to free space, not how many bytes.
+- **Only these are silent**: the user's own cancellation, and a failure the
+  specification explicitly says says nothing. Silent means not alerted, never
+  not known — a swallowed error still carries its title and code to the log.
+- **Do not promise a channel that does not exist.** No copy tells a user to
+  report a problem until there is a place for iOS users to report it.
+
+The vocabulary of degraded states — offline, syncing, locked, read-only,
+unentitled — is shared with desktop and is not reinvented per platform.
+
+**Every user-facing string is localizable** (spec-defect 98). RTL is required
+(FR-077) and RTL presupposes localization, so a hard-coded literal is a string
+someone rewrites later. Anything a user reads goes through the platform's
+localization mechanism from the first line, not after a milestone.
+
 ## Liquid Glass on iOS
 
 <!-- Filled in by spec 002-native-foundation-ios T228, after the S3 spike's

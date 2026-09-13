@@ -367,6 +367,17 @@ in [plan.md](./plan.md) under Technical Context.
   other thread". Note also that `Thread.isMainThread` and `Thread.current` are
   unavailable from an asynchronous context under Swift 6; use
   `pthread_main_np()`.
+- **A test over an `AsyncStream` must not drain a fixed count, because it hangs
+  instead of failing** (spec-defect 99). A fixture that awaits N elements and
+  asserts on them never returns when the bug under test is a **missing** yield:
+  the `await` simply parks. Observed — one `xcodebuild` sat for 21 minutes and
+  printed nothing, and the stall was indistinguishable from a deadlock in the
+  seam under test, which is the worst possible failure signal for concurrency
+  work. **A hang is worse than a failed assertion, because a hang looks like
+  slowness.** Emit a sentinel, `finish()` the stream, drain to completion, and
+  compare the **whole** history — then a missing element, a duplicated element
+  and a wrong payload are three distinct failures rather than one timeout. Carry
+  a `.timeLimit` as the backstop, never as the mechanism.
 - **The `Unit` test plan is not hermetic** (spec-defect 93). `SpikeTests`'
   S2 case makes a **live staging HTTP call** through `URLSession`, and it has
   no time limit: when staging is slow or unreachable it hangs the whole plan
