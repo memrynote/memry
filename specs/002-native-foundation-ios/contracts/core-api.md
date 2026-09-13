@@ -34,15 +34,24 @@ here that drifts from the generated one is a bug in this document.
 
 ## Error surfaces
 
-| Enum            | Raised by                            | Variants                                                                                                                                                                                    |
-| --------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CryptoError`   | primitives and derivations           | `InvalidLength`, `InvalidParameter`, `DecryptionFailed`, `EncryptionFailed`, `OutOfMemory`, `InvalidBase64`, `InvalidHex`                                                                   |
-| `RecoveryError` | the recovery-phrase path             | `UnknownWord`, `BadChecksum`, `WrongWordCount`, `NonAscii`, `VerifierMismatch`, `Crypto`                                                                                                    |
-| `CborError`     | the canonical encoder                | `FieldNotInOrdering`, `Unencodable`, `Malformed`                                                                                                                                            |
-| `CompressError` | the compression frame                | `IncompleteDeflateStream`, `Corrupt`                                                                                                                                                        |
-| `CrdtError`     | the document registry and update log | `DocumentBusy`, `Undecodable`, `NotApplicable`, `Storage`                                                                                                                                   |
-| `ApiError`      | every HTTP call                      | `Transport`, `Storage`, `Unauthorized`, `DeviceRevoked`, `RateLimited`, `WritesDisabled`, `UpgradeRequired`, `BootstrapUnavailable`, `Status`, `MalformedResponse`, `InvalidClientIdentity` |
-| `AuthError`     | the session                          | `Api`, `SecureStore`, `Crypto`, `InvalidState`, `MalformedToken`, `RefreshBlocked`, `SessionExpired`, `NoSetupToken`                                                                        |
+**Eight enums, not seven.** `LinkingError` joined with T235 and carries
+**fourteen** variants. `ErrorMapping.swift` did not cover it at all when it
+landed — a caught one fell through to the unrecognised arm until T153/T154 added
+the mapping. That is exactly the failure this table exists to prevent: **a new
+error surface is not done until the shell's exhaustive switch covers it**, and
+nothing else catches the gap, because the switches carry no `default:` arm by
+design and a missing enum simply never reaches them.
+
+| Enum            | Raised by                            | Variants                                                                                                                                                                                                                             |
+| --------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CryptoError`   | primitives and derivations           | `InvalidLength`, `InvalidParameter`, `DecryptionFailed`, `EncryptionFailed`, `OutOfMemory`, `InvalidBase64`, `InvalidHex`                                                                                                            |
+| `RecoveryError` | the recovery-phrase path             | `UnknownWord`, `BadChecksum`, `WrongWordCount`, `NonAscii`, `VerifierMismatch`, `Crypto`                                                                                                                                             |
+| `CborError`     | the canonical encoder                | `FieldNotInOrdering`, `Unencodable`, `Malformed`                                                                                                                                                                                     |
+| `CompressError` | the compression frame                | `IncompleteDeflateStream`, `Corrupt`                                                                                                                                                                                                 |
+| `CrdtError`     | the document registry and update log | `DocumentBusy`, `Undecodable`, `NotApplicable`, `Storage`                                                                                                                                                                            |
+| `ApiError`      | every HTTP call                      | `Transport`, `Storage`, `Unauthorized`, `DeviceRevoked`, `RateLimited`, `WritesDisabled`, `UpgradeRequired`, `BootstrapUnavailable`, `Status`, `MalformedResponse`, `InvalidClientIdentity`                                          |
+| `AuthError`     | the session                          | `Api`, `SecureStore`, `Crypto`, `InvalidState`, `MalformedToken`, `RefreshBlocked`, `SessionExpired`, `NoSetupToken`                                                                                                                 |
+| `LinkingError`  | device linking (T235)                | `InvalidLength`, `InvalidBase64`, `ScanMacInvalid`, `ConfirmMacInvalid`, `Crypto`, `Cbor`, `InvalidQrPayload`, `InvalidVaultTransfer`, `SessionExpired`, `NotScanned`, `AlreadyScanned`, `PollBudgetExhausted`, `Api`, `SecureStore` |
 
 Three of these carry a distinction that a flattened error would lose, and each
 one exists because collapsing it produces a specific wrong behaviour:

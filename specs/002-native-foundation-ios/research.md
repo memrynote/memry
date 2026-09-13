@@ -276,8 +276,14 @@ in [plan.md](./plan.md) under Technical Context.
   exist. VisionKit needs A12+ (C) and never works in the Simulator.
 - **Gotchas**: add output before setting `metadataObjectTypes`; debounce to
   first valid hit then `stopRunning()`; `NSCameraUsageDescription` is
-  mandatory or the app crashes. The QR carries a short one-time code, not a
-  key blob.
+  mandatory or the app crashes. **CORRECTED (spec-defect 129).** The QR does **not** carry a short one-time
+  code. Chapter 03 §3.8 is normative: the payload is
+  `JSON.stringify({ sessionId, ephemeralPublicKey, linkingSecret, expiresAt })`
+  — roughly 200 characters, including a 44-character base64 `linkingSecret` and
+  a base64 X25519 point. **It is not hand-typeable**, so "manual code entry"
+  cannot mean typing, and iOS implements the fallback as a first-class **paste**
+  field. A genuinely typeable short code would need a desktop and a server
+  change and is out of this feature's scope. The rest of this entry stands.
 
 ### R14. Sign in
 
