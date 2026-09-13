@@ -21,7 +21,7 @@ orchestrator, never taken from a subagent's report.
 | ---------------------------------------------- | ------------------------------------------------ |
 | `cargo fmt --all --check`                      | clean                                            |
 | `cargo clippy --all-targets -- -D warnings`    | clean                                            |
-| `cargo test`                                   | **521 passed, 0 failed, 1 ignored, 35 binaries** |
+| `cargo test`                                   | **526 passed, 0 failed, 1 ignored, 35 binaries** |
 | `node scripts/check-line-ceilings.mjs`         | passed (104 files)                               |
 | `pnpm --filter @memry/contracts vectors:check` | **11 classes**                                   |
 | `pnpm typecheck`                               | 19/19                                            |
@@ -196,9 +196,11 @@ from a desktop when convenient.
    CRDT rows, so the staging drills exercise `/sync/crdt/updates` end to end and
    the `/sync/push` record half is proven by vectors and a fake transport, not
    by a live command.
-3. **§7.13.3's snapshot cadence is unimplemented.** Nothing is incorrect —
-   §7.13.1 says there is no MUST-snapshot — but a heavily edited document's
-   server log grows unboundedly.
+3. ~~**§7.13.3's snapshot cadence is unimplemented.**~~ **The core half landed
+   this session**: `snapshot_is_due` with the chapter's 30 s quiet / 120 s cap,
+   constants pinned by test. The remaining triggers — document close, shutdown,
+   no-editor-open — are shell facts the core cannot see, so **wiring a caller
+   that polls it is a shell task**. `SnapshotGate`, the MUST, is untouched.
 4. **The socket has no self-driving `run()` loop**; the reconnect policy is
    implemented and tested.
 5. **A pulled update does not advance an already-resident `Document`**; it lands
