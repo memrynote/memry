@@ -163,14 +163,15 @@ device.
 
 Both halves import the contract module directly, so the types cannot drift.
 What can go stale is the prebuilt WebView document: the editor ships as one
-self-contained HTML file generated from `apps/mobile/editor-web/`.
+self-contained HTML file generated from `packages/editor-web/`.
 
 ```bash
-pnpm --filter @memry/mobile editor:build   # rebuild the asset
-pnpm --filter @memry/mobile editor:check   # fail if it is older than its sources
+pnpm --filter @memry/editor-web editor:build   # rebuild the asset
+pnpm --filter @memry/editor-web editor:check   # fail if it is older than its sources
 ```
 
-`editor:check` is the `ipc:check` of that boundary and runs in mobile CI. The
+`editor:check` is the `ipc:check` of that boundary and runs in both mobile CI
+and iOS CI. The
 build stamps a hash over the editor-web sources, the bridge contract and
 `@memry/editor-schema`; the same hash rides in the `ready` handshake, so a
 stale asset also fails at runtime.
