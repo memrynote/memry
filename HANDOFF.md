@@ -174,6 +174,33 @@ memory-mapped, unlinked on map. `waitsForConnectivity` off and redirects not
 followed, both because either is an invisible retry the core cannot see or
 cancel.
 
+## Device evidence already banked
+
+Taken on the **physical iPhone 12 Pro** (`8025C79A-F257-500F-8BA1-A14122135B2D`),
+iOS 27.0, arm64. **Re-run these against the final build for T162 — do not reuse
+these numbers as the final evidence.**
+
+| Run                        | Result                                               |
+| -------------------------- | ---------------------------------------------------- |
+| `Unit`, whole plan, device | **160 passed, 0 failed**                             |
+| `Conformance`, device      | **12 passed, 0 failed** — T162's first evidence item |
+
+**T082 is CLOSED.** It was Phase 3's only BLOCKED item, and blocked for exactly
+one reason: no physical iPhone. All three S4 assertions passed on hardware — the
+64 MiB derivation succeeds with no pressure, under memory pressure it either
+succeeds or fails as `Crypto` and **never** as a phrase error, and a wrong phrase
+is a phrase error and never a crypto one. That is the distinction
+`CryptoError::OutOfMemory` exists to preserve, now evidenced on the metal.
+
+**T144's device half landed too** (spec-defect 104). The measurement test asserts
+a different thing on each platform, and the effective-class test is **skipped**
+off-device rather than vacuously passed, so a green simulator run can never read
+as that having held.
+
+Bundle-identifier and keychain-group swaps were backed up to `/tmp`, applied, and
+reverted; `git status` confirmed `project.pbxproj` and `Memry.entitlements`
+unchanged. **Always confirm that revert.**
+
 ## Two corrections to things this project believed
 
 **"The fourth OTP request hangs with no output" was never a hang** (defect 109).
@@ -194,7 +221,7 @@ tasks ran was not the gate CI ran.** Fixed here; run `pnpm check:architecture`
 and a bare `swiftlint lint --strict` from `apps/ios` before declaring a wave
 green, not just the per-file form.
 
-## The defect log: 112 logged, 112 closed, **0 open**
+## The defect log: 113 logged, 113 closed, **0 open**
 
 Eleven closed this session, 89 to 99. The two most consequential:
 
