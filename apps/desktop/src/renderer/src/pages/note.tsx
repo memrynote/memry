@@ -1059,6 +1059,32 @@ export function NotePage({ noteId }: NotePageProps) {
     : null
   const [isRepositioningCover, setIsRepositioningCover] = useState(false)
 
+  /**
+   * Set or clear the note's icon from the title row. Writes the same `emoji`
+   * field the sidebar and folder-row menus write, so every entry point agrees.
+   */
+  const handleIconChange = useCallback(
+    async (icon: string | null) => {
+      if (!noteId || isDeleted) return
+      try {
+        const result = await notesService.update({ id: noteId, emoji: icon })
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to update icon')
+        }
+        refetchNote()
+      } catch (err) {
+        log.error('Failed to update note icon:', err)
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateIcon')
+          )
+        )
+      }
+    },
+    [noteId, isDeleted, refetchNote]
+  )
+
   const handleToggleFullWidth = useCallback(
     async (value: boolean) => {
       if (!noteId || isDeleted) return
@@ -1745,9 +1771,10 @@ export function NotePage({ noteId }: NotePageProps) {
           data-marquee-ignore
         >
           <NoteTitle
-            emoji={null}
+            emoji={note.emoji ?? null}
             title={note.title}
             onTitleChange={(...args) => void handleTitleChange(...args)}
+            onIconChange={(icon) => void handleIconChange(icon)}
             placeholder={t('editor.title.untitled')}
             inputRef={titleInputRef}
           />
