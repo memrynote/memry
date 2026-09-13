@@ -227,6 +227,32 @@ plus `encryptedKeyNonce`, both standard base64.
 cadence is itself the retry
 (`apps/desktop/src/main/sync/linking-service.ts:333`).
 
+**That policy belongs to a client whose poll loop is internal, and it is wrong
+for one whose poll timer is external.** Added to close spec-defect 126: the
+sentence above describes the desktop, where the retry ladder and the poll
+cadence are the same mechanism. A client that polls from an outside timer —
+which is what a shell with a UI does, and what the iOS core does — MUST use **no
+retry ladder on `complete`**, and issue **exactly one request per poll**. Two
+reasons, both load-bearing:
+
+1. **A per-session budget cannot be honoured by a client that cannot count its
+   own requests.** §3.4 caps a session at 30 requests per 60 seconds. An inner
+   ladder turns one call into up to four, invisibly, so the caller's accounting
+   is wrong by a factor it cannot observe, and the budget is enforced by the
+   server against a number the client never knew it sent.
+2. **The wait becomes unabandonable.** Where an in-flight call cannot be
+   cancelled — on iOS it cannot; the generated bindings contain no
+   `rust_future_cancel` — a ladder suspends the caller for up to 14 seconds
+   inside a single uncancellable call, during which the user cannot abandon a
+   link they have changed their mind about.
+
+The retry _is_ the next poll. A client with an external timer that wants to
+retry simply polls again, which is both accountable against §3.4 and abandonable
+by not polling.
+
+`POST /auth/linking/scan` is not affected: it is a single request, not a poll,
+and keeps the default ladder.
+
 After completion the new device fetches `GET /auth/recovery-info` and registers
 with `skipSetup`, so it never re-posts `kdfSalt` or `keyVerifier`
 (`apps/desktop/src/main/sync/linking-service.ts:492-512`; chapter 02 §2.8).

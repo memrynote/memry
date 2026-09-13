@@ -9,29 +9,38 @@ Branch `native-core-phase-3` in `.worktrees/native-core-phase-3`,
 fast-forwarded with `origin/main` and pushed straight to main, no PR, per
 Kaan's standing instruction.
 
-## STOP HERE FIRST: three open defects, and each one blocks a task
+## STOP HERE FIRST: nothing is blocked on a decision any more
 
-The defect log is **125 logged, 122 closed, 3 open**. All three block work, and
-none is fixable by trying harder — each needs a decision.
+The defect log is **128 logged, 126 closed, 2 open**. Neither open entry blocks
+the next wave.
 
-| #       | Blocks     | The question                                                                                                                                                                                                                             |
-| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **114** | T153, T154 | **Device linking has no export of any kind.** `link`, `pair` and `sas` return **zero** hits in the generated bindings. **No task covers this** — T163 and T164 did not touch it.                                                         |
-| **124** | T156       | A folder can hold notes and have **no `folder_config` record** (ch. 13 §13.7.10). So the projection is not "folders that exist", it is "folders someone configured", and a tree built on it omits folders whose notes are visibly there. |
-| **125** | T157       | **T157 cannot render a note from anything exported.** `extract_text` gives flattened plain text — a preview, not a render. `Document::encode_state()` exists in the core and is not on the FFI surface.                                  |
+| #       | State                                                                                                                                                                           |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **114** | Device-linking exports **landed** (T235). Stays open until **T153/T154** give them a production call site — by this phase's own standard, an export with no caller is not done. |
+| **128** | The local vault key verifier has **nowhere to live on iOS**, so data-model §C.2's "both verifiers are checked" is false there. **Not checkpoint-blocking.**                     |
 
-**114 is the one that stops the checkpoint.** The Independent Test Kaan approved
-requires unlocking every vault **by scanning the desktop's code** on a phone
-cleared of all state — that is T153 and T154, and they have nothing to call.
-**T235** now covers the linking exports (Kaan, 2026-09-13). It is
-the largest remaining unknown between here and T161.
+Kaan settled the three that were blocking: **124** show only configured folders,
+**125** preview rather than render, and **T235** for device linking, which has
+landed. **The next wave is T153 (QR) and T154 (SAS)** — the screens that close
+114 by becoming `DeviceLink`'s callers.
 
-**124 and 125 share a shape with 114 and are worth reading together**: three
-tasks were written against capabilities nobody had checked existed. That is the
-phase's real failure mode, and it is cheaper to check with a `grep` than to
-discover mid-wave.
+**128 is the one to keep in view.** `derive_vault_key` and
+`local_vault_key_verifier` are both exported, but there is nowhere to persist
+the result: chapter 01 §1.4.2 keeps it in desktop's settings table, the core
+exports no settings surface, and `SecureStoreKey` is a **closed five-entry
+enum**. The account verifier (§1.4.1) still catches a wrong recovery phrase, so
+this is not urgent — but a sentence in the data model is currently false in the
+shipping client, which is precisely what this log exists to surface. The honest
+fixes are a sixth `SecureStoreKey` entry (additive, needs a migration story) or
+a settings export (band B3's remainder).
 
-## State: **Phase 4 at 14 of 24 ticked.** Phase 3 closed 64/64.
+**The pattern worth carrying forward.** Defects 114, 124, 125 and 127 are all
+the same shape: **work specified against a capability nobody had checked
+existed.** Four times in one phase. A `grep` over the generated Swift costs five
+seconds and would have caught every one of them before a wave was dispatched.
+Do that before writing a brief, not after an agent hits the wall.
+
+## State: **Phase 4 at 16 of 25 ticked.** Phase 3 closed 64/64.
 
 T149, T150 and T151 are **CUT**; T163, T164 and T165 were **added** by Kaan's
 band-B3 decision. Read the Scope decisions block at the top of Phase 4 first.
@@ -125,16 +134,16 @@ The per-file `swiftlint` every brief prescribes is not the gate CI runs.
 | ------------------------------------------------------ | ---------------------------------------------- |
 | `cargo fmt --all --check`                              | clean                                          |
 | `cargo clippy --all-targets -- -D warnings`            | clean                                          |
-| `cargo test`                                           | **552 passed, 0 failed, 1 ignored**            |
-| `node scripts/check-line-ceilings.mjs`                 | passed (125 files)                             |
+| `cargo test`                                           | **577 passed, 0 failed, 1 ignored**            |
+| `node scripts/check-line-ceilings.mjs`                 | passed (132 files)                             |
 | `pnpm --filter @memry/contracts vectors:check`         | passed (11 classes)                            |
 | `pnpm check:architecture`                              | passed                                         |
-| `swiftlint lint --strict` (project-wide, bare)         | **0 violations, 0 serious, 51 files**          |
-| xcodebuild `Unit`, **whole plan**, iPhone 17 simulator | **229 total, 227 passed, 0 failed, 2 skipped** |
+| `swiftlint lint --strict` (project-wide, bare)         | **0 violations, 0 serious, 57 files**          |
+| xcodebuild `Unit`, **whole plan**, iPhone 17 simulator | **247 total, 245 passed, 0 failed, 2 skipped** |
 | generated Swift diff vs HEAD                           | **0 deleted lines**                            |
 | **iOS CI on `main`**                                   | **GREEN**, both jobs, verified job-by-job      |
 
-The 229 was **precomputed before the result was read**.
+The 247 was **precomputed before the result was read**.
 The 2 skips are exactly the device-gated tests from defect 115(a), which
 previously failed. The xcodebuild run used the **same signing flags the
 workflow now passes**, and the keychain suite passed under them with an empty
@@ -292,16 +301,23 @@ The entry now carries the real reason.
 
 ## Checkpoint status
 
-**NOT MET, and one hole stands between here and attempting it.** The checkpoint
-needs T162 — the device `Conformance` `.xcresult` re-run against the final
-build — plus T161 naming each test vault unlocked by **each** of the two paths,
-recovery phrase **and device link**, on a phone holding no prior state, repeated
-on an account holding two vaults.
+**NOT MET, but nothing is blocked on a decision and both unlock paths now have
+a core to call.**
 
-The recovery-phrase path is now buildable: T163 exports the key material, T165
-wires the screen and restores the session across a relaunch. **The device-link
-path is not**, because device linking has no export of any kind (defect 114),
-and no task covers it. That is **T166**, and it must be scoped against chapter
-03 before T161 can be attempted at all.
+- **Recovery phrase**: buildable and wired. T163 exports the key material, T165
+  restores the session across a relaunch, T155 picks a vault and opens it
+  through `VaultFiles.openingVault`.
+- **Device link**: the exports landed in T235 (`DeviceLink.scan` / `pollOnce`).
+  **T153 and T154 are the missing screens**, and they are the next wave.
+
+After those: T156/T156a (notes and folders — Kaan decided the tree shows only
+configured folders), T157 (a **text preview**, not a render), T158 (which owns
+`CoreEvents.consume()`, §7.15.1's runtime half and the `snapshot_is_due` poll),
+T159, then **T161/T162 with Kaan and the phone, about half an hour together**.
+
+Before T161, two config keys must land in `Info.plist` or the app cannot reach a
+server or authenticate as the right OAuth client: **`MemrySyncEnvironment`**
+(defect 110) and **`MemryGoogleClientID`** (defect 117). A release build is
+deliberately `notConfigured` until then.
 
 No vault has been opened on a phone yet.
