@@ -199,7 +199,44 @@ write-back to `projects/Conference Talk.md`. **Under the 5 s bar.**
 An earlier CLI write, `G5 blocked-write probe`, was already present in the same
 file before this run — so the direction was proven twice, once incidentally.
 
-### Desktop edit to `memry-cli`: **NOT DEMONSTRATED**
+### Desktop edit to `memry-cli`: **DIRECTION WORKS; the 5 s bar is unmeasurable with this probe**
+
+Re-run with the desktop confirmed alive and a liveness check on its PID **inside**
+the poll loop, exactly as the first attempt's correction prescribed.
+
+```
+marker: desktop-to-cli 143520
+REACHED CLI in 41.10s
+```
+
+**The direction works.** The desktop ingested the external vault-file edit,
+replaced the note body in its Y.Doc, pushed, and the CLI read it back. The first
+attempt's failure is explained: every Electron PID from that run had exited.
+
+**But 41.10 s is the instrument, not the latency.** A bare `pull` on this vault
+with **nothing to fetch** was then measured twice:
+
+```
+pull 1: 31.91s
+pull 2: 36.41s
+```
+
+The probe walks the record feed and then all 136 document bodies on every
+iteration, so the loop cannot resolve anything finer than one pull. Actual
+propagation was under roughly 9 s and is not resolvable further from this data.
+
+**T139's "under 5 s" therefore cannot be evaluated with a full-vault pull as the
+probe, and `memry-cli` currently offers no cheaper one.** That is a gap in the
+task's measurability rather than a property of the protocol: the CLI needs a
+single-document body fetch — `pull --document <id>` or equivalent — before this
+half of T139 can be stated as a pass or a fail. Recorded rather than papered
+over with the 41.10 s figure, which would have read as a 5 s-bar failure and
+would have been wrong.
+
+**Separately worth Kaan's attention**: a no-op pull costing 32–36 s on a 94-note
+vault is slow in its own right, independent of T139.
+
+### First attempt, superseded — kept because its correction matters
 
 Attempted by appending a line to the vault's markdown file directly, on the
 theory that the desktop watches the vault directory and would ingest it as its

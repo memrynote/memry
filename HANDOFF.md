@@ -110,7 +110,19 @@ Not done, and not doable headlessly:
   desktop wrote back to its vault markdown file on disk, so it covers the yrs
   append, the seal, the push, the server, the desktop's receive, apply, render
   and write-back. Under the 5 s bar. Recorded in `g4-evidence.md`.
-- **Desktop edit to `memry-cli`: NOT DEMONSTRATED.** Appending to the vault's
+- **Desktop edit to `memry-cli`: DIRECTION WORKS, 5 s bar unmeasurable.**
+  Re-run with the desktop alive and a PID liveness check inside the loop:
+  **reached the CLI in 41.10 s**. The desktop ingested the external vault-file
+  edit, replaced the body in its Y.Doc, pushed, and the CLI read it back — so
+  the first attempt's failure was the dead desktop, as the correction predicted.
+  **The 41.10 s is the instrument**: a bare `pull` with nothing to fetch costs
+  **31.9 s and 36.4 s** on this vault, because the probe walks the record feed
+  and all 136 bodies every iteration. Real propagation was under ~9 s and is not
+  resolvable further. **T139's 5 s bar cannot be evaluated until `memry-cli` has
+  a single-document fetch** (`pull --document <id>` or equivalent). That is a
+  measurability gap in the task, not a protocol property. A no-op pull costing
+  32–36 s on a 94-note vault is also worth attention on its own.
+- ~~**Desktop edit to `memry-cli`: NOT DEMONSTRATED.**~~ Appending to the vault's
   markdown file directly did not reach the CLI within 90 s. The file was
   restored byte-identically.
 
