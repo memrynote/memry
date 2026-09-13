@@ -297,10 +297,23 @@ Four obligations bind every chapter.
    `specs/002-native-foundation-ios/checklists/protocol-spec.md`.
 3. **FR-008 is a test, not an intention.** A covered format change that does not
    also change this chapter set and the vectors MUST fail the build. The
-   mechanism is a digest over each chapter's fact tables, asserted against the
-   production constants those tables were derived from, run inside the vector
-   verifiers: `packages/contracts/src/__tests__/protocol-chapters.test.ts`. Every
-   table in every chapter that carries a constant is covered by it.
+   mechanism lives in
+   `packages/contracts/src/__tests__/protocol-chapters.test.ts` and has two
+   halves, both required. **Per-constant rows** import the production constant
+   and assert the chapter's fact table still spells it, so a failure names the
+   paragraph to fix. **A digest over the whole covered constant set** is recorded
+   immediately below, so a change to something no row lists yet still forces an
+   edit to this chapter — and a reviewer is then looking at the fact tables.
+
+   ```
+   protocol-constants-sha256: 0fe9875851540e984215156440fccd8d0f50c34d97162aef22d00609efc7264d
+   ```
+
+   To update it: change the constant, run
+   `pnpm --filter @memry/contracts test protocol-chapters`, and the failure
+   message carries the new digest. Replacing the digest without re-reading the
+   chapter it guards defeats the mechanism.
+
 4. **Verbatim payload preservation is normative.** A client stores the decrypted
    payload exactly as received and pushes that stored string back, having parsed
    only a copy for its projections. Every payload schema in this specification is
