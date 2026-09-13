@@ -498,6 +498,12 @@ does not decide the cases that actually come up. These do (spec-defect 94):
 - **Only these are silent**: the user's own cancellation, and a failure the
   specification explicitly says says nothing. Silent means not alerted, never
   not known — a swallowed error still carries its title and code to the log.
+- **A sentence must be true on every screen that can show it** (spec-defect
+  111). A mapping keyed only on the error cannot know where it is being read, so
+  copy that promises a mechanism — "syncing will resume on its own", "close this
+  screen" — is wrong the first time the error surfaces somewhere without that
+  mechanism. Say what happened and that nothing is lost; leave the mechanism to
+  the screen.
 - **Do not promise a channel that does not exist.** No copy tells a user to
   report a problem until there is a place for iOS users to report it.
 

@@ -9,41 +9,52 @@ Branch `native-core-phase-3` in `.worktrees/native-core-phase-3`, fast-forwarded
 with `origin/main` and pushed straight to main, no PR, per Kaan's standing
 instruction.
 
-## State: **Phase 4 at 6 of 21.** Phase 3 closed 64/64.
+## State: **Phase 4 at 8 of 21.** Phase 3 closed 64/64.
 
-**21, not 24** — T149, T150 and T151 are **CUT** by Kaan's decision. See the
-Scope decisions block at the top of Phase 4 in `tasks.md`; it is the first thing
-to read.
+**21, not 24** — T149, T150 and T151 are **CUT** by Kaan's decision. Read the
+Scope decisions block at the top of Phase 4 in `tasks.md` first.
 
-| Wave | Tasks                                        | Status                   |
-| ---- | -------------------------------------------- | ------------------------ |
-| W1   | T140 `CoreExecutor`, T141 `CoreEvents`       | **DONE**, ticked, pushed |
-| W2   | T142 `ErrorMapping` + `Log`, T143 `Keychain` | **DONE**, ticked, pushed |
-| W3   | T144 `FileProtection`, T145 `Transport`      | **DONE**, ticked, pushed |
-| W4   | T146 `Reachability` + `CodeCapture`          | **NEXT**                 |
+| Wave | Tasks                                                              | Status   |
+| ---- | ------------------------------------------------------------------ | -------- |
+| W1   | T140 `CoreExecutor`, T141 `CoreEvents`                             | **DONE** |
+| W2   | T142 `ErrorMapping` + `Log`, T143 `Keychain`                       | **DONE** |
+| W3   | T144 `FileProtection`, T145 `Transport`                            | **DONE** |
+| W4   | T146 `Reachability` + `Camera`, T147 `SignInView` + **the wiring** | **DONE** |
+| W5   | T148 Google, T152 `RecoveryPhraseView`                             | **NEXT** |
+
+## THE SHELL IS WIRED. That changed this session.
+
+Seven tiers had landed with **zero non-test call sites** — the exact state in
+which Phase 3 shipped five real bugs behind a green suite. T147 ended it:
+`AuthSession` is constructed with the real `Keychain` and the real
+`URLSessionTransport`, and `MemryApp` shows `AuthRootView`.
+
+The evidence that matters is a **break-test**, not a passing one: swapping the
+real `Keychain` for a **working** in-memory `SecureStore`, or the real transport
+for a **working** stub, fails the suite. A fake that behaves correctly still
+fails. That is the only assertion shape that distinguishes "wired" from "wired
+to something else", and it is the shape every later wiring task should copy.
 
 ## The exact next wave
 
-**W4: T146, both seams. It is one task, so dispatch ONE agent** — the second
-slot is free for T147 if you want the pair, but T147 is the wiring task and is
-better run alone with everything else green.
+**W5: T148 and T152, two agents.**
 
-- **T146** `apps/ios/Memry/Seams/Reachability.swift` over `NWPathMonitor`,
-  reporting online and whether the path is expensive **with no interpretation of
-  either**; and `apps/ios/Memry/Seams/Camera.swift`, `AVCaptureMetadataOutput`
-  with `.qr`, **output added before `metadataObjectTypes` is set** (research
-  R13), debounced to the first valid hit then `stopRunning()`.
-- T146 is also where **`Reachability::observe` finally gets a caller** — known
-  bug 6. The seam doc is explicit that draining on the transition is the shell's
-  obligation, not a guarantee the core meets. Wire it or it stays unwired and the
-  queue waits for a timer.
+- **T148** `Features/Auth/GoogleSignIn.swift` — `ASWebAuthenticationSession`,
+  auth code + PKCE, `prefersEphemeralWebBrowserSession = true`, `state` and
+  verifier validated, ID token posted to `POST /auth/oauth/google/native`,
+  `canceledLogin` a non-error, **no GoogleSignIn-iOS SDK** (R14). The server side
+  is ready — the route exists at `auth.ts:435` and reads `GOOGLE_IOS_CLIENT_ID`,
+  which **Kaan has now configured in staging**. Confirmed present.
+- **T152** `Features/Unlock/RecoveryPhraseView.swift` — 24-word entry, the
+  verifier checked **before any key is stored** so a wrong phrase leaves nothing
+  partially unlocked, and errors that tell an unknown word from a checksum
+  failure from an Argon2id OOM. This is `CoreExecutor`'s canonical caller: the
+  64 MiB derivation is the blocking call that must not run on the main actor.
+  **A recovery-phrase word is not displayable in error copy** (`DESIGN.md`
+  §Error copy, defect 96) — the view may highlight it in the field instead.
 
-Then **W5 = T147**, which is the most important task in the phase: the first
-production `AuthSession`, and therefore the first real wiring of `Keychain` and
-`Transport`. It also ratifies `UserFacingError`'s shape before eleven views
-inherit it (defect 95). **Confirm `GOOGLE_IOS_CLIENT_ID` is set in staging before
-dispatching T148** — it is optional in the server's types and cannot be read from
-here.
+Then W6 = T153/T154 (QR + SAS), W7 = T155 (vaults, and it **owns T144's call
+site** — defect 105), W8+ = T156–T160, W9 = T161/T162 with Kaan.
 
 ## Gate baseline — re-run and observed at the end of this session
 
@@ -163,7 +174,27 @@ memory-mapped, unlinked on map. `waitsForConnectivity` off and redirects not
 followed, both because either is an invisible retry the core cannot see or
 cancel.
 
-## The defect log: 106 logged, 106 closed, **0 open**
+## Two corrections to things this project believed
+
+**"The fourth OTP request hangs with no output" was never a hang** (defect 109).
+It is the retry ladder obeying the server: `http.rs` turns a 429's `Retry-After`
+straight into the delay with **no ceiling**, and the per-IP limiter is 10 per
+**3600 s** with `Retry-After` set to the remaining window — so an eleventh OTP
+call from one address suspends for up to an hour. And it **cannot be
+interrupted**: `rust_future_cancel` appears **zero** times in the generated
+bindings, so cancelling the Swift `Task` does not stop an in-flight core call
+(defect 108). Two sessions were spent treating this as a rate-limit mystery.
+Capping the honoured delay in the core's ladder is a **decision for Kaan**, not a
+Phase 4 task.
+
+**iOS CI was red on `main` for the whole of Phase 3 and the first half of Phase
+4, and nobody noticed** (defect 112) — because the per-file `swiftlint` every
+brief prescribes passes cleanly while CI runs it project-wide. **The gate the
+tasks ran was not the gate CI ran.** Fixed here; run `pnpm check:architecture`
+and a bare `swiftlint lint --strict` from `apps/ios` before declaring a wave
+green, not just the per-file form.
+
+## The defect log: 112 logged, 112 closed, **0 open**
 
 Eleven closed this session, 89 to 99. The two most consequential:
 
