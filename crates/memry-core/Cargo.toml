@@ -50,6 +50,10 @@ tokio = { workspace = true }
 
 [dev-dependencies]
 dryoc = "1.0.0"
+# `test-util` only: the auth tier's own backoff ladder sleeps on tokio's
+# timer, and a paused clock is what keeps asserting it from costing seven
+# real seconds.
+tokio = { workspace = true, features = ["test-util"] }
 proptest = "1"
 insta = "1"
 # The vector harness reads the committed JSON directly; an integration test

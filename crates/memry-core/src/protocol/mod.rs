@@ -1,7 +1,9 @@
 //! Wire formats: the compression frame, the record envelope, and the HTTP
 //! surface above them.
 
+pub mod auth;
 pub mod compress;
 pub mod crdt_envelope;
 pub mod envelope;
+pub mod http;
 pub mod types;
