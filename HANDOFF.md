@@ -34,7 +34,7 @@ every time.
 
 ## State: **Phase 4 COMPLETE — 24 of 24 ticked.** Phase 3 closed 64/64.
 
-T149, T150, T151 and **T156a** are **CUT**; T163, T164, T165 and T235 were
+T149, T150, T151 and **T156a** are **CUT**; T239, T240, T241 and T235 were
 **added**. **T156a was cut today**: `Notes` exports only `folders`/`list`/`read`,
 T126 built the CRUD in Rust in Phase 3 and none of it reached the FFI — and it
 is write work in a read-only phase, needing the vault key on `Vault`, sealing,
@@ -47,8 +47,8 @@ the outbox and the push path. Cut, not deleted; nothing depends on it. Read the 
 | W3   | T144 `FileProtection`, T145 `Transport`                        | **DONE**         |
 | W4   | T146 `Reachability` + `Camera`, T147 `SignInView` + the wiring | **DONE**         |
 | W5   | T148 Google, T152 `RecoveryPhraseView`                         | **DONE**         |
-| W6   | T160 design tokens, T163 B3 account exports                    | **DONE**         |
-| W7   | T164 `Vault`/`Notes` read, T165 restore + shell wiring         | **DONE**         |
+| W6   | T160 design tokens, T239 B3 account exports                    | **DONE**         |
+| W7   | T240 `Vault`/`Notes` read, T241 restore + shell wiring         | **DONE**         |
 | W8   | **T235 device-linking exports (new-device half)**              | **NEXT**         |
 | W9+  | T155, T156, T156a, T157, T158, T159, then T161/T162 with Kaan  | partly unblocked |
 
@@ -66,9 +66,9 @@ are what the `memry` CLI already drives. **Only the UniFFI layer was missing.**
 If a future export turns out to need behaviour that is not already there,
 **reopen 114** — the narrow choice rests entirely on that.
 
-**T163** exported `keyMaterial`, `vaults`, `beginProviderSignIn` and
-`completeProviderSignIn`. **T164** exported the read slice of `Vault` and
-`Notes`. **T165** closed defects 121 and 123 and wired the shell onto all of it,
+**T239** exported `keyMaterial`, `vaults`, `beginProviderSignIn` and
+`completeProviderSignIn`. **T240** exported the read slice of `Vault` and
+`Notes`. **T241** closed defects 121 and 123 and wired the shell onto all of it,
 so T148 and T152 finally have production call sites and are ticked.
 
 **T160** landed the design tokens with real adoption — `SignInView` lost 23
@@ -79,13 +79,13 @@ Three things the agents got right that are worth imitating:
 
 - T148 **refused to wire a Google button** it could not complete, because a
   button that opens a real consent screen and then cannot sign anyone in is
-  worse than no button. It stayed unwired until T165 could finish it.
+  worse than no button. It stayed unwired until T241 could finish it.
 - T148 also hit `check:architecture` with a `URLSession` in `GoogleSignIn.swift`
   and **did not weaken the gate** — it deleted the default exchange so the type
-  now _requires_ its transport. T165 later routed that exchange over the **one**
+  now _requires_ its transport. T241 later routed that exchange over the **one**
   existing `Transport` seam rather than a new file under `Memry/Seams/`, which
   would have passed the gate while defeating the rule it exists for.
-- T164 **exported the folder projection honestly** and documented that
+- T240 **exported the folder projection honestly** and documented that
   unconfigured folders have no row (defect 124), rather than inventing a product
   policy inside the core.
 

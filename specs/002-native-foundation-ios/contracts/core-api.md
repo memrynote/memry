@@ -170,18 +170,18 @@ core surface that band B3 supplies, so seven of its tasks have no call site
 that any amount of Swift can build. The specific missing capabilities, each
 confirmed by `grep` over the generated bindings rather than inferred:
 
-- ~~no method accepts a provider token~~ — **closed by T163**:
+- ~~no method accepts a provider token~~ — **closed by T239**:
   `begin_provider_sign_in` and `complete_provider_sign_in` make
   `AuthState::AwaitingProviderToken` and `AuthEvent::ProviderSheetOpened`
   reachable for the first time;
-- ~~no way to fetch `{kdf_salt, key_verifier}`~~ — **closed by T163**:
+- ~~no way to fetch `{kdf_salt, key_verifier}`~~ — **closed by T239**:
   `AuthSession::key_material`;
 - **no device-linking surface at all** — `link`, `pair` and `sas` return zero
   hits, so T153 and T154 have nothing to drive. **This is the one that is
   still open, and no task covers it**: the checkpoint's Independent Test
   requires unlocking every vault by scanning the desktop's code on a phone
   cleared of all state, which is exactly T153 and T154;
-- ~~no vault, note or folder API~~ — **read half closed by T164**:
+- ~~no vault, note or folder API~~ — **read half closed by T240**:
   `Vault.open/id/notes` and `Notes.folders/list/read`. Writes and `Sync`
   (T158, T159) remain.
 
@@ -199,7 +199,7 @@ foreign seams and their four companions are unchanged, so
 
 ## Records and enums that cross with band B3's account minimum
 
-Added by T163. All are `uniffi::Record`/`uniffi::Enum` on the **existing**
+Added by T239. All are `uniffi::Record`/`uniffi::Enum` on the **existing**
 `protocol::` structs rather than duplicates in `api/`, following the precedent
 `protocol::auth::DevicePlatform` already set.
 
@@ -248,7 +248,7 @@ stale or churned binding** — Phase 3 ended with one.
 
 Adding a method to an exported object widens the generated
 `…Protocol`, and **every Swift type conforming to it stops compiling** — test
-fakes included. T163's four additions broke `FakeAuthSession` and took the iOS
+fakes included. T239's four additions broke `FakeAuthSession` and took the iOS
 `Unit` target red until it was updated. This is not a defect; it is what a
 protocol is. It is written down because the breakage surfaces as a Swift
 compile error in a file the Rust author is not looking at, and in a worktree
@@ -261,7 +261,7 @@ call and then throw.
 
 ## The read slice of `Vault` and `Notes`
 
-Landed by T164 over `memry_core::domain::reads`. **That module path is now ABI**
+Landed by T240 over `memry_core::domain::reads`. **That module path is now ABI**
 and must not move — see the module-path rule above.
 
 | Method                                     | Errors         |

@@ -1,0 +1,335 @@
+/speckit-implement Finish Phase 5 of specs/002-native-foundation-ios/tasks.md — User Story 4, "edit notes
+anywhere, offline first": the WebView-hosted BlockNote editor over bridge protocol v1, with the core
+owning the document and the guest persisting nothing. This is a GOAL prompt: re-run it verbatim each
+session until the checkpoint holds. Do NOT try to finish it in one session.
+
+Phase 5 is **22 tasks, 2 done**. Twenty remain: T165 through T183, plus T184 if the ID survives
+review. Phase 4 closed at 24/24 with its checkpoint met on real hardware.
+
+## Your role: orchestrator, not implementer
+
+Read state, pick the next unblocked wave, dispatch subagents, verify what they return, commit, push
+to main. Dispatch with the Agent tool, `model: "opus"`, `subagent_type: "general-purpose"`, run in
+background.
+
+**Cap at TWO concurrent subagents, and they must not both add files to `MemryTests`.** That target
+is **one Swift module**: a single file that fails to compile takes down every suite in it, and
+`-only-testing:` cannot route around it. This cost an hour in Phase 4 — one agent's seven compile
+errors blocked the other's verification entirely while its retry loop starved the only party who
+could fix them. If two agents must run, only one may add tests.
+
+**Do not start your own `xcodebuild` while agents are running.** Phase 4's orchestrator did, creating
+a three-way fight over one lock. And **never `pkill` xcodebuild or `simctl shutdown all`** to clear a
+suspected hang: doing that wedged the simulator into `FBSOpenApplicationErrorDomain Code=6
+"Application failed preflight checks"`, which then looked like a code bug for an hour.
+
+Stop dispatching new waves once this session's context is ~60% spent. Finish verifying, committing
+and pushing what is in flight, then overwrite HANDOFF.md.
+
+## First action, every session: re-derive state. Do not trust this prompt's task list.
+
+```bash
+cd .worktrees/native-core-phase-3
+git fetch origin && git status --short && git merge --ff-only origin/main
+awk '/^## Phase 5/,/^## Phase 6/' specs/002-native-foundation-ios/tasks.md | grep -nE '^- \[[ x]\]'
+tail -40 specs/002-native-foundation-ios/spec-defects.md
+cat HANDOFF.md
+```
+
+A `[x]` means the task's verification was RUN and PASSED. A `[ ]` is open regardless of what any
+commit message claims.
+
+## THE RULE PHASE 4 EARNED, AND IT IS THE FIRST THING YOU DO
+
+**Before writing any subagent brief, `grep` the generated Swift for the capability the task assumes.**
+
+```bash
+G=packages/swift/MemryCore/Sources/MemryCore/Generated/memry_core.swift
+grep -cE 'func .*<thing>' $G
+```
+
+Phase 4 had work specified against a capability nobody had checked existed **six times**: defects
+114, 124, 125, 127, the cut T156a, and 136. The first five were found mid-wave, by an agent hitting a
+wall. The last was found by **Kaan, on a phone**. The two that were caught before dispatch were
+caught by this grep, which takes five seconds.
+
+**For Phase 5 the specific hazard is `EditorHost`.** Spec-defect 107 established that six of the
+eight seams — including `EditorHost` — **are accepted by nothing**. T166 says the bridge replica feed
+lives "behind the `EditorHost` seam". **Check whether anything can be handed that seam before you
+dispatch T166**, and if not, say so to Kaan before building a tier that cannot be wired.
+
+## THE DEEPER LESSON, from the bug a person found and no test could
+
+**Spec-defect 136**: the phone could open a vault and read it, and **nothing could fill it**. Every
+test built the store it then read. The screen *before* it worked, because the vault list is a network
+read and the note list is local — so an account with 94 notes rendered "no notes" and looked like an
+empty account.
+
+**The rule**: when a surface is exported, ask what *feeds* it, and make at least one test start from
+a state only the production path can reach. For Phase 5 this is sharp and concrete — **a test that
+seeds a Y.Doc and then reads it proves nothing about whether the editor can ever put anything in
+one.** The editor's equivalent of 136 is a bridge that round-trips beautifully in tests and never
+receives a real keystroke.
+
+## THE OTHER LESSON — assertions pass under the very bug they were written for
+
+Phase 3 found five. Phase 4 found more, and these three are the shapes most likely to bite here:
+
+- A `received.count == 256` stayed green under `.unbounded` — only the identity of both ends
+  separates newest-256 from unbounded. **You are building a batching bridge; this is your shape.**
+- An `AsyncStream` test **hung instead of failing** — 21 minutes of silence that looked exactly like
+  a deadlock in the seam under test (defect 99). **Bound every wait. A test must fail, not hang.**
+- A test's premise was "this is not configured yet", and it **inverted the day the feature started
+  working** (defect 133). Two instances landed from one `Info.plist` edit; the first was caught and
+  split out, the second was missed one file over and blocked the whole plan for hours.
+
+**Break every new assertion, watch it fail, restore it, and report what you observed.** Aim for one
+distinct failing test per break: if two breaks produce the same failure, the tests cannot tell those
+bugs apart. When a break will not compile, the test was not carrying the weight you thought.
+
+## Hard constraints — restate these in every subagent brief
+
+- **PRODUCTION.** Real users run this on real data. Backward compatibility is mandatory. No DB
+  resets; schema changes are additive, hand-written migrations.
+- **Staging only. Never point anything at prod.** Staging `https://sync-staging.memrynote.com`,
+  prod `https://sync.memrynote.com`. Subagents make **no network call** and do not read
+  `~/.memry/staging/`. **Anything that touches Kaan's real account is the orchestrator's to run.**
+  The account holds 94 real notes in one vault and three empty ones; Phase 3 put two test lines into
+  Kaan's actual notes and had to clean them by hand.
+- **The core owns the document; the guest persists nothing.** That is this phase's whole thesis.
+  `websiteDataStore` is `.nonPersistent()`, and a guest that writes to `localStorage` or IndexedDB
+  is a second source of truth.
+- **The core never parses or serialises markdown** (chapter 12 §12.1). `extract_text` is its only
+  text operation. T179's template seeding goes through `seed-from-markdown` on the **guest**, never
+  a Rust markdown parser.
+- **A whole-fragment replace loses concurrent edits** (defect 88, chapter 12 §12.5.0.1). Anything
+  that re-seeds a document from an external source of truth is an authoritative overwrite, not an
+  edit — and US4's Independent Test is explicitly about a concurrent desktop edit merging without
+  loss.
+- **Durability order is the task, not a detail** (T167, FR-030): append to `yjs_updates` and enqueue
+  in `outbox` in **one transaction**, and advance the in-memory document only after it commits. The
+  test asserts the order **against a call log**, not eventual appearance.
+- **Constitution II: no raw error object is ever shown to a user.** `ErrorMapping.swift` is the whole
+  of that rule. **Check that it covers every new core error enum** — this failed twice in Phase 4
+  (`LinkingError`, then `SyncError`), both times falling through to the unrecognised arm, because
+  those switches carry no `default:` by design. Test through the `any Error` funnel a catch block
+  actually uses. `Log.swift` is the only logging path — `StaticString` plus a closed `LogDetail`, so
+  a runtime string *cannot* be logged. **Do not widen it**, and never log note text.
+- **An async core call cannot be cancelled from Swift** (defect 108) — `rust_future_cancel` appears
+  **zero** times in the bindings. Never offer a Cancel over one.
+- **Blocking versus async is contract, not an implementation detail** (defect 90). Blocking goes on
+  `CoreExecutor`; async is awaited directly.
+- **RTL and accessibility are not polish.** Logical properties, dynamic type, reduce-transparency and
+  reduce-motion branched **at the modifier level**. **Localization is OUT of scope** (defect 98).
+- **Line ceilings**: 600 per `.rs`; Swift `file_length` 600, `function_body_length` 100,
+  `line_length` 160; `Features` files and **test files** are held to **400**.
+- **Do not re-litigate** #2179–#2187.
+
+## Open defects you inherit — read them before dispatching
+
+| # | What |
+| --- | --- |
+| **139** | **Every linking refusal renders as one sentence.** This cost six rounds on the device: a `400 VALIDATION_ERROR` and an expired session read identically. `ApiError::Status` carries `code` precisely so a shell can distinguish; nothing keys on it yet. **Fix this before the next wire-shape bug, not after.** |
+| **137** | The "metadata arrived, body did not" state is unnamed in chapter 12 — the third read it does not name. A shell that renders windowed-out as blank ships 136 again at note granularity. |
+| **134** | `Reachability` has **no production producer** — `PathReachability` is constructed only in tests. A ticked seam with no caller. |
+| **130** | `CodeCapture` exposes no viewfinder. The camera path worked on device anyway; the paste path is what the tests drive. |
+| **132** | A revocation's reason does not survive a relaunch, so `Revoked` is not terminal in practice. |
+| **128** | The local vault key verifier has nowhere to live on iOS, so §C.2's "both verifiers are checked" is false there. |
+
+**And one decision waiting for Kaan, now proven in practice**: the retry ladder honours a server
+`Retry-After` with **no ceiling**, and the per-IP OTP limiter is 10 per **3600 s**. Kaan hit it in
+Phase 4 — the screen said "sending your code" and waited, silently and uncancellably, for up to an
+hour. **Capping the honoured delay is a core change and Kaan's call, not a task.**
+
+## Known bugs and platform facts — do not rediscover
+
+1. **A permanently-rejected record wedges the whole outbox.** A `400` for one item fails the
+   **batch**, the row keeps `attempt_count 0` with no backoff, and it retries forever. **The most
+   serious open item in the tree**, and it is why no copy may describe a permanent refusal as
+   transient.
+2. **Pull-then-push is not a convenience.** A client that pushes a field-merged type **without
+   pulling first** silently destroys a concurrent peer's field, and no later pass repairs it.
+3. **A delete must tick its clock** or the server accepts it and does nothing (§6.9.1).
+4. **`packages/contracts`' `ScanLinkingRequestSchema` is wrong** — six fields where the route
+   requires eight, `min(1)` where it requires a UUID. Any client written correctly against the
+   shared contract cannot link. `apps/sync-server` is out of scope; it needs tracking server-side.
+5. A no-op pull costs **32–36 s** on the 94-note vault. Use `memry notes fetch <id>` (0.4–1.8 s)
+   when measuring.
+
+## iOS facts that cost a session each
+
+- **`swiftlint --strict --path <file>` does not exist.** Use `cd apps/ios && swiftlint lint --strict`,
+  **run from `apps/ios`** — one directory up it silently lints the wrong set with no config. Run the
+  **bare project-wide** form every wave; the per-file form is not the gate CI runs, and that gap kept
+  `main` red for two entire phases.
+- **A whole-plan run that writes NO xcresult is ONE TEST BLOCKED FOREVER, not a toolchain bug.** A
+  unit test pressed a real Google button and `ASWebAuthenticationSession` waited for a human; nothing
+  timed out, nothing logged. Find it in one run: `-parallel-testing-enabled NO`, then diff `started`
+  against `finished` in the raw log — the stall is the last `started` line. **A unit test must never
+  drive a seam that waits on a person.**
+- **`test-without-building` silently runs a STALE binary when DerivedData paths differ.** Pair
+  `build-for-testing test-without-building`, or pass the same `-derivedDataPath` the build used. This
+  produced a completely convincing wrong answer.
+- **`-only-testing:` with a name that matches nothing runs nothing and prints `TEST SUCCEEDED`**
+  (defect 106). Suite names are **struct names, not file names**. **Precompute the expected total
+  before reading the result** — the failure mode is a plausible smaller number, not an error.
+- **`xcodebuild` lies about the count.** Real numbers **only** from
+  `xcrun xcresulttool get test-results summary --path <bundle>.xcresult`.
+- **Real-keychain tests must nest under `RealKeychainSuite`**; a SwiftLint custom rule enforces it.
+  Swift Testing runs sibling suites in parallel and `.serialized` does nothing between siblings.
+- **NEVER revert a break with `git checkout --`.** On an untracked file it silently does nothing; on
+  a tracked file it destroys every uncommitted edit. Use an inverse patch or a byte-for-byte
+  copy-back, **verified by hash**. And verify the revert after an *interrupted* sweep too — an agent
+  re-recorded its md5 baseline from an already-broken file.
+- **An exported type's Rust module path is part of its ABI** (defect 122). After any surface change,
+  regenerate and confirm the generated Swift diff has **zero deleted lines** — unless you widened a
+  constructor, in which case the only deletions are that declaration, and say so rather than claiming
+  zero.
+- `Thread.isMainThread` is unavailable from an async context under Swift 6; assert the **queue
+  label** (defect 91).
+- **No `project.pbxproj` edit is needed for a new file** — `PBXFileSystemSynchronizedRootGroup`.
+- **The generated bindings are their own target at Swift 5**; `MemryCore` stays at Swift 6. Do not
+  undo this. `Package.swift` links `libz`. Do not undo that either.
+- **Turn off the simulator's hardware keyboard (⇧⌘K) and dismiss the QuickPath overlay before any
+  editor or toolbar test** (R16) — both make a correct toolbar look absent with no error. **This
+  phase is the editor and the toolbar**, so this is no longer a footnote.
+
+## The device — available, and the recipe matters
+
+**iPhone 12 Pro, arm64, iOS 27.0**, `8025C79A-F257-500F-8BA1-A14122135B2D`. Team **`TV343Q4W8A`**.
+**`com.memry.app` cannot be registered to that team** — use `com.memry.app.t094`. **Do NOT pass
+`PRODUCT_BUNDLE_IDENTIFIER=` on the command line**; it applies to the embedded `MemryCore` framework
+and iOS refuses the install. Back up `project.pbxproj` and `Memry/Memry.entitlements` to `/tmp`,
+`sed` `com.memry.app` → `com.memry.app.t094` in both, run, **restore from the backups and confirm
+with `git status`.**
+
+Simulator: **`A7E3D181-58A5-4982-9899-4FD15F5666DC`** (iPhone 17), target it **by id**.
+
+**One phone, and it is a shared resource with no lock.** Never run a device test plan while Kaan is
+using the phone — Phase 4 lost two runs that way, and the failure shape is `1 total, 0 passed,
+1 failed`, which reads as a test failure and is not one.
+
+**T169 needs a device screenshot** (Liquid Glass on keyboard accessory views is undocumented) and
+**T183's counters are meant to be asserted by a device test** rather than read off a panel.
+
+## The defect log is still the point
+
+Every time anyone has to open `packages/sync-client`, `apps/desktop` or `apps/sync-server` to find
+out what the protocol does, that is a defect in `docs/protocol/` — log it with the chapter, the
+question, and the file. **Close it by changing the chapter**, never by writing the answer into code.
+Where a chapter or `DESIGN.md` does not say what the shell should show, that is equally a defect.
+
+Two Phase 4 lessons about the log itself:
+
+- **A subagent's reported defect candidate that you do not write into the log does not exist.**
+  Defect 139 was reported when the linking screens landed, was not logged, and survived exactly long
+  enough to cost six rounds on the device.
+- **Write the correction into the entry when you were wrong.** Defect 136's first recorded blocker
+  was wrong and cost Kaan a needless decision; the entry now says so, and that is worth more than the
+  fix.
+
+The log stands at **140 logged, 134 closed, 6 open**. Subagents report; **YOU** write the entry and
+the amendment. When a subagent guesses a shape, **read the source yourself**.
+
+## Subagent brief template — every dispatch must carry all of this
+
+> You are implementing task {IDs} of Phase 5, specs/002-native-foundation-ios/tasks.md, in the
+> worktree `.worktrees/native-core-phase-3`. Read the exact task text with
+> `awk '/^## Phase 5/,/^## Phase 6/' specs/002-native-foundation-ios/tasks.md`. Read HANDOFF.md in
+> full, especially its numbered list of things that cost a run.
+>
+> Baseline, freshly observed: {paste the real numbers}. Do not burn a cycle re-confirming it.
+>
+> Read first, and treat as the ONLY source of truth: docs/protocol/{chapters — 12 for the body
+> format, 07 for CRDT updates, 04 for the envelope}, specs/002-native-foundation-ios/{data-model.md
+> §C.4, contracts/core-api.md, contracts/shell-seams.md, research.md R10/R16/R17/§E},
+> **DESIGN.md for anything a user sees**. `packages/contracts/test-vectors/` is the byte-level
+> contract. **Read the landed Swift you will call** — its header comments carry rules you are bound
+> by.
+>
+> **If a chapter or DESIGN.md does not say something you need, that is a spec defect, not a licence
+> to read apps/desktop.** Record the chapter, the question, and the file. Do NOT edit
+> spec-defects.md or any chapter — the orchestrator owns both.
+>
+> {paste Hard constraints, Known bugs, iOS facts, and both LESSONS}
+>
+> File ownership: you own {paths}. {name the other live agent's paths}. **Only one agent may add
+> files to MemryTests.** Shared files are edited with a targeted Edit on a unique anchor, NEVER a
+> Write, re-reading immediately before. No pbxproj edit is needed.
+>
+> Make no network call. Staging credentials are NOT yours.
+>
+> `export PATH="$HOME/.cargo/bin:$PATH"`. Pinned toolchain 1.98.1. Serialize every xcodebuild with
+> the lock; pair `build-for-testing test-without-building`. Never pkill xcodebuild.
+>
+> Deliver working code plus tests. **Break each new assertion deliberately, watch it fail, restore
+> it, and report what you observed.** Prove something real calls what you land, or say plainly that
+> nothing does and name the task that will. Do NOT commit, push, or tick tasks.md.
+>
+> Before returning, RUN and paste the actual output of, from the worktree root:
+>   cd crates && cargo fmt --all --check && cargo clippy --all-targets -- -D warnings && cargo test
+>   cd .. && node scripts/check-line-ceilings.mjs && pnpm --filter @memry/contracts vectors:check
+>   pnpm check:architecture
+>   cd apps/ios && swiftlint lint --strict            # bare, project-wide, FROM apps/ios
+>   {the whole Unit plan, by simulator id, rebuilt, with the expected total you precomputed}
+> If any gate is red, fix it or say plainly that it is red and why. Do not report success you did not
+> observe.
+>
+> Report, in order: (1) what you built and its production call site or explicit absence; (2) real
+> counts from `xcresulttool` plus your precomputed total; (3) every assertion you broke, what failed,
+> what it proved; (4) each gate's actual result; (5) every spec defect and every place you decided
+> what a user sees without a source.
+
+## Orchestrator duties after each wave returns
+
+1. Re-run the gates yourself. **A subagent's claim is not evidence.**
+2. Write any reported defect into `spec-defects.md` AND close it by amending the chapter or
+   `DESIGN.md`. Read the source yourself for any guessed shape. `pnpm docs:build` if you touched
+   `docs/`.
+3. If the UniFFI surface changed: rerun `crates/memry-core/build-xcframework.sh`, confirm the
+   generated Swift diff, update `contracts/core-api.md`. **Nothing else catches a stale binding.**
+4. **Check for duplicate task IDs** before adding one:
+   `grep -oE '^- \[[ x]\] (\*\*CUT[^*]*\*\* )?T[0-9]+' specs/.../tasks.md | grep -oE '[0-9]+' | sort -n | uniq -d`
+   Phase 4 created three collisions by appending IDs that later phases already used.
+5. **Stage explicit paths, never `git add -A` blindly** — and check `git status` for unstaged work
+   before committing; Phase 4 shipped a commit missing its Rust half that way.
+6. Commit per meaningful unit. The body states what changed, why, and the evidence with real numbers.
+   **No Co-Authored-By.**
+7. Tick tasks.md ONLY for tasks whose verification you ran and watched pass.
+8. **Push to main**: `git fetch origin && git rebase origin/main && git push origin HEAD:main`.
+   Other work lands on main; `--ff-only` will fail and a rebase is correct.
+
+## Ending a session
+
+Overwrite `HANDOFF.md` with: waves completed, waves in flight, the exact next wave, open defect
+entries, anything blocked on Kaan, and the current gate baseline. Commit and push it.
+
+## Blocked on Kaan — only at the very end
+
+- **T169's device screenshot and any device evidence** need the phone. **Do not run a device test
+  plan while he is using it.**
+- **The `Retry-After` ceiling** (defect 109) is his call and is now proven in practice.
+- **Defect 139** — whether `ErrorMapping` keys on the server's `code` — is a decision that sets a
+  pattern for every flow, not just linking.
+- **`MemrySyncEnvironment` must be added to `Info.plist`** and the release build settings before any
+  release or TestFlight build (110). A release build is deliberately `notConfigured` until then, and
+  the two tempting ways to add it are both wrong — the reasons are written into `Info.plist`.
+- **The staging recovery phrase has now been pasted into two transcripts. It should be rotated.**
+
+## Checkpoint — this prompt stops when this holds
+
+**US4's Independent Test, on the real device**: with sync suspended, edit and create notes;
+force-quit; relaunch; reconnect; **every edit appears on desktop intact, and a concurrent desktop
+edit to the same note merges without loss.**
+
+Plus SC-016's boundary counters asserted by a device test rather than read off a panel, and T169's
+device screenshot of the toolbar under Liquid Glass.
+
+**Note what the checkpoint requires that Phase 4 deliberately cut**: T156a removed create, rename,
+move and delete from the phone, and T236/T237 shipped a **read-only** pull with no push path. **US4
+needs the write half**, so the first thing to establish — before any editor work — is what exists:
+the outbox, `PushWave`, and whether `SyncEngine::with_push` is reachable from the shell. **Grep
+before you plan.**
+
+When it holds, say so with the evidence and stop. Until then, end each session with HANDOFF.md
+pushed and the next wave named.
