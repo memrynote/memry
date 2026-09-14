@@ -164,6 +164,8 @@ export interface NoteCreateInput {
   tags?: string[]
   template?: string
   properties?: Record<string, unknown>
+  /** Explicit icon wins over the template's; omit to inherit the template's. */
+  emoji?: string | null
   /** ISO timestamps to preserve on import; default to now when omitted. */
   created?: string
   modified?: string
@@ -261,6 +263,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   let templateContent = ''
   let templateTags: string[] = []
   let templateProperties: Record<string, unknown> = {}
+  let templateIcon: string | null = null
 
   let templateId = input.template
   if (!templateId && input.folder) {
@@ -276,6 +279,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
       templateContent = applied.content
       templateTags = applied.tags
       templateProperties = applied.properties
+      templateIcon = applied.icon
     }
   }
 
@@ -299,6 +303,8 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   }
 
   const content = input.content && input.content.trim() ? input.content : templateContent
+  // Icon is Memry sidecar state (index DB), never frontmatter — same as updateNote.
+  const emoji = input.emoji === undefined ? templateIcon : input.emoji
   const fileContent = serializeNote(frontmatter, content)
 
   await atomicWrite(filePath, fileContent)
@@ -315,7 +321,8 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
       parsedContent: content,
       title: input.title,
       createdAt: created,
-      modifiedAt: modified
+      modifiedAt: modified,
+      emoji
     },
     { isNew: true }
   )
@@ -338,7 +345,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     aliases: frontmatter.aliases ?? [],
     wordCount: syncResult.wordCount,
     properties,
-    emoji: null
+    emoji
   }
 
   emitNoteEvent(NotesChannels.events.CREATED, {
@@ -645,7 +652,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
       }
     }
   }
-  const newEmoji = input.emoji !== undefined ? input.emoji : existing.emoji
+  const newEmoji = input.emoji === undefined ? existing.emoji : input.emoji
 
   if (input.content !== undefined && input.content !== existing.content) {
     logger.info('updateNote: content changed, attempting snapshot', { noteId: input.id })
@@ -708,14 +715,14 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   const absolutePath = toAbsolutePath(existing.path)
   const currentRaw = await safeRead(absolutePath)
   let fileContent: string
-  if (currentRaw !== null) {
+  if (currentRaw === null) {
+    fileContent = serializeNote(newFrontmatter, newContent)
+  } else {
     const parsedCurrent = parseNote(currentRaw, existing.path)
-    const nextBody = input.content !== undefined ? newContent : parsedCurrent.content
+    const nextBody = input.content === undefined ? parsedCurrent.content : newContent
     fileContent = serializeParsedNote({ ...parsedCurrent, frontmatter: newFrontmatter }, nextBody, {
       frontmatterEdited
     })
-  } else {
-    fileContent = serializeNote(newFrontmatter, newContent)
   }
 
   const wrote = currentRaw === null || fileContent !== currentRaw

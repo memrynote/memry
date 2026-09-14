@@ -87,6 +87,8 @@ If you change the default mid-month, existing entries don't change — only new 
 
 When creating a note, the create dialog has a template picker. Choose a template; the note is seeded with its content. Variables resolve at that moment.
 
+The new note also takes the template's icon, so notes made from the same template share an icon and are easy to tell apart in the sidebar and in lists. Give a Meeting Note template one icon and a General Note template another, and every note you create shows which kind it is at a glance. Change the note's icon at any time — that only affects the note, not the template. A template with no icon leaves the note without one.
+
 ## Applying a Template to an Existing Note
 
 Templates aren't just for new notes — you can apply one to a note you already have.
@@ -101,6 +103,8 @@ The note page's <kbd>⋯</kbd> menu no longer applies a template over the body; 
 - If the note **already has content**, you're warned that applying will replace it, with two choices:
   - **Replace content & add template details** — replaces the body and merges in the template's tags and properties. Your existing tags and properties are kept; the template's are added on top. If a property key exists on both, the note's current value wins.
   - **Replace content only** — replaces the body and leaves your existing tags and properties untouched.
+
+**Replace content & add template details** also gives the note the template's icon, but only when the note has no icon of its own — an icon you already set is never overwritten. **Replace content only** leaves the icon alone.
 
 `{{title}}` resolves to the note's current title. If the note is open in the editor, the update shows up live.
 
