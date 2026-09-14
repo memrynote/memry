@@ -9,7 +9,7 @@ import {
   isToday,
   isSameMonth,
   parseLocalDate,
-  toLocalDateKey
+  spanDateKeys
 } from './date-utils'
 import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
@@ -40,7 +40,7 @@ export function CalendarMiniMonth({
   )
 
   const gridDays = getMonthGridDays(anchorDate, weekStartsOn)
-  const daysWithEvents = new Set(items.map((item) => toLocalDateKey(item.startAt)))
+  const daysWithEvents = new Set(items.flatMap((item) => spanDateKeys(item)))
 
   return (
     <div className="px-6 py-5">

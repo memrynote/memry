@@ -10,6 +10,64 @@ export function toLocalDateKey(value: string): string {
   return toLocalDateString(new Date(value))
 }
 
+/**
+ * Minimal shape every calendar view shares: a projection item's local span.
+ * `endAt` is exclusive for all-day items (projection stores next-day midnight)
+ * and for timed items that land exactly on midnight.
+ */
+export interface DateSpanLike {
+  startAt: string
+  endAt?: string | null
+  isAllDay?: boolean
+}
+
+// A span longer than this is almost certainly bad data; rendering a bar per day
+// for it would stall the grid.
+const MAX_SPAN_DAYS = 400
+
+export function spanStartDateKey(item: DateSpanLike): string {
+  return toLocalDateKey(item.startAt)
+}
+
+/** Last day the span actually covers, inclusive. */
+export function spanEndDateKey(item: DateSpanLike): string {
+  const startKey = spanStartDateKey(item)
+  if (!item.endAt) return startKey
+  const end = new Date(item.endAt)
+  if (Number.isNaN(end.getTime())) return startKey
+  const endsOnMidnight =
+    end.getHours() === 0 &&
+    end.getMinutes() === 0 &&
+    end.getSeconds() === 0 &&
+    end.getMilliseconds() === 0
+  // Exclusive end: a span ending at midnight belongs to the previous day.
+  const inclusiveEnd = item.isAllDay || endsOnMidnight ? new Date(end.getTime() - 1) : end
+  const endKey = toLocalDateString(inclusiveEnd)
+  return endKey < startKey ? startKey : endKey
+}
+
+export function spanDayCount(item: DateSpanLike): number {
+  const days = dayIndexFromDate(spanEndDateKey(item)) - dayIndexFromDate(spanStartDateKey(item)) + 1
+  return Math.min(Math.max(days, 1), MAX_SPAN_DAYS)
+}
+
+export function isMultiDaySpan(item: DateSpanLike): boolean {
+  return spanDayCount(item) > 1
+}
+
+/** True when the span covers `date` (a `YYYY-MM-DD` local day key). */
+export function spanCoversDate(item: DateSpanLike, date: string): boolean {
+  return date >= spanStartDateKey(item) && date <= spanEndDateKey(item)
+}
+
+/** Every local day key the span covers, inclusive, start first. */
+export function spanDateKeys(item: DateSpanLike): string[] {
+  const start = spanStartDateKey(item)
+  const count = spanDayCount(item)
+  if (count === 1) return [start]
+  return Array.from({ length: count }, (_, i) => addLocalDays(start, i))
+}
+
 export function parseLocalDate(value: string): Date {
   const [year, month, day] = value.split('-').map(Number)
   return new Date(year, month - 1, day, 0, 0, 0, 0)

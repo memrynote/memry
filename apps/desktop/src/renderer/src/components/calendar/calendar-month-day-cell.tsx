@@ -14,6 +14,8 @@ interface CalendarMonthDayCellProps {
   highlighted: boolean
   items: CalendarProjectionItem[]
   maxVisibleEvents: number
+  /** Vertical room the week row's multi-day span bars occupy over this cell. */
+  spanReservedHeight?: number
   selectedItemId: string | null
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
@@ -29,6 +31,7 @@ export function CalendarMonthDayCell({
   highlighted,
   items,
   maxVisibleEvents,
+  spanReservedHeight = 0,
   selectedItemId,
   onSelectItem,
   onDeleteItem,
@@ -67,6 +70,9 @@ export function CalendarMonthDayCell({
       </div>
 
       <div className="flex flex-col gap-1">
+        {spanReservedHeight > 0 && (
+          <div aria-hidden className="shrink-0" style={{ height: spanReservedHeight }} />
+        )}
         {items.slice(0, maxVisibleEvents).map((item) => (
           <DraggableTaskChip
             key={item.projectionId}

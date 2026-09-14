@@ -7,8 +7,11 @@ import { DraggableTaskChip } from './draggable-task-chip'
 import {
   dateFromDayIndex,
   dayIndexFromDate,
+  isMultiDaySpan,
   isToday,
   isWeekend,
+  spanEndDateKey,
+  spanStartDateKey,
   toLocalDateKey
 } from './date-utils'
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
@@ -148,6 +151,13 @@ export function CalendarWeekView({
 
   const virtualItems = virtualizer.getVirtualItems()
   const totalSize = virtualizer.getTotalSize()
+  // Laid-out columns keyed by their local day, so span bars can be positioned
+  // from dates instead of the scroller's internal index space.
+  const renderedColumns = virtualItems.map((vi) => ({
+    date: dateForDayIndex(vi.index),
+    start: vi.start,
+    size: vi.size
+  }))
   const dayNames = useMemo(() => getWeekdayLabels(i18n.language, 'short'), [i18n.language])
   const dayNamesShort = useMemo(() => getWeekdayLabels(i18n.language, 'narrow'), [i18n.language])
 
@@ -213,10 +223,42 @@ export function CalendarWeekView({
   // `useWeekInfiniteScroll` already positions from on first layout.
   useTabScrollRestore({ getScrollElement: getScrollEl, key: CALENDAR_SCROLL_KEYS.week })
 
-  const { timedByDate, allDayByDate, maxAllDayPerDay } = useMemo(() => {
+  // Multi-day items leave the per-day buckets entirely: they render as one bar
+  // across the columns they cover, in lanes stacked above the single-day chips.
+  const { timedByDate, allDayByDate, maxAllDayPerDay, spanBars, spanLaneCount } = useMemo(() => {
     const timed = new Map<string, CalendarProjectionItem[]>()
     const allDay = new Map<string, CalendarProjectionItem[]>()
+    const bars: {
+      item: CalendarProjectionItem
+      startDate: string
+      endDate: string
+      dayCount: number
+      lane: number
+    }[] = []
+    const laneEndDate: string[] = []
+
+    const spans = items.flatMap((item) =>
+      isMultiDaySpan(item)
+        ? [{ item, startDate: spanStartDateKey(item), endDate: spanEndDateKey(item) }]
+        : []
+    )
+    spans.sort(
+      (a, b) => a.startDate.localeCompare(b.startDate) || b.endDate.localeCompare(a.endDate)
+    )
+
+    for (const span of spans) {
+      let lane = laneEndDate.findIndex((end) => end < span.startDate)
+      if (lane === -1) lane = laneEndDate.length
+      laneEndDate[lane] = span.endDate
+      bars.push({
+        ...span,
+        dayCount: dayIndexFromDate(span.endDate) - dayIndexFromDate(span.startDate) + 1,
+        lane
+      })
+    }
+
     for (const item of items) {
+      if (isMultiDaySpan(item)) continue
       const dateKey = toLocalDateKey(item.startAt)
       const target = item.isAllDay ? allDay : timed
       const bucket = target.get(dateKey)
@@ -230,18 +272,26 @@ export function CalendarWeekView({
     for (const bucket of allDay.values()) {
       if (bucket.length > maxCount) maxCount = bucket.length
     }
-    return { timedByDate: timed, allDayByDate: allDay, maxAllDayPerDay: maxCount }
+    return {
+      timedByDate: timed,
+      allDayByDate: allDay,
+      maxAllDayPerDay: maxCount,
+      spanBars: bars,
+      spanLaneCount: laneEndDate.length
+    }
   }, [items])
 
+  const allDayRowCount = maxAllDayPerDay + spanLaneCount
+  const spanLanesHeight = spanLaneCount * (ALL_DAY_CHIP_HEIGHT + ALL_DAY_CHIP_GAP)
+
+  const emptyAllDayRowHeight = isTaskDragInFlight ? ALL_DAY_ROW_MIN_HEIGHT : 0
   const allDayRowHeight =
-    maxAllDayPerDay === 0
-      ? isTaskDragInFlight
-        ? ALL_DAY_ROW_MIN_HEIGHT
-        : 0
+    allDayRowCount === 0
+      ? emptyAllDayRowHeight
       : Math.max(
           ALL_DAY_ROW_MIN_HEIGHT,
-          maxAllDayPerDay * ALL_DAY_CHIP_HEIGHT +
-            Math.max(0, maxAllDayPerDay - 1) * ALL_DAY_CHIP_GAP +
+          allDayRowCount * ALL_DAY_CHIP_HEIGHT +
+            Math.max(0, allDayRowCount - 1) * ALL_DAY_CHIP_GAP +
             ALL_DAY_ROW_PADDING
         )
 
@@ -305,7 +355,7 @@ export function CalendarWeekView({
         </div>
       </div>
 
-      {(maxAllDayPerDay > 0 || isTaskDragInFlight) && (
+      {(allDayRowCount > 0 || isTaskDragInFlight) && (
         <div
           className="flex shrink-0 bg-background"
           data-testid="week-all-day-strip"
@@ -341,6 +391,9 @@ export function CalendarWeekView({
                       date={date}
                       className="flex h-full flex-col gap-[2px] px-0.5 py-1"
                     >
+                      {spanLanesHeight > 0 && (
+                        <div aria-hidden style={{ height: spanLanesHeight }} className="shrink-0" />
+                      )}
                       {dayAllDay.map((item) => (
                         <div key={item.projectionId} style={{ height: ALL_DAY_CHIP_HEIGHT }}>
                           <DraggableTaskChip
@@ -353,6 +406,54 @@ export function CalendarWeekView({
                         </div>
                       ))}
                     </CalendarAllDayCell>
+                  </div>
+                )
+              })}
+
+              {spanBars.map((bar) => {
+                // Clip to the rendered window by date, not by day index: only
+                // laid-out columns have a real x, and the virtualizer's index
+                // space is an implementation detail of the scroller.
+                const startColumn = renderedColumns.findIndex(
+                  (column) => column.date >= bar.startDate
+                )
+                const endColumn = renderedColumns.findLastIndex(
+                  (column) => column.date <= bar.endDate
+                )
+                if (startColumn === -1 || endColumn === -1 || endColumn < startColumn) return null
+                const first = renderedColumns[startColumn]
+                const last = renderedColumns[endColumn]
+                const left = first.start
+                const width = last.start + last.size - first.start
+                const continuesBefore = bar.startDate < first.date
+                const continuesAfter = bar.endDate > last.date
+                return (
+                  <div
+                    key={bar.item.projectionId}
+                    data-testid="calendar-span-bar"
+                    data-span-days={bar.dayCount}
+                    className={cn(
+                      'pointer-events-auto absolute px-0.5',
+                      continuesBefore && 'ps-0',
+                      continuesAfter && 'pe-0'
+                    )}
+                    style={{
+                      left,
+                      width,
+                      top: 4 + bar.lane * (ALL_DAY_CHIP_HEIGHT + ALL_DAY_CHIP_GAP),
+                      height: ALL_DAY_CHIP_HEIGHT
+                    }}
+                  >
+                    <CalendarItemChip
+                      item={bar.item}
+                      clockFormat={clockFormat}
+                      isSelected={
+                        bar.item.sourceType === 'event' && bar.item.sourceId === selectedItemId
+                      }
+                      onClick={onSelectItem}
+                      onDeleteItem={onDeleteItem}
+                      onAddToProject={onAddToProject}
+                    />
                   </div>
                 )
               })}

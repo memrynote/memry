@@ -10,7 +10,7 @@ import {
   isToday,
   isSameMonth,
   parseLocalDate,
-  toLocalDateKey,
+  spanDateKeys,
   toLocalDateString
 } from './date-utils'
 import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
@@ -90,13 +90,15 @@ export function CalendarYearView({
 
   const itemsByDay = useMemo(() => {
     const map = new Map<string, CalendarProjectionItem[]>()
+    // Multi-day items land on every day they cover, not only their start day.
     for (const item of items) {
-      const key = toLocalDateKey(item.startAt)
-      const existing = map.get(key)
-      if (existing) {
-        existing.push(item)
-      } else {
-        map.set(key, [item])
+      for (const key of spanDateKeys(item)) {
+        const existing = map.get(key)
+        if (existing) {
+          existing.push(item)
+        } else {
+          map.set(key, [item])
+        }
       }
     }
     return map
