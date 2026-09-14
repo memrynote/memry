@@ -95,6 +95,8 @@ async function runCli() {
     getReleaseListFields().join(',')
   ])
   const draftTag = resolveDraftTag(releases, options)
+  const draftCreatedAt =
+    releases.find((release) => release.isDraft && release.tagName === draftTag)?.createdAt ?? null
   const workDir = path.join(stateRoot, draftTag.replaceAll('/', '-'))
 
   if (options.restart) {
@@ -102,7 +104,7 @@ async function runCli() {
     console.log(`Cleared ${path.relative(repoRoot, workDir)}`)
   }
 
-  let state = readState(workDir, draftTag)
+  let state = readState(workDir, draftTag, draftCreatedAt)
 
   if (isStepDone(state, 'publish')) {
     console.log(`Release ${state.tag} is already published. Nothing to do.`)
@@ -119,10 +121,10 @@ async function runCli() {
     return
   }
 
-  state = readState(workDir, draftTag)
+  state = readState(workDir, draftTag, draftCreatedAt)
 
   const { assetDir, metadata } = downloadRunArtifacts({ runId, state, workDir })
-  state = markStepDone(readState(workDir, draftTag), 'download', {
+  state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'download', {
     appVersion: metadata.appVersion,
     tag: metadata.tag
   })
@@ -136,18 +138,18 @@ async function runCli() {
   }
 
   const velopackDir = await packVelopack({ assetDir, metadata, releases, state, workDir })
-  state = markStepDone(readState(workDir, draftTag), 'pack')
+  state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'pack')
   writeState(workDir, state)
   verifyVelopackSignatures({ metadata, velopackDir, workDir })
-  state = markStepDone(readState(workDir, draftTag), 'verify')
+  state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'verify')
   writeState(workDir, state)
 
   uploadReleaseAssets({ assetDir, draftTag, metadata, velopackDir })
-  state = markStepDone(readState(workDir, draftTag), 'upload')
+  state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'upload')
   writeState(workDir, state)
 
   publishRelease(metadata)
-  state = markStepDone(readState(workDir, draftTag), 'publish')
+  state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'publish')
   writeState(workDir, state)
 
   dispatchHomebrewCask(metadata)
@@ -741,8 +743,11 @@ function hasCommand(command) {
   return spawnSync('command', ['-v', command], { shell: true, stdio: 'ignore' }).status === 0
 }
 
-function readState(workDir, draftTag) {
-  return parseReleaseState(readJsonOrNull(path.join(workDir, 'state.json')), { draftTag })
+function readState(workDir, draftTag, draftCreatedAt = null) {
+  return parseReleaseState(readJsonOrNull(path.join(workDir, 'state.json')), {
+    draftCreatedAt,
+    draftTag
+  })
 }
 
 function writeState(workDir, state) {

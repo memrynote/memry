@@ -49,22 +49,31 @@ const fullNupkgPattern = /^MemryNote-([^/]+)-full\.nupkg$/
 const inactiveTokenPattern =
   /CKR_USER_NOT_LOGGED_IN|CKR_TOKEN_NOT_PRESENT|no token present|CKR_DEVICE_ERROR/i
 
-export function createReleaseState({ draftTag }) {
+export function createReleaseState({ draftCreatedAt = null, draftTag }) {
   requireField(draftTag, 'draftTag')
 
   return {
     appVersion: null,
     completed: [],
+    draftCreatedAt,
     draftTag,
     runId: null,
     tag: null
   }
 }
 
-export function parseReleaseState(raw, { draftTag }) {
-  const fresh = createReleaseState({ draftTag })
+export function parseReleaseState(raw, { draftCreatedAt = null, draftTag }) {
+  const fresh = createReleaseState({ draftCreatedAt, draftTag })
 
   if (!isPlainObject(raw) || raw.draftTag !== draftTag) {
+    return fresh
+  }
+
+  // Draft tags like `vnext` are reused for every release cycle. When a live
+  // draft exists but was created at a different time than the one recorded in
+  // the persisted state, the state belongs to a previous (already published)
+  // cycle and must not block a same-day follow-up release (v…-…-… .2, .3, …).
+  if (draftCreatedAt && toStringOrNull(raw.draftCreatedAt) !== draftCreatedAt) {
     return fresh
   }
 
@@ -79,6 +88,7 @@ export function parseReleaseState(raw, { draftTag }) {
   return {
     appVersion: toStringOrNull(raw.appVersion),
     completed: releaseStepOrder.filter((step) => raw.completed.includes(step)),
+    draftCreatedAt: draftCreatedAt ?? toStringOrNull(raw.draftCreatedAt),
     draftTag,
     runId: toStringOrNull(raw.runId),
     tag: toStringOrNull(raw.tag)

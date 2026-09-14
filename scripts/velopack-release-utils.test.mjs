@@ -96,6 +96,7 @@ describe('release state', () => {
     assert.deepEqual(createReleaseState({ draftTag: 'vnext' }), {
       appVersion: null,
       completed: [],
+      draftCreatedAt: null,
       draftTag: 'vnext',
       runId: null,
       tag: null
@@ -122,10 +123,72 @@ describe('release state', () => {
     assert.deepEqual(state, {
       appVersion: '2026.508.1',
       completed: ['dispatch', 'build'],
+      draftCreatedAt: null,
       draftTag: 'vnext',
       runId: '25571212462',
       tag: null
     })
+  })
+
+  it('keeps a state whose draft creation time matches the live draft', () => {
+    const state = parseReleaseState(
+      {
+        appVersion: '2026.912.1',
+        completed: ['dispatch'],
+        draftCreatedAt: '2026-09-12T10:07:38Z',
+        draftTag: 'vnext',
+        runId: '1',
+        tag: null
+      },
+      { draftCreatedAt: '2026-09-12T10:07:38Z', draftTag: 'vnext' }
+    )
+
+    assert.deepEqual(state.completed, ['dispatch'])
+    assert.equal(state.draftCreatedAt, '2026-09-12T10:07:38Z')
+  })
+
+  it('starts over when the reused draft tag belongs to a new release cycle', () => {
+    const published = {
+      appVersion: '2026.912.1',
+      completed: ['dispatch', 'build', 'download', 'pack', 'verify', 'upload', 'publish'],
+      draftCreatedAt: '2026-09-11T23:13:30Z',
+      draftTag: 'vnext',
+      runId: '1',
+      tag: 'v2026-09-12'
+    }
+
+    assert.deepEqual(
+      parseReleaseState(published, { draftCreatedAt: '2026-09-12T10:07:38Z', draftTag: 'vnext' }),
+      createReleaseState({ draftCreatedAt: '2026-09-12T10:07:38Z', draftTag: 'vnext' })
+    )
+
+    const legacyWithoutCreatedAt = { ...published }
+    delete legacyWithoutCreatedAt.draftCreatedAt
+
+    assert.deepEqual(
+      parseReleaseState(legacyWithoutCreatedAt, {
+        draftCreatedAt: '2026-09-12T10:07:38Z',
+        draftTag: 'vnext'
+      }),
+      createReleaseState({ draftCreatedAt: '2026-09-12T10:07:38Z', draftTag: 'vnext' })
+    )
+  })
+
+  it('keeps a state when no live draft exists (resume after tag rename)', () => {
+    const state = parseReleaseState(
+      {
+        appVersion: '2026.912.1',
+        completed: ['dispatch'],
+        draftCreatedAt: '2026-09-11T23:13:30Z',
+        draftTag: 'vnext',
+        runId: '1',
+        tag: null
+      },
+      { draftCreatedAt: null, draftTag: 'vnext' }
+    )
+
+    assert.deepEqual(state.completed, ['dispatch'])
+    assert.equal(state.draftCreatedAt, '2026-09-11T23:13:30Z')
   })
 
   it('starts over when the persisted state belongs to another draft tag', () => {
@@ -178,6 +241,7 @@ describe('release state', () => {
     assert.deepEqual(next, {
       appVersion: null,
       completed: ['dispatch', 'build'],
+      draftCreatedAt: null,
       draftTag: 'vnext',
       runId: '25571212462',
       tag: null
