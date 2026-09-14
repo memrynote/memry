@@ -48,6 +48,7 @@ use zeroize::Zeroizing;
 
 use crate::api::errors::ApiError;
 use crate::protocol::account::VaultSummary;
+use crate::protocol::auth::DevicePlatform;
 use crate::protocol::http::{ClientIdentity, HttpClient};
 use crate::protocol::linking::routes::{self, CompleteOutcome, ScanRequest};
 use crate::protocol::linking::{
@@ -62,6 +63,19 @@ use crate::seams::transport::Transport;
 pub const POLL_BUDGET_REQUESTS: u32 = 30;
 /// The window [`POLL_BUDGET_REQUESTS`] is counted over.
 pub const POLL_BUDGET_WINDOW_MS: u64 = 60_000;
+
+/// `deviceName`'s ceiling on `POST /auth/linking/scan`
+/// (`apps/sync-server/src/routes/linking.ts:57`). **Not** `POST /auth/devices`'
+/// 255 (chapter 02 §2.3): the two fields are different fields on different
+/// routes, and only the registration one is sanitised server-side.
+const DEVICE_NAME_MAX_CHARS: usize = 100;
+
+/// The first `max` characters, cut on a character boundary so the result is
+/// still UTF-8 and still counts as at most `max` to the server's `z.string()`,
+/// which measures code points rather than bytes.
+fn truncate_chars(value: &str, max: usize) -> String {
+    value.chars().take(max).collect()
+}
 
 /// What a successful scan gives the user to check, §3.6 and §3.4.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -146,6 +160,11 @@ impl Pending {
 pub struct DeviceLink {
     http: Arc<HttpClient>,
     store: Arc<dyn SecureStore>,
+    /// §3.1's `scan` body carries the label the approving desktop shows before
+    /// a human presses Approve. See [`DeviceLink::new`] for why it is not the
+    /// `client_platform` the `HttpClient` already holds.
+    device_name: String,
+    device_platform: DevicePlatform,
     pending: Mutex<Option<Pending>>,
 }
 
@@ -157,6 +176,25 @@ impl DeviceLink {
     /// routes are unauthenticated (§3.1) and the phone has no session to
     /// refresh. A client with one would spend a refresh on every poll of a
     /// device whose whole problem is that it is not yet a device.
+    ///
+    /// **`device_platform` is chapter 02 §2.12's registration enumeration and
+    /// `client_platform` is `CLIENT_PLATFORMS`, and they are two parameters on
+    /// purpose** (spec-defect 140). On a phone both read `ios`, which is
+    /// exactly why reusing one for the other would never be caught here: a
+    /// desktop built on this same core registers as `macos`, identifies itself
+    /// as `desktop`, and sends `macos` on `scan`
+    /// (`apps/desktop/src/main/sync/linking-service.ts:276`) — a value
+    /// `CLIENT_PLATFORMS` does not contain. The server's own field is a free
+    /// `z.string().min(1).max(50)`, so nothing on the wire would reject the
+    /// mistake either; taking the typed enum is what refuses it.
+    ///
+    /// **An empty `device_name` is refused rather than sent.** The route's
+    /// `min(1)` would answer a bare `400 VALIDATION_ERROR` — the one sentence
+    /// that cost six rounds to read — and a shell that cannot name its device
+    /// has a bug worth surfacing where it happened. A name longer than the
+    /// route's 100 characters is **truncated on a character boundary**, not
+    /// refused: it is a label a human reads, never an identifier, and refusing
+    /// to link a computer with a long hostname would be the worse failure.
     #[uniffi::constructor]
     pub fn new(
         transport: Arc<dyn Transport>,
@@ -164,11 +202,20 @@ impl DeviceLink {
         base_url: String,
         client_platform: String,
         app_version: String,
+        device_name: String,
+        device_platform: DevicePlatform,
     ) -> Result<Self, ApiError> {
         let identity = ClientIdentity::new(&client_platform, &app_version)?;
+        if device_name.is_empty() {
+            return Err(ApiError::InvalidClientIdentity {
+                what: "deviceName must be 1 to 100 characters, got an empty string".to_string(),
+            });
+        }
         Ok(Self {
             http: Arc::new(HttpClient::new(transport, &base_url, identity)),
             store: secure_store,
+            device_name: truncate_chars(&device_name, DEVICE_NAME_MAX_CHARS),
+            device_platform,
             pending: Mutex::new(None),
         })
     }
@@ -228,6 +275,12 @@ impl DeviceLink {
             linking_secret: invitation.linking_secret_b64.clone(),
             scan_confirm: BASE64_STANDARD.encode(scan_mac(&confirm, &secret)?),
             scan_proof: BASE64_STANDARD.encode(scan_mac(&proof, &secret)?),
+            // Required by the route and by nothing the core can derive
+            // (spec-defect 140). They reach the approving desktop as the label
+            // a human approves, and they are held rather than passed in per
+            // scan because a device does not change its name mid-link.
+            device_name: self.device_name.clone(),
+            device_platform: self.device_platform,
         };
         routes::scan(&self.http, &request).await?;
 

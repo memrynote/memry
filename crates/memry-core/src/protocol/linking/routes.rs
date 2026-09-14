@@ -21,6 +21,7 @@ use serde_json::Value as Json;
 
 use super::{LinkingError, MasterKeyBlock};
 use crate::api::errors::ApiError;
+use crate::protocol::auth::DevicePlatform;
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
 
 pub const SCAN_PATH: &str = "/auth/linking/scan";
@@ -30,13 +31,28 @@ pub const COMPLETE_PATH: &str = "/auth/linking/complete";
 /// out of order; keep polling", not a failure.
 pub const LINKING_INVALID_TRANSITION: &str = "LINKING_INVALID_TRANSITION";
 
-/// The `POST /auth/linking/scan` body.
+/// The `POST /auth/linking/scan` body. **Eight fields, not six.**
 ///
-/// Five of the six fields are derived; `linking_secret_b64` is the **string
+/// Five of the first six are derived; `linking_secret_b64` is the **string
 /// from the QR, echoed byte-exact** (§3.3). Both scan-channel tags and the
 /// confirm-channel tag ride in this one body — §3.7's most missable fact is
 /// that `scan_proof` and `new_device_confirm` cover *identical* CBOR bytes
 /// under different keys and different primitives.
+///
+/// **`device_name` and `device_platform` are required and are easy to miss**
+/// (spec-defect 140). The route validates against its own `ScanLinkingSchema`
+/// (`apps/sync-server/src/routes/linking.ts:50-59`), which requires both;
+/// the exported `ScanLinkingRequestSchema`
+/// (`packages/contracts/src/linking-api.ts:19-26`) declares only the six and
+/// chapter 03 §3.1 writes out no body at all, so a client written correctly
+/// against either source omits them and every scan fails a bare
+/// `400 VALIDATION_ERROR` before any crypto is looked at. The core sent six
+/// until this was found on a physical phone.
+///
+/// Neither field is stored: the server forwards them to the approving device
+/// as the `linking_request` notification's `newDeviceName` and
+/// `newDevicePlatform` (`apps/sync-server/src/routes/linking.ts:155-160`), so
+/// they are the label a human reads before approving — nothing routes on them.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanRequest {
@@ -49,6 +65,14 @@ pub struct ScanRequest {
     pub scan_confirm: String,
     /// Scan channel, `LINKING_PROOF`, HMAC-SHA-256 under the decoded secret.
     pub scan_proof: String,
+    /// 1 to 100 characters, server-enforced and **not** sanitised on this
+    /// route the way `POST /auth/devices` sanitises its `name`.
+    pub device_name: String,
+    /// Chapter 02 §2.12's **registration** enumeration, serialised lowercase —
+    /// not `CLIENT_PLATFORMS`. The desktop initiator sends `macos`, `windows`
+    /// or `linux` here (`apps/desktop/src/main/sync/linking-service.ts:276`),
+    /// values `CLIENT_PLATFORMS` does not contain at all.
+    pub device_platform: DevicePlatform,
 }
 
 #[derive(Debug, Clone, Serialize)]

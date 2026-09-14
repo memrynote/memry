@@ -2092,8 +2092,27 @@ open class DeviceLink: DeviceLinkProtocol, @unchecked Sendable {
      * routes are unauthenticated (§3.1) and the phone has no session to
      * refresh. A client with one would spend a refresh on every poll of a
      * device whose whole problem is that it is not yet a device.
+     *
+     * **`device_platform` is chapter 02 §2.12's registration enumeration and
+     * `client_platform` is `CLIENT_PLATFORMS`, and they are two parameters on
+     * purpose** (spec-defect 140). On a phone both read `ios`, which is
+     * exactly why reusing one for the other would never be caught here: a
+     * desktop built on this same core registers as `macos`, identifies itself
+     * as `desktop`, and sends `macos` on `scan`
+     * (`apps/desktop/src/main/sync/linking-service.ts:276`) — a value
+     * `CLIENT_PLATFORMS` does not contain. The server's own field is a free
+     * `z.string().min(1).max(50)`, so nothing on the wire would reject the
+     * mistake either; taking the typed enum is what refuses it.
+     *
+     * **An empty `device_name` is refused rather than sent.** The route's
+     * `min(1)` would answer a bare `400 VALIDATION_ERROR` — the one sentence
+     * that cost six rounds to read — and a shell that cannot name its device
+     * has a bug worth surfacing where it happened. A name longer than the
+     * route's 100 characters is **truncated on a character boundary**, not
+     * refused: it is a label a human reads, never an identifier, and refusing
+     * to link a computer with a long hostname would be the worse failure.
      */
-public convenience init(transport: Transport, secureStore: SecureStore, baseUrl: String, clientPlatform: String, appVersion: String)throws  {
+public convenience init(transport: Transport, secureStore: SecureStore, baseUrl: String, clientPlatform: String, appVersion: String, deviceName: String, devicePlatform: DevicePlatform)throws  {
     let handle =
         try rustCallWithError(FfiConverterTypeApiError_lift) {
         uniffiCallStatus in
@@ -2102,7 +2121,9 @@ public convenience init(transport: Transport, secureStore: SecureStore, baseUrl:
         FfiConverterTypeSecureStore_lower(secureStore),
         FfiConverterString.lower(baseUrl),
         FfiConverterString.lower(clientPlatform),
-        FfiConverterString.lower(appVersion),uniffiCallStatus
+        FfiConverterString.lower(appVersion),
+        FfiConverterString.lower(deviceName),
+        FfiConverterTypeDevicePlatform_lower(devicePlatform),uniffiCallStatus
     )
 }
     self.init(unsafeFromHandle: handle)
@@ -11894,7 +11915,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_constructor_authsession_new() != 11309) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_constructor_devicelink_new() != 48739) {
+    if (uniffi_memry_core_checksum_constructor_devicelink_new() != 58580) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_constructor_runtimehost_new() != 10694) {

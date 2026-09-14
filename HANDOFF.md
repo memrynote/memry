@@ -32,7 +32,7 @@ against a capability nobody had checked existed **five times in one phase**:
 **before the brief was written**. The fifth was caught that way. Do it first,
 every time.
 
-## State: **Phase 4 at 22 of 24 ticked.** Phase 3 closed 64/64.
+## State: **Phase 4 COMPLETE — 24 of 24 ticked.** Phase 3 closed 64/64.
 
 T149, T150, T151 and **T156a** are **CUT**; T163, T164, T165 and T235 were
 **added**. **T156a was cut today**: `Notes` exports only `folders`/`list`/`read`,
@@ -343,6 +343,45 @@ The entry now carries the real reason.
    revoking. Account was at 21 of 50.
 8. **T161/T162 need Kaan and the phone**, about half an hour together — but
    they are unreachable until item 1 is answered.
+
+## Checkpoint status
+
+**MET, on the physical iPhone 12 Pro, against the real staging account.**
+
+Evidence: `apps/ios/SpikeEvidence/T161-T162-device-evidence.md`, with the two
+plan summaries beside it.
+
+- **Recovery phrase**: all four vaults opened and read.
+- **Device cleared**: the app was deleted, so no vault, no keys, no registration.
+- **Device link**: all four vaults opened again by scanning the desktop's code;
+  the SAS matched on both screens; the 94-note vault pulled and rendered.
+  **The camera path worked**, despite spec-defect 130's missing viewfinder.
+- **Two-vault requirement**: satisfied by a stronger case — four vaults.
+- **T162**: `Conformance` **12/12**, `Unit` **355 total, 351 passed, 0 failed,
+  4 skipped**, both re-run on the device against the final build. The banked
+  numbers were not reused.
+
+**What the evidence says it does NOT cover**, explicitly: two phones registered
+against one account at once (one phone exists; that bar was replaced, not
+reinterpreted), writes (T156a is cut), a systematic sweep of windowed-out
+bodies, and revocation across a relaunch.
+
+**Three bugs were found by a person using the phone that no test could see**, and
+this is the phase's most important result:
+
+1. **136** — the vault could be opened and read but **nothing could fill it**.
+   Every test built the store it then read; the screen _before_ it worked,
+   because the vault list is a network read and the note list is local.
+2. **140** — `scan` requires eight fields, the core sent six, and the exported
+   contracts schema — the shared definition — declares six and is **still
+   wrong**. Chapter 03 §3.1 writes out no request body at all.
+3. **109 in practice** — the per-IP OTP limit was exhausted, the ladder honoured
+   an unbounded `Retry-After`, and an uncancellable call sat behind "sending
+   your code" for up to an hour.
+
+**The rule this phase leaves behind**: when a read surface is exported, ask what
+fills the store — and make at least one test start from a store only the
+production path can fill.
 
 ## Checkpoint status
 

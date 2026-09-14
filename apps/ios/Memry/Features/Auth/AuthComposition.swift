@@ -93,12 +93,29 @@ enum AuthComposition {
         // Blocking and does no I/O at all (spec-defect 90), so building it
         // beside the session costs nothing and keeps the whole graph on one
         // trip through `CoreExecutor`.
+        //
+        // **`deviceName` and `devicePlatform` come from the same
+        // `DeviceDescriptor` that registers this phone, and they are not the
+        // `clientPlatform` above** (spec-defect 140). Chapter 03 §3.1's `scan`
+        // requires both, and chapter 02 §2.12's two platform lists only look
+        // alike here: `device.platform` is the registration enum, which a
+        // desktop fills with `macos`, and `clientPlatform` is
+        // `CLIENT_PLATFORMS`, which has no such value. The core takes them as
+        // two parameters so the coincidence cannot be leaned on.
+        //
+        // The name is `UIDevice.name`, which is the model — see `device()`
+        // below for why that is deliberate rather than incidental. It reaches
+        // the approving computer as the label beside Approve, and it reaches
+        // no log: `Log`'s surface is a `StaticString` plus a closed
+        // `LogDetail`, and nothing here widens it.
         let deviceLink = try DeviceLink(
             transport: transport,
             secureStore: store,
             baseUrl: environment.baseURL,
             clientPlatform: clientPlatform,
-            appVersion: device.appVersion
+            appVersion: device.appVersion,
+            deviceName: device.name,
+            devicePlatform: device.platform
         )
         return AuthGraph(session: session, transport: transport, deviceLink: deviceLink)
     }

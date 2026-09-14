@@ -19,9 +19,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use http_fakes::{FakeSecureStore, FakeTransport, body_json, error_response, response};
+use memry_core::api::errors::ApiError;
 use memry_core::api::linking::{DeviceLink, LinkingPoll, POLL_BUDGET_REQUESTS};
 use memry_core::crypto::sodium;
 use memry_core::protocol::account::VaultSummary;
+use memry_core::protocol::auth::DevicePlatform;
 use memry_core::protocol::linking::{
     self, LinkingError, LinkingSubkeys, MasterKeyBlock, confirm_mac, linking_proof_message,
     scan_confirm_message, vault_transfer_confirm_message, verify_confirm_mac, verify_scan_mac,
@@ -31,6 +33,9 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 const SESSION: &str = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
 const SECRET: [u8; 32] = [0x11; 32];
 const MASTER_KEY: [u8; 32] = [0x42; 32];
+/// What `UIDevice.name` gives a phone without the user-assigned-name
+/// entitlement: the model, never what someone called their phone.
+const DEVICE_NAME: &str = "iPhone";
 
 /// The desktop's half: the initiator's ephemeral pair, and the QR it printed.
 struct Desktop {
@@ -76,13 +81,28 @@ fn now_s() -> u64 {
 }
 
 fn link_over(transport: Arc<FakeTransport>, store: Arc<FakeSecureStore>) -> Arc<DeviceLink> {
+    link_named(transport, store, DEVICE_NAME)
+}
+
+/// The same client with a chosen `deviceName`, for the two cases that are
+/// about the name itself.
+fn link_named(
+    transport: Arc<FakeTransport>,
+    store: Arc<FakeSecureStore>,
+    device_name: &str,
+) -> Arc<DeviceLink> {
     Arc::new(
         DeviceLink::new(
             transport,
             store,
             "https://sync.example".to_string(),
+            // `CLIENT_PLATFORMS` (chapter 11) — the `x-memry-client` half.
             "ios".to_string(),
             "1.0.0".to_string(),
+            device_name.to_string(),
+            // Chapter 02 §2.12's registration enum. A different list that
+            // happens to read the same on a phone.
+            DevicePlatform::Ios,
         )
         .expect("a device link"),
     )
@@ -188,6 +208,105 @@ async fn scan_posts_both_mac_families_over_the_same_proof() {
     // §3.4: the server's `expiresAt`, not 300 seconds from now.
     assert_eq!(scanned.expires_at, desktop.expires_at as i64);
     assert_eq!(text(&body, "sessionId"), SESSION);
+}
+
+/// **The wire shape of `POST /auth/linking/scan`, pinned key by key.**
+///
+/// This is the test spec-defect 140 did not have. Every other case in this
+/// file scripts its own server, so every one of them passed for months against
+/// a body the real route rejects with a bare `400 VALIDATION_ERROR` — the
+/// failure was invisible precisely because the fake transport validates
+/// nothing. What a scripted server cannot check is the **set of keys**, so
+/// that is what is checked here and nothing else.
+///
+/// **Pinned to `apps/sync-server/src/routes/linking.ts:50-59`**, the route's
+/// own `ScanLinkingSchema`. That list is a **copy of a schema this repository
+/// does not own**: `apps/sync-server` is out of this feature's scope, the
+/// exported `ScanLinkingRequestSchema`
+/// (`packages/contracts/src/linking-api.ts:19-26`) declares only six of the
+/// eight and is the thing that is wrong, and chapter 03 §3.1 writes out no
+/// body at all. So this assertion cannot be derived from anything importable,
+/// and it will not notice if the server adds a ninth field. What it does catch
+/// is the drift that actually happened — the core quietly sending fewer keys
+/// than the route requires — and it fails at `cargo test` rather than on
+/// somebody's phone.
+#[tokio::test]
+async fn the_scan_body_carries_exactly_the_keys_the_route_requires() {
+    let desktop = Desktop::new();
+    let transport = FakeTransport::new(vec![response(200, r#"{"success":true}"#)]);
+    let link = link_over(transport.clone(), FakeSecureStore::new());
+
+    link.scan(desktop.qr()).await.expect("scan");
+
+    let body = scan_body(&transport);
+    let mut keys: Vec<&str> = body
+        .as_object()
+        .expect("a JSON object")
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    assert_eq!(
+        keys,
+        [
+            "deviceName",
+            "devicePlatform",
+            "linkingSecret",
+            "newDeviceConfirm",
+            "newDevicePublicKey",
+            "scanConfirm",
+            "scanProof",
+            "sessionId",
+        ],
+        "the exact key set of ScanLinkingSchema, routes/linking.ts:50-59"
+    );
+
+    // The two the core used to omit. `devicePlatform` is chapter 02 §2.12's
+    // registration enum, lowercase on the wire, and **not** `CLIENT_PLATFORMS`
+    // — which is why it is a separate constructor parameter and not the
+    // `client_platform` the same object already holds.
+    assert_eq!(text(&body, "deviceName"), DEVICE_NAME);
+    assert_eq!(text(&body, "devicePlatform"), "ios");
+}
+
+/// The route's `min(1)`/`max(100)` on `deviceName`, honoured by the client
+/// rather than discovered as a `400`.
+///
+/// An empty name is refused **before** a client exists, because a shell that
+/// cannot name its device would otherwise spend a whole 300-second window
+/// learning that from a sentence that says nothing. An over-long one is
+/// truncated instead: the field is a label a human reads on the approving
+/// computer, and refusing to link a machine with a long hostname is the worse
+/// of the two failures.
+#[tokio::test]
+async fn the_device_name_is_refused_when_empty_and_truncated_when_too_long() {
+    let transport = FakeTransport::new(vec![]);
+    let refused = DeviceLink::new(
+        transport.clone(),
+        FakeSecureStore::new(),
+        "https://sync.example".to_string(),
+        "ios".to_string(),
+        "1.0.0".to_string(),
+        String::new(),
+        DevicePlatform::Ios,
+    );
+    let refused = refused.err();
+    assert!(
+        matches!(refused, Some(ApiError::InvalidClientIdentity { .. })),
+        "an empty deviceName is refused locally, got {refused:?}"
+    );
+    assert_eq!(transport.calls_to("/auth/linking/scan").len(), 0);
+
+    let desktop = Desktop::new();
+    let transport = FakeTransport::new(vec![response(200, r#"{"success":true}"#)]);
+    let long = "é".repeat(140);
+    let link = link_named(transport.clone(), FakeSecureStore::new(), &long);
+    link.scan(desktop.qr()).await.expect("scan");
+
+    let sent = text(&scan_body(&transport), "deviceName");
+    // 100 characters, and still every byte of a whole character.
+    assert_eq!(sent.chars().count(), 100);
+    assert_eq!(sent, "é".repeat(100));
 }
 
 /// §3.3: the length check is the client's, and it happens before the request.

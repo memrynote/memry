@@ -1,0 +1,47 @@
+{
+  "devicesAndConfigurations": [
+    {
+      "device": {
+        "architecture": "arm64",
+        "deviceId": "00008101-00164CD02212001E",
+        "deviceName": "Kaan Karaca’s iPhone",
+        "modelName": "iPhone 12 Pro",
+        "osBuildNumber": "24A5390f",
+        "osVersion": "27.0",
+        "platform": "iOS"
+      },
+      "expectedFailures": 0,
+      "failedTests": 0,
+      "passedTests": 34,
+      "skippedTests": 0,
+      "testPlanConfiguration": {
+        "configurationId": "1",
+        "configurationName": "Default"
+      }
+    }
+  ],
+  "environmentDescription": "Conformance · Built with macOS 26.6.2",
+  "expectedFailures": 0,
+  "failedTests": 0,
+  "finishTime": 1789372258.397,
+  "passedTests": 12,
+  "result": "Passed",
+  "skippedTests": 0,
+  "startTime": 1789372241.491,
+  "statistics": [
+    {
+      "subtitle": "29 test runs",
+      "title": "7 tests ran with dynamic parameters"
+    }
+  ],
+  "testFailures": [],
+  "title": "Test - Memry",
+  "topInsights": [
+    {
+      "category": "Longest Test Runs",
+      "impact": "91% of duration",
+      "text": "2 longest test runs with outlier durations exceeding 2.15s (three standard deviations)"
+    }
+  ],
+  "totalTestCount": 12
+}

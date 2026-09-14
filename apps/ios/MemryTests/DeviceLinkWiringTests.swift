@@ -30,6 +30,11 @@ final class T153StubURLProtocol: URLProtocol, @unchecked Sendable {
     struct Seen: Sendable {
         let url: String?
         let method: String?
+        /// The request body, read from the **stream** when `httpBody` is nil.
+        /// `URLSession` moves a body onto `httpBodyStream` before a
+        /// `URLProtocol` ever sees it, so reading only `httpBody` here would
+        /// capture `nil` for every request and quietly assert nothing.
+        let body: Data?
     }
 
     static let captured = Mutex<[Seen]>([])
@@ -42,7 +47,10 @@ final class T153StubURLProtocol: URLProtocol, @unchecked Sendable {
     // swiftlint:enable static_over_final_class
 
     override func startLoading() {
-        Self.captured.withLock { $0.append(Seen(url: request.url?.absoluteString, method: request.httpMethod)) }
+        let body = request.httpBody ?? Self.drain(request.httpBodyStream)
+        Self.captured.withLock {
+            $0.append(Seen(url: request.url?.absoluteString, method: request.httpMethod, body: body))
+        }
         guard let url = request.url else { return }
         let response = HTTPURLResponse(
             url: url, statusCode: 404, httpVersion: "HTTP/1.1",
@@ -56,6 +64,20 @@ final class T153StubURLProtocol: URLProtocol, @unchecked Sendable {
     }
 
     override func stopLoading() {}
+
+    private static func drain(_ stream: InputStream?) -> Data? {
+        guard let stream else { return nil }
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 4096)
+        while stream.hasBytesAvailable {
+            let read = stream.read(&buffer, maxLength: buffer.count)
+            if read <= 0 { break }
+            data.append(contentsOf: buffer[0 ..< read])
+        }
+        return data
+    }
 }
 
 private func linkStubbedConfiguration() -> URLSessionConfiguration {
@@ -119,6 +141,25 @@ struct DeviceLinkWiringTests {
         let seen = try #require(T153StubURLProtocol.captured.withLock { $0.first })
         #expect(seen.url == "https://sync-staging.memrynote.com/auth/linking/scan")
         #expect(seen.method == "POST")
+        // **The wire shape, at the end of the real hop** (spec-defect 140).
+        // The core pins the same key set in `crates/memry-core/tests/
+        // device_link.rs`; this one is here because the two fields that were
+        // missing are the only ones in the body the *shell* supplies, and a
+        // core test cannot see whether this app ever handed them over.
+        // Pinned to `apps/sync-server/src/routes/linking.ts:50-59`, a schema
+        // this repository does not own and cannot import.
+        let body = try #require(seen.body)
+        let fields = try #require(
+            JSONSerialization.jsonObject(with: body) as? [String: Any]
+        )
+        #expect(fields.keys.sorted() == [
+            "deviceName", "devicePlatform", "linkingSecret", "newDeviceConfirm",
+            "newDevicePublicKey", "scanConfirm", "scanProof", "sessionId"
+        ])
+        // Chapter 02 §2.12's registration enum, which is what `DeviceDescriptor`
+        // carries — not `CLIENT_PLATFORMS`, which the same graph also holds.
+        #expect(fields["devicePlatform"] as? String == "ios")
+        #expect((fields["deviceName"] as? String)?.isEmpty == false)
         // §3.12's 404 is terminal, and it must not read as an expiry or as a
         // malformed code — the three are different facts.
         #expect(model.error?.code == "api.statusRefused")
