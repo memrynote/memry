@@ -1,0 +1,340 @@
+Close Phase 4 of specs/002-native-foundation-ios/tasks.md — User Story 3, "open your vault on your
+iPhone": sign in, unlock by recovery phrase or by scanning a desktop code, pick a vault, browse real
+notes and folders read-only. This is a GOAL prompt: re-run it verbatim each session until the
+checkpoint holds. Do NOT try to finish it in one session.
+
+Phase 3 is CLOSED — 64 of 64, G3/G4/G5 all held, defect log at 0 open / 88 closed. The core works
+against real staging. Phase 4 is the **shell**: Swift, SwiftUI, and the seams the core has been
+waiting for.
+
+## Your role this session: orchestrator, not implementer
+
+Read state, pick the next unblocked wave, dispatch subagents, verify what they return, commit, push
+to main. Dispatch with the Agent tool, `model: "opus"`, `subagent_type: "general-purpose"`, run in
+background.
+
+**Cap at TWO concurrent subagents.** Three dispatched at once have died without writing a file —
+they serialise on the shared `crates/target` and on `xcodebuild`. **Verify a new agent is alive**
+(files appearing, or a `cargo`/`rustc`/`xcodebuild` process) before assuming it is working.
+
+Stop dispatching new waves once this session's context is ~60% spent. Finish verifying, committing
+and pushing what is in flight, then overwrite HANDOFF.md.
+
+## First action, every session: re-derive state. Do not trust this prompt's task list.
+
+```bash
+cd .worktrees/native-core-phase-3
+git fetch origin && git status --short && git merge --ff-only origin/main
+awk '/^## Phase 4/,/^## Phase 5/' specs/002-native-foundation-ios/tasks.md | grep -nE '^- \[[ x]\]'
+tail -20 specs/002-native-foundation-ios/spec-defects.md
+cat HANDOFF.md
+```
+
+A `[x]` means the task's verification was RUN and PASSED. A `[ ]` is open regardless of what any
+commit message claims.
+
+## THE LESSON FROM PHASE 3 — it cost five bugs and it will recur here
+
+**A tier can be fully implemented, well tested behind fakes, and never wired.** Five separate times
+in Phase 3, every one of which passed the whole unit suite and all eleven vector classes:
+
+1. The field merge was written and **unreachable** — a concurrent title/dueDate edit lost one.
+2. §6.3.1's document gate was **never implemented** — a stale remote record overwrote a newer local
+   one, for eleven types.
+3. §6.9's settings merge stored **wholesale inbound** — a remote push reverted a local preference.
+4. §7.15's purge and projection delete had **no call site** — a deleted note stayed visible and the
+   next first sync re-pulled its body.
+5. `PushSealer` had **no production implementation** — every impl was a test fake, and `memry-cli`
+   had never pushed anything to a server.
+
+**Treat "it is implemented" as unproven until you find the production call site.** A `grep` for the
+caller is a five-second check that would have caught all five. Phase 4 is a shell wiring a core:
+this is precisely the failure mode it is shaped to produce. Every seam you land, prove something
+real calls it.
+
+**Second lesson: five test assertions passed under the very bug they were written for.** They were
+found only by deliberately breaking the code and watching which tests stayed green — including a
+convergence test that passed byte-identically while the document silently lost a block. **Break
+every new assertion, watch it fail, restore it, and report what you observed.** Make every subagent
+do this and report it.
+
+## What is left — 24 tasks, T140 to T162
+
+```
+W1  {T140} CoreExecutor  ||  {T141} CoreEvents          serial queue + AsyncStream, the spine
+W2  {T142}[P] ErrorMapping  ||  {T143} Keychain
+W3  {T144}[P] FileProtection  ||  {T145} Transport      the seam the core has waited for
+W4  {T146}[P] Reachability + CodeCapture
+W5  {T147} SignInView  ||  {T148} GoogleSignIn
+W6  {T149} AppleSignIn  ||  {T150} server-side `apple` provider   ← PRODUCTION, see below
+W7  {T151} Apple account link (client + server)
+W8  {T152} RecoveryPhraseView  ||  {T153} QRLinkView
+W9  {T154} SASConfirmView  ||  {T155} VaultListView
+W10 {T156} NotesList + FolderTree  ||  {T156a} notes/folders CRUD
+W11 {T157} NoteReadView  ||  {T158} SyncStatusView
+W12 {T159} SignOutService  ||  {T160}[P] Design tokens
+W13 {T161} device test: every test vault unlocks by phrase AND by device link
+G   {T162} SC-001 + SC-003 evidence
+```
+
+T140 and T141 are the spine — everything else calls through them. Land them first and land them
+well.
+
+## The device is available and configured — this is new since Phase 3
+
+**iPhone 12 Pro (iPhone13,3), arm64, iOS 27.0, Developer Mode enabled**, identifier
+`8025C79A-F257-500F-8BA1-A14122135B2D`. Confirm with `xcrun devicectl list devices`.
+
+Signing works, and the exact recipe matters because two obvious approaches fail:
+
+- **Team is `TV343Q4W8A`.** `K7NKJMST84` has a certificate but no Xcode account and fails with
+  "No Account for Team".
+- **`com.memry.app` cannot be registered to that team.** Use `com.memry.app.t094`, whose App ID
+  already has **Data Protection = Protected Until First User Authentication** enabled — the
+  entitlements file demands exactly `NSFileProtectionCompleteUntilFirstUserAuthentication`, and
+  "Complete Protection" does not match.
+- **Do NOT pass `PRODUCT_BUNDLE_IDENTIFIER=` on the xcodebuild command line.** It applies to *every*
+  target including the embedded `MemryCore` package framework, which then shares the app's
+  identifier and iOS refuses the install: "The parent bundle has the same identifier as sub-bundle".
+  Edit the four `PRODUCT_BUNDLE_IDENTIFIER` pairs in `project.pbxproj` **and** the
+  `keychain-access-groups` entry in `Memry.entitlements`, run, then **revert both**. Back them up
+  first; Phase 3 did this with `cp` to `/tmp` and restored cleanly.
+
+```bash
+while ! mkdir ~/.memry/xcodebuild.lock 2>/dev/null; do sleep 10; done
+trap 'rmdir ~/.memry/xcodebuild.lock 2>/dev/null' EXIT     # ALWAYS, including on failure
+xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry -testPlan <Unit|Conformance|UI> \
+  -destination 'platform=iOS,id=8025C79A-F257-500F-8BA1-A14122135B2D' \
+  DEVELOPMENT_TEAM=TV343Q4W8A -allowProvisioningUpdates \
+  -resultBundlePath apps/ios/SpikeEvidence/<name>.xcresult
+```
+
+**`xcodebuild` lies about the count.** These are Swift Testing suites and the XCTest counter does
+not see them: a run that executed 34 tests prints `Executed 0 tests ... ** TEST SUCCEEDED **`. The
+real numbers come from the result bundle, and a run reported off that line alone is a false green:
+
+```bash
+xcrun xcresulttool get test-results summary --path <bundle>.xcresult
+```
+
+**`.xcresult` bundles are gitignored** under `apps/ios/SpikeEvidence/` — T082's was 676 MB. Commit
+the extracted `*-summary.json` instead.
+
+`xcodebuild` and DerivedData are **shared across worktrees**. A stuck lock has blocked a run before.
+
+## iOS facts that already cost a session each
+
+- The **generated bindings are their own target at Swift 5**, because UniFFI 0.32.1 emits code Swift
+  6 rejects (a `sending` parameter). **`MemryCore` itself stays at Swift 6.** Do not undo this.
+- **`Package.swift` links `libz`**, because stock zlib is a protocol requirement (chapter 04 §4.1.1)
+  and the static archive needs the system zlib. Spec-defect 49. Do not undo this.
+- **Regenerate the bindings whenever the UniFFI surface changes**, then confirm
+  `git diff --exit-code packages/swift/MemryCore/Sources/MemryCore/Generated/` is clean and update
+  `specs/002-native-foundation-ios/contracts/core-api.md`. Phase 3 ended with a stale binding
+  because `ApiError::Storage` was added after the last regeneration and **no gate catches it** —
+  only a final `git status` did.
+- The **simulator is not the device**: `aarch64-apple-ios-sim` runs on the host CPU against host
+  memory with a different libsodium slice. Simulator evidence is evidence for the simulator.
+- Turn off the simulator's hardware keyboard (⇧⌘K) before any editor or toolbar test, and dismiss
+  the QuickPath overlay — both make a correct toolbar look absent with no error (research R16).
+- `defaults write com.apple.Accessibility ReduceTransparencyEnabled` does **not** reach
+  `UIAccessibility`. Only the Settings switch works. Have the app render its own state badge so a
+  screenshot proves itself.
+
+## Hard constraints — restate these in every subagent brief
+
+- **PRODUCTION.** Real users run this on real data. **T150 and T151 touch `apps/sync-server`** —
+  additive only, backward compatible, and the existing `google` and `email` providers must keep
+  working untouched. State the compat plan before changing a route. No DB reset; additive
+  `0003_*.sql` only.
+- **Staging only. Never point anything at prod.** Base URLs: staging
+  `https://sync-staging.memrynote.com`, prod `https://sync.memrynote.com`, local
+  `http://localhost:8787`. Not hardcoded — `SYNC_SERVER_URL` comes from a gitignored
+  `.env.<environment>`, so a worktree missing it falls back to localhost **silently**.
+  `pnpm env:check` must report its items in place. The staging D1 is **`memry-sync-staging`**.
+- **The core owns no networking and no UI.** Everything crosses a foreign-trait seam in
+  `crates/memry-core/src/seams/`. `reqwest` and `tokio-tungstenite` live in `memry-cli/src/transport.rs`
+  and nowhere else. T145's Swift `Transport` is the shell's implementation of that seam.
+- **The core never parses or serialises markdown.** `extract_text` is its only text operation
+  (chapter 12 §12.1). T157's read-only rendering happens in the shell.
+- **Constitution II: no raw error object is ever shown to a user.** T142 is the whole of that rule;
+  every feature view renders through it.
+- **Never let an unparseable input read as an empty one.** A `GET /sync/vaults` reader used a
+  `filter_map` and reported "this account has no vaults" against an account holding **four**. For a
+  shell this becomes: an empty list must mean "empty", never "could not tell".
+- **Line ceilings**: 600 lines per `.rs` under `crates/memry-core/src` and `crates/memry-cli/src`.
+  The gate is `node scripts/check-line-ceilings.mjs`. Swift is not covered by it; keep Swift files
+  comparably small anyway and say so if one grows past ~600.
+- **RTL and accessibility are not polish.** Logical leading/trailing only, dynamic type,
+  reduce-transparency and reduce-motion honoured. `DESIGN.md` is the authority and T160 mirrors it.
+- **Four decisions are settled and must not be re-litigated**: the relaxed `LINKING_IP_MISMATCH`
+  (#2184), the canonical value comparison (#2185), the corrected CRDT item type constants (#2186),
+  and frontmatter bytes guaranteed only on the unedited path (chapter 12 §12.4.3).
+- **Issues #2179 to #2187 are NOT yours to fix.**
+
+## Known bugs the shell will trip over — do not rediscover, and decide deliberately
+
+These are real, recorded in HANDOFF.md, and none is a Phase 4 task. Each one will look like a
+Phase 4 bug when it bites.
+
+1. **A permanently-rejected record wedges the whole outbox.** A `400` for one item's type fails the
+   **batch**, the row keeps `attempt_count 0` with no backoff, and it retries forever — a legitimate
+   record queued beside it never leaves the device. **The most serious open item in the tree.**
+   Reachable by shipping a client that writes an item type before the server accepts it.
+2. **Pull-then-push is not a convenience.** A client that pushes a field-merged type **without
+   pulling first** silently destroys a concurrent peer's field, and no later pass repairs it: the
+   server stores the payload verbatim (§6.10) and §6.5.2 P3 forbids the merging client from
+   re-pushing. `SyncEngine::run_pass` does pull-then-push; any shell-driven sync must too.
+3. **A whole-fragment replace loses concurrent edits** (defect 88, chapter 12 §12.5.0.1). Desktop's
+   external-file-edit path does one. Anything in the shell that re-seeds a document from an external
+   source of truth is an authoritative overwrite, not an edit.
+4. **A delete must tick its clock** or the server accepts it and does nothing (§6.9.1).
+5. **§7.15's runtime obligation is reported, not performed**: `PullReport::purged_documents` and
+   `BodyPullReport::advanced_documents` name ids a registry holder must act on. **The shell is that
+   holder.** Nothing acts on them today; a resident document goes stale and a purged one stays
+   resident. This is Phase 4's to wire.
+6. **`Reachability::observe` has no caller.** The seam doc now says draining on the transition is the
+   **shell's** obligation. T146 is where that gets wired, or it stays unwired and the queue waits
+   for a timer.
+7. **`snapshot_is_due` has no caller.** §7.13.3's cadence exists in the core and nothing polls it.
+8. A no-op pull costs **32–36 s** on a 94-note vault. Use `memry notes fetch <id>` for a cheap
+   single-document probe (0.4–1.8 s) when measuring anything.
+
+## Tooling that exists now and did not in Phase 3
+
+`memry-cli` is a working headless client against staging: `login`, `unlock`, `vaults`, `pull`,
+`push`, `notes list|text|state-vector|digest|fetch|edit --append`. Use it as the second device in any
+two-device test — a second profile is just a different `HOME`.
+
+`packages/contracts/scripts/sc010-probe.ts <noteId> <data.db>` runs the TypeScript reference
+extractor and prints §12.11's digest, for comparing a shell's extraction against the core's.
+
+## The defect log is still the point
+
+Every time anyone has to open `packages/sync-client`, `apps/desktop` or `apps/sync-server` to find
+out what the protocol does, that is a defect in `docs/protocol/` — log it in `spec-defects.md` with
+the chapter, the question, and the file that had to be read. **Close it by changing the chapter**
+(and its vectors, if a format is involved), never by writing the answer into code or a comment.
+
+Phase 4 adds a second kind: where a **chapter or `DESIGN.md` does not say what the shell should
+show**, that is equally a defect. "What does the user see when the vault is locked and the network
+is down" is a specification question, not a design improvisation.
+
+Subagents MUST report defects in their final message; YOU write the entry and the amendment. When a
+subagent guesses a shape, **read the source yourself and write the truth into the chapter** rather
+than enshrining the guess.
+
+The log stands at 88 logged, 88 closed, **0 open**. Keep it there.
+
+## Staging credentials
+
+Outside the repo, mode 600. Never commit them, never paste them into a chapter, a commit message or
+HANDOFF.md:
+- `~/.memry/staging/account-email.txt`
+- `~/.memry/staging/recovery-phrase.txt` — `unlock --recovery-phrase-file`'s argument
+
+**Kaan was asked to rotate the phrase; confirm it still works before assuming.** OTP arrives by mail
+and `memry login` reads the code from **stdin** — note the prompt goes to **stderr**, so a harness
+capturing only stdout sees nothing and looks hung. A FIFO blocks at open; feed it with `tail -f` on a
+file instead. Gmail search results can be **stale by minutes** — re-query rather than concluding no
+mail arrived.
+
+`login` on a profile that already holds a registered device **re-authenticates it** rather than
+registering a new one; only a fresh profile costs a device slot. The account is at 21 of 50.
+
+Subagent briefs must say: make no network call, do not read `~/.memry/staging/`. **Anything that
+writes to Kaan's real account is the orchestrator's to run**, and anything beyond staging needs his
+explicit authorisation.
+
+## Subagent brief template — every dispatch must carry all of this
+
+> You are implementing tasks {IDs} of Phase 4, specs/002-native-foundation-ios/tasks.md, in the
+> worktree `.worktrees/native-core-phase-3`. Read the exact task text with
+> `awk '/^## Phase 4/,/^## Phase 5/' specs/002-native-foundation-ios/tasks.md`. Read HANDOFF.md
+> first — it states the gate baseline you must not regress.
+>
+> Baseline, freshly observed: cargo test {N} passing 0 failed across {M} binaries, fmt and clippy
+> clean, line ceilings {K} files, vectors:check 11 classes. Do not burn a cycle re-confirming it.
+>
+> Read first, and treat as the ONLY source of truth: docs/protocol/{chapters},
+> specs/002-native-foundation-ios/{data-model.md §…, contracts/core-api.md, contracts/shell-seams.md},
+> DESIGN.md for anything a user sees. `packages/contracts/test-vectors/` is the byte-level contract.
+> spec-defects.md entries 1–88 are ALL CLOSED; do not re-open one.
+>
+> **If a chapter or DESIGN.md does not say something you need, that is a spec defect, not a licence
+> to read apps/desktop.** If you must read `packages/sync-client`, `apps/desktop` or
+> `apps/sync-server`, record in your final message: the chapter, the question, and the file. Do NOT
+> edit spec-defects.md or any chapter — the orchestrator owns both.
+>
+> {paste the Hard constraints block, the Known bugs block, and THE LESSON}
+>
+> File ownership: you own {paths}. {name the other live agent's paths}. Shared files are edited with
+> a targeted Edit on a unique anchor, NEVER a Write, re-reading immediately before. Cargo and
+> xcodebuild serialise on shared state; a command may block several minutes — wait it out, do not set
+> `CARGO_TARGET_DIR`.
+>
+> Make no network call. Staging credentials exist and are NOT yours; do not read `~/.memry/staging/`.
+>
+> `export PATH="$HOME/.cargo/bin:$PATH"`. Pinned toolchain 1.98.1.
+>
+> Deliver working code plus tests. **Break each new assertion deliberately, watch it fail, restore
+> it, and report what you observed** — that discipline caught five weak tests in Phase 3, including
+> ones that passed under the very bug they were written for. Do NOT commit, push, or tick tasks.md —
+> the orchestrator does all three.
+>
+> Before returning, RUN and paste the actual output of, from the worktree root:
+>   cd crates && cargo fmt --all --check && cargo clippy --all-targets -- -D warnings && cargo test
+>   cd .. && node scripts/check-line-ceilings.mjs && pnpm --filter @memry/contracts vectors:check
+>   swiftlint --strict   # on your own files, if you touched Swift
+> Do not run `cargo fmt --all` bare — it reformats the other agent's in-flight files. Use `--check`
+> and `rustfmt --edition 2024` on your own files. If any gate is red, fix it or say plainly that it
+> is red and why. Do not report success you did not observe.
+
+## Orchestrator duties after each wave returns
+
+1. Re-run the gate commands yourself. **A subagent's claim is not evidence.**
+2. Write any reported defect into `spec-defects.md` AND close it by amending the chapter or
+   `DESIGN.md`. Read the source yourself for any guessed shape. `pnpm docs:build` if you touched a
+   chapter under `docs/`.
+3. If `packages/contracts` changed: `pnpm ipc:generate` then `pnpm ipc:check`.
+4. If the UniFFI surface changed: rerun `crates/memry-core/build-xcframework.sh`, confirm
+   `git diff --exit-code packages/swift/MemryCore/Sources/MemryCore/Generated/` is clean, and update
+   `contracts/core-api.md` and `contracts/shell-seams.md`. **Nothing else catches a stale binding.**
+5. Root gates: `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+   `pnpm --filter @memry/contracts vectors:check`. Baseline: 1 pre-existing lint warning in
+   `apps/desktop/.../vault-switcher.tsx`. **Do not run the root suite alongside a Rust release build
+   or an xcodebuild** — CPU contention has produced a spurious failure, and a result from that run is
+   not evidence.
+6. **Stage explicit paths, never `git add -A`.** Doing that once swept a live subagent's unfinished
+   file onto main. A failed pre-commit hook also leaves the index populated — `git reset` before
+   staging the next unit.
+7. Commit per meaningful unit. The body states what changed, why, and the evidence with real
+   numbers. No Co-Authored-By.
+8. Tick tasks.md ONLY for tasks whose verification you ran and watched pass.
+9. **Push to main**: `git fetch origin && git merge --ff-only origin/main && git push origin HEAD:main`.
+   The pre-push docs gate fires on `packages/contracts` and desktop/sync-server changes. Write the
+   docs when the gate is right — it was right twice in Phase 3 and skipping would have been wrong
+   both times. `MEMRY_DOCS_IMPACT_SKIP=1` is correct only for genuinely non-user-facing changes, and
+   say why, every time.
+10. The pre-push hook also checks the mobile editor asset when `packages/contracts/src/webview-bridge.ts`
+    or the editor sources change: `pnpm --filter @memry/editor-web editor:build` and commit the result.
+
+If the staged-secret scanner blocks a commit on a false positive, **fix the scanner with tests in
+both directions** — do not rename around it.
+
+## Ending a session
+
+Overwrite `HANDOFF.md` with: waves completed, waves in flight, the exact next wave, open defect
+entries, anything blocked on Kaan, and the current gate baseline. Commit and push it. Then report to
+Kaan: what landed, the real command output, and what is next.
+
+## Checkpoint — this prompt stops when this holds
+
+**A read-only companion on a real vault**, evidenced by T162: the device `Conformance` `.xcresult`
+re-run against this build, plus T161's device test output naming **each** test vault unlocked by
+**each** of the two paths — recovery phrase and device link — on a phone that had never seen it, and
+repeated on an account holding two vaults. US3's independent test is the bar: sign in, unlock by
+phrase, unlock a *second* phone by scanning the desktop's code, and browse real content.
+
+When it holds, say so with the evidence and stop. Until then, end each session with HANDOFF.md
+pushed and the next wave named.

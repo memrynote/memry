@@ -1,0 +1,226 @@
+Continue Phase 3 of specs/002-native-foundation-ios/tasks.md — User Story 2, the core proves a full round trip with no UI. This is a GOAL prompt: re-run it verbatim each session until Phase 3 closes. Do NOT try to finish it in one session.
+
+## Your role this session: orchestrator, not implementer
+
+You do not write the Rust yourself. You read state, pick the next unblocked wave, dispatch
+subagents, verify what they return, commit, and push to main. Dispatch with the Agent tool,
+`model: "opus"`, medium reasoning effort, `subagent_type: "general-purpose"`, run in background.
+Independent batches in ONE message so they run concurrently. Related tasks that touch the same
+files go to ONE agent — never two agents in the same file.
+
+Cap: at most 3 concurrent subagents, and stop dispatching new waves once this session's context is
+~60% spent. Finish verifying, committing and pushing what is already in flight, then write the
+handoff (see "Ending a session"). A half-verified wave left uncommitted is worse than a smaller wave.
+
+## Where the work lives
+
+Everything through the B1 core is ON MAIN, at `c1d3f224f`. There is no long-lived feature branch.
+
+Work in the repo-local worktree `.worktrees/native-core-phase-3` (branch `native-core-phase-3`),
+kept fast-forwarded with `origin/main` — it exists, `pnpm install --frozen-lockfile` has already
+run there, and its `crates/target` cache is warm. Start every session by syncing it:
+
+```bash
+cd .worktrees/native-core-phase-3
+git fetch origin && git status --short && git merge --ff-only origin/main
+```
+
+If the worktree is gone, recreate it: `git worktree add .worktrees/native-core-phase-3 -b
+native-core-phase-3 origin/main`, then `pnpm install --frozen-lockfile`.
+
+Rust is at `~/.cargo/bin` and is NOT on PATH — every cargo invocation needs
+`export PATH="$HOME/.cargo/bin:$PATH"`. The pinned toolchain (1.89) resolves from `crates/`.
+
+Kaan's main checkout at `~/workspace/personal/memry` may lag behind `origin/main`; that is his to
+pull and is not your concern. Never run git commands against it.
+
+## First action, every session: re-derive state. Do not trust this prompt's task list.
+
+```bash
+cd .worktrees/native-core-phase-3
+git log --oneline origin/main -15
+awk '/^## Phase 3/,/^## Phase 4/' specs/002-native-foundation-ios/tasks.md | grep -nE '^- \[[ X]\]'
+tail -20 specs/002-native-foundation-ios/spec-defects.md
+cat HANDOFF.md 2>/dev/null
+```
+
+A `[X]` means the task's verification was RUN and PASSED. A `[ ]` is open regardless of what any
+commit message claims.
+
+## Already on main — do not redo
+
+Commits `fb08c3f36`, `a96611ea0`, `998bdeb8e`, `c1d3f224f`. Ticked: T084–T088, T090, T091, T092, T095.
+Phase 2 (docs/protocol/00–14, the 280 committed vectors, the dispositioned checklist) is also on main.
+
+- `crates/memry-core/src/crypto/{sodium,keys,recovery,cbor}.rs`, `protocol/compress.rs`,
+  `api/{errors,crypto}.rs`, `seams/` (all eight foreign traits + four companion traits).
+- `tests/vectors.rs` + `tests/support/mod.rs` (harness reads committed JSON via `include_str!`,
+  one copy in the repo) and `tests/dryoc_parity.rs`.
+- Four vector classes pass byte for byte: `crypto-vectors`, `bip39-unlock`, `cbor-canonical`,
+  `compression`. The other seven pin formats that B2/B3 has not built yet.
+- `contracts/core-api.md` and `contracts/shell-seams.md` are written and must be KEPT CURRENT.
+- `build-xcframework.sh` runs end to end; both slices emit; 10 functions and 12 protocols in the
+  generated Swift. The `.xcframework` itself is gitignored; the generated Swift is committed.
+- Spec defect 1 is logged and CLOSED (chapter 04 §4.1.1: stock zlib at level 6 —
+  `flate2 = { default-features = false, features = ["zlib"] }`. `miniz_oxide` and `zlib-rs` both
+  emit valid-but-different streams and fail the vectors; all three round-trip, so only the
+  committed bytes catch it). Do not re-open this.
+- `scripts/check-staged-secrets.mjs` now understands Rust declarations. If a commit is blocked by a
+  new false positive, fix the scanner with tests in both directions — do not rename around it.
+
+## READ FIRST, in this order (the orchestrator reads 1–4; every subagent is told to read its own chapters)
+
+1. `docs/protocol/00-overview-and-versioning.md` … `14-attachments.md` — the specification you are
+   implementing. It is the source of truth, NOT the TypeScript.
+2. `packages/contracts/test-vectors/README.md` — the three governing rules and the three documented
+   places the built classes differ from `contracts/conformance-vectors.md`.
+3. `specs/002-native-foundation-ios/data-model.md` and `plan.md`.
+4. `specs/002-native-foundation-ios/spec-defects.md` — read the rule at the top before any Rust.
+
+## THE DEFECT LOG IS THE POINT OF THIS PHASE, not paperwork
+
+Every time anyone has to open `packages/sync-client`, `apps/desktop` or `apps/sync-server` to find
+out what the protocol does, that is a defect in `docs/protocol/` — log it in `spec-defects.md` with
+the chapter, the question, and the file that had to be read. **Close it by changing the chapter**
+(and its vectors, if a format is involved), never by writing the answer into Rust, a comment, or a
+commit message. Each entry links the chapter diff that closed it. G3 requires zero open entries;
+G5 re-checks. SC-002 counts this file.
+
+Subagents MUST report defects back to you in their final message; YOU write the log entry and the
+chapter amendment, so the log stays coherent across sessions.
+
+## Hard constraints — restate these in every subagent brief
+
+- **SC-001 first.** 100% of committed vectors must pass in Rust byte for byte before any feature
+  work depends on the core. Run the vector tier before anything else. Treat a failure as a protocol
+  question, not a Rust bug, until proved otherwise.
+- **Four decisions are settled and must not be re-litigated**: the relaxed `LINKING_IP_MISMATCH`
+  (#2184), the canonical value comparison (#2185), the corrected CRDT item type constants (#2186),
+  and frontmatter bytes guaranteed only on the unedited path (chapter 12 §12.4.3). Implement the
+  decision, not today's TypeScript, where they differ — each chapter says which is which.
+- **Issues #2179 to #2187 are NOT yours to fix.** Where a chapter marks current behaviour with an
+  issue number, implement to the chapter and leave the issue alone.
+- **Core obligations that will bite, all already specified**: rebuild a push payload from the live
+  row at send time and never re-push after a merge apply (chapter 06 §6.5.2, P1+P2+P3 — an outbox
+  that freezes the payload at enqueue reintroduces divergence deterministically); never emit
+  `_offline` on the wire (§6.6); store `sync_items.payload` verbatim and project through an untyped
+  value, never a derive-Deserialize struct (chapter 13 §13.2); snapshot with a full-state encode and
+  never rebuild a Y.Doc through named accessors (chapter 12 §12.5.1); check vault association
+  explicitly, because all vaults share one key and a foreign ciphertext decrypts cleanly (chapter 01
+  §1.7); reproduce the SAS modular bias rather than correcting it (chapter 03 §3.6); use RFC 8949
+  §4.2.3 length-first CBOR, not §4.2.1 (chapter 04 §4.7).
+- **The core never parses or serialises markdown.** `extract_text` is its only text operation
+  (chapter 12 §12.1). Reaching for a markdown crate means re-read that section.
+- **Line ceilings are enforced**: 600 lines per `.rs` under `crates/memry-core/src` and
+  `crates/memry-cli/src` (`scripts/check-line-ceilings.mjs`). Past the ceiling is a build failure.
+- **Staging only.** There is no prod test environment.
+
+## Waves — dispatch in this order, respecting dependencies
+
+Each wave is one or more independently verifiable units. Tasks inside a `{}` group go to ONE agent.
+Groups on the same line are independent and dispatch in parallel.
+
+```
+W1  {T099,T100,T101,T102,T103}  storage: connection, migration runner, 3 baseline SQL files
+W2  {T105,T106} envelope + item-type negotiation   ||  {T109,T110,T111} yrs registry, update log, lifecycle
+W3  {T096,T097,T098} runtime, http client, auth    ||  {T104} repositories + per-type projectors   [needs W1]
+W4  {T107,T108} pull loop + engine state machine   [needs W1,W2,W3]
+W5  {T112,T113} CLI transport + commands           [needs W3,W4]
+W6  {T116,T117,T118} outbox, push wave, policy     ||  {T123} extract_text
+W7  {T119,T120,T121,T122} snapshots, bootstrap, socket, first sync   [needs W6]
+W8  {T126}||{T127}||{T128}||{T129}||{T130}  domain modules — all [P], separate files, fan out wide
+W9  {T131} search   [needs W1,T123]   ||  {T124,T125} markdown bridge in editor-web + CLI notes edit
+W10 {T132,T133,T134,T135,T136} five real-adapter seam tests   [needs W6,W7,W8]
+W11 {T079,T080,T081,T083} iOS spikes S1–S3 + G3a note          [independent, can go any time]
+```
+
+**T089 rides along.** Every wave that implements a format extends `tests/vectors.rs` with that
+format's committed class (record-envelope, crdt-update, field-merge, pack-container,
+payload-schemas, device-linking, text-extract). Tick T089 only when all eleven classes have a test
+function and pass.
+
+## Blocked — do not burn time on these
+
+- **T082, T093, T094 (device tier): BLOCKED by decision.** Kaan chose simulator-only; no physical
+  iPhone 15 is attached. Write the Swift conformance target and run it on a simulator, but record
+  explicitly in `research.md` §Addenda and in the G3 evidence that the simulator run is NOT evidence
+  for the `aarch64-apple-ios` crypto build (T093 says so). G3 closes with this item named as open,
+  never silently.
+- **T114, T115, T137, T139 (staging + a live desktop): BLOCKED on Kaan.** When W5 lands and
+  `memry-cli` can attempt a login, STOP and ask him for: the staging account email, the
+  recovery-phrase file path for a desktop-created vault, and confirmation a desktop is signed in on
+  staging. Do not guess credentials and do not point anything at prod. A 501 from `/sync/bootstrap`
+  means the deployment has no bootstrap key configured (chapter 10 §10.12), not a client[118;1:3u bug — size
+  the timing against the steady-state arithmetic in §10.6.1.
+
+## Subagent brief template — every dispatch must carry all of this
+
+> You are implementing tasks {IDs} of Phase 3, specs/002-native-foundation-ios/tasks.md, in the
+> worktree `.worktrees/native-core-phase-3`. Read the exact task text with
+> `awk '/^## Phase 3/,/^## Phase 4/' specs/002-native-foundation-ios/tasks.md`.
+>
+> Read first, and treat as the ONLY source of truth: docs/protocol/{chapters}, plus
+> specs/002-native-foundation-ios/data-model.md §{sections}. `packages/contracts/test-vectors/` is
+> the byte-level contract.
+>
+> **If a chapter does not say something you need, that is a spec defect, not a licence to read
+> apps/desktop.** If you must read `packages/sync-client`, `apps/desktop` or `apps/sync-server`,
+> record in your final message: the chapter, the question, and the file you read. Do NOT edit
+> spec-defects.md or any chapter yourself — the orchestrator owns both.
+>
+> Constraints: {paste the Hard constraints block}. `export PATH="$HOME/.cargo/bin:$PATH"`.
+>
+> Deliver: working code plus the committed-vector test coverage for any format you implemented.
+> Do NOT commit, do NOT push, and do NOT tick tasks.md — the orchestrator does all three.
+>
+> Before returning, RUN and paste the actual output of:
+>   cargo fmt --all --check
+>   cargo clippy --all-targets -- -D warnings
+>   cargo test
+>   node scripts/check-line-ceilings.mjs
+> If any is red, fix it or say plainly that it is red and why. Do not report success you did not
+> observe. Your final message must contain: files changed, the four command outputs, any spec
+> defects found, and anything you could not do.
+
+## Orchestrator duties after each wave returns
+
+1. Re-run the four gate commands yourself. A subagent's claim is not evidence.
+2. Write any reported spec defect into `spec-defects.md` AND close it by amending the chapter (and
+   its vectors, if a format is involved). Run `pnpm docs:build` if you touched a chapter.
+3. If `packages/contracts` changed: `pnpm ipc:generate` then `pnpm ipc:check`.
+4. If the UniFFI surface changed: rerun `crates/memry-core/build-xcframework.sh` and keep
+   `contracts/core-api.md` and `contracts/shell-seams.md` current.
+5. Root gates: `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+   `pnpm --filter @memry/contracts vectors:check`. (Baseline: 1 pre-existing lint warning in
+   `apps/desktop/src/renderer/src/components/vault-switcher.tsx`; `pnpm test` ~20935 passed,
+   3 expected-fail, 13 skipped. Anything worse is yours.)
+6. Commit per meaningful unit, never in one lump. Commit body states what changed, why, and the
+   evidence with real numbers. No Co-Authored-By.
+7. Tick tasks.md ONLY for tasks whose verification you ran and watched pass.
+8. **Push to main.** Kaan's standing instruction for this phase is straight to main, no PR:
+   `git fetch origin && git merge --ff-only origin/main && git push origin HEAD:main`.
+   Push only green units — never a wave whose gates you have not watched pass. If the fast-forward
+   fails because main moved, rebase onto it and re-run the gate commands before pushing.
+
+## Ending a session
+
+Write `HANDOFF.md` in the worktree (overwrite it each time) with: waves completed, waves in flight
+and their state, the exact next wave to dispatch, open spec-defect entries, anything blocked on
+Kaan, and the current gate baseline. Commit and push it with the rest. Then report to Kaan: what
+landed on main, the real command output, and what is next. Do not claim a gate is closed unless its
+evidence ran.
+
+## Gate exit criteria — this prompt stops when all three hold
+
+- **G3**: the Rust vector tier green across all eleven committed classes; `spec-defects.md` at zero
+  open; cargo fmt/clippy/test and `node scripts/check-line-ceilings.mjs` green; device-tier item
+  recorded as explicitly BLOCKED rather than passed.
+- **G4**: the headless round trip against staging with the FR-011 evidence T115 names, including the
+  T114 precondition checks (`BOOTSTRAP_SESSION_HMAC_KEY` present, a `client_policies` row for
+  platform `ios` with writes enabled).
+- **G5**: `spec-defects.md` re-checked at zero; the T139 recorded round-trip session; the SC-010
+  cross-shell digest compared, computed per chapter 12 §12.11 over `title + "\n" + extract_text(doc)`,
+  with `text-extract.json` as the contract between the two extractor ports.
+
+When all three hold, say so with the evidence and stop. Until then, end each session with HANDOFF.md
+pushed and the next wave named.

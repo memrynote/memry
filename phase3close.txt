@@ -1,0 +1,309 @@
+Close Phase 3 of specs/002-native-foundation-ios/tasks.md — User Story 2, the core proves a full
+round trip with no UI. This is a GOAL prompt: re-run it verbatim each session until all three gates
+hold. Do NOT try to finish it in one session. It replaces phase3rest.txt, which took the phase from
+nothing to a working read path; what is left is the WRITE path and the evidence.
+
+## Your role this session: orchestrator, not implementer
+
+You read state, pick the next unblocked wave, dispatch subagents, verify what they return, commit,
+and push to main. Dispatch with the Agent tool, `model: "opus"`, `subagent_type: "general-purpose"`,
+run in background.
+
+**Cap at TWO concurrent subagents in this worktree.** Three were dispatched once and all three died
+without writing a file: they each started a cold cargo build against the shared `crates/target` and
+serialised on its lock. Two work reliably. **Verify a new agent is alive** — files appearing, or a
+`cargo`/`rustc` process — before assuming it is working; and note that a long silence right after a
+toolchain change is a legitimate full rebuild, not a hang.
+
+Stop dispatching new waves once this session's context is ~60% spent. Finish verifying, committing
+and pushing what is in flight, then write HANDOFF.md.
+
+## Where the work lives
+
+Everything is ON MAIN at `71fa068b8`. No long-lived feature branch.
+
+Work in the repo-local worktree `.worktrees/native-core-phase-3` (branch `native-core-phase-3`),
+kept fast-forwarded with `origin/main`. Start every session with:
+
+```bash
+cd .worktrees/native-core-phase-3
+git fetch origin && git status --short && git merge --ff-only origin/main
+```
+
+Rust is at `~/.cargo/bin` and is NOT on PATH — every cargo invocation needs
+`export PATH="$HOME/.cargo/bin:$PATH"`. **The pinned toolchain is 1.98.1**, not 1.89: plan.md
+pinned 1.89 and `yrs 0.27.4` together, which is impossible (yrs uses `if let` guards, unstable
+before 1.95). It resolves from `crates/rust-toolchain.toml`.
+
+Kaan's main checkout may lag behind `origin/main`; that is his to pull. Never run git against it.
+
+## First action, every session: re-derive state. Do not trust this prompt's task list.
+
+```bash
+cd .worktrees/native-core-phase-3
+git log --oneline origin/main -10
+awk '/^## Phase 3/,/^## Phase 4/' specs/002-native-foundation-ios/tasks.md | grep -nE '^- \[[ x]\]'
+tail -20 specs/002-native-foundation-ios/spec-defects.md
+cat HANDOFF.md
+```
+
+A `[x]` means the task's verification was RUN and PASSED. A `[ ]` is open regardless of what any
+commit message claims.
+
+## Done — do not redo
+
+41 of Phase 3's tasks are ticked: T084–T092, T095–T113, T116–T123, T232, T233, T234, T089, T093,
+T114. That includes the whole storage tier, crypto, both envelopes, the CRDT tier, the pull loop and
+engine, outbox/push/policy, first sync with the downward body pull, `memry-cli`, and the iOS
+toolchain.
+
+**SC-001 is met**: all ELEVEN committed vector classes pass. **SC-002 is met**: `spec-defects.md`
+is at 0 open, 53 closed. Do not re-open a closed entry.
+
+Two classes carry a documented, deliberate divergence from their committed file. **Do not "fix"
+either by making the core match the file:**
+- `field-merge`'s `object-values-same-content-different-key-order` records pre-#2185 TypeScript;
+  chapter 06 §6.4.2 is the dated decision and the core follows it. Both values are asserted.
+- `pack-container`'s `entry-count-too-large` has no asserted message: the reference's
+  `pack truncated` is unreachable for a conforming reader that applies §8.6's cap.
+
+## What is left — 23 tasks
+
+```
+W8   {T126}||{T127}||{T128}||{T129}||{T130}   domain modules — all [P], separate files, fan out
+W9   {T125} notes edit --append (yrs)   ||   {T124} markdown bridge in editor-web
+W10  {T131} search   [needs T123, which is done]
+W11  {T132,T133,T134,T135,T136}  five real-adapter seam tests
+W12  {T079,T080,T081,T083}  iOS spikes S1–S3 + the G3a note
+G    {T115} G4 transcript · {T137} kill switch · {T138} defect log re-check · {T139} G5 session
+     {T094} G3 evidence · {T082} device tier (BLOCKED, see below)
+```
+
+Respect the cap of two. W8's five are genuinely independent files — dispatch two at a time.
+
+## THE LESSON FROM THE READ PATH — apply it to the write path
+
+The read path looked finished. 314 unit tests were green, all eleven vector classes passed, and the
+first real staging round trip still found **five wire mismatches**, four of them chapter omissions:
+
+1. `POST /sync/pull` takes `itemIds`, not `ids`. Request body was never written down.
+2. **The read envelope is not the write envelope** — pull nests the four ciphertext fields under
+   `blob`, push sends them flat. 500 of 500 items came back malformed.
+3. `GET /sync/vaults` sends `vaultUuid`, not `id` or `vaultId`.
+4. That vault reader **silently dropped** rows it could not parse, so a field-name mismatch read as
+   "this account has no vaults" against an account holding four.
+5. `tag_definition.icon: null` was recorded corrupt, 146 times. No vector carries a null `icon`.
+
+**So: assume the write path hides the same class of surprise, and that a write bug is worse,
+because it writes to Kaan's real data.** Two rules follow.
+
+- **Never let an unparseable response read as an empty one.** FR-032 states this for a zero-row
+  first page; it applies to every reader. A parse failure is `MalformedResponse`, never a skip.
+- **`Field::opt` versus `Field::opt_null` is invisible until a producer writes an explicit null.**
+  When a projector touches a field the vectors do not exercise with a null, prefer `opt_null` and
+  say why — §13.3's forward tolerance and data-model §A.4 both require substitute-never-refuse.
+
+## Hard constraints — restate these in every subagent brief
+
+- **SC-001 stays met.** All eleven vector classes must remain green byte for byte. Treat a failure
+  as a protocol question, not a Rust bug, until proved otherwise.
+- **Four decisions are settled and must not be re-litigated**: the relaxed `LINKING_IP_MISMATCH`
+  (#2184), the canonical value comparison (#2185), the corrected CRDT item type constants (#2186),
+  and frontmatter bytes guaranteed only on the unedited path (chapter 12 §12.4.3).
+- **Issues #2179 to #2187 are NOT yours to fix.**
+- **The core owns no networking.** Everything crosses the `Transport` seam. `reqwest` and
+  `tokio-tungstenite` live in `memry-cli/src/transport.rs` and nowhere else.
+- **The core never parses or serialises markdown.** `extract_text` is its only text operation
+  (chapter 12 §12.1). **T124 is the exception and it is not in the core** — it is
+  `packages/editor-web/src/markdown-bridge.ts`, in the editor bundle, where BlockNote already is.
+  T125 is not a markdown path either: it applies a schema-shaped node through yrs.
+- **Core obligations that bite**: rebuild a push payload from the live row at send time and never
+  re-push after a merge apply (chapter 06 §6.5.2 — already structural in `outbox.rs`, keep it that
+  way); never emit `_offline` on the wire (§6.6); store `sync_items.payload` verbatim and project
+  through an untyped value (chapter 13 §13.2); snapshot with a full-state encode (chapter 12
+  §12.5.1); check vault association explicitly (chapter 01 §1.7); reproduce the SAS modular bias
+  (chapter 03 §3.6); use RFC 8949 §4.2.3 length-first CBOR (chapter 04 §4.7).
+- **Line ceilings**: 600 lines per `.rs` under `crates/memry-core/src` and `crates/memry-cli/src`.
+  The gate is `node scripts/check-line-ceilings.mjs`, now anchored so it works from any directory —
+  it used to pass vacuously from `crates/` having scanned zero files.
+- **PRODUCTION.** Do not edit a committed migration. Additive `0003_*.sql` only, and say so.
+- **Staging only.** There is no prod test environment.
+
+## The defect log is still the point
+
+Every time anyone has to open `packages/sync-client`, `apps/desktop` or `apps/sync-server` to find
+out what the protocol does, that is a defect in `docs/protocol/` — log it in `spec-defects.md` with
+the chapter, the question, and the file that had to be read. **Close it by changing the chapter**
+(and its vectors, if a format is involved), never by writing the answer into Rust or a comment.
+
+Subagents MUST report defects in their final message; YOU write the entry and the chapter
+amendment. When a subagent guesses a wire shape, **read the source yourself and write the truth into
+the chapter** rather than enshrining the guess — three of the five mismatches above were guesses
+that happened to be right, and two were not.
+
+G5 re-checks the log at zero (T138).
+
+## Staging — all preconditions are now satisfied
+
+Credentials live OUTSIDE the repo, mode 600. Never commit them, never paste them into a chapter, a
+commit message or HANDOFF.md:
+- `~/.memry/staging/account-email.txt`
+- `~/.memry/staging/recovery-phrase.txt` — this is `unlock --recovery-phrase-file`'s argument
+
+Facts established, so nobody re-derives them:
+- Base URLs: staging `https://sync-staging.memrynote.com`, prod `https://sync.memrynote.com`,
+  local `http://localhost:8787`. Not hardcoded in the product — `SYNC_SERVER_URL` comes from a
+  gitignored `.env.<environment>`, so a worktree missing it falls back to localhost **silently**.
+  `pnpm env:check` must report its items in place.
+- The staging D1 is **`memry-sync-staging`**, not `memry-staging`.
+- `BOOTSTRAP_SESSION_HMAC_KEY` **is present**. No rotation needed.
+- `client_policies` now has an `ios` row, `writes_enabled = 1`, `min_write_version = NULL`.
+  **T137 is therefore runnable**: flip `writes_enabled` to 0, assert `PLATFORM_WRITES_DISABLED`,
+  flip it back. Leave it at 1.
+- The account has 4 vaults, ~620 items, 28+ devices. The largest vault is
+  `692184c5-c51c-48b4-9fba-0771ed37e34e`.
+- `memry-cli` is registered and visible in the desktop device list (T115's precondition, confirmed).
+- `memry login` reads the OTP from **stdin**; fetch the code from Gmail via the Gmail MCP. A FIFO
+  blocks at open, so feed it with `tail -f` on a file instead.
+
+The last observed clean run, for comparison: 524 applied, 31 deleted, **0 corrupt**, cursor 7598,
+then 136 bodies / 11407 updates / 128 baselines, then real heading-and-list text and a non-empty
+state vector from `dzxnhc9p3gk3`.
+
+**T115 and T139 are the orchestrator's to run, not a subagent's** — they need the credentials and
+they write to Kaan's real account. Subagent briefs must say: make no network call, do not read
+`~/.memry/staging/`.
+
+## iOS — what works and what does not
+
+`xcodebuild` and DerivedData are **shared across worktrees**. Serialise every invocation with
+`while ! mkdir ~/.memry/xcodebuild.lock 2>/dev/null; do sleep 10; done` and always `rmdir` after,
+including on failure. A stuck lock has already blocked a run once.
+
+Use the **iPhone 17** simulator: `-destination 'platform=iOS Simulator,name=iPhone 17'`.
+
+Two faults were fixed to make the app build at all; do not undo either:
+- The generated bindings are their own target at Swift 5 language mode, because UniFFI 0.32.1 emits
+  code Swift 6 rejects (`sending` parameter). **`MemryCore` itself stays at Swift 6.**
+- `Package.swift` links `libz`, because stock zlib is a protocol requirement (chapter 04 §4.1.1) and
+  the static archive needs the system zlib.
+
+T093's simulator suite runs 31 cases across 4 classes. Only 4 of 12 classes are reachable from the
+exported FFI; **do not invent an export to inflate that number** — if G3 needs more, the surface
+grows first and that is a decision, not a task.
+
+## BLOCKED — do not burn time
+
+- **T082, and T094's third evidence item: BLOCKED by decision.** Kaan chose simulator-only; no
+  physical iPhone 15 is attached. **A simulator run is NOT evidence for the `aarch64-apple-ios`
+  crypto build** — the simulator target is `aarch64-apple-ios-sim` on the host CPU and exercises
+  neither the device's memory pressure nor its libsodium. T082's question (does Argon2id at 64 MiB
+  OOM on a real iPhone 15, and is that `-1` distinguishable from a wrong passphrase) can only be
+  answered on hardware. G3 closes with this named as open, never silently.
+
+## Implementation follow-ups already recorded — fix or carry, do not rediscover
+
+1. **`ApiError` has no storage variant.** `PushWave::pending/drain` return `ApiError`, so a local
+   SQLite failure crosses as `ApiError::Transport { Failed { "local storage: …" } }`. Behaviour is
+   right, the typing lies. Add `ApiError::Storage`, and consider `ApiError::PaymentRequired`.
+2. **`apply_local_edit` and `apply_remote` cannot compose into one transaction** — both call
+   `conn.unchecked_transaction()` and SQLite refuses a nested `BEGIN`. A caller wanting the §13.2
+   rule-3 merge *and* its outbox row committed together needs `apply_local_edit_in(&Transaction, …)`.
+   `outbox::enqueue` refuses autocommit, so the unsafe path is a runtime error rather than silent
+   divergence — but the composition is missing and **W8's domain modules will hit it**.
+3. §7.13.3's snapshot **cadence** is unimplemented (the gate, watermark and prune are done). Nothing
+   is incorrect — §7.13.1 says there is no MUST-snapshot — but a heavily edited document's server
+   log grows unboundedly.
+4. The socket has no self-driving `run()` loop; the whole reconnect policy is implemented and tested.
+5. A pulled update does not advance an already-resident `Document` in memory; it lands on the next
+   `load_plan` replay.
+
+## Subagent brief template — every dispatch must carry all of this
+
+> You are implementing tasks {IDs} of Phase 3, specs/002-native-foundation-ios/tasks.md, in the
+> worktree `.worktrees/native-core-phase-3`. Read the exact task text with
+> `awk '/^## Phase 3/,/^## Phase 4/' specs/002-native-foundation-ios/tasks.md`. Read HANDOFF.md
+> first — it states the gate baseline you must not regress.
+>
+> The cargo cache is warm and the baseline is known: `cargo test` gives {N} passing, 0 failed, with
+> all eleven vector classes green. Do not burn a cycle re-confirming it.
+>
+> Read first, and treat as the ONLY source of truth: docs/protocol/{chapters}, plus
+> specs/002-native-foundation-ios/data-model.md §{sections}. `packages/contracts/test-vectors/` is
+> the byte-level contract. spec-defects.md entries 1–53 are ALL CLOSED; do not re-open one.
+>
+> **If a chapter does not say something you need, that is a spec defect, not a licence to read
+> apps/desktop.** If you must read `packages/sync-client`, `apps/desktop` or `apps/sync-server`,
+> record in your final message: the chapter, the question, and the file. Do NOT edit
+> spec-defects.md or any chapter — the orchestrator owns both.
+>
+> {paste the Hard constraints block, and the two rules from THE LESSON}
+>
+> File ownership: you own {paths}. {name the other live agent's paths}. Shared files are edited with
+> a targeted Edit on a unique anchor, NEVER a Write, re-reading immediately before. Cargo serialises
+> on the shared `crates/target`; a command may block a minute or two — wait it out, do not set
+> `CARGO_TARGET_DIR`.
+>
+> Make no network call. Staging credentials exist and are NOT yours; do not read `~/.memry/staging/`.
+>
+> `export PATH="$HOME/.cargo/bin:$PATH"`. Pinned toolchain 1.98.1.
+>
+> Deliver working code plus tests. Do NOT commit, push, or tick tasks.md — the orchestrator does all
+> three. Before returning, RUN and paste the actual output of, from the worktree root:
+>   cd crates && cargo fmt --all --check && cargo clippy --all-targets -- -D warnings && cargo test
+>   cd .. && node scripts/check-line-ceilings.mjs
+> Do not run `cargo fmt --all` bare — it reformats the other agent's in-flight files. Use `--check`
+> and `rustfmt --edition 2024` on your own files. If any gate is red, fix it or say plainly that it
+> is red and why. Do not report success you did not observe.
+
+## Orchestrator duties after each wave returns
+
+1. Re-run the four gate commands yourself. A subagent's claim is not evidence.
+2. Write any reported defect into `spec-defects.md` AND close it by amending the chapter. Read the
+   source yourself for any guessed wire shape. `pnpm docs:build` if you touched a chapter.
+3. If `packages/contracts` changed: `pnpm ipc:generate` then `pnpm ipc:check`.
+4. If the UniFFI surface changed: rerun `crates/memry-core/build-xcframework.sh`, confirm
+   `git diff --exit-code packages/swift/MemryCore/Sources/MemryCore/Generated/` is clean, and keep
+   `contracts/core-api.md` and `contracts/shell-seams.md` current.
+5. Root gates: `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+   `pnpm --filter @memry/contracts vectors:check`. Baseline: 1 pre-existing lint warning in
+   `apps/desktop/.../vault-switcher.tsx`; `pnpm test` ~20937 passed, 3 expected-fail, 13 skipped.
+   **Do not run the root suite alongside a Rust release build or an xcodebuild** — CPU contention
+   has produced a spurious failure, and a result from that is not evidence.
+6. **Stage explicit paths, never `git add -A`.** Doing that once swept a live subagent's unfinished
+   file onto main. A failed pre-commit hook also leaves the index populated — `git reset` before
+   staging the next unit.
+7. Commit per meaningful unit. The body states what changed, why, and the evidence with real
+   numbers. No Co-Authored-By.
+8. Tick tasks.md ONLY for tasks whose verification you ran and watched pass.
+9. **Push to main**: `git fetch origin && git merge --ff-only origin/main && git push origin HEAD:main`.
+   The pre-push docs gate fires on `packages/contracts` changes; `docs/protocol/` is not part of the
+   user-facing docs site, so `MEMRY_DOCS_IMPACT_SKIP=1` is correct there **when** the governing
+   chapter changed in the same commit. Say why, every time.
+
+If the staged-secret scanner blocks a commit on a false positive, **fix the scanner with tests in
+both directions** — do not rename around it. It has been extended four times for Rust already.
+
+## Ending a session
+
+Overwrite `HANDOFF.md` with: waves completed, waves in flight, the exact next wave, open defect
+entries, anything blocked on Kaan, and the current gate baseline. Commit and push it. Then report to
+Kaan: what landed, the real command output, and what is next.
+
+## Gate exit criteria — this prompt stops when all three hold
+
+- **G3**: the vector tier green across all eleven classes (already true — keep it true);
+  `spec-defects.md` at zero open; cargo fmt/clippy/test and the line-ceiling gate green; T094's
+  binding diff clean; T083's four spike notes written in `research.md` §Addenda; the device-tier
+  item recorded as explicitly BLOCKED rather than passed.
+- **G4**: the headless round trip against staging with the FR-011 evidence T115 names — a recorded
+  transcript, the new device in the desktop device list, a desktop-created note pulled and decrypted.
+- **G5**: `spec-defects.md` re-checked at zero (T138); the T139 recorded round-trip session showing
+  `memry-cli` edit to desktop under 5 s and desktop edit to `memry-cli` under 5 s; concurrent edits
+  converging; an injected synthetic unknown item type round-tripping verbatim (SC-014); the kill
+  switch honoured (T137); and the SC-010 cross-shell digest compared, computed per chapter 12 §12.11
+  over `title + "\n" + extract_text(doc)`, with `text-extract.json` as the contract between the two
+  extractor ports.
+
+When all three hold, say so with the evidence and stop. Until then, end each session with HANDOFF.md
+pushed and the next wave named.
