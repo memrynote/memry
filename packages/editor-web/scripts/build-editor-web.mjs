@@ -40,11 +40,18 @@ const contractFile = join(repoRoot, 'packages/contracts/src/webview-bridge.ts')
 // y-prosemirror, so a schema change shipping with a stale editor is data loss,
 // not a rendering gap.
 const schemaDir = join(repoRoot, 'packages/editor-schema/src')
-// The bundle now lives outside apps/mobile, but the frozen RN shell still loads
-// this generated module, so the output path is unchanged. The iOS shell's own
-// artifact (packages/editor-web/dist/ + apps/ios/Memry/Generated/) lands with
-// the Swift editor host, not with this move.
-const outFile = join(repoRoot, 'apps/mobile/src/editor/generated/editor-web-asset.ts')
+// The canonical artifact lives with its sources, in this package. Nothing
+// outside it owns the bundle any more, so `apps/mobile` can be deleted without
+// taking the editor with it.
+const outFile = join(editorWebRoot, 'generated/editor-web-asset.ts')
+// The frozen RN shell (apps/mobile) imports this module by relative path and
+// Metro resolves no `exports` map into a workspace package, so it keeps a
+// mirror copy. It is written from the same bytes, never edited by hand, and
+// the freshness gate reads the canonical file above. Delete these two lines
+// with apps/mobile.
+const mirrorFiles = [join(repoRoot, 'apps/mobile/src/editor/generated/editor-web-asset.ts')].filter(
+  (file) => existsSync(dirname(file))
+)
 
 const checkOnly = process.argv.includes('--check')
 
@@ -118,7 +125,7 @@ const css = existsSync(cssPath) ? readFileSync(cssPath, 'utf8') : ''
 
 // vite emits <script type=module src=…> and <link rel=stylesheet href=…>;
 // both become inline elements so the document has zero subresources.
-let inlined = html
+const inlined = html
   .replace(/<script\b[^>]*\bsrc="[^"]*editor\.js"[^>]*><\/script>/, () => {
     return `<script type="module">\n${js}\n</script>`
   })
@@ -146,12 +153,9 @@ if (remaining.length > 0) {
 
 const packed = gzipSync(Buffer.from(inlined, 'utf8'), { level: 9 }).toString('base64')
 
-mkdirSync(dirname(outFile), { recursive: true })
-writeFileSync(
-  outFile,
-  `/* eslint-disable */
+const moduleSource = `/* eslint-disable */
 /**
- * GENERATED — do not edit. Source: apps/mobile/editor-web/.
+ * GENERATED — do not edit. Source: packages/editor-web/src/.
  * Rebuild with \`pnpm --filter @memry/editor-web editor:build\`;
  * \`editor:check\` fails when this file is older than its sources.
  */
@@ -165,10 +169,13 @@ export const EDITOR_WEB_HTML_BYTES = ${Buffer.byteLength(inlined, 'utf8')}
 /** gzip(html), base64. Inflate with \`loadEditorWebHtml()\`. */
 export const EDITOR_WEB_HTML_GZ_B64 =
   ${JSON.stringify(packed)}
-`,
-  'utf8'
-)
+`
+
+for (const file of [outFile, ...mirrorFiles]) {
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(file, moduleSource, 'utf8')
+}
 
 console.log(
-  `editor-web asset written (${expected}, ${(inlined.length / 1024).toFixed(0)} KB → ${(packed.length / 1024).toFixed(0)} KB packed) → ${relative(repoRoot, outFile)}`
+  `editor-web asset written (${expected}, ${(inlined.length / 1024).toFixed(0)} KB → ${(packed.length / 1024).toFixed(0)} KB packed) → ${[outFile, ...mirrorFiles].map((file) => relative(repoRoot, file)).join(', ')}`
 )
