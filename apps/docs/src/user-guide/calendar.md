@@ -33,6 +33,26 @@ clickable target for opening or editing events.
 | Notes with a calendar-enabled date property | All-day note chips on the property's date      |
 | Notes (with **Show notes on calendar** on)  | All-day chips on the day each note was created |
 
+## Multi-Day Events
+
+An event whose end date is later than its start date is drawn as **one continuous bar** across
+every day it covers, not as a single chip on the day it starts.
+
+| View        | How a span appears                                                                       |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| Week        | A bar in the all-day row, crossing the day columns it covers                             |
+| Month       | A bar across the week row; a span that crosses a week boundary continues on the next row |
+| Day         | In the all-day row on every day it covers, including days it merely passes through       |
+| Year / mini | Every covered day is marked, not just the start day                                      |
+
+A span that runs past the days currently on screen is clipped to what's visible and keeps
+scrolling with the grid. Overlapping spans stack in lanes, and the all-day row grows to fit them.
+
+An all-day event that ends at midnight ends on the **previous** day — a 10-12 May event covers
+three days, not four. The day summary, day dots, and mini-calendar counts follow the same rule.
+
+Spans open their detail popover on click. Drag-to-move and resize remain on single-day chips.
+
 ## Search
 
 Click the search icon in the toolbar to reveal a search box. Type to filter everything
