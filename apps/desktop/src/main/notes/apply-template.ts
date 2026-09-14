@@ -14,7 +14,8 @@ import type { Template } from '@memry/contracts/templates-api'
 
 /**
  * Build the NoteUpdateInput for applying a template to a note.
- * - `full`: union tags, merge properties (existing values win on conflict).
+ * - `full`: union tags, merge properties (existing values win on conflict), and
+ *   adopt the template's icon only when the note has none of its own.
  * - `body`: content only; tags/properties left undefined so updateNote keeps them.
  */
 export function buildTemplateApplyUpdate(
@@ -28,6 +29,9 @@ export function buildTemplateApplyUpdate(
   if (mode === 'full') {
     update.tags = [...new Set([...note.tags, ...applied.tags])]
     update.properties = { ...applied.properties, ...note.properties }
+    if (!note.emoji && applied.icon) {
+      update.emoji = applied.icon
+    }
   }
 
   return update

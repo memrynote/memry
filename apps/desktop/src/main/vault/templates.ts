@@ -248,13 +248,13 @@ export async function updateTemplate(input: TemplateUpdateInput): Promise<Templa
   const updated: Template = {
     ...existing,
     name: input.name ?? existing.name,
-    description: input.description !== undefined ? input.description : existing.description,
-    icon: input.icon !== undefined ? input.icon : existing.icon,
+    description: input.description === undefined ? existing.description : input.description,
+    icon: input.icon === undefined ? existing.icon : input.icon,
     tags: input.tags ?? existing.tags,
     properties:
-      input.properties !== undefined
-        ? (input.properties as TemplateProperty[])
-        : existing.properties,
+      input.properties === undefined
+        ? existing.properties
+        : (input.properties as TemplateProperty[]),
     content: input.content ?? existing.content,
     modifiedAt: now
   }
@@ -342,6 +342,7 @@ export function applyTemplate(
   content: string
   tags: string[]
   properties: Record<string, unknown>
+  icon: string | null
 } {
   const content = substituteTemplatePlaceholders(template.content, title)
 
@@ -354,6 +355,7 @@ export function applyTemplate(
   return {
     content,
     tags: [...template.tags],
-    properties
+    properties,
+    icon: template.icon ?? null
   }
 }

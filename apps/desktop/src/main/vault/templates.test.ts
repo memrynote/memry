@@ -195,6 +195,26 @@ describe('applyTemplate', () => {
     expect(result.content).toBe('# Hello\n\nAbout Hello.')
     expect(result.tags).toEqual(['a', 'b'])
     expect(result.properties).toEqual({ status: 'todo', date: null })
+    expect(result.icon).toBeNull()
+  })
+
+  it('carries the template icon through so a new note can adopt it', () => {
+    const result = applyTemplate(
+      {
+        id: 'x',
+        name: 'X',
+        icon: '📝',
+        isBuiltIn: false,
+        tags: [],
+        properties: [],
+        content: 'plain',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        modifiedAt: '2026-01-01T00:00:00.000Z'
+      },
+      'Hello'
+    )
+
+    expect(result.icon).toBe('📝')
   })
 
   it('handles a template without properties', () => {

@@ -61,6 +61,25 @@ describe('buildTemplateApplyUpdate', () => {
     expect(u.properties).toEqual({ status: 'done', priority: 5, attendees: '' })
   })
 
+  it('full mode: adopts the template icon when the note has none', () => {
+    const u = buildTemplateApplyUpdate(note, { ...template, icon: '📝' }, 'full')
+    expect(u.emoji).toBe('📝')
+  })
+
+  it('full mode: keeps the note\u2019s own icon over the template icon', () => {
+    const u = buildTemplateApplyUpdate(
+      { ...note, emoji: '🚀' },
+      { ...template, icon: '📝' },
+      'full'
+    )
+    expect(u.emoji).toBeUndefined()
+  })
+
+  it('body mode: leaves the icon untouched', () => {
+    const u = buildTemplateApplyUpdate(note, { ...template, icon: '📝' }, 'body')
+    expect(u.emoji).toBeUndefined()
+  })
+
   it('body mode: leaves tags and properties undefined (untouched by updateNote)', () => {
     const u = buildTemplateApplyUpdate(note, template, 'body')
     expect(u.tags).toBeUndefined()

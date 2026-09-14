@@ -288,6 +288,34 @@ describe('notes operations', () => {
         owner: 'Kaan'
       })
     })
+
+    it('adopts the template icon so the note is identifiable in a list', async () => {
+      const result = await notes.createNote({
+        title: 'Weekly Sync',
+        template: 'meeting-notes'
+      })
+
+      expect(result.emoji).toBe('📝')
+
+      const reloaded = await notes.getNoteById(result.id)
+      expect(reloaded!.emoji).toBe('📝')
+    })
+
+    it('lets an explicit icon win over the template icon', async () => {
+      const result = await notes.createNote({
+        title: 'Custom Icon',
+        template: 'meeting-notes',
+        emoji: '🚀'
+      })
+
+      expect(result.emoji).toBe('🚀')
+    })
+
+    it('leaves the icon unset when the note uses no template', async () => {
+      const result = await notes.createNote({ title: 'No Template' })
+
+      expect(result.emoji).toBeNull()
+    })
   })
 
   // ==========================================================================
