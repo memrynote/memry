@@ -251,6 +251,8 @@ export async function updateTemplate(input: TemplateUpdateInput): Promise<Templa
     description: input.description === undefined ? existing.description : input.description,
     icon: input.icon === undefined ? existing.icon : input.icon,
     tags: input.tags ?? existing.tags,
+    // SAFETY: `input` is a TemplateUpdateInput already parsed by the templates
+    // IPC contract schema, so `properties` is a validated TemplateProperty list.
     properties:
       input.properties === undefined
         ? existing.properties
