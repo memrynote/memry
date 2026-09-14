@@ -26,16 +26,14 @@ final class AuthStartup {
 
     private(set) var phase: Phase = .starting
 
-    /// The process's one event hub.
+    /// The hub's emitter, handed down from the app root.
     ///
-    /// **Its stream is deliberately not taken here.** `CoreEvents.consume()`
-    /// vends the stream once and returns `nil` on every later call, and the
-    /// single consumer is **T158's** (spec-defect 92) — along with §7.15's
-    /// runtime obligations on `purged_documents` and `advanced_documents`, and
-    /// the `snapshot_is_due` poll (spec-defect 100), which are the app root's
-    /// and which T158 owns. The hub exists now only because `Keychain` and
-    /// `URLSessionTransport` cannot be constructed without an emitter.
-    private let events = CoreEvents()
+    /// **T158 moved the hub itself out of this object** (spec-defect 92). This
+    /// file used to construct `CoreEvents` and carry a comment saying its
+    /// stream must not be taken here; `ShellState` now owns the hub and hands
+    /// this object only a `CoreEventEmitter`, so the rule is held by what this
+    /// type can reach rather than by a comment.
+    private let emitter: CoreEventEmitter
     private let executor = CoreExecutor.shared
 
     /// T152's dependency. **No longer a gap.**
@@ -77,6 +75,8 @@ final class AuthStartup {
     private let keychainItems: any KeychainItemStore
 
     /// - Parameters:
+    ///   - emitter: the app root's hub emitter. **Required, with no default**:
+    ///     a discarding default would let a call site forget the hub silently.
     ///   - keyMaterial: a scripted account read, for a test that wants one.
     ///     Production passes nothing and gets `CoreAccountKeyMaterial`.
     ///   - transportConfiguration: substitutes the network **under** the real
@@ -90,10 +90,12 @@ final class AuthStartup {
     /// reconstruction of it that can drift. That is the difference the previous
     /// phase paid for five times over.
     init(
+        emitter: CoreEventEmitter,
         keyMaterial: (any AccountKeyMaterialSource)? = nil,
         transportConfiguration: URLSessionConfiguration = URLSessionTransport.defaultConfiguration(),
         keychainItems: any KeychainItemStore = SystemKeychainItemStore()
     ) {
+        self.emitter = emitter
         keyMaterialOverride = keyMaterial
         self.keyMaterial = keyMaterial
         self.transportConfiguration = transportConfiguration
@@ -110,7 +112,7 @@ final class AuthStartup {
         return RecoveryPhraseViewModel(
             executor: executor,
             source: keyMaterial,
-            secureStore: Keychain(emitter: events.emitter, items: keychainItems)
+            secureStore: Keychain(emitter: emitter, items: keychainItems)
         )
     }
 
@@ -129,8 +131,8 @@ final class AuthStartup {
         guard state == .registered, let deviceLink else { return nil }
         return DeviceLinkingViewModel(
             link: deviceLink,
-            capture: QRCodeScanner(emitter: events.emitter),
-            secureStore: Keychain(emitter: events.emitter, items: keychainItems),
+            capture: QRCodeScanner(emitter: emitter),
+            secureStore: Keychain(emitter: emitter, items: keychainItems),
             executor: executor
         )
     }
@@ -147,7 +149,7 @@ final class AuthStartup {
         return VaultSelectionViewModel(
             registry: CoreVaultRegistry(session: session),
             opener: CoreVaultOpener(
-                files: VaultFiles(emitter: events.emitter),
+                files: VaultFiles(emitter: emitter),
                 executor: executor
             )
         )
@@ -169,7 +171,7 @@ final class AuthStartup {
     /// so "could not tell" answers `false` and the phrase screen stays.
     func isAlreadyUnlocked() -> Bool {
         do {
-            return try Keychain(emitter: events.emitter, items: keychainItems).get(key: .masterKey) != nil
+            return try Keychain(emitter: emitter, items: keychainItems).get(key: .masterKey) != nil
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.secureStore.error("could not tell whether the master key is present", .code(mapped.code))
@@ -215,14 +217,14 @@ final class AuthStartup {
             // `UIDevice` is main-actor work, so the descriptor is built here
             // and crosses into the executor as a value.
             let descriptor = try AuthComposition.device()
-            let emitter = events.emitter
+            let hints = emitter
             let configuration = transportConfiguration
             let items = keychainItems
             let graph = try await executor.run {
                 try AuthComposition.makeGraph(
                     environment: environment,
                     device: descriptor,
-                    emitter: emitter,
+                    emitter: hints,
                     transportConfiguration: configuration,
                     keychainItems: items
                 )
@@ -292,10 +294,14 @@ final class AuthStartup {
 }
 
 struct AuthRootView: View {
-    @State private var startup = AuthStartup()
+    @State private var startup: AuthStartup
     @State private var unlock: RecoveryPhraseViewModel?
     @State private var link: DeviceLinkingViewModel?
     @State private var vaults: VaultSelectionViewModel?
+
+    init(emitter: CoreEventEmitter) {
+        _startup = State(initialValue: AuthStartup(emitter: emitter))
+    }
 
     var body: some View {
         Group {

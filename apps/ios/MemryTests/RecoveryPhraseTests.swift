@@ -238,11 +238,14 @@ struct RecoveryPhraseUnlockTests {
     /// export; band B3 is where it lands).
     @Test("the app root routes a registered device to the unlock screen, and only with a source")
     func appRootRoutesRegisteredToUnlock() {
-        let withSource = AuthStartup(keyMaterial: StubKeyMaterialSource(material: Self.material))
+        let withSource = AuthStartup(
+            emitter: CoreEvents().emitter,
+            keyMaterial: StubKeyMaterialSource(material: Self.material)
+        )
         #expect(withSource.unlockModel(for: .registered) != nil)
         #expect(withSource.unlockModel(for: .signedOut) == nil)
         #expect(withSource.unlockModel(for: .setupPending) == nil)
-        #expect(AuthStartup().unlockModel(for: .registered) == nil)
+        #expect(AuthStartup(emitter: CoreEvents().emitter).unlockModel(for: .registered) == nil)
     }
 
     // MARK: - Assembly

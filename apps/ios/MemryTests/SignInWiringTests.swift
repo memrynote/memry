@@ -282,7 +282,7 @@ struct SignInWiringTests {
     @Test("the app root constructs a real session rather than a scaffold")
     @MainActor
     func appRootConstructsASession() async {
-        let startup = AuthStartup()
+        let startup = AuthStartup(emitter: CoreEvents().emitter)
         await startup.begin()
 
         guard case let .ready(model) = startup.phase else {

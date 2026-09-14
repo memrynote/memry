@@ -345,6 +345,7 @@ struct T165WiringTests {
         func theProductionScreenOffersGoogle() async throws {
             T165StubURLProtocol.reset(status: 400, body: #"{"code":"VALIDATION_ERROR","message":"no"}"#)
             let startup = AuthStartup(
+                emitter: CoreEvents().emitter,
                 transportConfiguration: stubbedConfiguration(),
                 keychainItems: RecordingKeychainItems()
             )
@@ -417,7 +418,11 @@ struct T165WiringTests {
         func aRestoredLaunchReachesTheUnlockScreen() async throws {
             T165StubURLProtocol.reset(status: 400, body: #"{"code":"VALIDATION_ERROR","message":"no"}"#)
             let items = SeededKeychainItems(seed: ["refresh-token": "refresh-from-the-last-run"])
-            let startup = AuthStartup(transportConfiguration: stubbedConfiguration(), keychainItems: items)
+            let startup = AuthStartup(
+                emitter: CoreEvents().emitter,
+                transportConfiguration: stubbedConfiguration(),
+                keychainItems: items
+            )
 
             await startup.begin()
 
@@ -448,7 +453,11 @@ struct T165WiringTests {
         func aFirstLaunchStaysSignedOut() async throws {
             T165StubURLProtocol.reset(status: 400, body: #"{"code":"VALIDATION_ERROR","message":"no"}"#)
             let items = SeededKeychainItems()
-            let startup = AuthStartup(transportConfiguration: stubbedConfiguration(), keychainItems: items)
+            let startup = AuthStartup(
+                emitter: CoreEvents().emitter,
+                transportConfiguration: stubbedConfiguration(),
+                keychainItems: items
+            )
 
             await startup.begin()
 

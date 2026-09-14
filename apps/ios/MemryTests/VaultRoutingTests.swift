@@ -40,7 +40,7 @@ private struct UnusedKeyMaterial: AccountKeyMaterialSource {
 @Suite("T155 routing after unlock")
 struct VaultRoutingTests {
     private func startup(_ items: ScriptedKeychainItems) -> AuthStartup {
-        AuthStartup(keyMaterial: UnusedKeyMaterial(), keychainItems: items)
+        AuthStartup(emitter: CoreEvents().emitter, keyMaterial: UnusedKeyMaterial(), keychainItems: items)
     }
 
     @Test("a device that already holds the master key has nothing left to unlock")

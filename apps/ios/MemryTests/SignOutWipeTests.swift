@@ -357,7 +357,11 @@ struct SignOutWiringTests {
     @MainActor
     func theProductionLaunchIsWatched() async throws {
         let items = SeededKeychainItems(seed: ["refresh-token": "refresh-from-the-last-run"])
-        let startup = AuthStartup(transportConfiguration: stubbedConfiguration(), keychainItems: items)
+        let startup = AuthStartup(
+            emitter: CoreEvents().emitter,
+            transportConfiguration: stubbedConfiguration(),
+            keychainItems: items
+        )
 
         await startup.begin()
 

@@ -100,7 +100,11 @@ struct DeviceLinkWiringTests {
     func theScanLeavesThroughTheRealTransport() async throws {
         T153StubURLProtocol.reset()
         let items = SeededKeychainItems(seed: ["refresh-token": "refresh-from-the-last-run"])
-        let startup = AuthStartup(transportConfiguration: linkStubbedConfiguration(), keychainItems: items)
+        let startup = AuthStartup(
+            emitter: CoreEvents().emitter,
+            transportConfiguration: linkStubbedConfiguration(),
+            keychainItems: items
+        )
 
         await startup.begin()
 
@@ -136,7 +140,11 @@ struct DeviceLinkWiringTests {
             "refresh-token": "refresh-from-the-last-run",
             "master-key": "a-master-key-this-phone-already-has"
         ])
-        let startup = AuthStartup(transportConfiguration: linkStubbedConfiguration(), keychainItems: items)
+        let startup = AuthStartup(
+            emitter: CoreEvents().emitter,
+            transportConfiguration: linkStubbedConfiguration(),
+            keychainItems: items
+        )
         await startup.begin()
         let model = try #require(startup.linkModel(for: .registered))
 
@@ -160,7 +168,11 @@ struct DeviceLinkWiringTests {
     func aWrongLengthSecretNeverReachesTheServer() async throws {
         T153StubURLProtocol.reset()
         let items = SeededKeychainItems(seed: ["refresh-token": "refresh-from-the-last-run"])
-        let startup = AuthStartup(transportConfiguration: linkStubbedConfiguration(), keychainItems: items)
+        let startup = AuthStartup(
+            emitter: CoreEvents().emitter,
+            transportConfiguration: linkStubbedConfiguration(),
+            keychainItems: items
+        )
         await startup.begin()
         let model = try #require(startup.linkModel(for: .registered))
 
@@ -185,7 +197,11 @@ struct DeviceLinkWiringTests {
     func anExpiredInvitationIsRefusedLocally() async throws {
         T153StubURLProtocol.reset()
         let items = SeededKeychainItems(seed: ["refresh-token": "refresh-from-the-last-run"])
-        let startup = AuthStartup(transportConfiguration: linkStubbedConfiguration(), keychainItems: items)
+        let startup = AuthStartup(
+            emitter: CoreEvents().emitter,
+            transportConfiguration: linkStubbedConfiguration(),
+            keychainItems: items
+        )
         await startup.begin()
         let model = try #require(startup.linkModel(for: .registered))
 
