@@ -1,6 +1,6 @@
 import type { CalendarProjectionVisualType } from '@/services/calendar-service'
 
-import { toLocalDateKey } from './date-utils'
+import { spanDateKeys } from './date-utils'
 import { VISUAL_TYPE_META, VISUAL_TYPE_ORDER } from './visual-type-meta'
 
 const MAX_DOTS_PER_DAY = 3
@@ -8,6 +8,8 @@ const MAX_DOTS_PER_DAY = 3
 export interface DayDotsInput {
   visualType: CalendarProjectionVisualType
   startAt: string
+  endAt?: string | null
+  isAllDay?: boolean
 }
 
 interface RankedItem {
@@ -35,14 +37,16 @@ function pickDotsForBucket(bucket: readonly DayDotsInput[]): string[] {
     .map((entry) => VISUAL_TYPE_META[entry.visualType].dotColor)
 }
 
-export function buildDayDots(items: readonly DayDotsInput[]): Record<string, string[]> {
+export function buildDayDots(items: readonly DayDotsInput[]) {
   if (items.length === 0) return {}
 
   const bucketed: Record<string, DayDotsInput[]> = {}
+  // A multi-day item dots every day it covers, not just the day it starts.
   for (const entry of items) {
-    const key = toLocalDateKey(entry.startAt)
-    const existing = bucketed[key]
-    bucketed[key] = existing ? [...existing, entry] : [entry]
+    for (const key of spanDateKeys(entry)) {
+      const existing = bucketed[key]
+      bucketed[key] = existing ? [...existing, entry] : [entry]
+    }
   }
 
   const result: Record<string, string[]> = {}

@@ -4,7 +4,7 @@ import { CalendarAllDayCell } from './calendar-allday-cell'
 import { CalendarItemChip } from './calendar-item-chip'
 import { CalendarTimedColumnDroppable } from './calendar-timed-column-droppable'
 import { DraggableTaskChip } from './draggable-task-chip'
-import { isToday, toLocalDateKey } from './date-utils'
+import { isMultiDaySpan, isToday, spanCoversDate } from './date-utils'
 import { assignLanes } from './overlap-layout'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatHour } from '@/lib/time-format'
@@ -25,7 +25,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const GRID_LINE_BG =
   'repeating-linear-gradient(to bottom, transparent, transparent 47px, var(--grid-line-color) 47px, var(--grid-line-color) 48px)'
 
-function getEventPosition(item: CalendarProjectionItem): { top: number; height: number } {
+function getEventPosition(item: CalendarProjectionItem) {
   const start = new Date(item.startAt)
   const top = start.getHours() * HOUR_HEIGHT + start.getMinutes() * (HOUR_HEIGHT / 60)
   const endMs = item.endAt ? new Date(item.endAt).getTime() : start.getTime() + 3600000
@@ -89,9 +89,11 @@ export function CalendarDayView({
   // Deliberately NOT date-keyed: the offset here is a time of day, and the hour
   // the user reads at is the same hour whatever day they move to.
   useTabScrollRestore({ getScrollElement: getScrollEl, key: CALENDAR_SCROLL_KEYS.day })
-  const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === anchorDate)
-  const timedItems = dayItems.filter((item) => !item.isAllDay)
-  const allDayItems = dayItems.filter((item) => item.isAllDay)
+  // A span covering this day belongs here even when it started days ago, and it
+  // shows in the all-day strip rather than as a huge block in the time grid.
+  const dayItems = items.filter((item) => spanCoversDate(item, anchorDate))
+  const timedItems = dayItems.filter((item) => !item.isAllDay && !isMultiDaySpan(item))
+  const allDayItems = dayItems.filter((item) => item.isAllDay || isMultiDaySpan(item))
 
   const currentTimeOffset = useMemo(() => {
     const now = new Date()

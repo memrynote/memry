@@ -1,6 +1,6 @@
 import type { CalendarProjectionVisualType } from '@/services/calendar-service'
 
-import { toLocalDateKey } from './date-utils'
+import { spanDateKeys } from './date-utils'
 
 export interface DaySummary {
   notes: number
@@ -13,6 +13,8 @@ export interface DaySummary {
 export interface DaySummaryInput {
   visualType: CalendarProjectionVisualType
   startAt: string
+  endAt?: string | null
+  isAllDay?: boolean
 }
 
 function emptySummary(): DaySummary {
@@ -31,28 +33,31 @@ export function daySummaryTotal(summary: DaySummary): number {
 export function buildDaySummaries(
   items: readonly DaySummaryInput[],
   journalActivity: Record<string, number>
-): Record<string, DaySummary> {
+) {
   const result: Record<string, DaySummary> = {}
   const ensure = (key: string): DaySummary => (result[key] ??= emptySummary())
 
+  // A multi-day item counts on every day it covers, not just its start day.
   for (const item of items) {
-    const summary = ensure(toLocalDateKey(item.startAt))
-    switch (item.visualType) {
-      case 'note':
-        summary.notes += 1
-        break
-      case 'task':
-        summary.tasks += 1
-        break
-      case 'event':
-      case 'external_event':
-        summary.events += 1
-        break
-      case 'reminder':
-      case 'snooze':
-      case 'note_date':
-        summary.reminders += 1
-        break
+    for (const dayKey of spanDateKeys(item)) {
+      const summary = ensure(dayKey)
+      switch (item.visualType) {
+        case 'note':
+          summary.notes += 1
+          break
+        case 'task':
+          summary.tasks += 1
+          break
+        case 'event':
+        case 'external_event':
+          summary.events += 1
+          break
+        case 'reminder':
+        case 'snooze':
+        case 'note_date':
+          summary.reminders += 1
+          break
+      }
     }
   }
 
