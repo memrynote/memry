@@ -160,3 +160,39 @@ describe('NoteTitle - external inputRef (rename from menu)', () => {
     expect(inputRef.current?.selectionEnd).toBe('Focus Me'.length)
   })
 })
+
+describe('NoteTitle - icon button', () => {
+  it('renders no icon affordance when the note has no icon', () => {
+    renderWithI18n(
+      <NoteTitle emoji={null} title="Test Note" onTitleChange={vi.fn()} onIconChange={vi.fn()} />
+    )
+
+    expect(screen.queryByTestId('note-title-icon')).not.toBeInTheDocument()
+  })
+
+  it('renders the icon as a button when onIconChange is given', () => {
+    renderWithI18n(
+      <NoteTitle emoji="📝" title="Test Note" onTitleChange={vi.fn()} onIconChange={vi.fn()} />
+    )
+
+    expect(screen.getByTestId('note-title-icon')).toBeInTheDocument()
+  })
+
+  it('renders a static icon when no handler is given', () => {
+    renderWithI18n(<NoteTitle emoji="📝" title="Test Note" onTitleChange={vi.fn()} />)
+
+    expect(screen.queryByTestId('note-title-icon')).not.toBeInTheDocument()
+    expect(screen.getByText('📝')).toBeInTheDocument()
+  })
+
+  it('opens the shared picker when the icon is clicked', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(
+      <NoteTitle emoji="📝" title="Test Note" onTitleChange={vi.fn()} onIconChange={vi.fn()} />
+    )
+
+    await user.click(screen.getByTestId('note-title-icon'))
+
+    expect(await screen.findByLabelText('Emoji and icon picker')).toBeInTheDocument()
+  })
+})

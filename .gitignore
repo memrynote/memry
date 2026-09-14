@@ -93,3 +93,5 @@ apps/ios/**/*.xcuserdatad/
 # the first time anyone runs the test plans. Hundreds of megabytes of build
 # products; never a source file.
 apps/ios/build/
+
+.vitest/

@@ -9,6 +9,10 @@ everywhere.
 Open any icon picker — click a folder's icon in the sidebar, or a note's icon next to its title —
 and switch to **Custom**.
 
+Inside a note, the icon sits to the left of the title. Click it to change it, or to remove it from
+the same picker. A note with no icon shows no placeholder there — set its first icon from the
+sidebar or from a folder row, and it then appears in the note itself.
+
 When a folder is open as a tab, you can also right-click any note row there and choose **Set Icon**
 (or **Remove Icon**, when the note already has one). That opens the same picker in a centred
 dialog, which is handy when the note's own icon is not on screen.
