@@ -32,7 +32,7 @@ against a capability nobody had checked existed **five times in one phase**:
 **before the brief was written**. The fifth was caught that way. Do it first,
 every time.
 
-## State: **Phase 4 at 19 of 24 ticked.** Phase 3 closed 64/64.
+## State: **Phase 4 at 21 of 24 ticked.** Phase 3 closed 64/64.
 
 T149, T150, T151 and **T156a** are **CUT**; T163, T164, T165 and T235 were
 **added**. **T156a was cut today**: `Notes` exports only `folders`/`list`/`read`,
@@ -191,20 +191,70 @@ every run is what let defect 106's "plausible smaller number" hide for so long.
    anything — they serialise on `crates/target` and on `xcodebuild`. A new
    agent's first file typically appears 10–15 minutes in; that is reading, and
    it is correct.
-9. **A stale queued `cargo test` will report a failure that no longer exists.**
-   `crates/target` is shared, so with two agents a `cargo test` can sit queued
-   15+ minutes and then report against source the other agent has since fixed.
-   This happened **three times** in one session, and the agent reading its own
-   output has no way to tell. Both agents flagged it rather than claiming a
-   number, which was right. **The only reliable move is to re-run the failing
-   target directly** — seconds once the lock is free. Never commit or diagnose
-   on a whole-suite number you did not watch complete against the current tree.
-10. **`git checkout --` does nothing for an untracked file.** A subagent's
+9. **`MemryTests` is ONE Swift module, so two agents must never add test
+   files to it at the same time.** A single file that fails to compile takes
+   down every suite in the target, including the other agent's, and
+   `-only-testing:` **cannot** route around it. This cost an hour: one agent's
+   seven compile errors blocked the other's verification entirely, while the
+   blocked agent's retry loop kept taking the xcodebuild lock to run a build
+   that could never succeed — starving the only party who could fix it. If two
+   agents must run concurrently, **only one may add tests**, or split them
+   across targets. The orchestrator caused this by dispatching both into
+   `MemryTests` at once.
+10. **Verify a break-sweep revert after an INTERRUPTED sweep, not just a
+    completed one.** An agent's sweep was killed mid-break, leaving that break
+    applied; it then re-recorded its md5 baseline from the already-broken file,
+    so the baseline encoded the bug. It was caught only because the next run's
+    "B0 baseline" failed with exactly that break's signatures. Re-hash against a
+    record taken before the sweep started, and treat a baseline that fails as
+    evidence the baseline is wrong rather than evidence the code is.
+11. **A whole-plan run that writes NO xcresult is ONE TEST BLOCKED FOREVER,
+    not a Swift Testing bug.** This cost most of a night. A unit test pressed a
+    real Google button, `ASWebAuthenticationSession` opened, and it waited for a
+    human — nothing timed out, nothing errored, nothing logged. Three agents each
+    correctly said "not my suites"; suite-bisecting, disabling parallelism and
+    erasing the simulator could none of them find it. **Find it in one run**:
+    `-parallel-testing-enabled NO`, then diff `started` against `finished` in the
+    raw log — the stall is the last `started` line. And never let a unit test
+    drive a seam that waits on a person.
+12. **`test-without-building` silently runs a STALE binary when DerivedData
+    paths differ.** An agent built into `-derivedDataPath build`; the
+    orchestrator then ran `test-without-building` with no `-derivedDataPath`,
+    hit the default DerivedData, and tested code that did not contain the fix —
+    producing a completely convincing wrong answer. **Pair
+    `build-for-testing test-without-building`, or pass the same
+    `-derivedDataPath` the build used.**
+13. **A test whose premise is "this is not configured yet" is a test of ambient
+    build state**, and it inverts the day the feature starts working. Two
+    instances of this landed in one morning from one `Info.plist` edit; the
+    first was caught and split into `GoogleConfigurationTests`, the second was
+    missed one file over and is what caused gotcha 11. Assert the thing that is
+    true either way, or inject the absence.
+14. **A stale queued `cargo test` will report a failure that no longer exists.**
+    `crates/target` is shared, so with two agents a `cargo test` can sit queued
+    15+ minutes and then report against source the other agent has since fixed.
+    This happened **three times** in one session, and the agent reading its own
+    output has no way to tell. Both agents flagged it rather than claiming a
+    number, which was right. **The only reliable move is to re-run the failing
+    target directly** — seconds once the lock is free. Never commit or diagnose
+    on a whole-suite number you did not watch complete against the current tree.
+15. **NEVER revert a break with `git checkout --`. It is wrong in BOTH
+    directions.** On an **untracked** file it silently does nothing, so the
+    break stays applied and every later result is measured against broken code.
+    On a **tracked** file it does something far worse: it resets to HEAD and
+    **destroys every uncommitted edit in that file**, including the task's own
+    work. An agent lost all four of its edits to `NotesListView.swift` this way
+    mid-sweep, which then contaminated the next break with two spurious
+    failures that looked like real findings. **A revert must be an inverse
+    patch, or a byte-for-byte copy-back from a pre-sweep snapshot, verified by
+    hash afterwards.** The old wording of this entry mentioned only the
+    untracked half and is why the tracked half was walked into.
+16. **`git checkout --` does nothing for an untracked file.** A subagent's
     break-test sweep used it to revert, and its new files were untracked, so the
     deliberate breaks accumulated silently across iterations. The same command
     would have destroyed its tracked edit had git not errored first. Revert a
     break by inverse patch, and re-verify on restored code.
-11. **An async core call cannot be cancelled** (defect 108) —
+17. **An async core call cannot be cancelled** (defect 108) —
     `rust_future_cancel` appears **zero** times in the bindings. Never offer a
     Cancel button over a suspended core call.
 
@@ -296,28 +346,43 @@ The entry now carries the real reason.
 
 ## Checkpoint status
 
-**NOT MET — but both unlock paths are now built, and five tasks remain.**
+**NOT MET — but every screen the checkpoint needs is now built and wired, and
+only one task stands between here and the phone.**
 
-- **Recovery phrase**: built and wired (T163, T165, T155).
-- **Device link**: built and wired (T235 exports, T153/T154 screens). The
-  manual path is a **paste** field, not typing — the QR payload is ~200
-  characters of JSON, which is spec-defect 129.
-- **Browse**: built (T156), read-only by decision, with unconfigured folders
-  hidden and their notes still visible under a named section.
+Both unlock paths and the whole browse surface exist:
 
-Remaining: **T157** (a text preview — T156's report lists exactly what it needs,
-including that `NoteRowLabel` is deliberately not yet a `NavigationLink` and
-that `BrowseSourceTests` asserts one `navigationDestination` and must be updated
-to two in the same change), **T158** (which owns three runtime obligations:
-`CoreEvents.consume()`, §7.15.1's `purged_documents`/`advanced_documents`, and
-the `snapshot_is_due` poll), **T159**, then **T161/T162 with Kaan and the phone,
-about half an hour together**.
+- **Recovery phrase** — T163 exports the key material, T165 wires the screen and
+  restores the session across a relaunch, T155 picks a vault and opens it
+  through `VaultFiles.openingVault`.
+- **Device link** — T235 exports `DeviceLink.scan`/`pollOnce`, T153/T154 are the
+  screens. **The manual path is a PASTE field, not typing**: the QR payload is
+  ~200 characters of JSON (spec-defect 129), so "manual code entry" never meant
+  what research R13 said it meant.
+- **Browse** — T156 lists notes and folders, T157 previews a note. Read-only by
+  decision: T156a is cut, so there is no create, rename, move or delete
+  anywhere, and that absence is deliberate rather than unfinished.
+- **Sign-out and revocation** — T159.
 
-**Before T161, two keys must reach `Info.plist`** or the app cannot reach a
-server or authenticate as the right OAuth client: **`MemrySyncEnvironment`**
-(defect 110) and **`MemryGoogleClientID`** (defect 117). A release build is
-deliberately `notConfigured` until then. Also confirm the **staging recovery
-phrase still works** — it was pasted into a Phase 3 transcript and Kaan was
-asked to rotate it; still unconfirmed.
+**Remaining: T158'** — the single `CoreEvents.consume()` call site in the app
+root (spec-defect 92, open since T141). Pure shell, no core surface needed. Its
+sync half is cut.
+
+**Then T161/T162 with Kaan and the phone, about half an hour together.**
+
+### Before T161
+
+- **`MemryGoogleClientID` is in `Info.plist`** (Kaan supplied it). **Adding it
+  broke two tests whose premise was its absence** — see gotchas 11 and 13. Both
+  are fixed; the lesson is that configuring the app is a behaviour change.
+- **`MemrySyncEnvironment` is still deliberately absent.** A debug build
+  resolves to staging with no key at all, so **T161 does not need it**. It is
+  needed only for a release or TestFlight build, and the two tempting ways to
+  add it are both wrong — the reasons are written into `Info.plist` itself.
+- **The staging recovery phrase works** — Kaan confirmed it. It has now been
+  pasted into two transcripts; **rotate it after T161**.
+- **Camera QR pairing can be tested on the device**, but spec-defect 130 means
+  there is no viewfinder — aiming is blind and failure is silent. **Gather
+  T161's evidence through the paste path**, which is a complete path that every
+  wiring test drives, and treat the camera as a separate, smaller exercise.
 
 No vault has been opened on a phone yet.
