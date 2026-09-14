@@ -4,10 +4,33 @@ const path = require('path')
 const { builtinModules } = require('module')
 
 const repoRoot = process.cwd()
-const mobileRoot = path.resolve(repoRoot, 'apps/mobile')
 const packagesRoot = path.resolve(repoRoot, 'packages')
 const nodeBuiltins = new Set(builtinModules)
-const mobileSkippedDirs = new Set(['node_modules', 'ios', 'android', '.expo', 'assets', 'scripts'])
+const mobileSkippedDirs = new Set([
+  'node_modules',
+  'ios',
+  'android',
+  '.expo',
+  'assets',
+  'scripts',
+  'dist',
+  'generated'
+])
+
+// Seeds for the non-Node reachability walk. Each root is a client that has no
+// `node:` runtime and no electron, so nothing it reaches — including
+// transitively through workspace packages — may import either.
+//
+// `packages/editor-web` is the load-bearing one: it is the WebView guest, it
+// survives the native rewrite (native iOS plan, decision 3), and it pulls in
+// contracts + editor-schema + shared, which is where a node builtin would
+// actually leak in from. `apps/mobile` is the frozen RN shell — it used to be
+// the only seed, and this rule must not die with it, which is why the walk is
+// seeded by list and each root is skipped when absent.
+const nonNodeClientRoots = [
+  { label: 'packages/editor-web', dir: path.resolve(packagesRoot, 'editor-web/src') },
+  { label: 'apps/mobile', dir: path.resolve(repoRoot, 'apps/mobile') }
+]
 const desktopRoot = path.resolve(repoRoot, 'apps/desktop')
 const mainRoot = path.resolve(desktopRoot, 'src/main')
 const rendererRoot = path.resolve(desktopRoot, 'src/renderer/src')
@@ -429,17 +452,23 @@ function enqueueReachable(filePath, specifier, resolved, queue, blockingViolatio
   )
 }
 
-// Mobile reachability rule (spec 001-mobile-app T003 / Constitution I): nothing
-// reachable from apps/mobile — including transitively through workspace
-// packages — may import a node builtin or electron. Walks the real import
-// graph: mobile sources first, then every workspace package file they reach.
+// Non-Node reachability rule (spec 001-mobile-app T003 / Constitution I):
+// nothing reachable from a non-Node client — including transitively through
+// workspace packages — may import a node builtin or electron. Walks the real
+// import graph: the seed roots first, then every workspace package file they
+// reach. The seeds share one visited set, so a package reached from two
+// clients is walked once; the violation names the file, not the seed.
 async function checkMobileReachability(blockingViolations) {
-  if (!fsSync.existsSync(mobileRoot)) {
+  const roots = nonNodeClientRoots.filter((root) => fsSync.existsSync(root.dir))
+  if (roots.length === 0) {
     return
   }
 
   const workspacePackages = await getWorkspacePackageDirs()
-  const queue = await walkMobileSources(mobileRoot)
+  const queue = []
+  for (const root of roots) {
+    queue.push(...(await walkMobileSources(root.dir)))
+  }
   const visited = new Set()
 
   while (queue.length > 0) {
@@ -460,14 +489,14 @@ async function checkMobileReachability(blockingViolations) {
     for (const { specifier } of scanImports(source)) {
       if (isNodeBuiltinSpecifier(specifier)) {
         blockingViolations.add(
-          formatViolation(filePath, specifier, 'node builtin reachable from apps/mobile')
+          formatViolation(filePath, specifier, 'node builtin reachable from a non-Node client')
         )
         continue
       }
 
       if (isElectronSpecifier(specifier)) {
         blockingViolations.add(
-          formatViolation(filePath, specifier, 'electron reachable from apps/mobile')
+          formatViolation(filePath, specifier, 'electron reachable from a non-Node client')
         )
         continue
       }

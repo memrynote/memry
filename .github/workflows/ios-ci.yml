@@ -1,9 +1,12 @@
 # iOS CI (spec 002-native-foundation-ios, train A0 + A3 / gate G2b).
 #
-# This workflow inherits the two gates that used to live only in mobile-ci.yml,
-# because both die the day apps/mobile is frozen:
+# This workflow owns the two gates that used to live in the deleted mobile CI
+# workflow, because neither was ever mobile-specific:
 #   - editor asset freshness (the `ipc:check` of the prebuilt WebView bundle)
 #   - crypto vector parity (the desktop proof suite the Rust core is measured against)
+# apps/mobile is the frozen RN shell (docs/ideas/2026-09-12-native-ios-rust-core-plan.md)
+# and has no CI of its own. If these paths stop triggering this workflow, the
+# gates stop running anywhere — there is no second home for them.
 name: iOS CI
 
 on:
@@ -49,7 +52,7 @@ env:
 
 jobs:
   inherited-gates:
-    name: Gates inherited from mobile-ci
+    name: Editor, crypto and boundary gates
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -120,9 +123,9 @@ jobs:
       # "invalid developer directory".
       - name: Select Xcode 26
         run: |
-          app=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          app=$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' 2>/dev/null | sort -V | tail -1)
           if [ -z "$app" ]; then
-            echo "::error::No Xcode 26 on this runner. Found: $(ls -d /Applications/Xcode*.app 2>/dev/null | tr '\n' ' ')"
+            echo "::error::No Xcode 26 on this runner. Found: $(find /Applications -maxdepth 1 -name 'Xcode*.app' 2>/dev/null | tr '\n' ' ')"
             exit 1
           fi
           sudo xcode-select -s "$app"
