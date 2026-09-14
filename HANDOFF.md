@@ -32,7 +32,7 @@ against a capability nobody had checked existed **five times in one phase**:
 **before the brief was written**. The fifth was caught that way. Do it first,
 every time.
 
-## State: **Phase 4 at 21 of 24 ticked.** Phase 3 closed 64/64.
+## State: **Phase 4 at 22 of 24 ticked.** Phase 3 closed 64/64.
 
 T149, T150, T151 and **T156a** are **CUT**; T163, T164, T165 and T235 were
 **added**. **T156a was cut today**: `Notes` exports only `folders`/`list`/`read`,
@@ -346,43 +346,53 @@ The entry now carries the real reason.
 
 ## Checkpoint status
 
-**NOT MET — but every screen the checkpoint needs is now built and wired, and
-only one task stands between here and the phone.**
+**Every line of code Phase 4 calls for is written, wired and verified. What
+remains is evidence, and it needs Kaan and the phone.**
 
-Both unlock paths and the whole browse surface exist:
+| Path                                                    | State                                  |
+| ------------------------------------------------------- | -------------------------------------- |
+| Sign in (email OTP, Google)                             | built and wired                        |
+| Unlock by recovery phrase                               | built and wired                        |
+| Unlock by device link                                   | built and wired                        |
+| Pick a vault, open it through `VaultFiles.openingVault` | built and wired                        |
+| Browse notes and folders, preview a note                | built and wired, read-only by decision |
+| Sign out and revocation                                 | built and wired                        |
+| Session restore across a relaunch                       | built and wired                        |
+| The event hub has a consumer                            | built and wired                        |
 
-- **Recovery phrase** — T163 exports the key material, T165 wires the screen and
-  restores the session across a relaunch, T155 picks a vault and opens it
-  through `VaultFiles.openingVault`.
-- **Device link** — T235 exports `DeviceLink.scan`/`pollOnce`, T153/T154 are the
-  screens. **The manual path is a PASTE field, not typing**: the QR payload is
-  ~200 characters of JSON (spec-defect 129), so "manual code entry" never meant
-  what research R13 said it meant.
-- **Browse** — T156 lists notes and folders, T157 previews a note. Read-only by
-  decision: T156a is cut, so there is no create, rename, move or delete
-  anywhere, and that absence is deliberate rather than unfinished.
-- **Sign-out and revocation** — T159.
+**Remaining: T161 and T162 — about half an hour with Kaan, the phone and a
+desktop.**
 
-**Remaining: T158'** — the single `CoreEvents.consume()` call site in the app
-root (spec-defect 92, open since T141). Pure shell, no core surface needed. Its
-sync half is cut.
+### The plan for T161
 
-**Then T161/T162 with Kaan and the phone, about half an hour together.**
+The approved replacement Independent Test (Scope decisions, Phase 4): on the
+**single** phone, unlock every test vault **by recovery phrase**; then **clear
+the app's data so the device holds no vault, no keys and no registration**, and
+unlock the same vaults again **by scanning the desktop's code**. Repeat on an
+account holding two vaults. **The evidence must say explicitly that two phones
+registered against one account at once was not covered** — that bar is replaced,
+not reinterpreted.
 
-### Before T161
+Practicalities, each learned the hard way:
 
-- **`MemryGoogleClientID` is in `Info.plist`** (Kaan supplied it). **Adding it
-  broke two tests whose premise was its absence** — see gotchas 11 and 13. Both
-  are fixed; the lesson is that configuring the app is a behaviour change.
-- **`MemrySyncEnvironment` is still deliberately absent.** A debug build
-  resolves to staging with no key at all, so **T161 does not need it**. It is
-  needed only for a release or TestFlight build, and the two tempting ways to
-  add it are both wrong — the reasons are written into `Info.plist` itself.
-- **The staging recovery phrase works** — Kaan confirmed it. It has now been
-  pasted into two transcripts; **rotate it after T161**.
-- **Camera QR pairing can be tested on the device**, but spec-defect 130 means
-  there is no viewfinder — aiming is blind and failure is silent. **Gather
-  T161's evidence through the paste path**, which is a complete path that every
-  wiring test drives, and treat the camera as a separate, smaller exercise.
+- **Gather the device-link evidence through the PASTE path, not the camera.**
+  Spec-defect 130: `CodeCapture` exposes no preview, so aiming is blind and
+  failure is silent. The paste field is a complete path that every wiring test
+  drives. Treat the camera as a separate, smaller exercise afterwards.
+- **`MemrySyncEnvironment` is NOT needed.** A debug build with the key absent
+  resolves to staging by design. It is needed only for a release or TestFlight
+  build, and the two tempting ways to add it are both wrong — the reasons are
+  written into `Info.plist` itself.
+- **`MemryGoogleClientID` is present** (Kaan supplied it). Note that adding it
+  was a behaviour change that broke two tests whose premise was its absence.
+- **The staging recovery phrase works** (Kaan confirmed). It has now been pasted
+  into two transcripts. **Rotate it after T161.**
+- Signing recipe for the device is unchanged: team `TV343Q4W8A`, bundle id
+  `com.memry.app.t094`, and **never** pass `PRODUCT_BUNDLE_IDENTIFIER=` on the
+  command line. Back up `project.pbxproj` and `Memry.entitlements`, `sed`, run,
+  restore, **and confirm the revert with `git status`.**
+- **Re-run the device `Conformance` and `Unit` plans against the final build.**
+  The banked numbers (12 passed / 160 passed) are from an older build and are
+  T162's first evidence item only once re-taken.
 
-No vault has been opened on a phone yet.
+**No vault has been opened on a phone yet.** That is the whole of what is left.
