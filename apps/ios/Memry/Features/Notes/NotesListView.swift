@@ -43,10 +43,16 @@ struct NotesListView: View {
     /// The production entry point: an opened `Vault` and the shell's one core
     /// queue. `State(initialValue:)` so the model outlives a re-render — a
     /// model minted in `body` would re-read the whole vault on every frame.
-    init(vault: Vault, title: String, executor: CoreExecutor, switchVault: (() -> Void)? = nil) {
+    init(
+        vault: Vault,
+        title: String,
+        executor: CoreExecutor,
+        filler: (any VaultFilling)? = nil,
+        switchVault: (() -> Void)? = nil
+    ) {
         self.title = title
         self.switchVault = switchVault
-        _model = State(initialValue: VaultBrowseViewModel(vault: vault, executor: executor))
+        _model = State(initialValue: VaultBrowseViewModel(vault: vault, executor: executor, filler: filler))
     }
 
     init(model: VaultBrowseViewModel, title: String, switchVault: (() -> Void)? = nil) {
@@ -72,7 +78,10 @@ struct NotesListView: View {
                 // resolve against a stack that had never heard of the route
                 // and would silently do nothing.
                 .navigationDestination(for: NoteRoute.self) { route in
-                    NoteReadView(route: route, reader: model.reader)
+                    // T237. The filler travels with the reader, so a note
+                    // whose body the thirty-day window left behind has a way
+                    // to fetch it rather than rendering as an empty note.
+                    NoteReadView(route: route, reader: model.reader, filler: model.filler)
                 }
                 .toolbar {
                     if let switchVault {

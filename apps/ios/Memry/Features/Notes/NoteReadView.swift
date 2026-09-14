@@ -51,8 +51,8 @@ struct NoteReadView: View {
     ///
     /// `State(initialValue:)` so the model outlives a re-render: a model minted
     /// in `body` would re-read the note, and its CRDT apply, every frame.
-    init(route: NoteRoute, reader: any NotesReading) {
-        _model = State(initialValue: NoteReadViewModel(route: route, reader: reader))
+    init(route: NoteRoute, reader: any NotesReading, filler: (any VaultFilling)? = nil) {
+        _model = State(initialValue: NoteReadViewModel(route: route, reader: reader, filler: filler))
     }
 
     init(model: NoteReadViewModel) {
@@ -78,7 +78,11 @@ struct NoteReadView: View {
                         .memrySecondaryAction()
                 case let .ready(detail):
                     NoteHeader(title: model.displayTitle, summary: detail.summary)
-                    NoteBodyView(preview: NoteBodyPreview.of(detail.body))
+                    NoteBodyView(
+                        preview: NoteBodyPreview.of(detail.body),
+                        fetch: model.fetch,
+                        download: model.canFetchBody ? { Task { await model.fetchBody() } } : nil
+                    )
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -146,21 +150,31 @@ private struct NoteHeader: View {
 /// The body, in its three shapes. No arm is shared, by construction.
 private struct NoteBodyView: View {
     let preview: NoteBodyPreview
+    let fetch: NoteReadViewModel.Fetch
+    /// `nil` when this screen has no filler, in which case the not-pulled
+    /// state offers nothing rather than a button that cannot work.
+    let download: (() -> Void)?
 
     var body: some View {
         switch preview {
         case let .text(text):
+            // An incomplete fetch leaves real text behind it, so the text is
+            // shown and the gap is said beside it rather than instead of it.
             NoteTextPreview(text: text)
+            NoteFetchState(fetch: fetch, download: download)
         case .notPulled:
             // The note is here. Its body is not, and that is neither an empty
-            // note nor a failure — there is nothing to retry, because nothing
-            // went wrong.
+            // note nor a failure — nothing went wrong, it is simply outside
+            // the thirty-day window the first sync pulls bodies for (chapter
+            // 10 §10.6.1). **This is the state that must never render as an
+            // empty note**, and before T237 it was also a dead end.
             ContentUnavailableView {
                 Label("This note's text is not on this phone", systemImage: "icloud.and.arrow.down")
             } description: {
-                Text("This device has the note but has not downloaded its text yet.")
+                Text("Memry downloaded this note's title but not its text yet.")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            NoteFetchState(fetch: fetch, download: download)
         case .empty:
             // The body arrived and holds nothing. It promises no mechanism
             // this build has: there is no note editing on iOS, so it offers
@@ -225,4 +239,59 @@ private struct NoteMissingNotice: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+}
+
+/// The on-demand body fetch, in the four shapes it can be in.
+///
+/// The button is offered only where it would do something: no filler, no
+/// button. `SyncError.UnknownNote` and `SyncError.Locked` both map to
+/// `.blocked`, so neither offers a repeat — `UnknownNote` is a **permanent**
+/// refusal and calling it retryable would be a sentence that is not true.
+private struct NoteFetchState: View {
+    let fetch: NoteReadViewModel.Fetch
+    let download: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            switch fetch {
+            case .idle:
+                if let download {
+                    Button("Download this note's text", action: download)
+                        .memrySecondaryAction()
+                }
+            case .fetching:
+                // Words, never a bare spinner, and never a duration.
+                ProgressView { Text("Downloading this note's text") }
+                    .progressViewStyle(.circular)
+                    .font(Tokens.Typography.supporting.font)
+                    .tint(Tokens.Text.secondary.color)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            case .incomplete:
+                Text(Self.incomplete)
+                    .font(Tokens.Typography.supporting.font)
+                    .foregroundStyle(Tokens.Text.secondary.color)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let download {
+                    Button("Try the rest", action: download)
+                        .memrySecondaryAction()
+                }
+            case let .failed(error):
+                ErrorNotice(error: error, code: nil)
+                if error.recourse == .retry, let download {
+                    Button("Try again", action: download)
+                        .memrySecondaryAction()
+                }
+            }
+        }
+        .multilineTextAlignment(.leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Chapter 07 §7.9: the pull stopped at an update this device could not
+    /// open and the cursor did not advance, so the rest is retried rather than
+    /// lost. Neither "complete" nor "failed" would be true of it.
+    static let incomplete = """
+        Part of this note's text could not be opened on this phone. \
+        Nothing was lost, and Memry carries on from where it stopped.
+        """
 }

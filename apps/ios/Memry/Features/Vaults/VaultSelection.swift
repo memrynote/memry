@@ -95,12 +95,36 @@ final class VaultSelectionViewModel {
     /// again. See `VaultOpening.swift`.
     private(set) var vault: Vault?
 
+    /// T237. The read-only pull over the vault this screen opened.
+    ///
+    /// `nil` until a vault is open, and `nil` afterwards when no ``mint`` was
+    /// supplied. Held here rather than inside the browse screen because it is
+    /// per-vault and per-session: dropping this model on a sign-out drops the
+    /// filler, which drops the `VaultSync`, which drops its `Arc<AuthSession>`.
+    /// See `VaultFilling.swift`.
+    private(set) var filler: (any VaultFilling)?
+
     private let registry: any VaultRegistry
     private let opener: any VaultOpening
+    /// `nil` for a caller with no session to pull through — the screen then
+    /// browses whatever is already on this phone, which before T237 was the
+    /// only behaviour there was (spec-defect 136).
+    ///
+    /// Internal rather than private for the same reason ``reader`` is on the
+    /// browse model: the wiring suite asserts that the **production** graph
+    /// carries `CoreVaultFillerMint` rather than something that behaves like
+    /// one. A composition root that quietly stopped passing it would put the
+    /// defect straight back, and nothing else would notice.
+    let mint: (any VaultFillerMinting)?
 
-    init(registry: any VaultRegistry, opener: any VaultOpening) {
+    init(
+        registry: any VaultRegistry,
+        opener: any VaultOpening,
+        mint: (any VaultFillerMinting)? = nil
+    ) {
         self.registry = registry
         self.opener = opener
+        self.mint = mint
     }
 
     /// Whether a second vault exists to switch to. The switch is offered only
@@ -117,6 +141,7 @@ final class VaultSelectionViewModel {
     func load() async {
         phase = .loading
         vault = nil
+        filler = nil
         let summaries: [VaultSummary]
         do {
             summaries = try await registry.vaults()
@@ -149,6 +174,11 @@ final class VaultSelectionViewModel {
         phase = .opening(summary)
         do {
             let opened = try await opener.open(summary.id)
+            // T237. Minted here, before the screen says the vault is open, so
+            // that a vault which cannot be **filled** is never presented as a
+            // vault that can only be read. `sync(session:)` blocks and does no
+            // I/O, so this costs one trip through the core queue.
+            filler = try await mint?.filler(for: opened)
             vault = opened
             phase = .opened(summary)
             Log.storage.notice("a vault was opened")
@@ -156,6 +186,7 @@ final class VaultSelectionViewModel {
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("a vault could not be opened", .code(mapped.code))
             vault = nil
+            filler = nil
             phase = .failedToOpen(summary, mapped)
         }
     }
@@ -171,6 +202,7 @@ final class VaultSelectionViewModel {
     /// mechanism this build does not have.
     func chooseAgain() async {
         vault = nil
+        filler = nil
         await load()
     }
 }

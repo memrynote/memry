@@ -30,15 +30,46 @@ struct VaultListView: View {
     /// is handed on so it stays reachable from there (FR-021).
     var body: some View {
         if case let .opened(summary) = model.phase, let vault = model.vault {
-            NotesListView(
-                vault: vault,
-                title: VaultLabel(summary).text,
-                executor: .shared,
-                switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil
-            )
+            opened(vault, summary)
         } else {
             selection
         }
+    }
+
+    /// T237, and the answer to spec-defect 136.
+    ///
+    /// **The browse screen is on the far side of the pull.** Before this, an
+    /// opened vault went straight to `NotesListView`, which reads a local
+    /// database that nothing on the FFI surface had ever put a row in — so a
+    /// phone that had never synced showed "no notes" against an account
+    /// holding ninety-four. `VaultFillView` is the gate; it asks
+    /// `isFirstSyncComplete()` first, which makes no request, so a vault this
+    /// phone already has is reached without waiting on a network.
+    ///
+    /// With no filler — a caller that supplied no `VaultFillerMinting` — the
+    /// old path is what runs. That is deliberate: browsing what is already on
+    /// the phone is still correct, it is simply not the whole story.
+    @ViewBuilder
+    private func opened(_ vault: Vault, _ summary: VaultSummary) -> some View {
+        if let filler = model.filler {
+            VaultFillView(filler: filler) { browse(vault, summary, filler) }
+        } else {
+            browse(vault, summary, nil)
+        }
+    }
+
+    private func browse(
+        _ vault: Vault,
+        _ summary: VaultSummary,
+        _ filler: (any VaultFilling)?
+    ) -> some View {
+        NotesListView(
+            vault: vault,
+            title: VaultLabel(summary).text,
+            executor: .shared,
+            filler: filler,
+            switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil
+        )
     }
 
     private var selection: some View {

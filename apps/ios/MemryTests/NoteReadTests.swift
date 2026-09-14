@@ -279,7 +279,10 @@ struct NoteReadSourceTests {
         // The destination is built from the browse model's own reader, which
         // on the production graph is `CoreNotesReader`. A second reader minted
         // here would be a second path into the core with its own lifetime.
-        #expect(notesList.contains("NoteReadView(route: route, reader: model.reader)"))
+        // T237 added the filler on the same line; the rule is unchanged and
+        // the assertion is narrowed to the two things it was ever about.
+        #expect(notesList.contains("NoteReadView(route: route, reader: model.reader,"))
+        #expect(notesList.contains("filler: model.filler)"))
     }
 
     @Test(

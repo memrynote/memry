@@ -99,12 +99,71 @@ final class NoteReadViewModel {
     /// behind fakes and never called once.
     let reader: any NotesReading
 
+    /// T237. The on-demand body pull, or `nil` when this screen has no session
+    /// to fetch through.
+    ///
+    /// **This is what keeps `.notPulled` from being a dead end.** The first
+    /// sync's bodies pass is windowed to the recent thirty days (chapter 10
+    /// §10.6.1, FR-028 "older content on demand"), so on a real account most
+    /// notes arrive with their metadata and `NoteBody.present == false`.
+    /// Without this, such a note could never become readable — spec-defect 136
+    /// again, at note granularity.
+    let filler: (any VaultFilling)?
+
+    /// Where an on-demand body fetch is. `.idle` covers both "not asked" and
+    /// "asked, and it worked" — the second is visible as a body rather than as
+    /// a state.
+    enum Fetch: Equatable {
+        case idle
+        case fetching
+        /// The pull stopped at an update this device could not open (chapter
+        /// 07 §7.9). The body is **incomplete, not absent**, and the cursor
+        /// did not advance, so a later fetch resumes there.
+        case incomplete
+        /// The fetch threw. Whether it is worth repeating is the mapped
+        /// error's business, not this screen's.
+        case failed(UserFacingError)
+    }
+
     private(set) var phase: Phase = .loading
+    private(set) var fetch: Fetch = .idle
     private var hasLoaded = false
 
-    init(route: NoteRoute, reader: any NotesReading) {
+    init(route: NoteRoute, reader: any NotesReading, filler: (any VaultFilling)? = nil) {
         self.route = route
         self.reader = reader
+        self.filler = filler
+    }
+
+    /// Whether this screen can offer to fetch a body at all. An affordance
+    /// that leads nowhere is worse than its absence.
+    var canFetchBody: Bool { filler != nil }
+
+    /// Fetches this note's body, then re-reads it.
+    ///
+    /// Two steps and not one, because they are two facts: the fetch writes the
+    /// document's updates into the local database, and `Notes.read` is what
+    /// turns them into text. A screen that showed the body without re-reading
+    /// would be rendering the summary it was handed rather than what landed.
+    ///
+    /// `SyncError.UnknownNote` arrives here for a note this vault has no live
+    /// record of. It is **permanent** — the mapped copy says so and carries
+    /// `.blocked`, so the view offers no retry over it.
+    func fetchBody() async {
+        guard let filler, fetch != .fetching else { return }
+        fetch = .fetching
+        do {
+            let summary = try await filler.fetchNoteBody(noteId: route.id)
+            Log.sync.notice("fetched one note body", .count(Int(summary.updates)))
+            fetch = summary.stopped ? .incomplete : .idle
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.sync.error("a note body could not be fetched", .code(mapped.code))
+            fetch = .failed(mapped)
+            return
+        }
+        hasLoaded = false
+        await load()
     }
 
     /// The body, or `nil` in every phase that has no note.

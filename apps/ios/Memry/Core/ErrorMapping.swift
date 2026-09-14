@@ -121,6 +121,9 @@ enum ErrorMapping {
         // caught `LinkingError` fell through to `unrecognised`, which is
         // honest but says nothing about a QR code.
         if let error = error as? LinkingError { return userFacing(error) }
+        // T237. `SyncError` is newer still, and it arrived uncovered for
+        // exactly the reason `LinkingError` did. `ErrorMappingSync.swift`.
+        if let error = error as? SyncError { return userFacing(error) }
         return nil
     }
 

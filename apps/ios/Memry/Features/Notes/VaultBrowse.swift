@@ -108,16 +108,24 @@ final class VaultBrowseViewModel {
     /// fakes and never called.
     let reader: any NotesReading
 
+    /// T237. The on-demand body fetch, handed down to `NoteReadView`.
+    ///
+    /// `nil` when this screen has no session to pull through. A note outside
+    /// the first sync's thirty-day body window then stays unreadable, which is
+    /// honest — the alternative is a button that cannot do anything.
+    let filler: (any VaultFilling)?
+
     private var hasLoaded = false
 
-    init(reader: any NotesReading) {
+    init(reader: any NotesReading, filler: (any VaultFilling)? = nil) {
         self.reader = reader
+        self.filler = filler
     }
 
     /// The production initializer. `AuthRootView` -> `VaultListView` ->
-    /// `NotesListView` reaches this and nothing else.
-    convenience init(vault: Vault, executor: CoreExecutor) {
-        self.init(reader: CoreNotesReader(vault: vault, executor: executor))
+    /// `VaultFillView` -> `NotesListView` reaches this and nothing else.
+    convenience init(vault: Vault, executor: CoreExecutor, filler: (any VaultFilling)? = nil) {
+        self.init(reader: CoreNotesReader(vault: vault, executor: executor), filler: filler)
     }
 
     /// The loaded hierarchy, or `nil` in every other phase.
