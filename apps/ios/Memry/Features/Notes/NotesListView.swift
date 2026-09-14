@@ -34,7 +34,11 @@ struct NotesListView: View {
     let switchVault: (() -> Void)?
 
     @State private var model: VaultBrowseViewModel
-    @State private var path: [FolderRoute] = []
+    /// A type-erased path rather than `[FolderRoute]`, because T157 added a
+    /// second route type to the same stack. `NavigationPath` is what holds
+    /// both, and it is still `Codable`-restorable, which is what research
+    /// R15's rule is written for.
+    @State private var path = NavigationPath()
 
     /// The production entry point: an opened `Vault` and the shell's one core
     /// queue. `State(initialValue:)` so the model outlives a re-render — a
@@ -57,6 +61,18 @@ struct NotesListView: View {
                 .navigationTitle(title)
                 .navigationDestination(for: FolderRoute.self) { route in
                     FolderScreen(route: route, outline: model.outline)
+                }
+                // T157, and the **second and last** registration in this
+                // stack. It is here, on the stack's root content, and not in
+                // `NoteRowsView` — whose lazy stack is exactly the container
+                // research R15's rule is about. A note row is realised lazily
+                // and appears in two different screens; a destination declared
+                // beside it would be registered only once one of those rows
+                // had been drawn, so a restored path pointing at a note would
+                // resolve against a stack that had never heard of the route
+                // and would silently do nothing.
+                .navigationDestination(for: NoteRoute.self) { route in
+                    NoteReadView(route: route, reader: model.reader)
                 }
                 .toolbar {
                     if let switchVault {
@@ -179,7 +195,15 @@ struct NoteRowsView: View {
     var body: some View {
         LazyVStack(alignment: .leading, spacing: Tokens.Space.tight) {
             ForEach(notes, id: \.id) { note in
-                NoteRowLabel(note: note)
+                // `NavigationLink(value:)` and not `NavigationLink(destination:)`:
+                // a value push resolves against the **one** registration in
+                // `NotesListView.body`, which is what lets a restored path
+                // reach the same screen without a row existing. A destination
+                // built here would be a second, lazily-registered one.
+                NavigationLink(value: NoteRoute(id: note.id)) {
+                    NoteRowLabel(note: note)
+                }
+                .buttonStyle(.plain)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -188,10 +212,10 @@ struct NoteRowsView: View {
 
 /// One note.
 ///
-/// It opens nothing: the reading surface is T157's `NoteReadView`, and a row
-/// that pushed a blank screen would be worse than a row that does not move.
-/// When T157 lands, this row becomes a `NavigationLink(value:)` and its
-/// destination joins the **one** registration in `NotesListView.body`.
+/// The label only. T157 landed the reading surface, so `NoteRowsView` wraps
+/// this in a `NavigationLink(value:)` whose destination is registered once, in
+/// `NotesListView.body`. The wrapping is there and not here so that this type
+/// stays a pure label — the folder tree renders the same rows.
 private struct NoteRowLabel: View {
     let note: NoteSummary
 

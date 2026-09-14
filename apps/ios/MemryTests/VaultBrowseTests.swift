@@ -44,7 +44,20 @@ private final class ScriptedNotes: NotesReading, @unchecked Sendable {
         calls.withLock { $0.append("list") }
         return try noteAnswer.get()
     }
+
+    /// T157 widened `NotesReading`. **This fake records the call and throws**
+    /// rather than answering benignly (`contracts/core-api.md`, the fake
+    /// rule): nothing in this suite reads a note, so a browse screen that
+    /// started reading one must be visible here rather than silently
+    /// satisfied. A fake that behaves correctly is how this project shipped
+    /// five bugs behind a green suite in Phase 3.
+    func read(id _: String) async throws -> NoteDetail? {
+        calls.withLock { $0.append("read") }
+        throw NotScripted()
+    }
 }
+
+private struct NotScripted: Error {}
 
 private struct VaultUnreadable: Error {}
 

@@ -319,14 +319,28 @@ struct T165WiringTests {
             #expect((response as? HTTPURLResponse)?.statusCode == 400)
         }
 
-        /// The production button, pressed on the production object graph.
+        /// The production button, on the production object graph — **offered,
+        /// and deliberately not pressed.**
         ///
-        /// `Info.plist` carries no `MemryGoogleClientID` on any build today
-        /// (spec-defect 117), so `AuthComposition.googleSignIn` answers `nil` and
-        /// the button says so rather than disappearing. The assertion is the
-        /// **literal sentence**, not `error != nil`: a button wired to the wrong
-        /// failure would pass the weaker one.
-        @Test("the production sign-in screen offers Google, and says why this build cannot")
+        /// It used to be pressed here, and the sentence it produced asserted,
+        /// on the premise that no build carries `MemryGoogleClientID`
+        /// (spec-defect 117). **That premise died the moment the key landed in
+        /// `Info.plist`**: `AuthComposition` then answers a real `GoogleSignIn`
+        /// over `SystemWebAuthenticator`, so the press opened an
+        /// `ASWebAuthenticationSession` against Google and waited for a person
+        /// who is not there. Nothing timed out. The whole `Unit` plan ran every
+        /// suite to completion, stopped inside this one test, and `xcodebuild`
+        /// wrote **no result bundle at all** — so the plan could not report a
+        /// number for anything. A unit test must never drive a seam that waits
+        /// on a human, and a test whose premise is "this build is not
+        /// configured yet" is a test of ambient build state.
+        ///
+        /// Everything the press was not needed for is still asserted: the
+        /// button exists on the state the user lands on, it is enabled, the
+        /// machine has not moved, and this build **is** configured — which is
+        /// the fact that made the press dangerous. The sentence for a build
+        /// that is not configured is the test below.
+        @Test("the production sign-in screen offers Google, and this build is configured for it")
         @MainActor
         func theProductionScreenOffersGoogle() async throws {
             T165StubURLProtocol.reset(status: 400, body: #"{"code":"VALIDATION_ERROR","message":"no"}"#)
@@ -343,18 +357,46 @@ struct T165WiringTests {
             // The button exists, on the state the user actually lands on.
             #expect(model.step.secondary == .signInWithGoogle)
             #expect(model.isEnabled(.signInWithGoogle))
+            // Nothing has moved and nothing is being complained about.
+            #expect(model.state == .signedOut)
+            #expect(model.error == nil)
+            // Configured — which is why the button is not pressed here.
+            // `GoogleConfigurationTests` owns what the plist must contain.
+            #expect(AuthComposition.googleSignIn(transport: URLSessionTransport(
+                emitter: CoreEvents().emitter,
+                configuration: stubbedConfiguration()
+            )) != nil)
+        }
+
+        /// The half the press used to carry: a build with **no** client id
+        /// offers the same button and says why it cannot use it.
+        ///
+        /// `google: nil` is exactly what `AuthStartup` holds on such a build —
+        /// `AuthComposition.googleSignIn` answers `nil` and no flow is built —
+        /// so this runs the screen code a user would meet, with the one
+        /// dependency that opens a browser absent rather than substituted. The
+        /// assertion is the **literal sentence**: a button wired to the wrong
+        /// failure would pass `error != nil`.
+        @Test("a build with no client id offers the button and says why it cannot")
+        @MainActor
+        func anUnconfiguredBuildSaysSo() async throws {
+            let session = FakeAuthSession(from: .signedOut)
+            let model = SignInViewModel(
+                session: session,
+                executor: CoreExecutor(label: "t165-google-unconfigured"),
+                state: .signedOut,
+                google: nil
+            )
 
             await model.run(.signInWithGoogle)
 
             let error = try #require(model.error)
             #expect(error.title == "Signing in with Google is not available in this build of Memry.")
             #expect(error.guidance == "You can sign in with your email address instead.")
-            // Nothing opened and nothing moved: the machine is where it was.
+            // Nothing opened and nothing moved: the machine is where it was,
+            // and the only thing asked of the core was what state it is in.
             #expect(model.state == .signedOut)
-            #expect(AuthComposition.googleSignIn(transport: URLSessionTransport(
-                emitter: CoreEvents().emitter,
-                configuration: stubbedConfiguration()
-            )) == nil)
+            #expect(session.calls == [.state])
         }
     }
 

@@ -52,6 +52,27 @@ custom_rules:
     message: 'Use an OSLog Logger for the subsystem, not print().'
     severity: error
 
+  # spec-defect 131. Two suites wrote data-model §B's five production keychain
+  # identities at the same time, because Swift Testing runs sibling suites in
+  # parallel and `.serialized` orders only a suite's own tests. Neither suite
+  # could move off those identities without ceasing to be evidence, so both are
+  # now nested inside `RealKeychainSuite` (MemryTests/RealKeychain.swift), whose
+  # `.serialized` sub-suites inherit. This rule is what stops a third suite from
+  # silently racing them: a test file that drives `SecItem*` for real has to be
+  # added here, which means reading why.
+  real_keychain_must_be_serialized:
+    name: 'the real keychain is one suite at a time'
+    regex: '(SecItemAdd|SecItemDelete|SecItemUpdate|SecItemCopyMatching|SystemKeychainItemStore)'
+    match_kinds:
+      - identifier
+    included: '.*Tests/.*\.swift'
+    excluded: '.*(KeychainTests|SignOutWipeTests)\.swift'
+    message: >
+      A test that drives the real keychain must be a @Suite nested inside
+      RealKeychainSuite -- read MemryTests/RealKeychain.swift -- and then be
+      added to this rule's excluded list.
+    severity: error
+
 force_cast:
   severity: error
 

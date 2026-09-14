@@ -113,19 +113,23 @@ private enum BrowseSources {
 @Suite("T156 browse source structure")
 struct BrowseSourceTests {
     @Test(
-        "the one navigationDestination is in NotesListView.body, outside every lazy container",
+        "both navigationDestinations are in NotesListView.body, outside every lazy container",
         .enabled(if: BrowseSources.readable, "the checkout is not present on a device")
     )
     func theDestinationIsOutsideEveryLazyContainer() throws {
         let notesList = try BrowseSources.source(BrowseSources.notesList)
+        // Two since T157: `FolderRoute` and `NoteRoute`. The count is the
+        // point — it is what catches a third registration added next to the
+        // rows it pushes, which is the lazy-container bug R15 is about.
         let calls = notesList.components(separatedBy: ".navigationDestination(").count - 1
-        #expect(calls == 1)
+        #expect(calls == 2)
 
         guard let body = BrowseSources.bodyOfNotesListView(notesList) else {
             Issue.record("NotesListView.body could not be located in the source")
             return
         }
-        #expect(body.contains(".navigationDestination("))
+        #expect(body.contains(".navigationDestination(for: FolderRoute.self)"))
+        #expect(body.contains(".navigationDestination(for: NoteRoute.self)"))
         // The assertion has teeth only because a lazy container really exists
         // in this file; if the rows stopped being lazy, this reminds the next
         // author that the rule is about them.

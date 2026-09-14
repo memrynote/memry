@@ -44,6 +44,13 @@ protocol NotesReading: Sendable {
     /// - Returns: every live note, newest first. No folder filter exists on
     ///   the exported surface, which is why the grouping is done here.
     func list() async throws -> [NoteSummary]
+    /// One note and its body, for T157's read surface.
+    ///
+    /// - Returns: `nil` when this vault holds no live note by that id.
+    ///   **`nil` is not an error and not an empty note**: a note that exists
+    ///   and cannot be read throws, and a note that exists and holds no text
+    ///   returns a `NoteBody`. Three answers, three screens.
+    func read(id: String) async throws -> NoteDetail?
 }
 
 /// The production reader: the core's own `Notes`, over the shell's one serial
@@ -68,6 +75,13 @@ struct CoreNotesReader: NotesReading {
     func list() async throws -> [NoteSummary] {
         let vault = vault
         return try await executor.run { try vault.notes().list() }
+    }
+
+    /// Blocking like its siblings — a SQLite read plus a `yrs` apply — so it
+    /// goes on the same serial queue and offers no Cancel (spec-defect 108).
+    func read(id: String) async throws -> NoteDetail? {
+        let vault = vault
+        return try await executor.run { try vault.notes().read(id: id) }
     }
 }
 

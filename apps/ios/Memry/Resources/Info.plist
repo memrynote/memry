@@ -40,6 +40,65 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 
+	<!-- The iOS OAuth client this app authenticates as (spec-defect 117).
+	     GoogleSignInConfiguration reads exactly this key and has NO default and
+	     NO fallback: an absent key is a loud `notConfigured`, never a silent
+	     fall back to the web client, because validating an ID token against the
+	     wrong audience would accept a token minted for a different app.
+
+	     Not a secret. A native OAuth client id is public by design — it ships
+	     inside every copy of the app and Google treats it as an identifier, not
+	     a credential. There is no client *secret* in this flow; PKCE replaces
+	     it, which is why research R14 chose the authorization-code-plus-PKCE
+	     shape over anything that would need one. -->
+	<key>MemryGoogleClientID</key>
+	<string>244914619370-slch4ku0ukadc3lljpm8cs53arn9tapi.apps.googleusercontent.com</string>
+
+	<!-- The redirect scheme is the reversed client id, which is Google's iOS
+	     convention and is what `GoogleSignInConfiguration.callbackURLScheme`
+	     derives by reversing the dot-separated components above. Registering it
+	     is not what makes ASWebAuthenticationSession work -- the session
+	     intercepts its own callback -- but an unregistered scheme is one the
+	     system will hand to nobody if it ever arrives from outside the session,
+	     which is a silent failure rather than a refusal. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.memry.app.oauth.google</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.244914619370-slch4ku0ukadc3lljpm8cs53arn9tapi</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- MemrySyncEnvironment is DELIBERATELY ABSENT, and this comment is the
+	     record of why (spec-defect 110).
+
+	     `SyncEnvironmentResolver` resolves an absent key to `staging` on a
+	     debug build and to a loud `notConfigured` on a release build. That is
+	     the intended behaviour today: every build this phase produces is a
+	     debug build, and it reaches staging with no configuration at all.
+
+	     The two tempting ways to "just add it" are both wrong:
+
+	       * A literal `<string>staging</string>` would make a RELEASE build
+	         point at staging, which is the shipping-to-the-wrong-server failure
+	         this whole resolver exists to prevent.
+	       * `<string>$(MEMRY_SYNC_ENVIRONMENT)</string>` with the build setting
+	         undefined expands to an EMPTY STRING, which is not nil -- so the
+	         resolver takes the `unrecognisedName` branch and a debug build that
+	         works today would stop reaching staging.
+
+	     The correct form is the build-setting indirection WITH the setting
+	     defined per configuration in project.pbxproj. That is the change to
+	     make when a TestFlight or release build is actually cut, and not
+	     before. -->
+
+
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

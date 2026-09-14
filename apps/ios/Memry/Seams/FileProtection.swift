@@ -251,6 +251,26 @@ final class VaultFiles: FileProtection {
         return support.appendingPathComponent(bundleIdentifier, isDirectory: true)
     }
 
+    /// `<root>/vault`, the directory every vault directory sits in.
+    ///
+    /// **T159 needs this and nothing else from here.** Sign-out removes both
+    /// databases and `images/` for every vault on the account (data-model §B),
+    /// and the only thing this file guards that a remover cannot recompute is
+    /// **where** they are: `resolvedRoot()` is private, it refuses a build with
+    /// no bundle identifier rather than falling back to a fixed name, and it is
+    /// what the test root override replaces. A remover that rebuilt the path
+    /// itself would be a second copy of the layout, and the two would drift the
+    /// day `<bundle>` moves — so the path stays owned here and the deletion
+    /// lives in `Features/Account/`, which is the only thing outside this file
+    /// that removes anything.
+    ///
+    /// It does **not** create the directory and does not report whether it
+    /// exists: an absent vaults directory is a phone that never opened a vault,
+    /// which is a different fact from one this call emptied.
+    func vaultsDirectory() throws -> URL {
+        try resolvedRoot().appendingPathComponent(Self.vaultsDirectoryName, isDirectory: true)
+    }
+
     /// `<root>/vault/<vaultId>`, with the identifier checked before it becomes
     /// a path component.
     ///

@@ -64,6 +64,15 @@ final class AuthStartup {
     /// stayed open for. Built in `start(in:)` beside the session, over the
     /// same transport and the same keychain.
     private(set) var deviceLink: (any DeviceLinkProtocol)?
+
+    /// T159's dependency, and FR-025's only affordance. Built in `start(in:)`
+    /// over the session, so the destruction runs against the same core object
+    /// every other screen reads.
+    private(set) var account: AccountViewModel?
+    /// Held so ``publish(_:)`` can rebuild the sign-in screen without building
+    /// a second flow.
+    private var google: GoogleSignInFlow?
+
     private let transportConfiguration: URLSessionConfiguration
     private let keychainItems: any KeychainItemStore
 
@@ -168,6 +177,25 @@ final class AuthStartup {
         }
     }
 
+    /// T159. The state the core applied after a sign-out or a revocation,
+    /// re-read into the screens.
+    ///
+    /// A new `SignInViewModel` over the **same** session, never a second graph:
+    /// a second `AuthSession` over the same keychain entries is what chapter 02
+    /// §2.9 turns into a device revocation. It is also how the first state
+    /// after launch is published, so there is one path and not two.
+    private func publish(_ state: AuthState) {
+        guard let session else { return }
+        phase = .ready(SignInViewModel(session: session, executor: executor, state: state, google: google))
+    }
+
+    /// `RevocationWatch`'s handler. `false` means the destruction did not run,
+    /// and the watch then unlatches so the next refusal tries again.
+    private func revocationDetected() async -> Bool {
+        guard let account else { return false }
+        return await account.revocationDetected()
+    }
+
     func begin() async {
         guard case .starting = phase else { return }
         switch SyncEnvironment.current {
@@ -215,11 +243,31 @@ final class AuthStartup {
             // there is still no instant at which a state nobody reported is on
             // screen.
             let state = try await executor.run { try session.restore() }
+            // **T159, FR-026.** A revocation is only ever learned from a call
+            // the app was making anyway, so the detection sits where every
+            // authenticated call passes rather than on the one screen somebody
+            // remembered to wire. The watch is what the rest of the app is
+            // handed; the service under it holds the unwrapped session, so the
+            // wipe cannot re-enter its own watcher.
+            account = AccountViewModel(
+                service: SignOutService(
+                    session: session,
+                    content: VaultContentRemover(files: VaultFiles(emitter: emitter)),
+                    executor: executor
+                ),
+                publish: { [weak self] state in self?.publish(state) }
+            )
+            let watched = RevocationWatch(session: session) { [weak self] in
+                guard let self else { return false }
+                return await revocationDetected()
+            }
+            self.session = watched
             // No URL, no address, no token: `Log` accepts a `StaticString` and
             // a number and there is nowhere to put one.
             Log.app.notice("auth session constructed")
-            keyMaterial = keyMaterialOverride ?? CoreAccountKeyMaterial(session: session)
-            var google: GoogleSignInFlow?
+            // Through the watch, not around it: an account read is an
+            // authenticated call and is exactly where a revocation lands.
+            keyMaterial = keyMaterialOverride ?? CoreAccountKeyMaterial(session: watched)
             // T165. The production Google flow, over the **same** transport the
             // session got: one `URLSession` in the process, not two. `nil` when
             // this build carries no `MemryGoogleClientID` — the button is still
@@ -227,12 +275,7 @@ final class AuthStartup {
             if let flow = AuthComposition.googleSignIn(transport: graph.transport) {
                 google = { try await flow.signIn() }
             }
-            phase = .ready(SignInViewModel(
-                session: session,
-                executor: executor,
-                state: state,
-                google: google
-            ))
+            publish(state)
         } catch {
             // Construction, or the restore probe. A `restore()` that throws is
             // a keychain that could not be **read** — not a session that is not
@@ -266,7 +309,10 @@ struct AuthRootView: View {
                 // is the other). Built in `onChange` rather than in the body:
                 // a model minted per render would throw away what the user had
                 // typed on every keystroke.
-                Group {
+                // T159. The account's own affordances, wrapped around whatever
+                // is on screen: the way out under everything, the revoked
+                // screen instead of everything.
+                AccountShell(state: model.state, account: startup.account) {
                     if let vaults {
                         VaultListView(model: vaults)
                     } else if let unlock {

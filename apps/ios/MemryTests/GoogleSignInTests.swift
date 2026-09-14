@@ -154,13 +154,6 @@ struct GoogleSignInConfigurationTests {
             try GoogleSignInConfiguration(clientID: ".apps.googleusercontent.com")
         }
     }
-
-    @Test("a bundle with no client id throws rather than falling back to a web client")
-    func refusesAbsentConfiguration() {
-        #expect(throws: GoogleSignInFailure.notConfigured) {
-            try GoogleSignInConfiguration.fromBundle(Bundle.main)
-        }
-    }
 }
 
 // MARK: - The request

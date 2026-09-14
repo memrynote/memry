@@ -75,152 +75,154 @@ private let contract: [(key: SecureStoreKey, account: String)] = [
 /// the path would either fail or corrupt them, and base64 would be 44 bytes.
 private let rawKeyBytes = Data([0xFF, 0xFE, 0x00, 0x80, 0xC0, 0xAF] + Array(repeating: 0x7F, count: 26))
 
-@Suite("Keychain over the real keychain", .serialized)
-struct KeychainRealStoreTests {
-    private let hub = CoreEvents()
-    private let keychain: Keychain
+extension RealKeychainSuite {
+    @Suite("Keychain over the real keychain", .serialized)
+    struct KeychainRealStoreTests {
+        private let hub = CoreEvents()
+        private let keychain: Keychain
 
-    /// `.serialized` plus this: the simulator keychain is process-wide state,
-    /// so every test starts from empty. A failure here is the entitlement
-    /// problem (-34018), not a mapping problem.
-    init() throws {
-        keychain = Keychain(emitter: hub.emitter)
-        try keychain.clear()
-    }
+        /// `.serialized` plus this: the simulator keychain is process-wide state,
+        /// so every test starts from empty. A failure here is the entitlement
+        /// problem (-34018), not a mapping problem.
+        init() throws {
+            keychain = Keychain(emitter: hub.emitter)
+            try keychain.clear()
+        }
 
-    @Test("a value round-trips byte for byte, and is stored as those bytes")
-    func roundTripsRawBytes() throws {
-        try keychain.set(key: .masterKey, value: rawKeyBytes)
+        @Test("a value round-trips byte for byte, and is stored as those bytes")
+        func roundTripsRawBytes() throws {
+            try keychain.set(key: .masterKey, value: rawKeyBytes)
 
-        #expect(outcome(of: keychain, .masterKey) == .value(rawKeyBytes))
+            #expect(outcome(of: keychain, .masterKey) == .value(rawKeyBytes))
 
-        // Read around `Keychain` entirely: what is in the item is what the core
-        // handed over. 32 bytes, not base64's 44, and not decodable as text.
-        let stored = rawData("master-key")
-        #expect(stored == rawKeyBytes)
-        #expect(stored?.count == 32)
-        #expect(stored.flatMap { String(data: $0, encoding: .utf8) } == nil)
-    }
+            // Read around `Keychain` entirely: what is in the item is what the core
+            // handed over. 32 bytes, not base64's 44, and not decodable as text.
+            let stored = rawData("master-key")
+            #expect(stored == rawKeyBytes)
+            #expect(stored?.count == 32)
+            #expect(stored.flatMap { String(data: $0, encoding: .utf8) } == nil)
+        }
 
-    @Test("each of the five sits under §B's service and account, after first unlock, this device only")
-    func storesEveryEntryUnderTheContractedIdentity() throws {
-        for (index, entry) in contract.enumerated() {
-            let value = Data([UInt8(index), 0xFF, 0x00])
-            try keychain.set(key: entry.key, value: value)
+        @Test("each of the five sits under §B's service and account, after first unlock, this device only")
+        func storesEveryEntryUnderTheContractedIdentity() throws {
+            for (index, entry) in contract.enumerated() {
+                let value = Data([UInt8(index), 0xFF, 0x00])
+                try keychain.set(key: entry.key, value: value)
 
-            #expect(rawData(entry.account) == value, "\(entry.account)")
+                #expect(rawData(entry.account) == value, "\(entry.account)")
+                #expect(
+                    rawAttributes(entry.account)?[kSecAttrAccessible as String] as? String
+                        == kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String,
+                    "\(entry.account)"
+                )
+                // Asked for as a query rather than read as an attribute: a
+                // synchronizable query must not find a non-synchronizable item.
+                #expect(
+                    rawQuery(entry.account, [kSecAttrSynchronizable as String: true]).status
+                        == errSecItemNotFound,
+                    "\(entry.account)"
+                )
+            }
+        }
+
+        @Test("a second set overwrites in place rather than failing or duplicating")
+        func secondSetOverwrites() throws {
+            try keychain.set(key: .accessToken, value: Data([0x01, 0x02]))
+            try keychain.set(key: .accessToken, value: Data([0x03, 0x04, 0x05]))
+
+            #expect(outcome(of: keychain, .accessToken) == .value(Data([0x03, 0x04, 0x05])))
+
+            let all = rawQuery("access-token", [
+                kSecReturnData as String: true,
+                kSecMatchLimit as String: kSecMatchLimitAll
+            ])
+            #expect((all.result as? [Data])?.count == 1)
+        }
+
+        @Test("an overwrite re-asserts the access policy on an entry an older build wrote weakly")
+        func overwriteCorrectsAWeakerAccessClass() throws {
+            let added = SecItemAdd([
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: Keychain.service,
+                kSecAttrAccount as String: "device-signing-key",
+                kSecUseDataProtectionKeychain as String: true,
+                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                kSecValueData as String: Data([0x09])
+            ] as CFDictionary, nil)
+            #expect(added == errSecSuccess)
+
+            try keychain.set(key: .deviceSigningKey, value: rawKeyBytes)
+
             #expect(
-                rawAttributes(entry.account)?[kSecAttrAccessible as String] as? String
-                    == kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String,
-                "\(entry.account)"
+                rawAttributes("device-signing-key")?[kSecAttrAccessible as String] as? String
+                    == kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String
             )
-            // Asked for as a query rather than read as an attribute: a
-            // synchronizable query must not find a non-synchronizable item.
-            #expect(
-                rawQuery(entry.account, [kSecAttrSynchronizable as String: true]).status
-                    == errSecItemNotFound,
-                "\(entry.account)"
-            )
-        }
-    }
-
-    @Test("a second set overwrites in place rather than failing or duplicating")
-    func secondSetOverwrites() throws {
-        try keychain.set(key: .accessToken, value: Data([0x01, 0x02]))
-        try keychain.set(key: .accessToken, value: Data([0x03, 0x04, 0x05]))
-
-        #expect(outcome(of: keychain, .accessToken) == .value(Data([0x03, 0x04, 0x05])))
-
-        let all = rawQuery("access-token", [
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitAll
-        ])
-        #expect((all.result as? [Data])?.count == 1)
-    }
-
-    @Test("an overwrite re-asserts the access policy on an entry an older build wrote weakly")
-    func overwriteCorrectsAWeakerAccessClass() throws {
-        let added = SecItemAdd([
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Keychain.service,
-            kSecAttrAccount as String: "device-signing-key",
-            kSecUseDataProtectionKeychain as String: true,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            kSecValueData as String: Data([0x09])
-        ] as CFDictionary, nil)
-        #expect(added == errSecSuccess)
-
-        try keychain.set(key: .deviceSigningKey, value: rawKeyBytes)
-
-        #expect(
-            rawAttributes("device-signing-key")?[kSecAttrAccessible as String] as? String
-                == kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String
-        )
-        #expect(outcome(of: keychain, .deviceSigningKey) == .value(rawKeyBytes))
-    }
-
-    @Test("an entry that was never written reads as absent")
-    func missingEntryIsAbsent() {
-        #expect(outcome(of: keychain, .setupToken) == .absent)
-    }
-
-    @Test("deleting twice is not an error, and leaves nothing")
-    func deleteIsIdempotent() throws {
-        try keychain.set(key: .refreshToken, value: Data([0xAB]))
-        try keychain.delete(key: .refreshToken)
-        try keychain.delete(key: .refreshToken)
-
-        #expect(outcome(of: keychain, .refreshToken) == .absent)
-        #expect(rawData("refresh-token") == nil)
-    }
-
-    @Test("clear removes every one of the five, with nothing left behind")
-    func clearRemovesEveryEntry() throws {
-        for entry in contract {
-            try keychain.set(key: entry.key, value: Data([0x42]))
-            #expect(rawData(entry.account) != nil, "\(entry.account)")
+            #expect(outcome(of: keychain, .deviceSigningKey) == .value(rawKeyBytes))
         }
 
-        try keychain.clear()
-
-        for entry in contract {
-            #expect(outcome(of: keychain, entry.key) == .absent, "\(entry.account)")
-            #expect(rawData(entry.account) == nil, "\(entry.account)")
+        @Test("an entry that was never written reads as absent")
+        func missingEntryIsAbsent() {
+            #expect(outcome(of: keychain, .setupToken) == .absent)
         }
-    }
 
-    // MARK: - Reading around the seam
+        @Test("deleting twice is not an error, and leaves nothing")
+        func deleteIsIdempotent() throws {
+            try keychain.set(key: .refreshToken, value: Data([0xAB]))
+            try keychain.delete(key: .refreshToken)
+            try keychain.delete(key: .refreshToken)
 
-    private func rawQuery(_ account: String, _ extra: [String: Any]) -> (status: OSStatus, result: CFTypeRef?) {
-        var query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Keychain.service,
-            kSecAttrAccount as String: account,
-            kSecUseDataProtectionKeychain as String: true
-        ]
-        query.merge(extra) { _, new in new }
+            #expect(outcome(of: keychain, .refreshToken) == .absent)
+            #expect(rawData("refresh-token") == nil)
+        }
 
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        return (status, result)
-    }
+        @Test("clear removes every one of the five, with nothing left behind")
+        func clearRemovesEveryEntry() throws {
+            for entry in contract {
+                try keychain.set(key: entry.key, value: Data([0x42]))
+                #expect(rawData(entry.account) != nil, "\(entry.account)")
+            }
 
-    private func rawData(_ account: String) -> Data? {
-        let found = rawQuery(account, [
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ])
-        guard found.status == errSecSuccess else { return nil }
-        return found.result as? Data
-    }
+            try keychain.clear()
 
-    private func rawAttributes(_ account: String) -> [String: Any]? {
-        let found = rawQuery(account, [
-            kSecReturnAttributes as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ])
-        guard found.status == errSecSuccess else { return nil }
-        return found.result as? [String: Any]
+            for entry in contract {
+                #expect(outcome(of: keychain, entry.key) == .absent, "\(entry.account)")
+                #expect(rawData(entry.account) == nil, "\(entry.account)")
+            }
+        }
+
+        // MARK: - Reading around the seam
+
+        private func rawQuery(_ account: String, _ extra: [String: Any]) -> (status: OSStatus, result: CFTypeRef?) {
+            var query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: Keychain.service,
+                kSecAttrAccount as String: account,
+                kSecUseDataProtectionKeychain as String: true
+            ]
+            query.merge(extra) { _, new in new }
+
+            var result: CFTypeRef?
+            let status = SecItemCopyMatching(query as CFDictionary, &result)
+            return (status, result)
+        }
+
+        private func rawData(_ account: String) -> Data? {
+            let found = rawQuery(account, [
+                kSecReturnData as String: true,
+                kSecMatchLimit as String: kSecMatchLimitOne
+            ])
+            guard found.status == errSecSuccess else { return nil }
+            return found.result as? Data
+        }
+
+        private func rawAttributes(_ account: String) -> [String: Any]? {
+            let found = rawQuery(account, [
+                kSecReturnAttributes as String: true,
+                kSecMatchLimit as String: kSecMatchLimitOne
+            ])
+            guard found.status == errSecSuccess else { return nil }
+            return found.result as? [String: Any]
+        }
     }
 }
 
