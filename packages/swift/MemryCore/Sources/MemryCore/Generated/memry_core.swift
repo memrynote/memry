@@ -5397,6 +5397,218 @@ public func FfiConverterTypeSocketListener_lower(_ value: SocketListener) -> UIn
 
 
 /**
+ * Where progress goes.
+ *
+ * **Synchronous by contract.** It is called from inside the pass that is
+ * reporting, so an implementation that blocks stalls the sync it is measuring:
+ * hop to the main thread and return, never await inside it.
+ */
+public protocol SyncProgressListener: AnyObject, Sendable {
+    
+    func progress(progress: SyncProgress) 
+    
+}
+/**
+ * Where progress goes.
+ *
+ * **Synchronous by contract.** It is called from inside the pass that is
+ * reporting, so an implementation that blocks stalls the sync it is measuring:
+ * hop to the main thread and return, never await inside it.
+ */
+open class SyncProgressListenerImpl: SyncProgressListener, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_syncprogresslistener(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_syncprogresslistener(handle, $0) }
+    }
+
+    
+
+    
+open func progress(progress: SyncProgress)  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_syncprogresslistener_progress(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeSyncProgress_lower(progress),uniffiCallStatus
+    )
+}
+}
+    
+
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceSyncProgressListener {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfaceSyncProgressListener = UniffiVTableCallbackInterfaceSyncProgressListener(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterTypeSyncProgressListener.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface SyncProgressListener: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterTypeSyncProgressListener.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface SyncProgressListener: handle missing in uniffiClone")
+            }
+        },
+        progress: { (
+            uniffiHandle: UInt64,
+            progress: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeSyncProgressListener.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.progress(
+                     progress: try FfiConverterTypeSyncProgress_lift(progress)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    //
+    // `nonisolated(unsafe)` is needed under Swift 6 strict concurrency.
+    // This is safe because the pointee is initialized once during static init
+    // and never mutated by either side of the FFI.  Its fields are C function pointers.
+    nonisolated(unsafe) static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceSyncProgressListener> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceSyncProgressListener>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitSyncProgressListener() {
+    uniffi_memry_core_fn_init_callback_vtable_syncprogresslistener(UniffiCallbackInterfaceSyncProgressListener.vtablePtr)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyncProgressListener: FfiConverter {
+    fileprivate static let handleMap = UniffiHandleMap<SyncProgressListener>()
+
+    typealias FfiType = UInt64
+    typealias SwiftType = SyncProgressListener
+
+    public static func lift(_ handle: UInt64) throws -> SyncProgressListener {
+        if ((handle & 1) == 0) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return SyncProgressListenerImpl(unsafeFromHandle: handle)
+        } else {
+            // Swift-generated handle, get the object from the handle map
+            return try handleMap.remove(handle: handle)
+        }
+    }
+
+    public static func lower(_ value: SyncProgressListener) -> UInt64 {
+         if let rustImpl = value as? SyncProgressListenerImpl {
+             // Rust-implemented object.  Clone the handle and return it
+            return rustImpl.uniffiCloneHandle()
+         } else {
+            // Swift object, generate a new vtable handle and return that.
+            return handleMap.insert(obj: value)
+         }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncProgressListener {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: SyncProgressListener, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncProgressListener_lift(_ handle: UInt64) throws -> SyncProgressListener {
+    return try FfiConverterTypeSyncProgressListener.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncProgressListener_lower(_ value: SyncProgressListener) -> UInt64 {
+    return FfiConverterTypeSyncProgressListener.lower(value)
+}
+
+
+
+
+
+
+/**
  * The one network seam.
  */
 public protocol Transport: AnyObject, Sendable {
@@ -5720,6 +5932,18 @@ public protocol VaultProtocol: AnyObject, Sendable {
      */
     func notes()  -> Notes
     
+    /**
+     * The read-only sync that **fills** this vault's database (T236,
+     * spec-defect 136).
+     *
+     * Takes the session rather than holding one, so [`Vault::open`] stays a
+     * local, offline, blocking open. The session supplies the authenticated
+     * client and the master key; nothing of either crosses the FFI.
+     *
+     * Building this makes no request and takes no lock.
+     */
+    func sync(session: AuthSession)  -> VaultSync
+    
 }
 /**
  * One vault's local database, opened.
@@ -5836,6 +6060,26 @@ open func notes() -> Notes  {
 })
 }
     
+    /**
+     * The read-only sync that **fills** this vault's database (T236,
+     * spec-defect 136).
+     *
+     * Takes the session rather than holding one, so [`Vault::open`] stays a
+     * local, offline, blocking open. The session supplies the authenticated
+     * client and the master key; nothing of either crosses the FFI.
+     *
+     * Building this makes no request and takes no lock.
+     */
+open func sync(session: AuthSession) -> VaultSync  {
+    return try!  FfiConverterTypeVaultSync_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_sync(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeAuthSession_lower(session),uniffiCallStatus
+    )
+})
+}
+    
 
     
 }
@@ -5882,6 +6126,354 @@ public func FfiConverterTypeVault_lower(_ value: Vault) -> UInt64 {
 }
 
 
+
+
+
+
+/**
+ * The read-only sync over one opened vault.
+ *
+ * Built by [`crate::api::vault::Vault::sync`], which is the only way: a
+ * `VaultSync` over a database nobody opened is a sync into the wrong vault.
+ */
+public protocol VaultSyncProtocol: AnyObject, Sendable {
+    
+    /**
+     * One note's body, on demand (chapter 07 §7.8 – §7.11).
+     *
+     * **This is not an extra.** [`Self::first_sync`] pulls bodies only for the
+     * recent window — chapter 10 §10.6.1 mandates the windowing and FR-028
+     * says "older content on demand" — so a note outside it arrives with its
+     * metadata and no body, and [`crate::api::notes::Notes::read`] answers
+     * `NoteBody { present: false }`. Without this call that note could never
+     * become readable, which is spec-defect 136 one layer down.
+     *
+     * **`async`**, and one document rather than the whole feed: a handful of
+     * round trips, not tens.
+     *
+     * A note this vault holds no **live** record of is refused rather than
+     * fetched, and the refusal is [`SyncError::UnknownNote`]. Chapter 07 §7.15:
+     * the server still answers with the surviving log of a deleted document,
+     * and applying it would resurrect body state for a note the record feed
+     * says is gone. The liveness check is the same read the note view makes,
+     * so the two can never disagree.
+     */
+    func fetchNoteBody(noteId: String) async throws  -> BodyFetchSummary
+    
+    /**
+     * The first sync: refs to the end, then metadata newest first, then bodies
+     * for the recent window (data-model §C.3, FR-028).
+     *
+     * **`async`, and that is contract, not detail** (spec-defect 90). It is
+     * tens of network round trips — a no-op pass over a ninety-four-note vault
+     * already costs thirty-odd seconds, and a genuine first sync is longer.
+     *
+     * **It cannot be cancelled from the shell** (spec-defect 108:
+     * `rust_future_cancel` appears nowhere in the generated bindings). A shell
+     * may abandon the *UI* — navigate away, background the app, stop drawing
+     * the bar — and it may drop its `Arc` when the call returns, but the run
+     * itself continues to completion or to its first error. **Never offer a
+     * Cancel button over this call.** What makes that tolerable is that every
+     * pass's progress is durable in the data itself, so a run that is killed
+     * with the process resumes at the last thing it actually wrote rather than
+     * starting again.
+     *
+     * `progress` is optional and is the reason this is bearable to sit in
+     * front of: without it a shell has a spinner and no information. Pass one
+     * unless the run is genuinely invisible.
+     *
+     * **A partial run never leaves a vault looking empty.** Metadata lands
+     * before bodies and each pass is durable as it goes, so an error part way
+     * through leaves the notes that did arrive visible and readable; it throws,
+     * and what it throws is the reason. A shell must render that reason, never
+     * an empty state.
+     */
+    func firstSync(progress: SyncProgressListener?) async throws  -> FirstSyncSummary
+    
+    /**
+     * Whether this device has already finished a first sync for this vault.
+     *
+     * **Blocks, and makes no request** (spec-defect 90). It is one row of the
+     * local `meta` table, so a shell can decide whether to show a "setting
+     * up" screen without going near the network — which is the whole point of
+     * asking.
+     */
+    func isFirstSyncComplete() throws  -> Bool
+    
+}
+/**
+ * The read-only sync over one opened vault.
+ *
+ * Built by [`crate::api::vault::Vault::sync`], which is the only way: a
+ * `VaultSync` over a database nobody opened is a sync into the wrong vault.
+ */
+open class VaultSync: VaultSyncProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_vaultsync(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_vaultsync(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * One note's body, on demand (chapter 07 §7.8 – §7.11).
+     *
+     * **This is not an extra.** [`Self::first_sync`] pulls bodies only for the
+     * recent window — chapter 10 §10.6.1 mandates the windowing and FR-028
+     * says "older content on demand" — so a note outside it arrives with its
+     * metadata and no body, and [`crate::api::notes::Notes::read`] answers
+     * `NoteBody { present: false }`. Without this call that note could never
+     * become readable, which is spec-defect 136 one layer down.
+     *
+     * **`async`**, and one document rather than the whole feed: a handful of
+     * round trips, not tens.
+     *
+     * A note this vault holds no **live** record of is refused rather than
+     * fetched, and the refusal is [`SyncError::UnknownNote`]. Chapter 07 §7.15:
+     * the server still answers with the surviving log of a deleted document,
+     * and applying it would resurrect body state for a note the record feed
+     * says is gone. The liveness check is the same read the note view makes,
+     * so the two can never disagree.
+     */
+open func fetchNoteBody(noteId: String)async throws  -> BodyFetchSummary  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_fetch_note_body(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(noteId)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBodyFetchSummary_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
+     * The first sync: refs to the end, then metadata newest first, then bodies
+     * for the recent window (data-model §C.3, FR-028).
+     *
+     * **`async`, and that is contract, not detail** (spec-defect 90). It is
+     * tens of network round trips — a no-op pass over a ninety-four-note vault
+     * already costs thirty-odd seconds, and a genuine first sync is longer.
+     *
+     * **It cannot be cancelled from the shell** (spec-defect 108:
+     * `rust_future_cancel` appears nowhere in the generated bindings). A shell
+     * may abandon the *UI* — navigate away, background the app, stop drawing
+     * the bar — and it may drop its `Arc` when the call returns, but the run
+     * itself continues to completion or to its first error. **Never offer a
+     * Cancel button over this call.** What makes that tolerable is that every
+     * pass's progress is durable in the data itself, so a run that is killed
+     * with the process resumes at the last thing it actually wrote rather than
+     * starting again.
+     *
+     * `progress` is optional and is the reason this is bearable to sit in
+     * front of: without it a shell has a spinner and no information. Pass one
+     * unless the run is genuinely invisible.
+     *
+     * **A partial run never leaves a vault looking empty.** Metadata lands
+     * before bodies and each pass is durable as it goes, so an error part way
+     * through leaves the notes that did arrive visible and readable; it throws,
+     * and what it throws is the reason. A shell must render that reason, never
+     * an empty state.
+     */
+open func firstSync(progress: SyncProgressListener?)async throws  -> FirstSyncSummary  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_first_sync(
+                        self.uniffiCloneHandle(),FfiConverterOptionTypeSyncProgressListener.lower(progress)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeFirstSyncSummary_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
+     * Whether this device has already finished a first sync for this vault.
+     *
+     * **Blocks, and makes no request** (spec-defect 90). It is one row of the
+     * local `meta` table, so a shell can decide whether to show a "setting
+     * up" screen without going near the network — which is the whole point of
+     * asking.
+     */
+open func isFirstSyncComplete()throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeSyncError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultsync_is_first_sync_complete(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeVaultSync: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = VaultSync
+
+    public static func lift(_ handle: UInt64) throws -> VaultSync {
+        return VaultSync(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: VaultSync) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> VaultSync {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: VaultSync, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVaultSync_lift(_ handle: UInt64) throws -> VaultSync {
+    return try FfiConverterTypeVaultSync.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVaultSync_lower(_ value: VaultSync) -> UInt64 {
+    return FfiConverterTypeVaultSync.lower(value)
+}
+
+
+
+
+/**
+ * What one on-demand body fetch did.
+ */
+public struct BodyFetchSummary: Equatable, Hashable {
+    public var updates: UInt32
+    public var baselines: UInt32
+    /**
+     * The pull stopped at an update this device could not open (§7.9). The
+     * body is **incomplete, not absent**, and the cursor did not advance past
+     * the gap, so a later fetch resumes there.
+     */
+    public var stopped: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(updates: UInt32, baselines: UInt32, 
+        /**
+         * The pull stopped at an update this device could not open (§7.9). The
+         * body is **incomplete, not absent**, and the cursor did not advance past
+         * the gap, so a later fetch resumes there.
+         */stopped: Bool) {
+        self.updates = updates
+        self.baselines = baselines
+        self.stopped = stopped
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BodyFetchSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBodyFetchSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BodyFetchSummary {
+        return
+            try BodyFetchSummary(
+                updates: FfiConverterUInt32.read(from: &buf), 
+                baselines: FfiConverterUInt32.read(from: &buf), 
+                stopped: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BodyFetchSummary, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.updates, into: &buf)
+        FfiConverterUInt32.write(value.baselines, into: &buf)
+        FfiConverterBool.write(value.stopped, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBodyFetchSummary_lift(_ buf: RustBuffer) throws -> BodyFetchSummary {
+    return try FfiConverterTypeBodyFetchSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBodyFetchSummary_lower(_ value: BodyFetchSummary) -> RustBuffer {
+    return FfiConverterTypeBodyFetchSummary.lower(value)
+}
 
 
 /**
@@ -6029,6 +6621,122 @@ public func FfiConverterTypeDeviceDescriptor_lift(_ buf: RustBuffer) throws -> D
 #endif
 public func FfiConverterTypeDeviceDescriptor_lower(_ value: DeviceDescriptor) -> RustBuffer {
     return FfiConverterTypeDeviceDescriptor.lower(value)
+}
+
+
+/**
+ * What a first sync did.
+ *
+ * Counts are `u32` because `usize` has no FFI width. **`metadata_corrupt` is
+ * not a failure and must not be hidden**: it is the number of items this
+ * device could not open, and a vault that returns some of them is a vault a
+ * shell should say something about rather than render as complete.
+ */
+public struct FirstSyncSummary: Equatable, Hashable {
+    public var refsRecorded: UInt32
+    public var tombstones: UInt32
+    public var metadataApplied: UInt32
+    public var metadataCorrupt: UInt32
+    public var bodies: UInt32
+    public var updates: UInt32
+    /**
+     * Documents whose body pull stopped at an update this device could not
+     * open (chapter 07 §7.9). Their cursor did **not** advance, so the next
+     * run retries them; they are not lost and they are not complete.
+     */
+    public var bodiesStopped: UInt32
+    /**
+     * The window boundary this run used, epoch milliseconds. A note older than
+     * this has its metadata but not yet its body.
+     */
+    public var windowStartMs: Int64
+    /**
+     * Whether the bootstrap session was elevated (chapter 10 §10.7).
+     * Informational: the run is byte-for-byte identical either way.
+     */
+    public var elevated: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(refsRecorded: UInt32, tombstones: UInt32, metadataApplied: UInt32, metadataCorrupt: UInt32, bodies: UInt32, updates: UInt32, 
+        /**
+         * Documents whose body pull stopped at an update this device could not
+         * open (chapter 07 §7.9). Their cursor did **not** advance, so the next
+         * run retries them; they are not lost and they are not complete.
+         */bodiesStopped: UInt32, 
+        /**
+         * The window boundary this run used, epoch milliseconds. A note older than
+         * this has its metadata but not yet its body.
+         */windowStartMs: Int64, 
+        /**
+         * Whether the bootstrap session was elevated (chapter 10 §10.7).
+         * Informational: the run is byte-for-byte identical either way.
+         */elevated: Bool) {
+        self.refsRecorded = refsRecorded
+        self.tombstones = tombstones
+        self.metadataApplied = metadataApplied
+        self.metadataCorrupt = metadataCorrupt
+        self.bodies = bodies
+        self.updates = updates
+        self.bodiesStopped = bodiesStopped
+        self.windowStartMs = windowStartMs
+        self.elevated = elevated
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension FirstSyncSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFirstSyncSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FirstSyncSummary {
+        return
+            try FirstSyncSummary(
+                refsRecorded: FfiConverterUInt32.read(from: &buf), 
+                tombstones: FfiConverterUInt32.read(from: &buf), 
+                metadataApplied: FfiConverterUInt32.read(from: &buf), 
+                metadataCorrupt: FfiConverterUInt32.read(from: &buf), 
+                bodies: FfiConverterUInt32.read(from: &buf), 
+                updates: FfiConverterUInt32.read(from: &buf), 
+                bodiesStopped: FfiConverterUInt32.read(from: &buf), 
+                windowStartMs: FfiConverterInt64.read(from: &buf), 
+                elevated: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FirstSyncSummary, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.refsRecorded, into: &buf)
+        FfiConverterUInt32.write(value.tombstones, into: &buf)
+        FfiConverterUInt32.write(value.metadataApplied, into: &buf)
+        FfiConverterUInt32.write(value.metadataCorrupt, into: &buf)
+        FfiConverterUInt32.write(value.bodies, into: &buf)
+        FfiConverterUInt32.write(value.updates, into: &buf)
+        FfiConverterUInt32.write(value.bodiesStopped, into: &buf)
+        FfiConverterInt64.write(value.windowStartMs, into: &buf)
+        FfiConverterBool.write(value.elevated, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFirstSyncSummary_lift(_ buf: RustBuffer) throws -> FirstSyncSummary {
+    return try FfiConverterTypeFirstSyncSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFirstSyncSummary_lower(_ value: FirstSyncSummary) -> RustBuffer {
+    return FfiConverterTypeFirstSyncSummary.lower(value)
 }
 
 
@@ -6837,6 +7545,68 @@ public func FfiConverterTypeSocketRequest_lift(_ buf: RustBuffer) throws -> Sock
 #endif
 public func FfiConverterTypeSocketRequest_lower(_ value: SocketRequest) -> RustBuffer {
     return FfiConverterTypeSocketRequest.lower(value)
+}
+
+
+/**
+ * FR-028's determinate progress. `completed` is never above `total`, so a
+ * shell renders a fraction without guarding against one above 1.
+ */
+public struct SyncProgress: Equatable, Hashable {
+    public var phase: SyncPhase
+    public var completed: UInt64
+    public var total: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(phase: SyncPhase, completed: UInt64, total: UInt64) {
+        self.phase = phase
+        self.completed = completed
+        self.total = total
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SyncProgress: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyncProgress: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncProgress {
+        return
+            try SyncProgress(
+                phase: FfiConverterTypeSyncPhase.read(from: &buf), 
+                completed: FfiConverterUInt64.read(from: &buf), 
+                total: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SyncProgress, into buf: inout [UInt8]) {
+        FfiConverterTypeSyncPhase.write(value.phase, into: &buf)
+        FfiConverterUInt64.write(value.completed, into: &buf)
+        FfiConverterUInt64.write(value.total, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncProgress_lift(_ buf: RustBuffer) throws -> SyncProgress {
+    return try FfiConverterTypeSyncProgress.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncProgress_lower(_ value: SyncProgress) -> RustBuffer {
+    return FfiConverterTypeSyncProgress.lower(value)
 }
 
 
@@ -9915,6 +10685,254 @@ public func FfiConverterTypeStorageError_lower(_ value: StorageError) -> RustBuf
 
 
 /**
+ * Failures of the read-only sync a shell can drive (T236, spec-defect 136).
+ *
+ * **Every arm is a variant, never a rendered string** (Constitution II), and
+ * the two that are not simply forwarded exist because collapsing them lies:
+ *
+ * - [`SyncError::Locked`] is "this device holds no master key", which is a
+ * local state the user fixes by unlocking. Folded into
+ * [`SecureStoreError::Locked`] it would read as "the keychain is locked",
+ * which is a different sentence and a different remedy; folded into an
+ * `ApiError` it would read as a server answer, and no request was made.
+ * - [`SyncError::UnknownNote`] is a refusal, never a transient fault. A body
+ * fetched for a note this vault has no live record of would land with no row
+ * to hang it on (chapter 07 §7.15), so the fetch is refused. **No copy may
+ * describe it as something to retry.**
+ *
+ * A non-2xx arrives as [`SyncError::Api`] carrying [`ApiError::Status`] or one
+ * of its named arms — a **response**, never a transport failure — so a
+ * permanent refusal from the server can never be mistaken for a lost
+ * connection.
+ */
+public 
+enum SyncError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    case Api(source: ApiError
+    )
+    case Storage(source: StorageError
+    )
+    case SecureStore(source: SecureStoreError
+    )
+    case Crypto(source: CryptoError
+    )
+    /**
+     * No master key in the secure store: nothing has unlocked this device, so
+     * there is no vault key to open a record with. The keychain answered
+     * **absent**, not locked — a locked keychain crosses as
+     * [`SyncError::SecureStore`] and is the transient one of the two.
+     */
+    case Locked
+    /**
+     * This vault holds no live note by that id, so there is no record to hang
+     * a body on. Permanent for this id, not a retryable fault.
+     */
+    case UnknownNote(id: String
+    )
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension SyncError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyncError: FfiConverterRustBuffer {
+    typealias SwiftType = SyncError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Api(
+            source: try FfiConverterTypeApiError.read(from: &buf)
+            )
+        case 2: return .Storage(
+            source: try FfiConverterTypeStorageError.read(from: &buf)
+            )
+        case 3: return .SecureStore(
+            source: try FfiConverterTypeSecureStoreError.read(from: &buf)
+            )
+        case 4: return .Crypto(
+            source: try FfiConverterTypeCryptoError.read(from: &buf)
+            )
+        case 5: return .Locked
+        case 6: return .UnknownNote(
+            id: try FfiConverterString.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SyncError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case let .Api(source):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeApiError.write(source, into: &buf)
+            
+        
+        case let .Storage(source):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeStorageError.write(source, into: &buf)
+            
+        
+        case let .SecureStore(source):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeSecureStoreError.write(source, into: &buf)
+            
+        
+        case let .Crypto(source):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeCryptoError.write(source, into: &buf)
+            
+        
+        case .Locked:
+            writeInt(&buf, Int32(5))
+        
+        
+        case let .UnknownNote(id):
+            writeInt(&buf, Int32(6))
+            FfiConverterString.write(id, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncError_lift(_ buf: RustBuffer) throws -> SyncError {
+    return try FfiConverterTypeSyncError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncError_lower(_ value: SyncError) -> RustBuffer {
+    return FfiConverterTypeSyncError.lower(value)
+}
+
+
+/**
+ * Which pass a first sync is in, data-model §C.3 and FR-028.
+ *
+ * A mirror of [`FirstSyncPhase`] rather than a derive on it: the internal type
+ * is free to gain a pass, and the day it does, this enum's absence of one is a
+ * compile error here rather than a silent new case on the FFI.
+ */
+
+public enum SyncPhase: Equatable, Hashable {
+    
+    /**
+     * `GET /sync/changes` to the end of the feed.
+     */
+    case refs
+    /**
+     * `POST /sync/pull`, newest first.
+     */
+    case metadata
+    /**
+     * `GET /sync/crdt/updates` for the recent window.
+     */
+    case bodies
+    case done
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SyncPhase: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyncPhase: FfiConverterRustBuffer {
+    typealias SwiftType = SyncPhase
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncPhase {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .refs
+        
+        case 2: return .metadata
+        
+        case 3: return .bodies
+        
+        case 4: return .done
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SyncPhase, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .refs:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .metadata:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .bodies:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .done:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncPhase_lift(_ buf: RustBuffer) throws -> SyncPhase {
+    return try FfiConverterTypeSyncPhase.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncPhase_lower(_ value: SyncPhase) -> RustBuffer {
+    return FfiConverterTypeSyncPhase.lower(value)
+}
+
+
+
+/**
  * Failures of the `Transport` seam (research R5).
  *
  * A non-2xx HTTP status is **not** one of these: it is a successful response
@@ -10155,6 +11173,30 @@ fileprivate struct FfiConverterOptionData: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterData.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeSyncProgressListener: FfiConverterRustBuffer {
+    typealias SwiftType = SyncProgressListener?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeSyncProgressListener.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeSyncProgressListener.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -10714,10 +11756,25 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_runtimehost_resume_settled() != 37011) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_syncprogresslistener_progress() != 60104) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_body() != 40537) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_first_sync() != 1318) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_is_first_sync_complete() != 42151) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vault_id() != 63291) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_notes() != 15357) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_sync() != 39035) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_backgroundexec_schedule_refresh() != 7923) {
@@ -10858,6 +11915,7 @@ private let initializationResult: InitializationResult = {
     uniffiCallbackInitSecureStore()
     uniffiCallbackInitSocketHandle()
     uniffiCallbackInitSocketListener()
+    uniffiCallbackInitSyncProgressListener()
     uniffiCallbackInitTransport()
     return InitializationResult.ok
 }()

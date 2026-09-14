@@ -169,6 +169,26 @@ fn read_summary(row: &Row<'_>) -> Result<NoteSummary, rusqlite::Error> {
     })
 }
 
+/// Whether this vault holds a **live** note by that id.
+///
+/// The same `deleted_at IS NULL` predicate [`note`] reads under, and
+/// deliberately not a second opinion about it: chapter 07 §7.15 forbids pulling
+/// the body of a tombstoned document, and a liveness check that could disagree
+/// with the read would let a note be fetched that the note view says is gone.
+/// It decodes nothing, so it costs one indexed row rather than a whole update
+/// log.
+pub fn note_exists(conn: &Connection, id: &str) -> bool {
+    conn.query_row(
+        "SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NULL",
+        rusqlite::params![id],
+        |_| Ok(()),
+    )
+    .optional()
+    .ok()
+    .flatten()
+    .is_some()
+}
+
 /// One note and its body, or `None` when this vault holds no live note by that
 /// id.
 ///

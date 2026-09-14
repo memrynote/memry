@@ -434,3 +434,61 @@ pub enum AuthError {
     #[error("sign-in did not return a setup token")]
     NoSetupToken,
 }
+
+/// Failures of the read-only sync a shell can drive (T236, spec-defect 136).
+///
+/// **Every arm is a variant, never a rendered string** (Constitution II), and
+/// the two that are not simply forwarded exist because collapsing them lies:
+///
+/// - [`SyncError::Locked`] is "this device holds no master key", which is a
+///   local state the user fixes by unlocking. Folded into
+///   [`SecureStoreError::Locked`] it would read as "the keychain is locked",
+///   which is a different sentence and a different remedy; folded into an
+///   `ApiError` it would read as a server answer, and no request was made.
+/// - [`SyncError::UnknownNote`] is a refusal, never a transient fault. A body
+///   fetched for a note this vault has no live record of would land with no row
+///   to hang it on (chapter 07 §7.15), so the fetch is refused. **No copy may
+///   describe it as something to retry.**
+///
+/// A non-2xx arrives as [`SyncError::Api`] carrying [`ApiError::Status`] or one
+/// of its named arms — a **response**, never a transport failure — so a
+/// permanent refusal from the server can never be mistaken for a lost
+/// connection.
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
+pub enum SyncError {
+    #[error("{source}")]
+    Api {
+        #[from]
+        source: ApiError,
+    },
+
+    #[error("{source}")]
+    Storage {
+        #[from]
+        source: StorageError,
+    },
+
+    #[error("{source}")]
+    SecureStore {
+        #[from]
+        source: SecureStoreError,
+    },
+
+    #[error("{source}")]
+    Crypto {
+        #[from]
+        source: CryptoError,
+    },
+
+    /// No master key in the secure store: nothing has unlocked this device, so
+    /// there is no vault key to open a record with. The keychain answered
+    /// **absent**, not locked — a locked keychain crosses as
+    /// [`SyncError::SecureStore`] and is the transient one of the two.
+    #[error("this device is locked: no master key")]
+    Locked,
+
+    /// This vault holds no live note by that id, so there is no record to hang
+    /// a body on. Permanent for this id, not a retryable fault.
+    #[error("no live note `{id}` in this vault")]
+    UnknownNote { id: String },
+}

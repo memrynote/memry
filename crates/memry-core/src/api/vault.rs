@@ -38,8 +38,10 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::api::auth::AuthSession;
 use crate::api::errors::StorageError;
 use crate::api::notes::Notes;
+use crate::api::sync::VaultSync;
 use crate::storage::{Db, open_data};
 
 /// One vault's local database, opened.
@@ -81,6 +83,18 @@ impl Vault {
     /// says which vault it is rather than relying on the caller to remember.
     pub fn id(&self) -> String {
         self.id.clone()
+    }
+
+    /// The read-only sync that **fills** this vault's database (T236,
+    /// spec-defect 136).
+    ///
+    /// Takes the session rather than holding one, so [`Vault::open`] stays a
+    /// local, offline, blocking open. The session supplies the authenticated
+    /// client and the master key; nothing of either crosses the FFI.
+    ///
+    /// Building this makes no request and takes no lock.
+    pub fn sync(&self, session: Arc<AuthSession>) -> Arc<VaultSync> {
+        Arc::new(VaultSync::over(self.id.clone(), self.db.clone(), session))
     }
 
     /// The note and folder reads over **this** vault's database.

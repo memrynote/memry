@@ -65,7 +65,7 @@ pub(super) fn recent_document_ids(
     Ok(ids)
 }
 
-pub(super) fn read_meta(conn: &Connection, key: &str) -> Result<Option<String>, StorageError> {
+pub fn read_meta(conn: &Connection, key: &str) -> Result<Option<String>, StorageError> {
     conn.query_row(
         "SELECT value FROM meta WHERE key = ?1",
         params![key],

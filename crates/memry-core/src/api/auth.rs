@@ -21,7 +21,7 @@ use std::sync::{Arc, Mutex};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
-use crate::api::errors::{ApiError, AuthError};
+use crate::api::errors::{ApiError, AuthError, SecureStoreError};
 use crate::crypto::sodium;
 use crate::protocol::auth::{
     AuthRoutes, DevicePlatform, DeviceRegisterRequest, RenewSetupTokenRequest, TokenClaims,
@@ -202,6 +202,20 @@ impl AuthSession {
     /// Not part of the FFI surface — `HttpClient` is internal to the core.
     pub fn http(&self) -> Arc<HttpClient> {
         self.http.clone()
+    }
+
+    /// The master key this device unlocked with, or `None` when nothing has
+    /// unlocked it.
+    ///
+    /// **Not part of the FFI surface, and it never will be.** `core-api.md`'s
+    /// rule is that no exported object exposes a key; the sync tier needs the
+    /// key to derive a vault key, and it gets it here, inside the core, from
+    /// the store this session was built over. A `SecureStoreError::Locked` is
+    /// returned unchanged rather than folded into `None`, for the same reason
+    /// [`AuthSession::signing_secret_key`] does it: "locked" and "absent" have
+    /// different remedies and only one of them is the user's.
+    pub(crate) fn master_key(&self) -> Result<Option<Vec<u8>>, SecureStoreError> {
+        self.store.get(SecureStoreKey::MasterKey)
     }
 
     fn state_now(&self) -> AuthState {

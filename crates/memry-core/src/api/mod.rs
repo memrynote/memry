@@ -7,4 +7,5 @@ pub mod errors;
 pub mod linking;
 pub mod notes;
 pub mod runtime;
+pub mod sync;
 pub mod vault;
