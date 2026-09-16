@@ -91,7 +91,6 @@
     "src/renderer/src/components/zero-leaf-surfaces.test.tsx",
     "src/renderer/src/contexts/ai-settings-context.test.tsx",
     "src/renderer/src/contexts/drag-context.test.tsx",
-    "src/renderer/src/contexts/tabs/__tests__/history.test.ts",
     "src/renderer/src/contexts/tabs/__tests__/reducer.test.ts",
     "src/renderer/src/contexts/tabs/context.test.tsx",
     "src/renderer/src/contexts/tabs/persistence/serialization.test.ts",

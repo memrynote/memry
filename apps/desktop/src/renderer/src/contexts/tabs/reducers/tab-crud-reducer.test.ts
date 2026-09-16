@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { closeGroup, tabCrudReducer } from './tab-crud-reducer'
 import type { Tab, TabAction, TabGroup, TabSystemState } from '../types'
+import { snapshotTabContent } from './history-helpers'
 
 const tab = (id: string, type: Tab['type'], overrides: Partial<Tab> = {}): Tab => ({
   id,
@@ -22,8 +23,10 @@ const group = (id: string, tabs: Tab[], activeTabId = tabs[0]?.id ?? null): TabG
   tabs,
   activeTabId,
   isActive: id === 'g1',
-  back: tabs.slice(0, -1).map((t) => t.id),
-  forward: tabs.slice(1).map((t) => t.id)
+  // Stacks hold {tabId, content} pairs, not bare ids: a tab that navigates in
+  // place keeps its id, so the content is the only part that says where it was.
+  back: tabs.slice(0, -1).map((t) => ({ tabId: t.id, content: snapshotTabContent(t) })),
+  forward: tabs.slice(1).map((t) => ({ tabId: t.id, content: snapshotTabContent(t) }))
 })
 
 const baseState = (overrides: Partial<TabSystemState> = {}): TabSystemState => ({

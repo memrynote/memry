@@ -103,6 +103,10 @@ export interface HistoryEntry {
  * `steps = entries.length + 1` is correct even with stale ids because NAV_BACK /
  * NAV_FORWARD discard any closed-tab ids they pass and land on the next still-open
  * tab — so the k-th valid entry (0-indexed) is reached by exactly k+1 calls.
+ *
+ * The row shows the entry's SNAPSHOT over the live tab, not the tab as it looks
+ * now. After a same-tab navigation every entry names the same tab, so reading
+ * the live tab would list the note the user is already on, once per step.
  */
 export const buildHistoryEntries = (
   state: TabSystemState,
@@ -116,9 +120,10 @@ export const buildHistoryEntries = (
   const entries: HistoryEntry[] = []
   // End of both stacks is the nearest neighbour (NAV_BACK/NAV_FORWARD pop from the end).
   for (let i = stack.length - 1; i >= 0 && entries.length < limit; i--) {
-    const found = findTabById(state, stack[i])
+    const entry = stack[i]
+    const found = findTabById(state, entry.tabId)
     if (!found) continue // skip closed tabs, exactly like the reducer does
-    entries.push({ tab: found.tab, steps: entries.length + 1 })
+    entries.push({ tab: { ...found.tab, ...entry.content }, steps: entries.length + 1 })
   }
   return entries
 }

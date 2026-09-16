@@ -149,6 +149,47 @@ export interface Tab {
 }
 
 // =============================================================================
+// NAVIGATION HISTORY
+// =============================================================================
+
+/**
+ * What a tab was showing at a point in time.
+ *
+ * A tab KEEPS ITS ID when it navigates in place (`replaceActive`,
+ * `reuseActiveTab` — see the tab-crud reducer), so the id alone cannot say
+ * which note the pane was on. The snapshot is the part that can: back/forward
+ * restore it into the tab, which is what makes "open A, open B in the same tab,
+ * press back" land on A with its saved scroll instead of doing nothing.
+ */
+export type TabContentSnapshot = Pick<
+  Tab,
+  | 'type'
+  | 'title'
+  | 'icon'
+  | 'emoji'
+  | 'path'
+  | 'entityId'
+  | 'scrollPosition'
+  | 'scrollState'
+  | 'scrollPanes'
+  | 'viewState'
+>
+
+/**
+ * One step of a pane's back/forward history.
+ *
+ * Both halves matter: `tabId` says which tab to activate (and is what goes
+ * stale when that tab is closed), `content` says what that tab should be
+ * showing once it is active.
+ */
+export interface TabHistoryEntry {
+  /** Tab that was active for this step. */
+  tabId: string
+  /** Content that tab was showing for this step. */
+  content: TabContentSnapshot
+}
+
+// =============================================================================
 // TAB GROUP & LAYOUT
 // =============================================================================
 
@@ -164,10 +205,10 @@ export interface TabGroup {
   activeTabId: string | null
   /** Is this the focused group? */
   isActive: boolean
-  /** Tab activation history: ids previously active in this group, oldest → newest. In-memory only. */
-  back: string[]
-  /** Forward stack: tab ids re-activatable after a NAV_BACK. */
-  forward: string[]
+  /** Navigation history for this pane, oldest → newest. In-memory only. */
+  back: TabHistoryEntry[]
+  /** Forward stack: entries re-reachable after a NAV_BACK. */
+  forward: TabHistoryEntry[]
 }
 
 /**

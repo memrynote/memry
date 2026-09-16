@@ -9,7 +9,12 @@ import {
 } from '../helpers'
 import { removeGroupFromLayout } from '@/components/split-view/layout-helpers'
 import { createInitialState } from '../helpers'
-import { pruneHistory, recordActivation } from './history-helpers'
+import {
+  pruneHistory,
+  pruneHistoryByEntity,
+  recordActivation,
+  recordSameTabNavigation
+} from './history-helpers'
 
 type CrudAction = Extract<
   TabAction,
@@ -141,11 +146,18 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
             const newTabs = [...targetGroup.tabs]
             newTabs[activeTabIndex] = newTab
 
+            // Same tab, new contents: the active id does not change, so
+            // `recordActivation` would see nothing to record. Push the outgoing
+            // contents explicitly or back/forward stay dead here (#2207). A
+            // same-entity swap (note → file viewer) records nothing — see
+            // `isSameDestination`.
+            const withHistory = recordSameTabNavigation(targetGroup, activeTab, tab)
+
             return {
               ...state,
               tabGroups: {
                 ...state.tabGroups,
-                [groupId]: { ...targetGroup, tabs: newTabs, activeTabId: newTab.id }
+                [groupId]: { ...withHistory, tabs: newTabs, activeTabId: newTab.id }
               }
             }
           }
@@ -310,11 +322,17 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
           const reusedTabs = [...targetGroup.tabs]
           reusedTabs[activeIndex] = reusedTab
 
+          // Same history recording as `replaceActive` above, and for the same
+          // reason: this is the pane navigating, even though the tab strip does
+          // not change (#2207). This is the path a wiki link, a backlink or a
+          // folder-view row takes when "clicking a page opens a new tab" is off.
+          const withHistory = recordSameTabNavigation(targetGroup, activeTab, tab)
+
           return {
             ...state,
             tabGroups: {
               ...state.tabGroups,
-              [groupId]: { ...targetGroup, tabs: reusedTabs, activeTabId: reusedTab.id }
+              [groupId]: { ...withHistory, tabs: reusedTabs, activeTabId: reusedTab.id }
             },
             activeGroupId: groupId
           }
@@ -427,13 +445,37 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
           .filter((tab) => tab.entityId === entityId)
           .map((tab) => ({ tabId: tab.id, groupId }))
       )
-      if (targets.length === 0) return state
+      const closed =
+        targets.length === 0
+          ? state
+          : {
+              ...targets.reduce(
+                (acc, payload) => tabCrudReducer(acc, { type: 'CLOSE_TAB', payload }),
+                state
+              ),
+              recentlyClosed: state.recentlyClosed
+            }
 
-      const closed = targets.reduce(
-        (acc, payload) => tabCrudReducer(acc, { type: 'CLOSE_TAB', payload }),
-        state
+      // Closing the tabs is not enough now that history carries a content
+      // snapshot: a tab that navigated AWAY from this entity in place no longer
+      // shows it, so nothing above matches, yet back would still walk onto the
+      // tombstone. That is the common case, not the rare one — it is exactly
+      // what same-tab navigation leaves behind (#2207).
+      const tabGroups = Object.fromEntries(
+        Object.entries(closed.tabGroups).map(([id, group]) => [
+          id,
+          pruneHistoryByEntity(group, entityId)
+        ])
       )
-      return { ...closed, recentlyClosed: state.recentlyClosed }
+
+      // Nothing closed and no entry pruned: hand back the identical state so
+      // subscribers do not re-render for a delete that touched nothing here.
+      const historyChanged = Object.keys(tabGroups).some(
+        (id) => tabGroups[id] !== closed.tabGroups[id]
+      )
+      if (closed === state && !historyChanged) return state
+
+      return { ...closed, tabGroups }
     }
 
     case 'CLOSE_OTHER_TABS': {

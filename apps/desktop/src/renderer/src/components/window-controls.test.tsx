@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { WindowControls } from './window-controls'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import type { Tab, TabSystemState } from '@/contexts/tabs/types'
+import { snapshotTabContent } from '@/contexts/tabs/reducers/history-helpers'
 
 // The component now reads navigation state from useTabs(); drive it with a holder.
 const tabs = vi.hoisted(() => ({
@@ -51,8 +52,10 @@ const mkState = (tabIds: string[], back: string[], forward: string[]): TabSystem
       tabs: tabIds.map(mkTab),
       activeTabId: tabIds[tabIds.length - 1] ?? null,
       isActive: true,
-      back,
-      forward
+      // Stacks hold {tabId, content} pairs: a tab keeps its id when it navigates
+      // in place, so the snapshot is the only record of what it was showing.
+      back: back.map((id) => ({ tabId: id, content: snapshotTabContent(mkTab(id)) })),
+      forward: forward.map((id) => ({ tabId: id, content: snapshotTabContent(mkTab(id)) }))
     }
   },
   layout: { type: 'leaf', tabGroupId: 'g1' },
