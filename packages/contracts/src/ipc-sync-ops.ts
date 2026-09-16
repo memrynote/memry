@@ -43,6 +43,11 @@ export type SyncErrorCategory =
   // a payload problem, not an account-storage problem.
   | 'note_too_large'
   | 'sync_payment_required'
+  // The plan is ACTIVE and a limit inside it was hit: this vault is one more
+  // than the plan syncs. Also an HTTP 402, and the exact opposite of
+  // `sync_payment_required` — reporting it as a billing failure tells a paying
+  // user to pay again (docs/protocol/11-client-policy.md §11.7.1).
+  | 'sync_vault_limit_exceeded'
   | 'certificate_pin_failed'
   | 'unknown'
 

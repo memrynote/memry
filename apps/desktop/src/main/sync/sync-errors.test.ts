@@ -112,6 +112,29 @@ describe('classifyError', () => {
     expect(result.retryable).toBe(false)
   })
 
+  it('#given SyncServerError 402 with SYNC_VAULT_LIMIT_EXCEEDED #then vault limit, not payment', () => {
+    const err = new SyncServerError(
+      'plus allows 1 synced vaults',
+      402,
+      'SYNC_VAULT_LIMIT_EXCEEDED: plus allows 1 synced vaults'
+    )
+    const result = classifyError(err)
+
+    expect(result.category).toBe('sync_vault_limit_exceeded')
+    expect(result.retryable).toBe(false)
+    expect(result.statusCode).toBe(402)
+    expect(result.serverCode).toBe('SYNC_VAULT_LIMIT_EXCEEDED')
+  })
+
+  it('#given 402 vault limit as a raw JSON body #then vault limit, not payment', () => {
+    const body =
+      '{"error":{"code":"SYNC_VAULT_LIMIT_EXCEEDED","message":"plus allows 1 synced vaults"}}'
+    const err = new SyncServerError('Payment required', 402, body)
+    const result = classifyError(err)
+
+    expect(result.category).toBe('sync_vault_limit_exceeded')
+  })
+
   it('#given SyncServerError 400 #then server_error, not retryable', () => {
     const err = new SyncServerError('Bad Request', 400, 'invalid payload')
     const result = classifyError(err)

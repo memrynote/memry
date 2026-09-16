@@ -6,6 +6,7 @@ import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import {
   getCachedEntitlement,
+  isCachedUnpaidFresh,
   isPaidBillingStatus,
   setCachedEntitlementFromStatus,
   type CachedEntitlement
@@ -119,7 +120,12 @@ export async function reconcileBillingAndSync(input?: { transactionId?: string }
 
 export async function resolveEntitlementForSyncStart(): Promise<CachedEntitlement> {
   const cached = getCachedEntitlement()
-  if (cached && !cached.isPaid) return cached // known-unpaid: no server call
+  // Known-unpaid AND recently checked: no server call. The freshness half is
+  // what keeps this from being permanent — an unpaid verdict older than
+  // UNPAID_ENTITLEMENT_TTL_MS is re-asked, so an upgrade bought on the web or
+  // on another device starts syncing on its own instead of waiting for the
+  // user to open Settings → Account.
+  if (isCachedUnpaidFresh(cached)) return cached
 
   try {
     const result = await getBillingStatus()

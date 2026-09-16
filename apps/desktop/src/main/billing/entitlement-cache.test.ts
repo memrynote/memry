@@ -17,9 +17,11 @@ import {
   isPaidBillingStatus,
   getCachedMaxFileSize,
   getCachedEntitlement,
+  isCachedUnpaidFresh,
   setCachedEntitlementFromStatus,
   invalidateCachedEntitlementLimits,
-  ENTITLEMENT_LIMITS_TTL_MS
+  ENTITLEMENT_LIMITS_TTL_MS,
+  UNPAID_ENTITLEMENT_TTL_MS
 } from './entitlement-cache'
 import type { BillingStatus } from './paddle-billing'
 
@@ -194,6 +196,40 @@ describe('entitlement-cache', () => {
       plan: 'free',
       status: 'inactive',
       limits: { maxFileSize: 0 }
+    })
+  })
+
+  describe('isCachedUnpaidFresh', () => {
+    const unpaid = (cachedAt?: number) => ({
+      isPaid: false,
+      plan: 'free',
+      status: 'inactive',
+      ...(cachedAt === undefined ? {} : { cachedAt })
+    })
+
+    it('trusts a recent unpaid verdict', () => {
+      const now = 1_000_000_000
+      expect(isCachedUnpaidFresh(unpaid(now - 60_000), now)).toBe(true)
+    })
+
+    it('expires an unpaid verdict older than the TTL, so an upgrade is re-checked', () => {
+      const now = 1_000_000_000
+      expect(isCachedUnpaidFresh(unpaid(now - UNPAID_ENTITLEMENT_TTL_MS - 1), now)).toBe(false)
+    })
+
+    it('treats a store written before cachedAt existed as expired', () => {
+      expect(isCachedUnpaidFresh(unpaid())).toBe(false)
+    })
+
+    it('treats a cachedAt in the future as expired rather than trusting the clock', () => {
+      const now = 1_000_000_000
+      expect(isCachedUnpaidFresh(unpaid(now + 60_000), now)).toBe(false)
+    })
+
+    it('is never true for a paid entitlement or a missing cache', () => {
+      const now = 1_000_000_000
+      expect(isCachedUnpaidFresh({ ...unpaid(now), isPaid: true }, now)).toBe(false)
+      expect(isCachedUnpaidFresh(null, now)).toBe(false)
     })
   })
 })

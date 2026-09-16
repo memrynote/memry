@@ -97,6 +97,7 @@ const SYNC_ERROR_KEYS: Record<SyncErrorCategory, string> = {
   file_too_large: 'sync.fileTooLarge',
   note_too_large: 'sync.noteTooLarge',
   sync_payment_required: 'sync.paymentRequired',
+  sync_vault_limit_exceeded: 'sync.vaultLimitExceeded',
   certificate_pin_failed: 'sync.certificatePinFailed',
   unknown: 'sync.unknown'
 }

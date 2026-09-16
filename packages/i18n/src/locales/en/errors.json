@@ -93,6 +93,7 @@
     "noteTooLargeNamed": "\"{title}\" is too large to sync. Splitting it into smaller notes will fix this.",
     "attachmentUploadFailed": "Couldn't sync attachment \"{filename}\". It stays on this device.",
     "paymentRequired": "A paid Sync plan is required to use hosted encrypted sync.",
+    "vaultLimitExceeded": "Your plan syncs fewer vaults than this account has, so this vault stays on this device. Remove a vault from your account in Settings → Account, or upgrade your plan.",
     "certificatePinFailed": "Secure connection failed. Check your network connection.",
     "unknown": "An unexpected sync error occurred. Will retry automatically.",
     "statusFetchFailed": "Failed to fetch sync status",
