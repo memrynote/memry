@@ -27,11 +27,29 @@ Inactive, past-due, paused, canceled, or expired entitlements return `SYNC_PAYME
 sync data is read or written. Vault and file-size limits return `SYNC_VAULT_LIMIT_EXCEEDED` and
 `STORAGE_FILE_TOO_LARGE`.
 
+`SYNC_PAYMENT_REQUIRED` and `SYNC_VAULT_LIMIT_EXCEEDED` are both HTTP 402 and mean opposite things:
+the first says there is no active plan, the second says the plan **is** active and this vault is one
+more than it syncs. Clients must branch on the error code, never on the status alone — a vault-limit
+402 reported as a billing failure tells a paying user to pay again. The desktop classifies them as
+the separate `sync_payment_required` and `sync_vault_limit_exceeded` error categories, and only the
+former is an entitlement statement.
+
+A request with no `X-Memry-Vault-Id` header resolves to an existing vault and never creates a second
+one: an account with no vaults (or one that already holds the legacy `default` vault) is served
+`default` as before, an account with exactly one vault is served that vault, and an account with
+several is answered `400 VALIDATION_ERROR` rather than guessing and consuming a vault slot.
+
 The desktop client mirrors this gate locally to avoid pointless round-trips that can only return 402. Handlers for paid-only endpoints check the cached entitlement first and return their empty
 value (`GET_STATUS` → `local_only`, `GET_STORAGE_BREAKDOWN` → `null`) when the cache says the user
 is on the free plan. Only a **known-unpaid** entitlement is gated — an unknown/uncached
 entitlement (fresh install, before the first status call) still calls the server, so the gate can
 never lock a paying user out on stale local state. The server-side gate remains authoritative.
+
+The sync runtime's own gate additionally expires that negative: a cached "not paid" older than one
+hour (or written without a timestamp) is re-fetched from `GET /auth/billing` at startup rather than
+trusted. Nothing refreshes the cache in the background, so without the expiry an upgrade bought on
+the web or on another device would leave the user in local-only until they opened Settings →
+Account. A cached **paid** verdict needs no expiry — the server re-verifies it on every request.
 
 Development sync servers can seed a `dev_seed` Believer entitlement for configured local admin
 accounts during sign-in, billing checks, reconcile, and paid-sync middleware access. This path is
