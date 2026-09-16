@@ -256,6 +256,9 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 - **Reveal in navigation** — highlight the note in the sidebar
 - **Open in default app** — open the `.md` file in your system's default editor
 
+A folder's right-click menu carries the same **Reveal in Finder** item. It selects the folder
+itself inside its parent directory — it never opens into the folder's contents.
+
 **Local only** keeps the note on this device (never synced). Both halves stay put — the note's
 details and its text — and editing is unaffected. Turning it back off uploads the note again,
 including everything you wrote while it was local only.
