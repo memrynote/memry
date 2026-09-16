@@ -9,7 +9,7 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --import tsx --test 'src/**/*.test.ts'",
+    "test": "node --import tsx --test 'src/**/*.test.ts' 'api/**/*.test.ts'",
     "indexnow": "node --import tsx scripts/indexnow-ping.ts"
   },
   "dependencies": {
