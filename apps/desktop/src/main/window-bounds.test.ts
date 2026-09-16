@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
+  captureWindowState,
   createWindowBoundsPersister,
   resolveStartupBounds,
   WINDOW_BOUNDS_PERSIST_DELAY_MS,
   type DisplayLike,
-  type SavedWindowBounds
+  type SavedWindowBounds,
+  type WindowStateSnapshot
 } from './window-bounds'
 
 const FALLBACK = { width: 1550, height: 900 }
@@ -15,7 +17,7 @@ const PRIMARY: DisplayLike = { workArea: { x: 0, y: 0, width: 1440, height: 900 
 describe('resolveStartupBounds', () => {
   it('returns the fallback size, centered, when there are no saved bounds', () => {
     const result = resolveStartupBounds(null, [PRIMARY], FALLBACK)
-    expect(result).toEqual({ width: 1550, height: 900, maximize: false })
+    expect(result).toEqual({ width: 1550, height: 900, maximize: false, fullScreen: false })
     expect(result.x).toBeUndefined()
     expect(result.y).toBeUndefined()
   })
@@ -27,7 +29,8 @@ describe('resolveStartupBounds', () => {
       height: 800,
       x: 100,
       y: 60,
-      maximize: false
+      maximize: false,
+      fullScreen: false
     })
   })
 
@@ -49,7 +52,26 @@ describe('resolveStartupBounds', () => {
       height: 800,
       x: 100,
       y: 60,
-      maximize: true
+      maximize: true,
+      fullScreen: false
+    })
+  })
+
+  it('passes through the fullscreen flag while keeping the normal bounds', () => {
+    const saved: SavedWindowBounds = {
+      width: 1200,
+      height: 800,
+      x: 100,
+      y: 60,
+      isFullScreen: true
+    }
+    expect(resolveStartupBounds(saved, [PRIMARY], FALLBACK)).toEqual({
+      width: 1200,
+      height: 800,
+      x: 100,
+      y: 60,
+      maximize: false,
+      fullScreen: true
     })
   })
 
@@ -76,6 +98,70 @@ describe('resolveStartupBounds', () => {
     const result = resolveStartupBounds(saved, [PRIMARY], FALLBACK)
     expect(result.width).toBe(FALLBACK.width)
     expect(result.height).toBe(FALLBACK.height)
+  })
+})
+
+describe('captureWindowState', () => {
+  const BASE: WindowStateSnapshot = {
+    isDestroyed: false,
+    isMinimized: false,
+    isVisible: true,
+    isMaximized: false,
+    isFullScreen: false,
+    bounds: { x: 100, y: 60, width: 1200, height: 800 },
+    normalBounds: { x: 100, y: 60, width: 1200, height: 800 }
+  }
+
+  it('records the live bounds of a normal window', () => {
+    expect(captureWindowState(BASE)).toEqual({
+      width: 1200,
+      height: 800,
+      x: 100,
+      y: 60,
+      isMaximized: false,
+      isFullScreen: false
+    })
+  })
+
+  it('records the maximized flag with the normal (restore) bounds', () => {
+    const state = captureWindowState({
+      ...BASE,
+      isMaximized: true,
+      bounds: { x: 0, y: 0, width: 2560, height: 1440 }
+    })
+    expect(state).toEqual({
+      width: 1200,
+      height: 800,
+      x: 100,
+      y: 60,
+      isMaximized: true,
+      isFullScreen: false
+    })
+  })
+
+  it('records the fullscreen flag with the normal (restore) bounds', () => {
+    const state = captureWindowState({
+      ...BASE,
+      isFullScreen: true,
+      bounds: { x: 0, y: 0, width: 2560, height: 1440 }
+    })
+    expect(state?.isFullScreen).toBe(true)
+    expect(state).toMatchObject({ width: 1200, height: 800 })
+  })
+
+  // The reported bug (#2208): on Windows a hidden/minimized window answers
+  // isMaximized() with false and hands back the restored rectangle, so capturing
+  // then would downgrade the saved state and reopen the app small.
+  it('skips a minimized window so the maximized state is not downgraded', () => {
+    expect(captureWindowState({ ...BASE, isMinimized: true, isMaximized: false })).toBeNull()
+  })
+
+  it('skips a hidden window (tray) so the maximized state is not downgraded', () => {
+    expect(captureWindowState({ ...BASE, isVisible: false, isMaximized: false })).toBeNull()
+  })
+
+  it('skips a destroyed window', () => {
+    expect(captureWindowState({ ...BASE, isDestroyed: true })).toBeNull()
   })
 })
 
@@ -172,6 +258,27 @@ describe('createWindowBoundsPersister', () => {
     // A window nudged and snapped back re-emits `move` with identical geometry.
     persister.schedule()
     vi.advanceTimersByTime(WINDOW_BOUNDS_PERSIST_DELAY_MS)
+    persister.flush()
+    expect(writes).toHaveLength(1)
+  })
+
+  // #2208: the tray hides the window before `close`, so the close flush reads an
+  // untrustworthy snapshot (read() returns null) and must leave the maximized
+  // state written at hide time alone.
+  it('keeps the last state when a later flush has nothing trustworthy to read', () => {
+    const { writes, write } = trackWrites()
+    let visible = true
+    const persister = createWindowBoundsPersister({
+      read: () => (visible ? { width: 1200, height: 800, x: 100, y: 60, isMaximized: true } : null),
+      write
+    })
+
+    // `hide` flushes the real maximized state...
+    persister.flush()
+    expect(writes).toEqual([{ width: 1200, height: 800, x: 100, y: 60, isMaximized: true }])
+
+    // ...then `close` fires on the already-hidden window and writes nothing.
+    visible = false
     persister.flush()
     expect(writes).toHaveLength(1)
   })

@@ -12,6 +12,7 @@ export interface SavedWindowBounds {
   x?: number
   y?: number
   isMaximized?: boolean
+  isFullScreen?: boolean
 }
 
 /** Shape of the parts of an Electron `Display` we depend on. */
@@ -25,6 +26,23 @@ export interface ResolvedBounds {
   x?: number
   y?: number
   maximize: boolean
+  fullScreen: boolean
+}
+
+/**
+ * The parts of a `BrowserWindow` the capture logic reads, snapshotted into a
+ * plain object so the rules below can be unit tested without Electron.
+ */
+export interface WindowStateSnapshot {
+  isDestroyed: boolean
+  isMinimized: boolean
+  isVisible: boolean
+  isMaximized: boolean
+  isFullScreen: boolean
+  /** `getBounds()` — the window's current on-screen rectangle. */
+  bounds: { x: number; y: number; width: number; height: number }
+  /** `getNormalBounds()` — the rectangle a later unmaximize/unfullscreen restores. */
+  normalBounds: { x: number; y: number; width: number; height: number }
 }
 
 // Sizes below this are almost certainly corrupt/stale and would produce an
@@ -57,7 +75,7 @@ function isPositionVisible(
  *
  * - No (or corrupt) saved bounds → the fallback size, centered by the OS.
  * - A saved position is only reused when it remains visible on some display.
- * - The maximized flag is passed through; the returned size is the *normal*
+ * - The maximized/fullscreen flags are passed through; the returned size is the *normal*
  *   (un-maximized) size so a later `unmaximize()` restores it correctly.
  */
 export function resolveStartupBounds(
@@ -67,13 +85,14 @@ export function resolveStartupBounds(
 ): ResolvedBounds {
   const hasValidSize = saved != null && saved.width >= MIN_WIDTH && saved.height >= MIN_HEIGHT
   if (!hasValidSize) {
-    return { width: fallback.width, height: fallback.height, maximize: false }
+    return { width: fallback.width, height: fallback.height, maximize: false, fullScreen: false }
   }
 
   const result: ResolvedBounds = {
     width: saved.width,
     height: saved.height,
-    maximize: saved.isMaximized === true
+    maximize: saved.isMaximized === true,
+    fullScreen: saved.isFullScreen === true
   }
 
   if (
@@ -110,8 +129,38 @@ function isSameBounds(a: SavedWindowBounds, b: SavedWindowBounds): boolean {
     a.height === b.height &&
     a.x === b.x &&
     a.y === b.y &&
-    a.isMaximized === b.isMaximized
+    a.isMaximized === b.isMaximized &&
+    a.isFullScreen === b.isFullScreen
   )
+}
+
+/**
+ * Decide what to remember about a window's current state, or null when the
+ * snapshot cannot be trusted and the previously saved state must survive.
+ *
+ * A destroyed, minimized, or hidden window is skipped on purpose: Windows
+ * reports a minimized/hidden window as *not* maximized and hands back the
+ * restored rectangle, so persisting at that moment silently downgrades a
+ * maximized window to a small one (the app then reopens small). Skipping keeps
+ * the last trustworthy state — which is exactly the state the user left.
+ *
+ * When maximized or fullscreen we store the *normal* rectangle plus the flag, so
+ * a later restore can both place the window and re-apply the mode.
+ */
+export function captureWindowState(snapshot: WindowStateSnapshot): SavedWindowBounds | null {
+  if (snapshot.isDestroyed || snapshot.isMinimized || !snapshot.isVisible) return null
+
+  const usesNormalBounds = snapshot.isMaximized || snapshot.isFullScreen
+  const { x, y, width, height } = usesNormalBounds ? snapshot.normalBounds : snapshot.bounds
+
+  return {
+    width,
+    height,
+    x,
+    y,
+    isMaximized: snapshot.isMaximized,
+    isFullScreen: snapshot.isFullScreen
+  }
 }
 
 /**
