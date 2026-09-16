@@ -1,19 +1,26 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import handler, { resolveAssetUrl } from './download.ts'
+import handler, { VELOPACK_WINDOWS_SETUP_ASSET, resolveAssetUrl } from './download.ts'
 
+const DOWNLOAD_BASE = 'https://github.com/memrynote/memry/releases/download/v1.2.3'
+
+const asset = (name: string) => ({ name, browser_download_url: `${DOWNLOAD_BASE}/${name}` })
+
+// Mirrors a real release: both Windows installers plus the blockmap sidecars.
 const ASSETS = [
-  { name: 'MemryNote-1.2.3-arm64.dmg', browser_download_url: 'https://example.com/arm64.dmg' },
-  { name: 'MemryNote-1.2.3-x64.dmg', browser_download_url: 'https://example.com/x64.dmg' },
-  { name: 'MemryNote-1.2.3-win.zip', browser_download_url: 'https://example.com/win.zip' },
-  { name: 'MemryNote-1.2.3-setup.exe', browser_download_url: 'https://example.com/setup.exe' },
-  {
-    name: 'MemryNote-1.2.3-x64.AppImage',
-    browser_download_url: 'https://example.com/app.AppImage'
-  },
-  { name: 'MemryNote-1.2.3-amd64.deb', browser_download_url: 'https://example.com/app.deb' }
+  asset('MemryNote-1.2.3-arm64.dmg'),
+  asset('MemryNote-1.2.3-x64.dmg'),
+  asset('MemryNote-1.2.3-win.zip'),
+  asset('MemryNote-1.2.3-setup.exe'),
+  asset('MemryNote-1.2.3-setup.exe.blockmap'),
+  asset(VELOPACK_WINDOWS_SETUP_ASSET),
+  asset('MemryNote-1.2.3-x64.AppImage'),
+  asset('MemryNote-1.2.3-amd64.deb')
 ]
+
+// Tags published before the Velopack switchover carry no Velopack installer.
+const LEGACY_ASSETS = ASSETS.filter((item) => item.name !== VELOPACK_WINDOWS_SETUP_ASSET)
 
 const RELEASES_PAGE_URL = 'https://github.com/memrynote/memry/releases/latest'
 
@@ -62,11 +69,38 @@ function jsonResponse(payload: unknown, status = 200): Response {
 
 describe('download asset resolution', () => {
   it('maps each platform to its versioned asset', () => {
-    assert.equal(resolveAssetUrl('mac-arm64', ASSETS), 'https://example.com/arm64.dmg')
-    assert.equal(resolveAssetUrl('mac-x64', ASSETS), 'https://example.com/x64.dmg')
-    assert.equal(resolveAssetUrl('windows', ASSETS), 'https://example.com/setup.exe')
-    assert.equal(resolveAssetUrl('linux', ASSETS), 'https://example.com/app.AppImage')
-    assert.equal(resolveAssetUrl('linux-deb', ASSETS), 'https://example.com/app.deb')
+    assert.equal(resolveAssetUrl('mac-arm64', ASSETS), `${DOWNLOAD_BASE}/MemryNote-1.2.3-arm64.dmg`)
+    assert.equal(resolveAssetUrl('mac-x64', ASSETS), `${DOWNLOAD_BASE}/MemryNote-1.2.3-x64.dmg`)
+    assert.equal(resolveAssetUrl('linux', ASSETS), `${DOWNLOAD_BASE}/MemryNote-1.2.3-x64.AppImage`)
+    assert.equal(resolveAssetUrl('linux-deb', ASSETS), `${DOWNLOAD_BASE}/MemryNote-1.2.3-amd64.deb`)
+  })
+
+  // The electron-builder `-setup.exe` is built on CI and never Authenticode-signed,
+  // so SmartScreen refuses to unblock it. Only the Velopack installer is signed.
+  it('prefers the signed Velopack installer for Windows', () => {
+    assert.equal(
+      resolveAssetUrl('windows', ASSETS),
+      `${DOWNLOAD_BASE}/${VELOPACK_WINDOWS_SETUP_ASSET}`
+    )
+  })
+
+  it('falls back to the NSIS installer on releases without a Velopack asset', () => {
+    assert.equal(
+      resolveAssetUrl('windows', LEGACY_ASSETS),
+      `${DOWNLOAD_BASE}/MemryNote-1.2.3-setup.exe`
+    )
+  })
+
+  it('never resolves a blockmap sidecar', () => {
+    const blockmapOnly = [asset('MemryNote-1.2.3-setup.exe.blockmap')]
+    assert.equal(resolveAssetUrl('windows', blockmapOnly), null)
+  })
+
+  it('refuses an asset URL outside the release download prefix', () => {
+    const spoofed = [
+      { name: VELOPACK_WINDOWS_SETUP_ASSET, browser_download_url: 'https://evil.example.com/x.exe' }
+    ]
+    assert.equal(resolveAssetUrl('windows', spoofed), null)
   })
 
   it('returns null for an unknown platform or a missing asset', () => {
@@ -88,7 +122,7 @@ describe('download handler', () => {
       )
 
       assert.equal(result.statusCode, 302)
-      assert.equal(result.redirectedTo, 'https://example.com/arm64.dmg')
+      assert.equal(result.redirectedTo, `${DOWNLOAD_BASE}/MemryNote-1.2.3-arm64.dmg`)
     } finally {
       globalThis.fetch = previousFetch
     }
