@@ -48,6 +48,7 @@ process.stdout.write(
     workDir: path.win32.join(tmpdir(), `memry-installer-handoff-${appPid}`),
     setupExePath: options.setup,
     setupLogPath: options.log,
+    handoffLogPath: path.win32.join(path.win32.dirname(options.log), 'installer-handoff.log'),
     nsisInstallerPath: options['nsis-installer'] ?? null
   })
 )

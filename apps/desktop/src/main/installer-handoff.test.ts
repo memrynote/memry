@@ -1,3 +1,5 @@
+import type { ExecFileOptions } from 'node:child_process'
+import type { PathLike } from 'node:fs'
 import path from 'node:path'
 import { Readable, Writable } from 'node:stream'
 import type { UpdateDownloadedEvent } from 'electron-updater'
@@ -60,6 +62,8 @@ function makeHost(): UpdaterHost {
 }
 
 function response(status: number, body?: Readable, contentLength?: number): Response {
+  // SAFETY: the hand-off reads only `ok`, `status`, `headers` and `body`; the rest
+  // of Response is never touched, so the stub supplies exactly those four.
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -89,30 +93,32 @@ function makeHarness(
   const get =
     options.get ??
     (() => response(200, Readable.from([Buffer.from('abcd'), Buffer.from('efghij')]), 10))
-  const fetch = vi.fn(async (_url: string, init?: RequestInit) =>
+  const fetch = vi.fn(async (_url: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) =>
     init?.method === 'HEAD' ? head : get()
   )
   const spawn = vi.fn(() => child)
   const execFile = vi.fn(
     (
       _file: string,
-      _args: string[],
-      _options: unknown,
+      _args: readonly string[],
+      _options: ExecFileOptions,
       callback: (error: Error | null, stdout: string, stderr: string) => void
     ) => {
       callback(null, options.signature ?? VALID_SIGNATURE, '')
     }
   )
   const deps: InstallerHandoffDeps = {
+    // The retry backoff is real time in production; tests must not pay it.
+    retryDelayMs: 0,
     userDataDir: USER_DATA,
     tmpDir: TMP,
     execPath: EXEC_PATH,
     pid: 1234,
-    fetch: fetch as unknown as typeof globalThis.fetch,
-    execFile: execFile as unknown as InstallerHandoffDeps['execFile'],
-    spawn: spawn as unknown as InstallerHandoffDeps['spawn'],
+    fetch,
+    execFile,
+    spawn,
     fs: {
-      existsSync: vi.fn((p: unknown) => String(p).endsWith('Uninstall MemryNote.exe')),
+      existsSync: vi.fn((p: PathLike) => String(p).endsWith('Uninstall MemryNote.exe')),
       mkdirSync: vi.fn(),
       rmSync: vi.fn(),
       writeFileSync: vi.fn(),
@@ -125,7 +131,7 @@ function makeHarness(
               callback()
             }
           })
-      ) as unknown as InstallerHandoffDeps['fs']['createWriteStream']
+      )
     }
   }
   return { deps, host: makeHost(), written, fetch, spawn, child, execFile }
@@ -206,11 +212,59 @@ describe('createInstallerHandoff', () => {
     expect(harness.deps.fs.mkdirSync).toHaveBeenCalledWith(HANDOFF_DIR, { recursive: true })
     expect(harness.deps.fs.createWriteStream).toHaveBeenCalledWith(expectedPlan().setupExePath)
     expect(Buffer.concat(harness.written).toString()).toBe('abcdefghij')
+    // SAFETY: onProgress is only ever invoked with a number by the hand-off, so the
+    // recorded first argument is a number.
     const percents = onProgress.mock.calls.map(([percent]) => percent as number)
     expect(percents[0]).toBe(0)
     expect(percents).toContain(40)
     expect(percents.at(-1)).toBe(100)
     expect(percents).toEqual([...percents].sort((a, b) => a - b))
+  })
+
+  // Production hit INSTALLER_HANDOFF_DOWNLOAD_FAILED twice for the same user inside
+  // an hour: a ~450 MB GET with no retry anywhere in the path.
+  it('retries a dropped download and arms on a later attempt', async () => {
+    let attempts = 0
+    const harness = makeHarness({
+      get: () => {
+        attempts += 1
+        if (attempts === 1) {
+          return response(
+            200,
+            new Readable({
+              read() {
+                this.destroy(new Error('connection reset'))
+              }
+            }),
+            10
+          )
+        }
+        return response(200, Readable.from([Buffer.from('abcd'), Buffer.from('efghij')]), 10)
+      }
+    })
+    const handoff = createInstallerHandoff(harness.host, harness.deps)
+
+    await handoff.prepare(makeInfo(), vi.fn())
+
+    expect(attempts).toBe(2)
+    expect(harness.host.onError).not.toHaveBeenCalled()
+    expect(handoff.armed()).toBe(true)
+  })
+
+  // A connection that drops mid-body still resolves the pipeline, so a short file
+  // must be caught here rather than surfacing later as a signature failure.
+  it('treats a truncated body as a failed download, not a bad signature', async () => {
+    const harness = makeHarness({
+      get: () => response(200, Readable.from([Buffer.from('abc')]), 10)
+    })
+    const handoff = createInstallerHandoff(harness.host, harness.deps)
+
+    await handoff.prepare(makeInfo(), vi.fn())
+
+    expect(harness.host.onError).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'INSTALLER_HANDOFF_DOWNLOAD_FAILED' })
+    )
+    expect(handoff.armed()).toBe(false)
   })
 
   it('reports a failed download through the host and removes the partial file', async () => {
@@ -366,19 +420,15 @@ describe('verifyAuthenticode', () => {
     const execFile = vi.fn(
       (
         _file: string,
-        _args: string[],
-        _options: unknown,
+        _args: readonly string[],
+        _options: ExecFileOptions,
         callback: (error: Error | null, stdout: string, stderr: string) => void
       ) => {
         callback(new Error('spawn powershell.exe ENOENT'), '', '')
       }
     )
 
-    await expect(
-      verifyAuthenticode(String.raw`C:\x\Setup.exe`, {
-        execFile: execFile as unknown as InstallerHandoffDeps['execFile']
-      })
-    ).resolves.toEqual({
+    await expect(verifyAuthenticode(String.raw`C:\x\Setup.exe`, { execFile })).resolves.toEqual({
       ok: false,
       reason: 'Get-AuthenticodeSignature failed: spawn powershell.exe ENOENT'
     })
