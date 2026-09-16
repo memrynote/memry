@@ -129,7 +129,9 @@ function defaultDeps(): InstallerHandoffDeps {
  * tag, or any future caller, still cannot reach another host.
  */
 function releaseAssetUrl(input: Parameters<typeof fetch>[0]): string {
-  const target = String(input)
+  // Each arm of RequestInfo is unwrapped explicitly; a bare String() would turn a
+  // Request into '[object Object]' and reject it for the wrong reason.
+  const target = input instanceof URL ? input.href : input instanceof Request ? input.url : input
   if (!target.startsWith(`${GITHUB_RELEASE_DOWNLOAD_BASE}/`)) {
     throw new Error(`refusing to fetch outside the release download path: ${target}`)
   }
