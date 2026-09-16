@@ -261,4 +261,55 @@ describe('note derived state projector', () => {
 
     expect(links).toEqual([])
   })
+
+  it('project backfills a backlink retroactively when the linked note is created later (#2209)', async () => {
+    // The master note was saved first, while "New Note" did not exist yet:
+    // an unresolved outbound link, target_id null.
+    seedCachedNote('master-note', 'notes/master.md')
+    indexDb.db.run(sql`
+      INSERT INTO note_links (source_id, target_id, target_title)
+      VALUES (${'master-note'}, NULL, ${'New Note'})
+    `)
+
+    const projector = createNoteDerivedStateProjector(() => vaultDir)
+
+    // Create-from-link creates the note; this is that note's projection event.
+    await projector.project({
+      type: 'note.upserted',
+      note: {
+        kind: 'markdown',
+        noteId: 'new-note',
+        path: 'notes/new-note.md',
+        title: 'New Note',
+        fileType: 'markdown',
+        localOnly: false,
+        contentHash: 'hash',
+        wordCount: 0,
+        characterCount: 0,
+        snippet: '',
+        date: null,
+        emoji: null,
+        createdAt: '2026-01-02T00:00:00.000Z',
+        modifiedAt: '2026-01-02T00:00:00.000Z',
+        parsedContent: '',
+        tags: [],
+        properties: {},
+        wikiLinks: []
+      }
+    })
+
+    const links = indexDb.db
+      .select()
+      .from(noteLinks)
+      .where(eq(noteLinks.sourceId, 'master-note'))
+      .all()
+
+    expect(links).toEqual([
+      expect.objectContaining({
+        sourceId: 'master-note',
+        targetId: 'new-note',
+        targetTitle: 'New Note'
+      })
+    ])
+  })
 })

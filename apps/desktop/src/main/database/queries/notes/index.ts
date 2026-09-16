@@ -49,6 +49,7 @@ export {
 
 export {
   setNoteLinks,
+  backfillUnresolvedLinksByTitle,
   getOutgoingLinks,
   getIncomingLinks,
   getIncomingReferences,

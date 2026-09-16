@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { createLogger } from '../../lib/logger'
 import {
+  backfillUnresolvedLinksByTitle,
   deleteLinksToNote,
   deleteNoteCache,
   extractDateFromPath,
@@ -72,6 +73,12 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
       createdAt: note.createdAt,
       modifiedAt: note.modifiedAt
     })
+
+    // This note just appeared. Any note anywhere that links to it by title
+    // was, until now, an unresolved link with no edge in `note_links` — the
+    // gap create-from-link (and every other creation route) hits (#2209).
+    // Resolve those rows retroactively so the new note gets its backlink.
+    backfillUnresolvedLinksByTitle(db, note.noteId, note.title)
   }
 
   if (bodyUnread) return
