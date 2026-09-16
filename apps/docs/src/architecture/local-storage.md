@@ -143,7 +143,9 @@ so high-frequency writers must batch.
 ### Window Geometry
 
 The main window's size and position are persisted so the next launch (or macOS dock reopen)
-restores them. `resize`, `move`, `maximize` and `unmaximize` all feed one trailing debounce
+restores them — including whether the window was left **maximized or fullscreen**. `resize`,
+`move`, `maximize`, `unmaximize`, `enter-full-screen` and `leave-full-screen` all feed one
+trailing debounce
 (`createWindowBoundsPersister` in `src/main/window-bounds.ts`,
 `WINDOW_BOUNDS_PERSIST_DELAY_MS` = 1500 ms), so a continuous drag settles into a single
 config write instead of rewriting the file throughout the gesture. The persister also drops
@@ -152,8 +154,21 @@ their own `resize`, and a window nudged back to where it started re-emits `move`
 The window `close` handler flushes the pending write so the final geometry is never lost to
 a timer that never fired.
 
+A maximized or fullscreen window is stored as its **normal** (restore) rectangle plus the
+flag, so the next launch can both place the window and re-apply the mode.
+
+Two rules exist because a window closed while maximized used to reopen small on Windows:
+
+- `captureWindowState` refuses to persist a snapshot taken from a **hidden, minimized or
+  destroyed** window. Windows reports such a window as not maximized and returns the restored
+  rectangle, so writing then would quietly downgrade the saved state. `hide` and `minimize`
+  therefore flush the last visible state before a later `close` can read an untrustworthy one.
+- The maximized/fullscreen mode is applied at window creation **and again once the window is
+  actually shown**, because Windows can drop `maximize()` on a still-hidden window. The
+  re-apply is guarded, so a window that is already in the requested mode is left alone.
+
 The persister is deliberately free of Electron imports (it takes `read`/`write` callbacks) so
-the debounce can be unit tested with fake timers.
+the debounce and the capture rules can be unit tested with fake timers.
 
 ## Canvas Files
 
