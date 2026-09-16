@@ -305,6 +305,7 @@ const createActions = (overrides: Record<string, unknown> = {}) => ({
   handleRenameClick: vi.fn(),
   handleOpenExternal: vi.fn(),
   handleRevealInFinder: vi.fn(),
+  handleRevealFolderInFinder: vi.fn(),
   handleDeleteClick: vi.fn(),
   handleRenameInputChange: vi.fn(),
   handleRenameSubmit: vi.fn(),
@@ -384,6 +385,9 @@ describe('NotesTree isolated coverage', () => {
     expect(mocks.actions.handleRenameClick).toHaveBeenCalledWith(rootNote)
     expect(mocks.actions.handleOpenExternal).toHaveBeenCalledWith(rootNote)
     expect(mocks.actions.handleRevealInFinder).toHaveBeenCalledWith(rootNote)
+    // The folder's own "Reveal in Finder" (#2205) shares the label above, so
+    // `clickAll` hits it too — it must reach the folder handler, not the note's.
+    expect(mocks.actions.handleRevealFolderInFinder).toHaveBeenCalledWith('Work')
     expect(mocks.actions.handleDeleteClick).toHaveBeenCalledWith(rootNote)
 
     clickAll(/tree.actions.newNote/)

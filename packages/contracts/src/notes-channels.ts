@@ -47,6 +47,8 @@ export const NotesChannels = {
     OPEN_EXTERNAL: 'notes:open-external',
     /** Reveal note in file explorer */
     REVEAL_IN_FINDER: 'notes:reveal-in-finder',
+    /** Reveal a folder itself (not its parent) in the OS file manager */
+    REVEAL_FOLDER_IN_FINDER: 'notes:reveal-folder-in-finder',
     /** Get all property definitions (T017) */
     GET_PROPERTY_DEFINITIONS: 'notes:get-property-definitions',
     /** Create a property definition (T018) */

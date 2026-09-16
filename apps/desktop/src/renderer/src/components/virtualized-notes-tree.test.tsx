@@ -256,6 +256,7 @@ const renderTree = (overrides: Partial<React.ComponentProps<typeof VirtualizedNo
     onDeleteNote: vi.fn(),
     onOpenExternal: vi.fn(),
     onRevealInFinder: vi.fn(),
+    onRevealFolderInFinder: vi.fn(),
     onCreateNote: vi.fn(),
     onCreateFolder: vi.fn(),
     onRenameFolder: vi.fn(),
@@ -520,7 +521,15 @@ describe('VirtualizedNotesTree', () => {
     await user.click(screen.getAllByRole('button', { name: 'Open in External Editor' })[0])
     expect(props.onOpenExternal).toHaveBeenCalledWith(workNote)
 
-    await user.click(screen.getAllByRole('button', { name: 'Reveal in Finder' })[0])
+    // The folder row's own "Reveal in Finder" (#2205) renders ahead of the
+    // note rows' — all three share the label (folder Work, note Alpha inside
+    // it, root-level note Root), so the folder's click must reveal the folder
+    // itself and never a note.
+    const revealButtons = screen.getAllByRole('button', { name: 'Reveal in Finder' })
+    expect(revealButtons).toHaveLength(3)
+    await user.click(revealButtons[0])
+    expect(props.onRevealFolderInFinder).toHaveBeenCalledWith('Work')
+    await user.click(revealButtons[1])
     expect(props.onRevealInFinder).toHaveBeenCalledWith(workNote)
 
     const deleteButtons = screen.getAllByRole('button', { name: 'Delete' })

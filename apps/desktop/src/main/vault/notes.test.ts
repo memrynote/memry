@@ -1658,6 +1658,17 @@ describe('notes operations', () => {
       await expect(notes.openExternal('missing-note')).rejects.toThrow('Note not found')
       expect(() => notes.revealInFinder('missing-note')).toThrow('Note not found')
     })
+
+    it('reveals a folder itself, not its parent (#2205)', async () => {
+      const { shell } = await import('electron')
+      await notes.createFolder('Projects/Alpha')
+
+      notes.revealFolderInFinder('Projects/Alpha')
+
+      expect(shell.showItemInFolder).toHaveBeenCalledWith(
+        path.join(tempVault.path, 'Projects/Alpha')
+      )
+    })
   })
 
   describe('importFiles', () => {

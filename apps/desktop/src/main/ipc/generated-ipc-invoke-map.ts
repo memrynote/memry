@@ -251,6 +251,7 @@ export interface MainIpcInvokeHandlers {
   "notes:resolve-titles": (...args: [string[]]) => Awaited<Promise<{ [k: string]: { id: string; path: string; } | null; }>>
   "notes:resolve-wiki-target": (...args: [string]) => Awaited<Promise<{ id: string; path: string; title: string; fileType: import("../../../../../packages/shared/src/file-types").FileType; heading: string | null; } | null>>
   "notes:restore-version": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; note: import("../vault/notes-crud").Note; }>>
+  "notes:reveal-folder-in-finder": (...args: [string]) => Awaited<Promise<void>>
   "notes:reveal-in-finder": (...args: [string]) => Awaited<Promise<void>>
   "notes:set-calendar-property-visibility": (...args: [{ name: string; showOnCalendar: boolean; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
   "notes:set-folder-config": (...args: [{ folderPath: string; config: { icon?: string | null | undefined; template?: string | undefined; inherit?: boolean | undefined; }; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>

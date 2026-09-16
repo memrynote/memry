@@ -553,6 +553,15 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               <ContextMenuSeparator />
               <BookmarkMenuItem itemType="folder" itemId={folder.path} />
               <ContextMenuSeparator />
+              {folder.path && (
+                <ContextMenuItem
+                  onClick={() => void actions.handleRevealFolderInFinder(folder.path)}
+                >
+                  <FolderOpen className="me-2 h-4 w-4" />
+                  {fileActions.revealInFolder}
+                </ContextMenuItem>
+              )}
+              <ContextMenuSeparator />
               <ContextMenuItem onClick={() => actions.handleRenameFolderClick(folder.path)}>
                 <Pencil className="me-2 h-4 w-4" />
                 {t('tree.actions.rename')}
@@ -689,6 +698,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           onClearFolderTemplate={(...args) => void actions.handleClearFolderTemplate(...args)}
           folderTemplateNames={data.folderTemplateNames}
           onSetFolderIcon={(path, icon) => void data.setFolderIcon(path, icon)}
+          onRevealFolderInFinder={(path) => void actions.handleRevealFolderInFinder(path)}
           onSetNoteIcon={(id, icon) =>
             void data.mutations.updateNote.mutateAsync({ id, emoji: icon })
           }

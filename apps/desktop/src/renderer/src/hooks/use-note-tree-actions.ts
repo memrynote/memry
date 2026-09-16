@@ -561,6 +561,14 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     }
   }, [])
 
+  const handleRevealFolderInFinder = useCallback(async (folderPath: string) => {
+    try {
+      await notesService.revealFolderInFinder(folderPath)
+    } catch (err) {
+      log.error('Failed to reveal folder in Finder', err)
+    }
+  }, [])
+
   // ---- Folder templates ----
 
   const handleSetFolderTemplate = useCallback((folderPath: string) => {
@@ -958,6 +966,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     // External
     handleOpenExternal,
     handleRevealInFinder,
+    handleRevealFolderInFinder,
 
     // Templates
     folderToConfigureTemplate,

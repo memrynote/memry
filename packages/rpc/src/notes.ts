@@ -573,6 +573,10 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.REVEAL_IN_FINDER,
       params: ['id']
     }),
+    revealFolderInFinder: defineMethod<(folderPath: string) => Promise<void>>({
+      channel: NotesChannels.invoke.REVEAL_FOLDER_IN_FINDER,
+      params: ['folderPath']
+    }),
     resolveAttachment: defineMethod<
       (noteId: string, url: string) => Promise<AttachmentResolveResult>
     >({

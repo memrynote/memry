@@ -56,6 +56,7 @@ const mocks = vi.hoisted(() => {
     getVersionHistory: vi.fn(),
     getVersion: vi.fn(),
     restoreVersion: vi.fn(),
+    revealFolderInFinder: vi.fn(),
     readFolderConfig: vi.fn(),
     writeFolderConfig: vi.fn(),
     getFolderTemplate: vi.fn(),
@@ -125,6 +126,10 @@ vi.mock('../vault/notes', () => ({
   getVersion: mocks.getVersion,
   restoreVersion: mocks.restoreVersion,
   importFiles: mocks.importFiles
+}))
+
+vi.mock('../vault/folder-actions', () => ({
+  revealFolderInFinder: mocks.revealFolderInFinder
 }))
 
 vi.mock('../notes/domain', () => ({
@@ -553,6 +558,11 @@ describe('notes-handlers extra coverage', () => {
       canceled: false,
       filePaths: ['/tmp/Doc.md']
     })
+  })
+
+  it('reveals a folder itself in the OS file manager (#2205)', async () => {
+    await invoke(NotesChannels.invoke.REVEAL_FOLDER_IN_FINDER, 'Projects/Alpha')
+    expect(mocks.revealFolderInFinder).toHaveBeenCalledWith('Projects/Alpha')
   })
 
   it('exports notes to PDF and HTML with canceled and missing-note guards', async () => {

@@ -93,6 +93,7 @@ export function createGeneratedRpcApi({
       "exists": ((titleOrPath) => invoke("notes:exists", titleOrPath)) as GeneratedRpcApi["notes"]["exists"],
       "openExternal": ((id) => invoke("notes:open-external", id)) as GeneratedRpcApi["notes"]["openExternal"],
       "revealInFinder": ((id) => invoke("notes:reveal-in-finder", id)) as GeneratedRpcApi["notes"]["revealInFinder"],
+      "revealFolderInFinder": ((folderPath) => invoke("notes:reveal-folder-in-finder", folderPath)) as GeneratedRpcApi["notes"]["revealFolderInFinder"],
       "resolveAttachment": ((noteId, url) => invoke("notes:attachment-resolve", { noteId, url })) as GeneratedRpcApi["notes"]["resolveAttachment"],
       "revealAttachmentInFinder": ((noteId, url) => invoke("notes:attachment-reveal-in-finder", { noteId, url })) as GeneratedRpcApi["notes"]["revealAttachmentInFinder"],
       "openAttachmentExternal": ((noteId, url) => invoke("notes:attachment-open-external", { noteId, url })) as GeneratedRpcApi["notes"]["openAttachmentExternal"],

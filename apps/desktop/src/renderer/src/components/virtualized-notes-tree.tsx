@@ -129,6 +129,8 @@ interface VirtualizedNotesTreeProps {
   onRevealInFinder?: (note: NoteListItem) => void
   /** Callback when a folder should be deleted */
   onDeleteFolder?: (folderPath: string) => void
+  /** Callback when revealing a folder itself in the OS file manager */
+  onRevealFolderInFinder?: (folderPath: string) => void
   /** Callback when creating a note in a folder */
   onCreateNote?: (folderPath: string) => void
   /** Callback when creating a subfolder */
@@ -299,6 +301,7 @@ interface FolderRowProps {
   onSetFolderIcon?: (folderPath: string, icon: string | null) => void
   iconPickerFolderPath?: string | null
   onIconPickerOpenChange?: (folderPath: string | null) => void
+  onRevealFolderInFinder?: (folderPath: string) => void
   onBulkDelete?: () => void
   onDragStart: (e: React.DragEvent, itemId: string) => void
   onDragEnd: () => void
@@ -336,6 +339,7 @@ function FolderRow({
   onSetFolderIcon,
   iconPickerFolderPath,
   onIconPickerOpenChange,
+  onRevealFolderInFinder,
   onBulkDelete,
   onDragStart,
   onDragEnd,
@@ -346,6 +350,7 @@ function FolderRow({
 }: FolderRowProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
+  const fileActions = useFileActionLabels()
   const { openInNewTab } = useOpenTarget()
   const rowRef = useRef<HTMLDivElement>(null)
   const showBulkActions = isSelected && selectedCount > 1
@@ -600,6 +605,13 @@ function FolderRow({
             )}
             <ContextMenuSeparator />
             <BookmarkMenuItem itemType="folder" itemId={item.folder.path} />
+            <ContextMenuSeparator />
+            {item.folder.path && (
+              <ContextMenuItem onClick={() => onRevealFolderInFinder?.(item.folder.path)}>
+                <FolderOpen className="me-2 h-4 w-4" />
+                {fileActions.revealInFolder}
+              </ContextMenuItem>
+            )}
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onRenameFolder?.(item.folder.path)}>
               <Pencil className="me-2 h-4 w-4" />
@@ -937,6 +949,7 @@ export function VirtualizedNotesTree({
   onOpenExternal,
   onRevealInFinder,
   onDeleteFolder,
+  onRevealFolderInFinder,
   onCreateNote,
   onCreateFolder,
   onRenameFolder,
@@ -1465,6 +1478,7 @@ export function VirtualizedNotesTree({
                   onFolderRenameCancel={onFolderRenameCancel}
                   isFolderRenaming={isFolderRenaming}
                   onDeleteFolder={onDeleteFolder}
+                  onRevealFolderInFinder={onRevealFolderInFinder}
                   onSetFolderTemplate={onSetFolderTemplate}
                   onClearFolderTemplate={onClearFolderTemplate}
                   onSetFolderIcon={(path, icon) => onSetFolderIcon?.(path, icon)}
