@@ -5,6 +5,7 @@ import {
   type CustomIconSyncPayload
 } from '@memry/contracts/sync-payloads'
 import { CustomIconsChannels } from '@memry/contracts/ipc-channels'
+import { isCustomIconStoredExtension } from '@memry/contracts/custom-icons-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
@@ -55,6 +56,15 @@ class CustomIconHandler extends BaseItemHandler<CustomIconSyncPayload> {
     data: CustomIconSyncPayload,
     clock: VectorClock
   ): ApplyResult {
+    // `ext` stays a free-form string in the payload schema on purpose: a strict
+    // enum would make one odd record fail the parse and take its whole sync
+    // batch with it. The check lives here instead, and an unknown extension is
+    // a normal `skipped` that leaves the local row untouched.
+    if (data.ext !== undefined && !isCustomIconStoredExtension(data.ext)) {
+      log.warn('Skipping remote custom icon, unsupported extension', { itemId, ext: data.ext })
+      return 'skipped'
+    }
+
     return ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(customIcons).where(eq(customIcons.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})

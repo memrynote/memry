@@ -7,11 +7,26 @@ export { CustomIconsChannels }
  * Image formats accepted for a custom icon.
  *
  * Raster formats are re-encoded to PNG and downscaled by the main process, so
- * `ext` on a stored icon is always `png` or `svg`. SVG is kept verbatim and is
- * only ever rendered through `<img src>`, which does not execute script.
+ * `ext` on a stored icon is always `png` or `svg`. SVG keeps its markup, but
+ * the main process strips script, event handlers, external references and
+ * entity declarations from it before storing.
  */
 export const CUSTOM_ICON_INPUT_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'] as const
 export type CustomIconInputExtension = (typeof CUSTOM_ICON_INPUT_EXTENSIONS)[number]
+
+/**
+ * Extensions an icon may carry once stored.
+ *
+ * Normalization only ever produces these two, but a row can also arrive from a
+ * peer, so consumers check membership and skip what they do not recognise
+ * instead of trusting `ext` blindly.
+ */
+export const CUSTOM_ICON_STORED_EXTENSIONS = ['png', 'svg'] as const
+export type CustomIconStoredExtension = (typeof CUSTOM_ICON_STORED_EXTENSIONS)[number]
+
+export function isCustomIconStoredExtension(ext: string): ext is CustomIconStoredExtension {
+  return (CUSTOM_ICON_STORED_EXTENSIONS as readonly string[]).includes(ext)
+}
 
 /** Ceiling on the bytes the renderer may hand over, before normalization. */
 export const CUSTOM_ICON_MAX_INPUT_BYTES = 2 * 1024 * 1024
@@ -26,7 +41,7 @@ export const CustomIconSchema = z.object({
   /** User-visible label, also what the picker's search matches against. */
   name: z.string().min(1),
   /** Stored file extension — `png` or `svg`. */
-  ext: z.string().min(1),
+  ext: z.enum(CUSTOM_ICON_STORED_EXTENSIONS),
   /** Absolute path of the icon file inside `<vault>/.memry/icons`. */
   path: z.string().min(1),
   createdAt: z.string()
