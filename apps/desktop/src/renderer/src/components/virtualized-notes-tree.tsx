@@ -975,11 +975,23 @@ export function VirtualizedNotesTree({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => loadExpandedFolders())
 
   // Drag state
-  const [dragState, setDragState] = useState<DragState>({
+  const [dragState, setDragStateInternal] = useState<DragState>({
     draggedId: null,
     dropTargetId: null,
     dropPosition: null
   })
+  // The `drop` event is dispatched straight after the last `dragover`, and on
+  // Windows the native drag runs in a nested OS message loop — React has no
+  // guarantee of having committed that `dragover`'s state by then. Reading
+  // `dragState` inside `drop` therefore saw `dropTargetId: null` and the move
+  // was dropped on the floor with no error anywhere. The ref is written
+  // synchronously, so `drop` always sees the last hover. State stays for the
+  // before/after/inside indicators, which only need to be eventually right.
+  const dragStateRef = useRef<DragState>(dragState)
+  const setDragState = useCallback((next: Partial<DragState>) => {
+    dragStateRef.current = { ...dragStateRef.current, ...next }
+    setDragStateInternal(dragStateRef.current)
+  }, [])
 
   // Folder icon picker state
   const [iconPickerFolderPath, setIconPickerFolderPath] = useState<string | null>(null)
@@ -1248,21 +1260,23 @@ export function VirtualizedNotesTree({
         // can create a referencing card on drop (markdown notes set no other MIME).
         e.dataTransfer.setData(CANVAS_ITEM_DRAG_MIME, canvasDragPayload('note', itemId))
       }
-      setDragState((prev) => ({ ...prev, draggedId: itemId }))
+      setDragState({ draggedId: itemId })
     },
-    [isDragDisabled]
+    [isDragDisabled, setDragState]
   )
 
   const handleDragEnd = useCallback(() => {
     setDragState({ draggedId: null, dropTargetId: null, dropPosition: null })
-  }, [])
+  }, [setDragState])
 
   const handleDragOver = useCallback(
     (e: React.DragEvent, itemId: string, canDropInside: boolean) => {
       // A file coming from outside the app is not a reorder — the sidebar's file
       // drop zone handles it, and a before/after indicator would lie about it.
       if (e.dataTransfer.types.includes('Files')) return
-      if (isDragDisabled || dragState.draggedId === itemId) return
+      // Read the ref, not state: `dragstart` may not have committed yet, and a
+      // stale `null` here let a row register itself as its own drop target.
+      if (isDragDisabled || dragStateRef.current.draggedId === itemId) return
 
       e.preventDefault()
       e.dataTransfer.dropEffect = 'move'
@@ -1270,36 +1284,48 @@ export function VirtualizedNotesTree({
       const rect = e.currentTarget.getBoundingClientRect()
       const position = resolveDropPosition(e.clientY - rect.top, rect.height, canDropInside)
 
-      setDragState((prev) => ({
-        ...prev,
+      setDragState({
         dropTargetId: itemId,
         dropPosition: position
-      }))
+      })
     },
-    [isDragDisabled, dragState.draggedId]
+    [isDragDisabled, setDragState]
   )
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    const relatedTarget = e.relatedTarget as HTMLElement
-    const currentTarget = e.currentTarget as HTMLElement
-    if (!currentTarget.contains(relatedTarget)) {
-      setDragState((prev) => ({
-        ...prev,
-        dropTargetId: null,
-        dropPosition: null
-      }))
-    }
-  }, [])
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      // SAFETY: only passed to `Node.contains`, which accepts any node or null.
+      const relatedTarget = e.relatedTarget as HTMLElement
+      // SAFETY: `currentTarget` during dispatch is the element this listener is
+      // attached to — the row div rendered below — so it is always an HTMLElement.
+      const currentTarget = e.currentTarget as HTMLElement
+      if (!currentTarget.contains(relatedTarget)) {
+        setDragState({
+          dropTargetId: null,
+          dropPosition: null
+        })
+      }
+    },
+    [setDragState]
+  )
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
 
-      const { draggedId, dropTargetId, dropPosition } = dragState
+      const { draggedId, dropTargetId, dropPosition } = dragStateRef.current
+      // `dragstart` writes `draggedId` through the same ref, but a drag whose
+      // start state was reset still carries the id in `dataTransfer` — trust
+      // that before giving up and silently doing nothing.
+      const resolvedDraggedId =
+        draggedId ||
+        e.dataTransfer.getData(MEMRY_NOTE_DRAG_MIME) ||
+        e.dataTransfer.getData('text/plain') ||
+        null
 
-      if (draggedId && dropTargetId && dropPosition && onMove) {
+      if (resolvedDraggedId && dropTargetId && dropPosition && onMove) {
         onMove({
-          draggedId,
+          draggedId: resolvedDraggedId,
           targetId: dropTargetId,
           position: dropPosition
         })
@@ -1307,7 +1333,7 @@ export function VirtualizedNotesTree({
 
       setDragState({ draggedId: null, dropTargetId: null, dropPosition: null })
     },
-    [dragState, onMove]
+    [onMove, setDragState]
   )
 
   // Finder-style arrow navigation. Rows only carry their depth, and a parent is
@@ -1334,7 +1360,9 @@ export function VirtualizedNotesTree({
   const focusRow = useCallback(
     (nodeId: string, index: number) => {
       const find = (): HTMLElement | null => {
-        const wrappers = parentRef.current?.querySelectorAll('[data-tree-node-id]') ?? []
+        const wrappers = Array.from(
+          parentRef.current?.querySelectorAll('[data-tree-node-id]') ?? []
+        )
         for (const wrapper of wrappers) {
           if (wrapper.getAttribute('data-tree-node-id') !== nodeId) continue
           // `data-tree-node-id` sits on the positioned wrapper; the focusable
@@ -1361,6 +1389,8 @@ export function VirtualizedNotesTree({
     (e: React.KeyboardEvent) => {
       // An inline rename owns its own arrows — they move the caret, not the
       // selection.
+      // SAFETY: only `tagName` and the optional `closest` are read, both guarded
+      // for absence, so a non-element target degrades to "no row".
       const target = e.target as HTMLElement | null
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return
 

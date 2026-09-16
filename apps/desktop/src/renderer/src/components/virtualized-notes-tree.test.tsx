@@ -616,6 +616,74 @@ describe('VirtualizedNotesTree', () => {
     })
   })
 
+  it('moves a folder when drop lands before React commits the last dragover', () => {
+    // #given — #2206. A native drag on Windows runs in a nested OS message loop
+    // and `drop` is dispatched straight after the last `dragover`, so React may
+    // not have committed that hover yet. Reading `dragState` in `drop` then saw
+    // `dropTargetId: null` and the move vanished with no error anywhere.
+    // Batching both dispatches reproduces exactly that: no render in between.
+    const onMove = vi.fn<(operation: MoveOperation) => void>()
+    renderTree({ tree: emptyFolderTree, onMove })
+
+    const transfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      types: [] as string[],
+      setData: vi.fn(),
+      getData: vi.fn(() => '')
+    }
+    const source = screen.getByText('Work').closest('[role="treeitem"]') as HTMLElement
+    const target = screen.getByText('Archive').closest('[role="treeitem"]') as HTMLElement
+    stubRowRect(target)
+
+    fireEvent.dragStart(source, { dataTransfer: transfer })
+
+    // #when — hover and release with no commit between them
+    const over = createEvent.dragOver(target, { dataTransfer: transfer })
+    Object.defineProperty(over, 'clientY', { value: ROW_HEIGHT / 2 })
+    const drop = createEvent.drop(target, { dataTransfer: transfer })
+    act(() => {
+      target.dispatchEvent(over)
+      target.dispatchEvent(drop)
+    })
+
+    // #then — the folder lands inside the target, not nowhere
+    expect(onMove).toHaveBeenCalledWith({
+      draggedId: 'folder-Work',
+      targetId: 'folder-Archive',
+      position: 'inside'
+    })
+  })
+
+  it('recovers the dragged id from the drag itself when start state is gone', () => {
+    // #given — #2206. The id is on the drag the whole time. If `dragstart` state
+    // was lost (a re-mount mid-drag, a drag begun in the other tree copy), the
+    // drop used to give up silently rather than read what it was handed.
+    const onMove = vi.fn<(operation: MoveOperation) => void>()
+    renderTree({ tree: emptyFolderTree, onMove })
+
+    const transfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      types: [] as string[],
+      setData: vi.fn(),
+      getData: vi.fn((type: string) => (type === 'text/plain' ? 'folder-Work' : ''))
+    }
+    const target = screen.getByText('Archive').closest('[role="treeitem"]') as HTMLElement
+    stubRowRect(target)
+
+    // #when — no dragstart on this instance, so there is no in-memory draggedId
+    dragOverAt(target, ROW_HEIGHT / 2, transfer)
+    fireEvent.drop(target, { dataTransfer: transfer })
+
+    // #then
+    expect(onMove).toHaveBeenCalledWith({
+      draggedId: 'folder-Work',
+      targetId: 'folder-Archive',
+      position: 'inside'
+    })
+  })
+
   it('keeps the reorder bands at the edges of a folder row and off a note row', () => {
     const onMove = vi.fn<(operation: MoveOperation) => void>()
     renderTree({ tree: emptyFolderTree, onMove })
@@ -721,7 +789,7 @@ describe('VirtualizedNotesTree', () => {
     }
     const source = screen.getByText('Root').closest('[role="treeitem"]') as HTMLElement
     const folderTarget = screen.getByText('Work').closest('[role="treeitem"]') as HTMLElement
-    let folderRect = {
+    const folderRect = {
       x: 0,
       y: 0,
       top: 0,

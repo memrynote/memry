@@ -171,14 +171,21 @@ function renderTree(
   return { onSelectionChange, onMove, onIconChange }
 }
 
-function dataTransfer(types: string[] = []) {
+function dataTransfer(types: string[] = [], stored: Record<string, string> = {}) {
+  const data = { ...stored }
   return {
     effectAllowed: '',
     dropEffect: '',
     // A real DataTransfer always exposes `types`; the tree reads it to tell an
     // internal reorder from a file dragged in from the OS.
     types,
-    setData: vi.fn()
+    setData: vi.fn((type: string, value: string) => {
+      data[type] = value
+    }),
+    // A real DataTransfer always exposes `getData` too. Omitting it here let the
+    // double disagree with the platform, so a drop path that recovers the
+    // dragged id from the drag itself blew up only in tests.
+    getData: vi.fn((type: string) => data[type] ?? '')
   }
 }
 
@@ -325,6 +332,90 @@ describe('TreeProvider and tree primitives', () => {
     // #when — the drag hovers the middle of the row
     const transfer = dataTransfer()
     fireEvent.dragStart(source, { dataTransfer: transfer })
+    dragOverAt(target, 14, transfer)
+    fireEvent.drop(target, { dataTransfer: transfer })
+
+    // #then
+    expect(onMove).toHaveBeenCalledWith({
+      draggedId: 'note',
+      targetId: 'folder-empty',
+      position: 'inside'
+    })
+  })
+
+  it('moves a node when drop lands before React commits the last dragover', () => {
+    // #given — #2206. A native drag on Windows runs in a nested OS message loop
+    // and `drop` arrives straight after the last `dragover`, so React may not
+    // have committed that hover. Reading state in `drop` then saw a null drop
+    // target and the move vanished with no error anywhere. Batching both
+    // dispatches reproduces exactly that: no render in between.
+    const onMove = vi.fn()
+    render(
+      <TreeProvider persistKey="tree-uncommitted-hover" draggable onMove={onMove}>
+        <TreeView>
+          <TreeNode nodeId="note">
+            <TreeNodeTrigger>
+              <span>Loose Note</span>
+            </TreeNodeTrigger>
+          </TreeNode>
+          <TreeNode nodeId="folder-empty" acceptsDropInside>
+            <TreeNodeTrigger>
+              <span>Empty Folder</span>
+            </TreeNodeTrigger>
+          </TreeNode>
+        </TreeView>
+      </TreeProvider>
+    )
+
+    const source = screen.getByText('Loose Note').closest('[data-tree-node-id]') as HTMLElement
+    const target = screen.getByText('Empty Folder').closest('[data-tree-node-id]') as HTMLElement
+    target.getBoundingClientRect = vi.fn(
+      () => ({ top: 0, height: 28, right: 100, left: 0 }) as DOMRect
+    )
+
+    const transfer = dataTransfer()
+    fireEvent.dragStart(source, { dataTransfer: transfer })
+
+    // #when — hover and release with no commit between them
+    const over = createEvent.dragOver(target, { dataTransfer: transfer })
+    Object.defineProperty(over, 'clientY', { value: 14 })
+    const drop = createEvent.drop(target, { dataTransfer: transfer })
+    act(() => {
+      target.dispatchEvent(over)
+      target.dispatchEvent(drop)
+    })
+
+    // #then
+    expect(onMove).toHaveBeenCalledWith({
+      draggedId: 'note',
+      targetId: 'folder-empty',
+      position: 'inside'
+    })
+  })
+
+  it('recovers the dragged id from the drag itself when start state is gone', () => {
+    // #given — #2206. `dragstart` puts the id on the drag, so a drop can always
+    // recover it — even if the row that started the drag was unmounted since.
+    const onMove = vi.fn()
+    render(
+      <TreeProvider persistKey="tree-recovered-id" draggable onMove={onMove}>
+        <TreeView>
+          <TreeNode nodeId="folder-empty" acceptsDropInside>
+            <TreeNodeTrigger>
+              <span>Empty Folder</span>
+            </TreeNodeTrigger>
+          </TreeNode>
+        </TreeView>
+      </TreeProvider>
+    )
+
+    const target = screen.getByText('Empty Folder').closest('[data-tree-node-id]') as HTMLElement
+    target.getBoundingClientRect = vi.fn(
+      () => ({ top: 0, height: 28, right: 100, left: 0 }) as DOMRect
+    )
+
+    // #when — no dragstart here, so there is no in-memory draggedId
+    const transfer = dataTransfer([], { 'application/x-memry-tree-node': 'note' })
     dragOverAt(target, 14, transfer)
     fireEvent.drop(target, { dataTransfer: transfer })
 

@@ -7,6 +7,7 @@ import {
   createContext,
   type HTMLAttributes,
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
   useEffect,
@@ -37,6 +38,9 @@ type NodeInfo = {
 }
 
 export type { DropPosition }
+
+/** The dragged node's id, carried on the drag itself so a drop can recover it. */
+const TREE_NODE_DRAG_MIME = 'application/x-memry-tree-node'
 
 export type DragState = {
   draggedId: string | null
@@ -81,7 +85,9 @@ type TreeContextType = {
   collapseAll: () => void
   renameNode: (oldNodeId: string, newNodeId: string) => void
   setDragState: (state: Partial<DragState>) => void
-  handleDrop: () => void
+  /** Live drag state, readable synchronously from a `drop` handler. */
+  dragStateRef: RefObject<DragState>
+  handleDrop: (fallbackDraggedId?: string | null) => void
   setNodeIcon: (nodeId: string, iconName: string | null) => void
   getEffectiveIcon: (nodeId: string) => string | undefined
   draggable?: boolean
@@ -190,6 +196,13 @@ export const TreeProvider = ({
     dropTargetId: null,
     dropPosition: null
   })
+  // The `drop` event is dispatched straight after the last `dragover`, and on
+  // Windows the native drag runs in a nested OS message loop — React has no
+  // guarantee of having committed that `dragover`'s state by then. Reading
+  // `dragState` inside `drop` therefore saw `dropTargetId: null` and the move
+  // was dropped on the floor with no error anywhere. The ref is written
+  // synchronously in `setDragState`, so `drop` always sees the last hover.
+  const dragStateRef = useRef<DragState>(dragState)
   const nodesRef = useRef<Map<string, NodeInfo>>(new Map())
   const nodeOrderRef = useRef<string[]>([])
   // İkon state'i için re-render tetiklemek için
@@ -226,26 +239,35 @@ export const TreeProvider = ({
   const currentSelectedIds = isControlled ? selectedIds : internalSelectedIds
 
   const setDragState = useCallback((state: Partial<DragState>) => {
-    setDragStateInternal((prev) => ({ ...prev, ...state }))
+    dragStateRef.current = { ...dragStateRef.current, ...state }
+    setDragStateInternal(dragStateRef.current)
   }, [])
 
-  const handleDrop = useCallback(() => {
-    const { draggedId, dropTargetId, dropPosition } = dragState
+  const handleDrop = useCallback(
+    (fallbackDraggedId?: string | null) => {
+      const { draggedId, dropTargetId, dropPosition } = dragStateRef.current
+      // `dragstart` writes `draggedId` through the same ref, but a drag that
+      // started in another tree instance (or whose start state was reset) still
+      // carries the id in `dataTransfer` — trust that before giving up.
+      const resolvedDraggedId = draggedId ?? fallbackDraggedId ?? null
 
-    if (draggedId && dropTargetId && dropPosition && onMove) {
-      onMove({
-        draggedId,
-        targetId: dropTargetId,
-        position: dropPosition
-      })
-    }
+      if (resolvedDraggedId && dropTargetId && dropPosition && onMove) {
+        onMove({
+          draggedId: resolvedDraggedId,
+          targetId: dropTargetId,
+          position: dropPosition
+        })
+      }
 
-    setDragStateInternal({
-      draggedId: null,
-      dropTargetId: null,
-      dropPosition: null
-    })
-  }, [dragState, onMove])
+      dragStateRef.current = {
+        draggedId: null,
+        dropTargetId: null,
+        dropPosition: null
+      }
+      setDragStateInternal(dragStateRef.current)
+    },
+    [onMove]
+  )
 
   const registerNode = useCallback(
     (
@@ -471,6 +493,7 @@ export const TreeProvider = ({
     collapseAll,
     renameNode,
     setDragState,
+    dragStateRef,
     handleDrop,
     setNodeIcon,
     getEffectiveIcon,
@@ -620,6 +643,7 @@ export const TreeNodeTrigger = ({
     expandedIds,
     draggable,
     dragState,
+    dragStateRef,
     setDragState,
     handleDrop,
     setNodeIcon,
@@ -677,10 +701,7 @@ export const TreeNodeTrigger = ({
         case 'ArrowRight': {
           e.preventDefault()
           if (hasChildren) {
-            if (!expandedIds.has(nodeId)) {
-              // Expand the folder
-              expandNode(nodeId)
-            } else {
+            if (expandedIds.has(nodeId)) {
               // Already expanded, move to first child
               const nextIndex = currentIndex + 1
               if (nextIndex < visibleNodes.length) {
@@ -691,6 +712,9 @@ export const TreeNodeTrigger = ({
                   handleSelection(nextNodeId, false)
                 }
               }
+            } else {
+              // Expand the folder
+              expandNode(nodeId)
             }
           }
           break
@@ -729,7 +753,7 @@ export const TreeNodeTrigger = ({
       if (!draggable) return
 
       e.dataTransfer.effectAllowed = canvasNoteId ? 'copyMove' : 'move'
-      e.dataTransfer.setData('application/x-memry-tree-node', nodeId)
+      e.dataTransfer.setData(TREE_NODE_DRAG_MIME, nodeId)
       if (canvasNoteId) {
         // Mirrors VirtualizedNotesTree, which the sidebar swaps to once the
         // vault passes the virtualization threshold. Without this the same
@@ -753,7 +777,9 @@ export const TreeNodeTrigger = ({
       // keeps the before/after/inside indicator off and lets the sidebar's file
       // drop zone claim the event on the way up.
       if (e.dataTransfer.types.includes('Files')) return
-      if (!draggable || dragState.draggedId === nodeId) return
+      // Read the ref, not state: `dragstart` may not have committed yet, and a
+      // stale `null` here let a row register itself as its own drop target.
+      if (!draggable || dragStateRef.current.draggedId === nodeId) return
 
       e.preventDefault()
       e.dataTransfer.dropEffect = 'move'
@@ -769,7 +795,7 @@ export const TreeNodeTrigger = ({
 
       setDragState({ dropTargetId: nodeId, dropPosition: position })
     },
-    [draggable, dragState.draggedId, nodeId, hasChildren, acceptsDropInside, setDragState]
+    [draggable, dragStateRef, nodeId, hasChildren, acceptsDropInside, setDragState]
   )
 
   const handleDragLeave = useCallback(
@@ -791,7 +817,7 @@ export const TreeNodeTrigger = ({
 
       e.preventDefault()
       e.stopPropagation()
-      handleDrop()
+      handleDrop(e.dataTransfer.getData(TREE_NODE_DRAG_MIME) || null)
     },
     [handleDrop]
   )
