@@ -471,9 +471,15 @@ async function signNsisInstaller({ assetDir }) {
   const setupPath = path.join(assetDir, setupName)
   const manifestPath = path.join(assetDir, 'latest.yml')
 
-  if (!existsSync(manifestPath)) {
+  // Read it now rather than probe for it: this still refuses before anything is
+  // signed, and there is no window between the check and the read in which the
+  // manifest could change underneath us.
+  let manifest
+  try {
+    manifest = readFileSync(manifestPath, 'utf8')
+  } catch (error) {
     throw new Error(
-      `No latest.yml next to ${setupName}; refusing to sign a manifest-less installer.`
+      `No readable latest.yml next to ${setupName}; refusing to sign a manifest-less installer. ${error.message}`
     )
   }
 
@@ -509,10 +515,7 @@ async function signNsisInstaller({ assetDir }) {
 
   const { sha512, size } = await buildBlockMap(setupPath, 'gzip', `${setupPath}.blockmap`)
 
-  writeFileSync(
-    manifestPath,
-    rewriteWindowsUpdateManifest(readFileSync(manifestPath, 'utf8'), { sha512, size })
-  )
+  writeFileSync(manifestPath, rewriteWindowsUpdateManifest(manifest, { sha512, size }))
 
   console.log(`Rewrote latest.yml and the blockmap for the signed installer (${size} bytes)`)
 }
