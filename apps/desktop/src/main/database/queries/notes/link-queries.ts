@@ -31,6 +31,20 @@ export function getOutgoingLinks(db: IndexDb, noteId: string): NoteLink[] {
   return db.select().from(noteLinks).where(eq(noteLinks.sourceId, noteId)).all()
 }
 
+/**
+ * A note just appeared (created, or a new file indexed) under `title`. Any
+ * existing outbound link whose target was unresolved (`target_id IS NULL`)
+ * because it pointed at this title before the target existed now resolves —
+ * this is what makes create-from-link (and any other creation route) produce
+ * a backlink retroactively instead of only for links written after the fact.
+ */
+export function backfillUnresolvedLinksByTitle(db: IndexDb, noteId: string, title: string): void {
+  db.update(noteLinks)
+    .set({ targetId: noteId })
+    .where(and(isNull(noteLinks.targetId), sql`lower(${noteLinks.targetTitle}) = lower(${title})`))
+    .run()
+}
+
 export function getIncomingLinks(db: IndexDb, noteId: string): NoteLink[] {
   return db.select().from(noteLinks).where(eq(noteLinks.targetId, noteId)).all()
 }
