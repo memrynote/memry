@@ -3,6 +3,7 @@
     "day": "Day",
     "week": "Week",
     "month": "Month",
+    "monthGridLabel": "Month grid",
     "year": "Year"
   },
   "undo": {

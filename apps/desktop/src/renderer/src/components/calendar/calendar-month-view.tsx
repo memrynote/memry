@@ -96,7 +96,7 @@ export function CalendarMonthView({
   onAddToProject,
   onQuickSave
 }: CalendarMonthViewProps): React.JSX.Element {
-  const { i18n } = useT('calendar')
+  const { t, i18n } = useT('calendar')
   const weekStartsOn = useWeekStartsOn()
   const gridDays = getMonthGridDays(anchorDate, weekStartsOn)
   const [containerWidth, containerRef] = useContainerWidth()
@@ -132,7 +132,7 @@ export function CalendarMonthView({
 
       <div
         role="application"
-        aria-label="month grid"
+        aria-label={t('calendar:view.monthGridLabel')}
         ref={(el) => {
           containerRef(el)
           gridRef.current = el
