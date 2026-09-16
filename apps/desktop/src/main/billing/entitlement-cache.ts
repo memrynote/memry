@@ -29,6 +29,40 @@ export function getCachedEntitlement(): CachedEntitlement | null {
  */
 export const ENTITLEMENT_LIMITS_TTL_MS = 24 * 60 * 60 * 1000
 
+/**
+ * How long a cached *unpaid* verdict may gate the sync runtime before the
+ * server is asked again.
+ *
+ * `resolveEntitlementForSyncStart` short-circuits on a cached `isPaid: false`
+ * so a free account does not spend a billing call per launch. With no expiry
+ * that short-circuit is permanent: a user who upgrades on the web, on another
+ * device, or through a server-side grant stays gated into local-only forever
+ * unless they happen to open Settings → Account, because nothing else writes
+ * the cache. The costly direction of that trade is a paying customer whose
+ * sync never starts, so a negative expires. A positive needs no TTL — the
+ * server re-verifies it on every single request.
+ */
+export const UNPAID_ENTITLEMENT_TTL_MS = 60 * 60 * 1000
+
+/**
+ * True when a cached "not paid" is recent enough to gate on without asking the
+ * server.
+ *
+ * A store written before `cachedAt` existed, or one whose clock moved backwards
+ * under it, has an unknowable age: read it as expired and re-check rather than
+ * trust it. Only ever consulted for a negative.
+ */
+export function isCachedUnpaidFresh(
+  cached: CachedEntitlement | null,
+  now = Date.now()
+): cached is CachedEntitlement {
+  if (!cached || cached.isPaid) return false
+  const cachedAt = cached.cachedAt
+  if (typeof cachedAt !== 'number' || !Number.isFinite(cachedAt)) return false
+  const age = now - cachedAt
+  return age >= 0 && age <= UNPAID_ENTITLEMENT_TTL_MS
+}
+
 export function setCachedEntitlementFromStatus(s: BillingStatus): CachedEntitlement {
   const cached: CachedEntitlement = {
     isPaid: isPaidBillingStatus(s),

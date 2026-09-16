@@ -66,10 +66,11 @@ export function classifyError(error: unknown): SyncErrorInfo {
     // ships beside it — the exact status and the server's own error code, which
     // is what separates a permanent 400 VALIDATION_ERROR from a transient 503
     // and made `server_error` an undiagnosable catch-all (#1584).
+    const code = serverErrorCode(error)
     return {
-      ...classifyServerError(error),
+      ...classifyServerError(error, code),
       statusCode: error.statusCode,
-      serverCode: serverErrorCode(error)
+      serverCode: code
     }
   }
 
@@ -103,7 +104,7 @@ export function classifyError(error: unknown): SyncErrorInfo {
  * rather than repeated across every branch; the branch logic itself is
  * unchanged.
  */
-function classifyServerError(error: SyncServerError): SyncErrorInfo {
+function classifyServerError(error: SyncServerError, code?: string): SyncErrorInfo {
   if (error.statusCode === 401) {
     return {
       category: 'auth_expired',
@@ -119,6 +120,23 @@ function classifyServerError(error: SyncServerError): SyncErrorInfo {
     }
   }
   if (error.statusCode === 402 || error.serverError?.includes('SYNC_PAYMENT_REQUIRED')) {
+    // 402 carries two opposite facts. SYNC_VAULT_LIMIT_EXCEEDED means the plan
+    // is ACTIVE and this vault is one more than it syncs; answering that with
+    // "a paid plan is required" sends a paying customer back to checkout for a
+    // problem no payment can fix. That is not hypothetical: 110 of the 113
+    // payment-required reports in production were really this. Only
+    // SYNC_PAYMENT_REQUIRED is a billing statement — chapter 11 §11.7.1.
+    if (
+      code === 'SYNC_VAULT_LIMIT_EXCEEDED' ||
+      error.serverError?.includes('SYNC_VAULT_LIMIT_EXCEEDED') ||
+      error.message.includes('SYNC_VAULT_LIMIT_EXCEEDED')
+    ) {
+      return {
+        category: 'sync_vault_limit_exceeded',
+        message: 'This vault is over the number of vaults your plan syncs',
+        retryable: false
+      }
+    }
     return {
       category: 'sync_payment_required',
       message: 'A paid Sync plan is required',
