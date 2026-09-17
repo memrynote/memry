@@ -2107,9 +2107,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     }
                     return item
                   }),
-                  // `updateBlock` is typed against the whole schema union, so a
+                  // SAFETY: `updateBlock` is typed against the whole schema union, so a
                   // helper that only ever writes table content cannot state its
-                  // parameter in terms the editor's own signature accepts.
+                  // parameter in terms the editor's own signature accepts. The helper
+                  // only ever touches table blocks, which this editor's schema has.
                   editor as unknown as TableInsertEditor
                 )
                 // `/pdf` and `/media` are the same item as `/file` — same
