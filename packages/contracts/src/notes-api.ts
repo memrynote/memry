@@ -509,6 +509,8 @@ export interface NotesHandlers {
 
   [NotesChannels.invoke.REVEAL_IN_FINDER]: (id: string) => Promise<void>
 
+  [NotesChannels.invoke.REVEAL_FOLDER_IN_FINDER]: (folderPath: string) => Promise<void>
+
   [NotesChannels.invoke.APPLY_TEMPLATE]: (
     input: z.infer<typeof ApplyTemplateSchema>
   ) => Promise<NoteUpdateResponse>
@@ -622,6 +624,7 @@ export interface NotesClientAPI {
   exists(titleOrPath: string): Promise<boolean>
   openExternal(id: string): Promise<void>
   revealInFinder(id: string): Promise<void>
+  revealFolderInFinder(folderPath: string): Promise<void>
   resolveAttachment(noteId: string, url: string): Promise<AttachmentResolveResult>
   revealAttachmentInFinder(noteId: string, url: string): Promise<void>
   openAttachmentExternal(noteId: string, url: string): Promise<void>

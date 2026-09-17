@@ -34,6 +34,7 @@ import {
   revealAttachmentInFinder,
   openAttachmentExternal
 } from '../vault/attachment-actions'
+import { revealFolderInFinder } from '../vault/folder-actions'
 import { renameAttachment } from '../vault/attachment-rename'
 import {
   buildExistingAttachmentReference,
@@ -543,6 +544,15 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.REVEAL_IN_FINDER,
     createStringHandler(async (id) => {
       revealInFinder(id)
+    })
+  )
+
+  // notes:reveal-folder-in-finder - Reveal a folder itself (not its parent) in
+  // the OS file manager (#2205)
+  ipcMain.handle(
+    NotesChannels.invoke.REVEAL_FOLDER_IN_FINDER,
+    createStringHandler(async (folderPath) => {
+      revealFolderInFinder(folderPath)
     })
   )
 
