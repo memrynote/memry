@@ -6,7 +6,8 @@ import {
   isLastHomeTab
 } from './helpers'
 import { SINGLETON_TAB_TYPES } from './types'
-import type { Tab, TabType, TabSystemState } from './types'
+import type { Tab, TabType, TabSystemState, TabHistoryEntry } from './types'
+import { snapshotTabContent } from './reducers/history-helpers'
 
 describe('home tab', () => {
   it('home is a singleton tab type', () => {
@@ -94,6 +95,16 @@ const mkTab = (id: string): Tab => ({
   lastAccessedAt: 0
 })
 
+/**
+ * History entry for `id`, snapshotting the tab that id would name. Stacks hold
+ * {tabId, content} pairs so a tab that navigated in place can be restored; these
+ * tests only care about the id half, so the content mirrors `mkTab`.
+ */
+const mkEntry = (id: string): TabHistoryEntry => ({
+  tabId: id,
+  content: snapshotTabContent(mkTab(id))
+})
+
 const mkState = (tabIds: string[], back: string[], forward: string[]): TabSystemState => ({
   tabGroups: {
     g1: {
@@ -101,8 +112,8 @@ const mkState = (tabIds: string[], back: string[], forward: string[]): TabSystem
       tabs: tabIds.map(mkTab),
       activeTabId: tabIds[tabIds.length - 1] ?? null,
       isActive: true,
-      back,
-      forward
+      back: back.map(mkEntry),
+      forward: forward.map(mkEntry)
     }
   },
   layout: { type: 'leaf', tabGroupId: 'g1' },

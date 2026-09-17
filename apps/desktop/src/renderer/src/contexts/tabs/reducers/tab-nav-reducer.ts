@@ -1,5 +1,5 @@
-import type { TabAction, TabGroup, TabSystemState } from '../types'
-import { recordActivation } from './history-helpers'
+import type { TabAction, TabGroup, TabHistoryEntry, TabSystemState } from '../types'
+import { pushCurrentPosition, recordActivation, restoreHistoryEntry } from './history-helpers'
 
 type NavAction = Extract<
   TabAction,
@@ -17,6 +17,70 @@ type NavAction = Extract<
 
 const touchActiveTimestamp = (tabs: TabGroup['tabs'], activeTabId: string): TabGroup['tabs'] =>
   tabs.map((t) => (t.id === activeTabId ? { ...t, lastAccessedAt: Date.now() } : t))
+
+/**
+ * Pop one step off `direction`, put the pane where that entry says, and push
+ * where the pane WAS onto the opposite stack.
+ *
+ * Both directions are the same walk with the stacks swapped, so they share one
+ * implementation — they drifted apart too easily as two copies.
+ *
+ * Two things move, not one: the active tab (`entry.tabId`) and that tab's
+ * contents (`entry.content`). The second is what makes back work after a
+ * same-tab open, where every entry names the tab the user is already on and
+ * only the contents differ (#2207).
+ *
+ * Entries whose tab has since been closed are skipped, exactly as before —
+ * `buildHistoryEntries` counts steps on the same rule.
+ */
+const navigateHistory = (
+  state: TabSystemState,
+  groupId: string,
+  direction: 'back' | 'forward'
+): TabSystemState => {
+  const group = state.tabGroups[groupId]
+  if (!group) return state
+
+  const source = direction === 'back' ? group.back : group.forward
+  if (source.length === 0) return state
+
+  const tabIds = new Set(group.tabs.map((t) => t.id))
+  let remaining = source
+  let entry: TabHistoryEntry | null = null
+  while (remaining.length > 0) {
+    const candidate = remaining[remaining.length - 1]
+    remaining = remaining.slice(0, -1)
+    if (tabIds.has(candidate.tabId)) {
+      entry = candidate
+      break
+    }
+  }
+
+  // Nothing reachable left: keep the stale entries we burned through popped off
+  // so the button stops offering a navigation that cannot happen.
+  if (entry === null) {
+    if (remaining.length === source.length) return state
+    const drained =
+      direction === 'back' ? { ...group, back: remaining } : { ...group, forward: remaining }
+    return { ...state, tabGroups: { ...state.tabGroups, [groupId]: drained } }
+  }
+
+  const opposite = pushCurrentPosition(group, direction === 'back' ? group.forward : group.back)
+  const tabs = touchActiveTimestamp(restoreHistoryEntry(group.tabs, entry), entry.tabId)
+
+  const updated: TabGroup = {
+    ...group,
+    back: direction === 'back' ? remaining : opposite,
+    forward: direction === 'back' ? opposite : remaining,
+    activeTabId: entry.tabId,
+    tabs
+  }
+  return {
+    ...state,
+    tabGroups: { ...state.tabGroups, [groupId]: updated },
+    activeGroupId: groupId
+  }
+}
 
 export function tabNavReducer(state: TabSystemState, action: NavAction): TabSystemState {
   switch (action.type) {
@@ -116,82 +180,12 @@ export function tabNavReducer(state: TabSystemState, action: NavAction): TabSyst
 
     case 'NAV_BACK': {
       const { groupId } = action.payload
-      const group = state.tabGroups[groupId]
-      if (!group || group.back.length === 0) return state
-
-      const tabIds = new Set(group.tabs.map((t) => t.id))
-      let back = group.back
-      let target: string | null = null
-      while (back.length > 0) {
-        const candidate = back[back.length - 1]
-        back = back.slice(0, -1)
-        if (tabIds.has(candidate)) {
-          target = candidate
-          break
-        }
-      }
-      if (target === null) {
-        if (back.length === group.back.length) return state
-        return {
-          ...state,
-          tabGroups: { ...state.tabGroups, [groupId]: { ...group, back } }
-        }
-      }
-
-      const forward = group.activeTabId ? [...group.forward, group.activeTabId] : group.forward
-
-      const updated: TabGroup = {
-        ...group,
-        back,
-        forward,
-        activeTabId: target,
-        tabs: touchActiveTimestamp(group.tabs, target)
-      }
-      return {
-        ...state,
-        tabGroups: { ...state.tabGroups, [groupId]: updated },
-        activeGroupId: groupId
-      }
+      return navigateHistory(state, groupId, 'back')
     }
 
     case 'NAV_FORWARD': {
       const { groupId } = action.payload
-      const group = state.tabGroups[groupId]
-      if (!group || group.forward.length === 0) return state
-
-      const tabIds = new Set(group.tabs.map((t) => t.id))
-      let forward = group.forward
-      let target: string | null = null
-      while (forward.length > 0) {
-        const candidate = forward[forward.length - 1]
-        forward = forward.slice(0, -1)
-        if (tabIds.has(candidate)) {
-          target = candidate
-          break
-        }
-      }
-      if (target === null) {
-        if (forward.length === group.forward.length) return state
-        return {
-          ...state,
-          tabGroups: { ...state.tabGroups, [groupId]: { ...group, forward } }
-        }
-      }
-
-      const back = group.activeTabId ? [...group.back, group.activeTabId] : group.back
-
-      const updated: TabGroup = {
-        ...group,
-        back,
-        forward,
-        activeTabId: target,
-        tabs: touchActiveTimestamp(group.tabs, target)
-      }
-      return {
-        ...state,
-        tabGroups: { ...state.tabGroups, [groupId]: updated },
-        activeGroupId: groupId
-      }
+      return navigateHistory(state, groupId, 'forward')
     }
 
     default:

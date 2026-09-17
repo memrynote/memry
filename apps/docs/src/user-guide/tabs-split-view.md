@@ -79,9 +79,18 @@ Each copy is an independent tab: close, pin, or move one and the other stays put
 
 Whole-app views — Home, Inbox, Calendar, Tasks, Journal, Graph, and Tags — stay single-instance, since a second copy would show exactly the same thing. Their rows leave **Open in New Tab** out of the menu rather than offer a command that would only refocus the tab you already have, and the modifier gestures focus that tab instead of duplicating it.
 
-## Mouse Navigation
+## Back and Forward
 
-Mouse Back and Forward side buttons move through tab focus history across the whole window, including split panes. Back returns to the previously focused tab; Forward replays the next tab after a Back action. Opening or selecting another tab starts a new history path.
+The Back and Forward arrows in the title bar, the mouse side buttons, and the keyboard shortcuts all walk the same history. It is the history of the pane you are in, and it covers both ways of moving:
+
+- **Switching tabs.** Back returns to the tab you were on before.
+- **Moving inside one tab.** If you have turned off "clicking a page opens a new tab", following a link, a backlink, or a Folder View row replaces what the current tab is showing rather than opening another tab. Those steps are recorded too, so Back returns to the note you came from, in that same tab.
+
+Back restores the note you left _and_ where you were reading it — a note you had scrolled halfway down comes back halfway down, not at the top.
+
+Right-click either arrow for the last few places that pane has been, and jump straight to one instead of pressing Back repeatedly. Each row names the note it takes you to.
+
+Opening or selecting something new starts a new history path, dropping whatever Forward was holding. History is per pane in a split, and it is kept for the current session only — it is not restored when you reopen the app.
 
 ## Split View
 
