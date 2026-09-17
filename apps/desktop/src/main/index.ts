@@ -64,6 +64,7 @@ import {
   setWindowBounds
 } from './store'
 import {
+  captureWindowState,
   createWindowBoundsPersister,
   resolveStartupBounds,
   type SavedWindowBounds
@@ -703,14 +704,20 @@ function resizeWindowIfNeeded(
 /**
  * Read the main window's geometry for persistence, or null when there is nothing
  * worth remembering. Guarded to the real app window — the compact vault picker is
- * never remembered. When maximized we report the *normal* (un-maximized) bounds
- * plus the flag, so a later restore can place the window correctly and re-maximize.
+ * never remembered. `captureWindowState` owns the rest of the rules (skip a
+ * hidden/minimized window, store normal bounds plus the maximized/fullscreen flags).
  */
 function readWindowBounds(window: BrowserWindow): SavedWindowBounds | null {
   if (window.isDestroyed() || !getCurrentVaultPath()) return null
-  const isMaximized = window.isMaximized()
-  const { width, height, x, y } = isMaximized ? window.getNormalBounds() : window.getBounds()
-  return { width, height, x, y, isMaximized }
+  return captureWindowState({
+    isDestroyed: false,
+    isMinimized: window.isMinimized(),
+    isVisible: window.isVisible(),
+    isMaximized: window.isMaximized(),
+    isFullScreen: window.isFullScreen(),
+    bounds: window.getBounds(),
+    normalBounds: window.getNormalBounds()
+  })
 }
 
 function createWindow(): void {
@@ -730,7 +737,7 @@ function createWindow(): void {
         screen.getAllDisplays().map((display) => ({ workArea: display.workArea })),
         DEFAULT_MAIN_WINDOW_SIZE
       )
-    : { width: initialSize.width, height: initialSize.height, maximize: false }
+    : { width: initialSize.width, height: initialSize.height, maximize: false, fullScreen: false }
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -757,7 +764,18 @@ function createWindow(): void {
       webSecurity: true
     }
   })
-  if (startupBounds.maximize) mainWindow.maximize()
+  // Applied again after the window is shown: Windows can ignore maximize on a
+  // still-hidden window, which is how a window closed while maximized used to
+  // come back small. `applyStartupWindowMode` is idempotent.
+  const applyStartupWindowMode = (): void => {
+    if (mainWindow.isDestroyed()) return
+    if (startupBounds.fullScreen) {
+      if (!mainWindow.isFullScreen()) mainWindow.setFullScreen(true)
+      return
+    }
+    if (startupBounds.maximize && !mainWindow.isMaximized()) mainWindow.maximize()
+  }
+  applyStartupWindowMode()
   recordLaunchPhase('window_created')
 
   // Remember geometry as the user resizes/moves/maximizes it, and on close. Every
@@ -773,6 +791,13 @@ function createWindow(): void {
   mainWindow.on('move', () => boundsPersister.schedule())
   mainWindow.on('maximize', () => boundsPersister.schedule())
   mainWindow.on('unmaximize', () => boundsPersister.schedule())
+  mainWindow.on('enter-full-screen', () => boundsPersister.schedule())
+  mainWindow.on('leave-full-screen', () => boundsPersister.schedule())
+  // `close` can arrive after the window is already hidden (tray) or minimized,
+  // where the platform no longer reports the maximized state; capture the last
+  // visible state up front so the flush has something trustworthy to fall back on.
+  mainWindow.on('hide', () => boundsPersister.flush())
+  mainWindow.on('minimize', () => boundsPersister.flush())
   mainWindow.on('close', () => boundsPersister.flush())
 
   // Registered after the bounds flush so geometry is still persisted on a close
@@ -800,6 +825,9 @@ function createWindow(): void {
         width: saved?.width ?? DEFAULT_MAIN_WINDOW_SIZE.width,
         height: saved?.height ?? DEFAULT_MAIN_WINDOW_SIZE.height
       })
+      // The picker never persists geometry, so a saved maximized flag can only
+      // come from a previous app window the user left maximized: honor it here too.
+      if (saved?.isMaximized) mainWindow.maximize()
     } else {
       resizeWindowIfNeeded(mainWindow, VAULT_PICKER_WINDOW_SIZE)
     }
@@ -818,6 +846,7 @@ function createWindow(): void {
     mainWindowShown = true
     clearTimeout(fallbackShowTimer)
     mainWindow.show()
+    applyStartupWindowMode()
     recordLaunchPhase('window_shown')
     mainLog.info(`main window shown (${reason})`)
     // Reveal is the moment the user stops staring at nothing, so it is where

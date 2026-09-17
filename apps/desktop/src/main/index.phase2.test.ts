@@ -145,6 +145,8 @@ function createBrowserWindowMock() {
     maximize: vi.fn(),
     unmaximize: vi.fn(),
     isMaximized: vi.fn(() => false),
+    isFullScreen: vi.fn(() => false),
+    setFullScreen: vi.fn(),
     getSize: vi.fn(() => [480, 82] as [number, number]),
     setSize: vi.fn(),
     getBounds: vi.fn(() => ({ x: 0, y: 0, width: 480, height: 82 })),
@@ -893,6 +895,100 @@ describe('main index phase2 exports', () => {
     await flushReadyWork()
 
     expect(browserWindows[0].maximize).toHaveBeenCalledTimes(1)
+  })
+
+  // #2208: Windows can drop maximize() on a still-hidden window, so the app came
+  // back small. The mode is re-applied once the window is actually shown.
+  it('re-applies the maximized state after the window is shown', async () => {
+    // Fake timers so the post-reveal work this reveal schedules cannot fire into
+    // a later test (afterEach drops pending fake timers with useRealTimers).
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+    getWindowBoundsMock.mockReturnValue({
+      width: 1280,
+      height: 820,
+      x: 120,
+      y: 90,
+      isMaximized: true
+    })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const mainWindow = browserWindows[0]
+    // The pre-show maximize did not stick (isMaximized stays false).
+    mainWindow.emitTestEvent('ready-to-show')
+    expect(mainWindow.show).toHaveBeenCalled()
+    expect(mainWindow.maximize).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not re-maximize after show when the window is already maximized', async () => {
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+    getWindowBoundsMock.mockReturnValue({
+      width: 1280,
+      height: 820,
+      x: 120,
+      y: 90,
+      isMaximized: true
+    })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const mainWindow = browserWindows[0]
+    mainWindow.isMaximized.mockReturnValue(true)
+    mainWindow.emitTestEvent('ready-to-show')
+    expect(mainWindow.maximize).toHaveBeenCalledTimes(1)
+  })
+
+  it('restores fullscreen instead of maximize when the window was left fullscreen', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+    getWindowBoundsMock.mockReturnValue({
+      width: 1280,
+      height: 820,
+      x: 120,
+      y: 90,
+      isMaximized: false,
+      isFullScreen: true
+    })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const mainWindow = browserWindows[0]
+    expect(mainWindow.setFullScreen).toHaveBeenCalledWith(true)
+    expect(mainWindow.maximize).not.toHaveBeenCalled()
+  })
+
+  // The tray hides the window before `close`, and a hidden window no longer
+  // reports its maximized state — so the state is captured at hide time.
+  it('persists the maximized state when the window is hidden or minimized', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const mainWindow = browserWindows[0]
+    mainWindow.isMaximized.mockReturnValue(true)
+    mainWindow.getNormalBounds.mockReturnValue({ x: 120, y: 90, width: 1280, height: 820 })
+
+    mainWindow.emitTestEvent('hide')
+    expect(setWindowBoundsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ width: 1280, height: 820, isMaximized: true })
+    )
+
+    setWindowBoundsMock.mockClear()
+    // Once hidden, the platform reports a non-maximized window: nothing more is
+    // written, so the state saved above survives into the next launch.
+    mainWindow.isVisible.mockReturnValue(false)
+    mainWindow.isMaximized.mockReturnValue(false)
+    mainWindow.emitTestEvent('close', { preventDefault: vi.fn() })
+    expect(setWindowBoundsMock).not.toHaveBeenCalled()
   })
 
   it('restores saved bounds on dock reopen even when dev forces the vault picker', async () => {
