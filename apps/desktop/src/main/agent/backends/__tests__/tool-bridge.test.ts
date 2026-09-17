@@ -34,6 +34,8 @@ vi.mock('../../mcp/lifecycle', () => ({
 }))
 
 import { AgentToolBridge, createAiSdkToolSet } from '../tool-bridge'
+import type { TurnWriteGrant } from '../../turn-grants'
+const TEST_GRANT = 'turn-grant-1' as TurnWriteGrant
 
 describe('AgentToolBridge', () => {
   beforeEach(() => {
@@ -52,7 +54,7 @@ describe('AgentToolBridge', () => {
 
     await expect(
       bridge.execute({
-        conversationId: 'conversation-1',
+        writeGrant: TEST_GRANT,
         windowId: 'window-1',
         name: 'vault_create_task',
         args: { title: 'Ship local backend' }
@@ -60,7 +62,7 @@ describe('AgentToolBridge', () => {
     ).resolves.toEqual({ ok: true, data: { id: 'task-1' } })
 
     expect(callTool).toHaveBeenCalledWith({
-      conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       name: 'vault_create_task',
       args: { title: 'Ship local backend' }
@@ -73,7 +75,7 @@ describe('AgentToolBridge', () => {
     })
 
     const tools = createAiSdkToolSet(bridge, {
-      conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1'
     })
 
@@ -82,7 +84,7 @@ describe('AgentToolBridge', () => {
     expect(tools.vault_create_task.inputSchema).toBeDefined()
   })
 
-  it('calls the running Vault MCP server with auth and conversation context', async () => {
+  it('calls the running Vault MCP server with auth and the turn write capability', async () => {
     mocks.clientCallTool.mockResolvedValueOnce({
       isError: false,
       structuredContent: { id: 'task-1' }
@@ -91,7 +93,7 @@ describe('AgentToolBridge', () => {
 
     await expect(
       bridge.execute({
-        conversationId: 'conversation-1',
+        writeGrant: TEST_GRANT,
         windowId: 'window-1',
         name: 'vault_create_task',
         args: { title: 'Ship local backend' }
@@ -104,7 +106,7 @@ describe('AgentToolBridge', () => {
         requestInit: {
           headers: {
             Authorization: 'Bearer agent-token',
-            'X-Memry-Conversation': 'conversation-1',
+            'X-Memry-Turn': TEST_GRANT,
             'X-Memry-Window': 'window-1'
           }
         }
@@ -128,7 +130,7 @@ describe('AgentToolBridge', () => {
 
     await expect(
       bridge.execute({
-        conversationId: 'conversation-1',
+        writeGrant: TEST_GRANT,
         windowId: 'window-1',
         name: 'vault_create_task',
         args: { title: 'Ship local backend' }
@@ -150,7 +152,7 @@ describe('AgentToolBridge', () => {
 
     await expect(
       bridge.execute({
-        conversationId: 'conversation-1',
+        writeGrant: TEST_GRANT,
         windowId: 'window-1',
         name: 'vault_create_task',
         args: 'not an object'
@@ -177,7 +179,7 @@ describe('AgentToolBridge', () => {
 
     await expect(
       bridge.execute({
-        conversationId: 'conversation-1',
+        writeGrant: TEST_GRANT,
         windowId: 'window-1',
         name: 'vault_create_task',
         args: { title: 'Ship local backend' }
@@ -196,7 +198,7 @@ describe('AgentToolBridge', () => {
 
     await expect(
       bridge.execute({
-        conversationId: 'conversation-1',
+        writeGrant: TEST_GRANT,
         windowId: 'window-1',
         name: 'vault_create_task',
         args: { title: 'Ship local backend' }

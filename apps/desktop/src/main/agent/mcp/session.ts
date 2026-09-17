@@ -1,7 +1,11 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 
 export interface McpSessionContext {
-  conversationId: string | null
+  /**
+   * Opaque per-turn write capability, as presented by the client. Unverified
+   * here: only the write gate can say whether it names an in-flight turn.
+   */
+  writeGrant: string | null
   windowId: string | null
 }
 
@@ -45,7 +49,7 @@ export function createMcpSession(): McpSession {
     },
     contextFromHeaders(headers) {
       return {
-        conversationId: readHeader(headers, 'x-memry-conversation'),
+        writeGrant: readHeader(headers, 'x-memry-turn'),
         windowId: readHeader(headers, 'x-memry-window')
       }
     }

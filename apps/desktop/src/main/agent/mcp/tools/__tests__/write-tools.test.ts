@@ -114,7 +114,7 @@ describe('Write tools — P1 deny-by-default', () => {
   it('returns PERMISSION_DENIED for vault_create_note when no gate is wired', async () => {
     const t = tools.find((x) => x.name === 'vault_create_note')!
     await expect(
-      t.handler({ title: 't', content_markdown: 'body' }, { conversationId: null, windowId: null })
+      t.handler({ title: 't', content_markdown: 'body' }, { writeGrant: null, windowId: null })
     ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
   })
 
@@ -184,7 +184,7 @@ describe('Write tools — P1 deny-by-default', () => {
     }
     for (const t of tools) {
       await expect(
-        t.handler(valid[t.name], { conversationId: null, windowId: null })
+        t.handler(valid[t.name], { writeGrant: null, windowId: null })
       ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
     }
   })
@@ -192,7 +192,7 @@ describe('Write tools — P1 deny-by-default', () => {
   it('still rejects malformed args with VALIDATION before gating', async () => {
     const t = tools.find((x) => x.name === 'vault_create_note')!
     await expect(
-      t.handler({ title: '' }, { conversationId: null, windowId: null })
+      t.handler({ title: '' }, { writeGrant: null, windowId: null })
     ).rejects.toMatchObject({ code: 'VALIDATION' })
   })
 
@@ -202,7 +202,7 @@ describe('Write tools — P1 deny-by-default', () => {
     const t = withGate.find((x) => x.name === 'vault_create_note')!
     const out = await t.handler(
       { title: 'x', content_markdown: 'y' },
-      { conversationId: 'c1', windowId: 'w1' }
+      { writeGrant: 'turn-grant-1', windowId: 'w1' }
     )
     expect(out).toEqual({ id: 'created-note' })
   })
@@ -227,7 +227,7 @@ describe('Write tools — P1 deny-by-default', () => {
     const t = withGate.find((x) => x.name === 'vault_create_note')!
     await t.handler(
       { title: 'orig', content_markdown: 'orig' },
-      { conversationId: 'c1', windowId: 'w1' }
+      { writeGrant: 'turn-grant-1', windowId: 'w1' }
     )
     expect(received).toEqual({ title: 'EDITED', content_markdown: 'EDITED-BODY' })
   })
@@ -297,7 +297,7 @@ describe('Write tools — P1 deny-by-default', () => {
     const withGate = buildWriteTools(localHandles, async () => ({ approved: true }))
     const run = async (name: string, input: unknown) => {
       const tool = withGate.find((x) => x.name === name)!
-      return tool.handler(input, { conversationId: 'c1', windowId: 'w1' })
+      return tool.handler(input, { writeGrant: 'turn-grant-1', windowId: 'w1' })
     }
 
     await expect(run('vault_create_task', { title: 'Task' })).resolves.toEqual({
@@ -540,7 +540,10 @@ describe('Write tools — P1 deny-by-default', () => {
     const withGate = buildWriteTools(handles, gate)
     const t = withGate.find((x) => x.name === 'vault_create_note')!
     await expect(
-      t.handler({ title: 't', content_markdown: 'b' }, { conversationId: 'c1', windowId: 'w1' })
+      t.handler(
+        { title: 't', content_markdown: 'b' },
+        { writeGrant: 'turn-grant-1', windowId: 'w1' }
+      )
     ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
   })
 })

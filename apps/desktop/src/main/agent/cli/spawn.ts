@@ -20,7 +20,7 @@ export interface SpawnOptions {
   mcp?: {
     serverUrl: string
     authorizationValue: string
-    conversationId: string
+    writeGrant: string
     windowId: string
     allowedTools: string
   }
@@ -72,7 +72,7 @@ export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubproc
           url: `${opts.mcp.serverUrl}/mcp`,
           headers: {
             Authorization: `Bearer ${opts.mcp.authorizationValue}`,
-            'X-Memry-Conversation': opts.mcp.conversationId,
+            'X-Memry-Turn': opts.mcp.writeGrant,
             'X-Memry-Window': opts.mcp.windowId
           }
         }

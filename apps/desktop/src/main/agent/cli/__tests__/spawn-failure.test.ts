@@ -92,7 +92,7 @@ describe('CLI spawn failure', () => {
           mcp: {
             serverUrl: 'http://127.0.0.1:54321',
             authorizationValue: 'secret-bearer-token',
-            conversationId: 'conversation-1',
+            writeGrant: 'turn-grant-1',
             windowId: 'window-1',
             allowedTools: 'mcp__memry__vault_read_note'
           },

@@ -5,11 +5,12 @@ import type { ToolSet } from 'ai'
 import { createLogger } from '../../lib/logger'
 import { trackMainError } from '../../telemetry/diagnostics'
 import { ALL_TOOL_NAMES, TOOL_SCHEMAS, type ToolName } from '../mcp/tools/schemas'
+import type { TurnWriteGrant } from '../turn-grants'
 
 const logger = createLogger('AgentToolBridge')
 
 export interface AgentToolCallInput {
-  conversationId: string
+  writeGrant: TurnWriteGrant
   windowId: string
   name: ToolName
   args: unknown
@@ -31,7 +32,7 @@ export class AgentToolBridge {
 
 export function createAiSdkToolSet(
   bridge: AgentToolBridge,
-  ctx: { conversationId: string; windowId: string }
+  ctx: { writeGrant: TurnWriteGrant; windowId: string }
 ): ToolSet {
   const tools: ToolSet = {}
   for (const name of ALL_TOOL_NAMES) {
@@ -41,7 +42,7 @@ export function createAiSdkToolSet(
       inputSchema: schema.input,
       execute: async (args: unknown) =>
         bridge.execute({
-          conversationId: ctx.conversationId,
+          writeGrant: ctx.writeGrant,
           windowId: ctx.windowId,
           name,
           args
@@ -66,7 +67,7 @@ async function callVaultMcpTool(input: AgentToolCallInput): Promise<AgentToolCal
     requestInit: {
       headers: {
         Authorization: `Bearer ${status.token}`,
-        'X-Memry-Conversation': input.conversationId,
+        'X-Memry-Turn': input.writeGrant,
         'X-Memry-Window': input.windowId
       }
     }

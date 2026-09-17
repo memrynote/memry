@@ -18,7 +18,7 @@ describe('spawnClaudeTurn', () => {
     vi.clearAllMocks()
   })
 
-  it('writes mcp-config.json with bearer + conversation/window headers', async () => {
+  it('writes mcp-config.json with bearer + turn-capability/window headers', async () => {
     const fakeProc = makeFakeProc()
     vi.mocked(spawn).mockReturnValue(fakeProc)
 
@@ -27,7 +27,7 @@ describe('spawnClaudeTurn', () => {
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
-        conversationId: 'conv-1',
+        writeGrant: 'turn-grant-1',
         windowId: 'win-1',
         allowedTools: 'mcp__memry__vault_read_note'
       },
@@ -39,7 +39,7 @@ describe('spawnClaudeTurn', () => {
     const written = JSON.parse(vi.mocked(writeFile).mock.calls[0][1] as string)
     expect(written.mcpServers.memry.url).toBe('http://127.0.0.1:54321/mcp')
     expect(written.mcpServers.memry.headers.Authorization).toBe('Bearer test-auth-value')
-    expect(written.mcpServers.memry.headers['X-Memry-Conversation']).toBe('conv-1')
+    expect(written.mcpServers.memry.headers['X-Memry-Turn']).toBe('turn-grant-1')
     expect(written.mcpServers.memry.headers['X-Memry-Window']).toBe('win-1')
   })
 
@@ -52,7 +52,7 @@ describe('spawnClaudeTurn', () => {
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
-        conversationId: 'c',
+        writeGrant: 'turn-grant-1',
         windowId: 'w',
         allowedTools: 'mcp__memry__vault_read_note'
       },
@@ -89,7 +89,7 @@ describe('spawnClaudeTurn', () => {
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
-        conversationId: 'c',
+        writeGrant: 'turn-grant-1',
         windowId: 'w',
         allowedTools: 'mcp__memry__vault_read_note'
       },
@@ -115,7 +115,7 @@ describe('spawnClaudeTurn', () => {
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
-        conversationId: 'c',
+        writeGrant: 'turn-grant-1',
         windowId: 'w',
         allowedTools: 'mcp__memry__vault_read_note'
       },
@@ -142,7 +142,7 @@ describe('spawnClaudeTurn', () => {
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
-        conversationId: 'c',
+        writeGrant: 'turn-grant-1',
         windowId: 'w',
         allowedTools: 'a'
       },
@@ -165,7 +165,7 @@ describe('spawnClaudeTurn', () => {
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-auth-value',
-        conversationId: 'c',
+        writeGrant: 'turn-grant-1',
         windowId: 'w',
         allowedTools: 'a'
       },

@@ -9,7 +9,13 @@ import { stepCountIs, streamText } from 'ai'
 
 import type { BackendEvent } from '../cli/types'
 import { AgentToolBridge, createAiSdkToolSet } from './tool-bridge'
-import type { AgentBackend, AgentBackendRunInput, BackendRunHandle } from './types'
+import type { TurnWriteGrant } from '../turn-grants'
+import type {
+  AgentBackend,
+  AgentBackendRunInput,
+  AgentBackendTurnInput,
+  BackendRunHandle
+} from './types'
 
 let nextLocalRunPid = -1
 
@@ -62,7 +68,7 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     }
   ) {}
 
-  async runTurn(input: AgentBackendRunInput): Promise<BackendRunHandle> {
+  async runTurn(input: AgentBackendTurnInput): Promise<BackendRunHandle> {
     return this.run(input, true)
   }
 
@@ -134,7 +140,10 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     return result
   }
 
-  private async run(input: AgentBackendRunInput, allowTools: boolean): Promise<BackendRunHandle> {
+  private async run(
+    input: AgentBackendRunInput & { writeGrant?: TurnWriteGrant },
+    allowTools: boolean
+  ): Promise<BackendRunHandle> {
     const settings = await this.deps.getSettings()
     const apiKey = await this.deps.getApiKey()
     const options = input.options.backend === this.id ? input.options : null
@@ -162,10 +171,10 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
       ...(isOllama
         ? { providerOptions: { ollama: { options: { num_ctx: OLLAMA_NUM_CTX } } } }
         : {}),
-      ...(toolsEnabled
+      ...(toolsEnabled && input.writeGrant
         ? {
             tools: createAiSdkToolSet(this.deps.toolBridge, {
-              conversationId: input.conversationId,
+              writeGrant: input.writeGrant,
               windowId: input.windowId
             })
           }

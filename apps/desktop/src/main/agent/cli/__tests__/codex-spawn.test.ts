@@ -23,7 +23,7 @@ describe('spawnCodexTurn', () => {
       mcp: {
         serverUrl: 'http://127.0.0.1:54321',
         authorizationValue: 'test-token',
-        conversationId: 'conversation-1',
+        writeGrant: 'turn-grant-1',
         windowId: 'window-1'
       }
     })
@@ -44,7 +44,7 @@ describe('spawnCodexTurn', () => {
     expect(args).toContain('mcp_servers.memry.url="http://127.0.0.1:54321/mcp"')
     expect(args).toContain('mcp_servers.memry.bearer_token_env_var="MEMRY_AGENT_TOKEN"')
     expect(args).toContain(
-      'mcp_servers.memry.env_http_headers={"X-Memry-Conversation"="MEMRY_AGENT_CONVERSATION","X-Memry-Window"="MEMRY_AGENT_WINDOW"}'
+      'mcp_servers.memry.env_http_headers={"X-Memry-Turn"="MEMRY_AGENT_TURN","X-Memry-Window"="MEMRY_AGENT_WINDOW"}'
     )
     expect(args).toContain('mcp_servers.memry.default_tools_approval_mode="approve"')
 
@@ -56,7 +56,7 @@ describe('spawnCodexTurn', () => {
     expect(options.cwd).toBe('/tmp/memry-codex-test')
     expect(options.stdio).toEqual(['ignore', 'pipe', 'pipe'])
     expect(options.env.MEMRY_AGENT_TOKEN).toBe('test-token')
-    expect(options.env.MEMRY_AGENT_CONVERSATION).toBe('conversation-1')
+    expect(options.env.MEMRY_AGENT_TURN).toBe('turn-grant-1')
     expect(options.env.MEMRY_AGENT_WINDOW).toBe('window-1')
   })
 
@@ -143,7 +143,7 @@ describe('spawnCodexTurn', () => {
       env: NodeJS.ProcessEnv
     }
     expect(options.env.MEMRY_AGENT_TOKEN).toBeUndefined()
-    expect(options.env.MEMRY_AGENT_CONVERSATION).toBeUndefined()
+    expect(options.env.MEMRY_AGENT_TURN).toBeUndefined()
     expect(options.env.MEMRY_AGENT_WINDOW).toBeUndefined()
   })
 })

@@ -20,18 +20,26 @@ describe('McpSession', () => {
     expect(next).toMatch(/^[0-9a-f]{64}$/)
   })
 
-  it('extracts conversation id from X-Memry-Conversation header', () => {
+  it('extracts the turn write capability from the X-Memry-Turn header', () => {
     const ctx = session.contextFromHeaders({
       authorization: `Bearer ${session.token}`,
-      'x-memry-conversation': 'conv-42',
+      'x-memry-turn': 'turn-grant-42',
       'x-memry-window': 'win-7'
     })
-    expect(ctx).toEqual({ conversationId: 'conv-42', windowId: 'win-7' })
+    expect(ctx).toEqual({ writeGrant: 'turn-grant-42', windowId: 'win-7' })
   })
 
   it('returns null context when the header is absent (external client)', () => {
     const ctx = session.contextFromHeaders({ authorization: `Bearer ${session.token}` })
-    expect(ctx).toEqual({ conversationId: null, windowId: null })
+    expect(ctx).toEqual({ writeGrant: null, windowId: null })
+  })
+
+  it('never reads a write capability out of the old conversation header', () => {
+    const ctx = session.contextFromHeaders({
+      authorization: `Bearer ${session.token}`,
+      'x-memry-conversation': 'conv-42'
+    })
+    expect(ctx.writeGrant).toBeNull()
   })
 
   it('verifies bearer token in constant time', () => {

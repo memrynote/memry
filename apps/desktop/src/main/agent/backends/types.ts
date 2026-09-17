@@ -9,6 +9,7 @@ import type {
 } from '@memry/contracts/ipc-agent'
 
 import type { BackendEvent } from '../cli/types'
+import type { TurnWriteGrant } from '../turn-grants'
 
 export interface BackendRunHandle {
   events: AsyncIterable<BackendEvent>
@@ -28,9 +29,18 @@ export interface AgentBackendRunInput {
   purpose?: 'turn' | 'summary' | 'title'
 }
 
+/**
+ * A real turn, as opposed to the title and summary runs that share the shape.
+ * Only a turn may write to the vault, so only a turn carries the capability —
+ * the compiler, not a runtime check, is what keeps the two apart.
+ */
+export interface AgentBackendTurnInput extends AgentBackendRunInput {
+  writeGrant: TurnWriteGrant
+}
+
 export interface AgentBackend {
   id: AgentBackendId
-  runTurn(input: AgentBackendRunInput): Promise<BackendRunHandle>
+  runTurn(input: AgentBackendTurnInput): Promise<BackendRunHandle>
   generateTitle(input: AgentBackendRunInput): Promise<BackendRunHandle>
   summarize(input: AgentBackendRunInput): Promise<BackendRunHandle>
   getStatus(): Promise<AgentBackendStatus>
@@ -39,7 +49,7 @@ export interface AgentBackend {
 
 export interface ClaudeCliSpawnInput {
   prompt: string
-  conversationId: string
+  writeGrant?: TurnWriteGrant
   windowId: string
   effort: ClaudeEffort
   model?: string
@@ -49,7 +59,7 @@ export interface ClaudeCliSpawnInput {
 
 export interface CodexCliSpawnInput {
   prompt: string
-  conversationId: string
+  writeGrant?: TurnWriteGrant
   windowId: string
   reasoningEffort: CodexReasoningEffort
   model?: string

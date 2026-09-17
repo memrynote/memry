@@ -15,6 +15,8 @@ vi.mock('../../cli/codex-binary', () => ({
 }))
 
 import { CodexCliBackend } from '../codex-cli-backend'
+import type { TurnWriteGrant } from '../../turn-grants'
+const TEST_GRANT = 'turn-grant-1' as TurnWriteGrant
 
 describe('CodexCliBackend', () => {
   it('spawns Codex turns and parses JSONL backend events', async () => {
@@ -26,6 +28,7 @@ describe('CodexCliBackend', () => {
     const run = await backend.runTurn({
       prompt: 'User: ping',
       conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       options: { backend: 'codex_cli', reasoningEffort: 'high', model: 'gpt-5.5' }
     })
@@ -35,7 +38,7 @@ describe('CodexCliBackend', () => {
 
     expect(spawn).toHaveBeenCalledWith({
       prompt: 'User: ping',
-      conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       reasoningEffort: 'high',
       model: 'gpt-5.5',

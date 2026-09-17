@@ -24,6 +24,8 @@ vi.mock('ai', () => ({
 }))
 
 import { LocalOpenAICompatibleBackend } from '../local-openai-compatible-backend'
+import type { TurnWriteGrant } from '../../turn-grants'
+const TEST_GRANT = 'turn-grant-1' as TurnWriteGrant
 
 describe('LocalOpenAICompatibleBackend', () => {
   beforeEach(() => {
@@ -82,6 +84,7 @@ describe('LocalOpenAICompatibleBackend', () => {
 
     const run = await backend.runTurn({
       conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       prompt: 'User: create a task',
       options: { backend: 'local_openai_compatible', model: 'llama3.2', toolsEnabled: true }
@@ -157,6 +160,7 @@ describe('LocalOpenAICompatibleBackend', () => {
 
     await backend.runTurn({
       conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       prompt: 'User: hello',
       options: { backend: 'local_openai_compatible', model: 'llama3.2', toolsEnabled: false }
@@ -385,6 +389,7 @@ describe('LocalOpenAICompatibleBackend', () => {
 
     await backend.runTurn({
       conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       prompt: 'User: create a task',
       options: { backend: 'local_openai_compatible', model: 'llama3.2', toolsEnabled: true }
@@ -420,6 +425,7 @@ describe('LocalOpenAICompatibleBackend', () => {
     await backend.runTurn({
       prompt: 'hi',
       conversationId: 'c1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       options: { backend: 'local_openai_compatible' }
     })
@@ -456,6 +462,7 @@ describe('LocalOpenAICompatibleBackend', () => {
     async function turn(backend: LocalOpenAICompatibleBackend): Promise<void> {
       await backend.runTurn({
         conversationId: 'conversation-1',
+        writeGrant: TEST_GRANT,
         windowId: 'window-1',
         prompt: 'User: hello',
         options: { backend: 'local_openai_compatible', model: 'llama3.2', toolsEnabled: true }
@@ -629,6 +636,7 @@ describe('LocalOpenAICompatibleBackend', () => {
     await backend.runTurn({
       prompt: 'hi',
       conversationId: 'c1',
+      writeGrant: TEST_GRANT,
       windowId: 'window-1',
       options: { backend: 'local_openai_compatible' }
     })
