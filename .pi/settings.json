@@ -1,0 +1,11 @@
+{
+  "subagents": {
+    "modelScope": {
+      "enforce": true,
+      "strict": true,
+      "allow": [
+        "anthropic/*"
+      ]
+    }
+  }
+}

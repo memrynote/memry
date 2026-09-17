@@ -59,24 +59,17 @@ Thumbs.db
 .worktrees/
 
 # Agent / AI tooling
-.claude/
-CLAUDE.md
-.mcp.json
-opencode.jsonc
-.codex
-.serena
 .social
-.specify/
-.gstack/
-.playwright-mcp
-.agents/
-.impeccable/
 
+# Track stable Pi project configuration, not Pi runtime state.
+!.pi/
+.pi/*
+!.pi/mcp.json
+!.pi/multi-pass.json
+!.pi/settings.json
 
-agents/
 !docs/agents/
 .env*.local
-.superpowers/
 
 .feedback
 

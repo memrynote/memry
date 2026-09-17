@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "gmail": {
+      "url": "https://gmailmcp.googleapis.com/mcp/v1",
+      "auth": "oauth",
+      "oauth": {
+        "clientId": "$env:GMAIL_MCP_CLIENT_ID",
+        "clientSecret": "$env:GMAIL_MCP_CLIENT_SECRET",
+        "redirectUri": "http://localhost:19876/callback"
+      },
+      "disabled": true
+    },
+    "posthog": {
+      "url": "https://mcp.posthog.com/mcp"
+    },
+    "vercel": {
+      "url": "https://mcp.vercel.com"
+    },
+    "cloudflare-api": {
+      "url": "https://mcp.cloudflare.com/mcp"
+    }
+  }
+}
