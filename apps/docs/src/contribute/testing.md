@@ -126,9 +126,18 @@ pnpm test:e2e -- tests/notes.spec.ts    # one file
 >
 > Skipping the rebuild is the #1 source of "passes locally, fails in CI" surprises.
 
-Main-push Desktop CI runs the full Electron E2E suite across 16 Playwright shards. Local E2E keeps
-the default 60s test timeout and 20s assertion timeout, while CI raises those to 180s and 60s, with
-helper-specific headroom for sync replication and Agent/MCP startup on slower Linux runners.
+Main-push Desktop CI runs the full Electron E2E suite across 8 Playwright shards, each running 2
+workers — the same 16 parallel lanes the old 16-shard matrix had, but the per-job install and build
+is paid half as often. Those shards do not build the app themselves: a single `Desktop build (Linux)`
+job builds `out/` plus the Electron-ABI native modules once and ships them as an artifact that every
+Linux E2E job restores. Local E2E keeps the default 60s test timeout and 20s assertion timeout, while
+CI raises those to 180s and 60s, with helper-specific headroom for sync replication and Agent/MCP
+startup on slower Linux runners.
+
+Two workers means two Electron apps at once, so anything an E2E launch touches must be per-launch:
+each launch gets its own `mkdtemp` user-data dir, its own `e2e-<uuid>` device id (which namespaces
+every keychain account), and every server the harness starts binds an ephemeral port — the simulated
+sync server included, since miniflare's default 8787 would otherwise collide between workers.
 
 ### E2E Keychain Cleanup (macOS)
 
@@ -288,7 +297,7 @@ runs the same installer helper once, trusts the helper's validation, and passes 
 package executable path directly instead of importing `electron/index.js`.
 
 Because several processes can reach that helper at once on one machine — `ensure-native.sh` from
-`predev` / `prebuild` / `pretest:e2e`, plus each Playwright worker (`workers: 2` locally) — the
+`predev` / `prebuild` / `pretest:e2e`, plus each Playwright worker (`workers: 2`) — the
 install is serialised with a lock file next to the `electron` package, and only one process
 downloads: the others wait and reuse the finished install. The archive is extracted into a staging
 directory beside `dist/` and swapped in with a rename, and `path.txt` is written last and never

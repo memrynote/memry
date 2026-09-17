@@ -32,6 +32,11 @@ export class SimulatedServer {
       scriptPath: workerPath,
       compatibilityDate: '2025-01-01',
 
+      // Ephemeral port. Miniflare defaults to 8787, which collides as soon as
+      // two harness instances run side by side (Playwright workers > 1, or a
+      // local `dev:sync-server`). Consumers read the real URL from getDirectUrl().
+      port: 0,
+
       d1Databases: { DB: 'test-db' },
       r2Buckets: { STORAGE: 'test-bucket' },
 

@@ -220,9 +220,75 @@ jobs:
       - name: Check coverage thresholds
         run: node apps/desktop/scripts/check-coverage-thresholds.mjs
 
+  desktop-build:
+    name: Desktop build (Linux)
+    # Build once, test many. Every downstream Linux E2E job used to redo
+    # `pnpm install` + `ensure-native.sh electron` + `electron-vite build`
+    # itself: ~6 min before the first test ran, times 17 jobs. This job pays
+    # that once and ships the result as an artifact.
+    #
+    # The artifact is Linux-only by construction (native .node binaries built
+    # against this runner's ABI and glibc). The macOS/Windows smoke jobs must
+    # keep building for themselves.
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Cache Electron binary
+        uses: ./.github/actions/cache-electron-binary
+
+      - name: Install system dependencies
+        run: |
+          # GitHub runners ship Microsoft/Azure apt repos that intermittently 403
+          # ("no longer signed") and break apt-get update. We don't need them.
+          sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-dev
+
+      - name: Install dependencies
+        env:
+          SKIP_ELECTRON_REBUILD: 1
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop app
+        run: |
+          bash apps/desktop/scripts/check-cert-hashes.sh
+          bash apps/desktop/scripts/ensure-native.sh electron
+          pnpm --filter @memry/desktop exec electron-vite build
+
+      - name: Pack build output
+        # tar rather than a raw multi-path upload: it keeps file modes (the
+        # .node binaries), keeps the dot-prefixed stamp/store paths that
+        # upload-artifact hides by default, and is far faster than uploading
+        # thousands of small out/ files individually.
+        run: bash .github/scripts/pack-desktop-build.sh desktop-build-linux.tar.gz
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-build-linux
+          path: desktop-build-linux.tar.gz
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
   e2e-smoke:
     name: Electron E2E smoke
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    needs: desktop-build
     runs-on: ubuntu-latest
     # The suite runs ~35 min here once a couple of specs burn a 3-minute first
     # attempt before passing on retry, so 35 cancelled the job mid-run rather
@@ -261,11 +327,16 @@ jobs:
       - name: Install Playwright system dependencies
         run: pnpm --filter @memry/desktop exec playwright install-deps chromium
 
-      - name: Build desktop app
-        run: |
-          bash apps/desktop/scripts/check-cert-hashes.sh
-          bash apps/desktop/scripts/ensure-native.sh electron
-          pnpm --filter @memry/desktop exec electron-vite build
+      - name: Download desktop build
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-build-linux
+
+      - name: Restore desktop build
+        # Unpacks out/ + the Electron-ABI native binaries + the ensure-native
+        # stamp, so the ensure-native.sh call below reports "already built" and
+        # exits instead of recompiling better-sqlite3/classic-level/keytar.
+        run: bash .github/scripts/restore-desktop-build.sh desktop-build-linux.tar.gz
 
       - name: Run Electron smoke tests
         run: |
@@ -394,28 +465,23 @@ jobs:
   e2e-full:
     name: Electron E2E full (${{ matrix.shard }})
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    needs: desktop-build
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    # 8 shards x 2 Playwright workers = the same 16 lanes the 16-shard matrix
+    # had, for half the per-job setup. See workers in config/playwright.config.ts.
     strategy:
       fail-fast: false
       matrix:
         shard:
-          - 1/16
-          - 2/16
-          - 3/16
-          - 4/16
-          - 5/16
-          - 6/16
-          - 7/16
-          - 8/16
-          - 9/16
-          - 10/16
-          - 11/16
-          - 12/16
-          - 13/16
-          - 14/16
-          - 15/16
-          - 16/16
+          - 1/8
+          - 2/8
+          - 3/8
+          - 4/8
+          - 5/8
+          - 6/8
+          - 7/8
+          - 8/8
 
     steps:
       - name: Checkout
@@ -449,11 +515,13 @@ jobs:
       - name: Install Playwright system dependencies
         run: pnpm --filter @memry/desktop exec playwright install-deps chromium
 
-      - name: Build desktop app
-        run: |
-          bash apps/desktop/scripts/check-cert-hashes.sh
-          bash apps/desktop/scripts/ensure-native.sh electron
-          pnpm --filter @memry/desktop exec electron-vite build
+      - name: Download desktop build
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-build-linux
+
+      - name: Restore desktop build
+        run: bash .github/scripts/restore-desktop-build.sh desktop-build-linux.tar.gz
 
       - name: Run Electron E2E shard
         env:
