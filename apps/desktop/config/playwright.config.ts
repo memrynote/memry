@@ -21,7 +21,12 @@ export default defineConfig({
 
   retries: process.env.CI ? 2 : 0,
 
-  workers: process.env.CI ? 1 : 2,
+  // Two workers on CI: every launch gets its own mkdtemp userData dir, its own
+  // `e2e-<uuid>` MEMRY_DEVICE (so keychain accounts never overlap), and every
+  // in-test server binds port 0 — so the isolation is per-launch, not per-process.
+  // Paired with 8 shards instead of 16 this keeps the same 16 lanes while paying
+  // the ~6 min job setup half as many times.
+  workers: 2,
 
   reporter: [['html', { outputFolder: '../test-results/e2e' }], ['list']],
 
