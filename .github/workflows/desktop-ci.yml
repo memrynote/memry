@@ -18,7 +18,10 @@ permissions:
 
 concurrency:
   group: desktop-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded runs on PR branches only. On main, two pushes in a row
+  # used to cancel the earlier run's e2e-full mid-flight, so some commits never
+  # got full e2e coverage at all. Main runs now queue instead of cancelling.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   CI: true
@@ -285,66 +288,10 @@ jobs:
           path: apps/desktop/test-results/
           if-no-files-found: ignore
 
-  e2e-smoke-macos:
-    name: Electron E2E smoke (macOS)
-    # Push-to-main only, matching the ubuntu and Windows e2e jobs: a macOS
-    # runner is the most expensive minute GitHub bills (10x ubuntu), and PRs
-    # already run lint + typecheck + unit + ubuntu coverage, plus the attachment
-    # client/server integration spec in sync-server-ci.
-    # No xvfb: macOS runners have a window server. ensure-native.sh is used
-    # directly (it is bash-native and works here — the Windows job hand-rolls the
-    # rebuild + stamp only because ensure-native.sh breaks under MSYS).
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
-    runs-on: macos-latest
-    timeout-minutes: 45
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: ./.github/actions/setup-pnpm
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Cache Electron binary
-        uses: ./.github/actions/cache-electron-binary
-
-      - name: Install dependencies
-        env:
-          SKIP_ELECTRON_REBUILD: 1
-        run: pnpm install --frozen-lockfile
-
-      - name: Build desktop app
-        run: |
-          bash apps/desktop/scripts/check-cert-hashes.sh
-          bash apps/desktop/scripts/ensure-native.sh electron
-          pnpm --filter @memry/desktop exec electron-vite build
-
-      - name: Run Electron smoke tests
-        run: |
-          bash apps/desktop/scripts/ensure-native.sh electron
-          pnpm --filter @memry/desktop exec playwright test \
-            --config config/playwright.config.ts \
-            tests/e2e/startup-recovery.e2e.ts \
-            tests/e2e/vault.e2e.ts \
-            tests/e2e/notes.e2e.ts \
-            tests/e2e/tasks.e2e.ts \
-            tests/e2e/file-attachments-viewer.e2e.ts \
-            tests/e2e/crdt-preflight-crash.e2e.ts \
-            tests/e2e/i18n.e2e.ts
-
-      - name: Upload E2E artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-smoke-macos-results
-          path: apps/desktop/test-results/
-          if-no-files-found: ignore
+  # Electron E2E smoke (macOS) and Packaged runtime smoke moved to
+  # .github/workflows/nightly-platform-smoke.yml — macOS minutes are billed at
+  # 10x ubuntu, and those two jobs alone were ~247 of the ~590 cost-units of a
+  # main push. They now run nightly plus on-demand via workflow_dispatch.
 
   e2e-smoke-windows:
     name: Electron E2E smoke (Windows)
@@ -531,39 +478,3 @@ jobs:
           name: e2e-full-results-${{ strategy.job-index }}
           path: apps/desktop/test-results/
           if-no-files-found: ignore
-
-  package-smoke:
-    name: Packaged runtime smoke
-    runs-on: macos-latest
-    timeout-minutes: 45
-    env:
-      CSC_IDENTITY_AUTO_DISCOVERY: false
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: ./.github/actions/setup-pnpm
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Install dependencies
-        env:
-          SKIP_ELECTRON_REBUILD: 1
-        run: pnpm install --frozen-lockfile
-
-      - name: Create production runtime environment
-        run: printf 'SYNC_SERVER_URL=https://sync.memrynote.com\n' > apps/desktop/.env.production
-
-      - name: Build unpacked macOS app
-        run: |
-          pnpm --filter @memry/desktop exec electron-vite build
-          node apps/desktop/scripts/build-packaged-app.js --dir
-
-      - name: Check packaged runtime dependencies
-        run: node apps/desktop/scripts/check-packaged-runtime-deps.js
