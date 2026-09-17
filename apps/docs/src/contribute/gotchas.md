@@ -26,6 +26,24 @@ Symptom: no `ERR_DLOPEN_FAILED`. The native binding loads, the LevelDB store ope
 
 `apps/desktop/scripts/ensure-native.sh` (dev/test) and `apps/desktop/scripts/build-packaged-app.js` (packaging) both handle this by driving each `.pnpm/classic-level@*` copy directly with `--build-from-source --module-dir`. macOS hides a regression here — pnpm's install-time `node-gyp-build` compiles classic-level from source on darwin, so only the Windows build job proves the packaging path. Never treat the plain `-o ...,classic-level` flag as proof the rebuild happened. The only proof is a `build/Release/*.node` inside the classic-level package, which `check-packaged-runtime-deps.js` asserts on every packaged build.
 
+## First `pnpm dev` in a worktree rebuilds native modules
+
+Symptom: `pnpm dev` sits for minutes on `[native] rebuilding better-sqlite3,keytar,classic-level for Electron...` right after a fresh `git worktree add` + `pnpm install`.
+
+The desktop `postinstall` used to call `electron-rebuild` directly. That did the work but never wrote `apps/desktop/node_modules/.native-build-target`, the stamp `ensure-native.sh` keys off, so `predev` redid the whole rebuild.
+
+`postinstall` now runs `node scripts/warm-native.mjs --background --target electron`: a detached warm-up that drives `ensure-native.sh` (and therefore writes the stamp) while `pnpm install` returns immediately.
+
+| Command         | What it does                                        |
+| --------------- | --------------------------------------------------- |
+| `pnpm warm`     | Run the warm-up in the foreground                   |
+| `pnpm warm:bg`  | Re-run it detached                                  |
+| `pnpm warm:log` | Print the log path plus `.native-warm.log` contents |
+
+A healthy first `pnpm dev` prints `[native] already built for electron — skipping`. If dev starts while the warm-up is still running it prints `[native] another native build is running (pid N) — waiting...`, blocks on `apps/desktop/node_modules/.native-build.lock`, then re-checks the stamp — it never starts a second concurrent rebuild. A lock left behind by a dead process is detected and cleared on the next run.
+
+`SKIP_ELECTRON_REBUILD=1` skips the warm-up entirely, and `CI` forces it to run blocking instead of detached; CI workflows keep calling `ensure-native.sh` explicitly.
+
 ## Electron binary re-downloads on every worktree
 
 `bash apps/desktop/scripts/ensure-native.sh electron` (and the E2E fixtures, when
