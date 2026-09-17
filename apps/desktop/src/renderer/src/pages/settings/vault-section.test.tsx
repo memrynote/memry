@@ -32,7 +32,22 @@ import { VaultSettings } from './vault-section'
 describe('VaultSettings account vaults', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.accountVaults = [
+      {
+        vaultUuid: 'uuid-active',
+        name: 'Active',
+        itemCount: 3,
+        localPath: '/vaults/Active',
+        createdAt: null
+      },
+      { vaultUuid: 'uuid-old', name: 'Old', itemCount: 9, localPath: null, createdAt: null }
+    ]
     window.api.vault.getStatus = vi.fn().mockResolvedValue({ path: '/vaults/Active' })
+    window.api.vault.getAll = vi.fn().mockResolvedValue({
+      vaults: [{ path: '/vaults/Active', vaultUuid: 'uuid-active' }],
+      currentVault: '/vaults/Active'
+    })
+    window.api.vault.switch = vi.fn().mockResolvedValue({ success: true, vault: null })
     const api = window.api as typeof window.api & {
       syncOps?: { getLargeNotes?: ReturnType<typeof vi.fn> }
     }
@@ -69,5 +84,59 @@ describe('VaultSettings account vaults', () => {
   it('loads the account vault list on mount', async () => {
     render(<VaultSettings />)
     await waitFor(() => expect(mocks.refresh).toHaveBeenCalled())
+  })
+
+  it('stays quiet when the open vault is in the account', async () => {
+    render(<VaultSettings />)
+    await screen.findByText('Active')
+    expect(screen.queryByText('vault.accountVaults.unsyncedTitle')).not.toBeInTheDocument()
+  })
+
+  it('warns and offers to open the account vault when the open vault is not synced', async () => {
+    mocks.accountVaults = [
+      {
+        vaultUuid: 'uuid-account',
+        name: 'Memry Note Vault',
+        itemCount: 798,
+        localPath: '/vaults/Memry Note Vault',
+        createdAt: null
+      }
+    ]
+    window.api.vault.getAll = vi.fn().mockResolvedValue({
+      vaults: [{ path: '/vaults/Unregistered', vaultUuid: 'uuid-unregistered' }],
+      currentVault: '/vaults/Unregistered'
+    })
+
+    render(<VaultSettings />)
+
+    expect(await screen.findByText('vault.accountVaults.unsyncedTitle')).toBeInTheDocument()
+    expect(
+      screen.getByText('vault.accountVaults.unsyncedBodyOne:Memry Note Vault')
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByText('vault.accountVaults.unsyncedOpen'))
+    await waitFor(() =>
+      expect(window.api.vault.switch).toHaveBeenCalledWith('/vaults/Memry Note Vault')
+    )
+  })
+
+  it('offers download when the account vault is not on this device', async () => {
+    mocks.accountVaults = [
+      {
+        vaultUuid: 'uuid-account',
+        name: 'Cloud',
+        itemCount: 12,
+        localPath: null,
+        createdAt: null
+      }
+    ]
+    window.api.vault.getAll = vi.fn().mockResolvedValue({
+      vaults: [{ path: '/vaults/Unregistered', vaultUuid: 'uuid-unregistered' }],
+      currentVault: '/vaults/Unregistered'
+    })
+
+    render(<VaultSettings />)
+
+    expect(await screen.findByText('vault.accountVaults.unsyncedDownload')).toBeInTheDocument()
+    expect(screen.queryByText('vault.accountVaults.unsyncedOpen')).not.toBeInTheDocument()
   })
 })

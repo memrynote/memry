@@ -11,6 +11,8 @@ import {
   SettingRow
 } from '@/components/settings/settings-primitives'
 import { LargeNotesWarning } from '@/components/settings/large-notes-warning'
+import { DownloadVaultDialog } from '@/components/download-vault-dialog'
+import type { AccountVaultInfo } from '../../../../preload/index.d'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +38,9 @@ export function VaultSettings() {
   const { data, loading, refresh } = useStorageUsage()
   const { accountVaults, refresh: refreshAccountVaults } = useAccountVaults()
   const [vaultPath, setVaultPath] = useState<string | null>(null)
+  const [currentVaultUuid, setCurrentVaultUuid] = useState<string | null>(null)
+  const [vaultToDownload, setVaultToDownload] = useState<AccountVaultInfo | null>(null)
+  const [switchError, setSwitchError] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [vaultToDelete, setVaultToDelete] = useState<{ uuid: string; name: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -46,6 +51,19 @@ export function VaultSettings() {
       .getStatus()
       .then((status) => {
         if (status?.path) setVaultPath(status.path)
+      })
+      .catch(() => null)
+  }, [])
+
+  // The vault registry knows which server vault each local folder belongs to.
+  // Without it the section can only compare paths, and a vault that is open but
+  // absent from the account looks indistinguishable from a synced one.
+  useEffect(() => {
+    window.api.vault
+      .getAll?.()
+      .then((result) => {
+        const current = result?.vaults?.find((v) => v.path === result.currentVault)
+        setCurrentVaultUuid(current?.vaultUuid ?? null)
       })
       .catch(() => null)
   }, [])
@@ -78,6 +96,33 @@ export function VaultSettings() {
       setDeleting(false)
     }
   }, [vaultToDelete, refreshAccountVaults, t])
+
+  const handleSwitchTo = useCallback(
+    async (path: string) => {
+      setSwitchError(null)
+      try {
+        const result = await window.api.vault.switch(path)
+        if (!result.success) {
+          setSwitchError(result.error ?? t('vault.accountVaults.unsyncedSwitchFailed'))
+        }
+      } catch (err) {
+        setSwitchError(extractErrorMessage(err, t('vault.accountVaults.unsyncedSwitchFailed')))
+      }
+    },
+    [t]
+  )
+
+  // Sync refuses a vault that is not in the account (402 vault limit on paid
+  // plans, silent no-op otherwise), and the list below only ever showed account
+  // vaults — so the vault actually open could be missing from it with no sign.
+  const isUnsyncedVault =
+    !!currentVaultUuid &&
+    accountVaults.length > 0 &&
+    !accountVaults.some((vault) => vault.vaultUuid === currentVaultUuid)
+  const suggestedVault = isUnsyncedVault
+    ? (accountVaults.find((vault) => vault.localPath !== null) ?? accountVaults[0])
+    : null
+  const suggestedLocalPath = suggestedVault?.localPath ?? null
 
   return (
     <div className="flex flex-col text-xs/4">
@@ -153,13 +198,50 @@ export function VaultSettings() {
       <LargeNotesWarning />
 
       <SettingsGroup label={t('vault.groups.accountVaults')}>
+        {isUnsyncedVault && suggestedVault && (
+          <div className="py-3 px-4 border-b border-border space-y-2">
+            <p className="font-semibold text-[13px]/4 text-foreground">
+              {t('vault.accountVaults.unsyncedTitle')}
+            </p>
+            <p className="text-xs/4 text-muted-foreground">
+              {accountVaults.length === 1
+                ? t('vault.accountVaults.unsyncedBodyOne', {
+                    name: suggestedVault.name ?? suggestedVault.vaultUuid
+                  })
+                : t('vault.accountVaults.unsyncedBodyMany')}
+            </p>
+            {suggestedLocalPath ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-3 text-xs/4"
+                onClick={() => void handleSwitchTo(suggestedLocalPath)}
+              >
+                {t('vault.accountVaults.unsyncedOpen')}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-3 text-xs/4"
+                onClick={() => setVaultToDownload(suggestedVault)}
+              >
+                {t('vault.accountVaults.unsyncedDownload')}
+              </Button>
+            )}
+            {switchError && <p className="text-xs/4 text-destructive">{switchError}</p>}
+          </div>
+        )}
+
         {accountVaults.length === 0 ? (
           <div className="py-3 px-4">
             <p className="text-xs/4 text-muted-foreground">{t('vault.accountVaults.empty')}</p>
           </div>
         ) : (
           accountVaults.map((vault) => {
-            const isActive = !!vault.localPath && vault.localPath === vaultPath
+            const isActive = currentVaultUuid
+              ? vault.vaultUuid === currentVaultUuid
+              : !!vault.localPath && vault.localPath === vaultPath
             const name = vault.name ?? vault.vaultUuid
             return (
               <SettingRow
@@ -204,6 +286,14 @@ export function VaultSettings() {
           </Button>
         </SettingRow>
       </SettingsGroup>
+
+      <DownloadVaultDialog
+        vault={vaultToDownload}
+        onClose={() => {
+          setVaultToDownload(null)
+          void refreshAccountVaults()
+        }}
+      />
 
       <AlertDialog
         open={!!vaultToDelete}
