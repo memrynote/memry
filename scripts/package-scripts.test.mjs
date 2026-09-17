@@ -41,7 +41,15 @@ describe('native warm-up scripts', () => {
     assert.match(desktopPackage.scripts.postinstall, /warm-native\.mjs/)
     assert.match(desktopPackage.scripts.postinstall, /--background/)
     assert.doesNotMatch(desktopPackage.scripts.postinstall, /electron-rebuild/)
-    assert.match(desktopPackage.scripts.postinstall, /SKIP_ELECTRON_REBUILD/)
+  })
+
+  it('keeps the SKIP_ELECTRON_REBUILD opt-out in the script, not the shell line', () => {
+    // A `[ "$SKIP_ELECTRON_REBUILD" = '1' ] ||` guard on the postinstall line is
+    // POSIX-only: Windows CI never short-circuited it, so the skip was ignored and
+    // the rebuild ran anyway. The check belongs in Node, where it is portable.
+    assert.doesNotMatch(desktopPackage.scripts.postinstall, /SKIP_ELECTRON_REBUILD/)
+    const warmNative = readFileSync(new URL('./warm-native.mjs', import.meta.url), 'utf8')
+    assert.match(warmNative, /process\.env\.SKIP_ELECTRON_REBUILD === '1'/)
   })
 
   it('exposes manual warm-up entry points at the root', () => {
