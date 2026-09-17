@@ -98,12 +98,33 @@ export function isEnvFileName(name) {
  * worktrees and must stay where they are. The skill entries that are
  * themselves symlinks into `.agents/skills` keep resolving, because the kernel
  * resolves them against the source worktree they physically live in.
+ *
+ * `.pi` is the project's agent configuration -- `mcp.json` (posthog, vercel,
+ * gmail), `multi-pass.json`, project skills. It is gitignored, so a session
+ * started inside `.worktrees/<name>` sees only the global MCP set and loses
+ * every project server with no error anywhere.
  */
-export const SHARED_DIRS = ['apps/sync-server/.wrangler/state', '.claude/skills']
+export const SHARED_DIRS = ['apps/sync-server/.wrangler/state', '.claude/skills', '.pi']
+
+/**
+ * Gitignored *files* of local agent configuration that a worktree needs.
+ *
+ * `.mcp.json` (and `.pi/mcp.json`, shared as part of the `.pi` link above) declare the
+ * project's MCP servers -- posthog, vercel, gmail. Both are gitignored, so an
+ * agent session started inside `.worktrees/<name>` resolves only the global
+ * server set and silently loses every project server, with no error anywhere.
+ * Linking them keeps one source of truth in the main worktree.
+ */
+export const SHARED_FILES = ['.mcp.json']
 
 /** Repo-relative paths from SHARED_DIRS that actually exist under `root`. */
 export function findSharedDirs(root, { exists = existsSync } = {}) {
   return SHARED_DIRS.filter((rel) => exists(path.join(root, rel)))
+}
+
+/** Repo-relative paths from SHARED_FILES that actually exist under `root`. */
+export function findSharedFiles(root, { exists = existsSync } = {}) {
+  return SHARED_FILES.filter((rel) => exists(path.join(root, rel)))
 }
 
 /** Recursively collect repo-relative paths of env-looking files under `root`. */
@@ -226,7 +247,7 @@ function main() {
     return
   }
 
-  const files = filterIgnored(source, findEnvFiles(source))
+  const files = filterIgnored(source, [...findEnvFiles(source), ...findSharedFiles(source)])
   const dirs = filterIgnored(source, findSharedDirs(source))
   const entries = [
     ...files.map((rel) => ({ rel, isDir: false })),
@@ -309,9 +330,15 @@ function main() {
 }
 
 // Only run when invoked directly, so the helpers above stay unit-testable.
-if (
-  process.argv[1] &&
-  path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)
-) {
+function selfPath() {
+  try {
+    return path.resolve(new URL(import.meta.url).pathname)
+  } catch {
+    return null // not a file: URL (bundled, eval'd): never the CLI entry point
+  }
+}
+
+const self = selfPath()
+if (process.argv[1] && self && path.resolve(process.argv[1]) === self) {
   main()
 }

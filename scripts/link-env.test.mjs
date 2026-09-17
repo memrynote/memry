@@ -6,9 +6,11 @@ import { describe, it } from 'node:test'
 
 import {
   SHARED_DIRS,
+  SHARED_FILES,
   filterIgnored,
   findEnvFiles,
   findSharedDirs,
+  findSharedFiles,
   isEnvFileName,
   planAction,
   resolveSource
@@ -184,6 +186,26 @@ describe('findSharedDirs', () => {
 
   it('shares only skills, never the whole gitignored .claude directory', () => {
     assert.ok(!SHARED_DIRS.includes('.claude'))
+  })
+
+  it('carries the agent config directory, so worktree MCP servers resolve', () => {
+    assert.ok(SHARED_DIRS.includes('.pi'))
+  })
+})
+
+describe('findSharedFiles', () => {
+  it('returns only the agent config files that exist in the source', () => {
+    const root = tmp()
+    writeFileSync(path.join(root, '.mcp.json'), '{}')
+    assert.deepEqual(findSharedFiles(root), ['.mcp.json'])
+  })
+
+  it('returns nothing when the source declares no project MCP servers', () => {
+    assert.deepEqual(findSharedFiles(tmp()), [])
+  })
+
+  it('carries the project MCP server list, which is the point', () => {
+    assert.ok(SHARED_FILES.includes('.mcp.json'))
   })
 })
 
