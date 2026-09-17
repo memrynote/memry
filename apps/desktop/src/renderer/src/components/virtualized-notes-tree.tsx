@@ -606,12 +606,10 @@ function FolderRow({
             <ContextMenuSeparator />
             <BookmarkMenuItem itemType="folder" itemId={item.folder.path} />
             <ContextMenuSeparator />
-            {item.folder.path && (
-              <ContextMenuItem onClick={() => onRevealFolderInFinder?.(item.folder.path)}>
-                <FolderOpen className="me-2 h-4 w-4" />
-                {fileActions.revealInFolder}
-              </ContextMenuItem>
-            )}
+            <ContextMenuItem onClick={() => onRevealFolderInFinder?.(item.folder.path)}>
+              <FolderOpen className="me-2 h-4 w-4" />
+              {fileActions.revealInFolder}
+            </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onRenameFolder?.(item.folder.path)}>
               <Pencil className="me-2 h-4 w-4" />

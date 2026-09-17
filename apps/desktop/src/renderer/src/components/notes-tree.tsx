@@ -553,14 +553,10 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               <ContextMenuSeparator />
               <BookmarkMenuItem itemType="folder" itemId={folder.path} />
               <ContextMenuSeparator />
-              {folder.path && (
-                <ContextMenuItem
-                  onClick={() => void actions.handleRevealFolderInFinder(folder.path)}
-                >
-                  <FolderOpen className="me-2 h-4 w-4" />
-                  {fileActions.revealInFolder}
-                </ContextMenuItem>
-              )}
+              <ContextMenuItem onClick={() => void actions.handleRevealFolderInFinder(folder.path)}>
+                <FolderOpen className="me-2 h-4 w-4" />
+                {fileActions.revealInFolder}
+              </ContextMenuItem>
               <ContextMenuSeparator />
               <ContextMenuItem onClick={() => actions.handleRenameFolderClick(folder.path)}>
                 <Pencil className="me-2 h-4 w-4" />

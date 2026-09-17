@@ -69,7 +69,8 @@ vi.mock('@/services/notes-service', () => ({
     reorder: vi.fn(),
     getAllPositions: vi.fn(),
     openExternal: vi.fn(),
-    revealInFinder: vi.fn()
+    revealInFinder: vi.fn(),
+    revealFolderInFinder: vi.fn()
   }
 }))
 
@@ -306,6 +307,20 @@ describe('useNoteTreeActions', () => {
     })
     expect(notesService.openExternal).toHaveBeenCalledWith('work-a')
     expect(notesService.revealInFinder).toHaveBeenCalledWith('work-a')
+  })
+
+  it('reveals a folder in the OS file manager and swallows a failed reveal (#2205)', async () => {
+    const { result } = renderActions()
+
+    await act(async () => {
+      await result.current.handleRevealFolderInFinder('Work')
+    })
+    expect(notesService.revealFolderInFinder).toHaveBeenCalledWith('Work')
+
+    vi.mocked(notesService.revealFolderInFinder).mockRejectedValueOnce(new Error('gone'))
+    await act(async () => {
+      await expect(result.current.handleRevealFolderInFinder('Work')).resolves.toBeUndefined()
+    })
   })
 
   it('sets and clears folder templates preserving the existing folder config', async () => {
