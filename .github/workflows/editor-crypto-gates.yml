@@ -5,6 +5,7 @@
 # were ever platform-specific:
 #   - editor asset freshness (the `ipc:check` of the prebuilt WebView bundle)
 #   - crypto vector parity (the desktop proof suite the Rust core is measured against)
+#   - the architecture boundary walk (non-Node client reachability)
 #   - line ceilings and the editor-guest console.* ban
 # If these paths stop triggering this workflow, the gates stop running
 # anywhere — there is no second home for them.
@@ -17,6 +18,7 @@ on:
       - 'packages/contracts/**'
       - 'packages/editor-schema/**'
       - 'crates/**'
+      - 'scripts/check-architecture-boundaries.js'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/editor-crypto-gates.yml'
   push:
@@ -27,6 +29,7 @@ on:
       - 'packages/contracts/**'
       - 'packages/editor-schema/**'
       - 'crates/**'
+      - 'scripts/check-architecture-boundaries.js'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/editor-crypto-gates.yml'
   workflow_dispatch:
@@ -80,6 +83,13 @@ jobs:
       # Inherited gate 2. The vectors the Rust core must reproduce byte for byte.
       - name: Crypto parity vectors (desktop proof suite)
         run: pnpm --filter @memry/contracts test -- src/__tests__/crypto-vectors.test.ts
+
+      # This is the ONLY place this gate runs in CI — no husky hook, no other
+      # workflow. It keeps node builtins out of the non-Node client graph
+      # (editor-web and everything it pulls in), and it deliberately outlived
+      # the mobile shell; do not drop it with a platform CI again.
+      - name: Architecture boundaries (non-Node client reachability)
+        run: pnpm check:architecture
 
       - name: Line ceilings
         run: node scripts/check-line-ceilings.mjs
