@@ -1525,13 +1525,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     if (!openTemplateInsertRef) return
     openTemplateInsertRef.current = () => {
       const blocks = editor.document
-      let anchorId: string | undefined
+      let anchor: TemplateAnchor | null = null
       try {
-        anchorId = editor.getTextCursorPosition().block.id
+        anchor = {
+          blockId: editor.getTextCursorPosition().block.id,
+          placement: 'replace-if-empty'
+        }
       } catch {
-        anchorId = blocks[blocks.length - 1]?.id
+        const lastId = blocks[blocks.length - 1]?.id
+        if (lastId) anchor = { blockId: lastId, placement: 'after' }
       }
-      if (anchorId) setTemplateAnchorBlockId(anchorId)
+      if (anchor) setTemplateAnchor(anchor)
     }
     return () => {
       openTemplateInsertRef.current = null
