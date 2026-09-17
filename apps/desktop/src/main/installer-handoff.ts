@@ -1,4 +1,4 @@
-import { execFile as nodeExecFile, spawn as nodeSpawn } from 'node:child_process'
+import { execFile as nodeExecFile, spawn as nodeSpawn, type SpawnOptions } from 'node:child_process'
 import fs from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -7,6 +7,7 @@ import { app } from 'electron'
 import type { UpdateDownloadedEvent } from 'electron-updater'
 import { createLogger } from './lib/logger'
 import {
+  GITHUB_RELEASE_DOWNLOAD_BASE,
   INSTALLER_HANDOFF_SIGNER_SUBJECT,
   VELOPACK_SETUP_ASSET_NAME,
   judgeAuthenticode,
@@ -24,6 +25,16 @@ const logger = createLogger('InstallerHandoff')
 export const INSTALLER_HANDOFF_DIRNAME = 'installer-handoff'
 
 const AUTHENTICODE_TIMEOUT_MS = 60_000
+
+/**
+ * The Velopack installer is ~450 MB over a single GET. One dropped connection used
+ * to lose the whole hand-off: production shows INSTALLER_HANDOFF_DOWNLOAD_FAILED
+ * twice for the same user within an hour, with no retry anywhere in the path.
+ */
+const DOWNLOAD_ATTEMPTS = 3
+const DOWNLOAD_RETRY_DELAY_MS = 3_000
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 export type InstallerHandoffState =
   | { status: 'idle' }
@@ -45,17 +56,55 @@ export interface InstallerHandoff {
 }
 
 export interface InstallerHandoffDeps {
+  /** Backoff between download attempts. Zero in tests so the retry path costs nothing. */
+  retryDelayMs: number
   userDataDir: string
   tmpDir: string
   execPath: string
   pid: number
   fetch: typeof fetch
-  execFile: typeof nodeExecFile
-  spawn: typeof nodeSpawn
-  fs: Pick<
-    typeof fs,
-    'existsSync' | 'mkdirSync' | 'rmSync' | 'writeFileSync' | 'createWriteStream' | 'copyFileSync'
-  >
+  /**
+   * Narrowed like `spawn` below. Passing `nodeExecFile` itself would not typecheck
+   * against this — tsc resolves an overloaded function value against its last
+   * overload — so the wrappers below call it instead, which picks the right
+   * overload at the call site and leaves stubs directly assignable.
+   */
+  execFile: (
+    file: string,
+    args: readonly string[],
+    options: HandoffExecFileOptions,
+    callback: (error: Error | null, stdout: string, stderr: string) => void
+  ) => void
+  /**
+   * Narrowed to the call the hand-off makes and the two members it uses on the
+   * result. `typeof nodeSpawn` drags in every overload and the full ChildProcess
+   * surface, which no injected stub can satisfy without a widening cast.
+   */
+  spawn: (command: string, args: readonly string[], options: SpawnOptions) => HandoffChild
+  fs: Pick<typeof fs, 'existsSync' | 'mkdirSync' | 'rmSync' | 'writeFileSync' | 'copyFileSync'> & {
+    /** Only ever piped into, so the Writable contract is the whole requirement. */
+    createWriteStream: (path: string) => NodeJS.WritableStream
+  }
+}
+
+/** The only execFile options the hand-off sets. */
+interface HandoffExecFileOptions {
+  windowsHide?: boolean
+  timeout?: number
+}
+
+/**
+ * `encoding` is what selects node's string-output overload; without it tsc offers
+ * only the Buffer variants, whose callback cannot take a `string` stdout.
+ */
+const runExecFile: InstallerHandoffDeps['execFile'] = (file, args, options, callback) => {
+  nodeExecFile(file, args, { ...options, encoding: 'utf8' as const }, callback)
+}
+
+/** What the hand-off actually uses from the spawned child. */
+interface HandoffChild {
+  unref(): void
+  on(event: 'error', listener: (error: Error) => void): void
 }
 
 type SpawnDeps = Pick<InstallerHandoffDeps, 'spawn' | 'tmpDir' | 'pid' | 'fs'>
@@ -66,17 +115,30 @@ function defaultDeps(): InstallerHandoffDeps {
     tmpDir: tmpdir(),
     execPath: process.execPath,
     pid: process.pid,
-    fetch: (input, init) => fetch(input, init),
-    execFile: nodeExecFile,
+    fetch: (input, init) => fetch(releaseAssetUrl(input), init),
+    execFile: runExecFile,
     spawn: nodeSpawn,
+    retryDelayMs: DOWNLOAD_RETRY_DELAY_MS,
     fs
   }
 }
 
-const coded = (code: string, message: string): Error => Object.assign(new Error(message), { code })
+/**
+ * Every request the hand-off makes is for one release asset, so the allowlist is
+ * enforced at the sink rather than only where the URL is built: a hostile release
+ * tag, or any future caller, still cannot reach another host.
+ */
+function releaseAssetUrl(input: Parameters<typeof fetch>[0]): string {
+  // Each arm of RequestInfo is unwrapped explicitly; a bare String() would turn a
+  // Request into '[object Object]' and reject it for the wrong reason.
+  const target = input instanceof URL ? input.href : input instanceof Request ? input.url : input
+  if (!target.startsWith(`${GITHUB_RELEASE_DOWNLOAD_BASE}/`)) {
+    throw new Error(`refusing to fetch outside the release download path: ${target}`)
+  }
+  return target
+}
 
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)
+const coded = (code: string, message: string): Error => Object.assign(new Error(message), { code })
 
 export function buildInstallerHandoffPlan(input: {
   pid: number
@@ -98,6 +160,7 @@ export function buildInstallerHandoffPlan(input: {
       VELOPACK_SETUP_ASSET_NAME
     ),
     setupLogPath: path.win32.join(input.userDataDir, 'logs', 'velopack-setup.log'),
+    handoffLogPath: path.win32.join(input.userDataDir, 'logs', 'installer-handoff.log'),
     nsisInstallerPath: input.nsisInstallerPath
   }
 }
@@ -105,7 +168,7 @@ export function buildInstallerHandoffPlan(input: {
 /** Shared with the CLI. Runs powershell; resolves to a verdict, never rejects. */
 export function verifyAuthenticode(
   filePath: string,
-  deps: Pick<InstallerHandoffDeps, 'execFile'> = { execFile: nodeExecFile }
+  deps: Pick<InstallerHandoffDeps, 'execFile'> = { execFile: runExecFile }
 ): Promise<AuthenticodeVerdict> {
   const literal = `'${filePath.replace(/'/g, "''")}'`
   const command = `Get-AuthenticodeSignature -LiteralPath ${literal} | ConvertTo-Json -Compress`
@@ -186,7 +249,7 @@ export function createInstallerHandoff(
   let state: InstallerHandoffState = { status: 'idle' }
   let inFlight: Promise<void> | null = null
 
-  async function download(
+  async function downloadOnce(
     url: string,
     target: string,
     onProgress: (percent: number) => void
@@ -206,7 +269,36 @@ export function createInstallerHandoff(
         yield chunk
       }
     }, deps.fs.createWriteStream(target))
+
+    // A connection that drops mid-body still resolves the pipeline, leaving a short
+    // file that would reach Authenticode and be reported as a signature problem
+    // rather than the truncated download it actually is.
+    if (total > 0 && received !== total) {
+      throw new Error(`GET ${url} delivered ${received} of ${total} bytes`)
+    }
     onProgress(100)
+  }
+
+  /** Each attempt restarts from zero; Range resume against GitHub's redirect chain is not worth it for three tries. */
+  async function download(
+    url: string,
+    target: string,
+    onProgress: (percent: number) => void
+  ): Promise<void> {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        await downloadOnce(url, target, onProgress)
+        return
+      } catch (error) {
+        if (attempt >= DOWNLOAD_ATTEMPTS) throw error
+        logger.warn('Velopack installer download failed; retrying', {
+          attempt,
+          of: DOWNLOAD_ATTEMPTS,
+          reason: error instanceof Error ? error.message : String(error)
+        })
+        await sleep(deps.retryDelayMs * attempt)
+      }
+    }
   }
 
   async function run(
@@ -225,12 +317,21 @@ export function createInstallerHandoff(
     if (layout !== 'nsis') return decline(`install layout is ${layout}, not nsis`)
 
     const url = velopackSetupUrl(tag)
+    // `tag` arrives on the update payload. velopackSetupUrl encodes it into a fixed
+    // GitHub release path, and this re-checks the built URL before any request
+    // leaves the process, so a hostile tag cannot redirect the installer download.
+    if (!url.startsWith(`${GITHUB_RELEASE_DOWNLOAD_BASE}/`)) {
+      return decline('release url outside the GitHub release path')
+    }
     let head: Response
     try {
       head = await deps.fetch(url, { method: 'HEAD' })
     } catch (error) {
       host.onError(
-        coded('INSTALLER_HANDOFF_DOWNLOAD_FAILED', `HEAD ${url} failed: ${messageOf(error)}`)
+        coded(
+          'INSTALLER_HANDOFF_DOWNLOAD_FAILED',
+          `HEAD ${url} failed: ${error instanceof Error ? error.message : String(error)}`
+        )
       )
       return decline('network error')
     }
@@ -256,7 +357,10 @@ export function createInstallerHandoff(
     } catch (error) {
       removeHandoffDir()
       host.onError(
-        coded('INSTALLER_HANDOFF_DOWNLOAD_FAILED', `download of ${url} failed: ${messageOf(error)}`)
+        coded(
+          'INSTALLER_HANDOFF_DOWNLOAD_FAILED',
+          `download of ${url} failed: ${error instanceof Error ? error.message : String(error)}`
+        )
       )
       return decline('download failed')
     }
@@ -282,17 +386,20 @@ export function createInstallerHandoff(
         return Promise.resolve()
       }
       state = { status: 'preparing', version }
-      inFlight = run(info, onProgress)
-        .then((next) => {
-          state = next
-        })
-        .catch((error: unknown) => {
+      inFlight = (async () => {
+        try {
+          state = await run(info, onProgress)
+        } catch (error) {
           logger.error('installer hand-off preparation failed', error)
-          state = { status: 'declined', version, reason: messageOf(error) }
-        })
-        .finally(() => {
+          state = {
+            status: 'declined',
+            version,
+            reason: error instanceof Error ? error.message : String(error)
+          }
+        } finally {
           inFlight = null
-        })
+        }
+      })()
       return inFlight
     },
     armed() {

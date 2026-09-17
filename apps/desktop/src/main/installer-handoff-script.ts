@@ -22,6 +22,12 @@ export interface InstallerHandoffPlan {
   /** <userData>\logs\velopack-setup.log */
   setupLogPath: string
   /**
+   * <userData>\logs\installer-handoff.log. The script's own transcript. Velopack's
+   * --log only exists once Setup.exe runs, so a hand-off that died before that left
+   * no trace at all; this one records every step and its exit code.
+   */
+  handoffLogPath: string
+  /**
    * electron-updater's already-downloaded NSIS setup.exe; the safety net if
    * Setup.exe leaves no app behind. null from the CLI.
    */
@@ -35,10 +41,18 @@ export type AuthenticodeVerdict = { ok: true; subject: string } | { ok: false; r
  * is not supported" when stdin is not a console, which it is not under
  * `stdio: 'ignore'`. `tasklist` is filtered by PID and image name so a recycled
  * PID cannot match. The uninstaller runs from a copy with `_?=` (last argument,
- * unquoted) so it blocks and `RMDir /r $INSTDIR` can remove the original; no
- * `--updated`, so the tolerant removal path runs. Uninstall before Setup: the
- * NSIS uninstaller deletes the Start-menu and desktop `MemryNote.lnk`, the same
- * paths Velopack creates. Setup.exe launches the app itself.
+ * unquoted, the form electron-builder's own installUtil.nsh uses) so it blocks
+ * and `RMDir /r $INSTDIR` can remove the original; no `--updated`, so the
+ * tolerant removal path runs. Uninstall before Setup: the NSIS uninstaller
+ * deletes the Start-menu and desktop `MemryNote.lnk`, the same paths Velopack
+ * creates. Setup.exe launches the app itself.
+ *
+ * Every step logs its exit code and every failure routes to the NSIS fallback
+ * instead of running on. The previous version checked nothing, logged nothing of
+ * its own, and deleted itself on the way out, so a failed migration was
+ * indistinguishable from one that never started: telemetry shows nine Windows
+ * users stuck on 2026.912.1 and not one `handoff-applied` outcome, with no
+ * evidence anywhere on disk explaining which step gave up.
  */
 export function renderInstallerHandoffScript(plan: InstallerHandoffPlan): string {
   const lines = [
@@ -52,8 +66,11 @@ export function renderInstallerHandoffScript(plan: InstallerHandoffPlan): string
     `set "WORK_DIR=${plan.workDir}"`,
     `set "SETUP=${plan.setupExePath}"`,
     `set "SETUP_LOG=${plan.setupLogPath}"`,
+    `set "HANDOFF_LOG=${plan.handoffLogPath}"`,
     `set "NSIS_INSTALLER=${plan.nsisInstallerPath ?? ''}"`,
     'set "VELOPACK_EXE=%LocalAppData%\\MemryNote\\current\\Memrynote.exe"',
+    '',
+    'call :log "handoff start pid=%APP_PID% dir=%INSTALL_DIR%"',
     '',
     ':wait_for_exit',
     'tasklist /FI "PID eq %APP_PID%" /FI "IMAGENAME eq %APP_EXE%" /NH 2>nul | find /I "%APP_EXE%" >nul',
@@ -61,32 +78,63 @@ export function renderInstallerHandoffScript(plan: InstallerHandoffPlan): string
     '  ping -n 2 127.0.0.1 >nul',
     '  goto wait_for_exit',
     ')',
+    'call :log "app exited"',
     '',
     'if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"',
     'copy /y "%UNINSTALLER%" "%WORK_DIR%\\Uninstall MemryNote.exe" >nul',
-    'start "" /wait "%WORK_DIR%\\Uninstall MemryNote.exe" /S _?=%INSTALL_DIR%',
-    '',
-    'start "" /wait "%SETUP%" --silent --verbose --log "%SETUP_LOG%"',
-    '',
-    'if not exist "%VELOPACK_EXE%" (',
-    '  if exist "%NSIS_INSTALLER%" start "" /wait "%NSIS_INSTALLER%" /S --force-run',
+    'if errorlevel 1 (',
+    '  call :log "copy-uninstaller failed"',
+    '  goto fallback',
     ')',
     '',
+    'start "" /wait "%WORK_DIR%\\Uninstall MemryNote.exe" /S _?=%INSTALL_DIR%',
+    'call :log "uninstall exit=%errorlevel%"',
+    '',
+    'start "" /wait "%SETUP%" --silent --verbose --log "%SETUP_LOG%"',
+    'call :log "setup exit=%errorlevel%"',
+    '',
+    'if exist "%VELOPACK_EXE%" (',
+    '  call :log "result=velopack"',
+    '  goto cleanup',
+    ')',
+    '',
+    ':fallback',
+    'call :log "velopack exe missing; falling back to nsis"',
+    'if not exist "%NSIS_INSTALLER%" (',
+    '  call :log "result=failed no-nsis-fallback"',
+    '  goto cleanup',
+    ')',
+    'start "" /wait "%NSIS_INSTALLER%" /S --force-run',
+    'call :log "result=nsis exit=%errorlevel%"',
+    '',
+    ':cleanup',
     'del /q "%SETUP%" >nul 2>&1',
     'rmdir /s /q "%WORK_DIR%" >nul 2>&1',
-    '(goto) 2>nul & del "%~f0"'
+    'call :log "handoff done"',
+    '(goto) 2>nul & del "%~f0"',
+    '',
+    ':log',
+    'echo %DATE% %TIME% %~1>>"%HANDOFF_LOG%"',
+    'exit /b 0'
   ]
   return `${lines.join('\r\n')}\r\n`
 }
 
+/**
+ * The electron-updater payload this reads from. `files[].url` is typed `string` by
+ * electron-updater itself; `tag` is added at runtime by its GitHub provider, so it
+ * is declared optional here rather than probed for at runtime.
+ */
+export interface ReleaseTagSource {
+  tag?: string
+  files?: ReadonlyArray<{ url?: string }>
+}
+
 /** GitHub's `update-downloaded` payload carries `tag`; `files[].url` is the fallback when it is absolute. */
-export function resolveReleaseTag(info: {
-  tag?: unknown
-  files?: ReadonlyArray<{ url?: unknown }>
-}): string | null {
-  if (typeof info.tag === 'string' && info.tag) return info.tag
+export function resolveReleaseTag(info: ReleaseTagSource): string | null {
+  if (info.tag) return info.tag
   for (const file of info.files ?? []) {
-    if (typeof file.url !== 'string') continue
+    if (!file.url) continue
     const match = /\/releases\/download\/([^/]+)\//.exec(file.url)
     if (match) return match[1]
   }
@@ -97,6 +145,18 @@ export function velopackSetupUrl(tag: string): string {
   return `${GITHUB_RELEASE_DOWNLOAD_BASE}/${encodeURIComponent(tag)}/${VELOPACK_SETUP_ASSET_NAME}`
 }
 
+/**
+ * Shape of `Get-AuthenticodeSignature | ConvertTo-Json -Compress`. Every field is
+ * optional: the PowerShell host omits `StatusMessage` on some versions and sets
+ * `SignerCertificate` to null for an unsigned file. `Status` is the numeric enum
+ * value or its name depending on the host, hence the union.
+ */
+interface AuthenticodeSignatureJson {
+  Status?: number | string
+  StatusMessage?: string
+  SignerCertificate?: { Subject?: string } | null
+}
+
 /** Parses `Get-AuthenticodeSignature | ConvertTo-Json -Compress` output. Valid == Status 0 or 'Valid'. */
 export function judgeAuthenticode(stdout: string, expectedSubject: string): AuthenticodeVerdict {
   let parsed: unknown
@@ -105,25 +165,24 @@ export function judgeAuthenticode(stdout: string, expectedSubject: string): Auth
   } catch {
     return { ok: false, reason: 'signature output is not JSON' }
   }
-  if (!parsed || typeof parsed !== 'object') {
+  // Brand check rather than a truthiness/shape probe: it admits only a plain
+  // object, so an array or a bare scalar is rejected here instead of silently
+  // reading `undefined` fields off it further down.
+  if (Object.prototype.toString.call(parsed) !== '[object Object]') {
     return { ok: false, reason: 'signature output is not an object' }
   }
-  const { Status, StatusMessage, SignerCertificate } = parsed as {
-    Status?: unknown
-    StatusMessage?: unknown
-    SignerCertificate?: { Subject?: unknown } | null
+  // SAFETY: the brand check above establishes a plain object, and every field of
+  // AuthenticodeSignatureJson is optional and checked before use, so the assertion
+  // grants no trust that the checks below do not re-establish.
+  const report = parsed as AuthenticodeSignatureJson
+  const status = report.Status
+  if (status !== 0 && status !== 'Valid') {
+    const message = report.StatusMessage ? ` (${report.StatusMessage})` : ''
+    return { ok: false, reason: `signature status ${status ?? 'unknown'}${message}` }
   }
-  if (Status !== 0 && Status !== 'Valid') {
-    const status = typeof Status === 'string' || typeof Status === 'number' ? Status : 'unknown'
-    const message = typeof StatusMessage === 'string' && StatusMessage ? ` (${StatusMessage})` : ''
-    return { ok: false, reason: `signature status ${status}${message}` }
-  }
-  const subject = SignerCertificate?.Subject
-  if (typeof subject !== 'string' || !subject.includes(expectedSubject)) {
-    return {
-      ok: false,
-      reason: `unexpected signer ${typeof subject === 'string' ? subject : 'none'}`
-    }
+  const subject = report.SignerCertificate?.Subject
+  if (!subject || !subject.includes(expectedSubject)) {
+    return { ok: false, reason: `unexpected signer ${subject ?? 'none'}` }
   }
   return { ok: true, subject }
 }

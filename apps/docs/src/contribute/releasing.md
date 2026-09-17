@@ -62,6 +62,46 @@ The Velopack set is what new installs and the Velopack updater use:
 
 The NSIS assets stop shipping once telemetry shows that no NSIS installs remain.
 
+::: warning `MemryNote-<version>-setup.exe` is not signed
+The NSIS installer is built on the CI Windows runner, which has no access to the
+Certum key, and is uploaded as-is. Only the Velopack set is Authenticode-signed:
+`pnpm release` signs through Velopack's `--signTemplate`, and
+`verifyVelopackSignatures()` verifies `MemryNote-win-Setup.exe` and the packaged
+`Memrynote.exe`. Windows refuses to unblock the unsigned NSIS installer, so never
+hand it to a user as a manual download — point at `MemryNote-win-Setup.exe`.
+:::
+
+## Diagnosing a failed NSIS to Velopack migration
+
+An existing NSIS install migrates by downloading `MemryNote-win-Setup.exe`,
+verifying its Authenticode signature, and running a detached `.cmd` on quit that
+uninstalls NSIS and installs the Velopack build.
+
+When a user reports that an update "did nothing" and the app is still on the old
+version, ask for these two files:
+
+| File                                             | Meaning                                                            |
+| ------------------------------------------------ | ------------------------------------------------------------------ |
+| `%APPDATA%\memrynote\logs\installer-handoff.log` | The script's own transcript: one line per step with its exit code. |
+| `%APPDATA%\memrynote\logs\velopack-setup.log`    | Written by `Setup.exe`. Absent means Setup never ran.              |
+
+Read the transcript's last line first:
+
+- no file at all — the script never started; the hand-off was never armed
+- `copy-uninstaller failed` — the NSIS uninstaller was missing or locked
+- `uninstall exit=<n>` is the last line — the uninstaller hung or the machine
+  went down mid-migration
+- `result=nsis` — Velopack did not install and the NSIS fallback took over, so
+  the user has the new version on the old install layout
+- `result=failed no-nsis-fallback` — nothing installed; the user stays on the old
+  version and needs a manual `MemryNote-win-Setup.exe`
+
+A successful migration ends `result=velopack` and reports
+`app_update_installed` with `action=migrated, source=velopack-handoff` on the next
+launch. Telemetry counts that event: if it stays at zero while
+`UPDATE_INSTALL_DID_NOT_APPLY` with `source=velopack-handoff` climbs, migration is
+broken for everyone, not for one reporter.
+
 ## Smoke test
 
 Pass `--smoke` to `pnpm release` to dispatch the smoke test once the release is published, or dispatch it by hand:

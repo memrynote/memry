@@ -15,6 +15,7 @@ const plan: InstallerHandoffPlan = {
   workDir: String.raw`C:\Users\kaan\AppData\Local\Temp\memry-installer-handoff-1234`,
   setupExePath: String.raw`C:\Users\kaan\AppData\Roaming\memrynote\installer-handoff\MemryNote-win-Setup.exe`,
   setupLogPath: String.raw`C:\Users\kaan\AppData\Roaming\memrynote\logs\velopack-setup.log`,
+  handoffLogPath: String.raw`C:\Users\kaan\AppData\Roaming\memrynote\logs\installer-handoff.log`,
   nsisInstallerPath: String.raw`C:\Users\kaan\AppData\Local\memrynote-updater\pending\MemryNote-2026.911.1-setup.exe`
 }
 
@@ -29,8 +30,11 @@ const scriptLines = (nsisInstaller: string): string[] => [
   String.raw`set "WORK_DIR=C:\Users\kaan\AppData\Local\Temp\memry-installer-handoff-1234"`,
   String.raw`set "SETUP=C:\Users\kaan\AppData\Roaming\memrynote\installer-handoff\MemryNote-win-Setup.exe"`,
   String.raw`set "SETUP_LOG=C:\Users\kaan\AppData\Roaming\memrynote\logs\velopack-setup.log"`,
+  String.raw`set "HANDOFF_LOG=C:\Users\kaan\AppData\Roaming\memrynote\logs\installer-handoff.log"`,
   `set "NSIS_INSTALLER=${nsisInstaller}"`,
   String.raw`set "VELOPACK_EXE=%LocalAppData%\MemryNote\current\Memrynote.exe"`,
+  '',
+  'call :log "handoff start pid=%APP_PID% dir=%INSTALL_DIR%"',
   '',
   ':wait_for_exit',
   'tasklist /FI "PID eq %APP_PID%" /FI "IMAGENAME eq %APP_EXE%" /NH 2>nul | find /I "%APP_EXE%" >nul',
@@ -38,20 +42,44 @@ const scriptLines = (nsisInstaller: string): string[] => [
   '  ping -n 2 127.0.0.1 >nul',
   '  goto wait_for_exit',
   ')',
+  'call :log "app exited"',
   '',
   'if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"',
   String.raw`copy /y "%UNINSTALLER%" "%WORK_DIR%\Uninstall MemryNote.exe" >nul`,
-  String.raw`start "" /wait "%WORK_DIR%\Uninstall MemryNote.exe" /S _?=%INSTALL_DIR%`,
-  '',
-  'start "" /wait "%SETUP%" --silent --verbose --log "%SETUP_LOG%"',
-  '',
-  'if not exist "%VELOPACK_EXE%" (',
-  '  if exist "%NSIS_INSTALLER%" start "" /wait "%NSIS_INSTALLER%" /S --force-run',
+  'if errorlevel 1 (',
+  '  call :log "copy-uninstaller failed"',
+  '  goto fallback',
   ')',
   '',
+  String.raw`start "" /wait "%WORK_DIR%\Uninstall MemryNote.exe" /S _?=%INSTALL_DIR%`,
+  'call :log "uninstall exit=%errorlevel%"',
+  '',
+  'start "" /wait "%SETUP%" --silent --verbose --log "%SETUP_LOG%"',
+  'call :log "setup exit=%errorlevel%"',
+  '',
+  'if exist "%VELOPACK_EXE%" (',
+  '  call :log "result=velopack"',
+  '  goto cleanup',
+  ')',
+  '',
+  ':fallback',
+  'call :log "velopack exe missing; falling back to nsis"',
+  'if not exist "%NSIS_INSTALLER%" (',
+  '  call :log "result=failed no-nsis-fallback"',
+  '  goto cleanup',
+  ')',
+  'start "" /wait "%NSIS_INSTALLER%" /S --force-run',
+  'call :log "result=nsis exit=%errorlevel%"',
+  '',
+  ':cleanup',
   'del /q "%SETUP%" >nul 2>&1',
   'rmdir /s /q "%WORK_DIR%" >nul 2>&1',
-  '(goto) 2>nul & del "%~f0"'
+  'call :log "handoff done"',
+  '(goto) 2>nul & del "%~f0"',
+  '',
+  ':log',
+  'echo %DATE% %TIME% %~1>>"%HANDOFF_LOG%"',
+  'exit /b 0'
 ]
 
 describe('renderInstallerHandoffScript', () => {
@@ -69,6 +97,40 @@ describe('renderInstallerHandoffScript', () => {
 
     expect(script).toBe(`${scriptLines('').join('\r\n')}\r\n`)
     expect(script).toContain('set "NSIS_INSTALLER="\r\n')
+  })
+
+  // The previous script checked no exit code and wrote no log of its own, so a
+  // migration that died before Setup.exe ran left nothing on disk to explain it.
+  it('records every step and its exit code in its own log', () => {
+    const lines = renderInstallerHandoffScript(plan).split('\r\n')
+
+    expect(lines).toContain('call :log "app exited"')
+    expect(lines).toContain('call :log "uninstall exit=%errorlevel%"')
+    expect(lines).toContain('call :log "setup exit=%errorlevel%"')
+    expect(lines).toContain('call :log "handoff done"')
+    // The transcript survives the script deleting itself.
+    expect(lines).toContain('echo %DATE% %TIME% %~1>>"%HANDOFF_LOG%"')
+  })
+
+  it('routes a failed uninstaller copy to the NSIS fallback instead of running on', () => {
+    const lines = renderInstallerHandoffScript(plan).split('\r\n')
+    const copyAt = lines.indexOf(
+      String.raw`copy /y "%UNINSTALLER%" "%WORK_DIR%\Uninstall MemryNote.exe" >nul`
+    )
+
+    expect(lines[copyAt + 1]).toBe('if errorlevel 1 (')
+    expect(lines[copyAt + 3]).toBe('  goto fallback')
+    expect(lines).toContain(':fallback')
+    // Reaching the fallback with nothing to run must still be recorded, not silent.
+    expect(lines).toContain('  call :log "result=failed no-nsis-fallback"')
+  })
+
+  it('skips the fallback once the Velopack install is present', () => {
+    const lines = renderInstallerHandoffScript(plan).split('\r\n')
+    const guardAt = lines.indexOf('if exist "%VELOPACK_EXE%" (')
+
+    expect(lines[guardAt + 1]).toBe('  call :log "result=velopack"')
+    expect(lines[guardAt + 2]).toBe('  goto cleanup')
   })
 })
 
