@@ -7,7 +7,9 @@ import {
   CustomIconRenameSchema,
   CUSTOM_ICON_MAX_EDGE_PX,
   CUSTOM_ICON_MAX_INPUT_BYTES,
-  type CustomIcon
+  isCustomIconStoredExtension,
+  type CustomIcon,
+  type CustomIconStoredExtension
 } from '@memry/contracts/custom-icons-api'
 import type { CustomIconRow } from '@memry/db-schema/schema/custom-icons'
 import {
@@ -18,6 +20,7 @@ import {
   renameCustomIcon
 } from '../icons/store'
 import { downloadRemoteIcon } from '../icons/remote-icon'
+import { sanitizeSvgBytes } from '../icons/sanitize-svg'
 import {
   enqueueCustomIconCreate,
   enqueueCustomIconDelete,
@@ -37,12 +40,12 @@ import { getMainI18n } from '../lib/main-i18n'
 
 const log = createLogger('CustomIconHandlers')
 
-function rowToCustomIcon(row: CustomIconRow): CustomIcon {
+function rowToCustomIcon(row: CustomIconRow, ext: CustomIconStoredExtension): CustomIcon {
   return {
     id: row.id,
     name: row.name,
-    ext: row.ext,
-    path: getCustomIconFilePath(row.id, row.ext),
+    ext,
+    path: getCustomIconFilePath(row.id, ext),
     createdAt: row.createdAt
   }
 }
@@ -54,11 +57,19 @@ function rowToCustomIcon(row: CustomIconRow): CustomIcon {
  * edge is at most `CUSTOM_ICON_MAX_EDGE_PX`. That keeps every icon a few KB,
  * which is what makes carrying the bytes inside the sync record affordable, and
  * it strips whatever metadata the source file carried. SVG has no raster to
- * resize and is stored verbatim; it is only ever rendered through `<img src>`,
- * which does not execute script.
+ * resize, so instead of re-encoding it is sanitized: script, event handlers,
+ * external references and entity declarations are stripped before the bytes
+ * are stored, so the record that syncs to every device is already inert.
  */
-function normalizeIcon(bytes: Buffer, ext: string): { data: Buffer; ext: string } {
-  if (ext === 'svg') return { data: bytes, ext: 'svg' }
+function normalizeIcon(
+  bytes: Buffer,
+  ext: string
+): { data: Buffer; ext: CustomIconStoredExtension } {
+  if (ext === 'svg') {
+    const sanitized = sanitizeSvgBytes(bytes)
+    if (!sanitized) throw new Error(getMainI18n().t('errors:customIcon.unreadableImage'))
+    return { data: sanitized, ext: 'svg' }
+  }
 
   const image = nativeImage.createFromBuffer(bytes)
   if (image.isEmpty()) {
@@ -99,7 +110,7 @@ export function makeCustomIconHandlers(db: DataDb) {
 
     enqueueCustomIconCreate(row.id)
     broadcastToAllWindows(CustomIconsChannels.events.UPDATED, { id: row.id })
-    return rowToCustomIcon(row)
+    return rowToCustomIcon(row, normalized.ext)
   }
 
   return {
@@ -110,15 +121,28 @@ export function makeCustomIconHandlers(db: DataDb) {
      */
     list: async (): Promise<CustomIcon[]> => {
       const rows = listCustomIcons(db)
+      const icons: CustomIcon[] = []
       for (const row of rows) {
+        // A row can come from a peer, so `ext` is remote input. An unknown one
+        // would not render anyway; skipping it keeps the row intact for a
+        // version that does understand it.
+        if (!isCustomIconStoredExtension(row.ext)) {
+          log.warn('Skipping custom icon with unsupported extension', {
+            id: row.id,
+            ext: row.ext
+          })
+          continue
+        }
         try {
-          if (await customIconFileExists(row.id, row.ext)) continue
-          await writeCustomIconFile(row.id, row.ext, Buffer.from(row.data, 'base64'))
+          if (!(await customIconFileExists(row.id, row.ext))) {
+            await writeCustomIconFile(row.id, row.ext, Buffer.from(row.data, 'base64'))
+          }
         } catch (error) {
           log.warn('Failed to rehydrate custom icon file', { id: row.id, error })
         }
+        icons.push(rowToCustomIcon(row, row.ext))
       }
-      return rows.map(rowToCustomIcon)
+      return icons
     },
 
     add: async (input: unknown): Promise<CustomIcon> => {
@@ -144,9 +168,13 @@ export function makeCustomIconHandlers(db: DataDb) {
       const row = renameCustomIcon(db, id, name)
       if (!row) throw new Error(`Custom icon ${id} not found`)
 
+      if (!isCustomIconStoredExtension(row.ext)) {
+        throw new Error(`Custom icon ${id} has an unsupported extension: ${row.ext}`)
+      }
+
       enqueueCustomIconUpdate(row.id)
       broadcastToAllWindows(CustomIconsChannels.events.UPDATED, { id: row.id })
-      return rowToCustomIcon(row)
+      return rowToCustomIcon(row, row.ext)
     },
 
     delete: async (id: string): Promise<{ success: boolean }> => {

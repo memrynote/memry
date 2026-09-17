@@ -14,6 +14,7 @@ import fs from 'fs/promises'
 import { getStatus } from './index'
 import { getMemryDir } from './init'
 import { VaultError, VaultErrorCode } from '../lib/errors'
+import { sanitizeSvgBytes } from '../icons/sanitize-svg'
 
 const ICONS_DIR = 'icons'
 
@@ -44,11 +45,27 @@ export function getCustomIconFilePath(id: string, ext: string): string {
   return path.join(getCustomIconsDir(), `${id}.${ext}`)
 }
 
-/** Write (or overwrite) an icon's bytes. */
+/**
+ * Write (or overwrite) an icon's bytes.
+ *
+ * This is the only place icon bytes reach disk — uploads, links, the list-time
+ * rehydrate and the sync mirror all funnel through here — so SVG is sanitized
+ * here rather than at each caller. That also self-heals rows written by an
+ * older version or by a peer. Bytes that sanitize to nothing are a hard error;
+ * every caller either surfaces it to the user or logs and skips that icon.
+ */
 export async function writeCustomIconFile(id: string, ext: string, data: Buffer): Promise<string> {
   const filePath = getCustomIconFilePath(id, ext)
+  let bytes = data
+  if (ext.toLowerCase() === 'svg') {
+    const sanitized = sanitizeSvgBytes(data)
+    if (!sanitized) {
+      throw new VaultError(`Custom icon ${id} is not a usable SVG`, VaultErrorCode.CORRUPTED)
+    }
+    bytes = sanitized
+  }
   await fs.mkdir(path.dirname(filePath), { recursive: true })
-  await fs.writeFile(filePath, data)
+  await fs.writeFile(filePath, bytes)
   return filePath
 }
 

@@ -58,8 +58,14 @@ Raster images are re-encoded to PNG at a longest edge of 128 pixels. That is del
 each icon a few kilobytes, and it drops whatever metadata (camera model, GPS, editing history) the
 original file carried. Animated GIFs keep their first frame only.
 
-SVG files are stored exactly as given. They render inside an image element, which never executes
-script, so an SVG icon cannot run anything.
+SVG files keep their vector shape instead of being re-encoded, so they stay sharp at any size. They
+are cleaned up on the way in: script, event handlers, embedded markup and anything that would reach
+out to another server are stripped, and the icon is rendered as an image only. Titles, gradients,
+masks and clipping paths survive untouched, so an ordinary icon looks exactly as its author drew it.
+An SVG that has nothing left to draw after cleaning is rejected as unreadable.
+
+Removing the background from an image is not supported — an icon is stored the way you gave it,
+minus the cleanup above.
 
 ## Where the Files Live
 
