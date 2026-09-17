@@ -160,7 +160,7 @@ Run `pnpm ipc:generate` before `pnpm ipc:check` when editing contracts, preload 
 - Gitignored env files (`apps/desktop/.env.staging`, `apps/sync-server/.dev.vars`, `apps/landing/.env.local`, ...) do not travel with a worktree. `pnpm install` links them from the main worktree via `scripts/link-env.mjs`; run `pnpm env:link` by hand if a tree predates that, `pnpm env:check` to verify, `pnpm env:link:copy` for real copies instead of symlinks. They stay gitignored at the new paths. Without them `resolveSyncServerUrl()` silently falls back to `http://localhost:8787` and `dev:staging` never reaches staging.
 - The same script links the sync server's local database, `apps/sync-server/.wrangler/state` (miniflare D1 + R2 + Durable Objects), so every worktree shares the main worktree's dev data instead of booting `dev:sync-server` against an empty one. Migrate or seed it once in main and every tree sees it. `.wrangler/tmp` stays per-worktree. A worktree that already has its own real `state/` is left alone -- pass `--force` to replace it.
 - It also links `.claude/skills`, so repo skills (`/user-feedback`, `/release-desktop`, `/ipc-contract-change`, ...) work in a worktree. `.claude/` is gitignored, so without the link a worktree session sees no project skills at all. Only `skills` is shared -- the rest of `.claude` is per-session state plus `.claude/worktrees`. Skills are read at session start, so run `pnpm env:link` and restart the agent session before expecting a new one to appear.
-- Fresh worktrees may spend a long quiet period rebuilding Electron native deps; do not treat that as a hang without evidence.
+- Fresh worktrees may spend a long quiet period rebuilding Electron native deps; do not treat that as a hang without evidence. `pnpm install` now kicks that rebuild off detached in the background (`scripts/warm-native.mjs`, via desktop `postinstall`) and it writes the `ensure-native.sh` stamp, so the first `pnpm dev` normally prints `[native] already built for electron — skipping`. If dev starts while the warm-up is still running it prints `another native build is running — waiting...` and waits on the lock instead of starting a second rebuild. Watch it with `pnpm warm:log`; run it in the foreground with `pnpm warm`. `SKIP_ELECTRON_REBUILD=1` (CI) still skips it entirely.
 
 ## Database
 
@@ -228,6 +228,7 @@ The skill has specialized workflows that produce better results than ad-hoc answ
 Mention the skill name and why you are using it.
 
 Key routing rules:
+
 - Product ideas, "is this worth building", brainstorming → invoke office-hours
 - Bugs, errors, "why is this broken", 500 errors → invoke investigate
 - Ship, deploy, push, create PR → invoke ship

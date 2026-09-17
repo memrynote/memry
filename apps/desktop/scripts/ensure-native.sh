@@ -20,16 +20,65 @@ ELECTRON_DIR="$(dirname "$ELECTRON_INSTALL_SCRIPT")"
 PINNED_NODE_MAJOR=""
 
 if [ -f "$REPO_ROOT/.nvmrc" ]; then
-  PINNED_NODE_MAJOR="$(tr -d '[:space:]v' < "$REPO_ROOT/.nvmrc")"
+  PINNED_NODE_MAJOR="$(tr -d '[:space:]v' <"$REPO_ROOT/.nvmrc")"
 fi
+
+LOCK_DIR="$APP_ROOT/node_modules/.native-build.lock"
+LOCK_HELD=0
 
 mkdir -p "$(dirname "$STAMP_FILE")"
 cd "$APP_ROOT"
 
-CURRENT_STAMP=""
-if [ -f "$STAMP_FILE" ]; then
-  CURRENT_STAMP=$(cat "$STAMP_FILE")
-fi
+read_stamp() {
+  if [ -f "$STAMP_FILE" ]; then
+    cat "$STAMP_FILE"
+  fi
+}
+
+CURRENT_STAMP="$(read_stamp)"
+
+release_lock() {
+  if [ "$LOCK_HELD" = 1 ]; then
+    rm -rf "$LOCK_DIR"
+    LOCK_HELD=0
+  fi
+}
+
+# Serialize rebuilds across processes. postinstall warms the native build in a
+# detached background process (scripts/warm-native.mjs); without this lock a
+# `pnpm dev` started while that warm-up is still running would launch a second
+# concurrent electron-rebuild over the same node_modules.
+acquire_lock() {
+  local waited=0 owner_pid announced=0
+
+  while true; do
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+      echo $$ >"$LOCK_DIR/pid"
+      LOCK_HELD=1
+      trap release_lock EXIT
+      return 0
+    fi
+
+    owner_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if [ -z "$owner_pid" ] || ! kill -0 "$owner_pid" 2>/dev/null; then
+      echo "[native] clearing stale build lock (pid ${owner_pid:-unknown})"
+      rm -rf "$LOCK_DIR"
+      continue
+    fi
+
+    if [ "$announced" = 0 ]; then
+      echo "[native] another native build is running (pid $owner_pid) — waiting..."
+      announced=1
+    fi
+
+    sleep 2
+    waited=$((waited + 2))
+    if [ "$waited" -ge 900 ]; then
+      echo "[native] timed out waiting for $LOCK_DIR; remove it if no build is running." >&2
+      exit 1
+    fi
+  done
+}
 
 has_native_binary() {
   find "$MODULE_DIR" -type f -name '*.node' | grep -q .
@@ -56,12 +105,28 @@ install_electron_binary() {
   echo "[electron] installer helper completed"
 }
 
-if [ "$CURRENT_STAMP" = "$TARGET" ] && has_native_binary; then
-  if [ "$TARGET" != "electron" ] || has_electron_binary; then
-    echo "[native] already built for $TARGET — skipping"
-    exit 0
-  fi
+native_ready() {
+  [ "$CURRENT_STAMP" = "$TARGET" ] || return 1
+  has_native_binary || return 1
+  [ "$TARGET" != "electron" ] || has_electron_binary
+}
 
+if native_ready; then
+  echo "[native] already built for $TARGET — skipping"
+  exit 0
+fi
+
+# Slow path: take the lock, then re-read the stamp. A background warm-up may
+# have finished the exact build we were about to start while we were queued.
+acquire_lock
+CURRENT_STAMP="$(read_stamp)"
+
+if native_ready; then
+  echo "[native] already built for $TARGET — skipping"
+  exit 0
+fi
+
+if [ "$CURRENT_STAMP" = "$TARGET" ] && has_native_binary; then
   echo "[electron] bundle missing for $TARGET runtime — reinstalling..."
 fi
 
@@ -135,7 +200,7 @@ else
       for classic_dir in "$REPO_ROOT"/node_modules/.pnpm/classic-level@*/node_modules/classic-level; do
         [ -d "$classic_dir" ] || continue
         echo "[native] force-building ${classic_dir#"$REPO_ROOT/"}"
-        ( cd "$classic_dir" && pnpm exec node-gyp rebuild ) && classic_built=1
+        (cd "$classic_dir" && pnpm exec node-gyp rebuild) && classic_built=1
       done
       [ "$classic_built" = 1 ] || pnpm rebuild "$mod" || npm rebuild "$mod"
     else
@@ -144,4 +209,4 @@ else
   done
 fi
 
-echo "$TARGET" > "$STAMP_FILE"
+echo "$TARGET" >"$STAMP_FILE"

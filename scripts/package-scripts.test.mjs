@@ -33,3 +33,27 @@ describe('environment scripts', () => {
     assert.match(desktopPackage.scripts['dev:staging'], /MEMRY_ENV=staging/)
   })
 })
+
+describe('native warm-up scripts', () => {
+  it('warms the native build from postinstall instead of a stampless rebuild', () => {
+    // A bare `electron-rebuild` here never wrote node_modules/.native-build-target,
+    // so predev rebuilt everything again on the first `pnpm dev` of a worktree.
+    assert.match(desktopPackage.scripts.postinstall, /warm-native\.mjs/)
+    assert.match(desktopPackage.scripts.postinstall, /--background/)
+    assert.doesNotMatch(desktopPackage.scripts.postinstall, /electron-rebuild/)
+    assert.match(desktopPackage.scripts.postinstall, /SKIP_ELECTRON_REBUILD/)
+  })
+
+  it('exposes manual warm-up entry points at the root', () => {
+    assert.equal(rootPackage.scripts.warm, 'node scripts/warm-native.mjs --target electron')
+    assert.equal(
+      rootPackage.scripts['warm:bg'],
+      'node scripts/warm-native.mjs --background --target electron'
+    )
+    assert.equal(rootPackage.scripts['warm:log'], 'node scripts/warm-native.mjs --log')
+  })
+
+  it('keeps predev on the stamp-aware guard', () => {
+    assert.match(desktopPackage.scripts.predev, /ensure-native\.sh electron/)
+  })
+})
