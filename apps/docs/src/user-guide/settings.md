@@ -398,6 +398,12 @@ as collapsed tool rows, or they can require inline approval when **Tool Confirma
 
 Total usage vs. quota with a stacked bar by category (notes, attachments, CRDT, other). Refresh recomputes.
 
+### Vaults in your account
+
+Every vault synced to your account, with its local path or an "not on this device" hint, and a **Delete** button that removes the synced copy from Memry's servers without touching the files on disk. The vault you currently have open is marked and cannot be deleted.
+
+If the vault open on this device is **not** one of them, the section says so at the top. That vault is refused by sync — on a paid plan every attempt fails with the vault limit, because the extra vault has no slot. This usually happens when a second computer signs in and opens a new folder instead of the account's vault. The warning offers the way back: **Open account vault** when that vault already exists on this device, or **Download account vault** when it lives only in the cloud. Raising your plan's vault limit is the alternative if you genuinely want both vaults synced.
+
 ### Location
 
 The vault path on disk. **Reveal** opens it in Finder / Explorer.

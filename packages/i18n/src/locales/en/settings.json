@@ -155,7 +155,7 @@
     "tabs": {
       "openPagesInNewTab": {
         "label": "Open Pages in a New Tab",
-        "description": "Clicking or creating a page \u2014 notes, folders, projects, canvases, tags, bookmarks \u2014 opens it in a new tab. When off, the current tab is reused, including when following links inside a note; pinned tabs are never replaced. \"Open in New Tab\", \"Open to the Side\" and middle-click always open a new tab."
+        "description": "Clicking or creating a page \u2014 notes, folders, projects, canvases, tags, bookmarks — opens it in a new tab. When off, the current tab is reused, including when following links inside a note; pinned tabs are never replaced. \"Open in New Tab\", \"Open to the Side\" and middle-click always open a new tab."
       },
       "restoreSession": {
         "label": "Restore Session on Start",
@@ -1216,7 +1216,13 @@
       "deleteBody": "This permanently removes all synced data for this vault from Memry's servers and cannot be undone. Your files on disk are not deleted.",
       "deleteConfirm": "Delete from account",
       "deleteFailed": "Could not delete vault",
-      "activeHint": "Switch to another vault to delete this one."
+      "activeHint": "Switch to another vault to delete this one.",
+      "unsyncedTitle": "This vault is not synced",
+      "unsyncedBodyOne": "The vault open on this device is not in your account, so sync refuses it. Your account vault is “{name}” — open it here to start syncing again.",
+      "unsyncedBodyMany": "The vault open on this device is not in your account, so sync refuses it. Open one of the vaults listed below to start syncing again.",
+      "unsyncedOpen": "Open account vault",
+      "unsyncedDownload": "Download account vault",
+      "unsyncedSwitchFailed": "Could not open that vault"
     },
     "storage": {
       "title": "Storage",
