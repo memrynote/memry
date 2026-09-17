@@ -61,7 +61,7 @@ describe('insertTemplateBlocks', () => {
       content: '# {{title}}\n\nAgenda for {{title}}',
       noteTitle: 'Weekly review',
       referenceBlockId: 'ref',
-      consumeEmptyReference: false
+      placement: 'after'
     })
 
     expect(mocks.parseMarkdownPreservingBlanks).toHaveBeenCalledWith(
@@ -80,7 +80,7 @@ describe('insertTemplateBlocks', () => {
       content: '   \n\t\n  ',
       noteTitle: 'Weekly review',
       referenceBlockId: 'ref',
-      consumeEmptyReference: true
+      placement: 'replace-if-empty'
     })
 
     expect(result).toEqual({ ok: false, reason: 'empty' })
@@ -99,7 +99,7 @@ describe('insertTemplateBlocks', () => {
       content: '# Agenda',
       noteTitle: 'Weekly review',
       referenceBlockId: 'ref',
-      consumeEmptyReference: true
+      placement: 'replace-if-empty'
     })
 
     expect(result).toEqual({ ok: false, reason: 'stale-block' })
@@ -116,7 +116,7 @@ describe('insertTemplateBlocks', () => {
       content: '# Agenda',
       noteTitle: 'Weekly review',
       referenceBlockId: 'ref',
-      consumeEmptyReference: true
+      placement: 'replace-if-empty'
     })
 
     expect(replaceBlocks).toHaveBeenCalledWith(
@@ -135,7 +135,7 @@ describe('insertTemplateBlocks', () => {
       content: '# Agenda',
       noteTitle: 'Weekly review',
       referenceBlockId: 'ref',
-      consumeEmptyReference: true
+      placement: 'replace-if-empty'
     })
 
     expect(insertBlocks).toHaveBeenCalledWith(
@@ -161,7 +161,7 @@ describe('insertTemplateBlocks', () => {
       content: '- item',
       noteTitle: 'Weekly review',
       referenceBlockId: 'ref',
-      consumeEmptyReference: false
+      placement: 'after'
     })
 
     const [blocks] = insertBlocks.mock.calls[0]
@@ -181,7 +181,7 @@ describe('insertTemplateBlocks', () => {
       content: '# Agenda\n\nbody',
       noteTitle: 'Weekly review',
       referenceBlockId: 'ref',
-      consumeEmptyReference: false
+      placement: 'after'
     })
 
     expect(setTextCursorPosition).toHaveBeenCalledWith(
@@ -200,7 +200,7 @@ describe('insertTemplateBlocks', () => {
       content: '<!-- nothing -->',
       noteTitle: 'Note',
       referenceBlockId: 'ref',
-      consumeEmptyReference: true
+      placement: 'replace-if-empty'
     })
 
     expect(result).toEqual({ ok: false, reason: 'empty' })

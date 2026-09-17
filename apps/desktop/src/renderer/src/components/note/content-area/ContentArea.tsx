@@ -91,7 +91,7 @@ import {
   type AttachmentKind,
   type InsertedAttachment
 } from './attachment-picker-dialog'
-import { insertTemplateBlocks } from './insert-template'
+import { insertTemplateBlocks, type TemplateAnchor } from './insert-template'
 import { TemplateSelector } from '@/components/note/template-selector'
 import { useTemplates } from '@/hooks/use-templates'
 import { createMultiBlockIndentPlugin } from './multi-block-indent-plugin'
@@ -1480,10 +1480,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [])
 
   const { templates: templateList, getTemplate } = useTemplates()
-  const [templateAnchorBlockId, setTemplateAnchorBlockId] = useState<string | null>(null)
+  const [templateAnchor, setTemplateAnchor] = useState<TemplateAnchor | null>(null)
 
   const insertTemplate = useCallback(
-    async (templateId: string, referenceBlockId: string): Promise<void> => {
+    async (templateId: string, anchor: TemplateAnchor): Promise<void> => {
       try {
         const template = await getTemplate(templateId)
         if (!template) {
@@ -1495,8 +1495,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           editor,
           content: template.content,
           noteTitle: note?.title ?? '',
-          referenceBlockId,
-          consumeEmptyReference: true,
+          referenceBlockId: anchor.blockId,
+          placement: anchor.placement,
           notePath: note?.path
         })
         if (!result.ok) {
@@ -1609,6 +1609,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const requestBlockMove = useCallback((blockId: string) => {
     setMoveBlockId(blockId)
+  }, [])
+
+  const requestTemplateInsert = useCallback((anchor: TemplateAnchor) => {
+    setTemplateAnchor(anchor)
   }, [])
 
   const moveBlockToNote = useCallback(
@@ -1880,14 +1884,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               }}
             />
           )}
-          {templateAnchorBlockId && (
+          {templateAnchor && (
             <TemplateSelector
               isOpen
               applyMode
-              onClose={() => setTemplateAnchorBlockId(null)}
+              onClose={() => setTemplateAnchor(null)}
               onSelect={(templateId) => {
-                setTemplateAnchorBlockId(null)
-                if (templateId) void insertTemplate(templateId, templateAnchorBlockId)
+                setTemplateAnchor(null)
+                if (templateId) void insertTemplate(templateId, templateAnchor)
               }}
             />
           )}
@@ -2038,6 +2042,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             <BlockSideMenuController
               onAddComment={review?.onAddComment}
               onRequestMove={requestBlockMove}
+              onRequestInsertTemplate={requestTemplateInsert}
               floatingUIOptions={{
                 useFloatingOptions: { middleware: [BULLET_FOLD_HANDLE_OFFSET] }
               }}
@@ -2185,7 +2190,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 const insertTemplateItem = {
                   title: t('editor.slashMenu.insertTemplate.title'),
                   onItemClick: () =>
-                    setTemplateAnchorBlockId(editor.getTextCursorPosition().block.id),
+                    setTemplateAnchor({
+                      blockId: editor.getTextCursorPosition().block.id,
+                      placement: 'replace-if-empty'
+                    }),
                   aliases: ['template', 'templates', 'snippet', 'insert'],
                   group: 'Basic blocks',
                   subtext: t('editor.slashMenu.insertTemplate.subtext')
@@ -2195,7 +2203,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     ? templateList.map((template) => ({
                         title: template.name,
                         onItemClick: () =>
-                          void insertTemplate(template.id, editor.getTextCursorPosition().block.id),
+                          void insertTemplate(template.id, {
+                            blockId: editor.getTextCursorPosition().block.id,
+                            placement: 'replace-if-empty'
+                          }),
                         aliases: [] as string[],
                         group: t('editor.slashMenu.insertTemplate.group'),
                         subtext: template.description

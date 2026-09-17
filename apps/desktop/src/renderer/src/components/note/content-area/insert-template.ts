@@ -7,12 +7,19 @@ import { normalizeNoteBlocks } from './normalize-note-blocks'
 
 const log = createLogger('InsertTemplate')
 
+export type TemplatePlacement = 'replace-if-empty' | 'after'
+
+export interface TemplateAnchor {
+  blockId: string
+  placement: TemplatePlacement
+}
+
 export interface InsertTemplateArgs {
   editor: any
   content: string
   noteTitle: string
   referenceBlockId: string
-  consumeEmptyReference: boolean
+  placement: TemplatePlacement
   notePath?: string
 }
 
@@ -32,7 +39,7 @@ export async function insertTemplateBlocks({
   content,
   noteTitle,
   referenceBlockId,
-  consumeEmptyReference,
+  placement,
   notePath
 }: InsertTemplateArgs): Promise<InsertTemplateResult> {
   const markdown = substituteTemplatePlaceholders(content, noteTitle)
@@ -49,7 +56,7 @@ export async function insertTemplateBlocks({
   }
 
   const result =
-    consumeEmptyReference && isEmptyParagraph(reference)
+    placement === 'replace-if-empty' && isEmptyParagraph(reference)
       ? editor.replaceBlocks([reference], blocks)
       : editor.insertBlocks(blocks, reference, 'after')
 
