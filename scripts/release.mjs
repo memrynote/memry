@@ -22,6 +22,7 @@ import {
   extractWorkflowRunId,
   getReleaseListFields,
   parseReleaseArgs,
+  rewriteWindowsUpdateManifest,
   selectDispatchedWorkflowRun,
   selectDraftRelease
 } from './release-utils.mjs'
@@ -137,10 +138,14 @@ async function runCli() {
     return
   }
 
+  await signNsisInstaller({ assetDir })
+  state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'sign-nsis')
+  writeState(workDir, state)
+
   const velopackDir = await packVelopack({ assetDir, metadata, releases, state, workDir })
   state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'pack')
   writeState(workDir, state)
-  verifyVelopackSignatures({ metadata, velopackDir, workDir })
+  verifyWindowsSignatures({ assetDir, metadata, velopackDir, workDir })
   state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'verify')
   writeState(workDir, state)
 
@@ -442,7 +447,80 @@ function downloadPreviousFullPackage({ metadata, releases, workDir }) {
   return previousDir
 }
 
-function verifyVelopackSignatures({ metadata, velopackDir, workDir }) {
+/**
+ * Authenticode-sign the electron-builder NSIS installer.
+ *
+ * CI builds it on a Windows runner that cannot reach the Certum key, so it used to
+ * ship unsigned: Windows then refused to unblock it, and Defender could stop the
+ * silent install the hand-off falls back to.
+ *
+ * Signing rewrites the file, which invalidates both the `.blockmap` and the
+ * `sha512`/`size` in `latest.yml`. electron-updater checks that digest before it
+ * installs anything, so all three have to move together or every remaining NSIS
+ * install stops updating. `buildBlockMap` regenerates the blockmap and returns the
+ * digest of the file as it exists after signing, which is exactly what the
+ * manifest needs.
+ */
+async function signNsisInstaller({ assetDir }) {
+  const setupName = readdirSync(assetDir).find((name) => name.toLowerCase().endsWith('-setup.exe'))
+
+  if (!setupName) {
+    throw new Error(`No NSIS installer in ${assetDir}. The Windows build job staged nothing.`)
+  }
+
+  const setupPath = path.join(assetDir, setupName)
+  const manifestPath = path.join(assetDir, 'latest.yml')
+
+  // Read it now rather than probe for it: this still refuses before anything is
+  // signed, and there is no window between the check and the read in which the
+  // manifest could change underneath us.
+  let manifest
+  try {
+    manifest = readFileSync(manifestPath, 'utf8')
+  } catch (error) {
+    throw new Error(
+      `No readable latest.yml next to ${setupName}; refusing to sign a manifest-less installer. ${error.message}`
+    )
+  }
+
+  // Sessions last about two hours and the CI build can outlive one.
+  await requireSigningSession()
+
+  console.log(`Signing ${setupName}`)
+  const result = spawnSync(signTemplateScript, [setupPath], {
+    env: { ...process.env, MEMRY_SIGN_PIN: readSigningPin() },
+    stdio: 'inherit'
+  })
+
+  if (result.error) {
+    throw result.error
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`Signing ${setupName} failed with exit code ${result.status}`)
+  }
+
+  // Deep import: electron-builder does not re-export this. It is the same builder
+  // that produced the blockmap on CI, so the regenerated one stays byte-compatible
+  // with what electron-updater expects.
+  let buildBlockMap
+  try {
+    ;({ buildBlockMap } = await import('app-builder-lib/out/targets/blockmap/blockmap.js'))
+  } catch (error) {
+    throw new Error(
+      `Could not load app-builder-lib's blockmap builder, so the signed installer's ` +
+        `blockmap and latest.yml cannot be regenerated. Nothing was uploaded.\n${error.message}`
+    )
+  }
+
+  const { sha512, size } = await buildBlockMap(setupPath, 'gzip', `${setupPath}.blockmap`)
+
+  writeFileSync(manifestPath, rewriteWindowsUpdateManifest(manifest, { sha512, size }))
+
+  console.log(`Rewrote latest.yml and the blockmap for the signed installer (${size} bytes)`)
+}
+
+function verifyWindowsSignatures({ assetDir, metadata, velopackDir, workDir }) {
   const names = buildVelopackAssetNames(metadata.appVersion)
   const caFile = path.join(workDir, 'certum-ca-bundle.pem')
   writeFileSync(caFile, certumCaPaths.map((file) => readFileSync(file, 'utf8')).join(''))
@@ -459,9 +537,14 @@ function verifyVelopackSignatures({ metadata, velopackDir, workDir }) {
     inspectDir
   ])
 
+  const nsisSetup = readdirSync(assetDir).find((name) => name.toLowerCase().endsWith('-setup.exe'))
+
   for (const file of [
     path.join(velopackDir, names.setup),
-    path.join(inspectDir, 'lib/app/Memrynote.exe')
+    path.join(inspectDir, 'lib/app/Memrynote.exe'),
+    // The NSIS installer is signed here too now, so it is verified like the rest
+    // rather than uploaded on trust.
+    path.join(assetDir, nsisSetup)
   ]) {
     const result = capture('osslsigncode', buildOsslsigncodeVerifyArgs({ caFile, filePath: file }))
 
@@ -790,7 +873,7 @@ function printPlan({ draft, dryRun, preview }) {
   console.log(`  Final tag: ${preview.tag}`)
   console.log(`  App version: ${preview.appVersion}`)
   console.log(`  Release name: ${preview.releaseName}`)
-  console.log(`  Windows: NSIS setup.exe plus signed Velopack packages`)
+  console.log(`  Windows: signed NSIS setup.exe plus signed Velopack packages`)
   console.log('')
 }
 
@@ -853,7 +936,15 @@ function repoSlug() {
 }
 
 function readGhJson(args) {
-  return JSON.parse(runGh(args, { encoding: 'utf8' }))
+  const output = runGh(args, { encoding: 'utf8' })
+
+  try {
+    return JSON.parse(output)
+  } catch (error) {
+    throw new Error(
+      `gh ${args.join(' ')} did not return JSON: ${error.message}\n${output.slice(0, 500)}`
+    )
+  }
 }
 
 function runGh(args, options = {}) {
@@ -908,9 +999,13 @@ function errorMessage(error) {
 function printHelp() {
   console.log(`Usage: pnpm release -- [options]
 
-Builds every platform in GitHub Actions, packs and signs the Windows Velopack
-packages on this Mac with the Certum SimplySign key, uploads everything to the
-draft release and publishes it.
+Builds every platform in GitHub Actions, then on this Mac signs the Windows NSIS
+installer and packs and signs the Velopack packages with the Certum SimplySign
+key, uploads everything to the draft release and publishes it.
+
+Signing the NSIS installer rewrites it, so its blockmap and the sha512 in
+latest.yml are regenerated in the same step; electron-updater rejects a download
+that does not match that digest.
 
 Logging in to SimplySign Desktop with the OTP from your phone is the only manual
 step. --yes does not skip it.

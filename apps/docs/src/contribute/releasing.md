@@ -62,14 +62,26 @@ The Velopack set is what new installs and the Velopack updater use:
 
 The NSIS assets stop shipping once telemetry shows that no NSIS installs remain.
 
-::: warning `MemryNote-<version>-setup.exe` is not signed
-The NSIS installer is built on the CI Windows runner, which has no access to the
-Certum key, and is uploaded as-is. Only the Velopack set is Authenticode-signed:
-`pnpm release` signs through Velopack's `--signTemplate`, and
-`verifyVelopackSignatures()` verifies `MemryNote-win-Setup.exe` and the packaged
-`Memrynote.exe`. Windows refuses to unblock the unsigned NSIS installer, so never
-hand it to a user as a manual download — point at `MemryNote-win-Setup.exe`.
-:::
+## Windows signing
+
+Both Windows installer families are Authenticode-signed with the Certum key, which
+lives in a hardware-backed cloud keystore your Mac reaches through SimplySign. CI
+cannot reach it, so CI never signs.
+
+- the Velopack set is signed while it is packed, through `vpk --signTemplate`
+- the NSIS `MemryNote-<version>-setup.exe` is built unsigned on the CI Windows
+  runner and signed afterwards on your Mac, before anything is uploaded
+
+Signing rewrites the installer, so `pnpm release` also regenerates its `.blockmap`
+and rewrites the `sha512` and `size` in `latest.yml`. This is not optional:
+electron-updater refuses any download whose bytes do not match that digest, so a
+signed installer paired with the CI manifest would stop every remaining NSIS
+install from updating. All three move together in one step.
+
+Every signed artifact is then verified with `osslsigncode` against the Certum
+chain before upload — the Velopack `Setup.exe`, the packaged `Memrynote.exe`, and
+the NSIS installer. A verification failure aborts the release with nothing
+uploaded.
 
 ## Diagnosing a failed NSIS to Velopack migration
 
