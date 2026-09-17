@@ -41,8 +41,8 @@ inclusive_language:
 nesting:
   type_level: 2
 
-# The shell logs through OSLog `Logger`, never `print`. The ios-ci grep gate
-# catches it too; this makes it visible in the editor.
+# The shell logs through OSLog `Logger`, never `print`. This rule makes it
+# visible in the editor; there is currently no CI grep backing it up.
 # The test targets relax force_unwrapping / force_try through their own nested
 # .swiftlint.yml: a nil there fails the test, it does not crash a user's app.
 custom_rules:

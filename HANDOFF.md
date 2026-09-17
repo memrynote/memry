@@ -120,7 +120,9 @@ false reds:
 **The standing rule stands and is why this was found**: run a bare
 project-wide `swiftlint lint --strict` from `apps/ios`, run
 `pnpm check:architecture`, and check
-`gh run list --workflow=ios-ci.yml --limit 3` before believing main is green.
+the latest workflow runs on main (iOS CI has since been retired; its
+non-iOS gates live in `editor-crypto-gates.yml`) before believing main is
+green.
 The per-file `swiftlint` every brief prescribes is not the gate CI runs.
 
 ## Gate baseline — re-run and observed by the orchestrator this session

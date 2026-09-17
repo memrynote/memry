@@ -1,0 +1,94 @@
+# Editor & crypto gates.
+#
+# This workflow owns the gates that used to live in the deleted mobile CI
+# workflow (and later in the retired iOS CI workflow), because none of them
+# were ever platform-specific:
+#   - editor asset freshness (the `ipc:check` of the prebuilt WebView bundle)
+#   - crypto vector parity (the desktop proof suite the Rust core is measured against)
+#   - line ceilings and the editor-guest console.* ban
+# If these paths stop triggering this workflow, the gates stop running
+# anywhere — there is no second home for them.
+name: Editor & crypto gates
+
+on:
+  pull_request:
+    paths:
+      - 'packages/editor-web/**'
+      - 'packages/contracts/**'
+      - 'packages/editor-schema/**'
+      - 'crates/**'
+      - 'scripts/check-line-ceilings.mjs'
+      - '.github/workflows/editor-crypto-gates.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/editor-web/**'
+      - 'packages/contracts/**'
+      - 'packages/editor-schema/**'
+      - 'crates/**'
+      - 'scripts/check-line-ceilings.mjs'
+      - '.github/workflows/editor-crypto-gates.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: editor-crypto-gates-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  HUSKY: 0
+  SKIP_ELECTRON_REBUILD: 1
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  inherited-gates:
+    name: Editor and crypto gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck the WebView editor bundle
+        run: pnpm --filter @memry/editor-web typecheck
+
+      # Inherited gate 1. An edit to packages/editor-web or to the bridge
+      # contract that ships without a rebuild leaves the shell talking to
+      # yesterday's editor.
+      - name: Editor asset freshness (bridge contract drift gate)
+        run: pnpm --filter @memry/editor-web editor:check
+
+      # Inherited gate 2. The vectors the Rust core must reproduce byte for byte.
+      - name: Crypto parity vectors (desktop proof suite)
+        run: pnpm --filter @memry/contracts test -- src/__tests__/crypto-vectors.test.ts
+
+      - name: Line ceilings
+        run: node scripts/check-line-ceilings.mjs
+
+      # Constitution II: the editor guest logs through the bridge. A stray
+      # console.* is a build failure, not a review note.
+      - name: No console.* in the editor guest
+        run: |
+          if grep -rnE '(^|[^A-Za-z0-9_.])console\.' packages/editor-web/src; then
+            echo "::error::console.* found in the editor guest. Report through the bridge."
+            exit 1
+          fi

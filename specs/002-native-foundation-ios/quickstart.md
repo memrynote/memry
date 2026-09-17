@@ -57,11 +57,12 @@ desktop suites green.
 ## G2b: CI gates moved before the freeze
 
 ```bash
-gh workflow view ios-ci.yml
+gh workflow view editor-crypto-gates.yml   # formerly ios-ci.yml
 pnpm --filter @memry/editor-web check              # input-freshness gate now lives here
 ```
 
-Expected: `ios-ci.yml` runs the editor-asset freshness check and the vector
+Expected: `editor-crypto-gates.yml` (formerly `ios-ci.yml`) runs the
+editor-asset freshness check and the vector
 parity test; `apps/mobile/editor-web` no longer exists; `packages/editor-web/dist/manifest.json`
 carries both `contractHash` and `sha256`.
 
