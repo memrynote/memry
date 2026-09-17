@@ -45,6 +45,15 @@ if (argv.includes('--log')) {
   process.exit(0)
 }
 
+// The opt-out lives here, not in the postinstall script line: that line runs
+// through pnpm's shell, and a `[ "$SKIP_ELECTRON_REBUILD" = '1' ] ||` guard is
+// POSIX-only — on Windows it never short-circuits, so CI's skip was ignored and
+// the Electron rebuild ran anyway (and failed resolving @electron/rebuild).
+if (process.env.SKIP_ELECTRON_REBUILD === '1') {
+  console.log('[warm-native] SKIP_ELECTRON_REBUILD=1 — skipping the native warm-up')
+  process.exit(0)
+}
+
 if (target !== 'electron' && target !== 'node') {
   console.error(`[warm-native] unknown target "${target}" (expected electron or node)`)
   process.exit(1)

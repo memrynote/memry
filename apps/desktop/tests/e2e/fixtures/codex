@@ -23,9 +23,9 @@ function readMcpUrl() {
 
 async function callCreateTask() {
   const token = process.env.MEMRY_AGENT_TOKEN
-  const conversation = process.env.MEMRY_AGENT_CONVERSATION
+  const turnGrant = process.env.MEMRY_AGENT_TURN
   const windowId = process.env.MEMRY_AGENT_WINDOW
-  if (!token || !conversation || !windowId) {
+  if (!token || !turnGrant || !windowId) {
     throw new Error('missing Codex MCP environment')
   }
 
@@ -33,7 +33,7 @@ async function callCreateTask() {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      'X-Memry-Conversation': conversation,
+      'X-Memry-Turn': turnGrant,
       'X-Memry-Window': windowId,
       accept: 'application/json, text/event-stream',
       'content-type': 'application/json'
