@@ -38,6 +38,20 @@ export const isInputFocused = (): boolean => {
 }
 
 /**
+ * Check if a plain text-entry surface — input, textarea, or select — owns
+ * focus. Unlike `isInputFocused`, this does not include rich-text
+ * (contenteditable) surfaces: shortcuts that do not collide with any editor
+ * command should still fire while the caret is in a note body, and should
+ * only stand down for plain fields where typing the chord's letter is the
+ * expected outcome (e.g. renaming a note).
+ */
+export const isPlainTextInputFocused = (): boolean => {
+  const activeElement = document.activeElement as HTMLElement | null
+  const tagName = activeElement?.tagName.toLowerCase()
+  return tagName === 'input' || tagName === 'textarea' || tagName === 'select'
+}
+
+/**
  * Check if the caret sits in rich text — the note editor, a task description,
  * or any other contenteditable surface where formatting keys apply.
  *

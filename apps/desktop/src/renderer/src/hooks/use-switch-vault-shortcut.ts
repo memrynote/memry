@@ -1,15 +1,17 @@
 import { useCallback, useEffect } from 'react'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { matchesShortcut } from './use-keyboard-shortcuts-base'
-import { isInputFocused } from './use-keyboard-shortcuts'
+import { isPlainTextInputFocused } from './use-keyboard-shortcuts'
 
 /**
  * Switch vault. ⌘⇧O (⌃⇧O off Mac) opens the sidebar's vault switcher from
  * anywhere, so switching no longer means reopening the sidebar by hand.
  *
- * The chord stands down while a text input, textarea, select, or rich-text
- * editor owns focus: those surfaces may map the same keys, and a shortcut that
- * steals a keystroke mid-sentence is worse than no shortcut.
+ * The chord does not collide with any BlockNote/ProseMirror command, so it
+ * must fire even while the caret sits in a note body — that is the whole
+ * point of a global "jump elsewhere" shortcut. It only stands down over a
+ * plain text input, textarea, or select, where typing the letter O is the
+ * expected outcome (e.g. renaming a note).
  */
 export function useSwitchVaultShortcut(onOpen: () => void): void {
   const binding = useShortcutBinding('nav.switchVault')
@@ -17,7 +19,7 @@ export function useSwitchVaultShortcut(onOpen: () => void): void {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!matchesShortcut(e, binding.key, binding.modifiers)) return
-      if (isInputFocused()) return
+      if (isPlainTextInputFocused()) return
 
       e.preventDefault()
       e.stopPropagation()

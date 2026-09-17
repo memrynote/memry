@@ -84,7 +84,7 @@ describe('useSwitchVaultShortcut', () => {
     expect(onOpen).not.toHaveBeenCalled()
   })
 
-  it('stays inert while a rich-text editor owns focus', async () => {
+  it('fires while a rich-text editor owns focus (does not collide with an editor command)', async () => {
     const { hook } = await loadForPlatform('MacIntel')
     const onOpen = vi.fn()
     renderHook(() => hook.useSwitchVaultShortcut(onOpen))
@@ -99,7 +99,7 @@ describe('useSwitchVaultShortcut', () => {
 
     press(editor, { key: 'o', metaKey: true, shiftKey: true })
 
-    expect(onOpen).not.toHaveBeenCalled()
+    expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
   it('uses the registry default when older settings carry no binding for it', async () => {
