@@ -4,9 +4,18 @@ interface SyncApiOptions {
   baseUrl: string
   storage: AuthStorage
   fetchImpl?: typeof fetch
+  // Fired when the session is dropped mid-request so the auth context can flip
+  // isSignedIn and the route guards can bounce to /login. Without it the UI
+  // keeps rendering a signed-in shell over a dead session.
+  onSessionCleared?: () => void
 }
 
-export function createSyncApi({ baseUrl, storage, fetchImpl = fetch }: SyncApiOptions) {
+export function createSyncApi({
+  baseUrl,
+  storage,
+  fetchImpl = fetch,
+  onSessionCleared
+}: SyncApiOptions) {
   // The refresh token is single-use. If several authed calls 401 at once they
   // must share one in-flight /auth/refresh instead of each spending the same
   // token and clobbering the rotated session (which would force a spurious
@@ -34,6 +43,19 @@ export function createSyncApi({ baseUrl, storage, fetchImpl = fetch }: SyncApiOp
     return inFlightRefresh
   }
 
+  function dropSession(): void {
+    storage.clearSession()
+    onSessionCleared?.()
+  }
+
+  async function isDeviceRevoked(res: Response): Promise<boolean> {
+    const body = await res
+      .clone()
+      .text()
+      .catch(() => '')
+    return body.includes('AUTH_DEVICE_REVOKED')
+  }
+
   async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
     const send = () => {
       const token = storage.getSession()?.accessToken
@@ -53,8 +75,14 @@ export function createSyncApi({ baseUrl, storage, fetchImpl = fetch }: SyncApiOp
       } else {
         // Refresh token is gone/expired — drop the local session so the route
         // guard sends the user back to /auth instead of looping on failed calls.
-        storage.clearSession()
+        dropSession()
       }
+    }
+    // A revoked device answers 403, not 401, so refreshing cannot help: the
+    // tokens are valid and every authed call stays dead. Drop the session and
+    // let the user sign in again instead of retrying forever.
+    if (res.status === 403 && (await isDeviceRevoked(res))) {
+      dropSession()
     }
     return res
   }

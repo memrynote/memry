@@ -635,7 +635,16 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
        os_version = excluded.os_version,
        app_version = excluded.app_version,
        vault_id = excluded.vault_id,
-       updated_at = excluded.updated_at
+       updated_at = excluded.updated_at,
+       -- Clients keep their device keypair (browser localStorage, desktop
+       -- keychain), so a re-login after a revoke lands on this conflict path
+       -- and reuses the same row. Leaving revoked_at set handed the client
+       -- valid tokens for a device authMiddleware then 403s forever
+       -- (AUTH_DEVICE_REVOKED) — signed in, but every authed call dead.
+       -- Re-registration already costs a fresh setup token plus a device
+       -- challenge signature, i.e. proven account ownership, so un-revoking
+       -- here grants nothing a new keypair would not.
+       revoked_at = NULL
      RETURNING id`
   )
     .bind(

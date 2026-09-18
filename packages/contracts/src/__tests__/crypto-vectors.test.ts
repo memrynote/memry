@@ -284,9 +284,11 @@ describe('crypto parity vectors', () => {
  * about a subkey id produce master keys that derive different vault keys, and
  * nothing else in the tree compares them.
  */
+// The Expo app that owned the second copy of this map was removed in
+// e03cf8c10; its successor (apps/ios) has no KDF map yet. Add it back here the
+// moment it grows one — parity with the committed vectors is the whole point.
 const KDF_MAP_SOURCES = [
-  { label: 'desktop', path: '../../../../apps/desktop/src/main/crypto/keys.ts' },
-  { label: 'mobile', path: '../../../../apps/mobile/src/crypto/libsodium.ts' }
+  { label: 'desktop', path: '../../../../apps/desktop/src/main/crypto/keys.ts' }
 ] as const
 
 /** `'memry-vault-key-v1': { ctx: 'memryvlt', id: 1 }`, in either source. */

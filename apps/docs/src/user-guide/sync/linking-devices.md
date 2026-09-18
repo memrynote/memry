@@ -101,6 +101,8 @@ From the device list, click **Revoke**. Effects:
 
 Revoke when you no longer use a device. **Revoke immediately** if you suspect compromise — and follow up with a [key rotation](/user-guide/sync/recovery-rotation).
 
+Revoking is not permanent for that machine: signing in again from it registers the same device anew and restores its access. To lock someone out for good, revoke **and** rotate your keys.
+
 ## Lost Device
 
 You **cannot** revoke from a device you don't have. Use any other linked device:
