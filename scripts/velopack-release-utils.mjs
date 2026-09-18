@@ -2,6 +2,7 @@ export const releaseStepOrder = [
   'dispatch',
   'build',
   'download',
+  'sign-nsis',
   'pack',
   'verify',
   'upload',

@@ -85,6 +85,7 @@ describe('release state', () => {
       'dispatch',
       'build',
       'download',
+      'sign-nsis',
       'pack',
       'verify',
       'upload',

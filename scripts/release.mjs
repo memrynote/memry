@@ -138,9 +138,11 @@ async function runCli() {
     return
   }
 
-  await signNsisInstaller({ assetDir })
-  state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'sign-nsis')
-  writeState(workDir, state)
+  if (!isStepDone(state, 'sign-nsis')) {
+    await signNsisInstaller({ assetDir })
+    state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'sign-nsis')
+    writeState(workDir, state)
+  }
 
   const velopackDir = await packVelopack({ assetDir, metadata, releases, state, workDir })
   state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'pack')
