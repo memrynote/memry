@@ -45,6 +45,23 @@ if (argv.includes('--log')) {
   process.exit(0)
 }
 
+// The skip switch has to be honoured here rather than in the postinstall script.
+// pnpm runs lifecycle scripts through cmd.exe on Windows, where a `[ "$X" = '1' ]
+// || ...` guard is not a test at all: `[` is simply an unknown command, so the
+// guard always "fails" and the warm-up always ran -- which is what broke the
+// Windows E2E job's `pnpm install` on a tree without @electron/rebuild linked yet.
+if (process.env.SKIP_ELECTRON_REBUILD === '1') {
+  process.exit(0)
+}
+
+// ensure-native.sh is a bash script and the rebuild it drives is not something a
+// Windows install can do unattended; the Windows jobs run their own explicit
+// rebuild step instead.
+if (process.platform === 'win32') {
+  console.log('[warm-native] skipping the native warm-up on Windows')
+  process.exit(0)
+}
+
 if (target !== 'electron' && target !== 'node') {
   console.error(`[warm-native] unknown target "${target}" (expected electron or node)`)
   process.exit(1)

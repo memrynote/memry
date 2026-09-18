@@ -41,7 +41,14 @@ describe('native warm-up scripts', () => {
     assert.match(desktopPackage.scripts.postinstall, /warm-native\.mjs/)
     assert.match(desktopPackage.scripts.postinstall, /--background/)
     assert.doesNotMatch(desktopPackage.scripts.postinstall, /electron-rebuild/)
-    assert.match(desktopPackage.scripts.postinstall, /SKIP_ELECTRON_REBUILD/)
+    // The skip switch belongs inside warm-native.mjs, not in a shell guard here:
+    // pnpm runs this through cmd.exe on Windows, where `[ "$X" = '1' ] || ...`
+    // never guards anything.
+    assert.doesNotMatch(desktopPackage.scripts.postinstall, /SKIP_ELECTRON_REBUILD/)
+    assert.match(
+      readFileSync(new URL('./warm-native.mjs', import.meta.url), 'utf8'),
+      /process\.env\.SKIP_ELECTRON_REBUILD === '1'/
+    )
   })
 
   it('exposes manual warm-up entry points at the root', () => {

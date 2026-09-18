@@ -46,7 +46,7 @@ function readMcpConfig() {
   return {
     url: getLoopbackUrl(server.url),
     agentAuth: getMemryAgentToken(server.headers),
-    conversationId: server.headers?.['X-Memry-Conversation'],
+    writeGrant: server.headers?.['X-Memry-Turn'],
     windowId: server.headers?.['X-Memry-Window']
   }
 }
@@ -57,7 +57,7 @@ async function callCreateTask() {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${server.agentAuth}`,
-      'X-Memry-Conversation': server.conversationId,
+      'X-Memry-Turn': server.writeGrant,
       'X-Memry-Window': server.windowId,
       accept: 'application/json, text/event-stream',
       'content-type': 'application/json'
