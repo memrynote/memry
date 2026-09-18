@@ -3,9 +3,19 @@
     "modelScope": {
       "enforce": true,
       "strict": true,
-      "allow": [
-        "anthropic/*"
-      ]
+      "allow": ["anthropic/*"]
     }
+  },
+  "observational-memory": {
+    "model": {
+      "provider": "anthropic",
+      "id": "claude-sonnet-5",
+      "thinking": "low"
+    },
+    "compactAfterTokensMode": "ratio",
+    "compactAfterTokensRatio": 0.68,
+    "showWorkerNotifications": true,
+    "passive": false,
+    "debugLog": false
   }
 }
