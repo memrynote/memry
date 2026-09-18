@@ -81,6 +81,8 @@ Hover the row for a moment, or click it, and a small panel opens with the versio
 - **On next quit** — close the panel and carry on. The update installs the next time you quit on your own. memrynote does not ask again, and there is no toast or reminder.
 - **All changes** — opens the full release notes on GitHub in your browser.
 
+After the restart, the new version's release notes open as one extra read-only tab in the background. Nothing you had open is replaced or taken over — close the tab and you are exactly where you left off. It is never saved to your vault or synced, so it does not come back after the next restart.
+
 A **⋯** menu in the same panel holds the rarer choices: skip this version, turn off automatic updates, or copy your version details for a bug report.
 
 If an install fails, the row turns red and a dialog explains what happened. Your vault is never involved — an update replaces the app, not your notes — so a failed install leaves you on your current version with everything intact. The dialog shows the installer's own error and offers a manual download.
