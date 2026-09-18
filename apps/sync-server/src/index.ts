@@ -174,6 +174,9 @@ app.use('*', async (c, next) => {
   return middleware(c, next)
 })
 
+/** Keys already reported by the development-only missing-secret warning below. */
+const warnedMissingSecrets = new Set<string>()
+
 app.use('*', async (c, next) => {
   const env = c.env.ENVIRONMENT
   if (!env) {
@@ -202,7 +205,14 @@ app.use('*', async (c, next) => {
     }
 
     if (missing && env === 'development') {
-      logger.warn('Missing secret binding', { key })
+      // Once per key per isolate, not once per request. This middleware runs on
+      // every request, so a dev/CI deployment that intentionally leaves optional
+      // secrets unbound (the E2E sync harness binds none of them) used to bury
+      // the test log under thousands of identical lines.
+      if (!warnedMissingSecrets.has(key)) {
+        warnedMissingSecrets.add(key)
+        logger.warn('Missing secret binding', { key })
+      }
     }
   }
 

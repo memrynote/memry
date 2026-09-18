@@ -16,6 +16,23 @@ import { hashTelemetryId } from './telemetry'
 
 const logger = createLogger('Analytics')
 
+/**
+ * Analytics failures are per-request, so a deployment-wide cause (no
+ * TELEMETRY_HMAC_KEY, no PostHog key — the normal state of dev and of the E2E
+ * sync harness) repeats the same line on every single event and buries the CI
+ * log. The cause is worth exactly one line per isolate; the repeats carry no
+ * new information.
+ */
+const warnedAnalyticsFailures = new Set<string>()
+
+const warnAnalyticsFailureOnce = (message: string, error: unknown): void => {
+  const detail = error instanceof Error ? error.message : String(error)
+  const seenKey = `${message}:${detail}`
+  if (warnedAnalyticsFailures.has(seenKey)) return
+  warnedAnalyticsFailures.add(seenKey)
+  logger.warn(message, { error: detail })
+}
+
 const SERVER_SURFACE = 'server'
 
 const STATIC_ROUTE_SEGMENTS = new Set([
@@ -205,9 +222,7 @@ export const captureBusinessEvent = async (
     }
     await capturePostHogEvents(env, [posthogEvent])
   } catch (error) {
-    logger.warn('Business event capture failed', {
-      error: error instanceof Error ? error.message : String(error)
-    })
+    warnAnalyticsFailureOnce('Business event capture failed', error)
   }
 }
 
@@ -275,9 +290,7 @@ export const captureServerError = async (
     try {
       return await hashTelemetryId(env.TELEMETRY_HMAC_KEY, raw)
     } catch (error) {
-      logger.warn('Server error id hash failed', {
-        error: error instanceof Error ? error.message : String(error)
-      })
+      warnAnalyticsFailureOnce('Server error id hash failed', error)
       return undefined
     }
   }
