@@ -14,11 +14,12 @@ function runCli() {
   }
 
   const release = options.releaseFile
-    ? JSON.parse(readFileSync(options.releaseFile, 'utf8'))
+    ? parseJson(readFileSync(options.releaseFile, 'utf8'), options.releaseFile)
     : readGitHubRelease(options.tag)
   const post = buildRedditReleasePost({
     appVersion: options.appVersion,
     date: new Date(),
+    intro: options.intro,
     release: {
       ...release,
       tagName: options.tag ?? release.tagName
@@ -42,14 +43,23 @@ function readGitHubRelease(tag) {
     args.push(tag)
   }
 
-  args.push('--json', 'tagName,body,url')
-  return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }))
+  args.push('--json', 'tagName,body,url,assets')
+  return parseJson(execFileSync('gh', args, { encoding: 'utf8' }), 'gh release view')
+}
+
+function parseJson(raw, source) {
+  try {
+    return JSON.parse(raw)
+  } catch (error) {
+    throw new Error(`Could not parse release JSON from ${source}: ${error.message}`)
+  }
 }
 
 function parseArgs(argv) {
   const options = {
     appVersion: undefined,
     help: false,
+    intro: undefined,
     output: undefined,
     releaseFile: undefined,
     subreddit: 'MemryNote',
@@ -82,6 +92,17 @@ function parseArgs(argv) {
 
     if (arg.startsWith('--app-version=')) {
       options.appVersion = arg.slice('--app-version='.length)
+      continue
+    }
+
+    if (arg === '--intro') {
+      options.intro = readRequiredValue(argv, index, arg)
+      index += 1
+      continue
+    }
+
+    if (arg.startsWith('--intro=')) {
+      options.intro = arg.slice('--intro='.length)
       continue
     }
 
@@ -150,6 +171,7 @@ Options:
   --tag <tag>            Release tag to read with gh release view.
   --release-file <path>  Local release JSON with tagName, body, and url.
   --app-version <value>  App version shown in the Reddit title.
+  --intro <text>         Custom opening line. Defaults to a generated summary.
   --subreddit <name>     Target subreddit. Defaults to MemryNote.
   --output <path>        Also write the copy/paste output to a file.
   --help, -h             Show this help.

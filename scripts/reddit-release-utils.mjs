@@ -1,9 +1,24 @@
 const defaultSubreddit = 'MemryNote'
 const defaultTimeZone = 'Europe/Istanbul'
 
+// Same preference order as apps/landing/api/download.ts: the signed Velopack
+// installer wins over the unsigned electron-builder one.
+const downloadTargets = [
+  { label: 'macOS', matches: [(name) => name.endsWith('-arm64.dmg')] },
+  {
+    label: 'Windows',
+    matches: [
+      (name) => name === 'MemryNote-win-Setup.exe',
+      (name) => name.toLowerCase().endsWith('-setup.exe')
+    ]
+  },
+  { label: 'Linux', matches: [(name) => name.endsWith('.AppImage')] }
+]
+
 export function buildRedditReleasePost({
   appVersion,
   date = new Date(),
+  intro,
   release,
   subreddit = defaultSubreddit,
   timeZone = defaultTimeZone
@@ -16,16 +31,22 @@ export function buildRedditReleasePost({
 
   const resolvedAppVersion = appVersion || resolveReleaseAppVersion(tag)
   const titleVersion = resolvedAppVersion ? `${resolvedAppVersion} (${tag})` : tag
-  const title = `Memry Update - ${titleVersion}`
+  const title = `MemryNote Desktop Update - ${titleVersion}`
   const releaseUrl = release?.url || `https://github.com/memrynote/memry/releases/tag/${tag}`
-  const markdown = extractRedditReleaseMarkdown(release?.body ?? '')
+  const sections = extractRedditReleaseSections(release?.body ?? '')
+  // Reddit's editor drops list items nested inside a blockquote, so the body is a
+  // heading + paragraph + top-level list instead.
+  const bullets = sections.flatMap((section) => section.lines).map((line) => `* ${line}`)
   const text = [
-    '🗞️ Release Notes',
-    `📆 ${formatReleaseDate(date, timeZone)}`,
+    `## 📆 ${formatReleaseDate(date, timeZone)}`,
     '',
-    markdown,
+    intro || buildIntroLine(resolvedAppVersion || tag, sections),
     '',
-    `Release notes and downloads: ${releaseUrl}`
+    ...bullets,
+    '',
+    '---',
+    '',
+    buildLinkLine(releaseUrl, release?.assets ?? [])
   ].join('\n')
 
   if (title.length > 300) {
@@ -62,7 +83,71 @@ export function resolveReleaseAppVersion(tag) {
   return `${year}.${Number(month)}${day}.${releaseIndex}`
 }
 
-export function extractRedditReleaseMarkdown(body = '') {
+export function buildIntroLine(version, sections) {
+  const counts = sections.map((section) => {
+    const count = section.lines.length
+    const noun = sectionNoun(section.heading, count)
+    return `${count} ${noun}`
+  })
+
+  return `MemryNote **${version}** ships ${joinList(counts)}.`
+}
+
+export function buildLinkLine(releaseUrl, assets = []) {
+  const links = [`[Release Notes](${releaseUrl})`]
+
+  for (const target of downloadTargets) {
+    const asset = findAsset(assets, target.matches)
+    if (asset) {
+      links.push(`[${target.label}](${asset.url}) (${formatAssetSize(asset.size)})`)
+    }
+  }
+
+  return links.join(' – ')
+}
+
+function findAsset(assets, matchers) {
+  for (const match of matchers) {
+    const asset = assets.find((candidate) => candidate?.name && match(candidate.name))
+    if (asset?.url) {
+      return asset
+    }
+  }
+
+  return null
+}
+
+function formatAssetSize(size) {
+  return `${(Number(size || 0) / 1024 / 1024).toFixed(2)} MiB`
+}
+
+function sectionNoun(heading, count) {
+  const normalized = heading.toLowerCase()
+
+  if (normalized.includes('feature')) {
+    return count === 1 ? 'new feature' : 'new features'
+  }
+
+  if (normalized.includes('fix')) {
+    return count === 1 ? 'fix' : 'fixes'
+  }
+
+  if (normalized.includes('improvement')) {
+    return count === 1 ? 'improvement' : 'improvements'
+  }
+
+  return count === 1 ? normalized.replace(/s$/, '') : normalized
+}
+
+function joinList(items) {
+  if (items.length <= 1) {
+    return items.join('')
+  }
+
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
+}
+
+export function extractRedditReleaseSections(body = '') {
   const bodyWithoutMarker = body
     .replace(/<!--\s*memry-humanized-release-notes\s+tag=[^\s>]+\s*-->/, '')
     .trim()
@@ -74,7 +159,7 @@ export function extractRedditReleaseMarkdown(body = '') {
   const populatedSections = sections
     .map((section) => ({
       heading: section.heading,
-      lines: section.lines.map(sanitizeReleaseLine).filter(Boolean)
+      lines: section.lines.map(formatReleaseBullet).filter(Boolean)
     }))
     .filter((section) => section.lines.length > 0)
 
@@ -82,9 +167,43 @@ export function extractRedditReleaseMarkdown(body = '') {
     throw new Error('Release body has no humanized release notes for Reddit')
   }
 
-  return populatedSections
-    .map((section) => [`## ${section.heading}`, '', ...section.lines].join('\n'))
-    .join('\n\n')
+  return populatedSections.sort((a, b) => sectionRank(a.heading) - sectionRank(b.heading))
+}
+
+// Features first, then improvements, then fixes; anything else keeps to the end.
+function sectionRank(heading) {
+  const normalized = heading.toLowerCase()
+
+  if (normalized.includes('feature')) return 0
+  if (normalized.includes('improvement')) return 1
+  if (normalized.includes('fix')) return 2
+  return 3
+}
+
+// `- 📂 Title — description` becomes `📂 **Title**. Description.`
+function formatReleaseBullet(line) {
+  const text = sanitizeReleaseLine(line).replace(/^[-*]\s+/, '')
+
+  if (!text) {
+    return null
+  }
+
+  const [, emoji = '', rest] = /^((?:\p{Extended_Pictographic}\uFE0F?)+\s+)?([\s\S]*)$/u.exec(text)
+  const split = /^(.*?)\s+[—–]\s+([\s\S]+)$/.exec(rest)
+
+  if (!split) {
+    return `${emoji}${endWithPeriod(rest)}`
+  }
+
+  return `${emoji}**${split[1]}**. ${endWithPeriod(capitalize(split[2]))}`
+}
+
+function capitalize(value) {
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function endWithPeriod(value) {
+  return /[.!?]$/.test(value) ? value : `${value}.`
 }
 
 function parseSections(markdown) {
@@ -121,14 +240,19 @@ function sanitizeReleaseLine(line) {
 }
 
 function formatReleaseDate(date, timeZone) {
-  return new Intl.DateTimeFormat('en-US', {
+  const day = new Intl.DateTimeFormat('en-US', {
     day: 'numeric',
-    hour: '2-digit',
-    hour12: true,
-    minute: '2-digit',
-    month: 'long',
-    second: '2-digit',
+    month: 'short',
     timeZone,
     year: 'numeric'
   }).format(date)
+  const time = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    hour12: true,
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone
+  }).format(date)
+
+  return `${day} at ${time}`
 }
