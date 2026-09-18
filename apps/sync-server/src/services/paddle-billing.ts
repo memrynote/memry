@@ -1,4 +1,5 @@
 import { AppError, ErrorCodes } from '../lib/errors'
+import { createLogger } from '../lib/logger'
 import {
   getSyncEntitlement,
   upsertSyncEntitlement,
@@ -14,6 +15,8 @@ import {
 } from './paddle-prices'
 import { getUserById } from './user'
 import type { Bindings } from '../types'
+
+const logger = createLogger('PaddleBilling')
 
 export interface BillingStatusResponse {
   plan: SyncEntitlement['plan']
@@ -324,8 +327,9 @@ export async function previewPlanChange(
   const change = await buildPlanChange(env, userId, plan, cadence)
   const preview = await paddleFetch<PaddleSubscriptionPreview>(
     env,
+    // Paddle's preview mirrors the update operation, so it is PATCH, not POST. POST answers 405.
     `/subscriptions/${encodeURIComponent(change.subscriptionId)}/preview`,
-    { method: 'POST', body: change.body },
+    { method: 'PATCH', body: change.body },
     'Could not preview the plan change'
   )
 
@@ -415,6 +419,15 @@ async function paddleFetch<T>(
     throw new AppError(ErrorCodes.NOT_FOUND, 'Subscription not found', 404)
   }
   if (!response.ok) {
+    // The client only ever sees `failureMessage`, so a wrong API key and a rejected plan change
+    // are indistinguishable without this. Paddle's error body carries neither key nor PII.
+    const errorBody = await response.text()
+    logger.error('Paddle API call failed', {
+      path,
+      method: init.method,
+      status: response.status,
+      body: errorBody.slice(0, 500)
+    })
     throw new AppError(ErrorCodes.INTERNAL_ERROR, failureMessage, 502)
   }
 
