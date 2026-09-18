@@ -133,6 +133,85 @@ function isBillingStatus(value: unknown): value is BillingStatus {
   )
 }
 
+/**
+ * Offers a monthly subscriber the yearly switch. First click prices it through Paddle's preview,
+ * second confirms. Switching cadence must go through change-plan, not a fresh checkout: a second
+ * checkout would create a parallel subscription in Paddle and bill the card twice.
+ */
+function AnnualSwitchRow({
+  plan,
+  onSwitched
+}: {
+  plan: 'plus' | 'pro'
+  onSwitched: (billing: BillingStatus) => void
+}) {
+  const { t } = useT('settings')
+  const [preview, setPreview] = useState<PlanChangePreview | null>(null)
+  const [isPricing, setIsPricing] = useState(false)
+  const [isSwitching, setIsSwitching] = useState(false)
+  const failed = t('account.billing.annualSwitch.failed')
+
+  const run = async () => {
+    if (!preview) {
+      setIsPricing(true)
+      try {
+        const result = await window.api.account.previewPlanChange({ plan, cadence: 'annual' })
+        if (!isPlanChangePreview(result)) throw new Error(result.error ?? failed)
+        setPreview(result)
+      } catch (error: unknown) {
+        toast.error(extractErrorMessage(error, failed))
+      } finally {
+        setIsPricing(false)
+      }
+      return
+    }
+
+    setIsSwitching(true)
+    try {
+      const result = await window.api.account.changePlan({ plan, cadence: 'annual' })
+      if (!isBillingStatus(result)) throw new Error(result.error ?? failed)
+      onSwitched(result)
+      setPreview(null)
+      toast.success(t('account.billing.annualSwitch.success'))
+    } catch (error: unknown) {
+      toast.error(extractErrorMessage(error, failed))
+    } finally {
+      setIsSwitching(false)
+    }
+  }
+
+  const label = isSwitching ? 'switching' : isPricing ? 'pricing' : preview ? 'confirm' : 'action'
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-surface-active px-3 py-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-medium text-[13px]/4 text-foreground">
+            {t('account.billing.annualSwitch.title')}
+          </div>
+          <div className="mt-0.5 text-xs/4 text-muted-foreground">
+            {preview
+              ? t('account.billing.annualSwitch.preview', {
+                  amount: formatMinorUnits(preview.immediateChargeAmount ?? '0'),
+                  recurring: formatMinorUnits(preview.recurringAmount)
+                })
+              : t('account.billing.annualSwitch.description')}
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          disabled={isPricing || isSwitching}
+          onClick={() => void run()}
+        >
+          {t(`account.billing.annualSwitch.${label}`)}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 const STORAGE_COLORS: Record<string, string> = {
   notes: '#6366f1',
   attachments: '#f97316',
@@ -154,9 +233,6 @@ export function AccountSettings() {
   const [signingOut, setSigningOut] = useState(false)
   const [showLinkingQr, setShowLinkingQr] = useState(false)
   const [isBillingRefreshing, setIsBillingRefreshing] = useState(false)
-  const [planPreview, setPlanPreview] = useState<PlanChangePreview | null>(null)
-  const [isPlanPreviewLoading, setIsPlanPreviewLoading] = useState(false)
-  const [isPlanSwitching, setIsPlanSwitching] = useState(false)
   const [isCheckoutStarting, setIsCheckoutStarting] = useState(false)
   const [isPortalOpening, setIsPortalOpening] = useState(false)
   const [attachmentAutoDownload, setAttachmentAutoDownload] = useState(true)
@@ -276,48 +352,6 @@ export function AccountSettings() {
       setIsBillingRefreshing(false)
     }
   }, [loadStorage, t, triggerSync])
-
-  // Switching cadence must go through change-plan, not a fresh checkout: a second checkout would
-  // create a parallel subscription in Paddle and bill the card twice.
-  const handlePreviewAnnual = useCallback(async () => {
-    if (!billing || (billing.plan !== 'plus' && billing.plan !== 'pro')) return
-    setIsPlanPreviewLoading(true)
-    try {
-      const result = await window.api.account.previewPlanChange({
-        plan: billing.plan,
-        cadence: 'annual'
-      })
-      if (!isPlanChangePreview(result)) {
-        throw new Error(result.error ?? t('account.billing.annualSwitch.failed'))
-      }
-      setPlanPreview(result)
-    } catch (error: unknown) {
-      toast.error(extractErrorMessage(error, t('account.billing.annualSwitch.failed')))
-    } finally {
-      setIsPlanPreviewLoading(false)
-    }
-  }, [billing, t])
-
-  const handleConfirmAnnual = useCallback(async () => {
-    if (!billing || (billing.plan !== 'plus' && billing.plan !== 'pro')) return
-    setIsPlanSwitching(true)
-    try {
-      const result = await window.api.account.changePlan({
-        plan: billing.plan,
-        cadence: 'annual'
-      })
-      if (!isBillingStatus(result)) {
-        throw new Error(result.error ?? t('account.billing.annualSwitch.failed'))
-      }
-      setBilling(result)
-      setPlanPreview(null)
-      toast.success(t('account.billing.annualSwitch.success'))
-    } catch (error: unknown) {
-      toast.error(extractErrorMessage(error, t('account.billing.annualSwitch.failed')))
-    } finally {
-      setIsPlanSwitching(false)
-    }
-  }, [billing, t])
 
   const handleOpenBillingPortal = useCallback(async () => {
     setIsPortalOpening(true)
@@ -504,40 +538,7 @@ export function AccountSettings() {
           {billing?.status === 'active' &&
             billing.cadence === 'monthly' &&
             (billing.plan === 'plus' || billing.plan === 'pro') && (
-              <div className="space-y-2 rounded-lg border border-border bg-surface-active px-3 py-2.5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-medium text-[13px]/4 text-foreground">
-                      {t('account.billing.annualSwitch.title')}
-                    </div>
-                    <div className="mt-0.5 text-xs/4 text-muted-foreground">
-                      {planPreview
-                        ? t('account.billing.annualSwitch.preview', {
-                            amount: formatMinorUnits(planPreview.immediateChargeAmount ?? '0'),
-                            recurring: formatMinorUnits(planPreview.recurringAmount)
-                          })
-                        : t('account.billing.annualSwitch.description')}
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0"
-                    disabled={isPlanPreviewLoading || isPlanSwitching}
-                    onClick={() =>
-                      void (planPreview ? handleConfirmAnnual() : handlePreviewAnnual())
-                    }
-                  >
-                    {isPlanSwitching
-                      ? t('account.billing.annualSwitch.switching')
-                      : isPlanPreviewLoading
-                        ? t('account.billing.annualSwitch.pricing')
-                        : planPreview
-                          ? t('account.billing.annualSwitch.confirm')
-                          : t('account.billing.annualSwitch.action')}
-                  </Button>
-                </div>
-              </div>
+              <AnnualSwitchRow plan={billing.plan} onSwitched={setBilling} />
             )}
 
           {storage && (

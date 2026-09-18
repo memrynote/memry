@@ -166,66 +166,19 @@ export function CheckoutPanel({
         <div role="radiogroup" aria-label="Plan" className="space-y-1 p-2">
           {PURCHASABLE_TIERS.map((tier) => {
             const id = tier.checkoutPlanId!
-            const selected = plan === id
-            const rowSummary = getCheckoutSummary(id, normalizeCadenceForPlan(id, cadence))
-            // Believer is a one-time purchase, so an existing subscription cannot be switched
-            // onto it through the proration flow.
-            const rowDisabled = isChangeMode && id === 'believer'
-            const isCurrentPlan = isChangeMode && current?.plan === id
             return (
-              <button
+              <PlanRow
                 key={tier.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                disabled={rowDisabled}
-                onClick={() => selectPlan(id)}
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-start transition-colors duration-200',
-                  selected ? 'bg-[var(--color-paper-alt)]' : 'hover:bg-[var(--color-paper-alt)]/60',
-                  rowDisabled && 'cursor-not-allowed opacity-45 hover:bg-transparent'
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors',
-                    selected
-                      ? 'border-terracotta bg-terracotta text-white'
-                      : 'border-border text-transparent'
-                  )}
-                >
-                  <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
-                </span>
-
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-ink">{tier.name}</span>
-                    {isCurrentPlan ? (
-                      <span className="rounded-full bg-sage/15 px-1.5 py-0.5 text-[10px] font-medium text-sage">
-                        Current plan
-                      </span>
-                    ) : (
-                      tier.ribbon && (
-                        <span className="rounded-full bg-terracotta/10 px-1.5 py-0.5 text-[10px] font-medium text-terracotta">
-                          {tier.ribbon}
-                        </span>
-                      )
-                    )}
-                  </span>
-                  <span className="mt-0.5 block truncate text-xs text-muted">{tier.tagline}</span>
-                </span>
-
-                {rowSummary && (
-                  <span className="text-end leading-tight">
-                    <span className="font-mono-accent text-sm font-medium tabular-nums text-ink">
-                      {formatPrice(rowSummary.amount)}
-                    </span>
-                    <span className="ms-0.5 text-[11px] text-muted">
-                      {cadenceSuffix(rowSummary.billingFrequencyLabel)}
-                    </span>
-                  </span>
-                )}
-              </button>
+                tier={tier}
+                planId={id}
+                selected={plan === id}
+                summary={getCheckoutSummary(id, normalizeCadenceForPlan(id, cadence))}
+                // Believer is a one-time purchase, so an existing subscription cannot be
+                // switched onto it through the proration flow.
+                disabled={isChangeMode && id === 'believer'}
+                isCurrentPlan={isChangeMode && current?.plan === id}
+                onSelect={selectPlan}
+              />
             )
           })}
         </div>
@@ -294,6 +247,77 @@ export function CheckoutPanel({
         .
       </p>
     </div>
+  )
+}
+
+function PlanRow({
+  tier,
+  planId,
+  selected,
+  summary,
+  disabled,
+  isCurrentPlan,
+  onSelect
+}: {
+  tier: (typeof PURCHASABLE_TIERS)[number]
+  planId: CheckoutPlanId
+  selected: boolean
+  summary: ReturnType<typeof getCheckoutSummary>
+  disabled: boolean
+  isCurrentPlan: boolean
+  onSelect: (plan: CheckoutPlanId) => void
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      disabled={disabled}
+      onClick={() => onSelect(planId)}
+      className={cn(
+        'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-start transition-colors duration-200',
+        selected ? 'bg-[var(--color-paper-alt)]' : 'hover:bg-[var(--color-paper-alt)]/60',
+        disabled && 'cursor-not-allowed opacity-45 hover:bg-transparent'
+      )}
+    >
+      <span
+        className={cn(
+          'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors',
+          selected ? 'border-terracotta bg-terracotta text-white' : 'border-border text-transparent'
+        )}
+      >
+        <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">
+          <span className="text-sm font-medium text-ink">{tier.name}</span>
+          {isCurrentPlan ? (
+            <span className="rounded-full bg-sage/15 px-1.5 py-0.5 text-[10px] font-medium text-sage">
+              Current plan
+            </span>
+          ) : (
+            tier.ribbon && (
+              <span className="rounded-full bg-terracotta/10 px-1.5 py-0.5 text-[10px] font-medium text-terracotta">
+                {tier.ribbon}
+              </span>
+            )
+          )}
+        </span>
+        <span className="mt-0.5 block truncate text-xs text-muted">{tier.tagline}</span>
+      </span>
+
+      {summary && (
+        <span className="text-end leading-tight">
+          <span className="font-mono-accent text-sm font-medium tabular-nums text-ink">
+            {formatPrice(summary.amount)}
+          </span>
+          <span className="ms-0.5 text-[11px] text-muted">
+            {cadenceSuffix(summary.billingFrequencyLabel)}
+          </span>
+        </span>
+      )}
+    </button>
   )
 }
 
@@ -429,6 +453,29 @@ function ChangeSummary({
   )
 }
 
+/** The one-line explanation under "Total due today" for a pending plan switch. */
+function quoteDetail(preview: PlanChangePreview, cadence: PlanChangeTarget['cadence']) {
+  const recurring = formatMinorUnits(preview.recurringAmount, preview.currencyCode)
+  const nextBilledAt = formatDate(preview.nextBilledAt)
+  if (preview.effective === 'immediate') {
+    const per = cadence === 'annual' ? 'year' : 'month'
+    return `Prorated · then ${recurring} per ${per}${nextBilledAt ? ` · next on ${nextBilledAt}` : ''}`
+  }
+  const when = nextBilledAt ? `on ${nextBilledAt}` : 'at your next renewal'
+  return `Takes effect ${when} · then ${recurring}`
+}
+
+function quoteButtonLabel(
+  status: ChangeStatus,
+  preview: PlanChangePreview | null,
+  { plan, cadence }: PlanChangeTarget
+) {
+  if (status === 'applying') return 'Switching\u2026'
+  if (status === 'done') return 'Done'
+  if (preview?.isUpgrade === false) return 'Schedule change'
+  return `Switch to ${plan === 'plus' ? 'Plus' : 'Pro'} ${cadence === 'annual' ? 'yearly' : 'monthly'}`
+}
+
 function ChangeQuote({
   plan,
   cadence,
@@ -476,11 +523,9 @@ function ChangeQuote({
     }
   }
 
-  const nextBilledAt = formatDate(preview?.nextBilledAt ?? null)
-  const dueToday =
-    preview && preview.immediateChargeAmount
-      ? formatMinorUnits(preview.immediateChargeAmount, preview.currencyCode)
-      : '$0.00'
+  const dueToday = preview?.immediateChargeAmount
+    ? formatMinorUnits(preview.immediateChargeAmount, preview.currencyCode)
+    : '$0.00'
 
   return (
     <div className="border-t border-border px-5 py-5">
@@ -490,16 +535,7 @@ function ChangeQuote({
             Total due today
           </p>
           <p className="mt-1 text-xs text-muted">
-            {loading || !preview ? (
-              'Calculating\u2026'
-            ) : preview.effective === 'immediate' ? (
-              <>
-                {`Prorated · then ${formatMinorUnits(preview.recurringAmount, preview.currencyCode)} per ${cadence === 'annual' ? 'year' : 'month'}`}
-                {nextBilledAt && ` · next on ${nextBilledAt}`}
-              </>
-            ) : (
-              `Takes effect ${nextBilledAt ? `on ${nextBilledAt}` : 'at your next renewal'} · then ${formatMinorUnits(preview.recurringAmount, preview.currencyCode)}`
-            )}
+            {preview ? quoteDetail(preview, cadence) : 'Calculating\u2026'}
           </p>
         </div>
         <p className="shrink-0 text-end">
@@ -529,13 +565,7 @@ function ChangeQuote({
         disabled={loading || !preview || status !== 'idle'}
         onClick={apply}
       >
-        {status === 'applying'
-          ? 'Switching\u2026'
-          : status === 'done'
-            ? 'Done'
-            : preview?.isUpgrade === false
-              ? 'Schedule change'
-              : `Switch to ${plan === 'plus' ? 'Plus' : 'Pro'} ${cadence === 'annual' ? 'yearly' : 'monthly'}`}
+        {quoteButtonLabel(status, preview, { plan, cadence })}
       </Button>
     </div>
   )
