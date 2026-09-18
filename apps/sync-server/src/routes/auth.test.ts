@@ -1270,6 +1270,25 @@ describe('auth routes', () => {
       )
       expect(statements[deviceInsertIndex].bind.mock.calls[0][4]).toBeNull()
     })
+
+    it('should clear revoked_at when an existing device key re-registers', async () => {
+      const prepareMock = env.DB.prepare as unknown as ReturnType<typeof vi.fn>
+
+      const res = await app.request(
+        '/auth/devices',
+        jsonPost('/auth/devices', validDeviceBody),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      const insertSql = prepareMock.mock.calls
+        .map(([sql]) => String(sql))
+        .find((sql) => sql.includes('INSERT INTO devices'))
+      // Clients reuse their device keypair, so a re-login after a revoke hits
+      // the conflict path. Without this the row stays revoked and every authed
+      // call 403s with freshly issued, permanently useless tokens.
+      expect(insertSql).toMatch(/revoked_at = NULL/)
+    })
   })
 
   describe('GET /auth/recovery-info', () => {

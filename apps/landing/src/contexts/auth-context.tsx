@@ -17,9 +17,17 @@ const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const storage = useMemo(() => browserAuthStorage(), [])
-  const api = useMemo(() => createSyncApi({ baseUrl: SYNC_SERVER_URL, storage }), [storage])
   const [ready, setReady] = useState(false)
   const [isSignedIn, setIsSignedIn] = useState(false)
+  const api = useMemo(
+    () =>
+      createSyncApi({
+        baseUrl: SYNC_SERVER_URL,
+        storage,
+        onSessionCleared: () => setIsSignedIn(false)
+      }),
+    [storage]
+  )
 
   useEffect(() => {
     // Client-only: localStorage is unavailable during SSR. Defer the read to a
