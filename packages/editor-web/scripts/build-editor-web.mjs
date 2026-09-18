@@ -41,17 +41,8 @@ const contractFile = join(repoRoot, 'packages/contracts/src/webview-bridge.ts')
 // not a rendering gap.
 const schemaDir = join(repoRoot, 'packages/editor-schema/src')
 // The canonical artifact lives with its sources, in this package. Nothing
-// outside it owns the bundle any more, so `apps/mobile` can be deleted without
-// taking the editor with it.
+// outside it owns the bundle.
 const outFile = join(editorWebRoot, 'generated/editor-web-asset.ts')
-// The frozen RN shell (apps/mobile) imports this module by relative path and
-// Metro resolves no `exports` map into a workspace package, so it keeps a
-// mirror copy. It is written from the same bytes, never edited by hand, and
-// the freshness gate reads the canonical file above. Delete these two lines
-// with apps/mobile.
-const mirrorFiles = [join(repoRoot, 'apps/mobile/src/editor/generated/editor-web-asset.ts')].filter(
-  (file) => existsSync(dirname(file))
-)
 
 const checkOnly = process.argv.includes('--check')
 
@@ -171,11 +162,11 @@ export const EDITOR_WEB_HTML_GZ_B64 =
   ${JSON.stringify(packed)}
 `
 
-for (const file of [outFile, ...mirrorFiles]) {
+for (const file of [outFile]) {
   mkdirSync(dirname(file), { recursive: true })
   writeFileSync(file, moduleSource, 'utf8')
 }
 
 console.log(
-  `editor-web asset written (${expected}, ${(inlined.length / 1024).toFixed(0)} KB → ${(packed.length / 1024).toFixed(0)} KB packed) → ${[outFile, ...mirrorFiles].map((file) => relative(repoRoot, file)).join(', ')}`
+  `editor-web asset written (${expected}, ${(inlined.length / 1024).toFixed(0)} KB → ${(packed.length / 1024).toFixed(0)} KB packed) → ${relative(repoRoot, outFile)}`
 )

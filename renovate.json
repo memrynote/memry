@@ -5,8 +5,6 @@
   "timezone": "UTC",
   "labels": ["dependencies"],
   "rangeStrategy": "bump",
-  "_comment_ignorePaths": "apps/mobile is the frozen React Native shell (docs/ideas/2026-09-12-native-ios-rust-core-plan.md). Mobile is being rewritten native under apps/ios; the RN tree is kept as a reference implementation, so bumping Expo/React Native there is churn on code that will not ship. Drop this entry with apps/mobile.",
-  "ignorePaths": ["apps/mobile/**"],
   "postUpdateOptions": ["pnpmDedupe"],
   "packageRules": [
     {

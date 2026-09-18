@@ -33,23 +33,18 @@ has_changes() {
   printf '%s\n' "$changed_files" | grep -E "$1" >/dev/null
 }
 
-# The generated mobile editor asset carries a freshness hash over the editor
+# The generated editor-web asset carries a freshness hash over the editor
 # sources, the shared schema and the bridge contract. A schema change shipping
 # with a stale asset is data loss, not a rendering gap: y-prosemirror DELETES
-# any block or inline spec the mobile bundle cannot build from the shared Y.Doc.
+# any block or inline spec the WebView bundle cannot build from the shared Y.Doc.
 # #1886 landed a schema change without the rebuild and left main red on this
 # gate for two days, so the check runs here rather than only in CI. `--check`
 # only hashes files; it does not run a build.
-editor_asset_inputs='^(packages/editor-schema/src|packages/contracts/src/webview-bridge\.ts|apps/mobile/editor-web/)'
+editor_asset_inputs='^(packages/editor-schema/src|packages/contracts/src/webview-bridge\.ts|packages/editor-web/src)'
 
 if has_changes "$editor_asset_inputs"; then
-  # The scripts live in @memry/editor-web, which builds the asset; @memry/mobile
-  # only consumes it and has never had an `editor:` script. Filtering on mobile
-  # made pnpm exit non-zero with ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT, which this
-  # guard reported as "asset is stale" — so the check could only ever fail, and
-  # only on the rare push that touches an input. Fixed rather than skipped.
   if ! pnpm --filter @memry/editor-web editor:check; then
-    printf '\npre-push: mobile editor asset is stale. Run `pnpm --filter @memry/editor-web editor:build` and commit the result.\n\n' >&2
+    printf '\npre-push: editor-web asset is stale. Run `pnpm --filter @memry/editor-web editor:build` and commit the result.\n\n' >&2
     exit 1
   fi
 fi
