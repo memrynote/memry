@@ -1533,10 +1533,12 @@ interface SyncLinkingClientAPI {
 // Account API
 type BillingPlanId = 'plus' | 'pro' | 'believer'
 type BillingPlan = 'free' | BillingPlanId
+type BillingCadence = 'monthly' | 'annual' | 'lifetime'
 type BillingStatusValue = 'inactive' | 'active' | 'past_due' | 'paused' | 'canceled'
 
 interface BillingStatus {
   plan: BillingPlan
+  cadence: BillingCadence | null
   status: BillingStatusValue
   source: string
   email: string | null
@@ -1567,6 +1569,29 @@ interface AccountClientAPI {
     transactionId?: string
   }) => Promise<BillingStatus | (BillingActionResult & { status?: never })>
   openBillingPortal: () => Promise<BillingActionResult & { portalUrl?: string }>
+  previewPlanChange: (
+    input: PlanChangeTarget
+  ) => Promise<PlanChangePreview | (BillingActionResult & { plan?: never })>
+  changePlan: (
+    input: PlanChangeTarget
+  ) => Promise<BillingStatus | (BillingActionResult & { status?: never })>
+}
+
+interface PlanChangeTarget {
+  plan: 'plus' | 'pro'
+  cadence: 'monthly' | 'annual'
+}
+
+interface PlanChangePreview {
+  plan: PlanChangeTarget['plan']
+  cadence: PlanChangeTarget['cadence']
+  isUpgrade: boolean
+  effective: 'immediate' | 'next_billing_period'
+  /** Minor units (cents), straight from Paddle. `null` when nothing is charged today. */
+  immediateChargeAmount: string | null
+  recurringAmount: string
+  currencyCode: string
+  nextBilledAt: string | null
 }
 
 // Device Management API

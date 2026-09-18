@@ -36,6 +36,7 @@ function entitlementRow(overrides: Partial<SyncEntitlement> = {}): SyncEntitleme
     user_id: 'user-1',
     storage_used: 0,
     plan: 'plus',
+    cadence: 'monthly',
     status: 'active',
     source: 'paddle',
     storage_limit: SYNC_PLAN_LIMITS.plus.storageLimit,
@@ -153,9 +154,10 @@ describe('sync plan entitlements', () => {
       (value as MockStatement).bind.mock.calls.some((args) => args[1] === 'believer')
     )!.value as MockStatement
 
-    expect(entitlementStatement.bind.mock.calls[0].slice(0, 8)).toEqual([
+    expect(entitlementStatement.bind.mock.calls[0].slice(0, 9)).toEqual([
       'user-1',
       'believer',
+      'lifetime',
       'active',
       'dev_seed',
       SYNC_PLAN_LIMITS.believer.storageLimit,
@@ -196,9 +198,10 @@ describe('sync plan entitlements', () => {
     await ensureLocalAdminPaidSyncAccessForUser(db, 'development', 'user-1', 'kaan@memrynote.com')
 
     expect(userStatement.bind).toHaveBeenCalledWith('user-1')
-    expect(entitlementStatement.bind.mock.calls[0].slice(0, 4)).toEqual([
+    expect(entitlementStatement.bind.mock.calls[0].slice(0, 5)).toEqual([
       'user-1',
       'believer',
+      'lifetime',
       'active',
       'dev_seed'
     ])

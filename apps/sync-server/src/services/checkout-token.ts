@@ -1,6 +1,14 @@
 interface CheckoutTokenPayload {
   userId: string
   exp: number
+  /**
+   * Billing snapshot at mint time. Optional so tokens minted by older builds stay valid, and so a
+   * verifier that predates these fields keeps working. The landing checkout reads
+   * `hasSubscription` to refuse selling a second, parallel subscription.
+   */
+  plan?: string
+  cadence?: string
+  hasSubscription?: boolean
 }
 
 const encoder = new TextEncoder()

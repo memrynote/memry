@@ -40,8 +40,30 @@ const BILLING_SUPPORT_EMAIL = 'billing@memrynote.com'
 type BillingPlan = 'free' | 'plus' | 'pro' | 'believer'
 type BillingStatusValue = 'inactive' | 'active' | 'past_due' | 'paused' | 'canceled'
 
+type BillingCadence = 'monthly' | 'annual' | 'lifetime'
+
+interface PlanChangePreview {
+  isUpgrade: boolean
+  effective: 'immediate' | 'next_billing_period'
+  immediateChargeAmount: string | null
+  recurringAmount: string
+  currencyCode: string
+  nextBilledAt: string | null
+}
+
+/** Paddle reports money in minor units; `"4349"` is $43.49. */
+function formatMinorUnits(amount: string): string {
+  const value = Number(amount) / 100
+  return Number.isFinite(value) ? `$${value.toFixed(2)}` : amount
+}
+
+function isPlanChangePreview(value: unknown): value is PlanChangePreview {
+  return Boolean(value && typeof value === 'object' && 'recurringAmount' in value)
+}
+
 interface BillingStatus {
   plan: BillingPlan
+  cadence: BillingCadence | null
   status: BillingStatusValue
   email: string | null
   limits: {
@@ -108,6 +130,85 @@ function formatBytes(bytes: number): string {
 function isBillingStatus(value: unknown): value is BillingStatus {
   return Boolean(
     value && typeof value === 'object' && 'plan' in value && 'status' in value && 'limits' in value
+  )
+}
+
+/**
+ * Offers a monthly subscriber the yearly switch. First click prices it through Paddle's preview,
+ * second confirms. Switching cadence must go through change-plan, not a fresh checkout: a second
+ * checkout would create a parallel subscription in Paddle and bill the card twice.
+ */
+function AnnualSwitchRow({
+  plan,
+  onSwitched
+}: {
+  plan: 'plus' | 'pro'
+  onSwitched: (billing: BillingStatus) => void
+}) {
+  const { t } = useT('settings')
+  const [preview, setPreview] = useState<PlanChangePreview | null>(null)
+  const [isPricing, setIsPricing] = useState(false)
+  const [isSwitching, setIsSwitching] = useState(false)
+  const failed = t('account.billing.annualSwitch.failed')
+
+  const run = async () => {
+    if (!preview) {
+      setIsPricing(true)
+      try {
+        const result = await window.api.account.previewPlanChange({ plan, cadence: 'annual' })
+        if (!isPlanChangePreview(result)) throw new Error(result.error ?? failed)
+        setPreview(result)
+      } catch (error: unknown) {
+        toast.error(extractErrorMessage(error, failed))
+      } finally {
+        setIsPricing(false)
+      }
+      return
+    }
+
+    setIsSwitching(true)
+    try {
+      const result = await window.api.account.changePlan({ plan, cadence: 'annual' })
+      if (!isBillingStatus(result)) throw new Error(result.error ?? failed)
+      onSwitched(result)
+      setPreview(null)
+      toast.success(t('account.billing.annualSwitch.success'))
+    } catch (error: unknown) {
+      toast.error(extractErrorMessage(error, failed))
+    } finally {
+      setIsSwitching(false)
+    }
+  }
+
+  const label = isSwitching ? 'switching' : isPricing ? 'pricing' : preview ? 'confirm' : 'action'
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-surface-active px-3 py-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-medium text-[13px]/4 text-foreground">
+            {t('account.billing.annualSwitch.title')}
+          </div>
+          <div className="mt-0.5 text-xs/4 text-muted-foreground">
+            {preview
+              ? t('account.billing.annualSwitch.preview', {
+                  amount: formatMinorUnits(preview.immediateChargeAmount ?? '0'),
+                  recurring: formatMinorUnits(preview.recurringAmount)
+                })
+              : t('account.billing.annualSwitch.description')}
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          disabled={isPricing || isSwitching}
+          onClick={() => void run()}
+        >
+          {t(`account.billing.annualSwitch.${label}`)}
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -433,6 +534,12 @@ export function AccountSettings() {
               </span>
             )}
           </div>
+
+          {billing?.status === 'active' &&
+            billing.cadence === 'monthly' &&
+            (billing.plan === 'plus' || billing.plan === 'pro') && (
+              <AnnualSwitchRow plan={billing.plan} onSwitched={setBilling} />
+            )}
 
           {storage && (
             <div className="space-y-2">

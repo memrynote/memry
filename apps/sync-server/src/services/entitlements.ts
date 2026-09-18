@@ -6,6 +6,8 @@ const GIB = 1024 * 1024 * 1024
 export type SyncPlan = 'free' | 'plus' | 'pro' | 'believer'
 export type SyncEntitlementStatus = 'inactive' | 'active' | 'past_due' | 'paused' | 'canceled'
 export type SyncEntitlementSource = 'none' | 'paddle' | 'admin_override' | 'dev_seed'
+/** Billing cadence of the backing Paddle subscription. `null` = unknown (pre-cadence row). */
+export type SyncCadence = 'monthly' | 'annual' | 'lifetime'
 
 export interface SyncPlanLimits {
   storageLimit: number
@@ -18,6 +20,7 @@ export interface SyncEntitlement {
   user_id: string
   storage_used: number
   plan: SyncPlan
+  cadence: SyncCadence | null
   status: SyncEntitlementStatus
   source: SyncEntitlementSource
   storage_limit: number
@@ -33,6 +36,8 @@ export interface SyncEntitlement {
 export interface UpsertSyncEntitlementParams {
   userId: string
   plan: SyncPlan
+  /** Omit (or pass null) to keep whatever cadence is already stored. */
+  cadence?: SyncCadence | null
   status: SyncEntitlementStatus
   source: Exclude<SyncEntitlementSource, 'none'>
   paddleCustomerId?: string | null
@@ -87,6 +92,7 @@ export async function ensureLocalAdminPaidSyncAccess(
   await upsertSyncEntitlement(db, {
     userId,
     plan: 'believer',
+    cadence: 'lifetime',
     status: 'active',
     source: 'dev_seed'
   })
@@ -127,6 +133,7 @@ export async function getSyncEntitlement(db: D1Database, userId: string): Promis
          u.id as user_id,
          u.storage_used,
          COALESCE(e.plan, 'free') as plan,
+         e.cadence,
          COALESCE(e.status, 'inactive') as status,
          COALESCE(e.source, 'none') as source,
          COALESCE(e.storage_limit, 0) as storage_limit,
@@ -267,6 +274,7 @@ export async function upsertSyncEntitlement(
       `INSERT INTO sync_entitlements (
          user_id,
          plan,
+         cadence,
          status,
          source,
          storage_limit,
@@ -279,9 +287,10 @@ export async function upsertSyncEntitlement(
          expires_at,
          updated_at
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(user_id) DO UPDATE SET
          plan = excluded.plan,
+         cadence = COALESCE(excluded.cadence, sync_entitlements.cadence),
          status = excluded.status,
          source = excluded.source,
          storage_limit = excluded.storage_limit,
@@ -297,6 +306,7 @@ export async function upsertSyncEntitlement(
     .bind(
       params.userId,
       params.plan,
+      params.cadence ?? null,
       params.status,
       params.source,
       limits.storageLimit,

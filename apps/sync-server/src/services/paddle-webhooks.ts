@@ -1,4 +1,9 @@
-import { upsertSyncEntitlement, type SyncEntitlementStatus, type SyncPlan } from './entitlements'
+import {
+  upsertSyncEntitlement,
+  type SyncCadence,
+  type SyncEntitlementStatus,
+  type SyncPlan
+} from './entitlements'
 
 interface PaddleEvent {
   event_id?: string
@@ -23,6 +28,8 @@ interface VerifyPaddleWebhookSignatureParams {
 interface EntitlementTarget {
   userId: string
   plan: SyncPlan
+  /** `null` keeps whatever cadence is already stored (event carried no usable custom_data). */
+  cadence: SyncCadence | null
 }
 
 const SIGNATURE_TOLERANCE_SECONDS = 300
@@ -102,6 +109,7 @@ export async function applyPaddleWebhook(
   await upsertSyncEntitlement(db, {
     userId: target.userId,
     plan: target.plan,
+    cadence: target.cadence ?? cadenceFromBillingCycle(data),
     status: normalizeStatus(eventType, asString(data.status)),
     source: 'paddle',
     paddleCustomerId: asString(data.customer_id ?? data.customerId),
@@ -127,13 +135,14 @@ async function resolveEntitlementTarget(
   const customData = readCustomData(data)
   const userId = asString(customData.userId ?? customData.user_id ?? customData.memryUserId)
   const customPlan = normalizePlan(customData.plan)
+  const customCadence = normalizeCadence(customData.cadence)
 
   if (userId && customPlan) {
     const user = await db
       .prepare('SELECT id FROM users WHERE id = ?')
       .bind(userId)
       .first<{ id: string }>()
-    if (user) return { userId: user.id, plan: customPlan }
+    if (user) return { userId: user.id, plan: customPlan, cadence: customCadence }
   }
 
   const subscriptionId = asString(data.subscription_id ?? data.subscriptionId ?? data.id)
@@ -143,7 +152,7 @@ async function resolveEntitlementTarget(
       .bind(subscriptionId)
       .first<{ user_id: string; plan: SyncPlan }>()
     const plan = normalizePlan(entitlement?.plan)
-    if (entitlement && plan) return { userId: entitlement.user_id, plan }
+    if (entitlement && plan) return { userId: entitlement.user_id, plan, cadence: customCadence }
   }
 
   return null
@@ -160,6 +169,24 @@ function readCustomData(data: Record<string, unknown>): Record<string, unknown> 
 
 function normalizePlan(value: unknown): SyncPlan | null {
   if (value === 'plus' || value === 'pro' || value === 'believer') return value
+  return null
+}
+
+function normalizeCadence(value: unknown): SyncCadence | null {
+  if (value === 'monthly' || value === 'annual' || value === 'lifetime') return value
+  return null
+}
+
+/**
+ * Fallback for subscriptions created before custom_data carried a cadence: the billing cycle on
+ * the event itself says what they are actually billed on.
+ */
+function cadenceFromBillingCycle(data: Record<string, unknown>): SyncCadence | null {
+  const value = data.billing_cycle ?? data.billingCycle
+  if (!value || typeof value !== 'object') return null
+  const interval = (value as Record<string, unknown>).interval
+  if (interval === 'year') return 'annual'
+  if (interval === 'month') return 'monthly'
   return null
 }
 
@@ -191,10 +218,11 @@ function parseTimestamp(value: unknown): number | null {
   return Number.isNaN(timestamp) ? null : Math.floor(timestamp / 1000)
 }
 
-function readBillingPeriodEndsAt(data: Record<string, unknown>): unknown {
+function readBillingPeriodEndsAt(data: Record<string, unknown>): string | null {
   const value = data.current_billing_period ?? data.currentBillingPeriod
   if (!value || typeof value !== 'object') return null
-  return (value as Record<string, unknown>).ends_at ?? (value as Record<string, unknown>).endsAt
+  const period = value as Record<string, unknown>
+  return asString(period.ends_at ?? period.endsAt)
 }
 
 function asString(value: unknown): string | null {

@@ -668,6 +668,17 @@
     "billing": {
       "planStatus": "Plan status",
       "checking": "Checking billing status",
+      "annualSwitch": {
+        "title": "Switch to yearly billing",
+        "description": "Save 20%. We prorate the rest of this month, no second charge.",
+        "action": "Switch to yearly",
+        "pricing": "Pricing...",
+        "preview": "{amount} due today, then {recurring} per year",
+        "confirm": "Confirm switch",
+        "switching": "Switching...",
+        "success": "You're on yearly billing now.",
+        "failed": "Could not switch your plan"
+      },
       "plans": {
         "free": "Free plan",
         "plus": "Plus plan",

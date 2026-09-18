@@ -551,7 +551,11 @@ export const AccountChannels = {
     /** Reconcile Paddle transaction and refresh billing status */
     REFRESH_BILLING_STATUS: 'account:refreshBillingStatus',
     /** Open Paddle customer portal */
-    OPEN_BILLING_PORTAL: 'account:openBillingPortal'
+    OPEN_BILLING_PORTAL: 'account:openBillingPortal',
+    /** Price a plan/cadence switch on the existing subscription (no charge) */
+    PREVIEW_PLAN_CHANGE: 'account:previewPlanChange',
+    /** Switch the existing subscription's plan/cadence, prorated by Paddle */
+    CHANGE_PLAN: 'account:changePlan'
   }
 } as const
 

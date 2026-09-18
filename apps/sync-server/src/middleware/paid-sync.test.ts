@@ -9,6 +9,7 @@ function entitlement(overrides: Partial<SyncEntitlement> = {}): SyncEntitlement 
     user_id: 'user-1',
     storage_used: 0,
     plan: 'plus',
+    cadence: 'monthly',
     status: 'active',
     source: 'paddle',
     storage_limit: SYNC_PLAN_LIMITS.plus.storageLimit,

@@ -665,9 +665,10 @@ describe('auth routes', () => {
       const entitlementStatement = prepareMock.mock.results[entitlementCallIndex]!
         .value as ReturnType<typeof createD1Statement>
       const bindArgs = entitlementStatement.bind.mock.calls[0]
-      expect(bindArgs.slice(0, 8)).toEqual([
+      expect(bindArgs.slice(0, 9)).toEqual([
         'user-1',
         'believer',
+        'lifetime',
         'active',
         'dev_seed',
         SYNC_PLAN_LIMITS.believer.storageLimit,
@@ -1640,9 +1641,12 @@ describe('auth routes', () => {
       const json = (await res.json()) as { checkoutToken: string; expiresAt: number }
       const payload = readCheckoutTokenPayload(json.checkoutToken)
 
-      expect(payload).toEqual({
+      // The billing snapshot rides along so the landing checkout can refuse a second
+      // subscription even when the user arrives from the desktop deep link with no web session.
+      expect(payload).toMatchObject({
         userId: 'user-1',
-        exp: json.expiresAt
+        exp: json.expiresAt,
+        hasSubscription: false
       })
       expect(json.checkoutToken.split('.')).toHaveLength(2)
     })

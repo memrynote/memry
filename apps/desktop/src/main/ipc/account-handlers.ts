@@ -16,10 +16,13 @@ import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
 import { teardownSession } from '../sync/session-teardown'
 import {
+  changePlan,
   getBillingStatus,
   openBillingPortal,
+  previewPlanChange,
   refreshBillingStatus,
-  startBillingCheckout
+  startBillingCheckout,
+  type PlanChangeTarget
 } from '../billing/paddle-billing'
 
 const log = createLogger('IPC:Account')
@@ -85,6 +88,16 @@ export function registerAccountHandlers(): void {
     log.info('account:openBillingPortal requested')
     return openBillingPortal()
   })
+
+  ipcMain.handle(AccountChannels.invoke.PREVIEW_PLAN_CHANGE, async (_event, input) => {
+    log.info('account:previewPlanChange requested')
+    return previewPlanChange(input as PlanChangeTarget)
+  })
+
+  ipcMain.handle(AccountChannels.invoke.CHANGE_PLAN, async (_event, input) => {
+    log.info('account:changePlan requested')
+    return changePlan(input as PlanChangeTarget)
+  })
 }
 
 export function unregisterAccountHandlers(): void {
@@ -94,4 +107,6 @@ export function unregisterAccountHandlers(): void {
   ipcMain.removeHandler(AccountChannels.invoke.GET_BILLING_STATUS)
   ipcMain.removeHandler(AccountChannels.invoke.REFRESH_BILLING_STATUS)
   ipcMain.removeHandler(AccountChannels.invoke.OPEN_BILLING_PORTAL)
+  ipcMain.removeHandler(AccountChannels.invoke.PREVIEW_PLAN_CHANGE)
+  ipcMain.removeHandler(AccountChannels.invoke.CHANGE_PLAN)
 }
