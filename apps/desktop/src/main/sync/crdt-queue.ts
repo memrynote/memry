@@ -1,6 +1,6 @@
 import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
-import { SyncServerError } from './http-client'
+import { RateLimitError, SyncServerError } from './http-client'
 
 const log = createLogger('CrdtUpdateQueue')
 
@@ -55,6 +55,18 @@ export class CrdtUpdateQueue {
   private droppedInFlight = new Set<string>()
   private pushFn: ((noteId: string, updates: Uint8Array[]) => Promise<void>) | null = null
   private paused = false
+  /**
+   * Epoch ms until which every flush is held back after a 429.
+   *
+   * Without this the queue answered a 429 by putting the batch straight back
+   * and retrying on the next 1s tick, per note. Seeding a vault pushes more
+   * CRDT updates than the server's per-device window allows, so the queue sat
+   * in a hot loop: hundreds of 429s a minute, every one of them counting
+   * against the very window it was waiting on. UploadQueue and DownloadQueue
+   * already back off globally on 429 honouring Retry-After; this is the same
+   * rule for body sync.
+   */
+  private rateLimitedUntil = 0
   private bufferedBytes = 0
   private nextBudgetSweepBytes = MAX_TOTAL_BUFFERED_BYTES
 
@@ -319,6 +331,9 @@ export class CrdtUpdateQueue {
 
   private flushNote(noteId: string): void {
     if (this.paused) return
+    // Global, not per note: the server's bucket is per device, so retrying a
+    // different note inside the window just burns the same budget.
+    if (Date.now() < this.rateLimitedUntil) return
     if (this.flushingNotes.has(noteId)) return
 
     const buffer = this.buffers.get(noteId)
@@ -339,7 +354,13 @@ export class CrdtUpdateQueue {
       updates.map((u) => u.rawUpdate)
     )
       .catch((err) => {
-        if (!this.paused) {
+        if (err instanceof RateLimitError) {
+          this.rateLimitedUntil = Math.max(this.rateLimitedUntil, Date.now() + err.retryAfterMs)
+          log.warn('429 received, holding CRDT flushes until Retry-After', {
+            noteId,
+            backoffMs: err.retryAfterMs
+          })
+        } else if (!this.paused) {
           log.error('Failed to push CRDT updates', { noteId, error: err })
         }
         // 401 stays buffered: the push fn pauses the queue and a successful

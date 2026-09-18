@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { CrdtUpdateQueue, type CrdtUpdateQueueOptions } from './crdt-queue'
-import { SyncServerError } from './http-client'
+import { RateLimitError, SyncServerError } from './http-client'
 
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({
@@ -351,6 +351,37 @@ describe('CrdtUpdateQueue', () => {
 
     expect(push).toHaveBeenCalledTimes(1)
     expect(push).toHaveBeenCalledWith('still-syncing', [new Uint8Array([4])])
+  })
+
+  it('holds every note back until Retry-After once the server answers 429', async () => {
+    let rejectPush!: (err: unknown) => void
+    const push = vi.fn(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectPush = reject
+        })
+    )
+    const queue = new CrdtUpdateQueue()
+
+    queue.start(push)
+    queue.enqueue('note-a', new Uint8Array([1]))
+    vi.advanceTimersByTime(1000)
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(1)
+
+    rejectPush(new RateLimitError(5))
+    await flushPromises()
+
+    // The batch is back in the buffer, but retrying inside the window is what
+    // kept the seeding hot loop alive — including on a different note.
+    queue.enqueue('note-b', new Uint8Array([2]))
+    vi.advanceTimersByTime(4000)
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(1)
+
+    vi.advanceTimersByTime(2000)
+    await flushPromises()
+    expect(push.mock.calls.length).toBeGreaterThan(1)
   })
 
   it('does not re-buffer a dropped note whose push was already in flight', async () => {

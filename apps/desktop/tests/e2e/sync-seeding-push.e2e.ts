@@ -57,7 +57,11 @@ test.describe('Seeding push', () => {
     pageB,
     syncBootstrap
   }) => {
-    test.setTimeout(900_000)
+    // 10 min, not 15. With `retries: 2` this test's budget is spent three times,
+    // so a stall here used to cost 45 minutes of a 75-minute job and silently
+    // became the whole workflow's wall clock. The seed converges in ~2 min
+    // locally; anything past 10 on CI is a failure worth seeing fast.
+    test.setTimeout(600_000)
 
     await bootstrapSyncDevice(electronAppA, syncBootstrap.deviceA)
     await pageA.reload()
@@ -99,7 +103,7 @@ test.describe('Seeding push', () => {
             .first<{ c: number }>()
           return row?.c ?? 0
         },
-        { timeout: 420_000, intervals: [2_000] }
+        { timeout: 240_000, intervals: [2_000] }
       )
       .toBeGreaterThanOrEqual(SEED_NOTE_COUNT)
 
@@ -130,7 +134,7 @@ test.describe('Seeding push', () => {
             { titlePrefix: prefix, limit: NOTE_LIST_LIMIT }
           )
         },
-        { timeout: 420_000, intervals: [2_000] }
+        { timeout: 240_000, intervals: [2_000] }
       )
       .toBe(SEED_NOTE_COUNT)
 
@@ -163,7 +167,7 @@ test.describe('Seeding push', () => {
             .first<{ c: number }>()
           return row?.c ?? 0
         },
-        { timeout: 300_000, intervals: [2_000] }
+        { timeout: 120_000, intervals: [2_000] }
       )
       .toBeGreaterThanOrEqual(SEED_NOTE_COUNT + smallBatchTitles.length)
 
