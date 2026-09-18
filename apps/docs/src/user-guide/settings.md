@@ -38,6 +38,13 @@ choose a plan (Plus, Pro, or Believer) and billing frequency (monthly or yearly)
 to Paddle checkout. **Refresh status** asks the sync server to reconcile the latest Paddle transaction, and
 **Manage billing** opens Paddle's hosted customer portal when the account has a Paddle customer id.
 
+On an active monthly plan, Billing also offers **Switch to yearly**. The first click prices the
+switch and shows the exact amount due today; the second confirms it. You do not cancel first and
+you are not charged twice — Memry moves your existing subscription onto the yearly price and Paddle
+credits the unused part of the current month against it. Plan changes that cost less (yearly back to
+monthly, or Pro down to Plus) take effect at your next renewal instead of refunding today. Believer
+is a one-time purchase, so it is not part of the switch flow.
+
 If checkout succeeds before the webhook finishes, Billing shows **Activation pending**. Use
 **Refresh status** after a moment, or contact the billing support email shown in the panel for
 refunds, chargebacks, or manual help.

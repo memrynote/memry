@@ -42,9 +42,15 @@ After signing in you land on the account dashboard, organized into three section
 
 ### Sync
 
-Start or upgrade a sync plan directly from the browser. Because you are already signed in, the
+Start or change a sync plan directly from the browser. Because you are already signed in, the
 checkout opens without needing to launch the desktop app first. See
 [How Sync Works](/user-guide/sync/how-sync-works) for plan details.
+
+If you already have an active subscription, this page switches it instead of selling a second one.
+Your current plan is marked, and the total shows what the change actually costs: an upgrade (monthly
+to yearly, or Plus to Pro) bills only the prorated difference today, while a downgrade takes effect
+at your next renewal. You never need to cancel first, and you are never billed for two overlapping
+subscriptions.
 
 ## What the Web Cannot Do
 
