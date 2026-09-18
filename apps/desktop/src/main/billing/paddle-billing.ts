@@ -22,8 +22,28 @@ export type BillingCadence = 'monthly' | 'annual' | 'lifetime'
 export type BillingStatusValue = 'inactive' | 'active' | 'past_due' | 'paused' | 'canceled'
 export type BillingPlan = 'free' | BillingPlanId
 
+/** Recurring plans only — `believer` is a one-time purchase with nothing to switch. */
+export interface PlanChangeTarget {
+  plan: 'plus' | 'pro'
+  cadence: 'monthly' | 'annual'
+}
+
+export interface PlanChangePreview {
+  plan: PlanChangeTarget['plan']
+  cadence: PlanChangeTarget['cadence']
+  isUpgrade: boolean
+  effective: 'immediate' | 'next_billing_period'
+  /** Minor units (cents), straight from Paddle. `null` when nothing is charged today. */
+  immediateChargeAmount: string | null
+  recurringAmount: string
+  currencyCode: string
+  nextBilledAt: string | null
+}
+
 export interface BillingStatus {
   plan: BillingPlan
+  /** `null` on entitlements written before cadence was tracked. */
+  cadence: BillingCadence | null
   status: BillingStatusValue
   source: string
   email: string | null
@@ -93,6 +113,29 @@ export async function openBillingPortal(): Promise<BillingActionResult & { porta
   )
   await shell.openExternal(response.portalUrl)
   return { success: true, portalUrl: response.portalUrl }
+}
+
+export async function previewPlanChange(
+  target: PlanChangeTarget
+): Promise<PlanChangePreview | (BillingActionResult & { plan?: never })> {
+  const token = await getValidAccessToken()
+  if (!token) return { success: false, error: 'Sign in to change your plan' }
+  return postToServer<PlanChangePreview>('/auth/billing/change-plan/preview', target, token)
+}
+
+/**
+ * Switches the existing subscription instead of buying a second one. Paddle prorates: an upgrade
+ * bills the difference today, a downgrade takes effect at renewal.
+ */
+export async function changePlan(
+  target: PlanChangeTarget
+): Promise<BillingStatus | (BillingActionResult & { status?: never })> {
+  const token = await getValidAccessToken()
+  if (!token) return { success: false, error: 'Sign in to change your plan' }
+
+  const result = await postToServer<BillingStatus>('/auth/billing/change-plan', target, token)
+  setCachedEntitlementFromStatus(result)
+  return result
 }
 
 export async function reconcileBillingAndSync(input?: { transactionId?: string }): Promise<void> {

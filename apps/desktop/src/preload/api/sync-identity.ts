@@ -48,7 +48,11 @@ export const accountApi = {
   getBillingStatus: () => invoke(AccountChannels.invoke.GET_BILLING_STATUS),
   refreshBillingStatus: (input?: { transactionId?: string }) =>
     invoke(AccountChannels.invoke.REFRESH_BILLING_STATUS, input),
-  openBillingPortal: () => invoke(AccountChannels.invoke.OPEN_BILLING_PORTAL)
+  openBillingPortal: () => invoke(AccountChannels.invoke.OPEN_BILLING_PORTAL),
+  previewPlanChange: (input: { plan: 'plus' | 'pro'; cadence: 'monthly' | 'annual' }) =>
+    invoke(AccountChannels.invoke.PREVIEW_PLAN_CHANGE, input),
+  changePlan: (input: { plan: 'plus' | 'pro'; cadence: 'monthly' | 'annual' }) =>
+    invoke(AccountChannels.invoke.CHANGE_PLAN, input)
 }
 
 export const syncDevices = {

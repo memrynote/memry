@@ -50,15 +50,18 @@ import {
 } from '../services/user'
 import { signCheckoutToken } from '../services/checkout-token'
 import {
+  applyPlanChange,
   createPaddlePortalSession,
   getBillingStatus,
   getPaddleInvoicePdfUrl,
   listPaddleInvoices,
+  previewPlanChange,
   reconcilePaddleTransaction
 } from '../services/paddle-billing'
 import {
   ensureLocalAdminPaidSyncAccess,
-  ensureLocalAdminPaidSyncAccessForUser
+  ensureLocalAdminPaidSyncAccessForUser,
+  getSyncEntitlement
 } from '../services/entitlements'
 import { captureBusinessEvent, captureServerError, safeWaitUntil } from '../services/analytics'
 import { deleteUserData } from '../services/account-deletion'
@@ -731,6 +734,11 @@ const RecoveryQuerySchema = z.object({ email: z.string().email() })
 const BillingReconcileSchema = z.object({
   transactionId: z.string().trim().min(1).optional()
 })
+// `believer` is deliberately absent: it is a one-time purchase, not a recurring plan.
+const BillingChangePlanSchema = z.object({
+  plan: z.enum(['plus', 'pro']),
+  cadence: z.enum(['monthly', 'annual'])
+})
 
 async function generateDummyRecoveryData(
   email: string,
@@ -829,9 +837,18 @@ auth.get('/devices', authMiddleware, devicesRateLimit, async (c) => {
 auth.post('/checkout-token', authMiddleware, async (c) => {
   const userId = c.get('userId')!
   const expiresAt = Math.floor(Date.now() / 1000) + CHECKOUT_TOKEN_TTL_SECONDS
+  // The token is the only thing the landing checkout can trust when the user arrives from the
+  // desktop deep link with no web session, so it has to carry the "already subscribed" bit.
+  // Without it the checkout page would happily sell a second, parallel subscription.
+  // A failed lookup must not block minting: the checkout API re-checks server-side anyway, and a
+  // first-time buyer losing checkout over a billing read is worse than an omitted hint.
+  const entitlement = await getSyncEntitlement(c.env.DB, userId).catch(() => null)
   const checkoutToken = await signCheckoutToken(c.env.PADDLE_CHECKOUT_TOKEN_SECRET, {
     userId,
-    exp: expiresAt
+    exp: expiresAt,
+    plan: entitlement?.plan,
+    cadence: entitlement?.cadence ?? undefined,
+    hasSubscription: Boolean(entitlement?.paddle_subscription_id && entitlement.status === 'active')
   })
 
   return c.json({ checkoutToken, expiresAt })
@@ -872,6 +889,27 @@ auth.post('/billing/reconcile', authMiddleware, async (c) => {
 auth.post('/billing/portal-session', authMiddleware, async (c) => {
   const userId = c.get('userId')!
   return c.json(await createPaddlePortalSession(c.env, userId))
+})
+
+auth.post('/billing/change-plan/preview', authMiddleware, async (c) => {
+  const parsed = BillingChangePlanSchema.safeParse(await c.req.json())
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid plan change request', 400)
+  }
+
+  const userId = c.get('userId')!
+  return c.json(await previewPlanChange(c.env, userId, parsed.data.plan, parsed.data.cadence))
+})
+
+auth.post('/billing/change-plan', authMiddleware, async (c) => {
+  const parsed = BillingChangePlanSchema.safeParse(await c.req.json())
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid plan change request', 400)
+  }
+
+  const userId = c.get('userId')!
+  await applyPlanChange(c.env, userId, parsed.data.plan, parsed.data.cadence)
+  return c.json(await getBillingStatus(c.env.DB, userId))
 })
 
 auth.get('/billing/invoices', authMiddleware, async (c) => {

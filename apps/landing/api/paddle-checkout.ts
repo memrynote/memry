@@ -21,14 +21,20 @@ function getPaddleApiKey(environment: Environment) {
   return normalizePaddleApiKey(process.env.PADDLE_SANDBOX_API_KEY ?? process.env.PADDLE_API_KEY)
 }
 
-function getRequestBody(req: VercelRequest): unknown {
-  if (typeof req.body !== 'string') return req.body
+type CheckoutRequestBody = Record<string, unknown>
 
-  try {
-    return JSON.parse(req.body)
-  } catch {
-    return null
+/** Vercel hands us either a parsed body or the raw string, depending on the content type. */
+function getRequestBody(req: VercelRequest): CheckoutRequestBody | null {
+  if (typeof req.body === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(req.body)
+      return parsed && typeof parsed === 'object' ? (parsed as CheckoutRequestBody) : null
+    } catch {
+      return null
+    }
   }
+
+  return req.body && typeof req.body === 'object' ? (req.body as CheckoutRequestBody) : null
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -46,6 +52,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const intent = await parsePaddleCheckoutIntent(getRequestBody(req), process.env)
   if (!intent) {
     return res.status(400).json({ error: 'Invalid checkout request' })
+  }
+
+  // Hard stop on the double-billing path: a second checkout for an account that already has a
+  // live subscription creates a parallel one in Paddle and charges the card twice. Plan changes
+  // go through the sync-server change-plan endpoint, which prorates the existing subscription.
+  if (intent.hasSubscription) {
+    return res.status(409).json({
+      error: 'This account already has an active subscription. Change your plan instead.',
+      code: 'subscription_exists'
+    })
   }
 
   let checkoutConfig

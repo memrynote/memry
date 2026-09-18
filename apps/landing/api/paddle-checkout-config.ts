@@ -5,6 +5,8 @@ export type PaddleCheckoutIntent = {
   plan: PaddleCheckoutPlan
   cadence: PaddleCheckoutCadence
   userId: string
+  /** Signed into the token at mint time: the account already has an active subscription. */
+  hasSubscription: boolean
 }
 
 type CheckoutTokenPayload = {
@@ -12,6 +14,7 @@ type CheckoutTokenPayload = {
   cadence?: unknown
   userId?: unknown
   exp?: unknown
+  hasSubscription?: unknown
 }
 
 export type PaddleCheckoutConfig = {
@@ -154,13 +157,17 @@ export async function parsePaddleCheckoutIntent(
 
   if (!isPlan(plan) || !isCadence(cadence)) return null
 
+  // Tokens minted before this field existed simply have no claim; treating that as "no
+  // subscription" keeps the old checkout behaviour instead of blocking valid first purchases.
+  const hasSubscription = tokenPayload.hasSubscription === true
+
   if (plan === 'believer') {
-    return { plan, cadence: 'lifetime', userId: userId.trim() }
+    return { plan, cadence: 'lifetime', userId: userId.trim(), hasSubscription }
   }
 
   if (cadence === 'lifetime') return null
 
-  return { plan, cadence, userId: userId.trim() }
+  return { plan, cadence, userId: userId.trim(), hasSubscription }
 }
 
 export async function signPaddleCheckoutToken(

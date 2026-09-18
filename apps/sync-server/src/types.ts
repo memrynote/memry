@@ -29,6 +29,12 @@ export type Bindings = {
   PADDLE_CHECKOUT_TOKEN_SECRET: string
   PADDLE_API_KEY?: string
   PADDLE_ENVIRONMENT?: string
+  // Recurring price ids, needed to switch an existing subscription's plan/cadence.
+  // Same values the landing checkout uses; absent → change-plan reports 503.
+  PADDLE_PRICE_PLUS_MONTHLY?: string
+  PADDLE_PRICE_PLUS_ANNUAL?: string
+  PADDLE_PRICE_PRO_MONTHLY?: string
+  PADDLE_PRICE_PRO_ANNUAL?: string
   TELEMETRY_HMAC_KEY: string
   POSTHOG_KEY?: string
   POSTHOG_HOST?: string

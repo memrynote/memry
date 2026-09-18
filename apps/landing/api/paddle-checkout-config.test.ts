@@ -36,6 +36,20 @@ describe('paddle checkout config', () => {
     assert.match(source, /from ['"]\.\/paddle-checkout-config\.js['"]/)
   })
 
+  it('carries the signed hasSubscription claim so a second subscription can be refused', async () => {
+    const checkoutToken = await signPaddleCheckoutToken(
+      { userId: 'user-1', exp: 1_800_000_000, hasSubscription: true } as never,
+      env.PADDLE_CHECKOUT_TOKEN_SECRET
+    )
+    const intent = await parsePaddleCheckoutIntent(
+      { checkoutToken, plan: 'pro', cadence: 'annual' },
+      env,
+      1_700_000_000
+    )
+
+    assert.equal(intent?.hasSubscription, true)
+  })
+
   it('takes userId from the identity token and plan/cadence from the request body', async () => {
     const checkoutToken = await signPaddleCheckoutToken(
       { userId: 'user-1', exp: 1_800_000_000 },
@@ -47,7 +61,12 @@ describe('paddle checkout config', () => {
       1_700_000_000
     )
 
-    assert.deepEqual(intent, { plan: 'pro', cadence: 'annual', userId: 'user-1' })
+    assert.deepEqual(intent, {
+      plan: 'pro',
+      cadence: 'annual',
+      userId: 'user-1',
+      hasSubscription: false
+    })
     assert.deepEqual(getPaddleCheckoutConfig(intent, env), {
       priceId: 'pri_pro_annual',
       customData: {
@@ -71,7 +90,12 @@ describe('paddle checkout config', () => {
       1_700_000_000
     )
 
-    assert.deepEqual(intent, { plan: 'pro', cadence: 'annual', userId: 'user-1' })
+    assert.deepEqual(intent, {
+      plan: 'pro',
+      cadence: 'annual',
+      userId: 'user-1',
+      hasSubscription: false
+    })
   })
 
   it('always maps Believer to the lifetime price', async () => {
@@ -85,7 +109,12 @@ describe('paddle checkout config', () => {
       1_700_000_000
     )
 
-    assert.deepEqual(intent, { plan: 'believer', cadence: 'lifetime', userId: 'user-1' })
+    assert.deepEqual(intent, {
+      plan: 'believer',
+      cadence: 'lifetime',
+      userId: 'user-1',
+      hasSubscription: false
+    })
     assert.equal(getPaddleCheckoutConfig(intent, env).priceId, 'pri_believer_lifetime')
   })
 

@@ -28,6 +28,7 @@ import type { BillingStatus } from './paddle-billing'
 function status(plan: string, statusValue: string, expiresAt: number | null = null): BillingStatus {
   return {
     plan: plan as BillingStatus['plan'],
+    cadence: null,
     status: statusValue as BillingStatus['status'],
     source: 'paddle',
     email: null,
