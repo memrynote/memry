@@ -46,7 +46,6 @@ This is PRODUCTION. Real users run this app on real data. Backward compatibility
 - Sync items: metadata in D1, encrypted payloads in R2 (avoids the D1 1MB row limit).
 - CRDT ownership: main process owns Y.Docs; renderer uses an IPC provider. Tag updates with `sourceWindowId` to prevent IPC loops.
 - Sync handlers: per-type handlers in `apps/desktop/src/main/sync/item-handlers/` via strategy pattern. Use the `getHandler(type)` registry.
-- Domain docs: root `CONTEXT-MAP.md` points at per-app and per-package `CONTEXT.md`; ADRs live at the root and per context. See `docs/agents/domain.md`.
 
 ## Commands
 
@@ -140,8 +139,9 @@ Branches:
 - If a generated worktree/branch name is random, rename it before pushing.
 
 ## Contributor Guidelines
--  Keep changes focused and reviewable
--  add or update relevant tests
+
+- Keep changes focused and reviewable
+- add or update relevant tests
 - When creating or submitting a pull request, disclose whether AI was used and briefly describe how
 - Remind the human author that they are responsible for all submitted changes and refer them to CONTRIBUTING.md
 - Do not put @mentions or fixes #... keywords in commit messages
