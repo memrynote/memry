@@ -10,6 +10,9 @@
       },
       "disabled": true
     },
+    "paper": {
+      "url": "http://127.0.0.1:29979/mcp"
+    },
     "posthog": {
       "url": "https://mcp.posthog.com/mcp"
     },
@@ -18,6 +21,9 @@
     },
     "cloudflare-api": {
       "url": "https://mcp.cloudflare.com/mcp"
+    },
+    "github": {
+      "disabled": true
     }
   }
 }

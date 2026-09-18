@@ -95,3 +95,6 @@ apps/ios/build/
 # die on them.
 /.agents
 /.claude/
+
+# Xcode per-user SwiftPM scheme state; the package manifest is the source of truth.
+packages/swift/MemryCore/.swiftpm/

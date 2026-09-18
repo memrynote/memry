@@ -1,3 +1,4 @@
+import Inject
 import SwiftUI
 
 @main
@@ -19,6 +20,11 @@ struct MemryApp: App {
 struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var shell = ShellState()
+    // Hot reload (InjectionNext + Inject). No-op in release builds.
+    // ponytail: root-only — a save re-evaluates this body, so the whole tree
+    // picks up injected code. Add `@ObserveInjection`/`.enableInjection()` to
+    // a specific view only if it has state that must survive the reload.
+    @ObserveInjection private var inject
 
     var body: some View {
         // T147. The scaffold is gone, and so is the `--spike-s3` branch that
@@ -49,5 +55,6 @@ struct RootView: View {
             .onChange(of: scenePhase, initial: true) { _, phase in
                 shell.scenePhaseChanged(to: phase)
             }
+            .enableInjection()
     }
 }

@@ -10,6 +10,7 @@
 		B1000001 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000000 /* MemryCore */; };
 		B1000003 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000002 /* MemryCore */; };
 		B1000005 /* test-vectors in Resources */ = {isa = PBXBuildFile; fileRef = A0000040 /* test-vectors */; };
+		B1000007 /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = B1000006 /* Inject */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +55,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B1000001 /* MemryCore in Frameworks */,
+				B1000007 /* Inject in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -123,6 +125,7 @@
 			name = Memry;
 			packageProductDependencies = (
 				B1000000 /* MemryCore */,
+				B1000006 /* Inject */,
 			);
 			productName = Memry;
 			productReference = A0000010 /* Memry.app */;
@@ -216,6 +219,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				13000001 /* XCLocalSwiftPackageReference "../../packages/swift/MemryCore" */,
+				13000002 /* XCRemoteSwiftPackageReference "Inject" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E0000002 /* Products */;
@@ -266,8 +270,10 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COPY_PHASE_STRIP = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				EMIT_FRONTEND_COMMAND_LINES = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = ("$(inherited)", "-Xlinker", "-interposable");
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
@@ -471,9 +477,18 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		13000002 /* XCRemoteSwiftPackageReference "Inject" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krzysztofzablocki/Inject.git";
+			requirement = {kind = upToNextMajorVersion; minimumVersion = 1.5.2; };
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		B1000000 /* MemryCore */ = {isa = XCSwiftPackageProductDependency; productName = MemryCore; };
 		B1000002 /* MemryCore */ = {isa = XCSwiftPackageProductDependency; productName = MemryCore; };
+		B1000006 /* Inject */ = {isa = XCSwiftPackageProductDependency; package = 13000002 /* XCRemoteSwiftPackageReference "Inject" */; productName = Inject; };
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 12000001 /* Project object */;
