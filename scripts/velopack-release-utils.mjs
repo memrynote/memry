@@ -297,7 +297,13 @@ export function buildVelopackAssetNames(appVersion) {
 
 export function collectUploadAssets({ appVersion, ciAssetNames, velopackAssetNames }) {
   const names = buildVelopackAssetNames(appVersion)
-  const assets = ciAssetNames.map((name) => ({ name, source: 'ci' }))
+  // The Windows ZIP is only the payload vpk unpacks; it ships unsigned because the
+  // Certum key is not reachable from the CI runner, so uploading it hands users a
+  // SmartScreen-blocked portable build next to the signed installers. It stays a
+  // required staged artifact, it just never becomes a release asset.
+  const assets = ciAssetNames
+    .filter((name) => !name.endsWith('-win.zip'))
+    .map((name) => ({ name, source: 'ci' }))
   const missing = requiredCiAssets
     .filter((required) => !ciAssetNames.some((name) => required.matches(name)))
     .map((required) => required.description)

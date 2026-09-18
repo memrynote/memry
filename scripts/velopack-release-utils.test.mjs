@@ -529,18 +529,34 @@ describe('upload assets', () => {
       velopackAssetNames
     })
 
+    const uploadedCiNames = ciAssetNames.filter((name) => !name.endsWith('-win.zip'))
+
     assert.deepEqual(missing, [])
     assert.deepEqual(
       assets.map((asset) => asset.name),
-      [...ciAssetNames, ...velopackAssetNames.filter((name) => name !== 'assets.win.json')]
+      [...uploadedCiNames, ...velopackAssetNames.filter((name) => name !== 'assets.win.json')]
     )
     assert.deepEqual(
-      assets.slice(0, ciAssetNames.length).map((asset) => asset.source),
-      ciAssetNames.map(() => 'ci')
+      assets.slice(0, uploadedCiNames.length).map((asset) => asset.source),
+      uploadedCiNames.map(() => 'ci')
     )
     assert.deepEqual(
-      assets.slice(ciAssetNames.length).map((asset) => asset.source),
+      assets.slice(uploadedCiNames.length).map((asset) => asset.source),
       ['velopack', 'velopack', 'velopack', 'velopack', 'velopack']
+    )
+  })
+
+  it('never uploads the unsigned Windows payload ZIP', () => {
+    const { assets, missing } = collectUploadAssets({
+      appVersion: '2026.508.1',
+      ciAssetNames,
+      velopackAssetNames
+    })
+
+    assert.deepEqual(missing, [])
+    assert.equal(
+      assets.some((asset) => asset.name.endsWith('-win.zip')),
+      false
     )
   })
 
