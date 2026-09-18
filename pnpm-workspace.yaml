@@ -9,7 +9,6 @@ shamefullyHoist: true
 
 # Replaces onlyBuiltDependencies (removed in pnpm 11)
 allowBuilds:
-  react-native-libsodium: true
   electron: true
   esbuild: true
   better-sqlite3: true
@@ -25,19 +24,22 @@ allowBuilds:
   workerd: false
   spawn-sync: false
   unrs-resolver: true
+  react-native-libsodium: set this to true or false
 
 # Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
 overrides:
   tar: '>=7.5.21'
   rollup: '>=4.59.0'
   hono: '>=4.12.34'
-  # @modelcontextprotocol/sdk >=1.30 accepts '^1.19.9 || ^2.0.5'; 1.x has no patch.
+  # @modelcontextprotocol/sdk >=1.30 accepts '^1.19.9 || ^2.0.5';
+  # 1.x has no patch.
   '@hono/node-server': '>=2.0.5 <3'
   esbuild: '>=0.28.1'
   express-rate-limit: '>=8.2.2'
   # Electron 43 (ABI 148) ABI detection: @electron/rebuild's transitive node-abi
   # is otherwise capped at 4.26.0 by minimumReleaseAge, and 4.26.0 predates
-  # Electron 43 ("Could not detect abi for version 43.1.1"). Pin the version that
+  # Electron 43 ("Could not detect abi for version 43.1.1"). Pin the version
+  # that
   # maps Electron 43 (also age-excluded below).
   node-abi: '4.33.0'
   'minimatch@<4': 3.1.5
@@ -100,4 +102,3 @@ minimumReleaseAgeExclude:
 
 patchedDependencies:
   '@blocknote/core@0.47.1': patches/@blocknote__core@0.47.1.patch
-  react-native-libsodium@1.7.0: patches/react-native-libsodium@1.7.0.patch
