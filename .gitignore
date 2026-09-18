@@ -88,3 +88,10 @@ apps/ios/**/*.xcuserdatad/
 apps/ios/build/
 
 .vitest/
+
+# Machine-local agent config. `.agents` and `.claude/skills/*` are symlinks into
+# a personal dotfiles checkout (or created by `pnpm env:link` in a worktree), so
+# they dangle everywhere else — including CI, where the secret scanner used to
+# die on them.
+/.agents
+/.claude/

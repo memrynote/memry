@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { lstatSync, readFileSync } from 'node:fs'
 
 const ignoredPathPatterns = [
   /^node_modules\//,
@@ -394,6 +394,16 @@ function readStagedFile(filePath) {
 }
 
 function readWorkingTreeFile(filePath) {
+  // `--changed` walks a diff, so the list contains paths that are no longer
+  // regular files in the working tree: deletions, directories, and symlinks
+  // (including ones whose target is not checked out). None of those can hold a
+  // staged secret, and readFileSync would abort the whole scan on them.
+  const stats = lstatSync(filePath, { throwIfNoEntry: false })
+
+  if (!stats?.isFile()) {
+    return null
+  }
+
   const buffer = readFileSync(filePath)
 
   if (buffer.includes(0)) {
