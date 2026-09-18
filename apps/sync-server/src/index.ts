@@ -43,9 +43,12 @@ const logger = createLogger('Server')
 // Electron routes all requests through main process (no browser CORS).
 // Only development servers need explicit origins; staging/production
 // rely on ALLOWED_ORIGIN env var for any web-based clients.
+// staging also allows the local Vite dev server: there is no deployed
+// staging.memrynote.com, so billing/auth flows are exercised from a local
+// landing build pointed at sync-staging. Production stays closed.
 const ORIGIN_BY_ENV: Record<string, string[]> = {
   development: ['http://localhost:5173', 'http://localhost:3000'],
-  staging: [],
+  staging: ['http://localhost:5173'],
   production: []
 }
 
