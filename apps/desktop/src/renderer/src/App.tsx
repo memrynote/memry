@@ -70,6 +70,7 @@ import { UpdatingScreen } from '@/components/updating-screen'
 import { UpdateInstallFailedDialog } from '@/components/updater/update-install-failed-dialog'
 import { GithubStarCard } from '@/components/onboarding/github-star-card'
 import { ReleaseNotesDevTrigger } from '@/components/updater/release-notes-dev-trigger'
+import { UpdateReleaseNotesTabOpener } from '@/components/updater/update-release-notes-tab-opener'
 import { useAppUpdaterSelector } from '@/hooks/use-app-updater'
 import { useThemeSync } from '@/hooks/use-theme-sync'
 import { useWeekStartSync } from '@/hooks/use-week-start-sync'
@@ -551,8 +552,9 @@ function App(): React.JSX.Element {
                                 <SidebarInset className="flex flex-col overflow-hidden">
                                   <AppContent />
                                 </SidebarInset>
-                                {/* Opens the ephemeral read-only release-notes tab as part
-                                    of the update flow. Lives inside TabProvider for openTab(). */}
+                                {/* Opens the ephemeral read-only release-notes tab after an
+                                    update+restart. Lives inside TabProvider for openTab(). */}
+                                <UpdateReleaseNotesTabOpener />
                                 {/* Dev-only: window.openReleaseNotesDemo() to preview the tab
                                     with dummy data (updater never fires in dev). */}
                                 {import.meta.env.DEV && <ReleaseNotesDevTrigger />}
