@@ -9,6 +9,7 @@ import { AppleNotesFolderPanel, type AppleNotesPanelState } from './apple-notes-
 const TREE: AppleNotesFoldersResult = {
   accounts: [
     {
+      id: 'acc-icloud',
       name: 'iCloud',
       folders: [
         {

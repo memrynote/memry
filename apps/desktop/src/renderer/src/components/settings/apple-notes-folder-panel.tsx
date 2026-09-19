@@ -218,8 +218,8 @@ export function AppleNotesFolderPanel({
       </div>
 
       <div className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-md border border-border p-3">
-        {tree.accounts.map((account, index) => (
-          <div key={account.name || index} className="flex flex-col">
+        {tree.accounts.map((account) => (
+          <div key={account.id} className="flex flex-col">
             {multiAccount && account.name && (
               <p className="text-[13px]/4 font-medium text-foreground">{account.name}</p>
             )}

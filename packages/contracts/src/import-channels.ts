@@ -228,6 +228,8 @@ export interface AppleNotesFolderNode {
 }
 
 export interface AppleNotesAccountNode {
+  /** ICAccount identifier, falling back to its primary key — render key only. */
+  id: string
   /** Empty when the folders' account row is missing (the picker then shows no header). */
   name: string
   folders: AppleNotesFolderNode[]

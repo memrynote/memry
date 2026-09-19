@@ -299,6 +299,7 @@ export async function scanAppleNotesFolders(sourcePath: string): Promise<AppleNo
 
     const accountNodes: AppleNotesAccountNode[] = [...byAccount.entries()].map(
       ([owner, folderNodes]) => ({
+        id: accounts.find((a) => a.pk === owner)?.identifier ?? String(owner),
         name: accounts.find((a) => a.pk === owner)?.name ?? '',
         folders: folderNodes
       })
