@@ -58,29 +58,25 @@ but a client MUST NOT reject an id that does not, because journal ids
 **A core that is handed an id MUST validate it against the grammar rather than
 mint a replacement.** Replacing a caller's id is how the same note becomes two.
 
-### 7.1.1 The constants are wrong today (#2186)
+### 7.1.1 The constants (#2186, fixed)
 
-`CRDT_SYNC_ITEM_TYPES = ['note']`
-(`packages/contracts/src/sync-api.ts:91`) and `CrdtSyncItemType` (`:163`) are
-referenced only by tests. `EncryptedCrdtItemSchema.type` is `z.literal('note')`
-(`packages/contracts/src/crypto.ts:194`) on a type that matches nothing on the
-wire at all (chapter 04 §4.12.1).
+`CRDT_SYNC_ITEM_TYPES` was `['note']` and is now `['note', 'journal']`
+(`packages/contracts/src/sync-api.ts:101`), with `CrdtSyncItemType` (`:173`)
+derived from it. The dead `EncryptedCrdtItem` / `EncryptedCrdtItemSchema` pair
+was removed in the same change (chapter 04 §4.12.1).
 
 **Decision, 2026-09-13 — correct the constants; do not scope them.**
-"Record-envelope-scoped only" would be a false statement: the record envelope's
-type set is `ENCRYPTABLE_ITEM_TYPES`
-(`packages/contracts/src/crypto.ts:179`), which already contains `journal`
-(`packages/contracts/src/sync-api.ts:134`).
+"Record-envelope-scoped only" would have been a false statement: the record
+envelope's type set is `ENCRYPTABLE_ITEM_TYPES`
+(`packages/contracts/src/crypto.ts:166`), which already contains `journal`
+(`packages/contracts/src/sync-api.ts:144`).
 
-The corrections are `packages/contracts/src/sync-api.ts:91` becoming
-`['note', 'journal']`, its test
-(`packages/contracts/src/sync-api.test.ts:89-91`), and either deleting the dead
-`EncryptedCrdtItem` pair or widening its `type`. Tracked as **#2186**.
+Neither constant scopes anything at runtime — the CRDT wire carries no item type
+— so this is a correctness fix for clients reading the contract, not a wire
+change. Both are pinned by
+`packages/contracts/src/sync-api.test.ts:89-92`.
 
-**This chapter states the corrected rule. Where it differs from today's
-constants, the constants are wrong, not the chapter.**
-
-**Disposition of Q07.1: answered (decision: correct the constants, #2186).**
+**Disposition of Q07.1: answered (decision applied, #2186).**
 
 ## 7.2 Routes
 

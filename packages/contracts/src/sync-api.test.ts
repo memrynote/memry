@@ -86,8 +86,9 @@ describe('constants', () => {
     expect(RECORD_CLOCK_REQUIRED_ITEM_TYPES).not.toContain('settings')
   })
 
-  it('CRDT sync list is note-only', () => {
-    expect(CRDT_SYNC_ITEM_TYPES).toEqual(['note'])
+  it('CRDT sync list carries both body types', () => {
+    // A journal body is a Y.Doc on the same CRDT feed as a note body.
+    expect(CRDT_SYNC_ITEM_TYPES).toEqual(['note', 'journal'])
   })
 
   it('sync operations are create/update/delete', () => {

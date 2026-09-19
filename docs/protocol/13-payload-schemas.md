@@ -81,7 +81,7 @@ it.**
 
 **Normative, and harmless.** `RecordPullItemResponseSchema`
 (`packages/sync-client/src/pull/engine.ts:209`) and
-`EncryptedItemPayloadSchema` (`packages/contracts/src/sync-api.ts:311-316`)
+`EncryptedItemPayloadSchema` (`packages/contracts/src/sync-api.ts:321-326`)
 strip unknown **envelope** keys, not payload keys, and the signature covers only
 the ten allowlisted keys (chapter 04 §4.7.3). A client MAY reject an unknown
 envelope key; it MUST NOT reject an unknown payload key.

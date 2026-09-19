@@ -147,7 +147,7 @@ export const COVERED: readonly Covered[] = [
     slug: C00,
     label: 'CRDT_SYNC_ITEM_TYPES size',
     value: CRDT_SYNC_ITEM_TYPES.length,
-    spelledAs: ['| `CRDT_SYNC_ITEM_TYPES` | 1 |']
+    spelledAs: ['| `CRDT_SYNC_ITEM_TYPES` | 2 |']
   },
   {
     slug: C00,

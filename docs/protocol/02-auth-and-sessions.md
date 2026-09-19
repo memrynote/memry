@@ -422,7 +422,7 @@ that email as used (`apps/sync-server/src/services/otp.ts:26-58`).
 `macos | windows | linux | ios | android | web`
 (`packages/contracts/src/auth-api.ts:24`). `CLIENT_PLATFORMS`, used by the write
 gate in chapter 11, is `ios | android | desktop`
-(`packages/contracts/src/sync-api.ts:263`). **These are different lists.** A
+(`packages/contracts/src/sync-api.ts:273`). **These are different lists.** A
 phone registers as `ios` and identifies itself as `ios`, so they coincide for
 this feature, but a client MUST NOT model them as one enum: a desktop registers
 as `macos`, `windows` or `linux` and identifies itself as `desktop`.

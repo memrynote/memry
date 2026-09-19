@@ -57,7 +57,7 @@ together**. A client MUST treat each independently.
 | `PACK_VERSION`                                 | `1`                 | the MPAK container header and footer             | `packages/contracts/src/pack-format.ts:60`                              |
 | `BRIDGE_PROTOCOL_VERSION`                      | `1`                 | the host↔editor-bundle bridge, not a wire format | `packages/contracts/src/webview-bridge.ts:22`                           |
 | `providerAuthVersion` / `vaultTransferVersion` | literal `1`         | the two optional linking blocks                  | `packages/contracts/src/linking-api.ts:3`, `:36`, `:40`                 |
-| signature payload "v1"                         | shape, not a number | the signed CBOR field set                        | `packages/contracts/src/crypto.ts:205-222` (`SignaturePayloadV1Schema`) |
+| signature payload "v1"                         | shape, not a number | the signed CBOR field set                        | `packages/contracts/src/crypto.ts:179-196` (`SignaturePayloadV1Schema`) |
 
 `BRIDGE_PROTOCOL_VERSION` is listed for completeness and is **not** a wire
 version: it versions the JSON bridge between a host application and its editor
@@ -302,22 +302,22 @@ outside the retry budget.
 below were recounted against the working tree**; the outline this chapter was
 planned from states 25 for `SYNC_ITEM_TYPES`, which is wrong.
 
-| List                               | Members | Citation                                     | Membership                                                   |
-| ---------------------------------- | ------: | -------------------------------------------- | ------------------------------------------------------------ |
-| `SYNC_ITEM_TYPES`                  |  **26** | `packages/contracts/src/sync-api.ts:7-34`    | every type the server knows                                  |
-| `RECORD_SYNC_ITEM_TYPES`           |      25 | `packages/contracts/src/sync-api.ts:36-62`   | `SYNC_ITEM_TYPES` minus `attachment`                         |
-| `RECORD_CLOCK_REQUIRED_ITEM_TYPES` |      24 | `packages/contracts/src/sync-api.ts:64-89`   | `RECORD_SYNC_ITEM_TYPES` minus `settings`                    |
-| `CRDT_SYNC_ITEM_TYPES`             |       1 | `packages/contracts/src/sync-api.ts:91`      | `['note']` — **wrong today**, see chapter 07 and issue #2186 |
-| `LEGACY_RECORD_SYNC_ITEM_TYPES`    |      15 | `packages/contracts/src/sync-api.ts:105-121` | frozen forever; what a header-less client is served          |
-| `ENCRYPTABLE_ITEM_TYPES`           |      25 | `packages/contracts/src/sync-api.ts:127-153` | `SYNC_ITEM_TYPES` minus `attachment`                         |
+| List                               | Members | Citation                                     | Membership                                                      |
+| ---------------------------------- | ------: | -------------------------------------------- | --------------------------------------------------------------- |
+| `SYNC_ITEM_TYPES`                  |  **26** | `packages/contracts/src/sync-api.ts:7-34`    | every type the server knows                                     |
+| `RECORD_SYNC_ITEM_TYPES`           |      25 | `packages/contracts/src/sync-api.ts:36-62`   | `SYNC_ITEM_TYPES` minus `attachment`                            |
+| `RECORD_CLOCK_REQUIRED_ITEM_TYPES` |      24 | `packages/contracts/src/sync-api.ts:64-89`   | `RECORD_SYNC_ITEM_TYPES` minus `settings`                       |
+| `CRDT_SYNC_ITEM_TYPES`             |       2 | `packages/contracts/src/sync-api.ts:101`     | `['note', 'journal']` — body types on the CRDT feed, chapter 07 |
+| `LEGACY_RECORD_SYNC_ITEM_TYPES`    |      15 | `packages/contracts/src/sync-api.ts:115-131` | frozen forever; what a header-less client is served             |
+| `ENCRYPTABLE_ITEM_TYPES`           |      25 | `packages/contracts/src/sync-api.ts:137-163` | `SYNC_ITEM_TYPES` minus `attachment`                            |
 
 `SYNC_OPERATIONS` is `['create', 'update', 'delete']`
-(`packages/contracts/src/sync-api.ts:125`).
+(`packages/contracts/src/sync-api.ts:135`).
 
 `LEGACY_RECORD_SYNC_ITEM_TYPES` is frozen and MUST NOT grow: it is what a
 pre-negotiation binary is served, and adding a type to it reaches a client whose
 enum rejects it, failing a whole page and advancing that device's cursor past
-good data (`packages/contracts/src/sync-api.ts:93-104`).
+good data (`packages/contracts/src/sync-api.ts:103-114`).
 
 This feature's client subscribes to **thirteen** types (chapter 13).
 
@@ -341,7 +341,7 @@ Four obligations bind every chapter.
    edit to this chapter — and a reviewer is then looking at the fact tables.
 
    ```
-   protocol-constants-sha256: e4d23c8864f98244a637955d9b9d3955eef326dc6e48086401facd8a544e12b8
+   protocol-constants-sha256: 14bb026f1d764b283ffa2c078b760328cd8ac2ff4aae3dd1bd4269ba312c8848
    ```
 
    To update it: change the constant, run
@@ -371,7 +371,7 @@ marks what will change. **None of them is the Rust core's to work around.**
 | #2183 | desktop strips unknown payload keys                                        | 13      |
 | #2184 | relax `LINKING_IP_MISMATCH`                                                | 03      |
 | #2185 | mandate a canonical value comparison                                       | 06      |
-| #2186 | the journal CRDT constants                                                 | 07      |
+| #2186 | the journal CRDT constants — **fixed**                                     | 07      |
 | #2187 | return `revision` from a snapshot push                                     | 07      |
 
 #2180 was re-examined against the code and closed: the mirrored merge it
