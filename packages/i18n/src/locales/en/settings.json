@@ -662,7 +662,17 @@
       },
       "upsell": {
         "title": "Your notes live only on this device",
-        "description": "Upgrade to sync across all your devices — end-to-end encrypted, so only you can read them."
+        "description": "Turn on Sync and every note follows you to your other devices — encrypted end-to-end, so only you can read them.",
+        "benefits": {
+          "devices": "Every device picks up where you left off",
+          "encrypted": "End-to-end encrypted — the keys never leave you",
+          "backup": "An encrypted backup, in case this device is not around"
+        },
+        "guarantee": "14-day money-back guarantee. Cancel anytime."
+      },
+      "activating": {
+        "title": "Finishing your activation",
+        "description": "Your plan is active. Sync starts as soon as we confirm it — refreshing usually does the trick."
       }
     },
     "billing": {

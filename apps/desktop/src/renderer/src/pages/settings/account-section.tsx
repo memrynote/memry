@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
-import { CreditCard, ExternalLink, Lock, RefreshCw } from '@/lib/icons'
+import { Check, CreditCard, ExternalLink, Lock, RefreshCw, Sparkles } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
@@ -208,6 +208,107 @@ function AnnualSwitchRow({
           {t(`account.billing.annualSwitch.${label}`)}
         </Button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * What the Sync group shows to an account that cannot sync yet.
+ *
+ * Two audiences, one card. Without a plan it sells: what sync gives you, the
+ * guarantee, one CTA. With a plan that is ACTIVE but still gated it must not
+ * sell at all — the money is paid and the entitlement simply has not reached
+ * sync yet (#2201), so it offers a refresh instead of a second checkout.
+ */
+function SyncUpgradeCard({
+  billingStatus,
+  isCheckoutStarting,
+  isBillingRefreshing,
+  onStartCheckout,
+  onRefreshBilling
+}: {
+  billingStatus: BillingStatusValue | undefined
+  isCheckoutStarting: boolean
+  isBillingRefreshing: boolean
+  onStartCheckout: () => void
+  onRefreshBilling: () => void
+}) {
+  const { t } = useT('settings')
+  const isActivating = billingStatus === 'active'
+  const benefits = [
+    t('account.sync.upsell.benefits.devices'),
+    t('account.sync.upsell.benefits.encrypted'),
+    t('account.sync.upsell.benefits.backup')
+  ]
+
+  return (
+    <div className="space-y-3 px-4 py-3.5">
+      <div className="flex items-start gap-3">
+        <div
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--tint) 12%, transparent)' }}
+        >
+          <Sparkles className="size-4" style={{ color: 'var(--tint)' }} aria-hidden="true" />
+        </div>
+        <div className="min-w-0 space-y-1">
+          <div className="font-medium text-[13px]/4 text-foreground">
+            {t(isActivating ? 'account.sync.activating.title' : 'account.sync.upsell.title')}
+          </div>
+          <div className="text-xs/4 text-muted-foreground">
+            {t(
+              isActivating
+                ? 'account.sync.activating.description'
+                : 'account.sync.upsell.description'
+            )}
+          </div>
+        </div>
+      </div>
+
+      {isActivating ? (
+        <div className="ps-11">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={onRefreshBilling}
+            disabled={isBillingRefreshing}
+            className="h-7 shrink-0 px-3 text-xs/4"
+          >
+            <RefreshCw className={`me-1.5 size-3.5 ${isBillingRefreshing ? 'animate-spin' : ''}`} />
+            {t('account.billing.actions.refresh')}
+          </Button>
+        </div>
+      ) : (
+        <>
+          <ul className="grid gap-1.5 ps-11">
+            {benefits.map((benefit) => (
+              <li key={benefit} className="flex items-start gap-2 text-xs/4 text-foreground">
+                <Check
+                  className="mt-px size-3.5 shrink-0"
+                  style={{ color: 'var(--tint)' }}
+                  aria-hidden="true"
+                />
+                {benefit}
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 ps-11">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onStartCheckout}
+              disabled={isCheckoutStarting}
+              className="h-7 shrink-0 px-3 text-xs/4"
+            >
+              {isCheckoutStarting
+                ? t('account.billing.actions.opening')
+                : t('account.billing.actions.unlockSync')}
+            </Button>
+            <span className="text-[11px]/4 text-muted-foreground">
+              {t('account.sync.upsell.guarantee')}
+            </span>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -440,27 +541,13 @@ export function AccountSettings() {
 
       <SettingsGroup label={t('account.groups.sync')}>
         {isSyncLocked ? (
-          <div className="flex items-center justify-between gap-3 px-4 py-3.5">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="font-medium text-[13px]/4 text-foreground">
-                {t('account.sync.upsell.title')}
-              </span>
-              <span className="text-xs/4 text-muted-foreground">
-                {t('account.sync.upsell.description')}
-              </span>
-            </div>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => void handleStartCheckout()}
-              disabled={isCheckoutStarting}
-              className="h-7 shrink-0 px-3 text-xs/4"
-            >
-              {isCheckoutStarting
-                ? t('account.billing.actions.opening')
-                : t('account.billing.actions.unlockSync')}
-            </Button>
-          </div>
+          <SyncUpgradeCard
+            billingStatus={billing?.status}
+            isCheckoutStarting={isCheckoutStarting}
+            isBillingRefreshing={isBillingRefreshing}
+            onStartCheckout={() => void handleStartCheckout()}
+            onRefreshBilling={() => void handleRefreshBilling()}
+          />
         ) : (
           <div className="flex items-center justify-between h-11 px-4 shrink-0">
             <div className="flex items-center gap-2">

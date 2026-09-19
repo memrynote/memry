@@ -17,6 +17,12 @@ will not contact the sync server again to start sync while you stay unpaid, so a
 account behaves exactly like a signed-out one. Activating a plan starts sync immediately, with no
 restart.
 
+An unpaid account reads as **Local only** (gray), never as a sync error: the status indicator and
+**Settings -> Account** show what sync would give you and a button to start a plan, not a failure
+you cannot retry. If the server declines sync while your plan already reads **Active**, the same
+card switches to **Finishing your activation** with a refresh button — there is nothing to buy
+twice.
+
 ## Paid Sync Plans
 
 | Plan         | Encrypted storage | Synced vaults | File limit | Version history |
@@ -43,12 +49,13 @@ the app.
 
 A small indicator in the app chrome shows the current state:
 
-| Color  | Meaning                                                  |
-| ------ | -------------------------------------------------------- |
-| Green  | Idle, in sync                                            |
-| Blue   | Syncing right now                                        |
-| Yellow | Paused, retrying with backoff, or temporary error        |
-| Red    | Authentication, billing, or quota issue requiring action |
+| Color  | Meaning                                           |
+| ------ | ------------------------------------------------- |
+| Green  | Idle, in sync                                     |
+| Blue   | Syncing right now                                 |
+| Yellow | Paused, retrying with backoff, or temporary error |
+| Gray   | Offline, or local only (no active sync plan)      |
+| Red    | Authentication or quota issue requiring action    |
 
 Click the indicator for details, recent activity, and a pause toggle.
 

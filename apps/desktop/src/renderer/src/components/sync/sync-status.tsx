@@ -11,6 +11,24 @@ import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('SyncStatus')
 
+/**
+ * What the popover offers an account with no active sync plan: nothing here is
+ * retryable and nothing failed, so it sells the upgrade rather than showing a
+ * Retry whose only outcome is another 402 (#2201).
+ */
+function UnpaidSyncPanel({ onOpenSettings }: { onOpenSettings: () => void }): React.JSX.Element {
+  const { t } = useT('settings')
+
+  return (
+    <div className="space-y-2 px-3 py-2.5">
+      <p className="text-muted-foreground text-xs">{t('account.sync.upsell.description')}</p>
+      <Button size="sm" onClick={onOpenSettings} className="h-7 w-full text-xs">
+        {t('account.billing.actions.unlockSync')}
+      </Button>
+    </div>
+  )
+}
+
 interface SyncStatusProps {
   onOpenSettings: () => void
   iconOnly?: boolean
@@ -43,6 +61,9 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
 
   const isSyncing = status === 'syncing'
   const isOffline = status === 'offline'
+  // No plan, no sync runtime — nothing here is retryable and nothing failed.
+  // The popover sells the upgrade instead of showing a dead Retry (#2201).
+  const isLocalOnly = status === 'local_only'
 
   const handleSync = async (): Promise<void> => {
     try {
@@ -175,45 +196,49 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
           </>
         )}
 
-        {/* Actions */}
+        {/* Actions, or the upgrade path when there is no plan to act on */}
         <Separator />
-        <div className="flex items-center gap-1 px-2 py-1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={
-              error
-                ? () => {
-                    clearError()
-                    void handleSync()
-                  }
-                : () => void handleSync()
-            }
-            disabled={isSyncing || isOffline}
-            className="h-7 text-xs"
-          >
-            {error ? 'Retry' : 'Sync Now'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void handlePauseResume()}
-            disabled={isOffline}
-            className="h-7 text-xs"
-          >
-            {status === 'paused' ? 'Resume' : 'Pause'}
-          </Button>
-          <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onOpenSettings}
-            className="size-7"
-            aria-label={tPhaseF('phaseF.componentsSyncSyncStatus.openSyncSettings')}
-          >
-            <Settings className="size-3.5" aria-hidden="true" />
-          </Button>
-        </div>
+        {isLocalOnly ? (
+          <UnpaidSyncPanel onOpenSettings={onOpenSettings} />
+        ) : (
+          <div className="flex items-center gap-1 px-2 py-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={
+                error
+                  ? () => {
+                      clearError()
+                      void handleSync()
+                    }
+                  : () => void handleSync()
+              }
+              disabled={isSyncing || isOffline}
+              className="h-7 text-xs"
+            >
+              {error ? 'Retry' : 'Sync Now'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void handlePauseResume()}
+              disabled={isOffline}
+              className="h-7 text-xs"
+            >
+              {status === 'paused' ? 'Resume' : 'Pause'}
+            </Button>
+            <div className="flex-1" />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onOpenSettings}
+              className="size-7"
+              aria-label={tPhaseF('phaseF.componentsSyncSyncStatus.openSyncSettings')}
+            >
+              <Settings className="size-3.5" aria-hidden="true" />
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )
