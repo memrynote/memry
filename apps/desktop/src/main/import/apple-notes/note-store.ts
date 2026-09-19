@@ -108,12 +108,30 @@ export async function openNoteStore(selected: string): Promise<NoteStore> {
   const dbPath = isDbFile ? source : path.join(source, NOTE_DB)
   const mediaBase = isDbFile ? path.dirname(source) : source
 
-  let tempPath: string
-  let db: Database.Database
+  let tempPath: string | undefined
   try {
     tempPath = await copyToTemp(dbPath)
-    db = new Database(tempPath, { readonly: true, fileMustExist: true })
+    const db = new Database(tempPath, { readonly: true, fileMustExist: true })
+    const snapshotDir = path.dirname(tempPath)
+    return {
+      db,
+      mediaBase,
+      close: async () => {
+        try {
+          db.close()
+        } catch {
+          // ignore close errors
+        }
+        await fs.rm(snapshotDir, { recursive: true, force: true }).catch(() => {})
+      }
+    }
   } catch (error) {
+    // The copy can succeed and the open still fail (a corrupt or truncated
+    // file is SQLITE_NOTADB), so drop the snapshot here too rather than leave
+    // a full copy of the user's notes behind in the temp dir.
+    if (tempPath) {
+      await fs.rm(path.dirname(tempPath), { recursive: true, force: true }).catch(() => {})
+    }
     if (isAccessDenied(error)) throw new Error(ACCESS_DENIED_HINT)
     if (errorCode(error) === 'ENOENT') {
       throw new Error(
@@ -122,19 +140,6 @@ export async function openNoteStore(selected: string): Promise<NoteStore> {
       )
     }
     throw error
-  }
-
-  return {
-    db,
-    mediaBase,
-    close: async () => {
-      try {
-        db.close()
-      } catch {
-        // ignore close errors
-      }
-      await fs.rm(path.dirname(tempPath), { recursive: true, force: true }).catch(() => {})
-    }
   }
 }
 
@@ -220,8 +225,9 @@ export function folderPath(
 
 /** Note count per ICFolder pk; `null` key = notes that sit outside any folder. */
 function loadNoteCounts(db: Database.Database, keys: PrimaryKeys): Map<number | null, number> {
-  // Counts only — the note body (ZDATA) is never read, so the picker stays
-  // instant on a large library.
+  // Counts only — the note body (ZDATA) is never read, so the scan costs one
+  // snapshot copy plus this query, with none of the gunzip/protobuf decoding
+  // the import itself pays per note.
   const rows = db
     .prepare(
       'SELECT zcso.zfolder AS folder, COUNT(*) AS count ' +

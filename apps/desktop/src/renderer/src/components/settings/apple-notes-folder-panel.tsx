@@ -22,7 +22,7 @@ import type {
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Spinner } from '@/components/ui/spinner'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { extractErrorMessage, unwrapIpcResult } from '@/lib/ipc-error'
 
 export interface AppleNotesPanelState {
   /** False while the tree loads or when the user cleared every folder. */
@@ -63,8 +63,12 @@ export function AppleNotesFolderPanel({
     let active = true
     void window.api.import.appleNotes
       .folders({ sourcePath })
-      .then((result) => {
+      .then((raw) => {
         if (!active) return
+        // A denied scan (macOS TCC) resolves as `{ success: false, error }`
+        // rather than rejecting; unwrapped here so the handler's Full Disk
+        // Access hint reaches the user instead of a property-access crash.
+        const result = unwrapIpcResult(raw, t('import.dialog.appleNotes.foldersError'))
         setTree(result)
         // Everything on by default — the common case is "import my notes".
         setSelected(new Set(allFolderIds(result)))
@@ -81,6 +85,10 @@ export function AppleNotesFolderPanel({
     }
   }, [sourcePath, t])
 
+  const everyId = useMemo(() => (tree ? allFolderIds(tree) : []), [tree])
+  const allSelected =
+    everyId.length > 0 && everyId.every((id) => selected.has(id)) && includeUnfiled
+
   // Wrapped in queueMicrotask so the parent state update happens asynchronously
   // (same handoff pattern as onenote-import-panel).
   useEffect(() => {
@@ -95,13 +103,20 @@ export function AppleNotesFolderPanel({
       }
       onStateChange({
         ready: selected.size > 0 || includeUnfiled,
-        options: { folderIds: [...selected], includeUnfiledNotes: includeUnfiled }
+        // Everything ticked → send no options, so the run takes the same
+        // unfiltered path it took before the picker existed. An explicit
+        // "all" list would instead drop what it cannot name: a folder whose
+        // ZIDENTIFIER is null is addressed by primary key in the tree, which
+        // no note's folder identifier ever matches.
+        options: allSelected
+          ? {}
+          : { folderIds: [...selected], includeUnfiledNotes: includeUnfiled }
       })
     })
     return () => {
       cancelled = true
     }
-  }, [tree, isLoading, selected, includeUnfiled, onStateChange])
+  }, [tree, isLoading, selected, includeUnfiled, allSelected, onStateChange])
 
   const toggleFolder = useCallback((node: AppleNotesFolderNode, checked: boolean) => {
     const ids = folderIdsOf(node)
@@ -114,10 +129,6 @@ export function AppleNotesFolderPanel({
       return next
     })
   }, [])
-
-  const everyId = useMemo(() => (tree ? allFolderIds(tree) : []), [tree])
-  const allSelected =
-    everyId.length > 0 && everyId.every((id) => selected.has(id)) && includeUnfiled
 
   const countLabel = (node: AppleNotesFolderNode): string =>
     node.totalNoteCount === node.noteCount

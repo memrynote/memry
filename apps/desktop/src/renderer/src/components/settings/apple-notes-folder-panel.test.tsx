@@ -75,12 +75,33 @@ describe('AppleNotesFolderPanel', () => {
     expect(screen.getByText('0 (3)')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
 
+    expect(checkboxFor('Work')).toHaveAttribute('data-state', 'checked')
+    expect(checkboxFor('Personal')).toHaveAttribute('data-state', 'checked')
+
     await waitFor(() => {
       const last = states[states.length - 1]
       expect(last.ready).toBe(true)
-      expect(last.options.folderIds?.slice().sort()).toEqual(['f-clients', 'f-personal', 'f-work'])
+      // Everything ticked hands off no options at all, so the run keeps the
+      // unfiltered path: naming every folder would drop the ones the importer
+      // cannot match by identifier.
+      expect(last.options).toEqual({})
+    })
+  })
+
+  it('goes back to no options when a narrowed selection is restored to everything', async () => {
+    const states: AppleNotesPanelState[] = []
+    renderPanel((state) => states.push(state))
+    await screen.findByText('Work')
+
+    fireEvent.click(checkboxFor('Personal'))
+    await waitFor(() => {
+      const last = states[states.length - 1]
+      expect(last.options.folderIds?.slice().sort()).toEqual(['f-clients', 'f-work'])
       expect(last.options.includeUnfiledNotes).toBe(true)
     })
+
+    fireEvent.click(checkboxFor('Personal'))
+    await waitFor(() => expect(states[states.length - 1].options).toEqual({}))
   })
 
   it('cascades a parent toggle to its children and reports the narrowed selection', async () => {
@@ -122,17 +143,25 @@ describe('AppleNotesFolderPanel', () => {
     })
   })
 
-  it('stays ready with no selection when the scan fails, so a full import still runs', async () => {
-    folders.mockRejectedValue(new Error('Full Disk Access needed'))
+  it('surfaces a denied scan and hands off no selection, so a full import still runs', async () => {
+    // A denied scan resolves as a failure envelope instead of rejecting; an
+    // unchecked one used to render a TypeError and hand off “unfiled notes
+    // only”, importing almost nothing.
+    folders.mockResolvedValue({
+      success: false,
+      error: 'Memry could not read the Apple Notes data. Grant Full Disk Access.'
+    })
     const states: AppleNotesPanelState[] = []
     renderPanel((state) => states.push(state))
 
-    await screen.findByText('Full Disk Access needed')
+    await screen.findByText(/Full Disk Access/)
+    expect(screen.queryByText(/flatMap|undefined/)).not.toBeInTheDocument()
     await waitFor(() => {
       const last = states[states.length - 1]
       expect(last.ready).toBe(true)
       // Empty options → the importer imports everything, as before the picker.
       expect(last.options).toEqual({})
+      expect(last.options.folderIds).toBeUndefined()
     })
   })
 })

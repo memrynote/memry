@@ -51,6 +51,26 @@ export function getIpcErrorCode(error: unknown): string | undefined {
   return error instanceof IpcFailureError ? error.code : undefined
 }
 
+/**
+ * Turn an IPC command's failure envelope back into a thrown error.
+ *
+ * `withErrorHandler` resolves a failed command as `{ success: false, error }`
+ * rather than rejecting, so a caller that feeds the response straight into its
+ * success path crashes on a missing property and shows that crash instead of
+ * the handler's real message. Run every envelope-returning response through
+ * this first; the thrown message is display text (often an `errors:` key) for
+ * {@link extractErrorMessage}.
+ */
+export function unwrapIpcResult<T>(
+  result: T | { success: false; error?: string },
+  fallback: string
+): T {
+  if (result && typeof result === 'object' && (result as { success?: boolean }).success === false) {
+    throw new Error((result as { error?: string }).error || fallback)
+  }
+  return result as T
+}
+
 export function extractErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
   if (!raw) return fallback
