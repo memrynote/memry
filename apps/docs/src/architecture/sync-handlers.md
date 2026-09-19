@@ -94,6 +94,27 @@ correct for it — see
 [Push acknowledgements and in-flight mutations](/architecture/sync-protocol#push-acknowledgements-and-in-flight-mutations).
 When adding a handler, implement it unless the type genuinely has no local row to read back.
 
+## Keys this build does not understand survive the round trip
+
+A handler schema is a plain `z.object`, so Zod strips every payload key it has no field for, and
+`buildPushPayload` rebuilds the payload from local columns. On their own those two facts delete a
+field written by a newer client: the newer app writes `snoozedUntil`, this build parses it away,
+projects what is left into columns, and the next local edit pushes a payload with no `snoozedUntil`
+in it. The server copy loses the field for every device.
+
+`apply-item.ts` therefore compares the raw parsed JSON against the schema result and stores whatever
+was stripped in `sync_unknown_fields`, keyed by `(type, item_id)`. `resolvePushPayload` merges that
+remainder back underneath the freshly built payload, so locally owned keys always win and only keys
+this build never mentions ride along. Nothing else reads the table — it never affects local
+behavior.
+
+A handler needs no code for this; it happens around every handler at the apply and push seams. When
+a later build learns a field for real, its schema keeps the key, the stripped remainder comes back
+empty, and the row clears itself.
+
+Only top-level keys are preserved. An unknown key nested inside a known object is still stripped by
+that object's schema.
+
 ## Canvas: the payload comes from a file
 
 `canvas-handler.ts` is the one handler whose content does not live in the data DB. A canvas scene

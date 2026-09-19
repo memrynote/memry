@@ -3,6 +3,7 @@ import type { SyncAdapterRegistry } from '@memry/sync-core'
 import { getHandler, getRemoteSyncAdapter } from './item-handlers'
 import type { ApplyResult, DrizzleDb, EmitToWindows } from './item-handlers'
 import { hasPendingDelete } from './pending-deletes'
+import { recordUnknownPayloadFields } from './unknown-fields'
 import { createLogger } from '../lib/logger'
 import { trackMainEvent } from '../telemetry/track'
 
@@ -108,6 +109,12 @@ export class ItemApplier {
       })
       return 'skipped'
     }
+
+    // Zod strips every key the handler schema has no field for, and the push
+    // path re-serialises the projection row — so without this capture a field
+    // written by a newer client is deleted from the server copy on the next
+    // local edit (#2183).
+    recordUnknownPayloadFields(db, input.type, input.itemId, parsed, data)
 
     return adapter
       ? adapter.applyRemoteMutation({
