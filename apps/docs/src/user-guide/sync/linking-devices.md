@@ -37,6 +37,13 @@ The sign-in on the new device is only valid for a few minutes. If linking takes 
 memrynote tells you the sign-in timed out and asks you to sign in again and scan the code once
 more. Nothing is lost — generate a fresh code on the existing device and repeat the steps above.
 
+### If the Network Changes Mid-Link
+
+Switching networks between scanning the code and finishing the link — Wi-Fi to cellular, or a
+network that hands out a new address on its own — does not interrupt linking. The link is proven
+by the scanned code itself, not by the network you scanned from. Older sync servers rejected the
+final step after a network change and required a fresh code.
+
 ## Approval
 
 The existing device shows an approval prompt:
