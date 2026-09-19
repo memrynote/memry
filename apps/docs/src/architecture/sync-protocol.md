@@ -274,6 +274,30 @@ Migration 0047 resets `attempts` to 0 for rows that an earlier build had already
 stranded by the old in-cycle spend are retried again after upgrading. It preserves the row, its
 payload, and its recorded error.
 
+### A rejected signature is a device-identity failure, not a per-row failure
+
+`SYNC_INVALID_SIGNATURE` is the one rejection that says nothing about the row. It means the key this
+install signs with is not the public key its device id is registered under, so every queued row is
+condemned equally and no payload change can help. Charging it as a normal rejection spent one attempt
+per row across the whole queue and then dead-lettered every edit silently — 497 rejections inside 20
+minutes on one account, followed by edits that never synced again.
+
+The push loop therefore treats it as a device-level verdict: the run stops at the first one, no row
+is charged an attempt (the queue keeps its full budget for after the repair), and the engine reports
+the non-retryable `device_key_mismatch` category once.
+
+The repair is re-registration, because the server holds the public key the device registered with and
+never rotates it in place. The desktop client used to "self-heal" a key mismatch by rewriting its
+local `sync_devices` row to match the keychain, which only made local state agree with a key the
+server rejects. Both detection points — the startup integrity check and the runtime signing-key read
+— now tear the session down instead, so the ordinary sign-in flow re-registers the device under the
+key it actually holds. Both stand down while key material is in flux (sign-in, recovery, linking),
+where a transient mismatch is expected.
+
+An attachment manifest signed by such a device is unverifiable for every reader, forever. The
+download path classifies `ManifestSignatureError` as a permanent failure so the re-driver stops
+probing it, rather than re-fetching the same unverifiable manifest every hour.
+
 ### Dead-letter purge and the pause flag are kept off the enqueue path
 
 Rows that exhausted their budget are purged once at least 50 of them are older than
