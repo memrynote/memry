@@ -335,17 +335,17 @@ export class PushCoordinator {
                   itemId: pushItem.id.slice(0, 8),
                   signerDeviceId: pushItem.signerDeviceId
                 })
-                if (!signatureEventSent) {
-                  signatureEventSent = true
-                  trackMainEvent('sync_error', {
-                    surface: 'sync',
-                    action: 'push_device_key_mismatch',
-                    result: 'failed',
-                    errorCode: 'device_key_mismatch',
-                    source: 'push',
-                    dimensions: { transport: 'record' }
-                  })
-                }
+                // Reached at most once per run: the break below ends the item
+                // loop and the flag ends the outer one, so no repeat guard.
+                signatureEventSent = true
+                trackMainEvent('sync_error', {
+                  surface: 'sync',
+                  action: 'push_device_key_mismatch',
+                  result: 'failed',
+                  errorCode: 'device_key_mismatch',
+                  source: 'push',
+                  dimensions: { transport: 'record' }
+                })
                 this.ctx.lastErrorInfo = {
                   category: 'device_key_mismatch',
                   message: 'errors:sync.deviceKeyMismatch',
