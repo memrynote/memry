@@ -264,7 +264,12 @@ describe('ImportDialog summary — skipped reasons', () => {
         start: vi.fn(() => Promise.resolve({ success: true, summary })),
         cancel: () => {},
         preview: () => {},
-        list: () => {}
+        list: () => {},
+        // The Apple Notes folder panel scans the picked source; an empty tree
+        // keeps these summary cases on the import-everything path.
+        appleNotes: {
+          folders: vi.fn(() => Promise.resolve({ accounts: [], unfiledNoteCount: 0 }))
+        }
       }
     }
     render(
