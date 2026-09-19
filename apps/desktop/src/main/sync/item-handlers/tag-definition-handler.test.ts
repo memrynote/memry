@@ -169,8 +169,10 @@ describe('tagDefinitionHandler', () => {
     ).toBeNull()
 
     expect(tagDefinitionHandler.applyDelete(ctx, 'missing')).toBe('skipped')
-    expect(tagDefinitionHandler.applyDelete(ctx, 'synced', { 'device-b': 1 })).toBe('skipped')
-    expect(tagDefinitionHandler.applyDelete(ctx, 'synced', { 'device-a': 2 })).toBe('applied')
+    // Local happened after the tombstone: the delete loses.
+    expect(tagDefinitionHandler.applyDelete(ctx, 'synced', { 'device-a': 0 })).toBe('skipped')
+    // Concurrent with the local row: delete still wins (#2198).
+    expect(tagDefinitionHandler.applyDelete(ctx, 'synced', { 'device-b': 1 })).toBe('applied')
     expect(
       testDb.db.select().from(tagDefinitions).where(eq(tagDefinitions.name, 'synced')).get()
     ).toBeUndefined()

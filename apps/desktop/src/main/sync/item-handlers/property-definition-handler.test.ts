@@ -173,7 +173,7 @@ describe('propertyDefinitionHandler', () => {
     expect(read(testDb, 'area')).toBeUndefined()
   })
 
-  it('refuses a tombstone that has not seen the local edit', () => {
+  it('applies a tombstone concurrent with the local edit, because delete wins (#2198)', () => {
     propertyDefinitionHandler.applyUpsert(
       ctx,
       'area',
@@ -181,7 +181,19 @@ describe('propertyDefinitionHandler', () => {
       { 'device-a': 2 }
     )
 
-    expect(propertyDefinitionHandler.applyDelete(ctx, 'area', { 'device-b': 1 })).toBe('skipped')
+    expect(propertyDefinitionHandler.applyDelete(ctx, 'area', { 'device-b': 1 })).toBe('applied')
+    expect(read(testDb, 'area')).toBeUndefined()
+  })
+
+  it('refuses a tombstone the local edit already happened after', () => {
+    propertyDefinitionHandler.applyUpsert(
+      ctx,
+      'area',
+      { name: 'area', type: 'select', options: AREA_OPTIONS },
+      { 'device-a': 3 }
+    )
+
+    expect(propertyDefinitionHandler.applyDelete(ctx, 'area', { 'device-a': 2 })).toBe('skipped')
     expect(read(testDb, 'area')).toBeDefined()
   })
 

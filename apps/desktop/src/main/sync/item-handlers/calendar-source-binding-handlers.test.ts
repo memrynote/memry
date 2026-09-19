@@ -156,7 +156,7 @@ describe('calendarSourceHandler', () => {
     ).toBeUndefined()
 
     expect(calendarSourceHandler.applyDelete(ctx, 'missing')).toBe('skipped')
-    expect(calendarSourceHandler.applyDelete(ctx, 'source-synced', { 'device-c': 1 })).toBe(
+    expect(calendarSourceHandler.applyDelete(ctx, 'source-synced', { 'device-a': 1 })).toBe(
       'skipped'
     )
     expect(
@@ -323,7 +323,7 @@ describe('calendarBindingHandler', () => {
     ).toBeUndefined()
 
     expect(calendarBindingHandler.applyDelete(ctx, 'missing')).toBe('skipped')
-    expect(calendarBindingHandler.applyDelete(ctx, 'binding-synced', { 'device-c': 1 })).toBe(
+    expect(calendarBindingHandler.applyDelete(ctx, 'binding-synced', { 'device-a': 1 })).toBe(
       'skipped'
     )
     expect(

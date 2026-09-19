@@ -186,9 +186,18 @@ describe('calendarBindingHandler — partial payload merge and events', () => {
     calendarBindingHandler.applyUpsert(ctx(), 'binding-1', {}, { 'device-a': 5 })
     emit.mockClear()
 
-    expect(calendarBindingHandler.applyDelete(ctx(), 'binding-1', { 'device-b': 1 })).toBe(
+    expect(calendarBindingHandler.applyDelete(ctx(), 'binding-1', { 'device-a': 3 })).toBe(
       'skipped'
     )
     expect(emit).not.toHaveBeenCalled()
+  })
+
+  it('applies a delete concurrent with the local row, because delete wins (#2198)', () => {
+    calendarBindingHandler.applyUpsert(ctx(), 'binding-1', {}, { 'device-a': 5 })
+    emit.mockClear()
+
+    expect(calendarBindingHandler.applyDelete(ctx(), 'binding-1', { 'device-b': 1 })).toBe(
+      'applied'
+    )
   })
 })

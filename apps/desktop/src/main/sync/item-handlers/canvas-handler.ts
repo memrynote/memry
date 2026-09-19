@@ -340,11 +340,11 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
 
       let nextClock: VectorClock = existing.clock ?? {}
       if (clock) {
-        const resolution = this.resolveClock(existing.clock ?? {}, clock)
-        // Concurrent or older delete loses to local edits (R13/D2): skip so the
-        // canvas survives; a later delete with a dominating clock wins.
-        if (resolution.action === 'skip' || resolution.action === 'merge') {
-          log.info('Skipping remote canvas delete, local has unseen changes', { itemId })
+        const resolution = this.resolveDeleteClock(existing.clock ?? {}, clock)
+        // Delete wins over a concurrent local edit (#2198): only a canvas whose
+        // clock happens after the tombstone survives.
+        if (resolution.skip) {
+          log.info('Skipping remote canvas delete, local is ahead of the tombstone', { itemId })
           return 'skipped'
         }
         // Persist the delete's clock on the tombstone (mirrors the local-delete

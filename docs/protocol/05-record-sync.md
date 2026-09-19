@@ -183,6 +183,20 @@ behaviour (`:242-243`).
 row** and MUST NOT retry it; the correct recovery is to pull the tombstone and
 apply the delete locally.
 
+### Client-side rule (same predicate, other direction)
+
+**A conforming client MUST apply a pulled tombstone unless its local clock
+happens strictly after that tombstone** — the mirror of the server predicate
+above (`packages/sync-client/src/item-handlers/base-handler.ts`,
+`resolveDeleteClock`). A local clock merely _concurrent_ with the tombstone MUST
+NOT keep the item.
+
+A client that also skipped the delete on a concurrent clock never converged: its
+upsert is rejected with `SYNC_DELETE_WINS` on every push and its pull left the
+item alive, so that one device kept a ghost copy of an item deleted on every
+other device. The local edit is dropped; delete-wins is the protocol's
+resolution for that conflict on both sides.
+
 ## 5.9 Content hash and the stored blob — Q05.3
 
 **The same four fields are canonicalised twice, differently, and a client may

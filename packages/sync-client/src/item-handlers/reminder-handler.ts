@@ -171,9 +171,9 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = this.resolveClock(existing.clock, clock)
-      if (resolution.action === 'skip' || resolution.action === 'merge') {
-        log.info('Skipping remote reminder delete, local has unseen changes', { itemId })
+      const resolution = this.resolveDeleteClock(existing.clock, clock)
+      if (resolution.skip) {
+        log.info('Skipping remote reminder delete, local is ahead of the tombstone', { itemId })
         return 'skipped'
       }
     }
@@ -185,8 +185,7 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(reminders).where(eq(reminders.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
   }
 
   buildPushPayload(

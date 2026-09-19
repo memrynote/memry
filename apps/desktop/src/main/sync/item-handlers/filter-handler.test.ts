@@ -179,14 +179,17 @@ describe('filterHandler', () => {
     expect(emit).not.toHaveBeenCalled()
   })
 
-  it('skips a delete when the local clock is newer or concurrent', () => {
+  it('skips a delete the local clock happened after, applies a concurrent one', () => {
     filterHandler.applyUpsert(ctx(), 'filter-1', { name: 'Local' }, { deviceA: 5 })
     emit.mockClear()
 
     expect(filterHandler.applyDelete(ctx(), 'filter-1', { deviceA: 2 })).toBe('skipped')
-    expect(filterHandler.applyDelete(ctx(), 'filter-1', { deviceB: 1 })).toBe('skipped')
     expect(rowOf('filter-1')).toBeDefined()
     expect(emit).not.toHaveBeenCalled()
+
+    // Delete wins over a concurrent local edit (#2198): the server refuses this
+    // device's push forever, so keeping the row would strand it here alone.
+    expect(filterHandler.applyDelete(ctx(), 'filter-1', { deviceB: 1 })).toBe('applied')
   })
 
   it('deletes unconditionally when the local row has never been clocked', () => {
