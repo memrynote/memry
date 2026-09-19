@@ -140,15 +140,25 @@ export async function checkSyncIntegrity(): Promise<void> {
     const derivedPubKeyB64 = sodium.to_base64(derivedPubKey, sodium.base64_variants.ORIGINAL)
 
     if (currentDevice.signingPublicKey && currentDevice.signingPublicKey !== derivedPubKeyB64) {
-      logger.warn(
-        'Signing key mismatch: DB public key does not match keychain-derived key. ' +
-          'Self-healing by updating DB to match keychain (keychain is authority).',
+      // The row was written from the keypair this device REGISTERED with, so
+      // the server holds that same old public key under this device id. The
+      // old self-heal rewrote the row to match the keychain, which made the
+      // local state agree with a key the server rejects: every push earned
+      // SYNC_INVALID_SIGNATURE and every manifest signed here failed
+      // verification on every device, forever (#2218). Re-registration is the
+      // only repair, so take the same route as a missing key.
+      if (isKeyMaterialActivityRecent()) {
+        logger.info('Signing key mismatch during key-material transition — standing down', {
+          deviceId: currentDevice.id
+        })
+        return
+      }
+      logger.error(
+        'Signing key mismatch: the keychain key is not the key this device is registered under. ' +
+          'Signing out so the device re-registers under the key it holds.',
         { deviceId: currentDevice.id }
       )
-      db.update(syncDevices)
-        .set({ signingPublicKey: derivedPubKeyB64 })
-        .where(eq(syncDevices.id, currentDevice.id))
-        .run()
+      await cleanupLocalSyncState()
       return
     }
 

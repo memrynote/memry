@@ -100,7 +100,12 @@ export function isPermanentDownloadFailure(err: unknown): boolean {
   const withLastError = err as { name?: unknown; lastError?: unknown }
   const inner = withLastError?.name === 'DeadLetterError' ? withLastError.lastError : err
   const statusCode = (inner as { statusCode?: unknown })?.statusCode
-  return statusCode === 404 || statusCode === 410
+  if (statusCode === 404 || statusCode === 410) return true
+  // An unverifiable manifest is refused identically on every retry: the bytes
+  // were signed by a key the signer device is not registered under, and no
+  // later fetch changes either side. Retrying it forever is what produced 49
+  // identical manifest failures for one device in a day (#2218).
+  return (inner as { name?: unknown })?.name === 'ManifestSignatureError'
 }
 
 /**
