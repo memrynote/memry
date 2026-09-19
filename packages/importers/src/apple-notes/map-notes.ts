@@ -11,8 +11,12 @@ export interface AppleNoteRow {
   title: string
   /** Account display name (e.g. "iCloud", "On My Mac"). */
   accountName?: string | null
-  /** Folder display name; empty/"Notes"/Default folder → note root. */
-  folderName?: string | null
+  /**
+   * Folder chain from the account root down to the note's folder (leaf last).
+   * Apple Notes folders nest, so a single name would merge same-named leaves
+   * under different parents. Empty/"Notes" leaf → note root.
+   */
+  folderPath?: string[]
   /** CoreTime seconds (since 2001-01-01) for created/modified. */
   createdCoreTime?: number | null
   modifiedCoreTime?: number | null
@@ -52,10 +56,15 @@ export function mapNote(root: string, row: AppleNoteRow, multiAccount: boolean):
     if (account) segments.push(account)
   }
 
-  const folderName = (row.folderName ?? '').trim()
-  if (folderName && !DEFAULT_FOLDER_NAMES.has(folderName.toLowerCase())) {
-    const folder = sanitizeSegment(folderName)
-    if (folder) segments.push(folder)
+  const folderPath = row.folderPath ?? []
+  for (const [index, raw] of folderPath.entries()) {
+    const folder = sanitizeSegment(raw)
+    if (!folder) continue
+    // Default-folder suppression is leaf-only: "Work/Notes" is a real folder
+    // named Notes inside Work, not the account's default folder.
+    const isLeaf = index === folderPath.length - 1
+    if (isLeaf && DEFAULT_FOLDER_NAMES.has(folder.toLowerCase())) continue
+    segments.push(folder)
   }
 
   const result: MappedNote = {

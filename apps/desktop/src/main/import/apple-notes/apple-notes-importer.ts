@@ -4,7 +4,7 @@
  * Reads a copy of the Apple Notes NoteStore.sqlite database, decodes each
  * note's gzipped protobuf body via the pure @memry/importers/apple-notes package,
  * converts it to markdown, resolves inline image attachments, and creates a
- * note under `Apple Notes/<account>/<folder>`.
+ * note under `Apple Notes/<account>/<folder chain>`.
  *
  * Registration is gated to `process.platform === 'darwin'` by the orchestrator
  * (register-builtins); run() additionally early-returns on non-macOS as a
@@ -62,6 +62,9 @@ const ACCESS_DENIED_HINT =
 /** Folder type discriminator from ICFolder.ZFOLDERTYPE. */
 const FOLDER_TYPE_TRASH = 1
 const FOLDER_TYPE_SMART = 3
+
+/** Safety cap on the ZPARENT walk; a corrupt DB must not build endless paths. */
+const MAX_FOLDER_DEPTH = 32
 
 interface PrimaryKeys {
   ICAccount: number
@@ -228,6 +231,8 @@ export const appleNotesImporter: Importer = {
         )
         .all(keys.ICFolder) as FolderRow[]
       const folderById = new Map<number, FolderRow>(folders.map((f) => [f.pk, f]))
+      // Folder chains are shared by every note in a folder — resolve once.
+      const folderPathCache = new Map<number, string[]>()
       const trashFolders = new Set<number>(
         folders.filter((f) => f.folderType === FOLDER_TYPE_TRASH).map((f) => f.pk)
       )
@@ -284,7 +289,7 @@ export const appleNotesImporter: Importer = {
           const meta: AppleNoteRow = {
             title,
             accountName: accountName ?? null,
-            folderName: skipFolder ? null : folderDisplayName(folder),
+            folderPath: skipFolder ? [] : folderPath(folder, folderById, folderPathCache),
             createdCoreTime: row.created ?? null,
             modifiedCoreTime: row.modified ?? null
           }
@@ -388,6 +393,35 @@ export const appleNotesImporter: Importer = {
       }
     }
   }
+}
+
+/**
+ * Ordered folder titles from the account root down to `folder` (leaf last), so
+ * `Work/Clients/Acme` and `Personal/Acme` stay distinct instead of merging.
+ * Stops at the depth cap or on a ZPARENT cycle (corrupt DB), keeping the
+ * deepest segments. Default-folder suppression applies to the leaf only.
+ */
+function folderPath(
+  folder: FolderRow | undefined,
+  folderById: Map<number, FolderRow>,
+  cache: Map<number, string[]>
+): string[] {
+  if (!folder) return []
+  const cached = cache.get(folder.pk)
+  if (cached) return cached
+
+  const segments: string[] = []
+  const seen = new Set<number>()
+  let current: FolderRow | undefined = folder
+  while (current && segments.length < MAX_FOLDER_DEPTH && !seen.has(current.pk)) {
+    seen.add(current.pk)
+    const title = current === folder ? folderDisplayName(current) : current.title
+    if (title) segments.unshift(title)
+    current = current.parent != null ? folderById.get(current.parent) : undefined
+  }
+
+  cache.set(folder.pk, segments)
+  return segments
 }
 
 /** Default ("Notes") and account-root folders map to the importer root. */
