@@ -284,8 +284,17 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
               sliced here: the main process already bounds the list, and a
               render-side cut would drop exactly the coded lines it exempts.
             */}
-            {summary.skippedReasons?.map((group, i) => (
-              <p key={i} className="ps-3 text-xs/4 text-muted-foreground">
+            {summary.skippedReasons?.map((group) => (
+              <p
+                // The grouping key the main process used: a code, or the raw
+                // reason text. Unique per group by construction.
+                key={
+                  typeof group.reason === 'string'
+                    ? group.reason
+                    : (group.reason.code ?? group.reason.message)
+                }
+                className="ps-3 text-xs/4 text-muted-foreground"
+              >
                 {formatSkippedReason(group.reason, group.count)}
               </p>
             ))}
