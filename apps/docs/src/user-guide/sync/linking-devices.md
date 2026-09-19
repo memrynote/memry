@@ -67,6 +67,23 @@ choice stays available, so you can pick a different folder and try again without
 
 Accounts with a single vault skip this step entirely.
 
+## Signing In Without Linking
+
+You can also set up a second machine with just your email code and **recovery phrase**, without a
+linking code from the first device. The folder open on that machine then joins the vault your
+account already syncs — memrynote binds it to the account vault instead of registering the folder
+as a new one, so notes from both sides merge into one vault and sync starts immediately.
+
+This matters on plans with a **one vault limit**: a second vault would be refused by the server,
+and sync would keep failing until the vault was switched by hand.
+
+If your account holds several vaults, this path picks the largest one. Use the vault switcher
+(**In your account**) to download or open a different vault afterwards, and see
+[Settings → Vault](/user-guide/settings#vault) to check which vault the open folder belongs to.
+
+Creating an additional vault stays a deliberate action from the vault switcher — signing in never
+creates one.
+
 ## Initial Sync Progress
 
 After approval, the new device shows a sync progress screen:
