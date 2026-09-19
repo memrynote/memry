@@ -26,6 +26,8 @@ Symptom: no `ERR_DLOPEN_FAILED`. The native binding loads, the LevelDB store ope
 
 `apps/desktop/scripts/ensure-native.sh` (dev/test) and `apps/desktop/scripts/build-packaged-app.js` (packaging) both handle this by driving each `.pnpm/classic-level@*` copy directly with `--build-from-source --module-dir`. macOS hides a regression here — pnpm's install-time `node-gyp-build` compiles classic-level from source on darwin, so only the Windows build job proves the packaging path. Never treat the plain `-o ...,classic-level` flag as proof the rebuild happened. The only proof is a `build/Release/*.node` inside the classic-level package, which `check-packaged-runtime-deps.js` asserts on every packaged build.
 
+For the same reason, `pnpm check:native` does not `require('classic-level')`. classic-level is N-API, so a wrong-runtime binary loads cleanly and the require would pass on exactly the broken build. The check instead opens a throwaway y-leveldb store in a temp directory, writes an update, reads it back, clears it and closes — through `y-leveldb`, because the CRDT store reaches classic-level via `level` and a bare `require('classic-level')` resolves a different copy. `better-sqlite3` and `keytar` are NODE_MODULE_VERSION addons and keep their plain `require()` probes, which still report the compiled-vs-expected ABI pair.
+
 ## First `pnpm dev` in a worktree rebuilds native modules
 
 Symptom: `pnpm dev` sits for minutes on `[native] rebuilding better-sqlite3,keytar,classic-level for Electron...` right after a fresh `git worktree add` + `pnpm install`.
