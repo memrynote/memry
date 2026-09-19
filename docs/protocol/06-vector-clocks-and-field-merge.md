@@ -31,7 +31,7 @@ It is special only in the merge tie-break (§6.3) and in rebinding (§6.6).
 
 **Normative.** `clockTotal(clock)` is the plain sum of **every** tick in the
 clock, `_offline` included; no key is filtered
-(`packages/sync-client/src/field-merge.ts:47-51`).
+(`packages/sync-client/src/field-merge.ts:74-78`).
 
 A second implementation MUST accumulate in a 64-bit signed integer. Key iteration
 order is irrelevant to the sum.
@@ -39,24 +39,24 @@ order is irrelevant to the sum.
 ## 6.3 The complete winner-selection rule
 
 **Normative**, per field `f`, iterating `syncableFields` **in list order**
-(`packages/sync-client/src/field-merge.ts:90`):
+(`packages/sync-client/src/field-merge.ts:117`):
 
 1. `L = localFieldClocks[f] ?? {}`, `R = remoteFieldClocks[f] ?? {}`
-   (`:91-92`). **A missing field clock is the empty clock.**
-2. `tL = clockTotal(L)`, `tR = clockTotal(R)` (`:94-95`).
-3. `cmp = compare(L, R)` (`:93`). **Computed, but used only for the conflict
+   (`:118-119`). **A missing field clock is the empty clock.**
+2. `tL = clockTotal(L)`, `tR = clockTotal(R)` (`:121-122`).
+3. `cmp = compare(L, R)` (`:120`). **Computed, but used only for the conflict
    flag — never for the winner.**
-4. `differ = canonical(vL) != canonical(vR)` (`:100`; see §6.4).
+4. `differ = canonical(vL) != canonical(vR)` (`:127`; see §6.4).
 5. Winner:
-   - `tR > tL` → remote (`:102-103`)
-   - `tL > tR` → local (`:104-105`)
+   - `tR > tL` → remote (`:129-130`)
+   - `tL > tR` → local (`:131-132`)
    - `tL == tR` → **local iff `'_offline' ∈ keys(L)` and `'_offline' ∉ keys(R)`
-     and `differ`** (`:107-110`); **otherwise remote** (`:111-112`).
+     and `differ`** (`:134-137`); **otherwise remote** (`:138-139`).
 6. Conflict flag, **only inside the tie branch**: `cmp === 'concurrent' &&
-differ` (`:114-124`). The recorded conflict carries `mergedClock =
-merge(L, R)` (`:122`).
+differ` (`:141-151`). The recorded conflict carries `mergedClock =
+merge(L, R)` (`:149`).
 7. `mergedFieldClocks[f] = merge(L, R)` **unconditionally**, on every field,
-   whichever branch won (`:127`).
+   whichever branch won (`:154`).
 8. `merged[f] = winner` **even when the winner is `undefined`**; the caller's
    spread then leaves that column untouched
    (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:170-171`,
@@ -67,7 +67,7 @@ Three things a second implementation must get exactly right:
 - **The winner is chosen by sum of ticks, never by `compare`.**
 - **The `_offline` tie-break is a key-presence test, not a tick-value test**:
   `OFFLINE_CLOCK_DEVICE_ID in localFC`
-  (`packages/sync-client/src/field-merge.ts:108`), so `{_offline: 0}` counts as
+  (`packages/sync-client/src/field-merge.ts:135`), so `{_offline: 0}` counts as
   present. Note the asymmetry with §6.6: `rebindClockDevice` only acts when the
   tick is `> 0` (`packages/sync-client/src/offline-clock.ts:41`), so a
   zero-valued `_offline` key survives rebinding **and** still wins ties.
@@ -116,17 +116,18 @@ by `packages/sync-client/src/field-merge.test.ts:120-141`, row 4 by
 
 ## 6.4 Value equality — Q06.3
 
-### 6.4.1 What the code does today
+### 6.4.1 What the code did before #2185
 
-`JSON.stringify(a) !== JSON.stringify(b)` over the raw JavaScript values
-(`packages/sync-client/src/field-merge.ts:100`). Reproducing that in Rust means
-reproducing ECMAScript `JSON.stringify` byte for byte: `undefined` differs from
-`null` while `undefined` equals `undefined`; **object key order is significant**,
-in ES own-property order (integer-like keys ascending first, then string keys in
-insertion order); nested `undefined` omits a key in an object but becomes `null`
-in an array; `NaN` and `±Infinity` become `null`; `-0` becomes `0`; numbers use
-JavaScript shortest-round-trip formatting with the `1e+21` exponent form that
-`serde_json` does not produce; lone surrogates escape as `\uXXXX`.
+`JSON.stringify(a) !== JSON.stringify(b)` over the raw JavaScript values.
+Reproducing that in Rust means reproducing ECMAScript `JSON.stringify` byte for
+byte: `undefined` differs from `null` while `undefined` equals `undefined`;
+**object key order is significant**, in ES own-property order (integer-like keys
+ascending first, then string keys in insertion order); nested `undefined` omits a
+key in an object but becomes `null` in an array; `NaN` and `±Infinity` become
+`null`; `-0` becomes `0`; numbers use JavaScript shortest-round-trip formatting
+with the `1e+21` exponent form that `serde_json` does not produce; lone
+surrogates escape as `\uXXXX`. **This is history, not the rule; §6.4.2 is the
+rule.**
 
 **Only one field in scope carries an object**: `repeatConfig` in
 `TASK_SYNCABLE_FIELDS` (`packages/sync-client/src/field-merge.ts:22`,
@@ -151,8 +152,12 @@ normative rule.** `differ` is computed over a canonical form:
 Consequently `{a:1,b:2}` and `{b:2,a:1}` are **equal**, and `null` and
 `undefined` **differ**.
 
-`packages/sync-client/src/field-merge.ts:100` changes to match. Tracked as
-**#2185**. This chapter states the canonical form, not `JSON.stringify`.
+`valuesEqual` (`packages/sync-client/src/field-merge.ts:57-72`, called at
+`:127`) implements it: a recursive structural comparison, so key order cannot
+reach the result and no canonical string is built. Arrays stay
+**order-significant**; a key whose value is `undefined` compares as absent.
+Shipped for **#2185**. This chapter states the canonical form, not
+`JSON.stringify`.
 
 **Negative zero canonicalises to `0`.** IEEE 754 has two spellings of zero and
 the three rules above do not choose between them, which leaves the one hole a
@@ -168,13 +173,12 @@ order and number formatting.
 
 | Consumer                          | Effect                                                                                                                                                                                                                                                |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| winner rules 1 and 2 (`:102-105`) | do not read `differ`; unaffected                                                                                                                                                                                                                      |
-| winner rule 3 (`:109`)            | for an order-only difference both sides hold the same value, so only the stored serialisation changes: remote's key order persists instead of local's. **No semantic change.**                                                                        |
-| the conflict flag (`:114`)        | stops firing for such pairs, so there are fewer `'conflict'` returns (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:242`) and fewer `superseded` activity rows. **This is the only user-visible effect, and it removes false positives.** |
+| winner rules 1 and 2 (`:129-132`) | do not read `differ`; unaffected                                                                                                                                                                                                                      |
+| winner rule 3 (`:136`)            | for an order-only difference both sides hold the same value, so only the stored serialisation changes: remote's key order persists instead of local's. **No semantic change.**                                                                        |
+| the conflict flag (`:141`)        | stops firing for such pairs, so there are fewer `'conflict'` returns (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:242`) and fewer `superseded` activity rows. **This is the only user-visible effect, and it removes false positives.** |
 | the wire                          | nothing changes; the clock union is untouched                                                                                                                                                                                                         |
 
-**Disposition of Q06.3: answered (decision: mandate a canonical comparison,
-#2185).**
+**Disposition of Q06.3: answered and implemented (canonical comparison, #2185).**
 
 ## 6.5 Convergence — Q06.1 and Q06.2
 
@@ -195,7 +199,7 @@ and Y evaluates `W(Cy, Cx)`:
 **The asymmetric `_offline` test is the part that saves 3a and 3b**: from either
 seat, rule 3 means "the side carrying `_offline` wins". The branch that flips
 with the seat is the plain "remote wins" default at
-`packages/sync-client/src/field-merge.ts:111-112`.
+`packages/sync-client/src/field-merge.ts:138-139`.
 
 ### 6.5.2 Why 3c and 3d do not diverge in production
 
@@ -219,7 +223,7 @@ and a client that breaks any of them reintroduces divergence.**
   push dominate the server's row.** The handler itself stores the union clock
   and enqueues nothing
   (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:178-186`; union
-  from `packages/sync-client/src/field-merge.ts:127` and
+  from `packages/sync-client/src/field-merge.ts:154` and
   `packages/sync-client/src/item-handlers/types.ts:66`), but a `'conflict'`
   return re-queues the item one level up, in the pull coordinator
   (`apps/desktop/src/main/sync/engine/conflict-report.ts:56-61`, called from
@@ -286,7 +290,7 @@ logging; and MUST treat a missing field clock as `{}`.
 **Normative.** A field is reported as conflicted **iff** the field-clock totals
 are **equal**, `compare(L,R)` is `concurrent`, **and** the serialised values
 differ. The conflict block sits inside the tie branch
-(`packages/sync-client/src/field-merge.ts:106-125`, with the `isConcurrent &&
+(`packages/sync-client/src/field-merge.ts:133-152`, with the `isConcurrent &&
 valsDiffer` test at `:114` nested under the `else` of `:102`/`:104`).
 
 **A concurrent pair with unequal totals is resolved by the larger total and is
@@ -428,7 +432,7 @@ homeNoteId
 ```
 
 **A field absent from the list is not merged at all** and does not appear in
-`merged` (`packages/sync-client/src/field-merge.ts:90`).
+`merged` (`packages/sync-client/src/field-merge.ts:117`).
 
 `initAllFieldClocks(docClock, fields)` seeds **every listed field** with a copy of
 the document clock (`packages/sync-client/src/field-merge.ts:41-45`). It is what

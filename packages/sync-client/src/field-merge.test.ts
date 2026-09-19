@@ -190,6 +190,58 @@ describe('field-merge', () => {
       expect(result.merged.priority).toBe(2)
     })
 
+    describe('canonical value equality', () => {
+      const tieFC = (device: string): FieldClocks => ({ repeatConfig: { [device]: 1 } })
+      const mergeRepeat = (localVal: unknown, remoteVal: unknown) =>
+        mergeFields(
+          { repeatConfig: localVal },
+          { repeatConfig: remoteVal },
+          tieFC('deviceA'),
+          tieFC('deviceB'),
+          ['repeatConfig']
+        )
+
+      it('treats objects with the same content but different key order as equal', () => {
+        const result = mergeRepeat({ a: 1, b: 2 }, { b: 2, a: 1 })
+
+        expect(result.hadConflicts).toBe(false)
+        expect(result.conflictedFields).toEqual([])
+      })
+
+      it('treats null and undefined as differing', () => {
+        const result = mergeRepeat(null, undefined)
+
+        expect(result.hadConflicts).toBe(true)
+        expect(result.conflictedFields).toEqual(['repeatConfig'])
+      })
+
+      it('compares nested objects by content and arrays by order', () => {
+        const equal = mergeRepeat(
+          { unit: 'week', days: ['mon', 'tue'], every: { n: 2, from: 'due' } },
+          { days: ['mon', 'tue'], every: { from: 'due', n: 2 }, unit: 'week' }
+        )
+        expect(equal.hadConflicts).toBe(false)
+
+        const reordered = mergeRepeat({ days: ['mon', 'tue'] }, { days: ['tue', 'mon'] })
+        expect(reordered.hadConflicts).toBe(true)
+
+        const nestedDiffers = mergeRepeat({ every: { n: 2 } }, { every: { n: 3 } })
+        expect(nestedDiffers.hadConflicts).toBe(true)
+      })
+
+      it('treats an explicit undefined value as an absent key', () => {
+        const result = mergeRepeat({ unit: 'week', until: undefined }, { unit: 'week' })
+
+        expect(result.hadConflicts).toBe(false)
+      })
+
+      it('keeps an extra key differing', () => {
+        const result = mergeRepeat({ unit: 'week' }, { unit: 'week', count: 3 })
+
+        expect(result.hadConflicts).toBe(true)
+      })
+    })
+
     it('tracks multiple conflicted fields', () => {
       // #given — both title and priority have concurrent edits
       const local = { title: 'Local Title', dueDate: null, priority: 5 }
