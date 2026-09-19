@@ -197,12 +197,51 @@ function isRustDeclarationValue(filePath, value) {
   )
 }
 
+/**
+ * An inline object literal that describes *where* a credential lives rather
+ * than holding one: `ACCESS_TOKEN: { service: 'com.memry.sync', account:
+ * 'access-token' }` is a keychain lookup descriptor
+ * (`packages/contracts/src/crypto.ts`), and its strings are identifiers a
+ * reader needs, not material an attacker can use.
+ *
+ * Only cleared when no inner key is itself credential-shaped, so
+ * `ACCESS_TOKEN: { token: 'ghp_...' }` stays flagged. Nested braces are not
+ * cleared at all: the inner-key check only sees one level.
+ *
+ * Every entry must be a real `identifier:` pair, which is what keeps a JSX
+ * expression container holding a bare literal — `token={"supersecretvalue"}` —
+ * outside this exemption.
+ */
+function isCredentialFreeObjectLiteral(value) {
+  const normalized = normalizeValue(value)
+
+  if (!/^\{[^{}]*\}$/.test(normalized)) {
+    return false
+  }
+
+  const entries = normalized
+    .slice(1, -1)
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+
+  if (entries.length === 0) {
+    return false
+  }
+
+  return entries.every((entry) => {
+    const key = entry.match(/^([A-Za-z_$][\w$]*)\s*:/)
+    return key !== null && !isSecretKeywordKey(key[1])
+  })
+}
+
 function isCodeDeclarationValue(filePath, value) {
   const normalized = normalizeValue(value)
 
   return (
     // numeric literals (`tokenIssuedAt = 0`) carry no secret material
     /^-?\d+(?:\.\d+)?$/.test(normalized) ||
+    isCredentialFreeObjectLiteral(value) ||
     normalized.startsWith('() =>') ||
     // arrow function taking parameters (`getAccessToken: (force) => mint(force)`):
     // the value is a function, not a literal. Quote characters anywhere in it

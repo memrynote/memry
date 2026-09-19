@@ -230,3 +230,33 @@ describe('check-staged-secrets Rust declarations', () => {
     )
   })
 })
+
+describe('check-staged-secrets keychain descriptor objects', () => {
+  const tsRules = (text) =>
+    scanTextForSecrets('packages/contracts/src/crypto.ts', text).map((f) => f.rule)
+
+  it('ignores a credential-named key whose value is a keychain lookup descriptor', () => {
+    assert.deepEqual(
+      tsRules("  ACCESS_TOKEN: { service: 'com.memry.sync', account: 'access-token' },"),
+      []
+    )
+  })
+
+  it('still flags an object literal whose own key is credential-shaped', () => {
+    assert.deepEqual(tsRules("  ACCESS_TOKEN: { token: 'hunter2secretvalue' },"), [
+      'high-risk-secret-assignment'
+    ])
+  })
+
+  it('still detects a real credential format inside an object literal', () => {
+    // Assembled at runtime so this file does not trip the scanner it tests.
+    const shaped = ['ghp', 'abc123def456ghi789jkl012'].join('_')
+    assert.deepEqual(tsRules(`  ACCESS_TOKEN: { token: '${shaped}' },`), ['github-token'])
+  })
+
+  it('does not clear a nested object literal', () => {
+    assert.deepEqual(tsRules("  ACCESS_TOKEN: { entry: { value: 'hunter2secretvalue' } },"), [
+      'high-risk-secret-assignment'
+    ])
+  })
+})
