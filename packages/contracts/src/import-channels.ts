@@ -196,6 +196,64 @@ export interface ImportPreviewSuccess {
 export type ImportPreviewResponse = ImportPreviewSuccess | ImportErrorResult
 
 // ============================================================================
+// Apple Notes — folder tree for the dialog's folder picker. Apple Notes is
+// file-picked, not account-based: the user grants access to the
+// `group.com.apple.notes` container first, then this channel reads the folder
+// tree from that path so the import can be narrowed. The run itself still goes
+// over `import:start`, with the picked folders in `options`.
+// ============================================================================
+
+export const AppleNotesImportChannels = {
+  invoke: {
+    /** Account → folder → subfolder tree with note counts (no note bodies read). */
+    FOLDERS: 'import:apple-notes:folders'
+  }
+} as const
+
+export const AppleNotesFoldersSchema = z.object({
+  /** The picked `group.com.apple.notes` folder, or a NoteStore.sqlite file. */
+  sourcePath: z.string().min(1)
+})
+export type AppleNotesFoldersInput = z.infer<typeof AppleNotesFoldersSchema>
+
+export interface AppleNotesFolderNode {
+  /** ICFolder identifier — the stable key the import selection travels as. */
+  id: string
+  title: string
+  /** Notes directly in this folder. */
+  noteCount: number
+  /** Notes in this folder and every subfolder. */
+  totalNoteCount: number
+  children: AppleNotesFolderNode[]
+}
+
+export interface AppleNotesAccountNode {
+  /** ICAccount identifier, falling back to its primary key — render key only. */
+  id: string
+  /** Empty when the folders' account row is missing (the picker then shows no header). */
+  name: string
+  folders: AppleNotesFolderNode[]
+}
+
+export interface AppleNotesFoldersResult {
+  accounts: AppleNotesAccountNode[]
+  /** Notes that sit outside any folder; selectable as their own row. */
+  unfiledNoteCount: number
+}
+
+/**
+ * Shape of `ImportStartInput.options` for the Apple Notes importer. Both fields
+ * absent (or an empty `folderIds` with no unfiled notes) means import
+ * everything, so older callers and a failed folder scan keep working.
+ */
+export interface AppleNotesImportOptionsInput {
+  /** ICFolder identifiers to import; omit to import every folder. */
+  folderIds?: string[]
+  /** Also import notes that sit outside any folder (default: with everything). */
+  includeUnfiledNotes?: boolean
+}
+
+// ============================================================================
 // OneNote (account-based importer) — Microsoft sign-in + notebook tree for the
 // dialog's OneNote panel. The import itself still runs over the generic
 // `import:start` channel, with the panel's choices in `options`.

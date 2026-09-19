@@ -1118,6 +1118,16 @@
         "skipPrevious": "Skip previously imported pages",
         "skipPreviousHint": "Pages imported by an earlier OneNote run are skipped, so re-running only picks up what's new."
       },
+      "appleNotes": {
+        "loadingFolders": "Reading your folders…",
+        "foldersError": "Could not read your folders — the whole library will be imported.",
+        "unfiled": "Notes without a folder",
+        "selectAll": "Select all",
+        "deselectAll": "Clear selection",
+        "foldersSelected": "{count, plural, one {# folder selected} other {# folders selected}}",
+        "noteCount": "{count}",
+        "noteCountWithSubfolders": "{count} ({total})"
+      },
       "chooseFolder": "Select Apple Notes folder…",
       "chooseDirectory": "Choose folder…",
       "folderKeepsAssets": "Choose the folder when images sit outside the notes' own folder — exports often keep media in a shared one.",
