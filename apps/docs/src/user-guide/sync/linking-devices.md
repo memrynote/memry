@@ -22,6 +22,10 @@ The new device never sees your passphrase. The existing device never exposes the
 3. memrynote shows a **QR code** and a **linking code** — a long text string carrying the pairing data, meant to be copied, not typed by hand
 4. Keep this screen open
 
+Only the newest code is live. Choosing **Link a device** again cancels any code you generated
+before it, so a device still holding an older QR code or linking string is told the session was
+cancelled and has to scan the new one.
+
 ## On the New Device
 
 1. Sign in to the same email
