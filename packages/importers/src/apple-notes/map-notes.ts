@@ -11,8 +11,12 @@ export interface AppleNoteRow {
   title: string
   /** Account display name (e.g. "iCloud", "On My Mac"). */
   accountName?: string | null
-  /** Folder display name; empty/"Notes"/Default folder → note root. */
-  folderName?: string | null
+  /**
+   * Folder chain from the account root down to the note's folder (leaf last).
+   * Apple Notes folders nest, so a single name would merge same-named leaves
+   * under different parents. Empty/"Notes" root segment → note root.
+   */
+  folderPath?: string[]
   /** CoreTime seconds (since 2001-01-01) for created/modified. */
   createdCoreTime?: number | null
   modifiedCoreTime?: number | null
@@ -32,9 +36,14 @@ const DEFAULT_FOLDER_NAMES = new Set(['', 'notes'])
 
 function sanitizeSegment(name: string): string {
   // Keep names readable but strip path separators and collapse whitespace.
+  // Leading dots go too: the segments are joined into a filesystem path, so a
+  // dot-only folder name (`..`) would otherwise walk out of the importer root
+  // — two of them in one chain escape the vault entirely. Stripped to '', such
+  // a segment is dropped by the caller.
   return name
     .replace(/[\\/]+/g, '-')
     .replace(/\s+/g, ' ')
+    .replace(/^[.\s]+/, '')
     .trim()
 }
 
@@ -52,10 +61,17 @@ export function mapNote(root: string, row: AppleNoteRow, multiAccount: boolean):
     if (account) segments.push(account)
   }
 
-  const folderName = (row.folderName ?? '').trim()
-  if (folderName && !DEFAULT_FOLDER_NAMES.has(folderName.toLowerCase())) {
-    const folder = sanitizeSegment(folderName)
-    if (folder) segments.push(folder)
+  const folderPath = row.folderPath ?? []
+  for (const [index, raw] of folderPath.entries()) {
+    const folder = sanitizeSegment(raw)
+    if (!folder) continue
+    // Name-based default-folder suppression applies at the account root only.
+    // Apple Notes rejects two folders with the same name under one parent, so a
+    // root-level "Notes" is the account's default folder — but "Work/Notes" is a
+    // real folder the user made, and merging it into "Work" is the same
+    // flattening bug as same-named leaves.
+    if (index === 0 && DEFAULT_FOLDER_NAMES.has(folder.toLowerCase())) continue
+    segments.push(folder)
   }
 
   const result: MappedNote = {
