@@ -300,31 +300,42 @@ no-op when the tick is `<= 0` (`:41`, `:51`).
 **A clock containing `_offline` MUST never reach the server**, and rebinding MUST
 happen before the first push.
 
-### 6.6.1 Defect — `_offline` reaches the wire today (#2179)
+### 6.6.1 Fixed — `_offline` no longer rides the record create path (#2179)
 
-Desktop violates the rule above. `recoverDirtyItems` routes `syncedAt IS NULL`
-rows to `enqueueCreate`, not `enqueueRecoveredUpdate`
-(`apps/desktop/src/main/sync/dirty-recovery.ts:57-68` (`:58` picks `create` for a null `syncedAt`, `:67` enqueues it)), and rebinding
-runs only from `recoverPendingChange`, which only `enqueueRecoveredUpdate` calls
-(`packages/sync-core/src/record-sync.ts:114-142`). `applyLocalChange` increments
-the real device id but never strips `_offline`
-(`packages/sync-core/src/record-sync.ts:146-172`), and `seedUnclocked` only
-touches `clock IS NULL` rows
-(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:385-386`) so an
-offline-created task carrying `{_offline:1}` is not seeded. **The server filters
-nothing**: there is no reference to `_offline` anywhere under
-`apps/sync-server/src`.
+Desktop used to violate the rule above. `recoverDirtyItems` routes
+`syncedAt IS NULL` rows to `enqueueCreate`, not `enqueueRecoveredUpdate`
+(`apps/desktop/src/main/sync/dirty-recovery.ts:57-68`), and rebinding ran only
+from `recoverPendingChange`, which only `enqueueRecoveredUpdate` called;
+`applyLocalChange` increments the real device id but never strips `_offline`,
+and `seedUnclocked` only touches `clock IS NULL` rows
+(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:385-386`), so an
+offline-created task carrying `{_offline:1}` was never seeded either. Using the
+app with no account, creating and editing a task, then signing in shipped
+`clock = {_offline: 2, A: 1}` on the first recovery.
 
-Reproduction: use the app with no account, create and edit a task, then sign in;
-the first recovery ships `clock = {_offline: 2, A: 1}`. The existing test covers
-only the `syncedAt`-set path
-(`apps/desktop/src/main/sync/dirty-recovery.test.ts:166-200`). The hazard is
-already named in a code comment for notes at
-`packages/sync-client/src/offline-clock.ts:330-337`. A peer that later rebinds
-its own `_offline` also folds the **remote's** `_offline` ticks into its own
-device id (`packages/sync-client/src/offline-clock.ts:39-47`).
+**Fix.** `RecordSyncController.enqueueMutation` now calls `recoverPendingChange`
+before `applyLocalChange` (`packages/sync-core/src/record-sync.ts`), so every
+create *and* update of a record-shaped item rebinds and persists first. A row
+with nothing offline about it returns `null` and is untouched. Pinned by
+`packages/sync-core/src/record-sync.test.ts` and the create-path case in
+`apps/desktop/src/main/sync/dirty-recovery.test.ts`.
 
-**This is what makes case 3d of §6.5.1 reachable at all.** Tracked as **#2179**.
+**Residual, still open.** The fix reaches the types that implement
+`recoverPendingChange` — tasks and projects. Doc-clock-only types that mint
+`_offline` through `local-mutations.ts` (inbox, saved filters, templates, home
+pages, custom icons, bookmarks, reminders, canvases, canvas folders, task
+activity) have no rebinding hook, so their `_offline` still reaches the wire.
+Notes and journals are unaffected: `incrementNoteClockOffline` ticks the real
+device id and skips the bump when none is registered
+(`packages/sync-client/src/offline-clock.ts`). **The server filters nothing**:
+there is no reference to `_offline` anywhere under `apps/sync-server/src`.
+
+Why it matters wherever it remains: `_offline` is a device id two machines can
+both claim, so their clocks compare equal for edits that are genuinely
+concurrent, and a peer that later rebinds its own `_offline` folds the
+**remote's** ticks into its own device id
+(`packages/sync-client/src/offline-clock.ts:39-47`). **It is also what makes case
+3d of §6.5.1 reachable at all.**
 
 **Core obligation.** Never emit `_offline` on the wire. On inbound, treat it as an
 ordinary key with no special case, exactly as

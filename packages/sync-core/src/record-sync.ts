@@ -154,9 +154,22 @@ export class RecordSyncController<
     if (!local) return
     if (this.deps.shouldSkip?.(local)) return
 
+    // Rows edited with no device registered park their ticks under `_offline`,
+    // a device id every install claims. `applyLocalChange` only adds the real
+    // device's tick, so without this the placeholder rides out to the wire —
+    // most visibly through dirty recovery, which routes never-synced rows to
+    // `enqueueCreate` rather than `enqueueRecoveredUpdate` (#2179). Two peers'
+    // `_offline` entries then compare equal for edits that are concurrent, and
+    // a peer that later rebinds its own `_offline` folds the remote's ticks
+    // into its device id. `recoverPendingChange` rebinds and persists; it
+    // returns null when there is nothing offline about the row, which is the
+    // common case and costs one read.
+    const rebound = this.deps.recoverPendingChange?.(itemId, deviceId) ?? null
+    const base = rebound === null ? local : (this.deps.load(itemId) ?? local)
+
     const next = this.deps.applyLocalChange({
       itemId,
-      local,
+      local: base,
       deviceId,
       operation,
       extra
