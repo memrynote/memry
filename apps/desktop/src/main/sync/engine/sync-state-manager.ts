@@ -47,7 +47,24 @@ export class SyncStateManager {
     return this.ctx.state
   }
 
-  setState(newState: SyncStatusValue): void {
+  setState(requestedState: SyncStatusValue): void {
+    // An account without an active sync plan is not a failure: there is nothing
+    // to retry and nothing broke. Reported as `error` it paints the sidebar red,
+    // offers a Retry that can only 402 again, and buries the one action that
+    // does work — subscribing. Demote it to `local_only`, the exact state a free
+    // account is already gated into at startup, so every surface renders the
+    // upgrade path instead of an error (#2201). The error text is dropped with
+    // it: `getStatus` reads `lastError` independently of the state, so leaving
+    // it set would paint the banner even after the demotion.
+    let newState = requestedState
+    if (
+      requestedState === 'error' &&
+      this.ctx.lastErrorInfo?.category === 'sync_payment_required'
+    ) {
+      newState = 'local_only'
+      this.ctx.lastError = undefined
+      this.ctx.lastErrorInfo = undefined
+    }
     if (this.ctx.state === newState) return
     const wasOffline = this.ctx.state === 'offline'
     this.ctx.state = newState

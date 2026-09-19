@@ -43,6 +43,9 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
 
   const isSyncing = status === 'syncing'
   const isOffline = status === 'offline'
+  // No plan, no sync runtime — nothing here is retryable and nothing failed.
+  // The popover sells the upgrade instead of showing a dead Retry (#2201).
+  const isLocalOnly = status === 'local_only'
 
   const handleSync = async (): Promise<void> => {
     try {
@@ -94,6 +97,20 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
             </p>
           </div>
         </output>
+
+        {isLocalOnly && (
+          <>
+            <Separator />
+            <div className="space-y-2 px-3 py-2.5">
+              <p className="text-muted-foreground text-xs">
+                {tPhaseF('account.sync.upsell.description')}
+              </p>
+              <Button size="sm" onClick={onOpenSettings} className="h-7 w-full text-xs">
+                {tPhaseF('account.billing.actions.unlockSync')}
+              </Button>
+            </div>
+          </>
+        )}
 
         {/* Info rows */}
         {(pendingCount > 0 ||
@@ -176,44 +193,48 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
         )}
 
         {/* Actions */}
-        <Separator />
-        <div className="flex items-center gap-1 px-2 py-1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={
-              error
-                ? () => {
-                    clearError()
-                    void handleSync()
-                  }
-                : () => void handleSync()
-            }
-            disabled={isSyncing || isOffline}
-            className="h-7 text-xs"
-          >
-            {error ? 'Retry' : 'Sync Now'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void handlePauseResume()}
-            disabled={isOffline}
-            className="h-7 text-xs"
-          >
-            {status === 'paused' ? 'Resume' : 'Pause'}
-          </Button>
-          <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onOpenSettings}
-            className="size-7"
-            aria-label={tPhaseF('phaseF.componentsSyncSyncStatus.openSyncSettings')}
-          >
-            <Settings className="size-3.5" aria-hidden="true" />
-          </Button>
-        </div>
+        {!isLocalOnly && (
+          <>
+            <Separator />
+            <div className="flex items-center gap-1 px-2 py-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={
+                  error
+                    ? () => {
+                        clearError()
+                        void handleSync()
+                      }
+                    : () => void handleSync()
+                }
+                disabled={isSyncing || isOffline}
+                className="h-7 text-xs"
+              >
+                {error ? 'Retry' : 'Sync Now'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void handlePauseResume()}
+                disabled={isOffline}
+                className="h-7 text-xs"
+              >
+                {status === 'paused' ? 'Resume' : 'Pause'}
+              </Button>
+              <div className="flex-1" />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onOpenSettings}
+                className="size-7"
+                aria-label={tPhaseF('phaseF.componentsSyncSyncStatus.openSyncSettings')}
+              >
+                <Settings className="size-3.5" aria-hidden="true" />
+              </Button>
+            </div>
+          </>
+        )}
       </PopoverContent>
     </Popover>
   )

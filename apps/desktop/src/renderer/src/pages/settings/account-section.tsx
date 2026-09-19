@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
-import { CreditCard, ExternalLink, Lock, RefreshCw } from '@/lib/icons'
+import { Check, CreditCard, ExternalLink, Lock, RefreshCw, Sparkles } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
@@ -393,6 +393,16 @@ export function AccountSettings() {
   // Free plan (or any unpaid account main gated into `local_only`): sync never
   // connects, so the status row would sit on "Connecting..." forever.
   const isSyncLocked = billing?.plan === 'free' || syncStatus.status === 'local_only'
+  // Locked WITH an active plan is a different story and must not be sold to:
+  // the money is already paid and the entitlement simply has not reached sync
+  // yet (#2201). Offering "Unlock Sync" there sends a paying customer back to
+  // checkout for something a refresh fixes.
+  const isActivating = isSyncLocked && billing?.status === 'active'
+  const syncBenefits = [
+    t('account.sync.upsell.benefits.devices'),
+    t('account.sync.upsell.benefits.encrypted'),
+    t('account.sync.upsell.benefits.backup')
+  ]
   const storageCategoryLabels: Record<string, string> = {
     notes: t('account.storage.categories.notes'),
     attachments: t('account.storage.categories.attachments'),
@@ -440,26 +450,76 @@ export function AccountSettings() {
 
       <SettingsGroup label={t('account.groups.sync')}>
         {isSyncLocked ? (
-          <div className="flex items-center justify-between gap-3 px-4 py-3.5">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="font-medium text-[13px]/4 text-foreground">
-                {t('account.sync.upsell.title')}
-              </span>
-              <span className="text-xs/4 text-muted-foreground">
-                {t('account.sync.upsell.description')}
-              </span>
+          <div className="space-y-3 px-4 py-3.5">
+            <div className="flex items-start gap-3">
+              <div
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--tint) 12%, transparent)' }}
+              >
+                <Sparkles className="size-4" style={{ color: 'var(--tint)' }} aria-hidden="true" />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <div className="font-medium text-[13px]/4 text-foreground">
+                  {t(isActivating ? 'account.sync.activating.title' : 'account.sync.upsell.title')}
+                </div>
+                <div className="text-xs/4 text-muted-foreground">
+                  {t(
+                    isActivating
+                      ? 'account.sync.activating.description'
+                      : 'account.sync.upsell.description'
+                  )}
+                </div>
+              </div>
             </div>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => void handleStartCheckout()}
-              disabled={isCheckoutStarting}
-              className="h-7 shrink-0 px-3 text-xs/4"
-            >
-              {isCheckoutStarting
-                ? t('account.billing.actions.opening')
-                : t('account.billing.actions.unlockSync')}
-            </Button>
+
+            {!isActivating && (
+              <ul className="grid gap-1.5 ps-11">
+                {syncBenefits.map((benefit) => (
+                  <li key={benefit} className="flex items-start gap-2 text-xs/4 text-foreground">
+                    <Check
+                      className="mt-px size-3.5 shrink-0"
+                      style={{ color: 'var(--tint)' }}
+                      aria-hidden="true"
+                    />
+                    {benefit}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 ps-11">
+              {isActivating ? (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => void handleRefreshBilling()}
+                  disabled={isBillingRefreshing}
+                  className="h-7 shrink-0 px-3 text-xs/4"
+                >
+                  <RefreshCw
+                    className={`me-1.5 size-3.5 ${isBillingRefreshing ? 'animate-spin' : ''}`}
+                  />
+                  {t('account.billing.actions.refresh')}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => void handleStartCheckout()}
+                    disabled={isCheckoutStarting}
+                    className="h-7 shrink-0 px-3 text-xs/4"
+                  >
+                    {isCheckoutStarting
+                      ? t('account.billing.actions.opening')
+                      : t('account.billing.actions.unlockSync')}
+                  </Button>
+                  <span className="text-[11px]/4 text-muted-foreground">
+                    {t('account.sync.upsell.guarantee')}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-between h-11 px-4 shrink-0">

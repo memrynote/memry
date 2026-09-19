@@ -467,6 +467,21 @@ describe('sync components coverage', () => {
     await waitFor(() => expect(mocks.syncStatus.resume).toHaveBeenCalledTimes(1))
   })
 
+  it('sells the upgrade instead of a dead Retry when the account has no sync plan', () => {
+    mocks.syncStatus.status = 'local_only'
+    mocks.syncStatus.error = null
+    const openSettings = vi.fn()
+
+    render(<SyncStatus onOpenSettings={openSettings} />)
+
+    expect(screen.getByText('account.sync.upsell.description')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sync Now' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'account.billing.actions.unlockSync' }))
+    expect(openSettings).toHaveBeenCalledTimes(1)
+  })
+
   it('renders sync history, opens error details, filters, and loads more', () => {
     mocks.syncHistory.entries = [
       {
