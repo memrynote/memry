@@ -51,6 +51,14 @@ describe('handleDeviceKeyMismatch', () => {
     expect(mocks.trackMainEvent).toHaveBeenCalledTimes(1)
   })
 
+  it('#given the sign-out itself fails #then the failure is logged, not thrown', async () => {
+    const handle = await loadHandler()
+    mocks.teardownSession.mockRejectedValueOnce(new Error('teardown blew up'))
+
+    expect(() => handle()).not.toThrow()
+    await vi.waitFor(() => expect(mocks.teardownSession).toHaveBeenCalledWith('integrity'))
+  })
+
   it('#given key material is in flux #then it stands down and stays armed', async () => {
     const handle = await loadHandler()
     mocks.isKeyMaterialActivityRecent.mockReturnValue(true)

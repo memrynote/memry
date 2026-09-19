@@ -1105,9 +1105,13 @@ describe('sync runtime', () => {
 
     const deps = runtimeMocks.SyncEngine.instances[0].deps as {
       getSigningKeys: () => Promise<unknown>
+      onDeviceKeyMismatch: () => void
     }
 
     await expect(deps.getSigningKeys()).resolves.toBeNull()
+    // Same escalation the push coordinator reaches when the SERVER is the one
+    // that spots the mismatch.
+    expect(() => deps.onDeviceKeyMismatch()).not.toThrow()
     expect(runtimeMocks.db.updateRun).not.toHaveBeenCalled()
     expect(runtimeMocks.secureCleanup).toHaveBeenCalledWith(new Uint8Array([4, 5, 6]))
   })

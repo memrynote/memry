@@ -613,6 +613,23 @@ describe('sync IPC handlers', () => {
       expect(mockTeardownSession).toHaveBeenCalledWith('integrity')
     })
 
+    it('leaves a signing key mismatch alone while key material is being re-established', async () => {
+      // Sign-in / recovery / linking re-registers the device itself; a mismatch
+      // seen mid-flight is that flow in progress, not a broken install.
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'old-pubkey-b64' })
+      mockRetrieveKey
+        .mockResolvedValueOnce(new Uint8Array(32).fill(1))
+        .mockResolvedValueOnce(new Uint8Array(64).fill(9))
+      mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32).fill(8))
+      mockIsKeyMaterialActivityRecent.mockReturnValue(true)
+
+      await checkSyncIntegrity()
+
+      expect(mockTeardownSession).not.toHaveBeenCalled()
+      expect(mockUpdateSet).not.toHaveBeenCalled()
+    })
+
     it('cleans up local sync state when master or signing keys are missing', async () => {
       mockIsDatabaseInitialized.mockReturnValue(true)
       mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'base64-encoded' })
