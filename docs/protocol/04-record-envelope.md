@@ -161,7 +161,7 @@ decode, and throws `invalid base64 input` on a non-alphabet character
 
 ## 4.6 The record envelope on the wire
 
-**Normative.** `PushItem` (`packages/contracts/src/sync-api.ts:215-228`, schema
+**Normative.** `PushItem` (`packages/contracts/src/sync-api.ts:225-238`, schema
 `PushItemBaseSchema` at `:351-364`):
 
 | Field            | Type                               | Required |
@@ -199,7 +199,7 @@ string from the same map with the key absent.
 **The record push schema omits `stateVector` entirely.**
 `RecordPushItemSchema` is `PushItemBaseSchema.omit({ type: true, stateVector:
 true })` re-extended with the record type enum
-(`packages/contracts/src/sync-api.ts:374-377`). A conforming client MUST NOT send
+(`packages/contracts/src/sync-api.ts:384-387`). A conforming client MUST NOT send
 `stateVector` on `POST /sync/push`; the field exists on the general `PushItem`
 shape and on the signature payload, not on the record push.
 
@@ -325,7 +325,7 @@ only).
 per §4.7, sign Ed25519 detached, base64 the 64-byte signature
 (`apps/desktop/src/main/sync/encrypt.ts:59-85`,
 `packages/sync-client/src/push/record-encrypt.ts:59-85`; schema
-`SignaturePayloadV1Schema`, `packages/contracts/src/crypto.ts:205-222`).
+`SignaturePayloadV1Schema`, `packages/contracts/src/crypto.ts:179-196`).
 
 Rules a second implementation MUST reproduce:
 
@@ -333,7 +333,7 @@ Rules a second implementation MUST reproduce:
   (`apps/desktop/src/main/sync/encrypt.ts:54-57`, `:64-67`).
 - `cryptoVersion` is the **literal `1`** on the write side
   (`apps/desktop/src/main/sync/encrypt.ts:63`), and the schema pins it as
-  `z.literal(CRYPTO_VERSION)` (`packages/contracts/src/crypto.ts:209`).
+  `z.literal(CRYPTO_VERSION)` (`packages/contracts/src/crypto.ts:183`).
 - `deletedAt` is included **only when defined**
   (`apps/desktop/src/main/sync/encrypt.ts:70-72`).
 - `metadata` is included **only when `clock` or `stateVector` exists**, and it
@@ -359,7 +359,7 @@ is the safer construction.
 ### 4.8.1 `metadata.fieldClocks` — Q04.3
 
 `SignaturePayloadV1Schema.metadata` admits `fieldClocks`
-(`packages/contracts/src/crypto.ts:218`). **No writer sets it**: neither
+(`packages/contracts/src/crypto.ts:192`). **No writer sets it**: neither
 `apps/desktop/src/main/sync/encrypt.ts:74-79` nor
 `packages/sync-client/src/push/record-encrypt.ts:77-82` nor the server's
 reconstruction (`apps/sync-server/src/services/sync.ts:149-152`) ever does.
@@ -378,9 +378,9 @@ it.** Field clocks travel in the payload (chapter 13), not in the envelope.
 
 `EncryptedItem.signedAt` exists in the type
 (`packages/contracts/src/crypto.ts:134`) and in the schema
-(`packages/contracts/src/crypto.ts:187`). It is **not** in the signed CBOR
-(`packages/contracts/src/crypto.ts:205-222` has no such key), **not** in
-`PushItem` (`packages/contracts/src/sync-api.ts:215-228`), and no replay window
+(`packages/contracts/src/crypto.ts:174`). It is **not** in the signed CBOR
+(`packages/contracts/src/crypto.ts:179-196` has no such key), **not** in
+`PushItem` (`packages/contracts/src/sync-api.ts:225-238`), and no replay window
 reads it (chapter 05 §5.7 is a clock rule, not a timestamp rule).
 
 **Normative — `signedAt` is unused.** A conforming client MUST NOT send it and
@@ -410,7 +410,7 @@ described, not the one it would guess.
 1. **The read side defaults a missing `operation` to `'update'`**
    (`packages/sync-client/src/pull/record-decrypt.ts:60`), while the push schema
    makes `operation` required
-   (`packages/contracts/src/sync-api.ts:354`) and the server uses
+   (`packages/contracts/src/sync-api.ts:364`) and the server uses
    `item.operation` directly
    (`apps/sync-server/src/services/sync.ts:143`). A reader MUST apply the
    `'update'` default so that an item written by a path that omitted it still
@@ -444,7 +444,7 @@ signature payload with `cryptoVersion: CRYPTO_VERSION`
 (`apps/sync-server/src/services/sync.ts:144`) rather than with the value the
 item declared. **Normative: this is correct and intended today**, because
 `cryptoVersion` is not a wire field on `PushItem` at all
-(`packages/contracts/src/sync-api.ts:215-228`) — there is nothing for the client
+(`packages/contracts/src/sync-api.ts:225-238`) — there is nothing for the client
 to have declared. The signed constant is `1` on both sides (§4.8), so the
 reconstruction is exact. **When a version 2 is introduced,
 `cryptoVersion` must become a push field and the server must sign the declared
@@ -541,17 +541,16 @@ file key (`packages/sync-client/src/pull/record-decrypt.ts:82-100`, `:137-153`).
 
 ### 4.12.1 `EncryptedCrdtItem` — Q04.2
 
-`EncryptedCrdtItem` and `EncryptedCrdtItemSchema`
-(`packages/contracts/src/crypto.ts:139-150`, `:192-203`) declare
-`encryptedSnapshot`, `snapshotNonce` and `stateVector`. **Nothing on the wire has
-those fields**, and nothing produces the type: snapshots ship as the same packed
-blob as updates (chapter 07 §7.11).
+`EncryptedCrdtItem` and `EncryptedCrdtItemSchema` declared `encryptedSnapshot`,
+`snapshotNonce` and `stateVector`. **Nothing on the wire had those fields**, and
+nothing produced the type: snapshots ship as the same packed blob as updates
+(chapter 07 §7.11).
 
-**Normative — the type is dead, a pre-packed-envelope relic, and a Rust type
-derived from it would be wrong.** A conforming client MUST NOT model it. It is
-referenced only by `packages/contracts/src/crypto.test.ts`. Its removal, and the
-correction of `CRDT_SYNC_ITEM_TYPES`, are tracked together as **#2186** (chapter
-07 §7.1).
+**Normative — the type was dead, a pre-packed-envelope relic, and a Rust type
+derived from it would be wrong.** A conforming client MUST NOT model it. It was
+removed from `packages/contracts/src/crypto.ts` under **#2186**, together with
+the correction of `CRDT_SYNC_ITEM_TYPES` (chapter 07 §7.1.1); no runtime code
+referenced it.
 
 **Disposition of Q04.2: answered** (this section).
 
@@ -560,11 +559,11 @@ correction of `CRDT_SYNC_ITEM_TYPES`, are tracked together as **#2186** (chapter
 **Today, no.** Every signed numeric field is an integer by construction:
 `cryptoVersion` is the literal `1` (§4.8); every clock tick is
 `z.number().int().nonnegative()`
-(`packages/contracts/src/sync-api.ts:308`); and `deletedAt` on the push item is
-`z.number().int().min(0)` (`packages/contracts/src/sync-api.ts:363`).
+(`packages/contracts/src/sync-api.ts:318`); and `deletedAt` on the push item is
+`z.number().int().min(0)` (`packages/contracts/src/sync-api.ts:373`).
 
 **But `SignaturePayloadV1Schema.deletedAt` is a bare `z.number().optional()` with
-no `.int()`** (`packages/contracts/src/crypto.ts:214`), so the signature schema
+no `.int()`** (`packages/contracts/src/crypto.ts:188`), so the signature schema
 admits a fractional value that would encode as a float and hit the float16
 narrowing rule of §4.7.2.
 

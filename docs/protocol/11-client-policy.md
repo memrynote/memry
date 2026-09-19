@@ -30,7 +30,7 @@ matched by
 (`packages/sync-client/src/pull/client-header.ts:15-17`).
 
 `platform` MUST be one of `CLIENT_PLATFORMS` = `ios | android | desktop`
-(`packages/contracts/src/sync-api.ts:263`, checked at
+(`packages/contracts/src/sync-api.ts:273`, checked at
 `apps/sync-server/src/lib/client-identity.ts:28-29`, `:50-53`). This is **not**
 the device-registration platform enum (chapter 02 §2.12).
 
@@ -152,10 +152,10 @@ user to buy a plan they already have.
 
 **Normative.** `GET /sync/status` echoes
 `clientPolicy: { platform, writesEnabled, minWriteVersion? }`
-(`packages/contracts/src/sync-api.ts:275-287`,
+(`packages/contracts/src/sync-api.ts:285-297`,
 `apps/sync-server/src/services/client-policies.ts:61-62`) **when the request
 identified itself**, and omits it entirely for a legacy client
-(`packages/contracts/src/sync-api.ts:271-273`).
+(`packages/contracts/src/sync-api.ts:281-283`).
 
 `writesEnabled` defaults to `true` when there is no row
 (`apps/sync-server/src/services/client-policies.ts:61`), and `minWriteVersion` is

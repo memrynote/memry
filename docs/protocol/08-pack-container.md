@@ -125,7 +125,7 @@ bytes** (`packages/contracts/src/pack-format.ts:37-40`; chapter 07 §7.8).
 
 **Normative: `crdt_update = 2` is reserved and no writer produces it.** Updates
 live in D1 and have no R2 small-object GET floor to kill
-(`packages/contracts/src/sync-api.ts:495-496`).
+(`packages/contracts/src/sync-api.ts:505-506`).
 
 **A conforming reader MUST accept kind 2 structurally** — `KIND_BY_CODE` maps it
 (`packages/contracts/src/pack-format.ts:102-106`) and rejecting it would be a
@@ -234,12 +234,12 @@ into new packs; stale entries stay as dead bytes forever
 (`packages/contracts/src/pack-format.ts:52-53`). A client MUST NOT expect a pack
 it has read to change, and MUST NOT treat a pack as authoritative: individual
 blobs remain the source of truth throughout
-(`packages/contracts/src/sync-api.ts:516-517`).
+(`packages/contracts/src/sync-api.ts:526-527`).
 
 ## 8.9 Listing
 
 **Normative.** `GET /sync/packs` returns `PackListResponseSchema`
-(`packages/contracts/src/sync-api.ts:538-547`), whose `packs` are
+(`packages/contracts/src/sync-api.ts:548-557`), whose `packs` are
 `PackSummarySchema` (`:519-536`):
 
 | Field                    | Rule                                                                                                                                                  |
@@ -254,7 +254,7 @@ blobs remain the source of truth throughout
 | `expiresAt`              | epoch seconds at which `url` stops working (`:534`)                                                                                                   |
 
 `nextCursor` is an opaque keyset token, absent on the final page, and **packs
-arrive newest-first** (`packages/contracts/src/sync-api.ts:541-546`). A client
+arrive newest-first** (`packages/contracts/src/sync-api.ts:551-556`). A client
 MUST treat it as opaque.
 
 ## 8.10 Coverage is not total
@@ -264,7 +264,7 @@ under-cover same-second writes**: a document written the same second as an
 already-packed tie group with a smaller id sorts below the watermark and stays
 item-granular forever. Holes inside a range, from replaced or deleted items, are
 dead bytes and also fall back to item GETs
-(`packages/contracts/src/sync-api.ts:511-517`).
+(`packages/contracts/src/sync-api.ts:521-527`).
 
 **Membership MUST be verified against the pack's own index block, never assumed
 from the advertised cursor range.**

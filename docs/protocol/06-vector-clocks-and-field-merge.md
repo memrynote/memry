@@ -23,7 +23,7 @@ inputs produce the **same winner and the same conflict set**, with no appeal to
 - `getTick(clock, deviceId)` is `clock[deviceId] ?? 0` (`:43`).
 
 `_offline` is a reserved pseudo device id, the literal string `_offline`
-(`packages/contracts/src/sync-api.ts:173`). **The clock algebra gives it no
+(`packages/contracts/src/sync-api.ts:183`). **The clock algebra gives it no
 special treatment**: it is an ordinary key in `increment`, `merge` and `compare`.
 It is special only in the merge tie-break (§6.3) and in rebinding (§6.6).
 

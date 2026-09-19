@@ -68,7 +68,7 @@ under node in `adapters/conformance.test.ts`.
 
 ## Why Strategy Pattern (Phase 3)
 
-Phase 3 replaced a switch-based `ItemApplier` with this registry. The reason: every sync type has subtly different conflict resolution and side effects (e.g. tasks need field-level merge; notes need CRDT integration; inbox items have a triage state machine). Switch statements grew unwieldy.
+Phase 3 replaced a switch-based `ItemApplier` with this registry. The reason: every sync type has subtly different conflict resolution and side effects (e.g. tasks need field-level merge; notes and journals need CRDT integration; inbox items have a triage state machine). Switch statements grew unwieldy.
 
 ## Conflict Resolution
 

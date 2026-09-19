@@ -2,8 +2,8 @@
  * Crypto Contract Tests
  *
  * Zod schema + constant surface tests for the crypto contract:
- * EncryptedItem, EncryptedCrdtItem, SignaturePayloadV1 — plus
- * the parameter and keychain constant tables.
+ * EncryptedItem, SignaturePayloadV1 — plus the parameter and
+ * keychain constant tables.
  *
  * The deletedAt-in-signature regression lock (Phase 1.3) lives
  * against signatures.ts; here we only assert the schema surface
@@ -16,7 +16,6 @@ import {
   ARGON2_PARAMS,
   CRYPTO_VERSION,
   ED25519_PARAMS,
-  EncryptedCrdtItemSchema,
   EncryptedItemSchema,
   KEYCHAIN_ENTRIES,
   KEY_DERIVATION_CONTEXTS,
@@ -34,19 +33,6 @@ const validEncryptedItem = {
   keyNonce: 'kn',
   encryptedData: 'ed',
   dataNonce: 'dn',
-  signature: 'sig',
-  signerDeviceId: 'dev-1'
-}
-
-const validCrdtItem = {
-  id: 'note-1',
-  type: 'note' as const,
-  cryptoVersion: 1,
-  encryptedSnapshot: 'snap',
-  snapshotNonce: 'sn-nonce',
-  stateVector: 'sv',
-  encryptedKey: 'ek',
-  keyNonce: 'kn',
   signature: 'sig',
   signerDeviceId: 'dev-1'
 }
@@ -214,41 +200,6 @@ describe('EncryptedItemSchema', () => {
       fieldClocks: { title: { 'dev-1': -1 } }
     })
     expect(result.success).toBe(false)
-  })
-})
-
-describe('EncryptedCrdtItemSchema', () => {
-  it('accepts a valid CRDT item', () => {
-    const result = EncryptedCrdtItemSchema.safeParse(validCrdtItem)
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects any type literal other than "note"', () => {
-    const result = EncryptedCrdtItemSchema.safeParse({ ...validCrdtItem, type: 'journal' })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('type')
-    }
-  })
-
-  it('rejects missing stateVector', () => {
-    const invalid: Record<string, unknown> = { ...validCrdtItem }
-    delete invalid.stateVector
-    const result = EncryptedCrdtItemSchema.safeParse(invalid)
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects empty encryptedSnapshot', () => {
-    const result = EncryptedCrdtItemSchema.safeParse({ ...validCrdtItem, encryptedSnapshot: '' })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects cryptoVersion out of the 1..99 range', () => {
-    const low = EncryptedCrdtItemSchema.safeParse({ ...validCrdtItem, cryptoVersion: 0 })
-    expect(low.success).toBe(false)
-
-    const high = EncryptedCrdtItemSchema.safeParse({ ...validCrdtItem, cryptoVersion: 100 })
-    expect(high.success).toBe(false)
   })
 })
 
