@@ -22,13 +22,15 @@ describe('mapNote', () => {
     expect(personal.folder).toBe('Apple Notes/Personal/Acme')
   })
 
-  it('drops a default-named leaf but keeps its ancestors', () => {
-    expect(mapNote(ROOT, { title: 'A', folderPath: ['Work', 'Notes'] }, false).folder).toBe(
+  it('drops the account default folder but keeps a nested folder named Notes', () => {
+    expect(mapNote(ROOT, { title: 'A', folderPath: ['Notes'] }, false).folder).toBe('Apple Notes')
+    expect(mapNote(ROOT, { title: 'A', folderPath: ['Notes', 'Work'] }, false).folder).toBe(
       'Apple Notes/Work'
     )
-    // A "Notes" ancestor is a real folder — only the leaf is suppressed.
-    expect(mapNote(ROOT, { title: 'A', folderPath: ['Notes', 'Work'] }, false).folder).toBe(
-      'Apple Notes/Notes/Work'
+    // "Work/Notes" is a folder the user made — merging it into "Work" would
+    // collide with the notes sitting directly in Work.
+    expect(mapNote(ROOT, { title: 'A', folderPath: ['Work', 'Notes'] }, false).folder).toBe(
+      'Apple Notes/Work/Notes'
     )
   })
 
@@ -46,6 +48,19 @@ describe('mapNote', () => {
   it('sanitizes every segment', () => {
     const mapped = mapNote(ROOT, { title: 'A', folderPath: [' Work/Life ', 'A  B'] }, false)
     expect(mapped.folder).toBe('Apple Notes/Work-Life/A B')
+  })
+
+  it('drops dot-only segments instead of walking out of the importer root', () => {
+    // Joined into a filesystem path, `..` segments would escape the vault.
+    expect(mapNote(ROOT, { title: 'A', folderPath: ['..', '..'] }, false).folder).toBe(
+      'Apple Notes'
+    )
+    expect(mapNote(ROOT, { title: 'A', folderPath: ['.', ' .. ', 'Work'] }, false).folder).toBe(
+      'Apple Notes/Work'
+    )
+    expect(
+      mapNote(ROOT, { title: 'A', accountName: '..', folderPath: ['Work'] }, true).folder
+    ).toBe('Apple Notes/Work')
   })
 
   it('converts CoreTime timestamps when present', () => {

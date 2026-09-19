@@ -400,6 +400,8 @@ export const appleNotesImporter: Importer = {
  * `Work/Clients/Acme` and `Personal/Acme` stay distinct instead of merging.
  * Stops at the depth cap or on a ZPARENT cycle (corrupt DB), keeping the
  * deepest segments. Default-folder suppression applies to the leaf only.
+ * The trash root contributes no segment: a note under a folder nested inside
+ * “Recently Deleted” imports under its own name, not a literal trash tree.
  */
 function folderPath(
   folder: FolderRow | undefined,
@@ -415,7 +417,12 @@ function folderPath(
   let current: FolderRow | undefined = folder
   while (current && segments.length < MAX_FOLDER_DEPTH && !seen.has(current.pk)) {
     seen.add(current.pk)
-    const title = current === folder ? folderDisplayName(current) : current.title
+    const title =
+      current.folderType === FOLDER_TYPE_TRASH
+        ? null
+        : current === folder
+          ? folderDisplayName(current)
+          : current.title
     if (title) segments.unshift(title)
     current = current.parent != null ? folderById.get(current.parent) : undefined
   }

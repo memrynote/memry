@@ -322,6 +322,9 @@ function buildNestedFolderDb(dbPath: string): void {
   // Corrupt ZPARENT cycle: each folder claims the other as its parent.
   folder(26, 'Loop A', 27)
   folder(27, 'Loop B', 26)
+  // A folder nested under the trash root (ZFOLDERTYPE = 1).
+  insertFolder.run(28, 2, 'Recently Deleted', null, 'TrashFolder', 1, 10)
+  folder(29, 'Archive', 28)
   for (let i = 0; i < DEEP_CHAIN_LENGTH; i++) {
     folder(100 + i, `D${i}`, i === 0 ? null : 100 + i - 1)
   }
@@ -340,6 +343,7 @@ function buildNestedFolderDb(dbPath: string): void {
   note(202, 'Default Leaf Note', 25)
   note(203, 'Cycle Note', 26)
   note(204, 'Deep Note', 100 + DEEP_CHAIN_LENGTH - 1)
+  note(205, 'Trash Child Note', 29)
 
   db.close()
 }
@@ -598,7 +602,7 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
       const ctx = importContext.createImportContext('an-nested', new AbortController().signal)
       const summary = await importer.appleNotesImporter.run({ sourcePaths: [nestedDbPath] }, ctx)
       expect(summary.failed).toEqual([])
-      expect(summary.imported).toBe(5)
+      expect(summary.imported).toBe(6)
 
       const at = (...segments: string[]): boolean =>
         fs.existsSync(path.join(tempVault.path, 'Apple Notes', ...segments))
@@ -610,6 +614,9 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
       expect(at('Work', 'Default Leaf Note.md')).toBe(true)
       // A ZPARENT cycle terminates instead of looping forever.
       expect(at('Loop B', 'Loop A', 'Cycle Note.md')).toBe(true)
+      // The trash root is not a real folder — no literal trash tree in the vault.
+      expect(at('Archive', 'Trash Child Note.md')).toBe(true)
+      expect(at('Recently Deleted')).toBe(false)
       // Deeper than the cap → the deepest MAX_FOLDER_DEPTH segments are kept.
       const deepest = Array.from(
         { length: MAX_FOLDER_DEPTH },
