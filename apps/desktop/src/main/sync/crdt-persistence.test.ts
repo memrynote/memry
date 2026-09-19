@@ -6,6 +6,17 @@ const mockMoveStoreDir = vi.hoisted(() => vi.fn())
 const mockTrackMainEvent = vi.hoisted(() => vi.fn())
 const mockExistsSync = vi.hoisted(() => vi.fn())
 const mockRmSync = vi.hoisted(() => vi.fn())
+const mockGuard = vi.hoisted(() => vi.fn())
+
+const APP_VERSION = '2026.9.14'
+
+vi.mock('electron', () => ({
+  app: { getVersion: () => APP_VERSION }
+}))
+
+vi.mock('../store', () => ({
+  getCrdtPersistenceGuard: () => mockGuard()
+}))
 
 vi.mock('./crdt-preflight', () => ({
   runCrdtPreflight: (...args: unknown[]) => mockPreflight(...args)
@@ -53,7 +64,7 @@ vi.mock('y-leveldb', () => ({
   }
 }))
 
-import { openCrdtPersistence } from './crdt-persistence'
+import { openCrdtPersistence, shouldSkipCrdtPreflight } from './crdt-persistence'
 
 const STORE = '/tmp/memry-test/crdt-store'
 
@@ -79,6 +90,7 @@ describe('openCrdtPersistence telemetry', () => {
     vi.clearAllMocks()
     mockExistsSync.mockReturnValue(false)
     mockMoveStoreDir.mockResolvedValue(true)
+    mockGuard.mockReturnValue({ sessions: 0 })
   })
 
   it('reports the failure point when the binding aborts opening the store', async () => {
@@ -261,5 +273,76 @@ describe('openCrdtPersistence telemetry', () => {
     // may move a user's CRDT history.
     expect(mockPreflight).toHaveBeenCalledTimes(1)
     expect(mockMoveStoreDir).not.toHaveBeenCalled()
+  })
+})
+
+// #2217: the preflight child access-violates on every launch on some Windows
+// machines (83 crashes in three days for one user), and each launch re-derived
+// a verdict the previous one had already reached.
+describe('shouldSkipCrdtPreflight', () => {
+  it('runs the preflight while the streak is still short enough to self-heal', () => {
+    expect(shouldSkipCrdtPreflight({ sessions: 0, appVersion: APP_VERSION }, APP_VERSION)).toBe(
+      false
+    )
+    expect(shouldSkipCrdtPreflight({ sessions: 2, appVersion: APP_VERSION }, APP_VERSION)).toBe(
+      false
+    )
+  })
+
+  it('stops paying for the child once this build has failed it three times', () => {
+    expect(shouldSkipCrdtPreflight({ sessions: 3, appVersion: APP_VERSION }, APP_VERSION)).toBe(
+      true
+    )
+  })
+
+  // The auto-update is the retry: a new binary is the only thing that can
+  // plausibly change a native abort's verdict.
+  it('re-arms the preflight when a different build is running', () => {
+    expect(shouldSkipCrdtPreflight({ sessions: 83, appVersion: '2026.9.14' }, '2026.10.1')).toBe(
+      false
+    )
+  })
+
+  // Configs written before this field existed carry a streak with no owning
+  // build. Honouring it would disable the store on evidence no build claims.
+  it('re-arms a streak recorded before the version was persisted', () => {
+    expect(shouldSkipCrdtPreflight({ sessions: 56 }, APP_VERSION)).toBe(false)
+  })
+})
+
+describe('openCrdtPersistence preflight gate', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockExistsSync.mockReturnValue(false)
+    mockGuard.mockReturnValue({ sessions: 5, appVersion: APP_VERSION })
+  })
+
+  it('goes straight to in-memory without spawning the child that keeps crashing', async () => {
+    expect(await openCrdtPersistence(STORE)).toBeNull()
+
+    expect(mockPreflight).not.toHaveBeenCalled()
+    expect(mockMoveStoreDir).not.toHaveBeenCalled()
+  })
+
+  // The fleet count of installs running in memory must not silently drop to
+  // zero for exactly the population this event was built to measure.
+  it('still reports the install as unavailable, attributed to the gate', async () => {
+    await openCrdtPersistence(STORE)
+
+    const event = reportedEvent()
+    expect(event).toMatchObject({ errorCode: 'CRDT_PERSISTENCE_UNAVAILABLE:guard' })
+    const { message } = event.error as { message: string }
+    expect(message).toContain('5 in-memory launches')
+  })
+
+  it('runs the preflight when the guard cannot be read', async () => {
+    mockGuard.mockImplementation(() => {
+      throw new Error('config unreadable')
+    })
+    mockPreflight.mockResolvedValue(failed('store', 'node'))
+
+    expect(await openCrdtPersistence(STORE)).toBeNull()
+
+    expect(mockPreflight).toHaveBeenCalledTimes(1)
   })
 })
