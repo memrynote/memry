@@ -47,7 +47,7 @@ function useCountdown(
   return { seconds, canResend: seconds === 0, reset }
 }
 
-function OtpInputSession({
+export function OtpInput({
   onComplete,
   onResend,
   onBack,
@@ -59,6 +59,11 @@ function OtpInputSession({
   const { t } = useT('settings')
   const [value, setValue] = useState('')
   const { seconds, canResend, reset } = useCountdown(expiresIn, onResend)
+
+  useEffect(() => {
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- genuine external sync: the verification result arrives as props from the parent, not from an event this component sees. The rule's suggested key-remount is exactly what broke here: the key included the per-second `expiresIn`, so every countdown tick remounted the input and wiped half-typed codes. Keying on a failed attempt instead leaves typing untouched.
+    if (error && !isVerifying) setValue('')
+  }, [error, isVerifying])
 
   useEffect(() => {
     const unsubscribe = window.api.onOtpDetected((event) => {
@@ -147,7 +152,10 @@ function OtpInputSession({
         ) : canResend ? (
           <button
             type="button"
-            onClick={reset}
+            onClick={() => {
+              setValue('')
+              reset()
+            }}
             disabled={isVerifying}
             className="text-[var(--tint)] text-[13px] hover:underline disabled:opacity-50"
           >
@@ -171,9 +179,4 @@ function OtpInputSession({
       </div>
     </div>
   )
-}
-
-export function OtpInput(props: OtpInputProps): React.JSX.Element {
-  const sessionKey = `${props.error ?? 'ok'}:${props.expiresIn}`
-  return <OtpInputSession key={sessionKey} {...props} />
 }
