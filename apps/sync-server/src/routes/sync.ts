@@ -867,7 +867,7 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
 
   const snapshotBytes = decodeCrdtPayload(parsed.snapshot, endpoint, 'Snapshot exceeds 5MB limit')
 
-  let result: { sequenceNum: number }
+  let result: { sequenceNum: number; revision: string }
   try {
     result = await storeSnapshot(
       c.env.DB,
@@ -944,7 +944,11 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
     latencyMs: Date.now() - startedAt
   })
 
-  return c.json({ sequenceNum: result.sequenceNum })
+  // `revision` is additive (#2187): the token the upsert just wrote, so a client
+  // that pushed a snapshot can record it instead of leaving `server_revision`
+  // undefined until the next pull. Old clients read this body through an
+  // unvalidated cast and ignore the extra key.
+  return c.json({ sequenceNum: result.sequenceNum, revision: result.revision })
 }
 
 /**

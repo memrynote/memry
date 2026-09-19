@@ -115,9 +115,9 @@ describe('storeSnapshotBatch', () => {
 
     // #then — order is the request's, not the database's
     expect(outcomes).toEqual([
-      { noteId: 'note_c', accepted: true, sequenceNum: 0 },
-      { noteId: 'note_a', accepted: true, sequenceNum: 0 },
-      { noteId: 'note_b', accepted: true, sequenceNum: 0 }
+      { noteId: 'note_c', accepted: true, sequenceNum: 0, revision: expect.any(String) },
+      { noteId: 'note_a', accepted: true, sequenceNum: 0, revision: expect.any(String) },
+      { noteId: 'note_b', accepted: true, sequenceNum: 0, revision: expect.any(String) }
     ])
 
     for (const { noteId } of inputs) {
@@ -204,8 +204,8 @@ describe('storeSnapshotBatch', () => {
     // #then — the existing watermark is preserved so updates 3..4 stay pullable,
     // while the fresh note takes the current max
     expect(outcomes).toEqual([
-      { noteId: 'note_old', accepted: true, sequenceNum: 2 },
-      { noteId: 'note_new', accepted: true, sequenceNum: 3 }
+      { noteId: 'note_old', accepted: true, sequenceNum: 2, revision: expect.any(String) },
+      { noteId: 'note_new', accepted: true, sequenceNum: 3, revision: expect.any(String) }
     ])
     expect(snapshotRow('note_old').sequence_num).toBe(2)
     expect(snapshotRow('note_new').sequence_num).toBe(3)
@@ -215,16 +215,31 @@ describe('storeSnapshotBatch', () => {
   // body forever — the one failure this token exists to prevent.
   it('mints a fresh revision on every write, insert and conflict alike', async () => {
     // #given a first batch
-    await storeSnapshotBatch(harness.db, storage, USER_ID, VAULT_ID, DEVICE_ID, [
-      { noteId: 'note_r', snapshotData: bytes('v1') }
-    ])
+    const firstOutcomes = await storeSnapshotBatch(
+      harness.db,
+      storage,
+      USER_ID,
+      VAULT_ID,
+      DEVICE_ID,
+      [{ noteId: 'note_r', snapshotData: bytes('v1') }]
+    )
     const first = snapshotRow('note_r')
 
     // #when the SAME bytes are pushed again
-    await storeSnapshotBatch(harness.db, storage, USER_ID, VAULT_ID, DEVICE_ID, [
-      { noteId: 'note_r', snapshotData: bytes('v1') }
-    ])
+    const secondOutcomes = await storeSnapshotBatch(
+      harness.db,
+      storage,
+      USER_ID,
+      VAULT_ID,
+      DEVICE_ID,
+      [{ noteId: 'note_r', snapshotData: bytes('v1') }]
+    )
     const second = snapshotRow('note_r')
+
+    // #then each push answered with the token its own write landed (#2187), so a
+    // pusher recording the response cannot end up pointing at the other write
+    expect(firstOutcomes[0]).toMatchObject({ accepted: true, revision: first.revision })
+    expect(secondOutcomes[0]).toMatchObject({ accepted: true, revision: second.revision })
 
     // #then the revision moved, and the row identity did not (ON CONFLICT never
     // rewrites `id`, which is what makes the legacy-revision fallback stable)
@@ -274,9 +289,9 @@ describe('storeSnapshotBatch', () => {
 
     // #then only that note fails, and it fails with a typed reason
     expect(outcomes).toEqual([
-      { noteId: 'note_ok1', accepted: true, sequenceNum: 0 },
+      { noteId: 'note_ok1', accepted: true, sequenceNum: 0, revision: expect.any(String) },
       { noteId: 'note_bad', accepted: false, reason: ErrorCodes.STORAGE_UNAUTHORIZED },
-      { noteId: 'note_ok2', accepted: true, sequenceNum: 0 }
+      { noteId: 'note_ok2', accepted: true, sequenceNum: 0, revision: expect.any(String) }
     ])
 
     // #then the failed put left NO row behind, and its reservation came back

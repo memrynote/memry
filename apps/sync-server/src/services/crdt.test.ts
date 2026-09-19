@@ -507,6 +507,48 @@ describe('CRDT service sequencing', () => {
     expect(snapshot?.revision.startsWith('legacy:')).toBe(false)
   })
 
+  // #2187. A pusher that cannot see the revision it just wrote has to leave its
+  // local `server_revision` undefined until the next pull.
+  it('returns to the pusher the revision it stored, on insert and on replace', async () => {
+    // #given
+    const db = createD1Database()
+    const storage = createMemoryBucket()
+
+    // #when the note is snapshotted for the first time
+    const inserted = await storeSnapshot(
+      db,
+      storage,
+      'user-1',
+      'vault-1',
+      'note-1',
+      'device-a',
+      bytes('snap-a')
+    )
+
+    // #then the returned token is the one the row carries
+    expect(inserted.revision).not.toBe('')
+    expect((await getSnapshot(db, storage, 'user-1', 'vault-1', 'note-1'))?.revision).toBe(
+      inserted.revision
+    )
+
+    // #when the same note is snapshotted again through the ON CONFLICT path
+    const replaced = await storeSnapshot(
+      db,
+      storage,
+      'user-1',
+      'vault-1',
+      'note-1',
+      'device-b',
+      bytes('snap-b')
+    )
+
+    // #then the response follows the row rather than repeating the first token
+    expect(replaced.revision).not.toBe(inserted.revision)
+    expect((await getSnapshot(db, storage, 'user-1', 'vault-1', 'note-1'))?.revision).toBe(
+      replaced.revision
+    )
+  })
+
   // FM1. A revision that fails to move when the blob does is the whole design's
   // central risk: the client skips a snapshot it needed and keeps a stale body
   // forever. The replacement path is where it goes wrong, because the row already
