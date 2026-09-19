@@ -156,6 +156,22 @@ export interface CrdtStoreData {
    * starting state for an install that has never degraded.
    */
   inMemorySessions?: number
+  /**
+   * App version that was running when the current `inMemorySessions` streak was
+   * last extended.
+   *
+   * Scopes the streak to a build, exactly like `gpu-crash-guard.json` scopes its
+   * marker: a machine whose binding aborts is being asked to stop re-running the
+   * preflight, and the only thing that can plausibly change that verdict is a
+   * new binary. Shipping one makes the auto-update itself the retry, instead of
+   * disabling the store forever on the first bad release.
+   *
+   * Optional, and absent on every install that degraded under a build older than
+   * this one — which reads as "no build owns this streak", so the preflight runs
+   * once more and that launch stamps the version. Never treat a missing version
+   * as a match.
+   */
+  inMemoryAppVersion?: string
 }
 
 /**
@@ -554,6 +570,24 @@ export function getCrdtInMemorySessions(): number {
   return store.get('crdtStore').inMemorySessions ?? 0
 }
 
+/** The in-memory streak together with the build that recorded it. */
+export interface CrdtPersistenceGuard {
+  sessions: number
+  appVersion?: string
+}
+
+/**
+ * What the previous launches decided about this machine's CRDT binding.
+ *
+ * Read before the preflight runs (sync/crdt-persistence.ts): a streak is the
+ * only evidence available at that point, because the preflight's own verdict
+ * costs the crash it is being asked to stop paying for.
+ */
+export function getCrdtPersistenceGuard(): CrdtPersistenceGuard {
+  const current = store.get('crdtStore')
+  return { sessions: current.inMemorySessions ?? 0, appVersion: current.inMemoryAppVersion }
+}
+
 /**
  * Record this launch's CRDT persistence outcome and return the resulting streak.
  *
@@ -564,8 +598,11 @@ export function recordCrdtPersistenceOutcome(healthy: boolean): number {
   const current = store.get('crdtStore')
   const previous = current.inMemorySessions ?? 0
   const next = healthy ? 0 : previous + 1
-  if (next !== previous) {
-    store.set('crdtStore', { ...current, inMemorySessions: next })
+  // Stamped on the degraded path only. A healthy launch drops it so the streak
+  // and the build that owns it can never disagree.
+  const nextVersion = healthy ? undefined : app.getVersion()
+  if (next !== previous || current.inMemoryAppVersion !== nextVersion) {
+    store.set('crdtStore', { ...current, inMemorySessions: next, inMemoryAppVersion: nextVersion })
   }
   return next
 }

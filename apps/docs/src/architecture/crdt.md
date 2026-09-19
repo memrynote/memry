@@ -310,6 +310,24 @@ verdict lands while the window is still loading, so a broadcast would routinely
 arrive before anything was listening. The streak is persisted, so the answer is
 correct whenever it is asked.
 
+The same streak is what stops the preflight itself from running forever. The
+preflight's whole job is to contain a binding that takes the process down with
+no catchable error, and containing it costs a crashed child — on the Windows
+machines where the binding access-violates, two per launch (the store and the
+empty control directory), with an identical verdict every time. So
+`openCrdtPersistence` reads the streak _before_ spawning anything: at three or
+more consecutive in-memory launches it skips straight to in-memory mode without
+running the preflight, and reports that as
+`CRDT_PERSISTENCE_UNAVAILABLE:guard` so the fleet count of degraded installs
+stays honest.
+
+Giving up is scoped to one build. The streak is stamped with the app version
+that recorded it (`crdtStore.inMemoryAppVersion`), and a streak is only honoured
+while that version is still running — so shipping a new binary re-arms the
+preflight automatically, the same way `gpu-crash-guard.json` re-enables hardware
+acceleration on a new version. A streak written by a build that predates the
+field has no owning version and is re-armed once.
+
 There is deliberately no bounded retry of a failed store open within a session.
 The failure it guards against is a native abort in the binding, which in the
 field is deterministic per machine rather than transient, and every retry costs

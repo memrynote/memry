@@ -1,8 +1,10 @@
 import * as Y from 'yjs'
 import { LeveldbPersistence } from 'y-leveldb'
+import { app } from 'electron'
 import { existsSync, rmSync } from 'fs'
 import os from 'os'
 import { createLogger } from '../lib/logger'
+import { getCrdtPersistenceGuard, type CrdtPersistenceGuard } from '../store'
 import { runCrdtPreflight, type CrdtPreflightResult } from './crdt-preflight'
 import { moveStoreDir } from './crdt-store-move'
 import { trackMainEvent } from '../telemetry/track'
@@ -16,6 +18,16 @@ const log = createLogger('CrdtProvider')
 
 const PERSISTENCE_PROBE_KEY = '__memry_crdt_probe__'
 const PERSISTENCE_PROBE_TIMEOUT_MS = 15_000
+
+/**
+ * Consecutive in-memory launches after which this build stops running the
+ * preflight at all.
+ *
+ * Three, the same count the user-facing notice waits for: below it a degraded
+ * launch is usually a store that quarantined itself and recovers on its own, so
+ * giving up early would strand an install that was about to be fine.
+ */
+const PREFLIGHT_GIVE_UP_AFTER_SESSIONS = 3
 
 export interface CrdtPersistence {
   getYDoc(noteId: string): Promise<Y.Doc>
@@ -39,7 +51,38 @@ export interface CrdtPersistence {
  * `probe` is this module's own post-preflight check — the preflight stages
  * come from the child and stop at 'store'.
  */
-type FailurePoint = CrdtPreflightResult['stage'] | 'probe'
+type FailurePoint = CrdtPreflightResult['stage'] | 'probe' | 'guard'
+
+/**
+ * Has this machine already proved, under this exact build, that the preflight
+ * only ever ends in a native abort?
+ *
+ * The preflight exists to contain a binding that takes the process down with no
+ * catchable error, and containing it costs a crashed child. On the Windows
+ * installs in issue #2217 that child access-violates every single launch
+ * (`Utility:crashed:CrdtPreflight`, exit 0xC0000005), twice — once against the
+ * store and once against the empty control directory — and the verdict is
+ * identical every time. Nothing was remembered between launches, so the crash
+ * loop had no end: 83 crashes over three days for one user, all re-deriving a
+ * conclusion the previous launch had already reached.
+ *
+ * A streak under the threshold is NOT a verdict: a store that quarantined
+ * itself is degraded for exactly one launch and healthy on the next, and giving
+ * up on it would turn a self-healing case into a permanent one.
+ *
+ * The version is what keeps this from being permanent. A streak is only
+ * honoured for the build that recorded it, so shipping a new binary re-arms the
+ * preflight automatically — the auto-update is the retry. An install whose
+ * streak predates this field has no owning build and is re-armed once, which is
+ * also what makes the new field safe to add to configs that never had it.
+ */
+export function shouldSkipCrdtPreflight(
+  guard: CrdtPersistenceGuard,
+  currentVersion: string
+): boolean {
+  if (guard.sessions < PREFLIGHT_GIVE_UP_AFTER_SESSIONS) return false
+  return guard.appVersion === currentVersion
+}
 
 /**
  * Report that this install has no CRDT persistence.
@@ -59,8 +102,12 @@ type FailurePoint = CrdtPreflightResult['stage'] | 'probe'
  * Without it this event's Error Tracking issue was titled after its own error
  * code and carried nothing else at all (#1989).
  */
-function reportPersistenceUnavailable(preflight: CrdtPreflightResult | null): void {
-  const at: FailurePoint = preflight && !preflight.ok ? (preflight.stage ?? 'bootstrap') : 'probe'
+function reportPersistenceUnavailable(
+  preflight: CrdtPreflightResult | null,
+  failedAt?: FailurePoint
+): void {
+  const at: FailurePoint =
+    failedAt ?? (preflight && !preflight.ok ? (preflight.stage ?? 'bootstrap') : 'probe')
   const message = [
     `CRDT persistence unavailable at ${at}`,
     `transport=${preflight?.transport ?? 'none'}`,
@@ -97,6 +144,18 @@ export async function openCrdtPersistence(storagePath: string): Promise<CrdtPers
   // below is this function's own, but the catch also covers the binding
   // aborting out-of-band from probePersistence, where there is no verdict.
   let lastPreflight: CrdtPreflightResult | null = null
+  const skipped = skipPreflightVerdict()
+  if (skipped) {
+    // Reported like any other unavailable store, so the fleet count of installs
+    // running in memory does not silently drop to zero for exactly the
+    // population it was built to measure.
+    log.warn('Skipping the CRDT preflight — this build has already failed it repeatedly', {
+      storagePath,
+      reason: skipped
+    })
+    reportPersistenceUnavailable({ ok: false, reason: skipped }, 'guard')
+    return null
+  }
   try {
     // A binding that hard-aborts (unsupported CPU instructions, AV kills)
     // takes the whole process down with no catchable error — observed on
@@ -133,6 +192,24 @@ export async function openCrdtPersistence(storagePath: string): Promise<CrdtPers
       { storagePath, error: err }
     )
     reportPersistenceUnavailable(lastPreflight)
+    return null
+  }
+}
+
+/**
+ * Why this launch is skipping the preflight, or null to run it.
+ *
+ * Reading the guard must never be what stops the store from opening, so a store
+ * that cannot be read is treated as no evidence and the preflight runs.
+ */
+function skipPreflightVerdict(): string | null {
+  try {
+    const guard = getCrdtPersistenceGuard()
+    const version = app.getVersion()
+    if (!shouldSkipCrdtPreflight(guard, version)) return null
+    return `preflight skipped after ${guard.sessions} in-memory launches on ${version}`
+  } catch (err) {
+    log.warn('Could not read the CRDT persistence guard — running the preflight', { error: err })
     return null
   }
 }
