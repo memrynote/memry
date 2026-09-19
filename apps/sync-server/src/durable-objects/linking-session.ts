@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers'
 
-type SessionStatus = 'pending' | 'scanned' | 'approved' | 'completed' | 'expired'
+type SessionStatus = 'pending' | 'scanned' | 'approved' | 'completed' | 'cancelled' | 'expired'
 
 interface SessionMeta {
   sessionId: string

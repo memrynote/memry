@@ -36,23 +36,23 @@ affect the budget.
 
 **Normative.** `LINKING_SESSION_STATUSES` is
 `pending → scanned → approved → completed`, with `expired`
-(`packages/contracts/src/linking-api.ts:5-11`). `LINKING_INVALID_TRANSITION`
-(409) is the answer to anything else
+and `cancelled` (`packages/contracts/src/linking-api.ts:5-16`).
+`LINKING_INVALID_TRANSITION` (409) is the answer to anything else
 (`apps/sync-server/src/lib/errors.ts:24`).
 
 **`expired` is computed, never persisted**: the predicate is
 `expires_at < now` evaluated per request
 (`apps/sync-server/src/services/linking.ts:100-107`).
 
-**`cancelled` is a sixth, persisted status and it is missing from the contract.**
-`initiate` cancels the caller's prior `pending` and `scanned` sessions with
-`status = 'cancelled'` (`apps/sync-server/src/services/linking.ts:142-143`), but
-`cancelled` appears in neither `LINKING_SESSION_STATUSES`
-(`packages/contracts/src/linking-api.ts:5-11`) nor the Durable Object's
-`SessionStatus` (`apps/sync-server/src/durable-objects/linking-session.ts:3`).
-**A client that validates `GET /session/:id` against the contracts enum fails on
-an ordinary response.** A conforming client MUST accept `cancelled` and treat it
-as terminal. Tracked as **#2182**; the fix is additive and needs no migration.
+**`cancelled` is a sixth status and it is persisted.** `initiate` cancels the
+caller's prior `pending` and `scanned` sessions with `status = 'cancelled'`
+(`apps/sync-server/src/services/linking.ts:142-143`), so
+`GET /session/:id` can return it. It is carried by both
+`LINKING_SESSION_STATUSES` (`packages/contracts/src/linking-api.ts:5-16`) and the
+Durable Object's `SessionStatus`
+(`apps/sync-server/src/durable-objects/linking-session.ts:3`). A conforming
+client MUST accept `cancelled` and treat it as terminal. Was **#2182**; the fix
+was additive and needed no migration.
 
 ## 3.3 `linkingSecret` — Q03.1
 

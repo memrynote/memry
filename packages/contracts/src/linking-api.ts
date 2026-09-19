@@ -2,11 +2,16 @@ import { z } from 'zod'
 
 const ProviderAuthVersionSchema = z.literal(1)
 
+// `cancelled` is persisted: POST /auth/linking/initiate cancels the caller's
+// prior pending and scanned sessions (apps/sync-server/src/services/linking.ts),
+// so GET /auth/linking/session/:id can legitimately return it. `expired` is
+// computed per request and never written.
 export const LINKING_SESSION_STATUSES = [
   'pending',
   'scanned',
   'approved',
   'completed',
+  'cancelled',
   'expired'
 ] as const
 

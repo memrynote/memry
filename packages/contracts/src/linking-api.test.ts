@@ -22,8 +22,16 @@ describe('LINKING_SESSION_STATUSES', () => {
       'scanned',
       'approved',
       'completed',
+      'cancelled',
       'expired'
     ])
+  })
+
+  it('accepts the persisted cancelled status', () => {
+    // initiate writes status = 'cancelled' on the caller's prior sessions, so a
+    // client validating a server response against this enum must not reject it.
+    const result = ScanLinkingResponseSchema.safeParse({ success: false, status: 'cancelled' })
+    expect(result.success).toBe(true)
   })
 })
 

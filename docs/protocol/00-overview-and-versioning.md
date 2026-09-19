@@ -341,7 +341,7 @@ Four obligations bind every chapter.
    edit to this chapter — and a reviewer is then looking at the fact tables.
 
    ```
-   protocol-constants-sha256: 0fe9875851540e984215156440fccd8d0f50c34d97162aef22d00609efc7264d
+   protocol-constants-sha256: e4d23c8864f98244a637955d9b9d3955eef326dc6e48086401facd8a544e12b8
    ```
 
    To update it: change the constant, run
@@ -362,17 +362,17 @@ questions, all labelled `protocol-spec`. Where a chapter describes behaviour one
 of them changes, the chapter states the current behaviour, cites the issue, and
 marks what will change. **None of them is the Rust core's to work around.**
 
-| Issue | Subject                                                             | Chapter |
-| ----- | ------------------------------------------------------------------- | ------- |
-| #2179 | `_offline` reaches the wire                                         | 06      |
-| #2180 | the push-build / pull-apply race — **closed, not a divergence**     | 06      |
-| #2181 | `compactYDoc` drops unknown Y.Doc roots                             | 12      |
-| #2182 | `cancelled` is a persisted linking status missing from the contract | 03      |
-| #2183 | desktop strips unknown payload keys                                 | 13      |
-| #2184 | relax `LINKING_IP_MISMATCH`                                         | 03      |
-| #2185 | mandate a canonical value comparison                                | 06      |
-| #2186 | the journal CRDT constants                                          | 07      |
-| #2187 | return `revision` from a snapshot push                              | 07      |
+| Issue | Subject                                                                    | Chapter |
+| ----- | -------------------------------------------------------------------------- | ------- |
+| #2179 | `_offline` reaches the wire                                                | 06      |
+| #2180 | the push-build / pull-apply race — **closed, not a divergence**            | 06      |
+| #2181 | `compactYDoc` drops unknown Y.Doc roots                                    | 12      |
+| #2182 | `cancelled` is a persisted linking status — **fixed, now in the contract** | 03      |
+| #2183 | desktop strips unknown payload keys                                        | 13      |
+| #2184 | relax `LINKING_IP_MISMATCH`                                                | 03      |
+| #2185 | mandate a canonical value comparison                                       | 06      |
+| #2186 | the journal CRDT constants                                                 | 07      |
+| #2187 | return `revision` from a snapshot push                                     | 07      |
 
 #2180 was re-examined against the code and closed: the mirrored merge it
 describes is real, but the merged row is re-queued and an equal clock applies
