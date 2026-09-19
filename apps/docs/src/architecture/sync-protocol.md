@@ -405,9 +405,11 @@ Inside the encrypted blob, tasks, projects, and agent conversations carry per-fi
 (`field_clocks`).
 
 - Concurrent edits to **non-overlapping** fields merge cleanly.
-- Concurrent edits to **the same field** resolve last-writer-wins by the sum of device ticks (`tickSum`). Ties favor the remote write (deterministic).
+- Concurrent edits to **the same field** resolve last-writer-wins by the sum of device ticks (`tickSum`). On a tie the incoming (remote) write wins, so which value survives depends on which device happens to merge.
+- A merged row is **re-queued and pushed back** under the union of both clocks, and a pulled row whose clock equals the local one is applied rather than skipped. Together these are what converge two devices that both merged the same concurrent pair: the first re-push is accepted, the second is refused as a replay, and the refused device takes the accepted row on its next pull.
 
-See `apps/desktop/src/main/sync/field-merge.ts` for the merge implementation.
+See `packages/sync-client/src/field-merge.ts` for the merge implementation and
+`docs/protocol/06-vector-clocks-and-field-merge.md` for the normative rules.
 `TASK_SYNCABLE_FIELDS` is 15 fields; `PROJECT_SYNCABLE_FIELDS` is 8; agent conversations merge
 `title`, `backend`, `backendModel`, `trustList`, and `pinned`.
 
