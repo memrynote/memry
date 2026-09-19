@@ -969,6 +969,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))
         .catch(() => {})
 
+      // Folders made before folder creation wrote a folder_config row have no
+      // row at all, so an empty one never reached another device. Same shape as
+      // the attachment backfill below: fix forward, then close the gap once for
+      // what already exists. Lazy import keeps the vault module off the sync
+      // start path when the pass is a no-op.
+      void import('../notes/folder-config-effects')
+        .then(({ backfillFolderConfigs }) => backfillFolderConfigs())
+        .catch((error: unknown) => log.warn('Folder config backfill skipped', { error }))
+
       // Retry attachment uploads that failed or were interrupted in earlier
       // sessions — the durable outbox holds them across restarts. The backfill
       // runs first and in the same chain: it puts rows in that outbox for files
