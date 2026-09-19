@@ -59,6 +59,7 @@ vi.mock('../vault/notes', () => ({
 }))
 
 vi.mock('../notes/folder-config-effects', () => ({
+  syncFolderConfigCreate: vi.fn(),
   syncFolderConfigSet: vi.fn(),
   syncFolderConfigRename: vi.fn(),
   syncFolderConfigDelete: vi.fn()
@@ -467,6 +468,8 @@ describe('notes-handlers', () => {
 
       expect(result).toEqual({ success: true })
       expect(notesVault.createFolder).toHaveBeenCalledWith('new-folder')
+      // An empty folder has nothing else that would ever push it to the server.
+      expect(folderConfigEffects.syncFolderConfigCreate).toHaveBeenCalledWith('new-folder')
     })
 
     it('should handle folder creation errors', async () => {

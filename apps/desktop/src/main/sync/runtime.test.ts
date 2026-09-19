@@ -242,7 +242,9 @@ vi.mock('../crypto', () => ({
 vi.mock('../store', () => ({
   store: {
     get: runtimeMocks.storeGet
-  }
+  },
+  // The folder-config backfill kicked off at runtime start bails on this.
+  getCurrentVaultPath: () => null
 }))
 
 vi.mock('../agent/storage/vault-id', () => ({

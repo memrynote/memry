@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   getNoteById: vi.fn(),
   listNotes: vi.fn(),
   renameFolder: vi.fn(),
+  syncFolderConfigCreate: vi.fn(),
   syncFolderConfigDelete: vi.fn(),
   syncFolderConfigRename: vi.fn(),
   getConfig: vi.fn(),
@@ -85,6 +86,7 @@ vi.mock('../../../vault/notes', () => ({
 }))
 
 vi.mock('../../../notes/folder-config-effects', () => ({
+  syncFolderConfigCreate: mocks.syncFolderConfigCreate,
   syncFolderConfigDelete: mocks.syncFolderConfigDelete,
   syncFolderConfigRename: mocks.syncFolderConfigRename
 }))

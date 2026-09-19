@@ -77,6 +77,11 @@ signing back in still reaches the server. And it blocks the item from being writ
 device, so replaying your account history cannot put it back. Nothing is recorded on an install that
 does not sync at all (signed out, or on the free plan): there is no other device holding a copy.
 
+A folder syncs in its own right, so a folder you create and leave empty — and any empty folders
+inside it — appears on your other devices without needing a note in it. Renaming or deleting a
+folder carries its whole subtree with it. Folders that already existed before this was fixed are
+picked up once, the next time sync starts.
+
 A delete also wins against an edit made elsewhere at the same time. If you delete an item on one
 device while another device edits it without having seen the delete yet, the delete stands and the
 second device drops its copy on its next sync, rather than the edit bringing the item back.
@@ -96,7 +101,7 @@ second device drops its copy on its next sync, rather than the edit bringing the
 | Bookmarks and reminders                                        | ✓     |
 | Attachments (encrypted blobs)                                  | ✓     |
 | Agent chat conversations and terminal messages (paid accounts) | ✓     |
-| Folder icons                                                   | ✓     |
+| Folders (including empty ones) and their icons                 | ✓     |
 | Custom icons (uploaded images)                                 | ✓     |
 
 ## What Does **Not** Get Synced
