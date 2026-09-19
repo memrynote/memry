@@ -43,7 +43,9 @@ describe('calendar sync handlers', () => {
     const bindingSync = await import('@memry/sync-client/calendar-binding-sync').catch(() => null)
     bindingSync?.resetCalendarBindingSyncService()
 
-    const externalSync = await import('@memry/sync-client/calendar-external-event-sync').catch(() => null)
+    const externalSync = await import('@memry/sync-client/calendar-external-event-sync').catch(
+      () => null
+    )
     externalSync?.resetCalendarExternalEventSyncService()
 
     testDb.close()
@@ -151,6 +153,9 @@ describe('calendar sync handlers', () => {
     queued = queue.peek(1)
     expect(queued).toHaveLength(1)
     expect(queued[0].operation).toBe('delete')
+
+    // A tombstone the local row already happened after is refused.
+    expect(eventHandler?.applyDelete(ctx, 'event-remote', { 'device-b': 0 })).toBe('skipped')
 
     const deleteResult = eventHandler?.applyDelete(ctx, 'event-remote', {
       'device-b': 1,
@@ -380,9 +385,12 @@ describe('calendar sync handlers', () => {
   })
 
   it('preserves synced provider metadata, bindings, and imported cache rows across handler upserts', async () => {
-    const { initCalendarSourceSyncService } = await import('@memry/sync-client/calendar-source-sync')
-    const { initCalendarBindingSyncService } = await import('@memry/sync-client/calendar-binding-sync')
-    const { initCalendarExternalEventSyncService } = await import('@memry/sync-client/calendar-external-event-sync')
+    const { initCalendarSourceSyncService } =
+      await import('@memry/sync-client/calendar-source-sync')
+    const { initCalendarBindingSyncService } =
+      await import('@memry/sync-client/calendar-binding-sync')
+    const { initCalendarExternalEventSyncService } =
+      await import('@memry/sync-client/calendar-external-event-sync')
 
     initCalendarSourceSyncService({
       queue,
