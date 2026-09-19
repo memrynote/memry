@@ -305,7 +305,7 @@ describe('linking routes', () => {
     )
 
     expect(res.status).toBe(200)
-    expect(transitionToCompleted).toHaveBeenCalledWith(env.DB, SESSION_ID, '4.3.2.1')
+    expect(transitionToCompleted).toHaveBeenCalledWith(env.DB, SESSION_ID)
     expect(await res.json()).toEqual({
       success: true,
       encryptedMasterKey: 'emk',

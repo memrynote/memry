@@ -281,9 +281,8 @@ linking.post('/complete', linkingCompleteRateLimit, async (c) => {
   }
 
   const { sessionId } = parsed.data
-  const callerIp = c.req.header('cf-connecting-ip') || null
 
-  const keyData = await transitionToCompleted(c.env.DB, sessionId, callerIp)
+  const keyData = await transitionToCompleted(c.env.DB, sessionId)
 
   const doId = c.env.LINKING_SESSION.idFromName(sessionId)
   const stub = c.env.LINKING_SESSION.get(doId)

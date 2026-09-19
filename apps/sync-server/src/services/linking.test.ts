@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 import { encodeCbor } from '../lib/cbor'
-import { AppError, ErrorCodes } from '../lib/errors'
+import { ErrorCodes } from '../lib/errors'
 import {
   createLinkingSession,
   getSession,
@@ -570,7 +570,7 @@ describe('transitionToCompleted', () => {
     db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
 
     // #when
-    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1', null)
+    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1')
 
     // #then
     expect(result).toEqual({
@@ -601,9 +601,7 @@ describe('transitionToCompleted', () => {
       .mockReturnValueOnce(rereadStmt)
 
     // #when / #then
-    await expect(
-      transitionToCompleted(db as unknown as D1Database, 'session-1', null)
-    ).rejects.toThrow(
+    await expect(transitionToCompleted(db as unknown as D1Database, 'session-1')).rejects.toThrow(
       expect.objectContaining({
         code: ErrorCodes.LINKING_CONCURRENT_ATTEMPT,
         statusCode: 409
@@ -628,9 +626,7 @@ describe('transitionToCompleted', () => {
       .mockReturnValueOnce(rereadStmt)
 
     // #when / #then
-    await expect(
-      transitionToCompleted(db as unknown as D1Database, 'session-1', null)
-    ).rejects.toThrow(
+    await expect(transitionToCompleted(db as unknown as D1Database, 'session-1')).rejects.toThrow(
       expect.objectContaining({
         code: ErrorCodes.LINKING_INVALID_TRANSITION,
         statusCode: 409
@@ -655,9 +651,7 @@ describe('transitionToCompleted', () => {
       .mockReturnValueOnce(rereadStmt)
 
     // #when / #then
-    await expect(
-      transitionToCompleted(db as unknown as D1Database, 'session-1', null)
-    ).rejects.toThrow(
+    await expect(transitionToCompleted(db as unknown as D1Database, 'session-1')).rejects.toThrow(
       expect.objectContaining({
         code: ErrorCodes.LINKING_SESSION_NOT_FOUND,
         statusCode: 404
@@ -734,7 +728,7 @@ describe('vault transfer', () => {
     const db = createMockDb()
     db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
 
-    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1', null)
+    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1')
     expect(result.encryptedVaultTransfer).toBe('ct')
     expect(result.encryptedVaultTransferNonce).toBe('nonce')
     expect(result.vaultTransferConfirm).toBe('confirm')
@@ -919,12 +913,12 @@ describe('transitionToScanned — linkingSecret', () => {
 })
 
 // ============================================================================
-// Tests: IP binding in transitionToCompleted
+// Tests: transitionToCompleted is not IP-bound (#2184)
 // ============================================================================
 
-describe('transitionToCompleted — IP binding', () => {
-  it('should succeed when caller IP matches scanner IP', async () => {
-    // #given
+describe('transitionToCompleted — no IP binding', () => {
+  it('should complete even though the session recorded a different scanner IP', async () => {
+    // #given a session scanned on Wi-Fi, completed after a switch to cellular
     const session = makeSession({
       status: 'approved',
       scanner_ip: '1.2.3.4',
@@ -944,7 +938,7 @@ describe('transitionToCompleted — IP binding', () => {
     db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
 
     // #when
-    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1', '1.2.3.4')
+    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1')
 
     // #then
     expect(result).toEqual({
@@ -956,76 +950,5 @@ describe('transitionToCompleted — IP binding', () => {
       providerAuthConfirm: 'pac',
       providerAuthVersion: 1
     })
-  })
-
-  it('should reject with LINKING_IP_MISMATCH when caller IP differs from scanner IP', async () => {
-    // #given
-    const session = makeSession({
-      status: 'approved',
-      scanner_ip: '1.2.3.4',
-      encrypted_master_key: 'enc-mk',
-      encrypted_key_nonce: 'enc-n',
-      key_confirm: 'kc'
-    })
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue(session)
-    const db = createMockDb()
-    db.prepare.mockReturnValue(selectStmt)
-
-    // #when / #then
-    await expect(
-      transitionToCompleted(db as unknown as D1Database, 'session-1', '5.6.7.8')
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: ErrorCodes.LINKING_IP_MISMATCH,
-        statusCode: 403
-      })
-    )
-  })
-
-  it('should skip IP check when scanner_ip is null', async () => {
-    // #given
-    const session = makeSession({
-      status: 'approved',
-      scanner_ip: null,
-      encrypted_master_key: 'enc-mk',
-      encrypted_key_nonce: 'enc-n',
-      key_confirm: 'kc'
-    })
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue(session)
-    const updateStmt = createMockStatement()
-    updateStmt.run.mockResolvedValue({ meta: { changes: 1 } })
-    const db = createMockDb()
-    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
-
-    // #when
-    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1', '5.6.7.8')
-
-    // #then
-    expect(result.encryptedMasterKey).toBe('enc-mk')
-  })
-
-  it('should skip IP check when caller IP is null', async () => {
-    // #given
-    const session = makeSession({
-      status: 'approved',
-      scanner_ip: '1.2.3.4',
-      encrypted_master_key: 'enc-mk',
-      encrypted_key_nonce: 'enc-n',
-      key_confirm: 'kc'
-    })
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue(session)
-    const updateStmt = createMockStatement()
-    updateStmt.run.mockResolvedValue({ meta: { changes: 1 } })
-    const db = createMockDb()
-    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
-
-    // #when
-    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1', null)
-
-    // #then
-    expect(result.encryptedMasterKey).toBe('enc-mk')
   })
 })
