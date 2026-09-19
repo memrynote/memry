@@ -740,6 +740,10 @@ write, so a client can tell whether the server's baseline moved without download
   `{ "<noteId>": { "sequenceNum": 42, "revision": "…", "signerDeviceId": "…" } }`. A note absent from
   a present map has no server snapshot at all; an absent `snapshotMeta` key means the server predates
   this field.
+- `POST /sync/crdt/snapshot` returns `{ sequenceNum, revision }`, and each accepted entry of
+  `POST /sync/crdt/snapshot/batch` returns `{ noteId, accepted: true, sequenceNum, revision }`. The
+  token is the one that write stored, so a device that pushes a baseline records the same revision a
+  later read would advertise instead of leaving it unset until the next pull.
 
 The token is deliberately not `sequenceNum`. A replacement snapshot keeps the note's existing
 sequence number so later incrementals stay pullable, so the number does not move when the blob does.
@@ -750,8 +754,9 @@ Rows written before the field existed are not backfilled; the server derives a d
 for them at read time from the row's identity, creation time and size, and the next snapshot push
 replaces it with a real one. Both read paths return the same token for the same row.
 
-Both fields are additive: an older client reads these responses through an unvalidated cast and
-ignores the extra keys.
+All of these fields are additive: an older client reads these responses through an unvalidated cast
+and ignores the extra keys, and a client talking to a server that predates the push-response field
+stores no revision for its own push rather than inventing one.
 
 `snapshotMeta` is read on the same round trip as the incrementals, as extra statements inside the
 batch the pull already sends. D1 refuses any single query carrying more than 100 bound parameters and

@@ -326,7 +326,7 @@ export const storeSnapshot = async (
   signerDeviceId: string,
   snapshotData: ArrayBuffer,
   client: ClientIdentity | null = null
-): Promise<{ sequenceNum: number }> => {
+): Promise<{ sequenceNum: number; revision: string }> => {
   const id = crypto.randomUUID()
   // Fresh on EVERY write, insert and conflict alike, and never conditional on
   // whether the bytes look different. A revision that fails to move when the
@@ -389,7 +389,9 @@ export const storeSnapshot = async (
     await adjustStorageUsed(db, userId, deltaBytes)
   }
 
-  return { sequenceNum }
+  // The revision goes back to the pusher (#2187) so it can record the token for
+  // the row it just wrote instead of leaving it undefined until the next pull.
+  return { sequenceNum, revision }
 }
 
 /** One note's snapshot inside a batch push. */
@@ -406,7 +408,7 @@ export interface SnapshotBatchInput {
  * carries an ErrorCodes value.
  */
 export type SnapshotBatchOutcome =
-  | { noteId: string; accepted: true; sequenceNum: number }
+  | { noteId: string; accepted: true; sequenceNum: number; revision: string }
   | { noteId: string; accepted: false; reason: string }
 
 /**
@@ -424,6 +426,7 @@ interface PreparedSnapshot {
   snapshotData: ArrayBuffer
   blobKey: string
   sequenceNum: number
+  revision: string
   deltaBytes: number
   reservedBytes: number
 }
@@ -551,6 +554,9 @@ export const storeSnapshotBatch = async (
       // contain the server's updates above the prior watermark, so the
       // watermark stays put once a snapshot exists — see storeSnapshot.
       sequenceNum: existing?.sequence_num ?? watermarkByNote.get(entry.noteId) ?? 0,
+      // One per note per call, so this push's outcome can carry the token the
+      // upsert writes. Still fresh on every write and never reused across calls.
+      revision: crypto.randomUUID(),
       deltaBytes: entry.snapshotData.byteLength - (existing?.size_bytes ?? 0),
       reservedBytes: 0
     }
@@ -608,7 +614,7 @@ export const storeSnapshotBatch = async (
             entry.snapshotData.byteLength,
             signerDeviceId,
             now,
-            crypto.randomUUID(),
+            entry.revision,
             client?.platform ?? null,
             client?.version ?? null
           )
@@ -630,7 +636,8 @@ export const storeSnapshotBatch = async (
         outcomes[entry.index] = {
           noteId: entry.noteId,
           accepted: true,
-          sequenceNum: entry.sequenceNum
+          sequenceNum: entry.sequenceNum,
+          revision: entry.revision
         }
       }
     } catch (error) {
