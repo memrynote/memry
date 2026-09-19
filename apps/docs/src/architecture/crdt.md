@@ -477,6 +477,18 @@ on disk. The compacted snapshot itself is applied before the handler is attached
 compaction has already persisted and pushed it, and routing it through the handler would
 store and broadcast the whole note a second time.
 
+Compaction rebuilds the doc by copying each root into a fresh one, so it can only carry
+over root types it recognises — `Y.XmlFragment`, `Y.Map`, `Y.Array`, `Y.Text`. A root that
+arrived in an update but was never requested by name is still a bare placeholder, and a
+root added by a newer app version is unknown outright. Because the compaction output
+replaces both the pushed snapshot and local persistence, copying only the recognised roots
+would delete the rest on every device on the account. Compaction refuses instead: an
+unrecognised root aborts it and the doc stays large until the root is typed. The note's
+seven known roots — the ProseMirror fragment, `meta`, `tags`, `criticMarkupMarks`,
+`markdownSource`, `linkReferenceDefinitions`, `linkReferenceUsages` — are typed when the
+doc is created, before any persisted update is applied, so the ordinary note never trips
+this and an editor-less doc still compacts.
+
 Closing is asynchronous — it flushes the doc to persistence first — so a note can be
 reopened while its own close is still in flight. The reopen builds a fresh Y.Doc and takes
 over the provider's entry for that note, and the close then finds that the entry no longer

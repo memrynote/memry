@@ -33,7 +33,12 @@ import { markdownToYFragment, repairEmptyBlockIds } from './blocknote-converter'
 import { compactYDoc } from '@memry/sync-client/crdt-compact-utils'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
-import { CRITIC_MARKUP_MARKS_ARRAY } from '@memry/shared'
+import {
+  CRITIC_MARKUP_MARKS_ARRAY,
+  LINK_REFERENCE_DEFINITIONS_ARRAY,
+  LINK_REFERENCE_USAGES_ARRAY,
+  MARKDOWN_SOURCE_MAP
+} from '@memry/shared'
 
 const log = createLogger('CrdtProvider')
 
@@ -1041,6 +1046,14 @@ export class CrdtProvider {
     doc.getMap('meta')
     doc.getArray('tags')
     doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
+    // Typed here, before any persisted update is applied, so these roots are
+    // never left as bare `AbstractType` placeholders. compactYDoc refuses to
+    // compact a doc holding one, and write-back (the only other thing that
+    // types them) is debounced 500 ms — an editor-less doc would otherwise
+    // never compact.
+    doc.getMap(MARKDOWN_SOURCE_MAP)
+    doc.getArray(LINK_REFERENCE_DEFINITIONS_ARRAY)
+    doc.getArray(LINK_REFERENCE_USAGES_ARRAY)
   }
 
   private async seedFromMarkdown(noteId: string, doc: Y.Doc): Promise<void> {
