@@ -4,6 +4,7 @@ import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const mocks = vi.hoisted(() => ({
   db: null as unknown,
+  vaultPath: '/vault' as string | null,
   folders: [] as { path: string; icon: string | null }[],
   enqueueLocalSyncCreate: vi.fn(),
   enqueueLocalSyncUpdate: vi.fn(),
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../database', () => ({ getDatabase: () => mocks.db }))
 vi.mock('../vault/notes', () => ({ getFolders: async () => mocks.folders }))
+vi.mock('../store', () => ({ getCurrentVaultPath: () => mocks.vaultPath }))
 vi.mock('../sync/local-mutations', () => ({
   enqueueLocalSyncCreate: mocks.enqueueLocalSyncCreate,
   enqueueLocalSyncUpdate: mocks.enqueueLocalSyncUpdate,
@@ -38,6 +40,7 @@ function paths(): string[] {
 beforeEach(() => {
   testDb = createTestDataDb()
   mocks.db = testDb.db
+  mocks.vaultPath = '/vault'
   mocks.folders = []
   mocks.enqueueLocalSyncCreate.mockClear()
   mocks.enqueueLocalSyncUpdate.mockClear()
@@ -102,5 +105,13 @@ describe('backfillFolderConfigs', () => {
     mocks.enqueueLocalSyncCreate.mockClear()
     expect(await backfillFolderConfigs()).toBe(0)
     expect(mocks.enqueueLocalSyncCreate).not.toHaveBeenCalled()
+  })
+
+  it('does nothing when no vault is open', async () => {
+    mocks.vaultPath = null
+    mocks.folders = [{ path: 'Projects', icon: null }]
+
+    expect(await backfillFolderConfigs()).toBe(0)
+    expect(paths()).toEqual([])
   })
 })

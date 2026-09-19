@@ -3,6 +3,7 @@ import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { utcNow } from '@memry/shared/utc'
 import { getDatabase } from '../database'
 import { getFolders } from '../vault/notes'
+import { getCurrentVaultPath } from '../store'
 import { createLogger } from '../lib/logger'
 import {
   enqueueLocalSyncCreate,
@@ -102,6 +103,10 @@ export function syncFolderConfigDelete(folderPath: string): void {
  * already in the table and the pass is a no-op.
  */
 export async function backfillFolderConfigs(): Promise<number> {
+  // No vault open (sign-out, vault switch, shutdown mid-start) means nothing to
+  // scan, and getFolders would throw VAULT_NOT_INITIALIZED.
+  if (!getCurrentVaultPath()) return 0
+
   const db = getDatabase()
   if (!db) return 0
 
