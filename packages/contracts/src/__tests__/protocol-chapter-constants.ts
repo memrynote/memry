@@ -222,7 +222,7 @@ export const COVERED: readonly Covered[] = [
     slug: C03,
     label: 'LINKING_SESSION_STATUSES',
     value: LINKING_SESSION_STATUSES,
-    spelledAs: ['`pending → scanned → approved → completed`', '`expired`']
+    spelledAs: ['`pending → scanned → approved → completed`', '`expired`', '`cancelled`']
   },
   {
     slug: C03,
