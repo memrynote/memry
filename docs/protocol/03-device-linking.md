@@ -305,23 +305,22 @@ cancelling prior sessions (`:142-143`).
 
 ## 3.11 `LINKING_IP_MISMATCH` — Q03.2
 
-### 3.11.1 Current behaviour
+### 3.11.1 Historical behaviour (removed in #2184)
 
-The scanner's IP is recorded on `POST /auth/linking/scan` from
+The scanner's IP is still recorded on `POST /auth/linking/scan` from
 `cf-connecting-ip` (`apps/sync-server/src/routes/linking.ts:126`,
-`apps/sync-server/src/services/linking.ts:209`) and enforced **only** on
-`POST /auth/linking/complete`: reject `403 LINKING_IP_MISMATCH` when
-`scanner_ip && callerIp && scanner_ip !== callerIp`
-(`apps/sync-server/src/services/linking.ts:339-345`). `initiate`,
-`session/:sessionId` and `approve` are **not** IP-bound; they are access-token
+`apps/sync-server/src/services/linking.ts:209`), and it is now recorded for audit
+only. Servers before #2184 also enforced it on `POST /auth/linking/complete`:
+reject `403 LINKING_IP_MISMATCH` when
+`scanner_ip && callerIp && scanner_ip !== callerIp`. `initiate`,
+`session/:sessionId` and `approve` were never IP-bound; they are access-token
 authenticated.
 
-The check is skipped when either side is null, so it is inert in local
-development where `cf-connecting-ip` is absent. It runs **before** the status
-transition (`apps/sync-server/src/services/linking.ts:337-339` precedes `:348`),
-so a rejected `complete` does not consume the approved session.
+That check was skipped when either side was null, so it was inert in local
+development where `cf-connecting-ip` is absent. It ran **before** the status
+transition, so a rejected `complete` did not consume the approved session.
 
-**Why this matters for FR-020.** A phone that scans on Wi-Fi and polls
+**Why this mattered for FR-020.** A phone that scans on Wi-Fi and polls
 `complete` on cellular receives 403 on every poll. The desktop poll loop treats
 any non-409, non-429 error as terminal, clears the pending completion and zeroes
 `encKey` and `macKey`
@@ -343,16 +342,19 @@ MAC already binds `complete` to the scanner, so an attacker who reaches
 check was defence-in-depth worth a few bits against a real, recurring FR-020
 failure.
 
-Change site `apps/sync-server/src/services/linking.ts:339-345` and its test
-`apps/sync-server/src/services/linking.test.ts:961-984`. Tracked as **#2184**.
-**This chapter states the relaxed rule; §3.11.1 records the historical
-behaviour.**
+**Shipped in #2184.** `transitionToCompleted` no longer takes a caller IP and no
+longer reads `scanner_ip` (`apps/sync-server/src/services/linking.ts`), and
+`POST /auth/linking/complete` no longer reads `cf-connecting-ip`
+(`apps/sync-server/src/routes/linking.ts`). **This chapter states the relaxed
+rule; §3.11.1 records the historical behaviour.**
 
-### 3.11.3 Client obligation until the relaxation ships
+### 3.11.3 Client obligation against an older server
 
-**Normative.** On `LINKING_IP_MISMATCH` a client MUST zero the linking subkeys
-and MUST NOT retry. It SHOULD watch for a network path change between `scan` and
-`complete` and prompt the user to rescan rather than burning polls.
+**Normative.** The current server has no `LINKING_IP_MISMATCH` throw site, but a
+client may still meet one on a server deployed before #2184. On
+`LINKING_IP_MISMATCH` a client MUST zero the linking subkeys and MUST NOT retry.
+It SHOULD watch for a network path change between `scan` and `complete` and
+prompt the user to rescan rather than burning polls.
 
 **Disposition of Q03.2: answered (decision: relax the binding, #2184).**
 
@@ -369,4 +371,4 @@ and MUST NOT retry. It SHOULD watch for a network path change between `scan` and
 | `LINKING_DUPLICATE_SESSION`  | —      | declared, no throw site with an explicit status        |
 | `LINKING_CONCURRENT_ATTEMPT` | 409    | another device is mid-link on this account             |
 | `LINKING_SECRET_INVALID`     | 403    | wrong `linkingSecret`, or a scan-channel MAC failed    |
-| `LINKING_IP_MISMATCH`        | 403    | historical only; see §3.11 and #2184                   |
+| `LINKING_IP_MISMATCH`        | 403    | no throw site since #2184; see §3.11                   |

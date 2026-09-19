@@ -316,10 +316,14 @@ const transitionToApproved = async (
   }
 }
 
+// `scanner_ip` is recorded on scan for audit only. `complete` is NOT IP-bound:
+// a phone that scans on Wi-Fi and polls complete on cellular changes IP mid-flow
+// (CGNAT and IPv6 privacy rotation do it without an interface change), which
+// used to 403 every poll and kill linking. The QR-only 256-bit linkingSecret and
+// the X25519 keyConfirm MAC already bind complete to the scanner. See #2184.
 const transitionToCompleted = async (
   db: D1Database,
-  sessionId: string,
-  callerIp: string | null
+  sessionId: string
 ): Promise<{
   encryptedMasterKey: string
   encryptedKeyNonce: string
@@ -335,14 +339,6 @@ const transitionToCompleted = async (
 }> => {
   const session = await requireSession(db, sessionId)
   assertNotExpired(session)
-
-  if (session.scanner_ip && callerIp && session.scanner_ip !== callerIp) {
-    throw new AppError(
-      ErrorCodes.LINKING_IP_MISMATCH,
-      'Request must come from the same device that scanned the QR code',
-      403
-    )
-  }
 
   const now = Math.floor(Date.now() / 1000)
   const result = await db

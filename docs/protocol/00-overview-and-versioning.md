@@ -180,7 +180,7 @@ read from every non-test throw site under `apps/sync-server/src`.
 | `LINKING_DUPLICATE_SESSION`   | —                         | **no producer with an explicit status**                                                                                                   |
 | `LINKING_CONCURRENT_ATTEMPT`  | 409                       | another device is mid-link                                                                                                                |
 | `LINKING_SECRET_INVALID`      | 403                       | wrong `linkingSecret` or wrong scan MAC                                                                                                   |
-| `LINKING_IP_MISMATCH`         | 403                       | see chapter 03 and issue #2184                                                                                                            |
+| `LINKING_IP_MISMATCH`         | 403                       | **no producer since #2184**; only an older server can still send it. See chapter 03 §3.11                                                 |
 | `SYNC_ITEM_NOT_FOUND`         | 404                       |                                                                                                                                           |
 | `SYNC_VERSION_CONFLICT`       | —                         | **classified in telemetry only** (`apps/sync-server/src/services/sync-telemetry.ts:188`); no route returns it. See chapter 05, Q05.5      |
 | `SYNC_INVALID_SIGNATURE`      | 403                       | the item's signature did not verify                                                                                                       |
