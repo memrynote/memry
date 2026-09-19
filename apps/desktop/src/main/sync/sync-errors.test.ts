@@ -135,6 +135,19 @@ describe('classifyError', () => {
     expect(result.category).toBe('sync_vault_limit_exceeded')
   })
 
+  it('#given SyncServerError 403 SYNC_INVALID_SIGNATURE #then device_key_mismatch, not retryable', () => {
+    const err = new SyncServerError(
+      'Item signature verification failed',
+      403,
+      '{"error":{"code":"SYNC_INVALID_SIGNATURE","message":"Item signature verification failed"}}'
+    )
+    const result = classifyError(err)
+
+    expect(result.category).toBe('device_key_mismatch')
+    expect(result.retryable).toBe(false)
+    expect(result.serverCode).toBe('SYNC_INVALID_SIGNATURE')
+  })
+
   it('#given SyncServerError 400 #then server_error, not retryable', () => {
     const err = new SyncServerError('Bad Request', 400, 'invalid payload')
     const result = classifyError(err)

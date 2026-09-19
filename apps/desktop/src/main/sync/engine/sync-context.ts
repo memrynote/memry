@@ -40,6 +40,12 @@ export interface SyncEngineDeps {
   checkAccountKey?: () => Promise<'match' | 'mismatch' | 'transition' | 'unknown'>
   /** Escalation for a CONFIRMED account-key mismatch (recovery prompt / sign-out). */
   onVaultKeyMismatch?: () => void
+  /**
+   * The server rejected this device's signature (SYNC_INVALID_SIGNATURE): the
+   * keychain signing key is not the key this device id is registered under.
+   * Escalation re-registers or signs out — retrying cannot fix it (#2218).
+   */
+  onDeviceKeyMismatch?: () => void | Promise<void>
 }
 
 export interface SyncEngineOptions {

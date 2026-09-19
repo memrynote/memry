@@ -590,7 +590,7 @@ describe('sync IPC handlers', () => {
       expect(mockRetrieveKey).not.toHaveBeenCalled()
     })
 
-    it('self-heals when keychain key differs from DB public key', async () => {
+    it('signs out when the keychain key is not the registered device key', async () => {
       // #given
       mockIsDatabaseInitialized.mockReturnValue(true)
       const device = { id: 'dev-1', signingPublicKey: 'old-pubkey-b64' }
@@ -606,10 +606,28 @@ describe('sync IPC handlers', () => {
       // #when
       await checkSyncIntegrity()
 
-      // #then — should update DB, not wipe state
-      expect(mockDb.update).toHaveBeenCalled()
-      expect(mockUpdateSet).toHaveBeenCalledWith({ signingPublicKey: 'base64-encoded' })
-      expect(mockStoreSet).not.toHaveBeenCalled()
+      // #then — the server still holds `old-pubkey-b64` for this device id, so
+      // rewriting the row would only make local state agree with a key every
+      // push is rejected under (#2218). Re-registration is the only repair.
+      expect(mockUpdateSet).not.toHaveBeenCalledWith({ signingPublicKey: 'base64-encoded' })
+      expect(mockTeardownSession).toHaveBeenCalledWith('integrity')
+    })
+
+    it('leaves a signing key mismatch alone while key material is being re-established', async () => {
+      // Sign-in / recovery / linking re-registers the device itself; a mismatch
+      // seen mid-flight is that flow in progress, not a broken install.
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'old-pubkey-b64' })
+      mockRetrieveKey
+        .mockResolvedValueOnce(new Uint8Array(32).fill(1))
+        .mockResolvedValueOnce(new Uint8Array(64).fill(9))
+      mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32).fill(8))
+      mockIsKeyMaterialActivityRecent.mockReturnValue(true)
+
+      await checkSyncIntegrity()
+
+      expect(mockTeardownSession).not.toHaveBeenCalled()
+      expect(mockUpdateSet).not.toHaveBeenCalled()
     })
 
     it('cleans up local sync state when master or signing keys are missing', async () => {

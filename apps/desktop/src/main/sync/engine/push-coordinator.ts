@@ -85,6 +85,7 @@ export class PushCoordinator {
     const startTime = Date.now()
     let pushedCount = 0
     let quotaEventSent = false
+    let signatureEventSent = false
     let lastServerTime = 0
     let lastMaxCursor = 0
     let vaultKey: Uint8Array | null = null
@@ -131,6 +132,10 @@ export class PushCoordinator {
 
         for (let iteration = 0; iteration < MAX_PUSH_ITERATIONS; iteration++) {
           if (abortSignal.aborted) break
+          // One rejected signature condemns every other row in the queue too:
+          // they are all signed by the same device key. Dequeuing the next
+          // batch would just burn requests on the same verdict.
+          if (signatureEventSent) break
 
           const preDequeueCount = this.ctx.deps.queue.getPendingCount()
           const rawCount = this.ctx.deps.queue.getRawPendingCount()
@@ -316,6 +321,40 @@ export class PushCoordinator {
                   type: pushItem.type
                 })
                 this.ctx.deps.queue.markSuccess(queueId, payloadAtDequeue.get(queueId))
+              } else if (reason === 'SYNC_INVALID_SIGNATURE') {
+                // Every item this device signs is rejected the same way: its
+                // keychain signing key is not the key its device id is
+                // registered under, and no payload change can fix that. Left
+                // on the generic path this burned one retry attempt per row
+                // and dead-lettered the whole vault silently — 497 rejections
+                // in 20 minutes, then edits that never sync again (#2218).
+                // No markFailed here on purpose: the queue keeps its full
+                // budget so the rows push normally once the device is
+                // re-registered.
+                log.error("Push: server rejected this device's signature", {
+                  itemId: pushItem.id.slice(0, 8),
+                  signerDeviceId: pushItem.signerDeviceId
+                })
+                // Reached at most once per run: the break below ends the item
+                // loop and the flag ends the outer one, so no repeat guard.
+                signatureEventSent = true
+                trackMainEvent('sync_error', {
+                  surface: 'sync',
+                  action: 'push_device_key_mismatch',
+                  result: 'failed',
+                  errorCode: 'device_key_mismatch',
+                  source: 'push',
+                  dimensions: { transport: 'record' }
+                })
+                this.ctx.lastErrorInfo = {
+                  category: 'device_key_mismatch',
+                  message: 'errors:sync.deviceKeyMismatch',
+                  retryable: false
+                }
+                this.ctx.lastError = 'errors:sync.deviceKeyMismatch'
+                this.stateManager.setState('error')
+                void this.ctx.deps.onDeviceKeyMismatch?.()
+                break
               } else if (reason === 'STORAGE_QUOTA_EXCEEDED') {
                 log.warn('Push: storage quota exceeded', { itemId: pushItem.id.slice(0, 8) })
                 // Ends the run via `break`, never a throw — engine.push() records

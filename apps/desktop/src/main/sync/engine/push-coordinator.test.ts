@@ -625,6 +625,40 @@ describe('PushCoordinator', () => {
     })
   })
 
+  describe("#given the server rejects this device's signature", () => {
+    it('#then the run stops, the retry budget is untouched, and the mismatch escalates', async () => {
+      const { coordinator, queue, ctx, stateManager } = createHarness(getDb())
+      const onDeviceKeyMismatch = vi.fn()
+      ctx.deps.onDeviceKeyMismatch = onDeviceKeyMismatch
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => ({
+        accepted: [],
+        rejected: body.items.map((i) => ({ id: i.id, reason: 'SYNC_INVALID_SIGNATURE' })),
+        serverTime: Math.floor(Date.now() / 1000),
+        maxCursor: 0
+      }))
+
+      const payload = JSON.stringify({ title: 'Signed with the wrong key' })
+      queue.enqueue({ type: 'note', itemId: 'note-1', operation: 'update', payload })
+      queue.enqueue({ type: 'note', itemId: 'note-2', operation: 'update', payload })
+
+      await coordinator.push()
+
+      // Both rows survive with a full budget: the payloads are fine, the
+      // device registration is not, so burning attempts would dead-letter
+      // edits that push cleanly after re-registration.
+      expect(queue.getSize()).toBe(2)
+      expect(queue.peek(2).every((row) => row.attempts === 0)).toBe(true)
+      expect(postToServerMock).toHaveBeenCalledTimes(1)
+      expect(ctx.lastErrorInfo).toEqual({
+        category: 'device_key_mismatch',
+        message: 'errors:sync.deviceKeyMismatch',
+        retryable: false
+      })
+      expect(stateManager.setState).toHaveBeenCalledWith('error')
+      expect(onDeviceKeyMismatch).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('#given a second edit lands while the first is in flight', () => {
     it('#then the newer payload survives and is the one that reaches the server', async () => {
       const { coordinator, queue } = createHarness(getDb())
