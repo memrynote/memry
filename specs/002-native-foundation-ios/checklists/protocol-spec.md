@@ -154,15 +154,18 @@ are written into the chapters and are not re-litigated: #2184, #2185, #2186 and
 Q12.1 option B. Where a chapter describes behaviour one of them changes, the
 chapter states the current behaviour, cites the issue, and marks what will change.
 
-**Two dispositions that are answers _about_ an undefined area**, and are called out
-so a reviewer does not mistake them for silent drops. Both are stated inside their
-chapter as explicit "undefined, do not rely on this" clauses sitting under an
-answered question:
+**One disposition that is an answer _about_ an undefined area**, called out so a
+reviewer does not mistake it for a silent drop. It is stated inside its chapter
+as an explicit "undefined, do not rely on this" clause sitting under an answered
+question:
 
-- chapter 06 §6.6.2 — the push-build / pull-apply race (#2180) has no chosen fix,
-  and a client MUST NOT depend on either outcome.
 - chapter 12 §12.5.2 — the two-writer case where a document's `tags` root and the
   note record payload's `tags` disagree has no tiebreak.
+
+Chapter 06 §6.6.2 was a second such clause until 2026-09-19, when #2180 was
+re-examined against the code and closed: the mirrored merge is real, but the
+merged row is re-queued and an equal clock applies rather than skips, so both
+devices converge within a sync cycle. The section is now normative.
 
 One further open item is recorded in chapter 12 §12.2: whether the guest
 serialiser's output is acceptable as create-time `content` is undefined, so

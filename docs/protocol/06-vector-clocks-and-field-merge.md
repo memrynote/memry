@@ -215,16 +215,32 @@ and a client that breaks any of them reintroduces divergence.**
   `{...task}` from the current row
   (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:367-379`), same for
   projects (`apps/desktop/src/main/sync/item-handlers/project-handler.ts:340`).
-- **P3 — after a merge apply, the merging device stores the union clock and does
-  not re-push.** `apps/desktop/src/main/sync/item-handlers/task-handler.ts:178-186`;
-  there is no enqueue anywhere in the merge branch (`:152-242`); the union comes
+- **P3 — a merge apply re-queues the merged row, and the union clock makes that
+  push dominate the server's row.** The handler itself stores the union clock
+  and enqueues nothing
+  (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:178-186`; union
   from `packages/sync-client/src/field-merge.ts:127` and
-  `packages/sync-client/src/item-handlers/types.ts:66`.
+  `packages/sync-client/src/item-handlers/types.ts:66`), but a `'conflict'`
+  return re-queues the item one level up, in the pull coordinator
+  (`apps/desktop/src/main/sync/engine/conflict-report.ts:56-61`, called from
+  `apps/desktop/src/main/sync/engine/pull-coordinator.ts:861-864`, `:559-562`,
+  `:648-651` and `:942`), and an enqueue requests a push
+  (`apps/desktop/src/main/sync/runtime.ts:949`). The queued row is rebuilt from
+  the live — merged — row by P2, and its union clock has one component the
+  stored row lacks, so `detectReplay` accepts it.
+- **P4 — an EQUAL incoming clock applies the remote row, it does not skip it.**
+  `packages/sync-client/src/item-handlers/types.ts:67`. This is what settles the
+  two devices whose P3 re-pushes collide: the first is accepted, the second is
+  refused as a replay (`apps/sync-server/src/services/sync.ts:179-190`) and
+  marked done anyway
+  (`apps/desktop/src/main/sync/engine/push-coordinator.ts:299-305`), and the
+  refused device then pulls the accepted row under the same clock and takes it.
 
-Under P1 to P3 **at most one device ever runs `mergeFields` on a given concurrent
-pair**; the other sees its own row (`equal` → apply) or a strictly dominating one
-(`before` → apply). Trace, with ancestor `{X:1,Y:1}`, X editing `title` to
-`{X:2,Y:1}` and Y editing `title` to `{X:1,Y:2}`, both totals 3:
+In the ordinary interleavings P1 to P3 leave **at most one device running
+`mergeFields` on a given concurrent pair**; the other sees its own row (`equal` →
+apply) or a strictly dominating one (`before` → apply). Trace, with ancestor
+`{X:1,Y:1}`, X editing `title` to `{X:2,Y:1}` and Y editing `title` to
+`{X:1,Y:2}`, both totals 3:
 
 | Interleaving                   | Server row               | X ends                                       | Y ends                    | Merger |
 | ------------------------------ | ------------------------ | -------------------------------------------- | ------------------------- | ------ |
@@ -238,12 +254,19 @@ identically.
 **Core obligation — this is the load-bearing one.** An outbox that freezes the
 push payload at enqueue time reintroduces the 3c divergence **deterministically,
 not as a race**. A conforming client MUST rebuild the payload from the live row
-at send time (P2), MUST store the union clock after a merge apply without
-re-pushing (P3), and MUST implement rule 3's asymmetric key-presence test
+at send time (P2), MUST re-queue a merged item so the union-clocked row is
+pushed (P3), MUST apply — never skip — a remote row whose clock is EQUAL to the
+local one (P4), and MUST implement rule 3's asymmetric key-presence test
 exactly — a "symmetric" rewrite breaks 3a and 3b against desktop.
 
-**Disposition of Q06.1: answered (converges via P1 + P2 + P3, not via the merge
-rule).**
+P3 and P4 are what make the seat-dependent winner of 3c/3d survivable: the value
+that wins is whichever merged row the server accepted first, and every other
+device ends up on it. A core that stored the union clock **without** re-queueing
+would strand a pair of devices that both merged, on values they never push and
+that no later pull can dislodge until the item is edited again.
+
+**Disposition of Q06.1: answered (converges via P1 + P2 + P3 + P4, not via the
+merge rule).**
 
 ### 6.5.3 The tick sum is a proxy for edit count, not causality — Q06.2
 
@@ -331,23 +354,46 @@ ordinary key with no special case, exactly as
 `packages/sync-client/src/vector-clock.ts` does, so clocks stay comparable with
 desktop's.
 
-### 6.6.2 Defect — the push-build / pull-apply race (#2180)
+### 6.6.2 The push-build / pull-apply race (#2180) — not a divergence
 
-**Undefined, do not rely on this.** Nothing serialises the push drain against the
-pull apply transaction. If device Y's push payload is built
-(`apps/desktop/src/main/sync/engine/push-coordinator.ts:608-623`) **before** Y's
-`applyUpsert` commits
-(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:137`) and is sent
-**after** X's row lands, both devices merge the same pair: X ends with `vy`, Y
-with `vx`, both under clock `{X:2,Y:2}`, neither re-pushes (P3), and both write a
-`superseded` activity row with the **same id**
-(`apps/desktop/src/main/tasks/activity-log.ts:385`, the id minted from
-`mergedClock`) and opposite `winningValue`.
+**Normative, and it supersedes the "undefined" note this section used to
+carry.** The race itself is real to describe: two devices can both run
+`mergeFields` on the same concurrent pair and end mirrored — X holding `vy`, Y
+holding `vx`, both under clock `{X:2,Y:2}`. **It does not leave them there.**
 
-**The result is permanent, silent divergence**, in a sub-second window per
-concurrent edit. No fix is chosen; the candidates are serialising the two, or
-re-pushing after a merge that changed the local value. Tracked as **#2180**. A
-conforming client MUST NOT depend on either outcome.
+On desktop the window is additionally narrow, because a push drain and a pull
+apply cannot interleave in the first place: both take the same engine sync lock
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:70`,
+`apps/desktop/src/main/sync/engine/pull-coordinator.ts:133`,
+`apps/desktop/src/main/sync/engine.ts:630-643`), which is held across the whole
+push including its `POST /sync/push`. Only the stale-lock watchdog
+(`apps/desktop/src/main/sync/engine.ts:686-697`, 15 minutes) can overlap them.
+A client without such a lock — or a core with a background outbox — hits the
+mirrored state routinely.
+
+What happens from the mirrored state, by P3 and P4 of §6.5.2:
+
+1. both devices return `'conflict'` and re-queue the merged row;
+2. both push it under the union clock; the first is accepted (one component
+   ahead of the stored row), the second is refused `SYNC_REPLAY_DETECTED` (no
+   component ahead of an identical clock) and its queue row is marked done;
+3. the refused device pulls the accepted row, whose clock EQUALS its own, and
+   `resolveClockConflict` applies it wholesale (P4).
+
+Both devices end on the value whose re-push landed first, within one sync cycle.
+Pinned by `apps/desktop/src/main/sync/engine/conflict-report.test.ts` and
+`packages/sync-client/src/item-handlers/types.test.ts`.
+
+**Residual, cosmetic.** Both devices also write a `superseded` activity row with
+the **same id**, minted from `mergedClock`
+(`apps/desktop/src/main/tasks/activity-log.ts:385`), carrying opposite
+`winningValue`s. One overwrites the other on the server (P1), so an activity
+entry can name as "winning" the value that the convergence step then discarded.
+The task itself is not affected.
+
+**Core obligation.** Implement P3 and P4. A core that merges without re-queueing,
+or that treats an equal clock as a no-op, turns this race back into the
+permanent divergence this section once described.
 
 ## 6.7 Field lists
 

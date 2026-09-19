@@ -529,14 +529,26 @@ Three facts carry it:
   (`resolvePushPayload` → `buildPushPayload`), `task-handler.ts:367-379`
   (`{...task}` from the current row), same for projects
   (`project-handler.ts:340`).
-- **P3 — after a merge apply the merging device stores the union clock and does
-  not re-push.** `task-handler.ts:178-186`; no enqueue anywhere in the merge
-  branch (`:152-242`); union at `field-merge.ts:127` and `types.ts:66`.
+- **P3 — a merge apply re-queues the merged row under the union clock.** The
+  handler stores the union and enqueues nothing (`task-handler.ts:178-186`,
+  union at `field-merge.ts:127` and `types.ts:66`), but the pull coordinator
+  re-queues every `'conflict'` return
+  (`apps/desktop/src/main/sync/engine/conflict-report.ts:56-61`, called from
+  `pull-coordinator.ts:861-864`, `:559-562`, `:648-651`, `:942`) and an enqueue
+  requests a push (`apps/desktop/src/main/sync/runtime.ts:949`). P2 rebuilds
+  that row from the merged state, and the union clock is one component ahead of
+  the stored row, so `detectReplay` accepts it.
+- **P4 — an EQUAL incoming clock applies the remote row rather than skipping
+  it.** `types.ts:67`. Settles two devices whose P3 re-pushes collide: the first
+  is accepted, the second is refused `SYNC_REPLAY_DETECTED` and marked done
+  (`push-coordinator.ts:299-305`), and the refused device takes the accepted row
+  on the next pull.
 
-Under P1 to P3 at most **one** device ever runs `mergeFields` on a given
-concurrent pair; the other sees its own row (`equal` → apply) or a strictly
-dominating one (`before` → apply). Trace with ancestor `{X:1,Y:1}`, X edits
-`title` → `{X:2,Y:1}`, Y edits `title` → `{X:1,Y:2}`, both totals 3:
+In the ordinary interleavings P1 to P3 leave at most **one** device running
+`mergeFields` on a given concurrent pair; the other sees its own row (`equal` →
+apply) or a strictly dominating one (`before` → apply). Trace with ancestor
+`{X:1,Y:1}`, X edits `title` → `{X:2,Y:1}`, Y edits `title` → `{X:1,Y:2}`, both
+totals 3:
 
 | interleaving                   | server row               | X ends                                       | Y ends                    | merger |
 | ------------------------------ | ------------------------ | -------------------------------------------- | ------------------------- | ------ |
@@ -546,28 +558,35 @@ dominating one (`before` → apply). Trace with ancestor `{X:1,Y:1}`, X edits
 Both converge. Which value survives is "last pusher wins", not a property of the
 merge rule. A third device pulls the single latest row and behaves identically.
 
-**Normative for chapter 06.** FR-002 is satisfied by **P1 + P2 + P3**, not by
-`mergeFields`. State it that way: the merge rule alone does not converge, and a
-client that breaks any of the three reintroduces divergence.
+**Normative for chapter 06.** FR-002 is satisfied by **P1 + P2 + P3 + P4**, not
+by `mergeFields`. State it that way: the merge rule alone does not converge, and
+a client that breaks any of the four reintroduces divergence.
 
 **Core obligation — this is the load-bearing one.** A Rust outbox that freezes
 the push payload at enqueue time reintroduces the 3c divergence **deterministically,
 not as a race**. The core MUST rebuild the payload from the live row at send time
-(P2), MUST store the union clock after a merge apply without re-pushing (P3), and
+(P2), MUST re-queue a merged item so the union-clocked row is pushed (P3), MUST
+apply — never skip — a remote row whose clock is EQUAL to the local one (P4), and
 MUST implement rule 3's asymmetric key-presence test exactly — a "symmetric"
 rewrite breaks 3a and 3b against desktop.
 
-**Defect — the push-build / pull-apply race (open, no fix chosen).** Nothing
-serialises the push drain against the pull apply transaction. If Y's push payload
-is built (`push-coordinator.ts:608-623`) before Y's `applyUpsert` commits
-(`task-handler.ts:137`) and is sent after X's row lands, both devices merge the
-same pair: X ends with `vy`, Y with `vx`, both under clock `{X:2,Y:2}`, neither
-re-pushes (P3), and both write a `superseded` activity row with the **same id**
-(`apps/desktop/src/main/tasks/activity-log.ts:385`, id minted from `mergedClock`)
-and opposite `winningValue`. Permanent, silent divergence in a sub-second window
-per concurrent edit. Chapter 06 records it as UNDEFINED; the candidate fixes are
-serialising the two, or re-pushing after a merge that changed the local value.
-Tracked as **#2180**.
+**Re-examined 2026-09-19 — the push-build / pull-apply race is NOT a divergence
+(#2180, closed).** The original defect block claimed that a push payload built
+before the local `applyUpsert` commits and sent after the peer's row lands leaves
+X on `vy`, Y on `vx` and neither re-pushing. Two of its premises were wrong.
+First, P3 as written above: a `'conflict'` return **is** re-queued by the pull
+coordinator, so both mirrored devices push the merged row under the union clock;
+the first push is accepted, the second is refused as a replay, and P4 then hands
+the refused device the accepted value. Second, on desktop the two phases cannot
+interleave at all outside the 15-minute stale-lock watchdog: push and pull take
+the same engine sync lock (`push-coordinator.ts:70`, `pull-coordinator.ts:133`,
+`engine.ts:630-643`, `:686-697`), held across the whole `POST /sync/push`. What
+survives is cosmetic: both devices write a `superseded` activity row with the
+same id (`apps/desktop/src/main/tasks/activity-log.ts:385`) and opposite
+`winningValue`, and one overwrites the other, so an activity entry can name a
+value the convergence step discarded. Chapter 06 §6.6.2 states the converging
+sequence; pinned by `conflict-report.test.ts` and
+`packages/sync-client/src/item-handlers/types.test.ts`.
 
 **Defect — `_offline` reaches the wire.** This is what makes case 3d reachable at
 all. `recoverDirtyItems` routes `syncedAt IS NULL` rows to `enqueueCreate`, not

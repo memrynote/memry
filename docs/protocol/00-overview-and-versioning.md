@@ -365,7 +365,7 @@ marks what will change. **None of them is the Rust core's to work around.**
 | Issue | Subject                                                             | Chapter |
 | ----- | ------------------------------------------------------------------- | ------- |
 | #2179 | `_offline` reaches the wire                                         | 06      |
-| #2180 | the push-build / pull-apply race                                    | 06      |
+| #2180 | the push-build / pull-apply race — **closed, not a divergence**     | 06      |
 | #2181 | `compactYDoc` drops unknown Y.Doc roots                             | 12      |
 | #2182 | `cancelled` is a persisted linking status missing from the contract | 03      |
 | #2183 | desktop strips unknown payload keys                                 | 13      |
@@ -373,6 +373,11 @@ marks what will change. **None of them is the Rust core's to work around.**
 | #2185 | mandate a canonical value comparison                                | 06      |
 | #2186 | the journal CRDT constants                                          | 07      |
 | #2187 | return `revision` from a snapshot push                              | 07      |
+
+#2180 was re-examined against the code and closed: the mirrored merge it
+describes is real, but the merged row is re-queued and an equal clock applies
+rather than skips, so both devices converge within a sync cycle (chapter 06
+§6.6.2). The convergence properties it rests on are normative for the core.
 
 Four decisions taken on 2026-09-13 are **not** re-litigated by any chapter:
 relaxing `LINKING_IP_MISMATCH` (#2184), mandating a canonical value comparison
