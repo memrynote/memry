@@ -192,7 +192,7 @@ const MERGE_SPECS: MergeSpec[] = [
     remoteData: { repeatConfig: { b: 2, a: 1 } },
     localFieldClocks: { repeatConfig: { [A]: 1 } },
     remoteFieldClocks: { repeatConfig: { [B]: 1 } },
-    pins: 'THE SINGLE LIKELIEST DIVERGENCE. Recorded as the implementation behaves today (JSON.stringify, key-order sensitive); the canonical comparison decision (#2185) makes these EQUAL, and this case is what measures that change'
+    pins: 'THE SINGLE LIKELIEST DIVERGENCE. The canonical comparison (#2185) makes these EQUAL, so no conflict is reported; a port that compares serialised bytes key-order-sensitively fails here'
   },
   t(
     'number-formatting',
@@ -361,7 +361,7 @@ export function buildFieldMerge(): Record<string, unknown> {
       // the same ORDER: conflictedFields is consumed in field-list order.
       TASK_SYNCABLE_FIELDS: [...TASK_SYNCABLE_FIELDS],
       PROJECT_SYNCABLE_FIELDS: [...PROJECT_SYNCABLE_FIELDS],
-      valueEqualityToday: 'JSON.stringify, key-order sensitive',
+      valueEqualityToday: 'canonical: recursive key sort, arrays order-significant',
       valueEqualityDecided: 'recursive key sort; null distinct from absent (#2185)',
       caseCount: mergeCases.length + clockAlgebra.length + offlineRebind.length
     }),

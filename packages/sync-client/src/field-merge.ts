@@ -44,6 +44,33 @@ export function initAllFieldClocks(docClock: VectorClock, fields: readonly strin
   return fc
 }
 
+/**
+ * Canonical value equality, the normative rule of
+ * `docs/protocol/06-vector-clocks-and-field-merge.md` §6.4.2.
+ *
+ * Object key order is NOT significant: `repeatConfig` is the only object-valued
+ * syncable field and its key order comes from whoever last wrote the row, so a
+ * `JSON.stringify` comparison reported two identical configs as differing
+ * forever. Arrays stay order-significant, `undefined` counts as an absent key,
+ * and `null` stays distinct from `undefined`.
+ */
+function valuesEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false
+
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
+    return a.every((item, index) => valuesEqual(item, b[index]))
+  }
+
+  const aRecord = a as Record<string, unknown>
+  const bRecord = b as Record<string, unknown>
+  const aKeys = Object.keys(aRecord).filter((key) => aRecord[key] !== undefined)
+  const bKeys = Object.keys(bRecord).filter((key) => bRecord[key] !== undefined)
+  if (aKeys.length !== bKeys.length) return false
+  return aKeys.every((key) => valuesEqual(aRecord[key], bRecord[key]))
+}
+
 function clockTotal(clock: VectorClock): number {
   let total = 0
   for (const value of Object.values(clock)) total += value
@@ -97,7 +124,7 @@ export function mergeFields<T>(
     const localVal = (localData as Record<string, unknown>)[field]
     const remoteVal = (remoteData as Record<string, unknown>)[field]
     const isConcurrent = clockComparison === 'concurrent'
-    const valsDiffer = JSON.stringify(localVal) !== JSON.stringify(remoteVal)
+    const valsDiffer = !valuesEqual(localVal, remoteVal)
 
     if (remoteTotal > localTotal) {
       merged[field] = remoteVal
