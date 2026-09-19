@@ -343,9 +343,9 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = this.resolveClock(existing.clock, clock)
-      if (resolution.action === 'skip' || resolution.action === 'merge') {
-        log.info('Skipping remote task delete, local has unseen changes', { itemId })
+      const resolution = this.resolveDeleteClock(existing.clock, clock)
+      if (resolution.skip) {
+        log.info('Skipping remote task delete, local is ahead of the tombstone', { itemId })
         return 'skipped'
       }
     }

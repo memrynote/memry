@@ -258,7 +258,7 @@ describe('ItemApplier', () => {
         type: 'task',
         operation: 'delete',
         content: new Uint8Array(),
-        clock: { 'device-B': 1 },
+        clock: { 'device-A': 3 },
         deletedAt: Date.now()
       })
 
@@ -394,7 +394,7 @@ describe('ItemApplier', () => {
         type: 'inbox',
         operation: 'delete',
         content: new Uint8Array(),
-        clock: { 'device-B': 1 },
+        clock: { 'device-A': 3 },
         deletedAt: Date.now()
       })
 
@@ -541,7 +541,7 @@ describe('ItemApplier', () => {
         type: 'filter',
         operation: 'delete',
         content: new Uint8Array(),
-        clock: { 'device-B': 1 },
+        clock: { 'device-A': 3 },
         deletedAt: Date.now()
       })
 
@@ -662,7 +662,7 @@ describe('ItemApplier', () => {
   })
 
   describe('#given local edit at device-A:3 #when remote delete at device-B:1', () => {
-    it('#then skips delete (local has unseen changes)', () => {
+    it('#then applies delete (delete wins over a concurrent edit, #2198)', () => {
       // #given — local has higher tick
       testDb.db
         .insert(tasks)
@@ -686,11 +686,10 @@ describe('ItemApplier', () => {
         deletedAt: Date.now()
       })
 
-      // #then — edit wins over delete when local is concurrent
-      expect(result).toBe('skipped')
-      const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
-      expect(task).toBeDefined()
-      expect(task!.title).toBe('Local Survives')
+      // #then — the server refuses this device's push with SYNC_DELETE_WINS, so
+      // keeping the row locally would strand this one device with a ghost copy.
+      expect(result).toBe('applied')
+      expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeUndefined()
     })
   })
 
@@ -727,7 +726,7 @@ describe('ItemApplier', () => {
   })
 
   describe('#given concurrent delete and edit (same tick) #when remote delete applied', () => {
-    it('#then skips delete (edit-wins-over-delete for concurrent)', () => {
+    it('#then applies delete (delete-wins-over-edit for concurrent, #2198)', () => {
       // #given — local: device-A:2, remote delete: device-B:2
       testDb.db
         .insert(tasks)
@@ -751,10 +750,9 @@ describe('ItemApplier', () => {
         deletedAt: Date.now()
       })
 
-      // #then — concurrent clocks on a delete -> skip (edit preserves data)
-      expect(result).toBe('skipped')
-      const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
-      expect(task).toBeDefined()
+      // #then — concurrent clocks on a delete -> apply, mirroring the server
+      expect(result).toBe('applied')
+      expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeUndefined()
     })
   })
 

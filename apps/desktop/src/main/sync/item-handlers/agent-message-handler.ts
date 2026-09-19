@@ -195,12 +195,14 @@ export class AgentMessageHandler extends BaseItemHandler<AgentMessageSyncPayload
     // peer on an older build, and an absent clock keeps the previous
     // unconditional behaviour. A message is frozen once terminal and only
     // terminal messages sync, so a synced row's clock equals the tombstone's and
-    // still resolves to 'apply'; the only newly-skipped case is a row still
-    // being written locally, where losing the delete is the correct answer.
+    // still resolves to 'apply'; the only skipped case is a row whose clock
+    // happens strictly after the tombstone.
     if (clock && existing.vectorClock) {
-      const resolution = this.resolveClock(existing.vectorClock, clock)
-      if (resolution.action === 'skip' || resolution.action === 'merge') {
-        log.info('Skipping remote agent message delete, local has unseen changes', { itemId })
+      const resolution = this.resolveDeleteClock(existing.vectorClock, clock)
+      if (resolution.skip) {
+        log.info('Skipping remote agent message delete, local is ahead of the tombstone', {
+          itemId
+        })
         return 'skipped'
       }
     }

@@ -138,9 +138,11 @@ class CanvasFolderHandler extends BaseItemHandler<CanvasFolderSyncPayload> {
 
     let nextClock: VectorClock = existing.clock ?? {}
     if (clock && existing.clock) {
-      const resolution = this.resolveClock(existing.clock, clock)
-      if (resolution.action === 'skip' || resolution.action === 'merge') {
-        log.info('Skipping remote canvas folder delete, local has unseen changes', { itemId })
+      const resolution = this.resolveDeleteClock(existing.clock, clock)
+      if (resolution.skip) {
+        log.info('Skipping remote canvas folder delete, local is ahead of the tombstone', {
+          itemId
+        })
         return 'skipped'
       }
       // Persist the delete's clock on the tombstone, or it keeps a stale

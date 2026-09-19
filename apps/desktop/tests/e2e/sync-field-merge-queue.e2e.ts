@@ -334,14 +334,24 @@ test.describe('Sync field merge and queue retry E2E', () => {
     // (`shouldRejectResurrection`, apps/sync-server/src/services/sync.ts), so the
     // deleting device stays deleted and the stale rename never comes back.
     //
-    // Device B is deliberately not asserted here: issue #2198 — `applyDelete`
-    // skips a remote tombstone while the local clock holds unseen changes, so B
-    // keeps a ghost copy of the note. Assert B once that is fixed.
+    // Device B must converge too (#2198): its push is refused forever with
+    // SYNC_DELETE_WINS, so a client that kept the locally-renamed note would
+    // hold a ghost copy of an item deleted everywhere else.
     await expect
       .poll(
         async () => {
           await triggerSyncRound(pageA, pageB)
           return (await getNoteById(pageA, seed.noteId))?.id ?? null
+        },
+        { timeout: CONVERGENCE_TIMEOUT, intervals: [500, 2_000, 5_000] }
+      )
+      .toBeNull()
+
+    await expect
+      .poll(
+        async () => {
+          await triggerSyncRound(pageA, pageB)
+          return (await getNoteById(pageB, seed.noteId))?.id ?? null
         },
         { timeout: CONVERGENCE_TIMEOUT, intervals: [500, 2_000, 5_000] }
       )

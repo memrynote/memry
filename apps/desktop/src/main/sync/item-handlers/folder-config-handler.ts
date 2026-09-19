@@ -115,9 +115,11 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = this.resolveClock(existing.clock as VectorClock | null, clock)
-      if (resolution.action === 'skip' || resolution.action === 'merge') {
-        log.info('Skipping remote folder config delete, local has unseen changes', { itemId })
+      const resolution = this.resolveDeleteClock(existing.clock as VectorClock | null, clock)
+      if (resolution.skip) {
+        log.info('Skipping remote folder config delete, local is ahead of the tombstone', {
+          itemId
+        })
         return 'skipped'
       }
     }

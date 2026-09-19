@@ -191,8 +191,8 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
     if (!existing || existing.deletedAt !== null) return 'skipped'
 
     if (clock) {
-      const resolution = this.resolveClock(existing.vectorClock ?? {}, clock)
-      if (resolution.action === 'skip' || resolution.action === 'merge') return 'skipped'
+      const resolution = this.resolveDeleteClock(existing.vectorClock ?? {}, clock)
+      if (resolution.skip) return 'skipped'
     }
 
     const now = Date.now()

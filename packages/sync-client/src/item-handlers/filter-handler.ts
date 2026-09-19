@@ -74,9 +74,9 @@ class FilterHandler extends BaseItemHandler<FilterSyncPayload> {
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = this.resolveClock(existing.clock, clock)
-      if (resolution.action === 'skip' || resolution.action === 'merge') {
-        log.info('Skipping remote filter delete, local has unseen changes', { itemId })
+      const resolution = this.resolveDeleteClock(existing.clock, clock)
+      if (resolution.skip) {
+        log.info('Skipping remote filter delete, local is ahead of the tombstone', { itemId })
         return 'skipped'
       }
     }
@@ -88,8 +88,7 @@ class FilterHandler extends BaseItemHandler<FilterSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(savedFilters).where(eq(savedFilters.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
   }
 
   buildPushPayload(

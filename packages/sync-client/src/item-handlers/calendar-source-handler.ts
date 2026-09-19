@@ -102,9 +102,11 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = this.resolveClock(existing.clock as VectorClock | null, clock)
-      if (resolution.action === 'skip' || resolution.action === 'merge') {
-        log.info('Skipping remote calendar source delete, local has unseen changes', { itemId })
+      const resolution = this.resolveDeleteClock(existing.clock as VectorClock | null, clock)
+      if (resolution.skip) {
+        log.info('Skipping remote calendar source delete, local is ahead of the tombstone', {
+          itemId
+        })
         return 'skipped'
       }
     }
@@ -116,8 +118,7 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(calendarSources).where(eq(calendarSources.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
   }
 
   buildPushPayload(db: DrizzleDb, itemId: string): string | null {

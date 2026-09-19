@@ -171,10 +171,19 @@ describe('canvasFolderHandler', () => {
     expect(emit).toHaveBeenCalledWith('canvasFolder:deleted', expect.anything())
   })
 
-  it('skips a remote delete when the local row has unseen changes', () => {
+  it('applies a remote delete concurrent with local changes, because delete wins (#2198)', () => {
     seedRow({ id: 'cvf_work', path: 'Work', clock: { deviceA: 3 } })
 
     const result = canvasFolderHandler.applyDelete(ctx(), 'cvf_work', { deviceB: 1 })
+
+    expect(result).toBe('applied')
+    expect(row('cvf_work')?.deletedAt).toBeTruthy()
+  })
+
+  it('skips a remote delete the local row already happened after', () => {
+    seedRow({ id: 'cvf_work', path: 'Work', clock: { deviceA: 3 } })
+
+    const result = canvasFolderHandler.applyDelete(ctx(), 'cvf_work', { deviceA: 2 })
 
     expect(result).toBe('skipped')
     expect(row('cvf_work')?.deletedAt).toBeNull()
@@ -223,7 +232,7 @@ describe('canvasFolderHandler', () => {
       fs.mkdirSync(folderDir('Work'), { recursive: true })
       seedRow({ id: 'cvf_work', path: 'Work', clock: { deviceA: 3 } })
 
-      expect(canvasFolderHandler.applyDelete(ctx(), 'cvf_work', { deviceB: 1 })).toBe('skipped')
+      expect(canvasFolderHandler.applyDelete(ctx(), 'cvf_work', { deviceA: 2 })).toBe('skipped')
 
       expect(fs.existsSync(folderDir('Work'))).toBe(true)
     })

@@ -229,16 +229,15 @@ describe('agentMessageHandler', () => {
     expect(emit).not.toHaveBeenCalled()
   })
 
-  it('skips a remote delete that is concurrent with the local row', () => {
+  it('applies a remote delete concurrent with the local row, because delete wins (#2198)', () => {
     agentMessageHandler.applyUpsert(ctx(), 'msg-1', payload(), { deviceA: 3 })
     emit.mockClear()
 
     const result = agentMessageHandler.applyDelete(ctx(), 'msg-1', { deviceB: 1 })
 
-    expect(result).toBe('skipped')
+    expect(result).toBe('applied')
     const row = db.select().from(agentMessages).where(eq(agentMessages.id, 'msg-1')).get()
-    expect(row?.deletedAt).toBeNull()
-    expect(emit).not.toHaveBeenCalled()
+    expect(row?.deletedAt).not.toBeNull()
   })
 
   it('applies a delete with no clock, so an older peer keeps working', () => {

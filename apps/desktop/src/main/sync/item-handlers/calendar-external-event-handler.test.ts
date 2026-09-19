@@ -471,7 +471,7 @@ describe('calendar external event handler — rich fields (M5 Codex P2c)', () =>
     ).toBeNull()
 
     expect(handler?.applyDelete(ctx, 'missing')).toBe('skipped')
-    expect(handler?.applyDelete(ctx, 'external-synced', { 'device-c': 1 })).toBe('skipped')
+    expect(handler?.applyDelete(ctx, 'external-synced', { 'device-a': 1 })).toBe('skipped')
     expect(
       handler?.applyDelete(ctx, 'external-synced', {
         'device-a': 2,

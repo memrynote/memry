@@ -268,14 +268,17 @@ describe('inboxHandler', () => {
     expect(emit).not.toHaveBeenCalled()
   })
 
-  it('skips a delete when the local clock is newer or concurrent', () => {
+  it('skips a delete the local clock happened after, applies a concurrent one', () => {
     inboxHandler.applyUpsert(ctx(), 'inbox-1', { title: 'Local' }, { deviceA: 5 })
     emit.mockClear()
 
     expect(inboxHandler.applyDelete(ctx(), 'inbox-1', { deviceA: 2 })).toBe('skipped')
-    expect(inboxHandler.applyDelete(ctx(), 'inbox-1', { deviceB: 1 })).toBe('skipped')
     expect(rowOf('inbox-1')).toBeDefined()
     expect(emit).not.toHaveBeenCalled()
+
+    // Delete wins over a concurrent local edit (#2198): the server refuses this
+    // device's push forever, so keeping the row would strand it here alone.
+    expect(inboxHandler.applyDelete(ctx(), 'inbox-1', { deviceB: 1 })).toBe('applied')
   })
 
   it('fetches the local row and reports undefined for an unknown id', () => {
