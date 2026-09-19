@@ -1146,6 +1146,7 @@
         "imported": "{count, plural, one {# item imported} other {# items imported}}",
         "attachments": "{count, plural, one {# attachment copied} other {# attachments copied}}",
         "skipped": "{count} skipped",
+        "skippedReason": "{count, plural, one {# item} other {# items}}: {reason}",
         "failed": "{count} failed"
       },
       "error": "Import failed",
@@ -1153,6 +1154,9 @@
     },
     "messages": {
       "readFileFailed": "Failed to read file",
+      "appleNotes": {
+        "lockedNote": "{count, plural, one {# locked note was} other {# locked notes were}} not imported; Memry cannot read them without your Notes password."
+      },
       "csv": {
         "noHeaders": "CSV file has no headers",
         "emptyTitle": "Skipped row with empty title (column \"{column}\")",

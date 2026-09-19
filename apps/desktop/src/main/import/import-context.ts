@@ -1,6 +1,6 @@
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { ImportChannels } from '@memry/contracts/import-channels'
-import type { ImportMessage } from '@memry/contracts/import-channels'
+import { ImportChannels, MAX_SKIPPED_REASON_GROUPS } from '@memry/contracts/import-channels'
+import type { ImportMessage, ImportSkippedGroup } from '@memry/contracts/import-channels'
 import { createLogger } from '../lib/logger'
 import type { ImportContext, ImportProgress, ImportSummary } from './types'
 
@@ -21,8 +21,15 @@ export function createImportContext(importId: string, signal: AbortSignal): Impo
   let phase: ImportProgress['phase'] = 'scanning'
   let status: string | ImportMessage = ''
   const failed: { item: string; error: string }[] = []
+  // Keyed by code (one group per reason kind) or by the raw text when the
+  // reason carries no code.
+  const skippedReasons = new Map<string, ImportSkippedGroup>()
 
-  const toSummary = (): ImportSummary => ({ imported, attachments, skipped, failed })
+  const toSummary = (): ImportSummary => {
+    const summary: ImportSummary = { imported, attachments, skipped, failed }
+    if (skippedReasons.size > 0) summary.skippedReasons = [...skippedReasons.values()]
+    return summary
+  }
 
   const emit = (done = false): void => {
     const payload: ImportProgress = {
@@ -66,6 +73,14 @@ export function createImportContext(importId: string, signal: AbortSignal): Impo
     },
     reportSkipped: (item, reason) => {
       skipped++
+      if (reason) {
+        const key = typeof reason === 'string' ? reason : (reason.code ?? reason.message)
+        const group = skippedReasons.get(key)
+        if (group) group.count++
+        else if (skippedReasons.size < MAX_SKIPPED_REASON_GROUPS) {
+          skippedReasons.set(key, { reason, count: 1 })
+        }
+      }
       logger.info('import skipped', { item, reason })
       emit()
     },

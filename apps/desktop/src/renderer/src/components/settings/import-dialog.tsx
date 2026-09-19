@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useImportRun } from '@/hooks/use-import-run'
 import { notesKeys } from '@/hooks/use-notes-query'
-import { formatImportMessage } from '@/lib/import-message'
+import { formatImportMessage, formatSkippedReason } from '@/lib/import-message'
+import { MAX_SKIPPED_REASON_GROUPS } from '@memry/contracts/import-channels'
 import {
   OneNoteImportPanel,
   type OneNotePanelState
@@ -279,6 +280,12 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
                 {t('import.dialog.summary.skipped', { count: summary.skipped })}
               </p>
             )}
+            {/* Absent on summaries from builds before grouped skip reasons. */}
+            {summary.skippedReasons?.slice(0, MAX_SKIPPED_REASON_GROUPS).map((group, i) => (
+              <p key={i} className="ps-3 text-xs/4 text-muted-foreground">
+                {formatSkippedReason(group.reason, group.count)}
+              </p>
+            ))}
             {summary.failed.length > 0 && (
               <p className="text-xs/4 text-destructive">
                 {t('import.dialog.summary.failed', { count: summary.failed.length })}

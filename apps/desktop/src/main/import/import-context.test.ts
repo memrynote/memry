@@ -6,7 +6,7 @@ vi.mock('electron', () => ({
 }))
 
 import { createImportContext } from './import-context'
-import { ImportChannels } from '@memry/contracts/import-channels'
+import { ImportChannels, MAX_SKIPPED_REASON_GROUPS } from '@memry/contracts/import-channels'
 
 describe('import context', () => {
   beforeEach(() => send.mockClear())
@@ -23,8 +23,40 @@ describe('import context', () => {
       imported: 2,
       attachments: 1,
       skipped: 1,
-      failed: [{ item: 'b.html', error: 'boom' }]
+      failed: [{ item: 'b.html', error: 'boom' }],
+      skippedReasons: [{ reason: 'empty', count: 1 }]
     })
+  })
+
+  it('groups skipped items by reason, keyed by code when there is one', () => {
+    const ctx = createImportContext('id1', new AbortController().signal)
+    const locked = { code: 'appleNotes.lockedNote', message: 'Locked notes were not imported' }
+    ctx.reportSkipped('Passwords', locked)
+    ctx.reportSkipped('Bank', { ...locked, message: 'different text, same code' })
+    ctx.reportSkipped('a.png', 'attachment not found')
+
+    expect(ctx.toSummary().skippedReasons).toEqual([
+      { reason: locked, count: 2 },
+      { reason: 'attachment not found', count: 1 }
+    ])
+  })
+
+  it('counts a reasonless skip without inventing a group', () => {
+    const ctx = createImportContext('id1', new AbortController().signal)
+    ctx.reportSkipped('a.html')
+    const s = ctx.toSummary()
+    expect(s.skipped).toBe(1)
+    expect(s.skippedReasons).toBeUndefined()
+  })
+
+  it('caps distinct reasons while still counting every skip', () => {
+    const ctx = createImportContext('id1', new AbortController().signal)
+    // Reasons can embed a varying error string; the payload must stay bounded.
+    for (let i = 0; i < MAX_SKIPPED_REASON_GROUPS + 5; i++)
+      ctx.reportSkipped(`f${i}`, `reason ${i}`)
+    const s = ctx.toSummary()
+    expect(s.skipped).toBe(MAX_SKIPPED_REASON_GROUPS + 5)
+    expect(s.skippedReasons).toHaveLength(MAX_SKIPPED_REASON_GROUPS)
   })
 
   it('emits a progress event keyed by importId', () => {

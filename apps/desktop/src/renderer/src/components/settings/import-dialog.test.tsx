@@ -6,6 +6,7 @@ import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { ImportDialog } from './import-dialog'
 import { DEFAULT_IMPORT_ICON } from '@/lib/import-catalog'
+import type { ImportSummaryResult } from '@memry/contracts/import-channels'
 import type { ImporterItem } from '@/hooks/use-importers'
 
 const notionItem: ImporterItem = {
@@ -243,6 +244,85 @@ describe('ImportDialog folder picker (Apple Notes)', () => {
     expect(payload.importerId).toBe('apple-notes')
     expect(payload.sourcePaths).toEqual(['/Users/k/group.com.apple.notes'])
     expect(payload.options.folderIds).toEqual(['f-work'])
+  })
+})
+
+describe('ImportDialog summary — skipped reasons', () => {
+  let i18n: I18nInstance
+
+  beforeAll(async () => {
+    i18n = await createRendererI18n({ locale: 'en' })
+  })
+
+  const runWithSummary = async (summary: ImportSummaryResult) => {
+    ;(window as unknown as { api: unknown }).api = {
+      onImportProgress: () => () => {},
+      import: {
+        pickFiles: vi.fn(() =>
+          Promise.resolve({ canceled: false, filePaths: ['/export/Notes.sqlite'] })
+        ),
+        start: vi.fn(() => Promise.resolve({ success: true, summary })),
+        cancel: () => {},
+        preview: () => {},
+        list: () => {}
+      }
+    }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <I18nextProvider i18n={i18n}>
+          <ImportDialog item={appleNotesItem} open onOpenChange={() => {}} />
+        </I18nextProvider>
+      </QueryClientProvider>
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Select Apple Notes folder…' }))
+    const startButton = await screen.findByRole('button', { name: 'Start import' })
+    await waitFor(() => expect(startButton).toBeEnabled())
+    fireEvent.click(startButton)
+    await screen.findByText('Import complete')
+  }
+
+  it('explains a coded reason once, with the grouped count', async () => {
+    await runWithSummary({
+      imported: 4,
+      attachments: 0,
+      skipped: 3,
+      failed: [],
+      skippedReasons: [
+        {
+          reason: {
+            code: 'appleNotes.lockedNote',
+            message: 'Locked notes were not imported'
+          },
+          count: 3
+        }
+      ]
+    })
+
+    expect(screen.getByText('3 skipped')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '3 locked notes were not imported; Memry cannot read them without your Notes password.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('wraps a plain-string reason so its count still shows', async () => {
+    await runWithSummary({
+      imported: 1,
+      attachments: 0,
+      skipped: 2,
+      failed: [],
+      skippedReasons: [{ reason: 'attachment file not found', count: 2 }]
+    })
+
+    expect(screen.getByText('2 items: attachment file not found')).toBeInTheDocument()
+  })
+
+  it('renders a summary from an older build that has no skippedReasons', async () => {
+    await runWithSummary({ imported: 1, attachments: 0, skipped: 2, failed: [] })
+
+    expect(screen.getByText('2 skipped')).toBeInTheDocument()
+    expect(screen.queryByText(/2 items:/)).toBeNull()
   })
 })
 

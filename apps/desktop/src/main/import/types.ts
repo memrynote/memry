@@ -1,4 +1,8 @@
-import type { ImportMessage, ImportPreview } from '@memry/contracts/import-channels'
+import type {
+  ImportMessage,
+  ImportPreview,
+  ImportSkippedGroup
+} from '@memry/contracts/import-channels'
 
 export interface ImportFileSpec {
   label: string
@@ -49,6 +53,8 @@ export interface ImportSummary {
   attachments: number
   skipped: number
   failed: { item: string; error: string }[]
+  /** Skipped items grouped by reason; absent when nothing was skipped. */
+  skippedReasons?: ImportSkippedGroup[]
 }
 
 export interface ImportContext {
@@ -57,7 +63,8 @@ export interface ImportContext {
   reportProgress(completed: number, total: number): void
   reportImported(): void
   reportAttachment(): void
-  reportSkipped(item: string, reason?: string): void
+  /** A coded reason is grouped and translated in the summary; a string renders verbatim. */
+  reportSkipped(item: string, reason?: string | ImportMessage): void
   reportFailed(item: string, error?: unknown): void
   isCancelled(): boolean
   readonly signal: AbortSignal

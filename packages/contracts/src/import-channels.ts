@@ -58,11 +58,30 @@ export type ImportStartInput = z.infer<typeof ImportStartSchema>
 export const ImportCancelSchema = z.object({ importId: z.string().min(1) })
 export type ImportCancelInput = z.infer<typeof ImportCancelSchema>
 
+/**
+ * Skipped items collapsed by the reason they were skipped, so the summary can
+ * say *why* instead of only how many (e.g. locked Apple Notes notes).
+ */
+export interface ImportSkippedGroup {
+  /** Translated through the same code → key map as preview warnings. */
+  reason: ImportPreviewMessage
+  count: number
+}
+
+/**
+ * Distinct skip reasons kept per run. Reasons can embed a varying error string,
+ * so both the payload and the rendered list stay bounded; items beyond the cap
+ * are still counted in `skipped`.
+ */
+export const MAX_SKIPPED_REASON_GROUPS = 8
+
 export interface ImportSummaryResult {
   imported: number
   attachments: number
   skipped: number
   failed: { item: string; error: string }[]
+  /** Absent on payloads from builds before grouped skip reasons landed. */
+  skippedReasons?: ImportSkippedGroup[]
 }
 
 export interface ImportStartResult {
