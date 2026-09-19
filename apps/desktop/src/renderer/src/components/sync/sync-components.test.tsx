@@ -465,6 +465,11 @@ describe('sync components coverage', () => {
     rerender(<SyncStatus onOpenSettings={openSettings} iconOnly />)
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
     await waitFor(() => expect(mocks.syncStatus.resume).toHaveBeenCalledTimes(1))
+
+    // No error to clear: the same button syncs directly.
+    fireEvent.click(screen.getByRole('button', { name: 'Sync Now' }))
+    await waitFor(() => expect(mocks.syncStatus.triggerSync).toHaveBeenCalledTimes(2))
+    expect(mocks.syncStatus.clearError).toHaveBeenCalledTimes(1)
   })
 
   it('sells the upgrade instead of a dead Retry when the account has no sync plan', () => {

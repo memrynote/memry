@@ -563,6 +563,7 @@ describe('settings section coverage', () => {
     vi.clearAllMocks()
     installWindowApi()
     mocks.authState = { status: 'authenticated', email: 'kaan@example.com' }
+    mocks.syncStatus.status = 'idle'
     mocks.syncContext.linkingRequest = null
     mocks.syncContext.triggerSync.mockResolvedValue(undefined)
     mocks.generalSettings.isLoading = false
@@ -661,6 +662,48 @@ describe('settings section coverage', () => {
     // the sync toggle is the first one in the group.
     fireEvent.click(screen.getAllByRole('switch')[0])
     expect(mocks.syncStatus.pause).toHaveBeenCalled()
+  })
+
+  it('sells sync to an unpaid account with benefits and the guarantee, not an error', async () => {
+    mocks.syncStatus.status = 'local_only'
+    render(<AccountSettings />)
+    await screen.findByText('account.sync.upsell.title')
+
+    expect(screen.getByText('account.sync.upsell.benefits.devices')).toBeInTheDocument()
+    expect(screen.getByText('account.sync.upsell.benefits.encrypted')).toBeInTheDocument()
+    expect(screen.getByText('account.sync.upsell.benefits.backup')).toBeInTheDocument()
+    expect(screen.getByText('account.sync.upsell.guarantee')).toBeInTheDocument()
+    expect(screen.queryByText('account.sync.activating.title')).not.toBeInTheDocument()
+  })
+
+  it('offers a refresh, never a second checkout, when an active plan is still gated', async () => {
+    // #2201: the server has not released sync yet, but the money is already paid.
+    ;(window.api.account.getBillingStatus as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      plan: 'pro',
+      status: 'active',
+      source: 'paddle',
+      limits: {
+        storageLimit: 10 * 1024 * 1024 * 1024,
+        maxFileSize: 200 * 1024 * 1024,
+        maxVaults: 10,
+        versionHistoryDays: 365
+      },
+      usage: { storageUsed: 1536 },
+      expiresAt: null,
+      canManageBilling: true
+    })
+    mocks.syncStatus.status = 'local_only'
+
+    render(<AccountSettings />)
+
+    expect(await screen.findByText('account.sync.activating.title')).toBeInTheDocument()
+    expect(screen.queryByText('account.sync.upsell.title')).not.toBeInTheDocument()
+    expect(screen.queryByText('account.sync.upsell.guarantee')).not.toBeInTheDocument()
+
+    // Two refresh buttons now (sync card + billing actions); either must refresh.
+    fireEvent.click(screen.getAllByText('account.billing.actions.refresh')[0])
+    await waitFor(() => expect(window.api.account.refreshBillingStatus).toHaveBeenCalled())
+    expect(window.api.account.startCheckout).not.toHaveBeenCalled()
   })
 
   it('renders setup while recovery confirmation is still pending', () => {
