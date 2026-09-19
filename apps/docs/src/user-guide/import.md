@@ -211,9 +211,11 @@ Import a Bear `.bear2bk` archive (in Bear: **File → Export Notes → Bear Note
 | Headings, bold/italic, lists, to-dos, monospace | Markdown equivalents                                  |
 | Inline images                                   | Saved as attachments                                  |
 | Created / modified (CoreTime)                   | Preserved on the note                                 |
-| Password-protected notes                        | Skipped                                               |
+| Password-protected notes                        | Skipped, and named in the import summary              |
 | Nested folders                                  | Full hierarchy preserved (`Work/Clients/Acme`)        |
 | Folder selection                                | Only the folders you tick are imported                |
+
+Memry cannot read locked notes without your Notes password, so it leaves them behind and tells you: the summary at the end of the run counts them on their own line ("3 locked notes were not imported") instead of folding them into the generic skipped total. Every importer's summary groups skipped items by reason this way.
 
 **Limitations:** scanned documents, handwriting/drawings, and tables are not converted (shown as an unsupported-attachment marker); hashtags, @-mentions, and internal note links are dropped from the text. This importer only appears on macOS.
 

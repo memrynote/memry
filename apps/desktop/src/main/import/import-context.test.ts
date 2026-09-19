@@ -59,6 +59,19 @@ describe('import context', () => {
     expect(s.skippedReasons).toHaveLength(MAX_SKIPPED_REASON_GROUPS)
   })
 
+  it('keeps a coded reason that arrives after the free-text cap is full', () => {
+    const ctx = createImportContext('id1', new AbortController().signal)
+    // An Apple Notes vault whose early notes carry unsupported attachments
+    // emits one distinct free-text reason per extension before the first
+    // locked note is reached; the locked-note line still has to appear.
+    for (let i = 0; i < MAX_SKIPPED_REASON_GROUPS + 5; i++)
+      ctx.reportSkipped(`f${i}.bin`, `File type ".x${i}" is not allowed`)
+    const locked = { code: 'appleNotes.lockedNote', message: 'Locked notes were not imported' }
+    ctx.reportSkipped('Passwords', locked)
+
+    expect(ctx.toSummary().skippedReasons).toContainEqual({ reason: locked, count: 1 })
+  })
+
   it('emits a progress event keyed by importId', () => {
     const ctx = createImportContext('id1', new AbortController().signal)
     ctx.reportProgress(3, 10)

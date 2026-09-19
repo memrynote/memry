@@ -318,6 +318,20 @@ describe('ImportDialog summary — skipped reasons', () => {
     expect(screen.getByText('2 items: attachment file not found')).toBeInTheDocument()
   })
 
+  it('wraps a code this build cannot translate, keeping the count', async () => {
+    await runWithSummary({
+      imported: 1,
+      attachments: 0,
+      skipped: 5,
+      failed: [],
+      skippedReasons: [
+        { reason: { code: 'future.code', message: 'Something newer skipped them' }, count: 5 }
+      ]
+    })
+
+    expect(screen.getByText('5 items: Something newer skipped them')).toBeInTheDocument()
+  })
+
   it('renders a summary from an older build that has no skippedReasons', async () => {
     await runWithSummary({ imported: 1, attachments: 0, skipped: 2, failed: [] })
 

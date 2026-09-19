@@ -24,6 +24,7 @@ export function createImportContext(importId: string, signal: AbortSignal): Impo
   // Keyed by code (one group per reason kind) or by the raw text when the
   // reason carries no code.
   const skippedReasons = new Map<string, ImportSkippedGroup>()
+  let freeTextReasonGroups = 0
 
   const toSummary = (): ImportSummary => {
     const summary: ImportSummary = { imported, attachments, skipped, failed }
@@ -74,10 +75,16 @@ export function createImportContext(importId: string, signal: AbortSignal): Impo
     reportSkipped: (item, reason) => {
       skipped++
       if (reason) {
-        const key = typeof reason === 'string' ? reason : (reason.code ?? reason.message)
+        const code = typeof reason === 'string' ? undefined : reason.code
+        const key = code ?? (typeof reason === 'string' ? reason : reason.message)
         const group = skippedReasons.get(key)
         if (group) group.count++
-        else if (skippedReasons.size < MAX_SKIPPED_REASON_GROUPS) {
+        // A coded reason is always kept: the code space is bounded by
+        // IMPORT_MESSAGE_CODES, and the cap exists for free text — an import
+        // whose early items hit several per-extension attachment errors must
+        // not bury the locked-notes line behind them.
+        else if (code || freeTextReasonGroups < MAX_SKIPPED_REASON_GROUPS) {
+          if (!code) freeTextReasonGroups++
           skippedReasons.set(key, { reason, count: 1 })
         }
       }

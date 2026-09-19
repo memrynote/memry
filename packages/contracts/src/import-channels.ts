@@ -69,9 +69,12 @@ export interface ImportSkippedGroup {
 }
 
 /**
- * Distinct skip reasons kept per run. Reasons can embed a varying error string,
- * so both the payload and the rendered list stay bounded; items beyond the cap
- * are still counted in `skipped`.
+ * Distinct *free-text* skip reasons kept per run — a reason can embed a varying
+ * error string (one per rejected attachment extension, say), so the payload
+ * needs a bound. Coded reasons are exempt: their space is already bounded by
+ * IMPORT_MESSAGE_CODES, and capping them would let free text crowd out the
+ * line that explains the skip. Items beyond the cap are still counted in
+ * `skipped`.
  */
 export const MAX_SKIPPED_REASON_GROUPS = 8
 

@@ -14,7 +14,6 @@ import { Spinner } from '@/components/ui/spinner'
 import { useImportRun } from '@/hooks/use-import-run'
 import { notesKeys } from '@/hooks/use-notes-query'
 import { formatImportMessage, formatSkippedReason } from '@/lib/import-message'
-import { MAX_SKIPPED_REASON_GROUPS } from '@memry/contracts/import-channels'
 import {
   OneNoteImportPanel,
   type OneNotePanelState
@@ -280,8 +279,12 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
                 {t('import.dialog.summary.skipped', { count: summary.skipped })}
               </p>
             )}
-            {/* Absent on summaries from builds before grouped skip reasons. */}
-            {summary.skippedReasons?.slice(0, MAX_SKIPPED_REASON_GROUPS).map((group, i) => (
+            {/*
+              Absent on summaries from builds before grouped skip reasons. Not
+              sliced here: the main process already bounds the list, and a
+              render-side cut would drop exactly the coded lines it exempts.
+            */}
+            {summary.skippedReasons?.map((group, i) => (
               <p key={i} className="ps-3 text-xs/4 text-muted-foreground">
                 {formatSkippedReason(group.reason, group.count)}
               </p>
