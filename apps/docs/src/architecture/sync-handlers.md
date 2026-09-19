@@ -127,13 +127,30 @@ Two more decisions worth carrying to the next handler like this:
   `template-handler.ts`.
 - **Hard delete.** Record-sync tombstones live on the server item (`deleted_at`), never in a local
   column. A soft-delete column would also break downgrade inertness: an older build has no
-  `deletedAt` in its model and would list tombstoned boards. `applyDelete` refusing a delete when the
-  local clock is newer or concurrent — so manifest repair re-pushes the row and clears the server
-  tombstone — is the intended "a concurrent local edit beats a remote delete", not the canvas
-  resurrection hazard, which is about tombstoned rows in a soft-delete table.
+  `deletedAt` in its model and would list tombstoned boards. `applyDelete` refuses a remote delete
+  only when the local clock happens strictly after the tombstone (see "Delete wins" below), so a
+  concurrent local edit does not keep the row alive.
 
 Board _selection_ is deliberately not synced: which board is open stays in
 `localStorage['memry-home-active-board']` on each device.
+
+## Delete Wins Over a Concurrent Write
+
+`applyDelete` skips a pulled tombstone **only** when the local clock happens strictly after it —
+`BaseItemHandler.resolveDeleteClock` (`packages/sync-client/src/item-handlers/base-handler.ts`). A
+local clock merely concurrent with the tombstone loses: the row is deleted and the local edit is
+dropped.
+
+That mirrors the server. `shouldRejectResurrection` (`apps/sync-server/src/services/sync.ts`) refuses
+any non-delete push against a tombstoned id unless the incoming clock happens strictly after the
+stored one, answering `SYNC_DELETE_WINS`; `push-coordinator` drains that rejection without retrying,
+because a retry is refused identically every time.
+
+Handlers used to keep the row on a concurrent clock, and the two rules together stranded exactly one
+device: the device that edited an item before it saw the delete had its push refused forever and its
+pull decline the tombstone, so it kept a ghost copy of an item deleted on every other device. A
+handler that adds its own delete guard has to use `resolveDeleteClock`, not a hand-rolled
+`resolveClock` comparison.
 
 ## Atomicity
 
