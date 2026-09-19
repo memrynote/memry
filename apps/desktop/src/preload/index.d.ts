@@ -28,6 +28,8 @@ import type {
 } from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type {
+  AppleNotesFoldersInput,
+  AppleNotesFoldersResult,
   ImportStartInput,
   ImportStartResponse,
   ImportCancelInput,
@@ -1845,6 +1847,9 @@ interface API extends WindowAPI, GeneratedRpcApi {
     cancel: (input: ImportCancelInput) => Promise<{ success: true }>
     preview: (input: ImportPreviewInput) => Promise<ImportPreviewResponse>
     list: () => Promise<ImporterMeta[]>
+    appleNotes: {
+      folders: (input: AppleNotesFoldersInput) => Promise<AppleNotesFoldersResult>
+    }
     onenote: {
       status: () => Promise<OneNoteAuthStatusResult>
       connect: () => Promise<OneNoteAuthStatusResult>

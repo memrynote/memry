@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
+  AppleNotesFoldersSchema,
+  AppleNotesImportChannels,
   ImportChannels,
   OneNoteImportChannels,
   ImportStartSchema,
@@ -62,6 +64,21 @@ describe('ImportChannels', () => {
       ImportPreviewSchema.safeParse({ importId: 'i1', importerId: '', sourcePaths: ['/a.csv'] })
         .success
     ).toBe(false)
+  })
+})
+
+describe('AppleNotesImportChannels', () => {
+  it('defines a prefixed channel that does not collide with the generic ones', () => {
+    expect(AppleNotesImportChannels.invoke.FOLDERS).toBe('import:apple-notes:folders')
+    expect(Object.values(ImportChannels.invoke)).not.toContain(
+      AppleNotesImportChannels.invoke.FOLDERS
+    )
+  })
+
+  it('requires a source path to scan', () => {
+    expect(AppleNotesFoldersSchema.safeParse({ sourcePath: '/a/b' }).success).toBe(true)
+    expect(AppleNotesFoldersSchema.safeParse({ sourcePath: '' }).success).toBe(false)
+    expect(AppleNotesFoldersSchema.safeParse({}).success).toBe(false)
   })
 })
 

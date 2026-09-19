@@ -129,6 +129,7 @@ export interface MainIpcInvokeHandlers {
   "home-pages:list": (...args: []) => Awaited<Promise<{ id: string; name: string; position: number; widgets: { id: string; type: string; x: number; y: number; w: number; h: number; config: Record<string, unknown>; }[]; icon?: string | undefined; }[]>>
   "home-pages:reorder": (...args: [any]) => Awaited<Promise<{ success: boolean; }>>
   "home-pages:update": (...args: [any]) => Awaited<Promise<{ id: string; name: string; position: number; widgets: { id: string; type: string; x: number; y: number; w: number; h: number; config: Record<string, unknown>; }[]; icon?: string | undefined; }>>
+  "import:apple-notes:folders": (...args: [{ sourcePath: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/import-channels").AppleNotesFoldersResult> | { success: false; error: string }>
   "import:cancel": (...args: [{ importId: string; }]) => Awaited<{ success: true; } | { success: false; error: string }>
   "import:list": (...args: [unknown]) => Awaited<import("../../../../../packages/contracts/src/import-channels").ImporterMeta[] | { success: false; error: string }>
   "import:onenote:connect": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/import-channels").OneNoteAuthStatusResult> | { success: false; error: string }>

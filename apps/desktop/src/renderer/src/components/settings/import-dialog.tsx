@@ -18,6 +18,10 @@ import {
   OneNoteImportPanel,
   type OneNotePanelState
 } from '@/components/settings/onenote-import-panel'
+import {
+  AppleNotesFolderPanel,
+  type AppleNotesPanelState
+} from '@/components/settings/apple-notes-folder-panel'
 import type { ImporterItem } from '@/hooks/use-importers'
 
 /** Account-based importers bring their own source panel, keyed by importer id. */
@@ -43,6 +47,11 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
     ready: false,
     options: {}
   })
+  // Apple Notes narrows the run to picked folders once a source is chosen.
+  const [appleNotesState, setAppleNotesState] = useState<AppleNotesPanelState>({
+    ready: false,
+    options: {}
+  })
 
   // The import runner drains its projection pipeline before resolving, so once a
   // summary arrives the note_cache is complete. Refetch the sidebar tree (notes +
@@ -57,6 +66,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
   const reset = () => {
     setPaths([])
     setAccountState({ ready: false, options: {} })
+    setAppleNotesState({ ready: false, options: {} })
     run.reset()
   }
 
@@ -78,6 +88,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
     })
     if (result.canceled || result.filePaths.length === 0) return
     setPaths(result.filePaths)
+    setAppleNotesState({ ready: false, options: {} })
     if (item.supportsPreview) void run.runPreview(item.id, result.filePaths)
   }
 
@@ -94,6 +105,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
   // missing must not silently fall back to a file picker it cannot use.
   const isAccountBased = Boolean(item?.accountBased)
   const AccountPanel = isAccountBased && item ? ACCOUNT_PANELS[item.id] : undefined
+  const appleNotesSourcePath = item?.id === 'apple-notes' ? paths[0] : undefined
 
   const startImport = () => {
     if (!item || run.isRunning) return
@@ -103,7 +115,11 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
       return
     }
     if (paths.length === 0) return
-    void run.start(item.id, paths)
+    void run.start(
+      item.id,
+      paths,
+      appleNotesSourcePath ? (appleNotesState.options as Record<string, unknown>) : undefined
+    )
   }
 
   const summary = run.summary
@@ -162,6 +178,15 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
               <p className="text-xs/4 text-muted-foreground truncate">
                 {t('import.dialog.selected', { count: paths.length })}
               </p>
+            )}
+
+            {appleNotesSourcePath && !run.summary && (
+              <AppleNotesFolderPanel
+                key={appleNotesSourcePath}
+                sourcePath={appleNotesSourcePath}
+                disabled={run.isRunning}
+                onStateChange={setAppleNotesState}
+              />
             )}
 
             {run.isPreviewing && (
@@ -277,7 +302,10 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
               disabled={
                 isAccountBased
                   ? !AccountPanel || !accountState.ready
-                  : paths.length === 0 || run.isPreviewing || (needsPreview && !run.preview)
+                  : paths.length === 0 ||
+                    run.isPreviewing ||
+                    (needsPreview && !run.preview) ||
+                    (Boolean(appleNotesSourcePath) && !appleNotesState.ready)
               }
               onPointerDown={startImport}
               onClick={startImport}

@@ -1,6 +1,8 @@
 import { ipcMain, dialog } from 'electron'
 import { z } from 'zod'
 import {
+  AppleNotesFoldersSchema,
+  AppleNotesImportChannels,
   ImportChannels,
   ImportStartSchema,
   ImportCancelSchema,
@@ -11,6 +13,7 @@ import { registerCommand } from './lib/register-command'
 import { registerBuiltinImporters } from '../import/register-builtins'
 import { listImporterMeta } from '../import/registry'
 import { runImport, previewImport, cancelImport } from '../import/runner'
+import { scanAppleNotesFolders } from '../import/apple-notes/note-store'
 import {
   registerOneNoteImportHandlers,
   unregisterOneNoteImportHandlers
@@ -89,6 +92,15 @@ export function registerImportHandlers(): void {
     'errors:importer.listFailed'
   )
 
+  // Apple Notes is file-picked, so its folder tree is read from the path the
+  // user already granted access to — no auth step, one command.
+  registerCommand(
+    AppleNotesImportChannels.invoke.FOLDERS,
+    AppleNotesFoldersSchema,
+    (input) => scanAppleNotesFolders(input.sourcePath),
+    'errors:importer.appleNotesFoldersFailed'
+  )
+
   registerOneNoteImportHandlers()
 }
 
@@ -98,5 +110,6 @@ export function unregisterImportHandlers(): void {
   ipcMain.removeHandler(ImportChannels.invoke.CANCEL)
   ipcMain.removeHandler(ImportChannels.invoke.PREVIEW)
   ipcMain.removeHandler(ImportChannels.invoke.LIST)
+  ipcMain.removeHandler(AppleNotesImportChannels.invoke.FOLDERS)
   unregisterOneNoteImportHandlers()
 }

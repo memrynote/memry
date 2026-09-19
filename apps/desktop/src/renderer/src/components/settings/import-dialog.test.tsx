@@ -168,6 +168,84 @@ describe('ImportDialog i18n', () => {
   })
 })
 
+describe('ImportDialog folder picker (Apple Notes)', () => {
+  let i18n: I18nInstance
+  let start: ReturnType<typeof vi.fn>
+  let folders: ReturnType<typeof vi.fn>
+
+  beforeAll(async () => {
+    i18n = await createRendererI18n({ locale: 'en' })
+  })
+
+  beforeEach(() => {
+    start = vi.fn(() =>
+      Promise.resolve({
+        success: true,
+        summary: { imported: 1, attachments: 0, skipped: 0, failed: [] }
+      })
+    )
+    folders = vi.fn(() =>
+      Promise.resolve({
+        accounts: [
+          {
+            name: 'iCloud',
+            folders: [
+              { id: 'f-work', title: 'Work', noteCount: 2, totalNoteCount: 2, children: [] },
+              { id: 'f-personal', title: 'Personal', noteCount: 1, totalNoteCount: 1, children: [] }
+            ]
+          }
+        ],
+        unfiledNoteCount: 0
+      })
+    )
+    ;(window as unknown as { api: unknown }).api = {
+      onImportProgress: () => () => {},
+      import: {
+        pickFiles: vi.fn(() =>
+          Promise.resolve({ canceled: false, filePaths: ['/Users/k/group.com.apple.notes'] })
+        ),
+        start,
+        cancel: () => {},
+        preview: () => {},
+        list: () => {},
+        appleNotes: { folders }
+      }
+    }
+  })
+
+  it('picks folders after the source folder and starts with the selection', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <I18nextProvider i18n={i18n}>
+          <ImportDialog item={appleNotesItem} open onOpenChange={() => {}} />
+        </I18nextProvider>
+      </QueryClientProvider>
+    )
+
+    // The folder tree only loads once the user has granted access to a source.
+    expect(folders).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Select Apple Notes folder…' }))
+
+    await screen.findByText('Work')
+    expect(folders).toHaveBeenCalledWith({ sourcePath: '/Users/k/group.com.apple.notes' })
+
+    // Drop one folder, keep the other.
+    const personalRow = screen.getByText('Personal').closest('label')!
+    fireEvent.click(personalRow.querySelector('[role="checkbox"]')!)
+
+    const startButton = screen.getByText('Start import').closest('button')!
+    await waitFor(() => expect(startButton).not.toBeDisabled())
+    fireEvent.pointerDown(startButton)
+    fireEvent.click(startButton)
+
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(1))
+    const payload = start.mock.calls[0][0]
+    expect(payload.importerId).toBe('apple-notes')
+    expect(payload.sourcePaths).toEqual(['/Users/k/group.com.apple.notes'])
+    expect(payload.options.folderIds).toEqual(['f-work'])
+  })
+})
+
 describe('ImportDialog account-based importer (OneNote)', () => {
   let i18n: I18nInstance
   let start: ReturnType<typeof vi.fn>
