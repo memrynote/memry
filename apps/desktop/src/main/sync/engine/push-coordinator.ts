@@ -6,6 +6,7 @@ import { RECORD_CLOCK_REQUIRED_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { encryptPushBatch } from '../sync-crypto-batch'
 import { getHandler, getRemoteSyncAdapter } from '../item-handlers'
+import { mergeUnknownPayloadFields } from '../unknown-fields'
 import { coalesceSyncOperations } from '@memry/sync-client/queue'
 import { withRetry, type RetryResult } from '@memry/sync-client/retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
@@ -629,7 +630,14 @@ export class PushCoordinator {
         return this.ensureRequiredClock(item, item.payload, deviceId)
       }
 
-      return this.ensureRequiredClock(item, fresh, deviceId)
+      // The freshly built payload is a projection of local columns, so any key
+      // this build's schema stripped on apply is missing from it. Put those
+      // back before the item leaves the device (#2183).
+      return this.ensureRequiredClock(
+        item,
+        mergeUnknownPayloadFields(this.ctx.deps.db, item.type, item.itemId, fresh),
+        deviceId
+      )
     } catch (err) {
       log.warn('Push: failed to build fresh payload, using frozen', {
         itemId: item.itemId.slice(0, 8),
