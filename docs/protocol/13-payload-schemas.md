@@ -53,9 +53,11 @@ it: the raw string goes into `sync_items.payload`
 parsed copy (`:207`), and a push sends the whole stored object with only the
 changed keys mutated (`apps/mobile/src/sync/outbox.ts:66-71`).
 
-### 13.2.1 Desktop is the NON-reference for this obligation (#2183)
+### 13.2.1 Desktop meets the obligation by a different mechanism (#2183)
 
-Desktop violates rules 1 to 4 today. `apply-item.ts` parses and then runs
+Desktop does not satisfy rules 1 to 4 literally — it still parses and projects —
+but it no longer loses unknown keys, which is what those rules exist to protect.
+`apply-item.ts` parses and then runs
 `handler.schema.parse(parsed)`
 (`apps/desktop/src/main/sync/apply-item.ts:93-95`); **every handler schema is a
 plain `z.object`** — there is no `passthrough`, `loose` or `catchall` anywhere in
@@ -66,16 +68,28 @@ back by **re-serialising the projection row**
 (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:373-378`); the
 verbatim string is kept nowhere.
 
-`task-handler.ts:278-284` already documents exactly this loss for
-`linkedCanvasIds`, and works around it with a presence guard rather than a fix.
+`task-handler.ts:278-284` documents exactly this loss for `linkedCanvasIds`, and
+works around it with a presence guard.
 
-It also violates rule 5: an item whose payload fails `parse` is marked
+**Instead of the verbatim payload, desktop keeps the remainder.** On apply it
+diffs the raw parsed JSON against the schema result and stores every stripped
+top-level key verbatim in `sync_unknown_fields`
+(`apps/desktop/src/main/sync/unknown-fields.ts`); on push,
+`resolvePushPayload` merges that remainder back underneath the freshly built
+payload, locally built keys winning
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts`). The observable
+round-trip guarantee of rules 1 to 4 holds: a field written by a newer client
+survives an older desktop's edit. **The stated ceiling is nesting** — an unknown
+key inside a known object is still stripped by that object's schema, where a
+verbatim implementation would keep it.
+
+It still violates rule 5: an item whose payload fails `parse` is marked
 `'skipped'` **with the cursor advanced and no retry**
-(`apps/desktop/src/main/sync/apply-item.ts:96-109`, and the comment at `:98-101`
-naming it a mixed-version tripwire).
+(`apps/desktop/src/main/sync/apply-item.ts`, and the comment naming it a
+mixed-version tripwire). Routing it to `'parse_error'` would refetch identical
+bytes forever, so the fix is a real quarantine state, not a reclassification.
 
-Tracked as **#2183**. **This chapter states the obligation; desktop does not meet
-it.**
+**#2183** closed the key-loss half. Rule 5 and nested keys remain open.
 
 ### 13.2.2 The wire envelope is a different matter
 
@@ -90,7 +104,9 @@ envelope key; it MUST NOT reject an unknown payload key.
 
 Store the payload verbatim as `TEXT` or `BLOB`. Project through an untyped JSON
 value, or a struct carrying a flattened `extra` map. **A plain derived
-deserialise-then-reserialise reproduces desktop's bug exactly.**
+deserialise-then-reserialise reproduces desktop's original bug exactly**, and
+desktop's remainder table is a retrofit, not the shape to copy — it only reaches
+the top level.
 
 **Disposition of Q13.2: answered** (this section).
 
