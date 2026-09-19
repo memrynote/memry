@@ -32,6 +32,7 @@ import {
 import { getSyncEngine, startSyncRuntime } from './runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
+import { adoptAccountVaultIfAbsent } from './vault-adoption'
 import {
   ACCESS_TOKEN_EXPIRY_SECONDS,
   extractJtiFromToken,
@@ -116,16 +117,24 @@ export const persistKeysAndRegisterDevice = async (
   await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
 
   const db = getDatabase()
-  const vaultId = getOrCreateVaultUuid(db)
+  const localVaultUuid = getOrCreateVaultUuid(db)
 
-  let deviceResponse: DeviceRegisterResponse & { deviceId: string }
+  let deviceResponse: DeviceRegisterResponse & { deviceId: string; accessToken: string }
   try {
-    const raw = await registerDevice(setupToken, signingSecretKey, vaultId)
-    deviceResponse = raw as DeviceRegisterResponse & { deviceId: string }
+    const raw = await registerDevice(setupToken, signingSecretKey, localVaultUuid)
+    deviceResponse = raw as DeviceRegisterResponse & { deviceId: string; accessToken: string }
   } catch (err) {
     await deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => {})
     throw err
   }
+
+  // Registration does not spend a vault slot — the server only stamps
+  // devices.vault_id, and `ensureSyncVaultAllowed` runs on the first push,
+  // under the X-Memry-Vault-Id header. So this is the last moment the open
+  // vault's identity can still be corrected, and the first at which an access
+  // token exists to ask what the account already holds (#2226). Everything
+  // below binds to the returned uuid, adopted or not.
+  const vaultId = await adoptAccountVaultIfAbsent(db, localVaultUuid, deviceResponse.accessToken)
 
   if (!skipSetup) {
     const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)

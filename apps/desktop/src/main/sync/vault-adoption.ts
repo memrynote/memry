@@ -6,6 +6,7 @@ import { VAULT_KEY_VERIFIER_SETTING } from '../crypto/vault-key-state'
 import { resetVaultUuidCache } from '../agent/storage/vault-id'
 import { createLogger } from '../lib/logger'
 import { recordCrdtStoreRename } from '../store'
+import { getFromServer } from './http-client'
 
 const logger = createLogger('Sync:VaultAdoption')
 
@@ -64,4 +65,57 @@ export function adoptVaultLocally(db: DataDb, vaultUuid: string): void {
   // registration that immediately follows, and the vault-key derivation.
   resetVaultUuidCache()
   logger.info('Adopted shared vault identity for linked device', { vaultUuid })
+}
+
+/**
+ * Make a just-registered device sync the account's vault instead of minting a
+ * second one.
+ *
+ * QR linking adopts the initiator's vault uuid (`finalizeLinking`). Signing in
+ * with an OTP + recovery phrase adopted nothing, so whatever folder happened to
+ * be open kept its freshly minted local uuid and every push asked for another
+ * vault slot: on Plus (`max_vaults = 1`) that is `SYNC_VAULT_LIMIT_EXCEEDED`
+ * forever while the account's real vault keeps syncing from the first machine
+ * (#2226). A slot must be spent on purpose — creating a vault from the
+ * switcher — never as a side effect of signing in.
+ *
+ * Returns the uuid this device should sync under: the adopted one, or the local
+ * one when there is nothing to adopt (new account, or the open vault is already
+ * the account's). Never throws — a vault list that cannot be fetched leaves the
+ * pre-existing behaviour rather than failing the sign-in.
+ *
+ * ponytail: on a multi-vault account this binds to the most populated vault
+ * instead of asking. The other vaults stay reachable from the switcher
+ * ("In your account") and Settings → Vault says which vault is open, so the
+ * upgrade path is the same picker QR linking uses (`finalizeVaultChoice`) if
+ * the guess turns out to be wrong often enough to matter.
+ */
+export async function adoptAccountVaultIfAbsent(
+  db: DataDb,
+  localVaultUuid: string,
+  accessToken: string
+): Promise<string> {
+  let vaults: Array<{ vaultUuid: string; itemCount?: number }>
+  try {
+    ;({ vaults } = await getFromServer<{
+      vaults: Array<{ vaultUuid: string; itemCount?: number }>
+    }>('/sync/vaults', accessToken))
+  } catch (err) {
+    logger.warn('Could not enumerate account vaults after registration', err)
+    return localVaultUuid
+  }
+
+  if (vaults.length === 0) return localVaultUuid
+  if (vaults.some((vault) => vault.vaultUuid === localVaultUuid)) return localVaultUuid
+
+  // The server already orders by item count, but the choice is load-bearing
+  // enough not to depend on that.
+  const target = [...vaults].sort((a, b) => (b.itemCount ?? 0) - (a.itemCount ?? 0))[0]
+  adoptVaultLocally(db, target.vaultUuid)
+  logger.info('Adopted account vault instead of registering a new one', {
+    localVaultUuid,
+    adopted: target.vaultUuid,
+    accountVaultCount: vaults.length
+  })
+  return target.vaultUuid
 }
