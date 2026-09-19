@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useImportRun } from '@/hooks/use-import-run'
 import { notesKeys } from '@/hooks/use-notes-query'
-import { formatImportMessage } from '@/lib/import-message'
+import { formatImportMessage, formatSkippedReason } from '@/lib/import-message'
 import {
   OneNoteImportPanel,
   type OneNotePanelState
@@ -279,6 +279,25 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
                 {t('import.dialog.summary.skipped', { count: summary.skipped })}
               </p>
             )}
+            {/*
+              Absent on summaries from builds before grouped skip reasons. Not
+              sliced here: the main process already bounds the list, and a
+              render-side cut would drop exactly the coded lines it exempts.
+            */}
+            {summary.skippedReasons?.map((group) => (
+              <p
+                // The grouping key the main process used: a code, or the raw
+                // reason text. Unique per group by construction.
+                key={
+                  typeof group.reason === 'string'
+                    ? group.reason
+                    : (group.reason.code ?? group.reason.message)
+                }
+                className="ps-3 text-xs/4 text-muted-foreground"
+              >
+                {formatSkippedReason(group.reason, group.count)}
+              </p>
+            ))}
             {summary.failed.length > 0 && (
               <p className="text-xs/4 text-destructive">
                 {t('import.dialog.summary.failed', { count: summary.failed.length })}

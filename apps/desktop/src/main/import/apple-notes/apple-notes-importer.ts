@@ -35,7 +35,7 @@ import {
   ATTACHMENT_TOKEN_PREFIX,
   type AppleNoteRow
 } from '@memry/importers/apple-notes'
-import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
+import { IMPORT_MESSAGE_CODES, IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
 import type { AppleNotesImportOptionsInput } from '@memry/contracts/import-channels'
 import {
   ACCESS_DENIED_HINT,
@@ -201,7 +201,14 @@ export const appleNotesImporter: Importer = {
         const title = row.title ?? 'Untitled'
 
         if (row.passwordProtected) {
-          ctx.reportSkipped(title, 'note is password protected')
+          // Coded so the summary can group every locked note into one
+          // translated line instead of a bare skipped count (level 2 —
+          // decrypting them with the Notes password — is still unbuilt).
+          ctx.reportSkipped(title, {
+            code: IMPORT_MESSAGE_CODES.appleNotesLockedNote,
+            message:
+              'Locked notes were not imported; Memry cannot read them without your Notes password'
+          })
           done++
           ctx.reportProgress(done, total)
           continue

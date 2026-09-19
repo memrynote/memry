@@ -15,6 +15,9 @@ export const IMPORT_MESSAGE_CODES = {
   /** Fallback used when a preview group could not be read at all. */
   readFileFailed: 'readFileFailed',
 
+  /** Skip reason: Apple Notes locked (password-protected) notes. Takes `{count}`. */
+  appleNotesLockedNote: 'appleNotes.lockedNote',
+
   csvNoHeaders: 'csv.noHeaders',
   csvEmptyTitle: 'csv.emptyTitle',
   csvColumns: 'csv.columns',
