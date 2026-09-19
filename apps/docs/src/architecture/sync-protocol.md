@@ -310,7 +310,11 @@ before the builder's own error handling and take the rest of the sweep down with
 
 Because recovery never advances a clock, a change made while the sync runtime is down has to advance
 its own at write time or the re-push would be dismissed as a replay. Records park that tick under a
-placeholder device that their sync service rebinds on the way out; notes and journals have no
+placeholder device that their sync service rebinds on the way out. Rebinding runs before every
+record push, create as well as update: a row that was created *and* edited while signed out is
+recovered as a create, and until that path rebound too it shipped the placeholder device id to the
+server — an id every install claims, which makes two devices' clocks compare equal for edits that
+are genuinely concurrent. Notes and journals have no
 rebinding step, so their fallback bumps under the current device directly and does nothing when no
 device is registered (the same thing the online path does). It also clears the sync stamp, because
 metadata-only writes — recording an uploaded attachment or editing a journal's tags, say —
