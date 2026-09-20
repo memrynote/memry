@@ -10,6 +10,12 @@
       },
       "disabled": true
     },
+    "paddle-sandbox": {
+      "url": "https://sandbox-mcp.paddle.com/mcp",
+      "headers": {
+        "Authorization": "Bearer $env:PADDLE_SANDBOX_API_KEY"
+      }
+    },
     "paper": {
       "url": "http://127.0.0.1:29979/mcp"
     },

@@ -68,6 +68,7 @@
     "sync:init-db": "pnpm --filter @memry/sync-server exec wrangler d1 migrations apply memry-sync --local",
     "sync:reset": "pnpm sync:clean && pnpm sync:init-db",
     "sync:reset:staging": "pnpm --filter @memry/sync-server reset:staging",
+    "staging:user": "pnpm --filter @memry/sync-server staging:user",
     "check:lockfile": "node scripts/check-lockfile.js",
     "warm": "node scripts/warm-native.mjs --target electron",
     "warm:bg": "node scripts/warm-native.mjs --background --target electron",
