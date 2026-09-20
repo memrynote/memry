@@ -364,13 +364,16 @@ interface TaskTagsBadgeProps {
   maxVisible?: number
   className?: string
   size?: 'sm' | 'md'
+  /** Single-line hosts (a task row) must not let the group wrap and grow. */
+  nowrap?: boolean
 }
 
 export const TaskTagsBadge = ({
   tags,
   maxVisible = DEFAULT_MAX_VISIBLE_TAGS,
   className,
-  size = 'md'
+  size = 'md',
+  nowrap = false
 }: TaskTagsBadgeProps): React.JSX.Element | null => {
   const { tags: tagDefs } = useNoteTagsQuery({ enabled: tags.length > 0 })
 
@@ -396,7 +399,13 @@ export const TaskTagsBadge = ({
   const overflowCount = chips.length - visible.length
 
   return (
-    <ul className={cn('flex items-center gap-1.5 flex-wrap list-none p-0 m-0', className)}>
+    <ul
+      className={cn(
+        'flex items-center gap-1.5 list-none p-0 m-0',
+        nowrap ? 'flex-nowrap' : 'flex-wrap',
+        className
+      )}
+    >
       {visible.map((tag) => (
         <TagChip key={tag.id} tag={tag} size={size} />
       ))}

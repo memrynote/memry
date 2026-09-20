@@ -162,9 +162,30 @@ title the task already has: `!urgent` on its own sets the priority, it does not 
 and silently deleting a link you typed is worse than not making one — link notes from the task's
 **Related** section instead.
 
-To change something you already wrote, hover the task row and press the sliders button beside it. One
-popover covers priority, due date, tags, and project, each on its own panel, and every edit writes
-straight to the task — no navigation, and the cursor stays where it was in the note.
+### Editing What Is Already There
+
+Everything the task carries is a control on its own row. Status, priority and project sit there
+always — they cannot be empty, so there is nothing to add. The rest appear as small chips once they
+have a value: a due date, a start date, a reminder, a repeat, tags. Click any of them and its picker
+opens in place. Nothing navigates, and the cursor stays where it was in the note.
+
+What the task is _missing_ lives behind the **+** that appears when you hover the row. It lists only
+the properties that have no value yet, so it shrinks as you fill the task in, and once nothing is
+missing the button is gone entirely. Picking an entry from it opens that property's picker straight
+away — there is no second click.
+
+Start and due dates share one chip, reading `Sep 5 → Sep 12`, with a **Start | Due** switch above a
+single calendar. Clearing a due date clears its time with it: a time with no day never surfaces
+anywhere.
+
+Removing a value is the same path as setting one. Clear it in its picker, the chip disappears, and
+the property is offered by **+** again.
+
+A task with several tags shows the first two and a `+2`. That count is part of the same control —
+clicking it opens the tag editor with every tag listed, so the overflow is never a dead end.
+
+Descriptions and sub-issues are the two things that do not fit on a line; the arrow at the end of the
+row opens the task for those.
 
 ## The Checkbox in the File Wins
 

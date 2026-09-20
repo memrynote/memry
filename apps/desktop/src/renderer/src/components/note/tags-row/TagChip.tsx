@@ -73,7 +73,10 @@ export function TagChip({
           )}
         />
       )}
-      <span>{tag.name}</span>
+      {/* A tag name is free text. Unbounded, one long nested tag
+          (`work/client-onboarding-q3`) stretches every row that shows it — the
+          pill itself is shrink-0, so nothing else can give way. */}
+      <span className="truncate max-w-[120px]">{tag.name}</span>
       {isSelected && <Check className="h-3 w-3" />}
       {onRemove && !disabled && isHovered && (
         <span

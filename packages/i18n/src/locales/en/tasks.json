@@ -954,10 +954,13 @@
     "pink": "Pink"
   },
   "inlineContext": {
-    "trigger": "Edit task context",
+    "trigger": "Add task context",
     "dueDate": "Due date",
     "none": "None",
     "searchTags": "Search tags…",
-    "createTag": "Create \"{name}\""
+    "createTag": "Create \"{name}\"",
+    "setDate": "Set date",
+    "setRepeat": "Set repeat",
+    "clearRepeat": "Does not repeat"
   }
 }

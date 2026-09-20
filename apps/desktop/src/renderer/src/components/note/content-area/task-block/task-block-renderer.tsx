@@ -3,13 +3,13 @@ import { AlertTriangle, ArrowUpRight, Loader2, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useTaskBlockData } from './use-task-block-data'
 import { serviceTaskToDisplayTask, resolveTitleCommit, PRIORITY_REVERSE } from './task-block-utils'
-import { TaskContextPopover } from './task-context-popover'
 import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
 import { tasksService, type TaskUpdateInput } from '@/services/tasks-service'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { Task as DisplayTask } from '@/data/task-model'
 import { formatDateKey } from '@/lib/task-utils'
+import { toServiceRepeatConfig } from '@/features/tasks/use-task-queries'
 import { defaultStatuses, type Project, type Status } from '@/data/tasks-data'
 import { TaskRow } from '@/components/tasks/task-row'
 import { useT } from '@memry/i18n/renderer'
@@ -491,6 +491,13 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
           dueDate: updates.dueDate ? formatDateKey(updates.dueDate) : null
         }),
         ...(updates.dueTime !== undefined && { dueTime: updates.dueTime }),
+        ...(updates.startDate !== undefined && {
+          startDate: updates.startDate ? formatDateKey(updates.startDate) : null
+        }),
+        ...(updates.repeatConfig !== undefined && {
+          isRepeating: updates.repeatConfig !== null,
+          repeatConfig: toServiceRepeatConfig(updates.repeatConfig)
+        }),
         ...(updates.tags !== undefined && { tags: updates.tags })
       })
     },
@@ -666,19 +673,15 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
           onToggleComplete={(...args) => void handleToggleComplete(...args)}
           onUpdateTask={(...args) => void handleUpdateTask(...args)}
           onProjectChange={(...args) => void handleProjectChange(...args)}
-          actions={
-            hasResolvedTask && displayTask ? (
-              <>
-                <TaskContextPopover
-                  task={displayTask}
-                  projects={projects}
-                  onUpdate={(updates) => void handleUpdateTask(taskId, updates)}
-                  onProjectChange={(projectId) => void handleProjectChange(projectId)}
-                />
-                {navigateArrow}
-              </>
-            ) : null
+          metaEditing={
+            hasResolvedTask
+              ? {
+                  onUpdate: (updates) => void handleUpdateTask(taskId, updates),
+                  onProjectChange: (projectId) => void handleProjectChange(projectId)
+                }
+              : undefined
           }
+          actions={hasResolvedTask ? navigateArrow : null}
           renderTitle={isEditingTitle ? titleInput : clickableTitle}
           className="px-0"
         />

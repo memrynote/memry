@@ -22,12 +22,17 @@ interface TaskReminderButtonProps {
   taskId: string
   disabled?: boolean
   className?: string
+  /** Passed straight to {@link ReminderPicker} so a host can open it itself. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export function TaskReminderButton({
   taskId,
   disabled = false,
-  className
+  className,
+  open,
+  onOpenChange
 }: TaskReminderButtonProps): React.ReactElement {
   const { t } = useT('tasks')
   const {
@@ -58,6 +63,8 @@ export function TaskReminderButton({
     <ReminderPicker
       onSelect={(date, note) => void actions.setReminder(date, note)}
       presetType="standard"
+      open={open}
+      onOpenChange={onOpenChange}
       telemetrySurface="tasks"
       showNote
       disabled={disabled}

@@ -119,6 +119,7 @@ export function serviceTaskToDisplayTask(task: ServiceTask, fallbackStatusId: st
     projectId: task.projectId,
     statusId: task.statusId ?? fallbackStatusId,
     priority: DB_PRIORITY_MAP[task.priority] ?? 'none',
+    startDate: task.startDate ? parseDueDate(task.startDate) : null,
     dueDate: task.dueDate ? parseDueDate(task.dueDate) : null,
     dueTime: task.dueTime ?? null,
     isRepeating: task.repeatConfig !== null,

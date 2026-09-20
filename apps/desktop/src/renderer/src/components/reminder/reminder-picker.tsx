@@ -37,6 +37,13 @@ export interface ReminderPickerProps {
   onSelect: (date: Date, note?: string) => void
   presetType?: 'standard' | 'journal'
   trigger?: React.ReactNode
+  /**
+   * Controlled open state. A surface that decides to show this picker from
+   * somewhere other than its own trigger — the inline task row opens it
+   * straight out of the add menu — needs to open it without a second click.
+   */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   size?: 'sm' | 'md' | 'lg'
   showNote?: boolean
   showNoteField?: boolean
@@ -75,6 +82,8 @@ export function ReminderPicker({
   onSelect,
   presetType = 'standard',
   trigger,
+  open: controlledOpen,
+  onOpenChange,
   size = 'md',
   showNote = false,
   showNoteField = false,
@@ -90,7 +99,12 @@ export function ReminderPicker({
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = (next: boolean): void => {
+    if (controlledOpen === undefined) setInternalOpen(next)
+    onOpenChange?.(next)
+  }
   const [mode, setMode] = useState<PickerMode>('presets')
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState('09:00')

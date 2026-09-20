@@ -5,6 +5,7 @@ import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
 import { TaskTagsBadge } from '@/components/tasks/task-badges'
+import { TaskMetaStrip, type TaskMetaEditing } from '@/components/tasks/task-meta-strip'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import type { Task } from '@/data/task-model'
@@ -39,6 +40,13 @@ interface TaskRowProps {
    * clickable (#1907).
    */
   interactive?: boolean
+  /**
+   * Opt in to editable metadata: repeat, tags, dates, reminder and project
+   * become their own pickers, plus an add affordance for whatever the task is
+   * missing. Only the inline task block passes this — without it the row keeps
+   * exactly the static badges the Tasks page has always rendered.
+   */
+  metaEditing?: TaskMetaEditing
 }
 
 // ============================================================================
@@ -78,7 +86,8 @@ export const TaskRow = ({
   onProjectChange,
   actions,
   renderTitle,
-  interactive = true
+  interactive = true,
+  metaEditing
 }: TaskRowProps): React.JSX.Element => {
   const {
     settings: { clockFormat }
@@ -185,39 +194,58 @@ export const TaskRow = ({
         </span>
       )}
 
-      {task.isRepeating && task.repeatConfig && (
-        <RepeatIndicator config={task.repeatConfig} size="sm" />
-      )}
-
-      {task.tags.length > 0 && <TaskTagsBadge tags={task.tags} className="shrink-0" />}
-
-      {showProjectBadge && onProjectChange && interactive ? (
-        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-          <InteractiveProjectBadge
-            projectId={task.projectId}
-            projects={projects}
-            onProjectChange={onProjectChange}
-          />
-        </div>
-      ) : showProjectBadge ? (
-        <div className="flex items-center shrink-0 gap-[5px]">
-          <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
-          <div className="text-[11px] text-text-tertiary leading-3.5 truncate max-w-[100px]">
-            {project.name}
-          </div>
-        </div>
-      ) : null}
-
-      {dueDateDisplay && (
-        <div
-          className={cn(
-            'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',
-            'colorClass' in dueDateDisplay && dueDateDisplay.colorClass
+      {/* The strip owns every trailing property at once, so it replaces the
+          static badges wholesale rather than sitting beside them. */}
+      {metaEditing && interactive ? (
+        <TaskMetaStrip
+          task={task}
+          project={project}
+          projects={projects}
+          isCompleted={isCompleted}
+          {...metaEditing}
+        />
+      ) : (
+        <>
+          {task.isRepeating && task.repeatConfig && (
+            <RepeatIndicator config={task.repeatConfig} size="sm" />
           )}
-          style={'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined}
-        >
-          {dueDateDisplay.text}
-        </div>
+
+          {task.tags.length > 0 && <TaskTagsBadge tags={task.tags} className="shrink-0" />}
+
+          {showProjectBadge && onProjectChange && interactive ? (
+            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+              <InteractiveProjectBadge
+                projectId={task.projectId}
+                projects={projects}
+                onProjectChange={onProjectChange}
+              />
+            </div>
+          ) : showProjectBadge ? (
+            <div className="flex items-center shrink-0 gap-[5px]">
+              <div
+                className="rounded-xs shrink-0 size-2"
+                style={{ backgroundColor: project.color }}
+              />
+              <div className="text-[11px] text-text-tertiary leading-3.5 truncate max-w-[100px]">
+                {project.name}
+              </div>
+            </div>
+          ) : null}
+
+          {dueDateDisplay && (
+            <div
+              className={cn(
+                'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',
+                'colorClass' in dueDateDisplay && dueDateDisplay.colorClass
+              )}
+              style={
+                'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined
+              }
+            >
+              {dueDateDisplay.text}
+            </div>
+          )}
+        </>
       )}
 
       {actions}
