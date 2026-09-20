@@ -42,6 +42,7 @@ use crate::api::auth::AuthSession;
 use crate::api::errors::{AuthError, StorageError};
 use crate::api::notes::Notes;
 use crate::api::notes_write::NotesWriter;
+use crate::api::search::Search;
 use crate::api::sync::VaultSync;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::{Db, open_data};
@@ -57,6 +58,10 @@ use crate::storage::{Db, open_data};
 pub struct Vault {
     id: String,
     db: Db,
+    /// Kept because `index.db` lives beside `data.db` and is opened later, on
+    /// demand: the index is a cache of the vault (data-model §A.5) and a
+    /// vault that is never searched must not pay for it at open.
+    directory: String,
 }
 
 #[uniffi::export]
@@ -77,8 +82,12 @@ impl Vault {
     /// `X-Memry-Vault-Id` will carry.
     #[uniffi::constructor]
     pub fn open(vault_id: String, directory: String) -> Result<Self, StorageError> {
-        let db = open_data(&PathBuf::from(directory).join("data.db"))?;
-        Ok(Self { id: vault_id, db })
+        let db = open_data(&PathBuf::from(&directory).join("data.db"))?;
+        Ok(Self {
+            id: vault_id,
+            db,
+            directory,
+        })
     }
 
     /// The id this vault was opened under, so a handle passed around the shell
@@ -118,5 +127,15 @@ impl Vault {
     /// written, so there is nothing for the shell to undo.
     pub fn notes_writer(&self, store: Arc<dyn SecureStore>) -> Result<Arc<NotesWriter>, AuthError> {
         Ok(Arc::new(NotesWriter::over(self.db.clone(), &store)?))
+    }
+
+    /// The full-text search over this vault.
+    ///
+    /// **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
+    /// when the file cannot be trusted — so this one is not free, and a vault
+    /// that is never searched never opens it. Hold the handle rather than
+    /// rebuilding it per keystroke.
+    pub fn search(&self) -> Result<Arc<Search>, StorageError> {
+        Ok(Arc::new(Search::over(self.db.clone(), &self.directory)?))
     }
 }

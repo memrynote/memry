@@ -535,6 +535,22 @@ fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
+    typealias FfiType = Double
+    typealias SwiftType = Double
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Double {
+        return try lift(readDouble(&buf))
+    }
+
+    public static func write(_ value: Double, into buf: inout [UInt8]) {
+        writeDouble(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -3346,6 +3362,20 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func list() throws  -> [NoteSummary]
     
     /**
+     * One note's tags, typed properties and aliases.
+     *
+     * `nil` is "no such note", the same answer [`Notes::read`] gives. A note
+     * that exists and carries none of these reads as **empty lists**, which is
+     * a different screen from a note that is gone.
+     *
+     * Property values cross as JSON text against a declared type name rather
+     * than as a closed union: §13.7.1 lets a property hold any JSON, and a
+     * shell that meets a type it does not know shows the raw value instead of
+     * dropping the property.
+     */
+    func metadata(id: String) throws  -> NoteMetadata?
+    
+    /**
      * One note and its body, or `nil` when this vault holds no live note by
      * that id.
      *
@@ -3360,6 +3390,16 @@ public protocol NotesProtocol: AnyObject, Sendable {
      * `StorageError` rather than flattening it.
      */
     func read(id: String) throws  -> NoteDetail?
+    
+    /**
+     * What a `[[wiki link]]` points at, by title and then by alias.
+     *
+     * `nil` is a **broken link, not a failure**: chapter 12 §12.3 carries a
+     * title rather than an id, so a link can name a note that does not exist
+     * and the shell offers to create it. Nothing is created here — a reader
+     * that wrote would turn scrolling past a broken link into an edit.
+     */
+    func resolveWikiTarget(target: String) throws  -> String?
     
 }
 /**
@@ -3471,6 +3511,28 @@ open func list()throws  -> [NoteSummary]  {
 }
     
     /**
+     * One note's tags, typed properties and aliases.
+     *
+     * `nil` is "no such note", the same answer [`Notes::read`] gives. A note
+     * that exists and carries none of these reads as **empty lists**, which is
+     * a different screen from a note that is gone.
+     *
+     * Property values cross as JSON text against a declared type name rather
+     * than as a closed union: §13.7.1 lets a property hold any JSON, and a
+     * shell that meets a type it does not know shows the raw value instead of
+     * dropping the property.
+     */
+open func metadata(id: String)throws  -> NoteMetadata?  {
+    return try  FfiConverterOptionTypeNoteMetadata.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_metadata(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * One note and its body, or `nil` when this vault holds no live note by
      * that id.
      *
@@ -3490,6 +3552,24 @@ open func read(id: String)throws  -> NoteDetail?  {
     uniffi_memry_core_fn_method_notes_read(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * What a `[[wiki link]]` points at, by title and then by alias.
+     *
+     * `nil` is a **broken link, not a failure**: chapter 12 §12.3 carries a
+     * title rather than an id, so a link can name a note that does not exist
+     * and the shell offers to create it. Nothing is created here — a reader
+     * that wrote would turn scrolling past a broken link into an edit.
+     */
+open func resolveWikiTarget(target: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_resolve_wiki_target(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(target),uniffiCallStatus
     )
 })
 }
@@ -4885,6 +4965,197 @@ public func FfiConverterTypeRuntimeHost_lift(_ handle: UInt64) throws -> Runtime
 #endif
 public func FfiConverterTypeRuntimeHost_lower(_ value: RuntimeHost) -> UInt64 {
     return FfiConverterTypeRuntimeHost.lower(value)
+}
+
+
+
+
+
+
+/**
+ * The search surface over one opened vault.
+ */
+public protocol SearchProtocol: AnyObject, Sendable {
+    
+    /**
+     * Notes and journals matching `query`, best first.
+     *
+     * A query carrying no searchable term returns **empty, not everything**:
+     * an empty search box is not a request for the whole vault.
+     */
+    func notes(query: String, limit: UInt32) throws  -> [SearchResult]
+    
+    /**
+     * Brings the index up to date with the vault.
+     *
+     * Idempotent, incremental where it can be, and a full rebuild against an
+     * empty index. It walks what has changed since the last watermark, so it
+     * belongs on an explicit moment — a screen appearing, a sync finishing —
+     * and never on a keystroke.
+     */
+    func reindex() throws  -> ReindexSummary
+    
+    /**
+     * Tasks matching `query`, best first.
+     *
+     * Its own list rather than one merged with the notes: a bm25 score is
+     * relative to the table it was computed over, so interleaving the two
+     * would be inventing an order neither ranking supports.
+     */
+    func tasks(query: String, limit: UInt32) throws  -> [SearchResult]
+    
+}
+/**
+ * The search surface over one opened vault.
+ */
+open class Search: SearchProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_search(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_search(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Notes and journals matching `query`, best first.
+     *
+     * A query carrying no searchable term returns **empty, not everything**:
+     * an empty search box is not a request for the whole vault.
+     */
+open func notes(query: String, limit: UInt32)throws  -> [SearchResult]  {
+    return try  FfiConverterSequenceTypeSearchResult.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_search_notes(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(query),
+        FfiConverterUInt32.lower(limit),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Brings the index up to date with the vault.
+     *
+     * Idempotent, incremental where it can be, and a full rebuild against an
+     * empty index. It walks what has changed since the last watermark, so it
+     * belongs on an explicit moment — a screen appearing, a sync finishing —
+     * and never on a keystroke.
+     */
+open func reindex()throws  -> ReindexSummary  {
+    return try  FfiConverterTypeReindexSummary_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_search_reindex(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Tasks matching `query`, best first.
+     *
+     * Its own list rather than one merged with the notes: a bm25 score is
+     * relative to the table it was computed over, so interleaving the two
+     * would be inventing an order neither ranking supports.
+     */
+open func tasks(query: String, limit: UInt32)throws  -> [SearchResult]  {
+    return try  FfiConverterSequenceTypeSearchResult.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_search_tasks(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(query),
+        FfiConverterUInt32.lower(limit),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSearch: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Search
+
+    public static func lift(_ handle: UInt64) throws -> Search {
+        return Search(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Search) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Search {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Search, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearch_lift(_ handle: UInt64) throws -> Search {
+    return try FfiConverterTypeSearch.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearch_lower(_ value: Search) -> UInt64 {
+    return FfiConverterTypeSearch.lower(value)
 }
 
 
@@ -6334,6 +6605,16 @@ public protocol VaultProtocol: AnyObject, Sendable {
     func notesWriter(store: SecureStore) throws  -> NotesWriter
     
     /**
+     * The full-text search over this vault.
+     *
+     * **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
+     * when the file cannot be trusted — so this one is not free, and a vault
+     * that is never searched never opens it. Hold the handle rather than
+     * rebuilding it per keystroke.
+     */
+    func search() throws  -> Search
+    
+    /**
      * The read-only sync that **fills** this vault's database (T236,
      * spec-defect 136).
      *
@@ -6478,6 +6759,23 @@ open func notesWriter(store: SecureStore)throws  -> NotesWriter  {
     uniffi_memry_core_fn_method_vault_notes_writer(
             self.uniffiCloneHandle(),
         FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The full-text search over this vault.
+     *
+     * **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
+     * when the file cannot be trusted — so this one is not free, and a vault
+     * that is never searched never opens it. Hold the handle rather than
+     * rebuilding it per keystroke.
+     */
+open func search()throws  -> Search  {
+    return try  FfiConverterTypeSearch_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_search(
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -8003,6 +8301,197 @@ public func FfiConverterTypeNoteDetail_lower(_ value: NoteDetail) -> RustBuffer 
 
 
 /**
+ * A note's tags and properties.
+ */
+public struct NoteMetadata: Equatable, Hashable {
+    /**
+     * Spelled exactly as the payload holds them. Case is preserved because
+     * `Café` and `CAFÉ` are two rows one layer down, and only matching folds.
+     */
+    public var tags: [String]
+    /**
+     * Sorted by name, so two reads of an unchanged note render identically.
+     */
+    public var properties: [NoteProperty]
+    /**
+     * The note's other names, for the wiki-link resolver and for a shell that
+     * wants to show them. Empty when the payload carries none.
+     */
+    public var aliases: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Spelled exactly as the payload holds them. Case is preserved because
+         * `Café` and `CAFÉ` are two rows one layer down, and only matching folds.
+         */tags: [String], 
+        /**
+         * Sorted by name, so two reads of an unchanged note render identically.
+         */properties: [NoteProperty], 
+        /**
+         * The note's other names, for the wiki-link resolver and for a shell that
+         * wants to show them. Empty when the payload carries none.
+         */aliases: [String]) {
+        self.tags = tags
+        self.properties = properties
+        self.aliases = aliases
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NoteMetadata: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteMetadata: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteMetadata {
+        return
+            try NoteMetadata(
+                tags: FfiConverterSequenceString.read(from: &buf), 
+                properties: FfiConverterSequenceTypeNoteProperty.read(from: &buf), 
+                aliases: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteMetadata, into buf: inout [UInt8]) {
+        FfiConverterSequenceString.write(value.tags, into: &buf)
+        FfiConverterSequenceTypeNoteProperty.write(value.properties, into: &buf)
+        FfiConverterSequenceString.write(value.aliases, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteMetadata_lift(_ buf: RustBuffer) throws -> NoteMetadata {
+    return try FfiConverterTypeNoteMetadata.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteMetadata_lower(_ value: NoteMetadata) -> RustBuffer {
+    return FfiConverterTypeNoteMetadata.lower(value)
+}
+
+
+/**
+ * One property on a note: its name, its value, and the type the vault
+ * declared for it.
+ */
+public struct NoteProperty: Equatable, Hashable {
+    public var name: String
+    /**
+     * The value as JSON **text**, exactly as the payload carries it.
+     *
+     * Not a typed union: §13.7.1 lets a property hold any JSON, and a core
+     * that mapped it into a closed enum would have to drop or coerce whatever
+     * did not fit. A shell reads it against ``type_name``.
+     */
+    public var valueJson: String
+    /**
+     * The declared type, or `None` when the vault has no definition for this
+     * name — a property written before its definition arrived, which is legal
+     * and must still be shown.
+     */
+    public var typeName: String?
+    /**
+     * `property_definition.options`, opaque JSON text (§13.7.9). `None` when
+     * undefined or when the definition carries none.
+     */
+    public var optionsJson: String?
+    /**
+     * The definition's colour, for the shells that paint one.
+     */
+    public var color: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String, 
+        /**
+         * The value as JSON **text**, exactly as the payload carries it.
+         *
+         * Not a typed union: §13.7.1 lets a property hold any JSON, and a core
+         * that mapped it into a closed enum would have to drop or coerce whatever
+         * did not fit. A shell reads it against ``type_name``.
+         */valueJson: String, 
+        /**
+         * The declared type, or `None` when the vault has no definition for this
+         * name — a property written before its definition arrived, which is legal
+         * and must still be shown.
+         */typeName: String?, 
+        /**
+         * `property_definition.options`, opaque JSON text (§13.7.9). `None` when
+         * undefined or when the definition carries none.
+         */optionsJson: String?, 
+        /**
+         * The definition's colour, for the shells that paint one.
+         */color: String?) {
+        self.name = name
+        self.valueJson = valueJson
+        self.typeName = typeName
+        self.optionsJson = optionsJson
+        self.color = color
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NoteProperty: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteProperty: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteProperty {
+        return
+            try NoteProperty(
+                name: FfiConverterString.read(from: &buf), 
+                valueJson: FfiConverterString.read(from: &buf), 
+                typeName: FfiConverterOptionString.read(from: &buf), 
+                optionsJson: FfiConverterOptionString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteProperty, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.valueJson, into: &buf)
+        FfiConverterOptionString.write(value.typeName, into: &buf)
+        FfiConverterOptionString.write(value.optionsJson, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteProperty_lift(_ buf: RustBuffer) throws -> NoteProperty {
+    return try FfiConverterTypeNoteProperty.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteProperty_lower(_ value: NoteProperty) -> RustBuffer {
+    return FfiConverterTypeNoteProperty.lower(value)
+}
+
+
+/**
  * One row of the `notes` projection.
  *
  * `content` is deliberately absent, as it is from the table: the body lives in
@@ -8163,6 +8652,184 @@ public func FfiConverterTypeProviderSignInOutcome_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypeProviderSignInOutcome_lower(_ value: ProviderSignInOutcome) -> RustBuffer {
     return FfiConverterTypeProviderSignInOutcome.lower(value)
+}
+
+
+/**
+ * What a reindex did.
+ */
+public struct ReindexSummary: Equatable, Hashable {
+    /**
+     * Whether the index was rebuilt from nothing rather than topped up.
+     */
+    public var full: Bool
+    public var notesIndexed: UInt32
+    public var tasksIndexed: UInt32
+    /**
+     * Rows the apply path had already flagged corrupt. **Not an error**: they
+     * are skipped by the indexer and counted here so a shell can say the
+     * index is short rather than pretending it is complete.
+     */
+    public var corruptSkipped: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Whether the index was rebuilt from nothing rather than topped up.
+         */full: Bool, notesIndexed: UInt32, tasksIndexed: UInt32, 
+        /**
+         * Rows the apply path had already flagged corrupt. **Not an error**: they
+         * are skipped by the indexer and counted here so a shell can say the
+         * index is short rather than pretending it is complete.
+         */corruptSkipped: UInt32) {
+        self.full = full
+        self.notesIndexed = notesIndexed
+        self.tasksIndexed = tasksIndexed
+        self.corruptSkipped = corruptSkipped
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ReindexSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReindexSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReindexSummary {
+        return
+            try ReindexSummary(
+                full: FfiConverterBool.read(from: &buf), 
+                notesIndexed: FfiConverterUInt32.read(from: &buf), 
+                tasksIndexed: FfiConverterUInt32.read(from: &buf), 
+                corruptSkipped: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ReindexSummary, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.full, into: &buf)
+        FfiConverterUInt32.write(value.notesIndexed, into: &buf)
+        FfiConverterUInt32.write(value.tasksIndexed, into: &buf)
+        FfiConverterUInt32.write(value.corruptSkipped, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReindexSummary_lift(_ buf: RustBuffer) throws -> ReindexSummary {
+    return try FfiConverterTypeReindexSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReindexSummary_lower(_ value: ReindexSummary) -> RustBuffer {
+    return FfiConverterTypeReindexSummary.lower(value)
+}
+
+
+/**
+ * One search result.
+ *
+ * Flattened from [`SearchHit`] because uniffi has no enum-with-payload that
+ * reads well in Swift here: `journal_date` is `Some` exactly when `kind` is
+ * `journal`, and nothing else distinguishes the two.
+ */
+public struct SearchResult: Equatable, Hashable {
+    public var id: String
+    public var title: String
+    /**
+     * `note`, `journal` or `task`.
+     */
+    public var kind: String
+    /**
+     * The journal's calendar date, and `None` for everything else. A journal
+     * entry has no title of its own (§A.5), so this is what names it.
+     */
+    public var journalDate: String?
+    /**
+     * The bm25 score: negative, and more negative is a better match. Carried
+     * so a shell can show relevance if it wants to, never re-sorted — the
+     * order returned is already the ranking.
+     */
+    public var score: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String, 
+        /**
+         * `note`, `journal` or `task`.
+         */kind: String, 
+        /**
+         * The journal's calendar date, and `None` for everything else. A journal
+         * entry has no title of its own (§A.5), so this is what names it.
+         */journalDate: String?, 
+        /**
+         * The bm25 score: negative, and more negative is a better match. Carried
+         * so a shell can show relevance if it wants to, never re-sorted — the
+         * order returned is already the ranking.
+         */score: Double) {
+        self.id = id
+        self.title = title
+        self.kind = kind
+        self.journalDate = journalDate
+        self.score = score
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SearchResult: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SearchResult {
+        return
+            try SearchResult(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                kind: FfiConverterString.read(from: &buf), 
+                journalDate: FfiConverterOptionString.read(from: &buf), 
+                score: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SearchResult, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.kind, into: &buf)
+        FfiConverterOptionString.write(value.journalDate, into: &buf)
+        FfiConverterDouble.write(value.score, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchResult_lift(_ buf: RustBuffer) throws -> SearchResult {
+    return try FfiConverterTypeSearchResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchResult_lower(_ value: SearchResult) -> RustBuffer {
+    return FfiConverterTypeSearchResult.lower(value)
 }
 
 
@@ -11928,6 +12595,30 @@ fileprivate struct FfiConverterOptionTypeNoteDetail: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeNoteMetadata: FfiConverterRustBuffer {
+    typealias SwiftType = NoteMetadata?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNoteMetadata.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNoteMetadata.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionSequenceTypeBlock: FfiConverterRustBuffer {
     typealias SwiftType = [Block]?
 
@@ -12077,6 +12768,31 @@ fileprivate struct FfiConverterSequenceTypeInlineRun: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeNoteProperty: FfiConverterRustBuffer {
+    typealias SwiftType = [NoteProperty]
+
+    public static func write(_ value: [NoteProperty], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeNoteProperty.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NoteProperty] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [NoteProperty]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeNoteProperty.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeNoteSummary: FfiConverterRustBuffer {
     typealias SwiftType = [NoteSummary]
 
@@ -12094,6 +12810,31 @@ fileprivate struct FfiConverterSequenceTypeNoteSummary: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeNoteSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeSearchResult: FfiConverterRustBuffer {
+    typealias SwiftType = [SearchResult]
+
+    public static func write(_ value: [SearchResult], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSearchResult.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SearchResult] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SearchResult]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSearchResult.read(from: &buf))
         }
         return seq
     }
@@ -12584,7 +13325,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_list() != 25457) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_notes_metadata() != 14748) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notes_read() != 37060) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_resolve_wiki_target() != 21867) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_create() != 1507) {
@@ -12617,6 +13364,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_runtimehost_resume_settled() != 37011) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_search_notes() != 18500) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_reindex() != 12616) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_tasks() != 18334) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_syncprogresslistener_progress() != 60104) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -12636,6 +13392,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_notes_writer() != 9240) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_search() != 52313) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_sync() != 39035) {

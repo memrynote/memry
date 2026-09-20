@@ -8,5 +8,6 @@ pub mod linking;
 pub mod notes;
 pub mod notes_write;
 pub mod runtime;
+pub mod search;
 pub mod sync;
 pub mod vault;

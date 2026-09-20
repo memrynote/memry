@@ -10,6 +10,7 @@
 use crate::api::errors::StorageError;
 use crate::crdt::blocks::Block;
 use crate::crdt::errors::CrdtError;
+use crate::domain::note_meta::{self, NoteMetadata};
 use crate::domain::reads::{self, FolderSummary, NoteDetail, NoteSummary};
 use crate::storage::Db;
 
@@ -42,6 +43,32 @@ impl Notes {
     /// why one cannot be given an honest signature.
     pub fn list(&self) -> Result<Vec<NoteSummary>, StorageError> {
         self.db.call_blocking(|conn| reads::notes(conn))
+    }
+
+    /// One note's tags, typed properties and aliases.
+    ///
+    /// `nil` is "no such note", the same answer [`Notes::read`] gives. A note
+    /// that exists and carries none of these reads as **empty lists**, which is
+    /// a different screen from a note that is gone.
+    ///
+    /// Property values cross as JSON text against a declared type name rather
+    /// than as a closed union: §13.7.1 lets a property hold any JSON, and a
+    /// shell that meets a type it does not know shows the raw value instead of
+    /// dropping the property.
+    pub fn metadata(&self, id: String) -> Result<Option<NoteMetadata>, StorageError> {
+        self.db
+            .call_blocking(move |conn| note_meta::metadata(conn, &id))
+    }
+
+    /// What a `[[wiki link]]` points at, by title and then by alias.
+    ///
+    /// `nil` is a **broken link, not a failure**: chapter 12 §12.3 carries a
+    /// title rather than an id, so a link can name a note that does not exist
+    /// and the shell offers to create it. Nothing is created here — a reader
+    /// that wrote would turn scrolling past a broken link into an edit.
+    pub fn resolve_wiki_target(&self, target: String) -> Result<Option<String>, StorageError> {
+        self.db
+            .call_blocking(move |conn| note_meta::resolve_wiki_target(conn, &target))
     }
 
     /// One note and its body, or `nil` when this vault holds no live note by
