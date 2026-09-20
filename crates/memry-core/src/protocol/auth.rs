@@ -501,14 +501,20 @@ impl TokenProvider for TokenManager {
 pub struct AuthRoutes;
 
 impl AuthRoutes {
+    /// **Never retried on 429.** The person at the keyboard is the retry: a
+    /// rate-limited code request has to come back as "too many, wait this
+    /// long" so they can decide, not sleep behind a spinner until the window
+    /// closes.
     pub async fn request_otp(
         http: &HttpClient,
         email: &str,
     ) -> Result<RequestOtpResponse, ApiError> {
         http.send_json(
-            ApiRequest::post("/auth/otp/request").json(&RequestOtpRequest {
-                email: email.to_string(),
-            }),
+            ApiRequest::post("/auth/otp/request")
+                .json(&RequestOtpRequest {
+                    email: email.to_string(),
+                })
+                .retry(RetryPolicy::polled()),
         )
         .await
     }

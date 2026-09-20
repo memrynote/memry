@@ -39,6 +39,14 @@ pub const DEFAULT_REQUEST_TIMEOUT_MS: u64 = 60_000;
 
 /// Chapter 07 §7.10 and chapter 03 §3.9 both spell the same ladder.
 pub const DEFAULT_MAX_RETRIES: u32 = 3;
+
+/// The longest a retry may sleep, however long the server asked for.
+///
+/// Chapter 00 §0.6's ceiling covers one request's socket; this covers the
+/// ladder's own waiting, which that ceiling never saw. Thirty seconds is longer
+/// than any transient hiccup and shorter than a user's patience — past it, the
+/// error goes back so the caller can say what happened.
+pub const MAX_RETRY_DELAY_MS: u64 = 30_000;
 pub const DEFAULT_BASE_DELAY_MS: u64 = 2_000;
 
 pub const CLIENT_HEADER: &str = "x-memry-client";
@@ -288,6 +296,17 @@ impl HttpClient {
                         return Err(error);
                     }
                     let delay = delay_ms.unwrap_or_else(|| request.retry.backoff_ms(attempt));
+                    // **The server's wait is honoured, not obeyed without
+                    // limit.** A rate limiter counting down a long window
+                    // answers `Retry-After: 2358`, and a client that sleeps
+                    // through it is a screen stuck on "Sending your code" for
+                    // thirty-nine minutes with no error and no way out. Past
+                    // the ceiling the wait is the caller's to make, so the
+                    // rate-limit error — which carries `retry_after_s` — is
+                    // returned and the user is told how long it is.
+                    if delay > MAX_RETRY_DELAY_MS {
+                        return Err(error);
+                    }
                     attempt += 1;
                     self.sleeper.sleep_ms(delay).await;
                 }

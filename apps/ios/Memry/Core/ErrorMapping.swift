@@ -295,9 +295,14 @@ enum ErrorMapping {
         // must be true on every screen that can show it, so this one now states
         // the outcome — nothing was lost — and promises no mechanism. The
         // recourse, not the prose, is what says when to come back.
-        case .RateLimited:
+        // The wait is stated when the server sent one. "In a little while"
+        // against a thirty-nine minute window is a sentence that sends the
+        // user back to a button that will refuse them again; whole minutes,
+        // rounded up, is something they can act on. No seconds, and no ticking
+        // count — an exact duration the user cannot shorten is noise.
+        case let .RateLimited(retryAfterS, _):
             copy("api.rateLimited", "Memry is being asked to slow down.",
-                 "Nothing has been lost. Try again in a little while.", .retryLater)
+                 RateLimitWait(seconds: retryAfterS).guidance, .retryLater)
         // Chapter 11 §11.6 and §11.9. Read-only: the outbox parks, accrues no
         // backoff, and this is not a failure the user retries.
         case .WritesDisabled:

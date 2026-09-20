@@ -181,6 +181,43 @@ async fn a_429_waits_for_the_lowercase_retry_after() {
 }
 
 #[tokio::test]
+async fn a_long_retry_after_comes_back_rather_than_being_slept_through() {
+    // A rate limiter counting down a long window answers `Retry-After: 2358`.
+    // Slept through, that is thirty-nine minutes of a sign-in screen showing
+    // "Sending your code" with no error and no way out — which is what it did.
+    // The wait past the ceiling is the caller's to make, and the error carries
+    // the seconds so it can say how long.
+    let transport = FakeTransport::new(vec![
+        response_with_header(
+            429,
+            r#"{"error":{"code":"RATE_LIMITED","message":"Too many requests"}}"#,
+            ("retry-after", "2358"),
+        ),
+        response(200, "{}"),
+    ]);
+    let sleeper = RecordingSleeper::new();
+    let client = make_client(transport.clone(), sleeper.clone());
+
+    let error = client
+        .send(ApiRequest::get("/sync/changes"))
+        .await
+        .unwrap_err();
+
+    assert!(sleeper.slept().is_empty(), "nothing may sleep that long");
+    assert_eq!(transport.call_count(), 1);
+    match error {
+        ApiError::RateLimited { retry_after_s, .. } => {
+            assert_eq!(
+                retry_after_s,
+                Some(2358),
+                "the caller needs the wait in order to state it"
+            );
+        }
+        other => panic!("{other:?}"),
+    }
+}
+
+#[tokio::test]
 async fn a_polled_call_does_not_retry_a_429() {
     // Chapter 07 §7.10 and chapter 03 §3.9: the poll cadence is the retry.
     let transport = FakeTransport::new(vec![error_response(429, "RATE_LIMITED", "slow down")]);
