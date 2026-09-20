@@ -3659,6 +3659,20 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func deviceId()  -> String
     
     /**
+     * Applies one block edit to a note's body.
+     *
+     * - Returns: `false` when this vault holds no live note by that id — an
+     * answer, like the read surface's `nil`. A block the body does not hold
+     * **throws**: the note is here, and the edit did not land, so a caller
+     * that carried on would be showing a change it never made.
+     *
+     * The error is `CrdtError` because a body is a CRDT document: a log row
+     * that will not decode is permanent, and a failed disk write is not, and
+     * the two must not arrive as one sentence.
+     */
+    func editBlock(noteId: String, edit: BlockEdit) throws  -> Bool
+    
+    /**
      * Moves a note to a folder, or to the vault root with `nil`.
      */
     func moveToFolder(id: String, folderPath: String?) throws 
@@ -3776,6 +3790,29 @@ open func deviceId() -> String  {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_noteswriter_device_id(
             self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Applies one block edit to a note's body.
+     *
+     * - Returns: `false` when this vault holds no live note by that id — an
+     * answer, like the read surface's `nil`. A block the body does not hold
+     * **throws**: the note is here, and the edit did not land, so a caller
+     * that carried on would be showing a change it never made.
+     *
+     * The error is `CrdtError` because a body is a CRDT document: a log row
+     * that will not decode is permanent, and a failed disk write is not, and
+     * the two must not arrive as one sentence.
+     */
+open func editBlock(noteId: String, edit: BlockEdit)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_edit_block(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),
+        FfiConverterTypeBlockEdit_lower(edit),uniffiCallStatus
     )
 })
 }
@@ -9978,6 +10015,135 @@ public func FfiConverterTypeBackgroundError_lower(_ value: BackgroundError) -> R
 
 
 /**
+ * What an editor asks for.
+ */
+
+public enum BlockEdit: Equatable, Hashable {
+    
+    /**
+     * Replaces a block's inline content with plain text.
+     *
+     * **Marks on that block are lost.** Keeping them means addressing runs
+     * rather than blocks, which the shell cannot do until it renders a
+     * selection; until then this is the honest shape, and a caller that did
+     * not want it can read the block first and decide.
+     */
+    case setText(blockId: String, text: String
+    )
+    /**
+     * Sets one attribute: `checked` on a check item, `level` on a heading,
+     * `language` on a code block, `type` on a callout.
+     *
+     * The value crosses as the string the document stores, because that is
+     * what the attribute is — the core does not know which props are numbers.
+     */
+    case setProp(blockId: String, name: String, value: String
+    )
+    /**
+     * Inserts a paragraph after `after_block_id`, or at the end of the body
+     * when it is `None`.
+     */
+    case insertParagraph(afterBlockId: String?, text: String, 
+        /**
+         * The id the new block is given. Minted by the caller so the shell can
+         * place the caret in it without a second read.
+         */newBlockId: String
+    )
+    /**
+     * Removes a block and everything nested under it.
+     *
+     * Its children go with it: they live inside its container, and leaving
+     * them behind would reparent a list's items to the body.
+     */
+    case delete(blockId: String
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension BlockEdit: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
+    typealias SwiftType = BlockEdit
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BlockEdit {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .setText(blockId: try FfiConverterString.read(from: &buf), text: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .setProp(blockId: try FfiConverterString.read(from: &buf), name: try FfiConverterString.read(from: &buf), value: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 3: return .insertParagraph(afterBlockId: try FfiConverterOptionString.read(from: &buf), text: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 4: return .delete(blockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: BlockEdit, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .setText(blockId,text):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterString.write(text, into: &buf)
+            
+        
+        case let .setProp(blockId,name,value):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterString.write(name, into: &buf)
+            FfiConverterString.write(value, into: &buf)
+            
+        
+        case let .insertParagraph(afterBlockId,text,newBlockId):
+            writeInt(&buf, Int32(3))
+            FfiConverterOptionString.write(afterBlockId, into: &buf)
+            FfiConverterString.write(text, into: &buf)
+            FfiConverterString.write(newBlockId, into: &buf)
+            
+        
+        case let .delete(blockId):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(blockId, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlockEdit_lift(_ buf: RustBuffer) throws -> BlockEdit {
+    return try FfiConverterTypeBlockEdit.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlockEdit_lower(_ value: BlockEdit) -> RustBuffer {
+    return FfiConverterTypeBlockEdit.lower(value)
+}
+
+
+
+/**
  * Failures of the `CodeCapture` seam (chapter 03).
  */
 public 
@@ -13341,6 +13507,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_device_id() != 15214) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_edit_block() != 62445) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_move_to_folder() != 52953) {

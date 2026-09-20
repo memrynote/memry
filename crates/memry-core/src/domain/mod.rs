@@ -11,6 +11,7 @@
 
 pub mod folders;
 pub mod journal;
+pub mod body_write;
 pub mod note_meta;
 pub mod notes;
 pub mod projects;

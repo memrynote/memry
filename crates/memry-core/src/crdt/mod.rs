@@ -25,6 +25,7 @@
 //! `j2026-04-16`.
 
 pub mod blocks;
+pub mod body_edit;
 pub mod errors;
 pub mod lifecycle;
 pub mod registry;

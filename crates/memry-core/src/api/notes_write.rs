@@ -26,7 +26,10 @@
 use std::sync::Arc;
 
 use crate::api::errors::{AuthError, StorageError};
+use crate::crdt::body_edit::BlockEdit;
+use crate::crdt::errors::CrdtError;
 use crate::crypto::{keys, sodium};
+use crate::domain::body_write;
 use crate::domain::notes::{self, NewNote};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
@@ -149,6 +152,31 @@ impl NotesWriter {
             notes::delete(conn, &id, &device_id, now_ms())?;
             Ok(())
         })
+    }
+
+    /// Applies one block edit to a note's body.
+    ///
+    /// - Returns: `false` when this vault holds no live note by that id — an
+    ///   answer, like the read surface's `nil`. A block the body does not hold
+    ///   **throws**: the note is here, and the edit did not land, so a caller
+    ///   that carried on would be showing a change it never made.
+    ///
+    /// The error is `CrdtError` because a body is a CRDT document: a log row
+    /// that will not decode is permanent, and a failed disk write is not, and
+    /// the two must not arrive as one sentence.
+    pub fn edit_block(&self, note_id: String, edit: BlockEdit) -> Result<bool, CrdtError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                Ok(body_write::edit_block(
+                    conn,
+                    &note_id,
+                    &edit,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(CrdtError::from)?
     }
 
     /// The device identity these writes are recorded under. Exposed for the
