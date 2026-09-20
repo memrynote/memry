@@ -24,6 +24,7 @@
 //! this module branches on whether an id looks like `abc123def456` or
 //! `j2026-04-16`.
 
+pub mod blocks;
 pub mod errors;
 pub mod lifecycle;
 pub mod registry;

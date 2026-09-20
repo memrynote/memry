@@ -41,6 +41,7 @@ pub use seal::{
 };
 
 const KEY_VERIFIER_PATH: &str = "/auth/key-verifier";
+const SETUP_PATH: &str = "/auth/setup";
 const VAULTS_PATH: &str = "/sync/vaults";
 const DEVICES_PATH: &str = "/auth/devices";
 
@@ -96,6 +97,57 @@ pub async fn key_material(http: &HttpClient) -> Result<KeyMaterial, ApiError> {
         path: KEY_VERIFIER_PATH.to_string(),
         what: "expected { kdfSalt, keyVerifier }".to_string(),
     })
+}
+
+/// The same read, with "this account has no keys yet" as an **answer** rather
+/// than an error.
+///
+/// Chapter 02 §2.1.1 describes the route for an established account. An account
+/// that has never completed first-device setup has no `kdfSalt` at all, and the
+/// route answers `400` for that and for nothing else — a missing user is `404`
+/// and an unusable token is `401`, and both still cross as errors.
+///
+/// A separate function rather than a changed [`key_material`], because the two
+/// callers want opposite things: a device about to unlock wants the failure,
+/// and a device deciding *which screen to show* wants the answer. Folding them
+/// would make "this account has no keys" indistinguishable from "the request
+/// failed", which is how a phone with a bad connection ends up being offered a
+/// brand-new recovery phrase for an account that already has one.
+pub async fn key_material_if_configured(
+    http: &HttpClient,
+) -> Result<Option<KeyMaterial>, ApiError> {
+    match key_material(http).await {
+        Ok(material) => Ok(Some(material)),
+        Err(ApiError::Status { status: 400, .. }) => Ok(None),
+        Err(other) => Err(other),
+    }
+}
+
+/// `POST /auth/setup`: the first device publishes the account's
+/// `{ kdfSalt, keyVerifier }`.
+///
+/// **Once per account, and the server enforces it.** The update is conditional
+/// on `kdf_salt IS NULL`, so a second device that raced here is refused with
+/// `409` rather than overwriting the salt every existing key on the account was
+/// derived from. That refusal crosses unchanged: a client that read it as
+/// success would hold a master key nothing else on the account can read.
+pub async fn complete_setup(
+    http: &HttpClient,
+    kdf_salt_base64: &str,
+    key_verifier: &str,
+) -> Result<(), ApiError> {
+    let request = serde_json::json!({
+        "kdfSalt": kdf_salt_base64,
+        "keyVerifier": key_verifier,
+    });
+    let _: Json = http
+        .send_json(
+            ApiRequest::post(SETUP_PATH)
+                .auth(Auth::Session)
+                .json(&request),
+        )
+        .await?;
+    Ok(())
 }
 
 /// The vault registry. FR-021's "choose one and route to it" is this plus the

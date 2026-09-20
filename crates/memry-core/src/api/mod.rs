@@ -6,6 +6,7 @@ pub mod crypto;
 pub mod errors;
 pub mod linking;
 pub mod notes;
+pub mod notes_write;
 pub mod runtime;
 pub mod sync;
 pub mod vault;

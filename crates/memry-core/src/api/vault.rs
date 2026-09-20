@@ -39,9 +39,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::api::auth::AuthSession;
-use crate::api::errors::StorageError;
+use crate::api::errors::{AuthError, StorageError};
 use crate::api::notes::Notes;
+use crate::api::notes_write::NotesWriter;
 use crate::api::sync::VaultSync;
+use crate::seams::secure_store::SecureStore;
 use crate::storage::{Db, open_data};
 
 /// One vault's local database, opened.
@@ -102,5 +104,19 @@ impl Vault {
     /// A clone of the same handle, not a second connection: see the module doc.
     pub fn notes(&self) -> Arc<Notes> {
         Arc::new(Notes::over(self.db.clone()))
+    }
+
+    /// The note **writes** over this vault's database.
+
+    ///
+    /// Separate from [`Vault::notes`] and not free, because a write needs a
+    /// device identity and a read does not: the store is read once here to
+    /// derive it, so the per-write path stays a local SQLite call.
+    ///
+    /// Fails rather than writing under a borrowed identity when the keychain
+    /// is locked or this device has never registered. Either way nothing is
+    /// written, so there is nothing for the shell to undo.
+    pub fn notes_writer(&self, store: Arc<dyn SecureStore>) -> Result<Arc<NotesWriter>, AuthError> {
+        Ok(Arc::new(NotesWriter::over(self.db.clone(), &store)?))
     }
 }

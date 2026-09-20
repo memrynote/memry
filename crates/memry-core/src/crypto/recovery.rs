@@ -41,6 +41,24 @@ pub fn normalize_phrase(input: &str) -> String {
         .join(" ")
 }
 
+/// A new 24-word phrase, for an account that has none yet (chapter 01 §1.3).
+///
+/// **256 bits of entropy from libsodium, not from a second generator.** Every
+/// key on the account descends from these bytes, and the CSPRNG that produces
+/// them is the one the rest of the crypto tier already trusts.
+///
+/// Returned in the canonical form [`validate_phrase`] produces, so a caller
+/// that derives from it directly and a user who types it back by hand reach the
+/// same seed. `Zeroizing` because a phrase in memory is the account.
+pub fn generate_phrase() -> Zeroizing<String> {
+    // 32 bytes is what BIP-39 requires for 24 words; fewer makes a shorter
+    // phrase, which `validate_phrase` would then refuse.
+    let entropy = Zeroizing::new(crate::crypto::sodium::random_bytes(32));
+    let mnemonic = Mnemonic::from_entropy_in(Language::English, entropy.as_slice())
+        .expect("32 bytes of entropy is a valid 24-word mnemonic");
+    Zeroizing::new(normalize_phrase(&mnemonic.to_string()))
+}
+
 /// Normalises and validates a phrase, returning the canonical form.
 ///
 /// Step five of §1.3: reject unless the result is a valid 24-word English BIP-39

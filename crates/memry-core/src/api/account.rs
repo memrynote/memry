@@ -39,6 +39,43 @@ impl AuthSession {
         account::key_material(&self.http()).await
     }
 
+    /// The same read, answering "this account has never been set up" with `nil`
+    /// rather than with an error.
+    ///
+    /// This is what a device asks **before** deciding which screen to show. A
+    /// signed-in phone holding no master key is in one of two situations that
+    /// look identical locally: the account has a recovery phrase this device
+    /// has not been given, or the account has none because nobody finished
+    /// setting it up. Asking for the words in the second case is asking for
+    /// words that do not exist — which is exactly what a fresh account on
+    /// staging did.
+    ///
+    /// Every other failure still throws. A phone that cannot reach the server
+    /// must never be offered a **new** phrase for an account that already has
+    /// one.
+    pub async fn key_material_if_configured(&self) -> Result<Option<KeyMaterial>, ApiError> {
+        account::key_material_if_configured(&self.http()).await
+    }
+
+    /// `POST /auth/setup`: publish this account's `{ kdfSalt, keyVerifier }`.
+    ///
+    /// The caller derives both from a phrase it generated and has already shown
+    /// and had confirmed. **Nothing here stores the master key**: the key
+    /// belongs in the device's secure store, which is the shell's seam, and a
+    /// core writing to a store it does not own is the one thing chapter 02's
+    /// split forbids.
+    ///
+    /// A `409` means another device completed setup first. It crosses rather
+    /// than being swallowed: the phrase this device just showed is then not the
+    /// account's, and the user has to be told before they write it down.
+    pub async fn complete_account_setup(
+        &self,
+        kdf_salt_base64: String,
+        key_verifier: String,
+    ) -> Result<(), ApiError> {
+        account::complete_setup(&self.http(), &kdf_salt_base64, &key_verifier).await
+    }
+
     /// `GET /sync/vaults`, chapter 05 §5.1. FR-021's "choose one and route to
     /// it" is this list plus the `X-Memry-Vault-Id` header.
     ///

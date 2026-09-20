@@ -8,6 +8,7 @@
 //! "could not tell"**. The doc comments that matter are there.
 
 use crate::api::errors::StorageError;
+use crate::crdt::blocks::Block;
 use crate::crdt::errors::CrdtError;
 use crate::domain::reads::{self, FolderSummary, NoteDetail, NoteSummary};
 use crate::storage::Db;
@@ -61,6 +62,23 @@ impl Notes {
         // through would collapse `Undecodable` into "storage failure".
         self.db
             .call_blocking(|conn| Ok(reads::note(conn, &id)))
+            .map_err(CrdtError::from)?
+    }
+
+    /// One note's body as blocks, for a shell that renders it rather than
+    /// previewing it.
+    ///
+    /// `nil` is "no such note", exactly as in [`Self::read`]. An **empty list**
+    /// is a note whose body this device holds and which contains nothing: two
+    /// different facts, and a shell that renders them the same way reports an
+    /// unpulled note as an empty one.
+    ///
+    /// Not a second source of truth for the same text — this and `read`'s
+    /// `NoteBody.text` are two readings of one document rebuilt from one update
+    /// log, and `tests/crdt_blocks.rs` holds them to the same lines.
+    pub fn blocks(&self, id: String) -> Result<Option<Vec<Block>>, CrdtError> {
+        self.db
+            .call_blocking(|conn| Ok(reads::note_blocks(conn, &id)))
             .map_err(CrdtError::from)?
     }
 }

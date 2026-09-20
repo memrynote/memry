@@ -629,6 +629,21 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 public protocol AuthSessionProtocol: AnyObject, Sendable {
     
     /**
+     * `POST /auth/setup`: publish this account's `{ kdfSalt, keyVerifier }`.
+     *
+     * The caller derives both from a phrase it generated and has already shown
+     * and had confirmed. **Nothing here stores the master key**: the key
+     * belongs in the device's secure store, which is the shell's seam, and a
+     * core writing to a store it does not own is the one thing chapter 02's
+     * split forbids.
+     *
+     * A `409` means another device completed setup first. It crosses rather
+     * than being swallowed: the phrase this device just showed is then not the
+     * account's, and the user has to be told before they write it down.
+     */
+    func completeAccountSetup(kdfSaltBase64: String, keyVerifier: String) async throws 
+    
+    /**
      * `GET /auth/key-verifier`, chapter 02 §2.1.1: `{ kdfSalt, keyVerifier }`.
      *
      * The salt is base64 per chapter 01 §1.1 and the verifier is base64 per
@@ -642,6 +657,24 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
      * whose dummy answer makes a wrong email indistinguishable from one.
      */
     func keyMaterial() async throws  -> KeyMaterial
+    
+    /**
+     * The same read, answering "this account has never been set up" with `nil`
+     * rather than with an error.
+     *
+     * This is what a device asks **before** deciding which screen to show. A
+     * signed-in phone holding no master key is in one of two situations that
+     * look identical locally: the account has a recovery phrase this device
+     * has not been given, or the account has none because nobody finished
+     * setting it up. Asking for the words in the second case is asking for
+     * words that do not exist — which is exactly what a fresh account on
+     * staging did.
+     *
+     * Every other failure still throws. A phone that cannot reach the server
+     * must never be offered a **new** phrase for an account that already has
+     * one.
+     */
+    func keyMaterialIfConfigured() async throws  -> KeyMaterial?
     
     /**
      * `GET /sync/vaults`, chapter 05 §5.1. FR-021's "choose one and route to
@@ -871,6 +904,35 @@ public convenience init(transport: Transport, secureStore: SecureStore, baseUrl:
 
     
     /**
+     * `POST /auth/setup`: publish this account's `{ kdfSalt, keyVerifier }`.
+     *
+     * The caller derives both from a phrase it generated and has already shown
+     * and had confirmed. **Nothing here stores the master key**: the key
+     * belongs in the device's secure store, which is the shell's seam, and a
+     * core writing to a store it does not own is the one thing chapter 02's
+     * split forbids.
+     *
+     * A `409` means another device completed setup first. It crosses rather
+     * than being swallowed: the phrase this device just showed is then not the
+     * account's, and the user has to be told before they write it down.
+     */
+open func completeAccountSetup(kdfSaltBase64: String, keyVerifier: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_complete_account_setup(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(kdfSaltBase64),FfiConverterString.lower(keyVerifier)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
      * `GET /auth/key-verifier`, chapter 02 §2.1.1: `{ kdfSalt, keyVerifier }`.
      *
      * The salt is base64 per chapter 01 §1.1 and the verifier is base64 per
@@ -895,6 +957,38 @@ open func keyMaterial()async throws  -> KeyMaterial  {
             completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeKeyMaterial_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * The same read, answering "this account has never been set up" with `nil`
+     * rather than with an error.
+     *
+     * This is what a device asks **before** deciding which screen to show. A
+     * signed-in phone holding no master key is in one of two situations that
+     * look identical locally: the account has a recovery phrase this device
+     * has not been given, or the account has none because nobody finished
+     * setting it up. Asking for the words in the second case is asking for
+     * words that do not exist — which is exactly what a fresh account on
+     * staging did.
+     *
+     * Every other failure still throws. A phone that cannot reach the server
+     * must never be offered a **new** phrase for an account that already has
+     * one.
+     */
+open func keyMaterialIfConfigured()async throws  -> KeyMaterial?  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_key_material_if_configured(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionTypeKeyMaterial.lift,
             errorHandler: FfiConverterTypeApiError_lift
         )
 }
@@ -3226,6 +3320,21 @@ public func FfiConverterTypeLifecycleObserver_lower(_ value: LifecycleObserver) 
 public protocol NotesProtocol: AnyObject, Sendable {
     
     /**
+     * One note's body as blocks, for a shell that renders it rather than
+     * previewing it.
+     *
+     * `nil` is "no such note", exactly as in [`Self::read`]. An **empty list**
+     * is a note whose body this device holds and which contains nothing: two
+     * different facts, and a shell that renders them the same way reports an
+     * unpulled note as an empty one.
+     *
+     * Not a second source of truth for the same text — this and `read`'s
+     * `NoteBody.text` are two readings of one document rebuilt from one update
+     * log, and `tests/crdt_blocks.rs` holds them to the same lines.
+     */
+    func blocks(id: String) throws  -> [Block]?
+    
+    /**
      * Every live folder, parent before child.
      */
     func folders() throws  -> [FolderSummary]
@@ -3312,6 +3421,29 @@ open class Notes: NotesProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * One note's body as blocks, for a shell that renders it rather than
+     * previewing it.
+     *
+     * `nil` is "no such note", exactly as in [`Self::read`]. An **empty list**
+     * is a note whose body this device holds and which contains nothing: two
+     * different facts, and a shell that renders them the same way reports an
+     * unpulled note as an empty one.
+     *
+     * Not a second source of truth for the same text — this and `read`'s
+     * `NoteBody.text` are two readings of one document rebuilt from one update
+     * log, and `tests/crdt_blocks.rs` holds them to the same lines.
+     */
+open func blocks(id: String)throws  -> [Block]?  {
+    return try  FfiConverterOptionSequenceTypeBlock.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_blocks(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
     
     /**
      * Every live folder, parent before child.
@@ -3405,6 +3537,241 @@ public func FfiConverterTypeNotes_lift(_ handle: UInt64) throws -> Notes {
 #endif
 public func FfiConverterTypeNotes_lower(_ value: Notes) -> UInt64 {
     return FfiConverterTypeNotes.lower(value)
+}
+
+
+
+
+
+
+/**
+ * The write surface over one opened vault.
+ */
+public protocol NotesWriterProtocol: AnyObject, Sendable {
+    
+    /**
+     * Creates an empty note and returns its id.
+     *
+     * `folder_path` is `nil` for the vault root, which travels as an explicit
+     * `null`: an absent key means "the sender does not know this field" and
+     * every other device would keep its own value (chapter 13 §13.4).
+     *
+     * The body is **not** written here. A note's text lives in its Y.Doc, and
+     * chapter 12 §12.2's create-time `content` is best-effort by its own
+     * words; sending `""` keeps one authority for the body instead of two.
+     */
+    func create(title: String, folderPath: String?) throws  -> String
+    
+    /**
+     * Tombstones a note.
+     *
+     * A tombstone, never a row that vanishes: a delete has to reach every
+     * other device, and a deleted row with nothing left to send is a note that
+     * comes back on the next pull.
+     */
+    func delete(id: String) throws 
+    
+    /**
+     * The device identity these writes are recorded under. Exposed for the
+     * wiring tests, which is the only way to assert that the production graph
+     * derives it rather than accepting one.
+     */
+    func deviceId()  -> String
+    
+    /**
+     * Moves a note to a folder, or to the vault root with `nil`.
+     */
+    func moveToFolder(id: String, folderPath: String?) throws 
+    
+    /**
+     * Retitles a note.
+     *
+     * The title is a field, so it merges per field: a rename here and an edit
+     * to the same note's body elsewhere do not collide (chapter 06 §6.1).
+     */
+    func rename(id: String, title: String) throws 
+    
+}
+/**
+ * The write surface over one opened vault.
+ */
+open class NotesWriter: NotesWriterProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_noteswriter(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_noteswriter(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Creates an empty note and returns its id.
+     *
+     * `folder_path` is `nil` for the vault root, which travels as an explicit
+     * `null`: an absent key means "the sender does not know this field" and
+     * every other device would keep its own value (chapter 13 §13.4).
+     *
+     * The body is **not** written here. A note's text lives in its Y.Doc, and
+     * chapter 12 §12.2's create-time `content` is best-effort by its own
+     * words; sending `""` keeps one authority for the body instead of two.
+     */
+open func create(title: String, folderPath: String?)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_create(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(title),
+        FfiConverterOptionString.lower(folderPath),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Tombstones a note.
+     *
+     * A tombstone, never a row that vanishes: a delete has to reach every
+     * other device, and a deleted row with nothing left to send is a note that
+     * comes back on the next pull.
+     */
+open func delete(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_delete(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * The device identity these writes are recorded under. Exposed for the
+     * wiring tests, which is the only way to assert that the production graph
+     * derives it rather than accepting one.
+     */
+open func deviceId() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_device_id(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Moves a note to a folder, or to the vault root with `nil`.
+     */
+open func moveToFolder(id: String, folderPath: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_move_to_folder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(folderPath),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Retitles a note.
+     *
+     * The title is a field, so it merges per field: a rename here and an edit
+     * to the same note's body elsewhere do not collide (chapter 06 §6.1).
+     */
+open func rename(id: String, title: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_rename(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(title),uniffiCallStatus
+    )
+}
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNotesWriter: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = NotesWriter
+
+    public static func lift(_ handle: UInt64) throws -> NotesWriter {
+        return NotesWriter(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: NotesWriter) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NotesWriter {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: NotesWriter, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNotesWriter_lift(_ handle: UInt64) throws -> NotesWriter {
+    return try FfiConverterTypeNotesWriter.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNotesWriter_lower(_ value: NotesWriter) -> UInt64 {
+    return FfiConverterTypeNotesWriter.lower(value)
 }
 
 
@@ -5954,6 +6321,19 @@ public protocol VaultProtocol: AnyObject, Sendable {
     func notes()  -> Notes
     
     /**
+     * The note **writes** over this vault's database.
+     *
+     * Separate from [`Vault::notes`] and not free, because a write needs a
+     * device identity and a read does not: the store is read once here to
+     * derive it, so the per-write path stays a local SQLite call.
+     *
+     * Fails rather than writing under a borrowed identity when the keychain
+     * is locked or this device has never registered. Either way nothing is
+     * written, so there is nothing for the shell to undo.
+     */
+    func notesWriter(store: SecureStore) throws  -> NotesWriter
+    
+    /**
      * The read-only sync that **fills** this vault's database (T236,
      * spec-defect 136).
      *
@@ -6077,6 +6457,27 @@ open func notes() -> Notes  {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_notes(
             self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The note **writes** over this vault's database.
+     *
+     * Separate from [`Vault::notes`] and not free, because a write needs a
+     * device identity and a read does not: the store is read once here to
+     * derive it, so the per-write path stays a local SQLite call.
+     *
+     * Fails rather than writing under a borrowed identity when the keychain
+     * is locked or this device has never registered. Either way nothing is
+     * written, so there is nothing for the shell to undo.
+     */
+open func notesWriter(store: SecureStore)throws  -> NotesWriter  {
+    return try  FfiConverterTypeNotesWriter_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_notes_writer(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
     )
 })
 }
@@ -6424,6 +6825,178 @@ public func FfiConverterTypeVaultSync_lower(_ value: VaultSync) -> UInt64 {
 }
 
 
+
+
+/**
+ * One block of a note body.
+ */
+public struct Block: Equatable, Hashable {
+    /**
+     * The `blockContainer` id y-prosemirror carries, when there is one.
+     *
+     * `None` rather than a minted id: this identifies a block *in the
+     * document*, and inventing one would give the shell a handle that no edit
+     * could ever resolve.
+     */
+    public var id: String?
+    /**
+     * The node name, verbatim — `paragraph`, `heading`, `callout`,
+     * `bulletListItem`, or something this build has never seen.
+     */
+    public var kind: String
+    /**
+     * Nesting depth in blocks, 0 at the top of the body. A list inside a list
+     * item is 1; the shell indents from this and nothing else.
+     */
+    public var depth: UInt32
+    /**
+     * The node's own attributes: `level` on a heading, `type` on a callout,
+     * `checked` on a check list item, `language` on a code block.
+     */
+    public var props: [BlockProp]
+    /**
+     * The block's own inline content, in order. Nested blocks are not in
+     * here — they are their own entries, deeper.
+     */
+    public var inline: [InlineRun]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The `blockContainer` id y-prosemirror carries, when there is one.
+         *
+         * `None` rather than a minted id: this identifies a block *in the
+         * document*, and inventing one would give the shell a handle that no edit
+         * could ever resolve.
+         */id: String?, 
+        /**
+         * The node name, verbatim — `paragraph`, `heading`, `callout`,
+         * `bulletListItem`, or something this build has never seen.
+         */kind: String, 
+        /**
+         * Nesting depth in blocks, 0 at the top of the body. A list inside a list
+         * item is 1; the shell indents from this and nothing else.
+         */depth: UInt32, 
+        /**
+         * The node's own attributes: `level` on a heading, `type` on a callout,
+         * `checked` on a check list item, `language` on a code block.
+         */props: [BlockProp], 
+        /**
+         * The block's own inline content, in order. Nested blocks are not in
+         * here — they are their own entries, deeper.
+         */inline: [InlineRun]) {
+        self.id = id
+        self.kind = kind
+        self.depth = depth
+        self.props = props
+        self.inline = inline
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension Block: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBlock: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Block {
+        return
+            try Block(
+                id: FfiConverterOptionString.read(from: &buf), 
+                kind: FfiConverterString.read(from: &buf), 
+                depth: FfiConverterUInt32.read(from: &buf), 
+                props: FfiConverterSequenceTypeBlockProp.read(from: &buf), 
+                inline: FfiConverterSequenceTypeInlineRun.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: Block, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.id, into: &buf)
+        FfiConverterString.write(value.kind, into: &buf)
+        FfiConverterUInt32.write(value.depth, into: &buf)
+        FfiConverterSequenceTypeBlockProp.write(value.props, into: &buf)
+        FfiConverterSequenceTypeInlineRun.write(value.inline, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlock_lift(_ buf: RustBuffer) throws -> Block {
+    return try FfiConverterTypeBlock.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlock_lower(_ value: Block) -> RustBuffer {
+    return FfiConverterTypeBlock.lower(value)
+}
+
+
+/**
+ * One attribute of a block, as the document spells it.
+ */
+public struct BlockProp: Equatable, Hashable {
+    public var name: String
+    public var value: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String, value: String) {
+        self.name = name
+        self.value = value
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BlockProp: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBlockProp: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BlockProp {
+        return
+            try BlockProp(
+                name: FfiConverterString.read(from: &buf), 
+                value: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BlockProp, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.value, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlockProp_lift(_ buf: RustBuffer) throws -> BlockProp {
+    return try FfiConverterTypeBlockProp.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlockProp_lower(_ value: BlockProp) -> RustBuffer {
+    return FfiConverterTypeBlockProp.lower(value)
+}
 
 
 /**
@@ -6990,6 +7563,87 @@ public func FfiConverterTypeHttpResponse_lift(_ buf: RustBuffer) throws -> HttpR
 #endif
 public func FfiConverterTypeHttpResponse_lower(_ value: HttpResponse) -> RustBuffer {
     return FfiConverterTypeHttpResponse.lower(value)
+}
+
+
+/**
+ * A run of inline content that shares one set of marks.
+ */
+public struct InlineRun: Equatable, Hashable {
+    public var text: String
+    /**
+     * Mark names in document order: `bold`, `italic`, `code`, `strike`, and
+     * for an inline node its tag — `wikiLink`, `hashTag`, `dateMention`,
+     * `linkMention`.
+     */
+    public var marks: [String]
+    /**
+     * What the run points at, when it points at anything: a URL for a link, a
+     * wiki target for a wiki link, a tag name, an ISO date. The shell decides
+     * what to do with it; the core does not resolve it.
+     */
+    public var target: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(text: String, 
+        /**
+         * Mark names in document order: `bold`, `italic`, `code`, `strike`, and
+         * for an inline node its tag — `wikiLink`, `hashTag`, `dateMention`,
+         * `linkMention`.
+         */marks: [String], 
+        /**
+         * What the run points at, when it points at anything: a URL for a link, a
+         * wiki target for a wiki link, a tag name, an ISO date. The shell decides
+         * what to do with it; the core does not resolve it.
+         */target: String?) {
+        self.text = text
+        self.marks = marks
+        self.target = target
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InlineRun: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInlineRun: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InlineRun {
+        return
+            try InlineRun(
+                text: FfiConverterString.read(from: &buf), 
+                marks: FfiConverterSequenceString.read(from: &buf), 
+                target: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InlineRun, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterSequenceString.write(value.marks, into: &buf)
+        FfiConverterOptionString.write(value.target, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInlineRun_lift(_ buf: RustBuffer) throws -> InlineRun {
+    return try FfiConverterTypeInlineRun.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInlineRun_lower(_ value: InlineRun) -> RustBuffer {
+    return FfiConverterTypeInlineRun.lower(value)
 }
 
 
@@ -11226,6 +11880,30 @@ fileprivate struct FfiConverterOptionTypeSyncProgressListener: FfiConverterRustB
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeKeyMaterial: FfiConverterRustBuffer {
+    typealias SwiftType = KeyMaterial?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeKeyMaterial.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeKeyMaterial.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeNoteDetail: FfiConverterRustBuffer {
     typealias SwiftType = NoteDetail?
 
@@ -11242,6 +11920,30 @@ fileprivate struct FfiConverterOptionTypeNoteDetail: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeNoteDetail.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionSequenceTypeBlock: FfiConverterRustBuffer {
+    typealias SwiftType = [Block]?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceTypeBlock.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceTypeBlock.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -11275,6 +11977,56 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeBlock: FfiConverterRustBuffer {
+    typealias SwiftType = [Block]
+
+    public static func write(_ value: [Block], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBlock.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Block] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Block]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBlock.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeBlockProp: FfiConverterRustBuffer {
+    typealias SwiftType = [BlockProp]
+
+    public static func write(_ value: [BlockProp], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBlockProp.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [BlockProp] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [BlockProp]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBlockProp.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFolderSummary: FfiConverterRustBuffer {
     typealias SwiftType = [FolderSummary]
 
@@ -11292,6 +12044,31 @@ fileprivate struct FfiConverterSequenceTypeFolderSummary: FfiConverterRustBuffer
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeFolderSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInlineRun: FfiConverterRustBuffer {
+    typealias SwiftType = [InlineRun]
+
+    public static func write(_ value: [InlineRun], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInlineRun.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InlineRun] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InlineRun]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInlineRun.read(from: &buf))
         }
         return seq
     }
@@ -11607,6 +12384,39 @@ public func deriveVaultKey(masterKey: Data)throws  -> Data  {
 })
 }
 /**
+ * A new account KDF salt, chapter 01 §1.1: 16 bytes of libsodium randomness.
+ *
+ * Its own call rather than a constant the shell fills, because the **length**
+ * is the chapter's and [`derive_master_key`] refuses any other. A salt minted
+ * in the shell is a second place that rule lives.
+ */
+public func generateKdfSalt() -> Data  {
+    return try!  FfiConverterData.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_generate_kdf_salt(uniffiCallStatus
+    )
+})
+}
+/**
+ * A new 24-word recovery phrase, for an account that has none yet.
+ *
+ * Chapter 01 §1.3, and the call that makes first-device setup possible on a
+ * phone at all. The entropy is libsodium's; the words are English BIP-39; the
+ * form is the canonical one [`validate_recovery_phrase`] produces, so the
+ * phrase this returns and the phrase a user types back reach the same key.
+ *
+ * **The caller owns what happens next.** Nothing is stored, nothing is sent,
+ * and the account is not set up by this call: it is a string, and it is the
+ * account until the user has written it down.
+ */
+public func generateRecoveryPhrase() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_generate_recovery_phrase(uniffiCallStatus
+    )
+})
+}
+/**
  * The locally derived device id, chapter 01 §1.5: 32 lowercase hex characters.
  *
  * Computed at registration time. The **wire** identity is the server-assigned
@@ -11687,6 +12497,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_derive_vault_key() != 59906) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_func_generate_kdf_salt() != 51411) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_generate_recovery_phrase() != 4345) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_func_local_device_id_hex() != 5666) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11696,7 +12512,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_authsession_complete_account_setup() != 57429) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_authsession_key_material() != 7564) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_key_material_if_configured() != 23501) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_vaults() != 41946) {
@@ -11753,6 +12575,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_devicelink_scan() != 64888) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_notes_blocks() != 22042) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11760,6 +12585,21 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_read() != 37060) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_create() != 1507) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_delete() != 64986) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_device_id() != 15214) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_move_to_folder() != 52953) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_rename() != 25883) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_runtimehost_on_background() != 23225) {
@@ -11793,6 +12633,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_notes() != 15357) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_notes_writer() != 9240) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_sync() != 39035) {

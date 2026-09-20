@@ -15,6 +15,31 @@ use crate::api::errors::{CompressError, CryptoError, RecoveryError};
 use crate::crypto::{keys, recovery};
 use crate::protocol::compress;
 
+/// A new 24-word recovery phrase, for an account that has none yet.
+///
+/// Chapter 01 §1.3, and the call that makes first-device setup possible on a
+/// phone at all. The entropy is libsodium's; the words are English BIP-39; the
+/// form is the canonical one [`validate_recovery_phrase`] produces, so the
+/// phrase this returns and the phrase a user types back reach the same key.
+///
+/// **The caller owns what happens next.** Nothing is stored, nothing is sent,
+/// and the account is not set up by this call: it is a string, and it is the
+/// account until the user has written it down.
+#[uniffi::export]
+pub fn generate_recovery_phrase() -> String {
+    recovery::generate_phrase().to_string()
+}
+
+/// A new account KDF salt, chapter 01 §1.1: 16 bytes of libsodium randomness.
+///
+/// Its own call rather than a constant the shell fills, because the **length**
+/// is the chapter's and [`derive_master_key`] refuses any other. A salt minted
+/// in the shell is a second place that rule lives.
+#[uniffi::export]
+pub fn generate_kdf_salt() -> Vec<u8> {
+    keys::generate_kdf_salt()
+}
+
 /// Normalises and validates a recovery phrase, returning the canonical form.
 ///
 /// Chapter 01 §1.3. Distinguishes an unknown word from a bad checksum, because

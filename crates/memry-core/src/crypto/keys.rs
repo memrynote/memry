@@ -19,6 +19,17 @@ pub const ARGON2_OPS_LIMIT: u64 = 3;
 pub const ARGON2_MEMORY_LIMIT: usize = 67_108_864;
 pub const ARGON2_SALT_LENGTH: usize = 16;
 
+/// A fresh account salt, chapter 01 §1.1: [`ARGON2_SALT_LENGTH`] bytes of
+/// libsodium randomness.
+///
+/// Here rather than in the shell so that the length and the generator are the
+/// same two facts [`derive_master_key`] checks against. A salt is not a secret
+/// — it is published with the account — but a salt of the wrong length is a
+/// key nothing can re-derive.
+pub fn generate_kdf_salt() -> Vec<u8> {
+    sodium::random_bytes(ARGON2_SALT_LENGTH)
+}
+
 /// Every derived key in this protocol is 32 bytes (chapter 01 §1.2).
 pub const SUBKEY_LEN: usize = 32;
 /// The locally derived device id is a 16-byte BLAKE2b (chapter 01 §1.5).

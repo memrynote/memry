@@ -36,8 +36,9 @@ use std::sync::Arc;
 use rusqlite::{Connection, OptionalExtension as _, Row};
 
 use crate::api::errors::StorageError;
+use crate::crdt::blocks::{Block, extract_blocks};
 use crate::crdt::errors::CrdtError;
-use crate::crdt::registry::{DocumentRegistry, UpdateSink};
+use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log;
 
@@ -216,23 +217,55 @@ pub fn note(conn: &Connection, id: &str) -> Result<Option<NoteDetail>, CrdtError
     }))
 }
 
+/// One note's body as blocks, for a shell that renders rather than previews.
+///
+/// `None` has the same meaning it has in [`note`]: the query succeeded and
+/// matched no live row. **An empty list is not `None`** — it is a note whose
+/// body this device holds and which contains nothing, and a caller that
+/// rendered the two the same way would report an unpulled note as an empty
+/// one, which is the failure [`NoteBody::present`] exists against.
+pub fn note_blocks(conn: &Connection, id: &str) -> Result<Option<Vec<Block>>, CrdtError> {
+    let exists: Option<i64> = conn
+        .query_row(
+            "SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NULL",
+            rusqlite::params![id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    if exists.is_none() {
+        return Ok(None);
+    }
+    let document = document_of(conn, id)?;
+    Ok(Some(extract_blocks(&document)?))
+}
+
 /// The body of one document, from whatever the update log already holds.
 ///
 /// A read, never a fetch: chapter 07's downward body feed is the sync tier's,
 /// and a read path that reached for the network would be a second sync client
 /// the core cannot see.
 fn body(conn: &Connection, doc_id: &str) -> Result<NoteBody, CrdtError> {
+    let present = !update_log::load_plan(conn, doc_id)?.is_empty();
+    let document = document_of(conn, doc_id)?;
+    Ok(NoteBody {
+        text: extract_text(&document)?,
+        present,
+    })
+}
+
+/// The document a body id resolves to, rebuilt from the durable log.
+///
+/// Shared by [`body`] and [`note_blocks`], so the text preview and the rendered
+/// blocks are two readings of the **same** document rather than two loads that
+/// could disagree about which updates had arrived.
+fn document_of(conn: &Connection, doc_id: &str) -> Result<Arc<Document>, CrdtError> {
     // The document id of a note body is the note record's id (chapter 07 §7.1).
     let plan = update_log::load_plan(conn, doc_id)?;
-    let present = !plan.is_empty();
-
     let sink: UpdateSink = Arc::new(|_, _| {});
     let document = DocumentRegistry::new(READER_DEVICE_ID, sink).get_or_open(doc_id)?;
     for blob in plan.blobs() {
         document.apply_durable_update(blob)?;
     }
-    Ok(NoteBody {
-        text: extract_text(&document)?,
-        present,
-    })
+    Ok(document)
 }
