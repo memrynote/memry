@@ -2,12 +2,14 @@ import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'reac
 import { AlertTriangle, ArrowUpRight, Loader2, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useTaskBlockData } from './use-task-block-data'
-import { serviceTaskToDisplayTask, PRIORITY_REVERSE } from './task-block-utils'
+import { serviceTaskToDisplayTask, parseTaskShorthand, PRIORITY_REVERSE } from './task-block-utils'
+import { TaskContextPopover } from './task-context-popover'
 import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
-import { tasksService } from '@/services/tasks-service'
+import { tasksService, type TaskUpdateInput } from '@/services/tasks-service'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { Task as DisplayTask } from '@/data/task-model'
+import { formatDateKey } from '@/lib/task-utils'
 import { defaultStatuses, type Project, type Status } from '@/data/tasks-data'
 import { TaskRow } from '@/components/tasks/task-row'
 import { useT } from '@memry/i18n/renderer'
@@ -94,7 +96,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   const titleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skipBlurRef = useRef(false)
 
-  const projects = tasksCtx?.projects ?? []
+  // Stable identity: `resolveCommit` depends on this list, and a fresh `[]`
+  // every render would rebuild the whole title-commit callback chain.
+  const projects = useMemo(() => tasksCtx?.projects ?? [], [tasksCtx?.projects])
   const defaultProject =
     projects.find((p: Project & { isInbox?: boolean }) => p.isDefault || p.isInbox) ?? projects[0]
   const project = projects.find((p) => p.id === task?.projectId) ?? defaultProject
@@ -213,14 +217,37 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
 
   // --- Title editing handlers ---
 
+  /**
+   * Split a committed title into the text that stays and the fields its
+   * quick-add markers named (#2241). Only commits run this: the 600ms typing
+   * debounce below saves the raw text, because lifting `!h` out of the input
+   * the moment it parses would yank characters from under the cursor.
+   *
+   * A line of nothing but markers ("!high") keeps the title the task already
+   * has — the user was setting a property, not clearing the name.
+   */
+  const resolveCommit = useCallback(
+    (raw: string): { title: string; update: Omit<TaskUpdateInput, 'id'> } => {
+      if (!taskId) return { title: raw, update: {} }
+      const parsed = parseTaskShorthand(raw, projects, task?.tags ?? [])
+      return { title: parsed.title.trim() || task?.title?.trim() || raw, update: parsed.update }
+    },
+    [taskId, projects, task]
+  )
+
   const saveTitleToDb = useCallback(
-    async (newTitle: string) => {
-      if (!newTitle.trim()) return
+    async (newTitle: string, applyShorthand = false) => {
+      const raw = newTitle.trim()
+      if (!raw) return
+      const { title: nextTitle, update } = applyShorthand
+        ? resolveCommit(raw)
+        : { title: raw, update: {} as Omit<TaskUpdateInput, 'id'> }
       syncingRef.current = true
-      editor.updateBlock(block, { props: { ...block.props, title: newTitle.trim() } })
+      editor.updateBlock(block, { props: { ...block.props, title: nextTitle } })
+      if (nextTitle !== raw) setEditTitle(nextTitle)
       if (taskId) {
         try {
-          await tasksService.update({ id: taskId, title: newTitle.trim() })
+          await tasksService.update({ id: taskId, title: nextTitle, ...update })
         } finally {
           syncingRef.current = false
         }
@@ -228,7 +255,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
         syncingRef.current = false
       }
     },
-    [taskId, block, editor]
+    [taskId, block, editor, resolveCommit]
   )
 
   const handleTitleChange = useCallback(
@@ -246,7 +273,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
       return
     }
     if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-    if (editTitle.trim()) void saveTitleToDb(editTitle)
+    if (editTitle.trim()) void saveTitleToDb(editTitle, true)
     setIsEditingTitle(false)
   }, [editTitle, saveTitleToDb])
 
@@ -256,7 +283,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
         e.preventDefault()
         skipBlurRef.current = true
         if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-        if (editTitle.trim()) void saveTitleToDb(editTitle)
+        if (editTitle.trim()) void saveTitleToDb(editTitle, true)
         setIsEditingTitle(false)
         return
       }
@@ -278,9 +305,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
 
         skipBlurRef.current = true
         if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-        const trimmedTitle = editTitle.trim()
-        if (trimmedTitle && taskId && task && task.title !== trimmedTitle) {
-          void tasksService.update({ id: taskId, title: trimmedTitle })
+        const { title: trimmedTitle, update } = resolveCommit(editTitle.trim())
+        if (trimmedTitle && taskId && task && (task.title !== trimmedTitle || update.tags)) {
+          void tasksService.update({ id: taskId, title: trimmedTitle, ...update })
         }
         setIsEditingTitle(false)
 
@@ -319,9 +346,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
 
         skipBlurRef.current = true
         if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-        const trimmedTitle = editTitle.trim()
-        if (trimmedTitle && taskId && task && task.title !== trimmedTitle) {
-          void tasksService.update({ id: taskId, title: trimmedTitle })
+        const { title: trimmedTitle, update } = resolveCommit(editTitle.trim())
+        if (trimmedTitle && taskId && task && (task.title !== trimmedTitle || update.tags)) {
+          void tasksService.update({ id: taskId, title: trimmedTitle, ...update })
         }
         setIsEditingTitle(false)
 
@@ -396,7 +423,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
         const trimmed = editTitle.trim()
         if (trimmed) {
           isNewBlockRef.current = false
-          void saveTitleToDb(trimmed)
+          void saveTitleToDb(trimmed, true)
           setIsEditingTitle(false)
           editor.insertBlocks(
             [{ type: 'taskBlock', props: { taskId: '', title: '', checked: false } }],
@@ -428,7 +455,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
         }
       }
     },
-    [editor, block, taskId, task, parentTaskId, editTitle, saveTitleToDb]
+    [editor, block, taskId, task, parentTaskId, editTitle, saveTitleToDb, resolveCommit]
   )
 
   // --- Task action handlers ---
@@ -463,7 +490,12 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
         ...(updates.statusId !== undefined && { statusId: updates.statusId }),
         ...(updates.priority !== undefined && {
           priority: PRIORITY_REVERSE[updates.priority] ?? 0
-        })
+        }),
+        ...(updates.dueDate !== undefined && {
+          dueDate: updates.dueDate ? formatDateKey(updates.dueDate) : null
+        }),
+        ...(updates.dueTime !== undefined && { dueTime: updates.dueTime }),
+        ...(updates.tags !== undefined && { tags: updates.tags })
       })
     },
     [taskId]
@@ -638,7 +670,19 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
           onToggleComplete={(...args) => void handleToggleComplete(...args)}
           onUpdateTask={(...args) => void handleUpdateTask(...args)}
           onProjectChange={(...args) => void handleProjectChange(...args)}
-          actions={hasResolvedTask ? navigateArrow : null}
+          actions={
+            hasResolvedTask && displayTask ? (
+              <>
+                <TaskContextPopover
+                  task={displayTask}
+                  projects={projects}
+                  onUpdate={(updates) => void handleUpdateTask(taskId, updates)}
+                  onProjectChange={(projectId) => void handleProjectChange(projectId)}
+                />
+                {navigateArrow}
+              </>
+            ) : null
+          }
           renderTitle={isEditingTitle ? titleInput : clickableTitle}
           className="px-0"
         />

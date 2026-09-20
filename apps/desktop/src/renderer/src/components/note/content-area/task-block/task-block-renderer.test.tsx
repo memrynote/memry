@@ -273,6 +273,36 @@ describe('TaskBlockRenderer', () => {
     expect(editor.removeBlocks).toHaveBeenCalledWith([emptyBlock])
   })
 
+  it('applies quick-add shorthand when the title is committed, not while typing (#2241)', async () => {
+    const editor = makeEditor()
+    const block = makeBlock()
+    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    const titleInput = screen.getByDisplayValue('Draft task')
+    fireEvent.change(titleInput, { target: { value: 'Ship beta !high #launch' } })
+
+    // The typing debounce saves the raw line: lifting markers out mid-keystroke
+    // would yank characters from under the cursor.
+    act(() => vi.advanceTimersByTime(600))
+    await act(async () => Promise.resolve())
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', title: 'Ship beta !high #launch' })
+
+    mocks.update.mockClear()
+    fireEvent.blur(titleInput)
+    await act(async () => Promise.resolve())
+
+    expect(mocks.update).toHaveBeenCalledWith({
+      id: 'task-1',
+      title: 'Ship beta',
+      priority: 3,
+      tags: ['launch']
+    })
+    expect(editor.updateBlock).toHaveBeenCalledWith(block, {
+      props: { ...block.props, title: 'Ship beta' }
+    })
+  })
+
   it('indents and promotes task blocks from the title input', () => {
     const parent = makeBlock({ taskId: 'parent', title: 'Parent' })
     const child = makeBlock({ taskId: 'child', title: 'Child' })

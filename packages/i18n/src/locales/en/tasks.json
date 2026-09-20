@@ -952,5 +952,12 @@
     "indigo": "Indigo",
     "purple": "Purple",
     "pink": "Pink"
+  },
+  "inlineContext": {
+    "trigger": "Edit task context",
+    "dueDate": "Due date",
+    "none": "None",
+    "searchTags": "Search tags…",
+    "createTag": "Create \"{name}\""
   }
 }

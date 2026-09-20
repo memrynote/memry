@@ -145,6 +145,27 @@ Selecting a checklist item in a note offers a "Convert to task" action in the in
 
 A checklist item that is already ticked becomes a task that is already done — so a note you imported with `- [x] Book flights` in it does not reopen work you finished elsewhere.
 
+## Context Without Leaving the Note
+
+A task written inside a note speaks [the same grammar](#the-whole-grammar) quick-add does. Type
+
+```
+Ship the beta @next friday !high +Memry #launch
+```
+
+into the task's title and the markers are lifted off it when you commit the line — <kbd>Enter</kbd>,
+<kbd>Esc</kbd>, <kbd>Tab</kbd>, or clicking away. They are read on commit rather than as you type, so a
+half-typed `!h` is never pulled out from under the cursor. A line of nothing but markers keeps the
+title the task already has: `!urgent` on its own sets the priority, it does not blank the name.
+
+`[[…]]` is the one marker that stays in the title here. An inline task has no note picker behind it,
+and silently deleting a link you typed is worse than not making one — link notes from the task's
+**Related** section instead.
+
+To change something you already wrote, hover the task row and press the sliders button beside it. One
+popover covers priority, due date, tags, and project, each on its own panel, and every edit writes
+straight to the task — no navigation, and the cursor stays where it was in the note.
+
 ## The Checkbox in the File Wins
 
 A note's tasks live in the note's own Markdown file, as checklist lines carrying the task id:

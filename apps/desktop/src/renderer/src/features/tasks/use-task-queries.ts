@@ -167,7 +167,7 @@ export function dbProjectToUiProject(
   }
 }
 
-function toServiceRepeatConfig(config: UiRepeatConfig | null | undefined) {
+export function toServiceRepeatConfig(config: UiRepeatConfig | null | undefined) {
   if (config === undefined) return undefined
   if (config === null) return null
 

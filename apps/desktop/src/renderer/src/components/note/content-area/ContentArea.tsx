@@ -1426,7 +1426,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
         const parsed = title
           ? parseQuickAdd(title, projects)
-          : { title: '', priority: 'none', projectId: null, dueDate: null }
+          : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] as string[] }
         // The draft scan only checks the raw block title, so a token-only draft
         // reaches here with nothing left to name the task.
         if (!parsed.title.trim()) return
@@ -1440,12 +1440,22 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             title: parsed.title,
             priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
             dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
+            // A `#tag` typed into an inline task leaves the title, so it has to
+            // land on the row rather than being dropped (#2241).
+            tags: parsed.tags,
             linkedNoteIds: noteId ? [noteId] : []
           })
           if (result.success && result.task) {
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
-              const currentTitle = (freshBlock.props as any).title || parsed.title
+              // Same markers-off-the-block rule as the slash-menu path: the row
+              // was created from the parsed title, so a block still holding the
+              // raw line would write the markers straight back onto it.
+              const liveTitle = ((freshBlock.props as any).title as string)?.trim() ?? ''
+              const currentTitle =
+                !liveTitle || liveTitle === title.trim()
+                  ? parsed.title
+                  : parseQuickAdd(liveTitle, projects).title || liveTitle
               const currentParentTaskId = ((freshBlock.props as any).parentTaskId as string) || ''
               editor.updateBlock(freshBlock, {
                 props: {

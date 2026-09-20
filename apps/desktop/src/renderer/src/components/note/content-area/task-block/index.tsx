@@ -11,6 +11,7 @@ import { getI18n } from 'react-i18next'
 import { tasksService } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { parseQuickAdd } from '@/lib/quick-add-parser'
+import { parseTaskShorthand } from './task-block-utils'
 import { formatDateKey } from '@/lib/task-utils'
 import type { Project } from '@/data/tasks-data'
 
@@ -81,13 +82,26 @@ export function getTaskSlashMenuItem(editor: unknown, noteId?: string) {
           title: parsed.title,
           priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
           dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
+          // `#tag` leaves the title, so it has to land on the row or the user's
+          // tag is simply deleted (#2241).
+          tags: parsed.tags,
           linkedNoteIds: noteId ? [noteId] : []
         })
         if (result.success && result.task) {
           // Re-fetch fresh: the block reference captured before the awaits above
           // may be stale by now.
           const freshBlock = taskEditor.getBlock(blockId) ?? currentBlock
-          const currentTitle = freshBlock.props?.title || parsed.title || text
+          // The block still carries the raw line. The row was created from the
+          // parsed title, so the block has to drop the markers too — otherwise
+          // the note keeps rendering "!high" over a task whose priority is
+          // already set, and the update below writes the markers back onto the
+          // row's title. If the user kept typing during the awaits, re-parse
+          // what they now have rather than clobbering it.
+          const liveTitle = freshBlock.props?.title?.trim() ?? ''
+          const currentTitle =
+            !liveTitle || liveTitle === text
+              ? parsed.title
+              : parseTaskShorthand(liveTitle, projects as unknown as Project[]).title || liveTitle
           taskEditor.updateBlock(freshBlock, {
             type: 'taskBlock',
             props: { taskId: result.task.id, title: currentTitle, checked: false }

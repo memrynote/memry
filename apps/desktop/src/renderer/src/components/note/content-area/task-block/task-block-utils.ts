@@ -3,8 +3,11 @@ import type {
   Priority,
   RepeatConfig as DisplayRepeatConfig
 } from '@/data/task-model'
-import type { Task as ServiceTask } from '@/services/tasks-service'
-import { parseDueDate } from '@/lib/task-utils'
+import type { Task as ServiceTask, TaskUpdateInput } from '@/services/tasks-service'
+import type { Project } from '@/data/tasks-data'
+import { formatDateKey, parseDueDate } from '@/lib/task-utils'
+import { parseQuickAdd } from '@/lib/quick-add-parser'
+import { toServiceRepeatConfig } from '@/features/tasks/use-task-queries'
 
 // Pure task-block markdown helpers live in @memry/shared so the main-process
 // CRDT seed/writeback can reuse the exact same logic. Re-exported here so the
@@ -31,6 +34,53 @@ export const PRIORITY_REVERSE: Record<string, number> = {
   medium: 2,
   high: 3,
   urgent: 4
+}
+
+export interface TaskShorthandEdit {
+  /** The typed text with every recognised marker lifted off. May be empty. */
+  title: string
+  /** Only the fields the markers actually named. Empty when there were none. */
+  update: Omit<TaskUpdateInput, 'id'>
+  hasMarkers: boolean
+}
+
+/**
+ * Read quick-add markers off an inline task title so the journal speaks the
+ * same shorthand the Tasks page does (#2241). `[[Title]]` is left in the text:
+ * the block has no note list loaded to resolve it against, and silently
+ * deleting a link the user typed is worse than not linking it.
+ *
+ * Tags merge rather than replace — the input only ever carries the tags being
+ * added, never the ones the task already has.
+ */
+export function parseTaskShorthand(
+  input: string,
+  projects: Project[],
+  existingTags: string[] = []
+): TaskShorthandEdit {
+  const parsed = parseQuickAdd(input, projects, { keepNoteLinks: true })
+  const update: Omit<TaskUpdateInput, 'id'> = {}
+
+  if (parsed.priority !== 'none') update.priority = PRIORITY_REVERSE[parsed.priority] ?? 0
+  if (parsed.dueDate) {
+    update.dueDate = formatDateKey(parsed.dueDate)
+    if (parsed.dueTime) update.dueTime = parsed.dueTime
+  }
+  if (parsed.projectId) update.projectId = parsed.projectId
+  if (parsed.repeat) {
+    update.isRepeating = true
+    update.repeatConfig = toServiceRepeatConfig(parsed.repeat)
+  }
+
+  const seen = new Set(existingTags.map((tag) => tag.toLowerCase()))
+  const addedTags = parsed.tags.filter((tag) => !seen.has(tag.toLowerCase()))
+  if (addedTags.length > 0) update.tags = [...existingTags, ...addedTags]
+
+  return {
+    title: parsed.title,
+    update,
+    hasMarkers: Object.keys(update).length > 0 || parsed.title !== input.trim()
+  }
 }
 
 export function serviceTaskToDisplayTask(task: ServiceTask, fallbackStatusId: string): DisplayTask {

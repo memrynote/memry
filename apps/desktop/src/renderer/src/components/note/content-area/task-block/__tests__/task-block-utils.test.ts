@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
   isLikelyTask,
+  parseTaskShorthand,
   serializeTaskBlock,
   parseTaskBlockSuffix,
   normalizeTaskBlocks
 } from '../task-block-utils'
+import type { Project } from '@/data/tasks-data'
 
 describe('isLikelyTask', () => {
   it('returns true for text starting with action verbs', () => {
@@ -373,5 +375,64 @@ describe('subtask round-trip: serialize → parse → normalize', () => {
     expect((sub2.props as any).taskId).toBe('s2')
     expect((sub2.props as any).parentTaskId).toBe('p1')
     expect((sub2.props as any).checked).toBe(false)
+  })
+})
+
+describe('parseTaskShorthand', () => {
+  const projects: Project[] = [
+    {
+      id: 'proj-work',
+      name: 'Work',
+      description: '',
+      icon: '',
+      color: '#000000',
+      statuses: [],
+      isDefault: false,
+      isArchived: false,
+      createdAt: new Date('2025-01-01'),
+      taskCount: 0
+    }
+  ]
+
+  it('lifts every marker off the title and onto the update', () => {
+    const { title, update, hasMarkers } = parseTaskShorthand(
+      'Ship beta build !high #launch +Work',
+      projects
+    )
+
+    expect(title).toBe('Ship beta build')
+    expect(update.priority).toBe(3)
+    expect(update.tags).toEqual(['launch'])
+    expect(update.projectId).toBe('proj-work')
+    expect(hasMarkers).toBe(true)
+  })
+
+  it('merges tags instead of replacing the ones the task already has', () => {
+    const { update } = parseTaskShorthand('Ship it #launch', projects, ['beta'])
+    expect(update.tags).toEqual(['beta', 'launch'])
+  })
+
+  it('does not re-add a tag the task already carries', () => {
+    const { update } = parseTaskShorthand('Ship it #Beta', projects, ['beta'])
+    expect(update.tags).toBeUndefined()
+  })
+
+  it('leaves [[links]] in the title — the block cannot resolve them to note ids', () => {
+    const { title, update } = parseTaskShorthand('Review [[Q3 Roadmap]] !low', projects)
+    expect(title).toBe('Review [[Q3 Roadmap]]')
+    expect(update.priority).toBe(1)
+  })
+
+  it('reports no markers for plain prose', () => {
+    const { title, update, hasMarkers } = parseTaskShorthand('Buy milk', projects)
+    expect(title).toBe('Buy milk')
+    expect(update).toEqual({})
+    expect(hasMarkers).toBe(false)
+  })
+
+  it('returns an empty title for a marker-only line so the caller can keep the old one', () => {
+    const { title, update } = parseTaskShorthand('!urgent', projects)
+    expect(title).toBe('')
+    expect(update.priority).toBe(4)
   })
 })

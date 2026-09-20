@@ -262,7 +262,21 @@ const stripSpans = (input: string, spans: QuickAddSpan[]): string => {
  * - "Review PR +work @next friday" → title: "Review PR", project: work, due: next Friday
  * - "Water plants every 2 weeks" → title: "Water plants", repeats every second week
  */
-export const parseQuickAdd = (input: string, projects: Project[]): ParsedQuickAdd => {
+export interface ParseQuickAddOptions {
+  /**
+   * Leave `[[Title]]` runs in the title instead of lifting them out. Surfaces
+   * that cannot resolve a title to a note id (the inline task block has no
+   * note list loaded) would otherwise delete the text the user typed and link
+   * nothing. Markers *inside* a link are still ignored either way.
+   */
+  keepNoteLinks?: boolean
+}
+
+export const parseQuickAdd = (
+  input: string,
+  projects: Project[],
+  options: ParseQuickAddOptions = {}
+): ParsedQuickAdd => {
   const spans: QuickAddSpan[] = []
   let dueDate: Date | null = null
   let dueTime: string | null = null
@@ -271,8 +285,10 @@ export const parseQuickAdd = (input: string, projects: Project[]): ParsedQuickAd
 
   // Note links first: they own their whole run, sigils inside included.
   const noteLinks = findNoteLinks(input)
-  for (const link of noteLinks) {
-    spans.push({ start: link.start, end: link.end, kind: 'noteLink' })
+  if (!options.keepNoteLinks) {
+    for (const link of noteLinks) {
+      spans.push({ start: link.start, end: link.end, kind: 'noteLink' })
+    }
   }
 
   // Natural-language due date: @tomorrow, @next wednesday
@@ -336,7 +352,7 @@ export const parseQuickAdd = (input: string, projects: Project[]): ParsedQuickAd
     projectId,
     repeat,
     tags,
-    noteTitles: noteLinks.map((link) => link.title).filter(Boolean)
+    noteTitles: options.keepNoteLinks ? [] : noteLinks.map((link) => link.title).filter(Boolean)
   }
 }
 
