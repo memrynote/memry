@@ -14,6 +14,7 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import { InlineCheckbox, renderInlineCheckbox } from './inline-checkbox'
+import { renderInlineSpec } from './inline-spec-render.test-helper'
 
 function renderDom(
   renderType: 'dom' | 'nodeView',
@@ -61,11 +62,10 @@ describe('the serialization render', () => {
   it('is what BlockNote reaches through the spec, which passes no `this`', () => {
     // #given the exporter calls the wrapped implementation with no `this`, so
     // `renderType` is undefined and the nodeView branch must not be taken
-    const dom = (InlineCheckbox as any).implementation.render(
-      { type: 'inlineCheckbox', props: { checked: true } },
-      () => {},
-      {}
-    ).dom
+    const dom = renderInlineSpec('inlineCheckbox', InlineCheckbox, {
+      type: 'inlineCheckbox',
+      props: { checked: true }
+    }).dom
 
     // #then
     expect(dom.textContent).toBe('[x] ')

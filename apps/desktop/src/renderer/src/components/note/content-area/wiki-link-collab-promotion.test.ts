@@ -45,6 +45,7 @@ vi.mock('@/lib/url-metadata', () => ({
 }))
 
 import { editorSchema } from './editor-schema'
+import { withCollaborationIfLive } from './collaboration-options'
 import { useEditorSync } from './hooks/use-editor-sync'
 
 const mounted: Array<{ editor: BlockNoteEditor; el: HTMLElement; doc: Y.Doc }> = []
@@ -53,7 +54,7 @@ afterEach(() => {
   for (const { editor, el, doc } of mounted.splice(0)) {
     // `mount()` with no element is BlockNote's unmount; its type only admits an
     // element, so the call has to say so.
-    ;(editor as unknown as { mount: (element?: HTMLElement) => void }).mount()
+    editor.unmount()
     el.remove()
     doc.destroy()
   }
@@ -70,10 +71,13 @@ function createCollaborativeEditor(existingDoc?: Y.Doc): CollabEditor {
   const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
 
   // Exactly how ContentArea builds it when `isCollaborationActive(...)` is true.
-  const editor = BlockNoteEditor.create({
-    schema: editorSchema,
-    collaboration: { fragment, user: { name: 'Local User', color: '#3b82f6' } }
-  } as never) as unknown as BlockNoteEditor
+  const editor = BlockNoteEditor.create(
+    // The production helper, not a copy of it: `collaboration` stopped being
+    // an editor option in BlockNote 0.52 and passing it raw still compiles,
+    // so a hand-rolled options object here would bind to nothing and these
+    // tests would pass against an editor that never touches the Y.Doc.
+    withCollaborationIfLive(fragment, { schema: editorSchema })
+  ) as unknown as BlockNoteEditor
 
   const el = document.createElement('div')
   document.body.appendChild(el)

@@ -12,6 +12,7 @@ import {
   type SuggestionMenuProps
 } from '@blocknote/react'
 import { SuggestionMenu } from '@blocknote/core/extensions'
+import { withCollaborationIfLive } from './collaboration-options'
 import { Paperclip } from '@/lib/icons'
 import { BlockNoteView } from '@blocknote/shadcn'
 import {
@@ -61,6 +62,7 @@ import { getTaskSlashMenuItem } from './task-block'
 import { TaskPrefetchProvider } from './task-block/task-prefetch-context'
 import { tasksService } from '@/services/tasks-service'
 import { useTasksOptional } from '@/contexts/tasks'
+import { memrySyntaxHighlighter } from '@memry/editor-schema/code-block'
 import { parseQuickAdd } from '@/lib/quick-add-parser'
 import { buildObsidianTaskImport } from '@/lib/obsidian-task-import'
 import { obsidianTaskImportBlocker } from '@memry/shared/obsidian-tasks'
@@ -506,38 +508,37 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     )
   ).current
 
-  // Create the BlockNote editor instance
-  const editor = useCreateBlockNote({
-    schema: editorSchema,
-    setIdAttribute: true,
-    // All off by default in BlockNote 0.47. `headers` leaves the table handle
-    // menu with no way to make a header row at all — while markdown storage
-    // hands every table one on the way back in. The two colour flags are pure
-    // UI gates on the cell menu (nothing in the schema turns on with them), and
-    // without them a table was the one place in a note where colour was
-    // unreachable (#1639). What the cell holds is written back through the
-    // `<!-- table-colors:… -->` marker, so the colour survives the save.
-    tables: { headers: true, cellBackgroundColor: true, cellTextColor: true },
-    uploadFile,
-    resolveFileUrl,
-    placeholders: {
-      default: resolvedPlaceholder,
-      heading: t('editor.content.headingPlaceholder'),
-      bulletListItem: t('editor.content.listPlaceholder'),
-      numberedListItem: t('editor.content.listPlaceholder'),
-      checkListItem: t('editor.content.todoPlaceholder')
-    },
-    dictionary: { ...coreEn, ai: aiEn } as any,
-    pasteHandler: handleEditorPaste,
-    ...(yjsFragment
-      ? {
-          collaboration: {
-            fragment: yjsFragment,
-            user: { name: 'Local User', color: '#3b82f6' }
-          }
-        }
-      : {})
-  })
+  // Create the BlockNote editor instance. `withCollaborationIfLive` is what
+  // binds it to the Y.Doc — see that module for why a bare `collaboration`
+  // option compiles but does nothing from BlockNote 0.52 on.
+  const editor = useCreateBlockNote(
+    withCollaborationIfLive(yjsFragment, {
+      schema: editorSchema,
+      // Syntax highlighting is an extension in BlockNote 0.51+, not a code-block
+      // option. Without it a code block renders its text uncoloured.
+      extensions: [memrySyntaxHighlighter],
+      setIdAttribute: true,
+      // All off by default in BlockNote 0.47. `headers` leaves the table handle
+      // menu with no way to make a header row at all — while markdown storage
+      // hands every table one on the way back in. The two colour flags are pure
+      // UI gates on the cell menu (nothing in the schema turns on with them), and
+      // without them a table was the one place in a note where colour was
+      // unreachable (#1639). What the cell holds is written back through the
+      // `<!-- table-colors:… -->` marker, so the colour survives the save.
+      tables: { headers: true, cellBackgroundColor: true, cellTextColor: true },
+      uploadFile,
+      resolveFileUrl,
+      placeholders: {
+        default: resolvedPlaceholder,
+        heading: t('editor.content.headingPlaceholder'),
+        bulletListItem: t('editor.content.listPlaceholder'),
+        numberedListItem: t('editor.content.listPlaceholder'),
+        checkListItem: t('editor.content.todoPlaceholder')
+      },
+      dictionary: { ...coreEn, ai: aiEn } as any,
+      pasteHandler: handleEditorPaste
+    })
+  )
 
   // Closes the loop for `uploadFile`, which is built before the editor exists
   // but needs `getBlock` to know whether it is filling a `file` block.

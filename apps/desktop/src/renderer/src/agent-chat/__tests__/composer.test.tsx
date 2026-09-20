@@ -832,7 +832,12 @@ describe('Composer', () => {
 
     await setPromptText('summarize @plan')
     fireEvent.click(await screen.findByRole('option', { name: /planning note/i }))
-    expect(screen.getByTestId('agent-mention-note-note-1')).toHaveTextContent('@Planning note')
+    // `findBy`, not `getBy`: the mention is a tiptap React node view, and
+    // from @tiptap/react 3.31 its portal renders on a later tick than the
+    // transaction that inserted the node.
+    expect(await screen.findByTestId('agent-mention-note-note-1')).toHaveTextContent(
+      '@Planning note'
+    )
     expect(screen.queryByRole('button', { name: /remove.*planning note/i })).not.toBeInTheDocument()
     await submitPrompt()
 
@@ -913,7 +918,7 @@ describe('Composer', () => {
     await userEvent.keyboard('{Enter}')
 
     expect(mockSendTurn).not.toHaveBeenCalled()
-    expect(screen.getByTestId('agent-mention-note-note-3')).toHaveTextContent('@Gamma note')
+    expect(await screen.findByTestId('agent-mention-note-note-3')).toHaveTextContent('@Gamma note')
     expect(mockSearchQuery).toHaveBeenCalledWith({ text: '', limit: 20 })
     await submitPrompt()
 
@@ -1100,7 +1105,7 @@ describe('Composer', () => {
       fireEvent.click(await screen.findByRole('option', { name: new RegExp(label, 'i') }))
     }
 
-    expect(screen.getByTestId('agent-mention-note-note-1')).toHaveClass('bg-sky-500/10')
+    expect(await screen.findByTestId('agent-mention-note-note-1')).toHaveClass('bg-sky-500/10')
     expect(screen.getByTestId('agent-mention-task-task-1')).toHaveClass('bg-emerald-500/10')
     expect(screen.getByTestId('agent-mention-journal-2026-05-10')).toHaveClass('bg-rose-500/10')
     expect(screen.getByTestId('agent-mention-inbox-inbox-1')).toHaveClass('bg-amber-500/10')
@@ -1155,7 +1160,7 @@ describe('Composer', () => {
 
     await setPromptText('summarize @star wars')
     fireEvent.click(await screen.findByRole('option', { name: /star wars movies/i }))
-    expect(screen.getByTestId('agent-mention-note-note-1')).toBeInTheDocument()
+    expect(await screen.findByTestId('agent-mention-note-note-1')).toBeInTheDocument()
 
     await userEvent.keyboard('{Backspace}{Backspace}')
 
@@ -1199,7 +1204,7 @@ describe('Composer', () => {
 
     await setPromptText('@star wars')
     fireEvent.click(await screen.findByRole('option', { name: /star wars movies/i }))
-    const mention = screen.getByTestId('agent-mention-note-note-1')
+    const mention = await screen.findByTestId('agent-mention-note-note-1')
     expect(mention).toBeInTheDocument()
 
     fireEvent.mouseDown(mention)

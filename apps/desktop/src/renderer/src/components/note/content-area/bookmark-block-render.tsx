@@ -11,13 +11,9 @@ interface BookmarkProps {
   siteName: string
 }
 
-export function BookmarkBlockRender({
-  block,
-  contentRef
-}: {
-  block: { props: BookmarkProps }
-  contentRef: React.Ref<HTMLDivElement>
-}) {
+// No `contentRef`: BlockNote 0.54 stopped handing one to a block declared
+// `content: "none"`, which this one is.
+export function BookmarkBlockRender({ block }: { block: { props: BookmarkProps } }) {
   const { url, domain, title, description, image, favicon, siteName } = block.props
 
   // Markdown round-trip is lossy (URL only) — hydrate display-only metadata
@@ -50,11 +46,11 @@ export function BookmarkBlockRender({
   const displaySite = siteName || fetched?.siteName || domain || fetched?.domain || hostname
 
   if (!url) {
-    return <div ref={contentRef} className="p-2 text-muted-foreground text-sm" />
+    return <div className="p-2 text-muted-foreground text-sm" />
   }
 
   return (
-    <div ref={contentRef} className="bookmark-block my-2" contentEditable={false}>
+    <div className="bookmark-block my-2" contentEditable={false}>
       <a
         href={url}
         target="_blank"

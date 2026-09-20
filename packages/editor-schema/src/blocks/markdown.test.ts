@@ -1,10 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import {
   readStructuredQuoteRun,
+  restoreDetailsMarkup,
   serializeQuoteBlock,
   serializeToggleBlock,
   splitMarkdownByToggles
 } from './markdown'
+
+/**
+ * A declined `<details>` line leaves here with its `<` hidden behind a token,
+ * because BlockNote's markdown parser drops a raw HTML block outright. The
+ * exact token is an implementation detail; what the callers rely on is that no
+ * raw `<` reaches the parser and that `restoreDetailsMarkup` gives the
+ * author's bytes back unchanged.
+ */
+function expectHiddenMarkup(segments: ReturnType<typeof splitMarkdownByToggles>, source: string) {
+  expect(segments).toHaveLength(1)
+  const segment = segments[0]
+  expect(segment.kind).toBe('markdown')
+  const text = (segment as { text: string }).text
+  expect(text).not.toContain('<')
+  expect(restoreDetailsMarkup(text)).toBe(source)
+}
 
 describe('serializeToggleBlock', () => {
   it('wraps the body in blank lines so renderers format it as markdown', () => {
@@ -190,25 +207,13 @@ describe('splitMarkdownByToggles', () => {
       '\n'
     )
 
-    expect(splitMarkdownByToggles(markdown)).toEqual([
-      {
-        kind: 'markdown',
-        text: ['\\<details>', '\\<summary>Theirs\\</summary>', '', 'Body', '', '\\</details>'].join(
-          '\n'
-        )
-      }
-    ])
+    expectHiddenMarkup(splitMarkdownByToggles(markdown), markdown)
   })
 
   it('escapes an open tag with no <summary> after it', () => {
     const markdown = ['<details data-memry-toggle>', 'Body', '</details>'].join('\n')
 
-    expect(splitMarkdownByToggles(markdown)).toEqual([
-      {
-        kind: 'markdown',
-        text: ['\\<details data-memry-toggle>', 'Body', '\\</details>'].join('\n')
-      }
-    ])
+    expectHiddenMarkup(splitMarkdownByToggles(markdown), markdown)
   })
 
   it('escapes an unterminated toggle rather than swallowing the note', () => {
@@ -216,14 +221,7 @@ describe('splitMarkdownByToggles', () => {
       '\n'
     )
 
-    expect(splitMarkdownByToggles(markdown)).toEqual([
-      {
-        kind: 'markdown',
-        text: ['\\<details data-memry-toggle>', '\\<summary>Title\\</summary>', '', 'Rest'].join(
-          '\n'
-        )
-      }
-    ])
+    expectHiddenMarkup(splitMarkdownByToggles(markdown), markdown)
   })
 
   it('carries the blank lines at a toggle seam as a gap instead of trimming them', () => {

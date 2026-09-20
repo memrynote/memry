@@ -13,6 +13,7 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import { InlineImage, renderInlineImage } from './inline-image'
+import { renderInlineSpec } from './inline-spec-render.test-helper'
 
 const RELATIVE = '../attachments/n1/photo.png'
 const RESOLVED = 'memry-file://local/v/attachments/n1/photo.png'
@@ -46,7 +47,7 @@ function render(
 /** The path BlockNote's exporter actually takes — no `this`, so no resolution. */
 function renderThroughSpec(src: string, resolveFileUrl: (url: string) => Promise<string>) {
   const node = { type: 'inlineImage', props: { src, alt: 'photo.png' } }
-  return (InlineImage as any).implementation.render(node, () => {}, { resolveFileUrl }).dom
+  return renderInlineSpec('inlineImage', InlineImage, node, () => {}, { resolveFileUrl }).dom
 }
 
 describe('InlineImage render', () => {

@@ -12,8 +12,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@blocknote/code-block": "^0.47.1",
-    "@blocknote/core": "^0.47.1",
+    "@blocknote/code-block": "^0.54.2",
+    "@blocknote/core": "^0.54.2",
     "@memry/contracts": "workspace:*",
     "@memry/editor-schema": "workspace:*",
     "@memry/shared": "workspace:*",

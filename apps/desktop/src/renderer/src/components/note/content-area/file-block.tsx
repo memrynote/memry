@@ -850,10 +850,11 @@ interface FileBlockEditor {
   updateBlock: (block: unknown, update: { props: Record<string, unknown> }) => void
 }
 
+// No `contentRef`: BlockNote 0.54 stopped handing one to a block declared
+// `content: "none"`, which this one is.
 function FileBlockRender({
   block,
-  editor,
-  contentRef
+  editor
 }: {
   block: {
     props: {
@@ -867,7 +868,6 @@ function FileBlockRender({
     }
   }
   editor: unknown
-  contentRef: React.Ref<HTMLDivElement>
 }) {
   const { t: tPhaseF } = useT('notes')
   const { url, name, size, mimeType, width, height, align } = block.props
@@ -918,7 +918,7 @@ function FileBlockRender({
   // Don't render if no URL
   if (!url) {
     return (
-      <div ref={contentRef} className="file-block-empty p-2 text-muted-foreground text-sm">
+      <div className="file-block-empty p-2 text-muted-foreground text-sm">
         {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.noFileAttached')}
       </div>
     )
@@ -928,7 +928,7 @@ function FileBlockRender({
   // rather than letting the viewer fetch the unresolved path and latch its
   // load error.
   if (resolvedUrl === null) {
-    return <div ref={contentRef} className="file-block my-2" contentEditable={false} />
+    return <div className="file-block my-2" contentEditable={false} />
   }
 
   // The raw stored url goes to the menu, never `resolvedUrl` — main re-resolves
@@ -940,7 +940,7 @@ function FileBlockRender({
   if (presence.missing) {
     return (
       <AttachmentBlockContextMenu url={url} name={name} onRenamed={handleRenamed}>
-        <div ref={contentRef} className="file-block my-2" contentEditable={false}>
+        <div className="file-block my-2" contentEditable={false}>
           <MissingAttachmentCard
             name={name}
             expectedFilename={presence.expectedFilename}
@@ -953,7 +953,7 @@ function FileBlockRender({
 
   return (
     <AttachmentBlockContextMenu url={url} name={name} onRenamed={handleRenamed}>
-      <div ref={contentRef} className="file-block my-2" contentEditable={false}>
+      <div className="file-block my-2" contentEditable={false}>
         {isPdf ? (
           <PdfPreview
             // Keyed by URL so a changed one rebuilds the preview from scratch. A

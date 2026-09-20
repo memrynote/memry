@@ -643,9 +643,15 @@ describe('known non-convergence, pinned not endorsed', () => {
     // #then one rewrite, then a fixed point. Pinned so that dropping
     // `serializeCriticMarkup` from write-back — which deletes every review
     // comment from the note — cannot pass unnoticed the way it did before.
-    expect(lengths).toEqual([45, 93, 93, 93, 93, 93])
+    //
+    // 94 rather than the 93 this held before BlockNote 0.51: the space between
+    // the comment and the word after it used to be eaten, writing
+    // `note<<}with [[A]]`, and the new parser keeps it. One byte more and one
+    // less wrong — the rewrite itself is what stays unendorsed.
+    expect(lengths).toEqual([45, 94, 94, 94, 94, 94])
     expect(current).toContain('marked')
     expect(current).toContain('note')
+    expect(current).toContain('<<} with')
   })
 
   /**

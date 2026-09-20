@@ -6,6 +6,9 @@ import {
   extractWikiImageEmbedRefs,
   rewriteWikiImageEmbeds,
   normalizeSerializedMarkdown,
+  maskHardBreaks,
+  unmaskHardBreaks,
+  escapeWikiLinkPipesInTableRows,
   type MarkdownSegment
 } from './empty-lines'
 
@@ -465,5 +468,123 @@ describe('normalizeSerializedMarkdown', () => {
   it('does not touch emphasis or thematic breaks', () => {
     expect(normalizeSerializedMarkdown('*emphasis*')).toBe('*emphasis*')
     expect(normalizeSerializedMarkdown('***')).toBe('***')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// BlockNote 0.51+ markdown-parser compatibility
+// ---------------------------------------------------------------------------
+
+describe('hard break masking', () => {
+  it('marks a two-space hard break and leaves a soft break alone', () => {
+    // #given 0.51's parser maps both spellings onto one newline, so the hard
+    // one has to be marked before it reaches the parser.
+    const masked = maskHardBreaks('One  \nTwo\nThree')
+
+    // #then the hard break carries a token and the soft one does not
+    expect(masked).not.toContain('  \n')
+    expect(masked.split('\n')[0]).toMatch(/One\w+;$/)
+    expect(masked.split('\n')[1]).toBe('Two')
+  })
+
+  it('marks a backslash hard break too', () => {
+    expect(maskHardBreaks('One\\\nTwo')).not.toContain('\\\n')
+  })
+
+  it('leaves a line whose trailing spaces end the paragraph', () => {
+    // #given nothing follows, so the parser produces no break at all
+    expect(maskHardBreaks('One  \n\nTwo')).toBe('One  \n\nTwo')
+  })
+
+  it('leaves two trailing spaces inside a fence as content', () => {
+    const md = '```sh\nline one  \nline two\n```'
+    expect(maskHardBreaks(md)).toBe(md)
+  })
+
+  it('round-trips a hard break into the two newlines the doc spells it with', () => {
+    // #given the document holds a soft break as one newline and a hard break
+    // as two; `normalizeSerializedMarkdown` reads that back on the way out.
+    const masked = maskHardBreaks('One  \nTwo')
+    const parsed = unmaskHardBreaks(masked)
+
+    expect(parsed).toBe('One\n\nTwo')
+  })
+
+  it('deletes a token that lost its newline rather than leaking it', () => {
+    // #given the fallback that makes this safe: the worst case is a hard break
+    // that stays soft, never a token written into the user's file.
+    const masked = maskHardBreaks('One  \nTwo')
+    const token = masked.split('\n')[0].replace('One', '')
+
+    expect(unmaskHardBreaks(`One${token}Two`)).toBe('OneTwo')
+  })
+})
+
+describe('table column widths', () => {
+  it('lays a table out to its own column widths, not a ten-character minimum', () => {
+    // #given 0.51's serializer pads every column to at least ten characters,
+    // which rewrote every table in every vault on first open.
+    expect(normalizeSerializedMarkdown('| a          | b          |\n| ---------- | ---------- |\n| c          | d          |')).toBe(
+      '| a | b |\n| - | - |\n| c | d |'
+    )
+  })
+
+  it('pads each column to its widest cell', () => {
+    expect(normalizeSerializedMarkdown('| Name | Status |\n| --- | --- |\n| Ship | Done |')).toBe(
+      '| Name | Status |\n| ---- | ------ |\n| Ship | Done   |'
+    )
+  })
+
+  it('keeps alignment colons', () => {
+    // A colon costs a character the column may not have: a centred marker
+    // cannot go below `:-:`, so it stays wider than its one-character column.
+    expect(normalizeSerializedMarkdown('| a | b | c |\n| :-- | --: | :-: |\n| 1 | 2 | 3 |')).toBe(
+      '| a | b | c |\n| :- | -: | :-: |\n| 1 | 2 | 3 |'
+    )
+  })
+
+  it('treats an escaped pipe as cell content, not a delimiter', () => {
+    const md = '| a | b |\n| --- | --- |\n| x \\| y | z |'
+    expect(normalizeSerializedMarkdown(md)).toBe('| a      | b |\n| ------ | - |\n| x \\| y | z |')
+  })
+
+  it('leaves a table inside a fence alone', () => {
+    const md = '```\n| a          | b |\n| ---------- | - |\n```'
+    expect(normalizeSerializedMarkdown(md)).toBe(md)
+  })
+
+  it('is stable on a second pass', () => {
+    const once = normalizeSerializedMarkdown('| Name | Status |\n| --- | --- |\n| Ship | Done |')
+    expect(normalizeSerializedMarkdown(once)).toBe(once)
+  })
+})
+
+describe('escapeWikiLinkPipesInTableRows', () => {
+  it('escapes the alias separator of a wiki link in a table row', () => {
+    // #given the bytes every build up to BlockNote 0.50 wrote. 0.51's table
+    // parser splits the row on that pipe and the alias is lost.
+    expect(escapeWikiLinkPipesInTableRows('| [[Roadmap|the plan]] |')).toBe(
+      '| [[Roadmap\\|the plan]] |'
+    )
+  })
+
+  it('leaves a pipe outside a wiki link alone', () => {
+    expect(escapeWikiLinkPipesInTableRows('| a | b |')).toBe('| a | b |')
+  })
+
+  it('does not double an already-escaped pipe', () => {
+    const row = '| [[Roadmap\\|the plan]] |'
+    expect(escapeWikiLinkPipesInTableRows(row)).toBe(row)
+  })
+
+  it('leaves a wiki link outside a table alone', () => {
+    expect(escapeWikiLinkPipesInTableRows('See [[Roadmap|the plan]] here.')).toBe(
+      'See [[Roadmap|the plan]] here.'
+    )
+  })
+
+  it('leaves a table row inside a fence alone', () => {
+    const md = '```\n| [[Roadmap|the plan]] |\n```'
+    expect(escapeWikiLinkPipesInTableRows(md)).toBe(md)
   })
 })

@@ -35,7 +35,7 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Bullet list, numbered list, check list
 - Quote, callout
 - Toggle list (collapsible section — nest text, images, even other toggles inside it)
-- Code block (language picker: 50 languages, alphabetical, including PowerShell and KQL)
+- Code block (language picker: 50 languages, alphabetical)
 - Divider
 - Image, file
 - Table
@@ -47,8 +47,11 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 and a small toolbar appears in its top-right corner:
 
 - the **language picker**, which sets the syntax highlighting — 50 languages,
-  alphabetical, Plain Text first, including PowerShell and KQL
+  alphabetical, Plain Text first
 - **Copy code**, which puts the whole block on the clipboard
+
+PowerShell and KQL are in the picker and are saved to your file like any other
+language, but they currently render without colour.
 
 Highlighting follows your theme: the same block is light in the light theme and
 dark in the dark one, on the sidebar's own background rather than a black slab.

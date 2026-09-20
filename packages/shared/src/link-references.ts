@@ -115,6 +115,48 @@ export function stripLinkReferenceDefinitions(markdown: string): StrippedLinkRef
   }
 }
 
+/**
+ * Rewrite every reference usage as the ordinary inline link it means, so the
+ * editor's markdown parser sees a link it understands.
+ *
+ * Needed from BlockNote 0.51, which replaced its unified/remark markdown
+ * pipeline with a hand-written one that does not implement reference links at
+ * all. Before that we could hand the parser the body with the definitions
+ * still in it and remark would resolve `[docs][d]` itself and consume the
+ * definition lines. The new parser does neither: `[docs][d]` stays literal
+ * bracket text, and the definition lines come back as ordinary paragraphs,
+ * which `restoreLinkReferences` then appends a second copy of — a note that
+ * grew a duplicate block of definitions every time it was opened.
+ *
+ * So the resolution moves here, where we already hold the table. The exact
+ * inverse of the usage loop in `restoreLinkReferences`: same document order,
+ * same sequential cursor, same "skip what no longer matches" rule, so a body
+ * that goes through both comes back spelled the way the author wrote it.
+ */
+export function inlineLinkReferences(markdown: string, usages: LinkReferenceUsage[]): string {
+  if (usages.length === 0) return markdown
+
+  let body = markdown
+  let searchFrom = 0
+  for (const usage of usages) {
+    const at = body.indexOf(usage.raw, searchFrom)
+    if (at === -1) continue
+    const inline = `[${usage.text}](${wrapDestination(usage.destination)})`
+    body = body.slice(0, at) + inline + body.slice(at + usage.raw.length)
+    searchFrom = at + inline.length
+  }
+  return body
+}
+
+/**
+ * A destination is only bare if it can be read back as one. A space or an
+ * unbalanced paren would end the link early, so those go in angle brackets —
+ * the second spelling `restoreLinkReferences` looks for on the way out.
+ */
+function wrapDestination(destination: string): string {
+  return /[\s()]/.test(destination) ? `<${destination}>` : destination
+}
+
 export function restoreLinkReferences(
   markdown: string,
   definitions: LinkReferenceDefinition[],
@@ -160,8 +202,7 @@ export const LINK_REFERENCE_USAGES_ARRAY = 'linkReferenceUsages'
 
 interface YArrayLike {
   length: number
-  get(index: number): unknown
-  toArray?: () => unknown[]
+  toArray: () => unknown[]
   delete(index: number, length: number): void
   push(values: unknown[]): void
 }
@@ -343,10 +384,7 @@ function replaceArray(array: YArrayLike, next: unknown[]): void {
 }
 
 function readArray(array: YArrayLike): unknown[] {
-  if (array.toArray) return array.toArray()
-  const values: unknown[] = []
-  for (let index = 0; index < array.length; index++) values.push(array.get(index))
-  return values
+  return array.toArray()
 }
 
 function normalizeDefinition(value: unknown): LinkReferenceDefinition | null {
