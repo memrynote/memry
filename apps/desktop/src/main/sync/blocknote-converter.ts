@@ -7,6 +7,8 @@ import {
   EMBED_LINE_REGEX,
   FILE_BLOCK_LINE_REGEX,
   parseFileBlockMarker,
+  serializeFileBlock,
+  type FileBlockProps,
   readCalloutRun,
   readStructuredQuoteRun,
   resolveCalloutRun,
@@ -647,8 +649,18 @@ async function serializeBlocksWithNestingMarkers(
       currentLevel = level
     }
 
+    // A nested block loses the top-level walk's per-type dispatch, so anything
+    // BlockNote's own serializer cannot express has to be re-claimed here. The
+    // file marker is a DOM comment in the block spec, and a comment survives
+    // only while BlockNote's HTML→markdown step passes raw HTML through — so a
+    // file block under a list item is the one case the top-level fix does not
+    // cover. Same bytes either way: the spec builds the comment from
+    // `fileBlockCommentData`, which is what `serializeFileBlock` wraps.
     const shallowBlock = { ...block, children: [] } as Block
-    const markdown = (await serializeBlocks(editor, [shallowBlock] as PartialBlock[])).trim()
+    const markdown =
+      (block.type as string) === 'file'
+        ? serializeFileBlock(block.props as FileBlockProps)
+        : (await serializeBlocks(editor, [shallowBlock] as PartialBlock[])).trim()
     if (markdown) parts.push(markdown)
 
     for (const child of (block.children ?? []) as Block[]) {
@@ -1090,6 +1102,18 @@ async function blocksToMarkdownPreserving(
         }
       }
       segments.push({ type: 'content', text: lines.join('\n') })
+    } else if ((block.type as string) === 'file') {
+      // Emitted here rather than left to the block spec, which writes the marker
+      // as a DOM comment node. That only reaches the vault because BlockNote's
+      // HTML→markdown step passes comments through as raw HTML — an accident of
+      // its `unified` pipeline, not a guarantee: the 0.51 serializer rewrite
+      // returns "" for every node that is not an element or text, so the marker
+      // (and with it the whole file block) would vanish on the next writeback.
+      // Byte-identical to the renderer's twin in markdown-utils.ts, which has
+      // always serialized the marker itself.
+      await flushContentGroup()
+      flushGap()
+      segments.push({ type: 'content', text: serializeFileBlock(block.props as FileBlockProps) })
     } else if ((block.type as string) === 'toggleListItem') {
       await flushContentGroup()
       flushGap()

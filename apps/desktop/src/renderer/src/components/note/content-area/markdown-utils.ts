@@ -124,8 +124,17 @@ async function serializeBlocksWithNestingMarkers(editor: any, blocks: Block[]): 
       currentLevel = level
     }
 
+    // Twin of the main process's `serializeBlocksWithNestingMarkers`: a nested
+    // block loses the top-level walk's per-type dispatch, and the file marker
+    // is a DOM comment that only reaches the vault while BlockNote's
+    // HTML→markdown step passes raw HTML through. Same bytes either way — the
+    // spec builds the comment from `fileBlockCommentData`, which is what
+    // `serializeFileBlock` wraps.
     const shallowBlock = { ...block, children: [] } as Block
-    const markdown = (await serializeBlocks(editor, [shallowBlock])).trim()
+    const markdown =
+      (block.type as string) === 'file'
+        ? serializeFileBlock(block.props as FileBlockProps)
+        : (await serializeBlocks(editor, [shallowBlock])).trim()
     if (markdown) parts.push(markdown)
 
     for (const child of (block.children ?? []) as Block[]) {

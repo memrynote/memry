@@ -16,14 +16,22 @@
  * markdown parser; it is four ordinary characters that every other tool will
  * keep verbatim. So this adds a node type, not a file format.
  *
- * ## Why the DOM is `<span><input type="checkbox"> </span>`
+ * ## Why the editor's DOM and the on-disk DOM are different elements
  *
- * Measured against the real rehype-remark pipeline, because the obvious shape
- * is wrong: a BARE `<input type="checkbox">` followed by text serializes to
- * `| [ ]task |` — no space. BlockNote's `addSpacesToCheckboxes` rehype plugin
- * only inserts that space when the input's next sibling is a `<p>`, which is
- * the checkListItem shape and never ours. Carrying the space inside the node's
- * own element is what makes `| [ ] task |` come back byte-stable.
+ * The editor needs a real `<input type="checkbox">` — it is the control the
+ * user ticks. The serializer must NOT be handed one. An `<input>` only becomes
+ * `[x]` on disk because BlockNote 0.47's rehype-remark pipeline rewrites it
+ * (and only lands the separating space because of its `addSpacesToCheckboxes`
+ * plugin, which fires when the input's next sibling is a `<p>` — the
+ * checkListItem shape, never ours; carrying the space inside the wrapper is
+ * what fixed that). None of that is a BlockNote guarantee: its 0.51 serializer
+ * rewrite skips `<input>` entirely, which turns `| [x] task |` into
+ * `| task |` — the box AND its state, gone from the vault file.
+ *
+ * So serialization emits the token as literal TEXT (`createInlineCheckboxToken`
+ * DOM), which is what the file already holds and what every markdown pipeline
+ * reproduces verbatim. Measured byte-identical to the old input-shaped DOM
+ * through 0.47's own serializer, in a cell and in a paragraph.
  *
  * ## Why `parse` only claims a checkbox inside a cell
  *
@@ -77,6 +85,8 @@ export function createInlineCheckboxContent(checked = false) {
  * see the header.
  */
 export function createInlineCheckboxDOM(checked: boolean): HTMLSpanElement {
+  // Interactive only. Anything that writes to the vault takes
+  // `createInlineCheckboxTokenDOM` instead — see the header.
   const wrap = document.createElement('span')
   wrap.className = 'inline-checkbox'
 
@@ -91,6 +101,23 @@ export function createInlineCheckboxDOM(checked: boolean): HTMLSpanElement {
   wrap.appendChild(input)
   wrap.appendChild(document.createTextNode(' '))
   return wrap
+}
+
+/**
+ * The node's on-disk form: the literal token, never an `<input>`.
+ *
+ * `[x] ` / `[ ] ` including the separating space, so the bytes are the same
+ * ones `matchLeadingCheckbox` reads back on open. The wrapper is a `<span>`
+ * because every inline spec returns one — `addInlineContentAttributes` writes
+ * the node's props onto it on the table-cell path — and because a serializer
+ * that walks unknown elements by descending into their children reaches the
+ * text either way.
+ */
+export function createInlineCheckboxTokenDOM(checked: boolean): HTMLSpanElement {
+  const dom = document.createElement('span')
+  dom.className = 'inline-checkbox'
+  dom.textContent = checked ? '[x] ' : '[ ] '
+  return dom
 }
 
 type InlineCheckboxRender = CustomInlineContentImplementation<
@@ -117,7 +144,7 @@ export const inlineCheckboxSerialization = {
     return { checked: input.checked }
   },
   toExternalHTML: (inlineContent: { props: InlineCheckboxProps }) => ({
-    dom: createInlineCheckboxDOM(toChecked(inlineContent.props.checked))
+    dom: createInlineCheckboxTokenDOM(toChecked(inlineContent.props.checked))
   })
 }
 

@@ -38,6 +38,7 @@ import {
   createInlineCheckboxContent,
   createInlineCheckboxDOM,
   createInlineCheckboxSpec,
+  createInlineCheckboxTokenDOM,
   toChecked
 } from '@memry/editor-schema/inline'
 
@@ -54,15 +55,18 @@ export function renderInlineCheckbox(
   editor: any
 ) {
   const checked = toChecked(inlineContent.props.checked)
-  const dom = createInlineCheckboxDOM(checked)
 
   if (this?.renderType !== 'nodeView') {
-    // Serialization and the clipboard. Deliberately nothing but the shared
-    // element: this is the path a table cell's markdown comes out of, and a
-    // render that throws here makes `yDocToMarkdown` return null and stops the
-    // whole note's write-back.
-    return { dom }
+    // Serialization and the clipboard. The TOKEN element, not the control: an
+    // `<input>` reaches the vault as `[x]` only through BlockNote 0.47's rehype
+    // pipeline, and a serializer that skips inputs drops the box and its state
+    // (see inline-checkbox.ts). Deliberately nothing but the shared element —
+    // a render that throws here makes `yDocToMarkdown` return null and stops
+    // the whole note's write-back.
+    return { dom: createInlineCheckboxTokenDOM(checked) }
   }
+
+  const dom = createInlineCheckboxDOM(checked)
 
   const input = dom.querySelector('input')
   if (!input) return { dom }
