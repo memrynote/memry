@@ -8,16 +8,19 @@
  * every checklist in every existing note into an inline node ProseMirror then
  * has nowhere to put; claiming none inside a cell leaves the bug.
  *
- * The DOM is asserted here rather than only through the converter because a
- * table cell serializes its inline content through `render`, and the trailing
- * space inside the node's own element is the entire reason `| [ ] task |` comes
- * back with a space in it.
+ * Two DOMs are asserted here rather than only through the converter: the
+ * control the editor renders, and the TOKEN the vault gets. They are different
+ * elements on purpose — an `<input>` only becomes `[x]` through BlockNote
+ * 0.47's rehype pipeline, and a serializer that skips inputs drops the box and
+ * its state. The trailing space belongs to the token either way; it is the
+ * entire reason `| [ ] task |` comes back with a space in it.
  */
 
 import { describe, expect, it } from 'vitest'
 import {
   createInlineCheckboxContent,
   createInlineCheckboxDOM,
+  createInlineCheckboxTokenDOM,
   inlineCheckboxConfig,
   inlineCheckboxSerialization,
   toChecked
@@ -120,9 +123,29 @@ describe('the DOM both processes emit', () => {
     })
   })
 
-  it('toExternalHTML emits exactly what createInlineCheckboxDOM does', () => {
-    const external = inlineCheckboxSerialization.toExternalHTML({ props: { checked: true } })
-    expect(external.dom.outerHTML).toBe(createInlineCheckboxDOM(true).outerHTML)
+  it('serializes as the literal token, with no input element', () => {
+    // #given an `<input>` reaches the vault as `[x]` only through BlockNote
+    // 0.47's rehype-remark rewrite. Its 0.51 serializer skips inputs outright,
+    // so a cell that held `| [x] task |` would be written back as `| task |` —
+    // the box and its state gone from the file.
+    const ticked = inlineCheckboxSerialization.toExternalHTML({ props: { checked: true } })
+    const empty = inlineCheckboxSerialization.toExternalHTML({ props: { checked: false } })
+
+    // #when / #then the bytes the vault already holds, carried as text
+    expect(ticked.dom.outerHTML).toBe('<span class="inline-checkbox">[x] </span>')
+    expect(empty.dom.outerHTML).toBe('<span class="inline-checkbox">[ ] </span>')
+    expect(ticked.dom.querySelector('input')).toBeNull()
+  })
+
+  it('token and control agree on the state they show', () => {
+    // #given the two DOMs are built by different functions; a tick that only
+    // reaches one of them is a checkbox that renders and saves differently.
+    expect(createInlineCheckboxTokenDOM(true).textContent).toBe('[x] ')
+    expect(createInlineCheckboxDOM(true).querySelector('input')?.hasAttribute('checked')).toBe(true)
+    expect(createInlineCheckboxTokenDOM(false).textContent).toBe('[ ] ')
+    expect(createInlineCheckboxDOM(false).querySelector('input')?.hasAttribute('checked')).toBe(
+      false
+    )
   })
 })
 

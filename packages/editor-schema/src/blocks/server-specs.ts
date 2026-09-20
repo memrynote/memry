@@ -66,6 +66,13 @@ function bookmarkDom(block: { props: { url: string } }): { dom: HTMLElement } {
  * the serializer passes comments through as raw HTML and escapes everything
  * else, which is the difference between `<!-- file:{…} -->` reaching the vault
  * file and `\<!-- file:...` doing so.
+ *
+ * That passthrough is `unified`'s behaviour, not a BlockNote guarantee — the
+ * 0.51 serializer rewrite returns "" for every node that is not an element or
+ * text. So the vault write-back no longer routes through here: the converter
+ * serializes a top-level file block itself (`serializeFileBlock`), exactly as
+ * the renderer always has. What still reaches this DOM is a file block nested
+ * under a list item and any surface that serializes through BlockNote alone.
  */
 function fileDom(block: { props: Partial<FileBlockProps> }): { dom: HTMLElement } {
   const props: FileBlockProps = {
@@ -107,6 +114,13 @@ function calloutDom(block: { props: { type: string } }): {
  * vault already holds. Top-level task blocks never reach this — the converter
  * serializes those itself — but a task nested under a list item does, and this
  * spec's `render` used to throw there, taking the whole note's write-back with it.
+ *
+ * The label is wrapped in a `<span>` rather than left as a bare text node. A
+ * list-item serializer that reads the item's label from its first ELEMENT child
+ * (BlockNote 0.51+ does; 0.47's rehype pipeline reads the text either way)
+ * emits `- [x]` and drops a bare text node — the title AND the `{task:id}`
+ * suffix, which is what makes the line a task at all. Byte-identical through
+ * 0.47 with or without the wrapper; measured both.
  */
 function taskBlockDom(block: { props: unknown }): { dom: HTMLElement } {
   const props = block.props as TaskBlockProps
@@ -116,7 +130,9 @@ function taskBlockDom(block: { props: unknown }): { dom: HTMLElement } {
   checkbox.setAttribute('type', 'checkbox')
   if (props.checked) checkbox.setAttribute('checked', '')
   item.appendChild(checkbox)
-  item.appendChild(document.createTextNode(serializeTaskBlock(props).replace(/^- \[[ x]\] /, '')))
+  const label = document.createElement('span')
+  label.textContent = serializeTaskBlock(props).replace(/^- \[[ x]\] /, '')
+  item.appendChild(label)
   dom.appendChild(item)
   return { dom }
 }

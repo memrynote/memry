@@ -29,35 +29,33 @@ const inputOf = (dom: HTMLElement): HTMLInputElement =>
   dom.querySelector('input') as HTMLInputElement
 
 describe('the serialization render', () => {
-  it('is the shared span-wrapped input, with nothing added', () => {
-    // #given the path a table cell's markdown comes out of
+  it('is the literal token, with no input element', () => {
+    // #given the path a table cell's markdown comes out of. An `<input>` only
+    // becomes `[ ]` on disk through BlockNote 0.47's rehype rewrite; a
+    // serializer that skips inputs writes the cell back without its checkbox.
     const dom = renderDom('dom')
 
-    // #then exactly what `toExternalHTML` emits — the trailing space included,
-    // since a bare `<input>` serializes to `[ ]task` with no gap
+    // #then the bytes the vault already holds — the trailing space included,
+    // since the token and its label are separated by exactly one space
     expect(dom.tagName).toBe('SPAN')
-    expect(dom.innerHTML).toBe('<input type="checkbox"> ')
+    expect(dom.innerHTML).toBe('[ ] ')
+    expect(dom.querySelector('input')).toBeNull()
     // #and no editing affordances leak in: `contentEditable` on this path would
-    // be serialized markup, and `disabled` would be a state the vault records
+    // be serialized markup
     expect(dom.getAttribute('contenteditable')).toBeNull()
-    expect(inputOf(dom).disabled).toBe(false)
   })
 
-  it('carries the tick as an attribute', () => {
-    expect(renderDom('dom', { checked: true }).innerHTML).toBe(
-      '<input type="checkbox" checked=""> '
-    )
+  it('carries the tick in the token', () => {
+    expect(renderDom('dom', { checked: true }).innerHTML).toBe('[x] ')
   })
 
   it('does not tick a box whose `checked` arrived as the string "false"', () => {
     // #given exactly what a synced Y.Doc delivers — attributes are STRINGS
-    expect(renderDom('dom', { checked: 'false' }).innerHTML).toBe('<input type="checkbox"> ')
+    expect(renderDom('dom', { checked: 'false' }).innerHTML).toBe('[ ] ')
   })
 
   it('ticks one whose `checked` arrived as the string "true"', () => {
-    expect(renderDom('dom', { checked: 'true' }).innerHTML).toBe(
-      '<input type="checkbox" checked=""> '
-    )
+    expect(renderDom('dom', { checked: 'true' }).innerHTML).toBe('[x] ')
   })
 
   it('is what BlockNote reaches through the spec, which passes no `this`', () => {
@@ -70,7 +68,7 @@ describe('the serialization render', () => {
     ).dom
 
     // #then
-    expect(dom.querySelector('input').getAttribute('checked')).toBe('')
+    expect(dom.textContent).toBe('[x] ')
     expect(dom.getAttribute('contenteditable')).toBeNull()
   })
 })
