@@ -117,14 +117,25 @@ final class VaultSelectionViewModel {
     /// defect straight back, and nothing else would notice.
     let mint: (any VaultFillerMinting)?
 
+    /// The keychain the browse screen derives this device's write identity
+    /// from.
+    ///
+    /// `nil` for a caller that has none, and the browse screen is then
+    /// read-only: no create button, no rename, no delete. Carried here rather
+    /// than built inside the browse screen for the reason ``mint`` is — the
+    /// composition root owns what the production graph runs on.
+    let secureStore: (any SecureStore)?
+
     init(
         registry: any VaultRegistry,
         opener: any VaultOpening,
-        mint: (any VaultFillerMinting)? = nil
+        mint: (any VaultFillerMinting)? = nil,
+        secureStore: (any SecureStore)? = nil
     ) {
         self.registry = registry
         self.opener = opener
         self.mint = mint
+        self.secureStore = secureStore
     }
 
     /// Whether a second vault exists to switch to. The switch is offered only

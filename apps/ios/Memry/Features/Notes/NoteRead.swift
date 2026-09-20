@@ -127,6 +127,11 @@ final class NoteReadViewModel {
 
     private(set) var phase: Phase = .loading
     private(set) var fetch: Fetch = .idle
+    /// The rendered body. Empty means "nothing to draw", which the screen
+    /// resolves against `preview`: a body that is present and empty, a body
+    /// that was never pulled, and a reader that cannot walk blocks are three
+    /// different facts and only the first two are the note's.
+    private(set) var blocks: [Block] = []
     private var hasLoaded = false
 
     init(route: NoteRoute, reader: any NotesReading, filler: (any VaultFilling)? = nil) {
@@ -164,6 +169,22 @@ final class NoteReadViewModel {
         }
         hasLoaded = false
         await load()
+    }
+
+    /// The rendered body, read after the summary so the title and the dates
+    /// are on screen while the blocks are still being walked.
+    ///
+    /// A failure here is **not** a failure of the note: the summary and the
+    /// text preview are already loaded, so the screen falls back to the
+    /// preview rather than replacing a readable note with an error.
+    private func loadBlocks() async {
+        do {
+            blocks = try await reader.blocks(id: route.id) ?? []
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("this note's blocks could not be walked", .code(mapped.code))
+            blocks = []
+        }
     }
 
     /// The body, or `nil` in every phase that has no note.
@@ -219,5 +240,6 @@ final class NoteReadViewModel {
         // was present" without also saying how long it is.
         Log.storage.info("read one note")
         phase = .ready(detail)
+        await loadBlocks()
     }
 }

@@ -130,6 +130,21 @@ final class AuthStartup {
         )
     }
 
+    /// First-device setup, for a registered device on an account that may
+    /// never have been set up.
+    ///
+    /// The model asks the server which of the two situations this is; this only
+    /// builds it. `nil` before the session exists, which is the rule every
+    /// other model here follows.
+    func accountSetupModel(for state: AuthState) -> AccountSetupViewModel? {
+        guard state == .registered, let session else { return nil }
+        return AccountSetupViewModel(
+            account: CoreAccountSetting(session: session),
+            secureStore: Keychain(emitter: emitter, items: keychainItems),
+            executor: executor
+        )
+    }
+
     /// T153/T154. The device-linking flow, for a registered device that has
     /// no master key yet — the same moment ``unlockModel(for:)`` answers, and
     /// the other way through it.
@@ -171,7 +186,11 @@ final class AuthStartup {
                 files: VaultFiles(emitter: emitter),
                 executor: executor
             ),
-            mint: coreSession.map { CoreVaultFillerMint(session: $0, executor: executor) }
+            mint: coreSession.map { CoreVaultFillerMint(session: $0, executor: executor) },
+            // Phase 3's writes: the core derives this device's identity from
+            // the signing key here, so a browse screen built without it can
+            // read the vault but never write to it.
+            secureStore: Keychain(emitter: emitter, items: keychainItems)
         )
     }
 

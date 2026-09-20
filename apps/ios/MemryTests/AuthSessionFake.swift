@@ -155,6 +155,15 @@ final class FakeAuthSession: AuthSessionProtocol, @unchecked Sendable {
     // phase. Reaching one of these lines is a finding.
     func keyMaterial() async throws -> KeyMaterial { try trap(.keyMaterial) }
 
+    /// First-device setup's two calls, trapped for the same reason: a fake that
+    /// answered "this account has no keys" would send a test into a phrase
+    /// nobody scripted.
+    func keyMaterialIfConfigured() async throws -> KeyMaterial? { try trap(.keyMaterial) }
+
+    func completeAccountSetup(kdfSaltBase64: String, keyVerifier: String) async throws {
+        let _: KeyMaterial = try trap(.keyMaterial)
+    }
+
     func vaults() async throws -> [VaultSummary] { try trap(.vaults) }
 
     func restore() throws -> AuthState { try trap(.restore) }

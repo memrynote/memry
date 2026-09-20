@@ -68,11 +68,20 @@ struct SASConfirmView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
 
-            if let sasCode = model.sasCode {
-                VerificationCode(digits: sasCode)
+            // The code, the window it lives in and the wait are one block:
+            // they are the one thing on this screen, and three loose lines on
+            // the canvas read as three unrelated remarks.
+            VStack(alignment: .leading, spacing: Tokens.Space.medium) {
+                if let sasCode = model.sasCode {
+                    VerificationCode(digits: sasCode)
+                }
+                window
+                waiting
             }
-            window
-            waiting
+            .padding(Tokens.Space.inset)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.panel))
+
             Button("Stop") { Task { await model.stop() } }
                 .memrySecondaryAction()
         }
@@ -89,7 +98,7 @@ struct SASConfirmView: View {
             Text(Self.windowText(minutes: model.minutesRemaining))
         }
         .font(Tokens.Typography.supporting.font)
-        .foregroundStyle(Tokens.Text.tertiary.color)
+        .foregroundStyle(Tokens.Text.secondary.color)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 

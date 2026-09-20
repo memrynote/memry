@@ -63,13 +63,21 @@ struct VaultListView: View {
         _ summary: VaultSummary,
         _ filler: (any VaultFilling)?
     ) -> some View {
-        NotesListView(
-            vault: vault,
-            title: VaultLabel(summary).text,
-            executor: .shared,
-            filler: filler,
-            switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil
-        )
+        // The tab shell, not the notes screen directly: an opened vault is the
+        // whole product surface, and Notes is one of its five tabs.
+        VaultTabsView {
+            NotesListView(
+                vault: vault,
+                title: VaultLabel(summary).text,
+                executor: .shared,
+                filler: filler,
+                // The writes need this device's identity, and the keychain is
+                // where its signing key lives. A screen built without one
+                // browses and offers no write it cannot make.
+                store: model.secureStore,
+                switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil
+            )
+        }
     }
 
     private var selection: some View {
@@ -86,6 +94,13 @@ struct VaultListView: View {
                     VaultChoiceList(summaries: summaries) { summary in
                         Task { await model.open(summary) }
                     }
+                    // Where a vault comes from, since this screen cannot make
+                    // one: the core exports no vault creation, so the sentence
+                    // stands in for a button that would not work.
+                    Text("Vaults are created in Memry on your computer. New ones appear here on their own.")
+                        .font(Tokens.Typography.caption.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 case .empty:
                     EmptyVaultsNotice()
                 case let .unreadable(error):
@@ -180,17 +195,24 @@ private struct VaultRowLabel: View {
     let label: VaultLabel
 
     var body: some View {
-        HStack(spacing: Tokens.Space.small) {
-            Image(systemName: "lock.square")
-                .foregroundStyle(Tokens.Text.tertiary.color)
+        HStack(spacing: Tokens.Space.medium) {
+            // The mark, not a padlock: every vault on this screen is locked,
+            // so a padlock on all three rows distinguishes nothing.
+            MemryMark()
+                .fill(Tokens.Text.secondary.color)
+                .frame(width: 20 * MemryMark.aspectRatio, height: 20)
+                .frame(width: Tokens.Size.minimumHitArea - Tokens.Space.small,
+                       height: Tokens.Size.minimumHitArea - Tokens.Space.small)
+                .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.control))
             Text(label.text)
-                .font(Tokens.Typography.body.font)
+                .font(Tokens.Typography.heading.font)
                 .foregroundStyle(label.isPlaceholder
                     ? Tokens.Text.secondary.color
                     : Tokens.Text.primary.color)
             Spacer(minLength: Tokens.Space.tight)
             Image(systemName: "chevron.forward")
-                .foregroundStyle(Tokens.Text.tertiary.color)
+                .font(Tokens.Typography.supporting.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
         }
         .padding(Tokens.Space.inset)
         .frame(maxWidth: .infinity, alignment: .leading)

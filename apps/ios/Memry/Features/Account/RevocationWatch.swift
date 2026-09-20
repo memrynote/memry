@@ -105,6 +105,25 @@ final class RevocationWatch: AuthSessionProtocol, @unchecked Sendable {
         try await watching { try await session.keyMaterial() }
     }
 
+    /// Watched like its sibling. A revoked device asking whether the account
+    /// has keys gets the revocation, not `nil`: "this account has no key
+    /// material" would send it into first-device setup.
+    func keyMaterialIfConfigured() async throws -> KeyMaterial? {
+        try await watching { try await session.keyMaterialIfConfigured() }
+    }
+
+    /// Watched, and the one write in this section. A device whose access was
+    /// turned off mid-setup must hear that rather than publish an account's
+    /// key material.
+    func completeAccountSetup(kdfSaltBase64: String, keyVerifier: String) async throws {
+        try await watching {
+            try await session.completeAccountSetup(
+                kdfSaltBase64: kdfSaltBase64,
+                keyVerifier: keyVerifier
+            )
+        }
+    }
+
     func vaults() async throws -> [VaultSummary] {
         try await watching { try await session.vaults() }
     }

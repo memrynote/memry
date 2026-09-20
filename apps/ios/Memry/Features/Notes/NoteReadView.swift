@@ -78,11 +78,19 @@ struct NoteReadView: View {
                         .memrySecondaryAction()
                 case let .ready(detail):
                     NoteHeader(title: model.displayTitle, summary: detail.summary)
-                    NoteBodyView(
-                        preview: NoteBodyPreview.of(detail.body),
-                        fetch: model.fetch,
-                        download: model.canFetchBody ? { Task { await model.fetchBody() } } : nil
-                    )
+                    if model.blocks.isEmpty {
+                        // No blocks to draw. Which of the three reasons it is
+                        // — never pulled, genuinely empty, or a walk that
+                        // failed — is `NoteBodyPreview`'s to say, and it says
+                        // a different sentence for each.
+                        NoteBodyView(
+                            preview: NoteBodyPreview.of(detail.body),
+                            fetch: model.fetch,
+                            download: model.canFetchBody ? { Task { await model.fetchBody() } } : nil
+                        )
+                    } else {
+                        NoteBlocksView(blocks: model.blocks)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -295,3 +303,4 @@ private struct NoteFetchState: View {
         Nothing was lost, and Memry carries on from where it stopped.
         """
 }
+

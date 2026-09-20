@@ -48,6 +48,10 @@ private final class ScriptedSession: AuthSessionProtocol, @unchecked Sendable {
 
     func state() -> AuthState { .registered }
     func keyMaterial() async throws -> KeyMaterial { throw Untold() }
+    func keyMaterialIfConfigured() async throws -> KeyMaterial? { throw Untold() }
+    func completeAccountSetup(kdfSaltBase64: String, keyVerifier: String) async throws {
+        throw Untold()
+    }
     func vaults() async throws -> [VaultSummary] { throw Untold() }
     func refresh() async throws -> AuthState { throw Untold() }
     func registerDevice() async throws -> AuthState { throw Untold() }
@@ -368,6 +372,10 @@ private final class RevokingSession: AuthSessionProtocol, @unchecked Sendable {
 
     func vaults() async throws -> [VaultSummary] { throw error }
     func keyMaterial() async throws -> KeyMaterial { throw error }
+    func keyMaterialIfConfigured() async throws -> KeyMaterial? { throw error }
+    func completeAccountSetup(kdfSaltBase64: String, keyVerifier: String) async throws {
+        throw error
+    }
     func refresh() async throws -> AuthState { throw error }
 
     func state() -> AuthState { .registered }

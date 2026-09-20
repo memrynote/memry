@@ -37,6 +37,10 @@ import SwiftUI
 
 struct RecoveryPhraseView: View {
     @Bindable var model: RecoveryPhraseViewModel
+    /// Back to `UnlockRouteView`'s chooser. `nil` when there was no choice to
+    /// make — with no `DeviceLink` this screen is the whole route, and a Back
+    /// leading to a one-item picker is a step that undoes nothing.
+    var onBack: (() -> Void)?
 
     @FocusState private var focused: Bool
 
@@ -82,22 +86,24 @@ struct RecoveryPhraseView: View {
 
     private var field: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            TextField("Recovery phrase", text: $model.phrase, axis: .vertical)
-                .font(Tokens.Typography.recoveryMaterial.font)
-                .lineLimit(4...8)
-                .keyboardType(.asciiCapable)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .focused($focused)
-                .textFieldStyle(.roundedBorder)
-                // Key material: excluded from the redacted renderings the system
-                // takes for app switchers and screen recording.
-                .privacySensitive()
-                .accessibilityLabel("Recovery phrase")
-                .accessibilityHint("Twenty-four words, separated by spaces. Pasting the whole phrase works.")
+            FieldGroup(label: "Recovery phrase") {
+                TextField("", text: $model.phrase, axis: .vertical)
+                    .font(Tokens.Typography.recoveryMaterial.font)
+                    .lineLimit(4...8)
+                    .keyboardType(.asciiCapable)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focused)
+                    .padding(.vertical, Tokens.Space.medium)
+                    // Key material: excluded from the redacted renderings the
+                    // system takes for app switchers and screen recording.
+                    .privacySensitive()
+                    .accessibilityLabel("Recovery phrase")
+                    .accessibilityHint("Twenty-four words, separated by spaces. Pasting the whole phrase works.")
+            }
             Text(counter)
                 .font(Tokens.Typography.label.font)
-                .foregroundStyle(Tokens.Text.tertiary.color)
+                .foregroundStyle(Tokens.Text.secondary.color)
                 .accessibilityLabel(counterLabel)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -127,7 +133,13 @@ struct RecoveryPhraseView: View {
             } else {
                 Button("Unlock") { submit() }
                     .memryPrimaryAction()
+                    .frame(maxWidth: .infinity)
                     .disabled(!model.canSubmit)
+                if let onBack {
+                    Button("Unlock with a nearby computer instead", action: onBack)
+                        .memrySecondaryAction()
+                        .frame(maxWidth: .infinity)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

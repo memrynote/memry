@@ -228,9 +228,10 @@ struct DesignTokensTests {
             Tokens.Typography.heading, Tokens.Typography.body,
             Tokens.Typography.supporting, Tokens.Typography.label,
             Tokens.Typography.caption, Tokens.Typography.editorial,
+            Tokens.Typography.welcomeHeadline,
             Tokens.Typography.recoveryMaterial, Tokens.Typography.technicalCaption
         ]
-        #expect(roles.count == 10)
+        #expect(roles.count == 11)
         for role in roles {
             #expect(TypeRole.Ramp.allCases.contains(role.ramp))
         }
@@ -239,6 +240,8 @@ struct DesignTokensTests {
         #expect(Tokens.Typography.recoveryMaterial.design == .monospaced)
         #expect(Tokens.Typography.technicalCaption.design == .monospaced)
         #expect(Tokens.Typography.editorial.design == .serif)
+        #expect(Tokens.Typography.welcomeHeadline.design == .serif)
+        #expect(Tokens.Typography.welcomeHeadline.ramp == .screenTitle)
     }
 
     // MARK: Reduce motion

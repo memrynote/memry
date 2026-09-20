@@ -64,10 +64,11 @@ struct SignOutBar: View {
             Button(AccountCopy.signOut, role: .destructive) {
                 model.isConfirming = true
             }
-            .buttonStyle(.bordered)
-            .tint(Tokens.Interaction.destructive.color)
-            .controlSize(.large)
-            .frame(minHeight: Tokens.Size.minimumHitArea)
+            // Same geometry as every other action in the flow, in the one
+            // colour `DESIGN.md` reserves for removal. The role is still set,
+            // so VoiceOver says "destructive" and the colour is not the only
+            // cue.
+            .buttonStyle(MemryActionStyle(kind: .destructive))
             .confirmationDialog(
                 AccountCopy.confirmTitle,
                 isPresented: $model.isConfirming,
@@ -94,31 +95,19 @@ struct RevokedView: View {
     let model: AccountViewModel
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Tokens.Space.section) {
-                VStack(alignment: .leading, spacing: Tokens.Space.small) {
-                    Label(AccountCopy.revokedTitle, systemImage: "lock.slash")
-                        .font(Tokens.Typography.sectionTitle.font)
-                        .foregroundStyle(Tokens.Text.primary.color)
-                    Text(AccountCopy.revokedBody)
-                        .font(Tokens.Typography.body.font)
-                        .foregroundStyle(Tokens.Text.secondary.color)
-                }
-                .accessibilityElement(children: .combine)
-
-                if let residue = model.residue {
-                    ErrorNotice(error: residue, code: nil)
-                }
-                if let error = model.error {
-                    ErrorNotice(error: error, code: nil)
-                }
-
-                action
+        NoticeScreen(
+            symbol: "lock.slash",
+            tone: .destructive,
+            title: AccountCopy.revokedTitle,
+            detail: AccountCopy.revokedBody
+        ) {
+            if let residue = model.residue {
+                ErrorNotice(error: residue, code: nil)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .multilineTextAlignment(.leading)
-            .padding(.horizontal, Tokens.Space.screenInline)
-            .padding(.vertical, Tokens.Space.screenBlock)
+            if let error = model.error {
+                ErrorNotice(error: error, code: nil)
+            }
+            action
         }
         .calmAnimation(.fast, value: model.isWorking)
     }

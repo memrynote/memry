@@ -117,26 +117,26 @@ struct QRLinkView: View {
     // MARK: - The fallback that is not a fallback
 
     private var manualSection: some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            Text("Or paste the code")
-                .font(Tokens.Typography.heading.font)
-                .foregroundStyle(Tokens.Text.primary.color)
+        VStack(alignment: .leading, spacing: Tokens.Space.medium) {
+            OrDivider()
             Text("Your computer offers a copy button beside the code. It is long; pasting is the way in.")
                 .font(Tokens.Typography.supporting.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
-            TextField("Linking code", text: $model.typedPayload, axis: .vertical)
-                .font(Tokens.Typography.recoveryMaterial.font)
-                .lineLimit(3...6)
-                .keyboardType(.asciiCapable)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .textFieldStyle(.roundedBorder)
-                // The payload carries a 256-bit one-time secret: kept out of
-                // the redacted renderings the system takes for the app
-                // switcher and for screen recording.
-                .privacySensitive()
-                .accessibilityLabel("Linking code")
-                .accessibilityHint("Paste the code your computer is showing.")
+            FieldGroup(label: "Linking code") {
+                TextField("", text: $model.typedPayload, axis: .vertical)
+                    .font(Tokens.Typography.recoveryMaterial.font)
+                    .lineLimit(3...6)
+                    .keyboardType(.asciiCapable)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(.vertical, Tokens.Space.medium)
+                    // The payload carries a 256-bit one-time secret: kept out
+                    // of the redacted renderings the system takes for the app
+                    // switcher and for screen recording.
+                    .privacySensitive()
+                    .accessibilityLabel("Linking code")
+                    .accessibilityHint("Paste the code your computer is showing.")
+            }
             Button("Continue") { Task { await model.submitTypedPayload() } }
                 .memryPrimaryAction()
                 .disabled(!model.canSubmitTypedPayload)

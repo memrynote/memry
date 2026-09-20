@@ -112,23 +112,22 @@ extension View {
     }
 
     /// The Memry primary action: ink fill, not the platform blue and not the
-    /// tint, and never below the 44pt touch floor.
+    /// tint, the width of the screen's content column, and never below the
+    /// 44pt touch floor.
     ///
     /// `DESIGN.md` reserves tint-filled actions for creation and commit
     /// moments and says "do not make every primary button orange"; the
     /// platform default is a third colour that is neither of Memry's answers.
+    /// The shape is `MemryActionStyle`'s — `.borderedProminent` is a capsule
+    /// that hugs its label, which put "Get started" in the middle of a screen
+    /// built as a 24pt column.
     func memryPrimaryAction() -> some View {
-        buttonStyle(.borderedProminent)
-            .tint(Tokens.Interaction.actionFill.color)
-            .controlSize(.large)
-            .frame(minHeight: Tokens.Size.minimumHitArea)
+        buttonStyle(MemryActionStyle(kind: .primary))
     }
 
-    /// A supporting action beside the primary one.
+    /// A supporting action beside the primary one. Same geometry, so the two
+    /// stack into one column rather than into two different shapes.
     func memrySecondaryAction() -> some View {
-        buttonStyle(.bordered)
-            .tint(Tokens.Text.primary.color)
-            .controlSize(.large)
-            .frame(minHeight: Tokens.Size.minimumHitArea)
+        buttonStyle(MemryActionStyle(kind: .secondary))
     }
 }

@@ -109,6 +109,10 @@ private final class ScriptedKeyMaterial: AuthSessionProtocol, @unchecked Sendabl
     init(answer: KeyMaterial) { self.answer = answer }
 
     func keyMaterial() async throws -> KeyMaterial { answer }
+    func keyMaterialIfConfigured() async throws -> KeyMaterial? { answer }
+    func completeAccountSetup(kdfSaltBase64: String, keyVerifier: String) async throws {
+        throw NotScripted()
+    }
 
     func state() -> AuthState { .signedOut }
     func vaults() async throws -> [VaultSummary] { throw NotScripted() }

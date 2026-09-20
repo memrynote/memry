@@ -282,6 +282,11 @@ enum Tokens {
         /// `DESIGN.md`: "Keep touch targets at least 44pt. Density may reduce
         /// visual padding, but not the hit area."
         static let minimumHitArea: CGFloat = 44
+        /// A full-width action's resting height. Above the touch floor rather
+        /// than at it: these are the one thing a setup screen is asking for,
+        /// and they carry a 17pt label that Dynamic Type can grow past this,
+        /// which is why callers set it as a minimum.
+        static let actionHeight: CGFloat = 52
         /// The one-point boundary that `Line.border` paints.
         static let hairline: CGFloat = 1
     }
@@ -347,6 +352,11 @@ enum Tokens {
         static let caption = TypeRole(.caption)
         /// Journal, reflective copy, selected content titles.
         static let editorial = TypeRole(.sectionTitle, design: .serif)
+        /// The welcome screens' one dominant read. The editorial serif at the
+        /// screen-title step, and the only place it is that large: `DESIGN.md`
+        /// allows an editorial moment outside the working interface, and the
+        /// two screens before sign-in are the whole of that moment.
+        static let welcomeHeadline = TypeRole(.screenTitle, design: .serif)
         /// Recovery material, paths, tokens — anything the user must read
         /// character by character.
         static let recoveryMaterial = TypeRole(.body, design: .monospaced)

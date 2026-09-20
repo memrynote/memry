@@ -18,9 +18,19 @@ import SwiftUI
 // roles, and reduce-motion branched inside `calmAnimation` on every evaluation
 // rather than read once into a flag.
 //
-// **Read-only.** `Notes` exports `folders`, `list` and `read`; the CRUD T126
-// built in Rust never reached the FFI, so there is no menu, no swipe action
-// and no create button anywhere in this feature. T156a is cut.
+// **Read-only, for now and for one reason.** `Notes` exports `folders`,
+// `list` and `read`; the CRUD T126 built in Rust never reached the FFI, so
+// there is no menu, no swipe action and no create button here. It is not a
+// product decision — the calls do not exist — and the affordances land the
+// moment they do.
+//
+// **`List`, not a `LazyVStack` in a `ScrollView`.** The list is the screen, so
+// it takes the platform's own container: row recycling for a vault holding
+// thousands, the search field's scroll-edge behaviour, swipe actions when the
+// writes land, and the VoiceOver rotor — none of which a hand-rolled stack
+// gets. The hierarchy is flattened in `BrowseRows.swift` and rendered as one
+// flat list, so opening a folder costs no FFI crossing and no re-layout of
+// anything above it.
 //
 // **The folder tree shows only configured folders** (spec-defect 124, Kaan's
 // decision), and the notes in an unconfigured folder are still shown — in
@@ -39,6 +49,12 @@ struct NotesListView: View {
     /// both, and it is still `Codable`-restorable, which is what research
     /// R15's rule is written for.
     @State private var path = NavigationPath()
+    /// Which folders are open. Held by the screen rather than by the view
+    /// model: it is where the user is looking, not what the vault contains,
+    /// and a reload must not close what they opened.
+    @State private var expanded: Set<String> = []
+    @State private var sort: BrowseSort = .modified
+    @State private var query = ""
 
     /// The production entry point: an opened `Vault` and the shell's one core
     /// queue. `State(initialValue:)` so the model outlives a re-render — a
@@ -48,11 +64,19 @@ struct NotesListView: View {
         title: String,
         executor: CoreExecutor,
         filler: (any VaultFilling)? = nil,
+        store: (any SecureStore)? = nil,
         switchVault: (() -> Void)? = nil
     ) {
         self.title = title
         self.switchVault = switchVault
-        _model = State(initialValue: VaultBrowseViewModel(vault: vault, executor: executor, filler: filler))
+        _model = State(
+            initialValue: VaultBrowseViewModel(
+                vault: vault,
+                executor: executor,
+                filler: filler,
+                store: store
+            )
+        )
     }
 
     init(model: VaultBrowseViewModel, title: String, switchVault: (() -> Void)? = nil) {
@@ -63,8 +87,12 @@ struct NotesListView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            VaultBrowseScreen(model: model)
+            VaultBrowseScreen(model: model, expanded: $expanded, sort: sort, query: query)
                 .navigationTitle(title)
+                // The platform's search field: it owns the scroll-edge
+                // treatment, the cancel button and the keyboard, and on this
+                // OS it is glass without anything here asking for it.
+                .searchable(text: $query, prompt: "Search notes")
                 .navigationDestination(for: FolderRoute.self) { route in
                     FolderScreen(route: route, outline: model.outline)
                 }
@@ -84,6 +112,30 @@ struct NotesListView: View {
                     NoteReadView(route: route, reader: model.reader, filler: model.filler)
                 }
                 .toolbar {
+                    if model.writer != nil {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            // Shown only where a write can actually happen.
+                            // A device with no identity to write under gets no
+                            // button rather than a button that fails.
+                            Button("New note", systemImage: "square.and.pencil") {
+                                Task {
+                                    if let id = await model.createNote(in: nil) {
+                                        // Straight into the note that was just
+                                        // made: a create that leaves the user
+                                        // hunting for the row did half a job.
+                                        path.append(NoteRoute(id: id))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        // Its own view, and not inline: `body` must stay free
+                        // of every iterating container, because that is the
+                        // rule the destination registrations above depend on
+                        // and a source check enforces it literally.
+                        SortMenu(sort: $sort)
+                    }
                     if let switchVault {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Switch vault", systemImage: "lock.square") { switchVault() }
@@ -91,6 +143,43 @@ struct NotesListView: View {
                     }
                 }
                 .task { await model.loadIfNeeded() }
+                // A failed write is an alert over a screen that still holds
+                // the vault, not a replacement for it: the outline is still
+                // true, only the write did not happen.
+                .alert(
+                    model.writeFailure?.title ?? "",
+                    isPresented: Binding(
+                        get: { model.writeFailure != nil },
+                        set: { if !$0 { model.writeFailure = nil } }
+                    )
+                ) {
+                    Button("OK", role: .cancel) { model.writeFailure = nil }
+                } message: {
+                    // What to do next, when there is something to do. A
+                    // failure with no guidance says only what happened rather
+                    // than inventing a step that does not exist.
+                    if let guidance = model.writeFailure?.guidance {
+                        Text(guidance)
+                    }
+                }
+        }
+    }
+}
+
+/// The sort control. Lifted out of `NotesListView.body` on purpose — see the
+/// toolbar comment there.
+private struct SortMenu: View {
+    @Binding var sort: BrowseSort
+
+    var body: some View {
+        Menu {
+            Picker("Sort by", selection: $sort) {
+                ForEach(BrowseSort.allCases) { option in
+                    Text(option.label).tag(option)
+                }
+            }
+        } label: {
+            Label("Sort by", systemImage: "arrow.up.arrow.down")
         }
     }
 }
@@ -98,61 +187,222 @@ struct NotesListView: View {
 /// The root of the stack. Every phase is a distinct render.
 private struct VaultBrowseScreen: View {
     let model: VaultBrowseViewModel
+    @Binding var expanded: Set<String>
+    let sort: BrowseSort
+    let query: String
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Tokens.Space.section) {
-                switch model.phase {
-                case .loading:
-                    // Words, never a bare spinner, and never a duration.
-                    ProgressView { Text("Reading this vault") }
-                        .progressViewStyle(.circular)
-                        .font(Tokens.Typography.supporting.font)
-                        .tint(Tokens.Text.secondary.color)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                case .empty:
-                    EmptyVaultNotice()
-                case let .unreadable(error):
+        Group {
+            switch model.phase {
+            case .loading:
+                // Words, never a bare spinner, and never a duration.
+                ProgressView { Text("Reading this vault") }
+                    .progressViewStyle(.circular)
+                    .font(Tokens.Typography.supporting.font)
+                    .tint(Tokens.Text.secondary.color)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .empty:
+                EmptyVaultNotice()
+            case let .unreadable(error):
+                VStack(alignment: .leading, spacing: Tokens.Space.medium) {
                     ErrorNotice(error: error, code: nil)
                     Button("Try again") { Task { await model.reload() } }
                         .memrySecondaryAction()
-                case let .ready(outline):
-                    VaultOutlineView(outline: outline)
                 }
+                .padding(.horizontal, Tokens.Space.screenInline)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            case let .ready(outline):
+                VaultOutlineList(
+                    outline: outline,
+                    expanded: $expanded,
+                    sort: sort,
+                    query: query,
+                    model: model
+                )
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Tokens.Space.screenInline)
-            .padding(.vertical, Tokens.Space.screenBlock)
         }
         .background(Tokens.Canvas.background.color)
         .calmAnimation(.normal, value: model.phase)
     }
 }
 
-/// The hierarchy itself. Same shape as desktop's — the folder tree first, then
-/// the notes that sit at the vault root.
-private struct VaultOutlineView: View {
+/// The hierarchy itself, as one flat platform list.
+///
+/// **Searching replaces the tree.** A filtered tree either hides a match whose
+/// parent does not match or keeps parents that match nothing; a flat list of
+/// hits says where the notes are without either lie.
+private struct VaultOutlineList: View {
     let outline: VaultOutline
+    @Binding var expanded: Set<String>
+    let sort: BrowseSort
+    let query: String
+    /// Carried down for the row actions. The rows are where a rename, a move
+    /// or a delete starts, and each one needs the writer behind them.
+    let model: VaultBrowseViewModel
+
+    private var isSearching: Bool {
+        !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
-        let folders = outline.folderRows
-        if !folders.isEmpty {
-            BrowseSection(title: "Folders") { FolderTreeView(rows: folders) }
-        }
-        if !outline.rootNotes.isEmpty {
-            BrowseSection(title: "Notes") { NoteRowsView(notes: outline.rootNotes) }
-        }
-        if !outline.unplacedNotes.isEmpty {
-            // Kaan's spec-defect 124 decision, named on screen rather than
-            // papered over. These notes are real; their folder carries no
-            // `folder_config` row, so the tree above cannot contain it.
-            BrowseSection(
-                title: "Outside the folder list",
-                caption: "These notes are in folders this vault has no folder record for."
-            ) {
-                NoteRowsView(notes: outline.unplacedNotes)
+        List {
+            if isSearching {
+                let hits = outline.searchRows(query: query, sort: sort)
+                if hits.isEmpty {
+                    // Its own sentence: nothing matched is not an empty vault.
+                    ContentUnavailableView.search(text: query)
+                        .listRowSeparator(.hidden)
+                } else {
+                    ForEach(hits) { row in
+                        BrowseRowView(row: row, toggle: toggle, model: model)
+                    }
+                }
+            } else {
+                ForEach(outline.browseRows(expanded: expanded, sort: sort)) { row in
+                    BrowseRowView(row: row, toggle: toggle, model: model)
+                }
+                if !outline.unplacedNotes.isEmpty {
+                    // Kaan's spec-defect 124 decision, named on screen rather
+                    // than papered over. These notes are real; their folder
+                    // carries no `folder_config` row, so the tree above cannot
+                    // contain them.
+                    Section {
+                        ForEach(outline.unplacedRows(sort: sort)) { row in
+                            BrowseRowView(row: row, toggle: toggle, model: model)
+                        }
+                    } header: {
+                        Text("Outside the folder list")
+                    } footer: {
+                        Text("These notes are in folders this vault has no folder record for.")
+                    }
+                }
             }
         }
+        .listStyle(.plain)
+        .calmAnimation(.fast, value: expanded)
+    }
+
+    private func toggle(_ path: String) {
+        if expanded.contains(path) { expanded.remove(path) } else { expanded.insert(path) }
+    }
+}
+
+/// One row: a folder that opens in place, or a note that pushes.
+private struct BrowseRowView: View {
+    let row: BrowseRow
+    let toggle: (String) -> Void
+    let model: VaultBrowseViewModel
+
+    var body: some View {
+        switch row.kind {
+        case let .folder(path, noteCount, isExpanded):
+            Button { toggle(path) } label: {
+                FolderRowLabel(row: row, noteCount: noteCount, isExpanded: isExpanded)
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(.isButton)
+            // Said in words rather than as a trait: `AccessibilityTraits` has
+            // no expanded state, and a folder that does not say whether it is
+            // open is a row VoiceOver users have to guess at.
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+        case let .note(note):
+            // `NavigationLink(value:)` and not `NavigationLink(destination:)`:
+            // a value push resolves against the **one** registration in
+            // `NotesListView.body`, which is what lets a restored path reach
+            // the same screen without a row existing.
+            NavigationLink(value: NoteRoute(id: note.id)) {
+                NoteRowLabel(row: row, note: note)
+            }
+            .modifier(NoteRowActions(note: note, model: model))
+        }
+    }
+}
+
+/// A folder line: disclosure, name, and its own note count.
+private struct FolderRowLabel: View {
+    let row: BrowseRow
+    let noteCount: Int
+    let isExpanded: Bool
+
+    var body: some View {
+        HStack(spacing: Tokens.Space.small) {
+            Image(systemName: "chevron.forward")
+                .font(Tokens.Typography.caption.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                .frame(width: Tokens.Space.inset)
+                .accessibilityHidden(true)
+            Image(systemName: isExpanded ? "folder.fill" : "folder")
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .accessibilityHidden(true)
+            Text(row.title)
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(row.isPlaceholderTitle
+                    ? Tokens.Text.secondary.color
+                    : Tokens.Text.primary.color)
+            Spacer(minLength: Tokens.Space.tight)
+            // Only where it is not already on screen: an open folder's notes
+            // are the rows underneath, and counting them again is noise.
+            if !isExpanded, noteCount > 0 {
+                Text(noteCount.formatted())
+                    .font(Tokens.Typography.caption.font.monospacedDigit())
+                    .foregroundStyle(Tokens.Text.secondary.color)
+            }
+        }
+        .padding(.leading, CGFloat(row.depth) * Tokens.Space.inset)
+        .frame(minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(noteCount > 0 ? "\(row.title), \(noteCount) notes" : row.title)
+    }
+}
+
+/// One note line.
+private struct NoteRowLabel: View {
+    let row: BrowseRow
+    let note: NoteSummary
+
+    /// `nil` means the payload carried no such instant, never "zero"
+    /// (data-model §A.6). An absent date is rendered as nothing rather than as
+    /// an epoch nobody wrote.
+    private var modified: String? {
+        guard let milliseconds = note.modifiedAt else { return nil }
+        return Date(timeIntervalSince1970: Double(milliseconds) / 1000)
+            .formatted(date: .abbreviated, time: .omitted)
+    }
+
+    var body: some View {
+        HStack(spacing: Tokens.Space.small) {
+            Group {
+                if let emoji = note.emoji, !emoji.isEmpty {
+                    Text(emoji)
+                } else {
+                    Image(systemName: "doc.text")
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                }
+            }
+            .font(Tokens.Typography.body.font)
+            .frame(width: Tokens.Space.section, alignment: .center)
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                Text(row.title)
+                    .font(Tokens.Typography.body.font)
+                    .foregroundStyle(row.isPlaceholderTitle
+                        ? Tokens.Text.secondary.color
+                        : Tokens.Text.primary.color)
+                if let modified {
+                    Text(modified)
+                        .font(Tokens.Typography.caption.font.monospacedDigit())
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                }
+            }
+            Spacer(minLength: Tokens.Space.tight)
+        }
+        .padding(.leading, CGFloat(row.depth) * Tokens.Space.inset)
+        .frame(minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
+        .multilineTextAlignment(.leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -210,7 +460,7 @@ struct NoteRowsView: View {
                 // reach the same screen without a row existing. A destination
                 // built here would be a second, lazily-registered one.
                 NavigationLink(value: NoteRoute(id: note.id)) {
-                    NoteRowLabel(note: note)
+                    NoteRowLabel(row: .note(note), note: note)
                 }
                 .buttonStyle(.plain)
             }
@@ -219,50 +469,4 @@ struct NoteRowsView: View {
     }
 }
 
-/// One note.
-///
-/// The label only. T157 landed the reading surface, so `NoteRowsView` wraps
-/// this in a `NavigationLink(value:)` whose destination is registered once, in
-/// `NotesListView.body`. The wrapping is there and not here so that this type
-/// stays a pure label — the folder tree renders the same rows.
-private struct NoteRowLabel: View {
-    let note: NoteSummary
 
-    /// Never empty and never the id: an id identifies content and reads as
-    /// noise, so an untitled note says so in words.
-    private var title: String { note.title.isEmpty ? "Untitled note" : note.title }
-
-    /// `nil` means the payload carried no such instant, never "zero"
-    /// (data-model §A.6). An absent date is rendered as nothing rather than as
-    /// an epoch nobody wrote.
-    private var modified: String? {
-        guard let milliseconds = note.modifiedAt else { return nil }
-        let date = Date(timeIntervalSince1970: Double(milliseconds) / 1000)
-        return date.formatted(date: .abbreviated, time: .omitted)
-    }
-
-    var body: some View {
-        HStack(spacing: Tokens.Space.small) {
-            Text(note.emoji ?? "")
-                .font(Tokens.Typography.body.font)
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                Text(title)
-                    .font(Tokens.Typography.body.font)
-                    .foregroundStyle(note.title.isEmpty
-                        ? Tokens.Text.secondary.color
-                        : Tokens.Text.primary.color)
-                if let modified {
-                    Text(modified)
-                        .font(Tokens.Typography.caption.font.monospacedDigit())
-                        .foregroundStyle(Tokens.Text.tertiary.color)
-                }
-            }
-            Spacer(minLength: Tokens.Space.tight)
-        }
-        .padding(Tokens.Space.inset)
-        .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
-        .blockSurface(radius: Tokens.Radius.control)
-        .multilineTextAlignment(.leading)
-        .accessibilityElement(children: .combine)
-    }
-}

@@ -140,12 +140,22 @@ private struct FirstSyncScreen: View {
     private var bar: some View {
         if let progress, progress.total > 0 {
             let fraction = Double(progress.completed) / Double(progress.total)
-            ProgressView(value: Double(progress.completed), total: Double(progress.total)) {
-                Text(Self.sentence(for: progress.phase))
-                    .font(Tokens.Typography.supporting.font)
+            VStack(alignment: .leading, spacing: Tokens.Space.small) {
+                ProgressView(value: Double(progress.completed), total: Double(progress.total)) {
+                    Text(Self.sentence(for: progress.phase))
+                        .font(Tokens.Typography.supporting.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                }
+                // A tint fill, which is what `DESIGN.md` reserves the accent
+                // for. Nothing here rests on the colour: the count under it
+                // says the same thing in words.
+                .tint(Tokens.Tint.base.color)
+                // A count the user can act on — unlike a duration, which this
+                // screen still refuses to invent.
+                Text("\(progress.completed) of \(progress.total) notes")
+                    .font(Tokens.Typography.technicalCaption.font.monospacedDigit())
                     .foregroundStyle(Tokens.Text.secondary.color)
             }
-            .tint(Tokens.Text.primary.color)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(Self.sentence(for: progress.phase))

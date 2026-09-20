@@ -11,6 +11,23 @@ struct AuthRootView: View {
     @State private var unlock: RecoveryPhraseViewModel?
     @State private var link: DeviceLinkingViewModel?
     @State private var vaults: VaultSelectionViewModel?
+    /// First-device setup, for an account that may have no key material at all.
+    ///
+    /// **This is the branch a fresh signup was missing.** Before it, a
+    /// registered device with no master key was always sent to the unlock
+    /// screen and asked for 24 words — words an account nobody had finished
+    /// setting up has never had. The model asks the server which case it is;
+    /// this holds it while it does.
+    @State private var setup: AccountSetupViewModel?
+    /// Set once the setup model has answered "this account already has keys",
+    /// so the question is asked once per screen rather than on every route.
+    @State private var setupSettled = false
+    /// Whether the two welcome screens have been through once on this install.
+    ///
+    /// A presentation preference, so `@AppStorage` and not the keychain: it
+    /// carries no key material, and a user who reinstalls for a clean app is
+    /// entitled to see the pitch again.
+    @AppStorage("onboarding.welcomeSeen") private var welcomeSeen = false
 
     init(emitter: CoreEventEmitter) {
         _startup = State(initialValue: AuthStartup(emitter: emitter))
@@ -20,8 +37,7 @@ struct AuthRootView: View {
         Group {
             switch startup.phase {
             case .starting:
-                ProgressView()
-                    .controlSize(.large)
+                LaunchView()
             case let .ready(model):
                 // T152. A registered device with no master key is a locked
                 // vault, and the phrase is one of its two ways in (T153/T154
@@ -34,13 +50,42 @@ struct AuthRootView: View {
                 AccountShell(state: model.state, account: startup.account) {
                     if let vaults {
                         VaultListView(model: vaults)
+                    } else if let setup {
+                        AccountSetupView(
+                            model: setup,
+                            onEstablished: {
+                                // The key is in the store now, which is the
+                                // same ending a correct phrase has: the next
+                                // question is which vault.
+                                self.setup = nil
+                                setupSettled = true
+                                route(for: model.state)
+                            },
+                            onAlreadyConfigured: {
+                                self.setup = nil
+                                setupSettled = true
+                                route(for: model.state)
+                            }
+                        )
                     } else if let unlock {
                         // T153/T154. The phrase and the nearby computer are
                         // the two ways into the same locked vault, offered
                         // together rather than one behind the other.
                         UnlockRouteView(phrase: unlock, link: link)
+                    } else if welcomeSeen || model.state != .signedOut {
+                        // Back only from the first sign-in: it returns to the
+                        // welcome pages, and there is nothing to return to when
+                        // a session expired into this screen.
+                        SignInView(
+                            model: model,
+                            onBack: model.state == .signedOut ? { welcomeSeen = false } : nil
+                        )
                     } else {
-                        SignInView(model: model)
+                        // Only ever before the first sign-in. A device that is
+                        // signed out again later has already read this, and a
+                        // session that expired is an interruption, not a
+                        // first run.
+                        WelcomeView { welcomeSeen = true }
                     }
                 }
                 .onChange(of: model.state, initial: true) { _, state in
@@ -78,16 +123,32 @@ struct AuthRootView: View {
             unlock = nil
             link = nil
             vaults = nil
+            setup = nil
+            setupSettled = false
             return
         }
         if unlock?.isUnlocked == true || link?.isLinked == true || startup.isAlreadyUnlocked() {
             unlock = nil
             link = nil
+            setup = nil
+            // A device holding the master key has nothing to set up, and must
+            // not spend a round trip asking.
+            setupSettled = true
+        } else if !setupSettled {
+            // **Nothing else is built until this answers.** The setup model is
+            // asking the server whether the account has key material at all,
+            // and every screen after it depends on which answer comes back.
+            // Building the vault list beside it is what put "No vaults yet" in
+            // front of a brand-new account instead of its recovery phrase: the
+            // body renders the vault list first, so the phrase screen existed
+            // and was never reached.
+            if setup == nil { setup = startup.accountSetupModel(for: state) }
+            return
         } else if unlock == nil {
             unlock = startup.unlockModel(for: state)
             link = startup.linkModel(for: state)
         }
-        if unlock == nil, vaults == nil {
+        if setup == nil, unlock == nil, vaults == nil {
             vaults = startup.vaultModel(for: state)
         }
     }
@@ -102,12 +163,16 @@ private struct AuthUnavailableView: View {
     let error: UserFacingError
 
     var body: some View {
-        ContentUnavailableView {
-            Label(error.title, systemImage: "exclamationmark.triangle")
-        } description: {
-            if let guidance = error.guidance {
-                Text(guidance)
-            }
+        NoticeScreen(
+            symbol: "exclamationmark.triangle",
+            title: error.title,
+            // `DESIGN.md`: an error the user cannot act on still gets a second
+            // sentence. A mapped error without guidance has none to give, so
+            // this one says the only thing that is true on every screen that
+            // can show it — nothing on the phone was touched.
+            detail: error.guidance ?? "Nothing on this phone was changed. Open Memry again later."
+        ) {
+            EmptyView()
         }
     }
 }

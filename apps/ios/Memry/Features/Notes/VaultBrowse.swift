@@ -51,6 +51,13 @@ protocol NotesReading: Sendable {
     ///   and cannot be read throws, and a note that exists and holds no text
     ///   returns a `NoteBody`. Three answers, three screens.
     func read(id: String) async throws -> NoteDetail?
+    /// The same note's body as blocks, for rendering rather than previewing.
+    ///
+    /// - Returns: `nil` for "no such note", exactly as `read` does. An **empty
+    ///   array** is a body this device holds that contains nothing — the same
+    ///   distinction `NoteBody.present` draws one level down, and the reason
+    ///   the two are not collapsed here.
+    func blocks(id: String) async throws -> [Block]?
 }
 
 /// The production reader: the core's own `Notes`, over the shell's one serial
@@ -82,6 +89,14 @@ struct CoreNotesReader: NotesReading {
     func read(id: String) async throws -> NoteDetail? {
         let vault = vault
         return try await executor.run { try vault.notes().read(id: id) }
+    }
+
+    /// Blocking for the same reason and on the same queue. It rebuilds the
+    /// **same** document `read` does, from the same update log, so the two
+    /// cannot disagree about what has arrived.
+    func blocks(id: String) async throws -> [Block]? {
+        let vault = vault
+        return try await executor.run { try vault.notes().blocks(id: id) }
     }
 }
 
@@ -115,17 +130,44 @@ final class VaultBrowseViewModel {
     /// honest — the alternative is a button that cannot do anything.
     let filler: (any VaultFilling)?
 
+    /// The write surface, or `nil` for a screen that has none.
+    ///
+    /// `nil` is not a policy either: a caller with no keychain to derive this
+    /// device's identity from cannot write, and the affordances are hidden
+    /// rather than shown failing. See `VaultWrite.swift`.
+    let writer: (any NotesWriting)?
+
+    /// The last failed write, for the screen to show and dismiss. Separate
+    /// from ``phase`` because a failed write leaves the vault readable: the
+    /// outline is still true, only the write did not happen.
+    var writeFailure: UserFacingError?
+
     private var hasLoaded = false
 
-    init(reader: any NotesReading, filler: (any VaultFilling)? = nil) {
+    init(
+        reader: any NotesReading,
+        filler: (any VaultFilling)? = nil,
+        writer: (any NotesWriting)? = nil
+    ) {
         self.reader = reader
         self.filler = filler
+        self.writer = writer
     }
 
     /// The production initializer. `AuthRootView` -> `VaultListView` ->
     /// `VaultFillView` -> `NotesListView` reaches this and nothing else.
-    convenience init(vault: Vault, executor: CoreExecutor, filler: (any VaultFilling)? = nil) {
-        self.init(reader: CoreNotesReader(vault: vault, executor: executor), filler: filler)
+    convenience init(
+        vault: Vault,
+        executor: CoreExecutor,
+        filler: (any VaultFilling)? = nil,
+        store: (any SecureStore)? = nil
+    ) {
+        self.init(
+            reader: CoreNotesReader(vault: vault, executor: executor),
+            filler: filler,
+            // No store, no identity, no writes — and no buttons offering them.
+            writer: store.map { CoreNotesWriter(vault: vault, store: $0, executor: executor) }
+        )
     }
 
     /// The loaded hierarchy, or `nil` in every other phase.
