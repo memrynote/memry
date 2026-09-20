@@ -188,6 +188,14 @@ enum Tokens {
         static let secondary = AdaptiveColor(light: 0x62_5F_59, dark: 0xA5_A2_9D)
         /// `--text-tertiary`. Metadata and inactive icons.
         static let tertiary = AdaptiveColor(light: 0x6F_6C_66, dark: 0x96_93_8D)
+        /// Tint-derived ink, for a link inside running text.
+        ///
+        /// **Not `Tint.base`.** The accent is a fill at 2.80:1 on the light
+        /// canvas and cannot carry text; a wiki link painted with it would be
+        /// the accent failing AA on the one surface it is read on most. This
+        /// is the same hue darkened until it clears 4.5:1, so a link still
+        /// reads as Memry's orange rather than as the platform blue.
+        static let tint = AdaptiveColor(light: 0xB4_43_09, dark: 0xF4_A2_62)
     }
 
     // MARK: Boundaries

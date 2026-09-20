@@ -109,7 +109,16 @@ struct NotesListView: View {
                     // T237. The filler travels with the reader, so a note
                     // whose body the thirty-day window left behind has a way
                     // to fetch it rather than rendering as an empty note.
-                    NoteReadView(route: route, reader: model.reader, filler: model.filler)
+                    // A wiki link inside a note pushes through this same
+                    // registration rather than declaring one of its own: the
+                    // rule above is exactly why the read screen is handed a
+                    // push instead of owning a destination.
+                    NoteReadView(
+                        route: route,
+                        reader: model.reader,
+                        filler: model.filler,
+                        open: { path.append($0) }
+                    )
                 }
                 .toolbar {
                     if model.writer != nil {
@@ -247,16 +256,17 @@ private struct VaultOutlineList: View {
     var body: some View {
         List {
             if isSearching {
-                let hits = outline.searchRows(query: query, sort: sort)
-                if hits.isEmpty {
-                    // Its own sentence: nothing matched is not an empty vault.
-                    ContentUnavailableView.search(text: query)
-                        .listRowSeparator(.hidden)
-                } else {
-                    ForEach(hits) { row in
-                        BrowseRowView(row: row, toggle: toggle, model: model)
-                    }
-                }
+                // The index answers when it can. It reads bodies as well as
+                // titles, which is the whole point: a vault holding the word
+                // in a note's text used to answer "no results".
+                SearchResultsSection(
+                    query: query,
+                    search: model.search,
+                    outline: outline,
+                    sort: sort,
+                    model: model,
+                    toggle: toggle
+                )
             } else {
                 ForEach(outline.browseRows(expanded: expanded, sort: sort)) { row in
                     BrowseRowView(row: row, toggle: toggle, model: model)
@@ -280,10 +290,103 @@ private struct VaultOutlineList: View {
         }
         .listStyle(.plain)
         .calmAnimation(.fast, value: expanded)
+        // Once per screen, before the first query: an index that was never
+        // built answers nothing, and a user cannot tell that from an empty
+        // vault.
+        .task { await model.search?.prepare() }
+        .onChange(of: query) { _, latest in model.search?.run(latest) }
     }
 
     private func toggle(_ path: String) {
         if expanded.contains(path) { expanded.remove(path) } else { expanded.insert(path) }
+    }
+}
+
+/// What a search shows.
+///
+/// **Three different answers, and they are not interchangeable.** The index
+/// answering "nothing matched" is a fact about the query. The index failing is
+/// a failure, and it falls back to matching titles in the outline already on
+/// screen rather than showing an error over a vault the user can still read.
+/// And a vault with no index at all — the file would not open — gets the same
+/// title matching, silently, because that is what it had before search
+/// existed.
+private struct SearchResultsSection: View {
+    let query: String
+    let search: VaultSearchViewModel?
+    let outline: VaultOutline
+    let sort: BrowseSort
+    let model: VaultBrowseViewModel
+    let toggle: (String) -> Void
+
+    var body: some View {
+        switch search?.phase {
+        case let .results(hits) where !hits.isEmpty:
+            ForEach(hits, id: \.id) { hit in
+                // Pushed by value, through the one registration on the stack
+                // root — the same route a browse row uses.
+                NavigationLink(value: NoteRoute(id: hit.id)) {
+                    SearchHitLabel(hit: hit)
+                }
+            }
+        case .results:
+            // Nothing matched. Not an empty vault, and said as its own thing.
+            ContentUnavailableView.search(text: query)
+                .listRowSeparator(.hidden)
+        case .searching, .idle, .none:
+            // Still running, or no index: the titles this screen already holds
+            // are shown rather than a blank list. They are a subset of what
+            // the index will answer, never a contradiction of it.
+            TitleMatches(outline: outline, query: query, sort: sort, model: model, toggle: toggle)
+        case .failed:
+            TitleMatches(outline: outline, query: query, sort: sort, model: model, toggle: toggle)
+        }
+    }
+}
+
+/// The pre-index behaviour, kept as the fallback: titles, matched in memory.
+private struct TitleMatches: View {
+    let outline: VaultOutline
+    let query: String
+    let sort: BrowseSort
+    let model: VaultBrowseViewModel
+    let toggle: (String) -> Void
+
+    var body: some View {
+        let hits = outline.searchRows(query: query, sort: sort)
+        if hits.isEmpty {
+            ContentUnavailableView.search(text: query)
+                .listRowSeparator(.hidden)
+        } else {
+            ForEach(hits) { row in
+                BrowseRowView(row: row, toggle: toggle, model: model)
+            }
+        }
+    }
+}
+
+/// One hit. The kind is named because a journal has no title of its own — its
+/// calendar date is what names it.
+private struct SearchHitLabel: View {
+    let hit: SearchResult
+
+    private var title: String {
+        if let date = hit.journalDate, !date.isEmpty { return date }
+        return hit.title.isEmpty ? "Untitled note" : hit.title
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+            Text(title)
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(Tokens.Text.primary.color)
+            if hit.kind == "journal" {
+                Text("Journal")
+                    .font(Tokens.Typography.caption.font)
+                    .foregroundStyle(Tokens.Text.secondary.color)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

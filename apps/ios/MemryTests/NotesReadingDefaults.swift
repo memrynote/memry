@@ -15,5 +15,14 @@ import MemryCore
 // default to fall back on, so the compiler is what holds it to the surface.
 extension NotesReading {
     func blocks(id: String) async throws -> [Block]? { [] }
+
+    /// Unread rather than empty, for the same reason the production screen
+    /// keeps the two apart: a fake answering "this note has no tags" would let
+    /// a test pass over a tag row that was never asked for.
+    func metadata(id: String) async throws -> NoteMetadata? { nil }
+
+    /// Every link is broken until a test scripts otherwise — which is the
+    /// honest default for a reader holding no notes.
+    func resolveWikiTarget(_ target: String) async throws -> String? { nil }
 }
 

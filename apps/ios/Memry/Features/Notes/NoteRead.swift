@@ -132,6 +132,12 @@ final class NoteReadViewModel {
     /// that was never pulled, and a reader that cannot walk blocks are three
     /// different facts and only the first two are the note's.
     private(set) var blocks: [Block] = []
+    /// The note's tags and typed properties, or `nil` while they are unread.
+    ///
+    /// `nil` and "read, and it has none" are different: the first draws
+    /// nothing because the answer has not arrived, the second draws nothing
+    /// because there is nothing — and only the first may change on its own.
+    private(set) var metadata: NoteMetadata?
     private var hasLoaded = false
 
     init(route: NoteRoute, reader: any NotesReading, filler: (any VaultFilling)? = nil) {
@@ -184,6 +190,37 @@ final class NoteReadViewModel {
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this note's blocks could not be walked", .code(mapped.code))
             blocks = []
+        }
+    }
+
+    /// The tags and properties, read after the note for the same reason the
+    /// blocks are: the title and the dates belong on screen first, and a
+    /// failure here is not a failure of the note.
+    private func loadMetadata() async {
+        do {
+            metadata = try await reader.metadata(id: route.id)
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("this note's tags and properties could not be read", .code(mapped.code))
+            // Left unread rather than emptied. An empty row would say this
+            // note has no tags, which is a claim this screen cannot make.
+            metadata = nil
+        }
+    }
+
+    /// Where a `[[wiki link]]` leads, or `nil` when it names no note.
+    ///
+    /// The lookup happens on the tap rather than on load: a note can hold many
+    /// links, and resolving all of them to draw one screen would be a lookup
+    /// per link for an answer most of them are never asked for.
+    func wikiTarget(for title: String) async -> NoteRoute? {
+        do {
+            guard let id = try await reader.resolveWikiTarget(title) else { return nil }
+            return NoteRoute(id: id)
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("a wiki link could not be resolved", .code(mapped.code))
+            return nil
         }
     }
 
@@ -241,5 +278,6 @@ final class NoteReadViewModel {
         Log.storage.info("read one note")
         phase = .ready(detail)
         await loadBlocks()
+        await loadMetadata()
     }
 }

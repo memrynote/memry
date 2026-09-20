@@ -51,6 +51,18 @@ protocol NotesReading: Sendable {
     ///   and cannot be read throws, and a note that exists and holds no text
     ///   returns a `NoteBody`. Three answers, three screens.
     func read(id: String) async throws -> NoteDetail?
+    /// One note's tags, typed properties and aliases.
+    ///
+    /// - Returns: `nil` for "no such note", exactly as `read` does. **Empty
+    ///   lists are not absence**: a note that carries no tag is a different
+    ///   screen from a note that is gone.
+    func metadata(id: String) async throws -> NoteMetadata?
+    /// What a `[[wiki link]]` points at.
+    ///
+    /// - Returns: `nil` for a link naming no note. That is a **broken link,
+    ///   not a failure** — a link carries a title, so it can name a note that
+    ///   does not exist, and the screen says so rather than showing an error.
+    func resolveWikiTarget(_ target: String) async throws -> String?
     /// The same note's body as blocks, for rendering rather than previewing.
     ///
     /// - Returns: `nil` for "no such note", exactly as `read` does. An **empty
@@ -98,6 +110,19 @@ struct CoreNotesReader: NotesReading {
         let vault = vault
         return try await executor.run { try vault.notes().blocks(id: id) }
     }
+
+    /// One indexed row plus the vault's property definitions — no CRDT apply,
+    /// so it is the cheapest of these reads and still goes on the same queue.
+    func metadata(id: String) async throws -> NoteMetadata? {
+        let vault = vault
+        return try await executor.run { try vault.notes().metadata(id: id) }
+    }
+
+    /// A title lookup, then an alias pass. Blocking like its siblings.
+    func resolveWikiTarget(_ target: String) async throws -> String? {
+        let vault = vault
+        return try await executor.run { try vault.notes().resolveWikiTarget(target: target) }
+    }
 }
 
 @MainActor
@@ -137,6 +162,14 @@ final class VaultBrowseViewModel {
     /// rather than shown failing. See `VaultWrite.swift`.
     let writer: (any NotesWriting)?
 
+    /// Full-text search over this vault, or `nil` when the index could be
+    /// neither opened nor rebuilt.
+    ///
+    /// `nil` does not fail the screen: browsing a vault whose index is broken
+    /// still works, and the search field falls back to matching titles in the
+    /// outline this screen already holds.
+    let search: VaultSearchViewModel?
+
     /// The last failed write, for the screen to show and dismiss. Separate
     /// from ``phase`` because a failed write leaves the vault readable: the
     /// outline is still true, only the write did not happen.
@@ -147,11 +180,13 @@ final class VaultBrowseViewModel {
     init(
         reader: any NotesReading,
         filler: (any VaultFilling)? = nil,
-        writer: (any NotesWriting)? = nil
+        writer: (any NotesWriting)? = nil,
+        search: (any VaultSearching)? = nil
     ) {
         self.reader = reader
         self.filler = filler
         self.writer = writer
+        self.search = search.map { VaultSearchViewModel(search: $0) }
     }
 
     /// The production initializer. `AuthRootView` -> `VaultListView` ->
@@ -166,7 +201,11 @@ final class VaultBrowseViewModel {
             reader: CoreNotesReader(vault: vault, executor: executor),
             filler: filler,
             // No store, no identity, no writes — and no buttons offering them.
-            writer: store.map { CoreNotesWriter(vault: vault, store: $0, executor: executor) }
+            writer: store.map { CoreNotesWriter(vault: vault, store: $0, executor: executor) },
+            // A vault whose index will not open is still a vault worth
+            // browsing, so this failure is absorbed into "no full-text search"
+            // rather than into "no screen".
+            search: try? CoreVaultSearch(vault: vault, executor: executor)
         )
     }
 

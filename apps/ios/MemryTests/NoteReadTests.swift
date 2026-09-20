@@ -279,10 +279,16 @@ struct NoteReadSourceTests {
         // The destination is built from the browse model's own reader, which
         // on the production graph is `CoreNotesReader`. A second reader minted
         // here would be a second path into the core with its own lifetime.
-        // T237 added the filler on the same line; the rule is unchanged and
-        // the assertion is narrowed to the two things it was ever about.
-        #expect(notesList.contains("NoteReadView(route: route, reader: model.reader,"))
-        #expect(notesList.contains("filler: model.filler)"))
+        // T237 added the filler and Phase 5 added the wiki-link push, so the
+        // call is now spread over several lines. The rule is unchanged, and
+        // the assertions are the arguments rather than one formatting of them
+        // — a source check that breaks on a line wrap is a check about layout.
+        #expect(notesList.contains("reader: model.reader"))
+        #expect(notesList.contains("filler: model.filler"))
+        // The push is handed down for the same reason the destination is
+        // registered once: a wiki link must resolve against that registration
+        // rather than a second one declared inside the read screen.
+        #expect(notesList.contains("open: { path.append($0) }"))
     }
 
     @Test(

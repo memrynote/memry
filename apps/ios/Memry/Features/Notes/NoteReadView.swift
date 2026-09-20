@@ -51,13 +51,36 @@ struct NoteReadView: View {
     ///
     /// `State(initialValue:)` so the model outlives a re-render: a model minted
     /// in `body` would re-read the note, and its CRDT apply, every frame.
-    init(route: NoteRoute, reader: any NotesReading, filler: (any VaultFilling)? = nil) {
+    /// Pushes another note onto the enclosing stack.
+    ///
+    /// Handed down rather than declared here: the destination stays registered
+    /// once, on `NotesListView.body`, because a `navigationDestination`
+    /// declared beside a lazily-realised row is registered only once that row
+    /// has been drawn, and a restored path would then resolve against a stack
+    /// that never heard of the route (research R15).
+    ///
+    /// `nil` for a caller with no stack — a preview, or a test rendering this
+    /// screen alone. Wiki links then draw as links and go nowhere, which is
+    /// the truth about that context.
+    private let open: ((NoteRoute) -> Void)?
+
+    init(
+        route: NoteRoute,
+        reader: any NotesReading,
+        filler: (any VaultFilling)? = nil,
+        open: ((NoteRoute) -> Void)? = nil
+    ) {
+        self.open = open
         _model = State(initialValue: NoteReadViewModel(route: route, reader: reader, filler: filler))
     }
 
-    init(model: NoteReadViewModel) {
+    init(model: NoteReadViewModel, open: ((NoteRoute) -> Void)? = nil) {
+        self.open = open
         _model = State(initialValue: model)
     }
+
+    /// The title of a wiki link that resolved to nothing, for the notice.
+    @State private var brokenLink: String?
 
     var body: some View {
         ScrollView {
@@ -78,6 +101,13 @@ struct NoteReadView: View {
                         .memrySecondaryAction()
                 case let .ready(detail):
                     NoteHeader(title: model.displayTitle, summary: detail.summary)
+                    // Under the title and above the body, which is where
+                    // desktop puts them and where a reader looks for what a
+                    // note *is* before reading what it says. Absent until the
+                    // read answers, and absent again when there is nothing.
+                    if let metadata = model.metadata {
+                        NoteMetaView(metadata: metadata)
+                    }
                     if model.blocks.isEmpty {
                         // No blocks to draw. Which of the three reasons it is
                         // — never pulled, genuinely empty, or a walk that
@@ -88,7 +118,25 @@ struct NoteReadView: View {
                             fetch: model.fetch,
                             download: model.canFetchBody ? { Task { await model.fetchBody() } } : nil
                         )
+                    } else if let open {
+                        NoteBlocksView(blocks: model.blocks) { title in
+                            // Resolved on the tap, then pushed onto the same
+                            // stack the browse list pushes onto — a wiki link
+                            // leads to a note, not to a second kind of screen.
+                            Task {
+                                if let route = await model.wikiTarget(for: title) {
+                                    open(route)
+                                } else {
+                                    // A link naming no note. Desktop offers to
+                                    // create it; this build cannot, so it says
+                                    // what is true rather than doing nothing.
+                                    brokenLink = title
+                                }
+                            }
+                        }
                     } else {
+                        // No stack to push onto: the links are still drawn and
+                        // still readable, they simply lead nowhere here.
                         NoteBlocksView(blocks: model.blocks)
                     }
                 }
@@ -100,6 +148,17 @@ struct NoteReadView: View {
         .background(Tokens.Canvas.background.color)
         .calmAnimation(.normal, value: model.phase)
         .task { await model.loadIfNeeded() }
+        .alert(
+            "There is no note called \u{201c}\(brokenLink ?? "")\u{201d}",
+            isPresented: Binding(
+                get: { brokenLink != nil },
+                set: { if !$0 { brokenLink = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { brokenLink = nil }
+        } message: {
+            Text("The link points at a note this vault does not hold. You can create it on your computer.")
+        }
     }
 }
 
