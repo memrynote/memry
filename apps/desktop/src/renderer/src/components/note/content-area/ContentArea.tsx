@@ -62,6 +62,7 @@ import { TaskPrefetchProvider } from './task-block/task-prefetch-context'
 import { tasksService } from '@/services/tasks-service'
 import { useTasksOptional } from '@/contexts/tasks'
 import { parseQuickAdd } from '@/lib/quick-add-parser'
+import type { Project } from '@/data/tasks-data'
 import { buildObsidianTaskImport } from '@/lib/obsidian-task-import'
 import { obsidianTaskImportBlocker } from '@memry/shared/obsidian-tasks'
 import { formatDateKey } from '@/lib/task-utils'
@@ -177,6 +178,23 @@ function tagsForCreate(obsidianTags: string[], parsedTags: string[]): string[] {
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   return [...byKey.values()].slice(0, TAG_MAX_COUNT)
+}
+
+/**
+ * The title a freshly created task block should show. The row was created from
+ * the parsed title, so a block still holding the raw line would render `!high`
+ * over a task whose priority is already set — and the follow-up update would
+ * write the markers straight back onto the row. If the user kept typing during
+ * the create round-trip, re-parse what they now have rather than clobbering it.
+ */
+function titleAfterCreate(
+  liveTitle: string,
+  rawTitle: string,
+  parsedTitle: string,
+  projects: Project[]
+): string {
+  if (!liveTitle || liveTitle === rawTitle.trim()) return parsedTitle
+  return parseQuickAdd(liveTitle, projects).title || liveTitle
 }
 
 /** The block's line as markdown sees it, without the `- [ ] ` marker. */
@@ -1448,14 +1466,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           if (result.success && result.task) {
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
-              // Same markers-off-the-block rule as the slash-menu path: the row
-              // was created from the parsed title, so a block still holding the
-              // raw line would write the markers straight back onto it.
-              const liveTitle = ((freshBlock.props as any).title as string)?.trim() ?? ''
-              const currentTitle =
-                !liveTitle || liveTitle === title.trim()
-                  ? parsed.title
-                  : parseQuickAdd(liveTitle, projects).title || liveTitle
+              const currentTitle = titleAfterCreate(
+                ((freshBlock.props as any).title as string)?.trim() ?? '',
+                title,
+                parsed.title,
+                projects
+              )
               const currentParentTaskId = ((freshBlock.props as any).parentTaskId as string) || ''
               editor.updateBlock(freshBlock, {
                 props: {

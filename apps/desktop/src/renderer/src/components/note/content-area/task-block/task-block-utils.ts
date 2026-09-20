@@ -83,6 +83,24 @@ export function parseTaskShorthand(
   }
 }
 
+/**
+ * What a committed title input should become: the text that stays, plus the
+ * fields its markers named. A draft with no row yet keeps its text verbatim —
+ * there is nothing to write the markers to, and the create path parses the line
+ * itself. A line of nothing but markers falls back to the title the task
+ * already has: the user was setting a property, not clearing the name.
+ */
+export function resolveTitleCommit(
+  raw: string,
+  taskId: string,
+  projects: Project[],
+  task: { title: string; tags?: string[] | null } | null
+): { title: string; update: Omit<TaskUpdateInput, 'id'> } {
+  if (!taskId) return { title: raw, update: {} }
+  const parsed = parseTaskShorthand(raw, projects, task?.tags ?? [])
+  return { title: parsed.title.trim() || task?.title?.trim() || raw, update: parsed.update }
+}
+
 export function serviceTaskToDisplayTask(task: ServiceTask, fallbackStatusId: string): DisplayTask {
   let repeatConfig: DisplayRepeatConfig | null = null
   if (task.repeatConfig) {

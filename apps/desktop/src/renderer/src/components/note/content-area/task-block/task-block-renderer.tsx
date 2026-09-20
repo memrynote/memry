@@ -2,7 +2,7 @@ import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'reac
 import { AlertTriangle, ArrowUpRight, Loader2, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useTaskBlockData } from './use-task-block-data'
-import { serviceTaskToDisplayTask, parseTaskShorthand, PRIORITY_REVERSE } from './task-block-utils'
+import { serviceTaskToDisplayTask, resolveTitleCommit, PRIORITY_REVERSE } from './task-block-utils'
 import { TaskContextPopover } from './task-context-popover'
 import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
@@ -227,11 +227,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
    * has — the user was setting a property, not clearing the name.
    */
   const resolveCommit = useCallback(
-    (raw: string): { title: string; update: Omit<TaskUpdateInput, 'id'> } => {
-      if (!taskId) return { title: raw, update: {} }
-      const parsed = parseTaskShorthand(raw, projects, task?.tags ?? [])
-      return { title: parsed.title.trim() || task?.title?.trim() || raw, update: parsed.update }
-    },
+    (raw: string) => resolveTitleCommit(raw, taskId, projects, task),
     [taskId, projects, task]
   )
 
