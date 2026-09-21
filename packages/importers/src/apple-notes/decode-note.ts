@@ -6,18 +6,9 @@
  * synthetic fixtures and free of fs/zlib/sqlite.
  */
 
-import { Root } from 'protobufjs'
-import { descriptor, DOCUMENT_TYPE } from './descriptor.ts'
+import { DOCUMENT_TYPE } from './descriptor.ts'
+import { lookupAppleNotesType } from './root.ts'
 import type { AttributeRun, DecodedNote } from './types.ts'
-
-let cachedRoot: Root | null = null
-
-function getRoot(): Root {
-  if (!cachedRoot) {
-    cachedRoot = Root.fromJSON(descriptor)
-  }
-  return cachedRoot
-}
 
 /**
  * Decode the protobuf bytes of a note body.
@@ -26,7 +17,7 @@ function getRoot(): Root {
  * @returns the note text and its attribute runs (empty when the note is blank)
  */
 export function decodeNote(protobufBytes: Uint8Array): DecodedNote {
-  const Document = getRoot().lookupType(DOCUMENT_TYPE)
+  const Document = lookupAppleNotesType(DOCUMENT_TYPE)
   const message = Document.decode(protobufBytes)
   const obj = Document.toObject(message, {
     defaults: true,

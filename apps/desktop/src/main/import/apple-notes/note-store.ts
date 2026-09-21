@@ -143,6 +143,20 @@ export async function openNoteStore(selected: string): Promise<NoteStore> {
   }
 }
 
+/**
+ * Whether a column exists on a table in the opened snapshot.
+ *
+ * The Apple Notes schema grew over macOS releases: the columns a query names
+ * are not guaranteed to exist on an older install's database, and better-sqlite3
+ * throws at `prepare()` time for an unknown column, which would fail the whole
+ * import. Callers use this to select a column only when the schema has it.
+ */
+export function hasColumn(db: Database.Database, table: string, column: string): boolean {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+  const wanted = column.toLowerCase()
+  return rows.some((row) => row.name.toLowerCase() === wanted)
+}
+
 export function loadPrimaryKeys(db: Database.Database): PrimaryKeys {
   // better-sqlite3 keys rows by the schema's real column case — the Apple Notes
   // DB declares Z_ENT/Z_NAME uppercase, so an unaliased `z_name` read returns
