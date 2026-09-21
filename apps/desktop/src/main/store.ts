@@ -78,6 +78,14 @@ export interface AgentStoreData {
   disclosureAccepted?: boolean
   accessMode?: 'vault_only' | 'computer_access'
   toolApprovalMode?: 'always_accept' | 'ask'
+  /**
+   * Tools the user granted a standing approval for, keyed by vault uuid.
+   *
+   * Keyed rather than flat because this file is machine-local and outlives a
+   * vault switch: a grant made in a work vault must not silently apply to a
+   * personal one opened afterwards.
+   */
+  alwaysAllowedTools?: Record<string, string[]>
   localProvider?: {
     preset?: 'ollama' | 'lm_studio' | 'llama_cpp' | 'custom'
     baseUrl?: string

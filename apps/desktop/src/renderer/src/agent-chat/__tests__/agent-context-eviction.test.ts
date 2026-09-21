@@ -145,7 +145,8 @@ describe('agentReducer transcript retention', () => {
       toolCallId: 'tool-1',
       name: 'vault_create_task',
       args: { title: 'Buy milk' },
-      requiresDiff: false
+      requiresDiff: false,
+      previewKind: 'none'
     }
     state = agentReducer(state, { type: 'event', event: approval })
     state = { ...state, activeConversationId: null }

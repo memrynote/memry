@@ -10,6 +10,7 @@ import {
   AgentPreferencesUpdateSchema,
   AgentStreamTargetRequestSchema,
   ApproveToolRequestSchema,
+  EditTrustListRequestSchema,
   PreviewDiffRequestSchema,
   type AgentBackendOptions,
   type AgentLocalModelList,
@@ -24,7 +25,6 @@ import {
 } from '@memry/contracts/ipc-agent'
 
 import { CLI_MODEL_OPTIONS } from '../agent/cli-model-options'
-import { TOOL_SCHEMAS } from '../agent/mcp/tools/schemas'
 import { getAgentPreferences, setAgentPreferences } from '../agent/settings'
 import type { AgentRuntime } from '../agent/runtime/runtime'
 import { acceptDisclosure, getDisclosureState } from '../agent/runtime/disclosure-state'
@@ -60,11 +60,13 @@ interface AgentHandlerDeps {
   backends: AgentBackendRegistry
   /** False when the transcript is in-memory only — see agent/storage/ephemeral-stores.ts. */
   historyPersisted: boolean
-  previewNoteUpdate: (input: {
-    id: string
-    mode: 'append' | 'prepend' | 'replace'
-    content_markdown: string
-  }) => Promise<PreviewDiffResponse>
+  buildPreview: (input: { toolName: string; args: unknown }) => Promise<PreviewDiffResponse>
+  /** Vault-scoped standing approvals, for granting and for the Settings list. */
+  toolGrants: {
+    list: () => string[]
+    grant: (toolName: string) => void
+    revoke: (toolName: string) => void
+  }
   localProvider: {
     getSettings: () => Promise<AgentLocalProviderSettings>
     setSettings: (input: AgentLocalProviderSettingsUpdate) => Promise<AgentLocalProviderSettings>
@@ -244,24 +246,31 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
     if (!pending || pending.conversationId !== request.conversationId) {
       throw new Error('No pending approval found for diff preview')
     }
-    if (pending.name !== 'vault_update_note' || !pending.requiresDiff) {
-      throw new Error('Diff preview is only available for vault_update_note approvals')
+    if (!pending.requiresDiff) {
+      throw new Error(`No preview is available for ${pending.name} approvals`)
     }
 
-    const parsed = TOOL_SCHEMAS.vault_update_note.input.safeParse(pending.args)
-    if (!parsed.success) {
-      throw new Error('Pending approval has invalid vault_update_note arguments')
-    }
-
-    return deps.previewNoteUpdate(parsed.data)
+    return deps.buildPreview({ toolName: pending.name, args: pending.args })
   })
 
+  ipcMain.handle(AgentChannels.invoke.GET_TOOL_GRANTS, async () => ({
+    tools: deps.toolGrants.list()
+  }))
+
   ipcMain.handle(AgentChannels.invoke.EDIT_TRUST_LIST, async (_event, payload: unknown) => {
-    const { conversationId, add, remove } = (payload ?? {}) as {
-      conversationId: string
-      add?: string[]
-      remove?: string[]
+    const { conversationId, add, remove, scope } = EditTrustListRequestSchema.parse(payload)
+
+    if (scope === 'vault') {
+      for (const toolName of add ?? []) deps.toolGrants.grant(toolName)
+      for (const toolName of remove ?? []) deps.toolGrants.revoke(toolName)
+      // Vault grants live outside the conversation row, so nothing about the
+      // conversation changed and nothing needs broadcasting. Settings revokes
+      // one without naming a conversation at all.
+      return conversationId ? deps.conversations.getById(conversationId) : null
     }
+
+    if (!conversationId) return null
+
     for (const toolName of add ?? []) {
       deps.conversations.addToTrustList(conversationId, toolName)
     }
@@ -325,6 +334,7 @@ export function registerUnavailableAgentHandlers(reason: string): void {
   registerUnavailableHandler(AgentChannels.invoke.APPROVE_TOOL, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.PREVIEW_DIFF, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.EDIT_TRUST_LIST, async () => unavailable())
+  registerUnavailableHandler(AgentChannels.invoke.GET_TOOL_GRANTS, async () => ({ tools: [] }))
   registerUnavailableHandler(AgentChannels.invoke.GET_BACKEND_STATUSES, async () => ({
     claude_cli: {
       backend: 'claude_cli',

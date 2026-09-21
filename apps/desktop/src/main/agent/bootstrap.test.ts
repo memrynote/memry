@@ -412,16 +412,20 @@ describe('startAgent', () => {
     await startAgent()
     const deps = mocks.registerAgentHandlers.mock.calls[0][0]
 
-    const preview = await deps.previewNoteUpdate({
-      id: 'note-1',
-      mode: 'append',
-      content_markdown: 'new'
+    const preview = await deps.buildPreview({
+      toolName: 'vault_update_note',
+      args: { id: 'note-1', mode: 'append', content_markdown: 'new' }
     })
 
-    expect(preview).toEqual({
+    expect(preview).toMatchObject({
       title: 'Note',
       current: 'old',
-      candidate: 'old\n\nnew'
+      candidate: 'old\n\nnew',
+      preview: {
+        kind: 'body',
+        item: { type: 'note', id: 'note-1' },
+        body: { current: 'old', candidate: 'old\n\nnew' }
+      }
     })
   })
 

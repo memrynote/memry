@@ -1,4 +1,8 @@
-import type { AgentPreferences, ApproveToolDecision } from '@memry/contracts/ipc-agent'
+import type {
+  AgentPreferences,
+  ApproveToolDecision,
+  ChangePreviewKind
+} from '@memry/contracts/ipc-agent'
 import { toSafeToken } from '@memry/contracts/telemetry-api'
 
 import { createLogger } from '../../lib/logger'
@@ -41,6 +45,7 @@ interface PendingApproval {
    */
   args: unknown
   requiresDiff: boolean
+  previewKind: ChangePreviewKind
 }
 
 interface TrackedSubprocess {
@@ -86,6 +91,13 @@ export interface AgentRuntimeDeps {
   conversations: ConversationStore
   messages: MessageStore
   getPreferences?: () => AgentPreferences
+  /**
+   * Standing approvals for the open vault. Separate from the conversation
+   * trust list because these outlive the chat that granted them, which is also
+   * why granting one has to be revocable in Settings.
+   */
+  getVaultTrustList?: () => string[]
+  grantVaultTool?: (toolName: string) => void
   /** Overridable for tests. Defaults to {@link APPROVAL_TIMEOUT_MS}. */
   approvalTimeoutMs?: number
 }
@@ -143,6 +155,7 @@ export class AgentRuntime {
       const decision = decideToolGate({
         toolName: ctx.toolName,
         trustList: conversation.trustList,
+        vaultTrustList: this.deps.getVaultTrustList?.(),
         pendingDecision: null,
         toolApprovalMode: this.deps.getPreferences?.().toolApprovalMode
       })
@@ -152,14 +165,16 @@ export class AgentRuntime {
       }
 
       const toolCallId = `gate-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      const requiresDiff = decision.outcome === 'await_user' ? decision.requiresDiff : false
+      const previewKind = decision.outcome === 'await_user' ? decision.previewKind : 'none'
+      const requiresDiff = previewKind !== 'none'
       broadcastAgentEvent({
         kind: 'tool_call_pending_approval',
         conversationId,
         toolCallId,
         name: ctx.toolName,
         args: ctx.parsedArgs,
-        requiresDiff
+        requiresDiff,
+        previewKind
       })
       // Tool name only, never args.
       trackMainEvent('ai_action_completed', {
@@ -174,7 +189,8 @@ export class AgentRuntime {
         toolCallId,
         name: ctx.toolName,
         args: ctx.parsedArgs,
-        requiresDiff
+        requiresDiff,
+        previewKind
       })
       // Shutdown resolves every pending approval as deny; label that
       // abandonment distinctly so the funnel separates it from a real "No".
@@ -193,7 +209,8 @@ export class AgentRuntime {
       }
 
       if (userDecision.kind === 'allow_always') {
-        this.deps.conversations.addToTrustList(conversationId, ctx.toolName)
+        if (userDecision.scope === 'vault') this.deps.grantVaultTool?.(ctx.toolName)
+        else this.deps.conversations.addToTrustList(conversationId, ctx.toolName)
       }
 
       const args = userDecision.kind === 'edit_allow' ? userDecision.editedArgs : ctx.parsedArgs
@@ -215,7 +232,8 @@ export class AgentRuntime {
       toolCallId: pending.toolCallId,
       name: pending.name,
       args: pending.args,
-      requiresDiff: pending.requiresDiff
+      requiresDiff: pending.requiresDiff,
+      previewKind: pending.previewKind
     }
   }
 

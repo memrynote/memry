@@ -305,7 +305,8 @@ describe('agentReducer', () => {
       toolCallId: 'tool-1',
       name: 'vault_create_task',
       args: { title: 'Buy milk' },
-      requiresDiff: false
+      requiresDiff: false,
+      previewKind: 'none'
     }
 
     const queued = agentReducer(initialAgentState, { type: 'event', event })
@@ -342,7 +343,8 @@ describe('agentReducer', () => {
       toolCallId: 'tool-1',
       name: 'vault_create_task',
       args: { title: 'Buy milk' },
-      requiresDiff: false
+      requiresDiff: false,
+      previewKind: 'none'
     }
 
     const next = agentReducer(state, { type: 'event', event })
@@ -374,7 +376,8 @@ describe('agentReducer', () => {
       toolCallId: 'tool-1',
       name: 'vault_create_task',
       args: { title: 'Buy milk' },
-      requiresDiff: false
+      requiresDiff: false,
+      previewKind: 'none'
     }
     const queued = agentReducer(
       {
@@ -740,7 +743,8 @@ describe('agentReducer', () => {
           toolCallId: 'tool-1',
           name: 'vault_create_task',
           args: { title: 'Buy milk' },
-          requiresDiff: false
+          requiresDiff: false,
+          previewKind: 'none'
         }
       }
     )

@@ -34,8 +34,15 @@ import { spawnClaudeTurn } from './cli/spawn'
 import { getPublicStatus } from './mcp/lifecycle'
 import { createVaultServiceHandles } from './mcp/tools/handles-adapter'
 import { ALL_TOOL_NAMES } from './mcp/tools/schemas'
+import { buildPreviewDiffResponse } from './preview'
 import { AgentRuntime } from './runtime/runtime'
-import { getAgentPreferences, setAgentPreferences } from './settings'
+import {
+  getAgentPreferences,
+  getAlwaysAllowedTools,
+  grantAlwaysAllowedTool,
+  revokeAlwaysAllowedTool,
+  setAgentPreferences
+} from './settings'
 import { createConversationStore } from './storage/conversation-store'
 import {
   createEphemeralConversationStore,
@@ -46,17 +53,6 @@ import { getOrCreateVaultUuid } from './storage/vault-id'
 
 const logger = createLogger('AgentBootstrap')
 const ALLOWED_AGENT_TOOLS = ALL_TOOL_NAMES.map((name) => `mcp__memry__${name}`).join(',')
-
-function mergeContent(
-  current: string,
-  mode: 'append' | 'prepend' | 'replace',
-  next: string
-): string {
-  if (mode === 'replace') return next
-  if (!current) return next
-  if (!next) return current
-  return mode === 'append' ? `${current}\n\n${next}` : `${next}\n\n${current}`
-}
 
 export interface AgentHandle {
   shutdown: () => Promise<void>
@@ -295,7 +291,15 @@ export async function startAgent(): Promise<AgentHandle> {
     local: localBackend
   })
 
-  const runtime = new AgentRuntime({ conversations, messages, getPreferences: getAgentPreferences })
+  const runtime = new AgentRuntime({
+    conversations,
+    messages,
+    getPreferences: getAgentPreferences,
+    getVaultTrustList: () => getAlwaysAllowedTools(vaultId),
+    grantVaultTool: (toolName) => {
+      grantAlwaysAllowedTool(vaultId, toolName)
+    }
+  })
   runtime.install()
 
   registerAgentHandlers({
@@ -304,13 +308,14 @@ export async function startAgent(): Promise<AgentHandle> {
     messages,
     backends,
     historyPersisted,
-    previewNoteUpdate: async (input) => {
-      const note = await handles.notes.read(input.id)
-      if (!note) throw new Error(`Note not found: ${input.id}`)
-      return {
-        title: note.title,
-        current: note.content_markdown,
-        candidate: mergeContent(note.content_markdown, input.mode, input.content_markdown)
+    buildPreview: async (input) => buildPreviewDiffResponse(input, handles),
+    toolGrants: {
+      list: () => getAlwaysAllowedTools(vaultId),
+      grant: (toolName) => {
+        grantAlwaysAllowedTool(vaultId, toolName)
+      },
+      revoke: (toolName) => {
+        revokeAlwaysAllowedTool(vaultId, toolName)
       }
     },
     localProvider: {

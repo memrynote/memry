@@ -355,8 +355,8 @@ counts only matching rows. Omit `file_types` to search every file type.
 Notes indexed by older memrynote versions have no recorded file type; those are always treated as
 markdown, so upgrading never hides existing notes.
 
-Create, update, delete, archive, move, and reorder tools require Agent Chat context. They can be
-auto-accepted or shown for inline approval depending on the Agent Permissions setting:
+Create, update, delete, archive, move, and reorder tools require Agent Chat context. They pause for
+inline approval unless you set the Agent Permissions confirmation to **Always allow**:
 
 - `vault_create_note`
 - `vault_rename_note`
@@ -529,17 +529,55 @@ native-only. See [Calendar → Google Data and AI Features](/user-guide/calendar
 Google user data is never used to train or improve AI models, in line with the Google API Services
 User Data Policy (Limited Use).
 
-By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
-tool as compact, subdued text with a readable label such as `Reading note` or `Creating task`.
-Click the label to open or close the details area with the raw MCP tool name, parameters, and
-results.
+Read tool calls are accepted automatically. The chat shows each one as compact, subdued text with a
+readable label such as `Reading note` or `Reading tasks`. Click the label to open or close the
+details area with the raw MCP tool name, parameters, and results.
 
-If you switch tool confirmations to **Ask first** in settings, memrynote pauses the turn and shows inline
-approval controls inside the tool row. You can allow the request once, allow create tools always for
-that conversation, deny it, or edit the arguments before allowing. Note updates load a before/after
-diff before the write is applied. Write requests that present no active-turn capability — every
-external MCP client, and any call arriving after its turn ended — continue to be denied, whichever
-confirmation setting you choose.
+Changes are different. **Ask before changes** is the default, so memrynote pauses the turn and shows
+inline approval controls inside the tool row. A row waiting on you opens itself and folds back once
+you answer, so a paused turn is never hidden behind a collapsed summary. You can approve the request
+once, grant it a standing approval, reject it, or edit it before approving. Write requests that
+present no active-turn capability — every external MCP client, and any call arriving after its turn
+ended — continue to be denied, whichever confirmation setting you choose.
+
+A paused request always shows what it would change, in the shape that fits the item:
+
+- **Field changes** for tasks, projects, statuses, inbox items, tags, moves and renames. Each
+  changed column is one row: the value now, then the value the agent proposes. A value that is not
+  set yet reads as such rather than as an empty string.
+- **A body diff** for note and journal markdown, and for the text of a new note or inbox item. The
+  changed words are highlighted in place and long runs of untouched lines are collapsed, so a
+  one-word edit in a long note reads as a one-word edit.
+- **What would be lost** for deletes. A delete has no "after", so the card names the item and what
+  goes with it instead.
+
+Each preview reads the item as it stands right now, not as the agent last saw it, so the value in
+the "before" position is what the write is actually about to land on. Field rows list only the
+columns that move: an agent request often repeats every column it read, and those are left out.
+
+A body diff also offers **Edit before applying**, which opens the proposed markdown in a text box.
+Applying from there replaces the whole body with what you see, so an append you edited is applied as
+the finished document rather than appended a second time. Field changes and deletes have no text
+box; use **Edit and allow** on the tool row to change raw arguments instead.
+
+### Always allow
+
+**Always allow** on a paused request asks how long it should last:
+
+- **Always allow in this chat** ends with the conversation. Nothing survives it.
+- **Always allow in this vault** outlives the chat and is listed under Settings → Agent →
+  **Always allowed**, where **Revoke** takes it back. The list is per vault and stays on this
+  machine; it is never synced.
+
+**Deletes always ask.** A standing approval is a promise about work you can still look at
+afterwards, and a delete is the one write where that is not true, so the gate refuses to trust a
+delete tool at either scope and the menu says so.
+
+If you prefer the old behaviour, set tool confirmations to **Always allow** in
+Settings → Agent. That setting is per install and applies to every conversation.
+
+If you had never touched this setting before upgrading, you now get asked where you previously did
+not. An explicit **Always allow** choice you made earlier is kept.
 
 Stopping the turn while an approval is waiting counts as a denial: the pending request is refused,
 the tool never runs, and the approval controls disappear. Nothing is written to your vault.
@@ -599,8 +637,9 @@ of guessing.
 
 The MCP server binds only to localhost. Read tools still expose the content they return to the
 client you configure, so only paste the token into clients you trust on this machine. Write tools
-still require an active Agent Chat conversation context, and the in-app tool confirmation setting
-decides whether that conversation pauses for approval or accepts the call automatically.
+still require an active Agent Chat conversation context, and by default that conversation pauses and
+shows you the change before it is written. The in-app tool confirmation setting is what decides
+that; setting it to **Always allow** accepts the call without a preview.
 
 Provider privacy depends on the selected backend:
 

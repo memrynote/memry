@@ -46,10 +46,16 @@ vi.mock('../inbox/suggestions', () => ({
 // the move holding the pre-move body, so without this the next write-back
 // serializes the stale refs straight back over the file the move just corrected
 // — and persists them.
-const crdtMocks = vi.hoisted(() => ({ replaceNoteBodyInCrdt: vi.fn(async () => false) }))
+const crdtMocks = vi.hoisted(() => ({
+  replaceNoteBodyInCrdt: vi.fn(async () => false),
+  feedExternalEditToCrdt: vi.fn(async () => {})
+}))
 vi.mock('../sync/crdt-feed', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../sync/crdt-feed')>()),
   replaceNoteBodyInCrdt: crdtMocks.replaceNoteBodyInCrdt
+}))
+vi.mock('../sync/crdt-external-feed', () => ({
+  feedExternalEditToCrdt: crdtMocks.feedExternalEditToCrdt
 }))
 
 // ============================================================================
@@ -1863,6 +1869,36 @@ describe('notes operations', () => {
         // Should have created backup snapshot before restore
         const history = notes.getVersionHistory(created.id)
         expect(history.length).toBeGreaterThanOrEqual(2)
+      })
+
+      /**
+       * `syncNoteToCache` refreshes the index row's content hash before the
+       * watcher reaches the restored file, so the watcher dedupes and never
+       * feeds the CRDT. Without the explicit feed, restoring a version of a
+       * note that is open shows nothing and the next write-back puts the
+       * unrestored body back on disk.
+       */
+      it('hands the restored body to the note Y.Doc, not just to the file', async () => {
+        crdtMocks.feedExternalEditToCrdt.mockClear()
+        const created = await notes.createNote({
+          title: 'Restore Crdt Push',
+          content: 'Original content.'
+        })
+        const filePath = path.join(tempVault.path, created.path)
+        const snapshot = notes.createSnapshot(
+          created.id,
+          fs.readFileSync(filePath, 'utf-8'),
+          created.title,
+          'manual'
+        )
+
+        await notes.updateNote({ id: created.id, content: 'Modified content.' })
+        await notes.restoreVersion(snapshot!.id)
+
+        expect(crdtMocks.feedExternalEditToCrdt).toHaveBeenCalledWith(
+          created.id,
+          'Original content.\n'
+        )
       })
     })
   })

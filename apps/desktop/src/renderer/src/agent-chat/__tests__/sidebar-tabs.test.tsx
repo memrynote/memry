@@ -321,7 +321,8 @@ describe('SidebarTabs', () => {
             toolCallId: 'tool-1',
             name: 'vault_create_task',
             args: {},
-            requiresDiff: false
+            requiresDiff: false,
+            previewKind: 'none'
           }
         ],
         messagesByConversation: {},

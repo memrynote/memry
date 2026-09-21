@@ -10,6 +10,8 @@ import type {
   AgentPreferences,
   AgentPreferencesUpdate,
   AgentStreamTargetRequest,
+  AgentToolGrants,
+  AlwaysAllowScope,
   ApproveToolRequest,
   BackendStatusesResponse,
   PreviewDiffRequest,
@@ -45,10 +47,12 @@ export const agentApi = {
   previewDiff: (input: PreviewDiffRequest): Promise<PreviewDiffResponse> =>
     invoke(AgentChannels.invoke.PREVIEW_DIFF, input),
   editTrustList: (input: {
-    conversationId: string
+    conversationId?: string
     add?: string[]
     remove?: string[]
+    scope?: AlwaysAllowScope
   }): Promise<Conversation | null> => invoke(AgentChannels.invoke.EDIT_TRUST_LIST, input),
+  getToolGrants: (): Promise<AgentToolGrants> => invoke(AgentChannels.invoke.GET_TOOL_GRANTS),
   getBackendStatuses: (): Promise<BackendStatusesResponse> =>
     invoke(AgentChannels.invoke.GET_BACKEND_STATUSES),
   listBackendModels: (input: AgentBackendModelListRequest): Promise<AgentBackendModelList> =>

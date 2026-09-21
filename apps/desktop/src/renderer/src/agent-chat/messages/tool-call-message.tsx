@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import type {
+  AlwaysAllowScope,
   ApproveToolDecision,
   Message,
   PreviewDiffRequest,
@@ -8,12 +9,7 @@ import type {
 } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
-import {
-  Confirmation,
-  ConfirmationAction,
-  ConfirmationActions,
-  ConfirmationTitle
-} from '@/components/ai-elements/confirmation'
+import { Confirmation, ConfirmationTitle } from '@/components/ai-elements/confirmation'
 import {
   Tool,
   ToolContent,
@@ -26,6 +22,17 @@ import { Textarea } from '@/components/ui/textarea'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAgentOptional } from '../agent-context'
 import type { PendingToolApproval } from '../agent-context.reducer'
+import { ApprovalActions } from './approval-actions'
+import { ChangePreviewView } from './change-preview'
+
+/**
+ * A standing approval is only offered for a write the gate is willing to trust.
+ * Deletes are not: `decideToolGate` refuses them at either scope, so the menu
+ * would be a control that quietly does nothing.
+ */
+function canBeAlwaysAllowed(previewKind: PendingToolApproval['previewKind']): boolean {
+  return previewKind !== 'loss'
+}
 
 const updateToolNames = new Set(['vault_move_to_folder', 'vault_add_tag', 'vault_remove_tag'])
 
@@ -144,25 +151,39 @@ function getAgentDiffApi(): AgentDiffApi {
   return (window.api as typeof window.api & { agent: AgentDiffApi }).agent
 }
 
-function editedArgsWithCandidate(args: unknown, candidate: string): Record<string, unknown> {
+/**
+ * Put an edited body back into the tool's own argument shape.
+ *
+ * `vault_update_note` also has its mode forced to `replace`: the text in the
+ * box is the whole document the user just read and approved, so appending it to
+ * itself is never what they meant.
+ */
+function editedArgsWithCandidate(
+  args: unknown,
+  candidate: string,
+  toolName: string
+): Record<string, unknown> {
   const base = args && typeof args === 'object' && !Array.isArray(args) ? args : {}
-  return {
-    ...base,
-    mode: 'replace',
-    content_markdown: candidate
+  if (toolName === 'vault_add_to_inbox') return { ...base, content: candidate }
+  if (toolName === 'vault_update_note') {
+    return { ...base, mode: 'replace', content_markdown: candidate }
   }
+  return { ...base, content_markdown: candidate }
 }
 
 function InlineDiffApproval({
   agent,
-  pending
+  pending,
+  toolLabel
 }: {
   agent: NonNullable<ReturnType<typeof useAgentOptional>>
   pending: PendingToolApproval
+  toolLabel: string
 }): React.JSX.Element {
   const { t } = useT('common')
   const [preview, setPreview] = useState<PreviewDiffResponse | null>(null)
   const [candidate, setCandidate] = useState('')
+  const [editing, setEditing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -176,7 +197,7 @@ function InlineDiffApproval({
       .then((result) => {
         if (cancelled) return
         setPreview(result)
-        setCandidate(result.candidate)
+        setCandidate(result.preview.body?.candidate ?? result.candidate)
       })
       .catch((err) => {
         if (!cancelled) setError(extractErrorMessage(err, t('agentChat.diff.previewError')))
@@ -209,10 +230,24 @@ function InlineDiffApproval({
       toolCallId: pending.toolCallId,
       decision: {
         kind: 'edit_allow',
-        editedArgs: editedArgsWithCandidate(pending.args, candidate)
+        editedArgs: editedArgsWithCandidate(pending.args, candidate, pending.name)
       }
     })
   }
+
+  function allowAlways(scope: AlwaysAllowScope): void {
+    void agent.approveTool({
+      conversationId: pending.conversationId,
+      toolCallId: pending.toolCallId,
+      decision: { kind: 'allow_always', scope }
+    })
+  }
+
+  // Only a markdown body is editable before applying. There is nothing sensible
+  // to hand a textarea for a field change or a delete, and the JSON editor in
+  // the non-preview card already covers the case where someone wants to rewrite
+  // raw arguments.
+  const editableBody = preview?.preview.kind === 'body' && Boolean(preview.preview.body)
 
   return (
     <Confirmation state="pending">
@@ -225,37 +260,28 @@ function InlineDiffApproval({
         <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
         </p>
+      ) : !preview ? (
+        <p className="text-xs text-text-tertiary">{t('agentChat.diff.loading')}</p>
+      ) : editing ? (
+        <Textarea
+          aria-label={t('agentChat.diff.candidate')}
+          value={candidate}
+          onChange={(event) => setCandidate(event.target.value)}
+          className="h-52 resize-none font-mono text-xs"
+        />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="min-w-0 space-y-2">
-            <h4 className="text-sm font-medium">{t('agentChat.diff.current')}</h4>
-            <pre className="h-52 overflow-auto rounded-md border border-border bg-muted p-3 text-xs">
-              {preview?.current ?? t('agentChat.diff.loading')}
-            </pre>
-          </div>
-          <div className="min-w-0 space-y-2">
-            <h4 className="text-sm font-medium">{t('agentChat.diff.candidate')}</h4>
-            <Textarea
-              aria-label={t('agentChat.diff.candidate')}
-              value={candidate}
-              onChange={(event) => setCandidate(event.target.value)}
-              disabled={!preview}
-              className="h-52 resize-none font-mono text-xs"
-            />
-          </div>
-        </div>
+        <ChangePreviewView preview={preview.preview} />
       )}
-      <ConfirmationActions>
-        <ConfirmationAction variant="secondary" onClick={deny}>
-          {t('agentChat.approval.deny')}
-        </ConfirmationAction>
-        <ConfirmationAction variant="secondary" disabled={!preview} onClick={applyOriginal}>
-          {t('agentChat.diff.apply')}
-        </ConfirmationAction>
-        <ConfirmationAction disabled={!preview} onClick={applyEdited}>
-          {t('agentChat.diff.applyEdited')}
-        </ConfirmationAction>
-      </ConfirmationActions>
+      <ApprovalActions
+        approveLabel={editing ? t('agentChat.diff.applyEdited') : t('agentChat.diff.apply')}
+        approveDisabled={!preview}
+        onApprove={editing ? applyEdited : applyOriginal}
+        onReject={deny}
+        editLabel={editableBody && !editing ? t('agentChat.diff.editBody') : undefined}
+        onEdit={editableBody && !editing ? () => setEditing(true) : undefined}
+        onAllowAlways={canBeAlwaysAllowed(pending.previewKind) ? allowAlways : undefined}
+        toolLabel={toolLabel}
+      />
     </Confirmation>
   )
 }
@@ -269,6 +295,19 @@ export function ToolCallMessage({ message }: { message: Message }): React.JSX.El
   const [editing, setEditing] = useState(false)
   const [edited, setEdited] = useState('')
   const [parseError, setParseError] = useState<string | null>(null)
+
+  // A tool row is collapsed because tool activity is secondary. A row waiting
+  // on the user is not activity, it is a question, and a question folded out of
+  // sight reads as the agent having stalled. Open it while the answer is owed
+  // and fold it back once it is given, without taking away a manual toggle in
+  // between: this mirrors the awaiting flag rather than locking to it.
+  const awaitingDecision = Boolean(pending)
+  const [open, setOpen] = useState(awaitingDecision)
+  const [wasAwaiting, setWasAwaiting] = useState(awaitingDecision)
+  if (awaitingDecision !== wasAwaiting) {
+    setWasAwaiting(awaitingDecision)
+    setOpen(awaitingDecision)
+  }
 
   if (message.content.role !== 'tool_call') return null
 
@@ -311,14 +350,19 @@ export function ToolCallMessage({ message }: { message: Message }): React.JSX.El
   const toolLabel = humanizeToolName(message.content.data.tool, message.content.data.args)
 
   return (
-    <Tool defaultOpen={false}>
+    <Tool open={open} onOpenChange={setOpen}>
       <ToolHeader title={toolLabel} state={message.content.data.status} />
       <ToolContent>
         <ToolText value={message.content.data.tool} />
         <ToolInput input={message.content.data.args} label={t('agentChat.toolCall.parameters')} />
         <ToolOutput errorText={errorText} output={message.content.data.output} />
         {agent && pending?.requiresDiff && (
-          <InlineDiffApproval key={pending.toolCallId} agent={agent} pending={pending} />
+          <InlineDiffApproval
+            key={pending.toolCallId}
+            agent={agent}
+            pending={pending}
+            toolLabel={toolLabel}
+          />
         )}
         {pending && !pending.requiresDiff && (
           <Confirmation state={message.content.data.status}>
@@ -340,31 +384,19 @@ export function ToolCallMessage({ message }: { message: Message }): React.JSX.El
                 {parseError && <p className="text-xs text-destructive">{parseError}</p>}
               </div>
             )}
-            <ConfirmationActions>
-              <ConfirmationAction onClick={() => void respond({ kind: 'allow' })}>
-                {approvalLabel}
-              </ConfirmationAction>
-              {!updateTool && (
-                <ConfirmationAction
-                  variant="secondary"
-                  onClick={() => void respond({ kind: 'allow_always' })}
-                >
-                  {t('agentChat.approval.allowAlways')}
-                </ConfirmationAction>
-              )}
-              <ConfirmationAction
-                variant="secondary"
-                onClick={editing ? submitEditedArgs : startEditing}
-              >
-                {editing ? t('agentChat.approval.applyEdits') : editLabel}
-              </ConfirmationAction>
-              <ConfirmationAction
-                variant="destructive"
-                onClick={() => void respond({ kind: 'deny' })}
-              >
-                {t('agentChat.approval.deny')}
-              </ConfirmationAction>
-            </ConfirmationActions>
+            <ApprovalActions
+              approveLabel={editing ? t('agentChat.approval.applyEdits') : approvalLabel}
+              onApprove={editing ? submitEditedArgs : () => void respond({ kind: 'allow' })}
+              onReject={() => void respond({ kind: 'deny' })}
+              editLabel={editing ? undefined : editLabel}
+              onEdit={editing ? undefined : startEditing}
+              onAllowAlways={
+                canBeAlwaysAllowed(pending.previewKind)
+                  ? (scope) => void respond({ kind: 'allow_always', scope })
+                  : undefined
+              }
+              toolLabel={toolLabel}
+            />
           </Confirmation>
         )}
       </ToolContent>

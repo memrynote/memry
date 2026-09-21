@@ -9,6 +9,7 @@ import {
   type AgentLocalModelList,
   type AgentLocalProviderProbeResult,
   type AgentLocalProviderSettings,
+  type AgentToolGrants,
   type BackendStatusesResponse,
   type Conversation,
   type Message,
@@ -106,6 +107,10 @@ export function registerLazyAgentHandlers(): void {
       throw new Error(AGENT_RUNTIME_STARTING_CODE)
     }
   )
+  ipcMain.handle(AgentChannels.invoke.GET_TOOL_GRANTS, async (): Promise<AgentToolGrants> => {
+    await ensureLazyAgentServicesStarted()
+    throw new Error(AGENT_RUNTIME_STARTING_CODE)
+  })
   ipcMain.handle(
     AgentChannels.invoke.GET_BACKEND_STATUSES,
     async (): Promise<BackendStatusesResponse> => {

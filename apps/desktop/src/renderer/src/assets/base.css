@@ -2518,6 +2518,27 @@ del.bn-inline-content {
   color: rgba(168, 166, 161, 0.35) !important;
 }
 
+/*
+ * Agent approval previews reuse the in-editor AI diff language above rather
+ * than inventing a second one. Named tokens because the approval card is a
+ * component rather than an editor node, so it cannot inherit those ins/del
+ * rules, and warm rather than GitHub green because the card is something the
+ * user reads to decide, not a CI log.
+ */
+:root {
+  --diff-add: #2d7a6a;
+  --diff-add-surface: rgba(74, 158, 142, 0.12);
+  --diff-del: #7d766a;
+  --diff-del-surface: rgba(125, 118, 106, 0.1);
+}
+
+.dark {
+  --diff-add: #7dd3c4;
+  --diff-add-surface: rgba(90, 191, 173, 0.15);
+  --diff-del: #a8a6a1;
+  --diff-del-surface: rgba(168, 166, 161, 0.12);
+}
+
 /* AI agent cursor — warm accent */
 .bn-collaboration-cursor__caret {
   background-color: var(--sidebar-terracotta) !important;

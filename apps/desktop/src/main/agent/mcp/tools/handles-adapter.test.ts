@@ -32,7 +32,9 @@ const mocks = vi.hoisted(() => ({
   listTagCategories: vi.fn(),
   generateId: vi.fn(),
   snapshotCurrentNoteFromWindow: vi.fn(),
-  invokeDesktopApiFromWindow: vi.fn()
+  invokeDesktopApiFromWindow: vi.fn(),
+  feedExternalEditToCrdt: vi.fn(),
+  replaceNoteTagsInCrdt: vi.fn()
 }))
 
 vi.mock('../../../database/queries/search', () => ({
@@ -112,6 +114,14 @@ vi.mock('./desktop-api', () => ({
   invokeDesktopApiFromWindow: mocks.invokeDesktopApiFromWindow
 }))
 
+vi.mock('../../../sync/crdt-external-feed', () => ({
+  feedExternalEditToCrdt: mocks.feedExternalEditToCrdt
+}))
+
+vi.mock('../../../sync/crdt-feed', () => ({
+  replaceNoteTagsInCrdt: mocks.replaceNoteTagsInCrdt
+}))
+
 import { createVaultServiceHandles } from './handles-adapter'
 
 const deps = {
@@ -153,6 +163,13 @@ describe('createVaultServiceHandles', () => {
     vi.clearAllMocks()
 
     mocks.getConfig.mockReturnValue({ defaultNoteFolder: 'notes' })
+    // Every note write returns the note the command produced; the adapter reads
+    // its tags back to keep a live Y.Doc's tag array in step.
+    mocks.updateNoteCommand.mockImplementation(async (input: { id: string; tags?: string[] }) => ({
+      id: input.id,
+      tags: input.tags ?? []
+    }))
+    mocks.feedExternalEditToCrdt.mockResolvedValue(undefined)
     mocks.searchAll.mockReturnValue({ groups: [] })
     mocks.getFolders.mockResolvedValue([])
     mocks.listNotes.mockReturnValue({ notes: [] })
@@ -453,6 +470,95 @@ describe('createVaultServiceHandles', () => {
       handles.notes.update({ id: 'file-1', mode: 'replace', content_markdown: 'Body' })
     ).rejects.toMatchObject({ code: 'VALIDATION', details: { id: 'file-1', file_type: 'pdf' } })
     expect(mocks.updateNoteCommand).not.toHaveBeenCalled()
+    expect(mocks.feedExternalEditToCrdt).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The file write alone is not the edit. `updateNote` refreshes the index
+   * row's content hash before the watcher reaches the file, so the watcher
+   * dedupes and never feeds the CRDT — an open note's Y.Doc would keep the old
+   * body and the next write-back would put it back on disk, which is exactly
+   * the "the agent said it wrote it and nothing changed" report.
+   */
+  it('feeds the merged body into the CRDT after the note command, in that order', async () => {
+    const handles = createVaultServiceHandles(deps)
+    const order: string[] = []
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      title: 'Alpha',
+      path: 'work/alpha.md',
+      fileType: 'markdown'
+    })
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-1',
+      title: 'Alpha',
+      content: 'Current',
+      tags: ['team'],
+      path: 'work/alpha.md',
+      frontmatter: {}
+    })
+    mocks.updateNoteCommand.mockImplementation(async () => {
+      order.push('updateNoteCommand')
+      return { id: 'note-1', tags: ['team'] }
+    })
+    mocks.feedExternalEditToCrdt.mockImplementation(async () => {
+      order.push('feedExternalEditToCrdt')
+    })
+
+    await handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'Next' })
+
+    expect(order).toEqual(['updateNoteCommand', 'feedExternalEditToCrdt'])
+    expect(mocks.feedExternalEditToCrdt).toHaveBeenCalledWith('note-1', 'Current\n\nNext')
+    // The tag set did not move, so the live tag array is left alone.
+    expect(mocks.replaceNoteTagsInCrdt).not.toHaveBeenCalled()
+  })
+
+  it('re-points the live tag array when the new body changes the tag set', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      title: 'Alpha',
+      path: 'work/alpha.md',
+      fileType: 'markdown'
+    })
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-1',
+      title: 'Alpha',
+      content: 'Current',
+      tags: ['team'],
+      path: 'work/alpha.md',
+      frontmatter: {}
+    })
+    mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: ['team', 'planning'] })
+
+    await handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: '#planning' })
+
+    expect(mocks.replaceNoteTagsInCrdt).toHaveBeenCalledWith('note-1', ['team', 'planning'])
+  })
+
+  /**
+   * Write-back treats the Y.Doc tag array as authoritative, so a tag written
+   * only to the file is reverted on the next flush of an open note.
+   */
+  it('re-points the live tag array on add and remove', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-1',
+      title: 'Alpha',
+      content: 'Current',
+      tags: ['team'],
+      path: 'work/alpha.md',
+      frontmatter: {}
+    })
+
+    await handles.notes.addTag({ id: 'note-1', tag: 'planning' })
+    expect(mocks.replaceNoteTagsInCrdt).toHaveBeenLastCalledWith('note-1', ['team', 'planning'])
+
+    await handles.notes.removeTag({ id: 'note-1', tag: 'TEAM' })
+    expect(mocks.replaceNoteTagsInCrdt).toHaveBeenLastCalledWith('note-1', [])
   })
 
   it('returns null when the note cache has no row for the id', async () => {

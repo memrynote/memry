@@ -261,7 +261,8 @@ describe('AgentProvider', () => {
         toolCallId: 'tool-1',
         name: 'vault_create_task',
         args: { title: 'Task' },
-        requiresDiff: false
+        requiresDiff: false,
+        previewKind: 'none'
       })
     })
     expect(result.current.state.pendingApprovals).toHaveLength(1)
