@@ -38,7 +38,8 @@ edge while the chat content stays centered, and the tab name is the only convers
 that workspace view. Assistant responses render as full-width text in both the sidebar and popped-out
 tabs instead of bordered bubbles, with text aligned to the prompt input. For Claude CLI, memrynote checks
 that `claude` is available on `PATH`, that it reports version `2.1.0` or newer, and that the Agent
-disclosure has been accepted; the Codex CLI is detected the same way. On macOS and Linux, memrynote
+disclosure has been accepted; the Codex CLI and the Antigravity CLI (`agy`, version `1.2.7` or
+newer) are detected the same way. On macOS and Linux, memrynote
 resolves your login shell's `PATH` at startup, so CLIs installed in shell-managed locations
 (`~/.local/bin`, Homebrew, nvm, volta) are still found when the app is launched from the Dock or
 Finder rather than from a terminal. These checks run in the background rather than pausing the app,
@@ -46,13 +47,29 @@ and a successful check is reused for a few minutes so a burst of turns does not 
 check is never remembered: if you install or upgrade a CLI while memrynote is running, the next
 message or provider check picks it up without a restart. If the CLI is removed, replaced, or loses
 its executable bit between that check and the moment a turn actually starts, the turn ends right
-away with a `Claude CLI failed to start: ...` (or `Codex CLI failed to start: ...`) error naming the
+away with a `Claude CLI failed to start: ...` (or `Codex CLI failed to start: ...`,
+`Antigravity CLI failed to start: ...`) error naming the
 reason, and the conversation is free to accept a new message as soon as the CLI is back.
-A CLI that is not detected is not hidden: the composer's model picker still lists the Claude and
-Codex sections with a muted "Not detected — set up in Settings…" row that opens
+A CLI that is not detected is not hidden: the composer's model picker still lists the Claude, Codex
+and Antigravity sections with a muted "Not detected — set up in Settings…" row that opens
 [Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions), where a
 CLI agents group shows the live detection status of each CLI (version when found) alongside install
-and sign-in instructions (`claude login` / `codex login`).
+and sign-in instructions (`claude login` / `codex login` / a first interactive `agy` run).
+
+Antigravity models carry their own reasoning tier in the model id (`gemini-3.1-pro-high` versus
+`-low`), so picking an Antigravity model replaces the separate reasoning control rather than adding
+to it. Any model id your Google account can reach can be typed in, not only the listed presets.
+
+Unlike the other two CLIs, Antigravity has no per-run configuration flag: it reads MCP servers from
+`~/.gemini/config/mcp_config.json` and tool permissions from a project file, both at process start.
+So the first Antigravity turn registers one app-managed entry named `memry` in that file (every
+other MCP server there is preserved) and writes a `memry-agent-vault` / `memry-agent-computer`
+project that grants the vault tools and denies shell commands. No credential is written to either
+file: the endpoint token and the turn's single-use write capability travel in the spawned process's
+environment, which the bridge it launches inherits. A `mcp_config.json` that cannot be parsed is
+left untouched and the turn fails with a message naming the file. If you already had an MCP server
+named `memry` there, it is replaced by the app-managed one. Your own `agy` sessions also list the
+`memry` server; outside a running memrynote turn its tools report that no turn is active.
 For local models, configure a compatible server in
 [Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions) first.
 If the global AI switch is off in [Settings -> AI](/user-guide/settings#ai), the Agent tab and Agent
@@ -286,8 +303,8 @@ with `PERMISSION_DENIED` and the reason that writes need a running memrynote Age
 id is not a credential: knowing one, even a real one, does not let a client write.
 
 External clients still see the write tools listed. They are advertised to every client because
-memrynote's own Claude CLI, Codex CLI, and local-model backends discover their tools from that same
-list. Calling one without an active turn fails rather than writes.
+memrynote's own Claude CLI, Codex CLI, Antigravity CLI, and local-model backends discover their
+tools from that same list. Calling one without an active turn fails rather than writes.
 
 A write is only approved for a conversation that still exists. A conversation that has been deleted —
 including one deleted on another device and carried here by sync — no longer counts as an existing

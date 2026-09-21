@@ -884,7 +884,8 @@
       "providers": {
         "ollama": "Ollama (Yerel)",
         "openai": "OpenAI",
-        "anthropic": "Antropik"
+        "anthropic": "Antropik",
+        "google": "Google Gemini"
       },
       "model": "Modeli",
       "modelDescription": "Yeniden yazma ve özetleme için dil modeli",

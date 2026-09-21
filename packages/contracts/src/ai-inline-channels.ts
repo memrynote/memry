@@ -29,7 +29,7 @@ export type AIInlineEventChannel =
 
 export interface AIInlineSettings {
   enabled: boolean
-  provider: 'ollama' | 'openai' | 'anthropic'
+  provider: 'ollama' | 'openai' | 'anthropic' | 'google'
   model: string
   apiKey: string
   baseUrl: string

@@ -82,6 +82,14 @@ describe('agent IPC handlers', () => {
       version: '0.130.0',
       minimumRequired: '0.130.0'
     },
+    antigravity_cli: {
+      backend: 'antigravity_cli',
+      available: true,
+      reason: null,
+      detail: null,
+      version: '1.2.7',
+      minimumRequired: '1.2.7'
+    },
     local_openai_compatible: {
       backend: 'local_openai_compatible',
       available: true,
@@ -221,6 +229,7 @@ describe('agent IPC handlers', () => {
     await expect(findHandler(AgentChannels.invoke.GET_BACKEND_STATUSES)(null)).resolves.toEqual({
       claude_cli: expect.objectContaining({ backend: 'claude_cli', available: false }),
       codex_cli: expect.objectContaining({ backend: 'codex_cli', available: false }),
+      antigravity_cli: expect.objectContaining({ backend: 'antigravity_cli', available: false }),
       local_openai_compatible: expect.objectContaining({
         backend: 'local_openai_compatible',
         available: false
@@ -249,6 +258,7 @@ describe('agent IPC handlers', () => {
     )
     expect(deps.backends.get).toHaveBeenCalledWith('claude_cli')
     expect(deps.backends.get).toHaveBeenCalledWith('codex_cli')
+    expect(deps.backends.get).toHaveBeenCalledWith('antigravity_cli')
     expect(deps.backends.get).toHaveBeenCalledWith('local_openai_compatible')
   })
 

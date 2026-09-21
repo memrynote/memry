@@ -76,11 +76,16 @@ export const ClaudeEffortSchema = z.enum(['low', 'medium', 'high', 'xhigh', 'max
 export type ClaudeEffort = z.infer<typeof ClaudeEffortSchema>
 export const DEFAULT_CLAUDE_EFFORT: ClaudeEffort = 'xhigh'
 
-export const AgentBackendIdSchema = z.enum(['claude_cli', 'codex_cli', 'local_openai_compatible'])
+export const AgentBackendIdSchema = z.enum([
+  'claude_cli',
+  'codex_cli',
+  'antigravity_cli',
+  'local_openai_compatible'
+])
 export type AgentBackendId = z.infer<typeof AgentBackendIdSchema>
 export const DEFAULT_AGENT_BACKEND_ID: AgentBackendId = 'claude_cli'
 
-export const AgentCliBackendIdSchema = z.enum(['claude_cli', 'codex_cli'])
+export const AgentCliBackendIdSchema = z.enum(['claude_cli', 'codex_cli', 'antigravity_cli'])
 export type AgentCliBackendId = z.infer<typeof AgentCliBackendIdSchema>
 
 export const CodexReasoningEffortSchema = z.enum(['low', 'medium', 'high', 'xhigh'])
@@ -113,6 +118,15 @@ export const AgentBackendOptionsSchema = z
       .object({
         backend: z.literal('codex_cli'),
         reasoningEffort: CodexReasoningEffortSchema.default('medium'),
+        model: z.string().min(1).optional()
+      })
+      .strict(),
+    // Antigravity CLI model ids already encode their reasoning tier
+    // (`gemini-3.1-pro-high` vs `-low`), so there is no separate effort knob to
+    // contradict the model pick.
+    z
+      .object({
+        backend: z.literal('antigravity_cli'),
         model: z.string().min(1).optional()
       })
       .strict(),
@@ -236,6 +250,7 @@ export type AgentBackendStatus = z.infer<typeof AgentBackendStatusSchema>
 export const BackendStatusesResponseSchema = z.object({
   claude_cli: AgentBackendStatusSchema,
   codex_cli: AgentBackendStatusSchema,
+  antigravity_cli: AgentBackendStatusSchema,
   local_openai_compatible: AgentBackendStatusSchema,
   /**
    * False when this device cannot produce the vault key, so the session runs

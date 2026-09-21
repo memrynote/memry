@@ -2081,8 +2081,8 @@ async function runSync(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<voi
 }
 
 function parseAgentBackend(value: string | undefined): AgentBackend {
-  if (value === 'claude_cli' || value === 'codex_cli') return value
-  throw new Error('Agent backend must be claude_cli or codex_cli')
+  if (value === 'claude_cli' || value === 'codex_cli' || value === 'antigravity_cli') return value
+  throw new Error('Agent backend must be claude_cli, codex_cli or antigravity_cli')
 }
 
 async function runAgent(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {

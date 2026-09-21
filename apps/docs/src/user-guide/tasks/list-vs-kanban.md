@@ -26,6 +26,13 @@ row below them. On a short window, or for a row near the bottom of the list, the
 calendar scroll inside the picker while the time row stays pinned at its foot, so adding a time is
 always reachable.
 
+In the drawer, the **Start date** and **Due date** rows show how far away that date is underneath
+the date itself. Upcoming dates count days for the first two weeks (`in 2 days`) and then switch to
+weeks (`in 3 weeks`). An overdue task always counts days, never weeks, so `59 days overdue` stays
+easy to gauge. A start date that has already passed reads as elapsed time (`Yesterday`,
+`3 days ago`) rather than as overdue, because a start date cannot be late. A completed task shows
+no relative line at all.
+
 Drag the drawer's left edge to resize it; double-click the edge to reset to the default width. The width is remembered across restarts.
 
 Rows can be drag-reordered. Multi-select with shift-click for bulk actions.

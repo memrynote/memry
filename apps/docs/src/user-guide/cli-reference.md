@@ -1684,13 +1684,13 @@ Returns availability + version info for each agent backend.
 
 ### models
 
-| Positional  | Description                                       |
-| ----------- | ------------------------------------------------- |
-| `[backend]` | `claude_cli` or `codex_cli` (or use `--backend`). |
+| Positional  | Description                                                          |
+| ----------- | -------------------------------------------------------------------- |
+| `[backend]` | `claude_cli`, `codex_cli` or `antigravity_cli` (or use `--backend`). |
 
-| Flag               | Type   | Description                  |
-| ------------------ | ------ | ---------------------------- |
-| `--backend <name>` | string | `claude_cli` or `codex_cli`. |
+| Flag               | Type   | Description                                     |
+| ------------------ | ------ | ----------------------------------------------- |
+| `--backend <name>` | string | `claude_cli`, `codex_cli` or `antigravity_cli`. |
 
 ### local-settings
 

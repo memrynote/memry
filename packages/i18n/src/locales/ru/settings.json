@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Оллама (местный)",
         "openai": "ОпенАИ",
-        "anthropic": "антропный"
+        "anthropic": "антропный",
+        "google": "Google Gemini"
       },
       "model": "Модель",
       "modelDescription": "Языковая модель для переписывания и обобщения",

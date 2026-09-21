@@ -34,7 +34,9 @@ export {
   formatDateShort,
   formatDayName,
   formatOverdueRelative,
-  formatDueDate
+  formatDueDate,
+  type RelativeDateHint,
+  formatRelativeDateHint
 } from './task-formatting'
 
 export {

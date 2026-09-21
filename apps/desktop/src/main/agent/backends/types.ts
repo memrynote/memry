@@ -67,6 +67,15 @@ export interface CodexCliSpawnInput {
   purpose?: 'turn' | 'summary' | 'title'
 }
 
+export interface AgyCliSpawnInput {
+  prompt: string
+  writeGrant?: TurnWriteGrant
+  windowId: string
+  model?: string
+  permissions?: AgentTurnPermissions
+  purpose?: 'turn' | 'summary' | 'title'
+}
+
 export interface RawSubprocessHandle {
   stdout: AsyncIterable<Buffer>
   stderr: AsyncIterable<Buffer>

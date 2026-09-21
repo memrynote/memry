@@ -265,6 +265,14 @@ describe('agent IPC schemas', () => {
           version: '0.130.0',
           minimumRequired: '0.130.0'
         },
+        antigravity_cli: {
+          backend: 'antigravity_cli',
+          available: true,
+          reason: null,
+          detail: null,
+          version: '1.2.7',
+          minimumRequired: '1.2.7'
+        },
         local_openai_compatible: {
           backend: 'local_openai_compatible',
           available: true,
@@ -278,6 +286,24 @@ describe('agent IPC schemas', () => {
       BackendStatusesResponseSchema.safeParse({
         claude_cli: { backend: 'claude_cli', available: true },
         codex_cli: { backend: 'codex_cli', available: true }
+      }).success
+    ).toBe(false)
+  })
+
+  it('accepts the antigravity options variant, which carries no effort field', () => {
+    expect(
+      AgentBackendOptionsSchema.safeParse({
+        backend: 'antigravity_cli',
+        model: 'gemini-3.1-pro-high'
+      }).success
+    ).toBe(true)
+    expect(AgentBackendOptionsSchema.safeParse({ backend: 'antigravity_cli' }).success).toBe(true)
+    // Model ids already name the reasoning tier, so an effort field is a
+    // caller bug rather than a tolerated extra.
+    expect(
+      AgentBackendOptionsSchema.safeParse({
+        backend: 'antigravity_cli',
+        reasoningEffort: 'high'
       }).success
     ).toBe(false)
   })

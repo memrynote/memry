@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "אולמה (מקומי)",
         "openai": "OpenAI",
-        "anthropic": "אנתרופית"
+        "anthropic": "אנתרופית",
+        "google": "Google Gemini"
       },
       "model": "דגם",
       "modelDescription": "מודל שפה לשכתוב וסיכום",

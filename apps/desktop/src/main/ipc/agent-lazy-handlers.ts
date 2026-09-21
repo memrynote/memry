@@ -9,7 +9,6 @@ import {
   type AgentLocalModelList,
   type AgentLocalProviderProbeResult,
   type AgentLocalProviderSettings,
-  type AgentBackendModelList,
   type AgentToolGrants,
   type BackendStatusesResponse,
   type Conversation,
@@ -17,6 +16,7 @@ import {
   type PreviewDiffResponse
 } from '@memry/contracts/ipc-agent'
 
+import { CLI_MODEL_OPTIONS } from '../agent/cli-model-options'
 import { getAgentPreferences, setAgentPreferences } from '../agent/settings'
 import { getDisclosureState, acceptDisclosure } from '../agent/runtime/disclosure-state'
 import { setAgentStreamTarget } from '../agent/runtime/event-bus'
@@ -25,27 +25,6 @@ import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:AgentLazy')
-
-const CLI_MODEL_OPTIONS: Record<'claude_cli' | 'codex_cli', AgentBackendModelList> = {
-  claude_cli: {
-    backend: 'claude_cli',
-    supportsCustomModel: true,
-    models: [
-      { id: 'sonnet', label: 'Sonnet' },
-      { id: 'haiku', label: 'Haiku' },
-      { id: 'opus', label: 'Opus' }
-    ]
-  },
-  codex_cli: {
-    backend: 'codex_cli',
-    supportsCustomModel: true,
-    models: [
-      { id: 'gpt-5.5', label: 'GPT-5.5' },
-      { id: 'gpt-5.4', label: 'GPT-5.4' },
-      { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' }
-    ]
-  }
-}
 
 /**
  * Machine-readable marker for "the lazy agent runtime has not finished
