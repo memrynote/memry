@@ -65,6 +65,7 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     dueTime: null,
     isRepeating: false,
     repeatConfig: null,
+    repeatFrom: null,
     linkedNoteIds: [],
     sourceNoteId: null,
     tags: [],

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useUndoableTaskActions, UNDOABLE_FIELDS } from './use-undoable-task-actions'
 import type { Task, Priority } from '@/data/task-model'
@@ -37,6 +37,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   dueTime: null,
   isRepeating: false,
   repeatConfig: null,
+  repeatFrom: null,
   linkedNoteIds: [],
   sourceNoteId: null,
   parentId: null,
@@ -512,6 +513,84 @@ describe('useUndoableTaskActions', () => {
           completedAt: null
         })
       )
+    })
+
+    // The anchor only shows itself when the task is completed off its due date,
+    // so these two run the same overdue task under both settings.
+    describe('repeat anchor', () => {
+      const setupOverdue = (repeatFrom: Task['repeatFrom']) => {
+        const deps = {
+          tasks: [makeTask({ ...makeRepeatingTask(), repeatFrom })],
+          addTask: vi.fn(),
+          updateTask: vi.fn(),
+          deleteTask: vi.fn(),
+          registerUndo: vi.fn().mockReturnValue('undo-anchor'),
+          removeUndoEntry: vi.fn(),
+          projects: [
+            {
+              id: 'proj-1',
+              name: 'Project',
+              color: '#000',
+              isArchived: false,
+              statuses: [
+                {
+                  id: 'status-todo',
+                  name: 'To Do',
+                  type: 'todo' as const,
+                  position: 0,
+                  isDefault: true
+                },
+                {
+                  id: 'status-done',
+                  name: 'Done',
+                  type: 'done' as const,
+                  position: 2,
+                  isDefault: true
+                }
+              ]
+            }
+          ]
+        }
+
+        const { result } = renderHook(() => useUndoableTaskActions(deps))
+        return { result, deps }
+      }
+
+      beforeEach(() => {
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date(2026, 2, 5, 10, 0, 0))
+      })
+
+      afterEach(() => {
+        vi.useRealTimers()
+      })
+
+      it('keeps the fixed cadence when the anchor is unset', () => {
+        const { result, deps } = setupOverdue(null)
+
+        act(() => {
+          result.current.completeTask('repeat-1')
+        })
+
+        expect(deps.addTask).toHaveBeenCalledWith(
+          expect.objectContaining({ dueDate: new Date(2026, 2, 2) })
+        )
+      })
+
+      it('restarts the interval on the completion date when asked to', () => {
+        const { result, deps } = setupOverdue('completion')
+
+        act(() => {
+          result.current.completeTask('repeat-1')
+        })
+
+        expect(deps.addTask).toHaveBeenCalledWith(
+          expect.objectContaining({
+            dueDate: new Date(2026, 2, 6),
+            repeatFrom: 'completion'
+          })
+        )
+      })
     })
 
     it('should undo by restoring original repeat config and deleting next occurrence', () => {

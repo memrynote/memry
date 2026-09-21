@@ -35,6 +35,7 @@ const createTask = (overrides: Partial<Task> & { id: string }): Task => ({
   dueTime: null,
   isRepeating: false,
   repeatConfig: null,
+  repeatFrom: null,
   linkedNoteIds: [],
   sourceNoteId: null,
   tags: [],

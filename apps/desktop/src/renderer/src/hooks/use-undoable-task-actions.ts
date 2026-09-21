@@ -3,11 +3,15 @@ import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import type { Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
-import { getDefaultTodoStatus, getDefaultDoneStatus } from '@/lib/task-utils'
+import {
+  getDefaultTodoStatus,
+  getDefaultDoneStatus,
+  formatDateShort,
+  startOfDay
+} from '@/lib/task-utils'
 import { getSubtasks } from '@/lib/subtask-utils'
 import { calculateNextOccurrence, shouldCreateNextOccurrence } from '@/lib/repeat-utils'
 import { generateTaskId } from '@/data/task-model'
-import { formatDateShort } from '@/lib/task-utils'
 import { createLogger } from '@/lib/logger'
 
 const _log = createLogger('Hook:UndoableTaskActions')
@@ -134,7 +138,13 @@ export const useUndoableTaskActions = ({
       if (task.isRepeating && task.repeatConfig && task.dueDate) {
         const config = task.repeatConfig
         const newCompletedCount = config.completedCount + 1
-        const nextDate = calculateNextOccurrence(task.dueDate, config)
+        // A task set to repeat from its completion date restarts the interval
+        // today, so finishing Monday's daily task on Thursday schedules Friday,
+        // not Tuesday. Anything else — including the null that every task
+        // written before this was honored carries — keeps the fixed cadence off
+        // the due date.
+        const anchorDate = task.repeatFrom === 'completion' ? startOfDay(completedAt) : task.dueDate
+        const nextDate = calculateNextOccurrence(anchorDate, config)
         const shouldCreate = shouldCreateNextOccurrence({
           ...config,
           completedCount: newCompletedCount
@@ -164,6 +174,10 @@ export const useUndoableTaskActions = ({
             statusId: getDefaultTodoStatus(project)?.id || task.statusId,
             completedAt: null,
             createdAt: new Date(),
+            // The subtasks that just closed stay attached to the occurrence
+            // that owned them, so the fresh one starts empty rather than
+            // briefly listing the previous cycle's finished rows.
+            subtaskIds: [],
             repeatConfig: {
               ...config,
               completedCount: newCompletedCount
