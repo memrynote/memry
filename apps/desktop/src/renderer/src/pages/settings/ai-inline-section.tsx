@@ -78,7 +78,10 @@ function useOllamaModels(provider: AIInlineSettings['provider'], baseUrl: string
           success: boolean
           models?: string[]
         }
-        if (!cancelled && res.success && res.models?.length) setModels(res.models)
+        // The provider or endpoint may have changed while the probe was in
+        // flight, in which case this late answer describes the old one.
+        if (cancelled) return
+        if (res.success && res.models?.length) setModels(res.models)
       } catch {
         // unreachable Ollama → keep preset fallback
       }
