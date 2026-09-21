@@ -13,7 +13,7 @@ import type { Priority } from './task-model'
  * it follows the active locale, and fall back to English while i18n is still
  * booting.
  */
-const tasksT = (): TFunction<'tasks'> | null => {
+export const tasksT = (): TFunction<'tasks'> | null => {
   const i18n = getI18n()
   return i18n ? i18n.getFixedT(null, 'tasks') : null
 }
@@ -377,8 +377,26 @@ export interface TaskFilters {
 // SORT TYPES AND INTERFACES
 // ============================================================================
 
+/**
+ * `folder` and `note` group by the document a task came from, not by a field
+ * stored on the task, so they need the note index to resolve a source note to
+ * its title and vault-relative folder.
+ *
+ * A saved filter carries this value through sync, so an older build can read a
+ * field it does not know: `sortTasksAdvanced` leaves the order untouched and
+ * `groupTasksForSort` returns no groups, which renders the flat list. Keep that
+ * unknown-value path intact.
+ */
 export type SortField =
-  'dueDate' | 'priority' | 'status' | 'createdAt' | 'title' | 'project' | 'completedAt'
+  | 'dueDate'
+  | 'priority'
+  | 'status'
+  | 'createdAt'
+  | 'title'
+  | 'project'
+  | 'completedAt'
+  | 'folder'
+  | 'note'
 
 export type SortDirection = 'asc' | 'desc'
 

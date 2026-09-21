@@ -73,6 +73,23 @@
     "groupByOptions": "Group by options",
     "sortAscending": "Sort ascending",
     "sortDescending": "Sort descending",
+    "sortDirectionAscending": "Ascending",
+    "sortDirectionDescending": "Descending",
+    "groupByFields": {
+      "dueDate": "Due date",
+      "priority": "Priority",
+      "status": "Status",
+      "createdAt": "Created",
+      "title": "Title",
+      "project": "Project",
+      "completedAt": "Completed",
+      "folder": "Folder",
+      "note": "Note"
+    },
+    "groups": {
+      "vaultRoot": "Vault root",
+      "noNote": "No note"
+    },
     "dueDate": {
       "any": "Any due date",
       "none": "No due date",

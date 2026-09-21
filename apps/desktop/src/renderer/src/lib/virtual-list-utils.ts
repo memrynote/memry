@@ -3,6 +3,7 @@ import type { Project, Status, SortField, SortDirection } from '@/data/tasks-dat
 import { groupTasksByStatus, type TaskGroupByStatus } from '@/lib/task-utils'
 import { getTopLevelTasks, getSubtasks, hasSubtasks } from '@/lib/subtask-utils'
 import { groupTasksForSort } from '@/lib/task-grouping'
+import type { TaskNoteIndex } from '@/lib/task-note-index'
 
 // ============================================================================
 // VIRTUAL ITEM TYPES
@@ -209,10 +210,12 @@ export const flattenTasksGrouped = (
   sortField: SortField,
   sortDirection: SortDirection,
   collapsedGroups?: Set<string>,
-  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[],
+  /** Only the `folder` and `note` grouping modes read this. */
+  noteIndex?: TaskNoteIndex
 ): VirtualItem[] => {
   const topLevel = getTopLevelTasks(tasks)
-  const groups = groupTasksForSort(topLevel, sortField, sortDirection, projects)
+  const groups = groupTasksForSort(topLevel, sortField, sortDirection, projects, noteIndex)
 
   if (groups.length === 0) {
     return flattenTasksFlat(tasks, projects, allTasks, getOrderedTasks)

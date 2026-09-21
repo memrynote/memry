@@ -7,8 +7,11 @@ import {
   groupByProject,
   groupByCreatedDate,
   groupByStatus,
+  groupByFolder,
+  groupByNote,
   groupTasksForSort
 } from './task-grouping'
+import { buildTaskNoteIndex } from './task-note-index'
 
 // ============================================================================
 // MOCK FACTORIES
@@ -384,8 +387,143 @@ describe('task-grouping', () => {
   // groupTasksForSort (dispatcher)
   // ==========================================================================
 
+  // ==========================================================================
+  // groupByFolder / groupByNote
+  // ==========================================================================
+
+  describe('groupByFolder', () => {
+    const noteIndex = buildTaskNoteIndex([
+      { id: 'note-nda', path: 'Acme/Legal/NDA/nda-review.md', title: 'NDA review' },
+      { id: 'note-msa', path: 'Acme/Legal/msa.md', title: 'MSA' },
+      { id: 'note-kickoff', path: 'Acme/Meetings/kickoff.md', title: 'Kickoff' },
+      { id: 'note-scratch', path: 'scratch.md', title: 'Scratch' }
+    ])
+
+    it('should group tasks by the folder of their source note', () => {
+      // #given
+      const nda = createMockTask({ sourceNoteId: 'note-nda' })
+      const msa = createMockTask({ sourceNoteId: 'note-msa' })
+
+      // #when
+      const result = groupByFolder([nda, msa], noteIndex)
+
+      // #then
+      expect(result.map((group) => group.label)).toEqual(['Acme / Legal', 'Acme / Legal / NDA'])
+      expect(result[0].tasks).toEqual([msa])
+      expect(result[1].tasks).toEqual([nda])
+    })
+
+    it('should merge every note in the same folder into one group', () => {
+      // #given
+      const first = createMockTask({ sourceNoteId: 'note-kickoff' })
+      const second = createMockTask({ sourceNoteId: 'note-kickoff' })
+
+      // #when
+      const result = groupByFolder([first, second], noteIndex)
+
+      // #then
+      expect(result).toHaveLength(1)
+      expect(result[0].tasks).toHaveLength(2)
+    })
+
+    it('should fall back to the first related note when there is no source note', () => {
+      // #given
+      const task = createMockTask({ linkedNoteIds: ['note-msa'] })
+
+      // #when
+      const result = groupByFolder([task], noteIndex)
+
+      // #then
+      expect(result[0].label).toBe('Acme / Legal')
+    })
+
+    it('should put vault-root notes and unfiled tasks last', () => {
+      // #given
+      const unfiled = createMockTask()
+      const root = createMockTask({ sourceNoteId: 'note-scratch' })
+      const filed = createMockTask({ sourceNoteId: 'note-msa' })
+
+      // #when
+      const result = groupByFolder([unfiled, root, filed], noteIndex)
+
+      // #then
+      expect(result.map((group) => group.key)).toEqual([
+        'folder-Acme/Legal',
+        'folder-vault-root',
+        'no-source-note'
+      ])
+    })
+
+    it('should treat a note the index cannot resolve as unfiled', () => {
+      // #given
+      const task = createMockTask({ sourceNoteId: 'note-deleted' })
+
+      // #when
+      const result = groupByFolder([task], noteIndex)
+
+      // #then
+      expect(result).toHaveLength(1)
+      expect(result[0].key).toBe('no-source-note')
+    })
+
+    it('should namespace group keys so a folder cannot collide with a default-collapsed key', () => {
+      // #given
+      const index = buildTaskNoteIndex([{ id: 'note-1', path: 'done/notes.md', title: 'Notes' }])
+      const task = createMockTask({ sourceNoteId: 'note-1' })
+
+      // #when
+      const result = groupByFolder([task], index)
+
+      // #then
+      expect(result[0].key).toBe('folder-done')
+    })
+  })
+
+  describe('groupByNote', () => {
+    const noteIndex = buildTaskNoteIndex([
+      { id: 'note-kickoff', path: 'Acme/Meetings/kickoff.md', title: 'Kickoff' },
+      { id: 'note-msa', path: 'Acme/Legal/msa.md', title: 'MSA' },
+      { id: 'note-untitled', path: 'Acme/Legal/counterparty.md', title: '' }
+    ])
+
+    it('should order notes by folder, then title', () => {
+      // #given
+      const kickoff = createMockTask({ sourceNoteId: 'note-kickoff' })
+      const msa = createMockTask({ sourceNoteId: 'note-msa' })
+      const untitled = createMockTask({ sourceNoteId: 'note-untitled' })
+
+      // #when
+      const result = groupByNote([kickoff, msa, untitled], noteIndex)
+
+      // #then
+      expect(result.map((group) => group.label)).toEqual(['counterparty', 'MSA', 'Kickoff'])
+      expect(result.map((group) => group.key)).toEqual([
+        'note-note-untitled',
+        'note-note-msa',
+        'note-note-kickoff'
+      ])
+    })
+
+    it('should collect tasks with no note into one trailing group', () => {
+      // #given
+      const filed = createMockTask({ sourceNoteId: 'note-msa' })
+      const unfiled = createMockTask()
+
+      // #when
+      const result = groupByNote([filed, unfiled], noteIndex)
+
+      // #then
+      expect(result).toHaveLength(2)
+      expect(result[1].key).toBe('no-source-note')
+      expect(result[1].tasks).toEqual([unfiled])
+    })
+  })
+
   describe('groupTasksForSort', () => {
     const projects = [createMockProject()]
+    const noteIndex = buildTaskNoteIndex([
+      { id: 'note-1', path: 'Acme/Legal/msa.md', title: 'MSA' }
+    ])
 
     it('should return empty array for title sort', () => {
       const task = createMockTask()
@@ -431,6 +569,39 @@ describe('task-grouping', () => {
       // #then
       expect(result).toHaveLength(1)
       expect(result[0].label).toBe('Test Project')
+    })
+
+    it('should dispatch to folder grouper', () => {
+      // #given
+      const task = createMockTask({ sourceNoteId: 'note-1' })
+
+      // #when
+      const result = groupTasksForSort([task], 'folder', 'asc', projects, noteIndex)
+
+      // #then
+      expect(result).toHaveLength(1)
+      expect(result[0].label).toBe('Acme / Legal')
+    })
+
+    it('should dispatch to note grouper', () => {
+      // #given
+      const task = createMockTask({ sourceNoteId: 'note-1' })
+
+      // #when
+      const result = groupTasksForSort([task], 'note', 'asc', projects, noteIndex)
+
+      // #then
+      expect(result).toHaveLength(1)
+      expect(result[0].label).toBe('MSA')
+    })
+
+    it('should return no groups for folder and note while the note index is missing', () => {
+      // #given
+      const task = createMockTask({ sourceNoteId: 'note-1' })
+
+      // #when / #then
+      expect(groupTasksForSort([task], 'folder', 'asc', projects)).toEqual([])
+      expect(groupTasksForSort([task], 'note', 'asc', projects)).toEqual([])
     })
 
     it('should dispatch to createdAt grouper', () => {

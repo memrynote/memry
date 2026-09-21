@@ -1,12 +1,14 @@
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, SortField, SortDirection, StatusType } from '@/data/tasks-data'
 import { priorityConfig } from '@/data/task-model'
+import { tasksT } from '@/data/tasks-data'
 import {
   groupTasksByDueDate,
   startOfDay,
   differenceInDays,
   type TaskGroupByDate
 } from '@/lib/task-utils'
+import { getTaskNoteId, type TaskNoteIndex } from '@/lib/task-note-index'
 
 // ============================================================================
 // TYPES
@@ -222,6 +224,128 @@ export const groupByStatus = (tasks: Task[], projects: Project[]): TaskGroup[] =
 }
 
 // ============================================================================
+// FOLDER / NOTE GROUPING
+// ============================================================================
+
+/**
+ * Group keys are namespaced because the collapsed-group set is stored per tab
+ * and shared by every grouping mode. Without the prefix a folder literally
+ * named `done` would open collapsed, since `done` is a default-collapsed key.
+ */
+const FOLDER_GROUP_PREFIX = 'folder-'
+const NOTE_GROUP_PREFIX = 'note-'
+const ROOT_FOLDER_GROUP_KEY = 'folder-vault-root'
+const NO_NOTE_GROUP_KEY = 'no-source-note'
+
+const vaultRootLabel = (): string => tasksT()?.('filters.groups.vaultRoot') ?? 'Vault root'
+const noNoteLabel = (): string => tasksT()?.('filters.groups.noNote') ?? 'No note'
+
+/** `Acme/Legal/NDA` reads as `Acme / Legal / NDA` in a group header. */
+const folderGroupLabel = (folderPath: string): string => folderPath.split('/').join(' / ')
+
+interface NoteBucket {
+  folderPath: string
+  title: string
+  tasks: Task[]
+}
+
+/**
+ * Splits tasks into "has a resolvable source note" and "does not".
+ *
+ * A note id that the index cannot resolve — a note deleted after the task was
+ * written, or one outside the fetched page — counts as unfiled rather than
+ * inventing a group with no folder behind it.
+ */
+const bucketTasksByNote = (
+  tasks: Task[],
+  noteIndex: TaskNoteIndex
+): { byNote: Map<string, NoteBucket>; unfiled: Task[] } => {
+  const byNote = new Map<string, NoteBucket>()
+  const unfiled: Task[] = []
+
+  tasks.forEach((task) => {
+    const noteId = getTaskNoteId(task)
+    const info = noteId ? noteIndex.get(noteId) : undefined
+
+    if (!info) {
+      unfiled.push(task)
+      return
+    }
+
+    const bucket = byNote.get(info.id)
+    if (bucket) {
+      bucket.tasks.push(task)
+      return
+    }
+
+    byNote.set(info.id, { folderPath: info.folderPath, title: info.title, tasks: [task] })
+  })
+
+  return { byNote, unfiled }
+}
+
+/**
+ * One group per vault folder, ordered by path so a parent folder sits next to
+ * its subfolders. Vault-root notes come after the named folders, because the
+ * deliberate structure is what the user is scanning for; loose notes and
+ * unfiled tasks belong at the bottom.
+ */
+export const groupByFolder = (tasks: Task[], noteIndex: TaskNoteIndex): TaskGroup[] => {
+  const { byNote, unfiled } = bucketTasksByNote(tasks, noteIndex)
+
+  const byFolder = new Map<string, Task[]>()
+  for (const bucket of byNote.values()) {
+    const folderTasks = byFolder.get(bucket.folderPath)
+    if (folderTasks) folderTasks.push(...bucket.tasks)
+    else byFolder.set(bucket.folderPath, [...bucket.tasks])
+  }
+
+  const result: TaskGroup[] = [...byFolder.entries()]
+    .filter(([folderPath]) => folderPath !== '')
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([folderPath, folderTasks]) => ({
+      key: `${FOLDER_GROUP_PREFIX}${folderPath}`,
+      label: folderGroupLabel(folderPath),
+      tasks: folderTasks
+    }))
+
+  const rootTasks = byFolder.get('')
+  if (rootTasks && rootTasks.length > 0) {
+    result.push({ key: ROOT_FOLDER_GROUP_KEY, label: vaultRootLabel(), tasks: rootTasks })
+  }
+
+  if (unfiled.length > 0) {
+    result.push({ key: NO_NOTE_GROUP_KEY, label: noNoteLabel(), tasks: unfiled })
+  }
+
+  return result
+}
+
+/**
+ * One group per source note, ordered by folder path first so notes from the
+ * same folder stay together and the list reads like the vault tree.
+ */
+export const groupByNote = (tasks: Task[], noteIndex: TaskNoteIndex): TaskGroup[] => {
+  const { byNote, unfiled } = bucketTasksByNote(tasks, noteIndex)
+
+  const result: TaskGroup[] = [...byNote.entries()]
+    .sort(
+      ([, a], [, b]) => a.folderPath.localeCompare(b.folderPath) || a.title.localeCompare(b.title)
+    )
+    .map(([noteId, bucket]) => ({
+      key: `${NOTE_GROUP_PREFIX}${noteId}`,
+      label: bucket.title,
+      tasks: bucket.tasks
+    }))
+
+  if (unfiled.length > 0) {
+    result.push({ key: NO_NOTE_GROUP_KEY, label: noNoteLabel(), tasks: unfiled })
+  }
+
+  return result
+}
+
+// ============================================================================
 // DISPATCHER
 // ============================================================================
 
@@ -229,7 +353,14 @@ export const groupTasksForSort = (
   tasks: Task[],
   sortField: SortField,
   sortDirection: SortDirection,
-  projects: Project[]
+  projects: Project[],
+  /**
+   * Required by the `folder` and `note` modes only. While the notes list is
+   * still loading it is undefined, and those modes return no groups so the
+   * caller renders the flat list instead of parking every task under "No note"
+   * for a frame.
+   */
+  noteIndex?: TaskNoteIndex
 ): TaskGroup[] => {
   if (sortField === 'title' || sortField === 'completedAt') return []
 
@@ -250,6 +381,14 @@ export const groupTasksForSort = (
       break
     case 'createdAt':
       groups = groupByCreatedDate(tasks)
+      break
+    case 'folder':
+      if (!noteIndex) return []
+      groups = groupByFolder(tasks, noteIndex)
+      break
+    case 'note':
+      if (!noteIndex) return []
+      groups = groupByNote(tasks, noteIndex)
       break
     default:
       return []

@@ -159,7 +159,17 @@ describe('SavedFilterCreateSchema', () => {
   })
 
   it('should validate all sort fields', () => {
-    const fields = ['dueDate', 'priority', 'createdAt', 'title', 'project', 'completedAt']
+    const fields = [
+      'dueDate',
+      'priority',
+      'status',
+      'createdAt',
+      'title',
+      'project',
+      'completedAt',
+      'folder',
+      'note'
+    ]
     fields.forEach((field) => {
       const result = SavedFilterCreateSchema.safeParse({
         name: 'Filter',
