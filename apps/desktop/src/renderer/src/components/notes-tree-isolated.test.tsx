@@ -303,6 +303,7 @@ const createActions = (overrides: Record<string, unknown> = {}) => ({
   handleBulkDelete: vi.fn(),
   handleMove: vi.fn(),
   handleRenameClick: vi.fn(),
+  handleRenameById: vi.fn(),
   handleOpenExternal: vi.fn(),
   handleRevealInFinder: vi.fn(),
   handleRevealFolderInFinder: vi.fn(),
@@ -465,6 +466,45 @@ describe('NotesTree isolated coverage', () => {
     })
 
     expect(screen.getByTestId('pending-reveal')).toHaveTextContent('note-just-created')
+  })
+
+  it('opens inline rename when a reveal asks for it, once per request', () => {
+    // Surfaces far from the tree (the sidebar's "+ New", the tab bar's "+", ⌘N)
+    // create the note as `Untitled`; the row only exists once the reveal lands,
+    // so that is where the name input has to open (#2272).
+    render(
+      <TabProvider>
+        <NotesTree />
+      </TabProvider>
+    )
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('reveal-in-sidebar', { detail: { entityId: 'root', rename: true } })
+      )
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'reveal pending' }))
+    expect(mocks.actions.handleRenameById).toHaveBeenCalledWith('root')
+
+    // RevealHandler's effect can complete the same request more than once, and
+    // re-opening the input would wipe whatever has been typed into it.
+    mocks.actions.handleRenameById.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'reveal pending' }))
+    expect(mocks.actions.handleRenameById).not.toHaveBeenCalled()
+  })
+
+  it('leaves a plain reveal without a rename input', () => {
+    render(
+      <TabProvider>
+        <NotesTree />
+      </TabProvider>
+    )
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('reveal-in-sidebar', { detail: { entityId: 'root' } }))
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'reveal pending' }))
+    expect(mocks.actions.handleRenameById).not.toHaveBeenCalled()
   })
 
   it('reveals a folder row action on keyboard focus, not only on hover', () => {

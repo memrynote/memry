@@ -219,8 +219,10 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           isDeleted: false
         })
         // The folder may have come from `defaultNoteFolder` rather than the
-        // selection, so the created note is what says where to look.
-        revealNoteInSidebar(result.note.id)
+        // selection, so the created note is what says where to look. `rename`
+        // opens the row's name input once it gets there, so naming the note is
+        // not a separate second step (#2272).
+        revealNoteInSidebar(result.note.id, { rename: true })
       }
     } catch (error) {
       log.error('Failed to create new note', error)
