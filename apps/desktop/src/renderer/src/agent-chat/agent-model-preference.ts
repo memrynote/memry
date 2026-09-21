@@ -9,7 +9,8 @@ import type {
 const log = createLogger('AgentModelPreference')
 const STORAGE_KEY = 'memry:agent-model-preference'
 
-export type AgentProvider = 'claude_cli' | 'codex_cli' | 'local_openai_compatible'
+export type AgentProvider =
+  'claude_cli' | 'codex_cli' | 'antigravity_cli' | 'local_openai_compatible'
 
 export interface AgentModelPreference {
   provider: AgentProvider
@@ -21,8 +22,13 @@ export interface AgentModelPreference {
   localModel?: string | null
 }
 
-const PROVIDERS: AgentProvider[] = ['claude_cli', 'codex_cli', 'local_openai_compatible']
-const CLI_BACKENDS: AgentCliBackendId[] = ['claude_cli', 'codex_cli']
+const PROVIDERS: AgentProvider[] = [
+  'claude_cli',
+  'codex_cli',
+  'antigravity_cli',
+  'local_openai_compatible'
+]
+const CLI_BACKENDS: AgentCliBackendId[] = ['claude_cli', 'codex_cli', 'antigravity_cli']
 const CLAUDE_EFFORTS: ClaudeEffort[] = ['low', 'medium', 'high', 'xhigh', 'max']
 const CODEX_EFFORTS: CodexReasoningEffort[] = ['low', 'medium', 'high', 'xhigh']
 
@@ -79,7 +85,7 @@ export function preferredConversationDefaults():
   { backend: AgentBackendId; backendModel?: string | null } | undefined {
   const pref = readAgentModelPreference()
   if (!pref) return undefined
-  if (pref.provider === 'claude_cli' || pref.provider === 'codex_cli') {
+  if (pref.provider !== 'local_openai_compatible') {
     return { backend: pref.provider, backendModel: pref.models[pref.provider] ?? null }
   }
   return { backend: pref.provider, ...(pref.localModel ? { backendModel: pref.localModel } : {}) }

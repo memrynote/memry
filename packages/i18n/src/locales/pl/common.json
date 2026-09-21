@@ -445,6 +445,7 @@
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
+        "antigravity": "Antigravity",
         "local": "Lokalnie"
       },
       "models": {

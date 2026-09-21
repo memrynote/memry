@@ -1660,6 +1660,10 @@
         "label": "Codex CLI",
         "description": "Install with `npm install -g @openai/codex`, then run `codex login` to sign in to your OpenAI account. MemryNote picks it up automatically."
       },
+      "antigravity": {
+        "label": "Antigravity CLI",
+        "description": "Install Antigravity CLI from antigravity.google/docs/cli, then run `agy` once to sign in to your Google account. MemryNote picks it up automatically."
+      },
       "status": {
         "detected": "Detected · v{version}",
         "detectedNoVersion": "Detected",

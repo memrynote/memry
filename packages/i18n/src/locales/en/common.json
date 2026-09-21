@@ -190,6 +190,7 @@
         "label": "Provider",
         "claude": "Claude",
         "codex": "Codex",
+        "antigravity": "Antigravity",
         "local": "Local"
       },
       "access": {

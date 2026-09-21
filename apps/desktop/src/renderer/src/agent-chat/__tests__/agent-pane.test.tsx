@@ -54,6 +54,14 @@ const readyStatuses: BackendStatusesResponse = {
     reason: null,
     detail: null
   },
+  antigravity_cli: {
+    backend: 'antigravity_cli',
+    available: true,
+    version: '1.2.7',
+    minimumRequired: '1.2.7',
+    reason: null,
+    detail: null
+  },
   local_openai_compatible: {
     backend: 'local_openai_compatible',
     available: true,

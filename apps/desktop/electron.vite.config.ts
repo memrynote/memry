@@ -78,6 +78,9 @@ export default defineConfig({
           // silently falls back to scanning in-process.
           'large-file-index-worker': resolve(appRoot, 'src/main/vault/large-file-index-worker.ts'),
           'image-processing-worker': resolve(appRoot, 'src/main/image-processing/worker.ts'),
+          // Electron-as-node child that bridges Antigravity CLI's stdio MCP
+          // client to the in-process Vault MCP server (see agy-mcp-bridge.ts).
+          'agy-mcp-bridge': resolve(appRoot, 'src/main/agent/cli/agy-mcp-bridge.ts'),
           'voice-transcription-worker': resolve(
             appRoot,
             'src/main/inbox/voice-transcription-worker.ts'

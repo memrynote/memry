@@ -946,13 +946,15 @@ describe('settings section coverage', () => {
 
     expect(await screen.findByText('agentProviders.permissions.group')).toBeInTheDocument()
 
-    // CLI agent detection status: Claude detected with a version, Codex missing.
+    // CLI agent detection status: Claude detected with a version, Codex and
+    // Antigravity missing.
     expect(await screen.findByText('agentProviders.cliAgents.claude.label')).toBeInTheDocument()
     expect(
       await screen.findByText('agentProviders.cliAgents.status.detected {"version":"2.3.0"}')
     ).toBeInTheDocument()
     expect(screen.getByText('agentProviders.cliAgents.codex.label')).toBeInTheDocument()
-    expect(screen.getByText('agentProviders.cliAgents.status.notDetected')).toBeInTheDocument()
+    expect(screen.getByText('agentProviders.cliAgents.antigravity.label')).toBeInTheDocument()
+    expect(screen.getAllByText('agentProviders.cliAgents.status.notDetected')).toHaveLength(2)
 
     fireEvent.click(screen.getByText('agentProviders.permissions.access.computerAccess'))
     await waitFor(() =>

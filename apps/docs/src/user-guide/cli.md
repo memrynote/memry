@@ -336,12 +336,13 @@ These commands inspect or update local sync metadata in the vault. Storage is lo
 ```bash
 memrynote agent backends
 memrynote agent models --backend codex_cli
+memrynote agent models --backend antigravity_cli
 memrynote agent local-settings
 memrynote agent set-local-settings --preset lm_studio --model qwen
 memrynote agent set-local-settings --preset custom --base-url http://localhost:9999/v1
 ```
 
-Agent commands cover local diagnostics and settings that can run without Electron. `agent backends` probes local `claude` and `codex` binaries with `--version`, `agent models` returns the desktop Agent Chat model presets, and `agent local-settings` reads or updates local OpenAI-compatible provider settings in the vault. Chat turns, conversation storage, tool approvals, MCP server lifecycle, provider connection tests, and live local-model discovery still require the desktop Agent runtime.
+Agent commands cover local diagnostics and settings that can run without Electron. `agent backends` probes the local `claude`, `codex` and `agy` binaries with `--version`, `agent models` returns the desktop Agent Chat model presets, and `agent local-settings` reads or updates local OpenAI-compatible provider settings in the vault. Chat turns, conversation storage, tool approvals, MCP server lifecycle, provider connection tests, and live local-model discovery still require the desktop Agent runtime.
 
 ## Templates
 
