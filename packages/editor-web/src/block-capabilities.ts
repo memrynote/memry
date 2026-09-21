@@ -89,7 +89,10 @@ export const LONG_PRESS_BLOCK_TYPES: ReadonlySet<string> = new Set([
   'youtubeEmbed',
   'bookmark',
   'taskBlock',
-  'divider'
+  'divider',
+  // The card shows LaTeX source the phone cannot edit, so nothing here competes
+  // with the loupe for the gesture.
+  'mathBlock'
 ])
 
 /**
@@ -116,7 +119,8 @@ export const BLOCK_LABELS: Readonly<Record<string, string>> = {
   audio: 'Audio',
   bookmark: 'Bookmark',
   youtubeEmbed: 'YouTube embed',
-  taskBlock: 'Task'
+  taskBlock: 'Task',
+  mathBlock: 'Equation'
 }
 
 /** Block-level attachment, or an `inlineImage` in its content. Desktop's rule. */

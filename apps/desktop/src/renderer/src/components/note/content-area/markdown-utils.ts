@@ -33,11 +33,14 @@ import {
   restoreBlockNesting,
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
+import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { splitMarkdownByBlockquoteRuns, serializeCalloutBlock } from './callout-block'
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
 import {
+  readMathRun,
   resolveCalloutRun,
   resolveQuoteRun,
+  serializeMathBlock,
   serializeQuoteBlock,
   serializeToggleBlock,
   restoreDetailsMarkup,
@@ -146,7 +149,12 @@ async function serializeBlocksWithNestingMarkers(editor: any, blocks: Block[]): 
     const markdown =
       (block.type as string) === 'file'
         ? serializeFileBlock(block.props as FileBlockProps)
-        : (await serializeBlocks(editor, [shallowBlock])).trim()
+        : (block.type as string) === 'mathBlock'
+          ? // Twin of main's nested case: the `$$` fence is three lines of one
+            // paragraph in the block spec's DOM, so a nested formula is written
+            // from the shared serializer rather than through BlockNote.
+            serializeMathBlock((block.props as { latex?: string }).latex ?? '')
+          : (await serializeBlocks(editor, [shallowBlock])).trim()
     if (markdown) parts.push(markdown)
 
     for (const child of (block.children ?? []) as Block[]) {
@@ -445,6 +453,12 @@ async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block
             type: 'file' as const,
             props: part.props
           } as unknown as Block)
+        } else if (part.kind === 'math') {
+          // SAFETY: `mathBlock`'s one declared prop, a string.
+          blocks.push({
+            type: 'mathBlock' as const,
+            props: { latex: part.latex }
+          } as unknown as Block)
         } else {
           const parsed = await parseMarkdownChunkPreservingNesting(editor, part.text)
           if (parsed[0]) {
@@ -552,6 +566,15 @@ export async function serializeBlocksPreservingBlanks(
         type: 'content',
         text: markers.length > 0 ? `${markers.join('\n')}\n${calloutMd}` : calloutMd
       })
+    } else if ((block.type as string) === 'mathBlock') {
+      await flushContent()
+      flushGap()
+      const latex = (block.props as { latex?: string }).latex ?? ''
+      const mathMd = serializeMathBlock(latex)
+      segments.push({
+        type: 'content',
+        text: markers.length > 0 ? `${markers.join('\n')}\n${mathMd}` : mathMd
+      })
     } else if ((block.type as string) === 'toggleListItem') {
       await flushContent()
       flushGap()
@@ -604,6 +627,7 @@ type EmbedPart =
   | { kind: 'embed'; url: string; videoId: string }
   | { kind: 'bookmark'; url: string }
   | { kind: 'file'; props: FileBlockProps }
+  | { kind: 'math'; latex: string }
 
 const EMBED_LINE_REGEX = /^!\[embed\]\(([^)]+)\)$/
 const BOOKMARK_LINE_REGEX = /^!\[bookmark\]\(([^)]+)\)$/
@@ -612,6 +636,11 @@ const FILE_BLOCK_LINE_REGEX = /^<!-- file:\{[^}]+\} -->$/
 function splitByEmbedMarkers(text: string): EmbedPart[] {
   const lines = text.split('\n')
   const parts: EmbedPart[] = []
+  // Only the math claim is fence-guarded. The three marker branches below are
+  // unchanged, deliberately: they predate this tracker and main's twin leaves
+  // them unguarded too, so guarding them here would make the same file parse to
+  // a different document depending on which process read it.
+  const fence = createFenceTracker()
   let buffer: string[] = []
   let pending: SidecarPatch[] = []
 
@@ -624,7 +653,27 @@ function splitByEmbedMarkers(text: string): EmbedPart[] {
     pending = []
   }
 
-  for (const line of lines) {
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index]
+    const insideFence = fence.consume(line)
+
+    // `readMathRun` claims only a run that owns its whole paragraph and
+    // re-serializes byte-for-byte, so `$$` written by somebody else stays the
+    // markdown it is. Main's twin lives in `parseContentWithMarkers`.
+    const math = insideFence ? null : readMathRun(lines, index, buffer.length === 0)
+    if (math) {
+      flushBuffer()
+      // Sidecar markers are dropped the way the file branch drops them: a math
+      // block declares neither colours nor alignment, so every patch is a no-op.
+      pending = []
+      parts.push({ kind: 'math', latex: math.latex })
+      for (let consumed = index + 1; consumed < math.end; consumed++) {
+        fence.consume(lines[consumed])
+      }
+      index = math.end - 1
+      continue
+    }
+
     const trimmedLine = line.trim()
     const patch = parseSidecarMarkerLine(trimmedLine)
     if (patch) {

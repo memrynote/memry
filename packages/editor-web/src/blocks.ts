@@ -9,6 +9,7 @@ import {
   calloutConfig,
   CALLOUT_TYPE_VALUES,
   fileBlockConfig,
+  mathBlockConfig,
   taskBlockConfig,
   toggleListItemConfig,
   youtubeEmbedConfig
@@ -18,7 +19,7 @@ import { getYouTubeThumbnailUrl } from '@memry/shared/youtube'
 import { icon, type IconName } from './icons.ts'
 
 /**
- * Touch presentation for Memry's six custom blocks.
+ * Touch presentation for Memry's seven custom blocks.
  *
  * Every spec here takes its config and its `toExternalHTML` from
  * `@memry/editor-schema` unchanged, so the vault bytes are the ones the main
@@ -283,6 +284,35 @@ export function createTouchBlockSpecs() {
         return { dom }
       },
       toExternalHTML: blockExternalHTML.bookmark
+    })(),
+
+    /**
+     * The formula's SOURCE, not a rendering.
+     *
+     * KaTeX is 264 KB of JavaScript plus a 1.1 MB font family, and this bundle
+     * is the one that already dropped shiki for costing 3.4 MB of 4.4 MB and
+     * 3.2 s of the WebView's JS thread on every note open (#2032, #2044).
+     * Registering the spec is the part that is not optional — a node type this
+     * schema cannot build is DELETED from the shared Y.Doc by y-prosemirror —
+     * and registration is what the config and `toExternalHTML` above give it.
+     * So the phone shows what the vault file holds, in the source's own
+     * monospace, and the formula is a formula again on desktop.
+     */
+    mathBlock: createBlockSpec(mathBlockConfig, {
+      render(block) {
+        const dom = document.createElement('div')
+        dom.className = 'math-block'
+
+        const glyph = span('math-icon')
+        glyph.appendChild(icon('sigma'))
+
+        const body = span('math-source', block.props.latex || 'Empty equation')
+        if (!block.props.latex) body.setAttribute('data-empty', 'true')
+
+        dom.append(glyph, body)
+        return { dom }
+      },
+      toExternalHTML: blockExternalHTML.mathBlock
     })(),
 
     toggleListItem: createBlockSpec(

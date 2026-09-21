@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  readMathRun,
   readStructuredQuoteRun,
   restoreDetailsMarkup,
+  serializeMathBlock,
   serializeQuoteBlock,
   serializeToggleBlock,
   splitMarkdownByToggles
@@ -22,6 +24,97 @@ function expectHiddenMarkup(segments: ReturnType<typeof splitMarkdownByToggles>,
   expect(text).not.toContain('<')
   expect(restoreDetailsMarkup(text)).toBe(source)
 }
+
+describe('serializeMathBlock', () => {
+  it('fences the source between two `$$` lines', () => {
+    expect(serializeMathBlock('E = mc^2')).toBe('$$\nE = mc^2\n$$')
+  })
+
+  it('writes an empty block as the bare fence', () => {
+    // #given a block inserted from the slash menu, before anything is typed
+    expect(serializeMathBlock('')).toBe('$$\n$$')
+    expect(serializeMathBlock('  \n \n')).toBe('$$\n$$')
+  })
+
+  it('keeps the source multi-line', () => {
+    expect(serializeMathBlock('\\begin{aligned}\na &= b\n\\end{aligned}')).toBe(
+      '$$\n\\begin{aligned}\na &= b\n\\end{aligned}\n$$'
+    )
+  })
+
+  it('drops a blank line inside the body', () => {
+    // #given every parse splits on blank lines before any block reader runs, so
+    // a body carrying one arrives in two pieces and the block comes back as
+    // literal `$$` text on the next open.
+    expect(serializeMathBlock('a = b\n\nc = d')).toBe('$$\na = b\nc = d\n$$')
+  })
+})
+
+describe('readMathRun', () => {
+  const runOf = (markdown: string) => readMathRun(markdown.split('\n'), 0, true)
+
+  it('claims the bytes serializeMathBlock writes', () => {
+    // #given / #when
+    const run = runOf('$$\nE = mc^2\n$$')
+
+    // #then
+    expect(run).toEqual({ latex: 'E = mc^2', raw: '$$\nE = mc^2\n$$', end: 3 })
+  })
+
+  it('claims an empty block', () => {
+    expect(runOf('$$\n$$')).toEqual({ latex: '', raw: '$$\n$$', end: 2 })
+  })
+
+  it('reports the first line after the run', () => {
+    // #given a run followed by a paragraph, one blank line down
+    const run = readMathRun(['$$', 'x', '$$', '', 'After'], 0, true)
+
+    // #then the caller resumes at the blank line, not inside the fence
+    expect(run?.end).toBe(3)
+  })
+
+  it('refuses a run that does not start its paragraph', () => {
+    // #given `Cost\n$$\nx\n$$` is ONE paragraph to CommonMark. Splitting it in
+    // two puts a blank line between the halves on the next save.
+    expect(readMathRun(['Cost', '$$', 'x', '$$'], 1, false)).toBeNull()
+  })
+
+  it('refuses a run with a paragraph glued to its end', () => {
+    expect(readMathRun(['$$', 'x', '$$', 'After'], 0, true)).toBeNull()
+  })
+
+  it('refuses an unterminated fence rather than swallowing the note', () => {
+    // #given the shape #1883 is about, one block over
+    expect(runOf('$$\nE = mc^2')).toBeNull()
+  })
+
+  it('refuses a one-line `$$x$$`', () => {
+    // #given somebody else's notation. Claiming it would rewrite their file
+    // into the three-line form on the next save.
+    expect(runOf('$$E = mc^2$$')).toBeNull()
+  })
+
+  it('refuses a fence with trailing whitespace', () => {
+    expect(runOf('$$ \nE = mc^2\n$$')).toBeNull()
+    expect(runOf('$$\nE = mc^2\n$$ ')).toBeNull()
+  })
+
+  it('refuses an indented fence', () => {
+    // #given `  $$` is inside a list item or a code block; those bytes belong
+    // to the block around them.
+    expect(runOf('  $$\n  E = mc^2\n  $$')).toBeNull()
+  })
+
+  it('refuses a body whose lines carry trailing spaces', () => {
+    // #given the proof rule: what is not written byte-for-byte is not claimed,
+    // because write-back byte-compares.
+    expect(runOf('$$\nE = mc^2  \n$$')).toBeNull()
+  })
+
+  it('does not start a run on anything but a fence', () => {
+    expect(runOf('Cost is $$5\n$$')).toBeNull()
+  })
+})
 
 describe('serializeToggleBlock', () => {
   it('wraps the body in blank lines so renderers format it as markdown', () => {

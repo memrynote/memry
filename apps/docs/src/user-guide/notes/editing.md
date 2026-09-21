@@ -38,6 +38,7 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Heading 1 through 6
 - Bullet list, numbered list, check list
 - Quote, callout
+- Equation (a LaTeX formula on its own line)
 - Toggle list (collapsible section — nest text, images, even other toggles inside it)
 - Code block (language picker: 50 languages, alphabetical)
 - Divider
@@ -220,6 +221,34 @@ Two shapes are deliberately left alone rather than adopted:
   literal text, so nothing is lost; close the block by hand and it becomes a real toggle
   on the next open.
 
+## Equations
+
+`/math` — or `/equation`, `/latex`, `/formula` — inserts an equation block. Click it to open the source box, type LaTeX, and
+press <kbd>Esc</kbd> when you are done; the block shows the typeset formula the moment
+you close the box. LaTeX that does not parse shows the error instead of a formula, with
+your source still in the box.
+
+The file keeps the source, not the rendering:
+
+```md
+$$
+E = mc^2
+$$
+```
+
+That is the same block form Obsidian, GitHub and Pandoc read, so an equation written
+here is an equation there, and one written there opens here as a block.
+
+Two shapes are deliberately left alone:
+
+- `$$E = mc^2$$` written on a single line stays the text its author wrote. Adopting it
+  would rewrite the line into the three-line form the next time the note was saved.
+- A `$$` that starts or ends in the middle of a paragraph, or that is never closed,
+  stays text for the same reason.
+
+On iPhone and iPad an equation shows its LaTeX source rather than the typeset formula.
+The formula is unchanged in the file, and the same note shows it typeset on the desktop.
+
 ## Folding a bullet list
 
 Any bullet with something nested under it can be folded. Hover the line and a small
@@ -296,8 +325,8 @@ applies to that one block, no matter what else is selected:
 | **Comment**                     | Opens a comment on the block, in the same review sidebar as a comment on selected text.                                                                         |
 
 Some entries are hidden when they do not apply. **Turn into** and **Comment** do not
-appear on blocks with no text of their own — files, images, embeds, bookmarks, tasks
-and tables. **Move to…** is hidden on blocks that hold an attachment, because the
+appear on blocks with no text of their own — files, images, embeds, bookmarks, tasks,
+equations and tables. **Move to…** is hidden on blocks that hold an attachment, because the
 file stays with the note that owns it and the embed would break on your other
 devices.
 

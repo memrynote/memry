@@ -107,6 +107,28 @@ export const toggleListItemConfig = {
   content: 'inline' as const
 }
 
+/**
+ * A LaTeX formula on its own line, rendered as mathematics (#1871).
+ *
+ * `latex` is the block's WHOLE state and it is the source, not the rendering:
+ * KaTeX turns it into MathML at paint time on the surfaces that can afford the
+ * bytes, and the vault file holds the `$$…$$` source either way. So a surface
+ * without KaTeX still round-trips the block byte-for-byte, which is what lets
+ * the main process and the mobile WebView carry it without the renderer.
+ *
+ * `content: 'none'`: the formula is authored in a source popup, not as the
+ * editor's inline content. Inline content would make every markdown escape
+ * rule apply to LaTeX — `_`, `*`, `\` and `{}` are exactly what a formula is
+ * made of.
+ */
+export const mathBlockConfig = {
+  type: 'mathBlock' as const,
+  propSchema: {
+    latex: { default: '' }
+  },
+  content: 'none' as const
+}
+
 /** Node names of every custom block spec. The parity gate (#1433) will read this. */
 export const MEMRY_BLOCK_TYPES = [
   'taskBlock',
@@ -114,5 +136,6 @@ export const MEMRY_BLOCK_TYPES = [
   'file',
   'youtubeEmbed',
   'bookmark',
-  'toggleListItem'
+  'toggleListItem',
+  'mathBlock'
 ] as const

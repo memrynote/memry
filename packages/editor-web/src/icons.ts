@@ -30,6 +30,8 @@ const ICON_PATHS = {
   'check-circle': ['M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0', 'm8.5 12.5 2.5 2.5 4.5-5.5'],
   alarm: ['M20 13a8 8 0 1 1-16 0 8 8 0 1 1 16 0', 'M12 9.5V13l2 2', 'M5 3 2 6', 'm22 6-3-3'],
   bookmark: ['M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'],
+  /** A capital sigma, stroked as one open outline: math without a formula. */
+  sigma: ['M18 5H6l6 7-6 7h12'],
   globe: [
     'M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0',
     'M2 12h20',

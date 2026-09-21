@@ -230,6 +230,16 @@
       "error": "Error",
       "success": "Success"
     },
+    "math": {
+      "title": "Equation",
+      "group": "Basic blocks",
+      "subtext": "Write a formula in LaTeX",
+      "empty": "Add an equation",
+      "edit": "Edit equation",
+      "placeholder": "E = mc^2",
+      "sourceLabel": "LaTeX source",
+      "hint": "LaTeX. Press Escape when you are done."
+    },
     "slashMenu": {
       "pdf": {
         "title": "PDF",
