@@ -29,6 +29,7 @@ pub mod body_edit;
 pub mod canonical;
 pub mod errors;
 pub mod lifecycle;
+pub mod node_shapes;
 pub mod registry;
 pub mod snapshots;
 pub mod text_extract;

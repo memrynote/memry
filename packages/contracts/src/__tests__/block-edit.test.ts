@@ -130,13 +130,18 @@ describe('block-edit vectors', () => {
     }
   })
 
-  it('every pending case names the task that will fix it', () => {
-    // A pending flag with no owner is a defect nobody is going to find again.
+  it('carries no stale pending flags, and any flag names its owner', () => {
+    // The class shipped with four pending cases, each a real defect the write
+    // direction found on its first run: the append path adding a second
+    // top-level child, `SetProp` storing every value as text, `level` landing
+    // as a string, and inserted blocks omitting their declared props. N400 and
+    // N408 fixed all four and the flags came off, which is the convention
+    // working rather than a test relaxed for convenience.
+    //
+    // A flag added later must still name the task that will clear it: a
+    // pending flag with no owner is a defect nobody is going to find again.
     const pending = vectors.cases.filter((entry) => entry.pending)
-    expect(
-      pending.length,
-      'no pending cases left — drop this test with the last flag'
-    ).toBeGreaterThan(0)
+    expect(pending.map((entry) => entry.name)).toEqual([])
     for (const entry of pending) {
       expect(entry.pending?.task, `${entry.name} has no owning task`).toMatch(/^N\d/)
       expect(entry.pending?.reason.length ?? 0).toBeGreaterThan(40)

@@ -383,11 +383,17 @@ open — that repair exists because empty-string ids produced an editor error. A
 writer SHOULD write a v4-shaped id; a reader MUST NOT fail on a block without
 one.
 
-**A block's `props` are omitted when they equal their declared defaults.**
-`textColor`, `backgroundColor` and `textAlignment` are declared with defaults,
-so a node carrying no attributes reads identically to one carrying the defaults.
-Omitting them is what keeps a minimally-written block byte-comparable with the
-committed fixtures.
+**A block's `props` MAY be omitted when they equal their declared defaults, and
+a reader MUST accept either spelling.** `textColor`, `backgroundColor` and
+`textAlignment` are declared with defaults, so a node carrying no attributes
+reads identically to one carrying them, and omitting them is what keeps the
+hand-built fixtures small.
+
+**This is a reader's tolerance, not a writer's licence — see the paragraph
+above.** BlockNote's own writer emits the defaults explicitly, so a writer that
+omits them produces a document that renders identically and is not canonically
+identical to desktop's. The two statements are easy to read as one rule and are
+not: a reader accepts both spellings, a writer produces exactly one of them.
 
 **The committed fixtures are deliberately smaller than this, and two of them
 disagree with it.** `text-extract.json`'s `a plain paragraph document` is

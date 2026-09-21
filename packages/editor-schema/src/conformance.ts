@@ -1066,12 +1066,7 @@ export const BLOCK_EDIT_CASES: readonly BlockEditCase[] = [
     pins: 'a prop crosses as the string the document stores; the core does not know which props are numbers',
     base: [{ id: 'c1', type: 'checkListItem', props: { checked: false }, content: 'A task' }],
     op: { kind: 'setProp', blockId: 'c1', name: 'checked', value: 'true' },
-    expected: [{ id: 'c1', type: 'checkListItem', props: { checked: true }, content: 'A task' }],
-    pending: {
-      reason:
-        'SetProp carries a String and `insert_attribute` stores one, so `checked` lands as the string "true" where BlockNote writes the boolean `true`. This is not cosmetic: unticking stores "false", and a non-empty string is truthy, so a box the user cleared on iOS reads as ticked anywhere that tests the prop for truth. Latent today because no shell calls `Notes.editBlock` yet — which is exactly why it must be fixed before one does. The writer needs each block type’s declared prop TYPE, not just its name.',
-      task: 'N408'
-    }
+    expected: [{ id: 'c1', type: 'checkListItem', props: { checked: true }, content: 'A task' }]
   },
   {
     name: 'setProp changes a callout type',
@@ -1085,12 +1080,7 @@ export const BLOCK_EDIT_CASES: readonly BlockEditCase[] = [
     pins: 'all six levels are reachable by a prop edit, which is what the shell now renders',
     base: [{ id: 'h1', type: 'heading', props: { level: 2 }, content: 'A heading' }],
     op: { kind: 'setProp', blockId: 'h1', name: 'level', value: '5' },
-    expected: [{ id: 'h1', type: 'heading', props: { level: 5 }, content: 'A heading' }],
-    pending: {
-      reason:
-        'The same type defect as the check-list case: `level` lands as the string "5" where BlockNote writes the number 5. `extract_text` parses the level with a JavaScript-style digit-prefix read so the marker survives either spelling, which is why this has gone unnoticed.',
-      task: 'N408'
-    }
+    expected: [{ id: 'h1', type: 'heading', props: { level: 5 }, content: 'A heading' }]
   },
   {
     name: 'delete removes one block and nothing else',
@@ -1130,12 +1120,7 @@ export const BLOCK_EDIT_CASES: readonly BlockEditCase[] = [
       { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
       { id: 'p1a', type: 'paragraph', content: 'Inserted.' },
       { id: 'p2', type: 'paragraph', content: 'Second paragraph.' }
-    ],
-    pending: {
-      reason:
-        'body_edit.rs writes a bare `paragraph` with no attributes, and BlockNote writes one carrying backgroundColor, textAlignment and textColor at their declared defaults. Both documents RENDER the same, so nothing is lost today, but they are not the same document — so a shell cannot be held to producing what desktop produces until the writer knows each block type’s declared props.',
-      task: 'N400'
-    }
+    ]
   },
   {
     name: 'insertParagraph at the end of the body',
@@ -1146,12 +1131,7 @@ export const BLOCK_EDIT_CASES: readonly BlockEditCase[] = [
       { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
       { id: 'p2', type: 'paragraph', content: 'Second paragraph.' },
       { id: 'p3', type: 'paragraph', content: 'Appended.' }
-    ],
-    pending: {
-      reason:
-        'Two failures in one case. The declared-default props of the sibling case, plus §12.5.0’s central rule: `insert_paragraph` appends to the FRAGMENT when `after` is absent, which puts a `blockContainer` beside the existing `blockGroup` as a second top-level child. y-prosemirror cannot construct a `doc` with two top-level children and answers by DELETING the element — silently. The update applies, the document encodes, extract_text may still return the text, and the next desktop to open the note renders it without the block.',
-      task: 'N400'
-    }
+    ]
   }
 ]
 

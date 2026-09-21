@@ -204,16 +204,16 @@ after sync.
 
 **Depends on**: G-P1.
 
-- [ ] N400 Grow `crates/memry-core/src/crdt/body_edit.rs` into a schema-aware writer: one place that knows BlockNote's node shapes, locating its parent rather than assuming one, and refusing an unrecognised top-level layout rather than guessing (§12.5.0)
-- [ ] N401 `InsertBlock { kind, props, after }` for every registry type, building the correct node tree for each
-- [ ] N402 Table cell text. If N010 finds a cell carries a `blockContainer` id this is `SetText` reaching a cell, so the task is a test plus a rename; if not, add `SetCellText { table_id, row, col, text }`
-- [ ] N403 Table structure: `InsertRow`, `DeleteRow`, `InsertColumn`, `DeleteColumn`, preserving `colwidth` and cell colours on the cells that survive
-- [ ] N404 Table cell props: colour and `colwidth`, so desktop regenerates the `table-layout` and `table-colors` markers from what iOS wrote
-- [ ] N405 `TurnInto` across the 11 types desktop offers (`paragraph`, `heading1..3`, `bulletList`, `numberedList`, `checkList`, `toggleList`, `quote`, `codeBlock`, `callout`), carrying inline content across the change
-- [ ] N406 `Duplicate`, `MoveBlock`, `Indent` and `Outdent`, with nesting rules matching desktop's `multi-block-indent-plugin`
-- [ ] N407 Inline mark operations — apply and remove `bold`, `italic`, `underline`, `strike`, `code`, plus colour and link — addressed by range within a block. **This removes the documented limitation in `body_edit.rs` that `SetText` loses a block's marks**
-- [ ] N408 Block prop operations for the rest: callout `type`, code block `language`, toggle `open`, heading `level`, alignment and colours
-- [ ] N409 Every operation commits its update row and its outbox row together (FR-030), and a write that authored nothing stores and pushes nothing — the rule `body_edit.rs` already follows
+- [x] N400 Grow `crates/memry-core/src/crdt/body_edit.rs` into a schema-aware writer: one place that knows BlockNote's node shapes, locating its parent rather than assuming one, and refusing an unrecognised top-level layout rather than guessing (§12.5.0)
+- [x] N401 `InsertBlock { kind, props, after }` for every registry type, building the correct node tree for each
+- [x] N402 Table cell text. If N010 finds a cell carries a `blockContainer` id this is `SetText` reaching a cell, so the task is a test plus a rename; if not, add `SetCellText { table_id, row, col, text }`
+- [x] N403 Table structure: `InsertRow`, `DeleteRow`, `InsertColumn`, `DeleteColumn`, preserving `colwidth` and cell colours on the cells that survive
+- [x] N404 Table cell props: colour and `colwidth`, so desktop regenerates the `table-layout` and `table-colors` markers from what iOS wrote
+- [x] N405 `TurnInto` across the 11 types desktop offers (`paragraph`, `heading1..3`, `bulletList`, `numberedList`, `checkList`, `toggleList`, `quote`, `codeBlock`, `callout`), carrying inline content across the change
+- [x] N406 `Duplicate`, `MoveBlock`, `Indent` and `Outdent`, with nesting rules matching desktop's `multi-block-indent-plugin`
+- [x] N407 Inline mark operations — apply and remove `bold`, `italic`, `underline`, `strike`, `code`, plus colour and link — addressed by range within a block. **This removes the documented limitation in `body_edit.rs` that `SetText` loses a block's marks**
+- [x] N408 Block prop operations for the rest: callout `type`, code block `language`, toggle `open`, heading `level`, alignment and colours
+- [x] N409 Every operation commits its update row and its outbox row together (FR-030), and a write that authored nothing stores and pushes nothing — the rule `body_edit.rs` already follows
 
 ---
 

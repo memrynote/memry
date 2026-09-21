@@ -131,44 +131,42 @@ fn every_operation_produces_the_document_the_class_records() {
         );
         checked += 1;
     }
-    // The live half of the class. Four cases are `pending` against the writer
-    // as it stands (two on the declared-default props and the second
-    // top-level child, two on prop types), and the inverted test below holds
-    // those. This floor is what stops the class from quietly becoming all
-    // pending and measuring nothing.
+    // Every case is live now: the four that shipped `pending` were real
+    // defects, N400 and N408 fixed them, and the flags came off. This floor
+    // is what stops the class from quietly becoming all pending and
+    // measuring nothing.
     assert!(
-        checked >= 6,
+        checked >= 10,
         "only {checked} cases ran; a class that skips itself measures nothing"
     );
 }
 
-/// The inverted half. A pending case must still fail, or its flag is stale.
+/// **The class carries no `pending` case any more, and that is the point.**
+///
+/// It shipped with four, each a real defect the write class found on its first
+/// run: the append path adding a second top-level child, `SetProp` storing
+/// every value as text, `level` landing as a string, and inserted blocks
+/// omitting their declared props. N400 and N408 fixed all four, the inverted
+/// test fired to say so, and the flags came off — which is the convention
+/// working rather than a test deleted for convenience.
+///
+/// A flag added later reintroduces the inverted check with it.
 #[test]
-fn every_pending_case_still_fails() {
+fn the_class_carries_no_stale_pending_flags() {
     let file = vector_file("block-edit");
-    let pending: Vec<&Json> = file["cases"]
+    let pending: Vec<&str> = file["cases"]
         .as_array()
         .expect("cases")
         .iter()
         .filter(|case| case.get("pending").is_some())
+        .map(|case| str_field(case, "name"))
         .collect();
-    assert!(
-        !pending.is_empty(),
-        "no pending cases left — delete this test with the last flag"
-    );
 
-    for case in pending {
-        let name = str_field(case, "name");
-        let (actual, expected) = applied(case);
-        assert_ne!(
-            actual,
-            expected,
-            "{name} now passes. Delete its `pending` flag in \
-             packages/editor-schema/src/conformance.ts and regenerate the class; \
-             the flag is the stale thing, never the case.\n  reason was: {}",
-            case["pending"]["reason"].as_str().unwrap_or_default()
-        );
-    }
+    assert!(
+        pending.is_empty(),
+        "these cases are flagged pending; if they now pass, drop the flag in \
+         packages/editor-schema/src/conformance.ts and regenerate: {pending:?}"
+    );
 }
 
 /// §12.5.0's central rule, asserted directly rather than only through a
@@ -193,12 +191,15 @@ fn the_append_path_does_not_add_a_second_top_level_child() {
         .filter(|line| line.starts_with("0 "))
         .collect();
 
-    // Recorded as the defect it currently is. When N400 fixes the writer this
-    // becomes `assert_eq!(top_level, ["0 element blockGroup"])` and the
-    // pending flags come off.
-    assert!(
-        top_level.len() > 1,
-        "the append path is fixed — tighten this test to assert a single \
-         top-level blockGroup and drop the pending flags. Top level: {top_level:?}"
+    // The defect this replaced: `insert_paragraph` appended to the FRAGMENT
+    // when `after` was absent, putting a `blockContainer` beside the existing
+    // `blockGroup`. y-prosemirror cannot construct a `doc` with two top-level
+    // children and answers by DELETING the element — silently. Every check a
+    // naive writer can run still passed, and the block was simply gone the
+    // next time the note opened.
+    assert_eq!(
+        top_level,
+        ["0 element blockGroup"],
+        "a writer must append INSIDE the existing blockGroup, never beside it"
     );
 }
