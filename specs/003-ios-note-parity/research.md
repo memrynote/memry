@@ -373,3 +373,45 @@ one.
 
 **And upstream describes it as pre-release with no guarantee of support.**
 That is a poor foundation for the surface a user types into.
+
+---
+
+## The `clientID` is derived from the device id (found by R05)
+
+Writing the offline-convergence test produced garbled text rather than a
+merge: two paragraphs written on two devices came back as
+`"written on the phoneop"`. Not a lost edit — a **corrupted** one.
+
+The cause is that `DocumentRegistry::new(device_id, sink)` derives the Y.Doc
+`clientID` from the device id, and the test had opened both sides under the
+same name. Two Yjs documents sharing a `clientID` mint **conflicting struct
+ids**, so their updates do not merge; they interleave into nonsense.
+
+It was a defect in the test rather than in the core, and it is recorded
+because the failure mode is so misleading. Yjs's guarantee is convergence
+_given distinct clients_, and nothing in the API reminds a caller of the
+precondition. A harness that shares a device id across "two devices" produces
+a result that looks like a CRDT bug and is not one.
+
+**The rule for any future multi-device test**: same document id, different
+device ids. That is what two real devices are, and
+`roundtrip_acceptance.rs::opened_on` exists to make it hard to get wrong.
+
+## What R01, R02, R06 and R07 still need
+
+R03, R04 and R05 are proved in `crates/memry-core/tests/roundtrip_acceptance.rs`
+because all three are properties of the CRDT layer and a core test can hold
+them honestly.
+
+**The other four are not done, and are not counted as done.** Each needs a
+second real client:
+
+- **R01** and **R02** need desktop to write the vault markdown file, so that
+  "changed only in the edited region" and "the same `table-layout` bytes it
+  would have written itself" can be compared against a real file.
+- **R06** needs a server holding chunks, to confirm an uploaded picture lands
+  with a matching checksum and that its chunks are dereferenced on delete.
+- **R07** needs bytes that genuinely have not arrived yet.
+
+An in-process approximation asserting something weaker under those names would
+be worse than leaving them open, because it would read as coverage.

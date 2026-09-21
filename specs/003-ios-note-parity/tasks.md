@@ -281,8 +281,8 @@ Not a phase. Run after any phase that writes to the body or to bytes.
 
 - [ ] R01 Edit each block type on iOS, sync, open on desktop, and confirm the vault markdown file changed **only** in the edited region (FR-041)
 - [ ] R02 Edit a table's cell text, a cell colour and a column width on iOS, and confirm desktop regenerates `<!-- table-layout:… -->` and `<!-- table-colors:… -->` with the same bytes it would have written itself
-- [ ] R03 Open a note carrying suggestions and link references on iOS, edit an unrelated block, and confirm `criticMarkupMarks`, `linkReferenceDefinitions`, `linkReferenceUsages` and `markdownSource` survive untouched (§12.5)
-- [ ] R04 Open a note holding a block type this build does not know, edit a neighbouring block, and confirm the unknown block survives (FR-033)
-- [ ] R05 Edit the same block on iOS and desktop while both are offline, reconnect, and confirm both converge with neither edit lost
+- [x] R03 Open a note carrying suggestions and link references on iOS, edit an unrelated block, and confirm `criticMarkupMarks`, `linkReferenceDefinitions`, `linkReferenceUsages` and `markdownSource` survive untouched (§12.5)
+- [x] R04 Open a note holding a block type this build does not know, edit a neighbouring block, and confirm the unknown block survives (FR-033)
+- [x] R05 Edit the same block on iOS and desktop while both are offline, reconnect, and confirm both converge with neither edit lost
 - [ ] R06 Upload a picture from iOS, open the note on desktop, confirm the file lands in the vault with a matching checksum, then delete it from iOS and confirm the chunks are dereferenced
 - [ ] R07 Open a note whose attachment bytes have not arrived, confirm a placeholder rather than a gap, and confirm the picture appears on arrival without the note being recreated
