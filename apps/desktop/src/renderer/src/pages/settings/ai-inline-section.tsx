@@ -61,6 +61,47 @@ const BASE_URL_DEFAULTS: Record<string, string> = {
   google: ''
 }
 
+/**
+ * Live Ollama catalogue for the selected endpoint, or null while the provider
+ * is something else (or Ollama is unreachable, which is a normal state and
+ * leaves the caller on its presets).
+ */
+function useOllamaModels(provider: AIInlineSettings['provider'], baseUrl: string): string[] | null {
+  const [models, setModels] = useState<string[] | null>(null)
+
+  useEffect(() => {
+    if (provider !== 'ollama') return
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = (await window.electron.ipcRenderer.invoke('ai-inline:list-ollama-models')) as {
+          success: boolean
+          models?: string[]
+        }
+        if (!cancelled && res.success && res.models?.length) setModels(res.models)
+      } catch {
+        // unreachable Ollama → keep preset fallback
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [provider, baseUrl])
+
+  return models
+}
+
+/** Presets for the provider, with a hand-typed model kept at the top. */
+function modelChoices(
+  provider: AIInlineSettings['provider'],
+  selectedModel: string,
+  ollamaModels: string[] | null
+): string[] {
+  const presets =
+    provider === 'ollama' ? (ollamaModels ?? MODEL_PRESETS.ollama) : (MODEL_PRESETS[provider] ?? [])
+  return selectedModel && !presets.includes(selectedModel) ? [selectedModel, ...presets] : presets
+}
+
 export function AIInlineSettings(): React.JSX.Element {
   const { t: tPhaseF } = useT('settings')
   const { t } = useT('settings')
@@ -69,7 +110,6 @@ export function AIInlineSettings(): React.JSX.Element {
   const [isTesting, setIsTesting] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
   const [serverPort, setServerPort] = useState<number | null>(null)
-  const [ollamaModels, setOllamaModels] = useState<string[] | null>(null)
 
   useEffect(() => {
     async function load(): Promise<void> {
@@ -89,24 +129,7 @@ export function AIInlineSettings(): React.JSX.Element {
     void load()
   }, [])
 
-  useEffect(() => {
-    if (settings.provider !== 'ollama') return
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = (await window.electron.ipcRenderer.invoke('ai-inline:list-ollama-models')) as {
-          success: boolean
-          models?: string[]
-        }
-        if (!cancelled && res.success && res.models?.length) setOllamaModels(res.models)
-      } catch {
-        // unreachable Ollama → keep preset fallback
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [settings.provider, settings.baseUrl])
+  const ollamaModels = useOllamaModels(settings.provider, settings.baseUrl)
 
   const updateSetting = useCallback(
     async (updates: Partial<AIInlineSettings>) => {
@@ -198,14 +221,7 @@ export function AIInlineSettings(): React.JSX.Element {
   }
 
   const needsApiKey = settings.provider !== 'ollama'
-  const baseModels =
-    settings.provider === 'ollama'
-      ? (ollamaModels ?? MODEL_PRESETS.ollama)
-      : (MODEL_PRESETS[settings.provider] ?? [])
-  const models =
-    settings.model && !baseModels.includes(settings.model)
-      ? [settings.model, ...baseModels]
-      : baseModels
+  const models = modelChoices(settings.provider, settings.model, ollamaModels)
 
   return (
     <SettingsGroup label={t('ai.groups.inline')}>
