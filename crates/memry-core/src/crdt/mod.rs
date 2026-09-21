@@ -27,6 +27,7 @@
 pub mod blocks;
 pub mod body_edit;
 pub mod canonical;
+pub mod comments;
 pub mod errors;
 pub mod lifecycle;
 pub mod node_shapes;

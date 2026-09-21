@@ -3377,6 +3377,19 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func blocks(id: String) throws  -> [Block]?
     
     /**
+     * Every review comment and suggestion on one note (N604).
+     *
+     * **Read only, and normatively so.** §12.5.1 forbids a non-editor client
+     * writing the `criticMarkupMarks` root; §12.5.0's root table says a drop
+     * deletes every suggestion from the file on desktop's next write-back.
+     * There is no matching write on this API on purpose.
+     *
+     * The offsets are into the note's flattened text and may cross blocks,
+     * so binding one to a block is the shell's job.
+     */
+    func comments(id: String) throws  -> [ReviewComment]
+    
+    /**
      * Every live folder, parent before child.
      */
     func folders() throws  -> [FolderSummary]
@@ -3563,6 +3576,27 @@ open func blocks(id: String)throws  -> [Block]?  {
     return try  FfiConverterOptionSequenceTypeBlock.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_blocks(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every review comment and suggestion on one note (N604).
+     *
+     * **Read only, and normatively so.** §12.5.1 forbids a non-editor client
+     * writing the `criticMarkupMarks` root; §12.5.0's root table says a drop
+     * deletes every suggestion from the file on desktop's next write-back.
+     * There is no matching write on this API on purpose.
+     *
+     * The offsets are into the note's flattened text and may cross blocks,
+     * so binding one to a block is the shell's job.
+     */
+open func comments(id: String)throws  -> [ReviewComment]  {
+    return try  FfiConverterSequenceTypeReviewComment.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_comments(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),uniffiCallStatus
     )
@@ -9574,6 +9608,120 @@ public func FfiConverterTypeReindexSummary_lower(_ value: ReindexSummary) -> Rus
 
 
 /**
+ * One review mark.
+ *
+ * `start` and `end` are **byte offsets into the note's flattened text**, not
+ * block ids: a mark spans whatever text it covers, which may cross blocks.
+ * Binding one to a block is the shell's job and is why those offsets are
+ * carried verbatim rather than resolved here.
+ */
+public struct ReviewComment: Equatable, Hashable {
+    public var id: String
+    public var kind: CommentKind
+    /**
+     * The text the mark covers as the reader sees it.
+     */
+    public var visibleText: String
+    public var start: UInt32
+    public var end: UInt32
+    /**
+     * What the text was, for a substitution.
+     */
+    public var originalText: String?
+    /**
+     * A comment's own body.
+     */
+    public var body: String?
+    public var metadata: String?
+    /**
+     * Milliseconds since the epoch, when the writer recorded one.
+     */
+    public var createdAt: Int64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, kind: CommentKind, 
+        /**
+         * The text the mark covers as the reader sees it.
+         */visibleText: String, start: UInt32, end: UInt32, 
+        /**
+         * What the text was, for a substitution.
+         */originalText: String?, 
+        /**
+         * A comment's own body.
+         */body: String?, metadata: String?, 
+        /**
+         * Milliseconds since the epoch, when the writer recorded one.
+         */createdAt: Int64?) {
+        self.id = id
+        self.kind = kind
+        self.visibleText = visibleText
+        self.start = start
+        self.end = end
+        self.originalText = originalText
+        self.body = body
+        self.metadata = metadata
+        self.createdAt = createdAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ReviewComment: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReviewComment: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReviewComment {
+        return
+            try ReviewComment(
+                id: FfiConverterString.read(from: &buf), 
+                kind: FfiConverterTypeCommentKind.read(from: &buf), 
+                visibleText: FfiConverterString.read(from: &buf), 
+                start: FfiConverterUInt32.read(from: &buf), 
+                end: FfiConverterUInt32.read(from: &buf), 
+                originalText: FfiConverterOptionString.read(from: &buf), 
+                body: FfiConverterOptionString.read(from: &buf), 
+                metadata: FfiConverterOptionString.read(from: &buf), 
+                createdAt: FfiConverterOptionInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ReviewComment, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterTypeCommentKind.write(value.kind, into: &buf)
+        FfiConverterString.write(value.visibleText, into: &buf)
+        FfiConverterUInt32.write(value.start, into: &buf)
+        FfiConverterUInt32.write(value.end, into: &buf)
+        FfiConverterOptionString.write(value.originalText, into: &buf)
+        FfiConverterOptionString.write(value.body, into: &buf)
+        FfiConverterOptionString.write(value.metadata, into: &buf)
+        FfiConverterOptionInt64.write(value.createdAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReviewComment_lift(_ buf: RustBuffer) throws -> ReviewComment {
+    return try FfiConverterTypeReviewComment.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReviewComment_lower(_ value: ReviewComment) -> RustBuffer {
+    return FfiConverterTypeReviewComment.lower(value)
+}
+
+
+/**
  * One search result.
  *
  * Flattened from [`SearchHit`] because uniffi has no enum-with-payload that
@@ -11872,6 +12020,92 @@ public func FfiConverterTypeCborError_lift(_ buf: RustBuffer) throws -> CborErro
 public func FfiConverterTypeCborError_lower(_ value: CborError) -> RustBuffer {
     return FfiConverterTypeCborError.lower(value)
 }
+
+
+/**
+ * What a mark is. The four kinds the reference reader accepts, and no others:
+ * an unrecognised kind is dropped rather than carried as text, because the
+ * reference drops it and a shell that kept it would render a mark desktop
+ * does not show.
+ */
+
+public enum CommentKind: Equatable, Hashable {
+    
+    case addition
+    case deletion
+    case substitution
+    case comment
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CommentKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCommentKind: FfiConverterRustBuffer {
+    typealias SwiftType = CommentKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CommentKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .addition
+        
+        case 2: return .deletion
+        
+        case 3: return .substitution
+        
+        case 4: return .comment
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CommentKind, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .addition:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .deletion:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .substitution:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .comment:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommentKind_lift(_ buf: RustBuffer) throws -> CommentKind {
+    return try FfiConverterTypeCommentKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommentKind_lower(_ value: CommentKind) -> RustBuffer {
+    return FfiConverterTypeCommentKind.lower(value)
+}
+
 
 
 /**
@@ -14702,6 +14936,31 @@ fileprivate struct FfiConverterSequenceTypeNoteSummary: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeReviewComment: FfiConverterRustBuffer {
+    typealias SwiftType = [ReviewComment]
+
+    public static func write(_ value: [ReviewComment], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeReviewComment.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ReviewComment] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ReviewComment]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeReviewComment.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeSearchResult: FfiConverterRustBuffer {
     typealias SwiftType = [SearchResult]
 
@@ -15333,6 +15592,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_blocks() != 22042) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_comments() != 23328) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {

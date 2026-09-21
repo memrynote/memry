@@ -13,8 +13,8 @@ use memry_core::crdt::body_edit::{BlockEdit, apply};
 use memry_core::crdt::canonical::canonical_fragment;
 use memry_core::crdt::registry::{Document, UpdateSink};
 use yrs::{
-    Any, Doc, ReadTxn as _, Transact as _, Xml as _, XmlElementPrelim, XmlFragment as _,
-    XmlTextPrelim,
+    Any, Array as _, Doc, ReadTxn as _, Transact as _, Xml as _, XmlElementPrelim,
+    XmlFragment as _, XmlTextPrelim,
 };
 
 /// Opens a document over an authored update.
@@ -1087,5 +1087,173 @@ fn an_edit_authors_exactly_one_update_and_a_refused_one_authors_none() {
         authored.lock().expect("lock").len(),
         after_seed + 1,
         "a refused edit must store and push nothing"
+    );
+}
+
+// MARK: - Review comments, read only (N604)
+
+/// Builds a `criticMarkupMarks` root holding the given marks.
+fn comments_doc(marks: Vec<Any>) -> Vec<u8> {
+    let doc = Doc::new();
+    let array = doc.get_or_insert_array("criticMarkupMarks");
+    let mut txn = doc.transact_mut();
+    for mark in marks {
+        array.push_back(&mut txn, mark);
+    }
+    txn.encode_state_as_update_v1(&yrs::StateVector::default())
+}
+
+fn mark(pairs: &[(&str, Any)]) -> Any {
+    Any::Map(
+        pairs
+            .iter()
+            .map(|(key, value)| ((*key).to_owned(), value.clone()))
+            .collect::<std::collections::HashMap<String, Any>>()
+            .into(),
+    )
+}
+
+#[test]
+fn a_notes_review_comments_are_read_with_their_offsets() {
+    let document = opened(&comments_doc(vec![mark(&[
+        ("id", Any::String("c1".into())),
+        ("kind", Any::String("comment".into())),
+        ("visibleText", Any::String("the sentence".into())),
+        ("start", Any::Number(4.0)),
+        ("end", Any::Number(16.0)),
+        ("body", Any::String("is this right?".into())),
+        ("createdAt", Any::Number(1_700_000_000_000.0)),
+    ])]));
+
+    let comments = memry_core::crdt::comments::extract_comments(&document).expect("comments");
+    assert_eq!(comments.len(), 1);
+    let comment = &comments[0];
+    assert_eq!(comment.id, "c1");
+    assert_eq!(
+        comment.kind,
+        memry_core::crdt::comments::CommentKind::Comment
+    );
+    assert_eq!(comment.visible_text, "the sentence");
+    // The offsets are carried verbatim: they are into the flattened text and
+    // may cross blocks, so resolving them is the shell's job.
+    assert_eq!((comment.start, comment.end), (4, 16));
+    assert_eq!(comment.body.as_deref(), Some("is this right?"));
+    assert_eq!(comment.created_at, Some(1_700_000_000_000));
+}
+
+/// **The reference reader drops a malformed mark rather than repairing it,
+/// and so must this one.** A mark this port "fixed" would be a mark desktop
+/// does not have, and the two clients would disagree about which comments
+/// exist.
+#[test]
+fn a_malformed_mark_is_dropped_exactly_as_the_reference_drops_it() {
+    let good = mark(&[
+        ("id", Any::String("keep".into())),
+        ("kind", Any::String("addition".into())),
+        ("visibleText", Any::String("kept".into())),
+        ("start", Any::Number(0.0)),
+        ("end", Any::Number(4.0)),
+    ]);
+
+    let document = opened(&comments_doc(vec![
+        // No id.
+        mark(&[
+            ("kind", Any::String("comment".into())),
+            ("visibleText", Any::String("x".into())),
+            ("start", Any::Number(0.0)),
+            ("end", Any::Number(1.0)),
+        ]),
+        // A kind this build does not know.
+        mark(&[
+            ("id", Any::String("c2".into())),
+            ("kind", Any::String("applause".into())),
+            ("visibleText", Any::String("x".into())),
+            ("start", Any::Number(0.0)),
+            ("end", Any::Number(1.0)),
+        ]),
+        // `end` before `start`.
+        mark(&[
+            ("id", Any::String("c3".into())),
+            ("kind", Any::String("comment".into())),
+            ("visibleText", Any::String("x".into())),
+            ("start", Any::Number(9.0)),
+            ("end", Any::Number(2.0)),
+        ]),
+        // A negative offset.
+        mark(&[
+            ("id", Any::String("c4".into())),
+            ("kind", Any::String("comment".into())),
+            ("visibleText", Any::String("x".into())),
+            ("start", Any::Number(-1.0)),
+            ("end", Any::Number(2.0)),
+        ]),
+        // No visibleText.
+        mark(&[
+            ("id", Any::String("c5".into())),
+            ("kind", Any::String("comment".into())),
+            ("start", Any::Number(0.0)),
+            ("end", Any::Number(1.0)),
+        ]),
+        good,
+    ]));
+
+    let comments = memry_core::crdt::comments::extract_comments(&document).expect("comments");
+    let ids: Vec<&str> = comments.iter().map(|comment| comment.id.as_str()).collect();
+    assert_eq!(ids, ["keep"], "only the well-formed mark survives");
+}
+
+/// All four kinds the reference accepts, and nothing invented alongside them.
+#[test]
+fn the_four_kinds_are_the_four_the_reference_accepts() {
+    use memry_core::crdt::comments::CommentKind;
+    let marks = ["addition", "deletion", "substitution", "comment"]
+        .iter()
+        .enumerate()
+        .map(|(index, kind)| {
+            mark(&[
+                ("id", Any::String(format!("c{index}").into())),
+                ("kind", Any::String((*kind).into())),
+                ("visibleText", Any::String("x".into())),
+                ("start", Any::Number(0.0)),
+                ("end", Any::Number(1.0)),
+            ])
+        })
+        .collect();
+
+    let comments = memry_core::crdt::comments::extract_comments(&opened(&comments_doc(marks)))
+        .expect("comments");
+    assert_eq!(
+        comments.iter().map(|c| c.kind.clone()).collect::<Vec<_>>(),
+        [
+            CommentKind::Addition,
+            CommentKind::Deletion,
+            CommentKind::Substitution,
+            CommentKind::Comment
+        ]
+    );
+}
+
+/// A note with no marks reads as an empty list, and **nothing is written to
+/// say so**: writing an empty root is the drop §12.5.0 warns about.
+#[test]
+fn a_note_with_no_marks_reads_empty_and_writes_nothing() {
+    let authored: Arc<std::sync::Mutex<Vec<Vec<u8>>>> = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let seen = Arc::clone(&authored);
+    let sink: UpdateSink = Arc::new(move |_, update: &[u8]| {
+        seen.lock().expect("lock").push(update.to_vec());
+    });
+    let registry = DocumentRegistry::new("device-comments", sink);
+    let document = registry.get_or_open("abc123def456").expect("open");
+    document
+        .apply_durable_update(&body(&[("a", "paragraph", "no comments here")]))
+        .expect("seed");
+    let before = authored.lock().expect("lock").len();
+
+    let comments = memry_core::crdt::comments::extract_comments(&document).expect("comments");
+    assert!(comments.is_empty());
+    assert_eq!(
+        authored.lock().expect("lock").len(),
+        before,
+        "reading comments must not author an update"
     );
 }

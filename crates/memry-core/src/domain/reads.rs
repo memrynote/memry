@@ -37,6 +37,7 @@ use rusqlite::{Connection, OptionalExtension as _, Row};
 
 use crate::api::errors::StorageError;
 use crate::crdt::blocks::{Block, TableContent, extract_blocks, extract_table};
+use crate::crdt::comments::{ReviewComment, extract_comments};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
@@ -265,6 +266,28 @@ pub fn note_table(
     }
     let document = document_of(conn, id)?;
     extract_table(&document, block_id)
+}
+
+/// Every review comment and suggestion on one note (N604).
+///
+/// Read only: §12.5.1 forbids a non-editor client writing the
+/// `criticMarkupMarks` root, and §12.5.0 says what dropping it costs.
+pub fn note_comments(conn: &Connection, id: &str) -> Result<Vec<ReviewComment>, CrdtError> {
+    let exists: Option<i64> = conn
+        .query_row(
+            "SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NULL",
+            rusqlite::params![id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    if exists.is_none() {
+        // An empty list rather than an error: a note that is not here has no
+        // comments, and that is an answer.
+        return Ok(Vec::new());
+    }
+    let document = document_of(conn, id)?;
+    extract_comments(&document)
 }
 
 /// The body of one document, from whatever the update log already holds.
