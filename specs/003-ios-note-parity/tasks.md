@@ -1,0 +1,215 @@
+# Tasks: iOS note parity
+
+**Input**: [plan.md](./plan.md)
+
+**Protocol**: `docs/protocol/12-note-body-format.md` is normative for everything
+that touches the body; `docs/protocol/14-attachments.md` for everything that
+touches bytes. Read §12.5.0 before writing into the fragment and §14.4.1 before
+reading a manifest.
+
+**Format**: `[ID] [P?] Description with file path`. `[P]` means it can run beside
+its siblings. A task added later takes a suffix letter (`N004a`) so no existing
+id ever moves.
+
+**Gates are serial.** A phase marked with a gate does not start until that
+gate's evidence is green. Everything else is parallel: Phases A, B and C have no
+dependency on one another. Where A and C both touch
+`apps/ios/Memry/Features/Notes/NoteBlockView.swift`, land A first.
+
+---
+
+## Phase A: read fidelity and table read
+
+**Purpose**: the native read path loses content today. Fix that before building
+on it.
+
+### A1 — known defects
+
+- [ ] N001 Emit `divider` as a block: remove it from `SKIPPED` in `crates/memry-core/src/crdt/blocks.rs:135`, which returns before pushing and makes `NoteBlockView.swift:104` unreachable. Keep `blocks_to_text` emitting nothing for it so the `extract_text` parity test still holds
+- [ ] N002 Carry inline mark **values**: add an attribute map to `InlineRun` in `crates/memry-core/src/crdt/blocks.rs` and populate it in `runs_of_text` (`:320`), which records the mark name but only captures a value for `link`/`href`, so `textColor="red"` reaches the shell as a bare `textColor`
+- [ ] N003 [P] Apply inline colours in `apps/ios/Memry/Features/Notes/NoteBlockView.swift` `NoteInline.attributed`, mapping BlockNote's colour names onto `Tokens`; an unknown colour name leaves the text alone rather than guessing
+- [ ] N004 [P] Render all six heading levels in `NoteBlockView.swift` `headingRole`, which clamps to three today. Extend the `DESIGN.md` type ramp rather than clamping the content, and record the ramp extension in `DESIGN.md` in the same change
+- [ ] N005 [P] Number list items in `NoteBlockView.swift:78`, which hardcodes `1.`; count preceding siblings at the same `depth` whose `kind` is `numberedListItem`, restarting at a non-list block
+- [ ] N006 [P] Render `audio` and `video` blocks in `NoteBlockView.swift`; they fall through to `default` and draw an empty paragraph. Metadata only here — bytes arrive in Phase C
+- [ ] N007 [P] Render `toggleListItem` (disclosure driven by the `open` prop; children already arrive at `depth + 1`) and `inlineCheckbox` (arrives as an empty run carrying the mark) in `NoteBlockView.swift`
+- [ ] N008 [P] Apply block-level `textAlignment`, `textColor` and `backgroundColor` props in `NoteBlockView.swift`; `props_of` already returns them and nothing reads them
+
+### A2 — table read and render
+
+- [ ] N010 Expose table structure from the core. `crates/memry-core/src/crdt/blocks.rs:134` treats `table` and `tableRow` as containers and only `blockGroup` raises depth, so every cell of every row arrives at one depth with no row boundary and no column count. Add `Notes.table(blockId) -> TableContent` returning rows, cells, per-cell `colwidth`, per-cell colours, and header flags derived from `tableHeader` vs `tableCell`. **Answers Q1: record whether a cell carries a `blockContainer` id**
+- [ ] N011 Render tables in `apps/ios/Memry/Features/Notes/`: column widths applied proportionally with horizontal scrolling rather than as pixels, cell background and text colours, header row and header column emphasis
+- [ ] N012 [P] Table accessibility: VoiceOver row and column headers, Dynamic Type, and a reduced-motion-safe scroll affordance
+- [ ] N013 [P] Core test in `crates/memry-core/tests/` covering a table with mixed `tableHeader`/`tableCell`, a set `colwidth` and a coloured cell
+
+**Phase A evidence**: `cargo test -p memry-core` green, `Unit.xctestplan` green,
+and a note holding every block type screenshotted beside desktop.
+
+---
+
+## Phase B: vector classes — gate **G-P1**
+
+**Purpose**: make parity a red build. Phase E may not start until this gate is
+green, because Phase E is where Rust starts authoring nodes.
+
+Read `packages/contracts/test-vectors/README.md` first: vectors come out of
+production code paths, generation and verification are separate programs, and a
+format change updates the chapter and the vectors in the same change.
+
+- [ ] N100 Research note in `specs/003-ios-note-parity/research.md`: why Y update bytes cannot be compared across ports (an update encodes `clientID` and clock, so `yrs` and `yjs` performing the same edit legitimately differ), and what the write class compares instead
+- [ ] N101 Canonical fragment serialisation — **gates the rest of this phase**. One textual form of the `prosemirror` fragment (node names, sorted attribute sets, nesting, text) emitted identically by TypeScript and Rust. Attributes must be sorted, as `props_of` already sorts, because a Yjs map's order is not stable across runs
+- [ ] N102 Read-direction corpus in `packages/editor-schema/src/conformance.ts`, beside `ROUNDTRIP_CASES`, covering all 18 blocks, 8 inline types and 7 styles of `packages/editor-schema/src/registry-manifest.json`, authored through BlockNote so the bytes are what desktop really writes
+- [ ] N103 Generator `packages/contracts/scripts/vectors/note-blocks.ts` exporting N102 as `note-blocks.json`, registered in `gen-protocol-vectors.ts`, with a pinned `clientID` as the other classes use
+- [ ] N104 [P] TypeScript verifier `packages/contracts/src/__tests__/note-blocks.test.ts`; it reads the committed file and never imports the builder
+- [ ] N105 [P] Rust consumer in `crates/memry-core/tests/`, reading `note-blocks.json` through `include_str!` the way `tests/support/mod.rs:62` reads `text-extract.json`
+- [ ] N106 [P] iOS consumer in `apps/ios/MemryConformanceTests/`, through the real FFI, following the harness in `Vectors.swift`
+- [ ] N107 Write-direction corpus and class `block-edit.json`: a base document, one operation, and the expected resulting document in the N101 serialisation. One case per operation in Phase E
+- [ ] N108 Update `packages/contracts/test-vectors/README.md`'s file table and case total, and `docs/protocol/12-note-body-format.md` where the new classes are named — README rule 3
+
+**Gate G-P1 evidence**: `pnpm --filter @memry/contracts vectors:check` and
+`pnpm --filter @memry/contracts test` green, `cargo test -p memry-core` green,
+`Conformance.xctestplan` green on device.
+
+---
+
+## Phase C: attachments, both directions
+
+**Purpose**: the user sees every attachment and can add one. This opens
+`docs/protocol/14-attachments.md`, which is marked "scoped read-only and
+deferred", and overrides
+`specs/002-native-foundation-ios/spec.md:358`.
+
+Independent of Phases B and D. Needs no editor.
+
+### C1 — download
+
+- [ ] N200 Core: manifest fetch through `GET /sync/attachments/:attachment_id/manifest`, with **signature verification before unwrap and decrypt** (§14.4.1 states that order normatively) and an unresolvable signer device as a hard failure, not a fallback
+- [ ] N201 Core: the two transfer paths (§14.6) — `POST /sync/attachments/presign-batch` (cap 1024 hashes, `expiresAt` in epoch seconds) with the proxied `GET /sync/attachments/chunks/:chunk_hash` fallback. `STORAGE_PRESIGN_UNAVAILABLE` is permanent for that deployment and MUST NOT be retried on a timer
+- [ ] N202 Core: chunk decode — strip the 24-byte nonce, AEAD decrypt under the file key, verify `chunks[j].hash` over the plaintext, concatenate in index order, verify `manifest.checksum` over the whole file. `chunkSize` comes from the manifest, never from a constant (§14.9)
+- [ ] N203 Core: bounded local attachment cache with eviction, plus the metered policy — lazy download defaulting to unmetered with an explicit per-item override (FR-045, `unmetered_only` in `specs/002-native-foundation-ios/data-model.md:289`)
+- [ ] N204 Core: resolve a note's attachments through `attachmentReferences` on the note payload (§14.7). **Absent means "this sender does not know"** — never "no attachments" — and the local list is not cleared on seeing one
+- [ ] N205 Core: manifest signing and verification in Rust. **Answers Q3 and is the largest unknown in this phase**: either reimplement against `packages/sync-client/src/push/attachment-manifest.ts` with a conformance vector holding the two ports together, or lift the shared logic somewhere both call. Decide in `research.md` before writing code
+- [ ] N206 iOS: `image` blocks and `inlineImage` with real bytes, replacing the `AttachmentRow` placeholder in `NoteBlockView.swift:111`; a placeholder while bytes are absent, and a late arrival becomes visible without the note being recreated
+- [ ] N207 [P] iOS: `file`, `audio` and `video` blocks openable and playable
+- [ ] N208 [P] iOS: cover image rendering — pairs with N701
+
+### C2 — upload
+
+- [ ] N209 Core: chunking and framing — 8 MiB plaintext chunks with a short final chunk, at most 128 chunks per session, every chunk `nonce(24) ‖ ciphertext` under **one** file key wrapped once in the manifest (§14.2)
+- [ ] N210 Core: manifest build, encrypt under a fresh file key with no AAD, wrap under the vault key, and sign the four fields as canonical CBOR in `CBOR_FIELD_ORDER.ATTACHMENT_MANIFEST` order (§14.4.1)
+- [ ] N211 Core: upload session — `initiate`, per-chunk `PUT`, `complete`, plus status and cancel; resume after an interrupted session; quota reserved against **ciphertext** size, not `manifest.size` (§14.8)
+- [ ] N212 Core: dereference on delete. §14.8 — "a client that later gains the ability to delete an attachment MUST dereference". Phase C is when we gain it, so this is not optional. Rate limited to 20 requests per 60 s
+- [ ] N213 Protocol and spec: move the scope marker in `docs/protocol/14-attachments.md`, update the out-of-scope row at `specs/002-native-foundation-ios/spec.md:358`, and correct FR-045's "inline image" wording, which reads as the table-cell-only `inlineImage` type while meaning the `image` block (§12.7.1). Run `pnpm docs:impact --strict` in the same change (FR-008)
+- [ ] N214 iOS: attachment picker — photo library, camera and files — with upload progress, failure surfaced through `ErrorMapping.swift`, and the vault-relative placement desktop uses
+- [ ] N215 [P] iOS: attachment rename and remove, wired to N212
+
+**Phase C evidence**: upload a picture from iOS, open the note on desktop, and
+confirm the file lands in the vault with a matching checksum; delete it from iOS
+and confirm the chunks are dereferenced.
+
+---
+
+## Phase D: text input spike — gate **G-P2**
+
+**Purpose**: every editing task depends on how a caret, a selection and an IME
+behave across block boundaries. Decide with evidence, not with an opinion.
+
+- [ ] N300 Spike: one `UITextView` per block versus a document-wide TextKit 2 layout. Measure caret and selection across a block boundary, IME and dictation, autocorrect, undo grouping, a 500-block note's scroll performance, and VoiceOver. Evidence to `apps/ios/SpikeEvidence/`
+- [ ] N301 Decision record in `specs/003-ios-note-parity/research.md`, including why `lexical-ios` is not the answer: no Swift Yjs binding, a document model incompatible with the y-prosemirror fragment, and "pre-release with no guarantee of support" upstream
+- [ ] N302 Skeleton of the chosen surface in `apps/ios/Memry/Editor/`, an empty directory today, rendering one editable paragraph end to end through `Notes.editBlock`
+
+**Gate G-P2 evidence**: the spike's measurements committed, the decision
+recorded, and one paragraph editable on device with the edit visible on desktop
+after sync.
+
+---
+
+## Phase E: core write operations
+
+**Purpose**: every structural change a user can make, authored in Rust through
+`Document::write` (§12.5.1) — never by diffing, never by replacing the fragment
+(§12.5.0.1). Each task lands with its `block-edit.json` case.
+
+**Depends on**: G-P1.
+
+- [ ] N400 Grow `crates/memry-core/src/crdt/body_edit.rs` into a schema-aware writer: one place that knows BlockNote's node shapes, locating its parent rather than assuming one, and refusing an unrecognised top-level layout rather than guessing (§12.5.0)
+- [ ] N401 `InsertBlock { kind, props, after }` for every registry type, building the correct node tree for each
+- [ ] N402 Table cell text. If N010 finds a cell carries a `blockContainer` id this is `SetText` reaching a cell, so the task is a test plus a rename; if not, add `SetCellText { table_id, row, col, text }`
+- [ ] N403 Table structure: `InsertRow`, `DeleteRow`, `InsertColumn`, `DeleteColumn`, preserving `colwidth` and cell colours on the cells that survive
+- [ ] N404 Table cell props: colour and `colwidth`, so desktop regenerates the `table-layout` and `table-colors` markers from what iOS wrote
+- [ ] N405 `TurnInto` across the 11 types desktop offers (`paragraph`, `heading1..3`, `bulletList`, `numberedList`, `checkList`, `toggleList`, `quote`, `codeBlock`, `callout`), carrying inline content across the change
+- [ ] N406 `Duplicate`, `MoveBlock`, `Indent` and `Outdent`, with nesting rules matching desktop's `multi-block-indent-plugin`
+- [ ] N407 Inline mark operations — apply and remove `bold`, `italic`, `underline`, `strike`, `code`, plus colour and link — addressed by range within a block. **This removes the documented limitation in `body_edit.rs` that `SetText` loses a block's marks**
+- [ ] N408 Block prop operations for the rest: callout `type`, code block `language`, toggle `open`, heading `level`, alignment and colours
+- [ ] N409 Every operation commits its update row and its outbox row together (FR-030), and a write that authored nothing stores and pushes nothing — the rule `body_edit.rs` already follows
+
+---
+
+## Phase F: iOS editing surface
+
+**Depends on**: G-P2, Phase E.
+
+- [ ] N500 Block editing surface from N302 across all text-bearing block types
+- [ ] N501 Enter, Backspace and selection at block boundaries: split, merge and delete
+- [ ] N502 Insert menu (desktop's slash menu): all block types plus link to note, insert template, and insert picture through N214. Reachable from a keyboard accessory, not only by typing `/`
+- [ ] N503 Block context menu: turn into, colours, duplicate, move to, delete
+- [ ] N504 Selection formatting toolbar: the five marks, colour, link
+- [ ] N505 Table editing UI: cell selection, row and column insert and delete, column resize, cell colour
+- [ ] N506 Code block: language picker and copy
+- [ ] N507 Callout type switching and toggle fold
+- [ ] N508 [P] Editing accessibility pass: VoiceOver on an editable block, Dynamic Type in the toolbars, reduced motion
+- [ ] N509 Undo and redo, **native**: an undo stack over the operations the shell issued, not a yrs `UndoManager` in the core. Record in `research.md` that iOS and desktop undo granularity may differ, which is the accepted trade
+
+---
+
+## Phase G: inline richness
+
+**Depends on**: Phase F.
+
+- [ ] N600 Tappable `#tag` plus the tag screen it needs; `NoteBlockView.swift` marks tags deliberately unlinked today because there is nowhere to go
+- [ ] N601 `dateMention`: the date picker, `remindMe`, and the date suggestions desktop offers
+- [ ] N602 Wiki link menu: note search, heading selection, `displayAs` alias, embed versus link, and creating a note from a broken link
+- [ ] N603 Paste-link menu: url, mention, embedded video, bookmark
+- [ ] N604 Review comments, **read only**: a new core read over the `criticMarkupMarks` root, rendered against the block the byte offsets point at. §12.5.1 forbids writing them, and the reader drops any element failing shape validation, so the shell must not normalise what it reads
+- [ ] N605 [P] Tappable `inlineCheckbox` inside a table cell
+
+---
+
+## Phase H: metadata surface
+
+**Depends on**: Phase F for the editors, not for the reads.
+
+- [ ] N700 Core: property writes for the 10 types (`text`, `number`, `date`, `checkbox`, `url`, `status`, `select`, `multiselect`, `relation`, `project`). `NoteProperty` already carries `value_json`, `type_name`, `options_json` and `color` on the read side. **Answers Q2: record whether this belongs beside `domain/note_meta.rs` or in the note record payload handler**
+- [ ] N701 Core: add `cover` and `icon` to `NoteMetadata`, which carries only tags, properties and aliases today, plus their writes
+- [ ] N702 iOS: title editing and the icon picker (emoji and symbol)
+- [ ] N703 iOS: cover add, change, remove and reposition, on N208 and N214
+- [ ] N704 iOS: the 10 property editors
+- [ ] N705 iOS: tag add, remove and colour, with recent, matching and all suggestions as desktop offers
+- [ ] N706 [P] Core: alias writes, so a wiki link can resolve to a note by a name the note itself declares
+
+---
+
+## Phase I: page shell
+
+- [ ] N800 Backlinks section: core query plus the iOS surface, with desktop's three sort orders and the `viaProperty` distinction
+- [ ] N801 Find in note
+- [ ] N802 Export
+- [ ] N803 Apply template
+- [ ] N804 Reminders
+- [ ] N805 Attachments list for a note
+- [ ] N806 Folder CRUD — missing entirely: `crates/memry-core/src/api/notes_write.rs` offers `create`, `rename`, `move_to_folder`, `delete` and `edit_block` for notes, and nothing creates, renames or deletes a folder
+- [ ] N807 [P] Linked tasks section — blocked on the Tasks feature, which has no code
+- [ ] N808 [P] Note page overflow menu: rename, move to folder, copy path, bookmark, local-only, delete
+
+---
+
+## Round-trip acceptance
+
+Not a phase. Run after any phase that writes to the body or to bytes.
+
+- [ ] R01 Edit each block type on iOS, sync, open on desktop, and confirm the vault markdown file changed **only** in the edited region (FR-041)
+- [ ] R02 Edit a table's cell text, a cell colour and a column width on iOS, and confirm desktop regenerates `<!-- table-layout:… -->` and `<!-- table-colors:… -->` with the same bytes it would have written itself
+- [ ] R03 Open a note carrying suggestions and link references on iOS, edit an unrelated block, and confirm `criticMarkupMarks`, `linkReferenceDefinitions`, `linkReferenceUsages` and `markdownSource` survive untouched (§12.5)
+- [ ] R04 Open a note holding a block type this build does not know, edit a neighbouring block, and confirm the unknown block survives (FR-033)
+- [ ] R05 Edit the same block on iOS and desktop while both are offline, reconnect, and confirm both converge with neither edit lost
+- [ ] R06 Upload a picture from iOS, open the note on desktop, confirm the file lands in the vault with a matching checksum, then delete it from iOS and confirm the chunks are dereferenced
+- [ ] R07 Open a note whose attachment bytes have not arrived, confirm a placeholder rather than a gap, and confirm the picture appears on arrival without the note being recreated

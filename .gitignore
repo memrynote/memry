@@ -98,3 +98,8 @@ apps/ios/build/
 
 # Xcode per-user SwiftPM scheme state; the package manifest is the source of truth.
 packages/swift/MemryCore/.swiftpm/
+
+# xcode-build-server's BSP config, written by `xcode-build-server config`. It
+# records the absolute workspace path and this machine's DerivedData hash, so a
+# committed copy points every other checkout at one developer's build root.
+apps/ios/buildServer.json
