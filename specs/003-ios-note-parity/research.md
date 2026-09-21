@@ -150,6 +150,56 @@ now says so explicitly.
 
 ---
 
+## Q4 — How does an `image` block bind to an attachment id? (found by N206)
+
+**Open, and it blocks binding bytes to a block. Answered by N206a.**
+
+Not in the original question list, because nothing suggested the two ends did
+not already meet. They do not.
+
+A note's `attachmentReferences` carries **attachment ids** (§14.7), and
+`GET /sync/attachments/<id>/manifest` is keyed by exactly that. But an `image`
+block in the body carries a `url`, and on desktop that url is a
+**vault-relative file path**: `resolveAttachment(noteId, url)` joins it against
+the note's directory inside the vault root and hands back a file
+(`apps/desktop/src/main/vault/attachment-actions.ts:76`). A url with a scheme
+or a leading slash is deliberately _not_ a vault attachment and is refused.
+
+So desktop never needs the binding this phase needs: it has a file tree and the
+block's url is a path into it. **iOS has no vault file tree at all** — the body
+is a CRDT document and the attachment channel is the only source of bytes — so
+nothing on the phone turns `pictures/diagram.png` into an attachment id.
+
+**Why the obvious rule is not good enough to just write.** Matching the url's
+basename against `manifest.filename` looks like it works and is not sound:
+nothing makes a filename unique within a vault, so two notes referencing
+`screenshot.png` in two folders collide, and a note referencing two attachments
+whose files share a basename cannot be disambiguated at all. A wrong match here
+shows **the wrong picture in the wrong note**, which is worse than showing a
+placeholder.
+
+There is a second thread to follow before deciding. Desktop's
+`recordUploadedAttachment` writes **`attachmentId` singular** onto the note's
+metadata alongside the plural `attachmentReferences`
+(`apps/desktop/src/main/sync/note-attachment-metadata.ts:22-24`), and mirrors
+only the singular one into the index cache. If that field is the note's cover
+or primary image it is what N208 should read, and it is not a general answer
+for a body block.
+
+Candidate answers, none picked yet:
+
+1. the manifest gains the vault-relative path the upload used, so a reader
+   matches the same string the block carries — needs a writer change and a
+   compatibility story for every manifest already written;
+2. the reader matches on basename and **refuses** an ambiguous match rather
+   than guessing, drawing the placeholder instead;
+3. something already on the note payload carries the binding and this is a read
+   nobody has found yet.
+
+Option 3 has to be ruled out before either of the others is built, because
+changing a written format to recover information already on the wire would be
+the expensive wrong answer.
+
 ## Q2 — Where does the property write path belong?
 
 Open. Answered by N700.

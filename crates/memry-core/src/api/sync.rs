@@ -49,16 +49,21 @@
 //! Nothing on this surface accepts a key, returns a key, or names one, which is
 //! what keeps `core-api.md`'s "none of the B3 objects exposes a key" true.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use zeroize::Zeroizing;
 
 use crate::api::auth::AuthSession;
-use crate::api::errors::SyncError;
+use crate::api::errors::{StorageError, SyncError};
 use crate::crypto::keys;
+use crate::domain::attachments;
 use crate::domain::reads;
+use crate::protocol;
 use crate::protocol::account::{self, AccountCipher};
+use crate::protocol::attachments as protocol_attachments;
 use crate::protocol::types::Declaration;
+use crate::seams::reachability::Reachable;
 use crate::storage::Db;
 use crate::sync::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use crate::sync::bootstrap::BootstrapClient;
@@ -221,6 +226,23 @@ pub struct BodyFetchSummary {
     pub stopped: bool,
 }
 
+/// What one attachment fetch did.
+///
+/// `deferred` is not a failure. FR-045 asks for lazy, unmetered-by-default
+/// downloads, so "waiting for wifi" is the feature working; a shell that met
+/// an error there would report a fault for correct behaviour.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct AttachmentFetchSummary {
+    pub downloaded: bool,
+    /// The metered policy said not now (FR-045).
+    pub deferred: bool,
+    /// Plaintext bytes written. Zero when deferred.
+    pub bytes: u64,
+    /// Relative to the vault's `images/` directory, when the bytes are there
+    /// — which includes the deferred case if an earlier fetch succeeded.
+    pub local_path: Option<String>,
+}
+
 impl From<BodyPullReport> for BodyFetchSummary {
     fn from(report: BodyPullReport) -> Self {
         Self {
@@ -240,14 +262,24 @@ pub struct VaultSync {
     vault_id: String,
     db: Db,
     session: Arc<AuthSession>,
+    /// The vault directory, for the one thing sync writes outside the
+    /// database: attachment bytes live in `images/` as sandbox files rather
+    /// than as blobs (data-model §A.4).
+    directory: String,
 }
 
 impl VaultSync {
-    pub(crate) fn over(vault_id: String, db: Db, session: Arc<AuthSession>) -> Self {
+    pub(crate) fn over(
+        vault_id: String,
+        db: Db,
+        session: Arc<AuthSession>,
+        directory: String,
+    ) -> Self {
         Self {
             vault_id,
             db,
             session,
+            directory,
         }
     }
 
@@ -385,5 +417,228 @@ impl VaultSync {
         .pull_document(&note_id)
         .await?;
         Ok(report.into())
+    }
+
+    /// Every attachment this vault knows one note references (§14.7).
+    ///
+    /// **Blocks and makes no request**: it is the local cache, so a shell can
+    /// draw placeholders before deciding what to fetch.
+    ///
+    /// An empty list is **not** "this note has no attachments": it is also
+    /// what a note whose references have never arrived looks like, because an
+    /// absent `attachmentReferences` means "this sender does not know"
+    /// (§14.7, chapter 13 §13.4).
+    pub fn note_attachments(
+        &self,
+        note_id: String,
+    ) -> Result<Vec<attachments::CachedAttachment>, SyncError> {
+        Ok(self
+            .db
+            .call_blocking(move |conn| attachments::for_note(conn, &note_id))?)
+    }
+
+    /// Fetches one attachment's bytes into `images/` (N206's data half).
+    ///
+    /// **`reachable` is the shell's observation and the policy is the core's.**
+    /// Only the shell can see the current path; only one place should decide
+    /// what that means, and FR-045's rule — lazy, unmetered by default, with
+    /// an explicit per-item override — lives in
+    /// [`crate::domain::attachments::may_download`] where a test can reach it
+    /// without a network.
+    ///
+    /// **Deferring is a normal outcome, not an error.** A picture waiting for
+    /// wifi is exactly what FR-045 asks for, so it comes back as
+    /// `deferred: true` with no bytes written. A shell that met an error there
+    /// would show a failure for working behaviour.
+    ///
+    /// The verification order of §14.4.1 is not this function's to choose: it
+    /// calls [`crate::protocol::attachments::fetch_manifest`], which checks
+    /// the signature before unwrapping the file key, and an unresolvable
+    /// signer is refused there rather than skipped.
+    pub async fn fetch_attachment(
+        &self,
+        attachment_id: String,
+        reachable: Reachable,
+    ) -> Result<AttachmentFetchSummary, SyncError> {
+        // The row carries the user's override, and its absence means the
+        // default: FR-045 starts every attachment unmetered-only.
+        let wanted = attachment_id.clone();
+        let cached = self
+            .db
+            .call(move |conn| Ok(attachments::get(conn, &wanted)))
+            .await??;
+        let unmetered_only = cached.as_ref().is_none_or(|row| row.unmetered_only);
+
+        if !attachments::may_download_with(unmetered_only, reachable) {
+            return Ok(AttachmentFetchSummary {
+                downloaded: false,
+                deferred: true,
+                bytes: 0,
+                local_path: cached.and_then(|row| row.local_path),
+            });
+        }
+
+        let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
+        let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
+        let directory = account::device_directory(&self.session.http()).await?;
+
+        let (manifest, file_key) = protocol_attachments::fetch_manifest(
+            &self.session.http(),
+            &attachment_id,
+            &vault_key,
+            &DirectorySigners(directory),
+        )
+        .await
+        .map_err(attachment_error)?;
+
+        let bytes = self.download_chunks(&manifest, &file_key).await?;
+        let local_path = self.write_bytes(&attachment_id, &bytes)?;
+
+        let manifest_json =
+            protocol::attachment_manifest::manifest_json(&manifest).map_err(|error| {
+                SyncError::AttachmentCorrupt {
+                    what: error.to_string(),
+                }
+            })?;
+        let manifest_text = String::from_utf8_lossy(&manifest_json).into_owned();
+        // Ciphertext, because §14.8 reserves quota against it and the cache
+        // budget is measured in the same figure.
+        let remote_size: i64 = manifest
+            .chunks
+            .iter()
+            .map(|chunk| chunk.size as i64 + 24 + 16)
+            .sum();
+        let id = attachment_id.clone();
+        let filename = manifest.filename.clone();
+        let mime_type = manifest.mime_type.clone();
+        let stored = local_path.clone();
+        let now = now_ms();
+        self.db
+            .call(move |conn| {
+                attachments::put_manifest(
+                    conn,
+                    &id,
+                    &manifest_text,
+                    remote_size,
+                    &filename,
+                    &mime_type,
+                )?;
+                attachments::record_download(conn, &id, &stored, now)?;
+                Ok(())
+            })
+            .await?;
+
+        Ok(AttachmentFetchSummary {
+            downloaded: true,
+            deferred: false,
+            bytes: bytes.len() as u64,
+            local_path: Some(local_path),
+        })
+    }
+}
+
+impl VaultSync {
+    /// Every chunk, by whichever transfer path this deployment offers (§14.6).
+    ///
+    /// Presign is tried once. `STORAGE_PRESIGN_UNAVAILABLE` is permanent for
+    /// the deployment, so the proxied path is used for the rest of this file
+    /// and the route is not asked again within it.
+    async fn download_chunks(
+        &self,
+        manifest: &protocol::attachment_manifest::AttachmentManifest,
+        file_key: &[u8],
+    ) -> Result<Vec<u8>, SyncError> {
+        let hashes: Vec<String> = manifest
+            .chunks
+            .iter()
+            .map(|chunk| chunk.encrypted_hash.clone())
+            .collect();
+        let presigned = protocol_attachments::presign_all(&self.session.http(), &hashes)
+            .await
+            .map_err(attachment_error)?;
+
+        let mut decoded: Vec<(u32, Vec<u8>)> = Vec::with_capacity(manifest.chunks.len());
+        for chunk in &manifest.chunks {
+            let framed = match presigned
+                .as_ref()
+                .and_then(|batch| batch.urls.get(&chunk.encrypted_hash))
+            {
+                // A presigned GET goes straight to R2 and carries no session
+                // header, so it is an absolute-url fetch rather than an API call.
+                Some(url) => protocol_attachments::fetch_chunk_presigned(&self.session.http(), url)
+                    .await
+                    .map_err(attachment_error)?,
+                None => protocol_attachments::fetch_chunk_proxied(
+                    &self.session.http(),
+                    &chunk.encrypted_hash,
+                )
+                .await
+                .map_err(attachment_error)?,
+            };
+            let plaintext = protocol_attachments::decode_chunk(
+                &framed,
+                file_key,
+                chunk.index,
+                &chunk.hash,
+                chunk.size,
+            )
+            .map_err(attachment_error)?;
+            decoded.push((chunk.index, plaintext));
+        }
+
+        protocol_attachments::assemble(manifest, decoded).map_err(attachment_error)
+    }
+
+    /// Writes the bytes under `images/` and returns the path the row records.
+    ///
+    /// Relative, because the sandbox container moves between launches on iOS
+    /// and an absolute path stored today is a dangling path tomorrow.
+    fn write_bytes(&self, attachment_id: &str, bytes: &[u8]) -> Result<String, SyncError> {
+        let images = PathBuf::from(&self.directory).join("images");
+        std::fs::create_dir_all(&images).map_err(|error| SyncError::Storage {
+            source: StorageError::Failed {
+                what: error.to_string(),
+            },
+        })?;
+        std::fs::write(images.join(attachment_id), bytes).map_err(|error| SyncError::Storage {
+            source: StorageError::Failed {
+                what: error.to_string(),
+            },
+        })?;
+        Ok(attachment_id.to_owned())
+    }
+}
+
+/// The device directory as a signer resolver.
+///
+/// `None` for a device the directory does not hold, which §14.4.1 turns into a
+/// hard failure — unlike a record, where chapter 01 §1.4.0 leaves the item
+/// unverified and refetches.
+struct DirectorySigners(account::DeviceDirectory);
+
+impl protocol_attachments::SignerResolver for DirectorySigners {
+    fn public_key(&self, device_id: &str) -> Option<Vec<u8>> {
+        self.0.signing_key(device_id).map(<[u8]>::to_vec)
+    }
+}
+
+/// Maps the protocol tier's failure onto the exported one.
+///
+/// The two integrity outcomes stay apart: a manifest that would not verify is
+/// `AttachmentUnverified` and carries no retry, and bytes that failed their
+/// hash are `AttachmentCorrupt` and may be retried.
+fn attachment_error(error: protocol_attachments::AttachmentError) -> SyncError {
+    use protocol_attachments::AttachmentError as E;
+    match error {
+        E::Api(source) => SyncError::Api { source },
+        E::UnresolvableSigner { device_id } => SyncError::AttachmentUnverified { device_id },
+        E::Manifest(protocol::attachment_manifest::ManifestError::BadSignature {
+            signer_device_id,
+        }) => SyncError::AttachmentUnverified {
+            device_id: signer_device_id,
+        },
+        other => SyncError::AttachmentCorrupt {
+            what: other.to_string(),
+        },
     }
 }

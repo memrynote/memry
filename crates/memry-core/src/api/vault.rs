@@ -105,7 +105,12 @@ impl Vault {
     ///
     /// Building this makes no request and takes no lock.
     pub fn sync(&self, session: Arc<AuthSession>) -> Arc<VaultSync> {
-        Arc::new(VaultSync::over(self.id.clone(), self.db.clone(), session))
+        Arc::new(VaultSync::over(
+            self.id.clone(),
+            self.db.clone(),
+            session,
+            self.directory.clone(),
+        ))
     }
 
     /// The note and folder reads over **this** vault's database.

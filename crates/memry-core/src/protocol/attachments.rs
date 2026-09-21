@@ -38,7 +38,7 @@ use std::collections::HashMap;
 use sha2::{Digest as _, Sha256};
 
 use super::attachment_manifest::{AttachmentManifest, EncryptedAttachmentManifest, ManifestError};
-use super::http::{ApiRequest, HttpClient, RetryPolicy};
+use super::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
 use crate::api::errors::ApiError;
 use crate::crypto::sodium;
 
@@ -257,6 +257,30 @@ pub async fn presign_all(
             expires_at
         },
     }))
+}
+
+/// One chunk's framed bytes from a presigned URL (§14.6's direct path).
+///
+/// An **absolute** url rather than an API path, and deliberately unauthenticated:
+/// the url is already the authorisation and R2 is not our server, so sending a
+/// bearer token to a third-party host would leak it.
+///
+/// No retry either. A presigned url carries an `expiresAt`, so a failure may
+/// mean the signature went stale rather than that the object is unavailable,
+/// and the caller's correct move is to re-presign rather than to hammer a dead
+/// signature.
+pub async fn fetch_chunk_presigned(
+    client: &HttpClient,
+    url: &str,
+) -> Result<Vec<u8>, AttachmentError> {
+    let response = client
+        .send(
+            ApiRequest::get(url)
+                .auth(Auth::None)
+                .retry(RetryPolicy::never()),
+        )
+        .await?;
+    Ok(response.body)
 }
 
 /// One chunk's framed bytes through the Worker (§14.6's proxied path).

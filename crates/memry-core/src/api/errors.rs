@@ -491,4 +491,29 @@ pub enum SyncError {
     /// a body on. Permanent for this id, not a retryable fault.
     #[error("no live note `{id}` in this vault")]
     UnknownNote { id: String },
+
+    /// An attachment manifest could not be authenticated.
+    ///
+    /// **Its own variant, and never folded into [`SyncError::Api`] or
+    /// [`SyncError::Crypto`]** (chapter 14 §14.4.1). The manifest is the only
+    /// thing that names a file, so this is the one failure that means "the
+    /// server may be pointing this note's picture at somebody else's bytes"
+    /// rather than "something is broken". A shell must not offer a retry over
+    /// it, which is why it does not look like a transport fault.
+    ///
+    /// Also the answer for a signer device this vault cannot resolve, which
+    /// §14.4.1 makes a **hard failure rather than a fallback** — deliberately
+    /// unlike a record, where chapter 01 §1.4.0 leaves an unresolvable signer
+    /// *unverified* and refetches the directory.
+    #[error("the attachment manifest signed by `{device_id}` could not be verified")]
+    AttachmentUnverified { device_id: String },
+
+    /// The bytes arrived and were not the bytes the manifest describes.
+    ///
+    /// A failed chunk hash, a failed whole-file checksum, or a chunk that
+    /// would not decrypt. Separate from `AttachmentUnverified` because the
+    /// manifest was trustworthy and the transfer was not, so a retry is
+    /// reasonable here and is not there.
+    #[error("the attachment bytes failed their integrity check: {what}")]
+    AttachmentCorrupt { what: String },
 }

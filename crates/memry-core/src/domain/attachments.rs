@@ -26,12 +26,18 @@
 //! the note references; deleting it would turn an evicted picture into an
 //! unknown one.
 //!
-//! The core does not own the sandbox directory, so it cannot unlink the file.
-//! [`evict_to_budget`] clears the column and **returns the paths for the shell
-//! to delete**. If the shell dies in between, the bytes are orphaned on disk
-//! while the row says "not downloaded", so a later download rewrites the file
-//! rather than corrupting anything — a disk-space leak, not a data fault, and
-//! [`orphan_candidates`] is how a sweep reclaims it.
+//! **This module holds a database handle and nothing else**, so it cannot
+//! unlink a file — even though the core does know the vault directory, because
+//! `Vault::open` takes one. [`evict_to_budget`] therefore clears the column
+//! and **returns the paths**, and the caller that holds the directory unlinks
+//! them in the same pass.
+//!
+//! The row is cleared first, deliberately. If the unlink never happens the
+//! bytes are orphaned on disk while the row says "not downloaded", so a later
+//! download rewrites the file — a disk-space leak, not a data fault, and
+//! [`orphan_candidates`] is how a sweep reclaims it. Unlinking first and
+//! clearing second would invert that into a row pointing at a file that is
+//! gone, which every reader would meet as a corrupt cache.
 
 use rusqlite::{Connection, OptionalExtension as _};
 
@@ -187,10 +193,20 @@ pub fn set_pinned(
 /// on `Wifi` the override is irrelevant — the setting says "not on metered
 /// data", not "only when I ask".
 pub fn may_download(attachment: &CachedAttachment, reachable: Reachable) -> bool {
+    may_download_with(attachment.unmetered_only, reachable)
+}
+
+/// The same rule, for a caller that has the setting but no row yet.
+///
+/// An attachment referenced by a note this device has never fetched has no row
+/// until the reference merge creates one, and the answer must be the same
+/// either way: FR-045's default is unmetered-only, so `true` is what an absent
+/// row means.
+pub fn may_download_with(unmetered_only: bool, reachable: Reachable) -> bool {
     match reachable {
         Reachable::Offline => false,
         Reachable::Wifi => true,
-        Reachable::Cellular => !attachment.unmetered_only,
+        Reachable::Cellular => !unmetered_only,
     }
 }
 

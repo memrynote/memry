@@ -6935,6 +6935,28 @@ public func FfiConverterTypeVault_lower(_ value: Vault) -> UInt64 {
 public protocol VaultSyncProtocol: AnyObject, Sendable {
     
     /**
+     * Fetches one attachment's bytes into `images/` (N206's data half).
+     *
+     * **`reachable` is the shell's observation and the policy is the core's.**
+     * Only the shell can see the current path; only one place should decide
+     * what that means, and FR-045's rule — lazy, unmetered by default, with
+     * an explicit per-item override — lives in
+     * [`crate::domain::attachments::may_download`] where a test can reach it
+     * without a network.
+     *
+     * **Deferring is a normal outcome, not an error.** A picture waiting for
+     * wifi is exactly what FR-045 asks for, so it comes back as
+     * `deferred: true` with no bytes written. A shell that met an error there
+     * would show a failure for working behaviour.
+     *
+     * The verification order of §14.4.1 is not this function's to choose: it
+     * calls [`crate::protocol::attachments::fetch_manifest`], which checks
+     * the signature before unwrapping the file key, and an unresolvable
+     * signer is refused there rather than skipped.
+     */
+    func fetchAttachment(attachmentId: String, reachable: Reachable) async throws  -> AttachmentFetchSummary
+    
+    /**
      * One note's body, on demand (chapter 07 §7.8 – §7.11).
      *
      * **This is not an extra.** [`Self::first_sync`] pulls bodies only for the
@@ -6996,6 +7018,19 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      */
     func isFirstSyncComplete() throws  -> Bool
     
+    /**
+     * Every attachment this vault knows one note references (§14.7).
+     *
+     * **Blocks and makes no request**: it is the local cache, so a shell can
+     * draw placeholders before deciding what to fetch.
+     *
+     * An empty list is **not** "this note has no attachments": it is also
+     * what a note whose references have never arrived looks like, because an
+     * absent `attachmentReferences` means "this sender does not know"
+     * (§14.7, chapter 13 §13.4).
+     */
+    func noteAttachments(noteId: String) throws  -> [CachedAttachment]
+    
 }
 /**
  * The read-only sync over one opened vault.
@@ -7055,6 +7090,42 @@ open class VaultSync: VaultSyncProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * Fetches one attachment's bytes into `images/` (N206's data half).
+     *
+     * **`reachable` is the shell's observation and the policy is the core's.**
+     * Only the shell can see the current path; only one place should decide
+     * what that means, and FR-045's rule — lazy, unmetered by default, with
+     * an explicit per-item override — lives in
+     * [`crate::domain::attachments::may_download`] where a test can reach it
+     * without a network.
+     *
+     * **Deferring is a normal outcome, not an error.** A picture waiting for
+     * wifi is exactly what FR-045 asks for, so it comes back as
+     * `deferred: true` with no bytes written. A shell that met an error there
+     * would show a failure for working behaviour.
+     *
+     * The verification order of §14.4.1 is not this function's to choose: it
+     * calls [`crate::protocol::attachments::fetch_manifest`], which checks
+     * the signature before unwrapping the file key, and an unresolvable
+     * signer is refused there rather than skipped.
+     */
+open func fetchAttachment(attachmentId: String, reachable: Reachable)async throws  -> AttachmentFetchSummary  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_fetch_attachment(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(attachmentId),FfiConverterTypeReachable_lower(reachable)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAttachmentFetchSummary_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
     
     /**
      * One note's body, on demand (chapter 07 §7.8 – §7.11).
@@ -7153,6 +7224,27 @@ open func isFirstSyncComplete()throws  -> Bool  {
 })
 }
     
+    /**
+     * Every attachment this vault knows one note references (§14.7).
+     *
+     * **Blocks and makes no request**: it is the local cache, so a shell can
+     * draw placeholders before deciding what to fetch.
+     *
+     * An empty list is **not** "this note has no attachments": it is also
+     * what a note whose references have never arrived looks like, because an
+     * absent `attachmentReferences` means "this sender does not know"
+     * (§14.7, chapter 13 §13.4).
+     */
+open func noteAttachments(noteId: String)throws  -> [CachedAttachment]  {
+    return try  FfiConverterSequenceTypeCachedAttachment.lift(try rustCallWithError(FfiConverterTypeSyncError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultsync_note_attachments(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),uniffiCallStatus
+    )
+})
+}
+    
 
     
 }
@@ -7199,6 +7291,284 @@ public func FfiConverterTypeVaultSync_lower(_ value: VaultSync) -> UInt64 {
 }
 
 
+
+
+/**
+ * One chunk of an attachment, as the manifest lists it.
+ */
+public struct AttachmentChunkRef: Equatable, Hashable {
+    public var index: UInt32
+    /**
+     * SHA-256 of the **plaintext** chunk: the integrity check after decrypt.
+     */
+    public var hash: String
+    /**
+     * SHA-256 of `nonce ‖ ciphertext`: how the chunk is addressed in R2.
+     */
+    public var encryptedHash: String
+    public var size: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(index: UInt32, 
+        /**
+         * SHA-256 of the **plaintext** chunk: the integrity check after decrypt.
+         */hash: String, 
+        /**
+         * SHA-256 of `nonce ‖ ciphertext`: how the chunk is addressed in R2.
+         */encryptedHash: String, size: UInt64) {
+        self.index = index
+        self.hash = hash
+        self.encryptedHash = encryptedHash
+        self.size = size
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AttachmentChunkRef: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAttachmentChunkRef: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AttachmentChunkRef {
+        return
+            try AttachmentChunkRef(
+                index: FfiConverterUInt32.read(from: &buf), 
+                hash: FfiConverterString.read(from: &buf), 
+                encryptedHash: FfiConverterString.read(from: &buf), 
+                size: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AttachmentChunkRef, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.index, into: &buf)
+        FfiConverterString.write(value.hash, into: &buf)
+        FfiConverterString.write(value.encryptedHash, into: &buf)
+        FfiConverterUInt64.write(value.size, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentChunkRef_lift(_ buf: RustBuffer) throws -> AttachmentChunkRef {
+    return try FfiConverterTypeAttachmentChunkRef.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentChunkRef_lower(_ value: AttachmentChunkRef) -> RustBuffer {
+    return FfiConverterTypeAttachmentChunkRef.lower(value)
+}
+
+
+/**
+ * What one attachment fetch did.
+ *
+ * `deferred` is not a failure. FR-045 asks for lazy, unmetered-by-default
+ * downloads, so "waiting for wifi" is the feature working; a shell that met
+ * an error there would report a fault for correct behaviour.
+ */
+public struct AttachmentFetchSummary: Equatable, Hashable {
+    public var downloaded: Bool
+    /**
+     * The metered policy said not now (FR-045).
+     */
+    public var deferred: Bool
+    /**
+     * Plaintext bytes written. Zero when deferred.
+     */
+    public var bytes: UInt64
+    /**
+     * Relative to the vault's `images/` directory, when the bytes are there
+     * — which includes the deferred case if an earlier fetch succeeded.
+     */
+    public var localPath: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(downloaded: Bool, 
+        /**
+         * The metered policy said not now (FR-045).
+         */deferred: Bool, 
+        /**
+         * Plaintext bytes written. Zero when deferred.
+         */bytes: UInt64, 
+        /**
+         * Relative to the vault's `images/` directory, when the bytes are there
+         * — which includes the deferred case if an earlier fetch succeeded.
+         */localPath: String?) {
+        self.downloaded = downloaded
+        self.deferred = deferred
+        self.bytes = bytes
+        self.localPath = localPath
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AttachmentFetchSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAttachmentFetchSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AttachmentFetchSummary {
+        return
+            try AttachmentFetchSummary(
+                downloaded: FfiConverterBool.read(from: &buf), 
+                deferred: FfiConverterBool.read(from: &buf), 
+                bytes: FfiConverterUInt64.read(from: &buf), 
+                localPath: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AttachmentFetchSummary, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.downloaded, into: &buf)
+        FfiConverterBool.write(value.deferred, into: &buf)
+        FfiConverterUInt64.write(value.bytes, into: &buf)
+        FfiConverterOptionString.write(value.localPath, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentFetchSummary_lift(_ buf: RustBuffer) throws -> AttachmentFetchSummary {
+    return try FfiConverterTypeAttachmentFetchSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentFetchSummary_lower(_ value: AttachmentFetchSummary) -> RustBuffer {
+    return FfiConverterTypeAttachmentFetchSummary.lower(value)
+}
+
+
+/**
+ * The manifest itself (§14.4).
+ *
+ * Field order matches the reference writer's object literal, because the
+ * manifest crosses as `JSON.stringify` output and this order is what those
+ * bytes are. `serde` preserves declaration order for a struct, so the two
+ * ports agree as long as this list does.
+ */
+public struct AttachmentManifest: Equatable, Hashable {
+    public var id: String
+    public var filename: String
+    public var mimeType: String
+    /**
+     * Plaintext byte size. **Not** what quota is reserved against (§14.8).
+     */
+    public var size: UInt64
+    /**
+     * SHA-256 of the whole plaintext file.
+     */
+    public var checksum: String
+    public var chunks: [AttachmentChunkRef]
+    /**
+     * The writer's chunk size, carried per file.
+     *
+     * **Informational only.** §14.9: a reader MUST size every chunk from
+     * `chunks[j].size` and MUST NOT assume this value. `CHUNK_SIZE` is a
+     * desktop constant, not a contract constant.
+     */
+    public var chunkSize: UInt64
+    public var createdAt: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, filename: String, mimeType: String, 
+        /**
+         * Plaintext byte size. **Not** what quota is reserved against (§14.8).
+         */size: UInt64, 
+        /**
+         * SHA-256 of the whole plaintext file.
+         */checksum: String, chunks: [AttachmentChunkRef], 
+        /**
+         * The writer's chunk size, carried per file.
+         *
+         * **Informational only.** §14.9: a reader MUST size every chunk from
+         * `chunks[j].size` and MUST NOT assume this value. `CHUNK_SIZE` is a
+         * desktop constant, not a contract constant.
+         */chunkSize: UInt64, createdAt: Int64) {
+        self.id = id
+        self.filename = filename
+        self.mimeType = mimeType
+        self.size = size
+        self.checksum = checksum
+        self.chunks = chunks
+        self.chunkSize = chunkSize
+        self.createdAt = createdAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AttachmentManifest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAttachmentManifest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AttachmentManifest {
+        return
+            try AttachmentManifest(
+                id: FfiConverterString.read(from: &buf), 
+                filename: FfiConverterString.read(from: &buf), 
+                mimeType: FfiConverterString.read(from: &buf), 
+                size: FfiConverterUInt64.read(from: &buf), 
+                checksum: FfiConverterString.read(from: &buf), 
+                chunks: FfiConverterSequenceTypeAttachmentChunkRef.read(from: &buf), 
+                chunkSize: FfiConverterUInt64.read(from: &buf), 
+                createdAt: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AttachmentManifest, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.filename, into: &buf)
+        FfiConverterString.write(value.mimeType, into: &buf)
+        FfiConverterUInt64.write(value.size, into: &buf)
+        FfiConverterString.write(value.checksum, into: &buf)
+        FfiConverterSequenceTypeAttachmentChunkRef.write(value.chunks, into: &buf)
+        FfiConverterUInt64.write(value.chunkSize, into: &buf)
+        FfiConverterInt64.write(value.createdAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentManifest_lift(_ buf: RustBuffer) throws -> AttachmentManifest {
+    return try FfiConverterTypeAttachmentManifest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentManifest_lower(_ value: AttachmentManifest) -> RustBuffer {
+    return FfiConverterTypeAttachmentManifest.lower(value)
+}
 
 
 /**
@@ -7506,6 +7876,143 @@ public func FfiConverterTypeBridgeMessage_lower(_ value: BridgeMessage) -> RustB
 
 
 /**
+ * One cached attachment.
+ */
+public struct CachedAttachment: Equatable, Hashable {
+    public var attachmentId: String
+    /**
+     * The decrypted manifest JSON, verbatim.
+     *
+     * Stored as the bytes it arrived as rather than as parsed columns,
+     * because §14.4's field set may grow and a column per field would drop
+     * whatever this build does not know (FR-033).
+     */
+    public var manifest: String?
+    /**
+     * Note ids referencing this attachment.
+     */
+    public var noteRefs: [String]
+    /**
+     * **Ciphertext** size, which is what quota is reserved against (§14.8).
+     */
+    public var remoteSize: Int64?
+    /**
+     * Relative to the shell's `images/` directory. `None` until downloaded,
+     * and `None` again after eviction.
+     */
+    public var localPath: String?
+    public var downloadedAt: Int64?
+    /**
+     * FR-045's per-item override. `true` by default: bytes wait for an
+     * unmetered path unless the user asked for this one specifically.
+     */
+    public var unmeteredOnly: Bool
+    /**
+     * Exempt from eviction.
+     */
+    public var pinned: Bool
+    public var filename: String?
+    public var mimeType: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(attachmentId: String, 
+        /**
+         * The decrypted manifest JSON, verbatim.
+         *
+         * Stored as the bytes it arrived as rather than as parsed columns,
+         * because §14.4's field set may grow and a column per field would drop
+         * whatever this build does not know (FR-033).
+         */manifest: String?, 
+        /**
+         * Note ids referencing this attachment.
+         */noteRefs: [String], 
+        /**
+         * **Ciphertext** size, which is what quota is reserved against (§14.8).
+         */remoteSize: Int64?, 
+        /**
+         * Relative to the shell's `images/` directory. `None` until downloaded,
+         * and `None` again after eviction.
+         */localPath: String?, downloadedAt: Int64?, 
+        /**
+         * FR-045's per-item override. `true` by default: bytes wait for an
+         * unmetered path unless the user asked for this one specifically.
+         */unmeteredOnly: Bool, 
+        /**
+         * Exempt from eviction.
+         */pinned: Bool, filename: String?, mimeType: String?) {
+        self.attachmentId = attachmentId
+        self.manifest = manifest
+        self.noteRefs = noteRefs
+        self.remoteSize = remoteSize
+        self.localPath = localPath
+        self.downloadedAt = downloadedAt
+        self.unmeteredOnly = unmeteredOnly
+        self.pinned = pinned
+        self.filename = filename
+        self.mimeType = mimeType
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CachedAttachment: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCachedAttachment: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CachedAttachment {
+        return
+            try CachedAttachment(
+                attachmentId: FfiConverterString.read(from: &buf), 
+                manifest: FfiConverterOptionString.read(from: &buf), 
+                noteRefs: FfiConverterSequenceString.read(from: &buf), 
+                remoteSize: FfiConverterOptionInt64.read(from: &buf), 
+                localPath: FfiConverterOptionString.read(from: &buf), 
+                downloadedAt: FfiConverterOptionInt64.read(from: &buf), 
+                unmeteredOnly: FfiConverterBool.read(from: &buf), 
+                pinned: FfiConverterBool.read(from: &buf), 
+                filename: FfiConverterOptionString.read(from: &buf), 
+                mimeType: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CachedAttachment, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.attachmentId, into: &buf)
+        FfiConverterOptionString.write(value.manifest, into: &buf)
+        FfiConverterSequenceString.write(value.noteRefs, into: &buf)
+        FfiConverterOptionInt64.write(value.remoteSize, into: &buf)
+        FfiConverterOptionString.write(value.localPath, into: &buf)
+        FfiConverterOptionInt64.write(value.downloadedAt, into: &buf)
+        FfiConverterBool.write(value.unmeteredOnly, into: &buf)
+        FfiConverterBool.write(value.pinned, into: &buf)
+        FfiConverterOptionString.write(value.filename, into: &buf)
+        FfiConverterOptionString.write(value.mimeType, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCachedAttachment_lift(_ buf: RustBuffer) throws -> CachedAttachment {
+    return try FfiConverterTypeCachedAttachment.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCachedAttachment_lower(_ value: CachedAttachment) -> RustBuffer {
+    return FfiConverterTypeCachedAttachment.lower(value)
+}
+
+
+/**
  * What `POST /auth/devices` needs that only the shell knows.
  */
 public struct DeviceDescriptor: Equatable, Hashable {
@@ -7589,6 +8096,79 @@ public func FfiConverterTypeDeviceDescriptor_lift(_ buf: RustBuffer) throws -> D
 #endif
 public func FfiConverterTypeDeviceDescriptor_lower(_ value: DeviceDescriptor) -> RustBuffer {
     return FfiConverterTypeDeviceDescriptor.lower(value)
+}
+
+
+/**
+ * The signed, encrypted envelope the manifest travels in.
+ */
+public struct EncryptedAttachmentManifest: Equatable, Hashable {
+    public var encryptedManifest: String
+    public var manifestNonce: String
+    public var encryptedFileKey: String
+    public var keyNonce: String
+    public var manifestSignature: String
+    public var signerDeviceId: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(encryptedManifest: String, manifestNonce: String, encryptedFileKey: String, keyNonce: String, manifestSignature: String, signerDeviceId: String) {
+        self.encryptedManifest = encryptedManifest
+        self.manifestNonce = manifestNonce
+        self.encryptedFileKey = encryptedFileKey
+        self.keyNonce = keyNonce
+        self.manifestSignature = manifestSignature
+        self.signerDeviceId = signerDeviceId
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension EncryptedAttachmentManifest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEncryptedAttachmentManifest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EncryptedAttachmentManifest {
+        return
+            try EncryptedAttachmentManifest(
+                encryptedManifest: FfiConverterString.read(from: &buf), 
+                manifestNonce: FfiConverterString.read(from: &buf), 
+                encryptedFileKey: FfiConverterString.read(from: &buf), 
+                keyNonce: FfiConverterString.read(from: &buf), 
+                manifestSignature: FfiConverterString.read(from: &buf), 
+                signerDeviceId: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EncryptedAttachmentManifest, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.encryptedManifest, into: &buf)
+        FfiConverterString.write(value.manifestNonce, into: &buf)
+        FfiConverterString.write(value.encryptedFileKey, into: &buf)
+        FfiConverterString.write(value.keyNonce, into: &buf)
+        FfiConverterString.write(value.manifestSignature, into: &buf)
+        FfiConverterString.write(value.signerDeviceId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEncryptedAttachmentManifest_lift(_ buf: RustBuffer) throws -> EncryptedAttachmentManifest {
+    return try FfiConverterTypeEncryptedAttachmentManifest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEncryptedAttachmentManifest_lower(_ value: EncryptedAttachmentManifest) -> RustBuffer {
+    return FfiConverterTypeEncryptedAttachmentManifest.lower(value)
 }
 
 
@@ -11754,6 +12334,126 @@ public func FfiConverterTypeLinkingPoll_lower(_ value: LinkingPoll) -> RustBuffe
 
 
 /**
+ * What can go wrong reading a manifest.
+ */
+public 
+enum ManifestError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    /**
+     * The signature did not verify.
+     *
+     * Its own variant, carrying the device, because §14.4.1 makes this the
+     * one failure that means "the server may be lying about which bytes are
+     * this note's picture" rather than "something is broken".
+     */
+    case BadSignature(signerDeviceId: String
+    )
+    /**
+     * A base64 field would not decode.
+     */
+    case BadEncoding(field: String
+    )
+    /**
+     * Unwrap or decrypt failed.
+     */
+    case Undecryptable
+    /**
+     * The decrypted bytes were not the manifest.
+     */
+    case Malformed(detail: String
+    )
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension ManifestError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeManifestError: FfiConverterRustBuffer {
+    typealias SwiftType = ManifestError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ManifestError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .BadSignature(
+            signerDeviceId: try FfiConverterString.read(from: &buf)
+            )
+        case 2: return .BadEncoding(
+            field: try FfiConverterString.read(from: &buf)
+            )
+        case 3: return .Undecryptable
+        case 4: return .Malformed(
+            detail: try FfiConverterString.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ManifestError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case let .BadSignature(signerDeviceId):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(signerDeviceId, into: &buf)
+            
+        
+        case let .BadEncoding(field):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(field, into: &buf)
+            
+        
+        case .Undecryptable:
+            writeInt(&buf, Int32(3))
+        
+        
+        case let .Malformed(detail):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(detail, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeManifestError_lift(_ buf: RustBuffer) throws -> ManifestError {
+    return try FfiConverterTypeManifestError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeManifestError_lower(_ value: ManifestError) -> RustBuffer {
+    return FfiConverterTypeManifestError.lower(value)
+}
+
+
+/**
  * Failures of the `Notifications` seam.
  */
 public 
@@ -12620,6 +13320,33 @@ enum SyncError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
      */
     case UnknownNote(id: String
     )
+    /**
+     * An attachment manifest could not be authenticated.
+     *
+     * **Its own variant, and never folded into [`SyncError::Api`] or
+     * [`SyncError::Crypto`]** (chapter 14 §14.4.1). The manifest is the only
+     * thing that names a file, so this is the one failure that means "the
+     * server may be pointing this note's picture at somebody else's bytes"
+     * rather than "something is broken". A shell must not offer a retry over
+     * it, which is why it does not look like a transport fault.
+     *
+     * Also the answer for a signer device this vault cannot resolve, which
+     * §14.4.1 makes a **hard failure rather than a fallback** — deliberately
+     * unlike a record, where chapter 01 §1.4.0 leaves an unresolvable signer
+     * *unverified* and refetches the directory.
+     */
+    case AttachmentUnverified(deviceId: String
+    )
+    /**
+     * The bytes arrived and were not the bytes the manifest describes.
+     *
+     * A failed chunk hash, a failed whole-file checksum, or a chunk that
+     * would not decrypt. Separate from `AttachmentUnverified` because the
+     * manifest was trustworthy and the transfer was not, so a retry is
+     * reasonable here and is not there.
+     */
+    case AttachmentCorrupt(what: String
+    )
 
     
 
@@ -12665,6 +13392,12 @@ public struct FfiConverterTypeSyncError: FfiConverterRustBuffer {
         case 6: return .UnknownNote(
             id: try FfiConverterString.read(from: &buf)
             )
+        case 7: return .AttachmentUnverified(
+            deviceId: try FfiConverterString.read(from: &buf)
+            )
+        case 8: return .AttachmentCorrupt(
+            what: try FfiConverterString.read(from: &buf)
+            )
 
          default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -12704,6 +13437,16 @@ public struct FfiConverterTypeSyncError: FfiConverterRustBuffer {
         case let .UnknownNote(id):
             writeInt(&buf, Int32(6))
             FfiConverterString.write(id, into: &buf)
+            
+        
+        case let .AttachmentUnverified(deviceId):
+            writeInt(&buf, Int32(7))
+            FfiConverterString.write(deviceId, into: &buf)
+            
+        
+        case let .AttachmentCorrupt(what):
+            writeInt(&buf, Int32(8))
+            FfiConverterString.write(what, into: &buf)
             
         }
     }
@@ -13263,6 +14006,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeAttachmentChunkRef: FfiConverterRustBuffer {
+    typealias SwiftType = [AttachmentChunkRef]
+
+    public static func write(_ value: [AttachmentChunkRef], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAttachmentChunkRef.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AttachmentChunkRef] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AttachmentChunkRef]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAttachmentChunkRef.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeBlock: FfiConverterRustBuffer {
     typealias SwiftType = [Block]
 
@@ -13305,6 +14073,31 @@ fileprivate struct FfiConverterSequenceTypeBlockProp: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeBlockProp.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCachedAttachment: FfiConverterRustBuffer {
+    typealias SwiftType = [CachedAttachment]
+
+    public static func write(_ value: [CachedAttachment], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCachedAttachment.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CachedAttachment] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CachedAttachment]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCachedAttachment.read(from: &buf))
         }
         return seq
     }
@@ -14103,6 +14896,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_syncprogresslistener_progress() != 60104) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vaultsync_fetch_attachment() != 11177) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_body() != 40537) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -14110,6 +14906,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_is_first_sync_complete() != 42151) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_note_attachments() != 32162) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_id() != 63291) {
