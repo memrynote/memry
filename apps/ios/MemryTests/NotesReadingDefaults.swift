@@ -21,6 +21,17 @@ extension NotesReading {
     /// `TableContent` would claim a note holds a table with no rows.
     func table(id: String, blockId: String) async throws -> TableContent? { nil }
 
+    /// No attachments, for the same reason: a fake claiming a note has none
+    /// would let a test pass over an attachment row that was never asked for.
+    func attachments(id: String) async throws -> [CachedAttachment] { [] }
+
+    /// Nothing binds, which is what a device that has fetched no manifest
+    /// looks like — and is the answer that draws a placeholder rather than a
+    /// wrong picture.
+    func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment {
+        .unknown
+    }
+
     /// Unread rather than empty, for the same reason the production screen
     /// keeps the two apart: a fake answering "this note has no tags" would let
     /// a test pass over a tag row that was never asked for.

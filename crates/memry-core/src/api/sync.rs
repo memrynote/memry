@@ -419,24 +419,6 @@ impl VaultSync {
         Ok(report.into())
     }
 
-    /// Every attachment this vault knows one note references (§14.7).
-    ///
-    /// **Blocks and makes no request**: it is the local cache, so a shell can
-    /// draw placeholders before deciding what to fetch.
-    ///
-    /// An empty list is **not** "this note has no attachments": it is also
-    /// what a note whose references have never arrived looks like, because an
-    /// absent `attachmentReferences` means "this sender does not know"
-    /// (§14.7, chapter 13 §13.4).
-    pub fn note_attachments(
-        &self,
-        note_id: String,
-    ) -> Result<Vec<attachments::CachedAttachment>, SyncError> {
-        Ok(self
-            .db
-            .call_blocking(move |conn| attachments::for_note(conn, &note_id))?)
-    }
-
     /// Fetches one attachment's bytes into `images/` (N206's data half).
     ///
     /// **`reachable` is the shell's observation and the policy is the core's.**

@@ -160,6 +160,137 @@ fn an_attachment_shared_by_two_notes_keeps_the_other_reference() {
     .expect("the merges");
 }
 
+// MARK: - N206a, binding a block to an attachment (Q4)
+
+/// The rule desktop already implements in both directions: it writes an
+/// embedded attachment to `attachments/<noteId>/<basename(manifest.filename)>`
+/// and resolves a block url against that same path.
+#[test]
+fn a_block_url_binds_by_the_manifest_basename() {
+    let db = vault("bind");
+    db.call_blocking(|conn: &mut Connection| {
+        attachments::put_manifest(conn, "att-1", "{}", 10, "diagram.png", "image/png")?;
+        attachments::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
+
+        // The url form desktop writes for an embedded attachment.
+        let bound =
+            attachments::resolve_for_block(conn, "note-1", "attachments/note-1/diagram.png")?;
+        match bound {
+            attachments::BlockAttachment::Bound { attachment } => {
+                assert_eq!(attachment.attachment_id, "att-1");
+            }
+            other => panic!("expected a binding, got {other:?}"),
+        }
+        Ok(())
+    })
+    .expect("the binding");
+}
+
+#[test]
+fn a_percent_encoded_url_still_binds() {
+    let db = vault("encoded");
+    db.call_blocking(|conn: &mut Connection| {
+        attachments::put_manifest(conn, "att-1", "{}", 10, "my file.pdf", "application/pdf")?;
+        attachments::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
+
+        let bound = attachments::resolve_for_block(conn, "note-1", "my%20file.pdf")?;
+        assert!(matches!(bound, attachments::BlockAttachment::Bound { .. }));
+        Ok(())
+    })
+    .expect("the binding");
+}
+
+/// Each note has its own attachments directory, so the same basename in two
+/// notes is not a collision — which is why the match is scoped to the note's
+/// own references.
+#[test]
+fn two_notes_with_the_same_basename_do_not_collide() {
+    let db = vault("scoped");
+    db.call_blocking(|conn: &mut Connection| {
+        attachments::put_manifest(conn, "att-a", "{}", 10, "screenshot.png", "image/png")?;
+        attachments::put_manifest(conn, "att-b", "{}", 10, "screenshot.png", "image/png")?;
+        attachments::merge_note_references(conn, "note-a", Some(&["att-a".to_owned()]))?;
+        attachments::merge_note_references(conn, "note-b", Some(&["att-b".to_owned()]))?;
+
+        for (note, expected) in [("note-a", "att-a"), ("note-b", "att-b")] {
+            match attachments::resolve_for_block(conn, note, "screenshot.png")? {
+                attachments::BlockAttachment::Bound { attachment } => {
+                    assert_eq!(attachment.attachment_id, expected);
+                }
+                other => panic!("{note}: expected a binding, got {other:?}"),
+            }
+        }
+        Ok(())
+    })
+    .expect("the bindings");
+}
+
+/// One note holding two attachments with the same basename. Desktop cannot
+/// tell them apart either — both materialise to one path and one overwrites
+/// the other — so picking one here risks showing the wrong picture.
+#[test]
+fn an_ambiguous_basename_is_refused_rather_than_guessed() {
+    let db = vault("ambiguous");
+    db.call_blocking(|conn: &mut Connection| {
+        attachments::put_manifest(conn, "att-a", "{}", 10, "a/shot.png", "image/png")?;
+        attachments::put_manifest(conn, "att-b", "{}", 10, "b/shot.png", "image/png")?;
+        attachments::merge_note_references(
+            conn,
+            "note-1",
+            Some(&["att-a".to_owned(), "att-b".to_owned()]),
+        )?;
+
+        match attachments::resolve_for_block(conn, "note-1", "shot.png")? {
+            attachments::BlockAttachment::Ambiguous { basename } => {
+                assert_eq!(basename, "shot.png");
+            }
+            other => panic!("an ambiguous match must be refused, got {other:?}"),
+        }
+        Ok(())
+    })
+    .expect("the refusal");
+}
+
+/// A remote image is ordinary content, not a failed download. Desktop refuses
+/// to resolve these against the vault for the same reason.
+#[test]
+fn a_url_with_a_scheme_is_not_a_vault_attachment() {
+    let db = vault("remote");
+    db.call_blocking(|conn: &mut Connection| {
+        for url in [
+            "https://example.com/a.png",
+            "http://example.com/a.png",
+            "data:image/png;base64,AAAA",
+            "/absolute/a.png",
+        ] {
+            match attachments::resolve_for_block(conn, "note-1", url)? {
+                attachments::BlockAttachment::Remote { url: seen } => assert_eq!(seen, url),
+                other => panic!("{url} must be remote, got {other:?}"),
+            }
+        }
+        Ok(())
+    })
+    .expect("the remote urls");
+}
+
+#[test]
+fn a_block_naming_nothing_this_device_holds_is_unknown() {
+    let db = vault("unknown");
+    db.call_blocking(|conn: &mut Connection| {
+        assert!(matches!(
+            attachments::resolve_for_block(conn, "note-1", "missing.png")?,
+            attachments::BlockAttachment::Unknown
+        ));
+        // An empty url is not a remote url and not a binding either.
+        assert!(matches!(
+            attachments::resolve_for_block(conn, "note-1", "")?,
+            attachments::BlockAttachment::Unknown
+        ));
+        Ok(())
+    })
+    .expect("the unknowns");
+}
+
 // MARK: - N203, the metered policy
 
 /// FR-045: lazy, defaulting to unmetered, with an explicit per-item override.

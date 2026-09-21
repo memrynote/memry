@@ -152,7 +152,57 @@ now says so explicitly.
 
 ## Q4 — How does an `image` block bind to an attachment id? (found by N206)
 
-**Open, and it blocks binding bytes to a block. Answered by N206a.**
+**Answered by N206a: the basename of `manifest.filename`, scoped to one note's
+reference list. Not a guess \u2014 it is what desktop already does, in both
+directions.**
+
+Option 3 is ruled out: nothing on the note payload carries a url-to-id map.
+The payload has exactly two attachment fields (`sync-payloads.ts:265-266`), and
+the singular `attachmentId` is **not** a cover or a primary image. The redriver
+says what it is outright: "Binary note: the note file itself IS the
+attachment" (`attachment-download-redriver.ts:89-91`) \u2014 a note that _is_ a PDF
+rather than a note that _contains_ one. N208's cover is a different field and
+must not be read from here.
+
+Option 1 is unnecessary, because the binding is already implied by two pieces
+of desktop behaviour that meet in the middle:
+
+- **Download** materialises an embedded attachment at
+  `path.join(targetPath, sanitizeFilename(path.basename(manifest.filename)))`
+  where `targetPath` is `getNoteAttachmentsDir(vaultPath, noteId)`, i.e.
+  `<vault>/attachments/<noteId>/` (`attachments.ts:717-719`,
+  `vault/attachments.ts:257-259`). The filename comes from the **signed,
+  decrypted** manifest, and is basenamed and sanitised so a crafted manifest
+  cannot escape the directory.
+- **Read** resolves a block's url against the vault, treating
+  `attachments/<noteId>/\u2026` as root-relative rather than note-relative
+  (`vault/attachment-actions.ts:113-115`).
+
+So the file desktop writes for an attachment id and the file a block's url
+names are the same path, and the only varying part is
+`basename(manifest.filename)`. That is the binding.
+
+**The collision I worried about does not exist at the scope I worried about.**
+Each note has its own attachments directory, so two notes both referencing
+`screenshot.png` never meet. The residual case is one note referencing two
+attachments whose filenames share a basename \u2014 and desktop cannot distinguish
+those either, because both materialise to the same path and one overwrites the
+other. iOS therefore **refuses an ambiguous match and draws the placeholder**
+rather than picking one, which is the only answer that cannot show the wrong
+picture.
+
+**A url carrying a scheme is not a vault attachment.** `resolveAttachment`
+refuses `http:`, `data:` and absolute paths deliberately, and calls a remote
+image "ordinary content, not a defect". iOS keeps that distinction rather than
+hunting for an attachment that was never uploaded.
+
+The rule, then: percent-decode the url, take its basename, and match it against
+`basename(manifest.filename)` among **this note's** cached references. Exactly
+one match binds; zero or more than one draws the placeholder.
+
+---
+
+### Original statement of the question
 
 Not in the original question list, because nothing suggested the two ends did
 not already meet. They do not.

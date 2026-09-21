@@ -308,6 +308,132 @@ pub fn for_note(conn: &Connection, note_id: &str) -> Result<Vec<CachedAttachment
         .collect())
 }
 
+// MARK: - N206a, binding a body block to an attachment
+
+/// What a block's `url` resolved to.
+///
+/// Four answers rather than an `Option`, because a shell draws each one
+/// differently and collapsing them would make a remote image look like a
+/// failed download.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BlockAttachment {
+    /// The url carries a scheme or is absolute, so it is **not** a vault
+    /// attachment. Desktop refuses to resolve these and calls a remote image
+    /// "ordinary content, not a defect"; the shell loads it as a web resource.
+    Remote { url: String },
+    /// Exactly one of this note's attachments matches.
+    Bound { attachment: CachedAttachment },
+    /// No reference matches. Either the references have not arrived yet, or
+    /// this build has not fetched that manifest.
+    Unknown,
+    /// More than one of this note's attachments has that basename.
+    ///
+    /// **Refused rather than guessed.** Desktop cannot tell them apart either
+    /// — both materialise to the same path and one overwrites the other — and
+    /// picking one here risks showing the wrong picture, which is worse than
+    /// showing a placeholder.
+    Ambiguous { basename: String },
+}
+
+/// Percent-decoding, enough for a vault path.
+///
+/// Block urls are commonly percent-encoded (`my%20file.pdf`), and desktop
+/// decodes before resolving. An undecodable sequence is left as written,
+/// exactly as desktop's `try/catch` does.
+fn percent_decode(value: &str) -> String {
+    let bytes = value.as_bytes();
+    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' && index + 2 < bytes.len() {
+            let hex = std::str::from_utf8(&bytes[index + 1..index + 3]).ok();
+            if let Some(byte) = hex.and_then(|hex| u8::from_str_radix(hex, 16).ok()) {
+                out.push(byte);
+                index += 3;
+                continue;
+            }
+        }
+        out.push(bytes[index]);
+        index += 1;
+    }
+    String::from_utf8(out).unwrap_or_else(|_| value.to_owned())
+}
+
+/// The last path segment, with Windows separators normalised the way desktop
+/// normalises them.
+fn basename(path: &str) -> String {
+    path.replace('\\', "/")
+        .rsplit('/')
+        .next()
+        .unwrap_or(path)
+        .to_owned()
+}
+
+/// Whether a url names something outside the vault.
+///
+/// The same three shapes desktop refuses: a scheme, a leading `/`, a leading
+/// `\`.
+fn is_remote(url: &str) -> bool {
+    url.starts_with('/')
+        || url.starts_with('\\')
+        || url
+            .split_once("://")
+            .map(|(scheme, _)| {
+                !scheme.is_empty()
+                    && scheme
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+            })
+            .unwrap_or(false)
+        || url.starts_with("data:")
+}
+
+/// Binds one body block's `url` to one of the note's attachments (Q4).
+///
+/// **The rule, and why it is this one.** Desktop writes an embedded
+/// attachment to `<vault>/attachments/<noteId>/<basename(manifest.filename)>`,
+/// and resolves a block's url against the vault treating
+/// `attachments/<noteId>/…` as root-relative. The file it writes for an
+/// attachment id and the file a block's url names are therefore the same path,
+/// and the only varying part is the manifest's basename. `research.md` §Q4
+/// carries the citations.
+///
+/// Scoped to **this note's** references, which is why two notes both holding a
+/// `screenshot.png` never collide: each has its own directory.
+pub fn resolve_for_block(
+    conn: &Connection,
+    note_id: &str,
+    url: &str,
+) -> Result<BlockAttachment, StorageError> {
+    if url.is_empty() {
+        return Ok(BlockAttachment::Unknown);
+    }
+    if is_remote(url) {
+        return Ok(BlockAttachment::Remote {
+            url: url.to_owned(),
+        });
+    }
+
+    let wanted = basename(&percent_decode(url));
+    let matches: Vec<CachedAttachment> = for_note(conn, note_id)?
+        .into_iter()
+        .filter(|row| {
+            row.filename
+                .as_deref()
+                .map(|name| basename(name) == wanted)
+                .unwrap_or(false)
+        })
+        .collect();
+
+    Ok(match matches.len() {
+        0 => BlockAttachment::Unknown,
+        1 => BlockAttachment::Bound {
+            attachment: matches.into_iter().next().unwrap_or_else(|| unreachable!()),
+        },
+        _ => BlockAttachment::Ambiguous { basename: wanted },
+    })
+}
+
 // MARK: - N203, the bounded cache
 
 /// What one eviction pass decided.

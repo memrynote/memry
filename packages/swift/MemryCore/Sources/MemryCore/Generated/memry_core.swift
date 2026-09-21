@@ -3336,6 +3336,32 @@ public func FfiConverterTypeLifecycleObserver_lower(_ value: LifecycleObserver) 
 public protocol NotesProtocol: AnyObject, Sendable {
     
     /**
+     * What one body block's `url` points at (Q4).
+     *
+     * A block carries a **vault-relative path**, not an attachment id, so
+     * something has to bind the two. Desktop writes an embedded attachment to
+     * `attachments/<noteId>/<basename(manifest.filename)>` and resolves a
+     * block url against that same path, so the basename is the binding —
+     * `research.md` §Q4 carries the citations.
+     *
+     * Four answers rather than an optional one, because a shell draws each
+     * differently: a remote image is ordinary content rather than a failed
+     * download, and an **ambiguous** basename is refused rather than guessed,
+     * since showing the wrong picture is worse than showing a placeholder.
+     */
+    func attachmentForBlock(id: String, url: String) throws  -> BlockAttachment
+    
+    /**
+     * Every attachment this vault knows one note references (§14.7).
+     *
+     * **An empty list is not "this note has no attachments."** It is also
+     * what a note whose references have never arrived looks like, because an
+     * absent `attachmentReferences` means "this sender does not know"
+     * (chapter 13 §13.4). A shell must not render the two the same way.
+     */
+    func attachments(id: String) throws  -> [CachedAttachment]
+    
+    /**
      * One note's body as blocks, for a shell that renders it rather than
      * previewing it.
      *
@@ -3476,6 +3502,49 @@ open class Notes: NotesProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * What one body block's `url` points at (Q4).
+     *
+     * A block carries a **vault-relative path**, not an attachment id, so
+     * something has to bind the two. Desktop writes an embedded attachment to
+     * `attachments/<noteId>/<basename(manifest.filename)>` and resolves a
+     * block url against that same path, so the basename is the binding —
+     * `research.md` §Q4 carries the citations.
+     *
+     * Four answers rather than an optional one, because a shell draws each
+     * differently: a remote image is ordinary content rather than a failed
+     * download, and an **ambiguous** basename is refused rather than guessed,
+     * since showing the wrong picture is worse than showing a placeholder.
+     */
+open func attachmentForBlock(id: String, url: String)throws  -> BlockAttachment  {
+    return try  FfiConverterTypeBlockAttachment_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_attachment_for_block(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(url),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every attachment this vault knows one note references (§14.7).
+     *
+     * **An empty list is not "this note has no attachments."** It is also
+     * what a note whose references have never arrived looks like, because an
+     * absent `attachmentReferences` means "this sender does not know"
+     * (chapter 13 §13.4). A shell must not render the two the same way.
+     */
+open func attachments(id: String)throws  -> [CachedAttachment]  {
+    return try  FfiConverterSequenceTypeCachedAttachment.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_attachments(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
     
     /**
      * One note's body as blocks, for a shell that renders it rather than
@@ -7018,19 +7087,6 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      */
     func isFirstSyncComplete() throws  -> Bool
     
-    /**
-     * Every attachment this vault knows one note references (§14.7).
-     *
-     * **Blocks and makes no request**: it is the local cache, so a shell can
-     * draw placeholders before deciding what to fetch.
-     *
-     * An empty list is **not** "this note has no attachments": it is also
-     * what a note whose references have never arrived looks like, because an
-     * absent `attachmentReferences` means "this sender does not know"
-     * (§14.7, chapter 13 §13.4).
-     */
-    func noteAttachments(noteId: String) throws  -> [CachedAttachment]
-    
 }
 /**
  * The read-only sync over one opened vault.
@@ -7220,27 +7276,6 @@ open func isFirstSyncComplete()throws  -> Bool  {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vaultsync_is_first_sync_complete(
             self.uniffiCloneHandle(),uniffiCallStatus
-    )
-})
-}
-    
-    /**
-     * Every attachment this vault knows one note references (§14.7).
-     *
-     * **Blocks and makes no request**: it is the local cache, so a shell can
-     * draw placeholders before deciding what to fetch.
-     *
-     * An empty list is **not** "this note has no attachments": it is also
-     * what a note whose references have never arrived looks like, because an
-     * absent `attachmentReferences` means "this sender does not know"
-     * (§14.7, chapter 13 §13.4).
-     */
-open func noteAttachments(noteId: String)throws  -> [CachedAttachment]  {
-    return try  FfiConverterSequenceTypeCachedAttachment.lift(try rustCallWithError(FfiConverterTypeSyncError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_vaultsync_note_attachments(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(noteId),uniffiCallStatus
     )
 })
 }
@@ -10973,6 +11008,122 @@ public func FfiConverterTypeBackgroundError_lift(_ buf: RustBuffer) throws -> Ba
 public func FfiConverterTypeBackgroundError_lower(_ value: BackgroundError) -> RustBuffer {
     return FfiConverterTypeBackgroundError.lower(value)
 }
+
+
+/**
+ * What a block's `url` resolved to.
+ *
+ * Four answers rather than an `Option`, because a shell draws each one
+ * differently and collapsing them would make a remote image look like a
+ * failed download.
+ */
+
+public enum BlockAttachment: Equatable, Hashable {
+    
+    /**
+     * The url carries a scheme or is absolute, so it is **not** a vault
+     * attachment. Desktop refuses to resolve these and calls a remote image
+     * "ordinary content, not a defect"; the shell loads it as a web resource.
+     */
+    case remote(url: String
+    )
+    /**
+     * Exactly one of this note's attachments matches.
+     */
+    case bound(attachment: CachedAttachment
+    )
+    /**
+     * No reference matches. Either the references have not arrived yet, or
+     * this build has not fetched that manifest.
+     */
+    case unknown
+    /**
+     * More than one of this note's attachments has that basename.
+     *
+     * **Refused rather than guessed.** Desktop cannot tell them apart either
+     * — both materialise to the same path and one overwrites the other — and
+     * picking one here risks showing the wrong picture, which is worse than
+     * showing a placeholder.
+     */
+    case ambiguous(basename: String
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension BlockAttachment: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBlockAttachment: FfiConverterRustBuffer {
+    typealias SwiftType = BlockAttachment
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BlockAttachment {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .remote(url: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .bound(attachment: try FfiConverterTypeCachedAttachment.read(from: &buf)
+        )
+        
+        case 3: return .unknown
+        
+        case 4: return .ambiguous(basename: try FfiConverterString.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: BlockAttachment, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .remote(url):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(url, into: &buf)
+            
+        
+        case let .bound(attachment):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeCachedAttachment.write(attachment, into: &buf)
+            
+        
+        case .unknown:
+            writeInt(&buf, Int32(3))
+        
+        
+        case let .ambiguous(basename):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(basename, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlockAttachment_lift(_ buf: RustBuffer) throws -> BlockAttachment {
+    return try FfiConverterTypeBlockAttachment.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlockAttachment_lower(_ value: BlockAttachment) -> RustBuffer {
+    return FfiConverterTypeBlockAttachment.lower(value)
+}
+
 
 
 /**
@@ -14830,6 +14981,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_devicelink_scan() != 64888) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_notes_attachment_for_block() != 30405) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_attachments() != 62895) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notes_blocks() != 22042) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -14906,9 +15063,6 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_is_first_sync_complete() != 42151) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_memry_core_checksum_method_vaultsync_note_attachments() != 32162) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_id() != 63291) {

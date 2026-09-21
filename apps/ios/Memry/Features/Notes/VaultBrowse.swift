@@ -78,6 +78,20 @@ protocol NotesReading: Sendable {
     ///   dimension and a table is two, which is why this is a second read
     ///   rather than a field.
     func table(id: String, blockId: String) async throws -> TableContent?
+    /// Every attachment this vault knows one note references.
+    ///
+    /// - Returns: an **empty list is not "this note has no attachments"**. It
+    ///   is also what a note whose references have never arrived looks like,
+    ///   because an absent `attachmentReferences` means "this sender does not
+    ///   know" (chapter 13 §13.4).
+    func attachments(id: String) async throws -> [CachedAttachment]
+    /// What one body block's `url` points at.
+    ///
+    /// A block carries a vault-relative path rather than an attachment id, so
+    /// the core binds the two by the basename of the signed manifest's
+    /// filename. Four answers, because a remote image is ordinary content and
+    /// an ambiguous name is refused rather than guessed.
+    func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment
 }
 
 /// The production reader: the core's own `Notes`, over the shell's one serial
@@ -123,6 +137,18 @@ struct CoreNotesReader: NotesReading {
     func table(id: String, blockId: String) async throws -> TableContent? {
         let vault = vault
         return try await executor.run { try vault.notes().table(id: id, blockId: blockId) }
+    }
+
+    func attachments(id: String) async throws -> [CachedAttachment] {
+        let vault = vault
+        return try await executor.run { try vault.notes().attachments(id: id) }
+    }
+
+    func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment {
+        let vault = vault
+        return try await executor.run {
+            try vault.notes().attachmentForBlock(id: id, url: url)
+        }
     }
 
     /// One indexed row plus the vault's property definitions — no CRDT apply,

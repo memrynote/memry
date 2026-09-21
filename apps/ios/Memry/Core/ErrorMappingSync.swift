@@ -20,7 +20,7 @@ import MemryCore
 // content, and a string that reaches an alert can reach a screenshot.
 
 extension ErrorMapping {
-    /// `SyncError`'s six variants (`crates/memry-core/src/api/errors.rs`).
+    /// `SyncError`'s eight variants (`crates/memry-core/src/api/errors.rs`).
     ///
     /// Four are forwarded, and that is the whole reason they are nested rather
     /// than flattened: an `ApiError` reaching the shell inside a sync is the
@@ -43,8 +43,45 @@ extension ErrorMapping {
         case let .Crypto(source): userFacing(source)
         case .Locked: locked
         case .UnknownNote: unknownNote
+        case .AttachmentUnverified: attachmentUnverified
+        case .AttachmentCorrupt: attachmentCorrupt
         }
     }
+
+    /// Chapter 14 §14.4.1. The manifest is the only thing naming an
+    /// attachment — chunks are opaque ciphertext addressed by hash — so a
+    /// signature that does not verify means the bytes on offer may not be this
+    /// note's at all.
+    ///
+    /// **`.blocked`, and deliberately not retryable.** Asking again fetches
+    /// the same unverifiable manifest. This is also the answer for a signer
+    /// device this vault cannot place, which the chapter makes a hard failure
+    /// rather than a fallback.
+    ///
+    /// The device id is not in the sentence: it identifies a user's hardware,
+    /// and a string that reaches an alert can reach a screenshot.
+    static let attachmentUnverified = UserFacingError(
+        code: "sync.attachmentUnverified",
+        title: "This attachment could not be verified.",
+        guidance: "Memry will not open a file it cannot confirm came from one of your devices. Your note is unchanged.",
+        recourse: .blocked,
+        isUserVisible: true
+    )
+
+    /// The manifest was trustworthy and the transfer was not: a chunk failed
+    /// its hash, the whole file failed its checksum, or a chunk would not
+    /// decrypt.
+    ///
+    /// **`.retry`, unlike the one above, and that difference is the point.**
+    /// Nothing here suggests the server is lying; the bytes simply arrived
+    /// wrong, and fetching them again is a reasonable thing to do.
+    static let attachmentCorrupt = UserFacingError(
+        code: "sync.attachmentCorrupt",
+        title: "This attachment did not download correctly.",
+        guidance: "The file was incomplete or damaged in transit. Try again.",
+        recourse: .retry,
+        isUserVisible: true
+    )
 
     /// The secure store answered **absent**, not locked: this phone holds no
     /// account key, so there is no vault key to open a record with.

@@ -110,6 +110,13 @@ final class NoteReadViewModel {
     /// again, at note granularity.
     let filler: (any VaultFilling)?
 
+    /// The current network path, for FR-045's metered policy.
+    ///
+    /// Optional because nothing constructs a `PathReachability` in production
+    /// yet. The **policy** is never here either way — it is the core's, in
+    /// `may_download` — so this only supplies the observation.
+    let reachability: (any Reachability)?
+
     /// Where an on-demand body fetch is. `.idle` covers both "not asked" and
     /// "asked, and it worked" — the second is visible as a body rather than as
     /// a state.
@@ -139,6 +146,13 @@ final class NoteReadViewModel {
     /// appeared a frame late would reflow the note under the reader's eyes.
     /// A note holds few tables, so the cost is a few local reads.
     private(set) var tables: [String: TableContent] = [:]
+    /// What each attachment-bearing block's `url` binds to.
+    ///
+    /// Keyed by the url the block carries, because that is what the block has
+    /// — an attachment id is what the binding *produces*. Re-read after a
+    /// download so a picture becomes visible **without the note being
+    /// recreated**, which is what FR-045 asks for in as many words.
+    private(set) var attachments: [String: BlockAttachment] = [:]
     /// The note's tags and typed properties, or `nil` while they are unread.
     ///
     /// `nil` and "read, and it has none" are different: the first draws
@@ -147,10 +161,16 @@ final class NoteReadViewModel {
     private(set) var metadata: NoteMetadata?
     private var hasLoaded = false
 
-    init(route: NoteRoute, reader: any NotesReading, filler: (any VaultFilling)? = nil) {
+    init(
+        route: NoteRoute,
+        reader: any NotesReading,
+        filler: (any VaultFilling)? = nil,
+        reachability: (any Reachability)? = nil
+    ) {
         self.route = route
         self.reader = reader
         self.filler = filler
+        self.reachability = reachability
     }
 
     /// Whether this screen can offer to fetch a body at all. An affordance
@@ -199,6 +219,95 @@ final class NoteReadViewModel {
             blocks = []
         }
         await loadTables()
+        await loadAttachments()
+    }
+
+    /// Binds every attachment-bearing block in the body.
+    ///
+    /// Eager, like the tables and for the same reason: the resolver is async
+    /// and a SwiftUI body is not, and a picture that appeared a frame late
+    /// would reflow the note under the reader's eyes.
+    private func loadAttachments() async {
+        var bound: [String: BlockAttachment] = [:]
+        for url in Self.attachmentUrls(in: blocks) {
+            do {
+                bound[url] = try await reader.attachmentForBlock(id: route.id, url: url)
+            } catch {
+                let mapped = ErrorMapping.userFacing(error)
+                Log.storage.error("an attachment could not be resolved", .code(mapped.code))
+            }
+        }
+        attachments = bound
+    }
+
+    /// Every distinct `url` an attachment-bearing block carries.
+    ///
+    /// `taskBlock` and the link cards are deliberately absent: a bookmark's
+    /// url is a web address rather than a vault path, and resolving it would
+    /// ask the core about something it correctly refuses.
+    static func attachmentUrls(in blocks: [Block]) -> [String] {
+        let kinds: Set<String> = ["image", "inlineImage", "file", "audio", "video"]
+        var seen: [String] = []
+        for block in blocks where kinds.contains(block.kind) {
+            guard let url = block.props.first(where: { $0.name == "url" })?.value,
+                  !url.isEmpty,
+                  !seen.contains(url)
+            else { continue }
+            seen.append(url)
+        }
+        return seen
+    }
+
+    /// Fetches the bytes for every attachment this note is still waiting on,
+    /// then re-resolves so the pictures appear **in place**.
+    ///
+    /// FR-045 asks for exactly this: a picture whose bytes have not arrived
+    /// shows a placeholder and "becomes visible on arrival without the note
+    /// being recreated". Re-resolving into `attachments` re-renders the
+    /// existing views rather than rebuilding the screen, which is what keeps
+    /// the reader's scroll position.
+    ///
+    /// **Deferred is not failure.** On a metered path the core answers
+    /// `deferred` and writes nothing; the placeholder simply stays, which is
+    /// the feature working rather than an error to report.
+    ///
+    /// A single failure does not abandon the rest: one unverifiable manifest
+    /// must not stop the other pictures in the note from arriving.
+    func fetchWaitingAttachments() async {
+        guard let filler else { return }
+        // `PathReachability` has no production producer yet (`ShellState`
+        // says so), and its own documented answer for "we have not seen a
+        // path" is `.cellular`: usable, metered, and the honest unknown. On an
+        // unwired build that means an unmetered-only attachment defers rather
+        // than spending a stranger's data plan, which is the safe direction
+        // for a default to fail in.
+        let reachable = reachability?.current() ?? PathReachability.unknownPath
+
+        var landed = false
+        for (_, binding) in attachments {
+            guard case let .bound(attachment) = binding,
+                  attachment.localPath == nil
+            else { continue }
+            do {
+                let summary = try await filler.fetchAttachment(
+                    attachmentId: attachment.attachmentId,
+                    reachable: reachable
+                )
+                if summary.downloaded { landed = true }
+            } catch {
+                let mapped = ErrorMapping.userFacing(error)
+                Log.sync.error("an attachment could not be fetched", .code(mapped.code))
+            }
+        }
+
+        if landed {
+            await loadAttachments()
+        }
+    }
+
+    /// Re-resolves after bytes land, so the picture appears in place.
+    func refreshAttachments() async {
+        await loadAttachments()
     }
 
     /// The structure of every table in the body.

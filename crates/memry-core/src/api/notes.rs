@@ -10,6 +10,7 @@
 use crate::api::errors::StorageError;
 use crate::crdt::blocks::{Block, TableContent};
 use crate::crdt::errors::CrdtError;
+use crate::domain::attachments::{self, BlockAttachment, CachedAttachment};
 use crate::domain::note_meta::{self, NoteMetadata};
 use crate::domain::reads::{self, FolderSummary, NoteDetail, NoteSummary};
 use crate::storage::Db;
@@ -124,5 +125,37 @@ impl Notes {
         self.db
             .call_blocking(move |conn| Ok(reads::note_table(conn, &id, &block_id)))
             .map_err(CrdtError::from)?
+    }
+
+    /// Every attachment this vault knows one note references (§14.7).
+    ///
+    /// **An empty list is not "this note has no attachments."** It is also
+    /// what a note whose references have never arrived looks like, because an
+    /// absent `attachmentReferences` means "this sender does not know"
+    /// (chapter 13 §13.4). A shell must not render the two the same way.
+    pub fn attachments(&self, id: String) -> Result<Vec<CachedAttachment>, StorageError> {
+        self.db
+            .call_blocking(move |conn| attachments::for_note(conn, &id))
+    }
+
+    /// What one body block's `url` points at (Q4).
+    ///
+    /// A block carries a **vault-relative path**, not an attachment id, so
+    /// something has to bind the two. Desktop writes an embedded attachment to
+    /// `attachments/<noteId>/<basename(manifest.filename)>` and resolves a
+    /// block url against that same path, so the basename is the binding —
+    /// `research.md` §Q4 carries the citations.
+    ///
+    /// Four answers rather than an optional one, because a shell draws each
+    /// differently: a remote image is ordinary content rather than a failed
+    /// download, and an **ambiguous** basename is refused rather than guessed,
+    /// since showing the wrong picture is worse than showing a placeholder.
+    pub fn attachment_for_block(
+        &self,
+        id: String,
+        url: String,
+    ) -> Result<BlockAttachment, StorageError> {
+        self.db
+            .call_blocking(move |conn| attachments::resolve_for_block(conn, &id, &url))
     }
 }

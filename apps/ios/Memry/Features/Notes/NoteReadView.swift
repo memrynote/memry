@@ -138,14 +138,16 @@ struct NoteReadView: View {
                                     }
                                 }
                             },
-                            tableContent: { model.tables[$0] }
+                            tableContent: { model.tables[$0] },
+                            attachment: { model.attachments[$0] ?? .unknown }
                         )
                     } else {
                         // No stack to push onto: the links are still drawn and
                         // still readable, they simply lead nowhere here.
                         NoteBlocksView(
                             blocks: model.blocks,
-                            tableContent: { model.tables[$0] }
+                            tableContent: { model.tables[$0] },
+                            attachment: { model.attachments[$0] ?? .unknown }
                         )
                     }
                 }
@@ -156,7 +158,13 @@ struct NoteReadView: View {
         }
         .background(Tokens.Canvas.background.color)
         .calmAnimation(.normal, value: model.phase)
-        .task { await model.loadIfNeeded() }
+        .task {
+            await model.loadIfNeeded()
+            // After the body and its bindings are on screen, not before: the
+            // placeholders are what FR-045 asks to be visible first, and a
+            // fetch that finished early would still only re-render them.
+            await model.fetchWaitingAttachments()
+        }
         .alert(
             "There is no note called \u{201c}\(brokenLink ?? "")\u{201d}",
             isPresented: Binding(

@@ -33,6 +33,11 @@ struct NoteBlocksView: View {
     /// are two dimensions and `depth` is one. `nil` while no source is wired,
     /// and a table then draws as the placeholder rather than as nothing.
     var tableContent: ((String) -> TableContent?)?
+    /// What a block's `url` points at, by the rule the core owns (Q4).
+    ///
+    /// `nil` while nothing can resolve one, which draws every attachment as a
+    /// placeholder rather than pretending the bytes are missing.
+    var attachment: ((String) -> BlockAttachment)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
@@ -41,7 +46,8 @@ struct NoteBlocksView: View {
                     block: row.block,
                     marker: row.marker,
                     openTarget: openTarget,
-                    tableContent: tableContent
+                    tableContent: tableContent,
+                    attachment: attachment
                 )
             }
         }
@@ -122,6 +128,7 @@ struct NoteBlockView: View {
     var marker: String?
     var openTarget: ((String) -> Void)?
     var tableContent: ((String) -> TableContent?)?
+    var attachment: ((String) -> BlockAttachment)?
 
     var body: some View {
         content
@@ -177,12 +184,19 @@ struct NoteBlockView: View {
             // cannot open a disclosure would simply lose the text. The
             // chevron says which way the note was left.
             ToggleSummaryRow(isOpen: flag("open"), text: inline, alignment: alignment)
-        case "audio", "video":
-            // Metadata only. The bytes travel the attachment channel
-            // (chapter 14) and this build does not fetch them yet; before
-            // this case existed both fell through to `default` and drew an
-            // empty paragraph, which reads as a hole in the note.
-            AttachmentRow(kind: block.kind, name: value("name"), size: value("size"))
+        case "audio", "video", "file":
+            // Openable once the bytes are here, named when they are not.
+            // Before these cases existed, audio and video fell through to
+            // `default` and drew an empty paragraph, which reads as a hole in
+            // the note.
+            NoteAttachmentView(
+                kind: block.kind,
+                url: value("url"),
+                name: value("name"),
+                size: value("size"),
+                caption: value("caption"),
+                resolve: attachment
+            )
         case "table":
             NoteTableView(
                 table: block.id.flatMap { tableContent?($0) },
@@ -210,12 +224,18 @@ struct NoteBlockView: View {
                 subtitle: "Watch on YouTube",
                 symbol: "play.rectangle"
             )
-        case "image", "inlineImage", "file":
-            // **Blocked on the core, not on this screen.** Attachment bytes
-            // travel their own path (chapter 13 §13.8) and nothing on the FFI
-            // carries them, so this phone has the block and not the file.
-            // Naming the file beats an empty gap in the middle of a note.
-            AttachmentRow(kind: block.kind, name: value("name"), size: value("size"))
+        case "image", "inlineImage":
+            // Real bytes when this device has them, a placeholder when it does
+            // not. A block's url is a vault-relative path rather than an
+            // attachment id, so the core binds the two (Q4); this screen only
+            // renders the four answers it can get back.
+            NoteImageView(
+                url: value("url"),
+                name: value("name"),
+                caption: value("caption"),
+                previewWidth: value("previewWidth").flatMap(Double.init),
+                resolve: attachment
+            )
         default:
             Text(inline)
                 .font(Tokens.Typography.body.font)
@@ -588,56 +608,3 @@ private struct LinkCardRow: View {
         .accessibilityElement(children: .combine)
     }
 }
-
-/// A picture or a file: the block is here, the bytes are not.
-private struct AttachmentRow: View {
-    let kind: String
-    let name: String?
-    let size: String?
-
-    private var symbol: String {
-        kind == "file" ? "doc" : "photo"
-    }
-
-    private var label: String {
-        if let name, !name.isEmpty { return name }
-        return kind == "file" ? "A file is here" : "A picture is here"
-    }
-
-    /// Bytes, said in the units a person uses. Absent rather than guessed when
-    /// the prop carries nothing — "0 KB" would be a claim about the file.
-    private var measured: String? {
-        guard let size, let bytes = Int64(size), bytes > 0 else { return nil }
-        return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-    }
-
-    var body: some View {
-        HStack(spacing: Tokens.Space.medium) {
-            Image(systemName: symbol)
-                .font(Tokens.Typography.body.font)
-                .foregroundStyle(Tokens.Text.secondary.color)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                Text(label)
-                    .font(Tokens.Typography.supporting.font)
-                    .foregroundStyle(Tokens.Text.primary.color)
-                    .lineLimit(2)
-                // What is true: the file lives beside the vault on the
-                // computer and has never been sent to this phone. No retry,
-                // because there is nothing here that could fetch it.
-                Text(measured.map { "\($0) · on your computer" } ?? "On your computer")
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(Tokens.Space.inset)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(
-            RoundedRectangle(cornerRadius: Tokens.Radius.card)
-                .stroke(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline)
-        )
-        .accessibilityElement(children: .combine)
-    }
-}
-
