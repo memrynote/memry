@@ -89,7 +89,9 @@ function applyInlineFormatting(attr: AttributeRun, text: string): string {
  * cell's own line breaks collapse to spaces: `<br>` does not survive Memry's
  * markdown round-trip (it comes back with the two lines glued together), and a
  * raw newline or U+2028 would end the table row. Pipes are escaped so a cell
- * reading `a | b` stays one cell instead of splitting the row.
+ * reading `a | b` stays one cell instead of splitting the row. Backslashes are
+ * escaped along with them: a cell that already holds `\|` would otherwise escape
+ * our own escape and split the row anyway.
  */
 export function noteToCellMarkdown(doc: { text: string; runs: AttributeRun[] }): string {
   let out = ''
@@ -103,7 +105,7 @@ export function noteToCellMarkdown(doc: { text: string; runs: AttributeRun[] }):
       .join('\n')
   }
   return out
-    .replace(/\|/g, '\\|')
+    .replace(/[\\|]/g, (character) => `\\${character}`)
     .replace(/[\n\r\u2028\u2029]+/g, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim()

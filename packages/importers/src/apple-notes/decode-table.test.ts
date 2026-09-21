@@ -166,6 +166,18 @@ describe('decodeTable', () => {
     expect(markdown.split('\n').every((line) => line.split(' | ').length === 2)).toBe(true)
   })
 
+  it('escapes a backslash so it cannot escape the pipe escape', () => {
+    // A cell holding `a \| b` must not become `a \\| b`, which markdown reads
+    // as an escaped backslash followed by a live pipe -> an extra column.
+    const bytes = encodeTablePayload([
+      ['a \\| b', 'c'],
+      ['d', 'e']
+    ])
+    const markdown = tableToMarkdown(decodeTable(bytes)!)
+    expect(markdown).toContain('| a \\\\\\| b | c |')
+    expect(markdown.split('\n').every((line) => line.split(' | ').length === 2)).toBe(true)
+  })
+
   it('returns null for a payload that carries no table', () => {
     const Proto = Root.fromJSON(descriptor).lookupType(MERGEABLE_DATA_TYPE)
     const bytes = Proto.encode(
