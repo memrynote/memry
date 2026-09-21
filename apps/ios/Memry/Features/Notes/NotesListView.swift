@@ -119,6 +119,17 @@ struct NotesListView: View {
                         filler: model.filler,
                         editor: model.editor,
                         metadataWriter: model.metadataWriter,
+                        open: { path.append($0) },
+                        openTag: { path.append(TagRoute(name: $0)) }
+                    )
+                }
+                // N600, registered on the root for the same reason the two
+                // above are: a `#tag` tapped deep in a note, and a restored
+                // path pointing at a tag, both resolve here.
+                .navigationDestination(for: TagRoute.self) { route in
+                    TaggedNotesView(
+                        tag: route.name,
+                        reader: model.reader,
                         open: { path.append($0) }
                     )
                 }

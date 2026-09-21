@@ -160,6 +160,62 @@ pub fn notes(conn: &Connection) -> Result<Vec<NoteSummary>, StorageError> {
     rows.collect::<Result<Vec<_>, _>>().map_err(failed)
 }
 
+/// One tag, and how many live notes carry it (N600).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TagSummary {
+    /// Spelled as the payload holds it. Case is preserved because `Café` and
+    /// `CAFÉ` are one tag to the collation and two spellings to the user;
+    /// folding here would show them something they never wrote.
+    pub name: String,
+    pub note_count: u32,
+    /// `tag_definition.color`, when the vault has one.
+    pub color: Option<String>,
+}
+
+/// Every tag in the vault, with its note count (N600).
+///
+/// Ordered by count and then by name, which is the order a tag screen wants:
+/// the tags a user actually uses first, and a stable tie-break so two reads of
+/// an unchanged vault render identically.
+///
+/// **Case folds for grouping and not for display.** `note_tags.tag` is
+/// `COLLATE NOCASE`, which is what FR-047's "letter-case behaviour identical
+/// to desktop" means, so `Café` and `CAFÉ` count as one tag — and the name
+/// shown is whichever spelling the rows carry rather than a lowercased
+/// invention.
+pub fn tags(conn: &Connection) -> Result<Vec<TagSummary>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT t.tag, COUNT(*), d.color FROM note_tags t              JOIN notes n ON n.id = t.note_id AND n.deleted_at IS NULL              LEFT JOIN tag_definitions d ON d.name = t.tag AND d.deleted_at IS NULL              WHERE t.deleted_at IS NULL              GROUP BY t.tag              ORDER BY COUNT(*) DESC, t.tag",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok(TagSummary {
+                name: row.get(0)?,
+                note_count: row.get::<_, i64>(1)?.max(0) as u32,
+                color: row.get(2)?,
+            })
+        })
+        .map_err(failed)?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(failed)
+}
+
+/// The live notes carrying one tag (N600).
+///
+/// Matched case-insensitively by the column's own collation, so a screen
+/// opened from `#café` finds the note that spelled it `#Café` — which is what
+/// desktop does and what the user means.
+pub fn notes_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT n.id, n.title, n.folder_path, n.emoji, n.created_at, n.modified_at              FROM notes n JOIN note_tags t ON t.note_id = n.id              WHERE n.deleted_at IS NULL AND t.deleted_at IS NULL AND t.tag = ?1              ORDER BY COALESCE(n.modified_at, n.created_at, 0) DESC, n.id",
+        )
+        .map_err(failed)?;
+    let rows = statement.query_map([tag], read_summary).map_err(failed)?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(failed)
+}
+
 fn read_summary(row: &Row<'_>) -> Result<NoteSummary, rusqlite::Error> {
     Ok(NoteSummary {
         id: row.get(0)?,

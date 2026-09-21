@@ -44,7 +44,16 @@ struct NoteTableView: View {
                                 NoteTableCellView(
                                     cell: cell,
                                     width: width(of: column, in: table),
-                                    openTarget: openTarget
+                                    openTarget: openTarget,
+                                    toggleCheckbox: editing.flatMap { editing in
+                                        tableId.map { id in
+                                            { ordinal, checked in
+                                                editing.setCellCheckbox(
+                                                    id, rowIndex, column, ordinal, checked
+                                                )
+                                            }
+                                        }
+                                    }
                                 )
                                 .accessibilityLabel(label(rowIndex, column, cell, table))
                                 // The structure actions live on the cell
@@ -159,11 +168,30 @@ struct NoteTableCellView: View {
     let cell: TableCell
     let width: CGFloat
     var openTarget: ((String) -> Void)?
+    /// Ticks or unticks the `index`-th checkbox in this cell (N605). `nil`
+    /// leaves the boxes drawn but inert, which is what a read-only note gets.
+    var toggleCheckbox: ((Int, Bool) -> Void)?
 
     /// Dynamic Type is why the width is a minimum and the height is not set:
     /// a cell grows downward when the text grows, and the row grows with it.
     var body: some View {
-        NoteBlocksView(blocks: cell.content, openTarget: openTarget)
+        NoteBlocksView(
+            blocks: cell.content,
+            openTarget: openTarget,
+            checkboxBase: toggleCheckbox == nil ? nil : 0
+        )
+            // The cell's own handler, ahead of the note-wide one: a checkbox
+            // link carries an ordinal that only means something here.
+            .environment(\.openURL, OpenURLAction { url in
+                guard
+                    let ordinal = NoteInline.checkboxTarget(of: url),
+                    let toggleCheckbox
+                else {
+                    return .systemAction
+                }
+                toggleCheckbox(ordinal, !isTicked(ordinal))
+                return .handled
+            })
             .font(Tokens.Typography.body.font.weight(cell.isHeader ? .semibold : .regular))
             .foregroundStyle(ink)
             .frame(minWidth: width, alignment: frameAlignment)
@@ -175,6 +203,16 @@ struct NoteTableCellView: View {
                     .stroke(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline)
             )
             .accessibilityElement(children: .combine)
+    }
+
+    /// Whether the `ordinal`-th checkbox in this cell is currently ticked, so
+    /// a tap can write the opposite rather than always writing `true`.
+    private func isTicked(_ ordinal: Int) -> Bool {
+        let boxes = cell.content
+            .flatMap(\.inline)
+            .filter { $0.marks.contains("inlineCheckbox") }
+        guard ordinal < boxes.count else { return false }
+        return boxes[ordinal].markAttrs["inlineCheckbox.checked"] == "true"
     }
 
     /// The cell's own ink, or the ordinary one. An unknown colour name leaves
@@ -235,6 +273,8 @@ struct NoteTableEditing {
     let insertColumn: (String, Int) -> Void
     let deleteColumn: (String, Int) -> Void
     let setCellColour: (String, Int, Int, String) -> Void
+    /// Ticks or unticks the `index`-th inline checkbox in a cell (N605).
+    let setCellCheckbox: (String, Int, Int, Int, Bool) -> Void
 }
 
 /// The row and column actions, attached to a cell.

@@ -63,6 +63,8 @@ struct NoteReadView: View {
     /// screen alone. Wiki links then draw as links and go nowhere, which is
     /// the truth about that context.
     private let open: ((NoteRoute) -> Void)?
+    /// Where a `#tag` goes (N600). `nil` leaves tags marked but inert.
+    private let openTag: ((String) -> Void)?
 
     init(
         route: NoteRoute,
@@ -70,9 +72,11 @@ struct NoteReadView: View {
         filler: (any VaultFilling)? = nil,
         editor: (any BlockEditing)? = nil,
         metadataWriter: (any NoteMetadataWriting)? = nil,
-        open: ((NoteRoute) -> Void)? = nil
+        open: ((NoteRoute) -> Void)? = nil,
+        openTag: ((String) -> Void)? = nil
     ) {
         self.open = open
+        self.openTag = openTag
         _model = State(initialValue: NoteReadViewModel(route: route, reader: reader, filler: filler))
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: route.id, filler: filler)
@@ -89,9 +93,11 @@ struct NoteReadView: View {
         model: NoteReadViewModel,
         editor: (any BlockEditing)? = nil,
         metadataWriter: (any NoteMetadataWriting)? = nil,
-        open: ((NoteRoute) -> Void)? = nil
+        open: ((NoteRoute) -> Void)? = nil,
+        openTag: ((String) -> Void)? = nil
     ) {
         self.open = open
+        self.openTag = openTag
         _model = State(initialValue: model)
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: model.route.id, filler: model.filler)
@@ -177,6 +183,14 @@ struct NoteReadView: View {
                 Task { @MainActor in
                     await model.setCellProp(
                         tableId, row: row, column: column, "backgroundColor", colour
+                    )
+                    await reload()
+                }
+            },
+            setCellCheckbox: { tableId, row, column, index, checked in
+                Task { @MainActor in
+                    await model.setCellCheckbox(
+                        tableId, row: row, column: column, index: index, checked: checked
                     )
                     await reload()
                 }
@@ -278,6 +292,7 @@ struct NoteReadView: View {
                                     }
                                 }
                             },
+                            openTag: openTag,
                             tableContent: { model.tables[$0] },
                             attachment: { model.attachments[$0] ?? .unknown },
                             removeAttachment: { id in
@@ -293,6 +308,7 @@ struct NoteReadView: View {
                         // still readable, they simply lead nowhere here.
                         NoteBlocksView(
                             blocks: model.blocks,
+                            openTag: openTag,
                             tableContent: { model.tables[$0] },
                             attachment: { model.attachments[$0] ?? .unknown },
                             removeAttachment: { id in

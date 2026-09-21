@@ -98,6 +98,22 @@ pub enum BlockEdit {
         name: String,
         value: String,
     },
+    /// Ticks or unticks one `inlineCheckbox` inside a table cell (N605).
+    ///
+    /// **Addressed by position within the cell**, because an inline checkbox
+    /// has no id of its own — it is an inline node inside the cell's
+    /// `tableParagraph`, not a block (§12.7.1). `index` counts the checkboxes
+    /// in that cell, so a cell holding two has 0 and 1.
+    ///
+    /// A cell cannot hold a `checkListItem` block, which is why this exists
+    /// at all: the inline form is the only ticking a table supports.
+    SetCellCheckbox {
+        table_id: String,
+        row: u32,
+        column: u32,
+        index: u32,
+        checked: bool,
+    },
     /// Inserts a row (N403). `at` past the end appends.
     ///
     /// The new row takes its column count from the table's first row, so a
@@ -218,6 +234,13 @@ pub fn apply(document: &Document, edit: &BlockEdit) -> Result<(), CrdtError> {
             name,
             value,
         } => set_cell_prop(txn, table_id, *row, *column, name, value),
+        BlockEdit::SetCellCheckbox {
+            table_id,
+            row,
+            column,
+            index,
+            checked,
+        } => set_cell_checkbox(txn, table_id, *row, *column, *index, *checked),
         BlockEdit::InsertRow { table_id, at } => insert_row(txn, table_id, *at),
         BlockEdit::DeleteRow { table_id, at } => delete_row(txn, table_id, *at),
         BlockEdit::InsertColumn { table_id, at } => insert_column(txn, table_id, *at),
@@ -731,6 +754,43 @@ fn set_cell_prop(
             .unwrap_or_else(|| Any::String(value.into()))
     };
     cell.insert_attribute(txn, name, typed);
+    Ok(())
+}
+
+/// Ticks or unticks the `index`-th inline checkbox in one cell (N605).
+///
+/// The value is written as a **boolean**, not as text, for the reason N408
+/// gives: a non-empty string is truthy, so an unticked box stored as
+/// `"false"` reads as ticked by anything testing the prop for truth.
+fn set_cell_checkbox(
+    txn: &mut TransactionMut,
+    table_id: &str,
+    row: u32,
+    column: u32,
+    index: u32,
+    checked: bool,
+) -> Result<(), CrdtError> {
+    let cell = cell_at(txn, table_id, row, column)?;
+    let paragraph = cell_paragraph(txn, &cell).ok_or_else(|| CrdtError::Undecodable {
+        doc_id: table_id.to_owned(),
+        what: "that cell holds no tableParagraph to look in".to_owned(),
+    })?;
+
+    let boxes: Vec<XmlElementRef> = paragraph
+        .children(txn)
+        .filter_map(|child| match child {
+            XmlOut::Element(element) if element.tag().as_ref() == "inlineCheckbox" => Some(element),
+            _ => None,
+        })
+        .collect();
+
+    let target = boxes
+        .get(index as usize)
+        .ok_or_else(|| CrdtError::Undecodable {
+            doc_id: table_id.to_owned(),
+            what: "that cell has no such checkbox".to_owned(),
+        })?;
+    target.insert_attribute(txn, "checked", Any::Bool(checked));
     Ok(())
 }
 

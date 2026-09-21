@@ -27,6 +27,9 @@ struct NoteBlocksView: View {
     /// resolve one, which is honest: a link that looks tappable and does
     /// nothing is worse than a link that does not look tappable.
     var openTarget: ((String) -> Void)?
+    /// Where a `#tag` goes when it is tapped (N600). `nil` leaves tags marked
+    /// but inert, which is what a context with no stack gets.
+    var openTag: ((String) -> Void)?
     /// One table's structure, by the block id of its `table` block.
     ///
     /// A second read rather than a field on `Block`, because rows and columns
@@ -49,6 +52,9 @@ struct NoteBlocksView: View {
     var editing: NoteEditingBridge?
     /// Row and column editing for any table in this note (N505).
     var tableEditing: NoteTableEditing?
+    /// Set by a table cell so its checkboxes can be numbered and tapped
+    /// (N605). `nil` everywhere else.
+    var checkboxBase: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
@@ -61,7 +67,10 @@ struct NoteBlocksView: View {
                     attachment: attachment,
                     removeAttachment: removeAttachment,
                     editing: editing,
-                    tableEditing: tableEditing
+                    tableEditing: tableEditing,
+                    checkboxBase: checkboxBase.map { base in
+                        base + NoteBlockList.checkboxesBefore(row.id, in: blocks)
+                    }
                 )
             }
         }
@@ -71,6 +80,15 @@ struct NoteBlocksView: View {
         // tap gesture over styled text would never have reached. This is the
         // handler that turns one back into a note.
         .environment(\.openURL, OpenURLAction { url in
+            if let tag = NoteInline.tagTarget(of: url) {
+                guard let openTag else {
+                    // Marked but not going anywhere, which is the honest
+                    // answer for a context with no stack to push onto.
+                    return .handled
+                }
+                openTag(tag)
+                return .handled
+            }
             guard let target = NoteInline.wikiTarget(of: url), let openTarget else {
                 // No handler, or not one of ours: hand it back to the system
                 // rather than swallowing it. A real `https://` link in a note
@@ -90,6 +108,19 @@ struct NoteBlocksView: View {
 /// a list item is. Both need the sequence, so both are decided here rather
 /// than inside `NoteBlockView`.
 enum NoteBlockList {
+    /// How many inline checkboxes appear in the blocks before this row.
+    ///
+    /// A cell's checkboxes are numbered across everything it holds, because
+    /// that is how the core addresses them: the index counts the checkboxes
+    /// in the cell, not the ones in a particular block (N605).
+    static func checkboxesBefore(_ rowId: Int, in blocks: [Block]) -> Int {
+        rows(of: blocks)
+            .prefix { $0.id != rowId }
+            .reduce(0) { total, row in
+                total + row.block.inline.filter { $0.marks.contains("inlineCheckbox") }.count
+            }
+    }
+
     struct Row: Identifiable {
         let id: Int
         let block: Block
@@ -146,6 +177,10 @@ struct NoteBlockView: View {
     var removeAttachment: ((String) async -> Void)?
     var editing: NoteEditingBridge?
     var tableEditing: NoteTableEditing?
+    /// The ordinal the first inline checkbox in this block takes within its
+    /// cell (N605). `nil` outside a table cell, where there is nothing to
+    /// address a checkbox with.
+    var checkboxBase: Int?
 
     var body: some View {
         content
@@ -329,8 +364,17 @@ struct NoteBlockView: View {
     /// The block's runs as one attributed string, marks applied.
     private var inline: AttributedString {
         var out = AttributedString()
+        // Checkboxes are numbered within the cell that owns them, which is
+        // what the core addresses (N605). `nil` outside a table cell.
+        var ordinal = checkboxBase
         for run in block.inline {
-            out.append(NoteInline.attributed(run))
+            let isCheckbox = run.marks.contains("inlineCheckbox")
+            out.append(
+                NoteInline.attributed(run, checkboxOrdinal: isCheckbox ? ordinal : nil)
+            )
+            if isCheckbox, let current = ordinal {
+                ordinal = current + 1
+            }
         }
         return out
     }
@@ -357,6 +401,48 @@ enum NoteInline {
         return raw.removingPercentEncoding.map { $0 } ?? String(raw)
     }
 
+    /// The scheme a tappable inline checkbox is carried under (N605).
+    ///
+    /// A link, like a tag, because that is the affordance the platform
+    /// already draws, hits and lists for VoiceOver. The URL carries the
+    /// checkbox's ordinal **within its cell**, which is how the core
+    /// addresses it: an inline checkbox has no id (§12.7.1).
+    static let checkboxScheme = "memry-check"
+
+    static func checkboxTarget(of url: URL) -> Int? {
+        guard url.scheme == checkboxScheme else { return nil }
+        return Int(url.absoluteString.dropFirst("\(checkboxScheme)://".count))
+    }
+
+    static func checkboxURL(ordinal: Int) -> URL? {
+        URL(string: "\(checkboxScheme)://\(ordinal)")
+    }
+
+    /// The scheme a `#tag` is carried under (N600).
+    ///
+    /// Its own scheme rather than reusing the wiki one: a tag and a note
+    /// title are different destinations, and a handler that had to guess
+    /// which it was holding would guess wrong on a note actually titled like
+    /// a tag.
+    static let tagScheme = "memry-tag"
+
+    /// The tag a tag URL carries, or `nil` for any other URL.
+    static func tagTarget(of url: URL) -> String? {
+        guard url.scheme == tagScheme else { return nil }
+        let raw = url.absoluteString.dropFirst("\(tagScheme)://".count)
+        return raw.removingPercentEncoding.map { $0 } ?? String(raw)
+    }
+
+    static func tagURL(for tag: String) -> URL? {
+        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let encoded = trimmed.addingPercentEncoding(
+                  withAllowedCharacters: .alphanumerics
+              )
+        else { return nil }
+        return URL(string: "\(tagScheme)://\(encoded)")
+    }
+
     /// A wiki link's URL, or `nil` when there is no target to point at.
     static func wikiURL(for target: String) -> URL? {
         let trimmed = target.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -368,7 +454,7 @@ enum NoteInline {
         return URL(string: "\(wikiScheme)://\(encoded)")
     }
 
-    static func attributed(_ run: InlineRun) -> AttributedString {
+    static func attributed(_ run: InlineRun, checkboxOrdinal: Int? = nil) -> AttributedString {
         var piece = AttributedString(run.text)
         var font = Tokens.Typography.body.font
         for mark in run.marks {
@@ -394,9 +480,16 @@ enum NoteInline {
                 // A table cell cannot hold a block, so a checkbox inside one
                 // is an inline node carrying no text (chapter 12 §12.7.1).
                 // It arrives as an empty run and would draw as nothing.
-                piece.append(AttributedString(
-                    run.markAttrs["inlineCheckbox.checked"] == "true" ? "\u{2611}" : "\u{2610}"
-                ))
+                let ticked = run.markAttrs["inlineCheckbox.checked"] == "true"
+                var glyph = AttributedString(ticked ? "\u{2611}" : "\u{2610}")
+                // Tappable only where a cell handed it an ordinal (N605):
+                // elsewhere there is nothing to address it with, and a box
+                // that looks tappable and does nothing is worse than one that
+                // does not.
+                if let checkboxOrdinal, let url = checkboxURL(ordinal: checkboxOrdinal) {
+                    glyph.link = url
+                }
+                piece.append(glyph)
             case "wikiLink", "linkMention":
                 piece.foregroundColor = Tokens.Text.tint.color
                 piece.underlineStyle = .single
@@ -415,10 +508,20 @@ enum NoteInline {
                 if let target = run.target, let url = URL(string: target) {
                     piece.link = url
                 }
-            case "hashTag", "dateMention":
-                // Marked, not linked: this build has no tag screen and no
-                // calendar to open, and a word that looks tappable and does
-                // nothing is worse than a word that does not.
+            case "hashTag":
+                // Linked now that there is somewhere to go (N600). The tag's
+                // own text carries the `#`, which is not part of its name.
+                piece.foregroundColor = Tokens.Text.tint.color
+                let name = run.text.hasPrefix("#")
+                    ? String(run.text.dropFirst())
+                    : run.text
+                if let url = tagURL(for: name) {
+                    piece.link = url
+                }
+            case "dateMention":
+                // Still marked and not linked: this build has no calendar to
+                // open, and a word that looks tappable and does nothing is
+                // worse than a word that does not.
                 piece.foregroundColor = Tokens.Text.tint.color
             default:
                 // An unknown mark leaves the text alone rather than dropping

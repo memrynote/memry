@@ -3415,6 +3415,15 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func metadata(id: String) throws  -> NoteMetadata?
     
     /**
+     * The live notes carrying one tag (N600).
+     *
+     * Matched by the column's own `COLLATE NOCASE`, so a screen opened from
+     * `#café` finds a note that spelled it `#Café`. That is FR-047's
+     * "letter-case behaviour identical to desktop".
+     */
+    func notesTagged(tag: String) throws  -> [NoteSummary]
+    
+    /**
      * One note and its body, or `nil` when this vault holds no live note by
      * that id.
      *
@@ -3454,6 +3463,15 @@ public protocol NotesProtocol: AnyObject, Sendable {
      * that holds something else.
      */
     func table(id: String, blockId: String) throws  -> TableContent?
+    
+    /**
+     * Every tag in this vault, with the number of live notes carrying it
+     * (N600).
+     *
+     * Ordered by count then name — the tags a user actually uses first, with
+     * a stable tie-break so two reads of an unchanged vault agree.
+     */
+    func tags() throws  -> [TagSummary]
     
 }
 /**
@@ -3651,6 +3669,23 @@ open func metadata(id: String)throws  -> NoteMetadata?  {
 }
     
     /**
+     * The live notes carrying one tag (N600).
+     *
+     * Matched by the column's own `COLLATE NOCASE`, so a screen opened from
+     * `#café` finds a note that spelled it `#Café`. That is FR-047's
+     * "letter-case behaviour identical to desktop".
+     */
+open func notesTagged(tag: String)throws  -> [NoteSummary]  {
+    return try  FfiConverterSequenceTypeNoteSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_notes_tagged(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(tag),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * One note and its body, or `nil` when this vault holds no live note by
      * that id.
      *
@@ -3712,6 +3747,22 @@ open func table(id: String, blockId: String)throws  -> TableContent?  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),
         FfiConverterString.lower(blockId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every tag in this vault, with the number of live notes carrying it
+     * (N600).
+     *
+     * Ordered by count then name — the tags a user actually uses first, with
+     * a stable tie-break so two reads of an unchanged vault agree.
+     */
+open func tags()throws  -> [TagSummary]  {
+    return try  FfiConverterSequenceTypeTagSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_tags(
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -10447,6 +10498,83 @@ public func FfiConverterTypeTableRow_lower(_ value: TableRow) -> RustBuffer {
 
 
 /**
+ * One tag, and how many live notes carry it (N600).
+ */
+public struct TagSummary: Equatable, Hashable {
+    /**
+     * Spelled as the payload holds it. Case is preserved because `Café` and
+     * `CAFÉ` are one tag to the collation and two spellings to the user;
+     * folding here would show them something they never wrote.
+     */
+    public var name: String
+    public var noteCount: UInt32
+    /**
+     * `tag_definition.color`, when the vault has one.
+     */
+    public var color: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Spelled as the payload holds it. Case is preserved because `Café` and
+         * `CAFÉ` are one tag to the collation and two spellings to the user;
+         * folding here would show them something they never wrote.
+         */name: String, noteCount: UInt32, 
+        /**
+         * `tag_definition.color`, when the vault has one.
+         */color: String?) {
+        self.name = name
+        self.noteCount = noteCount
+        self.color = color
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TagSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTagSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TagSummary {
+        return
+            try TagSummary(
+                name: FfiConverterString.read(from: &buf), 
+                noteCount: FfiConverterUInt32.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TagSummary, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterUInt32.write(value.noteCount, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTagSummary_lift(_ buf: RustBuffer) throws -> TagSummary {
+    return try FfiConverterTypeTagSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTagSummary_lower(_ value: TagSummary) -> RustBuffer {
+    return FfiConverterTypeTagSummary.lower(value)
+}
+
+
+/**
  * One row of the vault registry.
  */
 public struct VaultSummary: Equatable, Hashable {
@@ -11653,6 +11781,19 @@ public enum BlockEdit: Equatable, Hashable {
     case setCellProp(tableId: String, row: UInt32, column: UInt32, name: String, value: String
     )
     /**
+     * Ticks or unticks one `inlineCheckbox` inside a table cell (N605).
+     *
+     * **Addressed by position within the cell**, because an inline checkbox
+     * has no id of its own — it is an inline node inside the cell's
+     * `tableParagraph`, not a block (§12.7.1). `index` counts the checkboxes
+     * in that cell, so a cell holding two has 0 and 1.
+     *
+     * A cell cannot hold a `checkListItem` block, which is why this exists
+     * at all: the inline form is the only ticking a table supports.
+     */
+    case setCellCheckbox(tableId: String, row: UInt32, column: UInt32, index: UInt32, checked: Bool
+    )
+    /**
      * Inserts a row (N403). `at` past the end appends.
      *
      * The new row takes its column count from the table's first row, so a
@@ -11761,37 +11902,40 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         case 7: return .setCellProp(tableId: try FfiConverterString.read(from: &buf), row: try FfiConverterUInt32.read(from: &buf), column: try FfiConverterUInt32.read(from: &buf), name: try FfiConverterString.read(from: &buf), value: try FfiConverterString.read(from: &buf)
         )
         
-        case 8: return .insertRow(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        case 8: return .setCellCheckbox(tableId: try FfiConverterString.read(from: &buf), row: try FfiConverterUInt32.read(from: &buf), column: try FfiConverterUInt32.read(from: &buf), index: try FfiConverterUInt32.read(from: &buf), checked: try FfiConverterBool.read(from: &buf)
         )
         
-        case 9: return .deleteRow(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        case 9: return .insertRow(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
         )
         
-        case 10: return .insertColumn(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        case 10: return .deleteRow(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
         )
         
-        case 11: return .deleteColumn(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        case 11: return .insertColumn(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
         )
         
-        case 12: return .duplicate(blockId: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
+        case 12: return .deleteColumn(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
         )
         
-        case 13: return .moveBlock(blockId: try FfiConverterString.read(from: &buf), afterBlockId: try FfiConverterOptionString.read(from: &buf)
+        case 13: return .duplicate(blockId: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
         )
         
-        case 14: return .indent(blockId: try FfiConverterString.read(from: &buf)
+        case 14: return .moveBlock(blockId: try FfiConverterString.read(from: &buf), afterBlockId: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 15: return .outdent(blockId: try FfiConverterString.read(from: &buf)
+        case 15: return .indent(blockId: try FfiConverterString.read(from: &buf)
         )
         
-        case 16: return .setMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf), value: try FfiConverterOptionString.read(from: &buf)
+        case 16: return .outdent(blockId: try FfiConverterString.read(from: &buf)
         )
         
-        case 17: return .removeMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf)
+        case 17: return .setMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf), value: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 18: return .delete(blockId: try FfiConverterString.read(from: &buf)
+        case 18: return .removeMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 19: return .delete(blockId: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -11853,54 +11997,63 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             FfiConverterString.write(value, into: &buf)
             
         
-        case let .insertRow(tableId,at):
+        case let .setCellCheckbox(tableId,row,column,index,checked):
             writeInt(&buf, Int32(8))
             FfiConverterString.write(tableId, into: &buf)
-            FfiConverterUInt32.write(at, into: &buf)
+            FfiConverterUInt32.write(row, into: &buf)
+            FfiConverterUInt32.write(column, into: &buf)
+            FfiConverterUInt32.write(index, into: &buf)
+            FfiConverterBool.write(checked, into: &buf)
             
         
-        case let .deleteRow(tableId,at):
+        case let .insertRow(tableId,at):
             writeInt(&buf, Int32(9))
             FfiConverterString.write(tableId, into: &buf)
             FfiConverterUInt32.write(at, into: &buf)
             
         
-        case let .insertColumn(tableId,at):
+        case let .deleteRow(tableId,at):
             writeInt(&buf, Int32(10))
             FfiConverterString.write(tableId, into: &buf)
             FfiConverterUInt32.write(at, into: &buf)
             
         
-        case let .deleteColumn(tableId,at):
+        case let .insertColumn(tableId,at):
             writeInt(&buf, Int32(11))
             FfiConverterString.write(tableId, into: &buf)
             FfiConverterUInt32.write(at, into: &buf)
             
         
-        case let .duplicate(blockId,newBlockId):
+        case let .deleteColumn(tableId,at):
             writeInt(&buf, Int32(12))
+            FfiConverterString.write(tableId, into: &buf)
+            FfiConverterUInt32.write(at, into: &buf)
+            
+        
+        case let .duplicate(blockId,newBlockId):
+            writeInt(&buf, Int32(13))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterString.write(newBlockId, into: &buf)
             
         
         case let .moveBlock(blockId,afterBlockId):
-            writeInt(&buf, Int32(13))
+            writeInt(&buf, Int32(14))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterOptionString.write(afterBlockId, into: &buf)
             
         
         case let .indent(blockId):
-            writeInt(&buf, Int32(14))
-            FfiConverterString.write(blockId, into: &buf)
-            
-        
-        case let .outdent(blockId):
             writeInt(&buf, Int32(15))
             FfiConverterString.write(blockId, into: &buf)
             
         
-        case let .setMark(blockId,start,end,mark,value):
+        case let .outdent(blockId):
             writeInt(&buf, Int32(16))
+            FfiConverterString.write(blockId, into: &buf)
+            
+        
+        case let .setMark(blockId,start,end,mark,value):
+            writeInt(&buf, Int32(17))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterUInt32.write(start, into: &buf)
             FfiConverterUInt32.write(end, into: &buf)
@@ -11909,7 +12062,7 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             
         
         case let .removeMark(blockId,start,end,mark):
-            writeInt(&buf, Int32(17))
+            writeInt(&buf, Int32(18))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterUInt32.write(start, into: &buf)
             FfiConverterUInt32.write(end, into: &buf)
@@ -11917,7 +12070,7 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             
         
         case let .delete(blockId):
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(19))
             FfiConverterString.write(blockId, into: &buf)
             
         }
@@ -15352,6 +15505,31 @@ fileprivate struct FfiConverterSequenceTypeTableRow: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeTagSummary: FfiConverterRustBuffer {
+    typealias SwiftType = [TagSummary]
+
+    public static func write(_ value: [TagSummary], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTagSummary.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TagSummary] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TagSummary]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTagSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeVaultSummary: FfiConverterRustBuffer {
     typealias SwiftType = [VaultSummary]
 
@@ -15922,6 +16100,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_metadata() != 14748) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_notes_notes_tagged() != 9661) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notes_read() != 37060) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -15929,6 +16110,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_table() != 23484) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_tags() != 21862) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_clear_property() != 35528) {

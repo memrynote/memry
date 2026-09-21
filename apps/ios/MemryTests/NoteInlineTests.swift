@@ -112,11 +112,26 @@ struct NoteInlineTests {
         #expect(piece.link == nil)
     }
 
-    @Test("a tag is marked but never linked")
-    func tagsAreNotLinks() {
-        // There is no tag screen in this build. A word that looks tappable and
-        // does nothing is worse than a word that does not.
+    @Test("a tag links to its own screen, carrying the name without the hash")
+    func tagsAreLinks() throws {
+        // N600 built the screen that was missing, so the tag is a link now.
+        // The `#` belongs to the text, not to the tag's name, and the name is
+        // what the core matches on.
         let piece = NoteInline.attributed(run("#reading", marks: ["hashTag"], target: "reading"))
+
+        let link = try #require(piece.link)
+        #expect(link.scheme == NoteInline.tagScheme)
+        #expect(NoteInline.tagTarget(of: link) == "reading")
+    }
+
+    @Test("a date mention is still marked and never linked")
+    func dateMentionsAreNotLinks() {
+        // Unchanged by N600: this build has no calendar to open, and a word
+        // that looks tappable and does nothing is worse than one that does
+        // not.
+        let piece = NoteInline.attributed(
+            run("tomorrow", marks: ["dateMention"], target: "2026-09-23")
+        )
 
         #expect(piece.link == nil)
     }

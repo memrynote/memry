@@ -518,3 +518,149 @@ fn a_notes_aliases_round_trip_including_the_empty_case() {
     .expect("the clear");
     assert!(read(&db).aliases.is_empty());
 }
+
+// MARK: - The tag screen's queries (N600)
+
+/// Tags are counted across notes, ordered by use, and **folded for grouping
+/// but not for display**.
+///
+/// `note_tags.tag` is `COLLATE NOCASE`, which is what FR-047's "letter-case
+/// behaviour identical to desktop" means: `Café` and `CAFÉ` are one tag. The
+/// name shown is a spelling the rows actually carry, never a lowercased
+/// invention.
+#[test]
+fn every_tag_is_listed_with_its_note_count() {
+    use memry_core::domain::reads;
+
+    let (db, _vault) = vault("tag-list");
+    write_note(&db, "note-1", "One", &["research".to_owned()], None);
+    write_note(
+        &db,
+        "note-2",
+        "Two",
+        &["research".to_owned(), "urgent".to_owned()],
+        None,
+    );
+
+    let tags = db
+        .call_blocking(|conn: &mut Connection| reads::tags(conn))
+        .expect("the tags");
+
+    // Ordered by count, so the tag a user actually uses comes first.
+    assert_eq!(tags[0].name, "research");
+    assert_eq!(tags[0].note_count, 2);
+    assert_eq!(tags[1].name, "urgent");
+    assert_eq!(tags[1].note_count, 1);
+}
+
+/// Two ASCII-case spellings of one tag are one row, and the surviving
+/// spelling is one a note really wrote.
+#[test]
+fn two_spellings_of_one_tag_count_as_one() {
+    use memry_core::domain::reads;
+
+    let (db, _vault) = vault("tag-case");
+    write_note(&db, "note-1", "One", &["Research".to_owned()], None);
+    write_note(&db, "note-2", "Two", &["RESEARCH".to_owned()], None);
+
+    let tags = db
+        .call_blocking(|conn: &mut Connection| reads::tags(conn))
+        .expect("the tags");
+
+    assert_eq!(tags.len(), 1, "one tag, two spellings: {tags:?}");
+    assert_eq!(tags[0].note_count, 2);
+    assert!(
+        tags[0].name == "Research" || tags[0].name == "RESEARCH",
+        "the name must be a spelling a note wrote, not a folded invention: {}",
+        tags[0].name
+    );
+}
+
+/// **Case folding is ASCII-only, on purpose, and `Café` / `CAFÉ` are two
+/// tags.**
+///
+/// `COLLATE NOCASE` folds `A`-`Z` and nothing else, and `domain::tags::fold`
+/// is `to_ascii_lowercase` to match it exactly. That is FR-047's "letter-case
+/// behaviour identical to desktop": a core that folded Unicode here would
+/// merge two tags desktop keeps apart, and the vaults would disagree about
+/// how many tags exist.
+///
+/// Pinned as a test because it reads like a bug and is a decision.
+#[test]
+fn folding_is_ascii_only_so_two_accented_spellings_stay_two_tags() {
+    use memry_core::domain::reads;
+
+    let (db, _vault) = vault("tag-unicode");
+    write_note(&db, "note-1", "One", &["Café".to_owned()], None);
+    write_note(&db, "note-2", "Two", &["CAFÉ".to_owned()], None);
+
+    let tags = db
+        .call_blocking(|conn: &mut Connection| reads::tags(conn))
+        .expect("the tags");
+    assert_eq!(
+        tags.len(),
+        2,
+        "non-ASCII case is not folded, matching desktop: {tags:?}"
+    );
+}
+
+/// Opening a tag screen from one spelling finds the notes that used another
+/// ASCII-case spelling of it.
+#[test]
+fn a_tag_screen_finds_notes_whatever_case_they_spelled_it_in() {
+    use memry_core::domain::reads;
+
+    let (db, _vault) = vault("tag-notes");
+    write_note(&db, "note-1", "One", &["Research".to_owned()], None);
+    write_note(&db, "note-2", "Two", &["RESEARCH".to_owned()], None);
+    write_note(&db, "note-3", "Three", &["other".to_owned()], None);
+
+    let found = db
+        .call_blocking(|conn: &mut Connection| reads::notes_tagged(conn, "research"))
+        .expect("the notes");
+
+    let ids: Vec<&str> = found.iter().map(|note| note.id.as_str()).collect();
+    assert_eq!(ids.len(), 2, "both spellings must be found: {ids:?}");
+    assert!(ids.contains(&"note-1") && ids.contains(&"note-2"));
+}
+
+/// A tag nothing carries is an empty list, not an error.
+#[test]
+fn a_tag_no_note_carries_is_empty_rather_than_an_error() {
+    use memry_core::domain::reads;
+
+    let (db, _vault) = vault("tag-empty");
+    write_note(&db, "note-1", "One", &["research".to_owned()], None);
+
+    let found = db
+        .call_blocking(|conn: &mut Connection| reads::notes_tagged(conn, "nothing"))
+        .expect("the notes");
+    assert!(found.is_empty());
+}
+
+/// A deleted note stops counting, because a tombstone is not a note.
+#[test]
+fn a_deleted_note_stops_counting_towards_its_tags() {
+    use memry_core::domain::{notes, reads};
+
+    let (db, _vault) = vault("tag-deleted");
+    write_note(&db, "note-1", "One", &["research".to_owned()], None);
+    write_note(&db, "note-2", "Two", &["research".to_owned()], None);
+
+    db.call_blocking(|conn: &mut Connection| {
+        notes::delete(conn, "note-1", DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the delete");
+
+    let tags = db
+        .call_blocking(|conn: &mut Connection| reads::tags(conn))
+        .expect("the tags");
+    assert_eq!(tags[0].note_count, 1);
+
+    let found = db
+        .call_blocking(|conn: &mut Connection| reads::notes_tagged(conn, "research"))
+        .expect("the notes");
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].id, "note-2");
+}

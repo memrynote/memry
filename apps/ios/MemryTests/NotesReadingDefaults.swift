@@ -16,6 +16,13 @@ import MemryCore
 extension NotesReading {
     func blocks(id: String) async throws -> [Block]? { [] }
 
+    /// No tags, for the same reason as the reads below: the tag queries are
+    /// asserted in Rust against a real vault, and a fake answering with a
+    /// list would claim a vault holds tags nobody wrote.
+    func tags() async throws -> [TagSummary] { [] }
+
+    func notesTagged(_ tag: String) async throws -> [NoteSummary] { [] }
+
     /// No table, for the same reason: the table read is asserted in Rust
     /// against a real document, and a fake answering with an empty
     /// `TableContent` would claim a note holds a table with no rows.

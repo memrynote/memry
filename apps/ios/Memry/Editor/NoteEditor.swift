@@ -315,6 +315,21 @@ final class NoteEditorViewModel {
         )
     }
 
+    /// Ticks or unticks one inline checkbox in a cell (N605).
+    ///
+    /// Addressed by position because an inline checkbox has no id: it is an
+    /// inline node inside the cell's paragraph, not a block (§12.7.1).
+    func setCellCheckbox(
+        _ tableId: String, row: Int, column: Int, index: Int, checked: Bool
+    ) async {
+        await run(
+            .setCellCheckbox(
+                tableId: tableId, row: UInt32(row), column: UInt32(column),
+                index: UInt32(index), checked: checked
+            )
+        )
+    }
+
     func insertRow(_ tableId: String, at index: Int) async {
         await run(.insertRow(tableId: tableId, at: UInt32(index)))
     }

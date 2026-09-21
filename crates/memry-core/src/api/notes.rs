@@ -13,7 +13,7 @@ use crate::crdt::comments::ReviewComment;
 use crate::crdt::errors::CrdtError;
 use crate::domain::attachments::{self, BlockAttachment, CachedAttachment};
 use crate::domain::note_meta::{self, NoteMetadata};
-use crate::domain::reads::{self, FolderSummary, NoteDetail, NoteSummary};
+use crate::domain::reads::{self, FolderSummary, NoteDetail, NoteSummary, TagSummary};
 use crate::storage::Db;
 
 /// The read-only content surface over one opened vault.
@@ -45,6 +45,25 @@ impl Notes {
     /// why one cannot be given an honest signature.
     pub fn list(&self) -> Result<Vec<NoteSummary>, StorageError> {
         self.db.call_blocking(|conn| reads::notes(conn))
+    }
+
+    /// Every tag in this vault, with the number of live notes carrying it
+    /// (N600).
+    ///
+    /// Ordered by count then name — the tags a user actually uses first, with
+    /// a stable tie-break so two reads of an unchanged vault agree.
+    pub fn tags(&self) -> Result<Vec<TagSummary>, StorageError> {
+        self.db.call_blocking(|conn| reads::tags(conn))
+    }
+
+    /// The live notes carrying one tag (N600).
+    ///
+    /// Matched by the column's own `COLLATE NOCASE`, so a screen opened from
+    /// `#café` finds a note that spelled it `#Café`. That is FR-047's
+    /// "letter-case behaviour identical to desktop".
+    pub fn notes_tagged(&self, tag: String) -> Result<Vec<NoteSummary>, StorageError> {
+        self.db
+            .call_blocking(move |conn| reads::notes_tagged(conn, &tag))
     }
 
     /// One note's tags, typed properties and aliases.

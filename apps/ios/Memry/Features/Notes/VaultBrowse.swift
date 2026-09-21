@@ -85,6 +85,11 @@ protocol NotesReading: Sendable {
     ///   because an absent `attachmentReferences` means "this sender does not
     ///   know" (chapter 13 §13.4).
     func attachments(id: String) async throws -> [CachedAttachment]
+    /// Every tag in the vault, with its note count (N600).
+    func tags() async throws -> [TagSummary]
+    /// The live notes carrying one tag (N600). Matched case-insensitively by
+    /// the column's own collation, which is ASCII-only and matches desktop.
+    func notesTagged(_ tag: String) async throws -> [NoteSummary]
     /// What one body block's `url` points at.
     ///
     /// A block carries a vault-relative path rather than an attachment id, so
@@ -142,6 +147,16 @@ struct CoreNotesReader: NotesReading {
     func attachments(id: String) async throws -> [CachedAttachment] {
         let vault = vault
         return try await executor.run { try vault.notes().attachments(id: id) }
+    }
+
+    func tags() async throws -> [TagSummary] {
+        let vault = vault
+        return try await executor.run { try vault.notes().tags() }
+    }
+
+    func notesTagged(_ tag: String) async throws -> [NoteSummary] {
+        let vault = vault
+        return try await executor.run { try vault.notes().notesTagged(tag: tag) }
     }
 
     func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment {

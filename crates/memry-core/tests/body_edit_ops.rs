@@ -1257,3 +1257,111 @@ fn a_note_with_no_marks_reads_empty_and_writes_nothing() {
         "reading comments must not author an update"
     );
 }
+
+// MARK: - The inline checkbox in a table cell (N605)
+
+/// A cell holding two inline checkboxes, which is the shape §12.7.1 describes:
+/// a cell cannot hold a block, so the checkbox is an inline node.
+fn checkbox_table() -> Vec<u8> {
+    let doc = Doc::new();
+    let fragment = doc.get_or_insert_xml_fragment("prosemirror");
+    let mut txn = doc.transact_mut();
+    let group = fragment.push_back(&mut txn, XmlElementPrelim::empty("blockGroup"));
+    let container = group.insert(&mut txn, 0, XmlElementPrelim::empty("blockContainer"));
+    container.insert_attribute(&mut txn, "id", "table-1");
+    let table = container.insert(&mut txn, 0, XmlElementPrelim::empty("table"));
+    let row = table.insert(&mut txn, 0, XmlElementPrelim::empty("tableRow"));
+    let cell = row.insert(&mut txn, 0, XmlElementPrelim::empty("tableCell"));
+    let paragraph = cell.insert(&mut txn, 0, XmlElementPrelim::empty("tableParagraph"));
+    for index in 0..2u32 {
+        let checkbox = paragraph.insert(&mut txn, index, XmlElementPrelim::empty("inlineCheckbox"));
+        checkbox.insert_attribute(&mut txn, "checked", Any::Bool(false));
+    }
+    txn.encode_state_as_update_v1(&yrs::StateVector::default())
+}
+
+/// **Ticking writes a boolean, not the word.**
+///
+/// The same trap N408 fixed for block props: a non-empty string is truthy, so
+/// an unticked box stored as `"false"` reads as ticked by anything testing it
+/// for truth.
+#[test]
+fn ticking_an_inline_checkbox_writes_a_boolean() {
+    let document = opened(&checkbox_table());
+
+    apply(
+        &document,
+        &BlockEdit::SetCellCheckbox {
+            table_id: "table-1".to_owned(),
+            row: 0,
+            column: 0,
+            index: 1,
+            checked: true,
+        },
+    )
+    .expect("tick");
+
+    let rendered = canonical(&document);
+    // The second box is ticked and the first is not, so position addressed
+    // the right one.
+    assert_eq!(rendered.matches("checked=true").count(), 1, "{rendered}");
+    assert_eq!(rendered.matches("checked=false").count(), 1, "{rendered}");
+}
+
+/// Unticking writes the boolean `false`, which is the half that would
+/// otherwise silently read as ticked.
+#[test]
+fn unticking_an_inline_checkbox_writes_false_rather_than_a_truthy_string() {
+    let document = opened(&checkbox_table());
+
+    apply(
+        &document,
+        &BlockEdit::SetCellCheckbox {
+            table_id: "table-1".to_owned(),
+            row: 0,
+            column: 0,
+            index: 0,
+            checked: true,
+        },
+    )
+    .expect("tick");
+    apply(
+        &document,
+        &BlockEdit::SetCellCheckbox {
+            table_id: "table-1".to_owned(),
+            row: 0,
+            column: 0,
+            index: 0,
+            checked: false,
+        },
+    )
+    .expect("untick");
+
+    let rendered = canonical(&document);
+    assert!(
+        !rendered.contains("checked=\"false\""),
+        "the value must be a boolean, never the string:\n{rendered}"
+    );
+    assert_eq!(rendered.matches("checked=false").count(), 2, "{rendered}");
+}
+
+/// A checkbox that is not there is refused, rather than ticking whichever one
+/// happens to be last.
+#[test]
+fn a_checkbox_index_outside_the_cell_is_refused() {
+    let document = opened(&checkbox_table());
+    let before = canonical(&document);
+
+    let refused = apply(
+        &document,
+        &BlockEdit::SetCellCheckbox {
+            table_id: "table-1".to_owned(),
+            row: 0,
+            column: 0,
+            index: 9,
+            checked: true,
+        },
+    );
+    assert!(refused.is_err());
+    assert_eq!(canonical(&document), before, "nothing may have changed");
+}
