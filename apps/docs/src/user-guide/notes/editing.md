@@ -13,7 +13,11 @@ memrynote's editor is built on **BlockNote** — a block-based rich text editor 
 | From a [Template](/user-guide/templates) | New note seeded with template content |
 | `[[New title]]` in another note          | Linked note created on first save     |
 
-The new note opens in a tab. The title field has focus.
+The new note opens in a tab, and its row in the sidebar opens a name field with `Untitled`
+already selected: type the name, press <kbd>Enter</kbd>, and it is named. Press <kbd>Esc</kbd> —
+or click away without typing — and it stays `Untitled`. It is the same field as **Rename** on the
+row's right-click menu, so naming a new note is no longer a second step you have to remember.
+New folders and subfolders open that field the same way.
 
 The sidebar follows along: the folder the note landed in is opened — nested folders included — and
 the note is scrolled into view and briefly highlighted, so you can see where it went without going
@@ -24,7 +28,7 @@ menu.
 
 Every way of making a note does this: <kbd>⌘</kbd>+<kbd>N</kbd>, the sidebar's **New** button, the
 **New note** icon on the Collections header, the tab bar's **+**, and **New note** on a folder's
-right-click menu — including when that folder is closed.
+right-click menu — including when that folder is closed. All of them open the name field too.
 
 ## Block Types
 
