@@ -9,6 +9,7 @@ import { PanelResizeRail } from '@/components/ui/panel-resize-rail'
 import { type Task, type Priority, type RepeatConfig } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getSubtasks } from '@/lib/subtask-utils'
+import { DatePropertyRow } from '@/components/tasks/date-property-row'
 import { TaskRepeatSection } from '@/components/tasks/task-repeat-section'
 import { notesService } from '@/services/notes-service'
 import { canvasService } from '@/services/canvas-service'
@@ -514,22 +515,26 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 />
               </div>
 
-              <div className="flex items-center py-1.5">
-                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                  {t('task.startDate')}
-                </span>
+              <DatePropertyRow
+                label={t('task.startDate')}
+                date={task.startDate ?? null}
+                kind="start"
+                isCompleted={!!task.completedAt}
+              >
                 <InteractiveDueDateBadge
                   dateKind="start"
                   dueDate={task.startDate ?? null}
                   dueTime={null}
                   onDateChange={handleStartDateChange}
                 />
-              </div>
+              </DatePropertyRow>
 
-              <div className="flex items-center py-1.5">
-                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                  {t('task.dueDate')}
-                </span>
+              <DatePropertyRow
+                label={t('task.dueDate')}
+                date={task.dueDate}
+                kind="due"
+                isCompleted={!!task.completedAt}
+              >
                 <InteractiveDueDateBadge
                   dueDate={task.dueDate}
                   dueTime={task.dueTime}
@@ -537,7 +542,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   onTimeChange={handleDueTimeChange}
                   isRepeating={task.isRepeating}
                 />
-              </div>
+              </DatePropertyRow>
 
               <div className="flex items-center py-1.5">
                 <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
