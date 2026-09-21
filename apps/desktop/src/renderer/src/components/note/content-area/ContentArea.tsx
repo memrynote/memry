@@ -53,6 +53,7 @@ import { LinkMentionPreviewCard } from './link-mention-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { BodySyncPendingHint } from './body-sync-pending-hint'
 import { getCalloutSlashMenuItem } from './callout-block'
+import { getMathSlashMenuItem } from './math-block'
 import {
   orderSlashMenuItemsByGroup,
   withTableHeaderRow,
@@ -2147,6 +2148,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   group: t('editor.callout.group'),
                   subtext: t('editor.callout.subtext')
                 })
+                const mathItem = getMathSlashMenuItem(editor, {
+                  title: t('editor.math.title'),
+                  group: t('editor.math.group'),
+                  subtext: t('editor.math.subtext')
+                })
                 const taskItem = isFeatureEnabled('tasks')
                   ? getTaskSlashMenuItem(editor, noteId)
                   : null
@@ -2221,6 +2227,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   ...defaults,
                   ...kindItems,
                   calloutItem,
+                  mathItem,
                   ...(taskItem ? [taskItem] : []),
                   ...dateItems,
                   linkToNoteItem,

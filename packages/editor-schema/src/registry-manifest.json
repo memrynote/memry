@@ -11,6 +11,7 @@
     "file",
     "heading",
     "image",
+    "mathBlock",
     "numberedListItem",
     "paragraph",
     "quote",

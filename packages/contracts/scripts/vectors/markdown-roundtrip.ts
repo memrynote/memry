@@ -1,10 +1,10 @@
 /**
- * Class: markdown round-trip corpus (`markdown-roundtrip/`), 89 cases plus 5
+ * Class: markdown round-trip corpus (`markdown-roundtrip/`), 100 cases plus 6
  * seeded fuzz families.
  *
  * THE CORPUS ALREADY EXISTS IN CODE and this class exports it rather than
- * starting over: `packages/editor-schema/src/conformance.ts` holds 80
- * `ROUNDTRIP_CASES` and 5 `FUZZ_FAMILIES`, whose bytes are produced by calling
+ * starting over: `packages/editor-schema/src/conformance.ts` holds 90
+ * `ROUNDTRIP_CASES` and 6 `FUZZ_FAMILIES`, whose bytes are produced by calling
  * the production serialisers, so they already satisfy the
  * "comes from production code" rule. Two desktop suites consume them today.
  *

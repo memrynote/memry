@@ -1832,6 +1832,20 @@ const BLOCK_CASES = [
     }
   },
   {
+    type: 'mathBlock',
+    // Literal for the same reason as `file`: the converter serializes math
+    // blocks through `serializeMathBlock` itself, so a computed expectation
+    // would compare that function to itself. These three lines are the vault
+    // format, and they are what Obsidian and GitHub read as display math.
+    markdown: '$$\nE = mc^2\n$$',
+    block: {
+      id: 'blk',
+      type: 'mathBlock',
+      props: { latex: 'E = mc^2' },
+      children: []
+    }
+  },
+  {
     type: 'taskBlock',
     // Literal for the same reason as `file`: the converter serializes task
     // blocks through `serializeTaskBlock` itself (blocknote-converter.ts), so a

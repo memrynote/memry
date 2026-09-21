@@ -2,6 +2,7 @@ import { createMemrySchema, WikiLink } from '@memry/editor-schema'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import { createFileBlock } from './file-block'
 import { createCalloutBlock } from './callout-block'
+import { createMathBlock } from './math-block'
 import { createYoutubeEmbedBlock } from './youtube-embed-block'
 import { createBookmarkBlock } from './bookmark-block'
 import { createTaskBlock } from './task-block'
@@ -31,6 +32,7 @@ export const editorSchema = createMemrySchema({
     youtubeEmbed: createYoutubeEmbedBlock(),
     bookmark: createBookmarkBlock(),
     taskBlock: createTaskBlock(),
+    mathBlock: createMathBlock(),
     // A default block overridden, not a new one: BlockNote's own toggle keeps
     // its fold in localStorage, which is per-device and keyed by an id that is
     // regenerated on every parse (#1847).
