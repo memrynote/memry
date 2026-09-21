@@ -3401,6 +3401,21 @@ public protocol NotesProtocol: AnyObject, Sendable {
      */
     func resolveWikiTarget(target: String) throws  -> String?
     
+    /**
+     * One table's rows, cells and column widths, by the `blockContainer` id
+     * [`Self::blocks`] reported for the `table` block.
+     *
+     * A second call rather than a field on `Block`, because a table is the
+     * one block whose shape a flat list cannot carry: rows and columns are
+     * two dimensions and `depth` is one. A shell asks for it when it meets a
+     * `table` block and not before, so a note full of tables costs nothing to
+     * scroll past.
+     *
+     * `nil` is "there is no such table here" — no such note, or a block id
+     * that holds something else.
+     */
+    func table(id: String, blockId: String) throws  -> TableContent?
+    
 }
 /**
  * The read-only content surface over one opened vault.
@@ -3570,6 +3585,30 @@ open func resolveWikiTarget(target: String)throws  -> String?  {
     uniffi_memry_core_fn_method_notes_resolve_wiki_target(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(target),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * One table's rows, cells and column widths, by the `blockContainer` id
+     * [`Self::blocks`] reported for the `table` block.
+     *
+     * A second call rather than a field on `Block`, because a table is the
+     * one block whose shape a flat list cannot carry: rows and columns are
+     * two dimensions and `depth` is one. A shell asks for it when it meets a
+     * `table` block and not before, so a note full of tables costs nothing to
+     * scroll past.
+     *
+     * `nil` is "there is no such table here" — no such note, or a block id
+     * that holds something else.
+     */
+open func table(id: String, blockId: String)throws  -> TableContent?  {
+    return try  FfiConverterOptionTypeTableContent.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_table(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(blockId),uniffiCallStatus
     )
 })
 }
@@ -7913,6 +7952,29 @@ public struct InlineRun: Equatable, Hashable {
      */
     public var marks: [String]
     /**
+     * What each mark **says**, which the name alone does not.
+     *
+     * `bold` is the whole statement; `textColor` is not, and until this
+     * existed a red word and a blue word reached the shell as the same bare
+     * `textColor`. Values are flattened into one flat map rather than nested,
+     * because the FFI carries a `Map<String, String>` and a shell asking "what
+     * colour" wants one lookup:
+     *
+     * - a mark whose attributes are empty — every boolean style — is **not**
+     * in the map at all; its presence in [`Self::marks`] is the whole fact;
+     * - BlockNote stores a string-valued style's value under one attribute
+     * named `stringValue`, and that one is normalised to the bare mark name,
+     * so `textColor` reads as `textColor -> "red"` and no shell ever learns
+     * BlockNote's spelling;
+     * - anything else is keyed `mark.attribute`, so a link's `href` is
+     * `link.href`, and a nested object or array is its JSON rather than
+     * being dropped (FR-033);
+     * - an inline **node**'s own attributes are here too, under its tag —
+     * `wikiLink.displayAs`, `dateMention.date` — because those are lost
+     * otherwise and Phase G needs them.
+     */
+    public var markAttrs: [String: String]
+    /**
      * What the run points at, when it points at anything: a URL for a link, a
      * wiki target for a wiki link, a tag name, an ISO date. The shell decides
      * what to do with it; the core does not resolve it.
@@ -7928,12 +7990,35 @@ public struct InlineRun: Equatable, Hashable {
          * `linkMention`.
          */marks: [String], 
         /**
+         * What each mark **says**, which the name alone does not.
+         *
+         * `bold` is the whole statement; `textColor` is not, and until this
+         * existed a red word and a blue word reached the shell as the same bare
+         * `textColor`. Values are flattened into one flat map rather than nested,
+         * because the FFI carries a `Map<String, String>` and a shell asking "what
+         * colour" wants one lookup:
+         *
+         * - a mark whose attributes are empty — every boolean style — is **not**
+         * in the map at all; its presence in [`Self::marks`] is the whole fact;
+         * - BlockNote stores a string-valued style's value under one attribute
+         * named `stringValue`, and that one is normalised to the bare mark name,
+         * so `textColor` reads as `textColor -> "red"` and no shell ever learns
+         * BlockNote's spelling;
+         * - anything else is keyed `mark.attribute`, so a link's `href` is
+         * `link.href`, and a nested object or array is its JSON rather than
+         * being dropped (FR-033);
+         * - an inline **node**'s own attributes are here too, under its tag —
+         * `wikiLink.displayAs`, `dateMention.date` — because those are lost
+         * otherwise and Phase G needs them.
+         */markAttrs: [String: String], 
+        /**
          * What the run points at, when it points at anything: a URL for a link, a
          * wiki target for a wiki link, a tag name, an ISO date. The shell decides
          * what to do with it; the core does not resolve it.
          */target: String?) {
         self.text = text
         self.marks = marks
+        self.markAttrs = markAttrs
         self.target = target
     }
 
@@ -7955,6 +8040,7 @@ public struct FfiConverterTypeInlineRun: FfiConverterRustBuffer {
             try InlineRun(
                 text: FfiConverterString.read(from: &buf), 
                 marks: FfiConverterSequenceString.read(from: &buf), 
+                markAttrs: FfiConverterDictionaryStringString.read(from: &buf), 
                 target: FfiConverterOptionString.read(from: &buf)
         )
     }
@@ -7962,6 +8048,7 @@ public struct FfiConverterTypeInlineRun: FfiConverterRustBuffer {
     public static func write(_ value: InlineRun, into buf: inout [UInt8]) {
         FfiConverterString.write(value.text, into: &buf)
         FfiConverterSequenceString.write(value.marks, into: &buf)
+        FfiConverterDictionaryStringString.write(value.markAttrs, into: &buf)
         FfiConverterOptionString.write(value.target, into: &buf)
     }
 }
@@ -8986,6 +9073,300 @@ public func FfiConverterTypeSyncProgress_lift(_ buf: RustBuffer) throws -> SyncP
 #endif
 public func FfiConverterTypeSyncProgress_lower(_ value: SyncProgress) -> RustBuffer {
     return FfiConverterTypeSyncProgress.lower(value)
+}
+
+
+/**
+ * One cell of a table.
+ */
+public struct TableCell: Equatable, Hashable {
+    /**
+     * **Q1's answer, recorded where it cannot be missed: a cell carries no
+     * `blockContainer` id.** BlockNote builds a cell as
+     * `tableCell > tableParagraph`, with no container and no id anywhere in
+     * between, so a cell cannot be addressed the way every other block is.
+     * An edit reaches one by the table's id plus its row and column
+     * (N402), and this field exists to say so rather than leaving the next
+     * reader to rediscover it from a fixture.
+     */
+    public var blockId: String?
+    /**
+     * `true` when the document spells this cell `tableHeader`.
+     */
+    public var isHeader: Bool
+    public var colspan: UInt32
+    public var rowspan: UInt32
+    public var backgroundColor: String?
+    public var textColor: String?
+    public var textAlignment: String?
+    /**
+     * This cell's own `colwidth`, one entry per column it spans.
+     */
+    public var colwidth: [Double?]
+    /**
+     * The cell's content, as blocks. Normally one `tableParagraph`; a cell
+     * holding something this build does not know keeps it rather than
+     * flattening it to text (FR-033).
+     */
+    public var content: [Block]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * **Q1's answer, recorded where it cannot be missed: a cell carries no
+         * `blockContainer` id.** BlockNote builds a cell as
+         * `tableCell > tableParagraph`, with no container and no id anywhere in
+         * between, so a cell cannot be addressed the way every other block is.
+         * An edit reaches one by the table's id plus its row and column
+         * (N402), and this field exists to say so rather than leaving the next
+         * reader to rediscover it from a fixture.
+         */blockId: String?, 
+        /**
+         * `true` when the document spells this cell `tableHeader`.
+         */isHeader: Bool, colspan: UInt32, rowspan: UInt32, backgroundColor: String?, textColor: String?, textAlignment: String?, 
+        /**
+         * This cell's own `colwidth`, one entry per column it spans.
+         */colwidth: [Double?], 
+        /**
+         * The cell's content, as blocks. Normally one `tableParagraph`; a cell
+         * holding something this build does not know keeps it rather than
+         * flattening it to text (FR-033).
+         */content: [Block]) {
+        self.blockId = blockId
+        self.isHeader = isHeader
+        self.colspan = colspan
+        self.rowspan = rowspan
+        self.backgroundColor = backgroundColor
+        self.textColor = textColor
+        self.textAlignment = textAlignment
+        self.colwidth = colwidth
+        self.content = content
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TableCell: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTableCell: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TableCell {
+        return
+            try TableCell(
+                blockId: FfiConverterOptionString.read(from: &buf), 
+                isHeader: FfiConverterBool.read(from: &buf), 
+                colspan: FfiConverterUInt32.read(from: &buf), 
+                rowspan: FfiConverterUInt32.read(from: &buf), 
+                backgroundColor: FfiConverterOptionString.read(from: &buf), 
+                textColor: FfiConverterOptionString.read(from: &buf), 
+                textAlignment: FfiConverterOptionString.read(from: &buf), 
+                colwidth: FfiConverterSequenceOptionDouble.read(from: &buf), 
+                content: FfiConverterSequenceTypeBlock.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TableCell, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.blockId, into: &buf)
+        FfiConverterBool.write(value.isHeader, into: &buf)
+        FfiConverterUInt32.write(value.colspan, into: &buf)
+        FfiConverterUInt32.write(value.rowspan, into: &buf)
+        FfiConverterOptionString.write(value.backgroundColor, into: &buf)
+        FfiConverterOptionString.write(value.textColor, into: &buf)
+        FfiConverterOptionString.write(value.textAlignment, into: &buf)
+        FfiConverterSequenceOptionDouble.write(value.colwidth, into: &buf)
+        FfiConverterSequenceTypeBlock.write(value.content, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTableCell_lift(_ buf: RustBuffer) throws -> TableCell {
+    return try FfiConverterTypeTableCell.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTableCell_lower(_ value: TableCell) -> RustBuffer {
+    return FfiConverterTypeTableCell.lower(value)
+}
+
+
+/**
+ * One table's structure, which a flat block list cannot carry.
+ *
+ * A table's cells reach [`extract_blocks`] as blocks like any other, because
+ * dropping them would lose their text and break the walk this module is held
+ * to. But a flat list with a depth number cannot say **which row** a cell is
+ * in, how wide a column is, or which cells are headers, so a shell reading
+ * only that list draws a table as a column of loose paragraphs. This is the
+ * second read that answers those questions.
+ */
+public struct TableContent: Equatable, Hashable {
+    /**
+     * The `blockContainer` id of the table itself, which is the handle an
+     * edit addresses. `None` for a table written without one.
+     */
+    public var blockId: String?
+    /**
+     * One entry per column, in the document's own units, `None` where the
+     * column has never been resized.
+     *
+     * Taken from the first row's `colwidth` attributes, the way BlockNote
+     * derives `columnWidths`. They are **not** pixels on this screen: a
+     * column sized on a desktop window is wider than a phone, so a shell
+     * applies them proportionally (N011).
+     */
+    public var columnWidths: [Double?]
+    /**
+     * How many rows are entirely `tableHeader`, counted the way BlockNote
+     * counts them: any fully-header row, not only leading ones.
+     */
+    public var headerRows: UInt32
+    /**
+     * How many columns are entirely `tableHeader`, same rule.
+     */
+    public var headerCols: UInt32
+    public var rows: [TableRow]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The `blockContainer` id of the table itself, which is the handle an
+         * edit addresses. `None` for a table written without one.
+         */blockId: String?, 
+        /**
+         * One entry per column, in the document's own units, `None` where the
+         * column has never been resized.
+         *
+         * Taken from the first row's `colwidth` attributes, the way BlockNote
+         * derives `columnWidths`. They are **not** pixels on this screen: a
+         * column sized on a desktop window is wider than a phone, so a shell
+         * applies them proportionally (N011).
+         */columnWidths: [Double?], 
+        /**
+         * How many rows are entirely `tableHeader`, counted the way BlockNote
+         * counts them: any fully-header row, not only leading ones.
+         */headerRows: UInt32, 
+        /**
+         * How many columns are entirely `tableHeader`, same rule.
+         */headerCols: UInt32, rows: [TableRow]) {
+        self.blockId = blockId
+        self.columnWidths = columnWidths
+        self.headerRows = headerRows
+        self.headerCols = headerCols
+        self.rows = rows
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TableContent: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTableContent: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TableContent {
+        return
+            try TableContent(
+                blockId: FfiConverterOptionString.read(from: &buf), 
+                columnWidths: FfiConverterSequenceOptionDouble.read(from: &buf), 
+                headerRows: FfiConverterUInt32.read(from: &buf), 
+                headerCols: FfiConverterUInt32.read(from: &buf), 
+                rows: FfiConverterSequenceTypeTableRow.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TableContent, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.blockId, into: &buf)
+        FfiConverterSequenceOptionDouble.write(value.columnWidths, into: &buf)
+        FfiConverterUInt32.write(value.headerRows, into: &buf)
+        FfiConverterUInt32.write(value.headerCols, into: &buf)
+        FfiConverterSequenceTypeTableRow.write(value.rows, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTableContent_lift(_ buf: RustBuffer) throws -> TableContent {
+    return try FfiConverterTypeTableContent.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTableContent_lower(_ value: TableContent) -> RustBuffer {
+    return FfiConverterTypeTableContent.lower(value)
+}
+
+
+/**
+ * One row of a table.
+ */
+public struct TableRow: Equatable, Hashable {
+    public var cells: [TableCell]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(cells: [TableCell]) {
+        self.cells = cells
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TableRow: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTableRow: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TableRow {
+        return
+            try TableRow(
+                cells: FfiConverterSequenceTypeTableCell.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TableRow, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeTableCell.write(value.cells, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTableRow_lift(_ buf: RustBuffer) throws -> TableRow {
+    return try FfiConverterTypeTableRow.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTableRow_lower(_ value: TableRow) -> RustBuffer {
+    return FfiConverterTypeTableRow.lower(value)
 }
 
 
@@ -12641,6 +13022,30 @@ fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionDouble: FfiConverterRustBuffer {
+    typealias SwiftType = Double?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterDouble.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterDouble.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -12777,6 +13182,30 @@ fileprivate struct FfiConverterOptionTypeNoteMetadata: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeNoteMetadata.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeTableContent: FfiConverterRustBuffer {
+    typealias SwiftType = TableContent?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTableContent.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTableContent.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -13009,6 +13438,56 @@ fileprivate struct FfiConverterSequenceTypeSearchResult: FfiConverterRustBuffer 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeTableCell: FfiConverterRustBuffer {
+    typealias SwiftType = [TableCell]
+
+    public static func write(_ value: [TableCell], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTableCell.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TableCell] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TableCell]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTableCell.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTableRow: FfiConverterRustBuffer {
+    typealias SwiftType = [TableRow]
+
+    public static func write(_ value: [TableRow], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTableRow.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TableRow] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TableRow]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTableRow.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeVaultSummary: FfiConverterRustBuffer {
     typealias SwiftType = [VaultSummary]
 
@@ -13026,6 +13505,31 @@ fileprivate struct FfiConverterSequenceTypeVaultSummary: FfiConverterRustBuffer 
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeVaultSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceOptionDouble: FfiConverterRustBuffer {
+    typealias SwiftType = [Double?]
+
+    public static func write(_ value: [Double?], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterOptionDouble.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Double?] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Double?]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterOptionDouble.read(from: &buf))
         }
         return seq
     }
@@ -13193,6 +13697,48 @@ private func uniffiForeignFutureDroppedCallback(handle: UInt64) {
 // For testing
 public func uniffiForeignFutureHandleCountMemryCore() -> Int {
     UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.count
+}
+/**
+ * One document's body as blocks, from a raw update.
+ *
+ * The same walk `Notes.blocks` runs, on the same code path, without a vault.
+ */
+public func blocksFromUpdate(update: Data)throws  -> [Block]  {
+    return try  FfiConverterSequenceTypeBlock.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_blocks_from_update(
+        FfiConverterData.lower(update),uniffiCallStatus
+    )
+})
+}
+/**
+ * The canonical fragment rendering, from a raw update.
+ *
+ * This is the form the write-direction class compares documents through,
+ * because Yjs update bytes cannot be compared across ports — an update
+ * encodes `clientID` and per-client clocks, so two ports performing the same
+ * edit legitimately differ. `specs/003-ios-note-parity/research.md` records
+ * the argument in full.
+ */
+public func canonicalFragmentFromUpdate(update: Data)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_canonical_fragment_from_update(
+        FfiConverterData.lower(update),uniffiCallStatus
+    )
+})
+}
+/**
+ * One table's structure, from a raw update.
+ */
+public func tableFromUpdate(update: Data, blockId: String)throws  -> TableContent?  {
+    return try  FfiConverterOptionTypeTableContent.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_table_from_update(
+        FfiConverterData.lower(update),
+        FfiConverterString.lower(blockId),uniffiCallStatus
+    )
+})
 }
 /**
  * The server-visible account key verifier, chapter 01 §1.4.1.
@@ -13383,6 +13929,15 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_memry_core_checksum_func_blocks_from_update() != 25013) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_canonical_fragment_from_update() != 25775) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_table_from_update() != 47635) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_func_account_key_verifier() != 56566) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -13498,6 +14053,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_resolve_wiki_target() != 21867) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_table() != 23484) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_create() != 1507) {

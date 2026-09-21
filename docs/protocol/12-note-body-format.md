@@ -373,6 +373,30 @@ and correct for what they pin — `extract_text`'s walk, and that the transport
 does not inspect the bytes — and neither is the layout above. **This section,
 not a fixture, is the authority on what a writer produces.**
 
+**`note-blocks.json` is the fixture that does carry this layout**, because its
+corpus is authored through BlockNote's own `blocksToYXmlFragment` rather than
+by hand: every case is a real `blockGroup > blockContainer > <block>` tree, and
+the top-level `blockGroup` above is visible in each one. It pins the **read**
+direction — document bytes in, a block list out — across the TypeScript, Rust
+and Swift ports, and its coverage is asserted against `registry-manifest.json`
+so a type in the §12.9 table with no case is a failing test.
+
+**Two facts about this layout that a reader must not get wrong, each now
+pinned by that class.** First, **the top-level `blockGroup` is structure, not
+nesting**: a walk that counts it as a level reports every top-level block one
+deeper than it is, and a shell that indents by depth draws the whole note
+indented. Second, a client comparing two documents **must not compare update
+bytes** to decide they are the same. An update encodes `clientID` and
+per-client clocks, and struct ordering, origin ids and run-length packing are
+free choices; two different updates that converge are both correct. Documents
+are compared through a canonical rendering of the fragment — node names,
+nesting, attributes sorted, text — which is what `note-blocks.json`'s
+`expectedCanonical` field carries and what the write-direction class compares.
+An attribute whose value is null or undefined is omitted from that rendering,
+because y-prosemirror writes an `undefined` attribute (`numberedListItem`
+carries `start: undefined`) while skipping a `null` one, and a port that
+rendered one and dropped the other would report a false mismatch.
+
 **Normative, and stronger than the question assumes: a conforming client MUST
 preserve every root present in the update stream, including roots this
 specification does not name.** FR-033 says unrecognised fields are preserved and

@@ -60,9 +60,10 @@ one-class change reviewable.
 | `payload-schemas.json`                  |                                 52 | `../scripts/vectors/payload-schemas.ts`    | `../src/__tests__/payload-schemas.test.ts`                            |
 | `device-linking.json`                   |                                  8 | `../scripts/vectors/device-linking.ts`     | `../src/__tests__/device-linking.test.ts` + the desktop parity suite  |
 | `text-extract.json`                     |                                 12 | `../scripts/vectors/text-extract.ts`       | `../src/__tests__/text-extract.test.ts`                               |
+| `note-blocks.json`                      |                                 30 | `../scripts/vectors/note-blocks.ts`        | `../src/__tests__/note-blocks.test.ts` + the Rust and iOS harnesses   |
 | `markdown-roundtrip/cases.json`         |                                 90 | `../scripts/vectors/markdown-roundtrip.ts` | `../src/__tests__/markdown-roundtrip.test.ts`                         |
 | `markdown-roundtrip/fuzz-families.json` |                         5 families | same                                       | same                                                                  |
-| **Total**                               | **280 cases plus 5 fuzz families** |                                            |                                                                       |
+| **Total**                               | **310 cases plus 5 fuzz families** |                                            |                                                                       |
 
 `crypto-vectors.json` is **frozen**: it is byte-for-byte as committed and no
 change in this feature touches it. Three suites consume it and none of them
@@ -71,6 +72,38 @@ should see a diff. Every new case landed in a new file.
 `deterministic-provider.ts` is not a vector file. It is the shared
 `SyncPushCryptoProvider` that injects a fixed file key and fixed nonces so a
 production writer produces reproducible bytes.
+
+### `note-blocks.json` compares documents, not update bytes
+
+The class carries two expectations per case: `expectedBlocks`, the block list a
+shell renders, and `expectedCanonical`, the document rendered through the
+**canonical fragment serialisation** (`../scripts/fragment-canonical.ts` and
+`crates/memry-core/src/crdt/canonical.rs`).
+
+The second exists because Y update bytes **cannot** be compared across ports. An
+update encodes `clientID` and per-client clocks, and struct ordering, origin ids
+and run-length packing are free choices an implementation may make differently
+while still converging. Two different updates that converge are both correct, so
+a byte comparison would fail on correct ports and catch nothing extra. The
+canonical form carries node names, nesting, sorted attributes and text, and
+nothing about how the document was built.
+
+Its corpus is authored through **BlockNote itself**
+(`@memry/editor-schema/conformance-ydoc`, which calls the same
+`blocksToYXmlFragment` desktop main calls), so the bytes are the bytes a real
+note carries rather than what someone believed y-prosemirror writes. Block ids
+are assigned deterministically rather than left to BlockNote's v4 UUIDs: an
+unpinned id makes the class non-reproducible and would silently exempt it from
+`vectors:check`.
+
+The verifier asserts coverage **against `registry-manifest.json`** rather than
+against a hand-counted list, so a type nobody wrote a case for is a failing
+test. That is what makes "a new block type is not done until it has a case"
+enforceable. It is also the gap that let two real defects ship: `divider` was
+dropped before it left the core, and inline colour values never crossed at all.
+Both passed the only test that existed, which compared the block walk against
+the text walk of the _same_ port — two readings that agree with each other
+whether or not either is right.
 
 ## Determinism
 

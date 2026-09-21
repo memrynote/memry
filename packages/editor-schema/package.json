@@ -10,7 +10,9 @@
     "./blocks": "./src/blocks/index.ts",
     "./code-block": "./src/code-block.ts",
     "./conformance": "./src/conformance.ts",
+    "./conformance-ydoc": "./src/conformance-ydoc.ts",
     "./note-refs": "./src/blocks/rewrite-note-refs.ts",
+    "./registry-manifest.json": "./src/registry-manifest.json",
     "./server": "./src/server.ts"
   },
   "types": "./src/index.ts",
@@ -26,6 +28,8 @@
     "prosemirror-highlight": "^0.13.0"
   },
   "devDependencies": {
-    "@memry/typescript-config": "workspace:*"
+    "@blocknote/server-util": "0.47.1",
+    "@memry/typescript-config": "workspace:*",
+    "yjs": "^13.6.29"
   }
 }

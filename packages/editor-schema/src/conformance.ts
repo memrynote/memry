@@ -583,6 +583,388 @@ function fuzzMixedDocumentMarkdown(random: () => number): string {
   return parts.join('\n\n\n')
 }
 
+/**
+ * The read-direction corpus (N102), for the `note-blocks` vector class.
+ *
+ * **Why it is here and not in `@memry/contracts`.** A vector has to come out
+ * of a production code path, and the production path that turns blocks into
+ * `prosemirror` bytes is BlockNote's own — which lives in this package's
+ * dependency, not in contracts. `conformance-ydoc.ts` beside this file does
+ * the authoring; contracts imports the result, the way it already imports
+ * `ROUNDTRIP_CASES`.
+ *
+ * **What it has to cover, and why the count is asserted.** FR-040's registry
+ * is 18 blocks, 8 inline types and 7 styles
+ * (`registry-manifest.json`, chapter 12 §12.9). `extract_blocks` had no vector
+ * class at all, and the self-consistency test it did have compared two walks
+ * of one port against each other — which agree whether or not either is
+ * right. That is precisely how dropping `divider` went unnoticed. So the
+ * corpus is checked against the manifest rather than eyeballed: a type nobody
+ * wrote a case for is a failing test.
+ */
+export interface NoteBlockCase {
+  name: string
+  /** What this case is here to catch, in one sentence. */
+  pins: string
+  /**
+   * BlockNote blocks, in the shape `blocksToYXmlFragment` takes. Loosely
+   * typed on purpose: pinning the precise generic here would make every case
+   * a type-level puzzle, and the schema validates them at authoring time.
+   */
+  blocks: unknown[]
+}
+
+/** A paragraph carrying one styled run, for the style cases. */
+function styled(text: string, styles: Record<string, unknown>): NoteBlockCase['blocks'] {
+  return [{ type: 'paragraph', content: [{ type: 'text', text, styles }] }]
+}
+
+export const NOTE_BLOCK_CASES: readonly NoteBlockCase[] = [
+  {
+    name: 'paragraph',
+    pins: 'the simplest block, and the one every unknown type falls back to',
+    blocks: [{ type: 'paragraph', content: 'One plain paragraph.' }]
+  },
+  {
+    name: 'headings at every level',
+    pins: 'all six levels survive as a `level` prop; the shell renders six, not three',
+    blocks: [1, 2, 3, 4, 5, 6].map((level) => ({
+      type: 'heading',
+      props: { level },
+      content: `Level ${level}`
+    }))
+  },
+  {
+    name: 'bulletListItem',
+    pins: 'a bullet list, including a nested child that arrives one depth deeper',
+    blocks: [
+      {
+        type: 'bulletListItem',
+        content: 'Outer',
+        children: [{ type: 'bulletListItem', content: 'Inner' }]
+      },
+      { type: 'bulletListItem', content: 'Second' }
+    ]
+  },
+  {
+    name: 'numberedListItem',
+    pins: 'three items that a shell must number 1, 2, 3 — the core emits no marker',
+    blocks: ['First', 'Second', 'Third'].map((content) => ({
+      type: 'numberedListItem',
+      content
+    }))
+  },
+  {
+    name: 'checkListItem',
+    pins: 'the `checked` prop, both ways',
+    blocks: [
+      { type: 'checkListItem', props: { checked: true }, content: 'Done' },
+      { type: 'checkListItem', props: { checked: false }, content: 'Not done' }
+    ]
+  },
+  {
+    name: 'divider',
+    pins: 'THE REGRESSION THIS CLASS EXISTS FOR: a divider must reach the shell as a block, between two paragraphs that prove it did not swallow them',
+    blocks: [
+      { type: 'paragraph', content: 'Above' },
+      { type: 'divider' },
+      { type: 'paragraph', content: 'Below' }
+    ]
+  },
+  {
+    name: 'quote',
+    pins: 'a quote is a block, not a paragraph with a marker',
+    blocks: [{ type: 'quote', content: 'Someone said this.' }]
+  },
+  {
+    name: 'callout',
+    pins: 'the callout `type` survives, which `extract_text` drops',
+    blocks: [
+      { type: 'callout', props: { type: 'warning' }, content: 'Mind the gap.' },
+      { type: 'callout', props: { type: 'info' }, content: 'For your information.' }
+    ]
+  },
+  {
+    name: 'codeBlock',
+    pins: 'the language survives and the newline inside the code is not a block break',
+    blocks: [
+      {
+        type: 'codeBlock',
+        props: { language: 'typescript' },
+        content: 'const x = 1\nconsole.log(x)'
+      }
+    ]
+  },
+  {
+    name: 'toggleListItem',
+    pins: 'the open state is a prop and the body arrives as a child one depth deeper',
+    blocks: [
+      {
+        type: 'toggleListItem',
+        content: 'Summary line',
+        children: [{ type: 'paragraph', content: 'Hidden body.' }]
+      }
+    ]
+  },
+  {
+    name: 'taskBlock',
+    pins: 'the Memry task block is `content: none` — its text is the `title` PROP, so a reader that only walks inline content shows an empty row',
+    blocks: [
+      {
+        type: 'taskBlock',
+        props: { taskId: 't1', title: 'A task in a note', checked: false }
+      }
+    ]
+  },
+  {
+    name: 'image',
+    pins: 'a picture block: the url, name and caption cross as props, the bytes do not',
+    blocks: [
+      {
+        type: 'image',
+        props: { url: 'attachment://a1.png', name: 'a1.png', caption: 'A picture' }
+      }
+    ]
+  },
+  {
+    name: 'video',
+    pins: 'metadata only, and the block must not fall through to an empty paragraph',
+    blocks: [{ type: 'video', props: { url: 'attachment://clip.mp4', name: 'clip.mp4' } }]
+  },
+  {
+    name: 'audio',
+    pins: 'same, for audio',
+    blocks: [{ type: 'audio', props: { url: 'attachment://note.m4a', name: 'note.m4a' } }]
+  },
+  {
+    name: 'file',
+    pins: 'a file block carries its own name and size and needs no bytes to render a row',
+    blocks: [{ type: 'file', props: { url: 'attachment://spec.pdf', name: 'spec.pdf' } }]
+  },
+  {
+    name: 'bookmark',
+    pins: 'a bookmark card is entirely props; nothing is fetched to draw it',
+    blocks: [
+      {
+        type: 'bookmark',
+        props: { url: 'https://example.com/a', title: 'Example', description: 'A site' }
+      }
+    ]
+  },
+  {
+    name: 'youtubeEmbed',
+    pins: 'the video url survives so a shell can offer to open it',
+    blocks: [
+      { type: 'youtubeEmbed', props: { videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' } }
+    ]
+  },
+  {
+    name: 'table',
+    pins: 'THE SECOND REGRESSION: a mixed header/cell table with a set colwidth and a coloured cell, which a flat block list cannot express',
+    blocks: [
+      {
+        type: 'table',
+        content: {
+          type: 'tableContent',
+          columnWidths: [180, undefined],
+          headerRows: 1,
+          rows: [
+            {
+              cells: [
+                {
+                  type: 'tableCell',
+                  content: [{ type: 'text', text: 'Name', styles: {} }],
+                  props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+                },
+                {
+                  type: 'tableCell',
+                  content: [{ type: 'text', text: 'Value', styles: {} }],
+                  props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+                }
+              ]
+            },
+            {
+              cells: [
+                {
+                  type: 'tableCell',
+                  content: [{ type: 'text', text: 'alpha', styles: {} }],
+                  props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+                },
+                {
+                  type: 'tableCell',
+                  content: [{ type: 'text', text: '1', styles: {} }],
+                  props: {
+                    colspan: 1,
+                    rowspan: 1,
+                    backgroundColor: 'yellow',
+                    textAlignment: 'center'
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    name: 'inline: link',
+    pins: 'a link carries its href as an attribute, not as text',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'see ', styles: {} },
+          { type: 'link', href: 'https://example.com/a', content: 'the docs' }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'inline: wikiLink',
+    pins: 'a wiki link points at a TITLE, and its alias is a separate prop',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'see ', styles: {} },
+          { type: 'wikiLink', props: { target: 'Dune Messiah', alias: 'the sequel' } }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'inline: hashTag',
+    pins: 'a tag is an inline node, not a `#` a shell has to parse back out of text',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'filed under ', styles: {} },
+          { type: 'hashTag', props: { tag: 'reading' } }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'inline: dateMention',
+    pins: 'the whole date payload survives, which Phase G needs and `extract_text` drops',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'due ', styles: {} },
+          {
+            type: 'dateMention',
+            props: {
+              anchorId: 'a1',
+              dateISO: '2026-08-14T09:00:00.000Z',
+              display: 'date',
+              remindMe: false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'inline: linkMention',
+    pins: 'the mention url, which encodes seven characters beyond encodeURIComponent',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'via ', styles: {} },
+          { type: 'linkMention', props: { url: "https://example.com/x_(y)*z!~'" } }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'inline: inlineImage and inlineCheckbox in a table cell',
+    pins: 'both inline types exist ONLY inside a table cell (§12.7.1), so this is the only shape that can carry them',
+    blocks: [
+      {
+        type: 'table',
+        content: {
+          type: 'tableContent',
+          rows: [
+            {
+              cells: [
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'inlineCheckbox', props: { checked: true } },
+                    { type: 'text', text: ' ', styles: {} },
+                    { type: 'inlineImage', props: { src: 'attachment://i.png', alt: 'i' } }
+                  ],
+                  props: { colspan: 1, rowspan: 1 }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    name: 'styles: the five boolean marks',
+    pins: 'bold, italic, underline, strike and code all survive as marks on the run',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'bold', styles: { bold: true } },
+          { type: 'text', text: ' italic', styles: { italic: true } },
+          { type: 'text', text: ' underline', styles: { underline: true } },
+          { type: 'text', text: ' strike', styles: { strike: true } },
+          { type: 'text', text: ' code', styles: { code: true } }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'styles: textColor and backgroundColor',
+    pins: 'THE THIRD REGRESSION: a colour mark must carry its VALUE, or red and blue arrive identical',
+    blocks: styled('red on yellow', { textColor: 'red', backgroundColor: 'yellow' })
+  },
+  {
+    name: 'styles: two colours in one paragraph',
+    pins: 'two runs of the same mark with different values, which a name-only reader collapses',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'red', styles: { textColor: 'red' } },
+          { type: 'text', text: ' and ', styles: {} },
+          { type: 'text', text: 'blue', styles: { textColor: 'blue' } }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'block props: alignment and colours',
+    pins: 'block-level textAlignment, textColor and backgroundColor, which `props_of` returned and nothing read',
+    blocks: [
+      {
+        type: 'paragraph',
+        props: { textAlignment: 'center', textColor: 'blue', backgroundColor: 'gray' },
+        content: 'Centred and coloured.'
+      }
+    ]
+  },
+  {
+    name: 'an empty document',
+    pins: 'no blocks at all is an empty list, never one empty paragraph',
+    blocks: []
+  },
+  {
+    name: 'a non-ASCII body',
+    pins: 'the walk is byte-transparent over UTF-8, including astral code points',
+    blocks: [{ type: 'paragraph', content: 'Grüße, 世界 — «citation» 🙂' }]
+  }
+]
+
 export interface FuzzFamily {
   name: string
   generate: (random: () => number) => string

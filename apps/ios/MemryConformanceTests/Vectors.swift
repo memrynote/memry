@@ -33,6 +33,7 @@ enum VectorFiles {
     static let compression: CompressionVectors = load("compression")
     static let cryptoVectors: CryptoVectors = load("crypto-vectors")
     static let recordEnvelope: RecordEnvelopeVectors = load("record-envelope")
+    static let noteBlocks: NoteBlocksVectors = load("note-blocks")
 
     private static func load<T: Decodable>(_ name: String) -> T {
         let bundle = Bundle(for: BundleMarker.self)
@@ -199,6 +200,56 @@ struct RecordEnvelopeVectors: Codable, Sendable {
         struct Expected: Codable, Sendable {
             let compressedHex: String
         }
+    }
+}
+
+// MARK: - note-blocks.json
+
+/// The read-direction block walk: document bytes in, the block list this shell
+/// renders out.
+///
+/// Reached through `blocksFromUpdate`, which is the same walk `Notes.blocks`
+/// runs without needing an opened vault. The class exists because the only
+/// other test holding the walk compared it against the *text* walk of the same
+/// port \u2014 two readings that agree with each other whether or not either is
+/// right, which is how dropping `divider` went unnoticed.
+struct NoteBlocksVectors: Codable, Sendable {
+    let meta: VectorMeta
+    let cases: [BlockCase]
+
+    struct BlockCase: Codable, Sendable, CustomStringConvertible {
+        let name: String
+        let pins: String
+        let updateHex: String
+        let expectedBlocks: [ExpectedBlock]
+        let expectedCanonical: String
+
+        var description: String { name }
+    }
+
+    /// The committed shape of one block.
+    ///
+    /// Declared here rather than decoded into the FFI's own `Block`: the file
+    /// is the contract, and decoding straight into the generated type would
+    /// let a field rename pass by renaming both sides at once.
+    struct ExpectedBlock: Codable, Sendable {
+        let id: String?
+        let kind: String
+        let depth: UInt32
+        let props: [ExpectedProp]
+        let inline: [ExpectedRun]
+    }
+
+    struct ExpectedProp: Codable, Sendable {
+        let name: String
+        let value: String
+    }
+
+    struct ExpectedRun: Codable, Sendable {
+        let text: String
+        let marks: [String]
+        let markAttrs: [String: String]
+        let target: String?
     }
 }
 

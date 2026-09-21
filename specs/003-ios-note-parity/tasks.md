@@ -23,26 +23,44 @@ dependency on one another. Where A and C both touch
 **Purpose**: the native read path loses content today. Fix that before building
 on it.
 
+### A0 — found while starting, not planned
+
+- [x] N000a Delete the stale override in `crates/memry-core/tests/field_merge_vectors.rs`. The suite was **already red on `main`**: the test asserted `object-values-same-content-different-key-order` against chapter 06 §6.4.2 instead of against the committed file, because the shipped TypeScript still compared `JSON.stringify` output. #2185 landed as `4208a2654` and the generator re-emitted the case with `hadConflicts: false`, so the override's own comment — "this override is deleted with no change to the Rust" — came due. Phase A's evidence is `cargo test -p memry-core` green, which it could not be until this went
+
 ### A1 — known defects
 
-- [ ] N001 Emit `divider` as a block: remove it from `SKIPPED` in `crates/memry-core/src/crdt/blocks.rs:135`, which returns before pushing and makes `NoteBlockView.swift:104` unreachable. Keep `blocks_to_text` emitting nothing for it so the `extract_text` parity test still holds
-- [ ] N002 Carry inline mark **values**: add an attribute map to `InlineRun` in `crates/memry-core/src/crdt/blocks.rs` and populate it in `runs_of_text` (`:320`), which records the mark name but only captures a value for `link`/`href`, so `textColor="red"` reaches the shell as a bare `textColor`
-- [ ] N003 [P] Apply inline colours in `apps/ios/Memry/Features/Notes/NoteBlockView.swift` `NoteInline.attributed`, mapping BlockNote's colour names onto `Tokens`; an unknown colour name leaves the text alone rather than guessing
-- [ ] N004 [P] Render all six heading levels in `NoteBlockView.swift` `headingRole`, which clamps to three today. Extend the `DESIGN.md` type ramp rather than clamping the content, and record the ramp extension in `DESIGN.md` in the same change
-- [ ] N005 [P] Number list items in `NoteBlockView.swift:78`, which hardcodes `1.`; count preceding siblings at the same `depth` whose `kind` is `numberedListItem`, restarting at a non-list block
-- [ ] N006 [P] Render `audio` and `video` blocks in `NoteBlockView.swift`; they fall through to `default` and draw an empty paragraph. Metadata only here — bytes arrive in Phase C
-- [ ] N007 [P] Render `toggleListItem` (disclosure driven by the `open` prop; children already arrive at `depth + 1`) and `inlineCheckbox` (arrives as an empty run carrying the mark) in `NoteBlockView.swift`
-- [ ] N008 [P] Apply block-level `textAlignment`, `textColor` and `backgroundColor` props in `NoteBlockView.swift`; `props_of` already returns them and nothing reads them
+- [x] N001 Emit `divider` as a block: remove it from `SKIPPED` in `crates/memry-core/src/crdt/blocks.rs:135`, which returns before pushing and makes `NoteBlockView.swift:104` unreachable. Keep `blocks_to_text` emitting nothing for it so the `extract_text` parity test still holds
+- [x] N002 Carry inline mark **values**: add an attribute map to `InlineRun` in `crates/memry-core/src/crdt/blocks.rs` and populate it in `runs_of_text` (`:320`), which records the mark name but only captures a value for `link`/`href`, so `textColor="red"` reaches the shell as a bare `textColor`
+- [x] N003 [P] Apply inline colours in `apps/ios/Memry/Features/Notes/NoteBlockView.swift` `NoteInline.attributed`, mapping BlockNote's colour names onto `Tokens`; an unknown colour name leaves the text alone rather than guessing
+- [x] N004 [P] Render all six heading levels in `NoteBlockView.swift` `headingRole`, which clamps to three today. Extend the `DESIGN.md` type ramp rather than clamping the content, and record the ramp extension in `DESIGN.md` in the same change
+- [x] N005 [P] Number list items in `NoteBlockView.swift:78`, which hardcodes `1.`; count preceding siblings at the same `depth` whose `kind` is `numberedListItem`, restarting at a non-list block
+- [x] N006 [P] Render `audio` and `video` blocks in `NoteBlockView.swift`; they fall through to `default` and draw an empty paragraph. Metadata only here — bytes arrive in Phase C
+- [x] N007 [P] Render `toggleListItem` (disclosure driven by the `open` prop; children already arrive at `depth + 1`) and `inlineCheckbox` (arrives as an empty run carrying the mark) in `NoteBlockView.swift`
+- [x] N008 [P] Apply block-level `textAlignment`, `textColor` and `backgroundColor` props in `NoteBlockView.swift`; `props_of` already returns them and nothing reads them
 
 ### A2 — table read and render
 
-- [ ] N010 Expose table structure from the core. `crates/memry-core/src/crdt/blocks.rs:134` treats `table` and `tableRow` as containers and only `blockGroup` raises depth, so every cell of every row arrives at one depth with no row boundary and no column count. Add `Notes.table(blockId) -> TableContent` returning rows, cells, per-cell `colwidth`, per-cell colours, and header flags derived from `tableHeader` vs `tableCell`. **Answers Q1: record whether a cell carries a `blockContainer` id**
-- [ ] N011 Render tables in `apps/ios/Memry/Features/Notes/`: column widths applied proportionally with horizontal scrolling rather than as pixels, cell background and text colours, header row and header column emphasis
-- [ ] N012 [P] Table accessibility: VoiceOver row and column headers, Dynamic Type, and a reduced-motion-safe scroll affordance
-- [ ] N013 [P] Core test in `crates/memry-core/tests/` covering a table with mixed `tableHeader`/`tableCell`, a set `colwidth` and a coloured cell
+- [x] N010 Expose table structure from the core. `crates/memry-core/src/crdt/blocks.rs:134` treats `table` and `tableRow` as containers and only `blockGroup` raises depth, so every cell of every row arrives at one depth with no row boundary and no column count. Add `Notes.table(blockId) -> TableContent` returning rows, cells, per-cell `colwidth`, per-cell colours, and header flags derived from `tableHeader` vs `tableCell`. **Answers Q1: record whether a cell carries a `blockContainer` id**
+- [x] N011 Render tables in `apps/ios/Memry/Features/Notes/`: column widths applied proportionally with horizontal scrolling rather than as pixels, cell background and text colours, header row and header column emphasis
+- [x] N012 [P] Table accessibility: VoiceOver row and column headers, Dynamic Type, and a reduced-motion-safe scroll affordance
+- [x] N013 [P] Core test in `crates/memry-core/tests/` covering a table with mixed `tableHeader`/`tableCell`, a set `colwidth` and a coloured cell
 
 **Phase A evidence**: `cargo test -p memry-core` green, `Unit.xctestplan` green,
 and a note holding every block type screenshotted beside desktop.
+
+**Status**: `cargo test -p memry-core` green (41 binaries, 0 failures).
+`Unit.xctestplan` green — 393 tests in 66 suites, up from 386, the four new
+ones covering the mark-value path, the unknown-colour refusal, the inline
+checkbox and the six-step heading ramp. The side-by-side screenshot needs a
+real vault and a desktop beside it and is **not** done; it is the one piece of
+Phase A's evidence still outstanding.
+
+A note on tooling found here: `sourcekit-lsp` reports `No such module
+'MemryCore'` and `Cannot find type 'Tokens' in scope` for **every** file in
+this target, touched or not, because an Xcode project gives it no compile
+database. `xcode-build-server config -project Memry.xcodeproj -scheme Memry`
+writes the `buildServer.json` that fixes it (already in `.gitignore`).
+`xcodebuild` is the authoritative check either way.
 
 ---
 
@@ -55,19 +73,45 @@ Read `packages/contracts/test-vectors/README.md` first: vectors come out of
 production code paths, generation and verification are separate programs, and a
 format change updates the chapter and the vectors in the same change.
 
-- [ ] N100 Research note in `specs/003-ios-note-parity/research.md`: why Y update bytes cannot be compared across ports (an update encodes `clientID` and clock, so `yrs` and `yjs` performing the same edit legitimately differ), and what the write class compares instead
-- [ ] N101 Canonical fragment serialisation — **gates the rest of this phase**. One textual form of the `prosemirror` fragment (node names, sorted attribute sets, nesting, text) emitted identically by TypeScript and Rust. Attributes must be sorted, as `props_of` already sorts, because a Yjs map's order is not stable across runs
-- [ ] N102 Read-direction corpus in `packages/editor-schema/src/conformance.ts`, beside `ROUNDTRIP_CASES`, covering all 18 blocks, 8 inline types and 7 styles of `packages/editor-schema/src/registry-manifest.json`, authored through BlockNote so the bytes are what desktop really writes
-- [ ] N103 Generator `packages/contracts/scripts/vectors/note-blocks.ts` exporting N102 as `note-blocks.json`, registered in `gen-protocol-vectors.ts`, with a pinned `clientID` as the other classes use
-- [ ] N104 [P] TypeScript verifier `packages/contracts/src/__tests__/note-blocks.test.ts`; it reads the committed file and never imports the builder
-- [ ] N105 [P] Rust consumer in `crates/memry-core/tests/`, reading `note-blocks.json` through `include_str!` the way `tests/support/mod.rs:62` reads `text-extract.json`
-- [ ] N106 [P] iOS consumer in `apps/ios/MemryConformanceTests/`, through the real FFI, following the harness in `Vectors.swift`
-- [ ] N107 Write-direction corpus and class `block-edit.json`: a base document, one operation, and the expected resulting document in the N101 serialisation. One case per operation in Phase E
-- [ ] N108 Update `packages/contracts/test-vectors/README.md`'s file table and case total, and `docs/protocol/12-note-body-format.md` where the new classes are named — README rule 3
+- [x] N100 Research note in `specs/003-ios-note-parity/research.md`: why Y update bytes cannot be compared across ports (an update encodes `clientID` and clock, so `yrs` and `yjs` performing the same edit legitimately differ), and what the write class compares instead
+- [x] N101 Canonical fragment serialisation — **gates the rest of this phase**. One textual form of the `prosemirror` fragment (node names, sorted attribute sets, nesting, text) emitted identically by TypeScript and Rust. Attributes must be sorted, as `props_of` already sorts, because a Yjs map's order is not stable across runs
+- [x] N102 Read-direction corpus in `packages/editor-schema/src/conformance.ts`, beside `ROUNDTRIP_CASES`, covering all 18 blocks, 8 inline types and 7 styles of `packages/editor-schema/src/registry-manifest.json`, authored through BlockNote so the bytes are what desktop really writes
+- [x] N103 Generator `packages/contracts/scripts/vectors/note-blocks.ts` exporting N102 as `note-blocks.json`, registered in `gen-protocol-vectors.ts`, with a pinned `clientID` as the other classes use
+- [x] N104 [P] TypeScript verifier `packages/contracts/src/__tests__/note-blocks.test.ts`; it reads the committed file and never imports the builder
+- [x] N105 [P] Rust consumer in `crates/memry-core/tests/`, reading `note-blocks.json` through `include_str!` the way `tests/support/mod.rs:62` reads `text-extract.json`
+- [x] N106 [P] iOS consumer in `apps/ios/MemryConformanceTests/`, through the real FFI, following the harness in `Vectors.swift`
+- [ ] N107 Write-direction corpus and class `block-edit.json`: a base document, one operation, and the expected resulting document in the N101 serialisation. One case per operation in Phase E. **The N101 serialisation both ports emit is in place and pinned by `note-blocks.json`, so this task is now only the corpus and the harness.** Design settled while doing N100: the expected result is authored by performing the equivalent edit **through BlockNote** and rendering it canonically, so the assertion is "the Rust writer produces the document BlockNote would have produced" — which is exactly what §12.5.0 demands and what a self-consistency test cannot check. Cases need explicit block ids on base and expected so the two line up under an insert
+- [x] N108 Update `packages/contracts/test-vectors/README.md`'s file table and case total, and `docs/protocol/12-note-body-format.md` where the new classes are named — README rule 3
 
 **Gate G-P1 evidence**: `pnpm --filter @memry/contracts vectors:check` and
 `pnpm --filter @memry/contracts test` green, `cargo test -p memry-core` green,
 `Conformance.xctestplan` green on device.
+
+**Status: the read half of the gate is green; N107 (the write half) is not
+done, so G-P1 is NOT yet open and Phase E may not start.**
+
+Measured:
+
+- `vectors:check` passed (12 classes, up from 11)
+- `pnpm --filter @memry/contracts test`: 2142 tests in 70 files
+- `cargo test -p memry-core`: 41 binaries, 0 failures
+- `Conformance.xctestplan`: 21 tests in 5 suites, on the simulator
+- the generator is byte-reproducible across two consecutive runs
+
+Three defects the new class caught that no existing test could, all fixed here:
+
+1. **Top-level blocks reported `depth: 1`, not 0.** §12.5.0's mandatory
+   top-level `blockGroup` was counted as nesting, so `NoteBlockView` — which
+   indents by `depth * inset` — drew every note one step indented. Fixed in
+   both ports with an `at_root` flag.
+2. **The generator was not reproducible.** `blocksToYXmlFragment` mints a v4
+   UUID per block, so two runs differed and `vectors:check` would have failed
+   on a tree nobody touched — silently exempting this class from its own gate.
+   Block ids are now assigned deterministically.
+3. **The two ports disagreed on an `undefined` attribute.** y-prosemirror
+   skips a `null` attribute but writes an `undefined` one, and every
+   `numberedListItem` carries `start: undefined`. Rust rendered `start=null`,
+   TypeScript dropped the key. Both now omit it.
 
 ---
 

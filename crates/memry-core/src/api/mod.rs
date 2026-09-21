@@ -2,6 +2,7 @@
 
 pub mod account;
 pub mod auth;
+pub mod conformance;
 pub mod crypto;
 pub mod errors;
 pub mod linking;

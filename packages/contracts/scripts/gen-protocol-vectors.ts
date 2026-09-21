@@ -38,6 +38,7 @@ import { buildCrdtUpdate } from './vectors/crdt-update'
 import { buildDeviceLinking } from './vectors/device-linking'
 import { buildFieldMerge } from './vectors/field-merge'
 import { buildMarkdownRoundtrip } from './vectors/markdown-roundtrip'
+import { buildNoteBlocks } from './vectors/note-blocks'
 import { buildPackContainer } from './vectors/pack-container'
 import { buildPayloadSchemas } from './vectors/payload-schemas'
 import { buildRecordEnvelope } from './vectors/record-envelope'
@@ -71,6 +72,7 @@ const CLASSES: readonly VectorClass[] = [
   },
   { name: 'device-linking', files: [{ path: 'device-linking.json', build: buildDeviceLinking }] },
   { name: 'text-extract', files: [{ path: 'text-extract.json', build: buildTextExtract }] },
+  { name: 'note-blocks', files: [{ path: 'note-blocks.json', build: buildNoteBlocks }] },
   {
     name: 'markdown-roundtrip',
     files: [
