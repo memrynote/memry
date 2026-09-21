@@ -153,10 +153,20 @@ export type AgentBackendModelList = z.infer<typeof AgentBackendModelListSchema>
 export const AgentToolApprovalModeSchema = z.enum(['always_accept', 'ask'])
 export type AgentToolApprovalMode = z.infer<typeof AgentToolApprovalModeSchema>
 
+/**
+ * `ask` is the default, and it reaches existing installs on purpose.
+ *
+ * The preference is never written until the user changes it (`store.get('agent')`
+ * starts as `{}`), so this default is the effective value for everyone who has
+ * not chosen. Flipping it therefore does change behaviour for current users,
+ * but only toward asking more, and anyone who explicitly picked
+ * `always_accept` keeps it. That direction is the only one that needs no
+ * migration and cannot surprise someone into a silent write.
+ */
 export const AgentPreferencesSchema = z
   .object({
     accessMode: AgentAccessModeSchema.default('vault_only'),
-    toolApprovalMode: AgentToolApprovalModeSchema.default('always_accept')
+    toolApprovalMode: AgentToolApprovalModeSchema.default('ask')
   })
   .strict()
 export type AgentPreferences = z.infer<typeof AgentPreferencesSchema>
@@ -474,10 +484,81 @@ export const PreviewDiffRequestSchema = z.object({
 })
 export type PreviewDiffRequest = z.infer<typeof PreviewDiffRequestSchema>
 
-export const PreviewDiffResponseSchema = z.object({
-  title: z.string(),
+/**
+ * Which shape the approval card should draw for a pending write.
+ *
+ * `fields` and `body` are not two renderings of one thing: a task moving its
+ * due date and a note gaining three paragraphs are different pictures, and a
+ * two-column text diff is the wrong primitive for `due 12 Oct -> 15 Oct`.
+ * `loss` is for deletes, which have no "after" to show at all — only what the
+ * user is about to stop having.
+ */
+export const ChangePreviewKindSchema = z.enum(['none', 'fields', 'body', 'loss'])
+export type ChangePreviewKind = z.infer<typeof ChangePreviewKindSchema>
+
+export const ChangePreviewItemTypeSchema = z.enum([
+  'note',
+  'folder',
+  'task',
+  'journal',
+  'inbox',
+  'project',
+  'status',
+  'canvas'
+])
+export type ChangePreviewItemType = z.infer<typeof ChangePreviewItemTypeSchema>
+
+export const ChangePreviewIntentSchema = z.enum(['create', 'update', 'delete', 'move', 'reorder'])
+export type ChangePreviewIntent = z.infer<typeof ChangePreviewIntentSchema>
+
+/**
+ * One metadata change. `key` is a stable identifier (`due_date`, `status`),
+ * never a sentence: the label is localized in the renderer, because main has no
+ * locale. `null` means the field was or becomes unset, which the card has to
+ * distinguish from the empty string.
+ */
+export const ChangePreviewFieldSchema = z.object({
+  key: z.string(),
+  before: z.string().nullable(),
+  after: z.string().nullable()
+})
+export type ChangePreviewField = z.infer<typeof ChangePreviewFieldSchema>
+
+export const ChangePreviewBodySchema = z.object({
   current: z.string(),
   candidate: z.string()
+})
+export type ChangePreviewBody = z.infer<typeof ChangePreviewBodySchema>
+
+export const ChangePreviewSchema = z.object({
+  kind: ChangePreviewKindSchema,
+  item: z.object({
+    type: ChangePreviewItemTypeSchema,
+    /** `null` for a create, which has no id until the write lands. */
+    id: z.string().nullable(),
+    title: z.string(),
+    /** Where the item lives — folder path, project name, journal date. */
+    context: z.string().nullable()
+  }),
+  intent: ChangePreviewIntentSchema,
+  fields: z.array(ChangePreviewFieldSchema),
+  body: ChangePreviewBodySchema.nullable(),
+  /** What a delete takes with it, as already-humanized counts. */
+  loss: z.array(z.string()),
+  destructive: z.boolean()
+})
+export type ChangePreview = z.infer<typeof ChangePreviewSchema>
+
+export const PreviewDiffResponseSchema = z.object({
+  /**
+   * The legacy note-body triple. Superseded by `preview`, which describes every
+   * item type rather than only a markdown body, and kept populated so a window
+   * running an older renderer bundle still has something it can draw.
+   */
+  title: z.string(),
+  current: z.string(),
+  candidate: z.string(),
+  preview: ChangePreviewSchema
 })
 export type PreviewDiffResponse = z.infer<typeof PreviewDiffResponseSchema>
 
@@ -518,7 +599,13 @@ export const AgentEventSchema = z.discriminatedUnion('kind', [
     toolCallId: z.string(),
     name: z.string(),
     args: z.unknown(),
-    requiresDiff: z.boolean()
+    /**
+     * True whenever `previewKind` is not `none`. Redundant on purpose: it is
+     * what the shipped renderer branches on, and dropping it would make an
+     * older window render no preview at all rather than a coarser one.
+     */
+    requiresDiff: z.boolean(),
+    previewKind: ChangePreviewKindSchema
   }),
   z.object({
     kind: z.literal('tool_call_completed'),

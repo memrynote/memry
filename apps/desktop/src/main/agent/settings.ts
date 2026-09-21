@@ -9,7 +9,7 @@ import { store } from '../store'
 
 const DEFAULT_AGENT_PREFERENCES: AgentPreferences = {
   accessMode: 'vault_only',
-  toolApprovalMode: 'always_accept'
+  toolApprovalMode: 'ask'
 }
 
 export function getAgentPreferences(): AgentPreferences {
