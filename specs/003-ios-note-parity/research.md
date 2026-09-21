@@ -158,4 +158,40 @@ Open. Answered by N700.
 
 ## Q3 — Does the Rust core reimplement manifest signing?
 
-Open. Answered by N205.
+**It reimplements it, held by a conformance vector. Answered by N205.**
+
+The task offered two options: reimplement against
+`packages/sync-client/src/push/attachment-manifest.ts` with a vector holding
+the two ports together, or lift the shared logic somewhere both call. **The
+second option does not exist**, and that is most of the answer: there is no
+shared runtime. The core is a standalone Rust port that a Swift shell links as
+a static library; it cannot call a TypeScript module, and §14.4.1 forbids the
+third option of not verifying at all. So the real choice was only
+"reimplement carefully" against "reimplement carelessly".
+
+It is also far smaller than "the largest unknown in this phase" suggested,
+because the core already owns every primitive:
+
+| Piece                            | Already in the core                                                                                |
+| -------------------------------- | -------------------------------------------------------------------------------------------------- |
+| the CBOR field order             | `crypto/cbor.rs:55` `ATTACHMENT_MANIFEST`, already present and already reachable through `by_name` |
+| canonical CBOR encoding          | `crypto::cbor::encode`, pinned by `cbor-canonical.json`                                            |
+| detached Ed25519 sign and verify | `crypto::sodium::sign_detached` and `sign_verify_detached`, pinned by `crypto-vectors.json`        |
+| AEAD encrypt and decrypt         | `crypto::sodium::aead_encrypt` and `aead_decrypt`, pinned by `crypto-vectors.json`                 |
+| file-key wrap and unwrap         | the same AEAD under the vault key, exactly as `protocol::envelope` already does for a record       |
+
+So N205 is assembly, not cryptography: build the four-field map in
+`ATTACHMENT_MANIFEST` order, sign it, and on read **verify before unwrapping
+and decrypting**. That order is normative (§14.4.1) and it is the one thing an
+assembler is likely to get backwards, because the natural way to write the
+function is to decrypt first and check the signature afterwards.
+
+**Where the real risk sits, and what the vector therefore pins.** The signature
+covers the four envelope fields, not the manifest body, and the body crosses as
+`JSON.stringify(manifest)`. A Rust writer that emitted the same fields in a
+different order, or spelled a number differently, would produce a manifest the
+TypeScript reader still parses — JSON object order means nothing to a parser —
+so nothing would fail loudly and the two ports would drift silently. The class
+therefore pins the **manifest bytes** as well as the envelope, and is generated
+from the TypeScript writer so the Rust port is held to what desktop really
+emits.
