@@ -618,8 +618,12 @@ is that nothing is _lost_ on the way through:
   clickable link while the note is open. Definitions are gathered at the end of the file.
 - **A code fence with no language keeps no language.** A bare ` ` ``` fence is not given one,
   which is what an Obsidian Kanban board's settings block needs to keep working.
+- **An indented code block stays a code block.** A run of lines indented four spaces or one tab
+  stays code, and a line break inside a table cell keeps its row intact rather than cutting the
+  table off there.
 
 Within an edited region some cosmetic details are normalized to one house style: `*` and `+`
-bullets become `-`, `_em_` becomes `*em*`, an underlined `Title` heading becomes `# Title`, and a
-`~~~` fence becomes a ` ``` ` one. These change how that region is spelled, never what it says.
+bullets become `-`, `_em_` becomes `*em*`, an underlined `Title` heading becomes `# Title`, a
+`~~~` fence becomes a ` ``` ` one, and an indented code block is rewritten as a fenced one.
+A line break pasted into a table cell becomes a space, because a table row is one line. These change how that region is spelled, never what it says.
 A note carrying review comments or tracked changes is written in house style throughout.
