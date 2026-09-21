@@ -1,5 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { createAnthropic } from '@ai-sdk/anthropic'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { LanguageModel } from 'ai'
 
 import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
@@ -25,6 +26,10 @@ export function createLanguageModel(settings: AIInlineSettings): LanguageModel {
     case 'anthropic':
       if (!settings.apiKey) throw markExpectedCondition(new Error('Anthropic API key required'))
       return createAnthropic({ apiKey: settings.apiKey })(settings.model)
+
+    case 'google':
+      if (!settings.apiKey) throw markExpectedCondition(new Error('Google API key required'))
+      return createGoogleGenerativeAI({ apiKey: settings.apiKey })(settings.model)
 
     default:
       throw new Error(`Unsupported provider: ${settings.provider}`)

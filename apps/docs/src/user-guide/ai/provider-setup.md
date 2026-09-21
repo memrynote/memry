@@ -6,11 +6,12 @@ Configure the LLM provider used by the inline AI menu in the editor. Open from [
 
 ## Supported Providers
 
-| Provider      | Runs                    | Needs                        |
-| ------------- | ----------------------- | ---------------------------- |
-| **Ollama**    | Locally on your machine | Ollama installed and running |
-| **OpenAI**    | OpenAI cloud            | API key                      |
-| **Anthropic** | Anthropic cloud         | API key                      |
+| Provider          | Runs                    | Needs                        |
+| ----------------- | ----------------------- | ---------------------------- |
+| **Ollama**        | Locally on your machine | Ollama installed and running |
+| **OpenAI**        | OpenAI cloud            | API key                      |
+| **Anthropic**     | Anthropic cloud         | API key                      |
+| **Google Gemini** | Google AI cloud         | API key                      |
 
 Each provider has its own model presets in the dropdown.
 
@@ -63,12 +64,27 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 
 Same key-storage and privacy properties as OpenAI.
 
+## Google Gemini
+
+### Setup
+
+1. Get an API key from [Google AI Studio](https://aistudio.google.com/apikey).
+2. **Provider: Google Gemini**
+3. Paste the API key.
+4. **Model**: pick a Gemini preset (e.g. `gemini-3.8-flash`) or type any model your key can access.
+5. Click **Test Connection**.
+
+### Notes
+
+- Uses the Gemini API directly with your key; it is not tied to a Gemini CLI or Code Assist subscription.
+- Same key-storage and privacy properties as OpenAI.
+
 ## Test Connection
 
 The button verifies:
 
 - The base URL is reachable
-- The API key authenticates (for OpenAI / Anthropic)
+- The API key authenticates (for OpenAI / Anthropic / Google Gemini)
 - The selected model exists and is accessible
 
 A status indicator (green / yellow / red) shows the most recent test result.
@@ -94,7 +110,7 @@ Rotating a key in the provider's dashboard requires updating it here too.
 | Symptom                                    | Likely cause                                                         |
 | ------------------------------------------ | -------------------------------------------------------------------- |
 | "Cannot connect" with Ollama               | Ollama not running; check `http://localhost:11434/v1/models`         |
-| "Unauthorized" with OpenAI / Anthropic     | Wrong key, expired, or rate-limited                                  |
+| "Unauthorized" with a cloud provider       | Wrong key, expired, or rate-limited                                  |
 | "Model not found"                          | Model name typo or not pulled (Ollama) / not enabled in your account |
 | Test passes but inline menu doesn't appear | AI Inline toggle off in settings                                     |
 

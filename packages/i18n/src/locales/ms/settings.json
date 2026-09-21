@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Ollama (Tempatan)",
         "openai": "OpenAI",
-        "anthropic": "Antropik"
+        "anthropic": "Antropik",
+        "google": "Google Gemini"
       },
       "model": "Model",
       "modelDescription": "Model bahasa untuk menulis semula dan meringkaskan",

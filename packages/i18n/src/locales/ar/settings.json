@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "أولاما (محلي)",
         "openai": "OpenAI",
-        "anthropic": "أنثروبي"
+        "anthropic": "أنثروبي",
+        "google": "Google Gemini"
       },
       "model": "نموذج",
       "modelDescription": "نموذج اللغة لإعادة الكتابة والتلخيص",

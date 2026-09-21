@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Ollama (ในเครื่อง)",
         "openai": "OpenAI",
-        "anthropic": "Anthropic"
+        "anthropic": "Anthropic",
+        "google": "Google Gemini"
       },
       "model": "โมเดล",
       "modelDescription": "โมเดลภาษาเพื่อเขียนใหม่และสรุป",

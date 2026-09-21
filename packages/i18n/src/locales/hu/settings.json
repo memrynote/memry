@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Ollama (helyi)",
         "openai": "OpenAI",
-        "anthropic": "Antropikus"
+        "anthropic": "Antropikus",
+        "google": "Google Gemini"
       },
       "model": "Modell",
       "modelDescription": "Nyelvi modell az újraíráshoz és összefoglaláshoz",

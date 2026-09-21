@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Ollama (Lokálne)",
         "openai": "OpenAI",
-        "anthropic": "Anthropic"
+        "anthropic": "Anthropic",
+        "google": "Google Gemini"
       },
       "model": "Model",
       "modelDescription": "Jazykový model na prepis a zhrnutie",
