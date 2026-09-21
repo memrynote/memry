@@ -77,6 +77,37 @@ const BLOCKNOTE_OVERRIDES = `
   }
 `
 
+/**
+ * The row still has to render before a task exists behind the block — a line
+ * the user is typing, or one whose task has not loaded yet. Kept out of the
+ * component so its own fallbacks stay out of the renderer body.
+ */
+const makePlaceholderTask = (
+  title: string,
+  project: Project | undefined,
+  statuses: Status[]
+): DisplayTask => ({
+  id: '',
+  title,
+  description: '',
+  projectId: project?.id ?? '',
+  statusId: statuses[0]?.id ?? '',
+  priority: 'none',
+  dueDate: null,
+  dueTime: null,
+  isRepeating: false,
+  repeatConfig: null,
+  repeatFrom: null,
+  linkedNoteIds: [],
+  sourceNoteId: null,
+  tags: [],
+  parentId: null,
+  subtaskIds: [],
+  createdAt: new Date(),
+  completedAt: null,
+  archivedAt: null
+})
+
 export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: editorInput }) => {
   const editor = editorInput as TaskBlockEditor
   const { t: tPhaseF } = useT('notes')
@@ -101,29 +132,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   const statuses: Status[] = project?.statuses ?? defaultStatuses
   const isCompleted = task ? !!task.completedAt : checked
 
-  const placeholderTask: import('@/data/task-model').Task = useMemo(
-    () => ({
-      id: '',
-      title,
-      description: '',
-      projectId: project?.id ?? '',
-      statusId: statuses[0]?.id ?? '',
-      priority: 'none' as const,
-      dueDate: null,
-      dueTime: null,
-      isRepeating: false,
-      repeatConfig: null,
-      repeatFrom: null,
-      linkedNoteIds: [],
-      sourceNoteId: null,
-      tags: [],
-      parentId: null,
-      subtaskIds: [],
-      createdAt: new Date(),
-      completedAt: null,
-      archivedAt: null
-    }),
-    [project?.id, statuses, title]
+  const placeholderTask = useMemo(
+    () => makePlaceholderTask(title, project, statuses),
+    [project, statuses, title]
   )
 
   const displayTask = useMemo(
