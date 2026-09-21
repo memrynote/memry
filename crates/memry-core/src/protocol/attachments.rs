@@ -88,6 +88,14 @@ pub enum AttachmentError {
     MissingChunk { hash: String },
     #[error("a chunk could not be decrypted")]
     Undecryptable,
+    /// The file needs more chunks than a session allows (§14.2).
+    ///
+    /// Refused **before a byte goes on the wire**, rather than by the server
+    /// after 128 successful puts: the cap is knowable locally and a user who
+    /// waited through a doomed upload learned nothing they could not have been
+    /// told immediately.
+    #[error("this file needs {chunks} chunks and a session allows {cap}")]
+    TooManyChunks { chunks: usize, cap: usize },
 }
 
 /// Maps a signer device id to its Ed25519 public key.

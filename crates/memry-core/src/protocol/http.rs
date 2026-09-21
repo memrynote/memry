@@ -170,6 +170,16 @@ impl ApiRequest {
         self
     }
 
+    /// Raw bytes as the body, for a request that is not JSON.
+    ///
+    /// An attachment chunk is `nonce ‖ ciphertext` and goes up as-is:
+    /// base64-ing it through [`Self::json`] would inflate every upload by a
+    /// third for no reader's benefit.
+    pub fn body(mut self, bytes: Vec<u8>) -> Self {
+        self.body = Some(bytes);
+        self
+    }
+
     pub fn auth(mut self, auth: Auth) -> Self {
         self.auth = auth;
         self
