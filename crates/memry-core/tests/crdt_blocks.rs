@@ -16,9 +16,9 @@ mod support;
 
 use std::sync::Arc;
 
-use memry_core::crdt::blocks::{blocks_to_text, extract_blocks, Block};
+use memry_core::crdt::blocks::{Block, blocks_to_text, extract_blocks};
 use memry_core::crdt::registry::UpdateSink;
-use memry_core::crdt::{extract_text, DocumentRegistry};
+use memry_core::crdt::{DocumentRegistry, extract_text};
 use support::{hex_field, str_field, vector_file};
 
 /// Both walks over one document, through the registry — the only door chapter

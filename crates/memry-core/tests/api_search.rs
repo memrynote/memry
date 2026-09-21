@@ -10,7 +10,6 @@
 //! | a note deleted after indexing never surfaces  | the index may be stale, not the answer |
 //! | a reindex is idempotent                       | safe on any schedule            |
 
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -29,7 +28,7 @@ static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
 fn vault(label: &str) -> (Db, Vault) {
     let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = PathBuf::from(std::env::temp_dir()).join(format!(
+    let dir = std::env::temp_dir().join(format!(
         "memry-api-search-{label}-{}-{unique}",
         std::process::id()
     ));

@@ -75,10 +75,11 @@ pub fn edit_block(
     let change = outbox::Change::crdt_update(ITEM_TYPE, note_id, update.clone());
     let doc_id = note_id.to_owned();
     outbox::commit(conn, &change, now_ms, |tx| {
-        update_log::append_local_update_in(tx, &doc_id, &update, now_ms)
-            .map_err(|error| crate::api::errors::StorageError::Failed {
+        update_log::append_local_update_in(tx, &doc_id, &update, now_ms).map_err(|error| {
+            crate::api::errors::StorageError::Failed {
                 what: error.to_string(),
-            })
+            }
+        })
     })
     .map_err(CrdtError::from)?;
     Ok(true)

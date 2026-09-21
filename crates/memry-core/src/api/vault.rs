@@ -116,7 +116,6 @@ impl Vault {
     }
 
     /// The note **writes** over this vault's database.
-
     ///
     /// Separate from [`Vault::notes`] and not free, because a write needs a
     /// device identity and a read does not: the store is read once here to

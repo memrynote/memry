@@ -15,7 +15,7 @@
 //! | a locked keychain is not a missing key            | `SecureStoreError::Locked` crosses    |
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -109,7 +109,7 @@ fn vault(label: &str) -> (PathBuf, Vault) {
 
 /// A second handle on the same file, to read the rows the exported surface does
 /// not return.
-fn behind(dir: &PathBuf) -> Db {
+fn behind(dir: &Path) -> Db {
     open_data(&dir.join("data.db")).expect("second open")
 }
 

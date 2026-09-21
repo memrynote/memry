@@ -9,9 +9,9 @@
 //! Nothing here parses or serialises markdown. `extract_text` is the core's
 //! only text operation (chapter 12 §12.1).
 
+pub mod body_write;
 pub mod folders;
 pub mod journal;
-pub mod body_write;
 pub mod note_meta;
 pub mod notes;
 pub mod projects;

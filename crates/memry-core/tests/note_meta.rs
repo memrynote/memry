@@ -13,7 +13,6 @@
 //! | a link naming nothing is broken, not an error     | `nil` is an answer                  |
 //! | a deleted note resolves nothing                   | §7.15                               |
 
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::api::errors::StorageError;
@@ -31,19 +30,28 @@ static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
 fn vault(label: &str) -> (Db, Vault) {
     let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = PathBuf::from(std::env::temp_dir()).join(format!(
+    let dir = std::env::temp_dir().join(format!(
         "memry-note-meta-{label}-{}-{unique}",
         std::process::id()
     ));
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let opened = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
-    (open_data(&dir.join("data.db")).expect("second open"), opened)
+    (
+        open_data(&dir.join("data.db")).expect("second open"),
+        opened,
+    )
 }
 
 /// Writes a note through the domain, with whatever tags and properties the
 /// test needs. The payload shape is §13.7.1's, written by the same code the
 /// app writes with rather than by hand.
-fn write_note(db: &Db, id: &str, title: &str, tags: &[String], properties: Option<Map<String, Value>>) {
+fn write_note(
+    db: &Db,
+    id: &str,
+    title: &str,
+    tags: &[String],
+    properties: Option<Map<String, Value>>,
+) {
     db.call_blocking(|conn: &mut Connection| {
         let note = NewNote {
             id,
@@ -106,7 +114,13 @@ fn tags_and_properties_come_back_with_the_note() {
         .as_object()
         .cloned()
         .expect("an object");
-    write_note(&db, "n1", "Dune", &["scifi".to_string(), "Café".to_string()], Some(properties));
+    write_note(
+        &db,
+        "n1",
+        "Dune",
+        &["scifi".to_string(), "Café".to_string()],
+        Some(properties),
+    );
 
     let read = metadata(&db, "n1").expect("the note");
 
@@ -115,7 +129,10 @@ fn tags_and_properties_come_back_with_the_note() {
     assert_eq!(read.tags, vec!["scifi".to_string(), "Café".to_string()]);
     // Ordered by name, so two reads of an unchanged note render identically.
     assert_eq!(
-        read.properties.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(),
+        read.properties
+            .iter()
+            .map(|p| p.name.as_str())
+            .collect::<Vec<_>>(),
         vec!["Pages", "Status"]
     );
     let status = &read.properties[1];
@@ -161,7 +178,10 @@ fn a_wiki_link_falls_back_to_an_alias() {
     set_aliases(&db, "n1", &["Herbert", "FH"]);
 
     assert_eq!(resolve(&db, "herbert").as_deref(), Some("n1"));
-    assert_eq!(metadata(&db, "n1").expect("the note").aliases, vec!["Herbert", "FH"]);
+    assert_eq!(
+        metadata(&db, "n1").expect("the note").aliases,
+        vec!["Herbert", "FH"]
+    );
 }
 
 #[test]

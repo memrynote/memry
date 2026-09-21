@@ -15,7 +15,11 @@ fn a_generated_phrase_is_twenty_four_valid_words() {
     let phrase = generate_recovery_phrase();
     let words: Vec<&str> = phrase.split(' ').collect();
 
-    assert_eq!(words.len(), 24, "the product issues 24-word phrases: {phrase}");
+    assert_eq!(
+        words.len(),
+        24,
+        "the product issues 24-word phrases: {phrase}"
+    );
     // The canonical form: nothing to normalise, because it is already
     // normalised. A phrase that needed trimming would reach a different seed
     // than the one the user types back.
@@ -50,7 +54,10 @@ fn the_phrase_and_salt_round_trip_to_one_master_key() {
     let retyped = format!("  {}  ", phrase.to_uppercase().replace(' ', "\n"));
     let second = derive_master_key(retyped, salt.clone()).expect("derive from a retyped phrase");
 
-    assert_eq!(first, second, "normalisation is what makes recovery possible");
+    assert_eq!(
+        first, second,
+        "normalisation is what makes recovery possible"
+    );
 
     let verifier = account_key_verifier(first).expect("verifier");
     let from_second = account_key_verifier(second).expect("verifier");
