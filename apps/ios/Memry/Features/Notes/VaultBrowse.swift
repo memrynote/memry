@@ -201,6 +201,9 @@ final class VaultBrowseViewModel {
     /// device's identity from cannot write, and the affordances are hidden
     /// rather than shown failing. See `VaultWrite.swift`.
     let writer: (any NotesWriting)?
+    /// The body write surface, `nil` on a vault with no identity to sign
+    /// with — the same condition that leaves ``writer`` absent.
+    let editor: (any BlockEditing)?
 
     /// Full-text search over this vault, or `nil` when the index could be
     /// neither opened nor rebuilt.
@@ -221,11 +224,13 @@ final class VaultBrowseViewModel {
         reader: any NotesReading,
         filler: (any VaultFilling)? = nil,
         writer: (any NotesWriting)? = nil,
+        editor: (any BlockEditing)? = nil,
         search: (any VaultSearching)? = nil
     ) {
         self.reader = reader
         self.filler = filler
         self.writer = writer
+        self.editor = editor
         self.search = search.map { VaultSearchViewModel(search: $0) }
     }
 
@@ -242,6 +247,7 @@ final class VaultBrowseViewModel {
             filler: filler,
             // No store, no identity, no writes — and no buttons offering them.
             writer: store.map { CoreNotesWriter(vault: vault, store: $0, executor: executor) },
+            editor: store.map { CoreBlockEditor(vault: vault, store: $0, executor: executor) },
             // A vault whose index will not open is still a vault worth
             // browsing, so this failure is absorbed into "no full-text search"
             // rather than into "no screen".

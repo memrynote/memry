@@ -186,9 +186,9 @@ and confirm the chunks are dereferenced.
 **Purpose**: every editing task depends on how a caret, a selection and an IME
 behave across block boundaries. Decide with evidence, not with an opinion.
 
-- [ ] N300 Spike: one `UITextView` per block versus a document-wide TextKit 2 layout. Measure caret and selection across a block boundary, IME and dictation, autocorrect, undo grouping, a 500-block note's scroll performance, and VoiceOver. Evidence to `apps/ios/SpikeEvidence/`
-- [ ] N301 Decision record in `specs/003-ios-note-parity/research.md`, including why `lexical-ios` is not the answer: no Swift Yjs binding, a document model incompatible with the y-prosemirror fragment, and "pre-release with no guarantee of support" upstream
-- [ ] N302 Skeleton of the chosen surface in `apps/ios/Memry/Editor/`, an empty directory today, rendering one editable paragraph end to end through `Notes.editBlock`
+- [x] N300 Spike: one `UITextView` per block versus a document-wide TextKit 2 layout. Measure caret and selection across a block boundary, IME and dictation, autocorrect, undo grouping, a 500-block note's scroll performance, and VoiceOver. Evidence to `apps/ios/SpikeEvidence/`
+- [x] N301 Decision record in `specs/003-ios-note-parity/research.md`, including why `lexical-ios` is not the answer: no Swift Yjs binding, a document model incompatible with the y-prosemirror fragment, and "pre-release with no guarantee of support" upstream
+- [x] N302 Skeleton of the chosen surface in `apps/ios/Memry/Editor/`, an empty directory today, rendering one editable paragraph end to end through `Notes.editBlock`
 
 **Gate G-P2 evidence**: the spike's measurements committed, the decision
 recorded, and one paragraph editable on device with the edit visible on desktop

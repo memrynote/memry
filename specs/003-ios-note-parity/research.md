@@ -295,3 +295,81 @@ so nothing would fail loudly and the two ports would drift silently. The class
 therefore pins the **manifest bytes** as well as the envelope, and is generated
 from the TypeScript writer so the Rust port is held to what desktop really
 emits.
+
+---
+
+## The editor architecture (N300, N301)
+
+**One `UITextView` per block, in a lazy list.** Measured in
+`apps/ios/SpikeEvidence/N300-editor-architecture.md`; the harness is
+`apps/ios/MemryTests/EditorArchitectureSpikeTests.swift`, so the figures can be
+re-run rather than believed.
+
+### Why, in the order the evidence actually landed
+
+**The obvious comparison points the other way, and it is the wrong
+comparison.** Building all 500 blocks as text views costs 0.8s against
+0.0007s for one document-wide TextKit 2 layout — three orders of magnitude,
+and it describes an architecture nobody ships. A lazy list holds a screenful.
+Measured against the shape that deploys, a screenful of text views costs
+**0.0179s against 0.0195s to lay out the whole note**, and the document-wide
+side cannot make that trade: one layout cannot be partially resident, so
+opening a note means laying out all of it.
+
+**A keystroke is 4.8x cheaper per-block** — 0.000295s against 0.00141s. A note
+is laid out once and typed into thousands of times, so this is the figure the
+decision rests on rather than the opening cost.
+
+**Half the registry is not text.** Nine of the eighteen block types — table,
+image, audio, video, file, bookmark, divider, `taskBlock`, `youtubeEmbed` —
+are not characters in a string. A document-wide layout hosts them only as
+attachments, which means building those views anyway _and_ pinning each to a
+character range.
+
+**And the core's write surface is block-addressed.** Every `BlockEdit` takes a
+block id, or a table id plus row and column. A document-wide layout would need
+an offset-to-block reconciliation layer on every edit, and that layer is
+exactly where an edit lands on the wrong block without anything failing.
+
+### What this costs, stated rather than buried
+
+**Caret and selection across block boundaries become the shell's work.**
+Document-wide gets both free — crossing a boundary is an offset change inside
+one range. Per-block, crossing is a change of first responder that the shell
+implements and restores, and a selection spanning three blocks is three
+selections it coordinates. That is N501's job, and it is the accepted trade,
+not an oversight.
+
+**Undo spans views rather than one `UITextView`'s built-in stack**, which is
+why N509 specifies a native undo stack over the operations the shell issued.
+**iOS and desktop undo granularity may therefore differ** — desktop groups by
+ProseMirror transaction, iOS by issued operation — and that difference is
+accepted rather than engineered away.
+
+**The open risk is at boundaries.** Dictation, autocorrect and IME composition
+are `UITextView` behaviours, and per-block keeps a real `UITextView` per
+editable block, so each works unchanged _within_ a block. An IME composing
+across a block break, or dictation running past the end of a paragraph, is the
+case that carries risk. **The spike did not measure any of them** — a test
+process cannot — and nothing above is presented as evidence about them. The
+risk is carried into N501 as an open risk.
+
+### Why `lexical-ios` is not the answer
+
+Evaluated and rejected; plan.md §3 D3 records the same conclusion.
+
+**There is no Swift Yjs binding.** Lexical's document model would have to be
+reconciled with the `prosemirror` Y.XmlFragment on every edit, which is the
+offset-to-block reconciliation problem above with an extra document model in
+the middle. The core already exposes block-addressed operations that map 1:1
+to what a per-block surface issues.
+
+**Its document model is incompatible with the y-prosemirror fragment.**
+Lexical nodes are not ProseMirror nodes; §12.5.0 is normative about the exact
+node shapes BlockNote can construct, and a node y-prosemirror cannot build is
+deleted silently. Adopting a second model would mean holding _three_ shapes in
+agreement — Lexical's, ProseMirror's, and the canonical rendering — instead of
+one.
+
+**And upstream describes it as pre-release with no guarantee of support.**
+That is a poor foundation for the surface a user types into.

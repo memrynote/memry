@@ -41,6 +41,12 @@ struct NoteBlocksView: View {
     /// Detaches an attachment. `nil` hides the action rather than offering
     /// one that cannot work.
     var removeAttachment: ((String) async -> Void)?
+    /// Makes a text-bearing block editable (N302).
+    ///
+    /// `nil` renders the note read-only, which is what a vault with no
+    /// identity to sign a write with gets — the keyboard is **absent** rather
+    /// than present and refusing.
+    var editing: NoteEditingBridge?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
@@ -51,7 +57,8 @@ struct NoteBlocksView: View {
                     openTarget: openTarget,
                     tableContent: tableContent,
                     attachment: attachment,
-                    removeAttachment: removeAttachment
+                    removeAttachment: removeAttachment,
+                    editing: editing
                 )
             }
         }
@@ -134,6 +141,7 @@ struct NoteBlockView: View {
     var tableContent: ((String) -> TableContent?)?
     var attachment: ((String) -> BlockAttachment)?
     var removeAttachment: ((String) async -> Void)?
+    var editing: NoteEditingBridge?
 
     var body: some View {
         content
@@ -244,9 +252,22 @@ struct NoteBlockView: View {
                 remove: removeAttachment
             )
         default:
-            Text(inline)
-                .font(Tokens.Typography.body.font)
-                .foregroundStyle(Tokens.Text.primary.color)
+            // N302's end-to-end path: with an editor wired, an ordinary
+            // paragraph is a real `UITextView` (N300's answer) and what the
+            // user types reaches `Notes.editBlock`. Without one, the same
+            // block draws exactly as it always did.
+            if let editing, let id = block.id, block.kind == "paragraph" {
+                EditableBlockView(
+                    text: editing.text(id, plainText),
+                    role: .body,
+                    commit: { editing.commit(id, $0, plainText) },
+                    onReturn: { editing.insertAfter(id) }
+                )
+            } else {
+                Text(inline)
+                    .font(Tokens.Typography.body.font)
+                    .foregroundStyle(Tokens.Text.primary.color)
+            }
         }
     }
 

@@ -68,6 +68,7 @@ struct NoteReadView: View {
         route: NoteRoute,
         reader: any NotesReading,
         filler: (any VaultFilling)? = nil,
+        editor: (any BlockEditing)? = nil,
         open: ((NoteRoute) -> Void)? = nil
     ) {
         self.open = open
@@ -75,21 +76,46 @@ struct NoteReadView: View {
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: route.id, filler: filler)
         )
+        _editorModel = State(
+            initialValue: NoteEditorViewModel(noteId: route.id, editor: editor)
+        )
     }
 
-    init(model: NoteReadViewModel, open: ((NoteRoute) -> Void)? = nil) {
+    init(
+        model: NoteReadViewModel,
+        editor: (any BlockEditing)? = nil,
+        open: ((NoteRoute) -> Void)? = nil
+    ) {
         self.open = open
         _model = State(initialValue: model)
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: model.route.id, filler: model.filler)
         )
+        _editorModel = State(
+            initialValue: NoteEditorViewModel(noteId: model.route.id, editor: editor)
+        )
     }
+
+    /// The body write surface. Read-only when absent.
+    @State private var editorModel: NoteEditorViewModel
 
     /// Adds and removes this note's attachments.
     @State private var composer: NoteAttachmentComposer
 
     /// The title of a wiki link that resolved to nothing, for the notice.
     @State private var brokenLink: String?
+
+    /// The editing bridge, or `nil` on a read-only note.
+    ///
+    /// Absent rather than disabled: with no editor there is nothing to write
+    /// through, and a keyboard that opens onto a note that cannot be saved is
+    /// a worse answer than no keyboard.
+    private var editing: NoteEditingBridge? {
+        guard editorModel.canEdit else { return nil }
+        // Re-read after a write so the block shows the document rather than
+        // only the draft.
+        return NoteEditingBridge(model: editorModel) { await model.reload() }
+    }
 
     var body: some View {
         ScrollView {
@@ -153,7 +179,8 @@ struct NoteReadView: View {
                                 if await composer.detach(attachmentId: id) {
                                     await model.refreshAttachments()
                                 }
-                            }
+                            },
+                            editing: editing
                         )
                     } else {
                         // No stack to push onto: the links are still drawn and
@@ -166,7 +193,8 @@ struct NoteReadView: View {
                                 if await composer.detach(attachmentId: id) {
                                     await model.refreshAttachments()
                                 }
-                            }
+                            },
+                            editing: editing
                         )
                     }
                 }

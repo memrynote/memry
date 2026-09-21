@@ -11260,6 +11260,95 @@ public enum BlockEdit: Equatable, Hashable {
          */newBlockId: String
     )
     /**
+     * Inserts any registry block type (N401).
+     *
+     * The node tree is built here, from the declared shape, because a node
+     * y-prosemirror cannot construct is **deleted silently** (§12.5.0). A
+     * `kind` this build cannot shape is refused rather than written bare.
+     */
+    case insertBlock(kind: String, afterBlockId: String?, text: String, newBlockId: String
+    )
+    /**
+     * Changes a block's type, carrying its inline content across (N405).
+     */
+    case turnInto(blockId: String, kind: String
+    )
+    /**
+     * Replaces one table cell's text (N402).
+     *
+     * **Addressed by position, not by id, and Q1 is why.** BlockNote builds
+     * a cell as `tableCell > tableParagraph` with no `blockContainer` and no
+     * id anywhere between, so there is nothing for `SetText` to find. A
+     * positional address is the only one available.
+     */
+    case setCellText(tableId: String, row: UInt32, column: UInt32, text: String
+    )
+    /**
+     * Sets one prop on one table cell (N404): its colours, its alignment, or
+     * its `colwidth`.
+     */
+    case setCellProp(tableId: String, row: UInt32, column: UInt32, name: String, value: String
+    )
+    /**
+     * Inserts a row (N403). `at` past the end appends.
+     *
+     * The new row takes its column count from the table's first row, so a
+     * table never gains a ragged row that desktop would render short.
+     */
+    case insertRow(tableId: String, at: UInt32
+    )
+    case deleteRow(tableId: String, at: UInt32
+    )
+    /**
+     * Inserts a column (N403), preserving every surviving cell's `colwidth`
+     * and colours because those belong to the cells rather than to the
+     * column index.
+     */
+    case insertColumn(tableId: String, at: UInt32
+    )
+    case deleteColumn(tableId: String, at: UInt32
+    )
+    /**
+     * Copies a block, and everything nested under it, directly after itself
+     * (N406).
+     */
+    case duplicate(blockId: String, newBlockId: String
+    )
+    /**
+     * Moves a block after another, or to the start of the body when
+     * `after_block_id` is `None` (N406).
+     */
+    case moveBlock(blockId: String, afterBlockId: String?
+    )
+    /**
+     * Nests a block under its previous sibling (N406).
+     *
+     * Desktop's rule, which this matches: a block with no previous sibling
+     * cannot indent, because there is nothing to nest under.
+     */
+    case indent(blockId: String
+    )
+    /**
+     * Lifts a block out to its parent's level (N406).
+     */
+    case outdent(blockId: String
+    )
+    /**
+     * Applies or removes an inline mark over a range within one block (N407).
+     *
+     * **This is what removes `SetText`'s documented limitation.** Replacing a
+     * block's whole text loses its marks; addressing a range keeps them, so
+     * a shell with a selection no longer has to choose between bold and
+     * editing.
+     *
+     * `value` carries a colour name for `textColor` and `backgroundColor`
+     * and an address for `link`; the boolean marks ignore it.
+     */
+    case setMark(blockId: String, start: UInt32, end: UInt32, mark: String, value: String?
+    )
+    case removeMark(blockId: String, start: UInt32, end: UInt32, mark: String
+    )
+    /**
      * Removes a block and everything nested under it.
      *
      * Its children go with it: they live inside its container, and leaving
@@ -11297,7 +11386,49 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         case 3: return .insertParagraph(afterBlockId: try FfiConverterOptionString.read(from: &buf), text: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
         )
         
-        case 4: return .delete(blockId: try FfiConverterString.read(from: &buf)
+        case 4: return .insertBlock(kind: try FfiConverterString.read(from: &buf), afterBlockId: try FfiConverterOptionString.read(from: &buf), text: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 5: return .turnInto(blockId: try FfiConverterString.read(from: &buf), kind: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 6: return .setCellText(tableId: try FfiConverterString.read(from: &buf), row: try FfiConverterUInt32.read(from: &buf), column: try FfiConverterUInt32.read(from: &buf), text: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 7: return .setCellProp(tableId: try FfiConverterString.read(from: &buf), row: try FfiConverterUInt32.read(from: &buf), column: try FfiConverterUInt32.read(from: &buf), name: try FfiConverterString.read(from: &buf), value: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 8: return .insertRow(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        )
+        
+        case 9: return .deleteRow(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        )
+        
+        case 10: return .insertColumn(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        )
+        
+        case 11: return .deleteColumn(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        )
+        
+        case 12: return .duplicate(blockId: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 13: return .moveBlock(blockId: try FfiConverterString.read(from: &buf), afterBlockId: try FfiConverterOptionString.read(from: &buf)
+        )
+        
+        case 14: return .indent(blockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 15: return .outdent(blockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 16: return .setMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf), value: try FfiConverterOptionString.read(from: &buf)
+        )
+        
+        case 17: return .removeMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 18: return .delete(blockId: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -11328,8 +11459,102 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             FfiConverterString.write(newBlockId, into: &buf)
             
         
-        case let .delete(blockId):
+        case let .insertBlock(kind,afterBlockId,text,newBlockId):
             writeInt(&buf, Int32(4))
+            FfiConverterString.write(kind, into: &buf)
+            FfiConverterOptionString.write(afterBlockId, into: &buf)
+            FfiConverterString.write(text, into: &buf)
+            FfiConverterString.write(newBlockId, into: &buf)
+            
+        
+        case let .turnInto(blockId,kind):
+            writeInt(&buf, Int32(5))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterString.write(kind, into: &buf)
+            
+        
+        case let .setCellText(tableId,row,column,text):
+            writeInt(&buf, Int32(6))
+            FfiConverterString.write(tableId, into: &buf)
+            FfiConverterUInt32.write(row, into: &buf)
+            FfiConverterUInt32.write(column, into: &buf)
+            FfiConverterString.write(text, into: &buf)
+            
+        
+        case let .setCellProp(tableId,row,column,name,value):
+            writeInt(&buf, Int32(7))
+            FfiConverterString.write(tableId, into: &buf)
+            FfiConverterUInt32.write(row, into: &buf)
+            FfiConverterUInt32.write(column, into: &buf)
+            FfiConverterString.write(name, into: &buf)
+            FfiConverterString.write(value, into: &buf)
+            
+        
+        case let .insertRow(tableId,at):
+            writeInt(&buf, Int32(8))
+            FfiConverterString.write(tableId, into: &buf)
+            FfiConverterUInt32.write(at, into: &buf)
+            
+        
+        case let .deleteRow(tableId,at):
+            writeInt(&buf, Int32(9))
+            FfiConverterString.write(tableId, into: &buf)
+            FfiConverterUInt32.write(at, into: &buf)
+            
+        
+        case let .insertColumn(tableId,at):
+            writeInt(&buf, Int32(10))
+            FfiConverterString.write(tableId, into: &buf)
+            FfiConverterUInt32.write(at, into: &buf)
+            
+        
+        case let .deleteColumn(tableId,at):
+            writeInt(&buf, Int32(11))
+            FfiConverterString.write(tableId, into: &buf)
+            FfiConverterUInt32.write(at, into: &buf)
+            
+        
+        case let .duplicate(blockId,newBlockId):
+            writeInt(&buf, Int32(12))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterString.write(newBlockId, into: &buf)
+            
+        
+        case let .moveBlock(blockId,afterBlockId):
+            writeInt(&buf, Int32(13))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterOptionString.write(afterBlockId, into: &buf)
+            
+        
+        case let .indent(blockId):
+            writeInt(&buf, Int32(14))
+            FfiConverterString.write(blockId, into: &buf)
+            
+        
+        case let .outdent(blockId):
+            writeInt(&buf, Int32(15))
+            FfiConverterString.write(blockId, into: &buf)
+            
+        
+        case let .setMark(blockId,start,end,mark,value):
+            writeInt(&buf, Int32(16))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterUInt32.write(start, into: &buf)
+            FfiConverterUInt32.write(end, into: &buf)
+            FfiConverterString.write(mark, into: &buf)
+            FfiConverterOptionString.write(value, into: &buf)
+            
+        
+        case let .removeMark(blockId,start,end,mark):
+            writeInt(&buf, Int32(17))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterUInt32.write(start, into: &buf)
+            FfiConverterUInt32.write(end, into: &buf)
+            FfiConverterString.write(mark, into: &buf)
+            
+        
+        case let .delete(blockId):
+            writeInt(&buf, Int32(18))
             FfiConverterString.write(blockId, into: &buf)
             
         }

@@ -117,6 +117,7 @@ struct NotesListView: View {
                         route: route,
                         reader: model.reader,
                         filler: model.filler,
+                        editor: model.editor,
                         open: { path.append($0) }
                     )
                 }
