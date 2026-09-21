@@ -691,8 +691,8 @@ function tagBuilder(add: boolean): Builder {
     const tag = str(args.tag)
     const onTask = args.kind === 'task'
 
-    let title = id
-    let before: string[] = []
+    let title: string
+    let before: string[]
     if (onTask) {
       const task = await readTask(handles, id)
       title = taskTitle(task, id)
