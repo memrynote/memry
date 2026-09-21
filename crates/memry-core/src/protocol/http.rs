@@ -391,6 +391,25 @@ impl HttpClient {
             return Outcome::Fatal(ApiError::BootstrapUnavailable);
         }
 
+        // Chapter 14 §14.6: `STORAGE_PRESIGN_UNAVAILABLE` is typed and
+        // **permanent for that deployment**, and a client MUST NOT retry the
+        // presign route on a timer. It arrives as a 503, so without this it
+        // falls into the retryable-5xx branch below and every presign call
+        // spends a full ladder on a condition that cannot change — the same
+        // reasoning the 501 above is lifted out for.
+        //
+        // Kept as a `Status` carrying the code rather than given its own
+        // variant, because the caller's correct response is not to fail: it
+        // switches to the proxied path and records that this deployment does
+        // not presign.
+        if code == "STORAGE_PRESIGN_UNAVAILABLE" {
+            return Outcome::Fatal(ApiError::Status {
+                status,
+                code: body.code,
+                message,
+            });
+        }
+
         match (status, code.as_str()) {
             (_, "AUTH_DEVICE_REVOKED") => Outcome::Fatal(ApiError::DeviceRevoked { message }),
             (403, "PLATFORM_WRITES_DISABLED") => {
