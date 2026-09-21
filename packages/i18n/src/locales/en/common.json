@@ -93,7 +93,9 @@
     "daysAgo": "{count, plural, one {# day ago} other {# days ago}}",
     "tomorrow": "Tomorrow",
     "daysOverdue": "{count, plural, one {# day overdue} other {# days overdue}}",
-    "daysLate": "{count, plural, one {#d late} other {#d late}}"
+    "daysLate": "{count, plural, one {#d late} other {#d late}}",
+    "inDays": "{count, plural, one {in # day} other {in # days}}",
+    "inWeeks": "{count, plural, one {in # week} other {in # weeks}}"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Every day} other {Every # days}}",

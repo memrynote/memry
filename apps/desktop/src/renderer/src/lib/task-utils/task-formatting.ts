@@ -65,6 +65,65 @@ export const formatOverdueRelative = (dueDate: Date): string => {
   return t('dateRelative.daysLate', { count: days })
 }
 
+export type RelativeDateTone = 'neutral' | 'overdue'
+
+export interface RelativeDateHint {
+  label: string
+  tone: RelativeDateTone
+}
+
+export interface RelativeDateHintOptions {
+  /** A past due date is late; a past start date has simply already begun. */
+  kind?: 'due' | 'start'
+  isCompleted?: boolean
+  now?: Date
+}
+
+// Upcoming dates stay in days for two weeks, then switch to weeks: "in 13 days"
+// is still a number you can plan around, "in 87 days" is not. Overdue dates are
+// always days, never weeks, so a long-neglected task reads as a concrete count
+// instead of a rounded "3 weeks" (#1861).
+const RELATIVE_HINT_DAYS_MAX = 14
+
+// `differenceInDays` floors a raw millisecond diff, so the 23-hour spring-forward
+// day reports 0 for two distinct calendar days. Round instead.
+const diffInCalendarDays = (a: Date, b: Date): number =>
+  Math.round((startOfDay(a).getTime() - startOfDay(b).getTime()) / 86_400_000)
+
+/**
+ * Relative distance to a date, for display next to the absolute date rather than
+ * instead of it: "Mar 15" alone never says whether that is tomorrow or next month.
+ */
+export const formatRelativeDateHint = (
+  date: Date | null,
+  options: RelativeDateHintOptions = {}
+): RelativeDateHint | null => {
+  if (!date || options.isCompleted) return null
+
+  const t = getI18n().getFixedT(null, 'common')
+  const days = diffInCalendarDays(date, options.now ?? new Date())
+
+  if (days === 0) return { label: t('dateRelative.today'), tone: 'neutral' }
+  if (days === 1) return { label: t('dateRelative.tomorrow'), tone: 'neutral' }
+
+  if (days > 1) {
+    const label =
+      days <= RELATIVE_HINT_DAYS_MAX
+        ? t('dateRelative.inDays', { count: days })
+        : t('dateRelative.inWeeks', { count: Math.round(days / 7) })
+    return { label, tone: 'neutral' }
+  }
+
+  const elapsed = -days
+  if (options.kind === 'start') {
+    const label =
+      elapsed === 1 ? t('dateRelative.yesterday') : t('dateRelative.daysAgo', { count: elapsed })
+    return { label, tone: 'neutral' }
+  }
+
+  return { label: t('dateRelative.daysOverdue', { count: elapsed }), tone: 'overdue' }
+}
+
 export const formatDueDate = (
   dueDate: Date | null,
   dueTime: string | null
