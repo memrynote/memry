@@ -117,6 +117,62 @@ struct NoteReadView: View {
         return NoteEditingBridge(model: editorModel) { await model.reload() }
     }
 
+    /// This session's undo history (N509).
+    @State private var history = EditorUndoStack()
+
+    /// Applies one direction of an undo step.
+    ///
+    /// The step is already off its stack by the time this runs, so a failure
+    /// is reported and the stacks are left as they are rather than trying to
+    /// put it back — a half-restored history is harder to reason about than
+    /// one that simply did not move.
+    private func applyHistory(_ edit: BlockEdit?) async {
+        guard let edit else { return }
+        await editorModel.apply(edit)
+        await model.reload()
+    }
+
+    /// Row and column editing, or `nil` on a read-only note.
+    private var tableEditing: NoteTableEditing? {
+        guard editorModel.canEdit else { return nil }
+        let model = editorModel
+        let reload: () async -> Void = { await self.model.reload() }
+        return NoteTableEditing(
+            insertRow: { tableId, row in
+                Task { @MainActor in
+                    await model.insertRow(tableId, at: row)
+                    await reload()
+                }
+            },
+            deleteRow: { tableId, row in
+                Task { @MainActor in
+                    await model.deleteRow(tableId, at: row)
+                    await reload()
+                }
+            },
+            insertColumn: { tableId, column in
+                Task { @MainActor in
+                    await model.insertColumn(tableId, at: column)
+                    await reload()
+                }
+            },
+            deleteColumn: { tableId, column in
+                Task { @MainActor in
+                    await model.deleteColumn(tableId, at: column)
+                    await reload()
+                }
+            },
+            setCellColour: { tableId, row, column, colour in
+                Task { @MainActor in
+                    await model.setCellProp(
+                        tableId, row: row, column: column, "backgroundColor", colour
+                    )
+                    await reload()
+                }
+            }
+        )
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
@@ -180,7 +236,8 @@ struct NoteReadView: View {
                                     await model.refreshAttachments()
                                 }
                             },
-                            editing: editing
+                            editing: editing,
+                            tableEditing: tableEditing
                         )
                     } else {
                         // No stack to push onto: the links are still drawn and
@@ -194,7 +251,8 @@ struct NoteReadView: View {
                                     await model.refreshAttachments()
                                 }
                             },
-                            editing: editing
+                            editing: editing,
+                            tableEditing: tableEditing
                         )
                     }
                 }
@@ -212,6 +270,35 @@ struct NoteReadView: View {
                     // read again: that is what makes the new picture appear
                     // in place rather than on the next note open.
                     Task { await model.refreshAttachments() }
+                }
+            }
+            // The editing affordances, absent entirely on a read-only note
+            // rather than present and refusing.
+            if editorModel.canEdit {
+                ToolbarItem(placement: .topBarTrailing) {
+                    BlockInsertMenu(
+                        insert: { block in
+                            Task {
+                                let id = await editorModel.insert(
+                                    block.id, after: model.blocks.last?.id
+                                )
+                                if let id, let level = block.level {
+                                    await editorModel.setProp(id, "level", String(level))
+                                }
+                                await model.reload()
+                            }
+                        }
+                        // No `insertPicture`: the picture affordance is the
+                        // adjacent toolbar item (N214), and a second entry
+                        // here would be a duplicate path to the same picker.
+                    )
+                }
+                ToolbarItem(placement: .bottomBar) {
+                    EditorHistoryControls(
+                        stack: history,
+                        undo: { Task { await applyHistory(history.popUndo()?.backward) } },
+                        redo: { Task { await applyHistory(history.popRedo()?.forward) } }
+                    )
                 }
             }
         }

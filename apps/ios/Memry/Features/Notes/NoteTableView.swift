@@ -24,6 +24,11 @@ import SwiftUI
 struct NoteTableView: View {
     let table: TableContent?
     var openTarget: ((String) -> Void)?
+    /// Row and column editing (N505). `nil` leaves the table read-only,
+    /// which is what a vault with no identity to write with gets.
+    var editing: NoteTableEditing?
+    /// The block id of this `table`, needed to address an edit at it.
+    var tableId: String?
 
     var body: some View {
         if let table, !table.rows.isEmpty {
@@ -42,6 +47,18 @@ struct NoteTableView: View {
                                     openTarget: openTarget
                                 )
                                 .accessibilityLabel(label(rowIndex, column, cell, table))
+                                // The structure actions live on the cell
+                                // because a row and a column are both reached
+                                // from one, and a phone has no margin to put
+                                // a handle in.
+                                .modifier(
+                                    NoteTableCellActions(
+                                        editing: editing,
+                                        tableId: tableId,
+                                        row: rowIndex,
+                                        column: column
+                                    )
+                                )
                             }
                         }
                     }
@@ -202,5 +219,81 @@ extension Array {
     /// and a note must not crash on arithmetic about a grid.
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
+    }
+}
+
+/// What a table needs to be editable (N505).
+///
+/// Closures rather than the editor model, so this view stays in the read
+/// feature and depends on four functions instead of on a type.
+/// Every closure takes the table's own block id first, because one note can
+/// hold several tables and a cell knows its row and column but not which grid
+/// it belongs to.
+struct NoteTableEditing {
+    let insertRow: (String, Int) -> Void
+    let deleteRow: (String, Int) -> Void
+    let insertColumn: (String, Int) -> Void
+    let deleteColumn: (String, Int) -> Void
+    let setCellColour: (String, Int, Int, String) -> Void
+}
+
+/// The row and column actions, attached to a cell.
+private struct NoteTableCellActions: ViewModifier {
+    let editing: NoteTableEditing?
+    /// The `table` block this cell belongs to. Without it there is no way to
+    /// say which grid an insert applies to.
+    let tableId: String?
+    let row: Int
+    let column: Int
+
+    func body(content: Content) -> some View {
+        guard let editing, let tableId else { return AnyView(content) }
+        return AnyView(
+            content.contextMenu {
+                Button {
+                    editing.insertRow(tableId, row)
+                } label: {
+                    Label("Insert row above", systemImage: "arrow.up.to.line")
+                }
+                Button {
+                    editing.insertRow(tableId, row + 1)
+                } label: {
+                    Label("Insert row below", systemImage: "arrow.down.to.line")
+                }
+                Button {
+                    editing.insertColumn(tableId, column)
+                } label: {
+                    Label("Insert column before", systemImage: "arrow.left.to.line")
+                }
+                Button {
+                    editing.insertColumn(tableId, column + 1)
+                } label: {
+                    Label("Insert column after", systemImage: "arrow.right.to.line")
+                }
+
+                Menu {
+                    Button("Default") { editing.setCellColour(tableId, row, column, "default") }
+                    ForEach(Tokens.Content.names, id: \.self) { name in
+                        Button(name.capitalized) {
+                            editing.setCellColour(tableId, row, column, name)
+                        }
+                    }
+                } label: {
+                    Label("Cell colour", systemImage: "paintpalette")
+                }
+
+                Divider()
+                Button(role: .destructive) {
+                    editing.deleteRow(tableId, row)
+                } label: {
+                    Label("Delete row", systemImage: "trash")
+                }
+                Button(role: .destructive) {
+                    editing.deleteColumn(tableId, column)
+                } label: {
+                    Label("Delete column", systemImage: "trash")
+                }
+            }
+        )
     }
 }

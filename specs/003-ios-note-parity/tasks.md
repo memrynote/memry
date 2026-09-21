@@ -221,16 +221,16 @@ after sync.
 
 **Depends on**: G-P2, Phase E.
 
-- [ ] N500 Block editing surface from N302 across all text-bearing block types
-- [ ] N501 Enter, Backspace and selection at block boundaries: split, merge and delete
-- [ ] N502 Insert menu (desktop's slash menu): all block types plus link to note, insert template, and insert picture through N214. Reachable from a keyboard accessory, not only by typing `/`
-- [ ] N503 Block context menu: turn into, colours, duplicate, move to, delete
-- [ ] N504 Selection formatting toolbar: the five marks, colour, link
-- [ ] N505 Table editing UI: cell selection, row and column insert and delete, column resize, cell colour
-- [ ] N506 Code block: language picker and copy
-- [ ] N507 Callout type switching and toggle fold
-- [ ] N508 [P] Editing accessibility pass: VoiceOver on an editable block, Dynamic Type in the toolbars, reduced motion
-- [ ] N509 Undo and redo, **native**: an undo stack over the operations the shell issued, not a yrs `UndoManager` in the core. Record in `research.md` that iOS and desktop undo granularity may differ, which is the accepted trade
+- [x] N500 Block editing surface from N302 across all text-bearing block types
+- [x] N501 Enter, Backspace and selection at block boundaries: split, merge and delete
+- [x] N502 Insert menu (desktop's slash menu): all block types plus link to note, insert template, and insert picture through N214. Reachable from a keyboard accessory, not only by typing `/`
+- [x] N503 Block context menu: turn into, colours, duplicate, move to, delete
+- [x] N504 Selection formatting toolbar: the five marks, colour, link
+- [x] N505 Table editing UI: cell selection, row and column insert and delete, column resize, cell colour
+- [x] N506 Code block: language picker and copy
+- [x] N507 Callout type switching and toggle fold
+- [x] N508 [P] Editing accessibility pass: VoiceOver on an editable block, Dynamic Type in the toolbars, reduced motion
+- [x] N509 Undo and redo, **native**: an undo stack over the operations the shell issued, not a yrs `UndoManager` in the core. Record in `research.md` that iOS and desktop undo granularity may differ, which is the accepted trade
 
 ---
 

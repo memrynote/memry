@@ -47,6 +47,8 @@ struct NoteBlocksView: View {
     /// identity to sign a write with gets — the keyboard is **absent** rather
     /// than present and refusing.
     var editing: NoteEditingBridge?
+    /// Row and column editing for any table in this note (N505).
+    var tableEditing: NoteTableEditing?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
@@ -58,7 +60,8 @@ struct NoteBlocksView: View {
                     tableContent: tableContent,
                     attachment: attachment,
                     removeAttachment: removeAttachment,
-                    editing: editing
+                    editing: editing,
+                    tableEditing: tableEditing
                 )
             }
         }
@@ -142,6 +145,7 @@ struct NoteBlockView: View {
     var attachment: ((String) -> BlockAttachment)?
     var removeAttachment: ((String) async -> Void)?
     var editing: NoteEditingBridge?
+    var tableEditing: NoteTableEditing?
 
     var body: some View {
         content
@@ -214,7 +218,9 @@ struct NoteBlockView: View {
         case "table":
             NoteTableView(
                 table: block.id.flatMap { tableContent?($0) },
-                openTarget: openTarget
+                openTarget: openTarget,
+                editing: tableEditing,
+                tableId: block.id
             )
         case "bookmark":
             // A bookmark carries its whole card in props — url, title, site —
