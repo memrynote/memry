@@ -34,6 +34,8 @@ Click **Restore** on a selected version to replace the current note content with
 
 The previous state is **itself recorded as a new version** — restore is non-destructive.
 
+If the note is open in a tab, the restored content swaps into the editor in place. You don't need to close and reopen the note to see it.
+
 ## Diff View
 
 Toggle a diff view to compare the selected version against the current. Adds, deletes, and modifications are color-coded.
