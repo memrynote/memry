@@ -59,7 +59,7 @@ function handles(overrides: Record<string, unknown> = {}): VaultServiceHandles {
           task_count: 4,
           icon: null,
           home_note_id: null,
-          linked_counts: { notes: 2, files: 0, events: 1 }
+          linked_counts: { notes: 2, files: 3, events: 1 }
         }
       ])
     },
@@ -223,7 +223,7 @@ describe('buildChangePreview', () => {
   it('reports project links, not just the task count, for a project delete', async () => {
     const preview = await buildChangePreview('vault_delete_project', { id: 'project-1' }, handles())
 
-    expect(preview.loss).toEqual(['tasks:4', 'notes:2', 'events:1'])
+    expect(preview.loss).toEqual(['tasks:4', 'notes:2', 'files:3', 'events:1'])
   })
 
   /**
@@ -280,6 +280,58 @@ describe('buildChangePreview', () => {
     expect(preview.item.type).toBe('task')
     expect(preview.item.title).toBe('Ship the preview API')
     expect(vault.notes.read).not.toHaveBeenCalled()
+  })
+
+  /**
+   * A tool with no builder still has to draw something. A card with no content
+   * is worse than a coarse one: the user cannot tell whether the write is small
+   * or the preview is broken.
+   */
+  it('names the operation and its arguments for a tool it does not know', async () => {
+    const preview = await buildChangePreview(
+      'vault_invent_something',
+      { id: 'thing-1', count: 3, untouched: null },
+      handles()
+    )
+
+    expect(preview.kind).toBe('fields')
+    expect(preview.item.title).toBe('vault_invent_something')
+    expect(preview.fields).toEqual([
+      { key: 'id', before: null, after: 'thing-1' },
+      { key: 'count', before: null, after: '3' }
+    ])
+  })
+
+  it('reads arguments that are not an object as no arguments at all', async () => {
+    const preview = await buildChangePreview('vault_invent_something', 'nonsense', handles())
+
+    expect(preview.fields).toEqual([])
+    expect(preview.item.title).toBe('vault_invent_something')
+  })
+
+  it('says nothing is lost when a project has no tasks or links', async () => {
+    const vault = handles({
+      projects: {
+        get: vi.fn(async () => null),
+        list: vi.fn(async () => [
+          {
+            id: 'project-1',
+            name: 'Empty',
+            status: null,
+            task_count: 0,
+            icon: null,
+            home_note_id: null,
+            linked_counts: { notes: 0, files: 0, events: 0 }
+          }
+        ])
+      }
+    })
+
+    const preview = await buildChangePreview('vault_delete_project', { id: 'project-1' }, vault)
+
+    expect(preview.loss).toEqual([])
+    expect(preview.destructive).toBe(true)
+    expect(preview.item.title).toBe('Empty')
   })
 
   it('throws rather than inventing a before when the note is gone', async () => {

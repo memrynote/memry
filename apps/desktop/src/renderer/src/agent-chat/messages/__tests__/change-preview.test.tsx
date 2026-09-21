@@ -107,6 +107,25 @@ describe('ChangePreviewView', () => {
   })
 
   /**
+   * A loss entry main did not shape as `key:value` still has to reach the user
+   * rather than being dropped on the floor.
+   */
+  it('falls back to the raw text of a loss entry it cannot parse', () => {
+    render(
+      <ChangePreviewView
+        preview={preview({
+          kind: 'loss',
+          intent: 'delete',
+          destructive: true,
+          loss: ['something unparsed']
+        })}
+      />
+    )
+
+    expect(screen.getByText('other: something unparsed')).toBeInTheDocument()
+  })
+
+  /**
    * Silence would read as a broken preview, so a write that moves nothing the
    * card can name has to say that in words.
    */
