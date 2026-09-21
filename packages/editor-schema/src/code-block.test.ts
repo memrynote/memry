@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { codeBlockOptions } from '@blocknote/code-block'
-import { memryCodeBlockOptions } from './code-block'
+import { memryCodeBlockOptions, memrySyntaxHighlighter } from './code-block'
 
 describe('memryCodeBlockOptions', () => {
   it('adds PowerShell and KQL to the language picker', () => {
@@ -44,64 +44,22 @@ describe('memryCodeBlockOptions', () => {
     expect(memryCodeBlockOptions.defaultLanguage).toBe('javascript')
   })
 
-  it('loads both grammars into the highlighter up front', async () => {
-    // #given BlockNote's resolver calls `loadLanguage(key)` for a key it has
-    // not loaded, which throws for anything outside its bundle.
-
-    // #when
-    const highlighter = await memryCodeBlockOptions.createHighlighter()
+  it('no longer carries a highlighter factory of its own', () => {
+    // #given BlockNote 0.51 moved syntax highlighting off the code-block
+    // options and into an editor extension. A stale `createHighlighter` here
+    // would be silently ignored — the options object is only read for its
+    // language map and default — so its absence is the contract.
 
     // #then
-    expect(highlighter.getLoadedLanguages()).toEqual(
-      expect.arrayContaining(['powershell', 'kusto'])
-    )
+    expect('createHighlighter' in memryCodeBlockOptions).toBe(false)
   })
 
-  it.each([
-    ['powershell', 'Get-ChildItem | Where-Object { $_.Length -gt 1kb }'],
-    ['kusto', 'StormEvents | where State == "TEXAS" | count']
-  ])('tokenizes %s, not just registers it', async (lang, code) => {
-    // #given registering a grammar name is not the same as having a grammar
-    // that produces spans — more than one colour proves it actually tokenized.
-    const highlighter = await memryCodeBlockOptions.createHighlighter()
-
-    // #when
-    const tokens = highlighter.codeToTokensBase(code, {
-      lang: lang as Parameters<typeof highlighter.codeToTokensBase>[1]['lang'],
-      theme: 'github-dark'
-    })
+  it('exports the highlighting extension a surface opts into', () => {
+    // #given `extensions: [memrySyntaxHighlighter]` is what turns colour on;
+    // a surface that cannot afford shiki's bytes passes nothing and still gets
+    // the same node with the same props (#2032).
 
     // #then
-    const colors = new Set(tokens.flat().map((token) => token.color))
-    expect(colors.size).toBeGreaterThan(1)
-  })
-
-  it('hands BlockNote a parser that emits both themes as CSS variables', async () => {
-    // #given BlockNote reuses `globalThis[Symbol.for('blocknote.shikiParser')]`
-    // if it is already set, which is how the dual-theme options get in. Without
-    // it every token is github-dark, unreadable on the light theme.
-
-    // #when
-    await memryCodeBlockOptions.createHighlighter()
-    const parser = (globalThis as Record<symbol, unknown>)[
-      Symbol.for('blocknote.shikiParser')
-    ] as (args: { content: string; language: string; pos: number; size: number }) => {
-      type: { attrs?: Record<string, unknown> }
-    }[]
-    const decorations = parser({
-      // powershell, because `createHighlighter` loads it eagerly; BlockNote's
-      // own grammars load on demand and are absent here.
-      content: 'Get-ChildItem',
-      language: 'powershell',
-      pos: 0,
-      size: 'Get-ChildItem'.length + 2
-    })
-
-    // #then
-    const styles = decorations
-      .map((decoration) => String(decoration.type.attrs?.style ?? ''))
-      .join(' ')
-    expect(styles).toContain('--shiki-light')
-    expect(styles).toContain('--shiki-dark')
+    expect(typeof memrySyntaxHighlighter).toBe('function')
   })
 })

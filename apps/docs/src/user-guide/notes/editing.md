@@ -35,7 +35,7 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Bullet list, numbered list, check list
 - Quote, callout
 - Toggle list (collapsible section — nest text, images, even other toggles inside it)
-- Code block (language picker: 50 languages, alphabetical, including PowerShell and KQL)
+- Code block (language picker: 50 languages, alphabetical)
 - Divider
 - Image, file
 - Table
@@ -47,8 +47,11 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 and a small toolbar appears in its top-right corner:
 
 - the **language picker**, which sets the syntax highlighting — 50 languages,
-  alphabetical, Plain Text first, including PowerShell and KQL
+  alphabetical, Plain Text first
 - **Copy code**, which puts the whole block on the clipboard
+
+PowerShell and KQL are in the picker and are saved to your file like any other
+language, but they currently render without colour.
 
 Highlighting follows your theme: the same block is light in the light theme and
 dark in the dark one, on the sidebar's own background rather than a black slab.
@@ -615,8 +618,12 @@ is that nothing is _lost_ on the way through:
   clickable link while the note is open. Definitions are gathered at the end of the file.
 - **A code fence with no language keeps no language.** A bare ` ` ``` fence is not given one,
   which is what an Obsidian Kanban board's settings block needs to keep working.
+- **An indented code block stays a code block.** A run of lines indented four spaces or one tab
+  stays code, and a line break inside a table cell keeps its row intact rather than cutting the
+  table off there.
 
 Within an edited region some cosmetic details are normalized to one house style: `*` and `+`
-bullets become `-`, `_em_` becomes `*em*`, an underlined `Title` heading becomes `# Title`, and a
-`~~~` fence becomes a ` ``` ` one. These change how that region is spelled, never what it says.
+bullets become `-`, `_em_` becomes `*em*`, an underlined `Title` heading becomes `# Title`, a
+`~~~` fence becomes a ` ``` ` one, and an indented code block is rewritten as a fenced one.
+A line break pasted into a table cell becomes a space, because a table row is one line. These change how that region is spelled, never what it says.
 A note carrying review comments or tracked changes is written in house style throughout.

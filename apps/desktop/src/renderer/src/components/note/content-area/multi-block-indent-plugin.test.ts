@@ -55,7 +55,9 @@ afterEach(() => {
   vi.useRealTimers()
   cleanup()
   for (const { editor, el } of mounted.splice(0)) {
-    ;(editor as any).mount(undefined)
+    // `mount(undefined)` was the teardown until BlockNote 0.54 gave unmounting
+    // its own method; `mount` now takes a required element.
+    editor.unmount()
     el.remove()
   }
 })

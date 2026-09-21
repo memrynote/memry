@@ -1042,13 +1042,19 @@ describe('a spec registered under a key that is not its config.type', () => {
     const blocks = misKeyed.yXmlFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     const written = (await misKeyed.blocksToMarkdownLossy(blocks)).trimEnd()
 
-    // #then the link is gone from the bytes — 30 down to 16. BlockNote logs
+    // #then the link is gone from the bytes — 30 down to 17. BlockNote logs
     // `unrecognized inline content type wikiLink` on the way past (visible in
     // this run's stderr) and returns normally, so nothing rejects the write and
     // the guard has nothing to refuse.
-    expect(written).toBe('See for details.')
+    //
+    // The dropped node leaves its two surrounding spaces behind. That was 16
+    // bytes and one space until BlockNote 0.51, whose serializer no longer
+    // collapses the pair. Incidental to what this test pins — the subject is
+    // that the link vanishes unrefused, and the spec-key assertion in
+    // `@memry/editor-schema` is what stops the schema being built at all.
+    expect(written).toBe('See  for details.')
     expect('See [[Wiki Link]] for details.'.length).toBe(30)
-    expect(written.length).toBe(16)
+    expect(written.length).toBe(17)
   })
 
   it('cannot be built through createMemrySchema', () => {
@@ -1100,7 +1106,14 @@ const INLINE_CASES = [
   {
     nodeName: 'wikiLink',
     attrs: { target: 'Roadmap', alias: 'the plan' },
-    text: '[[Roadmap|the plan]]'
+    text: '[[Roadmap|the plan]]',
+    // Same context split as `inlineImage` below: the alias separator is also
+    // the cell delimiter, so in a table it is escaped. It was written bare up
+    // to BlockNote 0.50, whose table parser tolerated it; 0.51's splits the
+    // row there and drops the alias, so the bare form is no longer safe to
+    // write. `escapeWikiLinkPipesInTableRows` carries the older bytes across
+    // the parse, which rewrites such a note once into this spelling.
+    tableText: '[[Roadmap\\|the plan]]'
   },
   { nodeName: 'hashTag', attrs: { tag: 'roadmap' }, text: '#roadmap' },
   {
@@ -2244,7 +2257,9 @@ describe('custom inline content inside a table', () => {
     [
       'wikiLink with an alias',
       [{ type: 'wikiLink', props: { target: 'Roadmap', alias: 'the plan' } }],
-      '[[Roadmap|the plan]]'
+      // Escaped, because the alias separator is the cell delimiter — see the
+      // `tableText` note on the same node in INLINE_CASES.
+      '[[Roadmap\\|the plan]]'
     ],
     ['hashTag', [{ type: 'hashTag', props: { tag: 'work', color: '', icon: '' } }], '#work'],
     [
@@ -3106,6 +3121,35 @@ describe('blocknote-converter table cell checkboxes', () => {
   it('keeps `[x] done` in a cell too', async () => {
     const first = await roundTrip('| a |\n| --- |\n| [x] done |\n')
     expect(first).toBe('| a        |\n| -------- |\n| [x] done |')
+    expect(await roundTrip(first!)).toBe(first)
+  })
+
+  it('keeps the alias of a bare `[[a|b]]` already written into a vault table', async () => {
+    // #given the bytes every build up to BlockNote 0.50 wrote for an aliased
+    // wiki link in a table cell: the `|` bare, because that parser did not
+    // treat it as the cell delimiter. 0.51's does, so without a reading fix
+    // this row parses as two cells and comes back `| [[Roadmap |` — the alias
+    // deleted from a file the user never edited.
+    const legacy = '| a |\n| --- |\n| [[Roadmap|the plan]] |\n'
+
+    // #when
+    const first = await roundTrip(legacy)
+
+    // #then the link is whole, in the escaped spelling that survives a reparse
+    expect(first).toContain('[[Roadmap\\|the plan]]')
+    // #and the rewrite happens once, not on every open
+    expect(await roundTrip(first!)).toBe(first)
+  })
+
+  it('leaves a pipe that is not inside a wiki link alone', async () => {
+    // #given the escape is scoped to `[[…]]`, so an already-escaped pipe in
+    // ordinary cell prose keeps exactly one backslash rather than collecting
+    // another on every pass.
+    const first = await roundTrip('| a | b |\n| --- | --- |\n| x \\| y | z |\n')
+
+    // #then
+    expect(first).toContain('x \\| y')
+    expect(first).not.toContain('\\\\|')
     expect(await roundTrip(first!)).toBe(first)
   })
 

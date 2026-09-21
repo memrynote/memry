@@ -33,6 +33,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import { BlockNoteEditor } from '@blocknote/core'
 import { createMemrySchema } from './schema'
 import {
   MEMRY_INLINE_CONTENT_TYPES,
@@ -188,7 +189,7 @@ const INLINE_FIXTURES: Record<MemryInlineType, unknown> = {
 interface AnySpec {
   config: { type: string; propSchema: object }
   implementation: {
-    render: (node: unknown, editor: unknown) => { dom: HTMLElement }
+    render: (node: unknown, update: unknown, editor?: unknown) => { dom: HTMLElement }
     toExternalHTML?: (
       node: unknown,
       editor: unknown,
@@ -207,6 +208,24 @@ function serverInlineSpecs(): Record<string, AnySpec> {
 
 function serverSchema() {
   return createMemrySchema({ blocks: createServerBlockSpecs(), inline: createServerInlineSpecs() })
+}
+
+/**
+ * An editor on the server schema, for the inline `render` calls below.
+ *
+ * From BlockNote 0.51 a custom inline spec's `implementation.render` is a
+ * wrapper: it rebuilds the ProseMirror node from the inline content before
+ * handing it to our implementation, and that needs a real `editor.pmSchema`
+ * (reached through `pmSchema.cached.blockNoteEditor`). Called without one it
+ * throws before any of our code runs, which would turn every assertion here
+ * into the same unrelated TypeError.
+ */
+let cachedRenderEditor: { pmSchema: unknown } | null = null
+function renderEditor(): unknown {
+  cachedRenderEditor ??= BlockNoteEditor.create({ schema: serverSchema() } as never) as unknown as {
+    pmSchema: unknown
+  }
+  return cachedRenderEditor
 }
 
 const sorted = (values: readonly string[]): string[] => [...values].sort()
@@ -312,7 +331,7 @@ describe('every server implementation emits exactly what it serializes', () => {
     const node = INLINE_FIXTURES[type]
 
     // #when
-    const rendered = impl.render(node, null)
+    const rendered = impl.render(node, null, renderEditor())
     const external = impl.toExternalHTML?.(node, null, { nestingLevel: 0 })
 
     // #then — `linkMention` shipped an `<a>` chip here and rewrote every
@@ -355,7 +374,7 @@ describe('every server implementation emits exactly what it serializes', () => {
     )
 
     // #when / #then
-    expect(() => impl.render({ type, props }, null)).not.toThrow()
+    expect(() => impl.render({ type, props }, null, renderEditor())).not.toThrow()
   })
 })
 

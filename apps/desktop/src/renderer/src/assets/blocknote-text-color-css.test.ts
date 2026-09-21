@@ -28,8 +28,11 @@ const SWATCHES = ['gray', 'brown', 'red', 'orange', 'yellow', 'green', 'blue', '
  * rather than frozen hexes, it also catches a future re-theme that quietly
  * drops a swatch back toward grey or under AA.
  */
-const LIGHT_SELECTOR = ':root .bn-container'
-const DARK_SELECTOR = ":root .bn-container[data-color-scheme='dark']"
+// `.bn-root`, not `.bn-container`: BlockNote 0.48 split the two and portals
+// the floating UI — including the colour picker these swatches exist for —
+// outside the container, so the palette has to be declared on the root.
+const LIGHT_SELECTOR = ':root .bn-root'
+const DARK_SELECTOR = ":root .bn-root[data-color-scheme='dark']"
 
 /** Below this, OKLCH chroma stops reading as a nameable hue and looks grey. */
 const MIN_CHROMA = 0.05
@@ -43,9 +46,9 @@ const PARSED = new Map<string, Map<string, string>>()
 /**
  * Every custom property `selector` sets, merged across all of its rules in
  * document order (last wins, as the cascade would have it). base.css spreads
- * one selector over several blocks — `:root .bn-container` carries the palette
- * vars up top and the editor chrome further down — so reading only the last
- * matching block would miss declarations that are genuinely in effect.
+ * one selector over several blocks — `:root .bn-root` carries the palette vars
+ * up top and the font family further down — so reading only the last matching
+ * block would miss declarations that are genuinely in effect.
  *
  * Memoised: the pairwise checks ask for the same selector ~80 times, and
  * re-reading and re-parsing a 70 KB stylesheet each time cost ~35s.

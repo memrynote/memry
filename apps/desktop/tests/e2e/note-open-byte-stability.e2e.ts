@@ -34,6 +34,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { test, expect } from './fixtures/sync-auth-fixtures'
 import {
+  getCrdtDocBodyById,
   getNoteHandleByTitle,
   getWritebackDebugById,
   openNoteByTitle
@@ -227,15 +228,30 @@ test.describe('Note open byte stability', () => {
     const baseline = await indexedBaseline(pageA, title, absPath)
     expect(baseline.bytes).not.toContain('tags:')
 
-    // #when it is opened, and write-back has genuinely run
+    // #when it is opened, and the shared doc has genuinely been seeded from it
+    //
+    // Seeding is what this test needs to have happened, not write-back. Up to
+    // BlockNote 0.50 every document carried a trailing empty paragraph, so
+    // opening any note dirtied its Y.Doc and always scheduled a write-back;
+    // waiting for one was how this test avoided passing vacuously. 0.51 made
+    // the trailing block a widget decoration rather than a node, so a note
+    // with nothing to promote — a hash tag is deliberately never promoted —
+    // now produces no CRDT change and therefore no write-back at all.
+    //
+    // That is the stronger form of what #1454 asks for, so it is asserted
+    // rather than waited for below.
     await openInEditor(pageA, title)
-    await waitForWritebackRuns(electronAppA, baseline.id, 1)
+    await expect.poll(() => getCrdtDocBodyById(electronAppA, baseline.id)).not.toBeNull()
 
     // #then the whole file is byte-identical: the tag stays where the user put
     // it. It reaches search and the tag hub through the index (#1454), not by
     // rewriting the file. This test used to assert the opposite, as a pin.
     expect(fs.readFileSync(absPath, 'utf8')).toBe(baseline.bytes)
     expect(fs.readFileSync(absPath, 'utf8')).not.toContain('tags:')
+
+    // #and opening it wrote nothing: no write-back was even scheduled.
+    const writeback = await getWritebackDebugById(electronAppA, baseline.id)
+    expect(writeback?.performedCount ?? 0).toBe(0)
 
     // and the note really does carry the tag, so this is not a lost feature
     const note = await getNoteHandleByTitle(pageA, title)

@@ -45,6 +45,7 @@ vi.mock('@/lib/url-metadata', () => ({
 }))
 
 import { editorSchema } from './editor-schema'
+import { withCollaborationIfLive } from './collaboration-options'
 import { useEditorSync } from './hooks/use-editor-sync'
 
 const mounted: Array<{ editor: BlockNoteEditor; el: HTMLElement; doc: Y.Doc }> = []
@@ -53,7 +54,7 @@ afterEach(() => {
   for (const { editor, el, doc } of mounted.splice(0)) {
     // `mount()` with no element is BlockNote's unmount; its type only admits an
     // element, so the call has to say so.
-    ;(editor as unknown as { mount: (element?: HTMLElement) => void }).mount()
+    editor.unmount()
     el.remove()
     doc.destroy()
   }
@@ -70,10 +71,13 @@ function createCollaborativeEditor(existingDoc?: Y.Doc): CollabEditor {
   const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
 
   // Exactly how ContentArea builds it when `isCollaborationActive(...)` is true.
-  const editor = BlockNoteEditor.create({
-    schema: editorSchema,
-    collaboration: { fragment, user: { name: 'Local User', color: '#3b82f6' } }
-  } as never) as unknown as BlockNoteEditor
+  const editor = BlockNoteEditor.create(
+    // The production helper, not a copy of it: `collaboration` stopped being
+    // an editor option in BlockNote 0.52 and passing it raw still compiles,
+    // so a hand-rolled options object here would bind to nothing and these
+    // tests would pass against an editor that never touches the Y.Doc.
+    withCollaborationIfLive(fragment, { schema: editorSchema })
+  ) as unknown as BlockNoteEditor
 
   const el = document.createElement('div')
   document.body.appendChild(el)
@@ -372,5 +376,86 @@ describe('opening a collaborative note promotes its links without an edit', () =
     // and not an excuse to do nothing
     expect(wikiLinkTargets(editor, 1)).toEqual(['Other Block'])
     expect(nodeNames(fragment).filter((name) => name === 'wikiLink')).toHaveLength(1)
+  })
+})
+
+describe('the renderer promotes [[X]] inside a table cell', () => {
+  it('writes a wikiLink node into the cell, not beside the table', () => {
+    // #given the shape main's parser leaves a vault table in: the cell holds
+    // `[[X]]` as plain text, and only the renderer turns it into a chip.
+    const { editor, fragment } = createCollaborativeEditor()
+    editor.replaceBlocks(editor.document, [
+      {
+        type: 'table',
+        content: {
+          type: 'tableContent',
+          columnWidths: [null, null],
+          headerRows: 1,
+          rows: [
+            {
+              cells: [
+                { type: 'tableCell', content: [{ type: 'text', text: 'Area', styles: {} }] },
+                { type: 'tableCell', content: [{ type: 'text', text: 'Owner', styles: {} }] }
+              ]
+            },
+            {
+              cells: [
+                { type: 'tableCell', content: [{ type: 'text', text: 'Q3', styles: {} }] },
+                { type: 'tableCell', content: [{ type: 'text', text: '[[Roadmap]]', styles: {} }] }
+              ]
+            }
+          ]
+        }
+      } as never
+    ])
+
+    // #when the note is opened
+    mountEditorSync(editor, fragment)
+
+    // #then the promotion reached the CRDT
+    expect(nodeNames(fragment)).toContain('wikiLink')
+  })
+
+  it('promotes a cell in a fragment that was already populated before the open', () => {
+    // #given the real open order: main seeded the shared doc from the vault
+    // file, and THIS editor binds to a fragment that already holds the table.
+    // The variant above writes the table through the same editor, which hides
+    // any ordering difference between ySync filling the document and the load
+    // effect reading it.
+    const seeded = createCollaborativeEditor()
+    seeded.editor.replaceBlocks(seeded.editor.document, [
+      {
+        type: 'table',
+        content: {
+          type: 'tableContent',
+          columnWidths: [null, null],
+          headerRows: 1,
+          rows: [
+            {
+              cells: [
+                { type: 'tableCell', content: [{ type: 'text', text: 'Area', styles: {} }] },
+                { type: 'tableCell', content: [{ type: 'text', text: 'Owner', styles: {} }] }
+              ]
+            },
+            {
+              cells: [
+                { type: 'tableCell', content: [{ type: 'text', text: 'Q3', styles: {} }] },
+                {
+                  type: 'tableCell',
+                  content: [{ type: 'text', text: '[[Table Target 1]]', styles: {} }]
+                }
+              ]
+            }
+          ]
+        }
+      } as never
+    ])
+
+    // #when a fresh editor opens the same doc
+    const reopened = createCollaborativeEditor(seeded.doc)
+    mountEditorSync(reopened.editor, reopened.fragment)
+
+    // #then
+    expect(nodeNames(reopened.fragment)).toContain('wikiLink')
   })
 })

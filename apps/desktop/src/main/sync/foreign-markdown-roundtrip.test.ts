@@ -155,6 +155,56 @@ const UNTAGGED_FENCE_CASES: ForeignCase[] = [
 ]
 
 /**
+ * Code that reaches the parser as something other than a fence.
+ *
+ * BlockNote 0.51 replaced the markdown pipeline and its parser implements
+ * neither of these. Both were measured against the real converter:
+ *
+ * - an INDENTED code block came back as a paragraph, so the block was gone
+ *   from the document and the note was rewritten as prose. Worse, the first
+ *   save and the second disagreed \u2014 `para\n\n const x = 1` then
+ *   `para\n\nconst x = 1` \u2014 which is two devices writing different bytes for
+ *   one edit. A fence is the only spelling the editor has for a code block
+ *   and the one every build up to 0.50 wrote, so that is what it becomes.
+ * - a raw `<pre>` block is prose to the hard-break mask and a CODE BLOCK to
+ *   0.51's HTML step, and the repair pass used to skip code blocks whole \u2014 so
+ *   the mask token was written into the user's file and stayed there on every
+ *   later save. The spelling now travels with the token, which is also what
+ *   keeps a `\\` line continuation from becoming two spaces.
+ */
+const NON_FENCE_CODE_CASES: ForeignCase[] = [
+  {
+    name: 'an indented code block stays a code block',
+    markdown: 'para\n\n    const x = 1\n    const y = 2',
+    canonical: 'para\n\n```javascript\nconst x = 1\nconst y = 2\n```'
+  },
+  {
+    name: 'a tab-indented code block stays a code block',
+    markdown: 'para\n\n\tconst x = 1',
+    canonical: 'para\n\n```javascript\nconst x = 1\n```'
+  },
+  {
+    name: 'a blank line inside an indented code block does not end it',
+    markdown: 'para\n\n    a\n\n    b',
+    canonical: 'para\n\n```javascript\na\n\nb\n```'
+  },
+  {
+    name: 'three spaces are prose, not code',
+    markdown: 'para\n\n   still a paragraph',
+    canonical: 'para\n\nstill a paragraph'
+  },
+  {
+    name: 'an indented lazy continuation line is prose, not code',
+    markdown: 'para\n    still the same paragraph',
+    canonical: 'para\nstill the same paragraph'
+  },
+  {
+    name: 'an indented line inside a fence is content, not a nested code block',
+    markdown: '```js\n    deep\n```'
+  }
+]
+
+/**
  * The settings block the report was written about.
  *
  * The plugin does not read its settings off an AST. `extractSettingsFooter`
@@ -347,6 +397,7 @@ describe('foreign markdown round-trip, main pipeline', () => {
     ['hard line breaks', HARD_BREAK_CASES],
     ['reference links', REFERENCE_LINK_CASES],
     ['untagged code fences', UNTAGGED_FENCE_CASES],
+    ['code that is not written as a fence', NON_FENCE_CODE_CASES],
     ['Obsidian Kanban settings', KANBAN_SETTINGS_CASES]
   ]
 
@@ -365,6 +416,39 @@ describe('foreign markdown round-trip, main pipeline', () => {
       })
     })
   }
+
+  /**
+   * The one thing that must never happen: a mask token in the user's file.
+   *
+   * `<pre>` is the path that got there. The hard-break mask skips code fences
+   * but not raw HTML, and 0.51 maps `<pre>` onto a code block, so the token
+   * rode into a block the repair pass skipped and was serialized verbatim \u2014
+   * stable across every later save, so it never healed.
+   */
+  describe('a raw <pre> block (the mask-token path)', () => {
+    it('writes no mask token into the file', async () => {
+      const out = await roundTripCanonical('<pre><code>A  \nB</code></pre>')
+
+      expect(out).not.toMatch(/MEMRYHBK|MEMRYTKN|MEMRYDLT/)
+      expect(await roundTripCanonical(out), 'and it settles').toBe(out)
+    })
+
+    it('keeps a shell line continuation as a backslash, not as two spaces', async () => {
+      // #given the reason the spelling travels with the token rather than
+      // being reconstituted as "two spaces": inside a code block a trailing
+      // backslash is a line continuation, and replacing it breaks the script.
+      const out = await roundTripCanonical('<pre><code>npm run build \\\n  --silent</code></pre>')
+
+      expect(out).toContain('npm run build \\')
+      expect(out).not.toMatch(/MEMRYHBK|MEMRYTKN|MEMRYDLT/)
+    })
+
+    it('keeps an inline token payload as the author wrote it', async () => {
+      const out = await roundTripCanonical('<pre><code>((mention:abc_def))</code></pre>')
+
+      expect(out).toContain('((mention:abc_def))')
+    })
+  })
 
   describe('an Obsidian Kanban board (#1915)', () => {
     it('comes back byte-identical when untouched', async () => {

@@ -11,6 +11,7 @@
     "./code-block": "./src/code-block.ts",
     "./conformance": "./src/conformance.ts",
     "./note-refs": "./src/blocks/rewrite-note-refs.ts",
+    "./parse-markdown": "./src/parse-markdown.ts",
     "./server": "./src/server.ts"
   },
   "types": "./src/index.ts",
@@ -19,11 +20,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
-    "@blocknote/code-block": "^0.47.1",
-    "@blocknote/core": "^0.47.1",
-    "@memry/shared": "workspace:*",
-    "@shikijs/langs-precompiled": "^3",
-    "prosemirror-highlight": "^0.13.0"
+    "@blocknote/code-block": "^0.54.2",
+    "@blocknote/core": "^0.54.2",
+    "@memry/shared": "workspace:*"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*"

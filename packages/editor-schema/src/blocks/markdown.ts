@@ -526,33 +526,55 @@ export function serializeToggleBlock(
 const DETAILS_MARKUP_LINE_REGEX = /^(?:<details(?:\s[^>]*)?>|<summary>.*<\/summary>|<\/details>)$/
 
 /**
- * Escape a `<details>` markup line that no toggle claimed, so CommonMark reads
- * it as text rather than as a raw HTML block.
+ * The `<` of a declined `<details>` line, while it crosses the parser.
+ *
+ * A markdown backslash escape used to do this job: `\<details>` parsed to the
+ * text `<details>` and the serializer wrote it back bare. BlockNote 0.51's
+ * parser does not implement `\<` — measured, it keeps the backslash in the
+ * text and reads the rest of the line as raw HTML, so
+ * `\<details data-memry-toggle>` came back as a paragraph holding a lone
+ * backslash with the markup gone. Escaping the `>` too got the line through
+ * intact but kept the backslash, writing `\<details …>` into the vault.
+ *
+ * So the `<` travels as a token instead, the same shape as the hard-break mask
+ * in `empty-lines.ts`: ordinary text to any parser, restored once the blocks
+ * exist. Nothing needs escaping on the way out — a text node holding
+ * `<details>` serializes to `<details>` bare.
+ */
+const DETAILS_LT_TOKEN = 'MEMRYDLT;'
+
+/**
+ * Hide the `<` of a `<details>` markup line that no toggle claimed, so the
+ * parser reads the line as text rather than dropping it as a raw HTML block.
  *
  * BlockNote's markdown parser has no block for raw HTML and drops it, which is
  * how an unterminated toggle lost its open and summary lines on the next
  * write-back (#1883) — and how a hand-written Obsidian `<details>` lost all
  * three, despite the promise above that it is left as its author wrote it.
- * Escaped, the line parses as an ordinary paragraph and remark writes the
- * backslash back out as nothing, so the author's bytes survive every save.
  *
- * Every `<` on the line is escaped, not just the leading one: a
+ * Every `<` on the line is hidden, not just the leading one: a
  * `<summary>x</summary>` whose closing tag stays raw loses that tag to the same
  * parser and comes back as `<summary>x`.
  *
- * The author's own backslashes are doubled FIRST, because a `\` already sitting
- * in front of a `<` would otherwise pair with the escape being added:
- * `<summary>C:\<path></summary>` became `...C:\\<path>...`, CommonMark read the
- * `\\` as one literal backslash, and `<path>` was left raw for the parser to
- * drop — the exact loss this function exists to prevent. Doubling costs nothing
- * on the way out: CommonMark reads `\\` back as one backslash and remark writes
- * a literal backslash bare, so a line with a backslash anywhere else is
- * byte-identical either way. Measured both directions, `<summary>a\b</summary>`
- * and `<summary>C:\Users\me</summary>` included.
+ * The author's own backslashes are left exactly as written. The old escape had
+ * to double them so a `\` already in front of a `<` could not pair with the
+ * backslash being added; nothing is added now, so there is nothing to pair
+ * with and `<summary>C:\<path></summary>` survives as its author wrote it.
  */
 function escapeDetailsMarkup(line: string): string {
   if (!DETAILS_MARKUP_LINE_REGEX.test(line)) return line
-  return line.replace(/\\/g, '\\\\').replace(/</g, '\\<')
+  return line.split('<').join(DETAILS_LT_TOKEN)
+}
+
+/**
+ * Put back every `<` that `escapeDetailsMarkup` hid, for one inline text run.
+ *
+ * Callers apply this to the blocks their parse produced. A token that reaches
+ * a block unrestored is written into the user's file as literal text, so this
+ * runs over every parsed run rather than only the ones expected to carry one.
+ */
+export function restoreDetailsMarkup(text: string): string {
+  return text.includes(DETAILS_LT_TOKEN) ? text.split(DETAILS_LT_TOKEN).join('<') : text
 }
 
 /**

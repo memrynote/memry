@@ -6,6 +6,7 @@ import {
   serializeLinkMentionToken,
   parseLinkMentionToken
 } from './link-mention'
+import { renderInlineSpec } from './inline-spec-render.test-helper'
 
 describe('LinkMention inline content', () => {
   it('creates link mention payloads with optional title, favicon, and site name defaults', () => {
@@ -41,7 +42,7 @@ describe('LinkMention inline content', () => {
   })
 
   it('renders favicon, site name, title, data attributes, fallback text, and image error hiding', () => {
-    const render = (LinkMention as any).implementation.render({
+    const render = renderInlineSpec('linkMention', LinkMention, {
       props: {
         url: 'https://memry.test/page',
         domain: 'memry.test',
@@ -65,7 +66,7 @@ describe('LinkMention inline content', () => {
     image.onerror?.(new Event('error'))
     expect(image).toHaveStyle({ display: 'none' })
 
-    const domainFallback = (LinkMention as any).implementation.render({
+    const domainFallback = renderInlineSpec('linkMention', LinkMention, {
       props: {
         url: 'https://memry.test/page',
         domain: 'memry.test',
@@ -76,7 +77,7 @@ describe('LinkMention inline content', () => {
     })
     expect(domainFallback.dom.querySelector('.link-mention-site')?.textContent).toBe('memry.test')
 
-    const fallback = (LinkMention as any).implementation.render({
+    const fallback = renderInlineSpec('linkMention', LinkMention, {
       props: {
         url: 'https://fallback.test/page',
         domain: '',

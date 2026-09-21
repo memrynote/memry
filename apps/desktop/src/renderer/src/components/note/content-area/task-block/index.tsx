@@ -20,13 +20,7 @@ const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, h
 // the main process's headless twin cannot disagree; only the React
 // presentation is declared here.
 export const createTaskBlock = createReactBlockSpec(taskBlockConfig, {
-  render: (props) => (
-    <TaskBlockRenderer
-      block={props.block as TaskBlock}
-      editor={props.editor}
-      contentRef={props.contentRef}
-    />
-  )
+  render: (props) => <TaskBlockRenderer block={props.block as TaskBlock} editor={props.editor} />
 })
 
 export function getTaskSlashMenuItem(editor: unknown, noteId?: string) {

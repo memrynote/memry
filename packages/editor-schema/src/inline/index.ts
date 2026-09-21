@@ -9,6 +9,7 @@ import { inlineCheckboxConfig } from './inline-checkbox'
 import { serializeThroughExternalHTML } from './table-cell-serialization'
 
 export * from './table-cell-serialization'
+export * from './token-masking'
 export * from './wiki-link'
 export * from './link-mention'
 export * from './hash-tag'

@@ -37,8 +37,12 @@ function createEditor(options?: { registerCreatesExtension?: boolean }) {
     }),
     focus: vi.fn(),
     setTextCursorPosition: vi.fn(),
+    // The paragraph BlockNote's trailing widget would have inserted for a
+    // click on itself; `focusAtEnd` puts one there since 0.51 stopped keeping
+    // a real trailing block in the document.
+    insertBlocks: vi.fn(() => [{ id: 'inserted' }]),
     isEditable: true,
-    document: [] as Array<{ id: string }>
+    document: [] as Array<{ id: string; type?: string; content?: unknown }>
   }
 
   return { editor, getAIExtension: () => aiExtension }
@@ -204,13 +208,20 @@ describe('useBlockNoteSetup', () => {
     expect((window as unknown as { __memryEditor?: unknown }).__memryEditor).toBe(noteEditor)
   })
 
-  it('syncs spellcheck and focus-at-end behavior into the editor DOM', () => {
+  it('syncs spellcheck, and starts a new block when the note ends in content', () => {
+    // #given a note whose last block is the user's own last line. Until
+    // BlockNote 0.51 that could not happen: every document carried a real
+    // trailing empty paragraph, so a click below the note landed in it. 0.51
+    // made the trailing block a widget decoration, and putting the caret at
+    // the end of the last block means continuing that line instead.
     const { editor } = createEditor()
     const contentEditable = document.createElement('div')
     contentEditable.setAttribute('contenteditable', 'true')
     editorContainerRef.current!.appendChild(contentEditable)
-    editor.document = [{ id: 'first' }, { id: 'last' }]
-    editor.setTextCursorPosition = vi.fn()
+    editor.document = [
+      { id: 'first', type: 'paragraph', content: [{ type: 'text', text: 'a' }] },
+      { id: 'last', type: 'paragraph', content: [{ type: 'text', text: 'b' }] }
+    ]
     const focusAtEndRef: React.RefObject<(() => void) | null> = { current: null }
 
     renderHook(() =>
@@ -224,10 +235,40 @@ describe('useBlockNoteSetup', () => {
 
     expect(contentEditable.spellcheck).toBe(true)
 
+    // #when the empty space below the note is clicked
     focusAtEndRef.current?.()
 
+    // #then a fresh paragraph carries the caret, and the user's last line is
+    // left as they wrote it
     expect(editor.focus).toHaveBeenCalled()
-    expect(editor.setTextCursorPosition).toHaveBeenCalledWith('last', 'end')
+    expect(editor.insertBlocks).toHaveBeenCalledWith(
+      [{ type: 'paragraph' }],
+      editor.document[1],
+      'after'
+    )
+    expect(editor.setTextCursorPosition).toHaveBeenCalledWith({ id: 'inserted' }, 'start')
+  })
+
+  it('reuses a trailing empty paragraph rather than stacking blank blocks', () => {
+    // #given the document the previous case leaves behind. Clicking below the
+    // note again must not add a second empty paragraph.
+    const { editor } = createEditor()
+    editor.document = [
+      { id: 'first', type: 'paragraph', content: [{ type: 'text', text: 'a' }] },
+      { id: 'trailing', type: 'paragraph', content: [] }
+    ]
+    const focusAtEndRef: React.RefObject<(() => void) | null> = { current: null }
+
+    renderHook(() =>
+      useBlockNoteSetup({ editor, spellCheck: true, focusAtEndRef, editorContainerRef })
+    )
+
+    // #when
+    focusAtEndRef.current?.()
+
+    // #then
+    expect(editor.insertBlocks).not.toHaveBeenCalled()
+    expect(editor.setTextCursorPosition).toHaveBeenCalledWith('trailing', 'end')
   })
 
   /**

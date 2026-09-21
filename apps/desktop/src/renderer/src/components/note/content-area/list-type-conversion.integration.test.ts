@@ -18,7 +18,9 @@ const mounted: Array<{ editor: BlockNoteEditor; el: HTMLElement }> = []
 
 afterEach(() => {
   for (const { editor, el } of mounted.splice(0)) {
-    editor.mount(undefined)
+    // `mount(undefined)` was the teardown until BlockNote 0.54 gave unmounting
+    // its own method; `mount` now takes a required element.
+    editor.unmount()
     el.remove()
   }
 })
@@ -38,8 +40,12 @@ function mountEditor(): BlockNoteEditor {
   return editor
 }
 
-// BlockNote keeps a trailing empty paragraph after the last block, so select
-// exactly the three pasted lines — what a user drags over.
+// Select exactly the three pasted lines — what a user drags over.
+//
+// There is no fourth block to avoid any more: BlockNote kept a real trailing
+// empty paragraph in `editor.document` until the 0.51 trailing-block rewrite,
+// and the affordance is not a document node now. The counts below are three
+// for that reason, not because the conversion changed.
 function selectPastedLines(editor: BlockNoteEditor): void {
   const blocks = editor.document
   editor.setSelection(blocks[0].id, blocks[2].id)
@@ -71,8 +77,7 @@ describe('list type conversion on a multi-block selection', () => {
     expect(blockTypes(editor)).toEqual([
       'bulletListItem',
       'bulletListItem',
-      'bulletListItem',
-      'paragraph'
+      'bulletListItem'
     ])
     expect(blockText(editor, 0)).toBe('Milk')
     expect(blockText(editor, 2)).toBe('Bread')
@@ -85,8 +90,7 @@ describe('list type conversion on a multi-block selection', () => {
     expect(blockTypes(numbered)).toEqual([
       'numberedListItem',
       'numberedListItem',
-      'numberedListItem',
-      'paragraph'
+      'numberedListItem'
     ])
 
     const checklist = mountEditor()
@@ -95,8 +99,7 @@ describe('list type conversion on a multi-block selection', () => {
     expect(blockTypes(checklist)).toEqual([
       'checkListItem',
       'checkListItem',
-      'checkListItem',
-      'paragraph'
+      'checkListItem'
     ])
   })
 
@@ -109,7 +112,7 @@ describe('list type conversion on a multi-block selection', () => {
     expect(isListTypeActive(editor, 'bulletListItem')).toBe(true)
 
     toggleListType(editor, 'bulletListItem')
-    expect(blockTypes(editor)).toEqual(['paragraph', 'paragraph', 'paragraph', 'paragraph'])
+    expect(blockTypes(editor)).toEqual(['paragraph', 'paragraph', 'paragraph'])
   })
 
   it('converts a mixed selection to the target type instead of toggling it off', () => {
@@ -123,8 +126,7 @@ describe('list type conversion on a multi-block selection', () => {
     expect(blockTypes(editor)).toEqual([
       'bulletListItem',
       'bulletListItem',
-      'bulletListItem',
-      'paragraph'
+      'bulletListItem'
     ])
   })
 
@@ -135,7 +137,7 @@ describe('list type conversion on a multi-block selection', () => {
     expect(canToggleListType(editor)).toBe(true)
 
     toggleListType(editor, 'bulletListItem')
-    expect(blockTypes(editor)).toEqual(['paragraph', 'bulletListItem', 'paragraph', 'paragraph'])
+    expect(blockTypes(editor)).toEqual(['paragraph', 'bulletListItem', 'paragraph'])
   })
 
   it('leaves blocks without inline content alone', () => {
@@ -154,8 +156,7 @@ describe('list type conversion on a multi-block selection', () => {
       'bulletListItem',
       'bulletListItem',
       'image',
-      'bulletListItem',
-      'paragraph'
+      'bulletListItem'
     ])
   })
 })

@@ -119,7 +119,7 @@ function makeEditor(document: TaskBlock[]): TaskBlockEditor {
 function renderBlock(block: TaskBlock): ReturnType<typeof render> {
   return render(
     <TaskPrefetchProvider noteId="note-1">
-      <TaskBlockRenderer block={block} editor={makeEditor([block])} contentRef={null} />
+      <TaskBlockRenderer block={block} editor={makeEditor([block])} />
     </TaskPrefetchProvider>
   )
 }

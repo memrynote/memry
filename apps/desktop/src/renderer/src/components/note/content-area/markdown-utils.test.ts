@@ -351,12 +351,12 @@ describe('sanitizeBlockIds', () => {
 describe('serializeBlocksPreservingBlanks', () => {
   it('serializes task blocks, embeds, callouts, blank paragraphs, and content groups', async () => {
     const editor = {
+      // No per-type branch: a callout reaches the serializer as a paragraph
+      // carrying its own inline content, so its text comes back through the
+      // same path as everything else.
       blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
         blocks
-          .map((block) => {
-            if (block.type === 'callout') return 'Callout body\n'
-            return block.content?.[0]?.text ?? ''
-          })
+          .map((block) => block.content?.[0]?.text ?? '')
           .filter(Boolean)
           .join('\n')
       )
@@ -405,6 +405,7 @@ describe('serializeBlocksPreservingBlanks', () => {
       {
         type: 'callout',
         props: { type: 'success' },
+        content: [{ type: 'text', text: 'Callout body', styles: {} }],
         children: []
       },
       {
@@ -812,7 +813,12 @@ describe('isEmptyParagraph', () => {
  * marker goes in front of the table, and comes back onto the same cell.
  */
 describe('table cell colours (#1639)', () => {
+  // What the mocked serializer hands back, and what a hand-written vault file
+  // holds. `normalizeSerializedMarkdown` lays a table's columns out to their
+  // own widths on the way out, so the bytes asserted below are the padded
+  // form — the same house style `blocknote-converter.ts` has always written.
   const TABLE_MD = ['| Name | Status |', '| --- | --- |', '| Ship | Done |'].join('\n')
+  const TABLE_OUT = ['| Name | Status |', '| ---- | ------ |', '| Ship | Done   |'].join('\n')
 
   const cell = (text: string, colors: Record<string, string> = {}) => ({
     type: 'tableCell',
@@ -852,14 +858,14 @@ describe('table cell colours (#1639)', () => {
 
     // #then
     expect(markdown).toBe(
-      `<!-- table-colors:{"1:0":{"textColor":"blue","backgroundColor":"red"}} -->\n${TABLE_MD}`
+      `<!-- table-colors:{"1:0":{"textColor":"blue","backgroundColor":"red"}} -->\n${TABLE_OUT}`
     )
   })
 
   it('writes nothing extra for a table nobody has coloured', async () => {
     const markdown = await serializeBlocksPreservingBlanks(tableEditor, [table()] as any[])
 
-    expect(markdown).toBe(TABLE_MD)
+    expect(markdown).toBe(TABLE_OUT)
   })
 
   it('reads the marker back onto the cell it names', async () => {
@@ -885,7 +891,12 @@ describe('table cell colours (#1639)', () => {
  * user drags only survives as a marker line in front of the table.
  */
 describe('table column widths (#1936)', () => {
+  // What the mocked serializer hands back, and what a hand-written vault file
+  // holds. `normalizeSerializedMarkdown` lays a table's columns out to their
+  // own widths on the way out, so the bytes asserted below are the padded
+  // form — the same house style `blocknote-converter.ts` has always written.
   const TABLE_MD = ['| Name | Status |', '| --- | --- |', '| Ship | Done |'].join('\n')
+  const TABLE_OUT = ['| Name | Status |', '| ---- | ------ |', '| Ship | Done   |'].join('\n')
 
   const cell = (text: string) => ({
     type: 'tableCell',
@@ -919,7 +930,7 @@ describe('table column widths (#1936)', () => {
       table([120, null])
     ] as any[])
 
-    expect(markdown).toBe(`<!-- table-layout:{"columnWidths":[120,null]} -->\n${TABLE_MD}`)
+    expect(markdown).toBe(`<!-- table-layout:{"columnWidths":[120,null]} -->\n${TABLE_OUT}`)
   })
 
   it('writes nothing extra for a table nobody has resized', async () => {
@@ -927,7 +938,7 @@ describe('table column widths (#1936)', () => {
       table([null, null])
     ] as any[])
 
-    expect(markdown).toBe(TABLE_MD)
+    expect(markdown).toBe(TABLE_OUT)
   })
 
   it('reads the marker back onto the parsed table', async () => {

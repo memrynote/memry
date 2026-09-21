@@ -163,8 +163,27 @@ async function focusEditorEnd(page: Page): Promise<void> {
 
     const lastBlock = (editor.document as any[]).at(-1)
     editor.focus()
-    if (lastBlock?.id) {
+    if (!lastBlock?.id) return
+
+    // Where a click in the empty space below the note puts the caret, which is
+    // what these tests are standing in for. Until BlockNote 0.51 that was
+    // simply the end of the last block, because every document carried a real
+    // trailing empty paragraph and the last block WAS one. 0.51 made the
+    // trailing block a widget decoration, so landing on the last block now
+    // means landing at the end of the user's own last line — typing there
+    // continues that line instead of starting a new one, and the undo this
+    // test is about would have nothing of its own to revert.
+    //
+    // Mirrors `focusAtEndRef` in `use-block-note-setup.ts`.
+    const content = lastBlock.content
+    const isEmptyParagraph =
+      lastBlock.type === 'paragraph' && Array.isArray(content) && content.length === 0
+    if (isEmptyParagraph) {
       editor.setTextCursorPosition(lastBlock.id, 'end')
+      return
     }
+
+    const [inserted] = editor.insertBlocks([{ type: 'paragraph' }], lastBlock, 'after')
+    editor.setTextCursorPosition(inserted, 'start')
   })
 }

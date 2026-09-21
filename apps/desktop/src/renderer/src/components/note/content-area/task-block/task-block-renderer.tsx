@@ -47,10 +47,14 @@ export interface TaskBlockEditor {
   getTextCursorPosition: () => { block: TaskBlock }
 }
 
+/**
+ * No `contentRef`: BlockNote 0.54 stopped handing one to a block declared
+ * `content: "none"`, which this one is. There was never a content DOM to
+ * attach it to — the ref only ever landed on our own wrapper.
+ */
 interface TaskBlockRendererProps {
   block: TaskBlock
   editor: unknown
-  contentRef: React.Ref<HTMLDivElement>
 }
 
 const BLOCKNOTE_OVERRIDES = `
@@ -73,11 +77,7 @@ const BLOCKNOTE_OVERRIDES = `
   }
 `
 
-export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
-  block,
-  editor: editorInput,
-  contentRef
-}) => {
+export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: editorInput }) => {
   const editor = editorInput as TaskBlockEditor
   const { t: tPhaseF } = useT('notes')
   const { taskId, title, checked, parentTaskId } = block.props
@@ -187,7 +187,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   useEffect(() => {
     if (!task || syncingRef.current) return
     const needsUpdate =
-      task.title !== block.props.title || !!task.completedAt !== block.props.checked
+      task.title !== block.props.title || Boolean(task.completedAt) !== block.props.checked
     if (!needsUpdate) return () => {}
     let cancelled = false
     queueMicrotask(() => {
@@ -569,7 +569,6 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   if (isDeleted) {
     return (
       <div
-        ref={contentRef}
         contentEditable={false}
         className={cn(
           'flex items-center gap-3 rounded-md bg-stone-100 py-[7px] text-sm text-muted-foreground opacity-60 dark:bg-stone-800/50',
@@ -606,7 +605,6 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   if (!rowProject) {
     return (
       <div
-        ref={contentRef}
         contentEditable={false}
         className={cn(
           'flex items-center gap-3 rounded-md py-[7px] text-sm text-muted-foreground',
@@ -621,11 +619,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   }
 
   return (
-    <div
-      ref={contentRef}
-      contentEditable={false}
-      className="w-full outline-none [&_*]:outline-none"
-    >
+    <div contentEditable={false} className="w-full outline-none [&_*]:outline-none">
       <style>{BLOCKNOTE_OVERRIDES}</style>
       <div className={cn(parentTaskId && 'ms-7')}>
         <TaskRow

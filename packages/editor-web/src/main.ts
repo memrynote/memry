@@ -4,8 +4,8 @@
 import { beginOpenMarks, guestMarks, markGuest } from './open-marks.ts'
 import * as Y from 'yjs'
 import { BlockNoteEditor } from '@blocknote/core'
+import { withCollaboration } from '@blocknote/core/yjs'
 import { en as coreEn } from '@blocknote/core/locales'
-import { codeBlockOptions } from '@blocknote/code-block'
 import {
   createInlineCheckboxContent,
   createInlineImageContent,
@@ -99,8 +99,6 @@ const chrome = document.getElementById('editor-chrome')!
 assertNoWebStorage()
 bindAssetBridge(bridge)
 
-traceHighlighter()
-
 const schema = createMobileEditorSchema()
 markGuest('schemaBuilt')
 const schemaV = fingerprintSchema(schema)
@@ -109,43 +107,51 @@ const schemaV = fingerprintSchema(schema)
  * One place the editor is constructed, so the mounted-doc record can name its
  * type without restating BlockNote's generics (which the custom schema makes
  * unwriteable by hand).
+ *
+ * `withCollaboration` is what installs the Yjs extensions (BlockNote 0.52+).
+ * A bare `collaboration` option is no longer part of `BlockNoteEditorOptions`,
+ * and because the options object is inferred into a generic type parameter it
+ * still type-checks and is then ignored — which would leave the editor unbound
+ * to the doc and every edit on the phone local to the WebView.
  */
 function createEditor(fragment: Y.XmlFragment) {
-  return BlockNoteEditor.create({
-    schema,
-    // No placeholder text on mobile: the hint sat under the caret on a small
-    // screen and read as content the moment the keyboard came up.
-    dictionary: {
-      ...coreEn,
-      placeholders: Object.fromEntries(
-        Object.keys(coreEn.placeholders).map((key) => [key, ''])
-      ) as typeof coreEn.placeholders
-    },
-    collaboration: {
-      fragment,
-      // No remote cursors are ever shown here — one person, one device, one
-      // doc — but the field is required, so it carries the local identity and
-      // nothing else.
-      user: { name: 'You', color: '#ff671a' }
-    },
-    trailingBlock: true,
-    animations: false,
-    // A cell holds inline content only, so a pasted `| a | b |` read as
-    // markdown would splice a whole table over the row the caret is in (#1641).
-    pasteHandler: (context) => handleCellPaste(context.editor, context),
-    /*
-     * The label belongs on the element that IS the text box.
-     *
-     * `#root` carried `role="textbox" aria-label="Note content"`, and it was
-     * never reachable: BlockNote mounts its own contenteditable inside, and
-     * that inner element is what VoiceOver and the iOS accessibility tree
-     * expose. The wrapper's label was shadowed, so the WebView surfaced only
-     * its document title and the editor had no addressable name at all.
-     */
-    domAttributes: {
-      editor: { 'aria-label': 'Note content' }
-    }
-  })
+  return BlockNoteEditor.create(
+    withCollaboration({
+      schema,
+      // No placeholder text on mobile: the hint sat under the caret on a small
+      // screen and read as content the moment the keyboard came up.
+      dictionary: {
+        ...coreEn,
+        placeholders: Object.fromEntries(
+          Object.keys(coreEn.placeholders).map((key) => [key, ''])
+        ) as typeof coreEn.placeholders
+      },
+      collaboration: {
+        fragment,
+        // No remote cursors are ever shown here — one person, one device, one
+        // doc — but the field is required, so it carries the local identity and
+        // nothing else.
+        user: { name: 'You', color: '#ff671a' }
+      },
+      trailingBlock: true,
+      animations: false,
+      // A cell holds inline content only, so a pasted `| a | b |` read as
+      // markdown would splice a whole table over the row the caret is in (#1641).
+      pasteHandler: (context) => handleCellPaste(context.editor, context),
+      /*
+       * The label belongs on the element that IS the text box.
+       *
+       * `#root` carried `role="textbox" aria-label="Note content"`, and it was
+       * never reachable: BlockNote mounts its own contenteditable inside, and
+       * that inner element is what VoiceOver and the iOS accessibility tree
+       * expose. The wrapper's label was shadowed, so the WebView surfaced only
+       * its document title and the editor had no addressable name at all.
+       */
+      domAttributes: {
+        editor: { 'aria-label': 'Note content' }
+      }
+    })
+  )
 }
 
 type MobileEditor = ReturnType<typeof createEditor>
@@ -430,6 +436,10 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   // After the toolbar, because the menu drives the toolbar's panel.
   const blockMenu = installBlockMenu({
     root,
+    // SAFETY: `BlockMenuEditorSurface` is a hand-written subset of the methods
+    // this editor already has. It is not structurally assignable only because
+    // `updateBlock`'s `PartialBlock` is keyed by each block's own literal
+    // type, so a signature taking a generic block can never match it.
     editor: editor as unknown as BlockMenuEditorSurface,
     panel: blockActionsPanel,
     bridge,
@@ -873,6 +883,10 @@ function tableBlockAt(editor: MobileEditor): TableBlock | null {
 }
 
 function tableContentOf(block: TableBlock): TableContentLike {
+  // SAFETY: `block.type === 'table'` was checked by `tableBlockAt`, so the
+  // content is BlockNote's table content. `TableContentLike` is a structural
+  // restatement of it; the two differ only in BlockNote's schema generics,
+  // which are not resolvable from a generic block.
   return block.content as unknown as TableContentLike
 }
 
@@ -931,6 +945,9 @@ function runTableAction(
       // off the end, a merged cell. Nothing to report and nothing to write.
       if (!next) return
       editor.updateBlock(block, {
+        // SAFETY: the inverse of `tableContentOf`. `applyTableStructureOp`
+        // returns the same table-content shape it was handed, with rows or
+        // cells added or removed, so it is valid content for this same block.
         content: next as unknown as TableBlock['content']
       })
       return
@@ -1193,6 +1210,9 @@ function toolbarActions(
  * exactly what the desktop popover writes.
  */
 function dateMentionSurface(editor: MobileEditor): DateMentionEditorSurface {
+  // SAFETY: as above — `DateMentionEditorSurface` names methods this editor
+  // already implements, and is unassignable only through `PartialBlock`'s
+  // per-block-type keying.
   return editor as unknown as DateMentionEditorSurface
 }
 
@@ -1399,35 +1419,6 @@ function traceIdleTicks(): void {
   bridge.onHostMsg((msg) => {
     if (msg.type === 'doc-load') clearInterval(timer)
   })
-}
-
-/**
- * Time shiki's highlighter without moving it (#2043).
- *
- * `createCodeBlockSpec(codeBlockOptions)` runs at schema construction, but the
- * factory it captures is only CALLED from the highlight plugin's parser, on the
- * first code block the editor sees — so the grammar cost lands inside editor
- * construction, in the interval this issue is breaking down. The wrapper reads
- * the property off the same options object the spec holds, calls straight
- * through and returns the same promise, so the only difference on the wire is
- * three `Date.now()` calls.
- *
- * Split into three because they answer different questions: `shikiStart` to
- * `shikiSync` is what BLOCKS the thread, and `shikiSync` to `shikiEnd` is the
- * asynchronous tail that a paint can and does overtake.
- */
-function traceHighlighter(): void {
-  const create = codeBlockOptions.createHighlighter
-  codeBlockOptions.createHighlighter = () => {
-    markGuest('shikiStart')
-    const highlighter = create()
-    markGuest('shikiSync')
-    void highlighter.then(
-      () => markGuest('shikiEnd'),
-      () => markGuest('shikiEnd')
-    )
-    return highlighter
-  }
 }
 
 function fingerprintSchema(built: {

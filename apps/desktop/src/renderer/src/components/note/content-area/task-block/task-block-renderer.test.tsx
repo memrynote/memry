@@ -191,7 +191,7 @@ describe('TaskBlockRenderer', () => {
     const editor = makeEditor()
     const block = makeBlock()
     const { rerender } = render(
-      <TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />
+      <TaskBlockRenderer block={block} editor={editor} />
     )
 
     expect(
@@ -201,7 +201,7 @@ describe('TaskBlockRenderer', () => {
     mocks.projects = [project]
     mocks.taskState.task = { ...task, title: 'Removed task' }
     mocks.taskState.isDeleted = true
-    rerender(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
 
     expect(screen.getByText('Removed task')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button'))
@@ -211,7 +211,7 @@ describe('TaskBlockRenderer', () => {
   it('forwards row actions to services and opens the task tab', async () => {
     const editor = makeEditor()
     const block = makeBlock()
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={block} editor={editor} />)
 
     fireEvent.click(screen.getByText('toggle'))
     await act(async () => Promise.resolve())
@@ -246,7 +246,7 @@ describe('TaskBlockRenderer', () => {
     const editor = makeEditor()
     const block = makeBlock()
     const { unmount } = render(
-      <TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />
+      <TaskBlockRenderer block={block} editor={editor} />
     )
 
     fireEvent.click(screen.getByText('Loaded task'))
@@ -266,7 +266,7 @@ describe('TaskBlockRenderer', () => {
     const emptyBlock = makeBlock({ taskId: '', title: '' })
     mocks.taskState.task = null
     unmount()
-    render(<TaskBlockRenderer block={emptyBlock} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={emptyBlock} editor={editor} />)
 
     const emptyInput = screen.getByDisplayValue('')
     fireEvent.keyDown(emptyInput, { key: 'Backspace' })
@@ -280,7 +280,7 @@ describe('TaskBlockRenderer', () => {
     const editor = makeEditor([parent, child])
 
     const { rerender } = render(
-      <TaskBlockRenderer block={child} editor={editor} contentRef={vi.fn()} />
+      <TaskBlockRenderer block={child} editor={editor} />
     )
 
     fireEvent.click(screen.getByText('Loaded task'))
@@ -301,7 +301,7 @@ describe('TaskBlockRenderer', () => {
     const nestedParent = { ...parent, children: [nestedChild] }
     const nestedEditor = makeEditor([nestedParent])
 
-    rerender(<TaskBlockRenderer block={nestedChild} editor={nestedEditor} contentRef={vi.fn()} />)
+    rerender(<TaskBlockRenderer block={nestedChild} editor={nestedEditor} />)
     fireEvent.click(screen.getByText('Loaded task'))
     fireEvent.keyDown(screen.getByDisplayValue('Child'), { key: 'Tab', shiftKey: true })
 
@@ -324,7 +324,7 @@ describe('TaskBlockRenderer', () => {
       completedAt: '2026-01-02T00:00:00.000Z'
     }
 
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={block} editor={editor} />)
     await act(async () => Promise.resolve())
 
     expect(editor.updateBlock).toHaveBeenCalledWith(block, {
@@ -338,12 +338,12 @@ describe('TaskBlockRenderer', () => {
     mocks.taskState.task = null
 
     const { rerender } = render(
-      <TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />
+      <TaskBlockRenderer block={block} editor={editor} />
     )
     expect(screen.getByDisplayValue('Draft title')).toBeInTheDocument()
 
     mocks.taskState.task = { ...task, title: 'Server title' }
-    rerender(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
     await act(async () => Promise.resolve())
 
     expect(mocks.update).toHaveBeenCalledWith({ id: '', title: 'Draft title' })
@@ -361,7 +361,7 @@ describe('TaskBlockRenderer', () => {
       completedAt: '2026-01-02T00:00:00.000Z'
     }
 
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={block} editor={editor} />)
 
     fireEvent.click(screen.getByText('Loaded task'))
     const titleInput = screen.getByDisplayValue('Draft task')
@@ -387,7 +387,7 @@ describe('TaskBlockRenderer', () => {
     const editor = makeEditor([paragraph, block])
     mocks.taskState.task = null
 
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={block} editor={editor} />)
 
     const input = screen.getByDisplayValue('')
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -405,7 +405,7 @@ describe('TaskBlockRenderer', () => {
     const editor = makeEditor([paragraph, block])
     mocks.taskState.task = null
 
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={block} editor={editor} />)
 
     fireEvent.keyDown(screen.getByDisplayValue(''), { key: 'Backspace' })
 
@@ -420,7 +420,7 @@ describe('TaskBlockRenderer', () => {
     const block = makeBlock({ taskId: '', title: '' })
     mocks.taskState.task = null
 
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={block} editor={editor} />)
 
     fireEvent.click(screen.getByText('toggle'))
     fireEvent.click(screen.getByText('priority'))

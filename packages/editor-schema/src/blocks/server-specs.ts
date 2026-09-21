@@ -94,15 +94,23 @@ function fileDom(block: { props: Partial<FileBlockProps> }): { dom: HTMLElement 
  * save path writes (`serializeCalloutBlock`). The marker and the content share
  * ONE paragraph, separated by a `<br>`: a second `<p>` would serialize as a
  * blank `>` line between them and rewrite every callout on disk.
+ *
+ * The separator is omitted when the callout is empty. BlockNote 0.51+ turns
+ * every `<br>` into a newline in the paragraph's text, so a trailing one on an
+ * empty callout serialized as a second, blank quote line: `> [!info]` came
+ * back as `> [!info]\n>`, which `serializeCalloutBlock` never writes and which
+ * grew a line on the note every time it was opened.
  */
-function calloutDom(block: { props: { type: string } }): {
+function calloutDom(block: { props: { type: string }; content?: unknown }): {
   dom: HTMLElement
   contentDOM: HTMLElement
 } {
   const dom = document.createElement('blockquote')
   const paragraph = document.createElement('p')
   paragraph.appendChild(document.createTextNode(`[!${block.props.type || 'info'}]`))
-  paragraph.appendChild(document.createElement('br'))
+  if (!Array.isArray(block.content) || block.content.length > 0) {
+    paragraph.appendChild(document.createElement('br'))
+  }
   const content = document.createElement('span')
   paragraph.appendChild(content)
   dom.appendChild(paragraph)

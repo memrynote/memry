@@ -5,6 +5,7 @@ import {
   HashTag,
   normalizeHashTags
 } from './hash-tag'
+import { renderInlineSpec } from './inline-spec-render.test-helper'
 
 describe('hash tag inline content', () => {
   it('creates, renders, parses, and serializes hash tag inline content', () => {
@@ -13,7 +14,7 @@ describe('hash tag inline content', () => {
       props: { tag: 'work', color: 'blue', icon: '' }
     })
 
-    const render = (HashTag as any).implementation.render({
+    const render = renderInlineSpec('hashTag', HashTag, {
       props: { tag: 'work', color: 'blue' }
     })
     expect(render.dom.textContent).toBe('#work')
@@ -80,7 +81,7 @@ describe('hash tag inline content', () => {
     ])
 
     // The chosen emoji renders ahead of the "#books" label in the chip.
-    const render = (HashTag as any).implementation.render({
+    const render = renderInlineSpec('hashTag', HashTag, {
       props: { tag: 'books', color: 'blue', icon: '📚' }
     })
     expect(render.dom.textContent).toBe('📚#books')

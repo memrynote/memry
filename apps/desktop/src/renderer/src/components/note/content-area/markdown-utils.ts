@@ -34,11 +34,13 @@ import {
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
 import { splitMarkdownByBlockquoteRuns, serializeCalloutBlock } from './callout-block'
+import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
 import {
   resolveCalloutRun,
   resolveQuoteRun,
   serializeQuoteBlock,
   serializeToggleBlock,
+  restoreDetailsMarkup,
   splitMarkdownByToggles,
   type ToggleBlockSegment
 } from '@memry/editor-schema/blocks'
@@ -78,6 +80,16 @@ function hasMarkerSerializedChildren(block: Block): boolean {
   )
 }
 
+/**
+ * Every markdown\u2192blocks call on this surface, through the repairs BlockNote
+ * 0.51+ needs. Shared with the main process rather than reimplemented: the
+ * same bytes have to parse to the same document in both, or a note reads
+ * differently depending on which process opened it.
+ */
+function parseMarkdown(editor: any, markdown: string): Promise<Block[]> {
+  return parseMarkdownToBlocksRepaired<Block>(editor, markdown)
+}
+
 async function parseMarkdownChunkPreservingNesting(
   editor: any,
   markdown: string
@@ -86,14 +98,14 @@ async function parseMarkdownChunkPreservingNesting(
   if (chunks.length === 0) return []
 
   if (chunks.length === 1 && chunks[0].level === 0) {
-    return editor.tryParseMarkdownToBlocks(chunks[0].text)
+    return parseMarkdown(editor, chunks[0].text)
   }
 
   const blocks: Block[] = []
   const levels: number[] = []
 
   for (const chunk of chunks) {
-    const parsed = await editor.tryParseMarkdownToBlocks(chunk.text)
+    const parsed = await parseMarkdown(editor, chunk.text)
     blocks.push(...parsed)
     levels.push(...parsed.map(() => chunk.level))
   }
@@ -167,6 +179,13 @@ async function serializeToggle(editor: any, block: Block): Promise<string> {
   // target block's propSchema, and a paragraph has no `open` to compare with —
   // it throws there, which loses the whole document's serialization.
   const { open: isOpen, ...summaryProps } = block.props as { open?: boolean }
+  // SAFETY: `Block` is a union discriminated on the schema's block types with
+  // `props` keyed per type, so no hand-written literal is assignable without
+  // naming the whole schema. Every literal cast in this file is that same
+  // case — the fields are what the named `type` declares, and the round-trip
+  // tests against the main-process twin are what actually check them. Here:
+  // a paragraph holding the toggle's content, minus the `open` prop a
+  // paragraph's propSchema has no slot for.
   const summaryBlock = {
     ...block,
     type: 'paragraph',
@@ -194,6 +213,8 @@ function isStructuredQuote(block: Block): boolean {
  * Byte-identical to the main process's `serializeQuote`.
  */
 async function serializeQuote(editor: any, block: Block): Promise<string> {
+  // SAFETY: the quote's own inline content as a bare paragraph, so it is
+  // serialized without the `> ` that `serializeQuoteBlock` adds.
   const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
   const children = (block.children ?? []) as Block[]
   const inner = await serializeBlocksPreservingBlanks(editor, [own, ...children])
@@ -267,8 +288,25 @@ export async function parseMarkdownPreservingBlanks(
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
   const { text: maskedMarkdown, spans } = maskInlineColorSpans(withEmbeds)
   const blocks = await parseMaskedMarkdown(editor, maskedMarkdown)
+  // Declined `<details>` lines cross the parser with their `<` hidden behind a
+  // token, because BlockNote drops a raw HTML block outright. Restoring it is
+  // not optional: a token left in a block is written into the vault as text.
+  restoreDetailsMarkupInBlocks(blocks)
 
   return applyInlineColorTokens(blocks as never[], spans) as Block[]
+}
+
+function restoreDetailsMarkupInBlocks(blocks: Block[]): void {
+  for (const block of blocks) {
+    if (block.type !== 'codeBlock' && Array.isArray(block.content)) {
+      for (const inline of block.content as { type?: string; text?: string }[]) {
+        if (inline?.type === 'text' && typeof inline.text === 'string') {
+          inline.text = restoreDetailsMarkup(inline.text)
+        }
+      }
+    }
+    if (Array.isArray(block.children)) restoreDetailsMarkupInBlocks(block.children as Block[])
+  }
 }
 
 /**
@@ -292,6 +330,7 @@ async function parseMaskedMarkdown(editor: any, markdown: string): Promise<Block
       // same empty paragraphs, as a gap the blank-line scanner finds inside a
       // markdown segment (#1877).
       for (let i = 0; i < segment.extraLines; i++) {
+        // SAFETY: an empty paragraph, the schema's own default block.
         blocks.push({ type: 'paragraph', content: [], children: [], props: {} } as unknown as Block)
       }
     } else {
@@ -303,9 +342,11 @@ async function parseMaskedMarkdown(editor: any, markdown: string): Promise<Block
 }
 
 async function parseToggleSegment(editor: any, segment: ToggleBlockSegment): Promise<Block> {
-  const parsedSummary = await editor.tryParseMarkdownToBlocks(segment.summary)
+  const parsedSummary = await parseMarkdown(editor, segment.summary)
   const colors = segment.colorsMarker ? parseBlockColorsMarker(segment.colorsMarker) : null
 
+  // SAFETY: `toggleListItem` as its spec declares it — block colours plus
+  // `open`, summary as inline content, body as children.
   return {
     type: 'toggleListItem' as const,
     props: { ...(colors ?? {}), open: segment.open },
@@ -322,10 +363,12 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
     if (cseg.kind === 'quote') {
       const claimed = await resolveQuoteRun(
         cseg.run,
-        async (md) => editor.tryParseMarkdownToBlocks(md),
+        async (md) => parseMarkdown(editor, md),
         async (parsed) => serializeBlocks(editor, parsed as Block[])
       )
       if (claimed) {
+        // SAFETY: `quote` as its spec declares it, with the run's parsed
+        // content and children.
         const quote = {
           type: 'quote' as const,
           props: {},
@@ -343,10 +386,12 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
     } else if (cseg.kind === 'callout') {
       const claimed = await resolveCalloutRun(
         cseg.run,
-        async (md) => editor.tryParseMarkdownToBlocks(md),
+        async (md) => parseMarkdown(editor, md),
         async (block) => serializeBlocks(editor, [block as Block])
       )
       if (claimed) {
+        // SAFETY: `callout` as its spec declares it; `claimed.type` is one of
+        // the callout kinds `resolveCalloutRun` recognises.
         const callout = {
           type: 'callout' as const,
           props: { type: claimed.type },
@@ -368,7 +413,10 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
 }
 
 function applyMarkers(markers: string[], block: Block): void {
-  for (const line of markers) parseSidecarMarkerLine(line)?.(block as unknown as MarkedBlock)
+  // SAFETY: `MarkedBlock` is the `{ type, props }` subset the sidecar patches
+  // read and write; every `Block` has both.
+  const marked = block as unknown as MarkedBlock
+  for (const line of markers) parseSidecarMarkerLine(line)?.(marked)
 }
 
 async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block[]): Promise<void> {
@@ -378,16 +426,21 @@ async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block
       const embedParts = splitByEmbedMarkers(seg.text)
       for (const part of embedParts) {
         if (part.kind === 'embed') {
+          // SAFETY: `youtubeEmbed`'s two declared props, both strings.
           blocks.push({
             type: 'youtubeEmbed' as const,
             props: { videoId: part.videoId, videoUrl: part.url }
           } as unknown as Block)
         } else if (part.kind === 'bookmark') {
+          // SAFETY: `bookmark`'s two required props; the rest of its
+          // propSchema has defaults and is rehydrated at render time.
           blocks.push({
             type: 'bookmark' as const,
             props: { url: part.url, domain: extractDomain(part.url) }
           } as unknown as Block)
         } else if (part.kind === 'file') {
+          // SAFETY: `part.props` came from `parseFileBlockMarker`, which
+          // returns exactly the `file` spec's props.
           blocks.push({
             type: 'file' as const,
             props: part.props
@@ -395,13 +448,16 @@ async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block
         } else {
           const parsed = await parseMarkdownChunkPreservingNesting(editor, part.text)
           if (parsed[0]) {
-            for (const apply of part.patches ?? []) apply(parsed[0] as unknown as MarkedBlock)
+            // SAFETY: as in `applyMarkers` — the `{ type, props }` subset.
+            const marked = parsed[0] as unknown as MarkedBlock
+            for (const apply of part.patches ?? []) apply(marked)
           }
           blocks.push(...parsed)
         }
       }
     } else {
       for (let i = 0; i < seg.extraLines; i++) {
+        // SAFETY: an empty paragraph, the schema's own default block.
         blocks.push({
           type: 'paragraph',
           content: [],
@@ -438,6 +494,7 @@ export async function serializeBlocksPreservingBlanks(
   }
 
   for (const block of blocks) {
+    // SAFETY: as in `applyMarkers` — the `{ type, props }` subset.
     const markers = sidecarMarkerLines(block as unknown as MarkedBlock)
 
     if ((block.type as string) === 'taskBlock') {
@@ -480,7 +537,16 @@ export async function serializeBlocksPreservingBlanks(
       await flushContent()
       flushGap()
       const calloutType = (block.props as any).type as string
-      const contentMd = await serializeBlocks(editor, [block])
+      // Serialized as a PARAGRAPH holding the callout's inline content, the
+      // same way `serializeQuote` above does it, rather than as the callout
+      // block itself. This block's React render puts its content in a plain
+      // `<div>`, and from BlockNote 0.51 a line break inside a container the
+      // HTML→markdown step does not recognise as a block is dropped instead of
+      // becoming a `<br>`: a two-line callout came back as `> OneTwo`.
+      // SAFETY: a paragraph carrying this block's own inline content; `props`
+      // is cleared because a paragraph's propSchema has no `type` key.
+      const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
+      const contentMd = await serializeBlocks(editor, [own])
       const calloutMd = serializeCalloutBlock(calloutType, contentMd.trim())
       segments.push({
         type: 'content',
