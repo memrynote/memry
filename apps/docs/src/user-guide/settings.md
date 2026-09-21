@@ -369,7 +369,8 @@ Agent Chat backend and permission settings are now collapsed inside the AI Assis
 machine-local and are not synced between devices.
 
 - **Default Access** — starts each new Agent turn in **Vault only** or **Computer access**
-- **Confirm Actions** — always accept Agent Chat tool calls by default, or require inline approval first
+- **Confirm Actions** — **Ask before changes** is the default: every vault write pauses and shows
+  what it would change before it lands. **Always allow** accepts writes without a preview
 - **Preset** — Ollama, LM Studio, llama.cpp, or Custom
 - **Base URL** — OpenAI-compatible endpoint, such as `http://localhost:11434/v1`
 - **Model** — choose from `/v1/models` when available or type a model manually
@@ -393,11 +394,11 @@ Local MCP server controls are also collapsed inside AI Assistant for external de
 - **Rotate Token** — immediately invalidates the previous token
 - **Registered Tools** — count of exposed vault tools
 
-Agent Chat backends use this same server for vault tools. Read tools do not prompt. Create and
-update tools require active Agent Chat context; by default they are accepted automatically and shown
-as collapsed tool rows, or they can require inline approval when **Tool Confirmations** is set to
-**Ask first**. Plain external clients can use read tools, but context-free writes are denied. See
-[Agent MCP Server](/user-guide/ai/agent-mcp).
+Agent Chat backends use this same server for vault tools. Read tools do not prompt. Create, update
+and delete tools require active Agent Chat context and, by default, pause for inline approval with a
+preview of the change. Setting **Confirm Actions** to **Always allow** accepts them automatically
+and shows them as collapsed tool rows instead. Plain external clients can use read tools, but
+context-free writes are denied. See [Agent MCP Server](/user-guide/ai/agent-mcp).
 
 ---
 
