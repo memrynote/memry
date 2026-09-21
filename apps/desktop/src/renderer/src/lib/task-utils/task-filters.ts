@@ -213,6 +213,12 @@ export const sortTasksAdvanced = (tasks: Task[], sort: TaskSort, projects: Proje
     let comparison = 0
 
     switch (sort.field) {
+      // `folder` and `note` order rows by the note they came from, which lives
+      // in the note index the grouping layer holds, not on the task. The group
+      // order is decided there; here only the order inside one group matters,
+      // and that is the due date.
+      case 'folder':
+      case 'note':
       case 'dueDate': {
         comparison = compareNullable(a.dueDate, b.dueDate, (x, y) => x.getTime() - y.getTime())
 

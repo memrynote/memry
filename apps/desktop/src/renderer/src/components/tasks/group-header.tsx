@@ -1,4 +1,4 @@
-import { Calendar, ChevronDown, Clock } from '@/lib/icons'
+import { Calendar, ChevronDown, Clock, FileText, FolderOpen } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { PriorityBars, PriorityStar } from '@/components/tasks/task-icons'
@@ -136,6 +136,10 @@ export const GroupHeader = ({
           style={labelColor ? { color: labelColor } : undefined}
         />
       )}
+
+      {sortField === 'folder' && <FolderOpen className="size-3.5 shrink-0 text-text-tertiary" />}
+
+      {sortField === 'note' && <FileText className="size-3.5 shrink-0 text-text-tertiary" />}
 
       <div
         className={cn(

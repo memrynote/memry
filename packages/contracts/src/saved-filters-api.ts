@@ -47,9 +47,26 @@ export interface TaskFilters {
 
 /**
  * TaskSort config - matches frontend type
+ *
+ * `status` was missing here while the renderer has offered it as a grouping
+ * mode all along, so saving a status-grouped filter failed validation at the
+ * IPC boundary. `folder` and `note` group by the note a task came from.
+ *
+ * Additive, like `completion: 'archived'`: a row written by a newer build is
+ * read back with a cast rather than through this schema, so an older build
+ * degrades to an ungrouped list instead of losing the filter.
  */
 export interface TaskSort {
-  field: 'dueDate' | 'priority' | 'createdAt' | 'title' | 'project' | 'completedAt'
+  field:
+    | 'dueDate'
+    | 'priority'
+    | 'status'
+    | 'createdAt'
+    | 'title'
+    | 'project'
+    | 'completedAt'
+    | 'folder'
+    | 'note'
   direction: 'asc' | 'desc'
 }
 
@@ -108,7 +125,17 @@ export const TaskFiltersSchema = z.object({
 })
 
 const TaskSortSchema = z.object({
-  field: z.enum(['dueDate', 'priority', 'createdAt', 'title', 'project', 'completedAt']),
+  field: z.enum([
+    'dueDate',
+    'priority',
+    'status',
+    'createdAt',
+    'title',
+    'project',
+    'completedAt',
+    'folder',
+    'note'
+  ]),
   direction: z.enum(['asc', 'desc'])
 })
 

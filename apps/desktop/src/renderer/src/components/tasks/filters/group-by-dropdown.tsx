@@ -10,7 +10,9 @@ import {
   Calendar,
   Clock,
   Type,
+  FileText,
   Folder,
+  FolderOpen,
   CheckCircle
 } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
@@ -25,16 +27,6 @@ interface GroupByDropdownProps {
   className?: string
 }
 
-const GROUP_FIELD_LABELS: Record<SortField, string> = {
-  dueDate: 'Due date',
-  priority: 'Priority',
-  status: 'Status',
-  createdAt: 'Created',
-  title: 'Title',
-  project: 'Project',
-  completedAt: 'Completed'
-}
-
 const GROUP_FIELD_ICONS: Record<SortField, React.ComponentType<{ size?: number }>> = {
   dueDate: Calendar,
   priority: Flag,
@@ -42,7 +34,9 @@ const GROUP_FIELD_ICONS: Record<SortField, React.ComponentType<{ size?: number }
   createdAt: Clock,
   title: Type,
   project: Folder,
-  completedAt: CheckCircle
+  completedAt: CheckCircle,
+  folder: FolderOpen,
+  note: FileText
 }
 
 const VISIBLE_FIELDS: SortField[] = [
@@ -51,13 +45,10 @@ const VISIBLE_FIELDS: SortField[] = [
   'dueDate',
   'createdAt',
   'title',
-  'project'
+  'project',
+  'folder',
+  'note'
 ]
-
-const DIRECTION_LABELS: Record<SortDirection, string> = {
-  asc: 'Ascending',
-  desc: 'Descending'
-}
 
 export const GroupByDropdown = ({
   sort,
@@ -66,6 +57,20 @@ export const GroupByDropdown = ({
 }: GroupByDropdownProps): React.JSX.Element => {
   const { t } = useT('tasks')
   const isNonDefault = sort.field !== defaultSort.field || sort.direction !== defaultSort.direction
+
+  // Written out key by key so the i18n scanner can see every one of them; a
+  // lookup table of key strings would only register as a dynamic key.
+  const fieldLabels: Record<SortField, string> = {
+    dueDate: t('filters.groupByFields.dueDate'),
+    priority: t('filters.groupByFields.priority'),
+    status: t('filters.groupByFields.status'),
+    createdAt: t('filters.groupByFields.createdAt'),
+    title: t('filters.groupByFields.title'),
+    project: t('filters.groupByFields.project'),
+    completedAt: t('filters.groupByFields.completedAt'),
+    folder: t('filters.groupByFields.folder'),
+    note: t('filters.groupByFields.note')
+  }
 
   const handleSelectField = useCallback(
     (field: string) => {
@@ -113,7 +118,7 @@ export const GroupByDropdown = ({
               <Picker.Item
                 key={field}
                 value={field}
-                label={GROUP_FIELD_LABELS[field]}
+                label={fieldLabels[field]}
                 icon={<Icon size={14} />}
                 indicator="check"
                 indicatorColor="var(--primary)"
@@ -125,7 +130,9 @@ export const GroupByDropdown = ({
           <div className="p-1">
             <div className="flex items-center justify-between rounded-[5px] py-1.5 px-2">
               <span className="text-[13px] text-muted-foreground leading-4">
-                {DIRECTION_LABELS[sort.direction]}
+                {sort.direction === 'asc'
+                  ? t('filters.sortDirectionAscending')
+                  : t('filters.sortDirectionDescending')}
               </span>
               <div className="flex items-center rounded-sm overflow-clip border border-border">
                 <button

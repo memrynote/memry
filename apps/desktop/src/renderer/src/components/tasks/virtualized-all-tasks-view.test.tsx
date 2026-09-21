@@ -1,13 +1,15 @@
 import type React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 import { VirtualizedAllTasksView } from './virtualized-all-tasks-view'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
+import type { TaskNoteIndex } from '@/lib/task-note-index'
 
 const useDroppableMock = vi.fn()
 const useDragContextMock = vi.fn()
+let noteIndexMock: TaskNoteIndex | undefined
 const measureMock = vi.fn()
 let virtualizerCount = 0
 const expandedIdsMock = new Set<string>()
@@ -58,6 +60,12 @@ vi.mock('@/hooks', () => ({
 
 vi.mock('@/contexts/drag-context', () => ({
   useDragContext: () => useDragContextMock()
+}))
+
+// The real hook reaches for the notes list through TanStack Query, which this
+// suite has no provider for; grouping itself is covered in task-grouping.test.
+vi.mock('@/hooks/use-task-note-index', () => ({
+  useTaskNoteIndex: (enabled: boolean) => (enabled ? noteIndexMock : undefined)
 }))
 
 vi.mock('@/components/tasks/drag-drop', async () => {
@@ -156,6 +164,7 @@ describe('VirtualizedAllTasksView list DnD metadata', () => {
     useDragContextMock.mockReset()
     measureMock.mockReset()
     measureElementMock.mockReset()
+    noteIndexMock = undefined
     useDragContextMock.mockReturnValue({
       dragState: {
         isDragging: false,
@@ -200,6 +209,35 @@ describe('VirtualizedAllTasksView list DnD metadata', () => {
         })
       })
     )
+  })
+
+  it('renders one inert header per source folder when grouping by folder', () => {
+    const project = createProject()
+    noteIndexMock = new Map([
+      ['note-msa', { id: 'note-msa', title: 'MSA', folderPath: 'Acme/Legal' }],
+      ['note-kickoff', { id: 'note-kickoff', title: 'Kickoff', folderPath: 'Acme/Meetings' }]
+    ])
+
+    render(
+      <VirtualizedAllTasksView
+        tasks={[
+          createTask({ id: 'task-msa', title: 'Redline MSA', sourceNoteId: 'note-msa' }),
+          createTask({ id: 'task-kickoff', title: 'Share deck', sourceNoteId: 'note-kickoff' }),
+          createTask({ id: 'task-loose', title: 'Buy milk' })
+        ]}
+        projects={[project]}
+        onToggleComplete={vi.fn()}
+        onQuickAdd={vi.fn()}
+        sortField="folder"
+        sortDirection="asc"
+      />
+    )
+
+    expect(screen.getByText('Acme / Legal')).toBeInTheDocument()
+    expect(screen.getByText('Acme / Meetings')).toBeInTheDocument()
+    expect(screen.getByText('No note')).toBeInTheDocument()
+    // A folder is not a task field, so its header must not accept a drop.
+    expect(useDroppableMock).not.toHaveBeenCalled()
   })
 
   it('keeps createdAt groups and done headers inert', () => {
