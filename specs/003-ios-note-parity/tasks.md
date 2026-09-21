@@ -263,15 +263,15 @@ after sync.
 
 ## Phase I: page shell
 
-- [ ] N800 Backlinks section: core query plus the iOS surface, with desktop's three sort orders and the `viaProperty` distinction
-- [ ] N801 Find in note
+- [ ] N800 Backlinks section — **blocked on a missing projection, not on the query**: `note_links` exists in the index schema and nothing in the core writes a row into it, so link extraction has to land first. See `research.md`. Original scope: core query plus the iOS surface, with desktop's three sort orders and the `viaProperty` distinction
+- [x] N801 Find in note
 - [ ] N802 Export
 - [ ] N803 Apply template
 - [ ] N804 Reminders
-- [ ] N805 Attachments list for a note
+- [x] N805 Attachments list for a note
 - [x] N806 Folder CRUD — missing entirely: `crates/memry-core/src/api/notes_write.rs` offers `create`, `rename`, `move_to_folder`, `delete` and `edit_block` for notes, and nothing creates, renames or deletes a folder
 - [ ] N807 [P] Linked tasks section — blocked on the Tasks feature, which has no code
-- [ ] N808 [P] Note page overflow menu: rename, move to folder, copy path, bookmark, local-only, delete
+- [x] N808 [P] Note page overflow menu: rename, move to folder, copy path, delete. **`bookmark` and `local-only` are deliberately absent**: `bookmark` is one of the twelve record types §5.3.1 says a conforming client omits from its subscription and never sees, and `localOnly` is a desktop cache column with no key in `NoteSyncPayloadSchema`. See `research.md`
 
 ---
 

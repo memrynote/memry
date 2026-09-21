@@ -479,3 +479,44 @@ cannot meaningfully _author_ one (N703) until there is a writer to agree with:
 a cover invented unilaterally here would be invisible on desktop and would
 have to be renegotiated later. That is Kaan's decision to make, not this
 feature's, and it is recorded here rather than resolved by guessing.
+
+---
+
+## Two of the page menu's six actions are not this client's (found by N808)
+
+N808 lists rename, move to folder, copy path, bookmark, local-only and
+delete. **Four are implemented and two are not, for reasons that are not
+effort.**
+
+**`bookmark` is a record type this client never sees.** §13.1 lists twelve
+types served by the server and not subscribed to here — `inbox`, `filter`,
+the calendar and agent and canvas families, `home_page`, and `bookmark` — and
+says a conforming client "omits them from the header and never sees them"
+(§5.3.1). Desktop implements bookmarks as their own item type keyed by
+`(itemType, itemId)`, not as a field on the note. So a bookmark action on iOS
+would mean subscribing to a record this specification says this client does
+not hold.
+
+**`local-only` is not a synced field.** Desktop carries `localOnly` as a
+column on its own note cache; `NoteSyncPayloadSchema` has no such key. There
+is nothing in the payload to write, and inventing one would repeat the
+`coverImage` mistake: a key only this client believes in.
+
+Both are left out rather than faked. An affordance that appears to mark a note
+and silently does nothing locally is worse than no affordance.
+
+## Backlinks need link extraction first (N800)
+
+`note_links` exists in the index schema (`0001_fts.sql`) with `source_id`,
+`target_id` and `target_title`, and **nothing in the core writes a single row
+into it**. The only reference anywhere in `crates/` is the migration that
+creates it.
+
+So N800 is not a query task. Before backlinks can be answered, something has
+to walk each note's body for `wikiLink` runs and project them into that table,
+incrementally, as bodies arrive — which is a projection with its own watermark
+and its own reindex story (`index_meta` already anticipates one). The query and
+the iOS section are the small half.
+
+Recorded so the next attempt starts from the projection rather than
+discovering the empty table from a query that always returns nothing.

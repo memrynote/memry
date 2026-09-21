@@ -119,6 +119,7 @@ struct NotesListView: View {
                         filler: model.filler,
                         editor: model.editor,
                         metadataWriter: model.metadataWriter,
+                        writer: model.writer,
                         open: { path.append($0) },
                         openTag: { path.append(TagRoute(name: $0)) }
                     )

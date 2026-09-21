@@ -72,11 +72,13 @@ struct NoteReadView: View {
         filler: (any VaultFilling)? = nil,
         editor: (any BlockEditing)? = nil,
         metadataWriter: (any NoteMetadataWriting)? = nil,
+        writer: (any NotesWriting)? = nil,
         open: ((NoteRoute) -> Void)? = nil,
         openTag: ((String) -> Void)? = nil
     ) {
         self.open = open
         self.openTag = openTag
+        _actions = State(initialValue: NotePageActions(noteId: route.id, writer: writer))
         _model = State(initialValue: NoteReadViewModel(route: route, reader: reader, filler: filler))
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: route.id, filler: filler)
@@ -93,11 +95,13 @@ struct NoteReadView: View {
         model: NoteReadViewModel,
         editor: (any BlockEditing)? = nil,
         metadataWriter: (any NoteMetadataWriting)? = nil,
+        writer: (any NotesWriting)? = nil,
         open: ((NoteRoute) -> Void)? = nil,
         openTag: ((String) -> Void)? = nil
     ) {
         self.open = open
         self.openTag = openTag
+        _actions = State(initialValue: NotePageActions(noteId: model.route.id, writer: writer))
         _model = State(initialValue: model)
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: model.route.id, filler: model.filler)
@@ -136,6 +140,17 @@ struct NoteReadView: View {
 
     /// This session's undo history (N509).
     @State private var history = EditorUndoStack()
+
+    /// The page menu's three write actions (N808).
+    @State private var actions: NotePageActions
+
+    /// The page menu's sheets and alert (N808).
+    @State private var renaming = false
+    @State private var renameDraft = ""
+    @State private var moving = false
+    @State private var confirmingDelete = false
+    /// Find in note (N801), shown on demand rather than always.
+    @State private var finding = false
 
     /// Applies one direction of an undo step.
     ///
@@ -337,6 +352,15 @@ struct NoteReadView: View {
                     Task { await model.refreshAttachments() }
                 }
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                NotePageMenu(
+                    canWrite: actions.canWrite,
+                    folderPath: model.folderPath,
+                    rename: { renaming = true },
+                    move: { moving = true },
+                    delete: { confirmingDelete = true }
+                )
+            }
             // The editing affordances, absent entirely on a read-only note
             // rather than present and refusing.
             if editorModel.canEdit {
@@ -364,6 +388,38 @@ struct NoteReadView: View {
                         undo: { Task { await applyHistory(history.popUndo()?.backward) } },
                         redo: { Task { await applyHistory(history.popRedo()?.forward) } }
                     )
+                }
+            }
+        }
+        // N808's three write actions. Each is a sheet or an alert rather
+        // than an inline control, because all three change the note as a
+        // whole and none of them should be one stray tap away.
+        .alert("Rename this note", isPresented: $renaming) {
+            TextField("Title", text: $renameDraft)
+            Button("Cancel", role: .cancel) {}
+            Button("Rename") {
+                Task {
+                    await actions.rename(to: renameDraft)
+                    await model.reload()
+                }
+            }
+        }
+        .alert("Delete this note?", isPresented: $confirmingDelete) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                Task { await actions.delete() }
+            }
+        } message: {
+            // What actually happens, rather than a vague warning: a delete
+            // travels to every device in the vault.
+            Text("It will be removed from every device signed in to this vault.")
+        }
+        .sheet(isPresented: $moving) {
+            NoteFolderPicker(current: model.folderPath) { folder in
+                moving = false
+                Task {
+                    await actions.move(to: folder)
+                    await model.reload()
                 }
             }
         }

@@ -370,6 +370,16 @@ final class NoteReadViewModel {
 
     /// The row's placeholder, matched exactly. An id identifies content and
     /// reads as noise, so an untitled note says so in words on both screens.
+    /// The note's folder, or `nil` at the vault root.
+    ///
+    /// `nil` is the root rather than "unknown": the read has answered by the
+    /// time anything asks, and §13.4's explicit null is what the payload
+    /// carries for a note that sits at the top.
+    var folderPath: String? {
+        guard case let .ready(detail) = phase else { return nil }
+        return detail.summary.folderPath
+    }
+
     var displayTitle: String {
         guard case let .ready(detail) = phase, !detail.summary.title.isEmpty else {
             return "Untitled note"
