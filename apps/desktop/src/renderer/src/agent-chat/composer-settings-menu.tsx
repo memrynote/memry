@@ -123,6 +123,71 @@ interface ComposerSettingsMenuProps {
   onOpenProviderSettings: () => void
 }
 
+interface CliSection {
+  backend: AgentCliBackendId
+  labelKey: string
+  available: boolean
+  models: AgentBackendModelOption[]
+}
+
+function matchesQuery(query: string, label: string, id?: string): boolean {
+  return (
+    query.length === 0 ||
+    label.toLowerCase().includes(query) ||
+    (id ?? '').toLowerCase().includes(query)
+  )
+}
+
+/**
+ * One list per CLI backend, filtered by the model search box.
+ *
+ * Lives outside the component because the three sections are identical apart
+ * from their label: a fourth backend is a row here rather than another copy of
+ * the menu markup.
+ */
+function cliSectionsFor(props: ComposerSettingsMenuProps, query: string): CliSection[] {
+  const sections: CliSection[] = [
+    {
+      backend: 'claude_cli',
+      labelKey: 'agentChat.composer.providers.claude',
+      available: props.claudeAvailable,
+      models: props.claudeCatalog
+    },
+    {
+      backend: 'codex_cli',
+      labelKey: 'agentChat.composer.providers.codex',
+      available: props.codexAvailable,
+      models: props.codexCatalog
+    },
+    {
+      backend: 'antigravity_cli',
+      labelKey: 'agentChat.composer.providers.antigravity',
+      available: props.antigravityAvailable,
+      models: props.antigravityCatalog
+    }
+  ]
+  return sections.map((section) => ({
+    ...section,
+    models: section.models.filter((model) => matchesQuery(query, model.label, model.id))
+  }))
+}
+
+/**
+ * Backend a typed-in model id would be sent to: the selected one when it is
+ * usable, otherwise the first detected CLI, and null when none is detected.
+ */
+function customModelBackendFor(
+  sections: CliSection[],
+  selectedProvider: AgentProvider
+): AgentCliBackendId | null {
+  const available = sections.filter((section) => section.available)
+  return (
+    available.find((section) => section.backend === selectedProvider)?.backend ??
+    available[0]?.backend ??
+    null
+  )
+}
+
 const sectionLabelClass =
   'px-2 pb-0.5 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground'
 const valueClass = 'ms-auto text-muted-foreground'
@@ -144,48 +209,13 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
   }
 
   const normalizedQuery = modelQuery.trim().toLowerCase()
-  const matchesQuery = (label: string, id?: string): boolean =>
-    normalizedQuery.length === 0 ||
-    label.toLowerCase().includes(normalizedQuery) ||
-    (id ?? '').toLowerCase().includes(normalizedQuery)
-  const localModelIds = props.localModelIds.filter((id) => matchesQuery(id))
-  // One list per CLI backend, rendered by a single loop: the three sections are
-  // identical apart from their label, so a fourth backend is a row here rather
-  // than another copy of the markup.
-  const cliSections: Array<{
-    backend: AgentCliBackendId
-    labelKey: string
-    available: boolean
-    models: AgentBackendModelOption[]
-  }> = [
-    {
-      backend: 'claude_cli',
-      labelKey: 'agentChat.composer.providers.claude',
-      available: props.claudeAvailable,
-      models: props.claudeCatalog.filter((model) => matchesQuery(model.label, model.id))
-    },
-    {
-      backend: 'codex_cli',
-      labelKey: 'agentChat.composer.providers.codex',
-      available: props.codexAvailable,
-      models: props.codexCatalog.filter((model) => matchesQuery(model.label, model.id))
-    },
-    {
-      backend: 'antigravity_cli',
-      labelKey: 'agentChat.composer.providers.antigravity',
-      available: props.antigravityAvailable,
-      models: props.antigravityCatalog.filter((model) => matchesQuery(model.label, model.id))
-    }
-  ]
+  const localModelIds = props.localModelIds.filter((id) => matchesQuery(normalizedQuery, id))
+  const cliSections = cliSectionsFor(props, normalizedQuery)
   const visibleCliSections = cliSections.filter(
     (section) => section.available && section.models.length > 0
   )
   const anyCliVisible = visibleCliSections.length > 0
-  const availableCliBackends = cliSections.filter((section) => section.available)
-  const customModelBackend: AgentCliBackendId | null =
-    availableCliBackends.find((section) => section.backend === props.selectedProvider)?.backend ??
-    availableCliBackends[0]?.backend ??
-    null
+  const customModelBackend = customModelBackendFor(cliSections, props.selectedProvider)
   const showCustomModelRow =
     normalizedQuery.length > 0 && !anyCliVisible && customModelBackend !== null
   const pickFirstVisibleModel = (): void => {

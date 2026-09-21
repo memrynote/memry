@@ -3,10 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   AgentAccessMode,
   AgentBackendModelList,
+  AgentBackendModelOption,
   AgentCliBackendId,
   AgentBackendOptions,
   AgentLocalProviderSettings,
   AttachmentInput,
+  BackendStatusesResponse,
   CodexReasoningEffort,
   ClaudeEffort
 } from '@memry/contracts/ipc-agent'
@@ -89,6 +91,42 @@ function isCliProvider(provider: AgentProvider): provider is AgentCliBackendId {
  */
 function hasEffortControl(provider: AgentProvider): boolean {
   return provider === 'claude_cli' || provider === 'codex_cli'
+}
+
+/**
+ * Which CLI backends the picker may offer, and whether the runtime itself is
+ * down.
+ *
+ * Every backend is read through `?.` rather than assumed present: the map is
+ * typed as complete, but a status payload shaped by a different build would
+ * otherwise take the whole composer down on a missing key. An absent status is
+ * read as "not yet known" (permissive) so rows do not flicker during bootstrap.
+ */
+function cliAvailability(statuses: BackendStatusesResponse | null | undefined): {
+  claude: boolean
+  codex: boolean
+  antigravity: boolean
+  runtimeUnavailable: boolean
+} {
+  const backends: AgentCliBackendId[] = ['claude_cli', 'codex_cli', 'antigravity_cli']
+  return {
+    claude: statuses?.claude_cli?.available !== false,
+    codex: statuses?.codex_cli?.available !== false,
+    antigravity: statuses?.antigravity_cli?.available !== false,
+    runtimeUnavailable: backends.some(
+      (backend) => statuses?.[backend]?.reason === 'agent_unavailable'
+    )
+  }
+}
+
+/** Loaded catalogue for a backend, falling back to the built-in labels. */
+function catalogFor(
+  modelOptions: Record<AgentCliBackendId, AgentBackendModelList | null>,
+  backend: AgentCliBackendId
+): AgentBackendModelOption[] {
+  const loaded = modelOptions[backend]?.models
+  if (loaded?.length) return loaded
+  return Object.entries(MODEL_LABEL_FALLBACKS[backend]).map(([id, label]) => ({ id, label }))
 }
 
 function dedupeAttachments(attachments: AttachmentInput[]): AttachmentInput[] {
@@ -250,17 +288,12 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     : null
 
   const backendStatuses = agent?.state.backendStatuses
-  // Each backend is read through `?.` rather than assumed present: the map is
-  // typed as complete, but a conversation synced from a build with a different
-  // backend set (or a status payload captured before one was added) would
-  // otherwise take the whole composer down on a missing key.
-  const claudeAvailable = backendStatuses?.claude_cli?.available !== false
-  const codexAvailable = backendStatuses?.codex_cli?.available !== false
-  const antigravityAvailable = backendStatuses?.antigravity_cli?.available !== false
-  const agentRuntimeUnavailable =
-    backendStatuses?.claude_cli?.reason === 'agent_unavailable' ||
-    backendStatuses?.codex_cli?.reason === 'agent_unavailable' ||
-    backendStatuses?.antigravity_cli?.reason === 'agent_unavailable'
+  const {
+    claude: claudeAvailable,
+    codex: codexAvailable,
+    antigravity: antigravityAvailable,
+    runtimeUnavailable: agentRuntimeUnavailable
+  } = cliAvailability(backendStatuses)
   const turnInFlight = conversationId ? agent?.state.inFlight?.[conversationId] === true : false
   const busy = turnInFlight || submitting
   // A CLI backend needs a positive detection, not merely the absence of a
@@ -535,15 +568,9 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     void agent.cancelTurn(conversationId)
   }
 
-  const claudeCatalog = modelOptions.claude_cli?.models.length
-    ? modelOptions.claude_cli.models
-    : Object.entries(MODEL_LABEL_FALLBACKS.claude_cli).map(([id, label]) => ({ id, label }))
-  const codexCatalog = modelOptions.codex_cli?.models.length
-    ? modelOptions.codex_cli.models
-    : Object.entries(MODEL_LABEL_FALLBACKS.codex_cli).map(([id, label]) => ({ id, label }))
-  const antigravityCatalog = modelOptions.antigravity_cli?.models.length
-    ? modelOptions.antigravity_cli.models
-    : Object.entries(MODEL_LABEL_FALLBACKS.antigravity_cli).map(([id, label]) => ({ id, label }))
+  const claudeCatalog = catalogFor(modelOptions, 'claude_cli')
+  const codexCatalog = catalogFor(modelOptions, 'codex_cli')
+  const antigravityCatalog = catalogFor(modelOptions, 'antigravity_cli')
   const localModelIds = (() => {
     const ids = [...(localModels ?? [])]
     const configuredModel = localSettings?.model.trim()

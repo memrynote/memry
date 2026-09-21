@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
   AgentAccessMode,
   AgentBackendStatus,
+  AgentCliBackendId,
   AgentLocalProviderPreset,
   AgentLocalProviderProbeResult,
   AgentLocalProviderSettings,
@@ -29,6 +30,37 @@ import {
 } from '@/components/settings/settings-primitives'
 import { RefreshCw } from '@/lib/icons'
 import { trackTelemetry } from '@/lib/telemetry'
+
+type Translate = (key: string, vars?: Record<string, string | number>) => string
+
+/** One row per CLI backend; the rows differ only in their labels. */
+const CLI_AGENT_ROWS: Array<{ backend: AgentCliBackendId; key: string }> = [
+  { backend: 'claude_cli', key: 'claude' },
+  { backend: 'codex_cli', key: 'codex' },
+  { backend: 'antigravity_cli', key: 'antigravity' }
+]
+
+function cliStatusText(cli: AgentBackendStatus | undefined, t: Translate): string {
+  if (!cli) return t('agentProviders.cliAgents.status.notDetected')
+  // The agent runtime is down for the whole session (vault key unavailable);
+  // the CLI was never probed, so "Not detected" would be a guess \u2014 and a wrong
+  // one whenever the CLI is in fact installed.
+  if (cli.reason === 'agent_unavailable') {
+    return t('agentProviders.cliAgents.status.runtimeUnavailable')
+  }
+  if (cli.available) {
+    return cli.version
+      ? t('agentProviders.cliAgents.status.detected', { version: cli.version })
+      : t('agentProviders.cliAgents.status.detectedNoVersion')
+  }
+  if (cli.version && cli.minimumRequired) {
+    return t('agentProviders.cliAgents.status.belowMinimum', {
+      version: cli.version,
+      minimum: cli.minimumRequired
+    })
+  }
+  return t('agentProviders.cliAgents.status.notDetected')
+}
 
 const PRESET_DEFAULTS: Record<Exclude<AgentLocalProviderPreset, 'custom'>, string> = {
   ollama: 'http://localhost:11434/v1',
@@ -170,28 +202,6 @@ export function AgentProvidersSection({
   const connectionError =
     status && (!status.connected || !status.modelAvailable) ? status.detail : null
 
-  const cliStatusText = (cli: AgentBackendStatus | undefined): string => {
-    if (!cli) return t('agentProviders.cliAgents.status.notDetected')
-    // The agent runtime is down for the whole session (vault key unavailable);
-    // the CLI was never probed, so "Not detected" would be a guess — and a wrong
-    // one whenever the CLI is in fact installed.
-    if (cli.reason === 'agent_unavailable') {
-      return t('agentProviders.cliAgents.status.runtimeUnavailable')
-    }
-    if (cli.available) {
-      return cli.version
-        ? t('agentProviders.cliAgents.status.detected', { version: cli.version })
-        : t('agentProviders.cliAgents.status.detectedNoVersion')
-    }
-    if (cli.version && cli.minimumRequired) {
-      return t('agentProviders.cliAgents.status.belowMinimum', {
-        version: cli.version,
-        minimum: cli.minimumRequired
-      })
-    }
-    return t('agentProviders.cliAgents.status.notDetected')
-  }
-
   if (!settings || !preferences) return null
 
   return (
@@ -249,48 +259,23 @@ export function AgentProvidersSection({
       </SettingsGroup>
 
       <SettingsGroup label={t('agentProviders.groups.cliAgents')}>
-        <SettingRow
-          label={t('agentProviders.cliAgents.claude.label')}
-          description={t('agentProviders.cliAgents.claude.description')}
-        >
-          <span
-            className={
-              backendStatuses?.claude_cli?.available
-                ? 'text-xs/4 text-green-600'
-                : 'text-xs/4 text-muted-foreground'
-            }
+        {CLI_AGENT_ROWS.map((row) => (
+          <SettingRow
+            key={row.backend}
+            label={t(`agentProviders.cliAgents.${row.key}.label`)}
+            description={t(`agentProviders.cliAgents.${row.key}.description`)}
           >
-            {cliStatusText(backendStatuses?.claude_cli)}
-          </span>
-        </SettingRow>
-        <SettingRow
-          label={t('agentProviders.cliAgents.codex.label')}
-          description={t('agentProviders.cliAgents.codex.description')}
-        >
-          <span
-            className={
-              backendStatuses?.codex_cli?.available
-                ? 'text-xs/4 text-green-600'
-                : 'text-xs/4 text-muted-foreground'
-            }
-          >
-            {cliStatusText(backendStatuses?.codex_cli)}
-          </span>
-        </SettingRow>
-        <SettingRow
-          label={t('agentProviders.cliAgents.antigravity.label')}
-          description={t('agentProviders.cliAgents.antigravity.description')}
-        >
-          <span
-            className={
-              backendStatuses?.antigravity_cli?.available
-                ? 'text-xs/4 text-green-600'
-                : 'text-xs/4 text-muted-foreground'
-            }
-          >
-            {cliStatusText(backendStatuses?.antigravity_cli)}
-          </span>
-        </SettingRow>
+            <span
+              className={
+                backendStatuses?.[row.backend]?.available
+                  ? 'text-xs/4 text-green-600'
+                  : 'text-xs/4 text-muted-foreground'
+              }
+            >
+              {cliStatusText(backendStatuses?.[row.backend], t)}
+            </span>
+          </SettingRow>
+        ))}
       </SettingsGroup>
 
       <SettingsGroup label={t('agentProviders.groups.local')}>
