@@ -533,6 +533,15 @@ A paused request always shows what it would change, in the shape that fits the i
 - **What would be lost** for deletes. A delete has no "after", so the card names the item and what
   goes with it instead.
 
+Each preview reads the item as it stands right now, not as the agent last saw it, so the value in
+the "before" position is what the write is actually about to land on. Field rows list only the
+columns that move: an agent request often repeats every column it read, and those are left out.
+
+A body diff also offers **Edit before applying**, which opens the proposed markdown in a text box.
+Applying from there replaces the whole body with what you see, so an append you edited is applied as
+the finished document rather than appended a second time. Field changes and deletes have no text
+box; use **Edit and allow** on the tool row to change raw arguments instead.
+
 If you prefer the old behaviour, set tool confirmations to **Always allow** in
 Settings → Agent. That setting is per install and applies to every conversation.
 
