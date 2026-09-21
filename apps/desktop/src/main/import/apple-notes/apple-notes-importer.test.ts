@@ -16,7 +16,13 @@ import * as path from 'path'
 import zlib from 'zlib'
 import Database from 'better-sqlite3'
 import { Root } from 'protobufjs'
-import { descriptor, DOCUMENT_TYPE, ANStyleType, ANFontWeight } from '@memry/importers/apple-notes'
+import {
+  descriptor,
+  DOCUMENT_TYPE,
+  MERGEABLE_DATA_TYPE,
+  ANStyleType,
+  ANFontWeight
+} from '@memry/importers/apple-notes'
 import { scanAppleNotesFolders } from './note-store'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -258,6 +264,211 @@ function buildAttachmentDb(dbPath: string): void {
     'INSERT INTO ziccloudsyncingobject ' +
       '(z_pk, z_ent, zidentifier, ztypeuti, zmedia, znote) VALUES (?,?,?,?,?,?)'
   ).run(62, 5, 'ATT-DOC', 'org.openxmlformats.spreadsheetml.sheet', 42, 52)
+
+  db.close()
+}
+
+/**
+ * Encode a table attachment's mergeable-data payload the way Apple Notes does:
+ * a flat object list plus key/type/uuid lookup lists, where a cell's position
+ * comes from resolving its row/column uuid through two ordered sets. Mirrors
+ * the live layout so the importer decodes it exactly as it decodes a real one.
+ */
+function encodeTableData(cells: string[][]): Buffer {
+  const keys = ['identity', 'crRows', 'crColumns', 'cellColumns', 'UUIDIndex']
+  const types = ['com.apple.CRDT.NSUUID', 'com.apple.notes.ICTable']
+  const UUID_INDEX_KEY = 4
+  const rowCount = cells.length
+  const columnCount = Math.max(...cells.map((row) => row.length))
+  const uuids = Array.from(
+    { length: rowCount + columnCount },
+    (_, i) => new Uint8Array([i + 1, ...Array(15).fill(0)])
+  )
+
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const objects: any[] = []
+  const push = (object: any): number => objects.push(object) - 1
+  const rootIndex = push({ customMap: { type: 1, mapEntry: [] } })
+
+  // Every reference to a row/column names an NSUUID wrapper, not the uuid.
+  const uuidObject = (uuidIndex: number): number =>
+    push({
+      customMap: {
+        type: 0,
+        mapEntry: [{ key: UUID_INDEX_KEY, value: { unsignedIntegerValue: uuidIndex } }]
+      }
+    })
+  const orderedSet = (uuidIndices: number[]): number =>
+    push({
+      orderedSet: {
+        ordering: {
+          array: {
+            attachment: uuidIndices.map((uuidIndex, position) => ({
+              index: position,
+              uuid: uuids[uuidIndex]
+            }))
+          },
+          contents: {
+            element: uuidIndices.map((uuidIndex) => ({
+              key: { objectIndex: uuidObject(uuidIndex) },
+              value: { objectIndex: uuidObject(uuidIndex) }
+            }))
+          }
+        }
+      }
+    })
+
+  const rowUuids = Array.from({ length: rowCount }, (_, i) => i)
+  const columnUuids = Array.from({ length: columnCount }, (_, i) => rowCount + i)
+  const rowsIndex = orderedSet(rowUuids)
+  const columnsIndex = orderedSet(columnUuids)
+
+  const columnElements = columnUuids.map((columnUuid, column) => ({
+    key: { objectIndex: uuidObject(columnUuid) },
+    value: {
+      objectIndex: push({
+        dictionary: {
+          element: rowUuids.map((rowUuid, row) => {
+            const text = cells[row][column] ?? ''
+            return {
+              key: { objectIndex: uuidObject(rowUuid) },
+              value: {
+                objectIndex: push({
+                  note: { noteText: text, attributeRun: [{ length: text.length }] }
+                })
+              }
+            }
+          })
+        }
+      })
+    }
+  }))
+  const cellsIndex = push({ dictionary: { element: columnElements } })
+
+  objects[rootIndex].customMap.mapEntry = [
+    { key: 1, value: { objectIndex: rowsIndex } },
+    { key: 2, value: { objectIndex: columnsIndex } },
+    { key: 3, value: { objectIndex: cellsIndex } }
+  ]
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+
+  const Proto = Root.fromJSON(descriptor).lookupType(MERGEABLE_DATA_TYPE)
+  const bytes = Proto.encode(
+    Proto.fromObject({
+      mergableDataObject: {
+        version: 1,
+        mergeableDataObjectData: {
+          mergeableDataObjectEntry: objects,
+          mergeableDataObjectKeyItem: keys,
+          mergeableDataObjectTypeItem: types,
+          mergeableDataObjectUuidItem: uuids
+        }
+      }
+    })
+  ).finish()
+  return zlib.gzipSync(Buffer.from(bytes))
+}
+
+/**
+ * Build a NoteStore.sqlite holding a note whose body embeds a table attachment
+ * (ICAttachment.ZMERGEABLEDATA1), plus a second note whose table payload is
+ * missing — the case where the grid cannot be rebuilt.
+ */
+function buildTableDb(dbPath: string): void {
+  const db = new Database(dbPath)
+  db.exec(`
+    CREATE TABLE z_primarykey (Z_ENT INTEGER, Z_NAME TEXT);
+    CREATE TABLE ziccloudsyncingobject (
+      z_pk INTEGER PRIMARY KEY,
+      z_ent INTEGER,
+      zname TEXT,
+      zidentifier TEXT,
+      ztitle TEXT,
+      ztitle1 TEXT,
+      ztitle2 TEXT,
+      zfolder INTEGER,
+      zparent INTEGER,
+      zfoldertype INTEGER,
+      zowner INTEGER,
+      zmedia INTEGER,
+      zfilename TEXT,
+      zgeneration1 TEXT,
+      ztypeuti TEXT,
+      zurlstring TEXT,
+      zmergeabledata1 BLOB,
+      znote INTEGER,
+      zcreationdate1 REAL,
+      zmodificationdate1 REAL,
+      zispasswordprotected INTEGER
+    );
+    CREATE TABLE zicnotedata (z_pk INTEGER PRIMARY KEY, znote INTEGER, zdata BLOB);
+  `)
+  db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(1, 'ICAccount')
+  db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(2, 'ICFolder')
+  db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(3, 'ICNote')
+  db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(4, 'ICMedia')
+  db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(5, 'ICAttachment')
+  db.prepare(
+    'INSERT INTO ziccloudsyncingobject (z_pk, z_ent, zname, zidentifier) VALUES (?,?,?,?)'
+  ).run(10, 1, 'iCloud', 'ACCT-UUID')
+  db.prepare(
+    'INSERT INTO ziccloudsyncingobject ' +
+      '(z_pk, z_ent, ztitle2, zparent, zidentifier, zfoldertype, zowner) VALUES (?,?,?,?,?,?,?)'
+  ).run(20, 2, 'Work', null, 'FOLDER-UUID', 0, 10)
+
+  // Note 70: text, the table, then more text.
+  db.prepare(
+    'INSERT INTO ziccloudsyncingobject ' +
+      '(z_pk, z_ent, ztitle1, zfolder, zispasswordprotected) VALUES (?,?,?,?,?)'
+  ).run(70, 3, 'Table Note', 20, 0)
+  db.prepare('INSERT INTO zicnotedata (z_pk, znote, zdata) VALUES (?,?,?)').run(
+    1,
+    70,
+    encodeNoteData(`Table Note\nBefore\n${OBJ}\nAfter\n`, [
+      { length: 'Table Note\n'.length, paragraphStyle: { styleType: ANStyleType.Title } },
+      { length: 'Before\n'.length },
+      {
+        length: 1,
+        attachmentInfo: { attachmentIdentifier: 'ATT-TBL', typeUti: 'com.apple.notes.table' }
+      },
+      { length: '\nAfter\n'.length }
+    ])
+  )
+  db.prepare(
+    'INSERT INTO ziccloudsyncingobject ' +
+      '(z_pk, z_ent, zidentifier, ztypeuti, zmergeabledata1, znote) VALUES (?,?,?,?,?,?)'
+  ).run(
+    80,
+    5,
+    'ATT-TBL',
+    'com.apple.notes.table',
+    encodeTableData([
+      ['Day', 'Exercise'],
+      ['Mon', 'Squat | Bench']
+    ]),
+    70
+  )
+
+  // Note 71: a table attachment whose payload never synced down.
+  db.prepare(
+    'INSERT INTO ziccloudsyncingobject ' +
+      '(z_pk, z_ent, ztitle1, zfolder, zispasswordprotected) VALUES (?,?,?,?,?)'
+  ).run(71, 3, 'Broken Table Note', 20, 0)
+  db.prepare('INSERT INTO zicnotedata (z_pk, znote, zdata) VALUES (?,?,?)').run(
+    2,
+    71,
+    encodeNoteData(`Broken Table Note\n${OBJ}`, [
+      { length: 'Broken Table Note\n'.length, paragraphStyle: { styleType: ANStyleType.Title } },
+      {
+        length: 1,
+        attachmentInfo: { attachmentIdentifier: 'ATT-TBL-EMPTY', typeUti: 'com.apple.notes.table' }
+      }
+    ])
+  )
+  db.prepare(
+    'INSERT INTO ziccloudsyncingobject ' +
+      '(z_pk, z_ent, zidentifier, ztypeuti, zmergeabledata1, znote) VALUES (?,?,?,?,?,?)'
+  ).run(81, 5, 'ATT-TBL-EMPTY', 'com.apple.notes.table', null, 71)
 
   db.close()
 }
@@ -612,6 +823,57 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
       expect(summary.attachments).toBe(2)
     } finally {
       fs.rmSync(attDir, { recursive: true, force: true })
+    }
+  })
+
+  it('imports an Apple Notes table as a markdown table, not an unsupported marker', async () => {
+    const tableDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apple-notes-table-'))
+    const tableDbPath = path.join(tableDir, 'NoteStore.sqlite')
+    buildTableDb(tableDbPath)
+    try {
+      const ctx = importContext.createImportContext('an-table', new AbortController().signal)
+      const summary = await importer.appleNotesImporter.run({ sourcePaths: [tableDbPath] }, ctx)
+      expect(summary.failed).toEqual([])
+
+      const md = fs.readFileSync(
+        path.join(tempVault.path, 'Apple Notes', 'Work', 'Table Note.md'),
+        'utf8'
+      )
+      expect(md).not.toContain('unsupported attachment')
+      expect(md).not.toContain('apple-notes-attachment:')
+      expect(md).toContain('| Day | Exercise |')
+      expect(md).toContain('| --- | --- |')
+      // A pipe typed into a cell stays inside that cell.
+      expect(md).toContain('| Mon | Squat \\| Bench |')
+      // The table is its own block, with the surrounding text intact.
+      expect(md).toMatch(/Before\n\n\| Day \| Exercise \|/)
+      expect(md).toMatch(/\| Mon \| Squat \\\| Bench \|\n\nAfter/)
+    } finally {
+      fs.rmSync(tableDir, { recursive: true, force: true })
+    }
+  })
+
+  it('skips a table whose payload is missing instead of failing the note', async () => {
+    const tableDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apple-notes-table-empty-'))
+    const tableDbPath = path.join(tableDir, 'NoteStore.sqlite')
+    buildTableDb(tableDbPath)
+    try {
+      const ctx = importContext.createImportContext('an-table-0', new AbortController().signal)
+      const summary = await importer.appleNotesImporter.run({ sourcePaths: [tableDbPath] }, ctx)
+
+      expect(summary.failed).toEqual([])
+      expect(summary.imported).toBe(2)
+      expect(summary.skipped).toBe(1)
+
+      const md = fs.readFileSync(
+        path.join(tempVault.path, 'Apple Notes', 'Work', 'Broken Table Note.md'),
+        'utf8'
+      )
+      // The note still imports; only the unresolvable placeholder is dropped.
+      expect(md).toContain('# Broken Table Note')
+      expect(md).not.toContain('apple-notes-attachment:')
+    } finally {
+      fs.rmSync(tableDir, { recursive: true, force: true })
     }
   })
 
