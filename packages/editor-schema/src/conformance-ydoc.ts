@@ -70,8 +70,11 @@ function serverEditor(): ServerBlockNoteEditor {
 function withIds(blocks: unknown[], prefix: string): unknown[] {
   return blocks.map((block, index) => {
     if (block === null || typeof block !== 'object') return block
-    const entry = block as Record<string, unknown> & { children?: unknown[] }
-    const id = `${prefix}-${index}`
+    const entry = block as Record<string, unknown> & { children?: unknown[]; id?: unknown }
+    // An explicit id wins. The write-direction class needs a base document and
+    // its expected result to name the same blocks, and a positional id shifts
+    // the moment an operation inserts or deletes one.
+    const id = typeof entry.id === 'string' && entry.id.length > 0 ? entry.id : `${prefix}-${index}`
     return {
       ...entry,
       id,
@@ -110,4 +113,21 @@ export function noteBlockDoc(entry: NoteBlockCase): Y.Doc {
 /** Every case, with its document. */
 export function noteBlockDocs(): Array<{ entry: NoteBlockCase; doc: Y.Doc }> {
   return NOTE_BLOCK_CASES.map((entry) => ({ entry, doc: noteBlockDoc(entry) }))
+}
+
+/**
+ * An arbitrary block array as a document, for the write-direction class.
+ *
+ * The same production path as {@link noteBlockDoc}, exposed separately because
+ * a write case authors **two** documents — the base and the expected result —
+ * and neither is a `NoteBlockCase`.
+ */
+export function blocksToDoc(blocks: unknown[], prefix: string): Y.Doc {
+  const doc = new Y.Doc()
+  doc.clientID = CONFORMANCE_CLIENT_ID
+  const fragment = doc.getXmlFragment(CONFORMANCE_FRAGMENT)
+  if (blocks.length > 0) {
+    serverEditor().blocksToYXmlFragment(withIds(blocks, prefix) as never, fragment)
+  }
+  return doc
 }

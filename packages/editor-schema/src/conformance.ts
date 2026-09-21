@@ -965,6 +965,196 @@ export const NOTE_BLOCK_CASES: readonly NoteBlockCase[] = [
   }
 ]
 
+/**
+ * The write-direction corpus (N107), for the `block-edit` vector class.
+ *
+ * **What it compares, and why not update bytes.** A write case has to hold a
+ * document `yrs` produced against one `yjs` produced, and update bytes cannot
+ * do that: an update encodes `clientID` and per-client clocks, and struct
+ * ordering, origin ids and run-length packing are free choices an
+ * implementation may make differently while still converging. Two different
+ * updates that converge are *both correct*. So a case records a base
+ * document, one operation, and the **expected resulting document**, and a port
+ * applies the operation and re-renders through the canonical fragment form.
+ *
+ * **Both documents are authored through BlockNote.** That makes the assertion
+ * "the writer produces the document BlockNote would have produced", which is
+ * exactly what §12.5.0 demands: y-prosemirror answers a node its schema cannot
+ * construct by DELETING the element, silently, and the next desktop to open
+ * the note renders it without the block. A writer held only to its own idea of
+ * the shape cannot catch that.
+ *
+ * **Ids are explicit on every block**, because an operation that inserts or
+ * deletes one shifts every positional id after it, and the base and the
+ * expected result have to name the same blocks.
+ */
+export interface BlockEditCase {
+  name: string
+  pins: string
+  /** The document before the edit. */
+  base: unknown[]
+  /** The operation, in the shape the core's `BlockEdit` enum takes. */
+  op: BlockEditOp
+  /** The document the edit must produce. */
+  expected: unknown[]
+  /**
+   * Set when the case FAILS against the current writer because the fix it
+   * asserts has not landed yet. The Rust harness runs these inverted, so the
+   * moment the writer is fixed the case turns red and forces the flag's
+   * removal. Remove the flag, never the case — the same convention
+   * `ROUNDTRIP_CASES` uses.
+   */
+  pending?: { reason: string; task: string }
+}
+
+export type BlockEditOp =
+  | { kind: 'setText'; blockId: string; text: string }
+  | { kind: 'setProp'; blockId: string; name: string; value: string }
+  | { kind: 'insertParagraph'; afterBlockId?: string; text: string; newBlockId: string }
+  | { kind: 'delete'; blockId: string }
+
+/** Two paragraphs, the base most cases start from. */
+const TWO_PARAGRAPHS: unknown[] = [
+  { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+  { id: 'p2', type: 'paragraph', content: 'Second paragraph.' }
+]
+
+export const BLOCK_EDIT_CASES: readonly BlockEditCase[] = [
+  {
+    name: 'setText replaces one block and leaves its sibling alone',
+    pins: 'the edit is scoped to the block it names; FR-041 rests on the untouched sibling',
+    base: TWO_PARAGRAPHS,
+    op: { kind: 'setText', blockId: 'p1', text: 'Rewritten.' },
+    expected: [
+      { id: 'p1', type: 'paragraph', content: 'Rewritten.' },
+      { id: 'p2', type: 'paragraph', content: 'Second paragraph.' }
+    ]
+  },
+  {
+    name: 'setText on an empty string empties the block without removing it',
+    pins: 'an emptied paragraph is still a paragraph, not a deleted block',
+    base: TWO_PARAGRAPHS,
+    op: { kind: 'setText', blockId: 'p2', text: '' },
+    expected: [
+      { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+      { id: 'p2', type: 'paragraph' }
+    ]
+  },
+  {
+    name: 'setText keeps a nested child, which lives in its own block',
+    pins: 'a list item’s children are their own blocks with their own ids and must survive a text replace',
+    base: [
+      {
+        id: 'l1',
+        type: 'bulletListItem',
+        content: 'Outer',
+        children: [{ id: 'l2', type: 'bulletListItem', content: 'Inner' }]
+      }
+    ],
+    op: { kind: 'setText', blockId: 'l1', text: 'Outer rewritten' },
+    expected: [
+      {
+        id: 'l1',
+        type: 'bulletListItem',
+        content: 'Outer rewritten',
+        children: [{ id: 'l2', type: 'bulletListItem', content: 'Inner' }]
+      }
+    ]
+  },
+  {
+    name: 'setProp ticks a check list item',
+    pins: 'a prop crosses as the string the document stores; the core does not know which props are numbers',
+    base: [{ id: 'c1', type: 'checkListItem', props: { checked: false }, content: 'A task' }],
+    op: { kind: 'setProp', blockId: 'c1', name: 'checked', value: 'true' },
+    expected: [{ id: 'c1', type: 'checkListItem', props: { checked: true }, content: 'A task' }],
+    pending: {
+      reason:
+        'SetProp carries a String and `insert_attribute` stores one, so `checked` lands as the string "true" where BlockNote writes the boolean `true`. This is not cosmetic: unticking stores "false", and a non-empty string is truthy, so a box the user cleared on iOS reads as ticked anywhere that tests the prop for truth. Latent today because no shell calls `Notes.editBlock` yet — which is exactly why it must be fixed before one does. The writer needs each block type’s declared prop TYPE, not just its name.',
+      task: 'N408'
+    }
+  },
+  {
+    name: 'setProp changes a callout type',
+    pins: 'the callout type is a prop rather than a separate block type',
+    base: [{ id: 'k1', type: 'callout', props: { type: 'info' }, content: 'Mind the gap.' }],
+    op: { kind: 'setProp', blockId: 'k1', name: 'type', value: 'warning' },
+    expected: [{ id: 'k1', type: 'callout', props: { type: 'warning' }, content: 'Mind the gap.' }]
+  },
+  {
+    name: 'setProp changes a heading level',
+    pins: 'all six levels are reachable by a prop edit, which is what the shell now renders',
+    base: [{ id: 'h1', type: 'heading', props: { level: 2 }, content: 'A heading' }],
+    op: { kind: 'setProp', blockId: 'h1', name: 'level', value: '5' },
+    expected: [{ id: 'h1', type: 'heading', props: { level: 5 }, content: 'A heading' }],
+    pending: {
+      reason:
+        'The same type defect as the check-list case: `level` lands as the string "5" where BlockNote writes the number 5. `extract_text` parses the level with a JavaScript-style digit-prefix read so the marker survives either spelling, which is why this has gone unnoticed.',
+      task: 'N408'
+    }
+  },
+  {
+    name: 'delete removes one block and nothing else',
+    pins: 'the surviving sibling is byte-identical, which is the whole of FR-041 for a delete',
+    base: [
+      { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+      { id: 'p2', type: 'paragraph', content: 'Second paragraph.' },
+      { id: 'p3', type: 'paragraph', content: 'Third paragraph.' }
+    ],
+    op: { kind: 'delete', blockId: 'p2' },
+    expected: [
+      { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+      { id: 'p3', type: 'paragraph', content: 'Third paragraph.' }
+    ]
+  },
+  {
+    name: 'delete takes a block’s children with it',
+    pins: 'children live inside the container, and leaving them behind would reparent a list’s items to the body',
+    base: [
+      {
+        id: 'l1',
+        type: 'bulletListItem',
+        content: 'Outer',
+        children: [{ id: 'l2', type: 'bulletListItem', content: 'Inner' }]
+      },
+      { id: 'p1', type: 'paragraph', content: 'After.' }
+    ],
+    op: { kind: 'delete', blockId: 'l1' },
+    expected: [{ id: 'p1', type: 'paragraph', content: 'After.' }]
+  },
+  {
+    name: 'insertParagraph after a block',
+    pins: 'THE §12.5.0 CASE: the writer must produce the node shape BlockNote produces, defaults included, or a peer cannot construct it',
+    base: TWO_PARAGRAPHS,
+    op: { kind: 'insertParagraph', afterBlockId: 'p1', text: 'Inserted.', newBlockId: 'p1a' },
+    expected: [
+      { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+      { id: 'p1a', type: 'paragraph', content: 'Inserted.' },
+      { id: 'p2', type: 'paragraph', content: 'Second paragraph.' }
+    ],
+    pending: {
+      reason:
+        'body_edit.rs writes a bare `paragraph` with no attributes, and BlockNote writes one carrying backgroundColor, textAlignment and textColor at their declared defaults. Both documents RENDER the same, so nothing is lost today, but they are not the same document — so a shell cannot be held to producing what desktop produces until the writer knows each block type’s declared props.',
+      task: 'N400'
+    }
+  },
+  {
+    name: 'insertParagraph at the end of the body',
+    pins: 'an absent `after` appends, and the writer must locate the existing blockGroup rather than adding a second top-level child',
+    base: TWO_PARAGRAPHS,
+    op: { kind: 'insertParagraph', text: 'Appended.', newBlockId: 'p3' },
+    expected: [
+      { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+      { id: 'p2', type: 'paragraph', content: 'Second paragraph.' },
+      { id: 'p3', type: 'paragraph', content: 'Appended.' }
+    ],
+    pending: {
+      reason:
+        'Two failures in one case. The declared-default props of the sibling case, plus §12.5.0’s central rule: `insert_paragraph` appends to the FRAGMENT when `after` is absent, which puts a `blockContainer` beside the existing `blockGroup` as a second top-level child. y-prosemirror cannot construct a `doc` with two top-level children and answers by DELETING the element — silently. The update applies, the document encodes, extract_text may still return the text, and the next desktop to open the note renders it without the block.',
+      task: 'N400'
+    }
+  }
+]
+
 export interface FuzzFamily {
   name: string
   generate: (random: () => number) => string

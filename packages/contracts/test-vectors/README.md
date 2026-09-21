@@ -61,9 +61,10 @@ one-class change reviewable.
 | `device-linking.json`                   |                                  8 | `../scripts/vectors/device-linking.ts`     | `../src/__tests__/device-linking.test.ts` + the desktop parity suite  |
 | `text-extract.json`                     |                                 12 | `../scripts/vectors/text-extract.ts`       | `../src/__tests__/text-extract.test.ts`                               |
 | `note-blocks.json`                      |                                 30 | `../scripts/vectors/note-blocks.ts`        | `../src/__tests__/note-blocks.test.ts` + the Rust and iOS harnesses   |
+| `block-edit.json`                       |                                 10 | `../scripts/vectors/block-edit.ts`         | `../src/__tests__/block-edit.test.ts` + the Rust writer harness       |
 | `markdown-roundtrip/cases.json`         |                                 90 | `../scripts/vectors/markdown-roundtrip.ts` | `../src/__tests__/markdown-roundtrip.test.ts`                         |
 | `markdown-roundtrip/fuzz-families.json` |                         5 families | same                                       | same                                                                  |
-| **Total**                               | **310 cases plus 5 fuzz families** |                                            |                                                                       |
+| **Total**                               | **320 cases plus 5 fuzz families** |                                            |                                                                       |
 
 `crypto-vectors.json` is **frozen**: it is byte-for-byte as committed and no
 change in this feature touches it. Three suites consume it and none of them
@@ -96,8 +97,48 @@ are assigned deterministically rather than left to BlockNote's v4 UUIDs: an
 unpinned id makes the class non-reproducible and would silently exempt it from
 `vectors:check`.
 
-The verifier asserts coverage **against `registry-manifest.json`** rather than
-against a hand-counted list, so a type nobody wrote a case for is a failing
+### `block-edit.json` is the write direction, and it runs some cases inverted
+
+Each case is a base document, one operation, and the document the operation
+must leave behind. A port applies the operation and re-renders through the same
+canonical form; it never compares the update it emitted, for the reason above.
+
+Both documents are authored through BlockNote, which makes the assertion **"the
+writer produces the document BlockNote would have produced"**. That is what
+chapter 12 §12.5.0 demands rather than merely suggests: y-prosemirror answers a
+node its schema cannot construct by **deleting the element**, silently — the
+update applies, the document encodes, `extract_text` may still return the text,
+and the next desktop to open the note renders it without the block. A writer
+held only to its own idea of the shape cannot catch that.
+
+There is no TypeScript verifier for the operations themselves, because there is
+no TypeScript writer: node construction lives in Rust by design. The TypeScript
+half proves the file is a sound contract — that both canonical strings really
+are what those documents render to, that every operation names a block its base
+holds, that a result differs from its base, and that every base and every result
+has exactly one top-level `blockGroup`.
+
+A case carrying `pending` **fails against the writer as it stands** and is
+asserted to fail, so fixing the writer turns it red and forces the flag's
+removal. Remove the flag, never the case — the same convention `ROUNDTRIP_CASES`
+uses. Four cases are pending today, and each one is a real defect the class
+found rather than a known-bad input:
+
+- `insert_paragraph` writes a bare `paragraph` where BlockNote writes one
+  carrying `backgroundColor`, `textAlignment` and `textColor` at their declared
+  defaults. Both render the same, so nothing is lost today, but they are not
+  the same document.
+- the append path adds a `blockContainer` **beside** the existing `blockGroup`
+  as a second top-level child, which is the §12.5.0 silent-deletion trap.
+- `SetProp` stores every value as a string, so `checked` lands as `"true"`
+  where BlockNote writes the boolean `true`. Unticking stores `"false"`, and a
+  non-empty string is truthy — a box cleared on one client reads as ticked
+  anywhere that tests the prop for truth. Latent only because no shell calls
+  `Notes.editBlock` yet.
+- `level` lands as `"5"` where BlockNote writes `5`.
+
+The read verifier asserts coverage **against `registry-manifest.json`** rather
+than against a hand-counted list, so a type nobody wrote a case for is a failing
 test. That is what makes "a new block type is not done until it has a case"
 enforceable. It is also the gap that let two real defects ship: `divider` was
 dropped before it left the core, and inline colour values never crossed at all.

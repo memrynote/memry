@@ -352,6 +352,30 @@ is empty; and **refuse** a top-level layout it does not recognise rather than
 guess. Refusing is correct because the alternatives are a deletion the user
 never sees and a document a peer cannot construct.
 
+**`block-edit.json` is the class that enforces this**, by recording a base
+document, one operation and the document the operation must leave behind, both
+authored through BlockNote. A writer is held to producing what BlockNote would
+have produced, which is the only statement of the rule that a test can check;
+a writer held to its own idea of the shape cannot catch a node its peer will
+delete. Its expectations are compared through the canonical rendering below
+rather than through update bytes.
+
+**Two writer defects that class found on its first run, recorded so they are
+not rediscovered as surprises.** The reference core's append path put a
+`blockContainer` beside the existing `blockGroup` as a second top-level child
+— exactly the deletion this section warns about. And its prop write stored
+every value as a **string**, so `checked` became `"true"` where BlockNote
+writes the boolean `true`; since a non-empty string is truthy, an unticked box
+written as `"false"` reads as ticked by anything testing the prop for truth. A
+conforming writer MUST write a prop in its **declared type**, not as text.
+
+**A block's declared props are written explicitly, not omitted.** The paragraph
+BlockNote's own writer produces carries `backgroundColor`, `textAlignment` and
+`textColor` at their declared defaults; the sentence below about omitting
+defaults describes the hand-built fixtures, not the reference writer. A client
+that omits them produces a document that renders identically and is **not**
+canonically identical, so it cannot be held to byte parity with desktop.
+
 **Each `blockContainer` carries an `id` attribute, a v4 UUID.** BlockNote's
 writer stamps one on every block; its reader tolerates a missing id by
 generating one, and desktop separately repairs containers lacking one on note

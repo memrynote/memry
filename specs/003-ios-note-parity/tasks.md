@@ -80,23 +80,51 @@ format change updates the chapter and the vectors in the same change.
 - [x] N104 [P] TypeScript verifier `packages/contracts/src/__tests__/note-blocks.test.ts`; it reads the committed file and never imports the builder
 - [x] N105 [P] Rust consumer in `crates/memry-core/tests/`, reading `note-blocks.json` through `include_str!` the way `tests/support/mod.rs:62` reads `text-extract.json`
 - [x] N106 [P] iOS consumer in `apps/ios/MemryConformanceTests/`, through the real FFI, following the harness in `Vectors.swift`
-- [ ] N107 Write-direction corpus and class `block-edit.json`: a base document, one operation, and the expected resulting document in the N101 serialisation. One case per operation in Phase E. **The N101 serialisation both ports emit is in place and pinned by `note-blocks.json`, so this task is now only the corpus and the harness.** Design settled while doing N100: the expected result is authored by performing the equivalent edit **through BlockNote** and rendering it canonically, so the assertion is "the Rust writer produces the document BlockNote would have produced" — which is exactly what §12.5.0 demands and what a self-consistency test cannot check. Cases need explicit block ids on base and expected so the two line up under an insert
+- [x] N107 Write-direction corpus and class `block-edit.json`: a base document, one operation, and the expected resulting document in the N101 serialisation. One case per operation in Phase E. **The N101 serialisation both ports emit is in place and pinned by `note-blocks.json`, so this task is now only the corpus and the harness.** Design settled while doing N100: the expected result is authored by performing the equivalent edit **through BlockNote** and rendering it canonically, so the assertion is "the Rust writer produces the document BlockNote would have produced" — which is exactly what §12.5.0 demands and what a self-consistency test cannot check. Cases need explicit block ids on base and expected so the two line up under an insert
 - [x] N108 Update `packages/contracts/test-vectors/README.md`'s file table and case total, and `docs/protocol/12-note-body-format.md` where the new classes are named — README rule 3
 
 **Gate G-P1 evidence**: `pnpm --filter @memry/contracts vectors:check` and
 `pnpm --filter @memry/contracts test` green, `cargo test -p memry-core` green,
 `Conformance.xctestplan` green on device.
 
-**Status: the read half of the gate is green; N107 (the write half) is not
-done, so G-P1 is NOT yet open and Phase E may not start.**
+**Status: G-P1 is OPEN. Phase E may start.**
 
 Measured:
 
-- `vectors:check` passed (12 classes, up from 11)
-- `pnpm --filter @memry/contracts test`: 2142 tests in 70 files
-- `cargo test -p memry-core`: 41 binaries, 0 failures
+- `vectors:check` passed (13 classes, up from 11)
+- `pnpm --filter @memry/contracts test`: 2189 tests in 71 files
+- `cargo test -p memry-core`: 43 binaries, 0 failures
 - `Conformance.xctestplan`: 21 tests in 5 suites, on the simulator
-- the generator is byte-reproducible across two consecutive runs
+- `Unit.xctestplan`: 393 tests in 66 suites
+- both generators are byte-reproducible across consecutive runs
+
+**Phase E starts with the four `pending` cases in `block-edit.json`, which are
+real defects the write class found on its first run rather than known-bad
+inputs.** Each is asserted to fail today, so fixing it turns the case red and
+forces the flag off:
+
+1. **The append path adds a second top-level child.** `insert_paragraph` with
+   no `after` appends to the **fragment**, putting a `blockContainer` beside
+   the existing `blockGroup`. §12.5.0: y-prosemirror cannot construct a `doc`
+   with two top-level children and answers by **deleting the element** —
+   silently. This is the single most dangerous thing a writing client can get
+   wrong, and the reference core did it. Owned by N400.
+2. **`SetProp` stores every value as a string.** `checked` lands as `"true"`
+   where BlockNote writes the boolean `true`. Not cosmetic: unticking stores
+   `"false"`, and a non-empty string is truthy, so a box cleared on iOS reads
+   as ticked anywhere that tests the prop for truth. Latent only because no
+   shell calls `Notes.editBlock` yet — which is exactly why it must be fixed
+   before one does. Owned by N408.
+3. **`level` lands as `"5"`** where BlockNote writes `5`. Unnoticed because
+   `extract_text` reads the level with a JavaScript-style digit-prefix parse,
+   so the `#` marker survives either spelling. Owned by N408.
+4. **Inserted blocks omit their declared props.** BlockNote's paragraph carries
+   `backgroundColor`, `textAlignment` and `textColor` at their declared
+   defaults; `insert_paragraph` writes none. Both render the same, so nothing
+   is lost today, but the documents are not identical — so iOS cannot be held
+   to byte parity with desktop until the writer knows each type's declared
+   props. Owned by N400. §12.5.0's sentence about omitting defaults describes
+   the hand-built fixtures, not BlockNote's writer, and the chapter now says so.
 
 Three defects the new class caught that no existing test could, all fixed here:
 

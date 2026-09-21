@@ -1,4 +1,5 @@
 import SwiftUI
+// pi-lens-ignore: SourceKit
 import UIKit
 
 // T160. The iOS implementation of `DESIGN.md`.

@@ -103,6 +103,53 @@ inserted blocks, which are v4 UUIDs a writer mints. A case that asserts
 placement passes the id in as an operation parameter, so it is an input rather
 than a random output.
 
+### What the write class found on its first run (N107)
+
+Four cases ship `pending`, and none of them is a known-bad input written to be
+red. Each is a defect in the reference writer that no existing test could see,
+because nothing existed to compare the writer's output against.
+
+**The append path adds a second top-level child.** `insert_paragraph` with no
+`after` appends to the _fragment_, which puts a `blockContainer` beside the
+existing `blockGroup`. §12.5.0 is explicit about the consequence:
+y-prosemirror cannot construct a `doc` with two top-level children and answers
+by **deleting the element**, silently. The update applies, the document
+encodes, `extract_text` may still return the text, and the next desktop to open
+the note renders it without the block. The chapter names this the single most
+dangerous thing a writing client can get wrong, and the core shipped it.
+
+**Props are written as strings rather than in their declared types.**
+`SetProp` carries a `String` and `insert_attribute` stores one, so `checked`
+lands as the string `"true"` where BlockNote writes the boolean `true`, and
+`level` lands as `"5"` where BlockNote writes `5`.
+
+This is not cosmetic. Unticking a box stores `"false"`, and a non-empty string
+is truthy — so a box the user cleared on iOS reads as **ticked** anywhere that
+tests the prop for truth. It is latent today only because no shell calls
+`Notes.editBlock`, which is precisely why it has to be fixed before one does.
+The heading case has hidden itself for a different reason: `extract_text` reads
+the level with a JavaScript-style digit-prefix parse, so the `#` marker comes
+out right either way.
+
+A conforming writer writes a prop in its **declared type**. That needs the
+writer to know each block type's prop schema, which is what N400 exists to
+build and why node construction belongs in Rust rather than in Swift (plan
+§3 D1).
+
+**Inserted blocks omit their declared props.** BlockNote's own paragraph
+carries `backgroundColor`, `textAlignment` and `textColor` at their declared
+defaults; `insert_paragraph` writes a bare `paragraph`. Both documents render
+identically, so nothing is lost today — but they are not the same document, so
+iOS cannot be held to byte parity with desktop until the writer knows the
+declared props.
+
+Worth recording because the chapter misled here: §12.5.0 says "a block's props
+are omitted when they equal their declared defaults", which describes the
+hand-built `text-extract` fixtures and **not** BlockNote's writer. The chapter
+now says so explicitly.
+
+---
+
 ## Q2 — Where does the property write path belong?
 
 Open. Answered by N700.
