@@ -11,6 +11,7 @@ import { Schema } from '@tiptap/pm/model'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { EditorState, TextSelection } from '@tiptap/pm/state'
 import type { Transaction } from '@tiptap/pm/state'
+import type { EditorView } from '@tiptap/pm/view'
 import { describe, expect, it, vi } from 'vitest'
 import {
   activeRunWikiLink,
@@ -297,6 +298,46 @@ describe('wiki-link edit plugin', () => {
     expect(unfocused.props.decorations!.call(unfocused, state)).toBeNull()
     const focused = focusedPlugin()
     expect(focused.props.decorations!.call(focused, state)).not.toBeNull()
+  })
+
+  it('paints nothing again once the view it was mounted on is gone', () => {
+    // #given a pane that unmounts. Nothing else clears the captured view, and
+    // a stale one would answer `hasFocus` for an editor that no longer exists.
+    const state = stateWith([schema.text('a '), chip({ target: 'A' })], 4)
+    const plugin = createWikiLinkEditPlugin()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mounted = (plugin.spec as any).view({ hasFocus: () => true })
+    expect(plugin.props.decorations!.call(plugin, state)).not.toBeNull()
+
+    // #when
+    mounted.destroy()
+
+    // #then
+    expect(plugin.props.decorations!.call(plugin, state)).toBeNull()
+  })
+
+  it('asks ProseMirror to repaint on focus and on blur', () => {
+    // #given focus changes what `decorations` answers but changes no document
+    // state, so ProseMirror would never recompute on its own \u2014 the chip would
+    // stay hidden until the next keystroke.
+    const dispatched: Transaction[] = []
+    const plugin = createWikiLinkEditPlugin()
+    const tr = stateWith([chip({ target: 'A' })], 2).tr
+    const view = {
+      hasFocus: () => true,
+      state: { tr },
+      dispatch: (next: Transaction) => dispatched.push(next)
+    } as unknown as EditorView
+
+    // #when
+    const onFocus = plugin.props.handleDOMEvents!.focus!
+    const onBlur = plugin.props.handleDOMEvents!.blur!
+
+    // #then the event is not claimed \u2014 ProseMirror's own focus handling has to
+    // keep running \u2014 and an empty transaction asks for the repaint.
+    expect(onFocus.call(plugin, view, new Event('focus') as FocusEvent)).toBe(false)
+    expect(onBlur.call(plugin, view, new Event('blur') as FocusEvent)).toBe(false)
+    expect(dispatched).toEqual([tr, tr])
   })
 
   it('paints nothing once the caret leaves the run', () => {
