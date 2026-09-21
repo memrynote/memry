@@ -25,14 +25,16 @@
 
 use std::sync::Arc;
 
-use crate::api::errors::{AuthError, StorageError};
+use crate::api::errors::{AuthError, PropertyWriteError, StorageError};
 use crate::crdt::body_edit::BlockEdit;
 use crate::crdt::errors::CrdtError;
 use crate::crypto::{keys, sodium};
 use crate::domain::body_write;
 use crate::domain::notes::{self, NewNote};
+use crate::domain::properties;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
+use serde_json::Value;
 
 /// The write surface over one opened vault.
 #[derive(uniffi::Object)]
@@ -177,6 +179,72 @@ impl NotesWriter {
                 ))
             })
             .map_err(CrdtError::from)?
+    }
+
+    /// Sets one property on a note (N700).
+    ///
+    /// The value crosses as **JSON text**, not as a typed union, for the same
+    /// reason `NoteProperty::value_json` is read that way: §13.7.1 lets a
+    /// property hold any JSON, and a closed enum here would have to drop or
+    /// coerce whatever did not fit. A shell serialises against the declared
+    /// `type_name` it already reads, which is what makes one call serve all
+    /// ten property types rather than ten calls.
+    ///
+    /// - Throws: `Retyped` when the edit would change a property's JSON type
+    ///   (FR-048). Deliberately not folded into a storage failure: a surface
+    ///   has to tell "that is not a valid value for this property" from "the
+    ///   disk is full", and a silent coercion would be invisible at the call
+    ///   site and permanent on the wire, since the merged payload is what
+    ///   every other device then reads.
+    pub fn set_property(
+        &self,
+        id: String,
+        name: String,
+        value_json: String,
+    ) -> Result<(), PropertyWriteError> {
+        let device_id = self.device_id.clone();
+        let value: Value =
+            serde_json::from_str(&value_json).map_err(|error| StorageError::Failed {
+                what: format!("that property value is not JSON: {error}"),
+            })?;
+        self.db
+            .call_blocking(move |conn| {
+                Ok(properties::set(
+                    conn,
+                    notes::ITEM_TYPE,
+                    &id,
+                    &name,
+                    value,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(PropertyWriteError::from)?
+            .map(|_| ())
+            .map_err(PropertyWriteError::from)
+    }
+
+    /// Clears one property, **leaving the key present and `null`** (§13.4).
+    ///
+    /// Not a removal: an absent key means "this sender does not know", so a
+    /// removed key would tell every other device nothing had changed rather
+    /// than that the user cleared it.
+    pub fn clear_property(&self, id: String, name: String) -> Result<(), PropertyWriteError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                Ok(properties::clear(
+                    conn,
+                    notes::ITEM_TYPE,
+                    &id,
+                    &name,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(PropertyWriteError::from)?
+            .map(|_| ())
+            .map_err(PropertyWriteError::from)
     }
 
     /// The device identity these writes are recorded under. Exposed for the

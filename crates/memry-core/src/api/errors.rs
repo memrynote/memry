@@ -533,3 +533,49 @@ pub enum SyncError {
     #[error("the attachment bytes failed their integrity check: {what}")]
     AttachmentCorrupt { what: String },
 }
+
+/// Why a property write was refused, as the shell meets it.
+///
+/// A separate type from [`crate::domain::properties::PropertyError`] rather
+/// than a derive on it: that one carries `&'static str` discriminants, which
+/// do not cross the FFI, and reshaping a domain type to suit the binding
+/// generator would be the wrong direction of dependency.
+///
+/// [`Retyped`](PropertyWriteError::Retyped) stays a distinct case because it
+/// is the behaviour FR-048 names: a surface has to be able to say "that is
+/// not a valid value for this property" rather than "something went wrong".
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
+pub enum PropertyWriteError {
+    #[error(
+        "property `{name}` holds {existing} and the edit would make it {proposed}; a value edit never retypes a property (FR-048)"
+    )]
+    Retyped {
+        name: String,
+        existing: String,
+        proposed: String,
+    },
+
+    #[error(transparent)]
+    Storage {
+        #[from]
+        source: StorageError,
+    },
+}
+
+impl From<crate::domain::properties::PropertyError> for PropertyWriteError {
+    fn from(error: crate::domain::properties::PropertyError) -> Self {
+        use crate::domain::properties::PropertyError;
+        match error {
+            PropertyError::Retyped {
+                name,
+                existing,
+                proposed,
+            } => PropertyWriteError::Retyped {
+                name,
+                existing: existing.to_owned(),
+                proposed: proposed.to_owned(),
+            },
+            PropertyError::Storage(source) => PropertyWriteError::Storage { source },
+        }
+    }
+}

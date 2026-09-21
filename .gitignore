@@ -111,6 +111,8 @@ packages/swift/MemryCore/.swiftpm/
 # errors on files nobody has touched. Regenerate both with:
 #
 #   cd apps/ios && xcode-build-server config -project Memry.xcodeproj -scheme Memry
-#   cp buildServer.json ../../buildServer.json
+#   cp buildServer.json
+# xcode-build-server's compile database, regenerated from a build log.
+.compile ../../buildServer.json
 apps/ios/buildServer.json
 buildServer.json

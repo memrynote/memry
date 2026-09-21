@@ -250,12 +250,6 @@ Option 3 has to be ruled out before either of the others is built, because
 changing a written format to recover information already on the wire would be
 the expensive wrong answer.
 
-## Q2 — Where does the property write path belong?
-
-Open. Answered by N700.
-
----
-
 ## Q3 — Does the Rust core reimplement manifest signing?
 
 **It reimplements it, held by a conformance vector. Answered by N205.**
@@ -415,3 +409,39 @@ second real client:
 
 An in-process approximation asserting something weaker under those names would
 be worse than leaving them open, because it would read as coverage.
+
+---
+
+## Q2 — Where does the property write path belong?
+
+**Beside the projection, in `domain/properties.rs`, and it was already there.
+Answered by N700.**
+
+The task offered two homes: next to `domain/note_meta.rs`, or in the note
+record payload handler. Neither is right, and the reason is that a property
+value is not metadata _about_ a note and not a field _of_ the record — it is
+one key inside the record's free-form `properties` object (§13.7.1). Writing
+one means reading that object, changing one key, and pushing the whole object
+back, which is exactly what `domain/properties.rs` already did for `set` and
+`clear`.
+
+**So N700 was mostly exposure rather than implementation.** The domain half —
+including FR-048's retype refusal — predates this feature. What was missing is
+that nothing reached it: no API method existed, so no shell could call it.
+`NotesWriter::set_property` and `clear_property` are that surface.
+
+Two decisions worth recording:
+
+**The value crosses as JSON text, not a typed union.** §13.7.1 lets a property
+hold any JSON, and a closed enum at the FFI would have to drop or coerce
+whatever did not fit. It is also what makes _one_ call serve all ten property
+types instead of ten near-identical calls, since the shell already reads
+`type_name` alongside the value.
+
+**`PropertyWriteError` is a separate type from `PropertyError`.** The domain
+error carries `&'static str` discriminants, which do not cross the FFI.
+Reshaping a domain type to suit the binding generator is the wrong direction
+of dependency, so the API layer owns its own error and converts. `Retyped`
+stays a distinct case rather than collapsing into a storage failure, because
+FR-048 is about a surface being able to say "that is not a valid value for
+this property" rather than "something went wrong".

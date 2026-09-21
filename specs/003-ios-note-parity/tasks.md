@@ -251,7 +251,7 @@ after sync.
 
 **Depends on**: Phase F for the editors, not for the reads.
 
-- [ ] N700 Core: property writes for the 10 types (`text`, `number`, `date`, `checkbox`, `url`, `status`, `select`, `multiselect`, `relation`, `project`). `NoteProperty` already carries `value_json`, `type_name`, `options_json` and `color` on the read side. **Answers Q2: record whether this belongs beside `domain/note_meta.rs` or in the note record payload handler**
+- [x] N700 Core: property writes for the 10 types (`text`, `number`, `date`, `checkbox`, `url`, `status`, `select`, `multiselect`, `relation`, `project`). `NoteProperty` already carries `value_json`, `type_name`, `options_json` and `color` on the read side. **Answers Q2: record whether this belongs beside `domain/note_meta.rs` or in the note record payload handler**
 - [ ] N701 Core: add `cover` and `icon` to `NoteMetadata`, which carries only tags, properties and aliases today, plus their writes
 - [ ] N702 iOS: title editing and the icon picker (emoji and symbol)
 - [ ] N703 iOS: cover add, change, remove and reposition, on N208 and N214

@@ -208,3 +208,165 @@ fn a_deleted_note_resolves_nothing() {
     assert!(resolve(&db, "Dune").is_none());
     assert!(metadata(&db, "n1").is_none());
 }
+
+// MARK: - Property writes (N700)
+
+/// The ten property types §13.7.1 allows, each written and read back.
+///
+/// **One call serves all ten** because the value crosses as JSON text rather
+/// than a typed union: §13.7.1 lets a property hold any JSON, and a closed
+/// enum would have to drop or coerce whatever did not fit.
+#[test]
+fn every_property_type_survives_a_write_and_a_read() {
+    let (db, _vault) = vault("property-types");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    let cases: Vec<(&str, Value)> = vec![
+        ("text", json!("a sentence")),
+        ("number", json!(42)),
+        ("date", json!("2026-09-22")),
+        ("checkbox", json!(true)),
+        ("url", json!("https://memry.app")),
+        ("status", json!("in progress")),
+        ("select", json!("one")),
+        ("multiselect", json!(["one", "two"])),
+        ("relation", json!(["note-2"])),
+        ("project", json!("project-1")),
+    ];
+
+    for (name, value) in &cases {
+        db.call_blocking({
+            let name = (*name).to_owned();
+            let value = value.clone();
+            move |conn: &mut Connection| {
+                memry_core::domain::properties::set(
+                    conn, "note", "note-1", &name, value, DEVICE, NOW,
+                )
+                .expect("the property write");
+                Ok(())
+            }
+        })
+        .expect("the write");
+    }
+
+    let metadata = db
+        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+        .expect("read")
+        .expect("the note");
+
+    for (name, value) in &cases {
+        let stored = metadata
+            .properties
+            .iter()
+            .find(|property| property.name == *name)
+            .unwrap_or_else(|| panic!("{name} is missing"));
+        let parsed: Value =
+            serde_json::from_str(&stored.value_json).expect("the stored value is JSON");
+        assert_eq!(&parsed, value, "{name} did not round-trip");
+    }
+}
+
+/// **FR-048: a value edit never retypes a property.**
+///
+/// The refusal is typed rather than folded into a storage failure because a
+/// surface has to tell "that is not a valid value for this property" from
+/// "the disk is full" — and a silent coercion would be invisible at the call
+/// site and permanent on the wire, since the merged payload is what every
+/// other device then reads.
+#[test]
+fn changing_a_propertys_type_is_refused_rather_than_coerced() {
+    use memry_core::domain::properties::{self, PropertyError};
+
+    let (db, _vault) = vault("property-retype");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    db.call_blocking(|conn: &mut Connection| {
+        properties::set(conn, "note", "note-1", "count", json!(3), DEVICE, NOW)
+            .expect("the first write establishes the type");
+        Ok(())
+    })
+    .expect("the write");
+
+    let refused = db
+        .call_blocking(|conn: &mut Connection| {
+            Ok(properties::set(
+                conn,
+                "note",
+                "note-1",
+                "count",
+                json!("three"),
+                DEVICE,
+                NOW,
+            ))
+        })
+        .expect("the call");
+
+    match refused {
+        Err(PropertyError::Retyped { name, .. }) => assert_eq!(name, "count"),
+        other => panic!("expected a Retyped refusal, got {other:?}"),
+    }
+
+    // And the original value is untouched: a refused write changes nothing.
+    let metadata = db
+        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+        .expect("read")
+        .expect("the note");
+    let count = metadata
+        .properties
+        .iter()
+        .find(|property| property.name == "count")
+        .expect("count");
+    assert_eq!(count.value_json, "3");
+}
+
+/// Clearing leaves the key present and `null` (§13.4).
+///
+/// **Not a removal.** An absent key means "this sender does not know", so a
+/// removed key would tell every other device that nothing changed rather than
+/// that the user cleared it.
+#[test]
+fn clearing_a_property_leaves_the_key_present_and_null() {
+    use memry_core::domain::properties;
+
+    let (db, _vault) = vault("property-clear");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    db.call_blocking(|conn: &mut Connection| {
+        properties::set(conn, "note", "note-1", "status", json!("done"), DEVICE, NOW)
+            .expect("the write");
+        properties::clear(conn, "note", "note-1", "status", DEVICE, NOW).expect("the clear");
+        Ok(())
+    })
+    .expect("the calls");
+
+    let metadata = db
+        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+        .expect("read")
+        .expect("the note");
+    let status = metadata
+        .properties
+        .iter()
+        .find(|property| property.name == "status")
+        .expect("the key must still be present after a clear");
+    assert_eq!(status.value_json, "null");
+}
+
+/// A clear is exempt from the retype rule, because `null` claims no type.
+#[test]
+fn clearing_is_not_a_retype() {
+    use memry_core::domain::properties;
+
+    let (db, _vault) = vault("property-clear-retype");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    let result = db
+        .call_blocking(|conn: &mut Connection| {
+            properties::set(conn, "note", "note-1", "count", json!(7), DEVICE, NOW)
+                .expect("the write");
+            Ok(properties::clear(
+                conn, "note", "note-1", "count", DEVICE, NOW,
+            ))
+        })
+        .expect("the call");
+    assert!(result.is_ok(), "a clear must never be refused as a retype");
+}
