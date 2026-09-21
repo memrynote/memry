@@ -381,6 +381,9 @@ function installWindowApi() {
         },
         local_openai_compatible: { backend: 'local_openai_compatible', available: true }
       }),
+      // #2317 made the section read standing tool grants on mount; without it
+      // here the whole section throws before it renders.
+      getToolGrants: vi.fn().mockResolvedValue({ tools: [] }),
       setPreferences: vi.fn(async (input) => ({ ...agentPreferences, ...input })),
       setLocalProviderSettings: vi.fn(async (input) => ({
         preset: input.preset,
