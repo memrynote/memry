@@ -22,6 +22,8 @@ import {
 } from '@main/database/queries/notes'
 import { SnapshotReasons, type SnapshotReason } from '@memry/db-schema/schema/notes-cache'
 import { getDatabase, getIndexDatabase } from '../database'
+import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@memry/contracts/notes-api'
@@ -234,6 +236,15 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
     changes: restoredNote,
     source: 'internal'
   })
+
+  // The file is not the note's body while an editor holds it: the Y.Doc is.
+  // `syncNoteToCache` above refreshes the index row's content hash before the
+  // watcher reaches the file, so the watcher dedupes and never feeds the CRDT
+  // either (`vault/watcher.ts`) — without these two lines a restore of an open
+  // note shows nothing and the next write-back rewrites the file from the
+  // unrestored Y.Doc. Same closing step as `vault/append-blocks.ts`.
+  await feedExternalEditToCrdt(cached.id, snapshotParsed.content)
+  replaceNoteTagsInCrdt(cached.id, syncResult.tags)
 
   return restoredNote
 }
