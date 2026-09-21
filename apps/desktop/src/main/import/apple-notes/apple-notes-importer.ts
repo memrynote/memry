@@ -3,8 +3,8 @@
  *
  * Reads a copy of the Apple Notes NoteStore.sqlite database, decodes each
  * note's gzipped protobuf body via the pure @memry/importers/apple-notes package,
- * converts it to markdown, resolves inline image attachments, and creates a
- * note under `Apple Notes/<account>/<folder chain>`.
+ * converts it to markdown, resolves inline image attachments and tables, and
+ * creates a note under `Apple Notes/<account>/<folder chain>`.
  *
  * Database access (temp snapshot, entity ids, account/folder rows, the ZPARENT
  * walk) is shared with the dialog's folder picker in `note-store.ts`.
@@ -22,6 +22,7 @@
 import path from 'path'
 import fs from 'fs/promises'
 import zlib from 'zlib'
+import type Database from 'better-sqlite3'
 import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
 import { attachmentMarkdown } from '../_shared/attachment-markdown'
@@ -30,8 +31,11 @@ import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import {
   decodeNote,
+  decodeTable,
   docToMarkdown,
   mapNote,
+  tableToMarkdown,
+  AN_ATTACHMENT_UTI,
   ATTACHMENT_TOKEN_PREFIX,
   type AppleNoteRow
 } from '@memry/importers/apple-notes'
@@ -43,6 +47,7 @@ import {
   FOLDER_TYPE_TRASH,
   defaultContainerDir,
   folderPath,
+  hasColumn,
   isAccessDenied,
   loadAccounts,
   loadFolders,
@@ -79,7 +84,8 @@ interface MediaRow {
 /**
  * A note's inline attachment resolved by its ICAttachment identifier. URL cards
  * carry `typeUti`/`title`/`url` and no file; file/image attachments carry the
- * `media*` fields from the joined ICMedia row (where the real filename lives).
+ * `media*` fields from the joined ICMedia row (where the real filename lives);
+ * a table carries its grid in `tableData` (hex of the gzipped CRDT payload).
  */
 interface AttachmentRow {
   typeUti: string | null
@@ -88,6 +94,36 @@ interface AttachmentRow {
   mediaId: string | null
   generation: string | null
   filename: string | null
+  tableData: string | null
+}
+
+/**
+ * Mergeable-data columns in schema preference order. A table's grid lives in
+ * ZMERGEABLEDATA1 on current macOS releases; older databases only have
+ * ZMERGEABLEDATA. Neither is guaranteed to exist, so the SELECT is built from
+ * whichever columns the opened snapshot actually has.
+ */
+const TABLE_DATA_COLUMNS = ['zmergeabledata1', 'zmergeabledata'] as const
+
+function tableDataExpression(db: Database.Database): string {
+  const present = TABLE_DATA_COLUMNS.filter((column) =>
+    hasColumn(db, 'ziccloudsyncingobject', column)
+  ).map((column) => `hex(a.${column})`)
+  if (present.length === 0) return 'NULL AS tableData'
+  if (present.length === 1) return `${present[0]} AS tableData`
+  return `COALESCE(${present.join(', ')}) AS tableData`
+}
+
+/**
+ * Decode a table attachment's payload into a markdown table, or '' when the
+ * payload is missing or carries a layout we cannot rebuild.
+ */
+function tableMarkdown(hexData: string | null): string {
+  if (!hexData) return ''
+  // unzipSync, not gunzipSync: the CRDT blob is gzip today but zlib-wrapped in
+  // some older databases, and unzipSync accepts both.
+  const table = decodeTable(zlib.unzipSync(Buffer.from(hexData, 'hex')))
+  return table ? tableToMarkdown(table) : ''
 }
 
 /**
@@ -172,11 +208,13 @@ export const appleNotesImporter: Importer = {
 
       // The note body references the ICAttachment identifier. URL cards hold
       // their link on the attachment row itself; file/image attachments point
-      // (ZMEDIA) at an ICMedia row that carries the real filename + generation.
+      // (ZMEDIA) at an ICMedia row that carries the real filename + generation;
+      // a table holds its grid in the mergeable-data blob on its own row.
       const attachmentStmt = db.prepare(
         'SELECT a.ztypeuti AS typeUti, a.ztitle AS title, a.zurlstring AS url, ' +
-          'm.zidentifier AS mediaId, m.zgeneration1 AS generation, m.zfilename AS filename ' +
-          'FROM ziccloudsyncingobject AS a ' +
+          'm.zidentifier AS mediaId, m.zgeneration1 AS generation, m.zfilename AS filename, ' +
+          tableDataExpression(db) +
+          ' FROM ziccloudsyncingobject AS a ' +
           'LEFT JOIN ziccloudsyncingobject AS m ON m.z_pk = a.zmedia ' +
           'WHERE a.zidentifier = ?'
       )
@@ -247,8 +285,9 @@ export const appleNotesImporter: Importer = {
           // just-written cache mid-import, throw, and drop every rewrite).
           const noteId = generateNoteId()
 
-          // Resolve inline attachments into the body: URL cards → markdown links,
-          // images → embedded `![](path)`, other files → a clickable file block.
+          // Resolve inline attachments into the body: tables → pipe tables, URL
+          // cards → markdown links, images → embedded `![](path)`, other files →
+          // a clickable file block.
           let rewritten = body
           for (const attachmentId of new Set(attachmentIds)) {
             const token = `${ATTACHMENT_TOKEN_PREFIX}${attachmentId}`
@@ -256,6 +295,20 @@ export const appleNotesImporter: Importer = {
               const att = attachmentStmt.get(attachmentId) as AttachmentRow | undefined
               if (!att) {
                 ctx.reportSkipped(attachmentId, 'attachment not found')
+                continue
+              }
+
+              // Table — the grid lives on the attachment row, not on disk.
+              // Splice it in as its own block (blank lines around it, so the
+              // pipe table is not glued to the paragraph above or below).
+              if (att.typeUti === AN_ATTACHMENT_UTI.Table) {
+                const table = tableMarkdown(att.tableData)
+                if (!table) {
+                  ctx.reportSkipped(att.title || attachmentId, 'table could not be decoded')
+                  rewritten = rewritten.split(`![](${token})`).join('')
+                  continue
+                }
+                rewritten = rewritten.split(`![](${token})`).join(`\n\n${table}\n\n`)
                 continue
               }
 
@@ -297,10 +350,15 @@ export const appleNotesImporter: Importer = {
             }
           }
 
+          // Spliced blocks (tables) can leave a run of blank lines behind where
+          // the placeholder sat; the converter already collapses those in the
+          // body it produced, so do the same to what the rewrite produced.
+          const content = rewritten.replace(/\n{3,}/g, '\n\n').trim()
+
           await createNote({
             id: noteId,
             title: mapped.title,
-            content: rewritten,
+            content,
             folder: mapped.folder,
             created: mapped.created,
             modified: mapped.modified

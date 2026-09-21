@@ -2,11 +2,16 @@
  * protobufjs JSON descriptor for the Apple Notes note body.
  *
  * Ported from the Three Planets Software Apple Notes importer (MIT).
- * Only the message graph reachable from `ciofecaforensics.Document` is kept,
- * which is everything required to decode a note body (Document → Note →
- * AttributeRun → ParagraphStyle/Font/Color/AttachmentInfo). The mergeable-data
- * CRDT messages used for tables/scans are intentionally omitted; those
- * attachment types are deferred (see convert-doc.ts).
+ * Two message graphs are kept:
+ *
+ * - `ciofecaforensics.Document` — a note body (Document → Note → AttributeRun →
+ *   ParagraphStyle/Font/Color/AttachmentInfo).
+ * - `ciofecaforensics.MergableDataProto` — the CRDT container a table
+ *   attachment stores in ICAttachment.ZMERGEABLEDATA1. Its cells are ordinary
+ *   `Note` messages, which is why the two graphs share one descriptor
+ *   (see decode-table.ts).
+ *
+ * Scans, drawings and handwriting are still deferred (see convert-doc.ts).
  *
  * Feed this to `protobufjs.Root.fromJSON(descriptor)`.
  */
@@ -88,6 +93,112 @@ export const descriptor: INamespace = {
               options: { packed: false }
             }
           }
+        },
+
+        // ---- Mergeable data (CRDT): tables ----
+        // Every reference inside the container is an index into one of the
+        // key/type/uuid/entry lists on MergeableDataObjectData.
+        ObjectID: {
+          fields: {
+            unsignedIntegerValue: { type: 'uint64', id: 2 },
+            stringValue: { type: 'string', id: 4 },
+            objectIndex: { type: 'int32', id: 6 }
+          }
+        },
+        DictionaryElement: {
+          fields: {
+            key: { type: 'ObjectID', id: 1 },
+            value: { type: 'ObjectID', id: 2 }
+          }
+        },
+        Dictionary: {
+          fields: {
+            element: {
+              rule: 'repeated',
+              type: 'DictionaryElement',
+              id: 1,
+              options: { packed: false }
+            }
+          }
+        },
+        RegisterLatest: {
+          fields: {
+            contents: { type: 'ObjectID', id: 2 }
+          }
+        },
+        MapEntry: {
+          fields: {
+            key: { type: 'int32', id: 1 },
+            value: { type: 'ObjectID', id: 2 }
+          }
+        },
+        MergeableDataObjectMap: {
+          fields: {
+            type: { type: 'int32', id: 1 },
+            mapEntry: { rule: 'repeated', type: 'MapEntry', id: 3, options: { packed: false } }
+          }
+        },
+        OrderedSetOrderingArrayAttachment: {
+          fields: {
+            index: { type: 'int32', id: 1 },
+            uuid: { type: 'bytes', id: 2 }
+          }
+        },
+        OrderedSetOrderingArray: {
+          fields: {
+            contents: { type: 'Note', id: 1 },
+            attachment: {
+              rule: 'repeated',
+              type: 'OrderedSetOrderingArrayAttachment',
+              id: 2,
+              options: { packed: false }
+            }
+          }
+        },
+        OrderedSetOrdering: {
+          fields: {
+            array: { type: 'OrderedSetOrderingArray', id: 1 },
+            contents: { type: 'Dictionary', id: 2 }
+          }
+        },
+        OrderedSet: {
+          fields: {
+            ordering: { type: 'OrderedSetOrdering', id: 1 },
+            elements: { type: 'Dictionary', id: 2 }
+          }
+        },
+        MergeableDataObjectEntry: {
+          fields: {
+            registerLatest: { type: 'RegisterLatest', id: 1 },
+            dictionary: { type: 'Dictionary', id: 6 },
+            note: { type: 'Note', id: 10 },
+            customMap: { type: 'MergeableDataObjectMap', id: 13 },
+            orderedSet: { type: 'OrderedSet', id: 16 }
+          }
+        },
+        MergeableDataObjectData: {
+          fields: {
+            mergeableDataObjectEntry: {
+              rule: 'repeated',
+              type: 'MergeableDataObjectEntry',
+              id: 3,
+              options: { packed: false }
+            },
+            mergeableDataObjectKeyItem: { rule: 'repeated', type: 'string', id: 4 },
+            mergeableDataObjectTypeItem: { rule: 'repeated', type: 'string', id: 5 },
+            mergeableDataObjectUuidItem: { rule: 'repeated', type: 'bytes', id: 6 }
+          }
+        },
+        MergableDataObject: {
+          fields: {
+            version: { type: 'int32', id: 2 },
+            mergeableDataObjectData: { type: 'MergeableDataObjectData', id: 3 }
+          }
+        },
+        MergableDataProto: {
+          fields: {
+            mergableDataObject: { type: 'MergableDataObject', id: 2 }
+          }
         }
       }
     }
@@ -96,3 +207,6 @@ export const descriptor: INamespace = {
 
 /** Fully-qualified protobuf type name for a decoded note document. */
 export const DOCUMENT_TYPE = 'ciofecaforensics.Document'
+
+/** Fully-qualified protobuf type name for a mergeable-data (table) payload. */
+export const MERGEABLE_DATA_TYPE = 'ciofecaforensics.MergableDataProto'

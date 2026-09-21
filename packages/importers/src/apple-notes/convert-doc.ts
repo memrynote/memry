@@ -8,9 +8,10 @@
  * Inline attachments are emitted as a placeholder token
  * `![](apple-notes-attachment:<identifier>)` and their identifiers collected;
  * the desktop importer resolves the bytes via SQLite, saves them, and rewrites
- * the token to the saved vault path. Tables, scans, drawings and handwriting
- * are deferred — they require the mergeable-data CRDT decode and on-disk
- * fallback files that are out of v1 scope.
+ * the token to the saved vault path. Tables take the same route: the token is
+ * rewritten to a markdown table decoded from the attachment's mergeable-data
+ * payload (see decode-table.ts). Scans, drawings and handwriting are still
+ * deferred — they need on-disk fallback files that are out of v1 scope.
  */
 
 import { ANFontWeight, ANStyleType, AN_ATTACHMENT_UTI } from './types.ts'
@@ -24,9 +25,8 @@ function isInlineTextAttachment(uti: string | undefined): boolean {
   return !!uti && uti.startsWith('com.apple.notes.inlinetextattachment')
 }
 
-/** Attachment UTIs deferred in v1 (tables / scans / drawings). */
+/** Attachment UTIs deferred in v1 (scans / drawings). */
 const DEFERRED_UTIS = new Set<string>([
-  AN_ATTACHMENT_UTI.Table,
   AN_ATTACHMENT_UTI.Scan,
   AN_ATTACHMENT_UTI.ModifiedScan,
   AN_ATTACHMENT_UTI.Drawing,
@@ -80,6 +80,35 @@ function applyInlineFormatting(attr: AttributeRun, text: string): string {
   }
 
   return out
+}
+
+/**
+ * Convert one table cell's note into single-line inline markdown.
+ *
+ * A GFM cell holds inline content only, so paragraph styles are dropped and the
+ * cell's own line breaks collapse to spaces: `<br>` does not survive Memry's
+ * markdown round-trip (it comes back with the two lines glued together), and a
+ * raw newline or U+2028 would end the table row. Pipes are escaped so a cell
+ * reading `a | b` stays one cell instead of splitting the row. Backslashes are
+ * escaped along with them: a cell that already holds `\|` would otherwise escape
+ * our own escape and split the row anyway.
+ */
+export function noteToCellMarkdown(doc: { text: string; runs: AttributeRun[] }): string {
+  let out = ''
+  for (const seg of segmentRuns(doc.text, doc.runs)) {
+    // Apple Notes does not allow files inside a table cell; an attachment run
+    // here carries no text we could recover, so skip it.
+    if (seg.attr.attachmentInfo) continue
+    out += seg.text
+      .split('\n')
+      .map((part) => (part ? applyInlineFormatting(seg.attr, part) : part))
+      .join('\n')
+  }
+  return out
+    .replace(/[\\|]/g, (character) => `\\${character}`)
+    .replace(/[\n\r\u2028\u2029]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
 }
 
 function lineMarkdownPrefix(attr: AttributeRun, listCounter: { n: number }): string {

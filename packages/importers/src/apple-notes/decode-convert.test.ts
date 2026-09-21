@@ -152,12 +152,28 @@ describe('decodeNote + docToMarkdown round-trip', () => {
     expect(markdown).not.toContain('#')
   })
 
-  it('marks deferred attachment types (tables) without throwing', () => {
+  it('emits a resolvable token for a table attachment', () => {
+    // The grid itself is not in the note body — the desktop importer decodes
+    // it from the attachment's mergeable-data blob and rewrites this token.
     const text = '￼\n'
     const bytes = encodeDocument(text, [
       {
         length: 1,
         attachmentInfo: { attachmentIdentifier: 'TBL-1', typeUti: 'com.apple.notes.table' }
+      },
+      { length: '\n'.length }
+    ])
+    const { markdown, attachmentIds } = docToMarkdown(decodeNote(bytes))
+    expect(attachmentIds).toEqual(['TBL-1'])
+    expect(markdown).toBe(`![](${ATTACHMENT_TOKEN_PREFIX}TBL-1)`)
+  })
+
+  it('marks still-deferred attachment types (scans) without throwing', () => {
+    const text = '￼\n'
+    const bytes = encodeDocument(text, [
+      {
+        length: 1,
+        attachmentInfo: { attachmentIdentifier: 'SCAN-1', typeUti: 'com.apple.notes.gallery' }
       },
       { length: '\n'.length }
     ])
