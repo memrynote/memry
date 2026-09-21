@@ -30,6 +30,7 @@ use crate::crdt::body_edit::BlockEdit;
 use crate::crdt::errors::CrdtError;
 use crate::crypto::{keys, sodium};
 use crate::domain::body_write;
+use crate::domain::folders;
 use crate::domain::notes::{self, NewNote};
 use crate::domain::properties;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -289,6 +290,63 @@ impl NotesWriter {
             .map_err(PropertyWriteError::from)?
             .map(|_| ())
             .map_err(PropertyWriteError::from)
+    }
+
+    // MARK: - Folders (N806)
+
+    /// Creates a `folder_config` at `path`.
+    ///
+    /// The whole folder domain existed and nothing could reach it, which is
+    /// what N806 records: the core could create, rename, move and delete a
+    /// folder, and no API method said so.
+    pub fn create_folder(&self, path: String, icon: Option<String>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            folders::create(conn, &path, icon.as_deref(), &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
+    /// Renames a folder in place, keeping its parent.
+    ///
+    /// - Returns: the ids of the notes whose `folderPath` was rewritten, so a
+    ///   shell can refresh exactly those rather than reloading the vault.
+    pub fn rename_folder(
+        &self,
+        path: String,
+        new_name: String,
+    ) -> Result<Vec<String>, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            Ok(folders::rename(conn, &path, &new_name, &device_id, now_ms())?.notes)
+        })
+    }
+
+    /// Moves a folder under `new_parent`, or to the vault root with `nil`.
+    pub fn move_folder(
+        &self,
+        path: String,
+        new_parent: Option<String>,
+    ) -> Result<Vec<String>, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            Ok(folders::move_to(conn, &path, new_parent.as_deref(), &device_id, now_ms())?.notes)
+        })
+    }
+
+    /// Tombstones a folder and every `folder_config` under it.
+    ///
+    /// **Throws when the subtree still holds a live note**, rather than
+    /// cascading. No chapter defines a cascading folder delete and a note
+    /// tombstone travels to every device in the vault: refusing costs a step
+    /// in the shell's flow, guessing costs the user their notes.
+    ///
+    /// - Returns: the paths that were tombstoned.
+    pub fn delete_folder(&self, path: String) -> Result<Vec<String>, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            Ok(folders::delete(conn, &path, &device_id, now_ms())?.folders)
+        })
     }
 
     /// The device identity these writes are recorded under. Exposed for the

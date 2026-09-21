@@ -291,3 +291,126 @@ fn a_locked_keychain_is_not_a_missing_key() {
         Ok(_) => panic!("a locked keychain must not yield a writer"),
     }
 }
+
+// MARK: - Folders (N806)
+
+/// **The whole folder domain existed and nothing could reach it.**
+///
+/// That is what N806 records: the core could create, rename, move and delete
+/// a folder, and no API method said so, so no shell could do any of it. This
+/// asserts the exposure end to end through the surface a shell actually has.
+#[test]
+fn a_folder_can_be_created_renamed_moved_and_deleted() {
+    let (dir, vault) = vault("folders");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+
+    writer
+        .create_folder("Projects".to_string(), None)
+        .expect("create");
+    assert!(
+        vault
+            .notes()
+            .folders()
+            .expect("folders")
+            .iter()
+            .any(|folder| folder.path == "Projects"),
+        "the folder must be readable through the read surface"
+    );
+
+    writer
+        .rename_folder("Projects".to_string(), "Work".to_string())
+        .expect("rename");
+    let folders = vault.notes().folders().expect("folders");
+    assert!(folders.iter().any(|folder| folder.path == "Work"));
+    assert!(!folders.iter().any(|folder| folder.path == "Projects"));
+
+    writer
+        .create_folder("Archive".to_string(), None)
+        .expect("create the parent");
+    writer
+        .move_folder("Work".to_string(), Some("Archive".to_string()))
+        .expect("move");
+    assert!(
+        vault
+            .notes()
+            .folders()
+            .expect("folders")
+            .iter()
+            .any(|folder| folder.path == "Archive/Work")
+    );
+
+    let removed = writer
+        .delete_folder("Archive/Work".to_string())
+        .expect("delete");
+    assert_eq!(removed, ["Archive/Work"]);
+
+    // Every one of those left something for the server: a folder that exists
+    // only locally is the same failure a local-only note is.
+    assert!(
+        count(&behind(&dir), "SELECT COUNT(*) FROM outbox") > 0,
+        "the folder writes must leave outbox rows behind"
+    );
+}
+
+/// **A folder still holding a live note refuses to delete**, rather than
+/// cascading.
+///
+/// No chapter defines a cascading folder delete, and a note tombstone travels
+/// to every device in the vault. Refusing costs a step in the shell's flow;
+/// guessing costs the user their notes.
+#[test]
+fn deleting_a_folder_that_still_holds_a_note_is_refused() {
+    let (_dir, vault) = vault("folder-occupied");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+
+    writer
+        .create_folder("Keep".to_string(), None)
+        .expect("create");
+    writer
+        .create("Inside".to_string(), Some("Keep".to_string()))
+        .expect("the note");
+
+    assert!(
+        writer.delete_folder("Keep".to_string()).is_err(),
+        "a folder holding a live note must not be deleted"
+    );
+    assert!(
+        vault
+            .notes()
+            .folders()
+            .expect("folders")
+            .iter()
+            .any(|folder| folder.path == "Keep"),
+        "and the folder must still be there"
+    );
+}
+
+/// A rename reports the notes it rewrote, so a shell can refresh exactly
+/// those rather than reloading the vault.
+#[test]
+fn renaming_a_folder_reports_the_notes_it_moved() {
+    let (_dir, vault) = vault("folder-rename-notes");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+
+    writer
+        .create_folder("Before".to_string(), None)
+        .expect("create");
+    let id = writer
+        .create("Filed".to_string(), Some("Before".to_string()))
+        .expect("the note");
+
+    let moved = writer
+        .rename_folder("Before".to_string(), "After".to_string())
+        .expect("rename");
+
+    assert_eq!(moved, [id.clone()]);
+    let listed = vault.notes().list().expect("list");
+    let note = listed.iter().find(|note| note.id == id).expect("the note");
+    assert_eq!(note.folder_path.as_deref(), Some("After"));
+}

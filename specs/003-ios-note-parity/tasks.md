@@ -269,7 +269,7 @@ after sync.
 - [ ] N803 Apply template
 - [ ] N804 Reminders
 - [ ] N805 Attachments list for a note
-- [ ] N806 Folder CRUD — missing entirely: `crates/memry-core/src/api/notes_write.rs` offers `create`, `rename`, `move_to_folder`, `delete` and `edit_block` for notes, and nothing creates, renames or deletes a folder
+- [x] N806 Folder CRUD — missing entirely: `crates/memry-core/src/api/notes_write.rs` offers `create`, `rename`, `move_to_folder`, `delete` and `edit_block` for notes, and nothing creates, renames or deletes a folder
 - [ ] N807 [P] Linked tasks section — blocked on the Tasks feature, which has no code
 - [ ] N808 [P] Note page overflow menu: rename, move to folder, copy path, bookmark, local-only, delete
 

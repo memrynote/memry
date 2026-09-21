@@ -454,6 +454,27 @@ enum NoteInline {
         return URL(string: "\(wikiScheme)://\(encoded)")
     }
 
+    /// A checkbox glyph, tappable only where a cell handed it an ordinal.
+    ///
+    /// A table cell cannot hold a block, so a checkbox inside one is an
+    /// inline node carrying no text (§12.7.1): it arrives as an empty run and
+    /// would otherwise draw as nothing. Outside a cell there is nothing to
+    /// address it with, and a box that looks tappable and does nothing is
+    /// worse than one that does not.
+    static func checkbox(_ run: InlineRun, ordinal: Int?) -> AttributedString {
+        let ticked = run.markAttrs["inlineCheckbox.checked"] == "true"
+        var glyph = AttributedString(ticked ? "\u{2611}" : "\u{2610}")
+        if let ordinal {
+            glyph.link = checkboxURL(ordinal: ordinal)
+        }
+        return glyph
+    }
+
+    /// A tag's name, which is its text without the `#` that displays it.
+    static func tagName(of run: InlineRun) -> String {
+        run.text.hasPrefix("#") ? String(run.text.dropFirst()) : run.text
+    }
+
     static func attributed(_ run: InlineRun, checkboxOrdinal: Int? = nil) -> AttributedString {
         var piece = AttributedString(run.text)
         var font = Tokens.Typography.body.font
@@ -477,19 +498,7 @@ enum NoteInline {
                     piece.backgroundColor = fill.color
                 }
             case "inlineCheckbox":
-                // A table cell cannot hold a block, so a checkbox inside one
-                // is an inline node carrying no text (chapter 12 §12.7.1).
-                // It arrives as an empty run and would draw as nothing.
-                let ticked = run.markAttrs["inlineCheckbox.checked"] == "true"
-                var glyph = AttributedString(ticked ? "\u{2611}" : "\u{2610}")
-                // Tappable only where a cell handed it an ordinal (N605):
-                // elsewhere there is nothing to address it with, and a box
-                // that looks tappable and does nothing is worse than one that
-                // does not.
-                if let checkboxOrdinal, let url = checkboxURL(ordinal: checkboxOrdinal) {
-                    glyph.link = url
-                }
-                piece.append(glyph)
+                piece.append(checkbox(run, ordinal: checkboxOrdinal))
             case "wikiLink", "linkMention":
                 piece.foregroundColor = Tokens.Text.tint.color
                 piece.underlineStyle = .single
@@ -509,15 +518,9 @@ enum NoteInline {
                     piece.link = url
                 }
             case "hashTag":
-                // Linked now that there is somewhere to go (N600). The tag's
-                // own text carries the `#`, which is not part of its name.
+                // Linked now that there is somewhere to go (N600).
                 piece.foregroundColor = Tokens.Text.tint.color
-                let name = run.text.hasPrefix("#")
-                    ? String(run.text.dropFirst())
-                    : run.text
-                if let url = tagURL(for: name) {
-                    piece.link = url
-                }
+                piece.link = tagURL(for: tagName(of: run))
             case "dateMention":
                 // Still marked and not linked: this build has no calendar to
                 // open, and a word that looks tappable and does nothing is

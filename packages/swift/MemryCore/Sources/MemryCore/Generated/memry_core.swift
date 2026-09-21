@@ -3845,6 +3845,15 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func create(title: String, folderPath: String?) throws  -> String
     
     /**
+     * Creates a `folder_config` at `path`.
+     *
+     * The whole folder domain existed and nothing could reach it, which is
+     * what N806 records: the core could create, rename, move and delete a
+     * folder, and no API method said so.
+     */
+    func createFolder(path: String, icon: String?) throws 
+    
+    /**
      * Tombstones a note.
      *
      * A tombstone, never a row that vanishes: a delete has to reach every
@@ -3852,6 +3861,18 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
      * comes back on the next pull.
      */
     func delete(id: String) throws 
+    
+    /**
+     * Tombstones a folder and every `folder_config` under it.
+     *
+     * **Throws when the subtree still holds a live note**, rather than
+     * cascading. No chapter defines a cascading folder delete and a note
+     * tombstone travels to every device in the vault: refusing costs a step
+     * in the shell's flow, guessing costs the user their notes.
+     *
+     * - Returns: the paths that were tombstoned.
+     */
+    func deleteFolder(path: String) throws  -> [String]
     
     /**
      * The device identity these writes are recorded under. Exposed for the
@@ -3875,6 +3896,11 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func editBlock(noteId: String, edit: BlockEdit) throws  -> Bool
     
     /**
+     * Moves a folder under `new_parent`, or to the vault root with `nil`.
+     */
+    func moveFolder(path: String, newParent: String?) throws  -> [String]
+    
+    /**
      * Moves a note to a folder, or to the vault root with `nil`.
      */
     func moveToFolder(id: String, folderPath: String?) throws 
@@ -3886,6 +3912,14 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
      * to the same note's body elsewhere do not collide (chapter 06 §6.1).
      */
     func rename(id: String, title: String) throws 
+    
+    /**
+     * Renames a folder in place, keeping its parent.
+     *
+     * - Returns: the ids of the notes whose `folderPath` was rewritten, so a
+     * shell can refresh exactly those rather than reloading the vault.
+     */
+    func renameFolder(path: String, newName: String) throws  -> [String]
     
     /**
      * Replaces a note's aliases (N706).
@@ -4035,6 +4069,23 @@ open func create(title: String, folderPath: String?)throws  -> String  {
 }
     
     /**
+     * Creates a `folder_config` at `path`.
+     *
+     * The whole folder domain existed and nothing could reach it, which is
+     * what N806 records: the core could create, rename, move and delete a
+     * folder, and no API method said so.
+     */
+open func createFolder(path: String, icon: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_create_folder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),
+        FfiConverterOptionString.lower(icon),uniffiCallStatus
+    )
+}
+}
+    
+    /**
      * Tombstones a note.
      *
      * A tombstone, never a row that vanishes: a delete has to reach every
@@ -4048,6 +4099,26 @@ open func delete(id: String)throws   {try rustCallWithError(FfiConverterTypeStor
         FfiConverterString.lower(id),uniffiCallStatus
     )
 }
+}
+    
+    /**
+     * Tombstones a folder and every `folder_config` under it.
+     *
+     * **Throws when the subtree still holds a live note**, rather than
+     * cascading. No chapter defines a cascading folder delete and a note
+     * tombstone travels to every device in the vault: refusing costs a step
+     * in the shell's flow, guessing costs the user their notes.
+     *
+     * - Returns: the paths that were tombstoned.
+     */
+open func deleteFolder(path: String)throws  -> [String]  {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_delete_folder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),uniffiCallStatus
+    )
+})
 }
     
     /**
@@ -4088,6 +4159,20 @@ open func editBlock(noteId: String, edit: BlockEdit)throws  -> Bool  {
 }
     
     /**
+     * Moves a folder under `new_parent`, or to the vault root with `nil`.
+     */
+open func moveFolder(path: String, newParent: String?)throws  -> [String]  {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_move_folder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),
+        FfiConverterOptionString.lower(newParent),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * Moves a note to a folder, or to the vault root with `nil`.
      */
 open func moveToFolder(id: String, folderPath: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -4114,6 +4199,23 @@ open func rename(id: String, title: String)throws   {try rustCallWithError(FfiCo
         FfiConverterString.lower(title),uniffiCallStatus
     )
 }
+}
+    
+    /**
+     * Renames a folder in place, keeping its parent.
+     *
+     * - Returns: the ids of the notes whose `folderPath` was rewritten, so a
+     * shell can refresh exactly those rather than reloading the vault.
+     */
+open func renameFolder(path: String, newName: String)throws  -> [String]  {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_rename_folder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),
+        FfiConverterString.lower(newName),uniffiCallStatus
+    )
+})
 }
     
     /**
@@ -16121,7 +16223,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_create() != 1507) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_noteswriter_create_folder() != 34413) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_noteswriter_delete() != 64986) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_delete_folder() != 4754) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_device_id() != 15214) {
@@ -16130,10 +16238,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_edit_block() != 62445) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_noteswriter_move_folder() != 48003) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_noteswriter_move_to_folder() != 52953) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_rename() != 25883) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_rename_folder() != 54465) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_set_aliases() != 27902) {
