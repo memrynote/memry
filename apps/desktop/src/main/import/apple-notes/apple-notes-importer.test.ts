@@ -374,7 +374,13 @@ function encodeTableData(cells: string[][]): Buffer {
  * (ICAttachment.ZMERGEABLEDATA1), plus a second note whose table payload is
  * missing — the case where the grid cannot be rebuilt.
  */
-function buildTableDb(dbPath: string): void {
+function buildTableDb(
+  dbPath: string,
+  // Which mergeable-data columns the schema declares. Current macOS databases
+  // carry both (the grid lives in ZMERGEABLEDATA1); older ones only have
+  // ZMERGEABLEDATA. The blob is written to the first column of the list.
+  dataColumns: readonly string[] = ['zmergeabledata1', 'zmergeabledata']
+): void {
   const db = new Database(dbPath)
   db.exec(`
     CREATE TABLE z_primarykey (Z_ENT INTEGER, Z_NAME TEXT);
@@ -395,7 +401,7 @@ function buildTableDb(dbPath: string): void {
       zgeneration1 TEXT,
       ztypeuti TEXT,
       zurlstring TEXT,
-      zmergeabledata1 BLOB,
+      ${dataColumns.map((column) => `${column} BLOB,`).join('\n      ')}
       znote INTEGER,
       zcreationdate1 REAL,
       zmodificationdate1 REAL,
@@ -403,6 +409,7 @@ function buildTableDb(dbPath: string): void {
     );
     CREATE TABLE zicnotedata (z_pk INTEGER PRIMARY KEY, znote INTEGER, zdata BLOB);
   `)
+  const dataColumn = dataColumns[0]
   db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(1, 'ICAccount')
   db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(2, 'ICFolder')
   db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(3, 'ICNote')
@@ -436,7 +443,7 @@ function buildTableDb(dbPath: string): void {
   )
   db.prepare(
     'INSERT INTO ziccloudsyncingobject ' +
-      '(z_pk, z_ent, zidentifier, ztypeuti, zmergeabledata1, znote) VALUES (?,?,?,?,?,?)'
+      `(z_pk, z_ent, zidentifier, ztypeuti, ${dataColumn}, znote) VALUES (?,?,?,?,?,?)`
   ).run(
     80,
     5,
@@ -467,7 +474,7 @@ function buildTableDb(dbPath: string): void {
   )
   db.prepare(
     'INSERT INTO ziccloudsyncingobject ' +
-      '(z_pk, z_ent, zidentifier, ztypeuti, zmergeabledata1, znote) VALUES (?,?,?,?,?,?)'
+      `(z_pk, z_ent, zidentifier, ztypeuti, ${dataColumn}, znote) VALUES (?,?,?,?,?,?)`
   ).run(81, 5, 'ATT-TBL-EMPTY', 'com.apple.notes.table', null, 71)
 
   db.close()
@@ -848,6 +855,28 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
       // The table is its own block, with the surrounding text intact.
       expect(md).toMatch(/Before\n\n\| Day \| Exercise \|/)
       expect(md).toMatch(/\| Mon \| Squat \\\| Bench \|\n\nAfter/)
+    } finally {
+      fs.rmSync(tableDir, { recursive: true, force: true })
+    }
+  })
+
+  it('reads the table from an older schema that only has ZMERGEABLEDATA', async () => {
+    // The column a table's grid lives in is not guaranteed to exist: newer
+    // databases carry ZMERGEABLEDATA1, older ones only ZMERGEABLEDATA, and
+    // naming a missing column would throw at prepare() and fail the whole run.
+    const tableDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apple-notes-table-legacy-'))
+    const tableDbPath = path.join(tableDir, 'NoteStore.sqlite')
+    buildTableDb(tableDbPath, ['zmergeabledata'])
+    try {
+      const ctx = importContext.createImportContext('an-table-old', new AbortController().signal)
+      const summary = await importer.appleNotesImporter.run({ sourcePaths: [tableDbPath] }, ctx)
+      expect(summary.failed).toEqual([])
+
+      const md = fs.readFileSync(
+        path.join(tempVault.path, 'Apple Notes', 'Work', 'Table Note.md'),
+        'utf8'
+      )
+      expect(md).toContain('| Day | Exercise |')
     } finally {
       fs.rmSync(tableDir, { recursive: true, force: true })
     }
