@@ -21,10 +21,10 @@ mod support;
 
 use std::sync::Arc;
 
+use memry_core::crdt::DocumentRegistry;
 use memry_core::crdt::blocks::{Block, extract_blocks};
 use memry_core::crdt::canonical::canonical_fragment;
 use memry_core::crdt::registry::{Document, UpdateSink};
-use memry_core::crdt::DocumentRegistry;
 use serde_json::Value as Json;
 use support::{hex_field, str_field, vector_file};
 
@@ -54,9 +54,7 @@ fn blocks_to_json(blocks: &[Block]) -> Json {
                 let props: Vec<Json> = block
                     .props
                     .iter()
-                    .map(|prop| {
-                        serde_json::json!({ "name": prop.name, "value": prop.value })
-                    })
+                    .map(|prop| serde_json::json!({ "name": prop.name, "value": prop.value }))
                     .collect();
                 let inline: Vec<Json> = block
                     .inline
@@ -215,7 +213,10 @@ fn a_colour_mark_carries_its_value() {
         .find(|run| run.marks.iter().any(|mark| mark == "textColor"))
         .expect("a coloured run");
 
-    assert_eq!(run.mark_attrs.get("textColor").map(String::as_str), Some("red"));
+    assert_eq!(
+        run.mark_attrs.get("textColor").map(String::as_str),
+        Some("red")
+    );
     assert_eq!(
         run.mark_attrs.get("backgroundColor").map(String::as_str),
         Some("yellow")

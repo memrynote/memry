@@ -124,7 +124,8 @@ fn every_operation_produces_the_document_the_class_records() {
         let name = str_field(case, "name");
         let (actual, expected) = applied(case);
         assert_eq!(
-            actual, expected,
+            actual,
+            expected,
             "{name}: {}\n  got\n{actual}\n  want\n{expected}",
             str_field(case, "pins")
         );
