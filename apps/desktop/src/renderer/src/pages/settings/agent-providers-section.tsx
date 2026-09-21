@@ -255,7 +255,7 @@ export function AgentProvidersSection({
         >
           <span
             className={
-              backendStatuses?.claude_cli.available
+              backendStatuses?.claude_cli?.available
                 ? 'text-xs/4 text-green-600'
                 : 'text-xs/4 text-muted-foreground'
             }
@@ -269,12 +269,26 @@ export function AgentProvidersSection({
         >
           <span
             className={
-              backendStatuses?.codex_cli.available
+              backendStatuses?.codex_cli?.available
                 ? 'text-xs/4 text-green-600'
                 : 'text-xs/4 text-muted-foreground'
             }
           >
             {cliStatusText(backendStatuses?.codex_cli)}
+          </span>
+        </SettingRow>
+        <SettingRow
+          label={t('agentProviders.cliAgents.antigravity.label')}
+          description={t('agentProviders.cliAgents.antigravity.description')}
+        >
+          <span
+            className={
+              backendStatuses?.antigravity_cli?.available
+                ? 'text-xs/4 text-green-600'
+                : 'text-xs/4 text-muted-foreground'
+            }
+          >
+            {cliStatusText(backendStatuses?.antigravity_cli)}
           </span>
         </SettingRow>
       </SettingsGroup>

@@ -8,6 +8,7 @@ import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { markExpectedCondition } from '../telemetry/expected-conditions'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
+import { AntigravityCliBackend } from './backends/antigravity-cli-backend'
 import { ClaudeCliBackend } from './backends/claude-cli-backend'
 import { CodexCliBackend } from './backends/codex-cli-backend'
 import { getLocalProviderApiKey } from './backends/local-provider-keychain'
@@ -22,7 +23,9 @@ import {
 } from './backends/local-openai-compatible-backend'
 import { createAgentBackendRegistry } from './backends/registry'
 import { AgentToolBridge } from './backends/tool-bridge'
-import type { ClaudeCliSpawnInput, CodexCliSpawnInput } from './backends/types'
+import type { AgyCliSpawnInput, ClaudeCliSpawnInput, CodexCliSpawnInput } from './backends/types'
+import { detectAgyBinary } from './cli/agy-binary'
+import { agyBridgeRuntime, spawnAgyTurn } from './cli/agy-spawn'
 import { detectClaudeBinary } from './cli/claude-binary'
 import { detectCodexBinary } from './cli/codex-binary'
 import { spawnCodexTurn } from './cli/codex-spawn'
@@ -224,6 +227,61 @@ export async function startAgent(): Promise<AgentHandle> {
     }
   }
 
+  const spawnAgyAdapter = async ({
+    prompt,
+    writeGrant,
+    windowId,
+    model,
+    permissions,
+    purpose = 'turn'
+  }: AgyCliSpawnInput) => {
+    const binary = await detectAgyBinary()
+    if (!binary.detected || !binary.meetsMinimum) {
+      throw markExpectedCondition(new Error(binary.installHint ?? 'Antigravity CLI unavailable'))
+    }
+
+    const status = purpose === 'turn' ? getPublicStatus() : null
+    if (purpose === 'turn' && (!status?.url || !status['token'])) {
+      throw new Error('Agent MCP server not running')
+    }
+
+    const sub = await spawnAgyTurn({
+      binaryPath: 'agy',
+      prompt,
+      model,
+      ...(permissions ? { permissions } : {}),
+      bridge: agyBridgeRuntime(),
+      ...(status?.url && status['token'] && writeGrant
+        ? {
+            mcp: {
+              serverUrl: status.url,
+              authorizationValue: status['token'],
+              writeGrant,
+              windowId
+            }
+          }
+        : {})
+    })
+
+    const stdout = sub.proc.stdout
+    const stderr = sub.proc.stderr
+    if (!stdout || !stderr) {
+      throw new Error('Antigravity subprocess stdio unavailable')
+    }
+    const exitCodePromise = new Promise<number>((resolve) => {
+      sub.proc.once('exit', (code) => resolve(code ?? 0))
+    })
+
+    return {
+      stdout,
+      stderr,
+      pid: sub.pid,
+      kill: createEscalatingKill(sub.proc),
+      waitExit: () => exitCodePromise,
+      cleanup: sub.cleanup
+    }
+  }
+
   const toolBridge = new AgentToolBridge()
   const localBackend = new LocalOpenAICompatibleBackend({
     getSettings: getLocalProviderSettings,
@@ -233,6 +291,7 @@ export async function startAgent(): Promise<AgentHandle> {
   const backends = createAgentBackendRegistry({
     claude: new ClaudeCliBackend({ spawn: spawnClaudeAdapter }),
     codex: new CodexCliBackend({ spawn: spawnCodexAdapter }),
+    antigravity: new AntigravityCliBackend({ spawn: spawnAgyAdapter }),
     local: localBackend
   })
 

@@ -68,6 +68,10 @@ const mockGetUserMedia = vi.fn()
 const readyBackendStatuses = {
   claude_cli: { backend: 'claude_cli', available: true },
   codex_cli: { backend: 'codex_cli', available: true },
+  // Left unavailable on purpose: these cases assert what the Claude and Codex
+  // sections show, and a third detected CLI would add a second model list to
+  // every by-name query here.
+  antigravity_cli: { backend: 'antigravity_cli', available: false, reason: 'missing_binary' },
   local_openai_compatible: { backend: 'local_openai_compatible', available: true }
 }
 
@@ -526,9 +530,11 @@ describe('Composer', () => {
 
     expect(await screen.findByRole('menuitem', { name: 'Sonnet' })).toBeInTheDocument()
     expect(screen.getByText('Codex')).toBeInTheDocument()
+    // One row per undetected CLI: Codex here, plus Antigravity from the shared
+    // fixture.
     expect(
-      screen.getByRole('menuitem', { name: 'Not detected — set up in Settings…' })
-    ).toBeInTheDocument()
+      screen.getAllByRole('menuitem', { name: 'Not detected — set up in Settings…' })
+    ).toHaveLength(2)
     expect(screen.queryByRole('menuitem', { name: 'GPT-5.5' })).not.toBeInTheDocument()
   })
 
@@ -545,7 +551,10 @@ describe('Composer', () => {
         backendStatuses: {
           ...readyBackendStatuses,
           claude_cli: { backend: 'claude_cli', ...agentUnavailable },
-          codex_cli: { backend: 'codex_cli', ...agentUnavailable }
+          codex_cli: { backend: 'codex_cli', ...agentUnavailable },
+          // A runtime that cannot start takes every CLI backend with it, which
+          // is what main reports when the vault key is unavailable.
+          antigravity_cli: { backend: 'antigravity_cli', ...agentUnavailable }
         }
       },
       createConversation: mockCreateConversation,
@@ -560,7 +569,7 @@ describe('Composer', () => {
       await screen.findAllByRole('menuitem', {
         name: 'Agent unavailable — open Settings…'
       })
-    ).toHaveLength(2)
+    ).toHaveLength(3)
     expect(
       screen.queryByRole('menuitem', { name: 'Not detected — set up in Settings…' })
     ).not.toBeInTheDocument()

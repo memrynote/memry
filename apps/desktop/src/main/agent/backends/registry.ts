@@ -10,11 +10,13 @@ export interface AgentBackendRegistry {
 export function createAgentBackendRegistry(input: {
   claude: AgentBackend
   codex: AgentBackend
+  antigravity: AgentBackend
   local: AgentBackend
 }): AgentBackendRegistry {
   const backends = new Map<AgentBackendId, AgentBackend>([
     ['claude_cli', input.claude],
     ['codex_cli', input.codex],
+    ['antigravity_cli', input.antigravity],
     ['local_openai_compatible', input.local]
   ])
 

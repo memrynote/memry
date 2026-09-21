@@ -445,6 +445,14 @@ const createMockApi = () => ({
         version: null,
         minimumRequired: '0.130.0'
       },
+      antigravity_cli: {
+        backend: 'antigravity_cli',
+        available: false,
+        reason: 'missing_binary',
+        detail: null,
+        version: null,
+        minimumRequired: '1.2.7'
+      },
       local_openai_compatible: {
         backend: 'local_openai_compatible',
         available: true,

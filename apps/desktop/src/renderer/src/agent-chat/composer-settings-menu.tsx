@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 
 import type {
   AgentAccessMode,
@@ -99,6 +99,7 @@ interface ComposerSettingsMenuProps {
   currentModelValueLabel: string
   claudeAvailable: boolean
   codexAvailable: boolean
+  antigravityAvailable: boolean
   /**
    * The agent runtime itself failed to start (vault key unavailable), so every
    * backend reports unavailable. Distinct from a missing CLI: telling the user
@@ -108,6 +109,7 @@ interface ComposerSettingsMenuProps {
   agentRuntimeUnavailable: boolean
   claudeCatalog: AgentBackendModelOption[]
   codexCatalog: AgentBackendModelOption[]
+  antigravityCatalog: AgentBackendModelOption[]
   localSettingsLoaded: boolean
   localConfigured: boolean
   localModelIds: string[]
@@ -146,28 +148,50 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
     normalizedQuery.length === 0 ||
     label.toLowerCase().includes(normalizedQuery) ||
     (id ?? '').toLowerCase().includes(normalizedQuery)
-  const claudeModels = props.claudeCatalog.filter((model) => matchesQuery(model.label, model.id))
-  const codexModels = props.codexCatalog.filter((model) => matchesQuery(model.label, model.id))
   const localModelIds = props.localModelIds.filter((id) => matchesQuery(id))
-  const anyCliVisible =
-    (props.claudeAvailable && claudeModels.length > 0) ||
-    (props.codexAvailable && codexModels.length > 0)
+  // One list per CLI backend, rendered by a single loop: the three sections are
+  // identical apart from their label, so a fourth backend is a row here rather
+  // than another copy of the markup.
+  const cliSections: Array<{
+    backend: AgentCliBackendId
+    labelKey: string
+    available: boolean
+    models: AgentBackendModelOption[]
+  }> = [
+    {
+      backend: 'claude_cli',
+      labelKey: 'agentChat.composer.providers.claude',
+      available: props.claudeAvailable,
+      models: props.claudeCatalog.filter((model) => matchesQuery(model.label, model.id))
+    },
+    {
+      backend: 'codex_cli',
+      labelKey: 'agentChat.composer.providers.codex',
+      available: props.codexAvailable,
+      models: props.codexCatalog.filter((model) => matchesQuery(model.label, model.id))
+    },
+    {
+      backend: 'antigravity_cli',
+      labelKey: 'agentChat.composer.providers.antigravity',
+      available: props.antigravityAvailable,
+      models: props.antigravityCatalog.filter((model) => matchesQuery(model.label, model.id))
+    }
+  ]
+  const visibleCliSections = cliSections.filter(
+    (section) => section.available && section.models.length > 0
+  )
+  const anyCliVisible = visibleCliSections.length > 0
+  const availableCliBackends = cliSections.filter((section) => section.available)
   const customModelBackend: AgentCliBackendId | null =
-    !props.claudeAvailable && !props.codexAvailable
-      ? null
-      : (props.selectedProvider === 'claude_cli' && props.claudeAvailable) ||
-          (props.selectedProvider === 'codex_cli' && props.codexAvailable)
-        ? props.selectedProvider
-        : props.claudeAvailable
-          ? 'claude_cli'
-          : 'codex_cli'
+    availableCliBackends.find((section) => section.backend === props.selectedProvider)?.backend ??
+    availableCliBackends[0]?.backend ??
+    null
   const showCustomModelRow =
     normalizedQuery.length > 0 && !anyCliVisible && customModelBackend !== null
   const pickFirstVisibleModel = (): void => {
-    if (props.claudeAvailable && claudeModels[0]) {
-      props.onSelectCliModel('claude_cli', claudeModels[0].id)
-    } else if (props.codexAvailable && codexModels[0]) {
-      props.onSelectCliModel('codex_cli', codexModels[0].id)
+    const firstCli = visibleCliSections[0]
+    if (firstCli?.models[0]) {
+      props.onSelectCliModel(firstCli.backend, firstCli.models[0].id)
     } else if (props.localConfigured && localModelIds[0]) {
       props.onSelectLocalModel(localModelIds[0])
     } else if (showCustomModelRow && customModelBackend) {
@@ -310,75 +334,41 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
               />
             </div>
             <DropdownMenuSeparator />
-            {props.claudeAvailable && claudeModels.length > 0 && (
-              <>
-                <DropdownMenuLabel className={sectionLabelClass}>
-                  {t('agentChat.composer.providers.claude')}
-                </DropdownMenuLabel>
-                {claudeModels.map((model) => (
+            {cliSections.map((section) =>
+              section.available && section.models.length > 0 ? (
+                <Fragment key={section.backend}>
+                  <DropdownMenuLabel className={sectionLabelClass}>
+                    {t(section.labelKey)}
+                  </DropdownMenuLabel>
+                  {section.models.map((model) => (
+                    <DropdownMenuItem
+                      key={model.id}
+                      onSelect={() => props.onSelectCliModel(section.backend, model.id)}
+                    >
+                      <span>{model.label}</span>
+                      {props.selectedProvider === section.backend &&
+                        props.selectedBackendModel === model.id &&
+                        selectedCheck}
+                    </DropdownMenuItem>
+                  ))}
+                </Fragment>
+              ) : !section.available && normalizedQuery.length === 0 ? (
+                <Fragment key={section.backend}>
+                  <DropdownMenuLabel className={sectionLabelClass}>
+                    {t(section.labelKey)}
+                  </DropdownMenuLabel>
                   <DropdownMenuItem
-                    key={model.id}
-                    onSelect={() => props.onSelectCliModel('claude_cli', model.id)}
+                    onSelect={props.onOpenProviderSettings}
+                    className="text-muted-foreground/70"
                   >
-                    <span>{model.label}</span>
-                    {props.selectedProvider === 'claude_cli' &&
-                      props.selectedBackendModel === model.id &&
-                      selectedCheck}
+                    <span>
+                      {props.agentRuntimeUnavailable
+                        ? t('agentChat.composer.models.runtimeUnavailable')
+                        : t('agentChat.composer.models.cliSetup')}
+                    </span>
                   </DropdownMenuItem>
-                ))}
-              </>
-            )}
-            {!props.claudeAvailable && normalizedQuery.length === 0 && (
-              <>
-                <DropdownMenuLabel className={sectionLabelClass}>
-                  {t('agentChat.composer.providers.claude')}
-                </DropdownMenuLabel>
-                <DropdownMenuItem
-                  onSelect={props.onOpenProviderSettings}
-                  className="text-muted-foreground/70"
-                >
-                  <span>
-                    {props.agentRuntimeUnavailable
-                      ? t('agentChat.composer.models.runtimeUnavailable')
-                      : t('agentChat.composer.models.cliSetup')}
-                  </span>
-                </DropdownMenuItem>
-              </>
-            )}
-            {props.codexAvailable && codexModels.length > 0 && (
-              <>
-                <DropdownMenuLabel className={sectionLabelClass}>
-                  {t('agentChat.composer.providers.codex')}
-                </DropdownMenuLabel>
-                {codexModels.map((model) => (
-                  <DropdownMenuItem
-                    key={model.id}
-                    onSelect={() => props.onSelectCliModel('codex_cli', model.id)}
-                  >
-                    <span>{model.label}</span>
-                    {props.selectedProvider === 'codex_cli' &&
-                      props.selectedBackendModel === model.id &&
-                      selectedCheck}
-                  </DropdownMenuItem>
-                ))}
-              </>
-            )}
-            {!props.codexAvailable && normalizedQuery.length === 0 && (
-              <>
-                <DropdownMenuLabel className={sectionLabelClass}>
-                  {t('agentChat.composer.providers.codex')}
-                </DropdownMenuLabel>
-                <DropdownMenuItem
-                  onSelect={props.onOpenProviderSettings}
-                  className="text-muted-foreground/70"
-                >
-                  <span>
-                    {props.agentRuntimeUnavailable
-                      ? t('agentChat.composer.models.runtimeUnavailable')
-                      : t('agentChat.composer.models.cliSetup')}
-                  </span>
-                </DropdownMenuItem>
-              </>
+                </Fragment>
+              ) : null
             )}
             {showCustomModelRow && customModelBackend && (
               <DropdownMenuItem

@@ -12,7 +12,6 @@ import {
   ApproveToolRequestSchema,
   PreviewDiffRequestSchema,
   type AgentBackendOptions,
-  type AgentBackendModelList,
   type AgentLocalModelList,
   type AgentLocalProviderProbeResult,
   type AgentLocalProviderSettings,
@@ -24,6 +23,7 @@ import {
   SendTurnRequestSchema
 } from '@memry/contracts/ipc-agent'
 
+import { CLI_MODEL_OPTIONS } from '../agent/cli-model-options'
 import { TOOL_SCHEMAS } from '../agent/mcp/tools/schemas'
 import { getAgentPreferences, setAgentPreferences } from '../agent/settings'
 import type { AgentRuntime } from '../agent/runtime/runtime'
@@ -42,27 +42,6 @@ import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
 
 const logger = createLogger('IPC:Agent')
-
-const CLI_MODEL_OPTIONS: Record<'claude_cli' | 'codex_cli', AgentBackendModelList> = {
-  claude_cli: {
-    backend: 'claude_cli',
-    supportsCustomModel: true,
-    models: [
-      { id: 'sonnet', label: 'Sonnet' },
-      { id: 'haiku', label: 'Haiku' },
-      { id: 'opus', label: 'Opus' }
-    ]
-  },
-  codex_cli: {
-    backend: 'codex_cli',
-    supportsCustomModel: true,
-    models: [
-      { id: 'gpt-5.5', label: 'GPT-5.5' },
-      { id: 'gpt-5.4', label: 'GPT-5.4' },
-      { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' }
-    ]
-  }
-}
 
 interface AgentHandlerDeps {
   runtime: Pick<
@@ -359,6 +338,12 @@ export function registerUnavailableAgentHandlers(reason: string): void {
       reason: 'agent_unavailable',
       detail: message
     },
+    antigravity_cli: {
+      backend: 'antigravity_cli',
+      available: false,
+      reason: 'agent_unavailable',
+      detail: message
+    },
     local_openai_compatible: {
       backend: 'local_openai_compatible',
       available: false,
@@ -420,7 +405,11 @@ async function backendModelFromOptions(
   options: AgentBackendOptions,
   deps: AgentHandlerDeps
 ): Promise<string | null> {
-  if (options.backend === 'claude_cli' || options.backend === 'codex_cli') {
+  if (
+    options.backend === 'claude_cli' ||
+    options.backend === 'codex_cli' ||
+    options.backend === 'antigravity_cli'
+  ) {
     return options.model ?? null
   }
   if (options.model) return options.model
@@ -434,12 +423,13 @@ async function backendModelFromOptions(
 const reportedUndetectedClis = new Set<string>()
 
 async function getBackendStatuses(deps: AgentHandlerDeps): Promise<BackendStatusesResponse> {
-  const [claude, codex, local] = await Promise.all([
+  const [claude, codex, antigravity, local] = await Promise.all([
     deps.backends.get('claude_cli').getStatus(),
     deps.backends.get('codex_cli').getStatus(),
+    deps.backends.get('antigravity_cli').getStatus(),
     deps.backends.get('local_openai_compatible').getStatus()
   ])
-  for (const status of [claude, codex]) {
+  for (const status of [claude, codex, antigravity]) {
     if (!status.available && !reportedUndetectedClis.has(status.backend)) {
       reportedUndetectedClis.add(status.backend)
       trackMainLog('warn', {
@@ -451,6 +441,7 @@ async function getBackendStatuses(deps: AgentHandlerDeps): Promise<BackendStatus
   return {
     claude_cli: claude,
     codex_cli: codex,
+    antigravity_cli: antigravity,
     local_openai_compatible: local,
     historyPersisted: deps.historyPersisted
   }

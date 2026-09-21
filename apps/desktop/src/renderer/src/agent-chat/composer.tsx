@@ -49,12 +49,14 @@ const DEFAULT_ACCESS_MODE: AgentAccessMode = 'vault_only'
 
 const DEFAULT_SELECTED_MODELS: Record<AgentCliBackendId, string | null> = {
   claude_cli: DEFAULT_CLAUDE_MODEL,
-  codex_cli: null
+  codex_cli: null,
+  antigravity_cli: null
 }
 
 const EMPTY_MODEL_OPTIONS: Record<AgentCliBackendId, AgentBackendModelList | null> = {
   claude_cli: null,
-  codex_cli: null
+  codex_cli: null,
+  antigravity_cli: null
 }
 
 const MODEL_LABEL_FALLBACKS: Record<AgentCliBackendId, Record<string, string>> = {
@@ -67,10 +69,25 @@ const MODEL_LABEL_FALLBACKS: Record<AgentCliBackendId, Record<string, string>> =
     'gpt-5.5': 'GPT-5.5',
     'gpt-5.4': 'GPT-5.4',
     'gpt-5.4-mini': 'GPT-5.4 Mini'
+  },
+  antigravity_cli: {
+    'gemini-3.8-flash-high': 'Gemini 3.8 Flash (High)',
+    'gemini-3.8-flash-medium': 'Gemini 3.8 Flash (Medium)',
+    'gemini-3.1-pro-high': 'Gemini 3.1 Pro (High)',
+    'gemini-3.1-pro-low': 'Gemini 3.1 Pro (Low)',
+    'claude-sonnet-4-6': 'Claude Sonnet 4.6 (Thinking)'
   }
 }
 
 function isCliProvider(provider: AgentProvider): provider is AgentCliBackendId {
+  return provider !== 'local_openai_compatible'
+}
+
+/**
+ * Antigravity model ids already name their reasoning tier, so the composer
+ * shows no separate effort control for that backend.
+ */
+function hasEffortControl(provider: AgentProvider): boolean {
   return provider === 'claude_cli' || provider === 'codex_cli'
 }
 
@@ -118,6 +135,11 @@ function defaultModelForProvider(
   modelOptions: AgentBackendModelList | null
 ): string | null {
   if (provider === 'claude_cli') return DEFAULT_CLAUDE_MODEL
+  if (provider === 'antigravity_cli') {
+    return (
+      modelOptions?.models[0]?.id ?? Object.keys(MODEL_LABEL_FALLBACKS.antigravity_cli)[0] ?? null
+    )
+  }
   const codexModelIds =
     modelOptions?.models.length === 0 || !modelOptions
       ? Object.keys(MODEL_LABEL_FALLBACKS.codex_cli)
@@ -228,11 +250,17 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     : null
 
   const backendStatuses = agent?.state.backendStatuses
-  const claudeAvailable = backendStatuses?.claude_cli.available !== false
-  const codexAvailable = backendStatuses?.codex_cli.available !== false
+  // Each backend is read through `?.` rather than assumed present: the map is
+  // typed as complete, but a conversation synced from a build with a different
+  // backend set (or a status payload captured before one was added) would
+  // otherwise take the whole composer down on a missing key.
+  const claudeAvailable = backendStatuses?.claude_cli?.available !== false
+  const codexAvailable = backendStatuses?.codex_cli?.available !== false
+  const antigravityAvailable = backendStatuses?.antigravity_cli?.available !== false
   const agentRuntimeUnavailable =
-    backendStatuses?.claude_cli.reason === 'agent_unavailable' ||
-    backendStatuses?.codex_cli.reason === 'agent_unavailable'
+    backendStatuses?.claude_cli?.reason === 'agent_unavailable' ||
+    backendStatuses?.codex_cli?.reason === 'agent_unavailable' ||
+    backendStatuses?.antigravity_cli?.reason === 'agent_unavailable'
   const turnInFlight = conversationId ? agent?.state.inFlight?.[conversationId] === true : false
   const busy = turnInFlight || submitting
   // A CLI backend needs a positive detection, not merely the absence of a
@@ -243,12 +271,9 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   //
   // The picker keeps the permissive `!== false` above: muting a row mid-load
   // would flicker, and picking an unavailable provider is recoverable.
-  const providerReady =
-    selectedProvider === 'claude_cli'
-      ? backendStatuses?.claude_cli.available === true
-      : selectedProvider === 'codex_cli'
-        ? backendStatuses?.codex_cli.available === true
-        : true
+  const providerReady = isCliProvider(selectedProvider)
+    ? backendStatuses?.[selectedProvider]?.available === true
+    : true
   const hasText = promptValue.text.trim().length > 0
   const canSend = Boolean(agent) && Boolean(sourceWindowId) && hasText && !busy && providerReady
   const pickerQuery = pickerOpen ? (mentionQuery ?? '') : ''
@@ -285,12 +310,12 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     : (effectiveLocalModel ?? localProviderLabel)
   const summaryLabel = !providerReady
     ? t('agentChat.composer.chooseModel')
-    : isCliProvider(selectedProvider)
+    : hasEffortControl(selectedProvider)
       ? `${currentModelValueLabel} · ${effortSummary}`
       : currentModelValueLabel
   const modelSettingsAriaLabel = t('agentChat.composer.modelSettingsLabel', {
     model: currentModelValueLabel,
-    settings: isCliProvider(selectedProvider) ? effortSummary : localProviderLabel
+    settings: hasEffortControl(selectedProvider) ? effortSummary : localProviderLabel
   })
   const backendOptions = (): AgentBackendOptions => {
     if (selectedProvider === 'local_openai_compatible') {
@@ -304,6 +329,12 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       return {
         backend: 'codex_cli',
         reasoningEffort: codexReasoning,
+        ...(selectedBackendModel ? { model: selectedBackendModel } : {})
+      }
+    }
+    if (selectedProvider === 'antigravity_cli') {
+      return {
+        backend: 'antigravity_cli',
         ...(selectedBackendModel ? { model: selectedBackendModel } : {})
       }
     }
@@ -389,6 +420,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     if (!open) return
     if (claudeAvailable) void loadModelOptions('claude_cli')
     if (codexAvailable) void loadModelOptions('codex_cli')
+    if (antigravityAvailable) void loadModelOptions('antigravity_cli')
     void loadLocalProviderData()
   }
   const insertTranscript = useCallback((text: string): void => {
@@ -509,6 +541,9 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const codexCatalog = modelOptions.codex_cli?.models.length
     ? modelOptions.codex_cli.models
     : Object.entries(MODEL_LABEL_FALLBACKS.codex_cli).map(([id, label]) => ({ id, label }))
+  const antigravityCatalog = modelOptions.antigravity_cli?.models.length
+    ? modelOptions.antigravity_cli.models
+    : Object.entries(MODEL_LABEL_FALLBACKS.antigravity_cli).map(([id, label]) => ({ id, label }))
   const localModelIds = (() => {
     const ids = [...(localModels ?? [])]
     const configuredModel = localSettings?.model.trim()
@@ -580,16 +615,18 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 selectedProvider={selectedProvider}
                 selectedBackendModel={selectedBackendModel}
                 effectiveLocalModel={effectiveLocalModel}
-                showEffort={isCliProvider(selectedProvider)}
+                showEffort={hasEffortControl(selectedProvider)}
                 effortSummary={effortSummary}
                 reasoningOptions={selectedReasoningOptions}
                 selectedReasoningValue={selectedReasoningValue}
                 currentModelValueLabel={currentModelValueLabel}
                 claudeAvailable={claudeAvailable}
                 codexAvailable={codexAvailable}
+                antigravityAvailable={antigravityAvailable}
                 agentRuntimeUnavailable={agentRuntimeUnavailable}
                 claudeCatalog={claudeCatalog}
                 codexCatalog={codexCatalog}
+                antigravityCatalog={antigravityCatalog}
                 localSettingsLoaded={localSettings !== null}
                 localConfigured={localConfigured}
                 localModelIds={localModelIds}
