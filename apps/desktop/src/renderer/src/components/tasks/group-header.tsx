@@ -20,6 +20,11 @@ interface GroupHeaderProps {
   onToggle?: () => void
 }
 
+interface IconProps {
+  className?: string
+  style?: React.CSSProperties
+}
+
 const DONE_GROUP_KEYS = new Set(['done', 'completed'])
 
 const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
@@ -30,6 +35,79 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
     g: parseInt(clean.slice(2, 4), 16),
     b: parseInt(clean.slice(4, 6), 16)
   }
+}
+
+/**
+ * The marker between the chevron and the label. Every grouping mode brings its
+ * own, and priority and project each need a second decision on top, so the
+ * choice lives here instead of as six conditional children of the header.
+ */
+const SIMPLE_GROUP_ICONS: Partial<
+  Record<SortField, { Icon: React.ComponentType<IconProps>; tinted: boolean }>
+> = {
+  dueDate: { Icon: Calendar, tinted: true },
+  createdAt: { Icon: Clock, tinted: true },
+  folder: { Icon: FolderOpen, tinted: false },
+  note: { Icon: FileText, tinted: false }
+}
+
+const GroupLeadingIcon = ({
+  sortField,
+  groupKey,
+  color,
+  labelColor
+}: {
+  sortField: SortField
+  groupKey: string
+  color?: string
+  labelColor?: string
+}): React.JSX.Element | null => {
+  if (sortField === 'priority') {
+    return groupKey === 'urgent' && color ? (
+      <PriorityStar color={color} />
+    ) : (
+      <PriorityBars priority={groupKey as Priority} />
+    )
+  }
+
+  if (sortField === 'project') {
+    return color ? (
+      <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: color }} />
+    ) : null
+  }
+
+  const entry = SIMPLE_GROUP_ICONS[sortField]
+  if (!entry) return null
+
+  const { Icon, tinted } = entry
+  return (
+    <Icon
+      className={cn('size-3.5 shrink-0', !tinted && 'text-text-tertiary')}
+      style={tinted && labelColor ? { color: labelColor } : undefined}
+    />
+  )
+}
+
+const getGroupLabelColor = (
+  sortField: SortField,
+  groupKey: string,
+  color?: string
+): string | undefined => {
+  if (sortField === 'priority') return priorityConfig[groupKey as Priority]?.color ?? undefined
+  if (color && (sortField === 'dueDate' || sortField === 'createdAt')) return color
+  if (DONE_GROUP_KEYS.has(groupKey)) return 'var(--task-complete)'
+  return undefined
+}
+
+/** Done groups never light up, and priority groups hover at their own tint. */
+const getGroupHoverBgColor = (
+  sortField: SortField,
+  groupKey: string,
+  bgColor?: string
+): string | undefined => {
+  if (DONE_GROUP_KEYS.has(groupKey)) return undefined
+  if (sortField === 'priority') return bgColor
+  return bgColor ? bgColor.replace('0.10)', '0.16)') : undefined
 }
 
 const getGroupBgColor = (
@@ -60,23 +138,10 @@ export const GroupHeader = ({
   isCollapsed = false,
   onToggle
 }: GroupHeaderProps): React.JSX.Element => {
-  const labelColor = (() => {
-    if (sortField === 'priority') return priorityConfig[groupKey as Priority]?.color ?? undefined
-    if (color && (sortField === 'dueDate' || sortField === 'createdAt')) return color
-    if (DONE_GROUP_KEYS.has(groupKey)) return 'var(--task-complete)'
-    return undefined
-  })()
-
+  const labelColor = getGroupLabelColor(sortField, groupKey, color)
   const bgColor = getGroupBgColor(sortField, groupKey, color)
-  const isDoneGroup = DONE_GROUP_KEYS.has(groupKey)
   const isPriorityGroup = sortField === 'priority'
-  const hoverBgColor = isDoneGroup
-    ? undefined
-    : isPriorityGroup
-      ? bgColor
-      : bgColor
-        ? bgColor.replace('0.10)', '0.16)')
-        : undefined
+  const hoverBgColor = getGroupHoverBgColor(sortField, groupKey, bgColor)
 
   return (
     <button
@@ -112,34 +177,12 @@ export const GroupHeader = ({
         style={labelColor ? { color: labelColor } : undefined}
       />
 
-      {sortField === 'priority' &&
-        (groupKey === 'urgent' && color ? (
-          <PriorityStar color={color} />
-        ) : (
-          <PriorityBars priority={groupKey as Priority} />
-        ))}
-
-      {sortField === 'dueDate' && (
-        <Calendar
-          className="size-3.5 shrink-0"
-          style={labelColor ? { color: labelColor } : undefined}
-        />
-      )}
-
-      {sortField === 'project' && color && (
-        <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: color }} />
-      )}
-
-      {sortField === 'createdAt' && (
-        <Clock
-          className="size-3.5 shrink-0"
-          style={labelColor ? { color: labelColor } : undefined}
-        />
-      )}
-
-      {sortField === 'folder' && <FolderOpen className="size-3.5 shrink-0 text-text-tertiary" />}
-
-      {sortField === 'note' && <FileText className="size-3.5 shrink-0 text-text-tertiary" />}
+      <GroupLeadingIcon
+        sortField={sortField}
+        groupKey={groupKey}
+        color={color}
+        labelColor={labelColor}
+      />
 
       <div
         className={cn(
