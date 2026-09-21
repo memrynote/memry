@@ -634,6 +634,55 @@ describe('Composer', () => {
     })
   })
 
+  it('sends an Antigravity model with no effort field, and offers no effort control', async () => {
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        inFlight: {},
+        conversations: {},
+        backendStatuses: {
+          ...readyBackendStatuses,
+          antigravity_cli: { backend: 'antigravity_cli', available: true }
+        }
+      },
+      createConversation: mockCreateConversation,
+      sendTurn: mockSendTurn,
+      cancelTurn: mockCancelTurn
+    })
+    vi.mocked(window.api.agent.listBackendModels).mockImplementation(async ({ backend }) => ({
+      backend,
+      supportsCustomModel: true,
+      models:
+        backend === 'antigravity_cli'
+          ? [{ id: 'gemini-3.1-pro-high', label: 'Gemini 3.1 Pro (High)' }]
+          : []
+    }))
+    renderComposer('conversation-1')
+
+    await openModelSubmenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Gemini 3.1 Pro (High)' }))
+
+    // The model id names its own reasoning tier, so a separate effort row
+    // would contradict the pick.
+    await waitFor(() =>
+      expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('Gemini 3.1 Pro (High)')
+    )
+    expect(screen.getByTestId('agent-model-trigger')).not.toHaveTextContent('·')
+    await openSettingsMenu()
+    expect(screen.queryByRole('menuitem', { name: /^effort/i })).not.toBeInTheDocument()
+    closeMenus()
+
+    await setPromptText('summarise my week')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'summarise my week',
+      attachments: [],
+      backendOptions: { backend: 'antigravity_cli', model: 'gemini-3.1-pro-high' }
+    })
+  })
+
   it('uses the highest suggested Codex model when none was ever picked', async () => {
     localStorage.setItem(
       'memry:agent-model-preference',
