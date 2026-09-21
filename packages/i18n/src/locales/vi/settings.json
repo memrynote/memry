@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "  \nOllama (Cục bộ)  ",
         "openai": "  \nOpenAI  ",
-        "anthropic": "  \nAnthropic  "
+        "anthropic": "  \nAnthropic  ",
+        "google": "Google Gemini"
       },
       "model": "  \nMô hình",
       "modelDescription": "Mô hình ngôn ngữ để viết lại và tóm tắt",

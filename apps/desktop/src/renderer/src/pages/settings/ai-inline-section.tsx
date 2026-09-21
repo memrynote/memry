@@ -27,22 +27,38 @@ import {
 
 const log = createLogger('Page:Settings:AIInline')
 
+const PROVIDER_LABEL_KEYS: Record<AIInlineSettings['provider'], string> = {
+  ollama: 'ai.inline.providers.ollama',
+  openai: 'ai.inline.providers.openai',
+  anthropic: 'ai.inline.providers.anthropic',
+  google: 'ai.inline.providers.google'
+}
+
 const PROVIDER_OPTIONS = [
-  { value: 'ollama', labelKey: 'ai.inline.providers.ollama' },
-  { value: 'openai', labelKey: 'ai.inline.providers.openai' },
-  { value: 'anthropic', labelKey: 'ai.inline.providers.anthropic' }
+  { value: 'ollama', labelKey: PROVIDER_LABEL_KEYS.ollama },
+  { value: 'openai', labelKey: PROVIDER_LABEL_KEYS.openai },
+  { value: 'anthropic', labelKey: PROVIDER_LABEL_KEYS.anthropic },
+  { value: 'google', labelKey: PROVIDER_LABEL_KEYS.google }
 ] as const
 
 const MODEL_PRESETS: Record<string, string[]> = {
   ollama: ['qwen2.5:7b', 'llama3.2', 'llama3.1', 'mistral', 'gemma2', 'phi3'],
   openai: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o4-mini'],
-  anthropic: ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001']
+  anthropic: ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
+  google: [
+    'gemini-3.8-flash',
+    'gemini-3.5-flash',
+    'gemini-3.1-pro-preview',
+    'gemini-2.5-flash',
+    'gemini-2.5-pro'
+  ]
 }
 
 const BASE_URL_DEFAULTS: Record<string, string> = {
   ollama: 'http://localhost:11434/v1',
   openai: '',
-  anthropic: ''
+  anthropic: '',
+  google: ''
 }
 
 export function AIInlineSettings(): React.JSX.Element {
@@ -253,10 +269,7 @@ export function AIInlineSettings(): React.JSX.Element {
                   onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
                   onBlur={() => void updateSetting({ apiKey: settings.apiKey })}
                   placeholder={t('ai.inline.apiKeyPlaceholder', {
-                    provider:
-                      settings.provider === 'openai'
-                        ? t('ai.inline.providers.openai')
-                        : t('ai.inline.providers.anthropic')
+                    provider: t(PROVIDER_LABEL_KEYS[settings.provider])
                   })}
                   className="flex-1 h-7 text-xs/4"
                 />

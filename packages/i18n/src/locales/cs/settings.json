@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "ollama (místní)",
         "openai": "OpenAI",
-        "anthropic": "Antropický"
+        "anthropic": "Antropický",
+        "google": "Google Gemini"
       },
       "model": "Model",
       "modelDescription": "Jazykový model pro přepsání a shrnutí",

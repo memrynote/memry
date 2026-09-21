@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "オラマ (地元)",
         "openai": "OpenAI",
-        "anthropic": "人間的"
+        "anthropic": "人間的",
+        "google": "Google Gemini"
       },
       "model": "モデル",
       "modelDescription": "書き換えと要約のための言語モデル",

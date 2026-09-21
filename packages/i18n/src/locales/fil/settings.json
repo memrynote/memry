@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Ollama (Lokal)",
         "openai": "OpenAI",
-        "anthropic": "Antropiko"
+        "anthropic": "Antropiko",
+        "google": "Google Gemini"
       },
       "model": "Modelo",
       "modelDescription": "Modelo ng wika para sa muling pagsulat at pagbubuod",

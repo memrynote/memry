@@ -11,6 +11,11 @@ const mocks = vi.hoisted(() => ({
     model,
     options
   })),
+  createGoogleGenerativeAI: vi.fn((options: Record<string, unknown>) => (model: string) => ({
+    provider: 'google',
+    model,
+    options
+  })),
   loggerInfo: vi.fn()
 }))
 
@@ -20,6 +25,10 @@ vi.mock('@ai-sdk/openai', () => ({
 
 vi.mock('@ai-sdk/anthropic', () => ({
   createAnthropic: mocks.createAnthropic
+}))
+
+vi.mock('@ai-sdk/google', () => ({
+  createGoogleGenerativeAI: mocks.createGoogleGenerativeAI
 }))
 
 vi.mock('../lib/logger', () => ({
@@ -74,6 +83,30 @@ describe('createLanguageModel', () => {
         apiKey: 'anthropic-key'
       })
     ).toMatchObject({ provider: 'anthropic', model: 'claude-4' })
+  })
+
+  it('creates Google models only when an API key is present', () => {
+    expect(() =>
+      createLanguageModel({
+        provider: 'google',
+        model: 'gemini-3.8-flash',
+        baseUrl: '',
+        apiKey: ''
+      })
+    ).toThrow('Google API key required')
+
+    expect(
+      createLanguageModel({
+        provider: 'google',
+        model: 'gemini-3.8-flash',
+        baseUrl: '',
+        apiKey: 'google-key'
+      })
+    ).toMatchObject({
+      provider: 'google',
+      model: 'gemini-3.8-flash',
+      options: { apiKey: 'google-key' }
+    })
   })
 
   it('rejects unsupported providers', () => {

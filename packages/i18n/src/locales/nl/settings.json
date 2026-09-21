@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Ollama (lokaal)",
         "openai": "OpenAI",
-        "anthropic": "Antropisch"
+        "anthropic": "Antropisch",
+        "google": "Google Gemini"
       },
       "model": "Model",
       "modelDescription": "Taalmodel voor herschrijven en samenvatten",

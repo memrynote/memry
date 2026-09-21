@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Ollama（本地）",
         "openai": "OpenAI",
-        "anthropic": "Anthropic"
+        "anthropic": "Anthropic",
+        "google": "Google Gemini"
       },
       "model": "模型",
       "modelDescription": "用於重寫和摘要的語言模型",
