@@ -124,7 +124,7 @@ describe('buildBodyChunks', () => {
 
     const chunks = buildBodyChunks(current, candidate)
 
-    expect(chunks[0]).toEqual({ kind: 'collapsed', lines: 6 })
+    expect(chunks[0]).toMatchObject({ kind: 'collapsed', lines: 6 })
     expect(chunks.at(-1)).toMatchObject({ kind: 'changed' })
   })
 
@@ -136,7 +136,7 @@ describe('buildBodyChunks', () => {
     const chunks = buildBodyChunks('before text\n', 'after text\n')
 
     expect(chunks).toHaveLength(1)
-    expect(chunks[0]).toEqual({
+    expect(chunks[0]).toMatchObject({
       kind: 'changed',
       removed: 'before text\n',
       added: 'after text\n'
@@ -146,7 +146,21 @@ describe('buildBodyChunks', () => {
   it('reports an append as an addition with no removal', () => {
     const chunks = buildBodyChunks('kept\n', 'kept\nadded\n')
 
-    expect(chunks[0]).toEqual({ kind: 'context', text: 'kept\n' })
-    expect(chunks[1]).toEqual({ kind: 'changed', removed: '', added: 'added\n' })
+    expect(chunks[0]).toMatchObject({ kind: 'context', text: 'kept\n' })
+    expect(chunks[1]).toMatchObject({ kind: 'changed', removed: '', added: 'added\n' })
+  })
+
+  /**
+   * The ids are what the card keys its rows by, so two hunks sharing one would
+   * make React reuse a changed block for a different part of the document.
+   */
+  it('gives every chunk a distinct id', () => {
+    const chunks = buildBodyChunks(
+      'one\ntwo\nthree\nfour\nfive\nsix\nseven\n',
+      'ONE\ntwo\nthree\nfour\nfive\nsix\nSEVEN\n'
+    )
+
+    expect(chunks.length).toBeGreaterThan(2)
+    expect(new Set(chunks.map((chunk) => chunk.id)).size).toBe(chunks.length)
   })
 })

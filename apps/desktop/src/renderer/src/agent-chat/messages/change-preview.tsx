@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import type { ChangePreview, ChangePreviewField } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
+import { ArrowRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 /**
@@ -101,9 +102,9 @@ function FieldRow({ row }: { row: ChangePreviewField }): React.JSX.Element {
     <div className="flex flex-wrap items-center gap-2 px-2 py-1.5">
       <span className="w-20 shrink-0 text-xs text-text-tertiary">{label}</span>
       <FieldValue value={row.before} tone="before" />
-      <span aria-hidden className="text-xs text-text-tertiary">
-        &rarr;
-      </span>
+      {/* Decoration, not content: the two values already carry the direction, and
+          in RTL the glyph has to turn with the reading order. */}
+      <ArrowRight aria-hidden className="size-3 shrink-0 text-text-tertiary rtl:rotate-180" />
       <FieldValue value={row.after} tone="after" />
     </div>
   )
@@ -188,10 +189,16 @@ function LossList({ entries }: { entries: string[] }): React.JSX.Element {
 /** A run of untouched lines long enough to be worth hiding. */
 const CONTEXT_COLLAPSE_LINES = 3
 
-type BodyChunk =
+/**
+ * `id` is the chunk's offset into the two documents, not its position in the
+ * list. Hunks are recomputed on every body change, so a list index would key a
+ * changed block to whatever hunk happens to land in that slot next.
+ */
+type BodyChunk = { id: string } & (
   | { kind: 'context'; text: string }
   | { kind: 'collapsed'; lines: number }
   | { kind: 'changed'; removed: string; added: string }
+)
 
 /**
  * Line diff first, word diff inside each changed hunk.
@@ -204,17 +211,22 @@ type BodyChunk =
 export function buildBodyChunks(current: string, candidate: string): BodyChunk[] {
   const chunks: BodyChunk[] = []
   const changes = diffLines(current, candidate)
+  let atCurrent = 0
+  let atCandidate = 0
 
   for (let index = 0; index < changes.length; index += 1) {
     const change = changes[index]
+    const id = `${atCurrent}-${atCandidate}`
 
     if (!change.added && !change.removed) {
       const lines = change.value.split('\n').filter((line) => line.length > 0).length
       chunks.push(
         lines > CONTEXT_COLLAPSE_LINES
-          ? { kind: 'collapsed', lines }
-          : { kind: 'context', text: change.value }
+          ? { id, kind: 'collapsed', lines }
+          : { id, kind: 'context', text: change.value }
       )
+      atCurrent += change.value.length
+      atCandidate += change.value.length
       continue
     }
 
@@ -222,16 +234,18 @@ export function buildBodyChunks(current: string, candidate: string): BodyChunk[]
     // word diff possible instead of two opaque blocks.
     const next = changes[index + 1]
     if (change.removed && next?.added) {
-      chunks.push({ kind: 'changed', removed: change.value, added: next.value })
+      chunks.push({ id, kind: 'changed', removed: change.value, added: next.value })
+      atCurrent += change.value.length
+      atCandidate += next.value.length
       index += 1
       continue
     }
 
-    chunks.push({
-      kind: 'changed',
-      removed: change.removed ? change.value : '',
-      added: change.added ? change.value : ''
-    })
+    const removed = change.removed ? change.value : ''
+    const added = change.added ? change.value : ''
+    chunks.push({ id, kind: 'changed', removed, added })
+    atCurrent += removed.length
+    atCandidate += added.length
   }
 
   return chunks
@@ -243,10 +257,10 @@ function BodyDiff({ body }: { body: { current: string; candidate: string } }): R
 
   return (
     <div className="flex max-h-72 flex-col gap-2 overflow-auto rounded-md bg-muted/60 p-3 text-start">
-      {chunks.map((chunk, index) => {
+      {chunks.map((chunk) => {
         if (chunk.kind === 'collapsed') {
           return (
-            <div key={index} className="flex items-center gap-2">
+            <div key={chunk.id} className="flex items-center gap-2">
               <div aria-hidden className="h-px grow bg-border" />
               <span className="text-[10px] text-text-tertiary">
                 {t('agentChat.preview.unchangedLines', { count: chunk.lines })}
@@ -259,7 +273,7 @@ function BodyDiff({ body }: { body: { current: string; candidate: string } }): R
         if (chunk.kind === 'context') {
           return (
             <p
-              key={index}
+              key={chunk.id}
               className="text-xs leading-relaxed whitespace-pre-wrap text-text-tertiary"
             >
               {chunk.text.replace(/\n+$/, '')}
@@ -267,26 +281,51 @@ function BodyDiff({ body }: { body: { current: string; candidate: string } }): R
           )
         }
 
-        return <ChangedChunk key={index} removed={chunk.removed} added={chunk.added} />
+        return <ChangedChunk key={chunk.id} removed={chunk.removed} added={chunk.added} />
       })}
     </div>
   )
 }
 
+interface WordToken {
+  id: string
+  value: string
+  added?: boolean
+  removed?: boolean
+}
+
+/**
+ * Word-level tokens for one changed hunk.
+ *
+ * Same reasoning as the chunk ids: tokens are recomputed whenever the body
+ * changes, so each one is keyed by where it starts rather than by its slot in
+ * the list.
+ */
+function buildWordTokens(removed: string, added: string): WordToken[] {
+  const raw = !removed
+    ? [{ value: added, added: true }]
+    : !added
+      ? [{ value: removed, removed: true }]
+      : diffWordsWithSpace(removed, added)
+
+  let at = 0
+  return raw.map((token) => {
+    const id = `${at}-${token.value.length}`
+    at += token.value.length
+    return { ...token, id }
+  })
+}
+
 function ChangedChunk({ removed, added }: { removed: string; added: string }): React.JSX.Element {
-  const tokens = useMemo(() => {
-    if (!removed) return [{ value: added, added: true, removed: false }]
-    if (!added) return [{ value: removed, added: false, removed: true }]
-    return diffWordsWithSpace(removed, added)
-  }, [removed, added])
+  const tokens = useMemo(() => buildWordTokens(removed, added), [removed, added])
 
   return (
     <p className="text-xs leading-relaxed whitespace-pre-wrap text-text-secondary">
-      {tokens.map((token, index) => {
+      {tokens.map((token) => {
         if (token.added) {
           return (
             <ins
-              key={index}
+              key={token.id}
               className="rounded bg-[var(--diff-add-surface)] px-0.5 font-medium text-[var(--diff-add)] no-underline"
             >
               {token.value}
@@ -296,14 +335,14 @@ function ChangedChunk({ removed, added }: { removed: string; added: string }): R
         if (token.removed) {
           return (
             <del
-              key={index}
+              key={token.id}
               className="rounded bg-[var(--diff-del-surface)] px-0.5 text-[var(--diff-del)]"
             >
               {token.value}
             </del>
           )
         }
-        return <span key={index}>{token.value}</span>
+        return <span key={token.id}>{token.value}</span>
       })}
     </p>
   )
