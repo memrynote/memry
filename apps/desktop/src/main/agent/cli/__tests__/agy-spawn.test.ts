@@ -18,8 +18,10 @@ vi.mock('../agy-config', () => ({
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 
+import { rm } from 'node:fs/promises'
+
 import { ensureAgyConfig } from '../agy-config'
-import { spawnAgyTurn } from '../agy-spawn'
+import { agyBridgeRuntime, spawnAgyTurn } from '../agy-spawn'
 
 const BRIDGE = { command: '/Apps/MemryNote', scriptPath: '/Apps/out/main/agy-mcp-bridge.js' }
 
@@ -114,6 +116,37 @@ describe('spawnAgyTurn', () => {
 
     const args = vi.mocked(spawn).mock.calls[0][1] as string[]
     expect(args[args.indexOf('--model') + 1]).toBe('gemini-3.1-pro-high')
+  })
+
+  it('cleans up its working directory when the caller is done', async () => {
+    mockSpawnedProc()
+
+    const sub = await spawnAgyTurn({ binaryPath: 'agy', prompt: 'hello', bridge: BRIDGE })
+    await sub.cleanup()
+
+    expect(vi.mocked(rm)).toHaveBeenCalledWith('/tmp/memry-agy-test', {
+      recursive: true,
+      force: true
+    })
+  })
+
+  it('survives a stdin error from a CLI that exits before reading the prompt', async () => {
+    const fakeProc = mockSpawnedProc()
+
+    const sub = await spawnAgyTurn({ binaryPath: 'agy', prompt: 'hello', bridge: BRIDGE })
+    // EPIPE arrives on stdin, not on the child; unhandled it is a main-process
+    // uncaughtException.
+    expect(() =>
+      fakeProc.stdin.emit('error', Object.assign(new Error('write EPIPE'), { code: 'EPIPE' }))
+    ).not.toThrow()
+    expect(sub.pid).toBe(4321)
+  })
+
+  it("runs the bridge as node through the app's own binary", () => {
+    const runtime = agyBridgeRuntime()
+
+    expect(runtime.command).toBe(process.execPath)
+    expect(runtime.scriptPath).toMatch(/agy-mcp-bridge\.js$/)
   })
 
   it('omits the turn environment for title and summary prompts', async () => {

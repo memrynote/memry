@@ -4,6 +4,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { spawnAgyTurn } from '../agy-spawn'
 import { spawnCodexTurn } from '../codex-spawn'
 import { spawnClaudeTurn } from '../spawn'
 
@@ -79,6 +80,21 @@ describe('CLI spawn failure', () => {
     await expect(
       spawnCodexTurn({ binaryPath: missingBinary, reasoningEffort: 'low', prompt: 'hi' })
     ).rejects.toThrow(`Codex CLI failed to start: spawn ${missingBinary} ENOENT`)
+
+    await settleUncaught()
+    expect(uncaught).toEqual([])
+  })
+
+  it('rejects spawnAgyTurn with the real spawn reason instead of crashing main', async () => {
+    await expect(
+      spawnAgyTurn({
+        binaryPath: missingBinary,
+        prompt: 'hi',
+        bridge: { command: '/Apps/MemryNote', scriptPath: '/Apps/out/main/agy-mcp-bridge.js' },
+        // Never the user's real ~/.gemini: the config writer runs for real here.
+        configRoot: path.join(fixtureDir, 'gemini')
+      })
+    ).rejects.toThrow(`Antigravity CLI failed to start: spawn ${missingBinary} ENOENT`)
 
     await settleUncaught()
     expect(uncaught).toEqual([])

@@ -99,6 +99,82 @@ describe('createAgyStreamParser', () => {
     expect(events).toEqual([{ kind: 'assistant_delta', text: 'Found ' }])
   })
 
+  it('treats a cancelled or failed tool step as a failed result', () => {
+    const cancelled =
+      '{"event":"step_update","step_update":{"step_index":7,"state":"CANCELLED","step_type":"tool","tool_name":"call_mcp_tool","tool_info":{"parameters":{"ServerName":"memry","ToolName":"notes_create"}}}}'
+
+    expect(collect([cancelled])).toEqual([
+      {
+        kind: 'tool_result',
+        toolUseId: '7',
+        ok: false,
+        error: { code: 'TOOL_ERROR', message: 'Antigravity CLI tool call failed' }
+      }
+    ])
+  })
+
+  it('falls back to the flattened output when the error carries no message', () => {
+    const line =
+      '{"event":"step_update","step_update":{"step_index":3,"state":"ERROR","step_type":"tool","tool_name":"run_command","tool_info":{"parameters":{},"output":"command denied by policy"}}}'
+
+    expect(collect([line])).toEqual([
+      {
+        kind: 'tool_result',
+        toolUseId: '3',
+        ok: false,
+        error: { code: 'TOOL_ERROR', message: 'command denied by policy' }
+      }
+    ])
+  })
+
+  it('keeps a non-JSON tool output as the plain string it is', () => {
+    const line =
+      '{"event":"step_update","step_update":{"step_index":2,"state":"DONE","step_type":"tool","tool_name":"view_file","tool_info":{"parameters":{},"output":"107 lines, 5465 bytes"}}}'
+
+    expect(collect([line])).toEqual([
+      { kind: 'tool_result', toolUseId: '2', ok: true, data: '107 lines, 5465 bytes' }
+    ])
+  })
+
+  it('ignores step types it has no mapping for', () => {
+    const line =
+      '{"event":"step_update","step_update":{"step_index":0,"state":"DONE","step_type":"user_input"}}'
+
+    expect(collect([line])).toEqual([{ kind: 'noop' }])
+  })
+
+  it('reads a structured result error object', () => {
+    const line =
+      '{"event":"result","result":{"status":"ERROR","response":"","error":{"message":"quota exhausted"}}}'
+
+    expect(collect([line])).toEqual([{ kind: 'error', message: 'quota exhausted' }])
+  })
+
+  it('names the status when a failed result explains nothing', () => {
+    const line = '{"event":"result","result":{"status":"TIMEOUT","response":""}}'
+
+    expect(collect([line])).toEqual([
+      { kind: 'error', message: 'Antigravity CLI reported status TIMEOUT' }
+    ])
+  })
+
+  it('reports an event shape it does not know instead of dropping it', () => {
+    const line = '{"event":"presence","presence":{"host":"laptop"}}'
+
+    expect(collect([line])).toEqual([
+      { kind: 'unknown', raw: { event: 'presence', presence: { host: 'laptop' } } }
+    ])
+  })
+
+  it('emits a line left in the buffer without a trailing newline on flush', () => {
+    const events: BackendEvent[] = []
+    const parser = createAgyStreamParser((event) => events.push(event))
+    parser.feed(TEXT_ACTIVE)
+    parser.flush()
+
+    expect(events).toEqual([{ kind: 'assistant_delta', text: 'Found ' }])
+  })
+
   it('reports an unparseable line instead of dropping it', () => {
     expect(collect(['not json'])).toEqual([{ kind: 'unknown', raw: 'not json' }])
   })
