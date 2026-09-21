@@ -70,6 +70,14 @@ protocol NotesReading: Sendable {
     ///   distinction `NoteBody.present` draws one level down, and the reason
     ///   the two are not collapsed here.
     func blocks(id: String) async throws -> [Block]?
+    /// One table's rows, cells and column widths, by the block id
+    /// ``blocks(id:)`` reported for the `table` block.
+    ///
+    /// - Returns: `nil` when there is no such table — no such note, or a
+    ///   block id holding something else. A flat block list carries one
+    ///   dimension and a table is two, which is why this is a second read
+    ///   rather than a field.
+    func table(id: String, blockId: String) async throws -> TableContent?
 }
 
 /// The production reader: the core's own `Notes`, over the shell's one serial
@@ -109,6 +117,12 @@ struct CoreNotesReader: NotesReading {
     func blocks(id: String) async throws -> [Block]? {
         let vault = vault
         return try await executor.run { try vault.notes().blocks(id: id) }
+    }
+
+    /// Same queue, same document, same reasons.
+    func table(id: String, blockId: String) async throws -> TableContent? {
+        let vault = vault
+        return try await executor.run { try vault.notes().table(id: id, blockId: blockId) }
     }
 
     /// One indexed row plus the vault's property definitions — no CRDT apply,

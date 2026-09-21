@@ -16,6 +16,11 @@ import MemryCore
 extension NotesReading {
     func blocks(id: String) async throws -> [Block]? { [] }
 
+    /// No table, for the same reason: the table read is asserted in Rust
+    /// against a real document, and a fake answering with an empty
+    /// `TableContent` would claim a note holds a table with no rows.
+    func table(id: String, blockId: String) async throws -> TableContent? { nil }
+
     /// Unread rather than empty, for the same reason the production screen
     /// keeps the two apart: a fake answering "this note has no tags" would let
     /// a test pass over a tag row that was never asked for.

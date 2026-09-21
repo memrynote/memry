@@ -8,7 +8,7 @@
 //! "could not tell"**. The doc comments that matter are there.
 
 use crate::api::errors::StorageError;
-use crate::crdt::blocks::Block;
+use crate::crdt::blocks::{Block, TableContent};
 use crate::crdt::errors::CrdtError;
 use crate::domain::note_meta::{self, NoteMetadata};
 use crate::domain::reads::{self, FolderSummary, NoteDetail, NoteSummary};
@@ -106,6 +106,23 @@ impl Notes {
     pub fn blocks(&self, id: String) -> Result<Option<Vec<Block>>, CrdtError> {
         self.db
             .call_blocking(|conn| Ok(reads::note_blocks(conn, &id)))
+            .map_err(CrdtError::from)?
+    }
+
+    /// One table's rows, cells and column widths, by the `blockContainer` id
+    /// [`Self::blocks`] reported for the `table` block.
+    ///
+    /// A second call rather than a field on `Block`, because a table is the
+    /// one block whose shape a flat list cannot carry: rows and columns are
+    /// two dimensions and `depth` is one. A shell asks for it when it meets a
+    /// `table` block and not before, so a note full of tables costs nothing to
+    /// scroll past.
+    ///
+    /// `nil` is "there is no such table here" — no such note, or a block id
+    /// that holds something else.
+    pub fn table(&self, id: String, block_id: String) -> Result<Option<TableContent>, CrdtError> {
+        self.db
+            .call_blocking(move |conn| Ok(reads::note_table(conn, &id, &block_id)))
             .map_err(CrdtError::from)?
     }
 }

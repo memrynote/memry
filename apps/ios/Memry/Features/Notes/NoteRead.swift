@@ -132,6 +132,13 @@ final class NoteReadViewModel {
     /// that was never pulled, and a reader that cannot walk blocks are three
     /// different facts and only the first two are the note's.
     private(set) var blocks: [Block] = []
+    /// Each table in the body, by the block id of its `table` block.
+    ///
+    /// Read eagerly once the blocks land, rather than lazily while drawing:
+    /// the reader is async and a SwiftUI body is not, and a table that
+    /// appeared a frame late would reflow the note under the reader's eyes.
+    /// A note holds few tables, so the cost is a few local reads.
+    private(set) var tables: [String: TableContent] = [:]
     /// The note's tags and typed properties, or `nil` while they are unread.
     ///
     /// `nil` and "read, and it has none" are different: the first draws
@@ -191,6 +198,28 @@ final class NoteReadViewModel {
             Log.storage.error("this note's blocks could not be walked", .code(mapped.code))
             blocks = []
         }
+        await loadTables()
+    }
+
+    /// The structure of every table in the body.
+    ///
+    /// A table that will not read is **left out rather than emptied**, and
+    /// the view draws its placeholder: an empty `TableContent` would claim
+    /// the note holds a table with no rows, which is a different note.
+    private func loadTables() async {
+        var loaded: [String: TableContent] = [:]
+        for block in blocks where block.kind == "table" {
+            guard let blockId = block.id else { continue }
+            do {
+                if let table = try await reader.table(id: route.id, blockId: blockId) {
+                    loaded[blockId] = table
+                }
+            } catch {
+                let mapped = ErrorMapping.userFacing(error)
+                Log.storage.error("a table in this note could not be read", .code(mapped.code))
+            }
+        }
+        tables = loaded
     }
 
     /// The tags and properties, read after the note for the same reason the

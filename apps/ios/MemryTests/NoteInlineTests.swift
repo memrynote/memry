@@ -1,5 +1,6 @@
 import Foundation
 import MemryCore
+import SwiftUI
 import Testing
 
 @testable import Memry
@@ -11,8 +12,74 @@ import Testing
 
 @Suite("Note inline")
 struct NoteInlineTests {
-    private func run(_ text: String, marks: [String] = [], target: String? = nil) -> InlineRun {
-        InlineRun(text: text, marks: marks, target: target)
+    private func run(
+        _ text: String,
+        marks: [String] = [],
+        markAttrs: [String: String] = [:],
+        target: String? = nil
+    ) -> InlineRun {
+        InlineRun(text: text, marks: marks, markAttrs: markAttrs, target: target)
+    }
+
+    /// A concrete colour, for comparison.
+    ///
+    /// `AdaptiveColor.color` wraps a **dynamic** `UIColor` built fresh on
+    /// every call, so two reads of one token are never `==` and neither are
+    /// two uncoloured runs. Resolving against a fixed interface style is what
+    /// turns "is this the ordinary ink" into a question with an answer.
+    private func resolved(_ color: Color?) -> UIColor? {
+        guard let color else { return nil }
+        return UIColor(color).resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
+    }
+
+    @Test("a colour mark paints the run the colour it names")
+    func colourMarksArePainted() {
+        // The defect this closes: the core sent the mark's NAME and not its
+        // value, so `textColor=red` and `textColor=blue` arrived identical
+        // and neither was painted at all.
+        let red = NoteInline.attributed(
+            run("warning", marks: ["textColor"], markAttrs: ["textColor": "red"])
+        )
+        let blue = NoteInline.attributed(
+            run("warning", marks: ["textColor"], markAttrs: ["textColor": "blue"])
+        )
+
+        #expect(resolved(red.foregroundColor) != nil)
+        #expect(
+            resolved(red.foregroundColor) != resolved(blue.foregroundColor),
+            "two colours must not render alike"
+        )
+    }
+
+    @Test("an unknown colour name leaves the text in the ordinary ink")
+    func unknownColoursAreNotGuessed() {
+        // A colour a later schema adds. Painting it something arbitrary is
+        // worse than not painting it.
+        let piece = NoteInline.attributed(
+            run("text", marks: ["textColor"], markAttrs: ["textColor": "chartreuse"])
+        )
+        // Against a run carrying no colour at all rather than against the
+        // token: `AdaptiveColor.color` builds a fresh dynamic `UIColor` on
+        // every call, so two reads of one token are never `==`. What matters
+        // is that an unknown name renders like no name.
+        let plain = NoteInline.attributed(run("text"))
+
+        #expect(resolved(piece.foregroundColor) == resolved(plain.foregroundColor))
+        #expect(String(piece.characters) == "text")
+    }
+
+    @Test("an inline checkbox draws a box rather than nothing")
+    func inlineCheckboxIsVisible() {
+        // It arrives as an empty run carrying the mark, because a table cell
+        // cannot hold a block (chapter 12 §12.7.1). Before this it drew as
+        // zero characters.
+        let checked = NoteInline.attributed(
+            run("", marks: ["inlineCheckbox"], markAttrs: ["inlineCheckbox.checked": "true"])
+        )
+        let unchecked = NoteInline.attributed(run("", marks: ["inlineCheckbox"]))
+
+        #expect(!String(checked.characters).isEmpty)
+        #expect(String(checked.characters) != String(unchecked.characters))
     }
 
     @Test("a wiki link becomes a link the platform can hit")

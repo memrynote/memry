@@ -104,8 +104,18 @@ struct TypeRole: Sendable, Equatable {
     enum Ramp: Sendable, CaseIterable, Equatable {
         /// The one dominant read on a screen. `DESIGN.md`: "one dominant read".
         case screenTitle
+        /// A note body's own level-one heading.
+        ///
+        /// Below `screenTitle` on purpose: the note **title** is the dominant
+        /// read on a note screen, and a body heading that matched it would
+        /// give the screen two. Added for the six editor heading levels
+        /// (`DESIGN.md` "Notes and editor").
+        case documentTitle
         /// A structural heading inside a screen.
         case sectionTitle
+        /// The step between `sectionTitle` and `heading`, which the six
+        /// editor heading levels need and no chrome surface did.
+        case subsectionTitle
         /// The heading of a grouped block, a notice, a card.
         case heading
         /// Ordinary body copy and controls.
@@ -120,7 +130,9 @@ struct TypeRole: Sendable, Equatable {
         var textStyle: Font.TextStyle {
             switch self {
             case .screenTitle: .largeTitle
+            case .documentTitle: .title
             case .sectionTitle: .title2
+            case .subsectionTitle: .title3
             case .heading: .headline
             case .body: .body
             case .supporting: .subheadline
@@ -134,7 +146,9 @@ struct TypeRole: Sendable, Equatable {
         var uiTextStyle: UIFont.TextStyle {
             switch self {
             case .screenTitle: .largeTitle
+            case .documentTitle: .title1
             case .sectionTitle: .title2
+            case .subsectionTitle: .title3
             case .heading: .headline
             case .body: .body
             case .supporting: .subheadline
@@ -370,5 +384,93 @@ enum Tokens {
         static let recoveryMaterial = TypeRole(.body, design: .monospaced)
         /// An error code, a numeric readout, an aligned technical value.
         static let technicalCaption = TypeRole(.caption, design: .monospaced)
+
+        /// The six heading levels a note body can hold.
+        ///
+        /// `DESIGN.md` "Notes and editor" gives the editor six levels at
+        /// weight 600, descending from `1.875em` to `0.875em`. The body used
+        /// to clamp them to three, which is the **content** losing structure
+        /// to fit the ramp; the ramp extends instead. A level outside 1...6 is
+        /// the document's problem, and the caller clamps it the way
+        /// `extract_text` clamps its `#` run (chapter 12 §12.1.3).
+        ///
+        /// Six distinct Dynamic Type steps, so every level is visibly its own
+        /// level and all six still scale. `DesignTokensTests` measures that
+        /// they are six sizes and not five.
+        ///
+        /// Level five is the `label` step and **not** `body`: `.headline` and
+        /// `.body` are both 17pt at the default category, so a level-four and
+        /// a level-five heading would have rendered identically at the same
+        /// weight — the clamp this task removed, reintroduced one level down.
+        static let bodyHeadings: [TypeRole] = [
+            TypeRole(.documentTitle, weight: .semibold),
+            TypeRole(.sectionTitle, weight: .semibold),
+            TypeRole(.subsectionTitle, weight: .semibold),
+            TypeRole(.heading, weight: .semibold),
+            TypeRole(.label, weight: .semibold),
+            TypeRole(.supporting, weight: .semibold)
+        ]
+
+        /// The role for a heading level, clamped into 1...6.
+        static func bodyHeading(level: Int) -> TypeRole {
+            bodyHeadings[min(max(level, 1), bodyHeadings.count) - 1]
+        }
+    }
+
+    // MARK: Note content colours
+
+    /// The nine named colours a note's text and blocks can carry.
+    ///
+    /// **These are BlockNote's colour *names*, not BlockNote's hex values,
+    /// and the difference is accessibility rather than taste.** BlockNote
+    /// paints `gray` text as `#9b9a97`, which is 2.6:1 on white and fails
+    /// FR-077 outright; four of its nine inks fail. `DESIGN.md` also says
+    /// mobile preserves desktop's *roles* rather than copying its pixels. So
+    /// each name maps onto an adaptive pair chosen to keep the hue
+    /// recognisable and clear 4.5:1, and `DesignTokensTests` measures every
+    /// ink against every fill in both interface styles.
+    ///
+    /// An unknown name answers `nil` rather than a guess: a colour a later
+    /// schema adds should leave the text in the ordinary ink, not paint it
+    /// something arbitrary.
+    enum Content {
+        /// A named text colour. `nil` for `default` and for any name this
+        /// build does not know.
+        static func ink(named name: String) -> AdaptiveColor? { inks[name] }
+
+        /// A named block or cell background. `nil` for `default` and unknown.
+        static func fill(named name: String) -> AdaptiveColor? { fills[name] }
+
+        /// Every name this build knows, for the suite to enumerate.
+        static let names = [
+            "gray", "brown", "red", "orange", "yellow", "green", "blue", "purple", "pink"
+        ]
+
+        private static let inks: [String: AdaptiveColor] = [
+            "gray": AdaptiveColor(light: 0x5F_5E_5B, dark: 0xA8_A6_A2),
+            "brown": AdaptiveColor(light: 0x6B_4A_3A, dark: 0xCC_A4_8C),
+            "red": AdaptiveColor(light: 0xB3_26_1E, dark: 0xFF_8A_80),
+            "orange": AdaptiveColor(light: 0x8A_4D_00, dark: 0xE9_A2_4A),
+            "yellow": AdaptiveColor(light: 0x6F_53_00, dark: 0xD4_B4_4A),
+            "green": AdaptiveColor(light: 0x3D_5A_55, dark: 0x8F_BD_B4),
+            "blue": AdaptiveColor(light: 0x0B_5E_86, dark: 0x6F_B8_D9),
+            "purple": AdaptiveColor(light: 0x5B_3A_96, dark: 0xBC_A0_E8),
+            "pink": AdaptiveColor(light: 0x97_14_5F, dark: 0xF0_93_C4)
+        ]
+
+        /// The light halves are BlockNote's own pale fills, which are quiet
+        /// enough already; the dark halves are the same hues taken down far
+        /// enough for the dark ink ramp to read on them.
+        private static let fills: [String: AdaptiveColor] = [
+            "gray": AdaptiveColor(light: 0xEB_EC_ED, dark: 0x2E_2E_30),
+            "brown": AdaptiveColor(light: 0xE9_E5_E3, dark: 0x33_2A_25),
+            "red": AdaptiveColor(light: 0xFB_E4_E4, dark: 0x3A_23_22),
+            "orange": AdaptiveColor(light: 0xF6_E9_D9, dark: 0x35_29_1A),
+            "yellow": AdaptiveColor(light: 0xFB_F3_DB, dark: 0x33_2C_18),
+            "green": AdaptiveColor(light: 0xDD_ED_EA, dark: 0x1F_2E_2C),
+            "blue": AdaptiveColor(light: 0xDD_EB_F1, dark: 0x1B_2B_33),
+            "purple": AdaptiveColor(light: 0xEA_E4_F2, dark: 0x2B_23_36),
+            "pink": AdaptiveColor(light: 0xF4_DF_EB, dark: 0x34_20_2B)
+        ]
     }
 }

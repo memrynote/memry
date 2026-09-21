@@ -57,6 +57,110 @@ struct DesignTokensTests {
         AdaptiveColor.RGB.contrast(ink.rgb(for: style), surface.rgb(for: style))
     }
 
+    // MARK: Note content colours
+
+    /// The nine named inks a note's text can carry, on every app surface.
+    ///
+    /// **The reason this test exists rather than a transcription.** BlockNote
+    /// paints `gray` text `#9b9a97`, which is 2.6:1 on white; four of its
+    /// nine inks fail AA. Copying its palette would have shipped unreadable
+    /// text under a token file whose whole premise is that it does not.
+    @Test("Every named content ink is readable on every surface")
+    func contentInksAreReadable() {
+        for style in Self.styles {
+            for name in Tokens.Content.names {
+                guard let ink = Tokens.Content.ink(named: name) else {
+                    Issue.record("\(name) has no ink")
+                    continue
+                }
+                for (surfaceName, surface) in Self.surfaces {
+                    let ratio = Self.contrast(ink, on: surface, style)
+                    #expect(
+                        ratio >= Self.readable,
+                        "\(name) on \(surfaceName) in \(style.rawValue) is \(ratio)"
+                    )
+                }
+            }
+        }
+    }
+
+    /// Every ink on every fill, both styles: 9 × 9 × 2.
+    ///
+    /// A user can pick a text colour and a background colour independently,
+    /// so any pair is reachable and checking only the ordinary ink would miss
+    /// the pair that actually fails.
+    @Test("Every named ink is readable on every named fill")
+    func contentInksAreReadableOnFills() {
+        for style in Self.styles {
+            for fillName in Tokens.Content.names {
+                guard let fill = Tokens.Content.fill(named: fillName) else {
+                    Issue.record("\(fillName) has no fill")
+                    continue
+                }
+                // The ordinary ink first: a filled block whose text carries
+                // no colour of its own is the common case.
+                let primary = Self.contrast(Tokens.Text.primary, on: fill, style)
+                #expect(
+                    primary >= Self.readable,
+                    "text.primary on fill \(fillName) in \(style.rawValue) is \(primary)"
+                )
+                for inkName in Tokens.Content.names {
+                    guard let ink = Tokens.Content.ink(named: inkName) else { continue }
+                    let ratio = Self.contrast(ink, on: fill, style)
+                    #expect(
+                        ratio >= Self.readable,
+                        "\(inkName) on fill \(fillName) in \(style.rawValue) is \(ratio)"
+                    )
+                }
+            }
+        }
+    }
+
+    /// An unknown name is `nil`, never a guess.
+    ///
+    /// A colour a later schema adds must leave the text in the ordinary ink.
+    /// Answering with an arbitrary colour would be this build inventing
+    /// meaning for a value it does not understand.
+    @Test("An unknown content colour name resolves to nothing")
+    func unknownContentColoursAreNotGuessed() {
+        #expect(Tokens.Content.ink(named: "chartreuse") == nil)
+        #expect(Tokens.Content.fill(named: "chartreuse") == nil)
+        // `default` is BlockNote's spelling of "no colour", and it must not
+        // resolve to a colour either.
+        #expect(Tokens.Content.ink(named: "default") == nil)
+        #expect(Tokens.Content.fill(named: "default") == nil)
+        #expect(Tokens.Content.names.count == 9)
+    }
+
+    // MARK: Body heading ramp
+
+    /// Six levels, six distinct sizes, descending.
+    ///
+    /// The body used to clamp six heading levels onto three roles, so a
+    /// level-four and a level-six heading rendered identically and the note
+    /// lost structure it really carried.
+    @Test("The six body heading levels are six distinct descending steps")
+    func bodyHeadingsAreSixDistinctSteps() {
+        let category = UITraitCollection(preferredContentSizeCategory: .large)
+        func size(_ role: TypeRole) -> CGFloat {
+            UIFont.preferredFont(forTextStyle: role.ramp.uiTextStyle, compatibleWith: category)
+                .pointSize
+        }
+
+        let sizes = (1...6).map { size(Tokens.Typography.bodyHeading(level: $0)) }
+        #expect(Set(sizes).count == 6, "two heading levels render alike: \(sizes)")
+        #expect(sizes == sizes.sorted(by: >), "the levels must descend: \(sizes)")
+
+        // The note title stays the dominant read on the screen: a body
+        // heading must not match it.
+        #expect(size(Tokens.Typography.bodyHeading(level: 1)) < size(Tokens.Typography.screenTitle))
+
+        // Out of range clamps rather than crashing, the way `extract_text`
+        // clamps its `#` run.
+        #expect(Tokens.Typography.bodyHeading(level: 0) == Tokens.Typography.bodyHeading(level: 1))
+        #expect(Tokens.Typography.bodyHeading(level: 9) == Tokens.Typography.bodyHeading(level: 6))
+    }
+
     // MARK: The arithmetic itself
 
     /// The contrast function is pinned to the two ends of the scale before it

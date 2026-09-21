@@ -119,25 +119,34 @@ struct NoteReadView: View {
                             download: model.canFetchBody ? { Task { await model.fetchBody() } } : nil
                         )
                     } else if let open {
-                        NoteBlocksView(blocks: model.blocks) { title in
-                            // Resolved on the tap, then pushed onto the same
-                            // stack the browse list pushes onto — a wiki link
-                            // leads to a note, not to a second kind of screen.
-                            Task {
-                                if let route = await model.wikiTarget(for: title) {
-                                    open(route)
-                                } else {
-                                    // A link naming no note. Desktop offers to
-                                    // create it; this build cannot, so it says
-                                    // what is true rather than doing nothing.
-                                    brokenLink = title
+                        NoteBlocksView(
+                            blocks: model.blocks,
+                            openTarget: { title in
+                                // Resolved on the tap, then pushed onto the
+                                // same stack the browse list pushes onto — a
+                                // wiki link leads to a note, not to a second
+                                // kind of screen.
+                                Task {
+                                    if let route = await model.wikiTarget(for: title) {
+                                        open(route)
+                                    } else {
+                                        // A link naming no note. Desktop
+                                        // offers to create it; this build
+                                        // cannot, so it says what is true
+                                        // rather than doing nothing.
+                                        brokenLink = title
+                                    }
                                 }
-                            }
-                        }
+                            },
+                            tableContent: { model.tables[$0] }
+                        )
                     } else {
                         // No stack to push onto: the links are still drawn and
                         // still readable, they simply lead nowhere here.
-                        NoteBlocksView(blocks: model.blocks)
+                        NoteBlocksView(
+                            blocks: model.blocks,
+                            tableContent: { model.tables[$0] }
+                        )
                     }
                 }
             }

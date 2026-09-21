@@ -36,7 +36,7 @@ use std::sync::Arc;
 use rusqlite::{Connection, OptionalExtension as _, Row};
 
 use crate::api::errors::StorageError;
-use crate::crdt::blocks::{Block, extract_blocks};
+use crate::crdt::blocks::{Block, TableContent, extract_blocks, extract_table};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
@@ -238,6 +238,33 @@ pub fn note_blocks(conn: &Connection, id: &str) -> Result<Option<Vec<Block>>, Cr
     }
     let document = document_of(conn, id)?;
     Ok(Some(extract_blocks(&document)?))
+}
+
+/// One table's structure inside one note's body.
+///
+/// Two ways to get `None`, and they are deliberately the same answer: the note
+/// is gone, or the block id names something that is not a table. The caller
+/// asked "what does this table look like" and the honest reply to both is
+/// "there is no such table" — a shell only reaches here for a block it has
+/// already seen with `kind == "table"`.
+pub fn note_table(
+    conn: &Connection,
+    id: &str,
+    block_id: &str,
+) -> Result<Option<TableContent>, CrdtError> {
+    let exists: Option<i64> = conn
+        .query_row(
+            "SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NULL",
+            rusqlite::params![id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    if exists.is_none() {
+        return Ok(None);
+    }
+    let document = document_of(conn, id)?;
+    extract_table(&document, block_id)
 }
 
 /// The body of one document, from whatever the update log already holds.

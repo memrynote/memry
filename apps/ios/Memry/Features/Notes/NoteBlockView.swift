@@ -27,11 +27,22 @@ struct NoteBlocksView: View {
     /// resolve one, which is honest: a link that looks tappable and does
     /// nothing is worse than a link that does not look tappable.
     var openTarget: ((String) -> Void)?
+    /// One table's structure, by the block id of its `table` block.
+    ///
+    /// A second read rather than a field on `Block`, because rows and columns
+    /// are two dimensions and `depth` is one. `nil` while no source is wired,
+    /// and a table then draws as the placeholder rather than as nothing.
+    var tableContent: ((String) -> TableContent?)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                NoteBlockView(block: block, openTarget: openTarget)
+            ForEach(NoteBlockList.rows(of: blocks), id: \.id) { row in
+                NoteBlockView(
+                    block: row.block,
+                    marker: row.marker,
+                    openTarget: openTarget,
+                    tableContent: tableContent
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -52,18 +63,90 @@ struct NoteBlocksView: View {
     }
 }
 
+/// The flat block list, prepared for drawing.
+///
+/// Two things the list cannot say for itself and a single block cannot work
+/// out alone: which cells belong to a table that draws itself, and what number
+/// a list item is. Both need the sequence, so both are decided here rather
+/// than inside `NoteBlockView`.
+enum NoteBlockList {
+    struct Row: Identifiable {
+        let id: Int
+        let block: Block
+        /// The marker a numbered list item draws, already counted.
+        let marker: String?
+    }
+
+    static func rows(of blocks: [Block]) -> [Row] {
+        var rows: [Row] = []
+        // Per depth, so a nested list numbers itself and an outer list is not
+        // disturbed by it.
+        var counters: [UInt32: Int] = [:]
+        // While inside a table, everything deeper belongs to it: the table
+        // draws its own rows from `Notes.table`, and drawing the cells again
+        // as loose paragraphs is what a flat list would otherwise do. Nothing
+        // is dropped from the core — this is one surface choosing the richer
+        // of two readings of the same content.
+        var tableDepth: UInt32?
+
+        for (offset, block) in blocks.enumerated() {
+            if let depth = tableDepth {
+                if block.depth > depth { continue }
+                tableDepth = nil
+            }
+            if block.kind == "table" { tableDepth = block.depth }
+
+            var marker: String?
+            if block.kind == "numberedListItem" {
+                let next = (counters[block.depth] ?? 0) + 1
+                counters[block.depth] = next
+                marker = "\(next)."
+            } else {
+                // Any other block ends the run, so a list after a paragraph
+                // starts at one again. Deeper counters go too: a nested list
+                // that ended restarts the next time one opens.
+                counters = counters.filter { $0.key < block.depth }
+            }
+
+            rows.append(Row(id: offset, block: block, marker: marker))
+        }
+        return rows
+    }
+}
+
 /// One block.
 struct NoteBlockView: View {
     let block: Block
+    /// The list marker this item draws, counted over its siblings by
+    /// `NoteBlockList`. `nil` for everything that is not a numbered item.
+    var marker: String?
     var openTarget: ((String) -> Void)?
+    var tableContent: ((String) -> TableContent?)?
 
     var body: some View {
         content
+            // A block's own ink, when it declares one. Applied as a tint over
+            // the whole block rather than per run: an inline `textColor`
+            // wins because it sets its own foreground on the run.
+            .foregroundStyle(blockInk ?? Tokens.Text.primary.color)
+            .padding(blockFill == nil ? 0 : Tokens.Space.small)
+            .background(blockFill ?? .clear, in: .rect(cornerRadius: Tokens.Radius.control))
             // Indentation carries nesting, exactly as it does in the browse
             // list: the block list is flat and depth is the only thing saying
             // a list item sits inside another.
             .padding(.leading, CGFloat(block.depth) * Tokens.Space.inset)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: frameAlignment)
+    }
+
+    /// `textColor` on the block itself. `nil` for `default`, for an absent
+    /// prop, and for a name this build does not know — all three mean "draw
+    /// it in the ordinary ink", and none of them mean "guess".
+    private var blockInk: Color? {
+        value("textColor").flatMap { Tokens.Content.ink(named: $0) }?.color
+    }
+
+    private var blockFill: Color? {
+        value("backgroundColor").flatMap { Tokens.Content.fill(named: $0) }?.color
     }
 
     @ViewBuilder
@@ -75,7 +158,7 @@ struct NoteBlockView: View {
                 .foregroundStyle(Tokens.Text.primary.color)
                 .accessibilityAddTraits(.isHeader)
         case "bulletListItem", "numberedListItem":
-            ListItemRow(marker: block.kind == "bulletListItem" ? "•" : "1.", text: inline)
+            ListItemRow(marker: marker ?? bullet, text: inline, alignment: alignment)
         case "checkListItem", "taskBlock":
             CheckItemRow(isChecked: flag("checked"), text: inline)
         case "quote":
@@ -86,6 +169,25 @@ struct NoteBlockView: View {
             CodeRow(language: value("language"), text: plainText)
         case "divider":
             Divider().overlay(Tokens.Line.border.color)
+        case "toggleListItem":
+            // The children already arrive as their own blocks one level
+            // deeper, so this draws the summary and the state — it does not
+            // own the body. A closed toggle still shows its children rather
+            // than hiding them: this screen reads a note, and a reader who
+            // cannot open a disclosure would simply lose the text. The
+            // chevron says which way the note was left.
+            ToggleSummaryRow(isOpen: flag("open"), text: inline, alignment: alignment)
+        case "audio", "video":
+            // Metadata only. The bytes travel the attachment channel
+            // (chapter 14) and this build does not fetch them yet; before
+            // this case existed both fell through to `default` and drew an
+            // empty paragraph, which reads as a hole in the note.
+            AttachmentRow(kind: block.kind, name: value("name"), size: value("size"))
+        case "table":
+            NoteTableView(
+                table: block.id.flatMap { tableContent?($0) },
+                openTarget: openTarget
+            )
         case "bookmark":
             // A bookmark carries its whole card in props — url, title, site —
             // and needs nothing fetched, so it is a real link rather than a
@@ -121,19 +223,45 @@ struct NoteBlockView: View {
         }
     }
 
-    /// Heading levels map onto the type ramp rather than onto sizes: `DESIGN.md`
-    /// closes the ramp deliberately, so a level past it clamps instead of
-    /// inventing a step.
+    /// All six levels the schema allows.
+    ///
+    /// This used to answer three, so a level-four heading and a level-six
+    /// heading rendered identically and the note lost structure it really
+    /// carried. `DESIGN.md`'s ramp was extended rather than the content
+    /// clamped; the clamp that remains is the document's own 1...6.
     private var headingRole: TypeRole {
-        switch value("level") {
-        case "1": Tokens.Typography.screenTitle
-        case "2": Tokens.Typography.sectionTitle
-        default: Tokens.Typography.heading
-        }
+        Tokens.Typography.bodyHeading(level: Int(value("level") ?? "") ?? 1)
+    }
+
+    /// BlockNote's bullet ladder: filled, hollow, square, then repeating.
+    private var bullet: String {
+        ["\u{2022}", "\u{25E6}", "\u{25AA}"][Int(block.depth) % 3]
     }
 
     private func value(_ name: String) -> String? {
         block.props.first { $0.name == name }?.value
+    }
+
+    /// `textAlignment`, as SwiftUI spells it. `props_of` has always returned
+    /// it and nothing read it.
+    private var alignment: TextAlignment {
+        switch value("textAlignment") {
+        case "center": .center
+        case "right": .trailing
+        // `justify` has no `TextAlignment`, and faking it by stretching
+        // spaces would be worse than reading as the default.
+        default: .leading
+        }
+    }
+
+    /// The frame alignment that matches [`alignment`], so a centred block sits
+    /// centred rather than merely wrapping centred.
+    private var frameAlignment: Alignment {
+        switch alignment {
+        case .center: .center
+        case .trailing: .trailing
+        default: .leading
+        }
     }
 
     private func flag(_ name: String) -> Bool {
@@ -196,6 +324,25 @@ enum NoteInline {
             case "code": font = Tokens.Typography.recoveryMaterial.font
             case "strike": piece.strikethroughStyle = .single
             case "underline": piece.underlineStyle = .single
+            case "textColor":
+                // The name is not the value. Until `mark_attrs` existed the
+                // core sent a bare `textColor` and red and blue arrived
+                // identical; now the value crosses and an unknown name
+                // leaves the text in the ordinary ink rather than guessing.
+                if let name = run.markAttrs[mark], let ink = Tokens.Content.ink(named: name) {
+                    piece.foregroundColor = ink.color
+                }
+            case "backgroundColor":
+                if let name = run.markAttrs[mark], let fill = Tokens.Content.fill(named: name) {
+                    piece.backgroundColor = fill.color
+                }
+            case "inlineCheckbox":
+                // A table cell cannot hold a block, so a checkbox inside one
+                // is an inline node carrying no text (chapter 12 §12.7.1).
+                // It arrives as an empty run and would draw as nothing.
+                piece.append(AttributedString(
+                    run.markAttrs["inlineCheckbox.checked"] == "true" ? "\u{2611}" : "\u{2610}"
+                ))
             case "wikiLink", "linkMention":
                 piece.foregroundColor = Tokens.Text.tint.color
                 piece.underlineStyle = .single
@@ -237,6 +384,7 @@ enum NoteInline {
 private struct ListItemRow: View {
     let marker: String
     let text: AttributedString
+    var alignment: TextAlignment = .leading
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
@@ -244,10 +392,38 @@ private struct ListItemRow: View {
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
                 // A fixed lane, so every marker in a list shares one edge.
-                .frame(width: Tokens.Space.inset, alignment: .trailing)
+                // Numbers past single digits need more than a bullet does.
+                .frame(minWidth: Tokens.Space.inset, alignment: .trailing)
+                // Hidden from VoiceOver but read in the value below, so the
+                // position is spoken once rather than as a stray "3 dot".
                 .accessibilityHidden(true)
-            Text(text)
+            Text(text).multilineTextAlignment(alignment)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(text.characters))
+        .accessibilityValue(marker.hasSuffix(".") ? "Item \(marker.dropLast())" : "")
+    }
+}
+
+/// A toggle's summary line and the state the note was left in.
+private struct ToggleSummaryRow: View {
+    let isOpen: Bool
+    let text: AttributedString
+    var alignment: TextAlignment = .leading
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
+            Image(systemName: isOpen ? "chevron.down" : "chevron.right")
+                .font(Tokens.Typography.caption.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .frame(minWidth: Tokens.Space.inset, alignment: .trailing)
+                .accessibilityHidden(true)
+            Text(text).multilineTextAlignment(alignment)
+        }
+        .accessibilityElement(children: .combine)
+        // Said in words: the chevron is the only other cue, and a rotation is
+        // never allowed to be the one that carries the state.
+        .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
     }
 }
 
