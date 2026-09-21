@@ -181,6 +181,50 @@ impl NotesWriter {
             .map_err(CrdtError::from)?
     }
 
+    /// Sets or clears a note's icon (N701).
+    ///
+    /// The payload spells it `emoji` (§13.7.1); it is `icon` here because that
+    /// is what it is on every surface, and because nothing restricts it to an
+    /// emoji — a shell may store a symbol name.
+    ///
+    /// `nil` writes an explicit **null**, never an absent key: §13.4 says an
+    /// absent key means "this sender does not know", so dropping the key would
+    /// tell every other device nothing had changed rather than that the user
+    /// cleared their icon.
+    pub fn set_icon(&self, id: String, icon: Option<String>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::set_icon(conn, &id, icon.as_deref(), &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
+    /// Replaces a note's tags (N705).
+    ///
+    /// `tags` is a field of the note payload (§13.7.1); the tag rows one layer
+    /// down are a projection of it. Writing a *property* called `tags` would
+    /// create a second, unrelated thing no other client reads.
+    pub fn set_tags(&self, id: String, tags: Vec<String>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::set_tags(conn, &id, &tags, &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
+    /// Replaces a note's aliases (N706).
+    ///
+    /// Whole-array rather than add-one, because that is the shape of the field
+    /// and of §13.2's field-level merge. An alias is what lets a wiki link
+    /// resolve to a note by a name the note itself declares.
+    pub fn set_aliases(&self, id: String, aliases: Vec<String>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::set_aliases(conn, &id, &aliases, &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
     /// Sets one property on a note (N700).
     ///
     /// The value crosses as **JSON text**, not as a typed union, for the same

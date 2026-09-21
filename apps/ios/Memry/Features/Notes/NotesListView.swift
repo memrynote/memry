@@ -118,6 +118,7 @@ struct NotesListView: View {
                         reader: model.reader,
                         filler: model.filler,
                         editor: model.editor,
+                        metadataWriter: model.metadataWriter,
                         open: { path.append($0) }
                     )
                 }

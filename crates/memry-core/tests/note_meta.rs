@@ -370,3 +370,151 @@ fn clearing_is_not_a_retype() {
         .expect("the call");
     assert!(result.is_ok(), "a clear must never be refused as a retype");
 }
+
+// MARK: - Icon, cover and aliases (N701, N706)
+
+/// The icon round-trips through the payload's `emoji` field.
+#[test]
+fn a_notes_icon_round_trips() {
+    let (db, _vault) = vault("icon");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    db.call_blocking(|conn: &mut Connection| {
+        notes::set_icon(conn, "note-1", Some("🌱"), DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the write");
+
+    let metadata = db
+        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+        .expect("read")
+        .expect("the note");
+    assert_eq!(metadata.icon.as_deref(), Some("🌱"));
+}
+
+/// **Clearing an icon writes an explicit `null`, never an absent key.**
+///
+/// §13.4: an absent key means "this sender does not know", so dropping it
+/// would tell every other device that nothing changed rather than that the
+/// user cleared their icon.
+#[test]
+fn clearing_an_icon_writes_null_rather_than_removing_the_key() {
+    let (db, _vault) = vault("icon-clear");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    db.call_blocking(|conn: &mut Connection| {
+        notes::set_icon(conn, "note-1", Some("🌱"), DEVICE, NOW)?;
+        notes::set_icon(conn, "note-1", None, DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the writes");
+
+    let metadata = db
+        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+        .expect("read")
+        .expect("the note");
+    assert_eq!(metadata.icon, None, "the icon reads as cleared");
+
+    // The key itself must still be in the payload, holding null.
+    let payload: String = db
+        .call_blocking(|conn: &mut Connection| {
+            let raw: String = conn
+                .query_row(
+                    "SELECT payload FROM sync_items WHERE item_type = 'note' AND item_id = 'note-1'",
+                    [],
+                    |row| row.get(0),
+                )
+                .expect("the payload");
+            Ok(raw)
+        })
+        .expect("read");
+    let object: Value = serde_json::from_str(&payload).expect("JSON");
+    assert_eq!(
+        object.get("emoji"),
+        Some(&Value::Null),
+        "the key must be present and null, not removed: {payload}"
+    );
+}
+
+/// **`coverImage` is not a field of the note schema**, and this is what it
+/// means in practice: whatever another client wrote under that key survives
+/// and reaches the shell as the JSON text the payload holds (FR-033).
+///
+/// It is the vectors' canonical *unknown key* case for exactly this reason,
+/// so parsing it into a typed field here would make this client the only one
+/// that believes the key is defined.
+#[test]
+fn an_unknown_cover_key_survives_and_reaches_the_shell_verbatim() {
+    let (db, _vault) = vault("cover");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    // Written the way another client would: a key this schema does not name.
+    db.call_blocking(|conn: &mut Connection| {
+        conn.execute(
+            "UPDATE sync_items SET payload = json_set(payload, '$.coverImage', \
+             json('{\"url\":\"memry://cover/1\",\"offsetY\":0.25}')) \
+             WHERE item_type = 'note' AND item_id = 'note-1'",
+            [],
+        )
+        .expect("the cover");
+        Ok(())
+    })
+    .expect("the write");
+
+    let metadata = db
+        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+        .expect("read")
+        .expect("the note");
+    let cover = metadata.cover_json.expect("the cover must reach the shell");
+    let parsed: Value = serde_json::from_str(&cover).expect("the cover is JSON");
+    assert_eq!(parsed["url"], json!("memry://cover/1"));
+    assert_eq!(parsed["offsetY"], json!(0.25));
+}
+
+/// A note with no cover key says so, rather than inventing an empty one.
+#[test]
+fn a_note_with_no_cover_reports_none() {
+    let (db, _vault) = vault("cover-absent");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    let metadata = db
+        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+        .expect("read")
+        .expect("the note");
+    assert_eq!(metadata.cover_json, None);
+}
+
+/// Aliases round-trip, and the empty case is written as an empty array rather
+/// than as `null`: removing the last alias is a fact, and `null` would read as
+/// "this sender does not know".
+#[test]
+fn a_notes_aliases_round_trip_including_the_empty_case() {
+    let (db, _vault) = vault("aliases");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    db.call_blocking(|conn: &mut Connection| {
+        notes::set_aliases(
+            conn,
+            "note-1",
+            &["Second name".to_owned(), "Third".to_owned()],
+            DEVICE,
+            NOW,
+        )?;
+        Ok(())
+    })
+    .expect("the write");
+
+    let read = |db: &Db| {
+        db.call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+            .expect("read")
+            .expect("the note")
+    };
+    assert_eq!(read(&db).aliases, ["Second name", "Third"]);
+
+    db.call_blocking(|conn: &mut Connection| {
+        notes::set_aliases(conn, "note-1", &[], DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the clear");
+    assert!(read(&db).aliases.is_empty());
+}

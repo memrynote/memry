@@ -311,6 +311,10 @@ enum Tokens {
         static let actionHeight: CGFloat = 52
         /// The one-point boundary that `Line.border` paints.
         static let hairline: CGFloat = 1
+        /// A note cover's resting height. Tall enough to read as an image and
+        /// short enough that the title stays the dominant read on the screen
+        /// (`DESIGN.md`: "one dominant read").
+        static let coverHeight: CGFloat = 160
     }
 
     // MARK: Motion

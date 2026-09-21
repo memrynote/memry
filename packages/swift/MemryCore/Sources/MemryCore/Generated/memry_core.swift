@@ -3772,6 +3772,15 @@ public func FfiConverterTypeNotes_lower(_ value: Notes) -> UInt64 {
 public protocol NotesWriterProtocol: AnyObject, Sendable {
     
     /**
+     * Clears one property, **leaving the key present and `null`** (§13.4).
+     *
+     * Not a removal: an absent key means "this sender does not know", so a
+     * removed key would tell every other device nothing had changed rather
+     * than that the user cleared it.
+     */
+    func clearProperty(id: String, name: String) throws 
+    
+    /**
      * Creates an empty note and returns its id.
      *
      * `folder_path` is `nil` for the vault root, which travels as an explicit
@@ -3826,6 +3835,57 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
      * to the same note's body elsewhere do not collide (chapter 06 §6.1).
      */
     func rename(id: String, title: String) throws 
+    
+    /**
+     * Replaces a note's aliases (N706).
+     *
+     * Whole-array rather than add-one, because that is the shape of the field
+     * and of §13.2's field-level merge. An alias is what lets a wiki link
+     * resolve to a note by a name the note itself declares.
+     */
+    func setAliases(id: String, aliases: [String]) throws 
+    
+    /**
+     * Sets or clears a note's icon (N701).
+     *
+     * The payload spells it `emoji` (§13.7.1); it is `icon` here because that
+     * is what it is on every surface, and because nothing restricts it to an
+     * emoji — a shell may store a symbol name.
+     *
+     * `nil` writes an explicit **null**, never an absent key: §13.4 says an
+     * absent key means "this sender does not know", so dropping the key would
+     * tell every other device nothing had changed rather than that the user
+     * cleared their icon.
+     */
+    func setIcon(id: String, icon: String?) throws 
+    
+    /**
+     * Sets one property on a note (N700).
+     *
+     * The value crosses as **JSON text**, not as a typed union, for the same
+     * reason `NoteProperty::value_json` is read that way: §13.7.1 lets a
+     * property hold any JSON, and a closed enum here would have to drop or
+     * coerce whatever did not fit. A shell serialises against the declared
+     * `type_name` it already reads, which is what makes one call serve all
+     * ten property types rather than ten calls.
+     *
+     * - Throws: `Retyped` when the edit would change a property's JSON type
+     * (FR-048). Deliberately not folded into a storage failure: a surface
+     * has to tell "that is not a valid value for this property" from "the
+     * disk is full", and a silent coercion would be invisible at the call
+     * site and permanent on the wire, since the merged payload is what
+     * every other device then reads.
+     */
+    func setProperty(id: String, name: String, valueJson: String) throws 
+    
+    /**
+     * Replaces a note's tags (N705).
+     *
+     * `tags` is a field of the note payload (§13.7.1); the tag rows one layer
+     * down are a projection of it. Writing a *property* called `tags` would
+     * create a second, unrelated thing no other client reads.
+     */
+    func setTags(id: String, tags: [String]) throws 
     
 }
 /**
@@ -3883,6 +3943,23 @@ open class NotesWriter: NotesWriterProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * Clears one property, **leaving the key present and `null`** (§13.4).
+     *
+     * Not a removal: an absent key means "this sender does not know", so a
+     * removed key would tell every other device nothing had changed rather
+     * than that the user cleared it.
+     */
+open func clearProperty(id: String, name: String)throws   {try rustCallWithError(FfiConverterTypePropertyWriteError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_clear_property(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(name),uniffiCallStatus
+    )
+}
+}
     
     /**
      * Creates an empty note and returns its id.
@@ -3984,6 +4061,90 @@ open func rename(id: String, title: String)throws   {try rustCallWithError(FfiCo
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),
         FfiConverterString.lower(title),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Replaces a note's aliases (N706).
+     *
+     * Whole-array rather than add-one, because that is the shape of the field
+     * and of §13.2's field-level merge. An alias is what lets a wiki link
+     * resolve to a note by a name the note itself declares.
+     */
+open func setAliases(id: String, aliases: [String])throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_set_aliases(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterSequenceString.lower(aliases),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Sets or clears a note's icon (N701).
+     *
+     * The payload spells it `emoji` (§13.7.1); it is `icon` here because that
+     * is what it is on every surface, and because nothing restricts it to an
+     * emoji — a shell may store a symbol name.
+     *
+     * `nil` writes an explicit **null**, never an absent key: §13.4 says an
+     * absent key means "this sender does not know", so dropping the key would
+     * tell every other device nothing had changed rather than that the user
+     * cleared their icon.
+     */
+open func setIcon(id: String, icon: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_set_icon(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(icon),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Sets one property on a note (N700).
+     *
+     * The value crosses as **JSON text**, not as a typed union, for the same
+     * reason `NoteProperty::value_json` is read that way: §13.7.1 lets a
+     * property hold any JSON, and a closed enum here would have to drop or
+     * coerce whatever did not fit. A shell serialises against the declared
+     * `type_name` it already reads, which is what makes one call serve all
+     * ten property types rather than ten calls.
+     *
+     * - Throws: `Retyped` when the edit would change a property's JSON type
+     * (FR-048). Deliberately not folded into a storage failure: a surface
+     * has to tell "that is not a valid value for this property" from "the
+     * disk is full", and a silent coercion would be invisible at the call
+     * site and permanent on the wire, since the merged payload is what
+     * every other device then reads.
+     */
+open func setProperty(id: String, name: String, valueJson: String)throws   {try rustCallWithError(FfiConverterTypePropertyWriteError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_set_property(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(name),
+        FfiConverterString.lower(valueJson),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Replaces a note's tags (N705).
+     *
+     * `tags` is a field of the note payload (§13.7.1); the tag rows one layer
+     * down are a projection of it. Writing a *property* called `tags` would
+     * create a second, unrelated thing no other client reads.
+     */
+open func setTags(id: String, tags: [String])throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_set_tags(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterSequenceString.lower(tags),uniffiCallStatus
     )
 }
 }
@@ -9189,6 +9350,31 @@ public struct NoteMetadata: Equatable, Hashable {
      * wants to show them. Empty when the payload carries none.
      */
     public var aliases: [String]
+    /**
+     * The note's icon, which the payload spells `emoji` (§13.7.1).
+     *
+     * Named `icon` here because that is what it is on every surface, and
+     * because the field is not restricted to an emoji — a shell may put a
+     * symbol name in it. `None` covers both an absent key and an explicit
+     * `null`, which mean the same thing for a value nobody has set.
+     */
+    public var icon: String?
+    /**
+     * The note's cover, as **preserved unknown payload data** (FR-033).
+     *
+     * **`coverImage` is not a field of the note schema.** §13.7.1 does not
+     * list it, desktop has no cover feature, and `payload-schemas.json` uses
+     * this exact key as its canonical *unknown key* case — the thing a
+     * conforming client must carry untouched rather than understand. So it
+     * is surfaced as the JSON text the payload holds rather than parsed into
+     * a typed field: inventing a schema for a key the specification does not
+     * define would make this client the only one that thinks it is defined.
+     *
+     * `None` when the payload carries no such key. A shell renders it if it
+     * recognises the shape and ignores it otherwise; either way the bytes
+     * survive, which is what FR-033 asks for.
+     */
+    public var coverJson: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -9203,10 +9389,35 @@ public struct NoteMetadata: Equatable, Hashable {
         /**
          * The note's other names, for the wiki-link resolver and for a shell that
          * wants to show them. Empty when the payload carries none.
-         */aliases: [String]) {
+         */aliases: [String], 
+        /**
+         * The note's icon, which the payload spells `emoji` (§13.7.1).
+         *
+         * Named `icon` here because that is what it is on every surface, and
+         * because the field is not restricted to an emoji — a shell may put a
+         * symbol name in it. `None` covers both an absent key and an explicit
+         * `null`, which mean the same thing for a value nobody has set.
+         */icon: String?, 
+        /**
+         * The note's cover, as **preserved unknown payload data** (FR-033).
+         *
+         * **`coverImage` is not a field of the note schema.** §13.7.1 does not
+         * list it, desktop has no cover feature, and `payload-schemas.json` uses
+         * this exact key as its canonical *unknown key* case — the thing a
+         * conforming client must carry untouched rather than understand. So it
+         * is surfaced as the JSON text the payload holds rather than parsed into
+         * a typed field: inventing a schema for a key the specification does not
+         * define would make this client the only one that thinks it is defined.
+         *
+         * `None` when the payload carries no such key. A shell renders it if it
+         * recognises the shape and ignores it otherwise; either way the bytes
+         * survive, which is what FR-033 asks for.
+         */coverJson: String?) {
         self.tags = tags
         self.properties = properties
         self.aliases = aliases
+        self.icon = icon
+        self.coverJson = coverJson
     }
 
     
@@ -9227,7 +9438,9 @@ public struct FfiConverterTypeNoteMetadata: FfiConverterRustBuffer {
             try NoteMetadata(
                 tags: FfiConverterSequenceString.read(from: &buf), 
                 properties: FfiConverterSequenceTypeNoteProperty.read(from: &buf), 
-                aliases: FfiConverterSequenceString.read(from: &buf)
+                aliases: FfiConverterSequenceString.read(from: &buf), 
+                icon: FfiConverterOptionString.read(from: &buf), 
+                coverJson: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -9235,6 +9448,8 @@ public struct FfiConverterTypeNoteMetadata: FfiConverterRustBuffer {
         FfiConverterSequenceString.write(value.tags, into: &buf)
         FfiConverterSequenceTypeNoteProperty.write(value.properties, into: &buf)
         FfiConverterSequenceString.write(value.aliases, into: &buf)
+        FfiConverterOptionString.write(value.icon, into: &buf)
+        FfiConverterOptionString.write(value.coverJson, into: &buf)
     }
 }
 
@@ -13339,6 +13554,107 @@ public func FfiConverterTypeNotificationPermission_lower(_ value: NotificationPe
 
 
 /**
+ * Why a property write was refused, as the shell meets it.
+ *
+ * A separate type from [`crate::domain::properties::PropertyError`] rather
+ * than a derive on it: that one carries `&'static str` discriminants, which
+ * do not cross the FFI, and reshaping a domain type to suit the binding
+ * generator would be the wrong direction of dependency.
+ *
+ * [`Retyped`](PropertyWriteError::Retyped) stays a distinct case because it
+ * is the behaviour FR-048 names: a surface has to be able to say "that is
+ * not a valid value for this property" rather than "something went wrong".
+ */
+public 
+enum PropertyWriteError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    case Retyped(name: String, existing: String, proposed: String
+    )
+    case Storage(source: StorageError
+    )
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension PropertyWriteError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePropertyWriteError: FfiConverterRustBuffer {
+    typealias SwiftType = PropertyWriteError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PropertyWriteError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Retyped(
+            name: try FfiConverterString.read(from: &buf), 
+            existing: try FfiConverterString.read(from: &buf), 
+            proposed: try FfiConverterString.read(from: &buf)
+            )
+        case 2: return .Storage(
+            source: try FfiConverterTypeStorageError.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PropertyWriteError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case let .Retyped(name,existing,proposed):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(name, into: &buf)
+            FfiConverterString.write(existing, into: &buf)
+            FfiConverterString.write(proposed, into: &buf)
+            
+        
+        case let .Storage(source):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeStorageError.write(source, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePropertyWriteError_lift(_ buf: RustBuffer) throws -> PropertyWriteError {
+    return try FfiConverterTypePropertyWriteError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePropertyWriteError_lower(_ value: PropertyWriteError) -> RustBuffer {
+    return FfiConverterTypePropertyWriteError.lower(value)
+}
+
+
+/**
  * The data-protection class a file is created under.
  */
 
@@ -15615,6 +15931,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_table() != 23484) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_noteswriter_clear_property() != 35528) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_noteswriter_create() != 1507) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -15631,6 +15950,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_rename() != 25883) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_set_aliases() != 27902) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_set_icon() != 32942) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_set_property() != 10559) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_set_tags() != 3241) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_runtimehost_on_background() != 23225) {

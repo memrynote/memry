@@ -204,6 +204,9 @@ final class VaultBrowseViewModel {
     /// The body write surface, `nil` on a vault with no identity to sign
     /// with — the same condition that leaves ``writer`` absent.
     let editor: (any BlockEditing)?
+    /// The metadata write surface (title, icon, tags, properties, aliases).
+    /// `nil` on a vault with no identity to sign with, like ``writer``.
+    let metadataWriter: (any NoteMetadataWriting)?
 
     /// Full-text search over this vault, or `nil` when the index could be
     /// neither opened nor rebuilt.
@@ -225,12 +228,14 @@ final class VaultBrowseViewModel {
         filler: (any VaultFilling)? = nil,
         writer: (any NotesWriting)? = nil,
         editor: (any BlockEditing)? = nil,
+        metadataWriter: (any NoteMetadataWriting)? = nil,
         search: (any VaultSearching)? = nil
     ) {
         self.reader = reader
         self.filler = filler
         self.writer = writer
         self.editor = editor
+        self.metadataWriter = metadataWriter
         self.search = search.map { VaultSearchViewModel(search: $0) }
     }
 
@@ -248,6 +253,9 @@ final class VaultBrowseViewModel {
             // No store, no identity, no writes — and no buttons offering them.
             writer: store.map { CoreNotesWriter(vault: vault, store: $0, executor: executor) },
             editor: store.map { CoreBlockEditor(vault: vault, store: $0, executor: executor) },
+            metadataWriter: store.map {
+                CoreNoteMetadataWriter(vault: vault, store: $0, executor: executor)
+            },
             // A vault whose index will not open is still a vault worth
             // browsing, so this failure is absorbed into "no full-text search"
             // rather than into "no screen".

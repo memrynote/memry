@@ -445,3 +445,37 @@ of dependency, so the API layer owns its own error and converts. `Retyped`
 stays a distinct case rather than collapsing into a storage failure, because
 FR-048 is about a surface being able to say "that is not a valid value for
 this property" rather than "something went wrong".
+
+---
+
+## The note has an icon and no cover (found by N701)
+
+N701 asked for `cover` and `icon` on `NoteMetadata`. **Only one of them
+exists.**
+
+`icon` is real: the payload spells it `emoji` (§13.7.1, nullable string), the
+projection already has a column for it, and N701 adds the read and the write.
+It is called `icon` on this API because that is what it is on every surface,
+and because nothing restricts the value to an emoji — a shell may store a
+symbol name.
+
+**`cover` is not a field of the note schema, anywhere.** §13.7.1 does not list
+it, `NoteSyncPayloadSchema` does not carry it, and desktop has no cover
+feature to mirror. What does exist is `payload-schemas.json`, which uses
+`coverImage: { url, offsetY }` as its canonical **unknown key** case — the
+literal example of a field a conforming client must preserve without
+understanding (FR-033).
+
+So adding a typed `cover` field would have made this client the only one that
+believes the key is defined, and would have pushed a shape no other client
+agreed to. Instead `NoteMetadata.cover_json` surfaces whatever the payload
+holds under that key, as JSON text. A shell renders it if it recognises the
+shape and ignores it otherwise; either way the bytes survive, which is the
+whole of what FR-033 asks.
+
+**This leaves N208 and N703 resting on a premise that is not true yet.** iOS
+can _render_ a cover another client wrote, which is N208's read half. It
+cannot meaningfully _author_ one (N703) until there is a writer to agree with:
+a cover invented unilaterally here would be invisible on desktop and would
+have to be renegotiated later. That is Kaan's decision to make, not this
+feature's, and it is recorded here rather than resolved by guessing.

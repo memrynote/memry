@@ -69,6 +69,7 @@ struct NoteReadView: View {
         reader: any NotesReading,
         filler: (any VaultFilling)? = nil,
         editor: (any BlockEditing)? = nil,
+        metadataWriter: (any NoteMetadataWriting)? = nil,
         open: ((NoteRoute) -> Void)? = nil
     ) {
         self.open = open
@@ -79,11 +80,15 @@ struct NoteReadView: View {
         _editorModel = State(
             initialValue: NoteEditorViewModel(noteId: route.id, editor: editor)
         )
+        _metadataModel = State(
+            initialValue: NoteMetadataViewModel(noteId: route.id, writer: metadataWriter)
+        )
     }
 
     init(
         model: NoteReadViewModel,
         editor: (any BlockEditing)? = nil,
+        metadataWriter: (any NoteMetadataWriting)? = nil,
         open: ((NoteRoute) -> Void)? = nil
     ) {
         self.open = open
@@ -94,10 +99,16 @@ struct NoteReadView: View {
         _editorModel = State(
             initialValue: NoteEditorViewModel(noteId: model.route.id, editor: editor)
         )
+        _metadataModel = State(
+            initialValue: NoteMetadataViewModel(noteId: model.route.id, writer: metadataWriter)
+        )
     }
 
     /// The body write surface. Read-only when absent.
     @State private var editorModel: NoteEditorViewModel
+
+    /// The metadata write surface. Read-only when absent.
+    @State private var metadataModel: NoteMetadataViewModel
 
     /// Adds and removes this note's attachments.
     @State private var composer: NoteAttachmentComposer
@@ -191,13 +202,51 @@ struct NoteReadView: View {
                     Button("Try again") { Task { await model.reload() } }
                         .memrySecondaryAction()
                 case let .ready(detail):
-                    NoteHeader(title: model.displayTitle, summary: detail.summary)
+                    // The cover sits above everything, as desktop puts it.
+                    // Render-only: `coverImage` is an unknown payload key, so
+                    // this draws what another client wrote and offers no way
+                    // to author one (research.md).
+                    NoteCoverView(
+                        cover: NoteCover.of(model.metadata?.coverJson),
+                        resolve: { model.attachments[$0] ?? .unknown }
+                    )
+                    if metadataModel.canEdit {
+                        NoteTitleEditor(
+                            title: model.displayTitle,
+                            icon: model.metadata?.icon,
+                            canEdit: true,
+                            rename: { title in
+                                Task {
+                                    await metadataModel.rename(
+                                        to: title, current: model.displayTitle
+                                    )
+                                    await model.reload()
+                                }
+                            },
+                            setIcon: { icon in
+                                Task {
+                                    await metadataModel.setIcon(icon)
+                                    await model.reload()
+                                }
+                            }
+                        )
+                    } else {
+                        NoteHeader(title: model.displayTitle, summary: detail.summary)
+                    }
                     // Under the title and above the body, which is where
                     // desktop puts them and where a reader looks for what a
                     // note *is* before reading what it says. Absent until the
                     // read answers, and absent again when there is nothing.
                     if let metadata = model.metadata {
-                        NoteMetaView(metadata: metadata)
+                        if metadataModel.canEdit {
+                            NoteMetadataEditors(
+                                metadata: metadata,
+                                model: metadataModel,
+                                reload: { await model.reload() }
+                            )
+                        } else {
+                            NoteMetaView(metadata: metadata)
+                        }
                     }
                     if model.blocks.isEmpty {
                         // No blocks to draw. Which of the three reasons it is

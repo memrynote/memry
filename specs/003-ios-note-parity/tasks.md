@@ -163,7 +163,7 @@ Independent of Phases B and D. Needs no editor.
 - [x] N206a **Answer Q4: what binds an `image` block to an attachment id.** Found while starting N206 and it blocks it. `attachmentReferences` carries attachment ids, but a body block carries a `url` that desktop resolves as a **vault-relative file path** against the vault root — and iOS has no vault file tree, so nothing on the phone turns `pictures/diagram.png` into an id. Basename-matching `manifest.filename` is **not** sound: a filename is not unique in a vault, so two notes referencing `screenshot.png` collide and a wrong match shows the wrong picture in the wrong note. Rule out first whether something already on the note payload carries the binding (desktop writes an `attachmentId` **singular** beside the plural list — possibly the cover, N208's field); only then choose between carrying the vault-relative path in the manifest and refusing an ambiguous basename match. Decision to `research.md` §Q4 before any code
 - [x] N206 iOS: `image` blocks and `inlineImage` with real bytes. **N206a answered it** for the block-to-id binding; the fetch, cache and placeholder halves do not depend on it, replacing the `AttachmentRow` placeholder in `NoteBlockView.swift:111`; a placeholder while bytes are absent, and a late arrival becomes visible without the note being recreated
 - [x] N207 [P] iOS: `file`, `audio` and `video` blocks openable and playable
-- [ ] N208 [P] iOS: cover image rendering — pairs with N701
+- [x] N208 [P] iOS: cover image rendering — pairs with N701
 
 ### C2 — upload
 
@@ -252,12 +252,12 @@ after sync.
 **Depends on**: Phase F for the editors, not for the reads.
 
 - [x] N700 Core: property writes for the 10 types (`text`, `number`, `date`, `checkbox`, `url`, `status`, `select`, `multiselect`, `relation`, `project`). `NoteProperty` already carries `value_json`, `type_name`, `options_json` and `color` on the read side. **Answers Q2: record whether this belongs beside `domain/note_meta.rs` or in the note record payload handler**
-- [ ] N701 Core: add `cover` and `icon` to `NoteMetadata`, which carries only tags, properties and aliases today, plus their writes
-- [ ] N702 iOS: title editing and the icon picker (emoji and symbol)
-- [ ] N703 iOS: cover add, change, remove and reposition, on N208 and N214
-- [ ] N704 iOS: the 10 property editors
-- [ ] N705 iOS: tag add, remove and colour, with recent, matching and all suggestions as desktop offers
-- [ ] N706 [P] Core: alias writes, so a wiki link can resolve to a note by a name the note itself declares
+- [x] N701 Core: add `cover` and `icon` to `NoteMetadata`, which carries only tags, properties and aliases today, plus their writes
+- [x] N702 iOS: title editing and the icon picker (emoji and symbol)
+- [ ] N703 iOS: cover add, change, remove and reposition, on N208 and N214 — **blocked by a protocol gap, not by effort**: `coverImage` is not a field of the note schema (§13.7.1 does not list it, desktop has no cover feature, and the vectors use the key as their canonical _unknown key_). Reading one another client wrote is done (N208); authoring one needs a writer to agree with, which is Kaan's call. See `research.md`
+- [x] N704 iOS: the 10 property editors
+- [x] N705 iOS: tag add, remove and colour, with recent, matching and all suggestions as desktop offers
+- [x] N706 [P] Core: alias writes, so a wiki link can resolve to a note by a name the note itself declares
 
 ---
 
