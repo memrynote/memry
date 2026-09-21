@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { SyncEngine } from './engine'
 import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
+import { asClientDb } from '@tests/utils/test-db'
+import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
+import { recordUnknownPayloadFields } from './unknown-fields'
 
 describe('SyncEngine', () => {
   const { getDb } = setupTestDb()
@@ -978,6 +981,65 @@ describe('SyncEngine', () => {
       )
 
       await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe("#given a payload key this build's schema stripped #when push rebuilds the payload", () => {
+    it('#then the key a newer client wrote rides along (#2183)', async () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      const db = asClientDb(getDb().db)
+
+      db.insert(tagDefinitions)
+        .values({ name: 'urgent', color: 'red', createdAt: '2026-01-01T00:00:00.000Z' })
+        .run()
+
+      // What a newer client sent and this build's z.object dropped on apply.
+      recordUnknownPayloadFields(
+        db,
+        'tag_definition',
+        'urgent',
+        { name: 'urgent', color: 'red', emoji: '\u{1F525}' },
+        { name: 'urgent', color: 'red' }
+      )
+
+      deps.queue.enqueue({
+        type: 'tag_definition',
+        itemId: 'urgent',
+        operation: 'update',
+        payload: JSON.stringify({ name: 'urgent', color: 'red' })
+      })
+
+      const mockEncrypt = vi.fn().mockReturnValue({
+        pushItem: {
+          id: 'urgent',
+          type: 'tag_definition',
+          operation: 'update',
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn',
+          signature: 'sig',
+          signerDeviceId: 'device-1'
+        },
+        sizeBytes: 100
+      })
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation(mockEncrypt)
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: ['urgent'],
+        rejected: [],
+        serverTime: Date.now()
+      })
+
+      await engine.push()
+
+      // buildPushPayload projects known columns only, so without the merge this
+      // push is what deletes `emoji` from the server copy.
+      const pushed = JSON.parse(new TextDecoder().decode(mockEncrypt.mock.calls[0][0].content))
+      expect(pushed.emoji).toBe('\u{1F525}')
+      expect(pushed.color).toBe('red')
+
       vi.restoreAllMocks()
     })
   })

@@ -152,6 +152,27 @@ describe('sync onboarding components', () => {
     vi.useRealTimers()
   })
 
+  it('keeps partially typed OTP digits while the expiry countdown ticks', () => {
+    setOtpDetected()
+    const complete = vi.fn()
+    const shared = { onComplete: complete, onResend: vi.fn(), onBack: vi.fn(), isResending: false }
+
+    const { rerender } = render(
+      <OtpInput {...shared} isVerifying={false} error={null} expiresIn={60} />
+    )
+    fireEvent.change(screen.getByLabelText('setup.otp.aria'), { target: { value: '123' } })
+
+    rerender(<OtpInput {...shared} isVerifying={false} error={null} expiresIn={59} />)
+    rerender(<OtpInput {...shared} isVerifying={false} error={null} expiresIn={58} />)
+    expect(screen.getByLabelText('setup.otp.aria')).toHaveValue('123')
+    expect(complete).not.toHaveBeenCalled()
+
+    // A failed verification still clears the boxes.
+    rerender(<OtpInput {...shared} isVerifying error={null} expiresIn={57} />)
+    rerender(<OtpInput {...shared} isVerifying={false} error="Wrong code" expiresIn={56} />)
+    expect(screen.getByLabelText('setup.otp.aria')).toHaveValue('')
+  })
+
   it('shows OTP verifying, resending, and error states', () => {
     setOtpDetected()
     render(

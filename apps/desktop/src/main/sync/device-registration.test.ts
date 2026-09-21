@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   extractJtiFromToken: vi.fn(),
   getDatabase: vi.fn(),
   getOrCreateVaultUuid: vi.fn(() => 'vault-1'),
+  adoptAccountVaultIfAbsent: vi.fn((_db: unknown, localVaultUuid: string) =>
+    Promise.resolve(localVaultUuid)
+  ),
   getSyncEngine: vi.fn(),
   startSyncRuntime: vi.fn(),
   markKeyMaterialActivity: vi.fn(),
@@ -96,6 +99,11 @@ vi.mock('../database/client', () => ({
 
 vi.mock('../agent/storage/vault-id', () => ({
   getOrCreateVaultUuid: (...args: unknown[]) => mocks.getOrCreateVaultUuid(...args)
+}))
+
+vi.mock('./vault-adoption', () => ({
+  adoptAccountVaultIfAbsent: (...args: [unknown, string, string]) =>
+    mocks.adoptAccountVaultIfAbsent(...args)
 }))
 
 vi.mock('./http-client', () => ({
@@ -189,6 +197,41 @@ describe('device registration', () => {
     mocks.deleteKey.mockResolvedValue(undefined)
     mocks.deleteFromServer.mockResolvedValue({})
     mocks.bindLocalVaultToMasterKey.mockResolvedValue(undefined)
+    mocks.adoptAccountVaultIfAbsent.mockImplementation((_db: unknown, localVaultUuid: string) =>
+      Promise.resolve(localVaultUuid)
+    )
+  })
+
+  // #2226: the account's vault, not the folder's fresh uuid, is what the rest
+  // of the flow must bind to — otherwise the device syncs under a second vault
+  // the plan may not allow and every push is refused.
+  it('binds key material to the adopted account vault, not the local uuid', async () => {
+    mocks.adoptAccountVaultIfAbsent.mockResolvedValue('account-vault')
+    const { persistKeysAndRegisterDevice } = await importModule()
+
+    await persistKeysAndRegisterDevice(
+      new Uint8Array([5]),
+      new Uint8Array([6]),
+      'setup-token',
+      'salt',
+      'verifier'
+    )
+
+    expect(mocks.adoptAccountVaultIfAbsent).toHaveBeenCalledWith(
+      mocks.getDatabase.mock.results[0].value,
+      'vault-1',
+      'access'
+    )
+    expect(mocks.postToServer).toHaveBeenCalledWith(
+      '/auth/devices',
+      expect.objectContaining({ vaultId: 'vault-1' }),
+      'setup-token'
+    )
+    expect(mocks.bindLocalVaultToMasterKey).toHaveBeenCalledWith(
+      mocks.getDatabase.mock.results[0].value,
+      'account-vault',
+      new Uint8Array([5])
+    )
   })
 
   it('registers a device, stores tokens and keys, seeds the local device row, and activates sync', async () => {

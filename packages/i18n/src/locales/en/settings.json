@@ -662,7 +662,17 @@
       },
       "upsell": {
         "title": "Your notes live only on this device",
-        "description": "Upgrade to sync across all your devices — end-to-end encrypted, so only you can read them."
+        "description": "Turn on Sync and every note follows you to your other devices — encrypted end-to-end, so only you can read them.",
+        "benefits": {
+          "devices": "Every device picks up where you left off",
+          "encrypted": "End-to-end encrypted — the keys never leave you",
+          "backup": "An encrypted backup, in case this device is not around"
+        },
+        "guarantee": "14-day money-back guarantee. Cancel anytime."
+      },
+      "activating": {
+        "title": "Finishing your activation",
+        "description": "Your plan is active. Sync starts as soon as we confirm it — refreshing usually does the trick."
       }
     },
     "billing": {
@@ -1108,6 +1118,16 @@
         "skipPrevious": "Skip previously imported pages",
         "skipPreviousHint": "Pages imported by an earlier OneNote run are skipped, so re-running only picks up what's new."
       },
+      "appleNotes": {
+        "loadingFolders": "Reading your folders…",
+        "foldersError": "Could not read your folders — the whole library will be imported.",
+        "unfiled": "Notes without a folder",
+        "selectAll": "Select all",
+        "deselectAll": "Clear selection",
+        "foldersSelected": "{count, plural, one {# folder selected} other {# folders selected}}",
+        "noteCount": "{count}",
+        "noteCountWithSubfolders": "{count} ({total})"
+      },
       "chooseFolder": "Select Apple Notes folder…",
       "chooseDirectory": "Choose folder…",
       "folderKeepsAssets": "Choose the folder when images sit outside the notes' own folder — exports often keep media in a shared one.",
@@ -1126,6 +1146,7 @@
         "imported": "{count, plural, one {# item imported} other {# items imported}}",
         "attachments": "{count, plural, one {# attachment copied} other {# attachments copied}}",
         "skipped": "{count} skipped",
+        "skippedReason": "{count, plural, one {# item} other {# items}}: {reason}",
         "failed": "{count} failed"
       },
       "error": "Import failed",
@@ -1133,6 +1154,9 @@
     },
     "messages": {
       "readFileFailed": "Failed to read file",
+      "appleNotes": {
+        "lockedNote": "{count, plural, one {# locked note was} other {# locked notes were}} not imported; Memry cannot read them without your Notes password."
+      },
       "csv": {
         "noHeaders": "CSV file has no headers",
         "emptyTitle": "Skipped row with empty title (column \"{column}\")",

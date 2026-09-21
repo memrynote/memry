@@ -203,14 +203,19 @@ Import a Bear `.bear2bk` archive (in Bear: **File → Export Notes → Bear Note
 1. Grant the app **Full Disk Access** (System Settings → Privacy & Security → Full Disk Access) so it can read `~/Library/Group Containers/group.com.apple.notes/NoteStore.sqlite`.
 2. Open **Settings → Import** and click **Import** next to **Apple Notes**.
 3. Select the `NoteStore.sqlite` file (or accept the default location).
+4. Pick the folders to bring over. memrynote reads your Apple Notes folder tree — account, folders, subfolders and the note count of each — and starts with everything ticked. Untick what you do not want; ticking a folder ticks its subfolders too. Notes that sit outside any folder are their own row. Smart folders are saved searches rather than containers, so they are not listed.
 
-| Apple Notes                                     | memrynote                                       |
-| ----------------------------------------------- | ----------------------------------------------- |
-| Note body (gzip + protobuf)                     | Markdown under `Apple Notes/<account>/<folder>` |
-| Headings, bold/italic, lists, to-dos, monospace | Markdown equivalents                            |
-| Inline images                                   | Saved as attachments                            |
-| Created / modified (CoreTime)                   | Preserved on the note                           |
-| Password-protected notes                        | Skipped                                         |
+| Apple Notes                                     | memrynote                                             |
+| ----------------------------------------------- | ----------------------------------------------------- |
+| Note body (gzip + protobuf)                     | Markdown under `Apple Notes/<account>/<folder chain>` |
+| Headings, bold/italic, lists, to-dos, monospace | Markdown equivalents                                  |
+| Inline images                                   | Saved as attachments                                  |
+| Created / modified (CoreTime)                   | Preserved on the note                                 |
+| Password-protected notes                        | Skipped, and named in the import summary              |
+| Nested folders                                  | Full hierarchy preserved (`Work/Clients/Acme`)        |
+| Folder selection                                | Only the folders you tick are imported                |
+
+Memry cannot read locked notes without your Notes password, so it leaves them behind and tells you: the summary at the end of the run counts them on their own line ("3 locked notes were not imported") instead of folding them into the generic skipped total. Every importer's summary groups skipped items by reason this way.
 
 **Limitations:** scanned documents, handwriting/drawings, and tables are not converted (shown as an unsupported-attachment marker); hashtags, @-mentions, and internal note links are dropped from the text. This importer only appears on macOS.
 

@@ -30,6 +30,7 @@ import {
   type PresignedUrlWindow
 } from './attachment-presign'
 import { withRetry, DeadLetterError } from '@memry/sync-client/retry'
+import { ManifestSignatureError } from '@memry/sync-client/push'
 import { recordBootstrapBytes } from './bootstrap-metrics'
 
 import type {
@@ -1409,9 +1410,9 @@ export class AttachmentSyncService {
     )
 
     if (!verified) {
-      throw new Error(
-        `Manifest signature verification failed for device ${encrypted.signerDeviceId}`
-      )
+      // Typed, not a bare Error: the download failure classifier reads the
+      // name to stop re-probing a manifest no retry can verify (#2218).
+      throw new ManifestSignatureError(encrypted.signerDeviceId)
     }
 
     const wrappedKey = fromB64(encrypted.encryptedFileKey)

@@ -68,7 +68,7 @@ under node in `adapters/conformance.test.ts`.
 
 ## Why Strategy Pattern (Phase 3)
 
-Phase 3 replaced a switch-based `ItemApplier` with this registry. The reason: every sync type has subtly different conflict resolution and side effects (e.g. tasks need field-level merge; notes need CRDT integration; inbox items have a triage state machine). Switch statements grew unwieldy.
+Phase 3 replaced a switch-based `ItemApplier` with this registry. The reason: every sync type has subtly different conflict resolution and side effects (e.g. tasks need field-level merge; notes and journals need CRDT integration; inbox items have a triage state machine). Switch statements grew unwieldy.
 
 ## Conflict Resolution
 
@@ -93,6 +93,27 @@ A type without it pushes the frozen queue payload verbatim, so queue bookkeeping
 correct for it — see
 [Push acknowledgements and in-flight mutations](/architecture/sync-protocol#push-acknowledgements-and-in-flight-mutations).
 When adding a handler, implement it unless the type genuinely has no local row to read back.
+
+## Keys this build does not understand survive the round trip
+
+A handler schema is a plain `z.object`, so Zod strips every payload key it has no field for, and
+`buildPushPayload` rebuilds the payload from local columns. On their own those two facts delete a
+field written by a newer client: the newer app writes `snoozedUntil`, this build parses it away,
+projects what is left into columns, and the next local edit pushes a payload with no `snoozedUntil`
+in it. The server copy loses the field for every device.
+
+`apply-item.ts` therefore compares the raw parsed JSON against the schema result and stores whatever
+was stripped in `sync_unknown_fields`, keyed by `(type, item_id)`. `resolvePushPayload` merges that
+remainder back underneath the freshly built payload, so locally owned keys always win and only keys
+this build never mentions ride along. Nothing else reads the table — it never affects local
+behavior.
+
+A handler needs no code for this; it happens around every handler at the apply and push seams. When
+a later build learns a field for real, its schema keeps the key, the stripped remainder comes back
+empty, and the row clears itself.
+
+Only top-level keys are preserved. An unknown key nested inside a known object is still stripped by
+that object's schema.
 
 ## Canvas: the payload comes from a file
 
@@ -127,13 +148,30 @@ Two more decisions worth carrying to the next handler like this:
   `template-handler.ts`.
 - **Hard delete.** Record-sync tombstones live on the server item (`deleted_at`), never in a local
   column. A soft-delete column would also break downgrade inertness: an older build has no
-  `deletedAt` in its model and would list tombstoned boards. `applyDelete` refusing a delete when the
-  local clock is newer or concurrent — so manifest repair re-pushes the row and clears the server
-  tombstone — is the intended "a concurrent local edit beats a remote delete", not the canvas
-  resurrection hazard, which is about tombstoned rows in a soft-delete table.
+  `deletedAt` in its model and would list tombstoned boards. `applyDelete` refuses a remote delete
+  only when the local clock happens strictly after the tombstone (see "Delete wins" below), so a
+  concurrent local edit does not keep the row alive.
 
 Board _selection_ is deliberately not synced: which board is open stays in
 `localStorage['memry-home-active-board']` on each device.
+
+## Delete Wins Over a Concurrent Write
+
+`applyDelete` skips a pulled tombstone **only** when the local clock happens strictly after it —
+`BaseItemHandler.resolveDeleteClock` (`packages/sync-client/src/item-handlers/base-handler.ts`). A
+local clock merely concurrent with the tombstone loses: the row is deleted and the local edit is
+dropped.
+
+That mirrors the server. `shouldRejectResurrection` (`apps/sync-server/src/services/sync.ts`) refuses
+any non-delete push against a tombstoned id unless the incoming clock happens strictly after the
+stored one, answering `SYNC_DELETE_WINS`; `push-coordinator` drains that rejection without retrying,
+because a retry is refused identically every time.
+
+Handlers used to keep the row on a concurrent clock, and the two rules together stranded exactly one
+device: the device that edited an item before it saw the delete had its push refused forever and its
+pull decline the tombstone, so it kept a ghost copy of an item deleted on every other device. A
+handler that adds its own delete guard has to use `resolveDeleteClock`, not a hand-rolled
+`resolveClock` comparison.
 
 ## Atomicity
 

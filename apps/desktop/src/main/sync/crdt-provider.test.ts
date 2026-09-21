@@ -110,7 +110,7 @@ const mocks = vi.hoisted(() => {
 })
 
 vi.mock('electron', () => ({
-  app: { getPath: () => mocks.userDataDir },
+  app: { getPath: () => mocks.userDataDir, getVersion: () => '2026.9.14' },
   BrowserWindow: {
     fromId: (id: number) => mocks.windows.get(id) ?? null,
     getAllWindows: () => Array.from(mocks.windows.values())
@@ -173,6 +173,9 @@ vi.mock('../store', () => ({
   getPendingCrdtStoreRename: () => undefined,
   clearPendingCrdtStoreRename: vi.fn(),
   getCrdtInMemorySessions: () => 0,
+  // Healthy install: the preflight gate in crdt-persistence.ts reads this and
+  // must let every test below reach the (mocked) preflight.
+  getCrdtPersistenceGuard: () => ({ sessions: 0 }),
   recordCrdtPersistenceOutcome: (...args: unknown[]) => mocks.recordPersistenceOutcome(...args)
 }))
 

@@ -4,7 +4,14 @@
  * Reads a copy of the Apple Notes NoteStore.sqlite database, decodes each
  * note's gzipped protobuf body via the pure @memry/importers/apple-notes package,
  * converts it to markdown, resolves inline image attachments, and creates a
- * note under `Apple Notes/<account>/<folder>`.
+ * note under `Apple Notes/<account>/<folder chain>`.
+ *
+ * Database access (temp snapshot, entity ids, account/folder rows, the ZPARENT
+ * walk) is shared with the dialog's folder picker in `note-store.ts`.
+ *
+ * Options (`ImportInput.options`): `folderIds` limits the run to the picked
+ * ICFolder identifiers and `includeUnfiledNotes` covers notes outside any
+ * folder. Absent — or an empty selection — imports everything.
  *
  * Registration is gated to `process.platform === 'darwin'` by the orchestrator
  * (register-builtins); run() additionally early-returns on non-macOS as a
@@ -12,11 +19,9 @@
  * on a read-only temp copy.
  */
 
-import os from 'os'
 import path from 'path'
 import fs from 'fs/promises'
 import zlib from 'zlib'
-import Database from 'better-sqlite3'
 import { createNote } from '../../vault/notes-crud'
 import { saveAttachment } from '../../vault/attachments'
 import { attachmentMarkdown } from '../_shared/attachment-markdown'
@@ -30,59 +35,29 @@ import {
   ATTACHMENT_TOKEN_PREFIX,
   type AppleNoteRow
 } from '@memry/importers/apple-notes'
-import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
+import { IMPORT_MESSAGE_CODES, IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
+import type { AppleNotesImportOptionsInput } from '@memry/contracts/import-channels'
+import {
+  ACCESS_DENIED_HINT,
+  FOLDER_TYPE_SMART,
+  FOLDER_TYPE_TRASH,
+  defaultContainerDir,
+  folderPath,
+  isAccessDenied,
+  loadAccounts,
+  loadFolders,
+  loadPrimaryKeys,
+  openNoteStore,
+  type FolderRow
+} from './note-store'
 
 const ROOT = 'Apple Notes'
-const NOTE_CONTAINER_REL = 'Library/Group Containers/group.com.apple.notes'
-const NOTE_DB = 'NoteStore.sqlite'
 const logger = createLogger('AppleNotesImport')
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
   if (typeof error === 'string') return error
   return 'Import error'
-}
-
-function errorCode(error: unknown): string | undefined {
-  return (error as { code?: string } | null | undefined)?.code
-}
-
-/** macOS TCC / filesystem permission denial reading the protected Notes data. */
-function isAccessDenied(error: unknown): boolean {
-  const code = errorCode(error)
-  return code === 'EPERM' || code === 'EACCES' || code === 'SQLITE_CANTOPEN'
-}
-
-const ACCESS_DENIED_HINT =
-  'Memry could not read the Apple Notes data. Click “Select Apple Notes folder” and ' +
-  'choose the “group.com.apple.notes” folder when the picker opens — that grants access ' +
-  'without Full Disk Access. If it still fails, grant Full Disk Access to Memry (or ' +
-  '“Electron” in development) in System Settings → Privacy & Security, then reopen the app.'
-
-/** Folder type discriminator from ICFolder.ZFOLDERTYPE. */
-const FOLDER_TYPE_TRASH = 1
-const FOLDER_TYPE_SMART = 3
-
-interface PrimaryKeys {
-  ICAccount: number
-  ICFolder: number
-  ICNote: number
-  ICMedia: number
-}
-
-interface AccountRow {
-  pk: number
-  name: string
-  identifier: string
-}
-
-interface FolderRow {
-  pk: number
-  title: string | null
-  parent: number | null
-  identifier: string | null
-  folderType: number | null
-  owner: number | null
 }
 
 interface NoteDataRow {
@@ -115,44 +90,21 @@ interface AttachmentRow {
   filename: string | null
 }
 
-function defaultContainerDir(): string {
-  return path.join(os.homedir(), NOTE_CONTAINER_REL)
-}
-
 /**
- * Copy the chosen NoteStore.sqlite (+ WAL/SHM sidecars when present) to a temp
- * file so we read a consistent, never-mutated snapshot.
+ * Read the dialog's folder selection out of the loose options bag. An absent or
+ * malformed field means "no selection" — i.e. import everything — so a payload
+ * from an older build, or a run started after the folder scan failed, still
+ * imports the whole library.
  */
-async function copyToTemp(sourcePath: string): Promise<string> {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memry-apple-notes-'))
-  const dest = path.join(tmpDir, 'NoteStore.sqlite')
-  await fs.copyFile(sourcePath, dest)
-  for (const suffix of ['-wal', '-shm']) {
-    try {
-      await fs.copyFile(sourcePath + suffix, dest + suffix)
-    } catch {
-      // Sidecar absent (DB checkpointed) — fine.
-    }
-  }
-  return dest
-}
-
-function loadPrimaryKeys(db: Database.Database): PrimaryKeys {
-  // better-sqlite3 keys rows by the schema's real column case — the Apple Notes
-  // DB declares Z_ENT/Z_NAME uppercase, so an unaliased `z_name` read returns
-  // undefined and every entity id falls back to -1 (→ zero rows). Alias to a
-  // stable lowercase key. (Every other query already aliases its columns.)
-  const rows = db.prepare('SELECT z_ent AS ent, z_name AS name FROM z_primarykey').all() as {
-    ent: number
-    name: string
-  }[]
-  const byName = new Map(rows.map((r) => [r.name, r.ent]))
-  return {
-    ICAccount: byName.get('ICAccount') ?? -1,
-    ICFolder: byName.get('ICFolder') ?? -1,
-    ICNote: byName.get('ICNote') ?? -1,
-    ICMedia: byName.get('ICMedia') ?? -1
-  }
+function parseSelection(options: Record<string, unknown> | undefined): {
+  folderIds: Set<string>
+  includeUnfiled: boolean
+} {
+  const raw = (options ?? {}) as AppleNotesImportOptionsInput
+  const folderIds = Array.isArray(raw.folderIds)
+    ? raw.folderIds.filter((id): id is string => typeof id === 'string')
+    : []
+  return { folderIds: new Set(folderIds), includeUnfiled: raw.includeUnfiledNotes === true }
 }
 
 export const appleNotesImporter: Importer = {
@@ -180,54 +132,28 @@ export const appleNotesImporter: Importer = {
       return ctx.toSummary()
     }
 
+    ctx.setPhase('scanning')
+    ctx.status(IMPORT_STATUS.appleNotesCopyingDatabase)
     // The user selects the container folder (preferred — its grant also covers
-    // attachments) or a NoteStore.sqlite file directly. Resolve both the DB path
-    // and the media base from whatever was chosen.
-    const selected = input.sourcePaths[0] || defaultContainerDir()
-    const isDbFile = selected.toLowerCase().endsWith('.sqlite')
-    const dbPath = isDbFile ? selected : path.join(selected, NOTE_DB)
-    const mediaBase = isDbFile ? path.dirname(selected) : selected
-
-    let tempPath: string | null = null
-    let db: Database.Database | null = null
+    // attachments) or a NoteStore.sqlite file directly.
+    const store = await openNoteStore(input.sourcePaths[0] || defaultContainerDir())
+    const db = store.db
+    const mediaBase = store.mediaBase
 
     try {
-      ctx.setPhase('scanning')
-      ctx.status(IMPORT_STATUS.appleNotesCopyingDatabase)
-      try {
-        tempPath = await copyToTemp(dbPath)
-        db = new Database(tempPath, { readonly: true, fileMustExist: true })
-      } catch (error) {
-        if (isAccessDenied(error)) throw new Error(ACCESS_DENIED_HINT)
-        if (errorCode(error) === 'ENOENT') {
-          throw new Error(
-            `Apple Notes database not found at ${dbPath}. Open the Notes app once to ` +
-              'create it, or select the “group.com.apple.notes” folder.'
-          )
-        }
-        throw error
-      }
       const keys = loadPrimaryKeys(db)
+      const selection = parseSelection(input.options)
 
       // ---- Accounts ----
-      const accounts = db
-        .prepare(
-          'SELECT z_pk AS pk, zname AS name, zidentifier AS identifier ' +
-            'FROM ziccloudsyncingobject WHERE z_ent = ?'
-        )
-        .all(keys.ICAccount) as AccountRow[]
-      const accountById = new Map<number, AccountRow>(accounts.map((a) => [a.pk, a]))
+      const accounts = loadAccounts(db, keys)
+      const accountById = new Map(accounts.map((a) => [a.pk, a]))
       const multiAccount = accounts.length > 1
 
       // ---- Folders ----
-      const folders = db
-        .prepare(
-          'SELECT z_pk AS pk, ztitle2 AS title, zparent AS parent, zidentifier AS identifier, ' +
-            'zfoldertype AS folderType, zowner AS owner ' +
-            'FROM ziccloudsyncingobject WHERE z_ent = ?'
-        )
-        .all(keys.ICFolder) as FolderRow[]
+      const folders = loadFolders(db, keys)
       const folderById = new Map<number, FolderRow>(folders.map((f) => [f.pk, f]))
+      // Folder chains are shared by every note in a folder — resolve once.
+      const folderPathCache = new Map<number, string[]>()
       const trashFolders = new Set<number>(
         folders.filter((f) => f.folderType === FOLDER_TYPE_TRASH).map((f) => f.pk)
       )
@@ -255,7 +181,15 @@ export const appleNotesImporter: Importer = {
           'WHERE a.zidentifier = ?'
       )
 
-      const importable = notes.filter((n) => n.folder == null || !trashFolders.has(n.folder))
+      // No picked folders and no unfiled opt-in → the whole library, as before.
+      const hasSelection = selection.folderIds.size > 0 || selection.includeUnfiled
+      const importable = notes.filter((n) => {
+        if (n.folder != null && trashFolders.has(n.folder)) return false
+        if (!hasSelection) return true
+        if (n.folder == null) return selection.includeUnfiled
+        const identifier = folderById.get(n.folder)?.identifier
+        return identifier != null && selection.folderIds.has(identifier)
+      })
       const total = importable.length
       let done = 0
 
@@ -267,7 +201,14 @@ export const appleNotesImporter: Importer = {
         const title = row.title ?? 'Untitled'
 
         if (row.passwordProtected) {
-          ctx.reportSkipped(title, 'note is password protected')
+          // Coded so the summary can group every locked note into one
+          // translated line instead of a bare skipped count (level 2 —
+          // decrypting them with the Notes password — is still unbuilt).
+          ctx.reportSkipped(title, {
+            code: IMPORT_MESSAGE_CODES.appleNotesLockedNote,
+            message:
+              'Locked notes were not imported; Memry cannot read them without your Notes password'
+          })
           done++
           ctx.reportProgress(done, total)
           continue
@@ -284,7 +225,7 @@ export const appleNotesImporter: Importer = {
           const meta: AppleNoteRow = {
             title,
             accountName: accountName ?? null,
-            folderName: skipFolder ? null : folderDisplayName(folder),
+            folderPath: skipFolder ? [] : folderPath(folder, folderById, folderPathCache),
             createdCoreTime: row.created ?? null,
             modifiedCoreTime: row.modified ?? null
           }
@@ -376,25 +317,9 @@ export const appleNotesImporter: Importer = {
 
       return ctx.toSummary()
     } finally {
-      if (db) {
-        try {
-          db.close()
-        } catch {
-          // ignore close errors
-        }
-      }
-      if (tempPath) {
-        await fs.rm(path.dirname(tempPath), { recursive: true, force: true }).catch(() => {})
-      }
+      await store.close()
     }
   }
-}
-
-/** Default ("Notes") and account-root folders map to the importer root. */
-function folderDisplayName(folder: FolderRow | undefined): string | null {
-  if (!folder || !folder.title) return null
-  if (folder.identifier && folder.identifier.startsWith('DefaultFolder')) return null
-  return folder.title
 }
 
 /**

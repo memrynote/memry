@@ -274,6 +274,30 @@ Migration 0047 resets `attempts` to 0 for rows that an earlier build had already
 stranded by the old in-cycle spend are retried again after upgrading. It preserves the row, its
 payload, and its recorded error.
 
+### A rejected signature is a device-identity failure, not a per-row failure
+
+`SYNC_INVALID_SIGNATURE` is the one rejection that says nothing about the row. It means the key this
+install signs with is not the public key its device id is registered under, so every queued row is
+condemned equally and no payload change can help. Charging it as a normal rejection spent one attempt
+per row across the whole queue and then dead-lettered every edit silently — 497 rejections inside 20
+minutes on one account, followed by edits that never synced again.
+
+The push loop therefore treats it as a device-level verdict: the run stops at the first one, no row
+is charged an attempt (the queue keeps its full budget for after the repair), and the engine reports
+the non-retryable `device_key_mismatch` category once.
+
+The repair is re-registration, because the server holds the public key the device registered with and
+never rotates it in place. The desktop client used to "self-heal" a key mismatch by rewriting its
+local `sync_devices` row to match the keychain, which only made local state agree with a key the
+server rejects. Both detection points — the startup integrity check and the runtime signing-key read
+— now tear the session down instead, so the ordinary sign-in flow re-registers the device under the
+key it actually holds. Both stand down while key material is in flux (sign-in, recovery, linking),
+where a transient mismatch is expected.
+
+An attachment manifest signed by such a device is unverifiable for every reader, forever. The
+download path classifies `ManifestSignatureError` as a permanent failure so the re-driver stops
+probing it, rather than re-fetching the same unverifiable manifest every hour.
+
 ### Dead-letter purge and the pause flag are kept off the enqueue path
 
 Rows that exhausted their budget are purged once at least 50 of them are older than
@@ -310,7 +334,11 @@ before the builder's own error handling and take the rest of the sweep down with
 
 Because recovery never advances a clock, a change made while the sync runtime is down has to advance
 its own at write time or the re-push would be dismissed as a replay. Records park that tick under a
-placeholder device that their sync service rebinds on the way out; notes and journals have no
+placeholder device that their sync service rebinds on the way out. Rebinding runs before every
+record push, create as well as update: a row that was created *and* edited while signed out is
+recovered as a create, and until that path rebound too it shipped the placeholder device id to the
+server — an id every install claims, which makes two devices' clocks compare equal for edits that
+are genuinely concurrent. Notes and journals have no
 rebinding step, so their fallback bumps under the current device directly and does nothing when no
 device is registered (the same thing the online path does). It also clears the sync stamp, because
 metadata-only writes — recording an uploaded attachment or editing a journal's tags, say —
@@ -405,9 +433,11 @@ Inside the encrypted blob, tasks, projects, and agent conversations carry per-fi
 (`field_clocks`).
 
 - Concurrent edits to **non-overlapping** fields merge cleanly.
-- Concurrent edits to **the same field** resolve last-writer-wins by the sum of device ticks (`tickSum`). Ties favor the remote write (deterministic).
+- Concurrent edits to **the same field** resolve last-writer-wins by the sum of device ticks (`tickSum`). On a tie the incoming (remote) write wins, so which value survives depends on which device happens to merge.
+- A merged row is **re-queued and pushed back** under the union of both clocks, and a pulled row whose clock equals the local one is applied rather than skipped. Together these are what converge two devices that both merged the same concurrent pair: the first re-push is accepted, the second is refused as a replay, and the refused device takes the accepted row on its next pull.
 
-See `apps/desktop/src/main/sync/field-merge.ts` for the merge implementation.
+See `packages/sync-client/src/field-merge.ts` for the merge implementation and
+`docs/protocol/06-vector-clocks-and-field-merge.md` for the normative rules.
 `TASK_SYNCABLE_FIELDS` is 15 fields; `PROJECT_SYNCABLE_FIELDS` is 8; agent conversations merge
 `title`, `backend`, `backendModel`, `trustList`, and `pinned`.
 
@@ -734,6 +764,10 @@ write, so a client can tell whether the server's baseline moved without download
   `{ "<noteId>": { "sequenceNum": 42, "revision": "…", "signerDeviceId": "…" } }`. A note absent from
   a present map has no server snapshot at all; an absent `snapshotMeta` key means the server predates
   this field.
+- `POST /sync/crdt/snapshot` returns `{ sequenceNum, revision }`, and each accepted entry of
+  `POST /sync/crdt/snapshot/batch` returns `{ noteId, accepted: true, sequenceNum, revision }`. The
+  token is the one that write stored, so a device that pushes a baseline records the same revision a
+  later read would advertise instead of leaving it unset until the next pull.
 
 The token is deliberately not `sequenceNum`. A replacement snapshot keeps the note's existing
 sequence number so later incrementals stay pullable, so the number does not move when the blob does.
@@ -744,8 +778,9 @@ Rows written before the field existed are not backfilled; the server derives a d
 for them at read time from the row's identity, creation time and size, and the next snapshot push
 replaces it with a real one. Both read paths return the same token for the same row.
 
-Both fields are additive: an older client reads these responses through an unvalidated cast and
-ignores the extra keys.
+All of these fields are additive: an older client reads these responses through an unvalidated cast
+and ignores the extra keys, and a client talking to a server that predates the push-response field
+stores no revision for its own push rather than inventing one.
 
 `snapshotMeta` is read on the same round trip as the incrementals, as extra statements inside the
 batch the pull already sends. D1 refuses any single query carrying more than 100 bound parameters and

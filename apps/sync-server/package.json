@@ -9,6 +9,7 @@
     "deploy:staging": "wrangler deploy --env staging",
     "deploy:production": "wrangler deploy --env production",
     "reset:staging": "node scripts/reset-staging.mjs",
+    "staging:user": "node scripts/staging-user.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

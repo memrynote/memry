@@ -1,6 +1,9 @@
 import {
+  AppleNotesImportChannels,
   ImportChannels,
   OneNoteImportChannels,
+  type AppleNotesFoldersInput,
+  type AppleNotesFoldersResult,
   type ImportStartInput,
   type ImportStartResponse,
   type ImportCancelInput,
@@ -25,6 +28,10 @@ export const importApi = {
   preview: (input: ImportPreviewInput): Promise<ImportPreviewResponse> =>
     invoke<ImportPreviewResponse>(ImportChannels.invoke.PREVIEW, input),
   list: (): Promise<ImporterMeta[]> => invoke<ImporterMeta[]>(ImportChannels.invoke.LIST),
+  appleNotes: {
+    folders: (input: AppleNotesFoldersInput): Promise<AppleNotesFoldersResult> =>
+      invoke<AppleNotesFoldersResult>(AppleNotesImportChannels.invoke.FOLDERS, input)
+  },
   onenote: {
     status: (): Promise<OneNoteAuthStatusResult> =>
       invoke<OneNoteAuthStatusResult>(OneNoteImportChannels.invoke.STATUS),

@@ -73,7 +73,7 @@ vi.mock('../services/crdt', () => ({
   storeUpdates: vi.fn().mockResolvedValue([1]),
   getUpdates: vi.fn().mockResolvedValue({ updates: [], hasMore: false }),
   getBatchUpdates: vi.fn().mockResolvedValue({}),
-  storeSnapshot: vi.fn().mockResolvedValue({ sequenceNum: 0 }),
+  storeSnapshot: vi.fn().mockResolvedValue({ sequenceNum: 0, revision: 'rev-0' }),
   storeSnapshotBatch: vi.fn().mockResolvedValue([]),
   getSnapshot: vi.fn().mockResolvedValue(null),
   pruneUpdatesBeforeSnapshot: vi.fn().mockResolvedValue(0),
@@ -1465,7 +1465,7 @@ describe('sync routes', () => {
     })
 
     it('stores CRDT snapshots and prunes prior updates', async () => {
-      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12 })
+      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12, revision: 'rev-12' })
 
       const res = await app.request(
         'http://localhost/sync/crdt/snapshot',
@@ -1478,7 +1478,7 @@ describe('sync routes', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ sequenceNum: 12 })
+      expect(await res.json()).toEqual({ sequenceNum: 12, revision: 'rev-12' })
       expect(storeSnapshot).toHaveBeenCalledWith(
         env.DB,
         env.STORAGE,
@@ -1496,7 +1496,7 @@ describe('sync routes', () => {
     // stored-but-unannounced snapshot is invisible on every peer until the next
     // vault sweep — up to 15 minutes.
     it('broadcasts crdt_updated to the other devices after a snapshot push', async () => {
-      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12 })
+      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12, revision: 'rev-12' })
 
       const res = await app.request(
         'http://localhost/sync/crdt/snapshot',
@@ -1524,7 +1524,7 @@ describe('sync routes', () => {
       const order: string[] = []
       vi.mocked(storeSnapshot).mockImplementationOnce(async () => {
         order.push('store')
-        return { sequenceNum: 12 }
+        return { sequenceNum: 12, revision: 'rev-12' }
       })
       vi.mocked(pruneUpdatesBeforeSnapshot).mockImplementationOnce(async () => {
         order.push('prune')
@@ -1547,7 +1547,7 @@ describe('sync routes', () => {
     })
 
     it('captures a failed snapshot broadcast without failing the push response', async () => {
-      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12 })
+      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12, revision: 'rev-12' })
       mockDoStub.fetch.mockRejectedValueOnce(new Error('broadcast failed'))
       const scheduled: Promise<unknown>[] = []
       const localExecutionCtx = {
@@ -1576,7 +1576,7 @@ describe('sync routes', () => {
       // The snapshot is already durable; a broadcast failure must not ask the
       // client to push it again.
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ sequenceNum: 12 })
+      expect(await res.json()).toEqual({ sequenceNum: 12, revision: 'rev-12' })
       const captureCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
       expect(captureCall).toBeDefined()
       const point = JSON.parse((captureCall![1] as RequestInit).body as string).batch[0] as {
@@ -1605,8 +1605,8 @@ describe('sync routes', () => {
 
     it('stores a snapshot batch and answers one result per note in request order', async () => {
       vi.mocked(storeSnapshotBatch).mockResolvedValueOnce([
-        { noteId: 'note_b', accepted: true, sequenceNum: 7 },
-        { noteId: 'note_a', accepted: true, sequenceNum: 0 }
+        { noteId: 'note_b', accepted: true, sequenceNum: 7, revision: 'rev-b' },
+        { noteId: 'note_a', accepted: true, sequenceNum: 0, revision: 'rev-a' }
       ])
 
       const res = await app.request(
@@ -1619,8 +1619,8 @@ describe('sync routes', () => {
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({
         results: [
-          { noteId: 'note_b', accepted: true, sequenceNum: 7 },
-          { noteId: 'note_a', accepted: true, sequenceNum: 0 }
+          { noteId: 'note_b', accepted: true, sequenceNum: 7, revision: 'rev-b' },
+          { noteId: 'note_a', accepted: true, sequenceNum: 0, revision: 'rev-a' }
         ]
       })
       expect(storeSnapshotBatch).toHaveBeenCalledWith(
@@ -1647,9 +1647,9 @@ describe('sync routes', () => {
     // an unannounced batch is invisible on every peer until the next sweep.
     it('broadcasts crdt_updated once per accepted note, and never for a rejected one', async () => {
       vi.mocked(storeSnapshotBatch).mockResolvedValueOnce([
-        { noteId: 'note_a', accepted: true, sequenceNum: 1 },
+        { noteId: 'note_a', accepted: true, sequenceNum: 1, revision: 'rev-a' },
         { noteId: 'note_b', accepted: false, reason: ErrorCodes.STORAGE_UPLOAD_FAILED },
-        { noteId: 'note_c', accepted: true, sequenceNum: 2 }
+        { noteId: 'note_c', accepted: true, sequenceNum: 2, revision: 'rev-c' }
       ])
 
       const res = await app.request(
@@ -1679,7 +1679,7 @@ describe('sync routes', () => {
       const order: string[] = []
       vi.mocked(storeSnapshotBatch).mockImplementationOnce(async () => {
         order.push('store')
-        return [{ noteId: 'note_a', accepted: true, sequenceNum: 1 }]
+        return [{ noteId: 'note_a', accepted: true, sequenceNum: 1, revision: 'rev-a' }]
       })
       vi.mocked(pruneUpdatesBeforeSnapshotBatch).mockImplementationOnce(async () => {
         order.push('prune')
@@ -1703,7 +1703,7 @@ describe('sync routes', () => {
 
     it('reports an undecodable payload against its own note and keeps the batch at 200', async () => {
       vi.mocked(storeSnapshotBatch).mockResolvedValueOnce([
-        { noteId: 'note_a', accepted: true, sequenceNum: 1 }
+        { noteId: 'note_a', accepted: true, sequenceNum: 1, revision: 'rev-a' }
       ])
 
       const res = await app.request(
@@ -1720,7 +1720,12 @@ describe('sync routes', () => {
 
       expect(res.status).toBe(200)
       const json = (await res.json()) as { results: Array<Record<string, unknown>> }
-      expect(json.results[0]).toEqual({ noteId: 'note_a', accepted: true, sequenceNum: 1 })
+      expect(json.results[0]).toEqual({
+        noteId: 'note_a',
+        accepted: true,
+        sequenceNum: 1,
+        revision: 'rev-a'
+      })
       expect(json.results[1]).toMatchObject({ noteId: 'note_bad', accepted: false })
       expect(json.results[1].reason).toBe(ErrorCodes.VALIDATION_ERROR)
       // The good note still reached the writer, alone.
@@ -1754,7 +1759,9 @@ describe('sync routes', () => {
       expect(storeSnapshotBatch).not.toHaveBeenCalled()
 
       vi.mocked(storeSnapshotBatch).mockResolvedValueOnce(
-        overCap.slice(0, 50).map((noteId) => ({ noteId, accepted: true as const, sequenceNum: 0 }))
+        overCap
+          .slice(0, 50)
+          .map((noteId) => ({ noteId, accepted: true as const, sequenceNum: 0, revision: noteId }))
       )
       res = await app.request(
         'http://localhost/sync/crdt/snapshot/batch',
@@ -1798,7 +1805,7 @@ describe('sync routes', () => {
     // Every shipped client posts to /sync/crdt/snapshot. Adding the batch route
     // must not move that path onto the new writer.
     it('leaves the single-note snapshot endpoint on the single-note writer', async () => {
-      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12 })
+      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12, revision: 'rev-12' })
 
       const res = await app.request(
         'http://localhost/sync/crdt/snapshot',
@@ -1808,7 +1815,7 @@ describe('sync routes', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ sequenceNum: 12 })
+      expect(await res.json()).toEqual({ sequenceNum: 12, revision: 'rev-12' })
       expect(storeSnapshotBatch).not.toHaveBeenCalled()
       expect(pruneUpdatesBeforeSnapshotBatch).not.toHaveBeenCalled()
       expect(storeSnapshot).toHaveBeenCalledTimes(1)

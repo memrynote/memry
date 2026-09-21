@@ -22,6 +22,10 @@ The new device never sees your passphrase. The existing device never exposes the
 3. memrynote shows a **QR code** and a **linking code** — a long text string carrying the pairing data, meant to be copied, not typed by hand
 4. Keep this screen open
 
+Only the newest code is live. Choosing **Link a device** again cancels any code you generated
+before it, so a device still holding an older QR code or linking string is told the session was
+cancelled and has to scan the new one.
+
 ## On the New Device
 
 1. Sign in to the same email
@@ -36,6 +40,13 @@ The new device never sees your passphrase. The existing device never exposes the
 The sign-in on the new device is only valid for a few minutes. If linking takes longer than that,
 memrynote tells you the sign-in timed out and asks you to sign in again and scan the code once
 more. Nothing is lost — generate a fresh code on the existing device and repeat the steps above.
+
+### If the Network Changes Mid-Link
+
+Switching networks between scanning the code and finishing the link — Wi-Fi to cellular, or a
+network that hands out a new address on its own — does not interrupt linking. The link is proven
+by the scanned code itself, not by the network you scanned from. Older sync servers rejected the
+final step after a network change and required a fresh code.
 
 ## Approval
 
@@ -66,6 +77,23 @@ If the pull fails — an unwritable folder, for example — the reason appears u
 choice stays available, so you can pick a different folder and try again without redoing the link.
 
 Accounts with a single vault skip this step entirely.
+
+## Signing In Without Linking
+
+You can also set up a second machine with just your email code and **recovery phrase**, without a
+linking code from the first device. The folder open on that machine then joins the vault your
+account already syncs — memrynote binds it to the account vault instead of registering the folder
+as a new one, so notes from both sides merge into one vault and sync starts immediately.
+
+This matters on plans with a **one vault limit**: a second vault would be refused by the server,
+and sync would keep failing until the vault was switched by hand.
+
+If your account holds several vaults, this path picks the largest one. Use the vault switcher
+(**In your account**) to download or open a different vault afterwards, and see
+[Settings → Vault](/user-guide/settings#vault) to check which vault the open folder belongs to.
+
+Creating an additional vault stays a deliberate action from the vault switcher — signing in never
+creates one.
 
 ## Initial Sync Progress
 

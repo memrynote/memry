@@ -200,6 +200,46 @@ describe('dirty-recovery', () => {
     expect(fc.statusId._offline).toBeUndefined()
   })
 
+  it('rebinds offline clocks on the never-synced create path too', () => {
+    // The shape a task created and then edited while signed out actually has:
+    // `syncedAt` null, so recovery routes it to `enqueueCreate`, which only
+    // adds the real device's tick. `_offline` is a device id every install
+    // claims, so letting it reach the wire makes two peers' clocks compare
+    // equal for edits that are genuinely concurrent (#2179).
+    db.insert(tasks)
+      .values({
+        id: 'task-offline-create',
+        projectId: 'proj-1',
+        title: 'Created offline',
+        priority: 0,
+        position: 0,
+        clock: { _offline: 2 },
+        fieldClocks: {
+          title: { _offline: 1 },
+          statusId: {},
+          dueDate: {}
+        },
+        syncedAt: null,
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+      .run()
+
+    recoverDirtyItems(db)
+
+    const queued = queue.peek(1)[0]
+    expect(queued?.operation).toBe('create')
+    const payload = queued ? (JSON.parse(queued.payload) as Record<string, unknown>) : null
+    const payloadFieldClocks = payload?.fieldClocks as
+      Record<string, Record<string, number>> | undefined
+    expect(payload?.clock).toEqual({ 'device-A': 3 })
+    expect(payloadFieldClocks?.title).toEqual({ 'device-A': 2 })
+
+    const task = db.select().from(tasks).where(eq(tasks.id, 'task-offline-create')).get()
+    expect((task.clock as Record<string, number>)._offline).toBeUndefined()
+    const fc = task.fieldClocks as Record<string, Record<string, number>>
+    expect(fc.title._offline).toBeUndefined()
+  })
+
   it('recovers dirty projects', () => {
     // #given — project modified after last sync
     db.update(projects)

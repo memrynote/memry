@@ -6,6 +6,7 @@ import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { ImportDialog } from './import-dialog'
 import { DEFAULT_IMPORT_ICON } from '@/lib/import-catalog'
+import type { ImportSummaryResult } from '@memry/contracts/import-channels'
 import type { ImporterItem } from '@/hooks/use-importers'
 
 const notionItem: ImporterItem = {
@@ -165,6 +166,182 @@ describe('ImportDialog i18n', () => {
 
     await waitFor(() => expect(screen.getByText('1 file selected')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Start import' })).toBeEnabled()
+  })
+})
+
+describe('ImportDialog folder picker (Apple Notes)', () => {
+  let i18n: I18nInstance
+  let start: ReturnType<typeof vi.fn>
+  let folders: ReturnType<typeof vi.fn>
+
+  beforeAll(async () => {
+    i18n = await createRendererI18n({ locale: 'en' })
+  })
+
+  beforeEach(() => {
+    start = vi.fn(() =>
+      Promise.resolve({
+        success: true,
+        summary: { imported: 1, attachments: 0, skipped: 0, failed: [] }
+      })
+    )
+    folders = vi.fn(() =>
+      Promise.resolve({
+        accounts: [
+          {
+            name: 'iCloud',
+            folders: [
+              { id: 'f-work', title: 'Work', noteCount: 2, totalNoteCount: 2, children: [] },
+              { id: 'f-personal', title: 'Personal', noteCount: 1, totalNoteCount: 1, children: [] }
+            ]
+          }
+        ],
+        unfiledNoteCount: 0
+      })
+    )
+    ;(window as unknown as { api: unknown }).api = {
+      onImportProgress: () => () => {},
+      import: {
+        pickFiles: vi.fn(() =>
+          Promise.resolve({ canceled: false, filePaths: ['/Users/k/group.com.apple.notes'] })
+        ),
+        start,
+        cancel: () => {},
+        preview: () => {},
+        list: () => {},
+        appleNotes: { folders }
+      }
+    }
+  })
+
+  it('picks folders after the source folder and starts with the selection', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <I18nextProvider i18n={i18n}>
+          <ImportDialog item={appleNotesItem} open onOpenChange={() => {}} />
+        </I18nextProvider>
+      </QueryClientProvider>
+    )
+
+    // The folder tree only loads once the user has granted access to a source.
+    expect(folders).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Select Apple Notes folder…' }))
+
+    await screen.findByText('Work')
+    expect(folders).toHaveBeenCalledWith({ sourcePath: '/Users/k/group.com.apple.notes' })
+
+    // Drop one folder, keep the other.
+    const personalRow = screen.getByText('Personal').closest('label')!
+    fireEvent.click(personalRow.querySelector('[role="checkbox"]')!)
+
+    const startButton = screen.getByText('Start import').closest('button')!
+    await waitFor(() => expect(startButton).not.toBeDisabled())
+    fireEvent.pointerDown(startButton)
+    fireEvent.click(startButton)
+
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(1))
+    const payload = start.mock.calls[0][0]
+    expect(payload.importerId).toBe('apple-notes')
+    expect(payload.sourcePaths).toEqual(['/Users/k/group.com.apple.notes'])
+    expect(payload.options.folderIds).toEqual(['f-work'])
+  })
+})
+
+describe('ImportDialog summary — skipped reasons', () => {
+  let i18n: I18nInstance
+
+  beforeAll(async () => {
+    i18n = await createRendererI18n({ locale: 'en' })
+  })
+
+  const runWithSummary = async (summary: ImportSummaryResult) => {
+    ;(window as unknown as { api: unknown }).api = {
+      onImportProgress: () => () => {},
+      import: {
+        pickFiles: vi.fn(() =>
+          Promise.resolve({ canceled: false, filePaths: ['/export/Notes.sqlite'] })
+        ),
+        start: vi.fn(() => Promise.resolve({ success: true, summary })),
+        cancel: () => {},
+        preview: () => {},
+        list: () => {},
+        // The Apple Notes folder panel scans the picked source; an empty tree
+        // keeps these summary cases on the import-everything path.
+        appleNotes: {
+          folders: vi.fn(() => Promise.resolve({ accounts: [], unfiledNoteCount: 0 }))
+        }
+      }
+    }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <I18nextProvider i18n={i18n}>
+          <ImportDialog item={appleNotesItem} open onOpenChange={() => {}} />
+        </I18nextProvider>
+      </QueryClientProvider>
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Select Apple Notes folder…' }))
+    const startButton = await screen.findByRole('button', { name: 'Start import' })
+    await waitFor(() => expect(startButton).toBeEnabled())
+    fireEvent.click(startButton)
+    await screen.findByText('Import complete')
+  }
+
+  it('explains a coded reason once, with the grouped count', async () => {
+    await runWithSummary({
+      imported: 4,
+      attachments: 0,
+      skipped: 3,
+      failed: [],
+      skippedReasons: [
+        {
+          reason: {
+            code: 'appleNotes.lockedNote',
+            message: 'Locked notes were not imported'
+          },
+          count: 3
+        }
+      ]
+    })
+
+    expect(screen.getByText('3 skipped')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '3 locked notes were not imported; Memry cannot read them without your Notes password.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('wraps a plain-string reason so its count still shows', async () => {
+    await runWithSummary({
+      imported: 1,
+      attachments: 0,
+      skipped: 2,
+      failed: [],
+      skippedReasons: [{ reason: 'attachment file not found', count: 2 }]
+    })
+
+    expect(screen.getByText('2 items: attachment file not found')).toBeInTheDocument()
+  })
+
+  it('wraps a code this build cannot translate, keeping the count', async () => {
+    await runWithSummary({
+      imported: 1,
+      attachments: 0,
+      skipped: 5,
+      failed: [],
+      skippedReasons: [
+        { reason: { code: 'future.code', message: 'Something newer skipped them' }, count: 5 }
+      ]
+    })
+
+    expect(screen.getByText('5 items: Something newer skipped them')).toBeInTheDocument()
+  })
+
+  it('renders a summary from an older build that has no skippedReasons', async () => {
+    await runWithSummary({ imported: 1, attachments: 0, skipped: 2, failed: [] })
+
+    expect(screen.getByText('2 skipped')).toBeInTheDocument()
+    expect(screen.queryByText(/2 items:/)).toBeNull()
   })
 })
 

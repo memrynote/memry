@@ -17,6 +17,7 @@ import {
   secureCleanup
 } from '../crypto'
 import { SyncEngine, type SyncEngineDeps } from './engine'
+import { handleDeviceKeyMismatch } from './device-key-mismatch'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { syncGoogleCalendarSource } from '../calendar/google/sync-service'
 import { toErrorCode } from '@memry/contracts/telemetry-api'
@@ -894,13 +895,18 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           if (device?.signingPublicKey) {
             const derivedB64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
             if (device.signingPublicKey !== derivedB64) {
-              log.warn('Signing key mismatch detected at runtime — self-healing DB', {
-                deviceId
-              })
-              db.update(syncDevices)
-                .set({ signingPublicKey: derivedB64 })
-                .where(eq(syncDevices.isCurrentDevice, true))
-                .run()
+              // The local row is written from the keypair the device was
+              // REGISTERED with, so a mismatch means the keychain key changed
+              // afterwards — the server still holds the old public key under
+              // this device id. Rewriting the row here only made the local
+              // state agree with a key the server rejects: every push earned
+              // SYNC_INVALID_SIGNATURE and every manifest this device signed
+              // was unverifiable, forever (#2218). Only re-registration mints
+              // a device id that matches the key, so escalate instead.
+              log.error('Signing key does not match the registered device key', { deviceId })
+              secureCleanup(secretKey)
+              handleDeviceKeyMismatch()
+              return null
             }
           }
 
@@ -922,6 +928,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           })
         },
         checkAccountKey: () => checkLocalKeyAgainstAccount(),
+        onDeviceKeyMismatch: () => handleDeviceKeyMismatch(),
         onVaultKeyMismatch: () => {
           // Only reached on a CONFIRMED mismatch ('transition' never escalates
           // — see checkAccountKey). Guard the rare race where a key-material
@@ -968,6 +975,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       void import('./vault-directory')
         .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))
         .catch(() => {})
+
+      // Folders made before folder creation wrote a folder_config row have no
+      // row at all, so an empty one never reached another device. Same shape as
+      // the attachment backfill below: fix forward, then close the gap once for
+      // what already exists. Lazy import keeps the vault module off the sync
+      // start path when the pass is a no-op.
+      void import('../notes/folder-config-effects')
+        .then(({ backfillFolderConfigs }) => backfillFolderConfigs())
+        .catch((error: unknown) => log.warn('Folder config backfill skipped', { error }))
 
       // Retry attachment uploads that failed or were interrupted in earlier
       // sessions — the durable outbox holds them across restarts. The backfill

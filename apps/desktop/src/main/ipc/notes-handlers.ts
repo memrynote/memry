@@ -95,6 +95,7 @@ import { getStatus as getVaultStatus } from '../vault/index'
 import { inlineExportImages } from '../lib/export-image-inliner'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
 import {
+  syncFolderConfigCreate,
   syncFolderConfigSet,
   syncFolderConfigRename,
   syncFolderConfigDelete
@@ -494,6 +495,7 @@ export function registerNotesHandlers(): void {
     createStringHandler(
       withErrorHandler(async (path) => {
         await createFolder(path)
+        syncFolderConfigCreate(path)
         return { success: true }
       }, 'errors:folder.createFailed')
     )

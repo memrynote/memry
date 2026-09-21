@@ -1588,6 +1588,26 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
     await expect(import('node:fs/promises').then((m) => m.stat(partialPath))).rejects.toThrow()
   })
 
+  it('a manifest signed by another key fails as ManifestSignatureError, not a bare Error', async () => {
+    // The download failure classifier reads the error name to stop re-probing a
+    // manifest no retry can verify (#2218).
+    const fixture = buildThreeChunkFixture('att-badsig')
+    const fetchFn = makeResumableFetchFn(fixture)
+    const otherKey = new Uint8Array(fixture.signerPublicKey)
+    otherKey[0] = otherKey[0] ^ 0xff
+
+    const service = new AttachmentSyncService(
+      createDownloadDeps(fetchFn, fixture.vaultKey, otherKey)
+    )
+
+    await expect(
+      service.downloadAttachment('att-badsig', path.join(tmpDir, 'badsig.bin'))
+    ).rejects.toMatchObject({
+      name: 'ManifestSignatureError',
+      signerDeviceId: 'device-1'
+    })
+  })
+
   it('an inconsistent partial+sidecar pair is discarded and the download restarts clean', async () => {
     const fixture = buildThreeChunkFixture('att-stale')
     const fetchFn = makeResumableFetchFn(fixture)

@@ -94,6 +94,65 @@ describe('SyncStateManager', () => {
     })
   })
 
+  describe('#given a payment-required failure #when setState to error', () => {
+    it('#then demotes to local_only and drops the error (#2201)', () => {
+      // #given
+      ctx.lastError = 'A paid Sync plan is required'
+      ctx.lastErrorInfo = {
+        category: 'sync_payment_required',
+        message: 'A paid Sync plan is required',
+        retryable: false
+      }
+
+      // #when
+      mgr.setState('error')
+
+      // #then
+      expect(ctx.state).toBe('local_only')
+      expect(ctx.lastError).toBeUndefined()
+      expect(ctx.lastErrorInfo).toBeUndefined()
+      expect(nodeEmit).toHaveBeenCalledWith(
+        'status-changed',
+        expect.objectContaining({ status: 'local_only', error: undefined })
+      )
+    })
+
+    it('#then a repeat 402 while already local_only leaves no error behind', () => {
+      // #given — already demoted, so setState early-returns on the same state
+      ctx.state = 'local_only' as SyncStatusValue
+      ctx.lastError = 'A paid Sync plan is required'
+      ctx.lastErrorInfo = {
+        category: 'sync_payment_required',
+        message: 'A paid Sync plan is required',
+        retryable: false
+      }
+
+      // #when
+      mgr.setState('error')
+
+      // #then — getStatus reads lastError independently of the state
+      expect(ctx.state).toBe('local_only')
+      expect(ctx.lastError).toBeUndefined()
+    })
+  })
+
+  describe('#given a vault-limit failure #when setState to error', () => {
+    it('#then stays an error: the plan is active and paying again fixes nothing', () => {
+      // #given
+      ctx.lastErrorInfo = {
+        category: 'sync_vault_limit_exceeded',
+        message: 'This vault is over the number of vaults your plan syncs',
+        retryable: false
+      }
+
+      // #when
+      mgr.setState('error')
+
+      // #then
+      expect(ctx.state).toBe('error')
+    })
+  })
+
   describe('#given SYNC_PAUSED is true in DB #when isPaused called', () => {
     it('#then returns true', () => {
       // #given

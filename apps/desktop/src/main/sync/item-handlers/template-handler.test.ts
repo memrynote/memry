@@ -174,8 +174,10 @@ describe('templateHandler', () => {
     ).toBeNull()
 
     expect(templateHandler.applyDelete(ctx, 'missing')).toBe('skipped')
-    expect(templateHandler.applyDelete(ctx, 'synced', { 'device-b': 1 })).toBe('skipped')
-    expect(templateHandler.applyDelete(ctx, 'synced', { 'device-a': 2 })).toBe('applied')
+    // Local happened after the tombstone: the delete loses.
+    expect(templateHandler.applyDelete(ctx, 'synced', { 'device-a': 0 })).toBe('skipped')
+    // Concurrent with the local row: delete still wins (#2198).
+    expect(templateHandler.applyDelete(ctx, 'synced', { 'device-b': 1 })).toBe('applied')
     expect(ctx.emit).toHaveBeenCalledWith(TemplatesChannels.events.DELETED, { id: 'synced' })
 
     const queue = new SyncQueueManager(asSyncDb(testDb.db))

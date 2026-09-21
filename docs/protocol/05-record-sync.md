@@ -15,7 +15,7 @@ form** (chapter 00 §0.3.1).
 
 | Method              | Path                                    | Query / body                                                                                                         |
 | ------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| GET                 | `/sync/status`                          | none; returns `SyncStatusSchema` including `clientPolicy` (`packages/contracts/src/sync-api.ts:463-468`)             |
+| GET                 | `/sync/status`                          | none; returns `SyncStatusSchema` including `clientPolicy` (`packages/contracts/src/sync-api.ts:473-478`)             |
 | GET                 | `/sync/manifest`                        | optional `limit` and `cursor`; **a cursor without a limit is a 400** (`apps/sync-server/src/routes/sync.ts:327-331`) |
 | GET                 | `/sync/changes`                         | optional `cursor`, optional `limit` (`apps/sync-server/src/routes/sync.ts:344-357`)                                  |
 | POST                | `/sync/push`                            | `RecordPushRequestSchema`, 1 to 100 items                                                                            |
@@ -97,9 +97,9 @@ and it is live on every type.
 ## 5.4 Push request
 
 **Normative.** `RecordPushRequestSchema` allows **1 to 100** items
-(`packages/contracts/src/sync-api.ts:388-390`). Every type in
+(`packages/contracts/src/sync-api.ts:398-400`). Every type in
 `RECORD_CLOCK_REQUIRED_ITEM_TYPES` MUST carry a `clock`, enforced by a
-`superRefine` (`packages/contracts/src/sync-api.ts:378-386`). **`settings` is the
+`superRefine` (`packages/contracts/src/sync-api.ts:388-396`). **`settings` is the
 only record type exempt** (chapter 00 §0.7).
 
 `RecordPushItemSchema` omits `stateVector` (chapter 04 §4.6).
@@ -107,7 +107,7 @@ only record type exempt** (chapter 00 §0.7).
 ## 5.5 Push response
 
 **Normative.** `{ accepted: string[], rejected: [{id, reason}], serverTime,
-maxCursor }` (`packages/contracts/src/sync-api.ts:392-402`).
+maxCursor }` (`packages/contracts/src/sync-api.ts:402-412`).
 
 **Acks are per item id.** Two queued rows sharing an id cannot be told apart in a
 mixed response, so **a client MUST collapse to one push item per id before
@@ -183,6 +183,20 @@ behaviour (`:242-243`).
 row** and MUST NOT retry it; the correct recovery is to pull the tombstone and
 apply the delete locally.
 
+### Client-side rule (same predicate, other direction)
+
+**A conforming client MUST apply a pulled tombstone unless its local clock
+happens strictly after that tombstone** — the mirror of the server predicate
+above (`packages/sync-client/src/item-handlers/base-handler.ts`,
+`resolveDeleteClock`). A local clock merely _concurrent_ with the tombstone MUST
+NOT keep the item.
+
+A client that also skipped the delete on a concurrent clock never converged: its
+upsert is rejected with `SYNC_DELETE_WINS` on every push and its pull left the
+item alive, so that one device kept a ghost copy of an item deleted on every
+other device. The local edit is dropped; delete-wins is the protocol's
+resolution for that conflict on both sides.
+
 ## 5.9 Content hash and the stored blob — Q05.3
 
 **The same four fields are canonicalised twice, differently, and a client may
@@ -243,7 +257,7 @@ because that is what the code implements.
 | `MAX_MANIFEST_PAGE_LIMIT`  | 1000  | `:36` |
 
 `POST /sync/pull` takes at most **100** ids
-(`packages/contracts/src/sync-api.ts:404-406`).
+(`packages/contracts/src/sync-api.ts:414-416`).
 
 ### 5.10.1 `limit` above the ceiling — Q05.4
 
@@ -367,7 +381,7 @@ middleware, so it takes no `X-Memry-Vault-Id`.
 
 **Normative.** `GET /sync/changes` returns
 `{ items, deleted, hasMore, nextCursor }`
-(`packages/contracts/src/sync-api.ts:440-445`).
+(`packages/contracts/src/sync-api.ts:450-455`).
 
 - The client **unions `deleted` ids into the `/sync/pull` request for the same
   page** (`packages/sync-client/src/pull/engine.ts:350`), because tombstones
@@ -453,7 +467,7 @@ already had would lose the guarantee for any id it had never seen.
 **Normative.** `RecordSyncManifestSchema` carries `nextCursor` **only** on a
 paginated response that has more rows; it is absent on the final page and on
 every parameter-less legacy call
-(`packages/contracts/src/sync-api.ts:429-438`).
+(`packages/contracts/src/sync-api.ts:439-448`).
 
 **There is no integrity digest on the manifest.** The only integrity machinery on
 this path is the per-item signature (chapter 04 §4.8) and, for packs, the pack's
@@ -470,7 +484,7 @@ paths (chapter 13 §13.6). An id-only key made a project and a tag both named
 **Normative.** `CLOCK_SKEW_THRESHOLD_SECONDS = 300`
 (`apps/desktop/src/main/sync/engine/sync-context.ts:133`), compared against the
 `serverTime` every push response and `GET /sync/status` returns
-(`packages/contracts/src/sync-api.ts:400`, `:466`).
+(`packages/contracts/src/sync-api.ts:410`, `:466`).
 
 Because JWT clock tolerance is **zero** (chapter 02 §2.2), a device more than a
 token lifetime out of true fails every authenticated request with a 401 that
@@ -481,7 +495,7 @@ consume its refresh-rejection budget (chapter 02 §2.10) chasing it.**
 
 ## 5.17 `ConflictResponseSchema` — Q05.5
 
-`ConflictResponseSchema` (`packages/contracts/src/sync-api.ts:470-479`) and
+`ConflictResponseSchema` (`packages/contracts/src/sync-api.ts:480-489`) and
 `SYNC_VERSION_CONFLICT` (`apps/sync-server/src/lib/errors.ts:31`) both exist.
 **No route returns either**: the only reference to the code outside the enum is a
 telemetry classification branch

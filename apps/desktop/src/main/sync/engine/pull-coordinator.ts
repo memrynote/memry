@@ -633,7 +633,7 @@ export class PullCoordinator {
 
   private applyOrphan(dec: DecryptedPullItem, runState: PullRunState): void {
     const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
-    this.ctx.applier.apply({
+    const result = this.ctx.applier.apply({
       itemId: dec.id,
       type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
       operation: itemOp,
@@ -642,6 +642,10 @@ export class PullCoordinator {
       deletedAt: dec.deletedAt,
       vaultKey: runState.vaultKey
     })
+    // The requeue is what carries a merged row back to the server (#2180).
+    // Not counted in `totalConflictsResolved`: that number is the pull's own
+    // per-page tally, and a repair pass runs after the last page is logged.
+    if (result === 'conflict') reportConflict(this.ctx.deps, dec)
     runState.processedIds.add(itemRefKey(dec.type, dec.id))
     runState.pulledCount++
     this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
@@ -929,6 +933,9 @@ export class PullCoordinator {
             vaultKey
           })
           if (result === 'applied' || result === 'conflict') {
+            // Unrequeued, the merged row keeps a union clock nothing pushes,
+            // which is the one way #2180 really strands two devices.
+            if (result === 'conflict') reportConflict(this.ctx.deps, dec)
             processedIds.add(itemRefKey(dec.type, dec.id))
             pageApplied++
             pageFailed--

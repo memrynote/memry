@@ -9,7 +9,14 @@ export function compactYDoc(
 ): { compacted: Uint8Array; savedBytes: number } | null {
   const originalSize = Y.encodeStateAsUpdate(doc).byteLength
 
+  // A root that arrived in an update but was never requested by name is a bare
+  // `AbstractType` placeholder until `getMap`/`getArray`/... types it, and any
+  // future root is unknown to this copy loop by definition. Copying only what
+  // we recognise would delete the rest on every device (the compaction output
+  // replaces both the pushed snapshot and local persistence), so refuse
+  // instead: a large doc is recoverable, a dropped root is not.
   const fresh = new Y.Doc({ gc: true })
+  let unknownRoot: string | null = null
   fresh.transact(() => {
     for (const [name, type] of doc.share) {
       if (type instanceof Y.XmlFragment) {
@@ -22,13 +29,19 @@ export function compactYDoc(
         const dst = fresh.getText(name)
         dst.applyDelta(type.toDelta())
       } else {
-        log.warn('Unknown shared type during compaction, skipping', {
+        unknownRoot ??= name
+        log.warn('Unknown shared type during compaction, refusing to compact', {
           name,
           type: type.constructor.name
         })
       }
     }
   })
+
+  if (unknownRoot !== null) {
+    fresh.destroy()
+    return null
+  }
 
   const compacted = Y.encodeStateAsUpdate(fresh)
   fresh.destroy()

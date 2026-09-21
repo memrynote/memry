@@ -26,6 +26,7 @@ import {
 import { getAllTagsWithCounts, listTagCategories } from '../../../tags/store'
 import { generateId } from '../../../lib/id'
 import {
+  syncFolderConfigCreate,
   syncFolderConfigDelete,
   syncFolderConfigRename
 } from '../../../notes/folder-config-effects'
@@ -326,7 +327,9 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return [...folderEntries, ...noteEntries]
       },
       async create(folderPath) {
-        await createFolder(internalFolderFromToolPath(folderPath) ?? '')
+        const internal = internalFolderFromToolPath(folderPath) ?? ''
+        await createFolder(internal)
+        syncFolderConfigCreate(internal)
         return { path: folderPath }
       },
       async rename({ old_path, new_path }) {

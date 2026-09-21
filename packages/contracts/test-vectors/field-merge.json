@@ -35,7 +35,7 @@
       "modifiedAt",
       "homeNoteId"
     ],
-    "valueEqualityToday": "JSON.stringify, key-order sensitive",
+    "valueEqualityToday": "canonical: recursive key sort, arrays order-significant",
     "valueEqualityDecided": "recursive key sort; null distinct from absent (#2185)",
     "caseCount": 32
   },
@@ -919,7 +919,7 @@
     },
     {
       "name": "object-values-same-content-different-key-order",
-      "pins": "THE SINGLE LIKELIEST DIVERGENCE. Recorded as the implementation behaves today (JSON.stringify, key-order sensitive); the canonical comparison decision (#2185) makes these EQUAL, and this case is what measures that change",
+      "pins": "THE SINGLE LIKELIEST DIVERGENCE. The canonical comparison (#2185) makes these EQUAL, so no conflict is reported; a port that compares serialised bytes key-order-sensitively fails here",
       "syncableFields": "TASK",
       "localData": {
         "repeatConfig": {
@@ -970,31 +970,9 @@
           "completedAt": {},
           "archivedAt": {}
         },
-        "hadConflicts": true,
-        "conflictedFields": [
-          "repeatConfig"
-        ],
-        "conflicts": [
-          {
-            "field": "repeatConfig",
-            "localValue": {
-              "a": 1,
-              "b": 2
-            },
-            "remoteValue": {
-              "b": 2,
-              "a": 1
-            },
-            "mergedValue": {
-              "b": 2,
-              "a": 1
-            },
-            "mergedClock": {
-              "device-a": 1,
-              "device-b": 1
-            }
-          }
-        ]
+        "hadConflicts": false,
+        "conflictedFields": [],
+        "conflicts": []
       }
     },
     {

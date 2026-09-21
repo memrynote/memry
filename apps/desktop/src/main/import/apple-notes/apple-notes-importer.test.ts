@@ -17,6 +17,7 @@ import zlib from 'zlib'
 import Database from 'better-sqlite3'
 import { Root } from 'protobufjs'
 import { descriptor, DOCUMENT_TYPE, ANStyleType, ANFontWeight } from '@memry/importers/apple-notes'
+import { scanAppleNotesFolders } from './note-store'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
@@ -259,6 +260,113 @@ function buildAttachmentDb(dbPath: string): void {
   ).run(62, 5, 'ATT-DOC', 'org.openxmlformats.spreadsheetml.sheet', 42, 52)
 
   db.close()
+}
+
+/** Longer than the importer's MAX_FOLDER_DEPTH so the cap is exercised. */
+const DEEP_CHAIN_LENGTH = 40
+const MAX_FOLDER_DEPTH = 32
+
+/**
+ * Build a NoteStore.sqlite exercising the ZPARENT walk and the folder picker:
+ * a nested chain, two same-named leaves under different parents, a
+ * default-named leaf under a real parent, a parent cycle, a chain deeper than
+ * the walk's cap, a smart folder, a trash folder, and a note filed nowhere.
+ */
+function buildNestedFolderDb(dbPath: string): void {
+  const db = new Database(dbPath)
+  db.exec(`
+    CREATE TABLE z_primarykey (Z_ENT INTEGER, Z_NAME TEXT);
+    CREATE TABLE ziccloudsyncingobject (
+      z_pk INTEGER PRIMARY KEY,
+      z_ent INTEGER,
+      zname TEXT,
+      zidentifier TEXT,
+      ztitle TEXT,
+      ztitle1 TEXT,
+      ztitle2 TEXT,
+      zfolder INTEGER,
+      zparent INTEGER,
+      zfoldertype INTEGER,
+      zowner INTEGER,
+      zmedia INTEGER,
+      zfilename TEXT,
+      zgeneration1 TEXT,
+      ztypeuti TEXT,
+      zurlstring TEXT,
+      znote INTEGER,
+      zcreationdate1 REAL,
+      zmodificationdate1 REAL,
+      zispasswordprotected INTEGER
+    );
+    CREATE TABLE zicnotedata (z_pk INTEGER PRIMARY KEY, znote INTEGER, zdata BLOB);
+  `)
+  db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(1, 'ICAccount')
+  db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(2, 'ICFolder')
+  db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(3, 'ICNote')
+  db.prepare('INSERT INTO z_primarykey (z_ent, z_name) VALUES (?, ?)').run(4, 'ICMedia')
+  db.prepare(
+    'INSERT INTO ziccloudsyncingobject (z_pk, z_ent, zname, zidentifier) VALUES (?,?,?,?)'
+  ).run(10, 1, 'iCloud', 'ACCT-UUID')
+
+  const insertFolder = db.prepare(
+    'INSERT INTO ziccloudsyncingobject ' +
+      '(z_pk, z_ent, ztitle2, zparent, zidentifier, zfoldertype, zowner) VALUES (?,?,?,?,?,?,?)'
+  )
+  const folder = (pk: number, title: string, parent: number | null, identifier?: string): void => {
+    insertFolder.run(pk, 2, title, parent, identifier ?? `FOLDER-${pk}`, 0, 10)
+  }
+  folder(20, 'Work', null)
+  folder(21, 'Clients', 20)
+  folder(22, 'Acme', 21)
+  folder(23, 'Personal', null)
+  folder(24, 'Acme', 23)
+  folder(25, 'Notes', 20, 'DefaultFolder-XYZ')
+  // Corrupt ZPARENT cycle: each folder claims the other as its parent.
+  folder(26, 'Loop A', 27)
+  folder(27, 'Loop B', 26)
+  // Smart folders are saved queries, Trash is not importable — neither belongs
+  // in the picker. `Archive` is a real folder that happens to sit under Trash.
+  insertFolder.run(28, 2, 'Recently Deleted', null, 'TrashFolder', 1, 10)
+  folder(29, 'Archive', 28)
+  insertFolder.run(30, 2, 'Smart', null, 'FOLDER-30', 3, 10)
+  for (let i = 0; i < DEEP_CHAIN_LENGTH; i++) {
+    folder(100 + i, `D${i}`, i === 0 ? null : 100 + i - 1)
+  }
+
+  const insertNote = db.prepare(
+    'INSERT INTO ziccloudsyncingobject ' +
+      '(z_pk, z_ent, ztitle1, zfolder, zispasswordprotected) VALUES (?,?,?,?,?)'
+  )
+  const insertData = db.prepare('INSERT INTO zicnotedata (z_pk, znote, zdata) VALUES (?,?,?)')
+  const note = (pk: number, title: string, folderPk: number): void => {
+    insertNote.run(pk, 3, title, folderPk, 0)
+    insertData.run(pk, pk, encodeNoteData(`${title}\n`, [{ length: title.length + 1 }]))
+  }
+  note(200, 'Work Acme Note', 22)
+  note(201, 'Personal Acme Note', 24)
+  note(202, 'Default Leaf Note', 25)
+  note(203, 'Cycle Note', 26)
+  note(204, 'Deep Note', 100 + DEEP_CHAIN_LENGTH - 1)
+  note(205, 'Trash Child Note', 29)
+  note(206, 'Smart Note', 30)
+  note(207, 'Deleted Note', 28)
+  // A note filed in no folder at all.
+  insertNote.run(208, 3, 'Unfiled Note', null, 0)
+  insertData.run(208, 208, encodeNoteData('Unfiled Note\n', [{ length: 13 }]))
+
+  db.close()
+}
+
+/** Run `body` against a throwaway nested-folder NoteStore.sqlite. */
+async function withNestedDb(body: (dbPath: string) => Promise<void>): Promise<void> {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apple-notes-nested-'))
+  const dbPath = path.join(dir, 'NoteStore.sqlite')
+  buildNestedFolderDb(dbPath)
+  try {
+    await body(dbPath)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
 }
 
 /** Write on-disk bytes for an ICMedia row under the importer's media base. */
@@ -505,6 +613,104 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
     } finally {
       fs.rmSync(attDir, { recursive: true, force: true })
     }
+  })
+
+  it('resolves the full folder chain, keeping same-named leaves apart', async () => {
+    await withNestedDb(async (nestedDbPath) => {
+      const ctx = importContext.createImportContext('an-nested', new AbortController().signal)
+      const summary = await importer.appleNotesImporter.run({ sourcePaths: [nestedDbPath] }, ctx)
+      expect(summary.failed).toEqual([])
+      // Every note except the one sitting directly in Trash.
+      expect(summary.imported).toBe(8)
+
+      const at = (...segments: string[]): boolean =>
+        fs.existsSync(path.join(tempVault.path, 'Apple Notes', ...segments))
+
+      // Nested chain preserved; the two "Acme" folders no longer merge.
+      expect(at('Work', 'Clients', 'Acme', 'Work Acme Note.md')).toBe(true)
+      expect(at('Personal', 'Acme', 'Personal Acme Note.md')).toBe(true)
+      // Default-folder suppression hits the leaf only — "Work" survives.
+      expect(at('Work', 'Default Leaf Note.md')).toBe(true)
+      // A ZPARENT cycle terminates instead of looping forever.
+      expect(at('Loop B', 'Loop A', 'Cycle Note.md')).toBe(true)
+      // The trash root is not a real folder — no literal trash tree in the vault.
+      expect(at('Archive', 'Trash Child Note.md')).toBe(true)
+      expect(at('Recently Deleted')).toBe(false)
+      // Deeper than the cap → the deepest MAX_FOLDER_DEPTH segments are kept.
+      const deepest = Array.from(
+        { length: MAX_FOLDER_DEPTH },
+        (_, i) => `D${DEEP_CHAIN_LENGTH - MAX_FOLDER_DEPTH + i}`
+      )
+      expect(at(...deepest, 'Deep Note.md')).toBe(true)
+      // Trash stays in Trash.
+      expect(at('Recently Deleted', 'Deleted Note.md')).toBe(false)
+    })
+  })
+
+  it('scans the folder tree with nesting, counts and no smart/trash folders', async () => {
+    await withNestedDb(async (nestedDbPath) => {
+      const tree = await scanAppleNotesFolders(nestedDbPath)
+
+      expect(tree.accounts.length).toBe(1)
+      const account = tree.accounts[0]
+      expect(account.name).toBe('iCloud')
+
+      const titles = account.folders.map((f) => f.title)
+      expect(titles).toContain('Work')
+      expect(titles).toContain('Personal')
+      // Saved queries and Trash are not importable containers.
+      expect(titles).not.toContain('Smart')
+      expect(titles).not.toContain('Recently Deleted')
+
+      const work = account.folders.find((f) => f.title === 'Work')
+      const clients = work?.children.find((f) => f.title === 'Clients')
+      const acme = clients?.children.find((f) => f.title === 'Acme')
+      expect(acme?.id).toBe('FOLDER-22')
+      expect(acme?.noteCount).toBe(1)
+      // Work holds no notes itself but two live below it (Acme + its "Notes" leaf).
+      expect(work?.noteCount).toBe(0)
+      expect(work?.totalNoteCount).toBe(2)
+
+      // A ZPARENT cycle surfaces at the top level instead of vanishing.
+      const loop = account.folders.find((f) => f.title.startsWith('Loop'))
+      expect(loop).toBeDefined()
+      expect(loop?.totalNoteCount).toBe(1)
+
+      expect(tree.unfiledNoteCount).toBe(1)
+    })
+  })
+
+  it('imports only the picked folders, and everything when the selection is empty', async () => {
+    await withNestedDb(async (nestedDbPath) => {
+      const at = (...segments: string[]): boolean =>
+        fs.existsSync(path.join(tempVault.path, 'Apple Notes', ...segments))
+
+      const picked = importContext.createImportContext('an-pick', new AbortController().signal)
+      const pickedSummary = await importer.appleNotesImporter.run(
+        { sourcePaths: [nestedDbPath], options: { folderIds: ['FOLDER-22'] } },
+        picked
+      )
+      expect(pickedSummary.imported).toBe(1)
+      expect(at('Work', 'Clients', 'Acme', 'Work Acme Note.md')).toBe(true)
+      expect(at('Personal', 'Acme', 'Personal Acme Note.md')).toBe(false)
+
+      // Unfiled notes are their own row in the picker, selectable on their own.
+      const unfiled = importContext.createImportContext('an-unfiled', new AbortController().signal)
+      const unfiledSummary = await importer.appleNotesImporter.run(
+        { sourcePaths: [nestedDbPath], options: { folderIds: [], includeUnfiledNotes: true } },
+        unfiled
+      )
+      expect(unfiledSummary.imported).toBe(1)
+      expect(at('Unfiled Note.md')).toBe(true)
+
+      // Empty options (older caller, or a failed folder scan) → import everything.
+      const all = importContext.createImportContext('an-all', new AbortController().signal)
+      const allSummary = await importer.appleNotesImporter.run(
+        { sourcePaths: [nestedDbPath], options: {} },
+        all
+      )
+      expect(allSummary.imported).toBe(8)
+    })
   })
 
   it('maps a permission-denied database to a Full Disk Access error', async () => {

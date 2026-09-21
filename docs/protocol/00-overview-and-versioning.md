@@ -57,7 +57,7 @@ together**. A client MUST treat each independently.
 | `PACK_VERSION`                                 | `1`                 | the MPAK container header and footer             | `packages/contracts/src/pack-format.ts:60`                              |
 | `BRIDGE_PROTOCOL_VERSION`                      | `1`                 | the host↔editor-bundle bridge, not a wire format | `packages/contracts/src/webview-bridge.ts:22`                           |
 | `providerAuthVersion` / `vaultTransferVersion` | literal `1`         | the two optional linking blocks                  | `packages/contracts/src/linking-api.ts:3`, `:36`, `:40`                 |
-| signature payload "v1"                         | shape, not a number | the signed CBOR field set                        | `packages/contracts/src/crypto.ts:205-222` (`SignaturePayloadV1Schema`) |
+| signature payload "v1"                         | shape, not a number | the signed CBOR field set                        | `packages/contracts/src/crypto.ts:179-196` (`SignaturePayloadV1Schema`) |
 
 `BRIDGE_PROTOCOL_VERSION` is listed for completeness and is **not** a wire
 version: it versions the JSON bridge between a host application and its editor
@@ -180,7 +180,7 @@ read from every non-test throw site under `apps/sync-server/src`.
 | `LINKING_DUPLICATE_SESSION`   | —                         | **no producer with an explicit status**                                                                                                   |
 | `LINKING_CONCURRENT_ATTEMPT`  | 409                       | another device is mid-link                                                                                                                |
 | `LINKING_SECRET_INVALID`      | 403                       | wrong `linkingSecret` or wrong scan MAC                                                                                                   |
-| `LINKING_IP_MISMATCH`         | 403                       | see chapter 03 and issue #2184                                                                                                            |
+| `LINKING_IP_MISMATCH`         | 403                       | **no producer since #2184**; only an older server can still send it. See chapter 03 §3.11                                                 |
 | `SYNC_ITEM_NOT_FOUND`         | 404                       |                                                                                                                                           |
 | `SYNC_VERSION_CONFLICT`       | —                         | **classified in telemetry only** (`apps/sync-server/src/services/sync-telemetry.ts:188`); no route returns it. See chapter 05, Q05.5      |
 | `SYNC_INVALID_SIGNATURE`      | 403                       | the item's signature did not verify                                                                                                       |
@@ -302,22 +302,22 @@ outside the retry budget.
 below were recounted against the working tree**; the outline this chapter was
 planned from states 25 for `SYNC_ITEM_TYPES`, which is wrong.
 
-| List                               | Members | Citation                                     | Membership                                                   |
-| ---------------------------------- | ------: | -------------------------------------------- | ------------------------------------------------------------ |
-| `SYNC_ITEM_TYPES`                  |  **26** | `packages/contracts/src/sync-api.ts:7-34`    | every type the server knows                                  |
-| `RECORD_SYNC_ITEM_TYPES`           |      25 | `packages/contracts/src/sync-api.ts:36-62`   | `SYNC_ITEM_TYPES` minus `attachment`                         |
-| `RECORD_CLOCK_REQUIRED_ITEM_TYPES` |      24 | `packages/contracts/src/sync-api.ts:64-89`   | `RECORD_SYNC_ITEM_TYPES` minus `settings`                    |
-| `CRDT_SYNC_ITEM_TYPES`             |       1 | `packages/contracts/src/sync-api.ts:91`      | `['note']` — **wrong today**, see chapter 07 and issue #2186 |
-| `LEGACY_RECORD_SYNC_ITEM_TYPES`    |      15 | `packages/contracts/src/sync-api.ts:105-121` | frozen forever; what a header-less client is served          |
-| `ENCRYPTABLE_ITEM_TYPES`           |      25 | `packages/contracts/src/sync-api.ts:127-153` | `SYNC_ITEM_TYPES` minus `attachment`                         |
+| List                               | Members | Citation                                     | Membership                                                      |
+| ---------------------------------- | ------: | -------------------------------------------- | --------------------------------------------------------------- |
+| `SYNC_ITEM_TYPES`                  |  **26** | `packages/contracts/src/sync-api.ts:7-34`    | every type the server knows                                     |
+| `RECORD_SYNC_ITEM_TYPES`           |      25 | `packages/contracts/src/sync-api.ts:36-62`   | `SYNC_ITEM_TYPES` minus `attachment`                            |
+| `RECORD_CLOCK_REQUIRED_ITEM_TYPES` |      24 | `packages/contracts/src/sync-api.ts:64-89`   | `RECORD_SYNC_ITEM_TYPES` minus `settings`                       |
+| `CRDT_SYNC_ITEM_TYPES`             |       2 | `packages/contracts/src/sync-api.ts:101`     | `['note', 'journal']` — body types on the CRDT feed, chapter 07 |
+| `LEGACY_RECORD_SYNC_ITEM_TYPES`    |      15 | `packages/contracts/src/sync-api.ts:115-131` | frozen forever; what a header-less client is served             |
+| `ENCRYPTABLE_ITEM_TYPES`           |      25 | `packages/contracts/src/sync-api.ts:137-163` | `SYNC_ITEM_TYPES` minus `attachment`                            |
 
 `SYNC_OPERATIONS` is `['create', 'update', 'delete']`
-(`packages/contracts/src/sync-api.ts:125`).
+(`packages/contracts/src/sync-api.ts:135`).
 
 `LEGACY_RECORD_SYNC_ITEM_TYPES` is frozen and MUST NOT grow: it is what a
 pre-negotiation binary is served, and adding a type to it reaches a client whose
 enum rejects it, failing a whole page and advancing that device's cursor past
-good data (`packages/contracts/src/sync-api.ts:93-104`).
+good data (`packages/contracts/src/sync-api.ts:103-114`).
 
 This feature's client subscribes to **thirteen** types (chapter 13).
 
@@ -341,7 +341,7 @@ Four obligations bind every chapter.
    edit to this chapter — and a reviewer is then looking at the fact tables.
 
    ```
-   protocol-constants-sha256: 0fe9875851540e984215156440fccd8d0f50c34d97162aef22d00609efc7264d
+   protocol-constants-sha256: 14bb026f1d764b283ffa2c078b760328cd8ac2ff4aae3dd1bd4269ba312c8848
    ```
 
    To update it: change the constant, run
@@ -362,17 +362,22 @@ questions, all labelled `protocol-spec`. Where a chapter describes behaviour one
 of them changes, the chapter states the current behaviour, cites the issue, and
 marks what will change. **None of them is the Rust core's to work around.**
 
-| Issue | Subject                                                             | Chapter |
-| ----- | ------------------------------------------------------------------- | ------- |
-| #2179 | `_offline` reaches the wire                                         | 06      |
-| #2180 | the push-build / pull-apply race                                    | 06      |
-| #2181 | `compactYDoc` drops unknown Y.Doc roots                             | 12      |
-| #2182 | `cancelled` is a persisted linking status missing from the contract | 03      |
-| #2183 | desktop strips unknown payload keys                                 | 13      |
-| #2184 | relax `LINKING_IP_MISMATCH`                                         | 03      |
-| #2185 | mandate a canonical value comparison                                | 06      |
-| #2186 | the journal CRDT constants                                          | 07      |
-| #2187 | return `revision` from a snapshot push                              | 07      |
+| Issue | Subject                                                                    | Chapter |
+| ----- | -------------------------------------------------------------------------- | ------- |
+| #2179 | `_offline` reaches the wire                                                | 06      |
+| #2180 | the push-build / pull-apply race — **closed, not a divergence**            | 06      |
+| #2181 | `compactYDoc` drops unknown Y.Doc roots                                    | 12      |
+| #2182 | `cancelled` is a persisted linking status — **fixed, now in the contract** | 03      |
+| #2183 | desktop strips unknown payload keys                                        | 13      |
+| #2184 | relax `LINKING_IP_MISMATCH`                                                | 03      |
+| #2185 | mandate a canonical value comparison                                       | 06      |
+| #2186 | the journal CRDT constants — **fixed**                                     | 07      |
+| #2187 | return `revision` from a snapshot push                                     | 07      |
+
+#2180 was re-examined against the code and closed: the mirrored merge it
+describes is real, but the merged row is re-queued and an equal clock applies
+rather than skips, so both devices converge within a sync cycle (chapter 06
+§6.6.2). The convergence properties it rests on are normative for the core.
 
 Four decisions taken on 2026-09-13 are **not** re-litigated by any chapter:
 relaxing `LINKING_IP_MISMATCH` (#2184), mandating a canonical value comparison

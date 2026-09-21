@@ -23,6 +23,8 @@ import type { ImportMessageCode, ImportStatusCode } from '@memry/importers/messa
 const IMPORT_MESSAGE_KEYS: Record<ImportMessageCode, string> = {
   readFileFailed: 'import.messages.readFileFailed',
 
+  'appleNotes.lockedNote': 'import.messages.appleNotes.lockedNote',
+
   'csv.noHeaders': 'import.messages.csv.noHeaders',
   'csv.emptyTitle': 'import.messages.csv.emptyTitle',
   'csv.columns': 'import.messages.csv.columns',
@@ -92,4 +94,25 @@ export function formatImportMessage(message: ImportPreviewMessage): string {
   return typeof translated === 'string' && translated.length > 0 && translated !== key
     ? translated
     : message.message
+}
+
+/**
+ * One line of the summary's "why items were skipped" list.
+ *
+ * A coded reason owns its whole sentence and gets `count` as an interpolation
+ * value ("3 locked notes were not imported; …"). A reason that is only text —
+ * a plain string, or a code this build cannot translate — is wrapped in the
+ * generic "{count} items: {reason}" line so the count never goes missing.
+ */
+export function formatSkippedReason(reason: ImportPreviewMessage, count: number): string {
+  const message = typeof reason === 'string' ? { message: reason } : reason
+  const translated = message.code
+    ? formatImportMessage({ ...message, params: { count, ...message.params } })
+    : null
+  if (translated !== null && translated !== message.message) return translated
+
+  return getI18n().getFixedT(null, 'settings')('import.dialog.summary.skippedReason', {
+    reason: message.message,
+    count
+  })
 }

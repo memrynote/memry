@@ -173,7 +173,9 @@ function createDb(existing: Record<string, unknown> | null = null) {
     run,
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({ get }))
+        where: vi.fn(() => ({ get })),
+        // Folder subtree reads scan the table and filter in JS.
+        all: vi.fn(() => (existing ? [existing] : []))
       }))
     })),
     insert: vi.fn(() => ({

@@ -17,7 +17,7 @@ import type {
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { LabeledCheckbox } from '@/components/ui/labeled-checkbox'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { extractErrorMessage, unwrapIpcResult as unwrap } from '@/lib/ipc-error'
 
 export interface OneNotePanelState {
   /** True when an import can start (connected + at least one section picked). */
@@ -28,19 +28,6 @@ export interface OneNotePanelState {
 interface OneNoteImportPanelProps {
   disabled: boolean
   onStateChange: (state: OneNotePanelState) => void
-}
-
-/**
- * IPC commands resolve failures as `{ success: false, error }` instead of
- * rejecting, so every response has to be checked before it is used — an
- * unchecked envelope surfaces as a property-access crash instead of the real
- * error (see `lib/ipc-error`).
- */
-function unwrap<T>(result: T | { success: false; error?: string }, fallback: string): T {
-  if (result && typeof result === 'object' && (result as { success?: boolean }).success === false) {
-    throw new Error((result as { error?: string }).error || fallback)
-  }
-  return result as T
 }
 
 function sectionIdsOfGroup(group: OneNoteSectionGroupDto): string[] {

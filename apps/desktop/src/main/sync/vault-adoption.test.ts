@@ -13,7 +13,16 @@ import { VAULT_KEY_VERIFIER_SETTING } from '../crypto/vault-key-state'
 
 const mocks = vi.hoisted(() => ({
   dataDb: null as object | null,
-  userData: '/userData'
+  userData: '/userData',
+  accountVaults: [] as Array<{ vaultUuid: string; itemCount?: number }>,
+  accountVaultsError: null as Error | null
+}))
+
+vi.mock('./http-client', () => ({
+  getFromServer: vi.fn(() => {
+    if (mocks.accountVaultsError) return Promise.reject(mocks.accountVaultsError)
+    return Promise.resolve({ vaults: mocks.accountVaults })
+  })
 }))
 
 vi.mock('electron', () => ({
@@ -68,6 +77,7 @@ describe('adoptVaultLocally', () => {
   // Re-imported per test: `store.ts` caches the config file in a module-level
   // variable, and every test gets its own userData directory.
   let adoptVaultLocally: typeof import('./vault-adoption').adoptVaultLocally
+  let adoptAccountVaultIfAbsent: typeof import('./vault-adoption').adoptAccountVaultIfAbsent
   let getOrCreateVaultUuid: typeof import('../agent/storage/vault-id').getOrCreateVaultUuid
   let resetVaultUuidCache: typeof import('../agent/storage/vault-id').resetVaultUuidCache
   let getPendingCrdtStoreRename: typeof import('../store').getPendingCrdtStoreRename
@@ -83,7 +93,9 @@ describe('adoptVaultLocally', () => {
     db = createTestDataDb()
     mocks.dataDb = db
 
-    ;({ adoptVaultLocally } = await import('./vault-adoption'))
+    mocks.accountVaults = []
+    mocks.accountVaultsError = null
+    ;({ adoptVaultLocally, adoptAccountVaultIfAbsent } = await import('./vault-adoption'))
     ;({ getOrCreateVaultUuid, resetVaultUuidCache } = await import('../agent/storage/vault-id'))
     ;({
       getPendingCrdtStoreRename,
@@ -223,6 +235,54 @@ describe('adoptVaultLocally', () => {
 
     expect(getLegacyCrdtStoreClaim()).toBe(INITIATOR_UUID)
     expect(getLegacyCrdtStorePartitionPending()).toBe(INITIATOR_UUID)
+  })
+
+  describe('adoptAccountVaultIfAbsent', () => {
+    // The reported failure (#2226): OTP sign-in on a second machine registered
+    // the open folder's fresh uuid, so every push asked for a vault slot the
+    // plan did not have and sync was refused permanently.
+    it('adopts the account vault when the open vault is not one of them', async () => {
+      const localUuid = getOrCreateVaultUuid(db)
+      mocks.accountVaults = [{ vaultUuid: INITIATOR_UUID, itemCount: 798 }]
+
+      const effective = await adoptAccountVaultIfAbsent(db, localUuid, 'access-token')
+
+      expect(effective).toBe(INITIATOR_UUID)
+      expect(getOrCreateVaultUuid(db)).toBe(INITIATOR_UUID)
+    })
+
+    it('adopts the most populated vault on a multi-vault account', async () => {
+      const localUuid = getOrCreateVaultUuid(db)
+      mocks.accountVaults = [
+        { vaultUuid: 'c0ffee00-dead-4bee-8fed-0123456789ab', itemCount: 3 },
+        { vaultUuid: INITIATOR_UUID, itemCount: 798 }
+      ]
+
+      expect(await adoptAccountVaultIfAbsent(db, localUuid, 'access-token')).toBe(INITIATOR_UUID)
+    })
+
+    it('keeps the local uuid when it is already an account vault', async () => {
+      const localUuid = getOrCreateVaultUuid(db)
+      mocks.accountVaults = [{ vaultUuid: localUuid, itemCount: 12 }]
+
+      expect(await adoptAccountVaultIfAbsent(db, localUuid, 'access-token')).toBe(localUuid)
+      expect(getPendingCrdtStoreRename(localUuid)).toBeUndefined()
+    })
+
+    it('keeps the local uuid on a brand new account with no vaults', async () => {
+      const localUuid = getOrCreateVaultUuid(db)
+
+      expect(await adoptAccountVaultIfAbsent(db, localUuid, 'access-token')).toBe(localUuid)
+      expect(getOrCreateVaultUuid(db)).toBe(localUuid)
+    })
+
+    it('leaves the vault alone when the account list cannot be fetched', async () => {
+      const localUuid = getOrCreateVaultUuid(db)
+      mocks.accountVaultsError = new Error('offline')
+
+      expect(await adoptAccountVaultIfAbsent(db, localUuid, 'access-token')).toBe(localUuid)
+      expect(getOrCreateVaultUuid(db)).toBe(localUuid)
+    })
   })
 
   it('still has the pre-link history after the device links and restarts', async () => {

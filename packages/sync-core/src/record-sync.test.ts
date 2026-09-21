@@ -40,6 +40,52 @@ describe('RecordSyncController', () => {
     })
   })
 
+  it('rebinds offline placeholder ticks before a create leaves the device', () => {
+    // Dirty recovery routes never-synced rows to `enqueueCreate`, so this is
+    // the path an offline-created, offline-edited task actually takes on first
+    // sign-in (#2179). `_offline` must not reach the payload.
+    const queue = { enqueue: vi.fn() }
+    const state = new Map<string, { id: string; clock: VectorClock }>([
+      ['task-1', { id: 'task-1', clock: { _offline: 2 } }]
+    ])
+
+    const controller = new RecordSyncController({
+      type: 'task',
+      queue,
+      getDeviceId: () => 'device-A',
+      load: (itemId) => state.get(itemId),
+      recoverPendingChange: (itemId, deviceId) => {
+        const row = state.get(itemId)
+        if (!row || !(row.clock._offline ?? 0)) return null
+        const clock = { ...row.clock }
+        const ticks = clock._offline ?? 0
+        delete clock._offline
+        clock[deviceId] = (clock[deviceId] ?? 0) + ticks
+        const next = { ...row, clock }
+        state.set(itemId, next)
+        return next
+      },
+      applyLocalChange: ({ itemId, local, deviceId }) => {
+        const next = {
+          ...local,
+          clock: { ...local.clock, [deviceId]: (local.clock[deviceId] ?? 0) + 1 }
+        }
+        state.set(itemId, next)
+        return next
+      },
+      serialize: (local) => local
+    })
+
+    controller.enqueueCreate('task-1')
+
+    expect(queue.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: 'create',
+        payload: JSON.stringify({ id: 'task-1', clock: { 'device-A': 3 } })
+      })
+    )
+  })
+
   it('tracks missing-device changes without enqueueing when an offline handler exists', () => {
     const queue = { enqueue: vi.fn() }
     const handleMissingDevice = vi.fn()

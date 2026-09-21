@@ -88,7 +88,17 @@ export const RECORD_CLOCK_REQUIRED_ITEM_TYPES = [
   'home_page'
 ] as const
 
-export const CRDT_SYNC_ITEM_TYPES = ['note'] as const
+/**
+ * Item types whose body travels the CRDT feed rather than the record envelope.
+ *
+ * Journals belong here: their body opens a Y.Doc keyed by the journal record's
+ * id (`apps/desktop/src/main/journal/runtime-effects.ts`), pull routes `journal`
+ * records into the CRDT body feed (`packages/sync-client/src/pull/engine.ts`),
+ * and `journalHandler` defers concurrent body merges to the CRDT. The CRDT wire
+ * carries no item type, so this list scopes nothing on the server — it only has
+ * to stay true for clients reading it.
+ */
+export const CRDT_SYNC_ITEM_TYPES = ['note', 'journal'] as const
 
 /**
  * The record sync item types understood by every client shipped BEFORE

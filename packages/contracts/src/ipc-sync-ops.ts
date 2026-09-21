@@ -49,6 +49,11 @@ export type SyncErrorCategory =
   // user to pay again (docs/protocol/11-client-policy.md §11.7.1).
   | 'sync_vault_limit_exceeded'
   | 'certificate_pin_failed'
+  // This device's keychain signing key is not the key its device id is
+  // registered under, so the server rejects every signature it produces
+  // (SYNC_INVALID_SIGNATURE) and no retry can ever succeed. Only
+  // re-registration fixes it.
+  | 'device_key_mismatch'
   | 'unknown'
 
 export interface GetSyncStatusResult {

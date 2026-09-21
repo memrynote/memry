@@ -29,6 +29,7 @@ import {
   getWindowBounds,
   setWindowBounds,
   getCrdtInMemorySessions,
+  getCrdtPersistenceGuard,
   recordCrdtPersistenceOutcome
 } from './store'
 
@@ -222,6 +223,17 @@ describe('store', () => {
       expect(recordCrdtPersistenceOutcome(false)).toBe(2)
       expect(recordCrdtPersistenceOutcome(false)).toBe(3)
       expect(getCrdtInMemorySessions()).toBe(3)
+    })
+
+    // #2217: the streak is what the preflight gate gives up on, and giving up
+    // may only ever be scoped to the build that earned it — a new binary is the
+    // retry.
+    it('stamps the build that owns the streak and drops it when the store returns', () => {
+      recordCrdtPersistenceOutcome(false)
+      expect(getCrdtPersistenceGuard()).toEqual({ sessions: 1, appVersion: '1.0.0' })
+
+      recordCrdtPersistenceOutcome(true)
+      expect(getCrdtPersistenceGuard()).toEqual({ sessions: 0, appVersion: undefined })
     })
 
     it('forgets the streak the moment the store opens again', () => {

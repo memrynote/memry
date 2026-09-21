@@ -119,6 +119,16 @@ function classifyServerError(error: SyncServerError, code?: string): SyncErrorIn
       retryable: false
     }
   }
+  if (error.statusCode === 403 && code === 'SYNC_INVALID_SIGNATURE') {
+    // The signature this device produced does not verify against the public
+    // key its device id is registered under. Resending is refused identically
+    // every time, so this must not look retryable (#2218).
+    return {
+      category: 'device_key_mismatch',
+      message: 'errors:sync.deviceKeyMismatch',
+      retryable: false
+    }
+  }
   if (error.statusCode === 402 || error.serverError?.includes('SYNC_PAYMENT_REQUIRED')) {
     // 402 carries two opposite facts. SYNC_VAULT_LIMIT_EXCEEDED means the plan
     // is ACTIVE and this vault is one more than it syncs; answering that with

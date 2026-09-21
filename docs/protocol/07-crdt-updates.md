@@ -58,29 +58,25 @@ but a client MUST NOT reject an id that does not, because journal ids
 **A core that is handed an id MUST validate it against the grammar rather than
 mint a replacement.** Replacing a caller's id is how the same note becomes two.
 
-### 7.1.1 The constants are wrong today (#2186)
+### 7.1.1 The constants (#2186, fixed)
 
-`CRDT_SYNC_ITEM_TYPES = ['note']`
-(`packages/contracts/src/sync-api.ts:91`) and `CrdtSyncItemType` (`:163`) are
-referenced only by tests. `EncryptedCrdtItemSchema.type` is `z.literal('note')`
-(`packages/contracts/src/crypto.ts:194`) on a type that matches nothing on the
-wire at all (chapter 04 §4.12.1).
+`CRDT_SYNC_ITEM_TYPES` was `['note']` and is now `['note', 'journal']`
+(`packages/contracts/src/sync-api.ts:101`), with `CrdtSyncItemType` (`:173`)
+derived from it. The dead `EncryptedCrdtItem` / `EncryptedCrdtItemSchema` pair
+was removed in the same change (chapter 04 §4.12.1).
 
 **Decision, 2026-09-13 — correct the constants; do not scope them.**
-"Record-envelope-scoped only" would be a false statement: the record envelope's
-type set is `ENCRYPTABLE_ITEM_TYPES`
-(`packages/contracts/src/crypto.ts:179`), which already contains `journal`
-(`packages/contracts/src/sync-api.ts:134`).
+"Record-envelope-scoped only" would have been a false statement: the record
+envelope's type set is `ENCRYPTABLE_ITEM_TYPES`
+(`packages/contracts/src/crypto.ts:166`), which already contains `journal`
+(`packages/contracts/src/sync-api.ts:144`).
 
-The corrections are `packages/contracts/src/sync-api.ts:91` becoming
-`['note', 'journal']`, its test
-(`packages/contracts/src/sync-api.test.ts:89-91`), and either deleting the dead
-`EncryptedCrdtItem` pair or widening its `type`. Tracked as **#2186**.
+Neither constant scopes anything at runtime — the CRDT wire carries no item type
+— so this is a correctness fix for clients reading the contract, not a wire
+change. Both are pinned by
+`packages/contracts/src/sync-api.test.ts:89-92`.
 
-**This chapter states the corrected rule. Where it differs from today's
-constants, the constants are wrong, not the chapter.**
-
-**Disposition of Q07.1: answered (decision: correct the constants, #2186).**
+**Disposition of Q07.1: answered (decision applied, #2186).**
 
 ## 7.2 Routes
 
@@ -167,14 +163,18 @@ Response: `{ notes: { <noteId>: { updates, hasMore } } }`, keyed by id — which
 is why the single form's flat shape above is worth stating separately.
 
 **`POST /sync/crdt/snapshot`** — request `{ noteId, snapshot }`, the snapshot
-being the base64 packed envelope. Response `{ sequenceNum }` (§7.13.4 — not
-`revision`).
+being the base64 packed envelope. Response `{ sequenceNum, revision }`
+(`apps/sync-server/src/routes/sync.ts:951`), the `revision` being the token the
+upsert just wrote (§7.13.4).
 
 **`POST /sync/crdt/snapshot/batch`** — request
 `{ snapshots: [{ noteId, snapshot }] }`, at most **50**, the lower cap because
 a snapshot may be 5 MiB decoded and roughly 6.7 MiB as base64. `snapshot` is
 deliberately unbounded per entry: an oversized payload is a per-note rejection,
-not a malformed batch.
+not a malformed batch. Response `{ results: [...] }`, one entry per request
+entry in request order, each `{ noteId, accepted: true, sequenceNum, revision }`
+or `{ noteId, accepted: false, reason }`
+(`apps/sync-server/src/services/crdt.ts:410-412`).
 
 `POST /sync/crdt/updates` takes
 `{ noteId: string, updates: string[] }` — the updates being base64 packed
@@ -397,17 +397,22 @@ table only through
 `packages/sync-client/src/pull/store.ts:60-65`). **Under today's scope every
 stored snapshot row is server-originated.**
 
-When a client starts pushing snapshots, `server_revision` is **undefined at write
-time**, because the push response returns `{ sequenceNum }` and **not** the
-revision (`apps/sync-server/src/routes/sync.ts:947`). The two options are
-returning `revision` from the snapshot routes (additive; old clients ignore it),
-or storing NULL and leaning on the `sequenceNum > cursor` guard
-(`packages/sync-client/src/pull/crdt-pull.ts:197`), which already prevents a self
-re-download. Tracked as **#2187**.
+A client that pushes a snapshot learns the revision it wrote from the push
+response: both snapshot routes carry it (`apps/sync-server/src/routes/sync.ts:951`
+for the single note, the accepted batch outcome at
+`apps/sync-server/src/services/crdt.ts:410-412`), and it is the same token the
+upsert bound, per push rather than per batch
+(`apps/sync-server/src/services/crdt.ts:335`, `:559`). **#2187**, resolved as the
+additive option: the field is new, so old clients reading these bodies through an
+unvalidated cast ignore it.
 
-**Until #2187 lands, a client that pushes a snapshot MUST store a NULL local
-revision rather than inventing one**, because an invented token can collide with
-a server revision and suppress a baseline the client needed.
+**A client that does not see a `revision` in the push response MUST store a NULL
+local revision rather than inventing one** — that is the case against an older
+server — because an invented token can collide with a server revision and
+suppress a baseline the client needed. Storing NULL remains correct on any
+server: the `sequenceNum > cursor` guard
+(`packages/sync-client/src/pull/crdt-pull.ts:197`) already prevents a self
+re-download.
 
 **Disposition of Q07.2: answered (the gate is MUST, the cadence is SHOULD, there
 is no MUST-snapshot).**

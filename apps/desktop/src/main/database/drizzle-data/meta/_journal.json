@@ -400,6 +400,13 @@
       "when": 1787399559433,
       "tag": "0056_property_definition_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "6",
+      "when": 1787485959433,
+      "tag": "0057_sync_unknown_fields",
+      "breakpoints": true
     }
   ]
 }

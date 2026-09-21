@@ -23,7 +23,7 @@ inputs produce the **same winner and the same conflict set**, with no appeal to
 - `getTick(clock, deviceId)` is `clock[deviceId] ?? 0` (`:43`).
 
 `_offline` is a reserved pseudo device id, the literal string `_offline`
-(`packages/contracts/src/sync-api.ts:173`). **The clock algebra gives it no
+(`packages/contracts/src/sync-api.ts:183`). **The clock algebra gives it no
 special treatment**: it is an ordinary key in `increment`, `merge` and `compare`.
 It is special only in the merge tie-break (§6.3) and in rebinding (§6.6).
 
@@ -31,7 +31,7 @@ It is special only in the merge tie-break (§6.3) and in rebinding (§6.6).
 
 **Normative.** `clockTotal(clock)` is the plain sum of **every** tick in the
 clock, `_offline` included; no key is filtered
-(`packages/sync-client/src/field-merge.ts:47-51`).
+(`packages/sync-client/src/field-merge.ts:74-78`).
 
 A second implementation MUST accumulate in a 64-bit signed integer. Key iteration
 order is irrelevant to the sum.
@@ -39,24 +39,24 @@ order is irrelevant to the sum.
 ## 6.3 The complete winner-selection rule
 
 **Normative**, per field `f`, iterating `syncableFields` **in list order**
-(`packages/sync-client/src/field-merge.ts:90`):
+(`packages/sync-client/src/field-merge.ts:117`):
 
 1. `L = localFieldClocks[f] ?? {}`, `R = remoteFieldClocks[f] ?? {}`
-   (`:91-92`). **A missing field clock is the empty clock.**
-2. `tL = clockTotal(L)`, `tR = clockTotal(R)` (`:94-95`).
-3. `cmp = compare(L, R)` (`:93`). **Computed, but used only for the conflict
+   (`:118-119`). **A missing field clock is the empty clock.**
+2. `tL = clockTotal(L)`, `tR = clockTotal(R)` (`:121-122`).
+3. `cmp = compare(L, R)` (`:120`). **Computed, but used only for the conflict
    flag — never for the winner.**
-4. `differ = canonical(vL) != canonical(vR)` (`:100`; see §6.4).
+4. `differ = canonical(vL) != canonical(vR)` (`:127`; see §6.4).
 5. Winner:
-   - `tR > tL` → remote (`:102-103`)
-   - `tL > tR` → local (`:104-105`)
+   - `tR > tL` → remote (`:129-130`)
+   - `tL > tR` → local (`:131-132`)
    - `tL == tR` → **local iff `'_offline' ∈ keys(L)` and `'_offline' ∉ keys(R)`
-     and `differ`** (`:107-110`); **otherwise remote** (`:111-112`).
+     and `differ`** (`:134-137`); **otherwise remote** (`:138-139`).
 6. Conflict flag, **only inside the tie branch**: `cmp === 'concurrent' &&
-differ` (`:114-124`). The recorded conflict carries `mergedClock =
-merge(L, R)` (`:122`).
+differ` (`:141-151`). The recorded conflict carries `mergedClock =
+merge(L, R)` (`:149`).
 7. `mergedFieldClocks[f] = merge(L, R)` **unconditionally**, on every field,
-   whichever branch won (`:127`).
+   whichever branch won (`:154`).
 8. `merged[f] = winner` **even when the winner is `undefined`**; the caller's
    spread then leaves that column untouched
    (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:170-171`,
@@ -67,7 +67,7 @@ Three things a second implementation must get exactly right:
 - **The winner is chosen by sum of ticks, never by `compare`.**
 - **The `_offline` tie-break is a key-presence test, not a tick-value test**:
   `OFFLINE_CLOCK_DEVICE_ID in localFC`
-  (`packages/sync-client/src/field-merge.ts:108`), so `{_offline: 0}` counts as
+  (`packages/sync-client/src/field-merge.ts:135`), so `{_offline: 0}` counts as
   present. Note the asymmetry with §6.6: `rebindClockDevice` only acts when the
   tick is `> 0` (`packages/sync-client/src/offline-clock.ts:41`), so a
   zero-valued `_offline` key survives rebinding **and** still wins ties.
@@ -116,17 +116,18 @@ by `packages/sync-client/src/field-merge.test.ts:120-141`, row 4 by
 
 ## 6.4 Value equality — Q06.3
 
-### 6.4.1 What the code does today
+### 6.4.1 What the code did before #2185
 
-`JSON.stringify(a) !== JSON.stringify(b)` over the raw JavaScript values
-(`packages/sync-client/src/field-merge.ts:100`). Reproducing that in Rust means
-reproducing ECMAScript `JSON.stringify` byte for byte: `undefined` differs from
-`null` while `undefined` equals `undefined`; **object key order is significant**,
-in ES own-property order (integer-like keys ascending first, then string keys in
-insertion order); nested `undefined` omits a key in an object but becomes `null`
-in an array; `NaN` and `±Infinity` become `null`; `-0` becomes `0`; numbers use
-JavaScript shortest-round-trip formatting with the `1e+21` exponent form that
-`serde_json` does not produce; lone surrogates escape as `\uXXXX`.
+`JSON.stringify(a) !== JSON.stringify(b)` over the raw JavaScript values.
+Reproducing that in Rust means reproducing ECMAScript `JSON.stringify` byte for
+byte: `undefined` differs from `null` while `undefined` equals `undefined`;
+**object key order is significant**, in ES own-property order (integer-like keys
+ascending first, then string keys in insertion order); nested `undefined` omits a
+key in an object but becomes `null` in an array; `NaN` and `±Infinity` become
+`null`; `-0` becomes `0`; numbers use JavaScript shortest-round-trip formatting
+with the `1e+21` exponent form that `serde_json` does not produce; lone
+surrogates escape as `\uXXXX`. **This is history, not the rule; §6.4.2 is the
+rule.**
 
 **Only one field in scope carries an object**: `repeatConfig` in
 `TASK_SYNCABLE_FIELDS` (`packages/sync-client/src/field-merge.ts:22`,
@@ -151,8 +152,12 @@ normative rule.** `differ` is computed over a canonical form:
 Consequently `{a:1,b:2}` and `{b:2,a:1}` are **equal**, and `null` and
 `undefined` **differ**.
 
-`packages/sync-client/src/field-merge.ts:100` changes to match. Tracked as
-**#2185**. This chapter states the canonical form, not `JSON.stringify`.
+`valuesEqual` (`packages/sync-client/src/field-merge.ts:57-72`, called at
+`:127`) implements it: a recursive structural comparison, so key order cannot
+reach the result and no canonical string is built. Arrays stay
+**order-significant**; a key whose value is `undefined` compares as absent.
+Shipped for **#2185**. This chapter states the canonical form, not
+`JSON.stringify`.
 
 **Negative zero canonicalises to `0`.** IEEE 754 has two spellings of zero and
 the three rules above do not choose between them, which leaves the one hole a
@@ -168,13 +173,12 @@ order and number formatting.
 
 | Consumer                          | Effect                                                                                                                                                                                                                                                |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| winner rules 1 and 2 (`:102-105`) | do not read `differ`; unaffected                                                                                                                                                                                                                      |
-| winner rule 3 (`:109`)            | for an order-only difference both sides hold the same value, so only the stored serialisation changes: remote's key order persists instead of local's. **No semantic change.**                                                                        |
-| the conflict flag (`:114`)        | stops firing for such pairs, so there are fewer `'conflict'` returns (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:242`) and fewer `superseded` activity rows. **This is the only user-visible effect, and it removes false positives.** |
+| winner rules 1 and 2 (`:129-132`) | do not read `differ`; unaffected                                                                                                                                                                                                                      |
+| winner rule 3 (`:136`)            | for an order-only difference both sides hold the same value, so only the stored serialisation changes: remote's key order persists instead of local's. **No semantic change.**                                                                        |
+| the conflict flag (`:141`)        | stops firing for such pairs, so there are fewer `'conflict'` returns (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:242`) and fewer `superseded` activity rows. **This is the only user-visible effect, and it removes false positives.** |
 | the wire                          | nothing changes; the clock union is untouched                                                                                                                                                                                                         |
 
-**Disposition of Q06.3: answered (decision: mandate a canonical comparison,
-#2185).**
+**Disposition of Q06.3: answered and implemented (canonical comparison, #2185).**
 
 ## 6.5 Convergence — Q06.1 and Q06.2
 
@@ -195,7 +199,7 @@ and Y evaluates `W(Cy, Cx)`:
 **The asymmetric `_offline` test is the part that saves 3a and 3b**: from either
 seat, rule 3 means "the side carrying `_offline` wins". The branch that flips
 with the seat is the plain "remote wins" default at
-`packages/sync-client/src/field-merge.ts:111-112`.
+`packages/sync-client/src/field-merge.ts:138-139`.
 
 ### 6.5.2 Why 3c and 3d do not diverge in production
 
@@ -215,16 +219,32 @@ and a client that breaks any of them reintroduces divergence.**
   `{...task}` from the current row
   (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:367-379`), same for
   projects (`apps/desktop/src/main/sync/item-handlers/project-handler.ts:340`).
-- **P3 — after a merge apply, the merging device stores the union clock and does
-  not re-push.** `apps/desktop/src/main/sync/item-handlers/task-handler.ts:178-186`;
-  there is no enqueue anywhere in the merge branch (`:152-242`); the union comes
-  from `packages/sync-client/src/field-merge.ts:127` and
-  `packages/sync-client/src/item-handlers/types.ts:66`.
+- **P3 — a merge apply re-queues the merged row, and the union clock makes that
+  push dominate the server's row.** The handler itself stores the union clock
+  and enqueues nothing
+  (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:178-186`; union
+  from `packages/sync-client/src/field-merge.ts:154` and
+  `packages/sync-client/src/item-handlers/types.ts:66`), but a `'conflict'`
+  return re-queues the item one level up, in the pull coordinator
+  (`apps/desktop/src/main/sync/engine/conflict-report.ts:56-61`, called from
+  `apps/desktop/src/main/sync/engine/pull-coordinator.ts:861-864`, `:559-562`,
+  `:648-651` and `:942`), and an enqueue requests a push
+  (`apps/desktop/src/main/sync/runtime.ts:949`). The queued row is rebuilt from
+  the live — merged — row by P2, and its union clock has one component the
+  stored row lacks, so `detectReplay` accepts it.
+- **P4 — an EQUAL incoming clock applies the remote row, it does not skip it.**
+  `packages/sync-client/src/item-handlers/types.ts:67`. This is what settles the
+  two devices whose P3 re-pushes collide: the first is accepted, the second is
+  refused as a replay (`apps/sync-server/src/services/sync.ts:179-190`) and
+  marked done anyway
+  (`apps/desktop/src/main/sync/engine/push-coordinator.ts:299-305`), and the
+  refused device then pulls the accepted row under the same clock and takes it.
 
-Under P1 to P3 **at most one device ever runs `mergeFields` on a given concurrent
-pair**; the other sees its own row (`equal` → apply) or a strictly dominating one
-(`before` → apply). Trace, with ancestor `{X:1,Y:1}`, X editing `title` to
-`{X:2,Y:1}` and Y editing `title` to `{X:1,Y:2}`, both totals 3:
+In the ordinary interleavings P1 to P3 leave **at most one device running
+`mergeFields` on a given concurrent pair**; the other sees its own row (`equal` →
+apply) or a strictly dominating one (`before` → apply). Trace, with ancestor
+`{X:1,Y:1}`, X editing `title` to `{X:2,Y:1}` and Y editing `title` to
+`{X:1,Y:2}`, both totals 3:
 
 | Interleaving                   | Server row               | X ends                                       | Y ends                    | Merger |
 | ------------------------------ | ------------------------ | -------------------------------------------- | ------------------------- | ------ |
@@ -238,12 +258,19 @@ identically.
 **Core obligation — this is the load-bearing one.** An outbox that freezes the
 push payload at enqueue time reintroduces the 3c divergence **deterministically,
 not as a race**. A conforming client MUST rebuild the payload from the live row
-at send time (P2), MUST store the union clock after a merge apply without
-re-pushing (P3), and MUST implement rule 3's asymmetric key-presence test
+at send time (P2), MUST re-queue a merged item so the union-clocked row is
+pushed (P3), MUST apply — never skip — a remote row whose clock is EQUAL to the
+local one (P4), and MUST implement rule 3's asymmetric key-presence test
 exactly — a "symmetric" rewrite breaks 3a and 3b against desktop.
 
-**Disposition of Q06.1: answered (converges via P1 + P2 + P3, not via the merge
-rule).**
+P3 and P4 are what make the seat-dependent winner of 3c/3d survivable: the value
+that wins is whichever merged row the server accepted first, and every other
+device ends up on it. A core that stored the union clock **without** re-queueing
+would strand a pair of devices that both merged, on values they never push and
+that no later pull can dislodge until the item is edited again.
+
+**Disposition of Q06.1: answered (converges via P1 + P2 + P3 + P4, not via the
+merge rule).**
 
 ### 6.5.3 The tick sum is a proxy for edit count, not causality — Q06.2
 
@@ -263,7 +290,7 @@ logging; and MUST treat a missing field clock as `{}`.
 **Normative.** A field is reported as conflicted **iff** the field-clock totals
 are **equal**, `compare(L,R)` is `concurrent`, **and** the serialised values
 differ. The conflict block sits inside the tie branch
-(`packages/sync-client/src/field-merge.ts:106-125`, with the `isConcurrent &&
+(`packages/sync-client/src/field-merge.ts:133-152`, with the `isConcurrent &&
 valsDiffer` test at `:114` nested under the `else` of `:102`/`:104`).
 
 **A concurrent pair with unequal totals is resolved by the larger total and is
@@ -300,54 +327,88 @@ no-op when the tick is `<= 0` (`:41`, `:51`).
 **A clock containing `_offline` MUST never reach the server**, and rebinding MUST
 happen before the first push.
 
-### 6.6.1 Defect — `_offline` reaches the wire today (#2179)
+### 6.6.1 Fixed — `_offline` no longer rides the record create path (#2179)
 
-Desktop violates the rule above. `recoverDirtyItems` routes `syncedAt IS NULL`
-rows to `enqueueCreate`, not `enqueueRecoveredUpdate`
-(`apps/desktop/src/main/sync/dirty-recovery.ts:57-68` (`:58` picks `create` for a null `syncedAt`, `:67` enqueues it)), and rebinding
-runs only from `recoverPendingChange`, which only `enqueueRecoveredUpdate` calls
-(`packages/sync-core/src/record-sync.ts:114-142`). `applyLocalChange` increments
-the real device id but never strips `_offline`
-(`packages/sync-core/src/record-sync.ts:146-172`), and `seedUnclocked` only
-touches `clock IS NULL` rows
-(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:385-386`) so an
-offline-created task carrying `{_offline:1}` is not seeded. **The server filters
-nothing**: there is no reference to `_offline` anywhere under
-`apps/sync-server/src`.
+Desktop used to violate the rule above. `recoverDirtyItems` routes
+`syncedAt IS NULL` rows to `enqueueCreate`, not `enqueueRecoveredUpdate`
+(`apps/desktop/src/main/sync/dirty-recovery.ts:57-68`), and rebinding ran only
+from `recoverPendingChange`, which only `enqueueRecoveredUpdate` called;
+`applyLocalChange` increments the real device id but never strips `_offline`,
+and `seedUnclocked` only touches `clock IS NULL` rows
+(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:385-386`), so an
+offline-created task carrying `{_offline:1}` was never seeded either. Using the
+app with no account, creating and editing a task, then signing in shipped
+`clock = {_offline: 2, A: 1}` on the first recovery.
 
-Reproduction: use the app with no account, create and edit a task, then sign in;
-the first recovery ships `clock = {_offline: 2, A: 1}`. The existing test covers
-only the `syncedAt`-set path
-(`apps/desktop/src/main/sync/dirty-recovery.test.ts:166-200`). The hazard is
-already named in a code comment for notes at
-`packages/sync-client/src/offline-clock.ts:330-337`. A peer that later rebinds
-its own `_offline` also folds the **remote's** `_offline` ticks into its own
-device id (`packages/sync-client/src/offline-clock.ts:39-47`).
+**Fix.** `RecordSyncController.enqueueMutation` now calls `recoverPendingChange`
+before `applyLocalChange` (`packages/sync-core/src/record-sync.ts`), so every
+create *and* update of a record-shaped item rebinds and persists first. A row
+with nothing offline about it returns `null` and is untouched. Pinned by
+`packages/sync-core/src/record-sync.test.ts` and the create-path case in
+`apps/desktop/src/main/sync/dirty-recovery.test.ts`.
 
-**This is what makes case 3d of §6.5.1 reachable at all.** Tracked as **#2179**.
+**Residual, still open.** The fix reaches the types that implement
+`recoverPendingChange` — tasks and projects. Doc-clock-only types that mint
+`_offline` through `local-mutations.ts` (inbox, saved filters, templates, home
+pages, custom icons, bookmarks, reminders, canvases, canvas folders, task
+activity) have no rebinding hook, so their `_offline` still reaches the wire.
+Notes and journals are unaffected: `incrementNoteClockOffline` ticks the real
+device id and skips the bump when none is registered
+(`packages/sync-client/src/offline-clock.ts`). **The server filters nothing**:
+there is no reference to `_offline` anywhere under `apps/sync-server/src`.
+
+Why it matters wherever it remains: `_offline` is a device id two machines can
+both claim, so their clocks compare equal for edits that are genuinely
+concurrent, and a peer that later rebinds its own `_offline` folds the
+**remote's** ticks into its own device id
+(`packages/sync-client/src/offline-clock.ts:39-47`). **It is also what makes case
+3d of §6.5.1 reachable at all.**
 
 **Core obligation.** Never emit `_offline` on the wire. On inbound, treat it as an
 ordinary key with no special case, exactly as
 `packages/sync-client/src/vector-clock.ts` does, so clocks stay comparable with
 desktop's.
 
-### 6.6.2 Defect — the push-build / pull-apply race (#2180)
+### 6.6.2 The push-build / pull-apply race (#2180) — not a divergence
 
-**Undefined, do not rely on this.** Nothing serialises the push drain against the
-pull apply transaction. If device Y's push payload is built
-(`apps/desktop/src/main/sync/engine/push-coordinator.ts:608-623`) **before** Y's
-`applyUpsert` commits
-(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:137`) and is sent
-**after** X's row lands, both devices merge the same pair: X ends with `vy`, Y
-with `vx`, both under clock `{X:2,Y:2}`, neither re-pushes (P3), and both write a
-`superseded` activity row with the **same id**
-(`apps/desktop/src/main/tasks/activity-log.ts:385`, the id minted from
-`mergedClock`) and opposite `winningValue`.
+**Normative, and it supersedes the "undefined" note this section used to
+carry.** The race itself is real to describe: two devices can both run
+`mergeFields` on the same concurrent pair and end mirrored — X holding `vy`, Y
+holding `vx`, both under clock `{X:2,Y:2}`. **It does not leave them there.**
 
-**The result is permanent, silent divergence**, in a sub-second window per
-concurrent edit. No fix is chosen; the candidates are serialising the two, or
-re-pushing after a merge that changed the local value. Tracked as **#2180**. A
-conforming client MUST NOT depend on either outcome.
+On desktop the window is additionally narrow, because a push drain and a pull
+apply cannot interleave in the first place: both take the same engine sync lock
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:70`,
+`apps/desktop/src/main/sync/engine/pull-coordinator.ts:133`,
+`apps/desktop/src/main/sync/engine.ts:630-643`), which is held across the whole
+push including its `POST /sync/push`. Only the stale-lock watchdog
+(`apps/desktop/src/main/sync/engine.ts:686-697`, 15 minutes) can overlap them.
+A client without such a lock — or a core with a background outbox — hits the
+mirrored state routinely.
+
+What happens from the mirrored state, by P3 and P4 of §6.5.2:
+
+1. both devices return `'conflict'` and re-queue the merged row;
+2. both push it under the union clock; the first is accepted (one component
+   ahead of the stored row), the second is refused `SYNC_REPLAY_DETECTED` (no
+   component ahead of an identical clock) and its queue row is marked done;
+3. the refused device pulls the accepted row, whose clock EQUALS its own, and
+   `resolveClockConflict` applies it wholesale (P4).
+
+Both devices end on the value whose re-push landed first, within one sync cycle.
+Pinned by `apps/desktop/src/main/sync/engine/conflict-report.test.ts` and
+`packages/sync-client/src/item-handlers/types.test.ts`.
+
+**Residual, cosmetic.** Both devices also write a `superseded` activity row with
+the **same id**, minted from `mergedClock`
+(`apps/desktop/src/main/tasks/activity-log.ts:385`), carrying opposite
+`winningValue`s. One overwrites the other on the server (P1), so an activity
+entry can name as "winning" the value that the convergence step then discarded.
+The task itself is not affected.
+
+**Core obligation.** Implement P3 and P4. A core that merges without re-queueing,
+or that treats an equal clock as a no-op, turns this race back into the
+permanent divergence this section once described.
 
 ## 6.7 Field lists
 
@@ -371,7 +432,7 @@ homeNoteId
 ```
 
 **A field absent from the list is not merged at all** and does not appear in
-`merged` (`packages/sync-client/src/field-merge.ts:90`).
+`merged` (`packages/sync-client/src/field-merge.ts:117`).
 
 `initAllFieldClocks(docClock, fields)` seeds **every listed field** with a copy of
 the document clock (`packages/sync-client/src/field-merge.ts:41-45`). It is what

@@ -136,19 +136,6 @@ export interface EncryptedItem {
   fieldClocks?: Record<string, Record<string, number>>
 }
 
-export interface EncryptedCrdtItem {
-  id: string
-  type: 'note'
-  cryptoVersion: CryptoVersion
-  encryptedSnapshot: string
-  snapshotNonce: string
-  stateVector: string
-  encryptedKey: string
-  keyNonce: string
-  signature: string
-  signerDeviceId: string
-}
-
 export interface SignaturePayloadV1 {
   id: string
   type: string
@@ -189,19 +176,6 @@ export const EncryptedItemSchema = z.object({
   fieldClocks: FieldClocksSchema.optional()
 })
 
-export const EncryptedCrdtItemSchema = z.object({
-  id: z.string().min(1),
-  type: z.literal('note'),
-  cryptoVersion: z.number().int().min(1).max(99),
-  encryptedSnapshot: z.string().min(1),
-  snapshotNonce: z.string().min(1),
-  stateVector: z.string().min(1),
-  encryptedKey: z.string().min(1),
-  keyNonce: z.string().min(1),
-  signature: z.string().min(1),
-  signerDeviceId: z.string().min(1)
-})
-
 export const SignaturePayloadV1Schema = z.object({
   id: z.string().min(1),
   type: z.string().min(1),
@@ -226,5 +200,4 @@ export const SignaturePayloadV1Schema = z.object({
 // ============================================================================
 
 export type EncryptedItemInput = z.infer<typeof EncryptedItemSchema>
-export type EncryptedCrdtItemInput = z.infer<typeof EncryptedCrdtItemSchema>
 export type SignaturePayloadV1Input = z.infer<typeof SignaturePayloadV1Schema>

@@ -147,7 +147,7 @@ export const COVERED: readonly Covered[] = [
     slug: C00,
     label: 'CRDT_SYNC_ITEM_TYPES size',
     value: CRDT_SYNC_ITEM_TYPES.length,
-    spelledAs: ['| `CRDT_SYNC_ITEM_TYPES` | 1 |']
+    spelledAs: ['| `CRDT_SYNC_ITEM_TYPES` | 2 |']
   },
   {
     slug: C00,
@@ -222,7 +222,7 @@ export const COVERED: readonly Covered[] = [
     slug: C03,
     label: 'LINKING_SESSION_STATUSES',
     value: LINKING_SESSION_STATUSES,
-    spelledAs: ['`pending → scanned → approved → completed`', '`expired`']
+    spelledAs: ['`pending → scanned → approved → completed`', '`expired`', '`cancelled`']
   },
   {
     slug: C03,

@@ -78,9 +78,9 @@ class TagCategoryHandler extends BaseItemHandler<TagCategorySyncPayload> {
 
     let mergedClock: VectorClock | undefined = clock
     if (clock && existing.clock) {
-      const resolution = this.resolveClock(existing.clock as VectorClock | null, clock)
-      if (resolution.action === 'skip' || resolution.action === 'merge') {
-        log.info('Skipping remote tag category delete, local has unseen changes', { itemId })
+      const resolution = this.resolveDeleteClock(existing.clock as VectorClock | null, clock)
+      if (resolution.skip) {
+        log.info('Skipping remote tag category delete, local is ahead of the tombstone', { itemId })
         return 'skipped'
       }
       mergedClock = resolution.mergedClock
@@ -106,8 +106,7 @@ class TagCategoryHandler extends BaseItemHandler<TagCategorySyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(tagCategories).where(eq(tagCategories.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
   }
 
   buildPushPayload(

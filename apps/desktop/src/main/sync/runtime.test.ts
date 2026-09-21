@@ -242,7 +242,9 @@ vi.mock('../crypto', () => ({
 vi.mock('../store', () => ({
   store: {
     get: runtimeMocks.storeGet
-  }
+  },
+  // The folder-config backfill kicked off at runtime start bails on this.
+  getCurrentVaultPath: () => null
 }))
 
 vi.mock('../agent/storage/vault-id', () => ({
@@ -1049,7 +1051,7 @@ describe('sync runtime', () => {
 
   it('exposes engine dependency branches for signing keys, device keys, and calendar sync', async () => {
     const runtime = await loadRuntime()
-    runtimeMocks.currentDevice = { id: 'device-1', signingPublicKey: 'stale-public-key' }
+    runtimeMocks.currentDevice = { id: 'device-1', signingPublicKey: 'derived-public-key' }
     await runtime.startSyncRuntime()
 
     const deps = runtimeMocks.SyncEngine.instances[0].deps as {
@@ -1063,7 +1065,9 @@ describe('sync runtime', () => {
       publicKey: new Uint8Array([7, 8, 9]),
       deviceId: 'device-1'
     })
-    expect(runtimeMocks.db.updateRun).toHaveBeenCalledTimes(1)
+    // The row already holds the key this install derives, so nothing is
+    // rewritten — the mismatch branch is covered separately below.
+    expect(runtimeMocks.db.updateRun).not.toHaveBeenCalled()
 
     runtimeMocks.retrieveKey.mockResolvedValueOnce(null)
     await expect(deps.getSigningKeys()).resolves.toBeNull()
@@ -1090,6 +1094,28 @@ describe('sync runtime', () => {
     runtimeMocks.syncGoogleCalendarSource.mockRejectedValueOnce(new Error('google failed'))
     deps.calendarSyncOneSource('source-2')
     await Promise.resolve()
+  })
+
+  it('refuses to sign with a key the device is not registered under', async () => {
+    // The row is written from the keypair the device REGISTERED with, so a
+    // mismatch means the server holds a different public key for this device
+    // id. Handing the engine these keys signs every push with a key the server
+    // rejects, forever (#2218) — and rewriting the row only hides that.
+    const runtime = await loadRuntime()
+    runtimeMocks.currentDevice = { id: 'device-1', signingPublicKey: 'a-different-key' }
+    await runtime.startSyncRuntime()
+
+    const deps = runtimeMocks.SyncEngine.instances[0].deps as {
+      getSigningKeys: () => Promise<unknown>
+      onDeviceKeyMismatch: () => void
+    }
+
+    await expect(deps.getSigningKeys()).resolves.toBeNull()
+    // Same escalation the push coordinator reaches when the SERVER is the one
+    // that spots the mismatch.
+    expect(() => deps.onDeviceKeyMismatch()).not.toThrow()
+    expect(runtimeMocks.db.updateRun).not.toHaveBeenCalled()
+    expect(runtimeMocks.secureCleanup).toHaveBeenCalledWith(new Uint8Array([4, 5, 6]))
   })
 
   it('does not start or re-arm the sync runtime once app shutdown has begun', async () => {

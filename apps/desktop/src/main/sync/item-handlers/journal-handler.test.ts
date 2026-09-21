@@ -271,7 +271,7 @@ describe('journalHandler', () => {
       journalDate: '2026-05-10',
       clock: { 'device-a': 3 }
     })
-    expect(journalHandler.applyDelete(ctx, 'journal-1', { 'device-b': 1 })).toBe('skipped')
+    expect(journalHandler.applyDelete(ctx, 'journal-1', { 'device-a': 2 })).toBe('skipped')
 
     mockGetNoteMetadataById.mockReturnValueOnce({
       id: 'journal-1',
