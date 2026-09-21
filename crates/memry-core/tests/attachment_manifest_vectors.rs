@@ -161,7 +161,10 @@ fn a_tampered_envelope_is_refused_on_the_signature() {
     // A server-side swap of each signed field in turn. The manifest is the
     // only thing that names the file, so this is exactly the attack §14.4.1
     // exists against.
-    let swaps: [(&str, fn(&mut EncryptedAttachmentManifest)); 4] = [
+    /// One server-side swap: the field it touches, and how.
+    type Swap = (&'static str, fn(&mut EncryptedAttachmentManifest));
+
+    let swaps: [Swap; 4] = [
         ("encryptedManifest", |envelope| {
             envelope.encrypted_manifest = BASE64_STANDARD.encode(b"someone else's manifest");
         }),
