@@ -72,12 +72,21 @@ struct NoteReadView: View {
     ) {
         self.open = open
         _model = State(initialValue: NoteReadViewModel(route: route, reader: reader, filler: filler))
+        _composer = State(
+            initialValue: NoteAttachmentComposer(noteId: route.id, filler: filler)
+        )
     }
 
     init(model: NoteReadViewModel, open: ((NoteRoute) -> Void)? = nil) {
         self.open = open
         _model = State(initialValue: model)
+        _composer = State(
+            initialValue: NoteAttachmentComposer(noteId: model.route.id, filler: model.filler)
+        )
     }
+
+    /// Adds and removes this note's attachments.
+    @State private var composer: NoteAttachmentComposer
 
     /// The title of a wiki link that resolved to nothing, for the notice.
     @State private var brokenLink: String?
@@ -139,7 +148,12 @@ struct NoteReadView: View {
                                 }
                             },
                             tableContent: { model.tables[$0] },
-                            attachment: { model.attachments[$0] ?? .unknown }
+                            attachment: { model.attachments[$0] ?? .unknown },
+                            removeAttachment: { id in
+                                if await composer.detach(attachmentId: id) {
+                                    await model.refreshAttachments()
+                                }
+                            }
                         )
                     } else {
                         // No stack to push onto: the links are still drawn and
@@ -147,7 +161,12 @@ struct NoteReadView: View {
                         NoteBlocksView(
                             blocks: model.blocks,
                             tableContent: { model.tables[$0] },
-                            attachment: { model.attachments[$0] ?? .unknown }
+                            attachment: { model.attachments[$0] ?? .unknown },
+                            removeAttachment: { id in
+                                if await composer.detach(attachmentId: id) {
+                                    await model.refreshAttachments()
+                                }
+                            }
                         )
                     }
                 }
@@ -158,6 +177,16 @@ struct NoteReadView: View {
         }
         .background(Tokens.Canvas.background.color)
         .calmAnimation(.normal, value: model.phase)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NoteAttachmentPicker(composer: composer) { _ in
+                    // The reference list changed, so the bindings have to be
+                    // read again: that is what makes the new picture appear
+                    // in place rather than on the next note open.
+                    Task { await model.refreshAttachments() }
+                }
+            }
+        }
         .task {
             await model.loadIfNeeded()
             // After the body and its bindings are on screen, not before: the

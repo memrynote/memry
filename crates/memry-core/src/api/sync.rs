@@ -57,10 +57,13 @@ use zeroize::Zeroizing;
 use crate::api::auth::AuthSession;
 use crate::api::errors::{StorageError, SyncError};
 use crate::crypto::keys;
+use crate::crypto::sodium;
 use crate::domain::attachments;
+use crate::domain::notes;
 use crate::domain::reads;
 use crate::protocol;
 use crate::protocol::account::{self, AccountCipher};
+use crate::protocol::attachment_upload;
 use crate::protocol::attachments as protocol_attachments;
 use crate::protocol::types::Declaration;
 use crate::seams::reachability::Reachable;
@@ -193,6 +196,14 @@ fn now_ms() -> i64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0)
+}
+
+/// 128 bits of libsodium randomness, hex.
+fn hex_id() -> String {
+    sodium::random_bytes(16)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 fn count(value: usize) -> u32 {
@@ -519,7 +530,211 @@ impl VaultSync {
     }
 }
 
+#[uniffi::export(async_runtime = "tokio")]
 impl VaultSync {
+    /// Uploads a file and attaches it to a note (N214).
+    ///
+    /// The whole chain of §14.2–§14.5 in one call, because every step is
+    /// useless alone and a shell that could stop between them would leave
+    /// chunks in R2 that no manifest names.
+    ///
+    /// **The note's reference list is merged, never replaced.** A note can
+    /// embed several pictures and each upload lands separately, so replacing
+    /// drops every id but the last.
+    ///
+    /// The reference is recorded **after** the manifest is stored, in that
+    /// order: a note pointing at an attachment whose manifest is not there yet
+    /// shows a broken picture on every other device, while a manifest nothing
+    /// references yet is merely unreachable and is what `dereference` exists
+    /// to collect.
+    pub async fn upload_attachment(
+        &self,
+        note_id: String,
+        filename: String,
+        mime_type: String,
+        bytes: Vec<u8>,
+    ) -> Result<String, SyncError> {
+        let device_id = self.session.device_id()?;
+        let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
+        let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
+        let signing_key = self.session.signing_secret_key()?;
+
+        // One file key for every chunk, because the manifest wraps exactly one
+        // (§14.2). Fresh per attachment, never reused.
+        let file_key = Zeroizing::new(sodium::random_bytes(32));
+        // 128 bits of libsodium randomness, hex — the same shape a note id
+        // takes, and for the same reason: the id becomes a path parameter on
+        // `/sync/attachments/:attachment_id/manifest`.
+        let attachment_id = hex_id();
+
+        let chunks = attachment_upload::frame_chunks(
+            &bytes,
+            &file_key,
+            attachment_upload::DEFAULT_CHUNK_SIZE,
+            |_| sodium::random_bytes(24),
+        )
+        .map_err(attachment_error)?;
+
+        let session = attachment_upload::initiate(
+            &self.session.http(),
+            &attachment_id,
+            &filename,
+            bytes.len() as u64,
+            &chunks,
+        )
+        .await
+        .map_err(attachment_error)?;
+
+        // A failure part way leaves a session the server will expire on its
+        // own; cancelling is the tidy path and is not load-bearing.
+        if let Err(error) = self.put_all(&session, &chunks).await {
+            let _ = attachment_upload::cancel(&self.session.http(), &session.session_id).await;
+            return Err(error);
+        }
+
+        attachment_upload::complete(&self.session.http(), &session.session_id)
+            .await
+            .map_err(attachment_error)?;
+
+        let manifest = attachment_upload::build_manifest(
+            &attachment_id,
+            &filename,
+            &mime_type,
+            &bytes,
+            &chunks,
+            attachment_upload::DEFAULT_CHUNK_SIZE,
+            now_ms(),
+        );
+        let envelope = protocol::attachment_manifest::encrypt(
+            &manifest,
+            &file_key,
+            &vault_key,
+            &sodium::random_bytes(24),
+            &sodium::random_bytes(24),
+            &signing_key,
+            &device_id,
+        )
+        .map_err(|error| SyncError::AttachmentCorrupt {
+            what: error.to_string(),
+        })?;
+        attachment_upload::put_manifest(&self.session.http(), &attachment_id, &envelope)
+            .await
+            .map_err(attachment_error)?;
+
+        // Local cache first, then the reference: the row is what a placeholder
+        // reads, and the push is what tells every other device.
+        let manifest_json =
+            protocol::attachment_manifest::manifest_json(&manifest).map_err(|error| {
+                SyncError::AttachmentCorrupt {
+                    what: error.to_string(),
+                }
+            })?;
+        let manifest_text = String::from_utf8_lossy(&manifest_json).into_owned();
+        let remote_size = attachment_upload::encrypted_size(&chunks) as i64;
+        let local_path = self.write_bytes(&attachment_id, &bytes)?;
+
+        let id = attachment_id.clone();
+        let note = note_id.clone();
+        let now = now_ms();
+        self.db
+            .call(move |conn| {
+                attachments::put_manifest(
+                    conn,
+                    &id,
+                    &manifest_text,
+                    remote_size,
+                    &filename,
+                    &mime_type,
+                )?;
+                attachments::record_download(conn, &id, &local_path, now)?;
+                notes::add_attachment_reference(conn, &note, &id, &device_id, now)?;
+                Ok(())
+            })
+            .await?;
+
+        Ok(attachment_id)
+    }
+
+    /// Detaches an attachment from a note and releases its bytes (N215, N212).
+    ///
+    /// **Dereferencing is not optional here.** §14.8: "a client that later
+    /// gains the ability to delete an attachment MUST dereference", and
+    /// gaining it is exactly what this phase did. A client that dropped the
+    /// reference without telling the server would leak the user's own quota,
+    /// silently and permanently.
+    ///
+    /// The reference is dropped **before** the chunks are released, so a
+    /// failure between the two leaves bytes nothing points at — reachable
+    /// only by a later sweep — rather than a note pointing at bytes that are
+    /// gone.
+    pub async fn detach_attachment(
+        &self,
+        note_id: String,
+        attachment_id: String,
+    ) -> Result<(), SyncError> {
+        let device_id = self.session.device_id()?;
+        let id = attachment_id.clone();
+        let note = note_id.clone();
+        let now = now_ms();
+
+        let (row, still_referenced) = self
+            .db
+            .call(move |conn| {
+                notes::remove_attachment_reference(conn, &note, &id, &device_id, now)?;
+                let row = attachments::get(conn, &id)?;
+                // Another note may embed the same attachment. Releasing its
+                // chunks then would break that note's picture.
+                let others = attachments::for_note_count_excluding(conn, &id, &note)?;
+                Ok((row, others > 0))
+            })
+            .await?;
+
+        if still_referenced {
+            return Ok(());
+        }
+
+        if let Some(row) = row
+            && let Some(manifest) = row.manifest.as_deref()
+            && let Ok(manifest) =
+                serde_json::from_str::<protocol::attachment_manifest::AttachmentManifest>(manifest)
+        {
+            let hashes: Vec<String> = manifest
+                .chunks
+                .iter()
+                .map(|chunk| chunk.encrypted_hash.clone())
+                .collect();
+            attachment_upload::dereference(&self.session.http(), &hashes)
+                .await
+                .map_err(attachment_error)?;
+        }
+        Ok(())
+    }
+}
+
+impl VaultSync {
+    /// Every chunk up, by whichever transfer path the session offered.
+    async fn put_all(
+        &self,
+        session: &attachment_upload::UploadSession,
+        chunks: &[attachment_upload::FramedChunk],
+    ) -> Result<(), SyncError> {
+        for chunk in chunks {
+            match session.chunk_urls.get(&chunk.reference.encrypted_hash) {
+                Some(url) => {
+                    attachment_upload::put_chunk_presigned(&self.session.http(), url, chunk)
+                        .await
+                        .map_err(attachment_error)?
+                }
+                None => {
+                    attachment_upload::put_chunk(&self.session.http(), &session.session_id, chunk)
+                        .await
+                        .map_err(attachment_error)?
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Every chunk, by whichever transfer path this deployment offers (§14.6).
     ///
     /// Presign is tried once. `STORAGE_PRESIGN_UNAVAILABLE` is permanent for

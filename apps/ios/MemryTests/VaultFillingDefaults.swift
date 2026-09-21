@@ -1,3 +1,4 @@
+import Foundation
 import MemryCore
 
 @testable import Memry
@@ -29,4 +30,19 @@ extension VaultFilling {
             localPath: nil
         )
     }
+
+    /// Refuses, rather than returning a plausible id. A fake that reported a
+    /// successful upload would let a test pass over bytes nothing ever put.
+    func uploadAttachment(
+        noteId: String,
+        filename: String,
+        mimeType: String,
+        bytes: Data
+    ) async throws -> String {
+        throw SyncError.Locked
+    }
+
+    /// Does nothing, which is the honest default for a fake with no server to
+    /// dereference against.
+    func detachAttachment(noteId: String, attachmentId: String) async throws {}
 }

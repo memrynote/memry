@@ -7004,6 +7004,22 @@ public func FfiConverterTypeVault_lower(_ value: Vault) -> UInt64 {
 public protocol VaultSyncProtocol: AnyObject, Sendable {
     
     /**
+     * Detaches an attachment from a note and releases its bytes (N215, N212).
+     *
+     * **Dereferencing is not optional here.** §14.8: "a client that later
+     * gains the ability to delete an attachment MUST dereference", and
+     * gaining it is exactly what this phase did. A client that dropped the
+     * reference without telling the server would leak the user's own quota,
+     * silently and permanently.
+     *
+     * The reference is dropped **before** the chunks are released, so a
+     * failure between the two leaves bytes nothing points at — reachable
+     * only by a later sweep — rather than a note pointing at bytes that are
+     * gone.
+     */
+    func detachAttachment(noteId: String, attachmentId: String) async throws 
+    
+    /**
      * Fetches one attachment's bytes into `images/` (N206's data half).
      *
      * **`reachable` is the shell's observation and the policy is the core's.**
@@ -7087,6 +7103,25 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      */
     func isFirstSyncComplete() throws  -> Bool
     
+    /**
+     * Uploads a file and attaches it to a note (N214).
+     *
+     * The whole chain of §14.2–§14.5 in one call, because every step is
+     * useless alone and a shell that could stop between them would leave
+     * chunks in R2 that no manifest names.
+     *
+     * **The note's reference list is merged, never replaced.** A note can
+     * embed several pictures and each upload lands separately, so replacing
+     * drops every id but the last.
+     *
+     * The reference is recorded **after** the manifest is stored, in that
+     * order: a note pointing at an attachment whose manifest is not there yet
+     * shows a broken picture on every other device, while a manifest nothing
+     * references yet is merely unreachable and is what `dereference` exists
+     * to collect.
+     */
+    func uploadAttachment(noteId: String, filename: String, mimeType: String, bytes: Data) async throws  -> String
+    
 }
 /**
  * The read-only sync over one opened vault.
@@ -7146,6 +7181,36 @@ open class VaultSync: VaultSyncProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * Detaches an attachment from a note and releases its bytes (N215, N212).
+     *
+     * **Dereferencing is not optional here.** §14.8: "a client that later
+     * gains the ability to delete an attachment MUST dereference", and
+     * gaining it is exactly what this phase did. A client that dropped the
+     * reference without telling the server would leak the user's own quota,
+     * silently and permanently.
+     *
+     * The reference is dropped **before** the chunks are released, so a
+     * failure between the two leaves bytes nothing points at — reachable
+     * only by a later sweep — rather than a note pointing at bytes that are
+     * gone.
+     */
+open func detachAttachment(noteId: String, attachmentId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_detach_attachment(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(noteId),FfiConverterString.lower(attachmentId)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
     
     /**
      * Fetches one attachment's bytes into `images/` (N206's data half).
@@ -7278,6 +7343,39 @@ open func isFirstSyncComplete()throws  -> Bool  {
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Uploads a file and attaches it to a note (N214).
+     *
+     * The whole chain of §14.2–§14.5 in one call, because every step is
+     * useless alone and a shell that could stop between them would leave
+     * chunks in R2 that no manifest names.
+     *
+     * **The note's reference list is merged, never replaced.** A note can
+     * embed several pictures and each upload lands separately, so replacing
+     * drops every id but the last.
+     *
+     * The reference is recorded **after** the manifest is stored, in that
+     * order: a note pointing at an attachment whose manifest is not there yet
+     * shows a broken picture on every other device, while a manifest nothing
+     * references yet is merely unreachable and is what `dereference` exists
+     * to collect.
+     */
+open func uploadAttachment(noteId: String, filename: String, mimeType: String, bytes: Data)async throws  -> String  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_upload_attachment(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(noteId),FfiConverterString.lower(filename),FfiConverterString.lower(mimeType),FfiConverterData.lower(bytes)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
 }
     
 
@@ -13472,6 +13570,20 @@ enum SyncError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     case UnknownNote(id: String
     )
     /**
+     * This device's own identity could not be read.
+     *
+     * Forwarded rather than flattened, exactly as the four above are: an
+     * `AuthError` reaching the shell inside a sync is the same fact as one
+     * reaching it inside a sign-in, and a second set of sentences for it
+     * would be a second set to keep true.
+     *
+     * Reachable because a **write** needs a signing key and a device id where
+     * a read does not: an attachment manifest is signed, so uploading one
+     * asks for the identity that a pull never had to.
+     */
+    case Auth(source: AuthError
+    )
+    /**
      * An attachment manifest could not be authenticated.
      *
      * **Its own variant, and never folded into [`SyncError::Api`] or
@@ -13543,10 +13655,13 @@ public struct FfiConverterTypeSyncError: FfiConverterRustBuffer {
         case 6: return .UnknownNote(
             id: try FfiConverterString.read(from: &buf)
             )
-        case 7: return .AttachmentUnverified(
+        case 7: return .Auth(
+            source: try FfiConverterTypeAuthError.read(from: &buf)
+            )
+        case 8: return .AttachmentUnverified(
             deviceId: try FfiConverterString.read(from: &buf)
             )
-        case 8: return .AttachmentCorrupt(
+        case 9: return .AttachmentCorrupt(
             what: try FfiConverterString.read(from: &buf)
             )
 
@@ -13590,13 +13705,18 @@ public struct FfiConverterTypeSyncError: FfiConverterRustBuffer {
             FfiConverterString.write(id, into: &buf)
             
         
-        case let .AttachmentUnverified(deviceId):
+        case let .Auth(source):
             writeInt(&buf, Int32(7))
+            FfiConverterTypeAuthError.write(source, into: &buf)
+            
+        
+        case let .AttachmentUnverified(deviceId):
+            writeInt(&buf, Int32(8))
             FfiConverterString.write(deviceId, into: &buf)
             
         
         case let .AttachmentCorrupt(what):
-            writeInt(&buf, Int32(8))
+            writeInt(&buf, Int32(9))
             FfiConverterString.write(what, into: &buf)
             
         }
@@ -15053,6 +15173,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_syncprogresslistener_progress() != 60104) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vaultsync_detach_attachment() != 43929) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vaultsync_fetch_attachment() != 11177) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -15063,6 +15186,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_is_first_sync_complete() != 42151) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 13377) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_id() != 63291) {

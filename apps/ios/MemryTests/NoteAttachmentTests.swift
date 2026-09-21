@@ -142,7 +142,13 @@ struct NoteAttachmentTests {
         let binding = NoteAttachmentBinding.of("picture.png") {
             model.attachments[$0] ?? .unknown
         }
-        #expect(binding == .waiting, "bytes that have not arrived are not a broken block")
+        // `.waitingFor` rather than `.waiting`: the reference is known even
+        // though the bytes are not here, which is what lets the user remove a
+        // picture they added by mistake before it finishes downloading.
+        #expect(
+            binding == .waitingFor("att-1"),
+            "bytes that have not arrived are not a broken block"
+        )
     }
 
     /// FR-045 in as many words: the picture "becomes visible on arrival
@@ -170,7 +176,7 @@ struct NoteAttachmentTests {
         )
         await model.loadIfNeeded()
         #expect(NoteAttachmentBinding.of("picture.png") { model.attachments[$0] ?? .unknown }
-            == .waiting)
+            == .waitingFor("att-1"))
 
         await model.fetchWaitingAttachments()
 
@@ -205,7 +211,7 @@ struct NoteAttachmentTests {
         #expect(filler.fetched == ["att-1"], "the core is still asked; it owns the policy")
         #expect(
             NoteAttachmentBinding.of("picture.png") { model.attachments[$0] ?? .unknown }
-                == .waiting,
+                == .waitingFor("att-1"),
             "a deferred picture keeps its placeholder"
         )
     }
@@ -251,6 +257,31 @@ struct NoteAttachmentTests {
             )
         ]
         #expect(NoteReadViewModel.attachmentUrls(in: blocks) == ["picture.png", "spec.pdf"])
+    }
+
+    /// A picture the user added by mistake must be removable before it has
+    /// finished downloading: the id is known even when the bytes are not here.
+    @Test("a waiting attachment can still be removed")
+    func waitingAttachmentsCarryTheirId() {
+        let waiting = NoteAttachmentBinding.of("picture.png") { _ in
+            .bound(attachment: cached(id: "att-1", localPath: nil))
+        }
+        #expect(waiting == .waitingFor("att-1"))
+        #expect(waiting.attachmentId == "att-1")
+
+        let landed = NoteAttachmentBinding.of("picture.png") { _ in
+            .bound(attachment: cached(id: "att-1", localPath: "att-1"))
+        }
+        #expect(landed.attachmentId == "att-1")
+    }
+
+    /// Neither resolves to a single attachment, so neither can be released \u2014
+    /// and offering the action would be offering a failure.
+    @Test("a remote or ambiguous binding offers no removal")
+    func unremovableBindingsCarryNoId() {
+        #expect(NoteAttachmentBinding.remote("https://example.com/a.png").attachmentId == nil)
+        #expect(NoteAttachmentBinding.ambiguous.attachmentId == nil)
+        #expect(NoteAttachmentBinding.waiting.attachmentId == nil)
     }
 
     /// The same url twice is one question, not two.

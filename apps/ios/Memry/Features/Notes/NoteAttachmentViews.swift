@@ -35,6 +35,9 @@ struct NoteImageView: View {
     /// a phone is narrower than the window that chose it.
     let previewWidth: Double?
     var resolve: ((String) -> BlockAttachment)?
+    /// Detaches this attachment. `nil` when there is no session to do it
+    /// with, which hides the action rather than offering one that fails.
+    var remove: ((String) async -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
@@ -46,16 +49,17 @@ struct NoteImageView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .attachmentRemoval(binding: NoteAttachmentBinding.of(url, resolve), remove: remove)
     }
 
     @ViewBuilder
     private var picture: some View {
         switch NoteAttachmentBinding.of(url, resolve) {
-        case let .file(path, label):
+        case let .file(path, label, _):
             LocalImage(path: path, label: label, maxWidth: previewWidth)
         case let .remote(address):
             RemoteImage(address: address, label: label)
-        case .waiting:
+        case .waiting, .waitingFor:
             AttachmentPlaceholder(
                 symbol: "photo",
                 label: label,
@@ -88,6 +92,7 @@ struct NoteAttachmentView: View {
     let size: String?
     let caption: String?
     var resolve: ((String) -> BlockAttachment)?
+    var remove: ((String) async -> Void)?
 
     @State private var previewing: URL?
 
@@ -100,12 +105,13 @@ struct NoteAttachmentView: View {
                     .foregroundStyle(Tokens.Text.secondary.color)
             }
         }
+        .attachmentRemoval(binding: NoteAttachmentBinding.of(url, resolve), remove: remove)
     }
 
     @ViewBuilder
     private var content: some View {
         switch NoteAttachmentBinding.of(url, resolve) {
-        case let .file(path, _):
+        case let .file(path, _, _):
             if kind == "audio" || kind == "video" {
                 // A real player, because a recording in a note is meant to be
                 // listened to in place. Video keeps its aspect ratio rather
@@ -124,7 +130,7 @@ struct NoteAttachmentView: View {
             }
         case let .remote(address):
             LinkCardRowPublic(url: address, title: label, subtitle: measured, symbol: symbol)
-        case .waiting:
+        case .waiting, .waitingFor:
             AttachmentPlaceholder(
                 symbol: symbol,
                 label: label,
@@ -161,11 +167,51 @@ struct NoteAttachmentView: View {
     }
 }
 
+private extension View {
+    /// A long-press action that detaches an attachment.
+    ///
+    /// **Only offered for something this device can actually name.** A
+    /// placeholder for bytes that have not arrived still knows its attachment
+    /// id, so it can be removed; a remote image and an ambiguous match cannot,
+    /// because there is no single id to release.
+    ///
+    /// Destructive and confirmed, because removing an attachment releases its
+    /// chunks on the server once no other note holds it (§14.8) — that is not
+    /// a gesture to trigger by accident.
+    @ViewBuilder
+    func attachmentRemoval(
+        binding: NoteAttachmentBinding,
+        remove: ((String) async -> Void)?
+    ) -> some View {
+        if let remove, let id = binding.attachmentId {
+            contextMenu {
+                Button(role: .destructive) {
+                    Task { await remove(id) }
+                } label: {
+                    Label("Remove attachment", systemImage: "trash")
+                }
+            }
+        } else {
+            self
+        }
+    }
+}
+
 /// The four answers, flattened for a view to switch over.
 enum NoteAttachmentBinding: Equatable {
-    case file(URL, String)
+    /// Bytes on disk: where they are, what to call them, and which attachment
+    /// they belong to.
+    case file(URL, String, String)
     case remote(String)
+    /// Nothing here names an attachment — the references have not arrived, or
+    /// no resolver was supplied. There is no id to remove.
     case waiting
+    /// The reference is known and the bytes are not here yet.
+    ///
+    /// Separate from [`waiting`] because the id **is** known, so this one can
+    /// be removed: a user who added the wrong picture should not have to wait
+    /// for it to download before they can take it off the note.
+    case waitingFor(String)
     case ambiguous
 
     /// Resolves a block url, or reports `waiting` when nothing can.
@@ -175,15 +221,31 @@ enum NoteAttachmentBinding: Equatable {
         case let .remote(address):
             return .remote(address)
         case let .bound(attachment):
-            // A bound attachment whose bytes are not on disk is still waiting:
-            // the reference is known, the file is not here yet.
-            guard let path = attachment.localPath, !path.isEmpty else { return .waiting }
-            return .file(AttachmentPaths.url(for: path), attachment.filename ?? path)
+            // A bound attachment whose bytes are not on disk is still waiting,
+            // but it knows which attachment it is waiting for.
+            guard let path = attachment.localPath, !path.isEmpty else {
+                return .waitingFor(attachment.attachmentId)
+            }
+            return .file(
+                AttachmentPaths.url(for: path),
+                attachment.filename ?? path,
+                attachment.attachmentId
+            )
         case .unknown:
             return .waiting
         case .ambiguous:
             return .ambiguous
         }
+    }
+
+    /// The attachment id, when this binding names exactly one.
+    ///
+    /// `nil` for a remote url and for an ambiguous basename: neither resolves
+    /// to a single attachment, so neither can be released.
+    var attachmentId: String? {
+        if case let .file(_, _, id) = self { return id }
+        if case let .waitingFor(id) = self { return id }
+        return nil
     }
 
     static func basename(_ path: String) -> String {

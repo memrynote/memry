@@ -90,6 +90,28 @@ protocol VaultFilling: Sendable {
         attachmentId: String,
         reachable: Reachable
     ) async throws -> AttachmentFetchSummary
+
+    /// Uploads a file and attaches it to a note (chapter 14 §14.2–§14.5).
+    ///
+    /// One call for the whole chain, because every step is useless alone: a
+    /// shell that could stop between them would leave chunks in R2 that no
+    /// manifest names.
+    ///
+    /// - Returns: the new attachment id.
+    func uploadAttachment(
+        noteId: String,
+        filename: String,
+        mimeType: String,
+        bytes: Data
+    ) async throws -> String
+
+    /// Detaches an attachment and releases its bytes (§14.8).
+    ///
+    /// **Dereferencing is not optional.** A client that dropped the reference
+    /// without telling the server would leak the user's own quota, silently
+    /// and permanently. The core also checks whether another note still holds
+    /// the attachment before releasing anything.
+    func detachAttachment(noteId: String, attachmentId: String) async throws
 }
 
 /// The production filler: the core's own `VaultSync`.
@@ -129,6 +151,24 @@ struct CoreVaultFiller: VaultFilling {
         reachable: Reachable
     ) async throws -> AttachmentFetchSummary {
         try await sync.fetchAttachment(attachmentId: attachmentId, reachable: reachable)
+    }
+
+    func uploadAttachment(
+        noteId: String,
+        filename: String,
+        mimeType: String,
+        bytes: Data
+    ) async throws -> String {
+        try await sync.uploadAttachment(
+            noteId: noteId,
+            filename: filename,
+            mimeType: mimeType,
+            bytes: bytes
+        )
+    }
+
+    func detachAttachment(noteId: String, attachmentId: String) async throws {
+        try await sync.detachAttachment(noteId: noteId, attachmentId: attachmentId)
     }
 }
 

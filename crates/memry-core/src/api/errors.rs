@@ -492,6 +492,22 @@ pub enum SyncError {
     #[error("no live note `{id}` in this vault")]
     UnknownNote { id: String },
 
+    /// This device's own identity could not be read.
+    ///
+    /// Forwarded rather than flattened, exactly as the four above are: an
+    /// `AuthError` reaching the shell inside a sync is the same fact as one
+    /// reaching it inside a sign-in, and a second set of sentences for it
+    /// would be a second set to keep true.
+    ///
+    /// Reachable because a **write** needs a signing key and a device id where
+    /// a read does not: an attachment manifest is signed, so uploading one
+    /// asks for the identity that a pull never had to.
+    #[error("{source}")]
+    Auth {
+        #[from]
+        source: AuthError,
+    },
+
     /// An attachment manifest could not be authenticated.
     ///
     /// **Its own variant, and never folded into [`SyncError::Api`] or

@@ -20,7 +20,7 @@ import MemryCore
 // content, and a string that reaches an alert can reach a screenshot.
 
 extension ErrorMapping {
-    /// `SyncError`'s eight variants (`crates/memry-core/src/api/errors.rs`).
+    /// `SyncError`'s nine variants (`crates/memry-core/src/api/errors.rs`).
     ///
     /// Four are forwarded, and that is the whole reason they are nested rather
     /// than flattened: an `ApiError` reaching the shell inside a sync is the
@@ -41,6 +41,11 @@ extension ErrorMapping {
         case let .Storage(source): userFacing(source)
         case let .SecureStore(source): userFacing(source)
         case let .Crypto(source): userFacing(source)
+        // Forwarded like the other four, and reachable for a reason worth
+        // naming: a WRITE needs this device's signing key and id where a read
+        // does not, because an attachment manifest is signed. Uploading asks
+        // for an identity that a pull never had to.
+        case let .Auth(source): userFacing(source)
         case .Locked: locked
         case .UnknownNote: unknownNote
         case .AttachmentUnverified: attachmentUnverified

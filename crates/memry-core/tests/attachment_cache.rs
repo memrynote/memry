@@ -17,9 +17,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::api::vault::Vault;
 use memry_core::domain::attachments;
+use memry_core::domain::notes::{self, NewNote};
 use memry_core::seams::reachability::Reachable;
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
+
+const DEVICE: &str = "device-a";
+const NOW: i64 = 1_760_000_000_000;
 
 static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
@@ -158,6 +162,128 @@ fn an_attachment_shared_by_two_notes_keeps_the_other_reference() {
         Ok(())
     })
     .expect("the merges");
+}
+
+// MARK: - N214/N215, the note's reference list
+
+/// A note can embed several pictures and each upload lands separately, so a
+/// replace drops every id but the last. Desktop's own writer carries a comment
+/// about exactly this bug.
+#[test]
+fn adding_a_reference_merges_rather_than_replaces() {
+    let db = vault("merge");
+    db.call_blocking(|conn: &mut Connection| {
+        notes::create(
+            conn,
+            &NewNote {
+                id: "note-1",
+                title: "a note",
+                folder_path: None,
+                content: "",
+                tags: &[],
+                properties: None,
+            },
+            DEVICE,
+            NOW,
+        )?;
+        notes::add_attachment_reference(conn, "note-1", "att-1", DEVICE, NOW)?;
+        notes::add_attachment_reference(conn, "note-1", "att-2", DEVICE, NOW)?;
+
+        let refs = notes::read_attachment_references(conn, "note-1")?;
+        assert_eq!(refs, vec!["att-1".to_owned(), "att-2".to_owned()]);
+        Ok(())
+    })
+    .expect("the merges");
+}
+
+/// A retried upload must not enqueue a second push of an unchanged note.
+#[test]
+fn adding_a_reference_twice_writes_nothing_the_second_time() {
+    let db = vault("idempotent");
+    db.call_blocking(|conn: &mut Connection| {
+        notes::create(
+            conn,
+            &NewNote {
+                id: "note-1",
+                title: "a note",
+                folder_path: None,
+                content: "",
+                tags: &[],
+                properties: None,
+            },
+            DEVICE,
+            NOW,
+        )?;
+        assert!(notes::add_attachment_reference(conn, "note-1", "att-1", DEVICE, NOW)?.is_some());
+        assert!(
+            notes::add_attachment_reference(conn, "note-1", "att-1", DEVICE, NOW)?.is_none(),
+            "a repeat is not a change and must not enqueue a push"
+        );
+        Ok(())
+    })
+    .expect("the merges");
+}
+
+/// The one place a positive removal is right: the user deleted the picture, so
+/// this device has evidence of absence rather than silence.
+#[test]
+fn removing_a_reference_prunes_only_that_one() {
+    let db = vault("prune");
+    db.call_blocking(|conn: &mut Connection| {
+        notes::create(
+            conn,
+            &NewNote {
+                id: "note-1",
+                title: "a note",
+                folder_path: None,
+                content: "",
+                tags: &[],
+                properties: None,
+            },
+            DEVICE,
+            NOW,
+        )?;
+        notes::add_attachment_reference(conn, "note-1", "att-1", DEVICE, NOW)?;
+        notes::add_attachment_reference(conn, "note-1", "att-2", DEVICE, NOW)?;
+        notes::remove_attachment_reference(conn, "note-1", "att-1", DEVICE, NOW)?;
+
+        assert_eq!(
+            notes::read_attachment_references(conn, "note-1")?,
+            vec!["att-2".to_owned()]
+        );
+        assert!(
+            notes::remove_attachment_reference(conn, "note-1", "att-1", DEVICE, NOW)?.is_none(),
+            "removing what is not there is not a change"
+        );
+        Ok(())
+    })
+    .expect("the prune");
+}
+
+/// A picture embedded in two notes must not lose its bytes because one of
+/// them dropped it.
+#[test]
+fn a_shared_attachment_is_still_referenced_after_one_note_drops_it() {
+    let db = vault("shared-release");
+    db.call_blocking(|conn: &mut Connection| {
+        attachments::put_manifest(conn, "att-1", "{}", 10, "a.png", "image/png")?;
+        attachments::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
+        attachments::merge_note_references(conn, "note-2", Some(&["att-1".to_owned()]))?;
+
+        assert_eq!(
+            attachments::for_note_count_excluding(conn, "att-1", "note-1")?,
+            1,
+            "note-2 still holds it, so the chunks must not be released"
+        );
+        attachments::merge_note_references(conn, "note-2", Some(&[]))?;
+        assert_eq!(
+            attachments::for_note_count_excluding(conn, "att-1", "note-1")?,
+            0,
+            "now nothing else holds it"
+        );
+        Ok(())
+    })
+    .expect("the counts");
 }
 
 // MARK: - N206a, binding a block to an attachment (Q4)

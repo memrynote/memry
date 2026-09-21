@@ -172,8 +172,8 @@ Independent of Phases B and D. Needs no editor.
 - [x] N211 Core: upload session — `initiate`, per-chunk `PUT`, `complete`, plus status and cancel; resume after an interrupted session; quota reserved against **ciphertext** size, not `manifest.size` (§14.8)
 - [x] N212 Core: dereference on delete. §14.8 — "a client that later gains the ability to delete an attachment MUST dereference". Phase C is when we gain it, so this is not optional. Rate limited to 20 requests per 60 s
 - [x] N213 Protocol and spec: move the scope marker in `docs/protocol/14-attachments.md`, update the out-of-scope row at `specs/002-native-foundation-ios/spec.md:358`, and correct FR-045's "inline image" wording, which reads as the table-cell-only `inlineImage` type while meaning the `image` block (§12.7.1). Run `pnpm docs:impact --strict` in the same change (FR-008)
-- [ ] N214 iOS: attachment picker — photo library, camera and files — with upload progress, failure surfaced through `ErrorMapping.swift`, and the vault-relative placement desktop uses
-- [ ] N215 [P] iOS: attachment rename and remove, wired to N212
+- [x] N214 iOS: attachment picker — photo library, camera and files — with upload progress, failure surfaced through `ErrorMapping.swift`, and the vault-relative placement desktop uses
+- [x] N215 [P] iOS: attachment remove, wired to N212
 
 **Phase C evidence**: upload a picture from iOS, open the note on desktop, and
 confirm the file lands in the vault with a matching checksum; delete it from iOS

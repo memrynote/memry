@@ -434,6 +434,26 @@ pub fn resolve_for_block(
     })
 }
 
+/// How many **other** notes still reference one attachment.
+///
+/// Asked before releasing chunks: a picture embedded in two notes must not
+/// lose its bytes because one of them dropped it. Desktop's reference merge
+/// is union-only for the same reason.
+pub fn for_note_count_excluding(
+    conn: &Connection,
+    attachment_id: &str,
+    excluding_note: &str,
+) -> Result<usize, StorageError> {
+    Ok(get(conn, attachment_id)?
+        .map(|row| {
+            row.note_refs
+                .iter()
+                .filter(|id| id.as_str() != excluding_note)
+                .count()
+        })
+        .unwrap_or(0))
+}
+
 // MARK: - N203, the bounded cache
 
 /// What one eviction pass decided.

@@ -239,7 +239,7 @@ private struct OneVault: VaultRegistry {
 
 @Suite("T237 SyncError copy")
 struct ErrorMappingSyncTests {
-    /// Every one of the eight variants, and none of them reaches the
+    /// Every one of the nine variants, and none of them reaches the
     /// unrecognised arm. `LinkingError` shipped uncovered and fell through to
     /// it until somebody noticed; this is the test that would have caught it.
     @Test("every SyncError variant has copy of its own")
@@ -252,7 +252,8 @@ struct ErrorMappingSyncTests {
             .Locked,
             .UnknownNote(id: "n"),
             .AttachmentUnverified(deviceId: "device-a"),
-            .AttachmentCorrupt(what: "chunk 2 failed its hash")
+            .AttachmentCorrupt(what: "chunk 2 failed its hash"),
+            .Auth(source: .MalformedToken(what: "device signing key is not 64 bytes"))
         ]
         for error in cases {
             // Through the funnel a `catch` block actually uses, not the

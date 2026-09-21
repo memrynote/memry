@@ -38,6 +38,9 @@ struct NoteBlocksView: View {
     /// `nil` while nothing can resolve one, which draws every attachment as a
     /// placeholder rather than pretending the bytes are missing.
     var attachment: ((String) -> BlockAttachment)?
+    /// Detaches an attachment. `nil` hides the action rather than offering
+    /// one that cannot work.
+    var removeAttachment: ((String) async -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
@@ -47,7 +50,8 @@ struct NoteBlocksView: View {
                     marker: row.marker,
                     openTarget: openTarget,
                     tableContent: tableContent,
-                    attachment: attachment
+                    attachment: attachment,
+                    removeAttachment: removeAttachment
                 )
             }
         }
@@ -129,6 +133,7 @@ struct NoteBlockView: View {
     var openTarget: ((String) -> Void)?
     var tableContent: ((String) -> TableContent?)?
     var attachment: ((String) -> BlockAttachment)?
+    var removeAttachment: ((String) async -> Void)?
 
     var body: some View {
         content
@@ -195,7 +200,8 @@ struct NoteBlockView: View {
                 name: value("name"),
                 size: value("size"),
                 caption: value("caption"),
-                resolve: attachment
+                resolve: attachment,
+                remove: removeAttachment
             )
         case "table":
             NoteTableView(
@@ -234,7 +240,8 @@ struct NoteBlockView: View {
                 name: value("name"),
                 caption: value("caption"),
                 previewWidth: value("previewWidth").flatMap(Double.init),
-                resolve: attachment
+                resolve: attachment,
+                remove: removeAttachment
             )
         default:
             Text(inline)
