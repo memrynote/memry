@@ -38,6 +38,7 @@ import { buildCrdtUpdate } from './vectors/crdt-update'
 import { buildDeviceLinking } from './vectors/device-linking'
 import { buildFieldMerge } from './vectors/field-merge'
 import { buildMarkdownRoundtrip } from './vectors/markdown-roundtrip'
+import { buildAttachmentManifest } from './vectors/attachment-manifest'
 import { buildBlockEdit } from './vectors/block-edit'
 import { buildNoteBlocks } from './vectors/note-blocks'
 import { buildPackContainer } from './vectors/pack-container'
@@ -75,6 +76,10 @@ const CLASSES: readonly VectorClass[] = [
   { name: 'text-extract', files: [{ path: 'text-extract.json', build: buildTextExtract }] },
   { name: 'note-blocks', files: [{ path: 'note-blocks.json', build: buildNoteBlocks }] },
   { name: 'block-edit', files: [{ path: 'block-edit.json', build: buildBlockEdit }] },
+  {
+    name: 'attachment-manifest',
+    files: [{ path: 'attachment-manifest.json', build: buildAttachmentManifest }]
+  },
   {
     name: 'markdown-roundtrip',
     files: [

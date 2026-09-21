@@ -67,6 +67,9 @@ pub fn vector_file(name: &str) -> Json {
         "block-edit" => {
             include_str!("../../../../packages/contracts/test-vectors/block-edit.json")
         }
+        "attachment-manifest" => {
+            include_str!("../../../../packages/contracts/test-vectors/attachment-manifest.json")
+        }
         other => panic!("no committed vector file named {other}"),
     };
     serde_json::from_str(raw)
