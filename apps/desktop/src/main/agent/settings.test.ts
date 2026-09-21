@@ -23,7 +23,24 @@ describe('agent preferences', () => {
     storeState.agent = {}
   })
 
-  it('defaults agent permissions to vault access with automatic confirmations', () => {
+  /**
+   * Nothing is written to the store until the user chooses, so this default is
+   * the effective value for every install that never visited the setting,
+   * including existing ones. It asks rather than accepting, which is the only
+   * direction that cannot surprise someone into a silent vault write.
+   */
+  it('defaults agent permissions to vault access and asking before changes', () => {
+    expect(getAgentPreferences()).toEqual({
+      accessMode: 'vault_only',
+      toolApprovalMode: 'ask'
+    })
+  })
+
+  it('persists an explicit choice to accept without asking', () => {
+    expect(setAgentPreferences({ toolApprovalMode: 'always_accept' })).toEqual({
+      accessMode: 'vault_only',
+      toolApprovalMode: 'always_accept'
+    })
     expect(getAgentPreferences()).toEqual({
       accessMode: 'vault_only',
       toolApprovalMode: 'always_accept'
@@ -44,7 +61,7 @@ describe('agent preferences', () => {
   it('persists default access mode', () => {
     expect(setAgentPreferences({ accessMode: 'computer_access' })).toEqual({
       accessMode: 'computer_access',
-      toolApprovalMode: 'always_accept'
+      toolApprovalMode: 'ask'
     })
   })
 

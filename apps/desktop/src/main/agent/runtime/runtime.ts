@@ -1,4 +1,8 @@
-import type { AgentPreferences, ApproveToolDecision } from '@memry/contracts/ipc-agent'
+import type {
+  AgentPreferences,
+  ApproveToolDecision,
+  ChangePreviewKind
+} from '@memry/contracts/ipc-agent'
 import { toSafeToken } from '@memry/contracts/telemetry-api'
 
 import { createLogger } from '../../lib/logger'
@@ -41,6 +45,7 @@ interface PendingApproval {
    */
   args: unknown
   requiresDiff: boolean
+  previewKind: ChangePreviewKind
 }
 
 interface TrackedSubprocess {
@@ -152,14 +157,16 @@ export class AgentRuntime {
       }
 
       const toolCallId = `gate-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      const requiresDiff = decision.outcome === 'await_user' ? decision.requiresDiff : false
+      const previewKind = decision.outcome === 'await_user' ? decision.previewKind : 'none'
+      const requiresDiff = previewKind !== 'none'
       broadcastAgentEvent({
         kind: 'tool_call_pending_approval',
         conversationId,
         toolCallId,
         name: ctx.toolName,
         args: ctx.parsedArgs,
-        requiresDiff
+        requiresDiff,
+        previewKind
       })
       // Tool name only, never args.
       trackMainEvent('ai_action_completed', {
@@ -174,7 +181,8 @@ export class AgentRuntime {
         toolCallId,
         name: ctx.toolName,
         args: ctx.parsedArgs,
-        requiresDiff
+        requiresDiff,
+        previewKind
       })
       // Shutdown resolves every pending approval as deny; label that
       // abandonment distinctly so the funnel separates it from a real "No".
@@ -215,7 +223,8 @@ export class AgentRuntime {
       toolCallId: pending.toolCallId,
       name: pending.name,
       args: pending.args,
-      requiresDiff: pending.requiresDiff
+      requiresDiff: pending.requiresDiff,
+      previewKind: pending.previewKind
     }
   }
 

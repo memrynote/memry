@@ -107,7 +107,8 @@ describe('agent IPC handlers', () => {
           mode: 'append',
           content_markdown: 'new'
         },
-        requiresDiff: true
+        requiresDiff: true,
+        previewKind: 'body'
       }))
     },
     conversations: {
@@ -133,10 +134,19 @@ describe('agent IPC handlers', () => {
       })),
       list: vi.fn(() => [])
     },
-    previewNoteUpdate: vi.fn(() => ({
+    buildPreview: vi.fn(() => ({
       title: 'Note',
       current: 'old',
-      candidate: 'old\n\nnew'
+      candidate: 'old\n\nnew',
+      preview: {
+        kind: 'body' as const,
+        item: { type: 'note' as const, id: 'note-1', title: 'Note', context: null },
+        intent: 'update' as const,
+        fields: [],
+        body: { current: 'old', candidate: 'old\n\nnew' },
+        loss: [],
+        destructive: false
+      }
     })),
     localProvider: {
       getSettings: vi.fn(async () => ({
@@ -426,7 +436,13 @@ describe('agent IPC handlers', () => {
     expect(deps.runtime.resolveApproval).toHaveBeenCalledWith('tool-1', { kind: 'allow' })
   })
 
-  it('previews pending vault_update_note diffs', async () => {
+  /**
+   * The handler hands the pending tool name straight through instead of
+   * re-deriving it. It used to parse the args against the vault_update_note
+   * schema and reject everything else by name, which is what limited previews
+   * to note bodies.
+   */
+  it('previews a pending approval through the tool it belongs to', async () => {
     registerAgentHandlers(deps)
 
     const result = await findHandler(AgentChannels.invoke.PREVIEW_DIFF)(null, {
@@ -434,16 +450,31 @@ describe('agent IPC handlers', () => {
       toolCallId: 'tool-1'
     })
 
-    expect(deps.previewNoteUpdate).toHaveBeenCalledWith({
-      id: 'note-1',
-      mode: 'append',
-      content_markdown: 'new'
+    expect(deps.buildPreview).toHaveBeenCalledWith({
+      toolName: 'vault_update_note',
+      args: { id: 'note-1', mode: 'append', content_markdown: 'new' }
     })
-    expect(result).toEqual({
-      title: 'Note',
-      current: 'old',
-      candidate: 'old\n\nnew'
-    })
+    expect(result).toMatchObject({ preview: { kind: 'body' } })
+  })
+
+  it('refuses to preview an approval the gate owes no preview for', async () => {
+    deps.runtime.getPendingApproval = vi.fn(() => ({
+      conversationId: 'conversation-1',
+      toolCallId: 'tool-1',
+      name: 'vault_invent_something',
+      args: {},
+      requiresDiff: false,
+      previewKind: 'none' as const
+    }))
+    registerAgentHandlers(deps)
+
+    await expect(
+      findHandler(AgentChannels.invoke.PREVIEW_DIFF)(null, {
+        conversationId: 'conversation-1',
+        toolCallId: 'tool-1'
+      })
+    ).rejects.toThrow('No preview is available')
+    expect(deps.buildPreview).not.toHaveBeenCalled()
   })
 
   it('returns the calling BrowserWindow id for agent turns', async () => {

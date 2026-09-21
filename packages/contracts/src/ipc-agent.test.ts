@@ -425,7 +425,8 @@ describe('agent IPC schemas', () => {
         toolCallId: 'tool-1',
         name: 'vault_create_task',
         args: { title: 'Ship' },
-        requiresDiff: false
+        requiresDiff: false,
+        previewKind: 'none'
       },
       {
         kind: 'tool_call_completed',

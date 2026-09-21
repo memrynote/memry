@@ -55,7 +55,16 @@ describe('MessageStream', () => {
     mockPreviewDiff.mockResolvedValue({
       title: 'Planning note',
       current: 'old',
-      candidate: 'old\n\nnew'
+      candidate: 'old\n\nnew',
+      preview: {
+        kind: 'body',
+        item: { type: 'note', id: 'note-1', title: 'Planning note', context: null },
+        intent: 'update',
+        fields: [],
+        body: { current: 'old', candidate: 'old\n\nnew' },
+        loss: [],
+        destructive: false
+      }
     })
     mockUseAgentOptional.mockReturnValue(null)
     clearVaultItemIconCache()
@@ -996,7 +1005,8 @@ describe('MessageStream', () => {
             toolCallId: 'tool-1',
             name: 'vault_create_task',
             args: { title: 'Buy milk' },
-            requiresDiff: false
+            requiresDiff: false,
+            previewKind: 'none'
           }
         ]
       },
@@ -1047,7 +1057,8 @@ describe('MessageStream', () => {
             toolCallId: 'tool-1',
             name: 'vault_create_task',
             args: { title: 'Buy milk' },
-            requiresDiff: false
+            requiresDiff: false,
+            previewKind: 'none'
           }
         ]
       },
@@ -1102,7 +1113,8 @@ describe('MessageStream', () => {
               mode: 'append',
               content_markdown: 'new'
             },
-            requiresDiff: true
+            requiresDiff: true,
+            previewKind: 'body'
           }
         ]
       },
@@ -1136,7 +1148,8 @@ describe('MessageStream', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /Updating note/i }))
-    const candidate = await screen.findByRole('textbox', { name: 'Candidate' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit before applying' }))
+    const candidate = screen.getByRole('textbox', { name: 'Candidate' })
     fireEvent.change(candidate, { target: { value: 'edited full note' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply edited' }))
 
