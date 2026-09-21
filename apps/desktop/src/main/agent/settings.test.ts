@@ -16,7 +16,13 @@ vi.mock('../store', () => ({
   }
 }))
 
-import { getAgentPreferences, setAgentPreferences } from './settings'
+import {
+  getAgentPreferences,
+  getAlwaysAllowedTools,
+  grantAlwaysAllowedTool,
+  revokeAlwaysAllowedTool,
+  setAgentPreferences
+} from './settings'
 
 describe('agent preferences', () => {
   beforeEach(() => {
@@ -72,5 +78,62 @@ describe('agent preferences', () => {
       accessMode: 'vault_only',
       toolApprovalMode: 'ask'
     })
+  })
+})
+
+describe('vault-scoped standing approvals', () => {
+  beforeEach(() => {
+    storeState.agent = {}
+  })
+
+  it('starts with nothing always allowed', () => {
+    expect(getAlwaysAllowedTools('vault-1')).toEqual([])
+  })
+
+  it('grants and revokes a tool without disturbing the rest of the list', () => {
+    grantAlwaysAllowedTool('vault-1', 'vault_create_task')
+    grantAlwaysAllowedTool('vault-1', 'vault_update_task')
+
+    expect(getAlwaysAllowedTools('vault-1')).toEqual(['vault_create_task', 'vault_update_task'])
+
+    expect(revokeAlwaysAllowedTool('vault-1', 'vault_create_task')).toEqual(['vault_update_task'])
+    expect(getAlwaysAllowedTools('vault-1')).toEqual(['vault_update_task'])
+  })
+
+  it('grants the same tool once', () => {
+    grantAlwaysAllowedTool('vault-1', 'vault_create_task')
+    grantAlwaysAllowedTool('vault-1', 'vault_create_task')
+
+    expect(getAlwaysAllowedTools('vault-1')).toEqual(['vault_create_task'])
+  })
+
+  it('ignores a revoke for a tool that was never granted', () => {
+    grantAlwaysAllowedTool('vault-1', 'vault_create_task')
+
+    expect(revokeAlwaysAllowedTool('vault-1', 'vault_update_task')).toEqual(['vault_create_task'])
+  })
+
+  /**
+   * This file is machine-local and outlives a vault switch. A grant made in one
+   * vault applying to the next one opened would hand an agent a standing
+   * approval over notes the user never showed it.
+   */
+  it("keeps one vault's grants out of another", () => {
+    grantAlwaysAllowedTool('vault-1', 'vault_create_task')
+
+    expect(getAlwaysAllowedTools('vault-2')).toEqual([])
+
+    grantAlwaysAllowedTool('vault-2', 'vault_update_task')
+
+    expect(getAlwaysAllowedTools('vault-1')).toEqual(['vault_create_task'])
+    expect(getAlwaysAllowedTools('vault-2')).toEqual(['vault_update_task'])
+  })
+
+  it('leaves the other agent preferences alone', () => {
+    setAgentPreferences({ toolApprovalMode: 'always_accept' })
+    grantAlwaysAllowedTool('vault-1', 'vault_create_task')
+
+    expect(getAgentPreferences().toolApprovalMode).toBe('always_accept')
+    expect(getAlwaysAllowedTools('vault-1')).toEqual(['vault_create_task'])
   })
 })

@@ -155,7 +155,7 @@
     "tabs": {
       "openPagesInNewTab": {
         "label": "Open Pages in a New Tab",
-        "description": "Clicking or creating a page \u2014 notes, folders, projects, canvases, tags, bookmarks — opens it in a new tab. When off, the current tab is reused, including when following links inside a note; pinned tabs are never replaced. \"Open in New Tab\", \"Open to the Side\" and middle-click always open a new tab."
+        "description": "Clicking or creating a page — notes, folders, projects, canvases, tags, bookmarks — opens it in a new tab. When off, the current tab is reused, including when following links inside a note; pinned tabs are never replaced. \"Open in New Tab\", \"Open to the Side\" and middle-click always open a new tab."
       },
       "restoreSession": {
         "label": "Restore Session on Start",
@@ -297,7 +297,7 @@
         "empty": "No matching fonts",
         "loading": "Reading installed fonts...",
         "unavailable": "Installed fonts are unavailable on this system.",
-        "notInstalled": "Not installed on this computer \u2014 using the fallback font."
+        "notInstalled": "Not installed on this computer — using the fallback font."
       },
       "fontSizeError": "Failed to update font size",
       "fontFamilyError": "Failed to update font family"
@@ -1723,6 +1723,13 @@
       "disconnected": "Disconnected",
       "toolsDisabled": "Tools disabled",
       "fullTools": "Full tools enabled"
+    },
+    "alwaysAllowed": {
+      "group": "Always allowed",
+      "description": "Tools you granted a standing approval for in this vault. Deletes can never be granted one.",
+      "empty": "Nothing is always allowed. Every change still asks.",
+      "revoke": "Revoke",
+      "revokeLabel": "Revoke the standing approval for {tool}"
     }
   }
 }

@@ -423,7 +423,14 @@
       "allowAlways": "Her zaman izin ver",
       "applyEdits": "Düzenlemeleri uygula",
       "deny": "Reddet",
-      "invalidJson": "Düzenlemeleri uygulamadan önce geçerli JSON girin."
+      "invalidJson": "Düzenlemeleri uygulamadan önce geçerli JSON girin.",
+      "thisTool": "bu aracı",
+      "alwaysAllowHint": "Her zaman izin, {tool} için geçerli. Diğer her araç yine sorar, silmeler her zaman sorar.",
+      "alwaysInChat": "Bu sohbette her zaman izin ver",
+      "alwaysInChatHint": "Sohbet bitince sona erer",
+      "alwaysInVault": "Bu kasada her zaman izin ver",
+      "alwaysInVaultHint": "Ayarlar › Agent'tan geri alınabilir",
+      "deletesAlwaysAsk": "Silmeler her zaman sorar"
     },
     "diff": {
       "previewError": "Bu değişikliğin önizlemesi yapılamadı",

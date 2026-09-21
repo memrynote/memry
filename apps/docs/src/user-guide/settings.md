@@ -371,6 +371,8 @@ machine-local and are not synced between devices.
 - **Default Access** — starts each new Agent turn in **Vault only** or **Computer access**
 - **Confirm Actions** — **Ask before changes** is the default: every vault write pauses and shows
   what it would change before it lands. **Always allow** accepts writes without a preview
+- **Always allowed** — tools you granted a standing approval for in this vault, each with a
+  **Revoke**. Grants are made from an approval card and never cover deletes
 - **Preset** — Ollama, LM Studio, llama.cpp, or Custom
 - **Base URL** — OpenAI-compatible endpoint, such as `http://localhost:11434/v1`
 - **Model** — choose from `/v1/models` when available or type a model manually

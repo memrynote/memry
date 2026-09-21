@@ -19,7 +19,9 @@ import {
   MessageAttachmentSchema,
   MessageContentSchema,
   PreviewDiffRequestSchema,
+  ApproveToolDecisionSchema,
   ChangePreviewSchema,
+  EditTrustListRequestSchema,
   PreviewDiffResponseSchema,
   SendTurnResponseSchema,
   SendTurnRequestSchema,
@@ -38,6 +40,7 @@ describe('AgentChannels', () => {
         APPROVE_TOOL: 'agent:approveTool',
         PREVIEW_DIFF: 'agent:previewDiff',
         EDIT_TRUST_LIST: 'agent:editTrustList',
+        GET_TOOL_GRANTS: 'agent:getToolGrants',
         GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
         LIST_BACKEND_MODELS: 'agent:listBackendModels',
         GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',
@@ -374,6 +377,27 @@ describe('agent IPC schemas', () => {
         fields: [{ key: 'priority', after: '2' }]
       }).success
     ).toBe(false)
+  })
+
+  /**
+   * The scope defaults to the conversation, which is what `allow_always` meant
+   * before there was a choice. A renderer that has not learned about scopes
+   * therefore keeps granting the narrower one rather than the vault-wide one.
+   */
+  it('defaults a standing approval to the conversation scope', () => {
+    const parsed = ApproveToolDecisionSchema.parse({ kind: 'allow_always' })
+
+    expect(parsed).toEqual({ kind: 'allow_always', scope: 'conversation' })
+    expect(ApproveToolDecisionSchema.parse({ kind: 'allow_always', scope: 'vault' })).toEqual({
+      kind: 'allow_always',
+      scope: 'vault'
+    })
+  })
+
+  it('accepts a vault trust-list edit that names no conversation', () => {
+    expect(
+      EditTrustListRequestSchema.parse({ remove: ['vault_create_task'], scope: 'vault' })
+    ).toEqual({ remove: ['vault_create_task'], scope: 'vault' })
   })
 
   it('validates assistant message source refs', () => {

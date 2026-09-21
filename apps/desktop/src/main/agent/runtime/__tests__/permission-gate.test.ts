@@ -72,10 +72,10 @@ describe('decideToolGate', () => {
     })
   })
 
-  it('asks on update tools, regardless of trust list, when manual approval is enabled', () => {
+  it('asks on an update tool nobody has granted', () => {
     const decision = decideToolGate({
       toolName: 'vault_update_note',
-      trustList: ['vault_update_note', 'vault_add_tag'],
+      trustList: [],
       pendingDecision: null,
       toolApprovalMode: 'ask'
     })
@@ -85,6 +85,52 @@ describe('decideToolGate', () => {
       requiresDiff: true,
       previewKind: 'body'
     })
+  })
+
+  /**
+   * A standing approval has to mean what it says. It used to be read only for
+   * create tools, so granting one on an update left the card appearing every
+   * time and the grant looking broken.
+   */
+  it('honours a standing approval on an update tool, at either scope', () => {
+    expect(
+      decideToolGate({
+        toolName: 'vault_update_note',
+        trustList: ['vault_update_note'],
+        pendingDecision: null,
+        toolApprovalMode: 'ask'
+      })
+    ).toEqual({ outcome: 'auto_approve' })
+
+    expect(
+      decideToolGate({
+        toolName: 'vault_update_task',
+        trustList: [],
+        vaultTrustList: ['vault_update_task'],
+        pendingDecision: null,
+        toolApprovalMode: 'ask'
+      })
+    ).toEqual({ outcome: 'auto_approve' })
+  })
+
+  /**
+   * The one write a standing approval must never cover. "Always allow" is a
+   * promise about work the user can still look at afterwards, and a delete is
+   * where that stops being true, so the gate refuses the grant rather than
+   * trusting the list.
+   */
+  it('refuses to trust a delete at either scope', () => {
+    for (const toolName of ['vault_delete_note', 'vault_delete_task']) {
+      expect(
+        decideToolGate({
+          toolName,
+          trustList: [toolName],
+          vaultTrustList: [toolName],
+          pendingDecision: null,
+          toolApprovalMode: 'ask'
+        })
+      ).toEqual({ outcome: 'await_user', requiresDiff: true, previewKind: 'loss' })
+    }
   })
 
   /**

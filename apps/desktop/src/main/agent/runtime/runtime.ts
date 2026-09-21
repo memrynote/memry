@@ -91,6 +91,13 @@ export interface AgentRuntimeDeps {
   conversations: ConversationStore
   messages: MessageStore
   getPreferences?: () => AgentPreferences
+  /**
+   * Standing approvals for the open vault. Separate from the conversation
+   * trust list because these outlive the chat that granted them, which is also
+   * why granting one has to be revocable in Settings.
+   */
+  getVaultTrustList?: () => string[]
+  grantVaultTool?: (toolName: string) => void
   /** Overridable for tests. Defaults to {@link APPROVAL_TIMEOUT_MS}. */
   approvalTimeoutMs?: number
 }
@@ -148,6 +155,7 @@ export class AgentRuntime {
       const decision = decideToolGate({
         toolName: ctx.toolName,
         trustList: conversation.trustList,
+        vaultTrustList: this.deps.getVaultTrustList?.(),
         pendingDecision: null,
         toolApprovalMode: this.deps.getPreferences?.().toolApprovalMode
       })
@@ -201,7 +209,8 @@ export class AgentRuntime {
       }
 
       if (userDecision.kind === 'allow_always') {
-        this.deps.conversations.addToTrustList(conversationId, ctx.toolName)
+        if (userDecision.scope === 'vault') this.deps.grantVaultTool?.(ctx.toolName)
+        else this.deps.conversations.addToTrustList(conversationId, ctx.toolName)
       }
 
       const args = userDecision.kind === 'edit_allow' ? userDecision.editedArgs : ctx.parsedArgs

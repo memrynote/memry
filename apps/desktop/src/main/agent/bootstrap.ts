@@ -33,7 +33,13 @@ import { createVaultServiceHandles } from './mcp/tools/handles-adapter'
 import { ALL_TOOL_NAMES } from './mcp/tools/schemas'
 import { buildPreviewDiffResponse } from './preview'
 import { AgentRuntime } from './runtime/runtime'
-import { getAgentPreferences, setAgentPreferences } from './settings'
+import {
+  getAgentPreferences,
+  getAlwaysAllowedTools,
+  grantAlwaysAllowedTool,
+  revokeAlwaysAllowedTool,
+  setAgentPreferences
+} from './settings'
 import { createConversationStore } from './storage/conversation-store'
 import {
   createEphemeralConversationStore,
@@ -226,7 +232,15 @@ export async function startAgent(): Promise<AgentHandle> {
     local: localBackend
   })
 
-  const runtime = new AgentRuntime({ conversations, messages, getPreferences: getAgentPreferences })
+  const runtime = new AgentRuntime({
+    conversations,
+    messages,
+    getPreferences: getAgentPreferences,
+    getVaultTrustList: () => getAlwaysAllowedTools(vaultId),
+    grantVaultTool: (toolName) => {
+      grantAlwaysAllowedTool(vaultId, toolName)
+    }
+  })
   runtime.install()
 
   registerAgentHandlers({
@@ -236,6 +250,15 @@ export async function startAgent(): Promise<AgentHandle> {
     backends,
     historyPersisted,
     buildPreview: async (input) => buildPreviewDiffResponse(input, handles),
+    toolGrants: {
+      list: () => getAlwaysAllowedTools(vaultId),
+      grant: (toolName) => {
+        grantAlwaysAllowedTool(vaultId, toolName)
+      },
+      revoke: (toolName) => {
+        revokeAlwaysAllowedTool(vaultId, toolName)
+      }
+    },
     localProvider: {
       getSettings: getLocalProviderSettings,
       setSettings: setLocalProviderSettings,

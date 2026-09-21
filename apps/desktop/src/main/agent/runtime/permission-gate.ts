@@ -4,19 +4,16 @@ import type {
   ChangePreviewKind
 } from '@memry/contracts/ipc-agent'
 
-import {
-  CREATE_TOOL_NAMES,
-  READ_TOOL_NAMES,
-  previewKindForTool,
-  type ToolName
-} from '../mcp/tools/schemas'
+import { READ_TOOL_NAMES, previewKindForTool, type ToolName } from '../mcp/tools/schemas'
 
 const READ_TOOLS: ReadonlySet<string> = new Set(READ_TOOL_NAMES)
-const CREATE_TOOLS: ReadonlySet<string> = new Set(CREATE_TOOL_NAMES)
 
 export interface GateInput {
   toolName: string
+  /** Standing approvals that die with this conversation. */
   trustList: string[]
+  /** Standing approvals that outlive it, revocable in Settings. */
+  vaultTrustList?: string[]
   pendingDecision: ApproveToolDecision | null
   toolApprovalMode?: AgentToolApprovalMode
 }
@@ -46,14 +43,21 @@ export function decideToolGate(input: GateInput): GateDecision {
     return { outcome: 'auto_approve' }
   }
 
-  if (CREATE_TOOLS.has(input.toolName)) {
-    if (input.trustList.includes(input.toolName)) {
-      return { outcome: 'auto_approve' }
-    }
+  // A delete is never trustable, at either scope. "Always allow" is a promise
+  // about work the user can look at afterwards; a delete is the one write where
+  // that is not true, so it asks every time and the menu says so out loud.
+  if (previewKindForTool(input.toolName) === 'loss') {
     return awaitUser(input.toolName)
   }
 
-  // Updates, deletes and anything unrecognised. A name the preview table has
+  const trusted =
+    input.trustList.includes(input.toolName) ||
+    (input.vaultTrustList ?? []).includes(input.toolName)
+  if (trusted) {
+    return { outcome: 'auto_approve' }
+  }
+
+  // Creates, updates and anything unrecognised. A name the preview table has
   // not been taught about still lands on "ask", just without a preview: the
   // gate must never fall through to allowing a write it cannot describe.
   return awaitUser(input.toolName)

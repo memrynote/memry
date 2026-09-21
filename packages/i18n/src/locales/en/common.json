@@ -143,10 +143,17 @@
       "allowOnce": "Allow once",
       "editAndApply": "Edit and apply",
       "editAndAllow": "Edit and allow",
-      "allowAlways": "Allow always",
+      "allowAlways": "Always allow",
       "applyEdits": "Apply edits",
-      "deny": "Deny",
-      "invalidJson": "Enter valid JSON before applying edits."
+      "deny": "Reject",
+      "invalidJson": "Enter valid JSON before applying edits.",
+      "thisTool": "this tool",
+      "alwaysAllowHint": "Always allow covers {tool}. Every other tool still asks, and deletes always ask.",
+      "alwaysInChat": "Always allow in this chat",
+      "alwaysInChatHint": "Ends when the conversation ends",
+      "alwaysInVault": "Always allow in this vault",
+      "alwaysInVaultHint": "Revocable in Settings \u203a Agent",
+      "deletesAlwaysAsk": "Deletes always ask"
     },
     "diff": {
       "previewError": "Could not preview this change",

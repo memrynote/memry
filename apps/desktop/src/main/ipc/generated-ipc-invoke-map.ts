@@ -21,6 +21,7 @@ export interface MainIpcInvokeHandlers {
   "agent:getDisclosureState": (...args: []) => Awaited<import("../agent/runtime/disclosure-state").DisclosureState>
   "agent:getLocalProviderSettings": (...args: []) => Awaited<Promise<{ preset: "custom" | "ollama" | "lm_studio" | "llama_cpp"; baseUrl: string; model: string; apiKeyConfigured: boolean; allowNonLoopback: boolean; }>>
   "agent:getPreferences": (...args: []) => Awaited<Promise<{ accessMode: "vault_only" | "computer_access"; toolApprovalMode: "always_accept" | "ask"; }>>
+  "agent:getToolGrants": (...args: []) => Awaited<Promise<{ tools: string[]; }>>
   "agent:getWindowId": (...args: []) => Awaited<{ windowId: string | null; }>
   "agent:listBackendModels": (...args: [unknown]) => Awaited<Promise<{ backend: "claude_cli" | "codex_cli"; supportsCustomModel: boolean; models: { id: string; label: string; }[]; }>>
   "agent:listConversations": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-agent").Conversation[]>>

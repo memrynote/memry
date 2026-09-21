@@ -10,6 +10,7 @@ import {
   AgentPreferencesUpdateSchema,
   AgentStreamTargetRequestSchema,
   ApproveToolRequestSchema,
+  EditTrustListRequestSchema,
   PreviewDiffRequestSchema,
   type AgentBackendOptions,
   type AgentBackendModelList,
@@ -81,6 +82,12 @@ interface AgentHandlerDeps {
   /** False when the transcript is in-memory only — see agent/storage/ephemeral-stores.ts. */
   historyPersisted: boolean
   buildPreview: (input: { toolName: string; args: unknown }) => Promise<PreviewDiffResponse>
+  /** Vault-scoped standing approvals, for granting and for the Settings list. */
+  toolGrants: {
+    list: () => string[]
+    grant: (toolName: string) => void
+    revoke: (toolName: string) => void
+  }
   localProvider: {
     getSettings: () => Promise<AgentLocalProviderSettings>
     setSettings: (input: AgentLocalProviderSettingsUpdate) => Promise<AgentLocalProviderSettings>
@@ -267,12 +274,24 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
     return deps.buildPreview({ toolName: pending.name, args: pending.args })
   })
 
+  ipcMain.handle(AgentChannels.invoke.GET_TOOL_GRANTS, async () => ({
+    tools: deps.toolGrants.list()
+  }))
+
   ipcMain.handle(AgentChannels.invoke.EDIT_TRUST_LIST, async (_event, payload: unknown) => {
-    const { conversationId, add, remove } = (payload ?? {}) as {
-      conversationId: string
-      add?: string[]
-      remove?: string[]
+    const { conversationId, add, remove, scope } = EditTrustListRequestSchema.parse(payload)
+
+    if (scope === 'vault') {
+      for (const toolName of add ?? []) deps.toolGrants.grant(toolName)
+      for (const toolName of remove ?? []) deps.toolGrants.revoke(toolName)
+      // Vault grants live outside the conversation row, so nothing about the
+      // conversation changed and nothing needs broadcasting. Settings revokes
+      // one without naming a conversation at all.
+      return conversationId ? deps.conversations.getById(conversationId) : null
     }
+
+    if (!conversationId) return null
+
     for (const toolName of add ?? []) {
       deps.conversations.addToTrustList(conversationId, toolName)
     }
@@ -336,6 +355,7 @@ export function registerUnavailableAgentHandlers(reason: string): void {
   registerUnavailableHandler(AgentChannels.invoke.APPROVE_TOOL, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.PREVIEW_DIFF, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.EDIT_TRUST_LIST, async () => unavailable())
+  registerUnavailableHandler(AgentChannels.invoke.GET_TOOL_GRANTS, async () => ({ tools: [] }))
   registerUnavailableHandler(AgentChannels.invoke.GET_BACKEND_STATUSES, async () => ({
     claude_cli: {
       backend: 'claude_cli',

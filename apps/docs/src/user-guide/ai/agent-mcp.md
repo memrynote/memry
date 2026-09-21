@@ -517,8 +517,9 @@ readable label such as `Reading note` or `Reading tasks`. Click the label to ope
 details area with the raw MCP tool name, parameters, and results.
 
 Changes are different. **Ask before changes** is the default, so memrynote pauses the turn and shows
-inline approval controls inside the tool row. You can allow the request once, allow create tools
-always for that conversation, deny it, or edit the arguments before allowing. Write requests that
+inline approval controls inside the tool row. A row waiting on you opens itself and folds back once
+you answer, so a paused turn is never hidden behind a collapsed summary. You can approve the request
+once, grant it a standing approval, reject it, or edit it before approving. Write requests that
 present no active-turn capability — every external MCP client, and any call arriving after its turn
 ended — continue to be denied, whichever confirmation setting you choose.
 
@@ -541,6 +542,19 @@ A body diff also offers **Edit before applying**, which opens the proposed markd
 Applying from there replaces the whole body with what you see, so an append you edited is applied as
 the finished document rather than appended a second time. Field changes and deletes have no text
 box; use **Edit and allow** on the tool row to change raw arguments instead.
+
+### Always allow
+
+**Always allow** on a paused request asks how long it should last:
+
+- **Always allow in this chat** ends with the conversation. Nothing survives it.
+- **Always allow in this vault** outlives the chat and is listed under Settings → Agent →
+  **Always allowed**, where **Revoke** takes it back. The list is per vault and stays on this
+  machine; it is never synced.
+
+**Deletes always ask.** A standing approval is a promise about work you can still look at
+afterwards, and a delete is the one write where that is not true, so the gate refuses to trust a
+delete tool at either scope and the menu says so.
 
 If you prefer the old behaviour, set tool confirmations to **Always allow** in
 Settings → Agent. That setting is per install and applies to every conversation.

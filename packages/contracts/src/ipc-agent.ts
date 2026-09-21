@@ -19,6 +19,7 @@ export const AgentChannels = {
     APPROVE_TOOL: 'agent:approveTool',
     PREVIEW_DIFF: 'agent:previewDiff',
     EDIT_TRUST_LIST: 'agent:editTrustList',
+    GET_TOOL_GRANTS: 'agent:getToolGrants',
     GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
     LIST_BACKEND_MODELS: 'agent:listBackendModels',
     GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',
@@ -463,13 +464,42 @@ export const SendTurnResponseSchema = z.object({
 })
 export type SendTurnResponse = z.infer<typeof SendTurnResponseSchema>
 
+/**
+ * How far a standing "always allow" reaches.
+ *
+ * `conversation` dies with the chat, which is the only scope that existed
+ * before and stays the default so an older renderer's `allow_always` keeps
+ * meaning exactly what it used to. `vault` outlives it and is therefore
+ * revocable in Settings; nothing may grant one without offering that.
+ */
+export const AlwaysAllowScopeSchema = z.enum(['conversation', 'vault'])
+export type AlwaysAllowScope = z.infer<typeof AlwaysAllowScopeSchema>
+
 export const ApproveToolDecisionSchema = z.union([
   z.object({ kind: z.literal('allow') }),
-  z.object({ kind: z.literal('allow_always') }),
+  z.object({
+    kind: z.literal('allow_always'),
+    scope: AlwaysAllowScopeSchema.default('conversation')
+  }),
   z.object({ kind: z.literal('edit_allow'), editedArgs: z.unknown() }),
   z.object({ kind: z.literal('deny') })
 ])
 export type ApproveToolDecision = z.infer<typeof ApproveToolDecisionSchema>
+
+export const EditTrustListRequestSchema = z.object({
+  /** Absent only for a vault-scoped edit, which no conversation owns. */
+  conversationId: z.string().optional(),
+  add: z.array(z.string()).optional(),
+  remove: z.array(z.string()).optional(),
+  scope: AlwaysAllowScopeSchema.default('conversation')
+})
+export type EditTrustListRequest = z.infer<typeof EditTrustListRequestSchema>
+
+/** The vault-scoped standing grants, for the Settings list that revokes them. */
+export const AgentToolGrantsSchema = z.object({
+  tools: z.array(z.string())
+})
+export type AgentToolGrants = z.infer<typeof AgentToolGrantsSchema>
 
 export const ApproveToolRequestSchema = z.object({
   conversationId: z.string(),

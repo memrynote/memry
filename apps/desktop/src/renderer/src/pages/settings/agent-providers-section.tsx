@@ -50,6 +50,7 @@ export function AgentProvidersSection({
   const [status, setStatus] = useState<AgentLocalProviderProbeResult | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
+  const [alwaysAllowed, setAlwaysAllowed] = useState<string[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -64,6 +65,17 @@ export function AgentProvidersSection({
     void window.api.agent.getBackendStatuses().then((statuses) => {
       if (!cancelled) setBackendStatuses(statuses)
     })
+    // A standing approval the user cannot find is a standing approval they
+    // cannot take back, so this list is not optional chrome.
+    void window.api.agent
+      .getToolGrants()
+      .then((grants) => {
+        if (!cancelled) setAlwaysAllowed(grants.tools)
+      })
+      .catch(() => {
+        // The agent runtime starts lazily; an empty list is the honest state
+        // until it answers, and the next visit to this page re-reads it.
+      })
     return () => {
       cancelled = true
     }
@@ -142,6 +154,17 @@ export function AgentProvidersSection({
       action: 'changed',
       objectType: 'agent_tool_approval_mode',
       dimensions: { value: toolApprovalMode }
+    })
+  }, [])
+
+  const revokeAlwaysAllowed = useCallback(async (toolName: string) => {
+    await window.api.agent.editTrustList({ remove: [toolName], scope: 'vault' })
+    const grants = await window.api.agent.getToolGrants()
+    setAlwaysAllowed(grants.tools)
+    void trackTelemetry('setting_changed', {
+      surface: 'settings',
+      action: 'changed',
+      objectType: 'agent_tool_grant_revoked'
     })
   }, [])
 
@@ -246,6 +269,33 @@ export function AgentProvidersSection({
             </SelectContent>
           </Select>
         </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('agentProviders.alwaysAllowed.group')}>
+        <SettingRow
+          label={t('agentProviders.alwaysAllowed.group')}
+          description={t('agentProviders.alwaysAllowed.description')}
+        >
+          <span className="text-xs/4 text-muted-foreground">{alwaysAllowed.length}</span>
+        </SettingRow>
+        {alwaysAllowed.length === 0 ? (
+          <SettingRow label={t('agentProviders.alwaysAllowed.empty')}>
+            <span />
+          </SettingRow>
+        ) : (
+          alwaysAllowed.map((toolName) => (
+            <SettingRow key={toolName} label={toolName}>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t('agentProviders.alwaysAllowed.revokeLabel', { tool: toolName })}
+                onClick={() => void revokeAlwaysAllowed(toolName)}
+              >
+                {t('agentProviders.alwaysAllowed.revoke')}
+              </Button>
+            </SettingRow>
+          ))
+        )}
       </SettingsGroup>
 
       <SettingsGroup label={t('agentProviders.groups.cliAgents')}>

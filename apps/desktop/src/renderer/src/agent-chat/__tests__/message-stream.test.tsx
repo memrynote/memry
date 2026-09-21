@@ -995,6 +995,158 @@ describe('MessageStream', () => {
     expect(screen.queryByText('Parameters')).not.toBeInTheDocument()
   })
 
+  /**
+   * The row is collapsed by default because tool activity is secondary. A row
+   * the turn is blocked on is not activity, and a question folded out of sight
+   * reads as the agent having stalled, so it opens itself and folds back once
+   * the answer is given.
+   */
+  it('opens a row that is waiting on the user and folds it back afterwards', () => {
+    const pendingApproval = {
+      kind: 'tool_call_pending_approval',
+      conversationId: 'conversation-1',
+      toolCallId: 'tool-1',
+      name: 'vault_create_task',
+      args: { title: 'Buy milk' },
+      requiresDiff: false,
+      previewKind: 'none'
+    }
+    mockUseAgentOptional.mockReturnValue({
+      state: { pendingApprovals: [pendingApproval] },
+      approveTool: mockApproveTool
+    })
+
+    const toolCall = message({
+      id: 'tool-call-1',
+      role: 'tool_call',
+      toolCallId: 'tool-1',
+      content: {
+        role: 'tool_call',
+        data: { tool: 'vault_create_task', args: { title: 'Buy milk' }, status: 'pending' }
+      }
+    })
+
+    const { rerender } = render(<MessageStream messages={[toolCall]} />)
+
+    expect(screen.getByRole('button', { name: 'Allow once' })).toBeInTheDocument()
+    expect(screen.getByText('Parameters')).toBeInTheDocument()
+
+    mockUseAgentOptional.mockReturnValue({
+      state: { pendingApprovals: [] },
+      approveTool: mockApproveTool
+    })
+    rerender(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'vault_create_task',
+                args: { title: 'Buy milk' },
+                status: 'output-available'
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.queryByText('Parameters')).not.toBeInTheDocument()
+  })
+
+  it('offers both standing-approval scopes, and neither for a delete', async () => {
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        pendingApprovals: [
+          {
+            kind: 'tool_call_pending_approval',
+            conversationId: 'conversation-1',
+            toolCallId: 'tool-1',
+            name: 'vault_create_task',
+            args: { title: 'Buy milk' },
+            requiresDiff: false,
+            previewKind: 'none'
+          }
+        ]
+      },
+      approveTool: mockApproveTool
+    })
+
+    const { unmount } = render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: { tool: 'vault_create_task', args: { title: 'Buy milk' }, status: 'pending' }
+            }
+          })
+        ]}
+      />
+    )
+
+    // Radix opens its menu on pointerdown, not on a synthetic click.
+    fireEvent.pointerDown(
+      screen.getByRole('button', { name: /Always allow/i }),
+      new MouseEvent('pointerdown', { bubbles: true })
+    )
+    fireEvent.click(await screen.findByText('Always allow in this vault'))
+
+    await waitFor(() => {
+      expect(mockApproveTool).toHaveBeenCalledWith({
+        conversationId: 'conversation-1',
+        toolCallId: 'tool-1',
+        decision: { kind: 'allow_always', scope: 'vault' }
+      })
+    })
+
+    unmount()
+
+    // A delete can never carry a standing approval, so the control that would
+    // grant one is not offered at all rather than offered and ignored.
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        pendingApprovals: [
+          {
+            kind: 'tool_call_pending_approval',
+            conversationId: 'conversation-1',
+            toolCallId: 'tool-2',
+            name: 'vault_delete_task',
+            args: { id: 'task-1' },
+            requiresDiff: false,
+            previewKind: 'loss'
+          }
+        ]
+      },
+      approveTool: mockApproveTool
+    })
+
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-2',
+            role: 'tool_call',
+            toolCallId: 'tool-2',
+            content: {
+              role: 'tool_call',
+              data: { tool: 'vault_delete_task', args: { id: 'task-1' }, status: 'pending' }
+            }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: /Always allow/i })).not.toBeInTheDocument()
+  })
+
   it('approves pending tool calls inline without a dialog', async () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
@@ -1035,7 +1187,8 @@ describe('MessageStream', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /Creating task/i }))
+    // A row waiting on the user opens itself: tool activity is collapsed
+    // because it is secondary, and a question the turn is blocked on is not.
     fireEvent.click(screen.getByRole('button', { name: 'Allow once' }))
 
     await waitFor(() => {
@@ -1085,7 +1238,6 @@ describe('MessageStream', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Creating task/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Edit and allow' }))
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '{"title":"Edited"}' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply edits' }))
@@ -1147,7 +1299,6 @@ describe('MessageStream', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /Updating note/i }))
     fireEvent.click(await screen.findByRole('button', { name: 'Edit before applying' }))
     const candidate = screen.getByRole('textbox', { name: 'Candidate' })
     fireEvent.change(candidate, { target: { value: 'edited full note' } })
