@@ -140,6 +140,21 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
   // ---- Create note ----
 
+  /**
+   * Put a row into inline rename.
+   *
+   * The name is read off the note's own path rather than the title it was asked
+   * to be created with: `createNote` de-duplicates on disk, so a second new note
+   * lands as `Untitled 1.md`. Seeding the input with `Untitled` there turns a
+   * blur with nothing typed into a real rename back to a name already taken.
+   */
+  const startNoteRename = useCallback((note: { id: string; path: string }) => {
+    const displayName = getDisplayName(note.path)
+    originalRenameTitle.current = displayName
+    setRenamingNoteId(note.id)
+    setRenameValue(displayName)
+  }, [])
+
   const handleCreateNote = useCallback(async () => {
     if (isCreating) return
 
@@ -179,9 +194,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         // it, stay shut inside a collapsed folder.
         revealNoteInSidebar(newNote.id)
 
-        originalRenameTitle.current = 'Untitled'
-        setRenamingNoteId(newNote.id)
-        setRenameValue('Untitled')
+        startNoteRename(newNote)
       }
     } catch (err) {
       trackRendererError('note_create_failed', err)
@@ -195,7 +208,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     } finally {
       setIsCreating(false)
     }
-  }, [isCreating, generalSettings.createInSelectedFolder, deps, openPage])
+  }, [isCreating, generalSettings.createInSelectedFolder, deps, openPage, startNoteRename])
 
   const handleCreateNoteInFolder = useCallback(
     async (folderPath: string) => {
@@ -229,6 +242,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           // "New note" on a folder's context menu can be used on a folder that
           // is shut; the note then lands somewhere invisible.
           revealNoteInSidebar(newNote.id)
+
+          startNoteRename(newNote)
         }
       } catch (err) {
         trackRendererError('note_create_failed', err)
@@ -243,7 +258,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setIsCreating(false)
       }
     },
-    [isCreating, deps.mutations.createNote, openPage]
+    [isCreating, deps.mutations.createNote, openPage, startNoteRename]
   )
 
   // ---- Create folder ----
@@ -293,6 +308,10 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     async (parentPath: string) => {
       if (isCreatingFolder) return
 
+      // The context menu reaches a folder that is shut, and a collapsed parent
+      // would hide the new row along with its rename input.
+      deps.expandFolderPath(parentPath)
+
       setIsCreatingFolder(true)
       try {
         const baseName = 'Untitled Folder'
@@ -309,6 +328,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
         if (success) {
           await deps.refreshFolders()
+          setRenamingFolderPath(fullPath)
+          setFolderRenameValue(folderName)
         }
       } catch (err) {
         trackRendererError('folder_create_failed', err)
@@ -328,12 +349,20 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
   // ---- Note rename ----
 
-  const handleRenameClick = useCallback((note: NoteListItem) => {
-    const displayName = getDisplayName(note.path)
-    originalRenameTitle.current = displayName
-    setRenamingNoteId(note.id)
-    setRenameValue(displayName)
-  }, [])
+  const handleRenameClick = startNoteRename
+
+  /**
+   * Rename by id, for a caller that only has one: a reveal completing on a note
+   * created somewhere else in the app knows the id, and the tree is the side
+   * that can turn it into a row.
+   */
+  const handleRenameById = useCallback(
+    (noteId: string) => {
+      const note = deps.noteMap.get(noteId)
+      if (note) startNoteRename(note)
+    },
+    [deps.noteMap, startNoteRename]
+  )
 
   const handleRenameInputChange = useCallback(
     (noteId: string, value: string) => {
@@ -939,6 +968,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     renameValue,
     isRenaming,
     handleRenameClick,
+    handleRenameById,
     handleRenameInputChange,
     handleRenameSubmit,
     handleRenameCancel,
