@@ -32,6 +32,11 @@ export const ErrorCodes = {
   SYNC_INVALID_SIGNATURE: 'SYNC_INVALID_SIGNATURE',
   SYNC_INVALID_CURSOR: 'SYNC_INVALID_CURSOR',
   SYNC_BATCH_TOO_LARGE: 'SYNC_BATCH_TOO_LARGE',
+  // A single push item the record schema refuses. Reported per item in
+  // `rejected[]` rather than as a request-level 400, so the rest of the batch
+  // still commits and the client can retire the one row that can never be
+  // accepted (#2320).
+  SYNC_INVALID_ITEM: 'SYNC_INVALID_ITEM',
   SYNC_REPLAY_DETECTED: 'SYNC_REPLAY_DETECTED',
   SYNC_DELETE_WINS: 'SYNC_DELETE_WINS',
   SYNC_VERSION_INCOMPATIBLE: 'SYNC_VERSION_INCOMPATIBLE',
