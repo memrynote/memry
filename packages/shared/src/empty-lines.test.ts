@@ -7,6 +7,7 @@ import {
   rewriteWikiImageEmbeds,
   normalizeSerializedMarkdown,
   maskHardBreaks,
+  restoreHardBreakSpelling,
   unmaskHardBreaks,
   escapeWikiLinkPipesInTableRows,
   type MarkdownSegment
@@ -479,32 +480,37 @@ describe('hard break masking', () => {
   it('marks a two-space hard break and leaves a soft break alone', () => {
     // #given 0.51's parser maps both spellings onto one newline, so the hard
     // one has to be marked before it reaches the parser.
-    const masked = maskHardBreaks('One  \nTwo\nThree')
+    const { markdown: masked, breaks } = maskHardBreaks('One  \nTwo\nThree')
 
     // #then the hard break carries a token and the soft one does not
     expect(masked).not.toContain('  \n')
     expect(masked.split('\n')[0]).toMatch(/One\w+;$/)
     expect(masked.split('\n')[1]).toBe('Two')
+    // #and the spelling it replaced travelled with it
+    expect(breaks).toEqual(['  '])
   })
 
-  it('marks a backslash hard break too', () => {
-    expect(maskHardBreaks('One\\\nTwo')).not.toContain('\\\n')
+  it('marks a backslash hard break too, and remembers it was a backslash', () => {
+    const { markdown: masked, breaks } = maskHardBreaks('One\\\nTwo')
+
+    expect(masked).not.toContain('\\\n')
+    expect(breaks).toEqual(['\\'])
   })
 
   it('leaves a line whose trailing spaces end the paragraph', () => {
     // #given nothing follows, so the parser produces no break at all
-    expect(maskHardBreaks('One  \n\nTwo')).toBe('One  \n\nTwo')
+    expect(maskHardBreaks('One  \n\nTwo')).toEqual({ markdown: 'One  \n\nTwo', breaks: [] })
   })
 
   it('leaves two trailing spaces inside a fence as content', () => {
     const md = '```sh\nline one  \nline two\n```'
-    expect(maskHardBreaks(md)).toBe(md)
+    expect(maskHardBreaks(md)).toEqual({ markdown: md, breaks: [] })
   })
 
   it('round-trips a hard break into the two newlines the doc spells it with', () => {
     // #given the document holds a soft break as one newline and a hard break
     // as two; `normalizeSerializedMarkdown` reads that back on the way out.
-    const masked = maskHardBreaks('One  \nTwo')
+    const { markdown: masked } = maskHardBreaks('One  \nTwo')
     const parsed = unmaskHardBreaks(masked)
 
     expect(parsed).toBe('One\n\nTwo')
@@ -513,10 +519,27 @@ describe('hard break masking', () => {
   it('deletes a token that lost its newline rather than leaking it', () => {
     // #given the fallback that makes this safe: the worst case is a hard break
     // that stays soft, never a token written into the user's file.
-    const masked = maskHardBreaks('One  \nTwo')
+    const { markdown: masked } = maskHardBreaks('One  \nTwo')
     const token = masked.split('\n')[0].replace('One', '')
 
     expect(unmaskHardBreaks(`One${token}Two`)).toBe('OneTwo')
+  })
+
+  it('gives a code block back the spelling, not the break', () => {
+    // #given a run that became a code block \u2014 BlockNote maps a raw `<pre>`
+    // onto one, and `<pre>` is prose as far as the mask is concerned. Its
+    // bytes are literal, so a trailing backslash there is a shell line
+    // continuation and not a paragraph break.
+    const { markdown: masked, breaks } = maskHardBreaks('npm run build \\\n  --silent')
+
+    // #then
+    expect(restoreHardBreakSpelling(masked, breaks)).toBe('npm run build \\\n  --silent')
+  })
+
+  it('deletes a code-block token whose spelling was never recorded', () => {
+    // #given the same safety property as `unmaskHardBreaks`: the one thing
+    // that must never reach the user's file is the token.
+    expect(restoreHardBreakSpelling('one MEMRYHBK9; two', [])).toBe('one  two')
   })
 })
 
@@ -524,9 +547,11 @@ describe('table column widths', () => {
   it('lays a table out to its own column widths, not a ten-character minimum', () => {
     // #given 0.51's serializer pads every column to at least ten characters,
     // which rewrote every table in every vault on first open.
-    expect(normalizeSerializedMarkdown('| a          | b          |\n| ---------- | ---------- |\n| c          | d          |')).toBe(
-      '| a | b |\n| - | - |\n| c | d |'
-    )
+    expect(
+      normalizeSerializedMarkdown(
+        '| a          | b          |\n| ---------- | ---------- |\n| c          | d          |'
+      )
+    ).toBe('| a | b |\n| - | - |\n| c | d |')
   })
 
   it('pads each column to its widest cell', () => {
@@ -551,6 +576,27 @@ describe('table column widths', () => {
   it('leaves a table inside a fence alone', () => {
     const md = '```\n| a          | b |\n| ---------- | - |\n```'
     expect(normalizeSerializedMarkdown(md)).toBe(md)
+  })
+
+  it('keeps a row whose cell holds a line break on one line', () => {
+    // #given what BlockNote 0.51+ serializes for two lines pasted into one
+    // cell: its backslash break, which ends the GFM row. Left alone, the table
+    // stopped being a table at that point and every row below it was lost.
+    const raw =
+      'Intro\n\n|              |        |\n| ------------ | ------ |\n| Task         | Owner  |\n| Review first\\\nsecond | Nobody |'
+
+    // #when
+    const out = normalizeSerializedMarkdown(raw)
+
+    // #then the break is a space and the table survives whole
+    expect(out).toContain('| Review first second | Nobody |')
+    expect(out.split('\n').filter((line) => line.startsWith('|'))).toHaveLength(4)
+    // #and it settles
+    expect(normalizeSerializedMarkdown(out)).toBe(out)
+  })
+
+  it('leaves a backslash break outside a table as a break', () => {
+    expect(normalizeSerializedMarkdown('one\\\ntwo')).toBe('one\ntwo')
   })
 
   it('is stable on a second pass', () => {

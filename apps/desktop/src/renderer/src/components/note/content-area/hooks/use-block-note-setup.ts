@@ -110,10 +110,31 @@ export function useBlockNoteSetup({
     focusAtEndRef.current = () => {
       editor.focus()
       const blocks = editor.document
-      if (blocks.length > 0) {
-        const lastBlock = blocks[blocks.length - 1]
+      if (blocks.length === 0) return
+
+      const lastBlock = blocks[blocks.length - 1]
+      // A click in the empty space below the note means "start writing here",
+      // and until BlockNote 0.51 that worked by accident: every document
+      // carried a real trailing empty paragraph, so the last block WAS an
+      // empty paragraph and the caret landed in it. 0.51 made the trailing
+      // block a widget decoration instead, so the last block is now the last
+      // thing the user wrote — and typing appended to the end of it, turning
+      // a new line into the same line.
+      //
+      // Insert the paragraph BlockNote's own trailing widget would have
+      // inserted for a click on itself. Skipped when the document already
+      // ends in an empty paragraph, so repeated clicks do not stack blank
+      // blocks up.
+      const content = lastBlock.content
+      const isEmptyParagraph =
+        lastBlock.type === 'paragraph' && Array.isArray(content) && content.length === 0
+      if (isEmptyParagraph) {
         editor.setTextCursorPosition(lastBlock.id, 'end')
+        return
       }
+
+      const [inserted] = editor.insertBlocks([{ type: 'paragraph' }], lastBlock, 'after')
+      editor.setTextCursorPosition(inserted, 'start')
     }
   }, [editor, focusAtEndRef])
 

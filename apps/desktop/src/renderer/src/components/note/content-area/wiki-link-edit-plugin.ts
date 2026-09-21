@@ -489,8 +489,35 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
    */
   let pressed: PressedChip | null = null
 
+  /**
+   * The mounted view, so `decorations` can ask whether the editor has focus.
+   *
+   * Reading the caret is not enough on its own. A document that has never been
+   * focused still has a selection — ProseMirror puts one at the end after a
+   * whole-document `replaceBlocks`, which is exactly what the open-time wiki
+   * link promotion does. Up to BlockNote 0.50 that landed on the trailing
+   * empty paragraph every document carried, so it was beside nothing and no
+   * source was painted. 0.51 made the trailing block a widget decoration
+   * instead of a node, so the end of the document is now the end of the last
+   * real block: a note whose last content is a wiki link opened with its chip
+   * hidden and raw `[[…]]` painted over it, untouched by the user.
+   *
+   * Focus is the honest gate. This paint exists for an editing caret, and an
+   * editor nobody is typing in does not have one.
+   */
+  let mountedView: EditorView | null = null
+
   return new Plugin<WikiLinkEditPluginState>({
     key: WIKI_LINK_EDIT_PLUGIN_KEY,
+
+    view(view: EditorView) {
+      mountedView = view
+      return {
+        destroy() {
+          if (mountedView === view) mountedView = null
+        }
+      }
+    },
 
     state: {
       init: () => ({ insertedAt: null }),
@@ -511,6 +538,9 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
 
     props: {
       decorations(state) {
+        // No editing caret, nothing to open: see `mountedView`.
+        if (!mountedView?.hasFocus()) return null
+
         const decorations: Decoration[] = []
 
         const run = activeRun(state)
@@ -592,6 +622,22 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
        * untouched.
        */
       handleDOMEvents: {
+        /**
+         * Focus and blur change what `decorations` should paint but change no
+         * document state, so ProseMirror would not recompute on its own. An
+         * empty transaction is the cheapest way to ask it to; the same shape
+         * BlockNote's own trailing-node plugin uses when `editable` flips.
+         */
+        focus(view: EditorView): boolean {
+          view.dispatch(view.state.tr)
+          return false
+        },
+
+        blur(view: EditorView): boolean {
+          view.dispatch(view.state.tr)
+          return false
+        },
+
         mousedown(view: EditorView, event: MouseEvent): boolean {
           // Unconditional: an abandoned press must never navigate on a later,
           // unrelated mouseup.

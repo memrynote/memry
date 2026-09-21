@@ -211,6 +211,103 @@ export function rewriteWikiImageEmbeds(
 
 const LIST_ITEM_LINE = /^[ \t]*(?:[-*+]|\d+[.)])\s/
 
+// ---------------------------------------------------------------------------
+// Indented code blocks
+// ---------------------------------------------------------------------------
+
+/** An indented code line: four spaces or one tab, then something. */
+const INDENTED_CODE_LINE = /^(?: {4}|\t)(.*)$/
+
+/**
+ * Rewrite CommonMark's indented code blocks as fenced ones, before the parse.
+ *
+ * BlockNote 0.51's markdown parser does not implement indented code at all.
+ * Measured on `para\n\n    const x = 1\n    const y = 2`: 0.54 returns a second
+ * PARAGRAPH holding the two lines, so the code block was gone from the
+ * document and the note was written back as prose. Up to 0.50 remark parsed it
+ * into a `codeBlock` and the serializer wrote it back as a fence, which is the
+ * behaviour this restores — same node, same bytes as before the upgrade.
+ *
+ * The conversion to a fence is not a choice: the editor has no indented-code
+ * node, so a fence is the only spelling a `codeBlock` can be written back as,
+ * and it is the one every build up to 0.50 wrote. Nothing changes for a note
+ * nobody edits \u2014 the author's bytes ride beside the document (#1915) and come
+ * back untouched.
+ *
+ * Deliberately narrower than CommonMark, because a false positive turns the
+ * author's prose into code, which is worse than the loss it fixes:
+ *
+ * - a blank line (or the start of the document) has to open the run, so a
+ *   lazy paragraph continuation line can never qualify;
+ * - the previous non-blank line may not be a list item, so an indented list
+ *   body is left to the list parser;
+ * - code fences are skipped, as everywhere else here.
+ */
+export function fenceIndentedCodeBlocks(markdown: string): string {
+  if (!markdown.includes('\n ') && !markdown.includes('\n\t') && !INDENTED_CODE_LINE.test(markdown))
+    return markdown
+
+  const regions = splitByCodeFences(markdown)
+  let out = ''
+  for (const region of regions) {
+    out += region.isCode ? region.text : fenceProseIndentedCode(region.text)
+  }
+  return out
+}
+
+function fenceProseIndentedCode(text: string): string {
+  const lines = text.split('\n')
+  const out: string[] = []
+  let previousNonBlank: string | undefined
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index]
+    const opens =
+      line.trim() !== '' &&
+      INDENTED_CODE_LINE.test(line) &&
+      (previousNonBlank === undefined || lines[index - 1]?.trim() === '') &&
+      !(previousNonBlank !== undefined && LIST_ITEM_LINE.test(previousNonBlank))
+
+    if (!opens) {
+      out.push(line)
+      if (line.trim() !== '') previousNonBlank = line
+      continue
+    }
+
+    const end = indentedRunEnd(lines, index)
+    out.push('```')
+    for (const body of lines.slice(index, end)) {
+      out.push(body.replace(INDENTED_CODE_LINE, '$1'))
+    }
+    out.push('```')
+    previousNonBlank = '```'
+    index = end - 1
+  }
+
+  return out.join('\n')
+}
+
+/** End index (exclusive) of the indented run at `start`, trailing blanks excluded. */
+function indentedRunEnd(lines: string[], start: number): number {
+  let end = start + 1
+  let lastContent = end
+  while (end < lines.length) {
+    const line = lines[end]
+    if (INDENTED_CODE_LINE.test(line)) {
+      end++
+      lastContent = end
+      continue
+    }
+    // A blank line only continues the run when indented content follows it.
+    if (line.trim() === '') {
+      end++
+      continue
+    }
+    break
+  }
+  return lastContent
+}
+
 /**
  * The token a hard break wears across BlockNote's markdown parser.
  *
@@ -229,36 +326,61 @@ const LIST_ITEM_LINE = /^[ \t]*(?:[-*+]|\d+[.)])\s/
  * parse, put it back after.
  *
  * The token is ASCII, so it cannot be mistaken for content the parser will
- * transform, and `unmaskHardBreaks` deletes any occurrence it cannot pair with
- * a newline. That fallback is the safety property: the worst case is a hard
- * break that stays soft — what happens today — and never a token written into
- * the user's file.
+ * transform, and no restore leaves one behind: `unmaskHardBreaks` deletes any
+ * occurrence it cannot pair with a newline. That fallback is the safety
+ * property: the worst case is a hard break that stays soft — what happens
+ * today — and never a token written into the user's file.
+ *
+ * The token is INDEXED, and the spelling it replaced is kept beside it, for
+ * the same reason `maskInlineTokens` keeps its payloads: where the masked run
+ * lands decides what it has to turn back into. In prose it means a break, and
+ * `unmaskHardBreaks` writes the document's spelling of one. In a code block it
+ * means nothing at all — the bytes are literal there — so
+ * `restoreHardBreakSpelling` puts back exactly what was taken, which is the
+ * difference between a `cmd \` line continuation surviving a `<pre>` block and
+ * being silently replaced by two spaces.
  */
-const HARD_BREAK_TOKEN = 'MEMRYHBK;'
+const HARD_BREAK_TOKEN_PREFIX = 'MEMRYHBK'
+
+/** `MEMRYHBK<index>;`, as written by `maskHardBreaks`. */
+const HARD_BREAK_TOKEN = /MEMRYHBK(\d+);/g
+
+/** The same token, with the newline it marks when it still has one. */
+const HARD_BREAK_TOKEN_WITH_NEWLINE = /MEMRYHBK\d+;(\n?)/g
 
 // A hard break is a line ending in two or more spaces, or in a single
 // backslash. Both only count when a non-blank line follows: otherwise the line
 // ends the paragraph and the parser produces no break at all.
 const HARD_BREAK_LINE = /(?:[ \t]{2,}|\\)$/
 
+export interface MaskedHardBreaks {
+  markdown: string
+  /** The spelling each token replaced, by index. Empty when nothing was masked. */
+  breaks: string[]
+}
+
 /**
  * Mark every hard line break in `markdown` so it survives the parse.
  *
  * Code fences are skipped: a line ending in two spaces inside a fence is the
- * author's content, not a break.
+ * author's content, not a break. A raw `<pre>` block is NOT skipped — it is
+ * prose as far as this scan is concerned — which is why the spelling has to
+ * travel with the token: BlockNote turns that `<pre>` into a code block, and
+ * `restoreHardBreakSpelling` is what puts the author's bytes back there.
  */
-export function maskHardBreaks(markdown: string): string {
-  if (!markdown) return markdown
+export function maskHardBreaks(markdown: string): MaskedHardBreaks {
+  if (!markdown) return { markdown, breaks: [] }
 
   const regions = splitByCodeFences(markdown)
+  const breaks: string[] = []
   let out = ''
   for (const region of regions) {
-    out += region.isCode ? region.text : maskProseHardBreaks(region.text)
+    out += region.isCode ? region.text : maskProseHardBreaks(region.text, breaks)
   }
-  return out
+  return breaks.length === 0 ? { markdown, breaks: [] } : { markdown: out, breaks }
 }
 
-function maskProseHardBreaks(text: string): string {
+function maskProseHardBreaks(text: string, breaks: string[]): string {
   // Cheap reject on the characters a hard break is spelled with. `$` in
   // `HARD_BREAK_LINE` anchors to the end of the whole string, so it is only
   // meaningful once the text is split into lines.
@@ -273,7 +395,10 @@ function maskProseHardBreaks(text: string): string {
     // trailing spaces in place would hand the parser a break it already knows
     // how to drop, and leaving the backslash would escape the token's first
     // character.
-    lines[index] = line.replace(HARD_BREAK_LINE, '') + HARD_BREAK_TOKEN
+    lines[index] = line.replace(HARD_BREAK_LINE, (spelling) => {
+      breaks.push(spelling)
+      return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};`
+    })
   }
   return lines.join('\n')
 }
@@ -282,16 +407,34 @@ function maskProseHardBreaks(text: string): string {
  * Turn each surviving token back into the second newline that spells a hard
  * break in the document, and delete any that lost its newline.
  *
- * Applied to one inline text run, after the parse.
+ * Applied to one inline text run of PROSE, after the parse. A run that became
+ * a code block goes through `restoreHardBreakSpelling` instead.
  */
 export function unmaskHardBreaks(text: string): string {
-  if (!text.includes(HARD_BREAK_TOKEN)) return text
-  return text.split(`${HARD_BREAK_TOKEN}\n`).join('\n\n').split(HARD_BREAK_TOKEN).join('')
+  if (!text.includes(HARD_BREAK_TOKEN_PREFIX)) return text
+  return text.replace(HARD_BREAK_TOKEN_WITH_NEWLINE, (_whole, newline: string) =>
+    newline ? '\n\n' : ''
+  )
+}
+
+/**
+ * Put back the exact spelling each token replaced, for one inline text run of
+ * a CODE BLOCK.
+ *
+ * A code block holds literal bytes, so the two trailing spaces or the trailing
+ * backslash that a token stands for mean nothing there beyond themselves and
+ * have to come back as themselves. A token with no recorded spelling is
+ * deleted rather than left: the one thing that must never reach the user's
+ * file is the token.
+ */
+export function restoreHardBreakSpelling(text: string, breaks: string[]): string {
+  if (!text.includes(HARD_BREAK_TOKEN_PREFIX)) return text
+  return text.replace(HARD_BREAK_TOKEN, (_whole, index: string) => breaks[Number(index)] ?? '')
 }
 
 /** True when the text still carries a token, so callers can skip the walk. */
 export function hasHardBreakToken(text: string): boolean {
-  return text.includes(HARD_BREAK_TOKEN)
+  return text.includes(HARD_BREAK_TOKEN_PREFIX)
 }
 
 /**
@@ -329,8 +472,44 @@ export function normalizeSerializedMarkdown(markdown: string): string {
 const BACKSLASH_BREAK_RUN = /(?:\\\n)+/g
 const HARD_BREAK = '  \n'
 
+/** A line that opens a table row. Its cells may not span more than one line. */
+const TABLE_ROW_START = /^[ \t]*\|/
+
+/**
+ * Put a table row that a line break split back onto one line.
+ *
+ * A GFM row IS a line: the break ends the row, and everything after it stops
+ * being part of the table. BlockNote 0.51+ writes a line break inside a cell
+ * as the backslash form it uses everywhere else, so pasting two lines into a
+ * cell serialized as
+ *
+ *   | Review first\
+ *   second | Nobody |
+ *
+ * and the table was gone from the file on the next read — with it, every row
+ * below the break. Measured on the real write-back, not inferred.
+ *
+ * The break becomes a space, which is what the cell already meant: one line of
+ * text. Lossy in the sense that the two lines become one, and that is the
+ * trade a single-line grammar forces; the alternative on disk today is losing
+ * the table.
+ */
+function joinBrokenTableRows(lines: string[]): string[] {
+  const out: string[] = []
+  for (const line of lines) {
+    const previous = out[out.length - 1]
+    if (previous !== undefined && previous.endsWith('\\') && TABLE_ROW_START.test(previous)) {
+      out[out.length - 1] = `${previous.slice(0, -1)} ${line}`
+      continue
+    }
+    out.push(line)
+  }
+  return out
+}
+
 function normalizeProseMarkdown(text: string): string {
-  const lines = text
+  const lines = joinBrokenTableRows(text.split('\n'))
+    .join('\n')
     .replace(BACKSLASH_BREAK_RUN, (run) =>
       run.length === 4 ? HARD_BREAK : '\n'.repeat(run.length / 2)
     )
