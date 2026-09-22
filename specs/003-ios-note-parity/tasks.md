@@ -279,7 +279,7 @@ after sync.
 
 Not a phase. Run after any phase that writes to the body or to bytes.
 
-- [ ] R01 Edit each block type on iOS, sync, open on desktop, and confirm the vault markdown file changed **only** in the edited region (FR-041)
+- [x] R01 Edit each block type on iOS, sync, open on desktop, and confirm the vault markdown file changed **only** in the edited region (FR-041) — closed without a device: `block-edit.json` already pins the document each iOS operation leaves behind, and `apps/desktop/src/main/sync/ios-edit-writeback.test.ts` runs desktop's real `yDocToMarkdown` over it
 - [ ] R02 Edit a table's cell text, a cell colour and a column width on iOS, and confirm desktop regenerates `<!-- table-layout:… -->` and `<!-- table-colors:… -->` with the same bytes it would have written itself
 - [x] R03 Open a note carrying suggestions and link references on iOS, edit an unrelated block, and confirm `criticMarkupMarks`, `linkReferenceDefinitions`, `linkReferenceUsages` and `markdownSource` survive untouched (§12.5)
 - [x] R04 Open a note holding a block type this build does not know, edit a neighbouring block, and confirm the unknown block survives (FR-033)
