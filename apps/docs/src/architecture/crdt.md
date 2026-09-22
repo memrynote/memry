@@ -1318,11 +1318,25 @@ plain markdown link and its domain, title, favicon and site name are gone. Every
 Whatever still cannot be represented is caught by the fail-closed guard in
 [Markdown Write-Back](#markdown-write-back).
 
-The custom **blocks** — `callout`, `youtubeEmbed`, `bookmark`, `file` and `taskBlock` — work
-the same way. `file` is worth calling out: the renderer overrides BlockNote's default `file`
-spec, so before the config was shared the main process built the _default_ one and wrote
-`[name.pdf](url)` where the vault file held `<!-- file:{…} -->`, dropping size, MIME type and
-any width/height/alignment.
+The custom **blocks** — `callout`, `youtubeEmbed`, `bookmark`, `file`, `taskBlock` and
+`diagram` — work the same way. `file` is worth calling out: the renderer overrides
+BlockNote's default `file` spec, so before the config was shared the main process built the
+_default_ one and wrote `[name.pdf](url)` where the vault file held `<!-- file:{…} -->`,
+dropping size, MIME type and any width/height/alignment.
+
+`diagram` is the one block whose renderer spec is a third party's. Desktop registers
+`createReactDiagramBlockSpec()` from `@blocknote/diagram-block`, which brings the source
+popup, the live Mermaid preview and the fence parse rule. Main and the mobile WebView cannot
+register the same thing — the package's entry point pulls React and ~3 MB of mermaid, and
+both of those surfaces exist to avoid exactly that weight — so they build the node from
+`diagramConfig` in `@memry/editor-schema` instead, and the renderer↔main parity gate compares
+every block's config field by field so the restatement cannot drift from the package's.
+
+Its markdown form is a plain ` ```mermaid ` fence, so there is no marker to recognise: a
+Memry build without the block reads a diagram back as a code block tagged `mermaid` and
+writes the same bytes out again, and a fence written by Obsidian or GitHub opens as a
+diagram. What the parse rule adds is priority — it runs before `codeBlock`'s, which would
+otherwise claim every `<pre><code>`.
 
 Main is also the parser. A note's Y.Doc is seeded from its vault file in the main process
 (`crdt-provider.ts`), and the renderer does not parse markdown when a Yjs fragment is

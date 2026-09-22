@@ -1863,6 +1863,29 @@ const BLOCK_CASES = [
       content: [{ type: 'text', text: 'Details', styles: {} }],
       children: []
     }
+  },
+  {
+    type: 'diagram',
+    // Literal, like `file` and `taskBlock`, but for the opposite reason: there
+    // is no Memry serializer to compare against at all. A diagram's on-disk
+    // form is a plain ```` ```mermaid ```` fence produced by BlockNote's own
+    // HTML\u2192markdown step from the `<pre><code class="language-mermaid">` the
+    // server spec builds \u2014 so these bytes, not a function, are the contract,
+    // and they are the bytes Obsidian and GitHub already render.
+    //
+    // The indented second line is the measurement, not decoration: the prose
+    // repair in `parse-markdown.ts` strips one space after every newline, and
+    // until it learned that a diagram's text is literal this came back
+    // `graph TD\n   A[Start] --> B[Stop]` \u2014 a note rewritten one space shorter
+    // on every open.
+    markdown: '```mermaid\ngraph TD\n    A[Start] --> B[Stop]\n```',
+    block: {
+      id: 'blk',
+      type: 'diagram',
+      props: {},
+      content: [{ type: 'text', text: 'graph TD\n    A[Start] --> B[Stop]', styles: {} }],
+      children: []
+    }
   }
 ] as const
 

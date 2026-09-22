@@ -40,6 +40,7 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Quote, callout
 - Toggle list (collapsible section — nest text, images, even other toggles inside it)
 - Code block (language picker: 50 languages, alphabetical)
+- Diagram (Mermaid)
 - Divider
 - Image, file
 - Table
@@ -61,6 +62,28 @@ Highlighting follows your theme: the same block is light in the light theme and
 dark in the dark one, on the sidebar's own background rather than a black slab.
 Code text sits one notch below body text and scales with **Appearance → Font
 Size**.
+
+## Diagrams
+
+`/mermaid` (or `/diagram`, `/flowchart`, `/chart`, `/graph`) inserts a
+[Mermaid](https://mermaid.js.org) diagram, starting from a two-box flowchart so
+there is something on the page to edit. The block shows the **drawing**; click it
+to open the source and edit it, and the picture redraws as you type. Source with
+a mistake in it keeps showing the last diagram that worked, with the error
+underneath, so a half-typed line does not blank the page.
+
+Flowcharts, sequence diagrams, Gantt charts, state diagrams, pie charts \u2014 whatever
+Mermaid draws.
+
+A diagram is stored as an ordinary ` ```mermaid ` code fence, the same notation
+Obsidian, GitHub and GitLab use. Nothing extra is written beside it, so a diagram
+you make here shows up as a diagram there, a fence written there opens as a
+diagram here, and a fence written by a Memry version that predates this block
+opens as one too.
+
+On the phone the block shows the Mermaid **source**, labelled, rather than the
+drawing \u2014 the renderer is far too heavy for the mobile editor. You can read and
+edit it there and the change syncs; the picture is drawn on the desktop.
 
 ## Tables
 

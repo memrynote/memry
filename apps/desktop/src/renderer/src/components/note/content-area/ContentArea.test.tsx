@@ -476,6 +476,15 @@ function resetEditor(): void {
       if ('props' in update) block.props = { ...block.props, ...(update.props as object) }
     }),
     insertBlocks: vi.fn(),
+    // `getDiagramSlashMenuItems` only offers its row when the editor's schema
+    // actually carries the block, so the stub has to say whether it does. The
+    // real schema does (`editor-schema.ts`), and the parity gate in
+    // `editor-schema.test.ts` is what proves that; here it only has to be
+    // present so the row is built. The empty `dictionary` is what makes the
+    // package fall back to its bundled English strings \u2014 which ContentArea then
+    // relabels with Memry's own, so nothing in this file reads them.
+    schema: { blockSchema: { diagram: {} } },
+    dictionary: {},
     getExtension: vi.fn(() => ({ openSuggestionMenu: contentAreaMocks.openSuggestionMenu })),
     getTextCursorPosition: vi.fn(() => ({ block: urlBlock })),
     prosemirrorView: {
@@ -1220,6 +1229,52 @@ describe('ContentArea', () => {
         content: expect.objectContaining({ headerRows: 1 })
       })
     )
+  })
+
+  it('offers the diagram row under /mermaid, in Memry’s words', async () => {
+    // #given the row comes from `@blocknote/diagram-block`, which carries the
+    // aliases (mermaid, flowchart, chart, graph) and the insert; only the two
+    // strings a reader sees are Memry's, because the package's dictionary is
+    // English-only and the rest of this menu is translated.
+    render(<ContentArea noteId="note-1" />)
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+
+    // #when the word the issue named, which is an ALIAS \u2014 the title is "Diagram"
+    const items = await slashController.getItems('mermaid')
+
+    // #then
+    expect(items).toEqual([
+      expect.objectContaining({
+        title: 'Diagram',
+        subtext: 'Flowchart, sequence or Gantt chart from Mermaid source'
+      })
+    ])
+  })
+
+  it('drops the diagram row while the caret is in a table cell', async () => {
+    // #given a caret inside a cell. A diagram is a BLOCK, so BlockNote lands it
+    // after the whole table and takes the caret with it (#1640) \u2014 and unlike
+    // image and check there is no inline form to offer instead.
+    contentAreaMocks.editor.transact = (run: (tr: unknown) => unknown) =>
+      run({
+        selection: {
+          $from: {
+            depth: 3,
+            node: (depth: number) => ({
+              type: { name: ['table', 'tableRow', 'tableCell'][depth - 1] }
+            })
+          }
+        }
+      })
+    render(<ContentArea noteId="note-1" />)
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+
+    // #when / #then
+    expect(await slashController.getItems('mermaid')).toEqual([])
   })
 
   it('registers the wiki-link edit plugin, prepended, through the undo-safe wrapper', () => {

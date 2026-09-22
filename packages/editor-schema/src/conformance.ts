@@ -390,6 +390,56 @@ const blockMarkerCases: RoundtripCase[] = [
 ]
 
 /**
+ * A Mermaid diagram is a ```` ```mermaid ```` fence on disk (#1870), and the
+ * fence is the whole compatibility story: it is what Obsidian, GitHub and
+ * GitLab already render, and it is what a Memry build WITHOUT the block reads
+ * back as a plain code block rather than as nothing at all.
+ *
+ * So what these cases pin is that the block is invisible to the file. The
+ * source's own indentation is why there is more than one of them: BlockNote's
+ * markdown parser indents the HTML it builds, and the repair that strips that
+ * artifact out of prose had to learn that a diagram's bytes are literal —
+ * without it `graph TD\n    A[Start]` came back one space short, and the note
+ * was rewritten a space shorter on every open.
+ */
+const diagramCases: RoundtripCase[] = [
+  {
+    name: 'mermaid fence',
+    markdown: '```mermaid\ngraph TD\n    A[Start] --> B[Stop]\n```'
+  },
+  {
+    // Deeper and uneven indentation, which is where a per-line strip shows up
+    // as a diagram that walks left one space at a time.
+    name: 'mermaid fence with nested indentation',
+    markdown:
+      '```mermaid\nsequenceDiagram\n    Alice->>John: Hello\n        Note right of John: thinking\n    John-->>Alice: Great\n```'
+  },
+  {
+    // What `/mermaid` leaves behind when the author clears the starter source.
+    name: 'empty mermaid fence',
+    markdown: '```mermaid\n```'
+  },
+  {
+    // Two trailing spaces are a hard break in prose and two trailing spaces in
+    // a diagram, so the mask has to give the spelling back here exactly as it
+    // does inside a code fence.
+    name: 'mermaid fence with trailing spaces',
+    markdown: '```mermaid\ngraph TD  \n  A --> B\n```'
+  },
+  {
+    name: 'mermaid fence between paragraphs',
+    markdown: 'Before\n\n```mermaid\ngraph LR\n  A --> B\n```\n\nAfter'
+  },
+  {
+    // The neighbour that must NOT be claimed. `runsBefore: ['codeBlock']` lets
+    // the diagram's parse rule go first, so a fence tagged anything else has
+    // to come back a code block with its language intact.
+    name: 'javascript fence is not claimed by the diagram block',
+    markdown: '```js\nconst a = 1\n```'
+  }
+]
+
+/**
  * Spellings Memry never writes, from files it did not author (#1915). The
  * block tree cannot tell `* One` from `- One`, so `canonical` here records
  * the house style an EDITED region comes back in. What an untouched document
@@ -432,6 +482,7 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...toggleCases,
   ...containerCases,
   ...blockMarkerCases,
+  ...diagramCases,
   ...foreignSpellingCases
 ]
 

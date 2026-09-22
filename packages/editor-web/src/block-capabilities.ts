@@ -116,7 +116,8 @@ export const BLOCK_LABELS: Readonly<Record<string, string>> = {
   audio: 'Audio',
   bookmark: 'Bookmark',
   youtubeEmbed: 'YouTube embed',
-  taskBlock: 'Task'
+  taskBlock: 'Task',
+  diagram: 'Diagram'
 }
 
 /** Block-level attachment, or an `inlineImage` in its content. Desktop's rule. */

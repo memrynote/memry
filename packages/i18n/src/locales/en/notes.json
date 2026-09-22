@@ -230,6 +230,10 @@
       "error": "Error",
       "success": "Success"
     },
+    "diagram": {
+      "title": "Diagram",
+      "subtext": "Flowchart, sequence or Gantt chart from Mermaid source"
+    },
     "slashMenu": {
       "pdf": {
         "title": "PDF",

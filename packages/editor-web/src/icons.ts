@@ -34,7 +34,10 @@ const ICON_PATHS = {
     'M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0',
     'M2 12h20',
     'M12 2a15.3 15.3 0 0 1 0 20a15.3 15.3 0 0 1 0-20'
-  ]
+  ],
+  // One node branching into two \u2014 a flowchart at glyph size, which is what a
+  // Mermaid source is most often a picture of.
+  diagram: ['M9 3h6v4H9z', 'M3 17h5v4H3z', 'M16 17h5v4h-5z', 'M12 7v4', 'M5.5 17v-3h13v3']
 } as const
 
 export type IconName = keyof typeof ICON_PATHS
