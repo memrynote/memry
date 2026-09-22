@@ -85,6 +85,10 @@ protocol NotesReading: Sendable {
     ///   because an absent `attachmentReferences` means "this sender does not
     ///   know" (chapter 13 §13.4).
     func attachments(id: String) async throws -> [CachedAttachment]
+    /// Every template a note can be made from (N803).
+    func templates() async throws -> [TemplateSummary]
+    /// The reminders pointing at one note (N804).
+    func reminders(noteId: String) async throws -> [ReminderSummary]
     /// Every tag in the vault, with its note count (N600).
     func tags() async throws -> [TagSummary]
     /// The live notes carrying one tag (N600). Matched case-insensitively by
@@ -147,6 +151,16 @@ struct CoreNotesReader: NotesReading {
     func attachments(id: String) async throws -> [CachedAttachment] {
         let vault = vault
         return try await executor.run { try vault.notes().attachments(id: id) }
+    }
+
+    func templates() async throws -> [TemplateSummary] {
+        let vault = vault
+        return try await executor.run { try vault.notes().templates() }
+    }
+
+    func reminders(noteId: String) async throws -> [ReminderSummary] {
+        let vault = vault
+        return try await executor.run { try vault.notes().reminders(noteId: noteId) }
     }
 
     func tags() async throws -> [TagSummary] {

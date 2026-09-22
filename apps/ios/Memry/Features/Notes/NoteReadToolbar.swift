@@ -23,6 +23,8 @@ struct NoteReadToolbar: ViewModifier {
     @Binding var moving: Bool
     @Binding var confirmingDelete: Bool
     let applyHistory: (BlockEdit?) async -> Void
+    /// The note as text, for the share sheet (N802).
+    let export: NoteExport
 
     func body(content: Content) -> some View {
         content

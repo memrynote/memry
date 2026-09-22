@@ -216,6 +216,85 @@ pub fn notes_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, St
     rows.collect::<Result<Vec<_>, _>>().map_err(failed)
 }
 
+/// One template a note can be made from (N803).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TemplateSummary {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub icon: Option<String>,
+}
+
+/// Every live template, by name.
+pub fn templates(conn: &Connection) -> Result<Vec<TemplateSummary>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT id, name, description, icon FROM templates \
+             WHERE deleted_at IS NULL ORDER BY name, id",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok(TemplateSummary {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+                icon: row.get(3)?,
+            })
+        })
+        .map_err(failed)?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(failed)
+}
+
+/// One reminder (N804, §13.7.12).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReminderSummary {
+    pub id: String,
+    /// What it points at — `note` for the ones this surface shows.
+    pub target_type: String,
+    pub target_id: String,
+    /// When to remind, as the ISO instant the payload carries.
+    pub remind_at: String,
+    pub title: Option<String>,
+    /// `pending`, `dismissed`, `snoozed` — carried verbatim rather than
+    /// mapped, because §13.7.12 never enumerates the values.
+    pub status: String,
+    pub snoozed_until: Option<String>,
+}
+
+/// The reminders pointing at one note (N804).
+///
+/// **`triggeredAt` is deliberately not part of this**, and §13.7.12 says why:
+/// each device shows its own notification, so a synced "already fired" would
+/// suppress it on a device that never displayed it. Dismiss and snooze do
+/// sync, and both are here.
+pub fn reminders_for(
+    conn: &Connection,
+    target_id: &str,
+) -> Result<Vec<ReminderSummary>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT id, target_type, target_id, remind_at, title, status, snoozed_until \
+             FROM reminders WHERE target_id = ?1 AND deleted_at IS NULL \
+             ORDER BY remind_at, id",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map([target_id], |row| {
+            Ok(ReminderSummary {
+                id: row.get(0)?,
+                target_type: row.get(1)?,
+                target_id: row.get(2)?,
+                remind_at: row.get(3)?,
+                title: row.get(4)?,
+                status: row.get(5)?,
+                snoozed_until: row.get(6)?,
+            })
+        })
+        .map_err(failed)?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(failed)
+}
+
 fn read_summary(row: &Row<'_>) -> Result<NoteSummary, rusqlite::Error> {
     Ok(NoteSummary {
         id: row.get(0)?,

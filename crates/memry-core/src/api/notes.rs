@@ -13,7 +13,9 @@ use crate::crdt::comments::ReviewComment;
 use crate::crdt::errors::CrdtError;
 use crate::domain::attachments::{self, BlockAttachment, CachedAttachment};
 use crate::domain::note_meta::{self, NoteMetadata};
-use crate::domain::reads::{self, FolderSummary, NoteDetail, NoteSummary, TagSummary};
+use crate::domain::reads::{
+    self, FolderSummary, NoteDetail, NoteSummary, ReminderSummary, TagSummary, TemplateSummary,
+};
 use crate::storage::Db;
 
 /// The read-only content surface over one opened vault.
@@ -45,6 +47,22 @@ impl Notes {
     /// why one cannot be given an honest signature.
     pub fn list(&self) -> Result<Vec<NoteSummary>, StorageError> {
         self.db.call_blocking(|conn| reads::notes(conn))
+    }
+
+    /// Every template a note can be made from (N803).
+    pub fn templates(&self) -> Result<Vec<TemplateSummary>, StorageError> {
+        self.db.call_blocking(|conn| reads::templates(conn))
+    }
+
+    /// The reminders pointing at one note (N804).
+    ///
+    /// **`triggeredAt` is not among them**, and §13.7.12 says why: each
+    /// device shows its own notification, so a synced "already fired" would
+    /// suppress it on a device that never displayed it. Dismiss and snooze do
+    /// sync, and both are here.
+    pub fn reminders(&self, note_id: String) -> Result<Vec<ReminderSummary>, StorageError> {
+        self.db
+            .call_blocking(move |conn| reads::reminders_for(conn, &note_id))
     }
 
     /// Every tag in this vault, with the number of live notes carrying it

@@ -83,6 +83,11 @@ struct NoteReadView: View {
         _backlinks = State(
             initialValue: BacklinksViewModel(noteId: route.id, search: search)
         )
+        _reminders = State(
+            initialValue: NoteRemindersViewModel(
+                noteId: route.id, reader: reader, writer: writer
+            )
+        )
         _model = State(initialValue: NoteReadViewModel(route: route, reader: reader, filler: filler))
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: route.id, filler: filler)
@@ -109,6 +114,11 @@ struct NoteReadView: View {
         _actions = State(initialValue: NotePageActions(noteId: model.route.id, writer: writer))
         _backlinks = State(
             initialValue: BacklinksViewModel(noteId: model.route.id, search: search)
+        )
+        _reminders = State(
+            initialValue: NoteRemindersViewModel(
+                noteId: model.route.id, reader: model.reader, writer: writer
+            )
         )
         _model = State(initialValue: model)
         _composer = State(
@@ -154,6 +164,9 @@ struct NoteReadView: View {
 
     /// The notes linking here (N800).
     @State private var backlinks: BacklinksViewModel
+
+    /// What is set to remind the reader about this note (N804).
+    @State private var reminders: NoteRemindersViewModel
 
     /// The page menu's sheets and alert (N808).
     @State private var renaming = false
@@ -351,6 +364,9 @@ struct NoteReadView: View {
                     if let open {
                         BacklinksSection(model: backlinks, open: open)
                     }
+                    // N804, under the backlinks: both are about the note
+                    // rather than in it.
+                    NoteRemindersSection(model: reminders)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -370,7 +386,11 @@ struct NoteReadView: View {
                 renaming: $renaming,
                 moving: $moving,
                 confirmingDelete: $confirmingDelete,
-                applyHistory: applyHistory
+                applyHistory: applyHistory,
+                export: NoteExport(
+                    title: model.displayTitle,
+                    text: model.exportText
+                )
             )
         )
         // N808's three write actions. Each is a sheet or an alert rather

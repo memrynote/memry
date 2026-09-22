@@ -377,6 +377,14 @@ final class NoteReadViewModel {
     /// while a menu is open.
     private(set) var vaultNotes: [NoteSummary] = []
 
+    /// The note's text for an export (N802).
+    ///
+    /// `extract_text` output, which is all §12.1.2 gives a non-editor client.
+    var exportText: String {
+        guard case let .ready(detail) = phase else { return "" }
+        return detail.body.text
+    }
+
     /// The note's folder, or `nil` at the vault root.
     ///
     /// `nil` is the root rather than "unknown": the read has answered by the

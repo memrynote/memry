@@ -3440,6 +3440,16 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func read(id: String) throws  -> NoteDetail?
     
     /**
+     * The reminders pointing at one note (N804).
+     *
+     * **`triggeredAt` is not among them**, and §13.7.12 says why: each
+     * device shows its own notification, so a synced "already fired" would
+     * suppress it on a device that never displayed it. Dismiss and snooze do
+     * sync, and both are here.
+     */
+    func reminders(noteId: String) throws  -> [ReminderSummary]
+    
+    /**
      * What a `[[wiki link]]` points at, by title and then by alias.
      *
      * `nil` is a **broken link, not a failure**: chapter 12 §12.3 carries a
@@ -3472,6 +3482,11 @@ public protocol NotesProtocol: AnyObject, Sendable {
      * a stable tie-break so two reads of an unchanged vault agree.
      */
     func tags() throws  -> [TagSummary]
+    
+    /**
+     * Every template a note can be made from (N803).
+     */
+    func templates() throws  -> [TemplateSummary]
     
 }
 /**
@@ -3710,6 +3725,24 @@ open func read(id: String)throws  -> NoteDetail?  {
 }
     
     /**
+     * The reminders pointing at one note (N804).
+     *
+     * **`triggeredAt` is not among them**, and §13.7.12 says why: each
+     * device shows its own notification, so a synced "already fired" would
+     * suppress it on a device that never displayed it. Dismiss and snooze do
+     * sync, and both are here.
+     */
+open func reminders(noteId: String)throws  -> [ReminderSummary]  {
+    return try  FfiConverterSequenceTypeReminderSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_reminders(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * What a `[[wiki link]]` points at, by title and then by alias.
      *
      * `nil` is a **broken link, not a failure**: chapter 12 §12.3 carries a
@@ -3762,6 +3795,18 @@ open func tags()throws  -> [TagSummary]  {
     return try  FfiConverterSequenceTypeTagSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_tags(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every template a note can be made from (N803).
+     */
+open func templates()throws  -> [TemplateSummary]  {
+    return try  FfiConverterSequenceTypeTemplateSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_templates(
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
@@ -3823,6 +3868,15 @@ public func FfiConverterTypeNotes_lower(_ value: Notes) -> UInt64 {
 public protocol NotesWriterProtocol: AnyObject, Sendable {
     
     /**
+     * Sets a reminder on a note and returns its id.
+     *
+     * `remind_at` is an ISO **instant**, unlike a date mention's calendar
+     * day: a reminder fires at a moment, and the moment is the same
+     * everywhere.
+     */
+    func addReminder(noteId: String, remindAt: String, title: String?) throws  -> String
+    
+    /**
      * Clears one property, **leaving the key present and `null`** (§13.4).
      *
      * Not a removal: an absent key means "this sender does not know", so a
@@ -3854,6 +3908,15 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func createFolder(path: String, icon: String?) throws 
     
     /**
+     * Creates a note from a template (N803).
+     *
+     * The template's content, tags and properties seed the new note, which
+     * is what makes this different from a create plus a paste: the
+     * properties arrive as properties rather than as text.
+     */
+    func createFromTemplate(templateId: String, title: String, folderPath: String?) throws  -> String
+    
+    /**
      * Tombstones a note.
      *
      * A tombstone, never a row that vanishes: a delete has to reach every
@@ -3880,6 +3943,13 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
      * derives it rather than accepting one.
      */
     func deviceId()  -> String
+    
+    /**
+     * Dismisses a reminder. A status change, never a delete: a dismissal has
+     * to reach the other devices, and a row that vanished has nothing left
+     * to send.
+     */
+    func dismissReminder(id: String) throws 
     
     /**
      * Applies one block edit to a note's body.
@@ -3972,6 +4042,8 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
      */
     func setTags(id: String, tags: [String]) throws 
     
+    func snoozeReminder(id: String, until: String) throws 
+    
 }
 /**
  * The write surface over one opened vault.
@@ -4030,6 +4102,25 @@ open class NotesWriter: NotesWriterProtocol, @unchecked Sendable {
 
     
     /**
+     * Sets a reminder on a note and returns its id.
+     *
+     * `remind_at` is an ISO **instant**, unlike a date mention's calendar
+     * day: a reminder fires at a moment, and the moment is the same
+     * everywhere.
+     */
+open func addReminder(noteId: String, remindAt: String, title: String?)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_add_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),
+        FfiConverterString.lower(remindAt),
+        FfiConverterOptionString.lower(title),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * Clears one property, **leaving the key present and `null`** (§13.4).
      *
      * Not a removal: an absent key means "this sender does not know", so a
@@ -4086,6 +4177,25 @@ open func createFolder(path: String, icon: String?)throws   {try rustCallWithErr
 }
     
     /**
+     * Creates a note from a template (N803).
+     *
+     * The template's content, tags and properties seed the new note, which
+     * is what makes this different from a create plus a paste: the
+     * properties arrive as properties rather than as text.
+     */
+open func createFromTemplate(templateId: String, title: String, folderPath: String?)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_create_from_template(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(templateId),
+        FfiConverterString.lower(title),
+        FfiConverterOptionString.lower(folderPath),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * Tombstones a note.
      *
      * A tombstone, never a row that vanishes: a delete has to reach every
@@ -4133,6 +4243,20 @@ open func deviceId() -> String  {
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Dismisses a reminder. A status change, never a delete: a dismissal has
+     * to reach the other devices, and a row that vanished has nothing left
+     * to send.
+     */
+open func dismissReminder(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_dismiss_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+}
 }
     
     /**
@@ -4298,6 +4422,16 @@ open func setTags(id: String, tags: [String])throws   {try rustCallWithError(Ffi
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),
         FfiConverterSequenceString.lower(tags),uniffiCallStatus
+    )
+}
+}
+    
+open func snoozeReminder(id: String, until: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_snooze_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(until),uniffiCallStatus
     )
 }
 }
@@ -10104,6 +10238,103 @@ public func FfiConverterTypeReindexSummary_lower(_ value: ReindexSummary) -> Rus
 
 
 /**
+ * One reminder (N804, §13.7.12).
+ */
+public struct ReminderSummary: Equatable, Hashable {
+    public var id: String
+    /**
+     * What it points at — `note` for the ones this surface shows.
+     */
+    public var targetType: String
+    public var targetId: String
+    /**
+     * When to remind, as the ISO instant the payload carries.
+     */
+    public var remindAt: String
+    public var title: String?
+    /**
+     * `pending`, `dismissed`, `snoozed` — carried verbatim rather than
+     * mapped, because §13.7.12 never enumerates the values.
+     */
+    public var status: String
+    public var snoozedUntil: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, 
+        /**
+         * What it points at — `note` for the ones this surface shows.
+         */targetType: String, targetId: String, 
+        /**
+         * When to remind, as the ISO instant the payload carries.
+         */remindAt: String, title: String?, 
+        /**
+         * `pending`, `dismissed`, `snoozed` — carried verbatim rather than
+         * mapped, because §13.7.12 never enumerates the values.
+         */status: String, snoozedUntil: String?) {
+        self.id = id
+        self.targetType = targetType
+        self.targetId = targetId
+        self.remindAt = remindAt
+        self.title = title
+        self.status = status
+        self.snoozedUntil = snoozedUntil
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ReminderSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReminderSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReminderSummary {
+        return
+            try ReminderSummary(
+                id: FfiConverterString.read(from: &buf), 
+                targetType: FfiConverterString.read(from: &buf), 
+                targetId: FfiConverterString.read(from: &buf), 
+                remindAt: FfiConverterString.read(from: &buf), 
+                title: FfiConverterOptionString.read(from: &buf), 
+                status: FfiConverterString.read(from: &buf), 
+                snoozedUntil: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ReminderSummary, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.targetType, into: &buf)
+        FfiConverterString.write(value.targetId, into: &buf)
+        FfiConverterString.write(value.remindAt, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterString.write(value.status, into: &buf)
+        FfiConverterOptionString.write(value.snoozedUntil, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReminderSummary_lift(_ buf: RustBuffer) throws -> ReminderSummary {
+    return try FfiConverterTypeReminderSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReminderSummary_lower(_ value: ReminderSummary) -> RustBuffer {
+    return FfiConverterTypeReminderSummary.lower(value)
+}
+
+
+/**
  * One review mark.
  *
  * `start` and `end` are **byte offsets into the note's flattened text**, not
@@ -10801,6 +11032,71 @@ public func FfiConverterTypeTagSummary_lift(_ buf: RustBuffer) throws -> TagSumm
 #endif
 public func FfiConverterTypeTagSummary_lower(_ value: TagSummary) -> RustBuffer {
     return FfiConverterTypeTagSummary.lower(value)
+}
+
+
+/**
+ * One template a note can be made from (N803).
+ */
+public struct TemplateSummary: Equatable, Hashable {
+    public var id: String
+    public var name: String
+    public var description: String?
+    public var icon: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, description: String?, icon: String?) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.icon = icon
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TemplateSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTemplateSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TemplateSummary {
+        return
+            try TemplateSummary(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                icon: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TemplateSummary, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.icon, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTemplateSummary_lift(_ buf: RustBuffer) throws -> TemplateSummary {
+    return try FfiConverterTypeTemplateSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTemplateSummary_lower(_ value: TemplateSummary) -> RustBuffer {
+    return FfiConverterTypeTemplateSummary.lower(value)
 }
 
 
@@ -15785,6 +16081,31 @@ fileprivate struct FfiConverterSequenceTypeNoteSummary: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeReminderSummary: FfiConverterRustBuffer {
+    typealias SwiftType = [ReminderSummary]
+
+    public static func write(_ value: [ReminderSummary], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeReminderSummary.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ReminderSummary] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ReminderSummary]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeReminderSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeReviewComment: FfiConverterRustBuffer {
     typealias SwiftType = [ReviewComment]
 
@@ -15902,6 +16223,31 @@ fileprivate struct FfiConverterSequenceTypeTagSummary: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeTagSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTemplateSummary: FfiConverterRustBuffer {
+    typealias SwiftType = [TemplateSummary]
+
+    public static func write(_ value: [TemplateSummary], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTemplateSummary.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TemplateSummary] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TemplateSummary]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTemplateSummary.read(from: &buf))
         }
         return seq
     }
@@ -16486,6 +16832,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_read() != 37060) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_notes_reminders() != 16202) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notes_resolve_wiki_target() != 21867) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -16493,6 +16842,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_tags() != 21862) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_templates() != 53193) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_add_reminder() != 21568) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_clear_property() != 35528) {
@@ -16504,6 +16859,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_create_folder() != 34413) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_noteswriter_create_from_template() != 26040) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_noteswriter_delete() != 64986) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -16511,6 +16869,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_device_id() != 15214) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_dismiss_reminder() != 37906) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_edit_block() != 62445) {
@@ -16538,6 +16899,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_set_tags() != 3241) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_snooze_reminder() != 55988) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_runtimehost_on_background() != 23225) {

@@ -19,6 +19,13 @@ extension NotesReading {
     /// No tags, for the same reason as the reads below: the tag queries are
     /// asserted in Rust against a real vault, and a fake answering with a
     /// list would claim a vault holds tags nobody wrote.
+    /// No templates and no reminders, for the same reason: both are asserted
+    /// in Rust against a real vault, and a fake answering with rows would
+    /// claim this vault holds things nobody wrote.
+    func templates() async throws -> [TemplateSummary] { [] }
+
+    func reminders(noteId: String) async throws -> [ReminderSummary] { [] }
+
     func tags() async throws -> [TagSummary] { [] }
 
     func notesTagged(_ tag: String) async throws -> [NoteSummary] { [] }

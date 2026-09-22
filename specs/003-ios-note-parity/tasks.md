@@ -265,9 +265,9 @@ after sync.
 
 - [x] N800 Backlinks section, with the link projection it turned out to need: core query plus the iOS surface, with desktop's three sort orders and the `viaProperty` distinction
 - [x] N801 Find in note
-- [ ] N802 Export
-- [ ] N803 Apply template
-- [ ] N804 Reminders
+- [x] N802 Export — plain text, not markdown: §12.1.2 gives a non-editor client `extract_text` and nothing else, so the filename says `.txt`
+- [x] N803 Apply template
+- [x] N804 Reminders
 - [x] N805 Attachments list for a note
 - [x] N806 Folder CRUD — missing entirely: `crates/memry-core/src/api/notes_write.rs` offers `create`, `rename`, `move_to_folder`, `delete` and `edit_block` for notes, and nothing creates, renames or deletes a folder
 - [ ] N807 [P] Linked tasks section — blocked on the Tasks feature, which has no code

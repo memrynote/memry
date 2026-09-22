@@ -33,6 +33,8 @@ use crate::domain::body_write;
 use crate::domain::folders;
 use crate::domain::notes::{self, NewNote};
 use crate::domain::properties;
+use crate::domain::reminders;
+use crate::domain::templates;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
 use serde_json::Value;
@@ -290,6 +292,83 @@ impl NotesWriter {
             .map_err(PropertyWriteError::from)?
             .map(|_| ())
             .map_err(PropertyWriteError::from)
+    }
+
+    /// Creates a note from a template (N803).
+    ///
+    /// The template's content, tags and properties seed the new note, which
+    /// is what makes this different from a create plus a paste: the
+    /// properties arrive as properties rather than as text.
+    pub fn create_from_template(
+        &self,
+        template_id: String,
+        title: String,
+        folder_path: Option<String>,
+    ) -> Result<String, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            let note_id = Self::new_id();
+            templates::create_note(
+                conn,
+                &templates::NoteFromTemplate {
+                    template_id: &template_id,
+                    note_id: &note_id,
+                    title: &title,
+                    folder_path: folder_path.as_deref(),
+                },
+                &device_id,
+                now_ms(),
+            )?;
+            Ok(note_id)
+        })
+    }
+
+    // MARK: - Reminders (N804)
+
+    /// Sets a reminder on a note and returns its id.
+    ///
+    /// `remind_at` is an ISO **instant**, unlike a date mention's calendar
+    /// day: a reminder fires at a moment, and the moment is the same
+    /// everywhere.
+    pub fn add_reminder(
+        &self,
+        note_id: String,
+        remind_at: String,
+        title: Option<String>,
+    ) -> Result<String, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            let id = Self::new_id();
+            reminders::create(
+                conn,
+                &id,
+                &note_id,
+                &remind_at,
+                title.as_deref(),
+                &device_id,
+                now_ms(),
+            )?;
+            Ok(id)
+        })
+    }
+
+    /// Dismisses a reminder. A status change, never a delete: a dismissal has
+    /// to reach the other devices, and a row that vanished has nothing left
+    /// to send.
+    pub fn dismiss_reminder(&self, id: String) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            reminders::dismiss(conn, &id, &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
+    pub fn snooze_reminder(&self, id: String, until: String) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            reminders::snooze(conn, &id, &until, &device_id, now_ms())?;
+            Ok(())
+        })
     }
 
     // MARK: - Folders (N806)

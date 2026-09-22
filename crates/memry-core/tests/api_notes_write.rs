@@ -414,3 +414,143 @@ fn renaming_a_folder_reports_the_notes_it_moved() {
     let note = listed.iter().find(|note| note.id == id).expect("the note");
     assert_eq!(note.folder_path.as_deref(), Some("After"));
 }
+
+// MARK: - Templates and reminders (N803, N804)
+
+/// A note made from a template carries the template's seed.
+///
+/// **Different from a create plus a paste**: the template's properties arrive
+/// as properties rather than as text, which is the whole point of a template.
+#[test]
+fn a_note_made_from_a_template_carries_its_seed() {
+    use memry_core::domain::templates::{self, NewTemplate};
+
+    let (_dir, vault) = vault("template");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+
+    let device = writer.device_id();
+    let db = behind(&_dir);
+    db.call_blocking(move |conn: &mut rusqlite::Connection| {
+        templates::create(
+            conn,
+            &NewTemplate {
+                id: "tpl-1",
+                name: "Meeting",
+                description: Some("Agenda and actions"),
+                icon: Some("📋"),
+                content: "## Agenda\n\n## Actions",
+            },
+            &device,
+            1_760_000_000_000,
+        )?;
+        Ok(())
+    })
+    .expect("the template");
+
+    // Readable through the surface a shell has.
+    let listed = vault.notes().templates().expect("templates");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].name, "Meeting");
+    assert_eq!(listed[0].icon.as_deref(), Some("📋"));
+
+    let id = writer
+        .create_from_template("tpl-1".to_string(), "Monday".to_string(), None)
+        .expect("create from template");
+
+    let note = vault
+        .notes()
+        .list()
+        .expect("list")
+        .into_iter()
+        .find(|note| note.id == id)
+        .expect("the note");
+    assert_eq!(note.title, "Monday");
+}
+
+/// A reminder is readable against the note it points at.
+#[test]
+fn a_reminder_is_set_and_read_back_against_its_note() {
+    let (_dir, vault) = vault("reminder");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+    let note = writer
+        .create("Remind me".to_string(), None)
+        .expect("the note");
+
+    let id = writer
+        .add_reminder(
+            note.clone(),
+            "2026-09-23T09:00:00.000Z".to_string(),
+            Some("Stand-up".to_string()),
+        )
+        .expect("the reminder");
+
+    let found = vault.notes().reminders(note.clone()).expect("reminders");
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].id, id);
+    assert_eq!(found[0].target_type, "note");
+    assert_eq!(found[0].target_id, note);
+    assert_eq!(found[0].remind_at, "2026-09-23T09:00:00.000Z");
+    assert_eq!(found[0].status, "pending");
+}
+
+/// **Dismissing is a status change, never a delete.**
+///
+/// A dismissal has to reach the other devices, and a row that vanished has
+/// nothing left to send — the same rule a note tombstone follows.
+#[test]
+fn dismissing_a_reminder_keeps_the_row_and_changes_its_status() {
+    let (_dir, vault) = vault("reminder-dismiss");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+    let note = writer.create("N".to_string(), None).expect("the note");
+    let id = writer
+        .add_reminder(note.clone(), "2026-09-23T09:00:00.000Z".to_string(), None)
+        .expect("the reminder");
+
+    writer.dismiss_reminder(id.clone()).expect("dismiss");
+
+    let found = vault.notes().reminders(note).expect("reminders");
+    assert_eq!(found.len(), 1, "the row must survive a dismissal");
+    assert_eq!(found[0].status, "dismissed");
+}
+
+/// Snoozing records when to come back, which is state that does sync.
+#[test]
+fn snoozing_a_reminder_records_when_to_come_back() {
+    let (_dir, vault) = vault("reminder-snooze");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+    let note = writer.create("N".to_string(), None).expect("the note");
+    let id = writer
+        .add_reminder(note.clone(), "2026-09-23T09:00:00.000Z".to_string(), None)
+        .expect("the reminder");
+
+    writer
+        .snooze_reminder(id, "2026-09-24T09:00:00.000Z".to_string())
+        .expect("snooze");
+
+    let found = vault.notes().reminders(note).expect("reminders");
+    assert_eq!(found[0].status, "snoozed");
+    assert_eq!(
+        found[0].snoozed_until.as_deref(),
+        Some("2026-09-24T09:00:00.000Z")
+    );
+}
+
+/// A note nothing points at has no reminders, which is an answer.
+#[test]
+fn a_note_with_no_reminders_reads_empty() {
+    let (_dir, vault) = vault("reminder-none");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+    let note = writer.create("N".to_string(), None).expect("the note");
+
+    assert!(vault.notes().reminders(note).expect("reminders").is_empty());
+}
