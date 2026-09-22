@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { PROJECT_PROPERTY_KEY } from '@memry/contracts/property-types'
 import { scanTaskCheckboxStates } from '@memry/shared/task-block'
 import { useT } from '@memry/i18n/renderer'
 import { useProjectsList } from '@/hooks/use-projects-list'
@@ -15,11 +16,21 @@ export interface NoteTaskMovePrompt {
   taskIds: string[]
 }
 
+/** One row of the note's property panel, as `usePropertySection` shapes it. */
+export interface NoteProperty {
+  id: string
+  value: unknown
+}
+
 export interface UseNoteProjectTaskMoveResult {
   prompt: NoteTaskMovePrompt | null
   isMoving: boolean
-  /** Call with the `project` property's value before and after the edit. */
-  handleProjectPropertyChange: (previousValue: unknown, nextValue: unknown) => void
+  /**
+   * Call for every property edit; everything but `project` is ignored. The
+   * value before the edit is read off the properties this hook was given,
+   * which still hold it at the moment the edit is dispatched.
+   */
+  handlePropertyChange: (propertyId: string, nextValue: unknown) => void
   confirmMove: () => void
   cancelMove: () => void
 }
@@ -51,7 +62,8 @@ function toProjectNames(value: unknown): string[] {
  */
 export function useNoteProjectTaskMove(
   noteId: string | null,
-  noteContent: string
+  noteContent: string,
+  properties: NoteProperty[]
 ): UseNoteProjectTaskMoveResult {
   const { t } = useT('notes')
   const { projects } = useProjectsList()
@@ -65,10 +77,20 @@ export function useNoteProjectTaskMove(
     contentRef.current = noteContent
   }, [noteContent])
 
-  const handleProjectPropertyChange = useCallback(
-    (previousValue: unknown, nextValue: unknown): void => {
-      if (!noteId) return
+  // Same reason: the property rows change with every edit anywhere on the
+  // note, and this callback is only read when one of them is dispatched.
+  const propertiesRef = useRef(properties)
+  useEffect(() => {
+    propertiesRef.current = properties
+  }, [properties])
 
+  const handlePropertyChange = useCallback(
+    (propertyId: string, nextValue: unknown): void => {
+      if (!noteId || propertyId !== PROJECT_PROPERTY_KEY) return
+
+      const previousValue = propertiesRef.current.find(
+        (property) => property.id === propertyId
+      )?.value
       const before = new Set(toProjectNames(previousValue).map((name) => name.toLowerCase()))
       const added = toProjectNames(nextValue).filter((name) => !before.has(name.toLowerCase()))
       if (added.length === 0) return
@@ -157,5 +179,5 @@ export function useNoteProjectTaskMove(
     setPrompt(null)
   }, [isMoving])
 
-  return { prompt, isMoving, handleProjectPropertyChange, confirmMove, cancelMove }
+  return { prompt, isMoving, handlePropertyChange, confirmMove, cancelMove }
 }

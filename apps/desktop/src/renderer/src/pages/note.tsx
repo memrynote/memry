@@ -55,7 +55,6 @@ import {
 } from '@/hooks/use-notes-query'
 import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
 import { useNoteProjectTaskMove } from '@/hooks/use-note-project-task-move'
-import { PROJECT_PROPERTY_KEY } from '@memry/contracts/property-types'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
@@ -351,16 +350,13 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Giving the note a project offers to bring the tasks already written in it
   // along (#2271); the property write itself is unchanged.
-  const noteTaskMove = useNoteProjectTaskMove(noteId ?? null, note?.content ?? '')
+  const noteTaskMove = useNoteProjectTaskMove(noteId ?? null, note?.content ?? '', properties)
   const handleNotePropertyChange = useCallback(
     (propertyId: string, value: unknown) => {
-      const previousValue = properties.find((property) => property.id === propertyId)?.value
       handlePropertyChange(propertyId, value)
-      if (propertyId === PROJECT_PROPERTY_KEY) {
-        noteTaskMove.handleProjectPropertyChange(previousValue, value)
-      }
+      noteTaskMove.handlePropertyChange(propertyId, value)
     },
-    [properties, handlePropertyChange, noteTaskMove]
+    [handlePropertyChange, noteTaskMove]
   )
 
   const [propertiesCollapsed, togglePropertiesCollapsed, setPropertiesCollapsed] =

@@ -40,6 +40,14 @@ const NOTE_BODY = [
   '- [ ] A plain checkbox'
 ].join('\n')
 
+/** The note's property rows as they stand before the edit under test. */
+const noteProperties = (...names: string[]): Array<{ id: string; value: unknown }> => [
+  { id: 'title', value: 'Plan' },
+  { id: 'project', value: names }
+]
+
+const properties = noteProperties()
+
 const task = (id: string, projectId: string, parentId: string | null = null) => ({
   id,
   projectId,
@@ -62,10 +70,10 @@ describe('useNoteProjectTaskMove', () => {
       task('t9', 'inbox')
     ])
 
-    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY))
+    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY, properties))
 
     act(() => {
-      result.current.handleProjectPropertyChange([], ['Work'])
+      result.current.handlePropertyChange('project', ['Work'])
     })
 
     // t2 is a subtask (it follows its parent), t3 is already in Work, and t9 is
@@ -79,10 +87,30 @@ describe('useNoteProjectTaskMove', () => {
   })
 
   it('does not prompt when a project is only removed', async () => {
-    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY))
+    const { result } = renderHook(() =>
+      useNoteProjectTaskMove('note-1', NOTE_BODY, noteProperties('Work'))
+    )
 
     act(() => {
-      result.current.handleProjectPropertyChange(['Work'], [])
+      result.current.handlePropertyChange('project', [])
+    })
+
+    await Promise.resolve()
+    expect(mocks.getLinkedTasks).not.toHaveBeenCalled()
+    expect(result.current.prompt).toBeNull()
+  })
+
+  it('ignores a project already on the note, and every other property', async () => {
+    const { result } = renderHook(() =>
+      useNoteProjectTaskMove('note-1', NOTE_BODY, noteProperties('Work'))
+    )
+
+    act(() => {
+      // Re-saving the same list is not a new project.
+      result.current.handlePropertyChange('project', ['Work'])
+    })
+    act(() => {
+      result.current.handlePropertyChange('title', 'Renamed')
     })
 
     await Promise.resolve()
@@ -91,13 +119,13 @@ describe('useNoteProjectTaskMove', () => {
   })
 
   it('ignores a name that resolves to no live project', async () => {
-    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY))
+    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY, properties))
 
     act(() => {
-      result.current.handleProjectPropertyChange([], ['Old'])
+      result.current.handlePropertyChange('project', ['Old'])
     })
     act(() => {
-      result.current.handleProjectPropertyChange([], ['Typo'])
+      result.current.handlePropertyChange('project', ['Typo'])
     })
 
     await Promise.resolve()
@@ -108,10 +136,10 @@ describe('useNoteProjectTaskMove', () => {
   it('does not prompt when every note task is already in the new project', async () => {
     mocks.getLinkedTasks.mockResolvedValue([task('t1', 'work'), task('t3', 'work')])
 
-    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY))
+    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY, properties))
 
     act(() => {
-      result.current.handleProjectPropertyChange([], ['Work'])
+      result.current.handlePropertyChange('project', ['Work'])
     })
 
     await waitFor(() => expect(mocks.getLinkedTasks).toHaveBeenCalledWith('note-1'))
@@ -126,10 +154,10 @@ describe('useNoteProjectTaskMove', () => {
       )
     )
 
-    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY))
+    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY, properties))
 
     act(() => {
-      result.current.handleProjectPropertyChange([], ['Work'])
+      result.current.handlePropertyChange('project', ['Work'])
     })
     await waitFor(() => expect(result.current.prompt).not.toBeNull())
 
@@ -152,10 +180,10 @@ describe('useNoteProjectTaskMove', () => {
       Promise.resolve(id === 't2' ? { success: false, error: 'Task not found' } : { success: true })
     )
 
-    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY))
+    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY, properties))
 
     act(() => {
-      result.current.handleProjectPropertyChange([], ['Work'])
+      result.current.handlePropertyChange('project', ['Work'])
     })
     await waitFor(() => expect(result.current.prompt).not.toBeNull())
 
@@ -172,10 +200,10 @@ describe('useNoteProjectTaskMove', () => {
   it('leaves every task alone when the move is declined', async () => {
     mocks.getLinkedTasks.mockResolvedValue([task('t1', 'inbox')])
 
-    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY))
+    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY, properties))
 
     act(() => {
-      result.current.handleProjectPropertyChange([], ['Work'])
+      result.current.handlePropertyChange('project', ['Work'])
     })
     await waitFor(() => expect(result.current.prompt).not.toBeNull())
 
