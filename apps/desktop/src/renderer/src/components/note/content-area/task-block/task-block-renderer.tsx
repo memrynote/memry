@@ -78,6 +78,24 @@ const BLOCKNOTE_OVERRIDES = `
 `
 
 /**
+ * Which project and status set a block renders against: the task's own project,
+ * the inbox when the task has not resolved yet, and the first project the
+ * context knows as a last resort. Resolved outside the component so this
+ * fallback chain is not part of its control flow.
+ */
+const resolveBlockProject = (
+  contextProjects: Project[] | undefined,
+  taskProjectId: string | undefined
+): { projects: Project[]; project: Project | undefined; statuses: Status[] } => {
+  const projects = contextProjects ?? []
+  const fallback =
+    projects.find((p: Project & { isInbox?: boolean }) => p.isDefault || p.isInbox) ?? projects[0]
+  const project = projects.find((p) => p.id === taskProjectId) ?? fallback
+
+  return { projects, project, statuses: project?.statuses ?? defaultStatuses }
+}
+
+/**
  * The row still has to render before a task exists behind the block — a line
  * the user is typing, or one whose task has not loaded yet. Kept out of the
  * component so its own fallbacks stay out of the renderer body.
@@ -125,11 +143,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   const titleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skipBlurRef = useRef(false)
 
-  const projects = tasksCtx?.projects ?? []
-  const defaultProject =
-    projects.find((p: Project & { isInbox?: boolean }) => p.isDefault || p.isInbox) ?? projects[0]
-  const project = projects.find((p) => p.id === task?.projectId) ?? defaultProject
-  const statuses: Status[] = project?.statuses ?? defaultStatuses
+  const { projects, project, statuses } = resolveBlockProject(tasksCtx?.projects, task?.projectId)
   const isCompleted = task ? !!task.completedAt : checked
 
   const placeholderTask = useMemo(
@@ -612,9 +626,8 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   // honour until the task resolves.
   const rowTask = displayTask ?? placeholderTask
   const hasResolvedTask = !!task
-  const rowProject = project ?? defaultProject
 
-  if (!rowProject) {
+  if (!project) {
     return (
       <div
         contentEditable={false}
@@ -636,7 +649,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
       <div className={cn(parentTaskId && 'ms-7')}>
         <TaskRow
           task={rowTask}
-          project={rowProject}
+          project={project}
           projects={projects}
           isCompleted={isCompleted}
           showProjectBadge
