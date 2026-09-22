@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 80,
+    "exportedCaseCount": 96,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 90,
+    "caseCount": 106,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -387,6 +387,76 @@
       "sha256": "2bcc11f0dce249aeaa97314b32ff80a6b62dba3e64f4f7c9f5de347e5f4746cb"
     },
     {
+      "name": "math block",
+      "markdown": "$$\nE = mc^2\n$$",
+      "canonical": null,
+      "pending": null,
+      "sha256": "de363226db8155f016895c671eeb19eb74f428f81f23ef312205d2b60fe5b538"
+    },
+    {
+      "name": "multi-line math block",
+      "markdown": "$$\n\\begin{aligned}\na &= b + c \\\\\nd &= e\n\\end{aligned}\n$$",
+      "canonical": null,
+      "pending": null,
+      "sha256": "cda5dcbfa0fb893ac4b730f4dff1c7d50260ca23dff456d82f7c4886a7d4f20a"
+    },
+    {
+      "name": "empty math block",
+      "markdown": "$$\n$$",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9bc0d2f5d4f17bb3f0f82e128f1f911fcb1067305e751fbcaac7bea45a00fb06"
+    },
+    {
+      "name": "math block with emphasis characters in its source",
+      "markdown": "$$\n\\frac{a_1}{b^2} \\cdot \\sum_{i=0}^{n} x_i\n$$",
+      "canonical": null,
+      "pending": null,
+      "sha256": "972cc509b6330db9452d940ccbe6de43f162313eda223b6bd5a8c39fb466c2d0"
+    },
+    {
+      "name": "math block between paragraphs",
+      "markdown": "Before\n\n$$\nx^2 + y^2 = z^2\n$$\n\nAfter",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d71ff4323b27e22342898a7c10f8093f40ab50ae9ea8c273f434dd5cf865dbb1"
+    },
+    {
+      "name": "math block in a toggle body",
+      "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n\n$$\nE = mc^2\n$$\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "374f17e68b0333cc6f66300aea6ab4b95195b8b0e6f7f65f1ddc148f733b0a1a"
+    },
+    {
+      "name": "one-line $$ span passes through untouched",
+      "markdown": "Einstein wrote $$E = mc^2$$ in 1905.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8fd0bca6ad536cbe25b29c66cb86d4a5a71c956d4690669d75755d0578e01d05"
+    },
+    {
+      "name": "a fence glued to the paragraph above it stays text",
+      "markdown": "Cost\n$$\n5\n$$",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b753050b7e34c309a8aa2651a7ebc93ca314337e3f81a1fb1c860809680a39f1"
+    },
+    {
+      "name": "an unterminated fence stays text",
+      "markdown": "$$\nE = mc^2",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8b02f75e5721d2c33caa1e6a4df7ad0b37e6f3ea60a62b8383064cbf3bd19c36"
+    },
+    {
+      "name": "a math fence inside a code block stays code",
+      "markdown": "```text\n$$\nE = mc^2\n$$\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "27e49b0e2486301963ae82ad854d3d4883daa1d1d8f112d84907bbb5b2ea4575"
+    },
+    {
       "name": "mention and date tokens in table cells",
       "markdown": "| a                                             | b                                                                                                                                                                                        |\n| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| ((mention:https%3A%2F%2Fexample.com%2Fplain)) | ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) |",
       "canonical": null,
@@ -504,6 +574,48 @@
       "canonical": null,
       "pending": null,
       "sha256": "0dd6752076d0c5cbceeaa7c9ef205cb042a9e2267d91b444b0c4867de7cc9e92"
+    },
+    {
+      "name": "mermaid fence",
+      "markdown": "```mermaid\ngraph TD\n    A[Start] --> B[Stop]\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "171faacef653a0c9c64efce3173afaf1bb281d77706f8d328049934c1a1a3a9a"
+    },
+    {
+      "name": "mermaid fence with nested indentation",
+      "markdown": "```mermaid\nsequenceDiagram\n    Alice->>John: Hello\n        Note right of John: thinking\n    John-->>Alice: Great\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "0ed3f28a26b98ed6891966c448122a243eaebe354f0d2746f52f463a431ff321"
+    },
+    {
+      "name": "empty mermaid fence",
+      "markdown": "```mermaid\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "f13ee1c30d53e77421b9db1fdcae491cb8f00d25d87d6b3391c1768eaec8ddd7"
+    },
+    {
+      "name": "mermaid fence with trailing spaces",
+      "markdown": "```mermaid\ngraph TD  \n  A --> B\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1e0de4e4f46231ae156e50db2920e060da23b95ad02ccd78bacc19f1cdb1b5d0"
+    },
+    {
+      "name": "mermaid fence between paragraphs",
+      "markdown": "Before\n\n```mermaid\ngraph LR\n  A --> B\n```\n\nAfter",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b1260d385acdeb7eb2737ba01b53ac27e5678d1babc4cfaba0053fc42db911db"
+    },
+    {
+      "name": "javascript fence is not claimed by the diagram block",
+      "markdown": "```js\nconst a = 1\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "475b23404d03f12ef8e09be433317586630b97dcf9214ad12974756727f39037"
     },
     {
       "name": "asterisk bullets",

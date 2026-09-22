@@ -1832,6 +1832,20 @@ const BLOCK_CASES = [
     }
   },
   {
+    type: 'mathBlock',
+    // Literal for the same reason as `file`: the converter serializes math
+    // blocks through `serializeMathBlock` itself, so a computed expectation
+    // would compare that function to itself. These three lines are the vault
+    // format, and they are what Obsidian and GitHub read as display math.
+    markdown: '$$\nE = mc^2\n$$',
+    block: {
+      id: 'blk',
+      type: 'mathBlock',
+      props: { latex: 'E = mc^2' },
+      children: []
+    }
+  },
+  {
     type: 'taskBlock',
     // Literal for the same reason as `file`: the converter serializes task
     // blocks through `serializeTaskBlock` itself (blocknote-converter.ts), so a
@@ -1861,6 +1875,29 @@ const BLOCK_CASES = [
         open: false
       },
       content: [{ type: 'text', text: 'Details', styles: {} }],
+      children: []
+    }
+  },
+  {
+    type: 'diagram',
+    // Literal, like `file` and `taskBlock`, but for the opposite reason: there
+    // is no Memry serializer to compare against at all. A diagram's on-disk
+    // form is a plain ```` ```mermaid ```` fence produced by BlockNote's own
+    // HTML\u2192markdown step from the `<pre><code class="language-mermaid">` the
+    // server spec builds — so these bytes, not a function, are the contract,
+    // and they are the bytes Obsidian and GitHub already render.
+    //
+    // The indented second line is the measurement, not decoration: the prose
+    // repair in `parse-markdown.ts` strips one space after every newline, and
+    // until it learned that a diagram's text is literal this came back
+    // `graph TD\n   A[Start] --> B[Stop]` — a note rewritten one space shorter
+    // on every open.
+    markdown: '```mermaid\ngraph TD\n    A[Start] --> B[Stop]\n```',
+    block: {
+      id: 'blk',
+      type: 'diagram',
+      props: {},
+      content: [{ type: 'text', text: 'graph TD\n    A[Start] --> B[Stop]', styles: {} }],
       children: []
     }
   }

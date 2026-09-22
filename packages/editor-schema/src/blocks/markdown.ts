@@ -417,6 +417,85 @@ export function parseFileBlockMarker(marker: string): FileBlockProps | null {
 }
 
 // ---------------------------------------------------------------------------
+// mathBlock — a `$$` fence around the LaTeX source
+// ---------------------------------------------------------------------------
+
+/**
+ * The fence line. `$$` on a line of its own is the block form Obsidian, Pandoc
+ * and GitHub all read, so a formula written here is a formula there — which is
+ * the whole reason the source and not a rendering is what reaches the file.
+ */
+const MATH_FENCE_LINE = '$$'
+
+/**
+ * `$$` / source / `$$`, with the body's blank lines dropped.
+ *
+ * Dropping them is not cosmetic. Every parse in both pipelines splits on blank
+ * lines BEFORE any block reader runs (`splitMarkdownPreservingBlanks`), so a
+ * body carrying one arrives as two fragments and no reader can claim the run:
+ * the block would come back as literal `$$` text on the next open. A blank line
+ * is also invalid inside LaTeX math mode, so nothing a formula can mean is lost
+ * by refusing to write one.
+ */
+export function serializeMathBlock(latex: string): string {
+  const body = latex
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0)
+    .join('\n')
+  return body
+    ? `${MATH_FENCE_LINE}\n${body}\n${MATH_FENCE_LINE}`
+    : `${MATH_FENCE_LINE}\n${MATH_FENCE_LINE}`
+}
+
+export interface MathRun {
+  /** The formula source, verbatim between the fences. */
+  latex: string
+  /** The run's original lines, for the caller that declines it. */
+  raw: string
+  /** Index of the first line after the run. */
+  end: number
+}
+
+/**
+ * Read one math run starting at `lines[start]`, or null.
+ *
+ * Claimed by proof, the same rule `resolveCalloutRun` applies: the run becomes
+ * a block only when `serializeMathBlock` writes those exact bytes back. So the
+ * only shape claimed is the one Memry writes, and `$$ x $$` on one line, an
+ * indented `$$` inside a list item, a fence with trailing spaces, or a body
+ * carrying a blank line all stay the author's markdown — which matters because
+ * `$$` is somebody else's notation too, and write-back byte-compares.
+ *
+ * An unterminated `$$` is refused whole rather than swallowing the rest of the
+ * note, exactly as an unterminated `<details>` is.
+ *
+ * The run must also OWN its paragraph, at both ends. A fence that starts or
+ * stops mid-paragraph belongs to that paragraph's bytes, and claiming it would
+ * split one paragraph into two blocks — which the write-back rejoins with a
+ * blank line between them, rewriting a file Memry never wrote.
+ */
+export function readMathRun(
+  lines: readonly string[],
+  start: number,
+  atParagraphStart: boolean
+): MathRun | null {
+  if (!atParagraphStart) return null
+  if (lines[start] !== MATH_FENCE_LINE) return null
+
+  let end = start + 1
+  while (end < lines.length && lines[end] !== MATH_FENCE_LINE) end++
+  if (end >= lines.length) return null
+  if (end + 1 < lines.length && lines[end + 1].trim() !== '') return null
+
+  const raw = lines.slice(start, end + 1).join('\n')
+  const latex = lines.slice(start + 1, end).join('\n')
+  if (serializeMathBlock(latex) !== raw) return null
+
+  return { latex, raw, end: end + 1 }
+}
+
+// ---------------------------------------------------------------------------
 // toggleListItem — `<details data-memry-toggle>` wrapping a `<summary>` and the
 // collapsed body
 // ---------------------------------------------------------------------------

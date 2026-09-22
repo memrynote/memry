@@ -1631,6 +1631,28 @@ describe('Task Utils', () => {
         expect(sorted.slice(1).every((t: Task) => t.dueDate === null)).toBe(true)
       })
 
+      it('should order folder and note grouping by due date inside each group', () => {
+        // #given the folder of a task lives in the note index, not on the task,
+        // so these two modes only decide the order within one group
+        const tasks = [
+          createMockTask({ id: 't1', dueDate: new Date('2026-01-20') }),
+          createMockTask({ id: 't2', dueDate: new Date('2026-01-10') }),
+          createMockTask({ id: 't3', dueDate: new Date('2026-01-15') })
+        ]
+
+        // #when / #then
+        expect(
+          sortTasksAdvanced(tasks, { field: 'folder', direction: 'asc' }, mockAdvancedProjects).map(
+            (t: Task) => t.id
+          )
+        ).toEqual(['t2', 't3', 't1'])
+        expect(
+          sortTasksAdvanced(tasks, { field: 'note', direction: 'desc' }, mockAdvancedProjects).map(
+            (t: Task) => t.id
+          )
+        ).toEqual(['t1', 't3', 't2'])
+      })
+
       it('should sort by time when dates are equal', () => {
         const sameDate = new Date('2026-01-15')
         const tasks = [

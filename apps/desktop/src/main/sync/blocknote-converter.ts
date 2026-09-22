@@ -10,9 +10,11 @@ import {
   serializeFileBlock,
   type FileBlockProps,
   readCalloutRun,
+  readMathRun,
   readStructuredQuoteRun,
   resolveCalloutRun,
   resolveQuoteRun,
+  serializeMathBlock,
   serializeQuoteBlock,
   serializeToggleBlock,
   splitMarkdownByToggles,
@@ -677,7 +679,14 @@ async function serializeBlocksWithNestingMarkers(
     const markdown =
       (block.type as string) === 'file'
         ? serializeFileBlock(block.props as FileBlockProps)
-        : (await serializeBlocks(editor, [shallowBlock] as PartialBlock[])).trim()
+        : (block.type as string) === 'mathBlock'
+          ? // Same reason as `file`: the `$$` fence is three lines of ONE
+            // paragraph in the spec's DOM, and a nested block that serializes
+            // through BlockNote alone depends on its `<br>` handling to keep
+            // them. Written from the shared serializer instead, so a nested
+            // formula reaches the vault as the same bytes as a top-level one.
+            serializeMathBlock((block.props as { latex?: string }).latex ?? '')
+          : (await serializeBlocks(editor, [shallowBlock] as PartialBlock[])).trim()
     if (markdown) parts.push(markdown)
 
     for (const child of (block.children ?? []) as Block[]) {
@@ -913,6 +922,27 @@ async function parseContentWithMarkers(
           fence.consume(lines[consumed])
         }
         i = claimed.end - 1
+        continue
+      }
+
+      // A `$$` fence claims nothing a callout or a quote could have claimed, so
+      // it is read after both. `readMathRun` demands the run own its whole
+      // paragraph and re-serialize byte-for-byte, which is what keeps someone
+      // else's `$$` notation on the untouched path.
+      const math = readMathRun(lines, i, atParagraphStart)
+      if (math) {
+        await flushBuffer()
+        // SAFETY: `mathBlock` as its spec declares it - one string prop.
+        const block = {
+          type: 'mathBlock',
+          props: { latex: math.latex }
+        } as unknown as Block
+        applyPending(block)
+        blocks.push(block)
+        for (let consumed = i + 1; consumed < math.end; consumed++) {
+          fence.consume(lines[consumed])
+        }
+        i = math.end - 1
         continue
       }
 
@@ -1158,6 +1188,19 @@ async function blocksToMarkdownPreserving(
       await flushContentGroup()
       flushGap()
       segments.push({ type: 'content', text: serializeFileBlock(block.props as FileBlockProps) })
+    } else if ((block.type as string) === 'mathBlock') {
+      // Emitted here rather than left to the block spec for the same reason as
+      // `file`: the spec's DOM is a paragraph whose `<br>`s BlockNote happens
+      // to turn into newlines today, and the fence only works as three lines.
+      // Byte-identical to the renderer's twin in markdown-utils.ts.
+      await flushContentGroup()
+      flushGap()
+      const latex = (block.props as { latex?: string }).latex ?? ''
+      const mathMd = serializeMathBlock(latex)
+      segments.push({
+        type: 'content',
+        text: markers.length > 0 ? `${markers.join('\n')}\n${mathMd}` : mathMd
+      })
     } else if ((block.type as string) === 'toggleListItem') {
       await flushContentGroup()
       flushGap()

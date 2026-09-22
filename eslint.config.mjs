@@ -219,6 +219,11 @@ export default defineConfig(
       // could not land without either this or a speculative split of the CRDT
       // provider — the wrong refactor to attach to a privacy fix.
       'apps/desktop/src/main/sync/crdt-provider.ts',
+      // Crossed 800 with the math block (#1871), and epic #1869 adds three more
+      // block types to the same per-type dispatch. The split this file wants is
+      // parse and serialize into their own modules beside their renderer twins,
+      // which is a refactor of its own and not one to attach to a block type.
+      'apps/desktop/src/main/sync/blocknote-converter.ts',
       'apps/desktop/src/main/vault/watcher.ts'
     ],
     rules: {

@@ -24,19 +24,23 @@
  *   blockquote        → `> [!type]` + one `> ` per content line
  *   checkbox li       → `- [ ] title {task:id}`
  *   li > p            → `- summary`, for a toggle nested under a list item
+ *   p with <br>s      → `$` / source / `$`, the math block's three lines
+ *   pre > code.mermaid → ```` ```mermaid ```` fence
  */
 
-import { addDefaultPropsExternalHTML, createBlockSpec } from '@blocknote/core'
+import { addDefaultPropsExternalHTML, createBlockSpec, parsePreCodeContent } from '@blocknote/core'
 import { serializeTaskBlock, type TaskBlockProps } from '@memry/shared/task-block'
 import {
   bookmarkConfig,
   calloutConfig,
+  diagramConfig,
   fileBlockConfig,
+  mathBlockConfig,
   taskBlockConfig,
   toggleListItemConfig,
   youtubeEmbedConfig
 } from './configs'
-import { fileBlockCommentData, type FileBlockProps } from './markdown'
+import { fileBlockCommentData, serializeMathBlock, type FileBlockProps } from './markdown'
 import { assertSpecKeysMatchNodeTypes } from '../spec-keys'
 
 /**
@@ -166,6 +170,82 @@ function toggleListItemDom(block: { props: Parameters<typeof addDefaultPropsExte
 }
 
 /**
+ * A ```` ```mermaid ```` fence, which is how a diagram sits in the vault file
+ * and in every other editor that understands one (Obsidian, GitHub, GitLab).
+ *
+ * The `<pre><code>` pair is what BlockNote's HTML→markdown step turns into a
+ * fence, and the language has to be on the `<code>` for the info string to
+ * survive: a bare `<pre>` comes back as an indented block with no `mermaid`
+ * marker, which reads as a plain code block on the next parse. Both spellings
+ * are written because both are read — `data-language` is BlockNote's, the
+ * `language-*` class is the one every markdown pipeline emits.
+ */
+function diagramDom(): { dom: HTMLElement; contentDOM: HTMLElement } {
+  const dom = document.createElement('pre')
+  const code = document.createElement('code')
+  code.className = 'language-mermaid'
+  code.setAttribute('data-language', 'mermaid')
+  dom.appendChild(code)
+  return { dom, contentDOM: code }
+}
+
+/**
+ * Claims a `<pre><code class="language-mermaid">` element for the diagram
+ * block — the element a ```` ```mermaid ```` fence parses into.
+ *
+ * Mirrors `parseDiagramCodeElement` in `@blocknote/diagram-block`, which the
+ * renderer uses; see `diagramConfig` for why this half is not imported from
+ * there. The pairing is what makes the fence round-trip: without it, a vault
+ * file written by the renderer comes back from the main process's parse as a
+ * `codeBlock` whose language happens to be `mermaid`, and the block the reader
+ * authored is gone from the document on the next write.
+ */
+function parseDiagramCodeElement(el: HTMLElement): Record<string, never> | undefined {
+  if (el.tagName !== 'PRE') return undefined
+
+  const code = el.firstElementChild
+  if (el.childElementCount !== 1 || code?.tagName !== 'CODE') return undefined
+
+  const language =
+    code.getAttribute('data-language') ||
+    code.className
+      .split(' ')
+      .find((name) => name.startsWith('language-'))
+      ?.replace('language-', '')
+
+  return language === 'mermaid' ? {} : undefined
+}
+
+/** The fence's text, newlines intact, as the block's plain content. */
+function parseDiagramCodeContent(options: Parameters<typeof parsePreCodeContent>[0]) {
+  return parsePreCodeContent(options, 'diagram')
+}
+
+/**
+ * The three `$` lines as ONE paragraph, separated by `<br>`.
+ *
+ * Same shape, and the same reason, as the callout's marker line: BlockNote 0.51+
+ * turns every `<br>` into a newline in the paragraph's text, so the paragraph
+ * serializes to the three lines the vault already holds. A `<pre>` would come
+ * back as a fenced code block, and three separate `<p>`s as three paragraphs
+ * with blank lines between them — and a blank line inside the fence is exactly
+ * what stops the run being read back as a block.
+ *
+ * Reached only for a math block nested under a list item and by surfaces that
+ * serialize through BlockNote alone; a math block on a page is written by the
+ * converters' own top-level walk, from `serializeMathBlock` directly.
+ */
+function mathBlockDom(block: { props: { latex?: string } }): { dom: HTMLElement } {
+  const dom = document.createElement('p')
+  const lines = serializeMathBlock(block.props.latex ?? '').split('\n')
+  for (const [index, line] of lines.entries()) {
+    if (index > 0) dom.appendChild(document.createElement('br'))
+    dom.appendChild(document.createTextNode(line))
+  }
+  return { dom }
+}
+
+/**
  * The on-disk DOM of every custom block, by node name.
  *
  * Named separately from the specs below because it is not only main's. A
@@ -183,7 +263,23 @@ export const blockExternalHTML = {
   file: fileDom,
   youtubeEmbed: youtubeEmbedDom,
   bookmark: bookmarkDom,
-  toggleListItem: toggleListItemDom
+  toggleListItem: toggleListItemDom,
+  mathBlock: mathBlockDom,
+  diagram: diagramDom
+}
+
+/**
+ * The diagram block's parse half, shared with every surface that supplies its
+ * own presentation. Packaged together because they are useless apart: the
+ * element rule claims the fence and the content rule reads its text, and
+ * `runsBefore` is what stops `codeBlock` claiming it first.
+ */
+export const diagramParsing = {
+  parse: parseDiagramCodeElement,
+  parseContent: parseDiagramCodeContent,
+  // `codeBlock` parses every `<pre><code>`, so the diagram's rule has to be
+  // tried before it to claim the `language-mermaid` ones.
+  runsBefore: ['codeBlock']
 }
 
 /**
@@ -216,6 +312,19 @@ export function createServerBlockSpecs() {
     toggleListItem: createBlockSpec(toggleListItemConfig, {
       render: blockExternalHTML.toggleListItem,
       toExternalHTML: blockExternalHTML.toggleListItem
+    })(),
+    mathBlock: createBlockSpec(mathBlockConfig, {
+      render: blockExternalHTML.mathBlock,
+      toExternalHTML: blockExternalHTML.mathBlock
+    })(),
+    diagram: createBlockSpec(diagramConfig, {
+      // `code`/`defining` are the renderer spec's, mirrored so both processes
+      // build the same ProseMirror node: `code` is what makes the source's
+      // newlines literal rather than paragraph breaks.
+      meta: { code: true, defining: true },
+      ...diagramParsing,
+      render: blockExternalHTML.diagram,
+      toExternalHTML: blockExternalHTML.diagram
     })()
   }
   assertSpecKeysMatchNodeTypes('blockSpecs (createServerBlockSpecs)', registered)
