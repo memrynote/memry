@@ -1011,12 +1011,154 @@ export type BlockEditOp =
   | { kind: 'setText'; blockId: string; text: string }
   | { kind: 'setProp'; blockId: string; name: string; value: string }
   | { kind: 'insertParagraph'; afterBlockId?: string; text: string; newBlockId: string }
+  | { kind: 'setCellText'; tableId: string; row: number; column: number; text: string }
+  | {
+      kind: 'setCellProp'
+      tableId: string
+      row: number
+      column: number
+      name: string
+      value: string
+    }
   | { kind: 'delete'; blockId: string }
 
 /** Two paragraphs, the base most cases start from. */
 const TWO_PARAGRAPHS: unknown[] = [
   { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
   { id: 'p2', type: 'paragraph', content: 'Second paragraph.' }
+]
+
+const EDITABLE_TABLE = [
+  {
+    id: 'tbl1',
+    type: 'table',
+    content: {
+      type: 'tableContent',
+      columnWidths: [180, undefined],
+      headerRows: 1,
+      rows: [
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Name', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Value', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            }
+          ]
+        },
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'alpha', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: '1', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
+
+/** The same table with one body cell rewritten. */
+const TABLE_WITH_EDITED_CELL = [
+  {
+    id: 'tbl1',
+    type: 'table',
+    content: {
+      type: 'tableContent',
+      columnWidths: [180, undefined],
+      headerRows: 1,
+      rows: [
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Name', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Value', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            }
+          ]
+        },
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'alpha', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: '42', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
+
+/** The same table with one body cell given a background colour. */
+const TABLE_WITH_COLOURED_CELL = [
+  {
+    id: 'tbl1',
+    type: 'table',
+    content: {
+      type: 'tableContent',
+      columnWidths: [180, undefined],
+      headerRows: 1,
+      rows: [
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Name', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Value', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            }
+          ]
+        },
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'alpha', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: '1', styles: {} }],
+              props: {
+                colspan: 1,
+                rowspan: 1,
+                backgroundColor: 'yellow',
+                textAlignment: 'left'
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
 ]
 
 export const BLOCK_EDIT_CASES: readonly BlockEditCase[] = [
@@ -1132,6 +1274,27 @@ export const BLOCK_EDIT_CASES: readonly BlockEditCase[] = [
       { id: 'p2', type: 'paragraph', content: 'Second paragraph.' },
       { id: 'p3', type: 'paragraph', content: 'Appended.' }
     ]
+  },
+  {
+    name: 'setCellText rewrites one cell and leaves the rest of the table alone',
+    pins: 'a cell is addressed by table id plus row and column, because a cell carries no blockContainer id of its own (Q1)',
+    base: EDITABLE_TABLE,
+    op: { kind: 'setCellText', tableId: 'tbl1', row: 1, column: 1, text: '42' },
+    expected: TABLE_WITH_EDITED_CELL
+  },
+  {
+    name: 'setCellProp colours one cell',
+    pins: 'a cell colour is what desktop regenerates the table-colors marker from, so it has to land on the cell rather than on the table',
+    base: EDITABLE_TABLE,
+    op: {
+      kind: 'setCellProp',
+      tableId: 'tbl1',
+      row: 1,
+      column: 1,
+      name: 'backgroundColor',
+      value: 'yellow'
+    },
+    expected: TABLE_WITH_COLOURED_CELL
   }
 ]
 

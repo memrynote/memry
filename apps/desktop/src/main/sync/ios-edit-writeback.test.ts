@@ -155,30 +155,75 @@ describe('R01 an iOS edit changes only the region it edited', () => {
 })
 
 describe('R02 a table edit is written as desktop would write it', () => {
+  function tableCase(kind: string): EditCase {
+    const found = vectors().find((entry) => entry.op.kind === kind && !entry.pending)
+    if (!found) throw new Error(`the class carries no ${kind} case`)
+    return found
+  }
+
   /**
-   * **This is a scope check rather than a marker comparison**, and saying so
-   * is more useful than a test that pretends otherwise.
+   * **The markers are the whole of R02.**
    *
-   * `block-edit.json` carries no table case: the class covers the four
-   * operations `body_edit.rs` had when it was written, and the table
-   * operations (N402 - N404) landed afterwards with their own Rust tests. Until
-   * a table case is authored through BlockNote and added to the class, there is
-   * no committed "document after an iOS table edit" for desktop to write, and
-   * comparing `table-layout` bytes would mean inventing one here — which is the
-   * thing the vector system exists to avoid.
-   *
-   * Recorded as a failing expectation would be wrong too: nothing is broken.
-   * This asserts the gap precisely, so it closes the moment a table case
-   * appears.
+   * A table's column widths and cell colours cannot be written in markdown
+   * table syntax, so desktop keeps them in `<!-- table-layout: -->` and
+   * `<!-- table-colors: -->` comments beside the table. An iOS edit that
+   * produced a document desktop regenerated different markers from would
+   * silently drop the user's column widths or colours on the next write-back.
    */
-  it('has no table case to write yet, and says so precisely', () => {
-    const tableCases = vectors().filter((entry) =>
-      ['setCellText', 'setCellProp', 'insertRow', 'insertColumn'].includes(entry.op.kind)
-    )
+  it('regenerates the column widths from the document iOS leaves behind', async () => {
+    const entry = tableCase('setCellText')
+    const before = await yDocToMarkdown(docOf(entry.baseUpdateHex))
+    const after = await yDocToMarkdown(docOf(entry.expectedUpdateHex))
+
+    expect(before, 'the base did not serialize').not.toBeNull()
+    expect(after, 'the edited table did not serialize').not.toBeNull()
+
+    const layout = /<!--\s*table-layout:.*?-->/
+    expect(before as string, 'the base table must carry a layout marker').toMatch(layout)
+
+    // Editing a cell's text must not disturb the widths: they belong to the
+    // columns, not to what is written in them.
+    expect((after as string).match(layout)?.[0]).toEqual((before as string).match(layout)?.[0])
+
+    // And the edit really landed, or the comparison above proves nothing.
+    expect(after).toContain('42')
+  })
+
+  /**
+   * A cell colour has to reach the `table-colors` marker, because that is the
+   * only place markdown can carry it.
+   */
+  it('regenerates the cell colours from the document iOS leaves behind', async () => {
+    const entry = tableCase('setCellProp')
+    const before = await yDocToMarkdown(docOf(entry.baseUpdateHex))
+    const after = await yDocToMarkdown(docOf(entry.expectedUpdateHex))
+
+    expect(before, 'the base did not serialize').not.toBeNull()
+    expect(after, 'the coloured table did not serialize').not.toBeNull()
+
+    const colors = /<!--\s*table-colors:.*?-->/
+    // The base has no colours, so it carries no marker to regenerate.
+    expect(before as string).not.toMatch(colors)
+    // The edit gives one cell a colour, so the marker has to appear.
     expect(
-      tableCases,
-      'a table case exists now — extend this file to compare the table-layout and ' +
-        'table-colors markers desktop regenerates, which is R02 proper'
-    ).toHaveLength(0)
+      after as string,
+      'a coloured cell must reach the table-colors marker, or the colour is ' +
+        'lost on the next write-back'
+    ).toMatch(colors)
+    expect(after as string).toContain('yellow')
+  })
+
+  /**
+   * The bytes desktop writes for an iOS table edit must be the bytes desktop
+   * would have written itself. Serialising the same document twice is the
+   * closest a test can get to that without a second machine, and it catches
+   * the failure that matters: a marker that depends on anything other than
+   * the document.
+   */
+  it('writes the same bytes twice for the same document', async () => {
+    const entry = tableCase('setCellProp')
+    const once = await yDocToMarkdown(docOf(entry.expectedUpdateHex))
+    const twice = await yDocToMarkdown(docOf(entry.expectedUpdateHex))
+    expect(twice).toEqual(once)
   })
 })

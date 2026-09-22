@@ -76,11 +76,31 @@ fn operation(case_name: &str, op: &Json) -> BlockEdit {
             text: text("text"),
             new_block_id: text("newBlockId"),
         },
+        "setCellText" => BlockEdit::SetCellText {
+            table_id: text("tableId"),
+            row: number(case_name, op, "row"),
+            column: number(case_name, op, "column"),
+            text: text("text"),
+        },
+        "setCellProp" => BlockEdit::SetCellProp {
+            table_id: text("tableId"),
+            row: number(case_name, op, "row"),
+            column: number(case_name, op, "column"),
+            name: text("name"),
+            value: text("value"),
+        },
         "delete" => BlockEdit::Delete {
             block_id: text("blockId"),
         },
         other => panic!("{case_name}: unknown operation kind {other}"),
     }
+}
+
+/// One numeric field of an operation descriptor.
+fn number(case_name: &str, op: &Json, field: &str) -> u32 {
+    op[field]
+        .as_u64()
+        .unwrap_or_else(|| panic!("{case_name}: `{field}` is not a number: {op}")) as u32
 }
 
 /// Applies one case and returns the resulting canonical document.
@@ -131,12 +151,12 @@ fn every_operation_produces_the_document_the_class_records() {
         );
         checked += 1;
     }
-    // Every case is live now: the four that shipped `pending` were real
-    // defects, N400 and N408 fixed them, and the flags came off. This floor
-    // is what stops the class from quietly becoming all pending and
-    // measuring nothing.
+    // Every case is live: the four that shipped `pending` were real defects,
+    // N400 and N408 fixed them, and the flags came off. The floor rose with
+    // the two table cases R02 needed. It is what stops the class from quietly
+    // becoming all pending and measuring nothing.
     assert!(
-        checked >= 10,
+        checked >= 12,
         "only {checked} cases ran; a class that skips itself measures nothing"
     );
 }
