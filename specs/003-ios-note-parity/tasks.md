@@ -254,7 +254,7 @@ after sync.
 - [x] N700 Core: property writes for the 10 types (`text`, `number`, `date`, `checkbox`, `url`, `status`, `select`, `multiselect`, `relation`, `project`). `NoteProperty` already carries `value_json`, `type_name`, `options_json` and `color` on the read side. **Answers Q2: record whether this belongs beside `domain/note_meta.rs` or in the note record payload handler**
 - [x] N701 Core: add `cover` and `icon` to `NoteMetadata`, which carries only tags, properties and aliases today, plus their writes
 - [x] N702 iOS: title editing and the icon picker (emoji and symbol)
-- [ ] N703 iOS: cover add, change, remove and reposition, on N208 and N214 — **blocked by a protocol gap, not by effort**: `coverImage` is not a field of the note schema (§13.7.1 does not list it, desktop has no cover feature, and the vectors use the key as their canonical _unknown key_). Reading one another client wrote is done (N208); authoring one needs a writer to agree with, which is Kaan's call. See `research.md`
+- [x] N703 iOS: cover add, change, remove and reposition, on N208 and N214 — written as the `coverImage` **unknown top-level key**, which §13.2/§13.2.1 guarantee survives a desktop edit. No other client renders a cover today; that is a product gap, recorded in `research.md`
 - [x] N704 iOS: the 10 property editors
 - [x] N705 iOS: tag add, remove and colour, with recent, matching and all suggestions as desktop offers
 - [x] N706 [P] Core: alias writes, so a wiki link can resolve to a note by a name the note itself declares

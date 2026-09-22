@@ -17,6 +17,7 @@ private final class ScriptedMetadataWriter: NoteMetadataWriting, @unchecked Send
         case icon(String?)
         case tags([String])
         case aliases([String])
+        case cover(String?, Double)
         case property(String, String)
         case clear(String)
     }
@@ -37,6 +38,9 @@ private final class ScriptedMetadataWriter: NoteMetadataWriting, @unchecked Send
     func setIcon(id: String, icon: String?) async throws { try record(.icon(icon)) }
     func setTags(id: String, tags: [String]) async throws { try record(.tags(tags)) }
     func setAliases(id: String, aliases: [String]) async throws { try record(.aliases(aliases)) }
+    func setCover(id: String, url: String?, offsetY: Double) async throws {
+        try record(.cover(url, offsetY))
+    }
     func setProperty(id: String, name: String, valueJson: String) async throws {
         try record(.property(name, valueJson))
     }
@@ -315,6 +319,49 @@ struct NoteMetadataViewModelTests {
 
         await model.rename(to: "New", current: "Old")
         await model.setIcon("🌱")
+        #expect(model.status == .idle)
+    }
+
+    // MARK: - The cover (N703)
+
+    /// A cover stores the **url** the reader resolves, not an attachment id:
+    /// Q4 binds a block url to an attachment by its filename's basename, so an
+    /// id here would be something the reader cannot resolve.
+    @Test func setting_a_cover_writes_its_url_and_offset() async {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+
+        await model.setCover(url: "cover.png", offsetY: 0.25)
+
+        #expect(writer.all == [.cover("cover.png", 0.25)])
+    }
+
+    /// Removing a cover is `nil`, which the core writes as an explicit null
+    /// rather than removing the key (§13.4).
+    @Test func removing_a_cover_sends_nil() async {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+
+        await model.setCover(url: nil, offsetY: 0.5)
+
+        #expect(writer.all == [.cover(nil, 0.5)])
+    }
+
+    /// Repositioning keeps the same picture and moves only what is visible.
+    @Test func repositioning_keeps_the_picture() async {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+
+        await model.setCover(url: "cover.png", offsetY: 0.0)
+        await model.setCover(url: "cover.png", offsetY: 1.0)
+
+        #expect(writer.all == [.cover("cover.png", 0.0), .cover("cover.png", 1.0)])
+    }
+
+    /// A read-only note offers no cover at all.
+    @Test func a_note_with_no_writer_cannot_set_a_cover() async {
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: nil)
+        await model.setCover(url: "cover.png", offsetY: 0.5)
         #expect(model.status == .idle)
     }
 }

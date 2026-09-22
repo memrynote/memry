@@ -18,6 +18,8 @@ protocol NoteMetadataWriting: Sendable {
     /// removing the key (§13.4).
     func setIcon(id: String, icon: String?) async throws
     func setTags(id: String, tags: [String]) async throws
+    /// Sets or clears a note's cover (N703). `nil` clears.
+    func setCover(id: String, url: String?, offsetY: Double) async throws
     func setAliases(id: String, aliases: [String]) async throws
     /// The value is JSON text, because §13.7.1 lets a property hold any JSON
     /// and a closed enum would have to drop or coerce whatever did not fit.
@@ -54,6 +56,12 @@ struct CoreNoteMetadataWriter: NoteMetadataWriting {
 
     func setTags(id: String, tags: [String]) async throws {
         try await executor.run { try writer().setTags(id: id, tags: tags) }
+    }
+
+    func setCover(id: String, url: String?, offsetY: Double) async throws {
+        try await executor.run {
+            try writer().setCover(id: id, url: url, offsetY: offsetY)
+        }
     }
 
     func setAliases(id: String, aliases: [String]) async throws {
@@ -269,6 +277,19 @@ final class NoteMetadataViewModel {
     private func setTags(_ tags: [String]) async {
         guard let writer else { return }
         await run { try await writer.setTags(id: noteId, tags: tags) }
+    }
+
+    /// Sets or clears the cover (N703).
+    ///
+    /// **`coverImage` is not a field of the note schema.** Writing it is safe
+    /// because §13.2 makes an unknown top-level payload key something every
+    /// conforming client carries, and §13.2.1 records how desktop does it, so
+    /// a cover written here survives an older desktop editing the note. No
+    /// other client renders one today — a product gap rather than a protocol
+    /// one, recorded in `research.md`.
+    func setCover(url: String?, offsetY: Double) async {
+        guard let writer else { return }
+        await run { try await writer.setCover(id: noteId, url: url, offsetY: offsetY) }
     }
 
     func setAliases(_ aliases: [String]) async {

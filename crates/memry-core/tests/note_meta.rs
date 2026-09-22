@@ -664,3 +664,132 @@ fn a_deleted_note_stops_counting_towards_its_tags() {
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].id, "note-2");
 }
+
+// MARK: - The cover (N703)
+
+/// A cover written here reads back through the same unknown-key path N208
+/// reads, in the shape `payload-schemas.json` already carries for it.
+#[test]
+fn a_cover_round_trips_through_the_unknown_key() {
+    let (db, _vault) = vault("cover-write");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    db.call_blocking(|conn: &mut Connection| {
+        notes::set_cover(conn, "note-1", Some("images/cover.png"), 0.25, DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the write");
+
+    let metadata = db
+        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+        .expect("read")
+        .expect("the note");
+    let cover: Value = serde_json::from_str(&metadata.cover_json.expect("a cover")).expect("JSON");
+    assert_eq!(cover["url"], json!("images/cover.png"));
+    assert_eq!(cover["offsetY"], json!(0.25));
+}
+
+/// **An offset outside the frame is clamped rather than stored.**
+///
+/// The offset decides which part of a tall image is visible; a value past the
+/// ends would show an empty frame, and storing it would spread that to every
+/// device.
+#[test]
+fn a_cover_offset_is_clamped_to_the_frame() {
+    let (db, _vault) = vault("cover-clamp");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    for (given, expected) in [(9.0, 1.0), (-4.0, 0.0)] {
+        db.call_blocking(move |conn: &mut Connection| {
+            notes::set_cover(conn, "note-1", Some("c.png"), given, DEVICE, NOW)?;
+            Ok(())
+        })
+        .expect("the write");
+
+        let metadata = db
+            .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+            .expect("read")
+            .expect("the note");
+        let cover: Value =
+            serde_json::from_str(&metadata.cover_json.expect("a cover")).expect("JSON");
+        assert_eq!(cover["offsetY"], json!(expected), "{given} was not clamped");
+    }
+}
+
+/// Removing a cover writes an explicit null rather than dropping the key: an
+/// absent key means "this sender does not know" (§13.4), which is not what
+/// removing a cover means.
+#[test]
+fn removing_a_cover_writes_null_rather_than_removing_the_key() {
+    let (db, _vault) = vault("cover-remove");
+    write_note(&db, "note-1", "A note", &[], None);
+
+    db.call_blocking(|conn: &mut Connection| {
+        notes::set_cover(conn, "note-1", Some("c.png"), 0.5, DEVICE, NOW)?;
+        notes::set_cover(conn, "note-1", None, 0.5, DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the writes");
+
+    let metadata = db
+        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+        .expect("read")
+        .expect("the note");
+    assert_eq!(metadata.cover_json, None, "the cover reads as cleared");
+
+    let payload: String = db
+        .call_blocking(|conn: &mut Connection| {
+            let raw: String = conn
+                .query_row(
+                    "SELECT payload FROM sync_items WHERE item_type = 'note' AND item_id = 'note-1'",
+                    [],
+                    |row| row.get(0),
+                )
+                .expect("the payload");
+            Ok(raw)
+        })
+        .expect("read");
+    let object: Value = serde_json::from_str(&payload).expect("JSON");
+    assert_eq!(
+        object.get("coverImage"),
+        Some(&Value::Null),
+        "the key must be present and null, not removed: {payload}"
+    );
+}
+
+/// **Writing a cover must not disturb the note's own fields.**
+///
+/// It is an unknown key living beside them, and a write that re-serialised the
+/// payload from a projection would drop whatever it did not know — which is
+/// the loss §13.2 exists to prevent.
+#[test]
+fn writing_a_cover_leaves_the_notes_own_fields_alone() {
+    let (db, _vault) = vault("cover-beside");
+    write_note(
+        &db,
+        "note-1",
+        "A note",
+        &["research".to_owned()],
+        Some(Map::from_iter([("count".to_owned(), json!(3))])),
+    );
+
+    db.call_blocking(|conn: &mut Connection| {
+        notes::set_cover(conn, "note-1", Some("c.png"), 0.5, DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the write");
+
+    let metadata = db
+        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
+        .expect("read")
+        .expect("the note");
+    assert_eq!(metadata.tags, ["research"]);
+    assert_eq!(
+        metadata
+            .properties
+            .iter()
+            .find(|property| property.name == "count")
+            .map(|property| property.value_json.as_str()),
+        Some("3")
+    );
+}

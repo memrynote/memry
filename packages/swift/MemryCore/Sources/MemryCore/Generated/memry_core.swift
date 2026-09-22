@@ -4029,6 +4029,20 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func setAliases(id: String, aliases: [String]) throws 
     
     /**
+     * Sets or clears a note's cover (N703).
+     *
+     * `coverImage` is not a field of the note schema. Writing it is safe
+     * because §13.2 makes an unknown top-level payload key something every
+     * conforming client carries, and §13.2.1 records how desktop does it —
+     * so a cover written here survives an older desktop editing the note.
+     * **No other client renders one today**, which is a product gap rather
+     * than a protocol one.
+     *
+     * `nil` clears, writing an explicit null rather than removing the key.
+     */
+    func setCover(id: String, url: String?, offsetY: Double) throws 
+    
+    /**
      * Sets or clears a note's icon (N701).
      *
      * The payload spells it `emoji` (§13.7.1); it is `icon` here because that
@@ -4383,6 +4397,29 @@ open func setAliases(id: String, aliases: [String])throws   {try rustCallWithErr
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),
         FfiConverterSequenceString.lower(aliases),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Sets or clears a note's cover (N703).
+     *
+     * `coverImage` is not a field of the note schema. Writing it is safe
+     * because §13.2 makes an unknown top-level payload key something every
+     * conforming client carries, and §13.2.1 records how desktop does it —
+     * so a cover written here survives an older desktop editing the note.
+     * **No other client renders one today**, which is a product gap rather
+     * than a protocol one.
+     *
+     * `nil` clears, writing an explicit null rather than removing the key.
+     */
+open func setCover(id: String, url: String?, offsetY: Double)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_set_cover(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(url),
+        FfiConverterDouble.lower(offsetY),uniffiCallStatus
     )
 }
 }
@@ -17037,6 +17074,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_set_aliases() != 27902) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_set_cover() != 11273) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_set_icon() != 32942) {

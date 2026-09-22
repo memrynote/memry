@@ -202,6 +202,29 @@ impl NotesWriter {
         })
     }
 
+    /// Sets or clears a note's cover (N703).
+    ///
+    /// `coverImage` is not a field of the note schema. Writing it is safe
+    /// because §13.2 makes an unknown top-level payload key something every
+    /// conforming client carries, and §13.2.1 records how desktop does it —
+    /// so a cover written here survives an older desktop editing the note.
+    /// **No other client renders one today**, which is a product gap rather
+    /// than a protocol one.
+    ///
+    /// `nil` clears, writing an explicit null rather than removing the key.
+    pub fn set_cover(
+        &self,
+        id: String,
+        url: Option<String>,
+        offset_y: f64,
+    ) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::set_cover(conn, &id, url.as_deref(), offset_y, &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
     /// Replaces a note's tags (N705).
     ///
     /// `tags` is a field of the note payload (§13.7.1); the tag rows one layer

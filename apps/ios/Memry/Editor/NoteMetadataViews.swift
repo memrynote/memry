@@ -7,6 +7,7 @@
 //
 
 import MemryCore
+import PhotosUI
 import SwiftUI
 import UIKit
 
@@ -463,5 +464,103 @@ struct NoteMetadataEditors: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Adding, changing, repositioning and removing a note's cover (N703).
+///
+/// The picture itself goes up through the attachment path (N214); this writes
+/// only the reference and the offset. **No other client renders a cover
+/// today**, which `research.md` records: the key survives a desktop edit by
+/// §13.2.1, it simply is not drawn there.
+struct NoteCoverMenu: View {
+    let cover: NoteCover?
+    /// Uploads a picture and returns the **url to store**, or `nil` on
+    /// failure. That url is the attachment's filename, because Q4 binds a
+    /// block's url to an attachment by its filename's basename — storing an
+    /// attachment id here would give the reader something it cannot resolve.
+    let upload: (Data, String, String) async -> String?
+    let setCover: (String?, Double) -> Void
+
+    @State private var repositioning = false
+    @State private var picking = false
+    @State private var photo: PhotosPickerItem?
+    @State private var offset: Double = 0.5
+
+    var body: some View {
+        Menu {
+            Button {
+                picking = true
+            } label: {
+                Label(cover == nil ? "Add a cover" : "Change the cover", systemImage: "photo")
+            }
+            if let cover {
+                Button {
+                    offset = cover.offsetY
+                    repositioning = true
+                } label: {
+                    Label("Reposition", systemImage: "arrow.up.and.down")
+                }
+                Divider()
+                Button(role: .destructive) {
+                    // `nil` clears, which the core writes as an explicit null
+                    // rather than removing the key.
+                    setCover(nil, cover.offsetY)
+                } label: {
+                    Label("Remove the cover", systemImage: "trash")
+                }
+            }
+        } label: {
+            Label("Cover", systemImage: "photo.on.rectangle")
+                .labelStyle(.iconOnly)
+        }
+        .accessibilityLabel(cover == nil ? "Add a cover" : "Change this note's cover")
+        .photosPicker(isPresented: $picking, selection: $photo, matching: .images)
+        .onChange(of: photo) { _, item in
+            guard let item else { return }
+            Task {
+                guard let data = try? await item.loadTransferable(type: Data.self) else {
+                    photo = nil
+                    return
+                }
+                let suffix = item.supportedContentTypes.first?
+                    .preferredFilenameExtension ?? "jpg"
+                let name = NoteAttachmentComposer.capturedName(extension: suffix)
+                let mime = item.supportedContentTypes.first?.preferredMIMEType
+                    ?? "application/octet-stream"
+                if let url = await upload(data, name, mime) {
+                    setCover(url, cover?.offsetY ?? 0.5)
+                }
+                photo = nil
+            }
+        }
+        .sheet(isPresented: $repositioning) {
+            NavigationStack {
+                Form {
+                    // The offset decides which part of a tall image is
+                    // visible, so it is a position rather than a percentage.
+                    Slider(value: $offset, in: 0...1) {
+                        Text("Vertical position")
+                    } minimumValueLabel: {
+                        Text("Top").font(Tokens.Typography.caption.font)
+                    } maximumValueLabel: {
+                        Text("Bottom").font(Tokens.Typography.caption.font)
+                    }
+                    .accessibilityLabel("Vertical position of the cover")
+                }
+                .navigationTitle("Reposition")
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cancel") { repositioning = false }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") {
+                            repositioning = false
+                            setCover(cover?.url, offset)
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -337,6 +337,48 @@ pub fn set_icon(
 /// itself declares**, so an empty array is written as an empty array rather
 /// than as `null`: the user removing their last alias is a fact, and `null`
 /// would read as "this sender does not know" (§13.4).
+/// Sets or clears a note's cover (N703).
+///
+/// **`coverImage` is not a field of the note schema**, and writing it anyway
+/// is safe rather than reckless: §13.2 makes an unknown top-level payload key
+/// a thing every conforming client must carry, and §13.2.1 records how desktop
+/// meets that obligation — it stores every stripped top-level key in
+/// `sync_unknown_fields` and merges it back on push, so a cover written here
+/// survives an older desktop editing the same note.
+///
+/// The shape is `{ "url": ..., "offsetY": ... }`, which is the shape
+/// `payload-schemas.json` already carries for this key and the shape N208
+/// reads. Inventing a different one would leave this client the only reader of
+/// its own writes.
+///
+/// `None` writes an explicit **null** rather than removing the key, for
+/// §13.4's reason: an absent key means "this sender does not know", which is
+/// not what removing a cover means.
+pub fn set_cover(
+    conn: &Connection,
+    note_id: &str,
+    url: Option<&str>,
+    offset_y: f64,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Durable<String>, StorageError> {
+    let change = match url {
+        Some(url) => Change::Set(serde_json::json!({
+            "url": url,
+            "offsetY": offset_y.clamp(0.0, 1.0),
+        })),
+        None => Change::Set(Value::Null),
+    };
+    edit(
+        conn,
+        ITEM_TYPE,
+        note_id,
+        vec![("coverImage", change)],
+        device_id,
+        now_ms,
+    )
+}
+
 /// Replaces a note's tags (N705).
 ///
 /// **`tags` is a field of the note payload (§13.7.1), not a property.** The
