@@ -103,6 +103,8 @@ Typing in the picker searches your whole vault rather than filtering the handful
 
 Notes and canvases are stored as separate links, so a task keeps its note links unchanged when you add a canvas — including on a device still running an older version of Memry, which simply does not show the canvas half.
 
+A task you create inside a [journal entry](/user-guide/journal/daily-entries) is related to that day, and clicking it opens the Journal on that date. If a related item points at something that is no longer in the vault at all, Memry tells you instead of opening an empty document.
+
 ## Tags
 
 Tasks take tags from the same pool as your notes — one tag means one thing across the app,
