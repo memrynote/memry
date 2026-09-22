@@ -26,7 +26,7 @@ import {
 } from '@memry/contracts/journal-api'
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createHandler } from './validate'
-import { createJournalEntry } from '../journal/create-entry'
+import { createJournalEntry, resolveJournalEntryId } from '../journal/create-entry'
 import {
   readJournalEntry,
   writeJournalEntryWithContent,
@@ -86,15 +86,25 @@ export function registerJournalHandlers(): void {
     JournalChannels.invoke.GET_ENTRY,
     createValidatedHandler(GetEntryInputSchema, async (input): Promise<JournalEntry | null> => {
       const entry = await readJournalEntry(input.date)
-      if (entry) {
-        trackMainEvent('journal_opened', {
-          surface: 'journal',
-          action: 'opened',
-          objectType: 'journal',
-          result: 'success'
-        })
-      }
-      return entry
+      if (!entry) return null
+
+      trackMainEvent('journal_opened', {
+        surface: 'journal',
+        action: 'opened',
+        objectType: 'journal',
+        result: 'success'
+      })
+
+      // `readJournalEntry` only reads the file, so its id is always the
+      // deterministic `j<date>` — but that is not necessarily the id the vault
+      // holds for the same file. A journal file that reached the index through
+      // the vault scanner or the watcher (a pre-existing vault, a file synced in
+      // by Dropbox/iCloud, an entry written by another editor) was given a fresh
+      // note id instead. Everything the renderer keys off this id resolves
+      // through note_cache: the `linkedNoteIds` of a task created inside the
+      // entry, bookmarks, backlinks, the CRDT doc. Hand back the id the cache
+      // actually holds — the same one create/update settle on.
+      return { ...entry, id: resolveJournalEntryId(input.date) }
     })
   )
 
@@ -194,13 +204,18 @@ export function registerJournalHandlers(): void {
       )
       enqueueJournalUpdate(cacheId, entry.date)
 
+      // Same identity rule as the create path: the renderer caches whatever this
+      // returns (and whatever the event carries) as the open entry, so both have
+      // to carry the cache id rather than the file-derived `j<date>`.
+      const syncedEntry = cacheId === entry.id ? entry : { ...entry, id: cacheId }
+
       // Emit event
       emitJournalEvent(JournalChannels.events.ENTRY_UPDATED, {
-        date: entry.date,
-        entry
+        date: syncedEntry.date,
+        entry: syncedEntry
       })
 
-      if (shouldEmitThrottled(`journal_updated:${entry.date}`)) {
+      if (shouldEmitThrottled(`journal_updated:${syncedEntry.date}`)) {
         trackMainEvent('journal_updated', {
           surface: 'journal',
           action: 'updated',
@@ -209,7 +224,7 @@ export function registerJournalHandlers(): void {
         })
       }
 
-      return entry
+      return syncedEntry
     })
   )
 
