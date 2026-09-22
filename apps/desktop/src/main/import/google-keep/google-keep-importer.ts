@@ -2,7 +2,7 @@ import path from 'node:path'
 import { readFile } from 'node:fs/promises'
 import { parseKeepNote, mapKeepNote } from '@memry/importers/google-keep'
 import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
-import { createNote } from '../../vault/notes-crud'
+import { createImportedNote } from '../_shared/imported-note'
 import { saveAttachment } from '../../vault/attachments'
 import { attachmentMarkdown } from '../_shared/attachment-markdown'
 import { generateNoteId } from '../../lib/id'
@@ -67,7 +67,7 @@ async function processNote(
       }
     }
 
-    await createNote({
+    await createImportedNote({
       id: noteId,
       title: mapped.title,
       content: rewritten,

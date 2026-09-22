@@ -23,7 +23,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import zlib from 'zlib'
 import type Database from 'better-sqlite3'
-import { createNote } from '../../vault/notes-crud'
+import { createImportedNote } from '../_shared/imported-note'
 import { saveAttachment } from '../../vault/attachments'
 import { attachmentMarkdown } from '../_shared/attachment-markdown'
 import { generateNoteId } from '../../lib/id'
@@ -355,7 +355,7 @@ export const appleNotesImporter: Importer = {
           // body it produced, so do the same to what the rewrite produced.
           const content = rewritten.replace(/\n{3,}/g, '\n\n').trim()
 
-          await createNote({
+          await createImportedNote({
             id: noteId,
             title: mapped.title,
             content,

@@ -22,7 +22,7 @@ import type { Dirent } from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import matter from 'gray-matter'
-import { createNote } from '../../vault/notes-crud'
+import { createImportedNote } from '../_shared/imported-note'
 import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import {
@@ -401,7 +401,7 @@ export async function runNotePlanImport(
       })
 
       const stat = await fs.stat(planned.absPath)
-      await createNote({
+      await createImportedNote({
         id: noteId,
         title: prepared.title,
         content: markdown,

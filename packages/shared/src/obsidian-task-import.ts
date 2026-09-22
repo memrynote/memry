@@ -11,14 +11,32 @@
  * user's symbol choice, field order and format, and a record only of the
  * fields we happened to find useful is not a record. One line of noise per
  * imported task buys a rewrite the user can undo by hand.
+ *
+ * Lives in `@memry/shared` because both conversion sites need it: the editor's
+ * checkbox converter in the renderer, and the import pipeline's checklist step
+ * in the main process.
  */
 
 import {
   hasObsidianTaskFields,
   parseObsidianTaskFields,
   type ObsidianPriority
-} from '@memry/shared/obsidian-tasks'
-import type { RepeatConfig as RepeatConfigInput } from '@memry/rpc/tasks'
+} from './obsidian-tasks'
+
+/**
+ * The slice of a task's repeat config an Obsidian recurrence can fill. Spelled
+ * structurally so `@memry/shared` keeps no dependency on the tasks contracts;
+ * it is assignable to both the domain's `RepeatConfig` and the `tasks:create`
+ * schema's input.
+ */
+interface ObsidianRepeatConfig {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  interval: number
+  daysOfWeek?: number[]
+  endType: 'never'
+  completedCount: number
+  createdAt: string
+}
 
 export interface ObsidianTaskImport {
   /** The description with every recognised plugin field stripped. Tags stay inline. */
@@ -27,7 +45,7 @@ export interface ObsidianTaskImport {
   dueDate: string | null
   startDate: string | null
   tags: string[]
-  repeatConfig: RepeatConfigInput | null
+  repeatConfig: ObsidianRepeatConfig | null
   repeatFrom: 'due' | 'completion' | null
   /** The original line, verbatim, so the rewrite stays reversible by hand. */
   description: string

@@ -27,7 +27,7 @@ import * as crypto from 'crypto'
 import { JSDOM } from 'jsdom'
 import { parseEnex, prepareEnml, resourceByHash } from '@memry/importers/evernote'
 import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
-import { createNote } from '../../vault/notes-crud'
+import { createImportedNote } from '../_shared/imported-note'
 import { saveAttachment } from '../../vault/attachments'
 import { attachmentMarkdown } from '../_shared/attachment-markdown'
 import { generateNoteId } from '../../lib/id'
@@ -200,7 +200,7 @@ export const evernoteImporter: Importer = {
           // or a failed save) so the internal `memry-enex:` scheme never leaks.
           rewritten = rewritten.replace(/!?\[[^\]]*\]\(memry-enex:[^)]*\)/g, '')
 
-          await createNote({
+          await createImportedNote({
             id: noteId,
             title: enexNote.title,
             content: rewritten,
