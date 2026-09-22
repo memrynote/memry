@@ -520,3 +520,21 @@ the iOS section are the small half.
 
 Recorded so the next attempt starts from the projection rather than
 discovering the empty table from a query that always returns nothing.
+
+**Resolved.** `index_links` now projects each note's outgoing `wikiLink` and
+`linkMention` runs into `note_links` during the same reindex pass that feeds
+`fts_notes`, deleting the source's rows first so a link the source no longer
+makes does not survive. `target_id` is resolved by title and left `NULL` when
+no note carries it, which is what lets a link written before its target
+existed resolve once the target is created.
+
+`via_property` is reported **false** rather than guessed: nothing writes
+property-sourced links yet, and desktop's "property → title" label belongs to
+a link this client cannot currently distinguish. Marking every link as
+body-sourced is true today; inventing the distinction would not be.
+
+One thing worth keeping: the first version of the removal test appended a
+second body update and asserted the backlink disappeared. It did not, and the
+test was wrong rather than the projection — Yjs updates are additive, so
+appending leaves the original link in the document. The test now authors a
+real deletion.

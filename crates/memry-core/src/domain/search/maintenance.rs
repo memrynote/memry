@@ -31,7 +31,9 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 use sha2::{Digest as _, Sha256};
 
 use crate::api::errors::StorageError;
+use crate::crdt::blocks::extract_blocks;
 use crate::crdt::errors::CrdtError;
+use crate::crdt::registry::Document;
 use crate::crdt::registry::{DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
@@ -194,6 +196,12 @@ fn index_note(
     index
         .execute("DELETE FROM fts_notes WHERE id = ?1", params![id])
         .map_err(failed)?;
+    // The note's outgoing links go with it. Deleting first means a note that
+    // stopped linking somewhere really stops: an insert-only pass would leave
+    // a backlink the source no longer makes.
+    index
+        .execute("DELETE FROM note_links WHERE source_id = ?1", params![id])
+        .map_err(failed)?;
 
     // The primary key is (item_type, item_id), so one id could in principle
     // name both a note and a journal. `journal` sorts first and one row is
@@ -252,7 +260,75 @@ fn index_note(
             ],
         )
         .map_err(failed)?;
+    index_links(data, index, id, now_ms)?;
     done.notes_indexed += 1;
+    Ok(())
+}
+
+/// Projects one note's outgoing wiki links into `note_links` (N800).
+///
+/// **The table existed and nothing wrote a row into it**, which is why
+/// backlinks could not be answered: a query over it would have returned
+/// nothing, forever, and looked like a note with no backlinks.
+///
+/// `target_id` is resolved here rather than at query time, and left `NULL`
+/// when no note carries that title — which is how a forward reference to a
+/// note that does not exist yet survives until it is created. The title is
+/// always stored, so the link is still a link in the meantime.
+fn index_links(
+    data: &Connection,
+    index: &Connection,
+    id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let document = body_document(data, id, now_ms)?;
+    let Some(document) = document else {
+        return Ok(());
+    };
+    let blocks = extract_blocks(&document).map_err(|error| crdt_failed(id, error))?;
+
+    // One row per distinct title: the primary key is (source_id, target_title)
+    // and a note linking to the same place twice is still one link between two
+    // notes. The mention count belongs to the reader, not to the edge.
+    let mut seen: BTreeSet<String> = BTreeSet::new();
+    for block in &blocks {
+        for run in &block.inline {
+            let is_link = run
+                .marks
+                .iter()
+                .any(|mark| mark == "wikiLink" || mark == "linkMention");
+            let Some(target) = run.target.as_deref().filter(|_| is_link) else {
+                continue;
+            };
+            let target = target.trim();
+            if target.is_empty() {
+                continue;
+            }
+            seen.insert(target.to_owned());
+        }
+    }
+
+    for title in seen {
+        // Resolved by title against the live notes, which is what a wiki link
+        // names (§12.3).
+        let target_id: Option<String> = data
+            .query_row(
+                "SELECT id FROM notes WHERE title = ?1 AND deleted_at IS NULL LIMIT 1",
+                params![&title],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(failed)?;
+        index
+            .execute(
+                "INSERT INTO note_links (source_id, target_id, target_title)
+                 VALUES (?1, ?2, ?3)
+                 ON CONFLICT(source_id, target_title) DO UPDATE SET
+                     target_id = excluded.target_id",
+                params![id, target_id, title],
+            )
+            .map_err(failed)?;
+    }
     Ok(())
 }
 
@@ -390,6 +466,33 @@ fn body_text(data: &Connection, doc_id: &str, now_ms: i64) -> Result<String, Sto
     )
     .map_err(failed)?;
     Ok(text)
+}
+
+/// One note's body as a document, rebuilt from the durable log.
+///
+/// `None` when the log holds nothing for it, which is a note whose body has
+/// not arrived rather than an empty one — the two are different and only the
+/// first can still change.
+fn body_document(
+    data: &Connection,
+    doc_id: &str,
+    _now_ms: i64,
+) -> Result<Option<Arc<Document>>, StorageError> {
+    let plan = update_log::load_plan(data, doc_id).map_err(|error| crdt_failed(doc_id, error))?;
+    let blobs = plan.blobs();
+    if blobs.is_empty() {
+        return Ok(None);
+    }
+    let sink: UpdateSink = Arc::new(|_, _| {});
+    let document = DocumentRegistry::new(READER_DEVICE_ID, sink)
+        .get_or_open(doc_id)
+        .map_err(|error| crdt_failed(doc_id, error))?;
+    for blob in blobs {
+        document
+            .apply_durable_update(blob)
+            .map_err(|error| crdt_failed(doc_id, error))?;
+    }
+    Ok(Some(document))
 }
 
 fn body_high_water(data: &Connection, doc_id: &str) -> Result<i64, StorageError> {

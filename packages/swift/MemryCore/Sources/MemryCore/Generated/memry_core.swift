@@ -5471,6 +5471,20 @@ public func FfiConverterTypeRuntimeHost_lower(_ value: RuntimeHost) -> UInt64 {
 public protocol SearchProtocol: AnyObject, Sendable {
     
     /**
+     * Every note linking to this one (N800).
+     *
+     * **Answerable only since the link projection landed.** `note_links`
+     * existed in the index schema and nothing wrote a row into it, so this
+     * query would have returned an empty list forever and read as "no note
+     * links here".
+     *
+     * Matched on the **title** rather than only on a resolved id, so a link
+     * written before its target existed still counts once the target is
+     * created — which is the case `target_id` being nullable exists for.
+     */
+    func backlinks(noteId: String, order: BacklinkOrder) throws  -> [Backlink]
+    
+    /**
      * Notes and journals matching `query`, best first.
      *
      * A query carrying no searchable term returns **empty, not everything**:
@@ -5553,6 +5567,29 @@ open class Search: SearchProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * Every note linking to this one (N800).
+     *
+     * **Answerable only since the link projection landed.** `note_links`
+     * existed in the index schema and nothing wrote a row into it, so this
+     * query would have returned an empty list forever and read as "no note
+     * links here".
+     *
+     * Matched on the **title** rather than only on a resolved id, so a link
+     * written before its target existed still counts once the target is
+     * created — which is the case `target_id` being nullable exists for.
+     */
+open func backlinks(noteId: String, order: BacklinkOrder)throws  -> [Backlink]  {
+    return try  FfiConverterSequenceTypeBacklink.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_search_backlinks(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),
+        FfiConverterTypeBacklinkOrder_lower(order),uniffiCallStatus
+    )
+})
+}
     
     /**
      * Notes and journals matching `query`, best first.
@@ -8049,6 +8086,97 @@ public func FfiConverterTypeAttachmentManifest_lift(_ buf: RustBuffer) throws ->
 #endif
 public func FfiConverterTypeAttachmentManifest_lower(_ value: AttachmentManifest) -> RustBuffer {
     return FfiConverterTypeAttachmentManifest.lower(value)
+}
+
+
+/**
+ * One note that links to another (N800).
+ */
+public struct Backlink: Equatable, Hashable {
+    /**
+     * The note doing the linking.
+     */
+    public var sourceId: String
+    public var sourceTitle: String
+    /**
+     * The title the link actually spells, which is not always the target's
+     * current title: a note renamed after being linked to keeps the old
+     * spelling in the link until the source is edited.
+     */
+    public var targetTitle: String
+    /**
+     * `true` when the link is a `linkMention` carried in a property rather
+     * than written in the body, which desktop labels differently ("property
+     * → title") because it is not a sentence the user wrote.
+     */
+    public var viaProperty: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The note doing the linking.
+         */sourceId: String, sourceTitle: String, 
+        /**
+         * The title the link actually spells, which is not always the target's
+         * current title: a note renamed after being linked to keeps the old
+         * spelling in the link until the source is edited.
+         */targetTitle: String, 
+        /**
+         * `true` when the link is a `linkMention` carried in a property rather
+         * than written in the body, which desktop labels differently ("property
+         * → title") because it is not a sentence the user wrote.
+         */viaProperty: Bool) {
+        self.sourceId = sourceId
+        self.sourceTitle = sourceTitle
+        self.targetTitle = targetTitle
+        self.viaProperty = viaProperty
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension Backlink: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBacklink: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Backlink {
+        return
+            try Backlink(
+                sourceId: FfiConverterString.read(from: &buf), 
+                sourceTitle: FfiConverterString.read(from: &buf), 
+                targetTitle: FfiConverterString.read(from: &buf), 
+                viaProperty: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: Backlink, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceId, into: &buf)
+        FfiConverterString.write(value.sourceTitle, into: &buf)
+        FfiConverterString.write(value.targetTitle, into: &buf)
+        FfiConverterBool.write(value.viaProperty, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBacklink_lift(_ buf: RustBuffer) throws -> Backlink {
+    return try FfiConverterTypeBacklink.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBacklink_lower(_ value: Backlink) -> RustBuffer {
+    return FfiConverterTypeBacklink.lower(value)
 }
 
 
@@ -11702,6 +11830,91 @@ public func FfiConverterTypeBackgroundError_lower(_ value: BackgroundError) -> R
 
 
 /**
+ * How a backlink list is ordered (N800), matching desktop's three.
+ */
+
+public enum BacklinkOrder: Equatable, Hashable {
+    
+    /**
+     * Most recently touched first, which is the default a reader wants.
+     */
+    case recent
+    /**
+     * Alphabetical by the linking note's title.
+     */
+    case title
+    /**
+     * Oldest first, for reading a thread of notes in the order it grew.
+     */
+    case oldest
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension BacklinkOrder: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBacklinkOrder: FfiConverterRustBuffer {
+    typealias SwiftType = BacklinkOrder
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BacklinkOrder {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .recent
+        
+        case 2: return .title
+        
+        case 3: return .oldest
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: BacklinkOrder, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .recent:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .title:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .oldest:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBacklinkOrder_lift(_ buf: RustBuffer) throws -> BacklinkOrder {
+    return try FfiConverterTypeBacklinkOrder.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBacklinkOrder_lower(_ value: BacklinkOrder) -> RustBuffer {
+    return FfiConverterTypeBacklinkOrder.lower(value)
+}
+
+
+
+/**
  * What a block's `url` resolved to.
  *
  * Four answers rather than an `Option`, because a shell draws each one
@@ -15332,6 +15545,31 @@ fileprivate struct FfiConverterSequenceTypeAttachmentChunkRef: FfiConverterRustB
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeBacklink: FfiConverterRustBuffer {
+    typealias SwiftType = [Backlink]
+
+    public static func write(_ value: [Backlink], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBacklink.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Backlink] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Backlink]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBacklink.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeBlock: FfiConverterRustBuffer {
     typealias SwiftType = [Block]
 
@@ -16275,6 +16513,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_runtimehost_resume_settled() != 37011) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_backlinks() != 53743) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_notes() != 18500) {

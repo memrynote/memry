@@ -73,12 +73,16 @@ struct NoteReadView: View {
         editor: (any BlockEditing)? = nil,
         metadataWriter: (any NoteMetadataWriting)? = nil,
         writer: (any NotesWriting)? = nil,
+        search: (any VaultSearching)? = nil,
         open: ((NoteRoute) -> Void)? = nil,
         openTag: ((String) -> Void)? = nil
     ) {
         self.open = open
         self.openTag = openTag
         _actions = State(initialValue: NotePageActions(noteId: route.id, writer: writer))
+        _backlinks = State(
+            initialValue: BacklinksViewModel(noteId: route.id, search: search)
+        )
         _model = State(initialValue: NoteReadViewModel(route: route, reader: reader, filler: filler))
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: route.id, filler: filler)
@@ -96,12 +100,16 @@ struct NoteReadView: View {
         editor: (any BlockEditing)? = nil,
         metadataWriter: (any NoteMetadataWriting)? = nil,
         writer: (any NotesWriting)? = nil,
+        search: (any VaultSearching)? = nil,
         open: ((NoteRoute) -> Void)? = nil,
         openTag: ((String) -> Void)? = nil
     ) {
         self.open = open
         self.openTag = openTag
         _actions = State(initialValue: NotePageActions(noteId: model.route.id, writer: writer))
+        _backlinks = State(
+            initialValue: BacklinksViewModel(noteId: model.route.id, search: search)
+        )
         _model = State(initialValue: model)
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: model.route.id, filler: model.filler)
@@ -143,6 +151,9 @@ struct NoteReadView: View {
 
     /// The page menu's three write actions (N808).
     @State private var actions: NotePageActions
+
+    /// The notes linking here (N800).
+    @State private var backlinks: BacklinksViewModel
 
     /// The page menu's sheets and alert (N808).
     @State private var renaming = false
@@ -334,6 +345,11 @@ struct NoteReadView: View {
                             editing: editing,
                             tableEditing: tableEditing
                         )
+                    }
+                    // Under the body, where desktop puts it and where a
+                    // reader looks after finishing the note (N800).
+                    if let open {
+                        BacklinksSection(model: backlinks, open: open)
                     }
                 }
             }

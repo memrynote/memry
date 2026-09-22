@@ -263,7 +263,7 @@ after sync.
 
 ## Phase I: page shell
 
-- [ ] N800 Backlinks section — **blocked on a missing projection, not on the query**: `note_links` exists in the index schema and nothing in the core writes a row into it, so link extraction has to land first. See `research.md`. Original scope: core query plus the iOS surface, with desktop's three sort orders and the `viaProperty` distinction
+- [x] N800 Backlinks section, with the link projection it turned out to need: core query plus the iOS surface, with desktop's three sort orders and the `viaProperty` distinction
 - [x] N801 Find in note
 - [ ] N802 Export
 - [ ] N803 Apply template

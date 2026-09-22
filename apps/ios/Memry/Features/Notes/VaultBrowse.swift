@@ -230,6 +230,9 @@ final class VaultBrowseViewModel {
     /// still works, and the search field falls back to matching titles in the
     /// outline this screen already holds.
     let search: VaultSearchViewModel?
+    /// The raw search surface, for the reads that are not a query — the
+    /// backlinks section (N800) is one.
+    let searcher: (any VaultSearching)?
 
     /// The last failed write, for the screen to show and dismiss. Separate
     /// from ``phase`` because a failed write leaves the vault readable: the
@@ -251,6 +254,7 @@ final class VaultBrowseViewModel {
         self.writer = writer
         self.editor = editor
         self.metadataWriter = metadataWriter
+        self.searcher = search
         self.search = search.map { VaultSearchViewModel(search: $0) }
     }
 

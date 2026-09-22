@@ -409,7 +409,7 @@ fn renaming_a_folder_reports_the_notes_it_moved() {
         .rename_folder("Before".to_string(), "After".to_string())
         .expect("rename");
 
-    assert_eq!(moved, [id.clone()]);
+    assert_eq!(moved, std::slice::from_ref(&id));
     let listed = vault.notes().list().expect("list");
     let note = listed.iter().find(|note| note.id == id).expect("the note");
     assert_eq!(note.folder_path.as_deref(), Some("After"));
