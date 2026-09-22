@@ -941,6 +941,43 @@ img.embed-image {
   color: var(--memry-muted);
 }
 
+/* A formula, shown as its LaTeX source - see the mathBlock spec in blocks.ts
+   for why the phone does not render it. */
+.math-block {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  inline-size: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  margin-block: 8px;
+  border: 1px solid var(--memry-hairline);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--memry-ink) 3%, transparent);
+}
+
+.math-icon {
+  flex: 0 0 auto;
+  display: flex;
+  font-size: 20px;
+  color: var(--memry-muted);
+  padding-block-start: 2px;
+}
+
+.math-source {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 15px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.math-source[data-empty='true'] {
+  font-style: italic;
+  color: var(--memry-muted);
+}
+
 /* Attachment, embed and bookmark cards. */
 .file-block,
 .embed-block,
@@ -1078,7 +1115,7 @@ img.embed-image {
 
 /* Mermaid diagram. The phone shows the SOURCE, not the drawing (see the spec in
    `blocks.ts`), so the card is built to say which one this is: a labelled
-   surface, monospaced, that scrolls sideways instead of wrapping \u2014 a wrapped
+   surface, monospaced, that scrolls sideways instead of wrapping — a wrapped
    Mermaid line reads as a different diagram. */
 .diagram-block {
   inline-size: 100%;

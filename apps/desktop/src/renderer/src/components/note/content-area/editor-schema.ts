@@ -3,6 +3,7 @@ import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import { createReactDiagramBlockSpec } from '@blocknote/diagram-block'
 import { createFileBlock } from './file-block'
 import { createCalloutBlock } from './callout-block'
+import { createMathBlock } from './math-block'
 import { createYoutubeEmbedBlock } from './youtube-embed-block'
 import { createBookmarkBlock } from './bookmark-block'
 import { createTaskBlock } from './task-block'
@@ -32,6 +33,7 @@ export const editorSchema = createMemrySchema({
     youtubeEmbed: createYoutubeEmbedBlock(),
     bookmark: createBookmarkBlock(),
     taskBlock: createTaskBlock(),
+    mathBlock: createMathBlock(),
     // A default block overridden, not a new one: BlockNote's own toggle keeps
     // its fold in localStorage, which is per-device and keyed by an id that is
     // regenerated on every parse (#1847).
@@ -41,7 +43,7 @@ export const editorSchema = createMemrySchema({
     // rather than a Memry reimplementation (#1870).
     //
     // This is the one block whose config is NOT imported from
-    // `@memry/editor-schema` \u2014 it cannot be, because that package is also the
+    // `@memry/editor-schema` — it cannot be, because that package is also the
     // headless main process's and the mobile WebView's, and this package's
     // entry point pulls React and ~3 MB of mermaid. `diagramConfig` restates it
     // for those two, and the parity gate in `editor-schema.test.ts` compares

@@ -512,7 +512,8 @@ are not plain CommonMark:
 | youtube embed    | `![embed](videoUrl)`                                                                                                            | `:304`, `:307`                 |
 | bookmark         | `![bookmark](url)`                                                                                                              | `:305`, `:311`                 |
 | file             | `<!-- file:{…} -->`, an HTML comment with JSON props                                                                            | `:349`, `:358`, `:399`         |
-| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open` | `:439`, `:446-447`, `:487-519` |
+| math             | `$$` alone on its line, the LaTeX source, then `$$`; the body's blank lines are dropped                                         | `:428`, `:440-449`             |
+| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open` | `:518`, `:525-526`, `:566-598` |
 
 **Claiming rules matter as much as the forms:**
 
@@ -524,6 +525,11 @@ are not plain CommonMark:
   (`:145`);
 - structured quotes refuse a `>text` line and claim only a run that is separated
   or nested (`:220-226`);
+- a math run is claimed only when it OWNS its paragraph at both ends and
+  `serializeMathBlock` reproduces it byte for byte
+  (`packages/editor-schema/src/blocks/markdown.ts:478-496`), so a one-line
+  `$$x$$`, an indented fence, a fence with trailing spaces and an unterminated
+  one all stay the author's markdown;
 - **the file marker's JSON key order is fixed** as `url, name, size, mimeType`,
   then `width` and `height` only when greater than zero and `align` only when set
   and not `left`, so legacy markers stay byte-identical (`:384-399`);
@@ -595,16 +601,16 @@ in-fragment, not a root.
 
 ## 12.9 The type registry FR-040 enumerates
 
-**Normative.** `createMemrySchema` produces exactly **34** types
+**Normative.** `createMemrySchema` produces exactly **35** types
 (`packages/editor-schema/src/schema.ts:52-77`), checked in as
 `packages/editor-schema/src/registry-manifest.json` and asserted in both
 directions by `packages/editor-schema/src/__tests__/registry-parity.test.ts`.
 
-| Group          | Count | Types                                                                                                                                                                                                                                       |
-| -------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| blocks         |    19 | `audio`, `bookmark`, `bulletListItem`, `callout`, `checkListItem`, `codeBlock`, `diagram`, `divider`, `file`, `heading`, `image`, `numberedListItem`, `paragraph`, `quote`, `table`, `taskBlock`, `toggleListItem`, `video`, `youtubeEmbed` |
-| inline content |     8 | `dateMention`, `hashTag`, `inlineCheckbox`, `inlineImage`, `link`, `linkMention`, `text`, `wikiLink`                                                                                                                                        |
-| styles         |     7 | `backgroundColor`, `bold`, `code`, `italic`, `strike`, `textColor`, `underline`                                                                                                                                                             |
+| Group          | Count | Types                                                                                                                                                                                                                                                    |
+| -------------- | ----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| blocks         |    20 | `audio`, `bookmark`, `bulletListItem`, `callout`, `checkListItem`, `codeBlock`, `diagram`, `divider`, `file`, `heading`, `image`, `mathBlock`, `numberedListItem`, `paragraph`, `quote`, `table`, `taskBlock`, `toggleListItem`, `video`, `youtubeEmbed` |
+| inline content |     8 | `dateMention`, `hashTag`, `inlineCheckbox`, `inlineImage`, `link`, `linkMention`, `text`, `wikiLink`                                                                                                                                                     |
+| styles         |     7 | `backgroundColor`, `bold`, `code`, `italic`, `strike`, `textColor`, `underline`                                                                                                                                                                          |
 
 `file` and `toggleListItem` are Memry specifications overriding BlockNote
 defaults of the same name

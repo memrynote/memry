@@ -21,6 +21,7 @@ import { GroupHeader } from '@/components/tasks/group-header'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress, getTopLevelTasks } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
+import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
 import { useDragContext } from '@/contexts/drag-context'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
 import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
@@ -292,6 +293,8 @@ export const VirtualizedAllTasksView = ({
 
   const combinedTasks = useMemo(() => [...tasks, ...(doneTasks ?? [])], [tasks, doneTasks])
 
+  const noteIndex = useTaskNoteIndex(sortField === 'folder' || sortField === 'note')
+
   const virtualItems = useMemo(() => {
     if (sortField && sortField !== 'title' && sortDirection) {
       return annotateGroupedVirtualItems(
@@ -302,7 +305,8 @@ export const VirtualizedAllTasksView = ({
           sortField,
           sortDirection,
           collapsedGroups,
-          getOrderedTasks
+          getOrderedTasks,
+          noteIndex
         ),
         { sortField, projects }
       )
@@ -310,7 +314,16 @@ export const VirtualizedAllTasksView = ({
     return annotateFlatVirtualItems(
       flattenTasksFlat(tasks, projects, combinedTasks, getOrderedTasks)
     )
-  }, [tasks, projects, combinedTasks, sortField, sortDirection, collapsedGroups, getOrderedTasks])
+  }, [
+    tasks,
+    projects,
+    combinedTasks,
+    sortField,
+    sortDirection,
+    collapsedGroups,
+    getOrderedTasks,
+    noteIndex
+  ])
 
   const doneVirtualItems = useMemo((): VirtualItem[] => {
     if (!doneTasks || doneTasks.length === 0) return []

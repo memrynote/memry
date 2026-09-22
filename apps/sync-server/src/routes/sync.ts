@@ -2,7 +2,13 @@ import type { Context } from 'hono'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
-import { PullRequestSchema, RecordPushRequestSchema } from '@memry/contracts/sync-api'
+import {
+  PullRequestSchema,
+  RecordPushEnvelopeSchema,
+  RecordPushItemIdentitySchema,
+  RecordPushItemSchema
+} from '@memry/contracts/sync-api'
+import type { RecordPushItemInput } from '@memry/contracts/sync-api'
 import { safeBase64Decode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
@@ -22,7 +28,8 @@ import {
   pullItems,
   setVaultName,
   updateDeviceCursor,
-  type ManifestPage
+  type ManifestPage,
+  type RecordPushBatchOutcome
 } from '../services/sync'
 import {
   ensureSyncVaultAllowed,
@@ -382,11 +389,62 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
   const startedAt = Date.now()
 
   const body: unknown = await c.req.json()
-  const parsed = parseTransportRequest(RecordPushRequestSchema, body, {
+  const envelope = parseTransportRequest(RecordPushEnvelopeSchema, body, {
     transport: 'record',
     endpoint,
     label: 'push request'
   })
+
+  // Per item, not per request. One item the schema refuses used to fail the
+  // whole body with a 400 that named no item, which left the client re-sending
+  // the same batch forever (#2320) — see RecordPushEnvelopeSchema.
+  const items: RecordPushItemInput[] = []
+  const invalidOutcomes: RecordPushBatchOutcome[] = []
+  for (const raw of envelope.items) {
+    const parsedItem = RecordPushItemSchema.safeParse(raw)
+    if (parsedItem.success) {
+      items.push(parsedItem.data)
+      continue
+    }
+
+    const issue = parsedItem.error.issues[0]?.message ?? 'validation failed'
+    logSyncValidationFailure({ transport: 'record', endpoint, issue })
+
+    // Without an id and a known type the item cannot be named in `rejected[]`
+    // nor attributed in batch telemetry. Dropping it silently is still safe:
+    // the client marks every id it sent and got no verdict for as failed, so
+    // the row leaves the queue either way.
+    const identity = RecordPushItemIdentitySchema.safeParse(raw)
+    if (!identity.success) continue
+
+    invalidOutcomes.push({
+      id: identity.data.id,
+      type: identity.data.type,
+      accepted: false,
+      reason: `${ErrorCodes.SYNC_INVALID_ITEM}: ${issue}`
+    })
+  }
+
+  // Nothing storable left. Answering the verdicts straight back skips a quota
+  // read that could raise a 413 for a batch that writes no bytes, which would
+  // tell the client its storage is full when the real problem is the items.
+  if (items.length === 0) {
+    logRecordPushBatch({
+      endpoint,
+      latencyMs: Date.now() - startedAt,
+      outcomes: invalidOutcomes
+    })
+
+    return c.json({
+      accepted: [],
+      rejected: invalidOutcomes.map((outcome) => ({
+        id: outcome.id,
+        reason: outcome.reason ?? ErrorCodes.SYNC_INVALID_ITEM
+      })),
+      serverTime: Math.floor(Date.now() / 1000),
+      maxCursor: 0
+    })
+  }
 
   let result
   try {
@@ -395,7 +453,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
       c.env.STORAGE,
       userId,
       deviceId,
-      parsed.items,
+      items,
       vaultId,
       c.get('client') ?? null
     )
@@ -404,12 +462,15 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
       logRecordPushBatch({
         endpoint,
         latencyMs: Date.now() - startedAt,
-        outcomes: parsed.items.map((item) => ({
-          id: item.id,
-          type: item.type,
-          accepted: false,
-          reason: error.code
-        }))
+        outcomes: [
+          ...invalidOutcomes,
+          ...items.map((item) => ({
+            id: item.id,
+            type: item.type,
+            accepted: false,
+            reason: error.code
+          }))
+        ]
       })
     }
     throw error
@@ -449,12 +510,18 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
   logRecordPushBatch({
     endpoint,
     latencyMs: Date.now() - startedAt,
-    outcomes: result.outcomes
+    outcomes: [...invalidOutcomes, ...result.outcomes]
   })
 
   return c.json({
     accepted: result.accepted,
-    rejected: result.rejected,
+    rejected: [
+      ...result.rejected,
+      ...invalidOutcomes.map((outcome) => ({
+        id: outcome.id,
+        reason: outcome.reason ?? ErrorCodes.SYNC_INVALID_ITEM
+      }))
+    ],
     serverTime: result.serverTime,
     maxCursor: result.maxCursor
   })

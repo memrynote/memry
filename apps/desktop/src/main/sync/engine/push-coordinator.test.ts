@@ -48,6 +48,25 @@ interface QueueRow {
 }
 
 /**
+ * The clock the real encrypt path lifts out of the resolved payload and hangs
+ * on the envelope (`extractPayloadMetadata` -> `encryptItemForPush`). The fake
+ * has to do it too: the coordinator now validates each envelope against
+ * `RecordPushItemSchema` before sending, and that schema requires a clock on
+ * every clock-required type.
+ */
+function envelopeClock(payload: string): Record<string, number> | undefined {
+  try {
+    const parsed: unknown = JSON.parse(payload)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined
+    const clock = (parsed as Record<string, unknown>).clock
+    if (!clock || typeof clock !== 'object' || Array.isArray(clock)) return undefined
+    return clock as Record<string, number>
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Stands in for the real encryptPushBatch: still routes each row through the
  * coordinator's own resolvePushPayload (so the fresh-vs-frozen payload path is
  * exercised) and parks the resulting plaintext in `encryptedData`, which lets a
@@ -64,20 +83,25 @@ function fakeEncryptPushBatch(): void {
         resolvePushPayload: (item: QueueRow, deviceId: string, vaultKey: Uint8Array) => string
       }
     ) =>
-      items.map((item) => ({
-        queueId: item.id,
-        pushItem: {
-          id: item.itemId,
-          type: item.type,
-          operation: item.operation,
-          encryptedKey: 'ek',
-          keyNonce: 'kn',
-          encryptedData: deps.resolvePushPayload(item, deviceId, vaultKey),
-          dataNonce: 'dn',
-          signature: 'sig',
-          signerDeviceId: deviceId
+      items.map((item) => {
+        const payload = deps.resolvePushPayload(item, deviceId, vaultKey)
+        const clock = envelopeClock(payload)
+        return {
+          queueId: item.id,
+          pushItem: {
+            id: item.itemId,
+            type: item.type,
+            operation: item.operation,
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: payload,
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: deviceId,
+            ...(clock ? { clock } : {})
+          }
         }
-      }))
+      })
   )
 }
 
@@ -873,6 +897,83 @@ describe('PushCoordinator', () => {
 
       const body = postToServerMock.mock.calls[0][1] as PushBody
       expect(body.items[0].encryptedData).toBe(payload)
+    })
+  })
+
+  // The stamping above reads the payload as JSON. A payload that is not a JSON
+  // object used to slip through it untouched — the repair gave up on exactly
+  // the input it exists for, and the clock-less item still reached the server,
+  // where it failed the WHOLE batch with a 400 that named no item. Nothing was
+  // marked, so the same batch came back every cycle and the vault stopped
+  // syncing (#2320).
+  describe('#given an unreadable frozen payload of a clock-required type', () => {
+    it('#then a delete is rebuilt around a first clock and still pushes', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+
+      queue.enqueue({
+        type: 'note',
+        itemId: 'note-broken-delete',
+        operation: 'delete',
+        payload: 'not json at all'
+      })
+
+      await coordinator.push()
+
+      const body = postToServerMock.mock.calls[0][1] as PushBody
+      expect(JSON.parse(body.items[0].encryptedData)).toEqual({
+        id: 'note-broken-delete',
+        clock: { 'device-1': 1 }
+      })
+      expect(queue.getSize()).toBe(0)
+    })
+
+    // An update is NOT rebuilt: inventing a body would push an empty record
+    // over the server's copy and blank every field it holds. It is retired
+    // locally instead, which is the part that keeps the queue moving.
+    it('#then an orphaned update is dropped without blocking the rest of the batch', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+      getHandlerMock.mockReturnValue({ buildPushPayload: () => null, markPushSynced: vi.fn() })
+
+      queue.enqueue({
+        type: 'note',
+        itemId: 'note-broken-update',
+        operation: 'update',
+        payload: 'not json at all'
+      })
+      queue.enqueue({
+        type: 'settings',
+        itemId: 'synced_settings',
+        operation: 'update',
+        payload: JSON.stringify({ general: { theme: 'dark' } })
+      })
+
+      await coordinator.push()
+
+      const body = postToServerMock.mock.calls[0][1] as PushBody
+      expect(body.items.map((item) => item.id)).toEqual(['synced_settings'])
+
+      const remaining = queue.peek().find((row) => row.itemId === 'note-broken-update')
+      expect(remaining?.attempts).toBe(1)
+      expect(remaining?.errorMessage).toContain('Invalid push item')
+    })
+
+    it('#then a batch of nothing but unsendable items makes no request', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+      getHandlerMock.mockReturnValue({ buildPushPayload: () => null, markPushSynced: vi.fn() })
+
+      queue.enqueue({
+        type: 'note',
+        itemId: 'note-broken-only',
+        operation: 'update',
+        payload: 'not json at all'
+      })
+
+      await coordinator.push()
+
+      expect(postToServerMock).not.toHaveBeenCalled()
     })
   })
 

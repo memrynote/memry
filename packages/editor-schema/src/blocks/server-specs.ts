@@ -24,6 +24,7 @@
  *   blockquote        → `> [!type]` + one `> ` per content line
  *   checkbox li       → `- [ ] title {task:id}`
  *   li > p            → `- summary`, for a toggle nested under a list item
+ *   p with <br>s      → `$` / source / `$`, the math block's three lines
  *   pre > code.mermaid → ```` ```mermaid ```` fence
  */
 
@@ -34,11 +35,12 @@ import {
   calloutConfig,
   diagramConfig,
   fileBlockConfig,
+  mathBlockConfig,
   taskBlockConfig,
   toggleListItemConfig,
   youtubeEmbedConfig
 } from './configs'
-import { fileBlockCommentData, type FileBlockProps } from './markdown'
+import { fileBlockCommentData, serializeMathBlock, type FileBlockProps } from './markdown'
 import { assertSpecKeysMatchNodeTypes } from '../spec-keys'
 
 /**
@@ -220,6 +222,30 @@ function parseDiagramCodeContent(options: Parameters<typeof parsePreCodeContent>
 }
 
 /**
+ * The three `$` lines as ONE paragraph, separated by `<br>`.
+ *
+ * Same shape, and the same reason, as the callout's marker line: BlockNote 0.51+
+ * turns every `<br>` into a newline in the paragraph's text, so the paragraph
+ * serializes to the three lines the vault already holds. A `<pre>` would come
+ * back as a fenced code block, and three separate `<p>`s as three paragraphs
+ * with blank lines between them — and a blank line inside the fence is exactly
+ * what stops the run being read back as a block.
+ *
+ * Reached only for a math block nested under a list item and by surfaces that
+ * serialize through BlockNote alone; a math block on a page is written by the
+ * converters' own top-level walk, from `serializeMathBlock` directly.
+ */
+function mathBlockDom(block: { props: { latex?: string } }): { dom: HTMLElement } {
+  const dom = document.createElement('p')
+  const lines = serializeMathBlock(block.props.latex ?? '').split('\n')
+  for (const [index, line] of lines.entries()) {
+    if (index > 0) dom.appendChild(document.createElement('br'))
+    dom.appendChild(document.createTextNode(line))
+  }
+  return { dom }
+}
+
+/**
  * The on-disk DOM of every custom block, by node name.
  *
  * Named separately from the specs below because it is not only main's. A
@@ -238,6 +264,7 @@ export const blockExternalHTML = {
   youtubeEmbed: youtubeEmbedDom,
   bookmark: bookmarkDom,
   toggleListItem: toggleListItemDom,
+  mathBlock: mathBlockDom,
   diagram: diagramDom
 }
 
@@ -285,6 +312,10 @@ export function createServerBlockSpecs() {
     toggleListItem: createBlockSpec(toggleListItemConfig, {
       render: blockExternalHTML.toggleListItem,
       toExternalHTML: blockExternalHTML.toggleListItem
+    })(),
+    mathBlock: createBlockSpec(mathBlockConfig, {
+      render: blockExternalHTML.mathBlock,
+      toExternalHTML: blockExternalHTML.mathBlock
     })(),
     diagram: createBlockSpec(diagramConfig, {
       // `code`/`defining` are the renderer spec's, mirrored so both processes

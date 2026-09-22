@@ -10,6 +10,7 @@ import {
   CALLOUT_TYPE_VALUES,
   diagramConfig,
   fileBlockConfig,
+  mathBlockConfig,
   taskBlockConfig,
   toggleListItemConfig,
   youtubeEmbedConfig
@@ -286,6 +287,35 @@ export function createTouchBlockSpecs() {
       toExternalHTML: blockExternalHTML.bookmark
     })(),
 
+    /**
+     * The formula's SOURCE, not a rendering.
+     *
+     * KaTeX is 264 KB of JavaScript plus a 1.1 MB font family, and this bundle
+     * is the one that already dropped shiki for costing 3.4 MB of 4.4 MB and
+     * 3.2 s of the WebView's JS thread on every note open (#2032, #2044).
+     * Registering the spec is the part that is not optional — a node type this
+     * schema cannot build is DELETED from the shared Y.Doc by y-prosemirror —
+     * and registration is what the config and `toExternalHTML` above give it.
+     * So the phone shows what the vault file holds, in the source's own
+     * monospace, and the formula is a formula again on desktop.
+     */
+    mathBlock: createBlockSpec(mathBlockConfig, {
+      render(block) {
+        const dom = document.createElement('div')
+        dom.className = 'math-block'
+
+        const glyph = span('math-icon')
+        glyph.appendChild(icon('sigma'))
+
+        const body = span('math-source', block.props.latex || 'Empty equation')
+        if (!block.props.latex) body.setAttribute('data-empty', 'true')
+
+        dom.append(glyph, body)
+        return { dom }
+      },
+      toExternalHTML: blockExternalHTML.mathBlock
+    })(),
+
     toggleListItem: createBlockSpec(
       toggleListItemConfig,
       {
@@ -319,12 +349,12 @@ export function createTouchBlockSpecs() {
       // phone that disagreed would reflow somebody's diagram on the first edit.
       meta: { code: true, defining: true },
       // The parse half is the shared one, so a ```` ```mermaid ```` fence read
-      // on a phone becomes the same block it becomes on a desktop \u2014 and,
+      // on a phone becomes the same block it becomes on a desktop — and,
       // through `runsBefore`, still loses `js` and every other fence to
       // `codeBlock`.
       ...diagramParsing,
       /**
-       * The SOURCE, labelled \u2014 not the picture.
+       * The SOURCE, labelled — not the picture.
        *
        * Desktop draws the diagram because it already ships mermaid; the phone
        * does not, and will not: the renderer is ~3 MB of JavaScript in a bundle

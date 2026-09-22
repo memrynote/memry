@@ -52,6 +52,7 @@ import {
   calloutConfig,
   diagramConfig,
   fileBlockConfig,
+  mathBlockConfig,
   taskBlockConfig,
   toggleListItemConfig,
   youtubeEmbedConfig
@@ -73,6 +74,7 @@ const BLOCK_CONFIGS: Record<MemryBlockType, { type: string; propSchema: object }
   youtubeEmbed: youtubeEmbedConfig,
   bookmark: bookmarkConfig,
   toggleListItem: toggleListItemConfig,
+  mathBlock: mathBlockConfig,
   diagram: diagramConfig
 }
 
@@ -148,13 +150,22 @@ const BLOCK_FIXTURES: Record<MemryBlockType, unknown> = {
     children: []
   },
   // `plain` content: unstyled text runs, the same shape a code block's source
-  // takes. The source is multi-line on purpose \u2014 a diagram's newlines are the
+  // takes. The source is multi-line on purpose — a diagram's newlines are the
   // syntax, and they only survive the fence because the node is `code`.
   diagram: {
     id: 'blk',
     type: 'diagram',
     props: {},
     content: [{ type: 'text', text: 'graph TD\n    A[Start] --> B[Stop]', styles: {} }],
+    children: []
+  },
+  // Multi-line, not a one-liner: the fence's three lines are what the `<br>`
+  // separators exist for, and a single-line formula would pass against a DOM
+  // that dropped them.
+  mathBlock: {
+    id: 'blk',
+    type: 'mathBlock',
+    props: { latex: '\\begin{aligned}\na &= b + c\n\\end{aligned}' },
     children: []
   }
 }

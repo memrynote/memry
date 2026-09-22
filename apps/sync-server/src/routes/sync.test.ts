@@ -993,7 +993,10 @@ describe('sync routes', () => {
       )
     })
 
-    it('should return 400 for unsupported record transport item types', async () => {
+    // An item the record schema refuses is rejected BY ITEM, never as a
+    // request (#2320). A 400 names no item, so the client cannot learn which
+    // queue row to retire and re-sends the same batch forever.
+    it('should reject an unsupported record transport item type per item', async () => {
       const body = {
         items: [makePushItem({ type: 'attachment', clock: undefined })]
       }
@@ -1005,13 +1008,15 @@ describe('sync routes', () => {
         executionCtx
       )
 
-      expect(res.status).toBe(400)
-      const json = (await res.json()) as { error: { code: string } }
-      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+      // An unknown type cannot be named in `rejected[]` either: the identity
+      // parse needs a type the record transport knows. The client marks an id
+      // it got no verdict for as failed on its own.
+      expect(res.status).toBe(200)
+      await expect(res.json()).resolves.toMatchObject({ accepted: [], rejected: [] })
       expect(processRecordPushBatch).not.toHaveBeenCalled()
     })
 
-    it('should return 400 when a clock-required record item omits clock metadata', async () => {
+    it('should reject a clock-less clock-required item per item', async () => {
       const body = {
         items: [makePushItem({ type: 'task', clock: undefined })]
       }
@@ -1023,10 +1028,43 @@ describe('sync routes', () => {
         executionCtx
       )
 
-      expect(res.status).toBe(400)
-      const json = (await res.json()) as { error: { code: string } }
-      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+      expect(res.status).toBe(200)
+      const json = (await res.json()) as { rejected: Array<{ id: string; reason: string }> }
+      expect(json.rejected).toHaveLength(1)
+      expect(json.rejected[0].id).toBe(VALID_UUID)
+      expect(json.rejected[0].reason).toContain(ErrorCodes.SYNC_INVALID_ITEM)
+      // Nothing storable was left, so the batch never reaches the pipeline.
       expect(processRecordPushBatch).not.toHaveBeenCalled()
+    })
+
+    it('should still commit the valid items around a rejected one', async () => {
+      const body = {
+        items: [makePushItem(), makePushItem({ id: 'no-clock-note', clock: undefined })]
+      }
+
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      const json = (await res.json()) as {
+        accepted: string[]
+        rejected: Array<{ id: string }>
+      }
+      expect(json.accepted).toEqual([VALID_UUID])
+      expect(json.rejected.map((entry) => entry.id)).toEqual(['no-clock-note'])
+      expect(processRecordPushBatch).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        'device-1',
+        [makePushItem()],
+        'vault-1',
+        null
+      )
     })
 
     it('should allow settings pushes without top-level clock metadata', async () => {

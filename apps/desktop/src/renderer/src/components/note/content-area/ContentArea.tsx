@@ -54,6 +54,7 @@ import { LinkMentionPreviewCard } from './link-mention-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { BodySyncPendingHint } from './body-sync-pending-hint'
 import { getCalloutSlashMenuItem } from './callout-block'
+import { getMathSlashMenuItem } from './math-block'
 import {
   orderSlashMenuItemsByGroup,
   withTableHeaderRow,
@@ -2143,7 +2144,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     ]
                   : []
                 const aiItems = aiEnabled && aiReady ? getAISlashMenuItems(editor) : []
-                // `/mermaid` \u2014 upstream's own item, so the insert seeds the same
+                // `/mermaid` — upstream's own item, so the insert seeds the same
                 // starter `graph TD` the preview needs something to draw from,
                 // and the aliases (mermaid, flowchart, chart, graph) come with
                 // it. Only the two strings a reader sees are Memry's, because
@@ -2166,6 +2167,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   title: t('editor.callout.title'),
                   group: t('editor.callout.group'),
                   subtext: t('editor.callout.subtext')
+                })
+                const mathItem = getMathSlashMenuItem(editor, {
+                  title: t('editor.math.title'),
+                  group: t('editor.math.group'),
+                  subtext: t('editor.math.subtext')
                 })
                 const taskItem = isFeatureEnabled('tasks')
                   ? getTaskSlashMenuItem(editor, noteId)
@@ -2242,6 +2248,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   ...kindItems,
                   ...diagramItems,
                   calloutItem,
+                  mathItem,
                   ...(taskItem ? [taskItem] : []),
                   ...dateItems,
                   linkToNoteItem,

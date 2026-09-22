@@ -399,6 +399,36 @@ export const RecordPushRequestSchema = z.object({
   items: z.array(RecordPushItemSchema).min(1).max(100)
 })
 
+/**
+ * The same `/sync/push` body with its items left UNVALIDATED on purpose.
+ *
+ * `RecordPushRequestSchema` validates all 100 items as one value, so one
+ * malformed item fails the whole body and the route can only answer 400 — a
+ * verdict that names no item. The client cannot learn which queue row to drop
+ * from that, marks nothing, and re-sends the identical batch every cycle: one
+ * clock-less note stopped a paid vault from syncing at all, 29 failed pushes in
+ * two hours (#2320).
+ *
+ * The route parses this envelope first and then runs `RecordPushItemSchema` per
+ * item, which costs a bad item one entry in `rejected[]` instead of the batch.
+ * The envelope itself still bounds the array, so a malformed request shape is
+ * rejected as a request, exactly as before.
+ */
+export const RecordPushEnvelopeSchema = z.object({
+  items: z.array(z.unknown()).min(1).max(100)
+})
+
+/**
+ * The two fields needed to name an item that failed `RecordPushItemSchema` in
+ * `rejected[]`. An item that cannot even produce these is unaddressable in the
+ * response; the client marks such an id failed on its own when the response
+ * mentions it in neither `accepted` nor `rejected`.
+ */
+export const RecordPushItemIdentitySchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(RECORD_SYNC_ITEM_TYPES)
+})
+
 export const PushResponseSchema = z.object({
   accepted: z.array(z.string().min(1)),
   rejected: z.array(
@@ -656,6 +686,8 @@ export type PushItemInput = z.infer<typeof PushItemSchema>
 export type PushRequestInput = z.infer<typeof PushRequestSchema>
 export type RecordPushItemInput = z.infer<typeof RecordPushItemSchema>
 export type RecordPushRequestInput = z.infer<typeof RecordPushRequestSchema>
+export type RecordPushEnvelopeInput = z.infer<typeof RecordPushEnvelopeSchema>
+export type RecordPushItemIdentity = z.infer<typeof RecordPushItemIdentitySchema>
 export type PushResponseInput = z.infer<typeof PushResponseSchema>
 export type SyncItemRefInput = z.infer<typeof SyncItemRefSchema>
 export type RecordSyncItemRefInput = z.infer<typeof RecordSyncItemRefSchema>

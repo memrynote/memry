@@ -96,13 +96,23 @@ and it is live on every type.
 
 ## 5.4 Push request
 
-**Normative.** `RecordPushRequestSchema` allows **1 to 100** items
-(`packages/contracts/src/sync-api.ts:398-400`). Every type in
+**Normative.** The request allows **1 to 100** items. Every type in
 `RECORD_CLOCK_REQUIRED_ITEM_TYPES` MUST carry a `clock`, enforced by a
-`superRefine` (`packages/contracts/src/sync-api.ts:388-396`). **`settings` is the
-only record type exempt** (chapter 00 §0.7).
+`superRefine` on `RecordPushItemSchema` (`packages/contracts/src/sync-api.ts`).
+**`settings` is the only record type exempt** (chapter 00 §0.7).
 
 `RecordPushItemSchema` omits `stateVector` (chapter 04 §4.6).
+
+**Those item requirements are enforced PER ITEM, never as a request.** The route
+parses `RecordPushEnvelopeSchema` — the same 1..100 bound with the items left
+unvalidated — and then runs `RecordPushItemSchema` on each item. Only the
+envelope can fail the request with a 400; a bad item costs one `rejected[]`
+entry with reason `SYNC_INVALID_ITEM` (§5.5) and the rest of the batch commits.
+
+A server that answers a bad item with a request-level 400 is **non-conforming**.
+That verdict names no item, so a client cannot learn which queued row to retire:
+it marks nothing, re-sends the identical batch every cycle, and the vault never
+syncs again. One clock-less note did exactly that to a paid vault (#2320).
 
 ## 5.5 Push response
 
@@ -119,6 +129,16 @@ Rejection reasons a client MUST handle:
 | ---------------------- | ---------------------------------------------------------------- |
 | `SYNC_REPLAY_DETECTED` | §5.7; drop the queued row, the server is ahead                   |
 | `SYNC_DELETE_WINS`     | §5.8; the id is tombstoned and this write did not see the delete |
+| `SYNC_INVALID_ITEM`    | §5.4; the item cannot satisfy the schema — permanent, retire it  |
+
+`SYNC_INVALID_ITEM` carries the failing issue after the code, so a client MAY
+log the reason verbatim. The verdict is permanent — resending the same bytes
+cannot change it — so a client SHOULD retire the row rather than spend its
+retry budget on it.
+
+An item too malformed to yield both an `id` and a known `type` appears in
+neither `accepted` nor `rejected`. **A client MUST treat an id it sent and got
+no verdict for as failed**, which is what retires such a row.
 
 A delete, being last, correctly wins over a preceding update when rows collapse,
 because the newest row carries the whole payload as it stood at enqueue time

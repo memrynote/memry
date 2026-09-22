@@ -274,6 +274,30 @@ Migration 0047 resets `attempts` to 0 for rows that an earlier build had already
 stranded by the old in-cycle spend are retried again after upgrading. It preserves the row, its
 payload, and its recorded error.
 
+### An item the schema refuses is rejected on its own, not with the batch
+
+The push body used to be validated as a single value: one item that failed `RecordPushItemSchema`
+failed all 100, and the server answered `400 VALIDATION_ERROR` with the first Zod issue as the
+message. That message names no item id. The client cannot map it to a queue row, so it marked
+nothing, charged no attempt, and dequeued the identical batch again on the next cycle. One note that
+left a device without clock metadata stopped a vault from syncing at all — 29 failed pushes in two
+hours, every one the same request and the same verdict.
+
+The route now parses only the envelope (the 1-to-100 bound) as a request, then validates each item
+separately. A refused item comes back as one `rejected[]` entry with reason `SYNC_INVALID_ITEM` and
+the failing issue appended, while every valid item in the same batch still commits. An item too
+malformed to yield an id and a known type cannot be named in the response at all; it is dropped, and
+the client's existing rule — an id it sent that appears in neither `accepted` nor `rejected` counts
+as failed — is what retires that row.
+
+The client stopped relying on the server for this verdict as well. Before sending, it validates each
+encrypted item against the same contract and retires the ones that can never be accepted, so a row
+the server is certain to refuse costs no round trip. The related repair that stamps a missing clock
+onto an outgoing payload used to give up when the payload was not readable as JSON — the exact input
+it exists for. A delete is now rebuilt around a first clock, which is already the fallback shape for
+a tombstone. A create or update is not: inventing a body for one would push an empty record over the
+server's copy and blank every field it holds, so those are retired instead.
+
 ### A rejected signature is a device-identity failure, not a per-row failure
 
 `SYNC_INVALID_SIGNATURE` is the one rejection that says nothing about the row. It means the key this
@@ -335,7 +359,7 @@ before the builder's own error handling and take the rest of the sweep down with
 Because recovery never advances a clock, a change made while the sync runtime is down has to advance
 its own at write time or the re-push would be dismissed as a replay. Records park that tick under a
 placeholder device that their sync service rebinds on the way out. Rebinding runs before every
-record push, create as well as update: a row that was created *and* edited while signed out is
+record push, create as well as update: a row that was created _and_ edited while signed out is
 recovered as a create, and until that path rebound too it shipped the placeholder device id to the
 server — an id every install claims, which makes two devices' clocks compare equal for edits that
 are genuinely concurrent. Notes and journals have no

@@ -481,7 +481,7 @@ function resetEditor(): void {
     // real schema does (`editor-schema.ts`), and the parity gate in
     // `editor-schema.test.ts` is what proves that; here it only has to be
     // present so the row is built. The empty `dictionary` is what makes the
-    // package fall back to its bundled English strings \u2014 which ContentArea then
+    // package fall back to its bundled English strings — which ContentArea then
     // relabels with Memry's own, so nothing in this file reads them.
     schema: { blockSchema: { diagram: {} } },
     dictionary: {},
@@ -1241,7 +1241,7 @@ describe('ContentArea', () => {
       (controller) => controller.triggerCharacter === '/'
     )
 
-    // #when the word the issue named, which is an ALIAS \u2014 the title is "Diagram"
+    // #when the word the issue named, which is an ALIAS — the title is "Diagram"
     const items = await slashController.getItems('mermaid')
 
     // #then
@@ -1255,7 +1255,7 @@ describe('ContentArea', () => {
 
   it('drops the diagram row while the caret is in a table cell', async () => {
     // #given a caret inside a cell. A diagram is a BLOCK, so BlockNote lands it
-    // after the whole table and takes the caret with it (#1640) \u2014 and unlike
+    // after the whole table and takes the caret with it (#1640) — and unlike
     // image and check there is no inline form to offer instead.
     contentAreaMocks.editor.transact = (run: (tr: unknown) => unknown) =>
       run({

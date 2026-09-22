@@ -16,7 +16,7 @@
  */
 
 import { serializeLinkMentionToken } from './inline/link-mention'
-import { serializeCalloutBlock, serializeToggleBlock } from './blocks/markdown'
+import { serializeCalloutBlock, serializeMathBlock, serializeToggleBlock } from './blocks/markdown'
 import { serializeDateMentionToken, type DateMentionData } from '@memry/shared/date-mention'
 
 export interface RoundtripCase {
@@ -292,6 +292,56 @@ const toggleCases: RoundtripCase[] = [
   }
 ]
 
+const mathCases: RoundtripCase[] = [
+  { name: 'math block', markdown: serializeMathBlock('E = mc^2') },
+  {
+    name: 'multi-line math block',
+    markdown: serializeMathBlock('\\begin{aligned}\na &= b + c \\\\\nd &= e\n\\end{aligned}')
+  },
+  {
+    // The block a slash-menu insert writes before anything is typed. It must
+    // survive a save/open cycle as a block, not decay into two `$$` lines.
+    name: 'empty math block',
+    markdown: serializeMathBlock('')
+  },
+  {
+    // Backslashes, braces, `_` and `^` are markdown-significant everywhere else
+    // in a note; inside the fence nothing may be escaped.
+    name: 'math block with emphasis characters in its source',
+    markdown: serializeMathBlock('\\frac{a_1}{b^2} \\cdot \\sum_{i=0}^{n} x_i')
+  },
+  {
+    name: 'math block between paragraphs',
+    markdown: `Before\n\n${serializeMathBlock('x^2 + y^2 = z^2')}\n\nAfter`
+  },
+  {
+    name: 'math block in a toggle body',
+    markdown: serializeToggleBlock('Summary', serializeMathBlock('E = mc^2'))
+  },
+  {
+    // `$$` is somebody else's notation too. A one-line span is not the shape
+    // Memry writes, so it stays the paragraph its author wrote.
+    name: 'one-line $$ span passes through untouched',
+    markdown: 'Einstein wrote $$E = mc^2$$ in 1905.'
+  },
+  {
+    name: 'a fence glued to the paragraph above it stays text',
+    markdown: 'Cost\n$$\n5\n$$'
+  },
+  {
+    name: 'an unterminated fence stays text',
+    markdown: '$$\nE = mc^2'
+  },
+  {
+    // Tagged, because an UNTAGGED fence is a different bug: the renderer
+    // pipeline stamps the schema's default language on one and main clears it
+    // again (`restoreUntaggedFenceLanguages`), so a bare ``` here would assert
+    // that gap rather than the math claim.
+    name: 'a math fence inside a code block stays code',
+    markdown: '```text\n$$\nE = mc^2\n$$\n```'
+  }
+]
+
 /**
  * Table bytes are the form the serializers emit — remark pads every cell to the
  * column width, so the canonical form of a table is the padded one.
@@ -480,6 +530,7 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...dateCases,
   ...calloutCases,
   ...toggleCases,
+  ...mathCases,
   ...containerCases,
   ...blockMarkerCases,
   ...diagramCases,
@@ -575,6 +626,19 @@ function fuzzCalloutMarkdown(random: () => number): string {
   return serializeCalloutBlock(pick(random, types), body)
 }
 
+/**
+ * LaTeX-ish source: every character class a formula is made of, minus `$` so
+ * the generator cannot write a fence line into the body it is fencing.
+ */
+const LATEX_ALPHABET = [...'abcxyz019', '\\', '{', '}', '^', '_', '+', '-', '=', '&', ' '] as const
+
+function fuzzMathMarkdown(random: () => number): string {
+  const line = (): string =>
+    stringFrom(random, LATEX_ALPHABET, 1 + Math.floor(random() * 24)).trim() || 'x'
+  const lines = Array.from({ length: 1 + Math.floor(random() * 3) }, line)
+  return serializeMathBlock(lines.join('\n'))
+}
+
 function fuzzToggleMarkdown(random: () => number, depth = 0): string {
   const roll = random()
   const body =
@@ -644,6 +708,9 @@ export const FUZZ_FAMILIES: readonly FuzzFamily[] = [
   { name: 'link mention urls', generate: fuzzMentionMarkdown },
   { name: 'date pill payloads', generate: fuzzDateMarkdown },
   { name: 'callout bodies', generate: fuzzCalloutMarkdown },
+  // Nothing inside a `$$` fence may be escaped, and every character above is
+  // one remark escapes in a paragraph.
+  { name: 'math sources', generate: fuzzMathMarkdown },
   { name: 'toggle summaries and bodies', generate: (random) => fuzzToggleMarkdown(random) },
   {
     name: 'mixed documents',
