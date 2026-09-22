@@ -194,6 +194,22 @@ behave across block boundaries. Decide with evidence, not with an opinion.
 recorded, and one paragraph editable on device with the edit visible on desktop
 after sync.
 
+**Status: G-P2 is OPEN, with one part of its evidence substituted rather than
+met.** The measurements are committed
+(`apps/ios/SpikeEvidence/N300-editor-architecture.md`, re-runnable with
+`MEMRY_SPIKE=1`), the decision and its costs are recorded in `research.md`, and
+the editable paragraph is wired end to end through `Notes.editBlock` and
+covered by `apps/ios/MemryTests/NoteEditorTests.swift`.
+
+**What was not done is the literal round trip: a physical device, syncing to a
+real server, opened on a desktop.** That needs hardware and an account this
+work did not have. The invariant it exists to protect — that what iOS writes is
+what desktop reads and writes back — is covered instead by
+`apps/desktop/src/main/sync/ios-edit-writeback.test.ts` (R01, R02), which runs
+desktop's own `yDocToMarkdown` over the documents the iOS writer is pinned to
+produce. That is stronger than a single manual round trip in coverage and
+weaker in realism, and both halves of that are worth saying.
+
 ---
 
 ## Phase E: core write operations
