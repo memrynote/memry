@@ -82,9 +82,28 @@ describe('openRelatedVaultItem', () => {
     getFile.mockResolvedValue(null)
     getNote.mockResolvedValue(null)
 
-    await openRelatedVaultItem('j2026-01-05', openTab)
+    await openRelatedVaultItem('note-gone', openTab)
 
     expect(openTab).not.toHaveBeenCalled()
     expect(toast.error).toHaveBeenCalledWith('drawer.relatedItemMissing')
+  })
+
+  // Tasks created in a journal day before #2271 was fixed carry `j<date>`,
+  // which resolves to no note whenever the vault cached that file under a
+  // scanner-assigned id. The day is still there, so open it by date.
+  it('opens the journal day for a j<date> id the cache does not hold', async () => {
+    getFile.mockResolvedValue(null)
+    getNote.mockResolvedValue(null)
+
+    await openRelatedVaultItem('j2026-01-05', openTab)
+
+    expect(openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'journal',
+        path: '/journal',
+        viewState: { date: '2026-01-05' }
+      })
+    )
+    expect(toast.error).not.toHaveBeenCalled()
   })
 })
