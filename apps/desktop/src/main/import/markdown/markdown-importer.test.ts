@@ -361,6 +361,54 @@ describe('markdownImporter (integration)', () => {
       }
     })
 
+    it('converts a CRLF checklist and keeps the line endings', async () => {
+      insertProject('inbox', 'Inbox', 1, 0)
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'markdown-import-crlf-'))
+      fs.writeFileSync(path.join(root, 'trip.md'), CHECKLIST.replace(/\n/g, '\r\n'))
+      try {
+        const ctx = importContext.createImportContext('it-crlf', new AbortController().signal)
+        const summary = await importer.markdownImporter.run({ sourcePaths: [root] }, ctx)
+        expect(summary.failed).toEqual([])
+
+        const rows = listTaskRows()
+        expect(rows.map((row) => row.title).sort()).toEqual([
+          'Book hotel',
+          'Charger',
+          'Pack bags',
+          'Passport'
+        ])
+
+        const note = indexDb.sqlite
+          .prepare('SELECT path FROM note_cache WHERE path LIKE ?')
+          .get('%trip.md') as { path: string } | undefined
+        const content = fs.readFileSync(path.join(tempVault.path, note!.path), 'utf8')
+        const packBags = rows.find((row) => row.title === 'Pack bags')!
+        // The suffix lands before the `\r`, not after it.
+        expect(content).toContain(`- [ ] Pack bags {task:${packBags.id}}\r\n`)
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true })
+      }
+    })
+
+    it('rolls the tasks back when the note write fails', async () => {
+      insertProject('inbox', 'Inbox', 1, 0)
+      const notesCrud = await import('../../vault/notes-crud')
+      vi.spyOn(notesCrud, 'createNote').mockRejectedValue(new Error('disk full'))
+
+      const root = writeChecklistSource()
+      try {
+        const ctx = importContext.createImportContext('it-rollback', new AbortController().signal)
+        const summary = await importer.markdownImporter.run({ sourcePaths: [root] }, ctx)
+
+        expect(summary.failed).toHaveLength(1)
+        // No note was written, so its tasks must not outlive the attempt.
+        expect(listTaskRows()).toEqual([])
+        expect(dataDb.sqlite.prepare('SELECT count(*) AS n FROM task_notes').get()).toEqual({ n: 0 })
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true })
+      }
+    })
+
     it('leaves the checkboxes as markdown when there is no project to file into', async () => {
       const root = writeChecklistSource()
       try {

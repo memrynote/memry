@@ -20,6 +20,7 @@ import { createNote, type Note, type NoteCreateInput } from '../../vault/notes-c
 import { generateId, generateNoteId } from '../../lib/id'
 import { getDatabase, type DataDb } from '../../database'
 import { listProjects } from '@main/database/queries/projects'
+import { getTaskById } from '@main/database/queries/tasks'
 import { createDesktopTasksDomain } from '../../tasks/domain'
 import { createTasksPublisher } from '../../tasks/publisher'
 import { getTaskSettings } from '../../settings/task-settings'
@@ -60,16 +61,49 @@ function resolveImportTarget(): { db: DataDb; projectId: string } | null {
  * The line an imported task is written back as: the original indentation and
  * list marker (so the import never restructures the note) plus the exact
  * `{task:<id>}` form the editor emits, taken from `serializeTaskBlock` so
- * there is only ever one spelling of that suffix.
+ * there is only ever one spelling of that suffix. A CRLF file's `\r` is part
+ * of the line ending and goes back on.
  */
-function taskLine(item: PlannedChecklistTask, taskId: string, checked: boolean): string {
+function taskLine(
+  item: PlannedChecklistTask,
+  taskId: string,
+  checked: boolean,
+  original: string
+): string {
   const canonical = serializeTaskBlock({ taskId, title: item.title, checked })
-  return item.indent + item.listMarker + canonical.slice('-'.length)
+  const eol = original.endsWith('\r') ? '\r' : ''
+  return item.indent + item.listMarker + canonical.slice('-'.length) + eol
 }
 
-async function convertChecklistsToTasks(noteId: string, markdown: string): Promise<string> {
+/**
+ * The row a nested line hangs under: a task this run just created, or the one
+ * an enclosing `{task:<id>}` line already names. That id came out of the note's
+ * own text, so it can name a task from another vault or one since deleted.
+ * Unresolvable means top-level, never a dangling `parentId`.
+ */
+function parentIdFor(
+  item: PlannedChecklistTask,
+  createdIds: (string | null)[],
+  db: DataDb
+): string | null {
+  if (item.parentIndex !== null) return createdIds[item.parentIndex]
+  if (item.parentTaskId === null) return null
+  return getTaskById(db, item.parentTaskId) ? item.parentTaskId : null
+}
+
+interface ConvertedChecklist {
+  markdown: string
+  /** Every task row this call created, parents before their children. */
+  createdIds: string[]
+}
+
+async function convertChecklistsToTasks(
+  noteId: string,
+  markdown: string
+): Promise<ConvertedChecklist> {
+  const unchanged: ConvertedChecklist = { markdown, createdIds: [] }
   const planned = planChecklistTasks(markdown, new Date())
-  if (planned.length === 0) return markdown
+  if (planned.length === 0) return unchanged
 
   const target = resolveImportTarget()
   if (!target) {
@@ -77,7 +111,7 @@ async function convertChecklistsToTasks(noteId: string, markdown: string): Promi
       noteId,
       checkboxes: planned.length
     })
-    return markdown
+    return unchanged
   }
   const { db, projectId } = target
 
@@ -87,7 +121,7 @@ async function convertChecklistsToTasks(noteId: string, markdown: string): Promi
   const createdIds: (string | null)[] = []
 
   for (const item of planned) {
-    const parentId = item.parentIndex === null ? null : createdIds[item.parentIndex]
+    const parentId = parentIdFor(item, createdIds, db)
     try {
       const result = await domain.createTask({
         projectId,
@@ -123,7 +157,7 @@ async function convertChecklistsToTasks(noteId: string, markdown: string): Promi
         })
       }
 
-      lines[item.lineIndex] = taskLine(item, result.task.id, checked)
+      lines[item.lineIndex] = taskLine(item, result.task.id, checked, lines[item.lineIndex])
       createdIds.push(result.task.id)
     } catch (error) {
       // One bad line must not cost the note its import.
@@ -132,7 +166,39 @@ async function convertChecklistsToTasks(noteId: string, markdown: string): Promi
     }
   }
 
-  return lines.join('\n')
+  return {
+    markdown: lines.join('\n'),
+    createdIds: createdIds.filter((id): id is string => id !== null)
+  }
+}
+
+/**
+ * Undo the rows a note's checklist created. Reached only when `createNote`
+ * fails after they exist: the importer reports the note failed, and tasks
+ * linked to a note that was never written would be unreachable clutter.
+ * Children first — `deleteTask` does not cascade to subtasks.
+ */
+async function deleteImportedTasks(noteId: string, createdIds: string[]): Promise<void> {
+  if (createdIds.length === 0) return
+  let db: DataDb
+  try {
+    db = getDatabase()
+  } catch {
+    return
+  }
+
+  const domain = createDesktopTasksDomain(db, createTasksPublisher(), generateId)
+  for (const id of [...createdIds].reverse()) {
+    try {
+      await domain.deleteTask(id)
+    } catch (error) {
+      logger.warn('Failed to roll back a checklist task after the note write failed', {
+        noteId,
+        taskId: id,
+        error
+      })
+    }
+  }
 }
 
 export async function createImportedNote(input: NoteCreateInput): Promise<Note> {
@@ -141,6 +207,14 @@ export async function createImportedNote(input: NoteCreateInput): Promise<Note> 
   // from, and `createNote` persists exactly the id it is handed.
   if (!input.content) return createNote({ ...input, id })
 
-  const content = await convertChecklistsToTasks(id, input.content)
-  return createNote({ ...input, id, content })
+  const converted = await convertChecklistsToTasks(id, input.content)
+  try {
+    return await createNote({ ...input, id, content: converted.markdown })
+  } catch (error) {
+    // The rows exist but the note does not, and the importer is about to report
+    // this item failed. Leaving them behind would file tasks into the user's
+    // project pointing at a note they can never open.
+    await deleteImportedTasks(id, converted.createdIds)
+    throw error
+  }
 }

@@ -22,7 +22,13 @@ import type { Dirent } from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import matter from 'gray-matter'
-import { createImportedNote } from '../_shared/imported-note'
+// Deliberately NOT `createImportedNote`: this importer owns its own checkbox
+// semantics. NotePlan inverts the list markers (`*` is a task, `+` is a
+// checklist), and `convertBody` already lifts every `*` line into a real task
+// row while rendering `+` lines as plain `- [ ]` on purpose — promoting those
+// would flood the project with timeblocks and micro-steps. The shared
+// checklist step cannot tell the two apart once they are both `- [ ]`.
+import { createNote } from '../../vault/notes-crud'
 import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import {
@@ -401,7 +407,7 @@ export async function runNotePlanImport(
       })
 
       const stat = await fs.stat(planned.absPath)
-      await createImportedNote({
+      await createNote({
         id: noteId,
         title: prepared.title,
         content: markdown,

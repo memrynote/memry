@@ -152,4 +152,49 @@ describe('planChecklistTasks', () => {
       expect(plan('- [ ] Buy milk')[0].tags).toEqual([])
     })
   })
+
+  describe('an already-persisted parent line', () => {
+    it('hands back the enclosing line\u2019s existing task id as the parent', () => {
+      const planned = plan('- [ ] Groceries {task:abc123}\n  - [ ] Milk')
+
+      expect(planned).toHaveLength(1)
+      expect(planned[0]).toMatchObject({
+        title: 'Milk',
+        parentIndex: null,
+        parentTaskId: 'abc123'
+      })
+    })
+
+    it('does not parent a checkbox two levels under an existing task', () => {
+      const planned = plan('- [ ] A {task:abc123}\n  - [ ] B\n    - [ ] C')
+
+      // B is a subtask of the existing task, so C is standalone — the same
+      // 1-level cut-off the analyzer applies to a run-created parent.
+      expect(planned.map((item) => [item.title, item.parentIndex, item.parentTaskId])).toEqual([
+        ['B', null, 'abc123'],
+        ['C', null, null]
+      ])
+    })
+
+    it('reports no parent task id for a line this run creates the parent of', () => {
+      const planned = plan('- [ ] Groceries\n  - [ ] Milk')
+
+      expect(planned[1]).toMatchObject({ parentIndex: 0, parentTaskId: null })
+    })
+  })
+
+  describe('CRLF', () => {
+    it('plans a Windows-authored checklist the same as a LF one', () => {
+      const planned = plan('- [ ] Pack bags\r\n  - [x] Charger\r\n')
+
+      expect(planned.map((item) => [item.title, item.checked, item.parentIndex])).toEqual([
+        ['Pack bags', false, null],
+        ['Charger', true, 0]
+      ])
+    })
+
+    it('keeps the carriage return out of the title', () => {
+      expect(titles('- [ ] Buy milk\r')).toEqual(['Buy milk'])
+    })
+  })
 })

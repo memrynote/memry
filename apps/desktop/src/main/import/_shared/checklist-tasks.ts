@@ -14,7 +14,15 @@
  *   - plugin fields are lifted off the title with `buildObsidianTaskImport`
  *   - 1-level subtask depth: a checkbox nested directly under a *top-level*
  *     converted checkbox is its subtask; anything deeper becomes a standalone
- *     task, exactly as the editor's analyzer resolves it
+ *     task, exactly as the editor's analyzer resolves it. A top-level line that
+ *     already carries `{task:<id>}` parents its children too, for the same
+ *     reason the analyzer does (`normalizeTaskBlocks` turns it into a taskBlock
+ *     before the walk sees it). The id is handed back unverified, and
+ *     `imported-note.ts` checks the row exists before using it.
+ *
+ * CRLF: a `\r` is stripped before matching and put back by the rewrite. `.` and
+ * `$` in these patterns do not span it, so a Windows-authored export would
+ * otherwise convert nothing at all.
  *
  * Pure and side-effect free — `imported-note.ts` owns the DB writes.
  *
@@ -41,8 +49,13 @@ export interface PlannedChecklistTask {
   title: string
   /** The line's `#tags`, clamped to what the create contract accepts. */
   tags: string[]
-  /** Index into this array, or null for a top-level task. */
+  /** Index into this array, or null when no task in this run is the parent. */
   parentIndex: number | null
+  /**
+   * The id on the enclosing line's existing `{task:<id>}` suffix, when that is
+   * what this line hangs under. Unverified: the row may belong to another vault.
+   */
+  parentTaskId: string | null
   /** Null when the line carries no Obsidian Tasks plugin syntax. */
   obsidian: ObsidianTaskImport | null
 }
@@ -89,13 +102,18 @@ function indentWidth(indent: string): number {
 
 /**
  * An enclosing list item, for resolving what a nested checkbox hangs under.
- * `planIndex` is null when the item is not a convertible checkbox — a plain
- * bullet, or a checkbox this module declined — because a task can only be a
- * subtask of a task that exists.
+ * Both id fields are null when the item parents nothing — a plain bullet, or a
+ * checkbox this module declined — because a task can only be a subtask of a
+ * task that exists.
  */
 interface OpenListItem {
   width: number
+  /** Index into `planned` when this run creates the enclosing task. */
   planIndex: number | null
+  /** Task id when the enclosing line already carries a `{task:<id>}` suffix. */
+  existingTaskId: string | null
+  /** True when no list item encloses this one — the analyzer's 1-level gate. */
+  topLevel: boolean
 }
 
 export function planChecklistTasks(markdown: string, now: Date): PlannedChecklistTask[] {
@@ -105,7 +123,8 @@ export function planChecklistTasks(markdown: string, now: Date): PlannedChecklis
 
   const lines = markdown.split('\n')
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-    const line = lines[lineIndex]
+    // A CRLF file's `\r` belongs to the line ending, not to the content.
+    const line = lines[lineIndex].replace(/\r$/, '')
 
     // A checkbox quoted inside a code fence is documentation, not a task.
     if (fence.consume(line)) continue
@@ -125,7 +144,7 @@ export function planChecklistTasks(markdown: string, now: Date): PlannedChecklis
     while (open.length > 0 && open[open.length - 1].width >= width) open.pop()
     const enclosing = open.length > 0 ? open[open.length - 1] : null
 
-    const planIndex = planChecklistLine({
+    const parents = planChecklistLine({
       lineIndex,
       indent,
       listMarker,
@@ -134,7 +153,7 @@ export function planChecklistTasks(markdown: string, now: Date): PlannedChecklis
       planned,
       now
     })
-    open.push({ width, planIndex })
+    open.push({ width, topLevel: enclosing === null, ...parents })
   }
 
   return planned
@@ -150,27 +169,36 @@ interface ChecklistLineInput {
   now: Date
 }
 
-/** Appends the line's task to `planned` and returns its index, or null. */
-function planChecklistLine(input: ChecklistLineInput): number | null {
-  if (!BULLET_MARKERS.has(input.listMarker)) return null
+/** What the line contributes as a parent for the lines nested under it. */
+type ChecklistLineResult = Pick<OpenListItem, 'planIndex' | 'existingTaskId'>
+
+const PARENTS_NOTHING: ChecklistLineResult = { planIndex: null, existingTaskId: null }
+
+/** Appends the line's task to `planned` when it converts. */
+function planChecklistLine(input: ChecklistLineInput): ChecklistLineResult {
+  if (!BULLET_MARKERS.has(input.listMarker)) return PARENTS_NOTHING
 
   const checkbox = input.rest.match(CHECKBOX)
-  if (!checkbox) return null
+  if (!checkbox) return PARENTS_NOTHING
 
   const text = (checkbox[2] ?? '').trim()
-  if (text === '') return null
-  if (parseTaskBlockSuffix(text) !== null) return null
-  if (obsidianTaskImportBlocker(text) !== null) return null
+  if (text === '') return PARENTS_NOTHING
+
+  // Already a persisted task: never converted again, but still the parent the
+  // editor would nest the lines below it under.
+  const suffix = parseTaskBlockSuffix(text)
+  if (suffix !== null) return { planIndex: null, existingTaskId: suffix.taskId }
+
+  if (obsidianTaskImportBlocker(text) !== null) return PARENTS_NOTHING
 
   const obsidian = buildObsidianTaskImport(text, input.now)
   const title = (obsidian?.title ?? text).trim()
-  if (title === '' || title.length > TITLE_MAX_LENGTH) return null
+  if (title === '' || title.length > TITLE_MAX_LENGTH) return PARENTS_NOTHING
 
   // 1-level subtask depth, as the editor resolves it: the enclosing item must
-  // be a converted checkbox that is itself top-level. Deeper checkboxes become
-  // standalone tasks, which is what the analyzer's `passAsParent` rule does.
-  const parent = input.enclosing?.planIndex ?? null
-  const parentIndex = parent !== null && input.planned[parent].parentIndex === null ? parent : null
+  // be a task that is itself top-level. Deeper checkboxes become standalone
+  // tasks, which is what the analyzer's `passAsParent` rule does.
+  const parent = input.enclosing?.topLevel === true ? input.enclosing : null
 
   input.planned.push({
     lineIndex: input.lineIndex,
@@ -179,8 +207,9 @@ function planChecklistLine(input: ChecklistLineInput): number | null {
     checked: checkbox[1] !== ' ',
     title,
     tags: tagsForCreate(obsidian?.tags ?? []),
-    parentIndex,
+    parentIndex: parent?.planIndex ?? null,
+    parentTaskId: parent?.planIndex == null ? (parent?.existingTaskId ?? null) : null,
     obsidian
   })
-  return input.planned.length - 1
+  return { planIndex: input.planned.length - 1, existingTaskId: null }
 }
