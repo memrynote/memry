@@ -440,11 +440,15 @@ describe('TaskBlockRenderer', () => {
     rerender(<TaskBlockRenderer block={created} editor={editor} />)
     await act(async () => Promise.resolve())
 
-    expect(mocks.update).toHaveBeenCalledWith({
+    // The project move is its own call, and it goes first: `updateTask`
+    // rewrites `statusId` to the destination project's equivalent status
+    // whenever `projectId` changes, so a combined payload would lose the
+    // status picked in the same window.
+    expect(mocks.update).toHaveBeenNthCalledWith(1, { id: 'task-9', projectId: 'project-2' })
+    expect(mocks.update).toHaveBeenNthCalledWith(2, {
       id: 'task-9',
       priority: 4,
-      statusId: 'done',
-      projectId: 'project-2'
+      statusId: 'done'
     })
   })
 

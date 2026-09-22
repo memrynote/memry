@@ -539,11 +539,18 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   // for the fetch would race the title write that follows it.
   useEffect(() => {
     if (!taskId) return
-    const { completed, ...updates } = pendingUpdatesRef.current
+    const { completed, projectId, ...updates } = pendingUpdatesRef.current
     pendingUpdatesRef.current = {}
-    if (Object.keys(updates).length > 0) void tasksService.update({ id: taskId, ...updates })
-    if (completed === true) void tasksService.complete({ id: taskId })
-    else if (completed === false) void tasksService.uncomplete(taskId)
+    void (async () => {
+      // The project move goes first and alone. `updateTask` rewrites `statusId`
+      // to the destination project's equivalent status whenever `projectId`
+      // changes, so a combined payload would throw away the status the user
+      // picked in the same window.
+      if (projectId !== undefined) await tasksService.update({ id: taskId, projectId })
+      if (Object.keys(updates).length > 0) await tasksService.update({ id: taskId, ...updates })
+      if (completed === true) await tasksService.complete({ id: taskId })
+      else if (completed === false) await tasksService.uncomplete(taskId)
+    })()
   }, [taskId])
 
   const handleRemoveGhost = useCallback(() => {

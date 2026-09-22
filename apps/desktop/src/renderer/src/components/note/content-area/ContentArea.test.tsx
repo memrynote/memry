@@ -2147,6 +2147,71 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1)
   })
 
+  // The renderer rewrites the block's title prop on a debounce while the user
+  // types, and each write is another onChange. Keying de-duplication on the
+  // title alone would let "Buy mil" and "Buy milk" mint two rows for one block.
+  it('creates one row for a draft whose title changes while the create is in flight', async () => {
+    let releaseProjects: (value: { projects: unknown[] }) => void = () => {}
+    contentAreaMocks.tasksService.listProjects.mockReturnValueOnce(
+      new Promise((resolve) => {
+        releaseProjects = resolve
+      })
+    )
+    const titles = ['Buy mil', 'Buy milk']
+    let seen = 0
+    contentAreaMocks.analyzeTaskIntents.mockImplementation(() => ({
+      ...emptyIntents(new Set()),
+      draftTaskBlock: {
+        blockId: 'draft',
+        title: titles[Math.min(seen++, titles.length - 1)]
+      }
+    }))
+
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.click(screen.getByText('change'))
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      releaseProjects({ projects: [{ id: 'project-1', name: 'Inbox', isDefault: true }] })
+      await Promise.resolve()
+    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1))
+
+    // The second onChange saw a different title, so the attempt key alone would
+    // have let it through; only the in-flight guard holds it back.
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1)
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Buy mil' })
+    )
+  })
+
+  // The row is tickable while the create is in flight (the draft controls are
+  // live so a project picked early is not lost). Writing a hardcoded `checked`
+  // back with the new id would clear that tick, and the markdown reconciler
+  // would then un-complete the row it belongs to.
+  it('keeps a tick made while the draft create was in flight', async () => {
+    contentAreaMocks.analyzeTaskIntents.mockImplementation(draftUnlessDismissed)
+    contentAreaMocks.tasksService.create.mockImplementation(async () => {
+      const live = contentAreaMocks.blocks.get('draft')
+      live.props = { ...live.props, checked: true }
+      return { success: true, task: { id: 'created-task', title: 'Draft title' } }
+    })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await waitFor(() =>
+      expect(contentAreaMocks.blocks.get('draft').props.taskId).toBe('created-task')
+    )
+    expect(contentAreaMocks.blocks.get('draft').props.checked).toBe(true)
+  })
+
   it('focuses the previous task title instead of letting Backspace delete task blocks', () => {
     render(<ContentArea noteId="note-1" />)
 

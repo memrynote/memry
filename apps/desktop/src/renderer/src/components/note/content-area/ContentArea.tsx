@@ -354,6 +354,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // it. Not a dismissal: the analyzer never reads it, so an edited title is a
   // fresh attempt and a failed one can be retried. See that callback.
   const draftCreateAttemptsRef = useRef(new Map<string, string>())
+  // The blocks a draft create is currently awaiting an answer for. One create
+  // per block at a time, whatever the title does in the meantime.
+  const draftCreateInFlightRef = useRef(new Set<string>())
   const knownTaskBlockIdsRef = useRef<Set<string>>(new Set())
   // Debounced standalone-task auto-convert. Holds the timer + the blockId we
   // intend to convert when it fires. The delay (CONVERT_DEBOUNCE_MS) is the
@@ -1251,11 +1254,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || parsed.title
               const currentParentTaskId = ((freshBlock.props as any).parentTaskId as string) || ''
+              // `checked` off the live block, not the `isDone` read before the
+              // create: the row is tickable while the id is in flight, and
+              // writing the stale value back would clear the tick the user just
+              // made. The renderer replays that tick against the row as soon as
+              // the id lands, and markdown is what the reconciler believes.
+              const currentChecked = !!(freshBlock.props as any).checked
               editor.updateBlock(freshBlock, {
                 props: {
                   taskId: result.task.id,
                   title: currentTitle,
-                  checked: isDone,
+                  checked: currentChecked,
                   parentTaskId: currentParentTaskId
                 }
               })
@@ -1336,11 +1345,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || title
+              // Live `checked`, same reason as the top-level path: the block is
+              // tickable while the create is in flight.
+              const currentChecked = !!(freshBlock.props as any).checked
               editor.updateBlock(freshBlock, {
                 props: {
                   taskId: result.task.id,
                   title: currentTitle,
-                  checked: isDone,
+                  checked: currentChecked,
                   parentTaskId
                 }
               })
@@ -1426,8 +1438,21 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       // once (no duplicate rows, and no spin on a title that can never create),
       // an edited title is attempted again, and a transient failure drops the
       // entry so the next change retries.
-      if (draftCreateAttemptsRef.current.get(blockId) === title) return
+      //
+      // The title changing is exactly what a user typing does, and the block's
+      // title prop is rewritten on every debounce tick, so the attempt key
+      // alone would let "Buy mil" and "Buy milk" create two rows for one block.
+      // `draftCreateInFlightRef` is the other half: one create per block at a
+      // time, and the post-create title reconciliation below carries whatever
+      // the user typed in the meantime.
+      if (
+        draftCreateInFlightRef.current.has(blockId) ||
+        draftCreateAttemptsRef.current.get(blockId) === title
+      ) {
+        return
+      }
       draftCreateAttemptsRef.current.set(blockId, title)
+      draftCreateInFlightRef.current.add(blockId)
       const retryDraft = (): void => {
         draftCreateAttemptsRef.current.delete(blockId)
       }
@@ -1493,11 +1518,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || parsed.title
               const currentParentTaskId = ((freshBlock.props as any).parentTaskId as string) || ''
+              // Live `checked`, not a hardcoded `false`: a draft row is
+              // tickable while the create is in flight, and the renderer
+              // replays that tick against the row once the id lands.
+              const currentChecked = !!(freshBlock.props as any).checked
               editor.updateBlock(freshBlock, {
                 props: {
                   taskId: result.task.id,
                   title: currentTitle,
-                  checked: false,
+                  checked: currentChecked,
                   parentTaskId: currentParentTaskId
                 }
               })
@@ -1505,11 +1534,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
             }
-          } else {
-            retryDraft()
           }
+          // No `retryDraft()` on `success: false`: the service answered, and it
+          // answers the same way for the same input. Retrying would put one
+          // `tasks:create` on the wire per keystroke in the note. The attempt
+          // record is keyed by title, so an edited title still retries.
         } catch {
+          // The call itself failed (no vault open, IPC down) rather than being
+          // refused — that is transient, so the next change tries again.
           retryDraft()
+        } finally {
+          draftCreateInFlightRef.current.delete(blockId)
         }
       })()
     },
