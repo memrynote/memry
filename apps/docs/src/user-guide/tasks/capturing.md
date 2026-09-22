@@ -147,6 +147,31 @@ Selecting a checklist item in a note offers a "Convert to task" action in the in
 
 A checklist item that is already ticked becomes a task that is already done — so a note you imported with `- [x] Book flights` in it does not reopen work you finished elsewhere.
 
+## Which Project a Note's Task Lands In
+
+A task written inside a note — `/task`, a checklist line that converts, or a new task block — is filed in the note's own project. The first answer that applies wins:
+
+| Checked                                                                             | Example                                                    |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| The parent task's project, for a subtask                                            | A line indented under another task                         |
+| A `+project` marker on the line                                                     | `- [ ] Ship the beta +Memry`                               |
+| The note's [`project` property](/user-guide/notes/properties-tags#project-property) | A note with `project: Website Redesign` in its frontmatter |
+| Your **Settings → Tasks → Default project**                                         | No project on the note                                     |
+| Inbox, then your first project                                                      | No default set                                             |
+
+Archived projects are skipped: a note whose only project is archived falls through to your default. If the note names several projects, the first one it was linked to is used — the same one every other single-select surface calls "the" note's project.
+
+### Bringing Existing Tasks Across
+
+Giving a note a project only changes where _new_ tasks go. If the note already holds tasks filed somewhere else, memrynote asks once whether to move them:
+
+- **Move tasks** — the note's top-level tasks move to the new project, and their subtasks come with them so a parent and its children never end up split. Each task keeps its status, matched to the equivalent status in the new project.
+- **Keep as is** — nothing moves.
+
+Only tasks actually written in the note (`{task:…}` lines) are offered; a task merely linked to the note under **Related** is left alone. Removing a project from a note never prompts — there is no destination to move to.
+
+Tasks filed before this behaviour existed are not moved for you. Change them from the task row's project picker, or from the prompt above the next time you set the note's project.
+
 ## The Checkbox in the File Wins
 
 A note's tasks live in the note's own Markdown file, as checklist lines carrying the task id:
