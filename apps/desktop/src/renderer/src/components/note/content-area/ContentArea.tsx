@@ -350,6 +350,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const tasksCtx = useTasksOptional()
   const dismissedBlocksRef = useRef(new Set<string>())
+  // blockId -> the draft title `createTaskForDraftBlock` already attempted for
+  // it. Not a dismissal: the analyzer never reads it, so an edited title is a
+  // fresh attempt and a failed one can be retried. See that callback.
+  const draftCreateAttemptsRef = useRef(new Map<string, string>())
   const knownTaskBlockIdsRef = useRef<Set<string>>(new Set())
   // Debounced standalone-task auto-convert. Holds the timer + the blockId we
   // intend to convert when it fires. The delay (CONVERT_DEBOUNCE_MS) is the
@@ -1137,6 +1141,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       const originalContent = block.content
       const text = checkboxLineText(block)
 
+      // An empty checkbox has no task in it yet. Converting one rewrites the
+      // block to a `taskBlock` whose title is empty, and the create below is
+      // refused for that empty title — leaving the block on `taskId: ''`
+      // forever (#2271). The analyzer declines empty checkboxes for the same
+      // reason; this guard is what covers the context menu, which reaches this
+      // converter directly. Returning before `dismissedBlocksRef` keeps the
+      // line convertible the moment the user types on it.
+      if (!text) return
+
       // Refused where the rewrite happens rather than only where the analyzer
       // proposes it. The context menu reaches this converter directly.
       // Appending Memry's suffix un-anchors the plugin's field regexes, and an
@@ -1207,8 +1220,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
           // A checklist line of nothing but quick-add tokens ("- [ ] #errand")
           // parses to an empty title, which `tasks:create` rejects. Leave it as
-          // a checkbox rather than surfacing a contract error (#1991).
-          if (!parsed.title.trim()) return
+          // a checkbox rather than surfacing a contract error (#1991) — the
+          // block was rewritten optimistically above, so putting the checkbox
+          // back is what actually leaves it as one (#2271). It stays dismissed:
+          // restoring re-enters `onChange`, and a candidate that converts and
+          // restores on every pass would spin.
+          if (!parsed.title.trim()) {
+            restoreCheckbox(blockId, originalContent, wasChecked)
+            return
+          }
 
           const result = await tasksService.create({
             projectId: projectIdForCreate ?? parsed.projectId ?? defaultProject.id,
@@ -1397,7 +1417,20 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const createTaskForDraftBlock = useCallback(
     (blockId: string, title: string) => {
-      dismissedBlocksRef.current.add(blockId)
+      // De-duplication used to be `dismissedBlocksRef`, which the analyzer
+      // honours forever: every early exit below (no project yet, a title
+      // quick-add parses to nothing, a rejected lookup) marked the draft
+      // dismissed on the way in and never took it back, so the block kept
+      // `taskId: ''` for the rest of the session no matter what the user typed
+      // next (#2271). Keyed by the title instead: the same title is attempted
+      // once (no duplicate rows, and no spin on a title that can never create),
+      // an edited title is attempted again, and a transient failure drops the
+      // entry so the next change retries.
+      if (draftCreateAttemptsRef.current.get(blockId) === title) return
+      draftCreateAttemptsRef.current.set(blockId, title)
+      const retryDraft = (): void => {
+        draftCreateAttemptsRef.current.delete(blockId)
+      }
 
       void (async () => {
         // Re-read the live block. Between the onChange that scheduled this
@@ -1410,31 +1443,41 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         const liveBlock = editor.getBlock(blockId)
         const liveParentTaskId = ((liveBlock?.props as any)?.parentTaskId as string) || ''
 
-        let projects: any[] = tasksCtx?.projects ?? []
-        if (projects.length === 0) {
-          const res = await tasksService.listProjects()
-          projects = res.projects ?? []
-        }
-
-        const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
-        if (!defaultProject) return
-
-        // If this draft is parented, inherit the parent task's projectId so
-        // the subtask lands in the right project (mirrors convertCheckboxToSubtask).
-        let projectIdForCreate: string | null = null
-        if (liveParentTaskId) {
-          const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
-          if (parentTask) projectIdForCreate = parentTask.projectId
-        }
-
-        const parsed = title
-          ? parseQuickAdd(title, projects)
-          : { title: '', priority: 'none', projectId: null, dueDate: null }
-        // The draft scan only checks the raw block title, so a token-only draft
-        // reaches here with nothing left to name the task.
-        if (!parsed.title.trim()) return
-
+        // Inside the try: `listProjects` rejects when no vault is open, and an
+        // unhandled rejection here used to abandon the draft mid-flight.
         try {
+          let projects: any[] = tasksCtx?.projects ?? []
+          if (projects.length === 0) {
+            const res = await tasksService.listProjects()
+            projects = res.projects ?? []
+          }
+
+          const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+          // Projects are still loading, or the vault has none yet — nothing to
+          // create into *now*. Retry on the next change rather than stranding
+          // the block.
+          if (!defaultProject) {
+            retryDraft()
+            return
+          }
+
+          // If this draft is parented, inherit the parent task's projectId so
+          // the subtask lands in the right project (mirrors convertCheckboxToSubtask).
+          let projectIdForCreate: string | null = null
+          if (liveParentTaskId) {
+            const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
+            if (parentTask) projectIdForCreate = parentTask.projectId
+          }
+
+          const parsed = title
+            ? parseQuickAdd(title, projects)
+            : { title: '', priority: 'none', projectId: null, dueDate: null }
+          // The draft scan only checks the raw block title, so a token-only draft
+          // reaches here with nothing left to name the task. Not retried for
+          // this title — it would fail the same way every keystroke — but the
+          // attempt record is keyed by title, so typing a real one retries.
+          if (!parsed.title.trim()) return
+
           const result = await tasksService.create({
             projectId: projectIdForCreate ?? parsed.projectId ?? defaultProject.id,
             // When parented, force parentId — never let parseQuickAdd's
@@ -1462,9 +1505,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
             }
+          } else {
+            retryDraft()
           }
         } catch {
-          dismissedBlocksRef.current.delete(blockId)
+          retryDraft()
         }
       })()
     },
@@ -2110,9 +2155,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     }
                     return item
                   }),
-                  // `updateBlock` is typed against the whole schema union, so a
-                  // helper that only ever writes table content cannot state its
-                  // parameter in terms the editor's own signature accepts.
+                  // SAFETY: `updateBlock` is typed against the whole schema
+                  // union, so a helper that only ever writes table content
+                  // cannot state its parameter in terms the editor's own
+                  // signature accepts. The editor is the real BlockNote editor
+                  // and the helper only calls members `TableInsertEditor`
+                  // declares.
                   editor as unknown as TableInsertEditor
                 )
                 // `/pdf` and `/media` are the same item as `/file` — same
