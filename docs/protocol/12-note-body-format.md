@@ -601,21 +601,43 @@ in-fragment, not a root.
 
 ## 12.9 The type registry FR-040 enumerates
 
-**Normative.** `createMemrySchema` produces exactly **34** types
+**Normative.** `createMemrySchema` produces exactly **35** types
 (`packages/editor-schema/src/schema.ts:52-77`), checked in as
 `packages/editor-schema/src/registry-manifest.json` and asserted in both
 directions by `packages/editor-schema/src/__tests__/registry-parity.test.ts`.
 
-| Group          | Count | Types                                                                                                                                                                                                                                         |
-| -------------- | ----: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| blocks         |    19 | `audio`, `bookmark`, `bulletListItem`, `callout`, `checkListItem`, `codeBlock`, `divider`, `file`, `heading`, `image`, `mathBlock`, `numberedListItem`, `paragraph`, `quote`, `table`, `taskBlock`, `toggleListItem`, `video`, `youtubeEmbed` |
-| inline content |     8 | `dateMention`, `hashTag`, `inlineCheckbox`, `inlineImage`, `link`, `linkMention`, `text`, `wikiLink`                                                                                                                                          |
-| styles         |     7 | `backgroundColor`, `bold`, `code`, `italic`, `strike`, `textColor`, `underline`                                                                                                                                                               |
+| Group          | Count | Types                                                                                                                                                                                                                                                    |
+| -------------- | ----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| blocks         |    20 | `audio`, `bookmark`, `bulletListItem`, `callout`, `checkListItem`, `codeBlock`, `diagram`, `divider`, `file`, `heading`, `image`, `mathBlock`, `numberedListItem`, `paragraph`, `quote`, `table`, `taskBlock`, `toggleListItem`, `video`, `youtubeEmbed` |
+| inline content |     8 | `dateMention`, `hashTag`, `inlineCheckbox`, `inlineImage`, `link`, `linkMention`, `text`, `wikiLink`                                                                                                                                                     |
+| styles         |     7 | `backgroundColor`, `bold`, `code`, `italic`, `strike`, `textColor`, `underline`                                                                                                                                                                          |
 
 `file` and `toggleListItem` are Memry specifications overriding BlockNote
 defaults of the same name
 (`packages/editor-schema/src/schema.ts:57-61`, where `impl.blocks` is spread over
 `defaultBlockSpecs`).
+
+`diagram` is a Mermaid diagram, and it is the one type whose renderer spec comes
+from a third-party package (`@blocknote/diagram-block`) rather than from
+`@memry/editor-schema`. Its config is restated in
+`packages/editor-schema/src/blocks/configs.ts` for the main process and the
+mobile WebView, neither of which can carry the package's React and ~3 MB of
+mermaid; the two are held equal by the renderer↔main parity gate
+(`apps/desktop/src/renderer/src/components/note/content-area/editor-schema.test.ts`),
+which compares every block's config field by field.
+
+**On disk a diagram is a ` ```mermaid ` fence and nothing else** — no marker, no
+sidecar comment. A client that does not implement the type reads the fence back
+as a plain `codeBlock` whose language is `mermaid` and writes the same bytes out
+again, so the block degrades to a code block rather than to nothing. The reverse
+also holds: a ` ```mermaid ` fence written by Obsidian, GitHub or an older Memry
+build opens as a diagram, because the parse rule runs before `codeBlock`'s
+(`packages/editor-schema/src/blocks/server-specs.ts`, `diagramParsing`).
+
+A diagram's source is LITERAL text (`content: 'plain'`, `meta.code`), so the
+markdown-parse repairs that strip the pretty-printer's indentation out of prose
+skip it, exactly as they skip a code block
+(`packages/editor-schema/src/parse-markdown.ts`, `LITERAL_TEXT_BLOCK_TYPES`).
 
 **The registration invariant**: every spec is registered under its own
 `config.type`, enforced at construction for blocks and inline content alike

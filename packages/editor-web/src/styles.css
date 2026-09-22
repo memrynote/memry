@@ -1113,6 +1113,43 @@ img.embed-image {
   overflow: hidden;
 }
 
+/* Mermaid diagram. The phone shows the SOURCE, not the drawing (see the spec in
+   `blocks.ts`), so the card is built to say which one this is: a labelled
+   surface, monospaced, that scrolls sideways instead of wrapping — a wrapped
+   Mermaid line reads as a different diagram. */
+.diagram-block {
+  inline-size: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--memry-hairline);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--memry-ink) 3%, var(--memry-paper));
+  overflow: hidden;
+}
+
+.diagram-label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 12px;
+  border-block-end: 1px solid var(--memry-hairline);
+  color: var(--memry-muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.diagram-source {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre;
+  color: var(--memry-ink);
+}
+
 /* Inline chips. Same trick as `.wiki-link`: the padding is on the inline box
    and the 44px hit area is on a pseudo-element, so a tappable chip does not
    have to be a 44px-tall block in the middle of a sentence. */

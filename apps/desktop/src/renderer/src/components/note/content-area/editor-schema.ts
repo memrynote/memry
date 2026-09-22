@@ -1,5 +1,6 @@
 import { createMemrySchema, WikiLink } from '@memry/editor-schema'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
+import { createReactDiagramBlockSpec } from '@blocknote/diagram-block'
 import { createFileBlock } from './file-block'
 import { createCalloutBlock } from './callout-block'
 import { createMathBlock } from './math-block'
@@ -36,7 +37,19 @@ export const editorSchema = createMemrySchema({
     // A default block overridden, not a new one: BlockNote's own toggle keeps
     // its fold in localStorage, which is per-device and keyed by an id that is
     // regenerated on every parse (#1847).
-    toggleListItem: createToggleListItemBlock()
+    toggleListItem: createToggleListItemBlock(),
+    // Mermaid, upstream's own: the source popup, the live preview and the
+    // ```` ```mermaid ```` parse rule all come from `@blocknote/diagram-block`
+    // rather than a Memry reimplementation (#1870).
+    //
+    // This is the one block whose config is NOT imported from
+    // `@memry/editor-schema` — it cannot be, because that package is also the
+    // headless main process's and the mobile WebView's, and this package's
+    // entry point pulls React and ~3 MB of mermaid. `diagramConfig` restates it
+    // for those two, and the parity gate in `editor-schema.test.ts` compares
+    // the two configs field by field, so an upstream prop added here and
+    // missing there fails the suite instead of being stripped on write-back.
+    diagram: createReactDiagramBlockSpec()
   },
   inline: {
     // The editor flavour of wikiLink: same node as main's, plus the `parse`

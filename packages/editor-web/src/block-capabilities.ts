@@ -120,7 +120,8 @@ export const BLOCK_LABELS: Readonly<Record<string, string>> = {
   bookmark: 'Bookmark',
   youtubeEmbed: 'YouTube embed',
   taskBlock: 'Task',
-  mathBlock: 'Equation'
+  mathBlock: 'Equation',
+  diagram: 'Diagram'
 }
 
 /** Block-level attachment, or an `inlineImage` in its content. Desktop's rule. */

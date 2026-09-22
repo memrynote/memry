@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 90,
+    "exportedCaseCount": 96,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 100,
+    "caseCount": 106,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -574,6 +574,48 @@
       "canonical": null,
       "pending": null,
       "sha256": "0dd6752076d0c5cbceeaa7c9ef205cb042a9e2267d91b444b0c4867de7cc9e92"
+    },
+    {
+      "name": "mermaid fence",
+      "markdown": "```mermaid\ngraph TD\n    A[Start] --> B[Stop]\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "171faacef653a0c9c64efce3173afaf1bb281d77706f8d328049934c1a1a3a9a"
+    },
+    {
+      "name": "mermaid fence with nested indentation",
+      "markdown": "```mermaid\nsequenceDiagram\n    Alice->>John: Hello\n        Note right of John: thinking\n    John-->>Alice: Great\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "0ed3f28a26b98ed6891966c448122a243eaebe354f0d2746f52f463a431ff321"
+    },
+    {
+      "name": "empty mermaid fence",
+      "markdown": "```mermaid\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "f13ee1c30d53e77421b9db1fdcae491cb8f00d25d87d6b3391c1768eaec8ddd7"
+    },
+    {
+      "name": "mermaid fence with trailing spaces",
+      "markdown": "```mermaid\ngraph TD  \n  A --> B\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1e0de4e4f46231ae156e50db2920e060da23b95ad02ccd78bacc19f1cdb1b5d0"
+    },
+    {
+      "name": "mermaid fence between paragraphs",
+      "markdown": "Before\n\n```mermaid\ngraph LR\n  A --> B\n```\n\nAfter",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b1260d385acdeb7eb2737ba01b53ac27e5678d1babc4cfaba0053fc42db911db"
+    },
+    {
+      "name": "javascript fence is not claimed by the diagram block",
+      "markdown": "```js\nconst a = 1\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "475b23404d03f12ef8e09be433317586630b97dcf9214ad12974756727f39037"
     },
     {
       "name": "asterisk bullets",

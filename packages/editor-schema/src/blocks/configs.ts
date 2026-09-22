@@ -108,6 +108,33 @@ export const toggleListItemConfig = {
 }
 
 /**
+ * A Mermaid diagram: source text in the document, a rendered picture on the
+ * surfaces that can draw one.
+ *
+ * Declared here rather than imported from `@blocknote/diagram-block` even
+ * though that package exports the identical config. The package's entry point
+ * is React — `createReactBlockSpec`, `react-icons`, and mermaid itself, which
+ * is ~3 MB — and two of the three surfaces registering this node have no React
+ * and no room for mermaid: the main process is headless, and the mobile
+ * WebView dropped shiki over 3.4 MB of bundle (#2032). They still MUST build
+ * the node or y-prosemirror deletes every diagram out of the shared Y.Doc.
+ *
+ * So the type, props and content are duplicated deliberately, and the
+ * duplication is gated rather than trusted: the renderer's schema is built
+ * from the package's own spec, and `editor-schema.test.ts` asserts every
+ * block's config deep-equals main's. A future upstream `engine` prop fails
+ * that comparison instead of being silently dropped on write-back.
+ *
+ * `content: 'plain'` is the code block's content kind — unstyled text — so the
+ * source carries no marks that the ```` ```mermaid ```` fence could not hold.
+ */
+export const diagramConfig = {
+  type: 'diagram' as const,
+  propSchema: {},
+  content: 'plain' as const
+}
+
+/**
  * A LaTeX formula on its own line, rendered as mathematics (#1871).
  *
  * `latex` is the block's WHOLE state and it is the source, not the rendering:
@@ -137,5 +164,6 @@ export const MEMRY_BLOCK_TYPES = [
   'youtubeEmbed',
   'bookmark',
   'toggleListItem',
-  'mathBlock'
+  'mathBlock',
+  'diagram'
 ] as const

@@ -127,6 +127,20 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks): void {
 }
 
 /**
+ * Every block whose text is LITERAL — BlockNote's `content: 'plain'` kinds.
+ *
+ * The distinction the repairs turn on is not "is it a code block" but "did the
+ * author write these bytes". Inside a fence, a newline followed by a space is
+ * indentation somebody typed; in prose it is the pretty-printer's artifact.
+ *
+ * `diagram` joined `codeBlock` here with the Mermaid block (#1870), and the
+ * loss was measurable the moment it did not: `graph TD\n    A[Start]` came back
+ * from the parse as `graph TD\n   A[Start]`, one space short, and the note was
+ * rewritten one space shorter on every open.
+ */
+const LITERAL_TEXT_BLOCK_TYPES: ReadonlySet<string> = new Set(['codeBlock', 'diagram'])
+
+/**
  * Code blocks are walked like everything else.
  *
  * They used to be skipped whole, on the reasoning that a token inside a fence
@@ -140,7 +154,7 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks): void {
  */
 function repairBlocks(blocks: BlockLike[], masks: Masks): void {
   for (const block of blocks) {
-    const code = block.type === 'codeBlock'
+    const code = LITERAL_TEXT_BLOCK_TYPES.has(block.type ?? '')
     if (Array.isArray(block.content)) {
       repairRuns(block.content as InlineRun[], code, masks)
     } else if (block.content && typeof block.content === 'object') {

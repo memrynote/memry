@@ -24,6 +24,7 @@ import {
 import { AttachmentRenameFlow } from './attachment-rename-dialog'
 import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
+import { getDiagramSlashMenuItems } from '@blocknote/diagram-block'
 import { CustomAIMenu } from './ai-menu'
 import { en as aiEn } from '@blocknote/xl-ai/locales'
 import { en as coreEn } from '@blocknote/core/locales'
@@ -2143,6 +2144,25 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     ]
                   : []
                 const aiItems = aiEnabled && aiReady ? getAISlashMenuItems(editor) : []
+                // `/mermaid` — upstream's own item, so the insert seeds the same
+                // starter `graph TD` the preview needs something to draw from,
+                // and the aliases (mermaid, flowchart, chart, graph) come with
+                // it. Only the two strings a reader sees are Memry's, because
+                // the package's dictionary is English-only and the rest of this
+                // menu is translated.
+                //
+                // Excluded inside a table cell for the same reason as the
+                // template item: a diagram is a BLOCK, so BlockNote lands it
+                // after the whole table and takes the caret with it (#1640),
+                // and unlike image and check there is no inline form to fall
+                // back to.
+                const diagramItems = inCell
+                  ? []
+                  : getDiagramSlashMenuItems(editor).map((item) => ({
+                      ...item,
+                      title: t('editor.diagram.title'),
+                      subtext: t('editor.diagram.subtext')
+                    }))
                 const calloutItem = getCalloutSlashMenuItem(editor, {
                   title: t('editor.callout.title'),
                   group: t('editor.callout.group'),
@@ -2226,6 +2246,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 const all = orderSlashMenuItemsByGroup([
                   ...defaults,
                   ...kindItems,
+                  ...diagramItems,
                   calloutItem,
                   mathItem,
                   ...(taskItem ? [taskItem] : []),
