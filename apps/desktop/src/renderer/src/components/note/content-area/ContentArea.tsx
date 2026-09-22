@@ -67,6 +67,7 @@ import { useTasksOptional } from '@/contexts/tasks'
 import { memrySyntaxHighlighter } from '@memry/editor-schema/code-block'
 import { parseQuickAdd } from '@/lib/quick-add-parser'
 import { buildObsidianTaskImport } from '@memry/shared/obsidian-task-import'
+import { resolveProjectIdForNoteTask } from '@/lib/note-task-project'
 import { obsidianTaskImportBlocker } from '@memry/shared/obsidian-tasks'
 import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
@@ -1204,16 +1205,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             projects = res.projects ?? []
           }
 
-          const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
-          if (!defaultProject) {
-            restoreCheckbox(blockId, originalContent, wasChecked)
-            return
-          }
-
-          let projectIdForCreate: string | null = null
+          let parentTaskProjectId: string | null = null
           if (liveParentTaskId) {
             const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
-            if (parentTask) projectIdForCreate = parentTask.projectId
+            if (parentTask) parentTaskProjectId = parentTask.projectId
           }
 
           // The plugin fields were lifted off the line already, so quick-add
@@ -1233,8 +1228,20 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             return
           }
 
+          // The note's own project decides where its checklists land (#2271).
+          const projectId = await resolveProjectIdForNoteTask({
+            noteId,
+            parentTaskProjectId,
+            quickAddProjectId: parsed.projectId,
+            projects
+          })
+          if (!projectId) {
+            restoreCheckbox(blockId, originalContent, wasChecked)
+            return
+          }
+
           const result = await tasksService.create({
-            projectId: projectIdForCreate ?? parsed.projectId ?? defaultProject.id,
+            projectId,
             ...(liveParentTaskId ? { parentId: liveParentTaskId } : {}),
             title: parsed.title,
             priority: obsidian?.priority ?? PRIORITY_REVERSE[parsed.priority] ?? 0,
@@ -1477,21 +1484,20 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             projects = res.projects ?? []
           }
 
-          const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
           // Projects are still loading, or the vault has none yet — nothing to
           // create into *now*. Retry on the next change rather than stranding
           // the block.
-          if (!defaultProject) {
+          if (projects.length === 0) {
             retryDraft()
             return
           }
 
           // If this draft is parented, inherit the parent task's projectId so
           // the subtask lands in the right project (mirrors convertCheckboxToSubtask).
-          let projectIdForCreate: string | null = null
+          let parentTaskProjectId: string | null = null
           if (liveParentTaskId) {
             const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
-            if (parentTask) projectIdForCreate = parentTask.projectId
+            if (parentTask) parentTaskProjectId = parentTask.projectId
           }
 
           const parsed = title
@@ -1503,8 +1509,20 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           // attempt record is keyed by title, so typing a real one retries.
           if (!parsed.title.trim()) return
 
+          // The note's own project decides where a task typed in it lands (#2271).
+          const projectId = await resolveProjectIdForNoteTask({
+            noteId,
+            parentTaskProjectId,
+            quickAddProjectId: parsed.projectId,
+            projects
+          })
+          if (!projectId) {
+            retryDraft()
+            return
+          }
+
           const result = await tasksService.create({
-            projectId: projectIdForCreate ?? parsed.projectId ?? defaultProject.id,
+            projectId,
             // When parented, force parentId — never let parseQuickAdd's
             // priority/date metadata leak into a top-level row.
             ...(liveParentTaskId ? { parentId: liveParentTaskId } : {}),

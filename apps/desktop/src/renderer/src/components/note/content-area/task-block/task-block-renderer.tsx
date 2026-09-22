@@ -2,6 +2,7 @@ import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'reac
 import { AlertTriangle, ArrowUpRight, Loader2, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useTaskBlockData } from './use-task-block-data'
+import { useTaskPrefetch } from './task-prefetch-context'
 import { serviceTaskToDisplayTask, PRIORITY_REVERSE } from './task-block-utils'
 import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
@@ -87,17 +88,20 @@ const BLOCKNOTE_OVERRIDES = `
 
 /**
  * Which project and status set a block renders against: the task's own project,
- * the inbox when the task has not resolved yet, and the first project the
- * context knows as a last resort. Resolved outside the component so this
- * fallback chain is not part of its control flow.
+ * then the project a draft in this note would be created in, and the first
+ * project the context knows as a last resort. Resolved outside the component so
+ * this fallback chain is not part of its control flow.
  */
 const resolveBlockProject = (
   contextProjects: Project[] | undefined,
-  taskProjectId: string | undefined
+  taskProjectId: string | undefined,
+  draftProjectId: string | null
 ): { projects: Project[]; project: Project | undefined; statuses: Status[] } => {
   const projects = contextProjects ?? []
   const fallback =
-    projects.find((p: Project & { isInbox?: boolean }) => p.isDefault || p.isInbox) ?? projects[0]
+    projects.find((p) => p.id === draftProjectId) ??
+    projects.find((p: Project & { isInbox?: boolean }) => p.isDefault || p.isInbox) ??
+    projects[0]
   const project = projects.find((p) => p.id === taskProjectId) ?? fallback
 
   return { projects, project, statuses: project?.statuses ?? defaultStatuses }
@@ -139,6 +143,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   const { t: tPhaseF } = useT('notes')
   const { taskId, title, checked, parentTaskId } = block.props
   const { task, isLoading: _isLoading, isDeleted } = useTaskBlockData(taskId)
+  const { draftProjectId } = useTaskPrefetch()
   const tasksCtx = useTasksOptional()
   const { openTab } = useTabActions()
   const syncingRef = useRef(false)
@@ -159,7 +164,11 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   // early is still the project the task is created into.
   const pendingUpdatesRef = useRef<PendingTaskUpdates>({})
 
-  const { projects, project, statuses } = resolveBlockProject(tasksCtx?.projects, task?.projectId)
+  const { projects, project, statuses } = resolveBlockProject(
+    tasksCtx?.projects,
+    task?.projectId,
+    draftProjectId
+  )
   const isCompleted = task ? !!task.completedAt : checked
 
   const placeholderTask = useMemo(

@@ -19,12 +19,14 @@ const contentAreaMocks = vi.hoisted(() => ({
   analyzeTaskIntents: vi.fn(),
   tasksService: {
     listProjects: vi.fn(),
+    listForItem: vi.fn(),
     get: vi.fn(),
     create: vi.fn(),
     complete: vi.fn(),
     update: vi.fn(),
     delete: vi.fn()
   },
+  getTaskSettings: vi.fn(),
   notesService: {
     uploadAttachment: vi.fn(),
     get: vi.fn()
@@ -561,6 +563,10 @@ describe('ContentArea', () => {
     contentAreaMocks.tasksService.listProjects.mockResolvedValue({
       projects: [{ id: 'project-1', name: 'Inbox', isDefault: true }]
     })
+    contentAreaMocks.tasksService.listForItem.mockResolvedValue([])
+    contentAreaMocks.getTaskSettings.mockResolvedValue({ defaultProjectId: null })
+    ;(window.api.settings as unknown as Record<string, unknown>).getTaskSettings =
+      contentAreaMocks.getTaskSettings
     contentAreaMocks.tasksService.get.mockResolvedValue({
       id: 'parent-task',
       projectId: 'project-1'
@@ -1616,6 +1622,30 @@ describe('ContentArea', () => {
     // The plugin fields left the block, so the markdown line the `{task:<id>}`
     // suffix lands on is the description alone.
     expect(contentAreaMocks.blocks.get('obsidian-check').props.title).toBe('Buy milk #Errand')
+  })
+
+  it('creates a converted checkbox in the project the note belongs to (#2271)', async () => {
+    // #given a note linked to a project that is not the inbox
+    contentAreaMocks.tasksService.listProjects.mockResolvedValue({
+      projects: [
+        { id: 'project-1', name: 'Inbox', isDefault: true, isArchived: false },
+        { id: 'project-2', name: 'Work', isDefault: false, isArchived: false }
+      ]
+    })
+    contentAreaMocks.tasksService.listForItem.mockResolvedValue([{ id: 'project-2', name: 'Work' }])
+    contentAreaMocks.getTaskSettings.mockResolvedValue({ defaultProjectId: 'project-1' })
+
+    render(<ContentArea noteId="note-1" />)
+
+    // #when a checklist line in it is converted to a task
+    fireEvent.contextMenu(screen.getByText('checklist target'))
+
+    // #then the note's project wins over the settings default and the inbox
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
+    expect(contentAreaMocks.tasksService.listForItem).toHaveBeenCalledWith('note', 'note-1')
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'project-2' })
+    )
   })
 
   it('refuses a line the plugin needs intact, however the conversion is asked for', async () => {

@@ -8,15 +8,32 @@ import {
   type ReactNode
 } from 'react'
 import { tasksService, type Task } from '@/services/tasks-service'
+import { useTasksOptional } from '@/contexts/tasks'
+import {
+  loadNoteTaskProjectContext,
+  resolveNoteTaskProjectId,
+  type NoteTaskProjectContext
+} from '@/lib/note-task-project'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('TaskPrefetch')
+
+const EMPTY_PROJECT_CONTEXT: NoteTaskProjectContext = {
+  noteProjectIds: [],
+  settingsDefaultProjectId: null
+}
 
 interface TaskPrefetchValue {
   /** 'loading' until the note's linked tasks have been fetched (or failed). */
   status: 'loading' | 'ready'
   /** Returns a prefetched task by id, or undefined if not in the batch. */
   getCached: (taskId: string) => Task | undefined
+  /**
+   * The project a task block drafted in this note would be created in, so a
+   * draft row shows the project badge and statuses it is about to get rather
+   * than the inbox's (#2271). Null outside a note or before it resolves.
+   */
+  draftProjectId: string | null
 }
 
 // Default used when a taskBlock renders outside a provider (e.g. unit tests):
@@ -24,7 +41,8 @@ interface TaskPrefetchValue {
 // their own fetch.
 const DEFAULT_VALUE: TaskPrefetchValue = {
   status: 'ready',
-  getCached: () => undefined
+  getCached: () => undefined,
+  draftProjectId: null
 }
 
 const TaskPrefetchContext = createContext<TaskPrefetchValue>(DEFAULT_VALUE)
@@ -49,13 +67,17 @@ export function TaskPrefetchProvider({
 }): ReactElement {
   const [tasksById, setTasksById] = useState<Map<string, Task>>(() => new Map())
   const [status, setStatus] = useState<'loading' | 'ready'>('loading')
+  const [projectContext, setProjectContext] =
+    useState<NoteTaskProjectContext>(EMPTY_PROJECT_CONTEXT)
   const [prevNoteId, setPrevNoteId] = useState(noteId)
+  const tasksCtx = useTasksOptional()
 
   // Clear the cache synchronously when the note changes, at render time rather
   // than in an effect, so blocks never read another note's tasks for a frame.
   if (noteId !== prevNoteId) {
     setPrevNoteId(noteId)
     setTasksById(new Map())
+    setProjectContext(EMPTY_PROJECT_CONTEXT)
     setStatus(noteId ? 'loading' : 'ready')
   }
 
@@ -84,9 +106,32 @@ export function TaskPrefetchProvider({
     }
   }, [noteId])
 
+  // The note's project links and the settings default, the two note-scoped
+  // halves of where a new task block would land. Read here rather than per
+  // block so N drafts cost one pair of IPC calls.
+  useEffect(() => {
+    if (!noteId) return
+
+    let cancelled = false
+    void loadNoteTaskProjectContext(noteId).then((context) => {
+      if (!cancelled) setProjectContext(context)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [noteId])
+
+  const projects = tasksCtx?.projects
+  const draftProjectId = useMemo(
+    () =>
+      noteId ? resolveNoteTaskProjectId({ ...projectContext, projects: projects ?? [] }) : null,
+    [noteId, projectContext, projects]
+  )
+
   const value = useMemo<TaskPrefetchValue>(
-    () => ({ status, getCached: (taskId: string) => tasksById.get(taskId) }),
-    [status, tasksById]
+    () => ({ status, getCached: (taskId: string) => tasksById.get(taskId), draftProjectId }),
+    [status, tasksById, draftProjectId]
   )
 
   return <TaskPrefetchContext.Provider value={value}>{children}</TaskPrefetchContext.Provider>

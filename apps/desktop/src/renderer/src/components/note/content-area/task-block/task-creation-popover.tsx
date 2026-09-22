@@ -1,9 +1,10 @@
-import { type FC, useState, useCallback, useMemo, useRef, type RefObject } from 'react'
+import { type FC, useState, useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
 import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { useTasksOptional } from '@/contexts/tasks'
 import { tasksService, type TaskCreateInput } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { resolveProjectIdForNoteTask } from '@/lib/note-task-project'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import { getI18n } from 'react-i18next'
@@ -38,14 +39,28 @@ export const TaskCreationPopover: FC<TaskCreationPopoverProps> = ({
     () => tasksCtx?.projects?.filter((p) => !p.isArchived) ?? [],
     [tasksCtx?.projects]
   )
-  const inboxProject = projects.find((p) => p.isDefault)
-  const defaultProjectId = inboxProject?.id ?? projects[0]?.id ?? ''
+  // The note's own project decides the pre-selected one (#2271); until that
+  // read resolves the form stays unmounted rather than showing the inbox and
+  // then swapping under the user.
+  // null until the read settles, so the form mounts once with the right
+  // project instead of showing the inbox and swapping under the user.
+  const [defaultProjectId, setDefaultProjectId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!isOpen) return
+    let cancelled = false
+    void resolveProjectIdForNoteTask({ noteId, projects }).then((projectId) => {
+      if (!cancelled) setDefaultProjectId(projectId ?? '')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, noteId, projects])
 
   return (
     <Popover open={isOpen} onOpenChange={(open) => !open && onCancel()}>
       <PopoverAnchor virtualRef={anchorRef as RefObject<HTMLElement>} />
       <PopoverContent side="bottom" align="start" sideOffset={6} className="w-72 p-3">
-        {isOpen && (
+        {isOpen && defaultProjectId !== null && (
           <TaskCreationPopoverForm
             key={`${title}-${noteId ?? ''}-${defaultProjectId}`}
             title={title}

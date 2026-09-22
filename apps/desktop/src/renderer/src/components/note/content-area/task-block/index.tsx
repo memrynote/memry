@@ -11,6 +11,7 @@ import { getI18n } from 'react-i18next'
 import { tasksService } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { parseQuickAdd } from '@/lib/quick-add-parser'
+import { resolveProjectIdForNoteTask } from '@/lib/note-task-project'
 import { formatDateKey } from '@/lib/task-utils'
 import type { Project } from '@/data/tasks-data'
 
@@ -56,22 +57,27 @@ export function getTaskSlashMenuItem(editor: unknown, noteId?: string) {
 
       const res = await tasksService.listProjects()
       const projects = res.projects ?? []
-      const defaultProject =
-        projects.find(
-          (p) =>
-            ('isDefault' in p && Boolean(p.isDefault)) || ('isInbox' in p && Boolean(p.isInbox))
-        ) ?? projects[0]
-      if (!defaultProject) return
 
+      // SAFETY: the parser only reads `id` and `name` off each project, which
+      // the IPC shape and the renderer view model spell identically; the rest
+      // of the view model (statuses, counts) is never touched.
       const parsed = parseQuickAdd(text, projects as unknown as Project[])
       // Quick-add lifts its own tokens off the line, so a line of nothing but
       // tokens ("#tag", "!!high") leaves no title behind. Same draft handoff as
       // the empty-line case above.
       if (!parsed.title.trim()) return
 
+      // The note's own project decides where `/task` lands (#2271).
+      const projectId = await resolveProjectIdForNoteTask({
+        noteId,
+        quickAddProjectId: parsed.projectId,
+        projects
+      })
+      if (!projectId) return
+
       try {
         const result = await tasksService.create({
-          projectId: parsed.projectId ?? defaultProject.id,
+          projectId,
           title: parsed.title,
           priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
           dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
