@@ -359,54 +359,20 @@ struct NoteReadView: View {
         }
         .background(Tokens.Canvas.background.color)
         .calmAnimation(.normal, value: model.phase)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NoteAttachmentPicker(composer: composer) { _ in
-                    // The reference list changed, so the bindings have to be
-                    // read again: that is what makes the new picture appear
-                    // in place rather than on the next note open.
-                    Task { await model.refreshAttachments() }
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                NotePageMenu(
-                    canWrite: actions.canWrite,
-                    folderPath: model.folderPath,
-                    rename: { renaming = true },
-                    move: { moving = true },
-                    delete: { confirmingDelete = true }
-                )
-            }
-            // The editing affordances, absent entirely on a read-only note
-            // rather than present and refusing.
-            if editorModel.canEdit {
-                ToolbarItem(placement: .topBarTrailing) {
-                    BlockInsertMenu(
-                        insert: { block in
-                            Task {
-                                let id = await editorModel.insert(
-                                    block.id, after: model.blocks.last?.id
-                                )
-                                if let id, let level = block.level {
-                                    await editorModel.setProp(id, "level", String(level))
-                                }
-                                await model.reload()
-                            }
-                        }
-                        // No `insertPicture`: the picture affordance is the
-                        // adjacent toolbar item (N214), and a second entry
-                        // here would be a duplicate path to the same picker.
-                    )
-                }
-                ToolbarItem(placement: .bottomBar) {
-                    EditorHistoryControls(
-                        stack: history,
-                        undo: { Task { await applyHistory(history.popUndo()?.backward) } },
-                        redo: { Task { await applyHistory(history.popRedo()?.forward) } }
-                    )
-                }
-            }
-        }
+        .modifier(
+            NoteReadToolbar(
+                model: model,
+                editorModel: editorModel,
+                metadataModel: metadataModel,
+                actions: actions,
+                composer: composer,
+                history: history,
+                renaming: $renaming,
+                moving: $moving,
+                confirmingDelete: $confirmingDelete,
+                applyHistory: applyHistory
+            )
+        )
         // N808's three write actions. Each is a sheet or an alert rather
         // than an inline control, because all three change the note as a
         // whole and none of them should be one stray tap away.

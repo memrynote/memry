@@ -1365,3 +1365,199 @@ fn a_checkbox_index_outside_the_cell_is_refused() {
     assert!(refused.is_err());
     assert_eq!(canonical(&document), before, "nothing may have changed");
 }
+
+// MARK: - Inline nodes (N601, N602, N603)
+
+use std::collections::HashMap;
+
+fn inline_attrs(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+    pairs
+        .iter()
+        .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
+        .collect()
+}
+
+/// **An inline node is a sibling element, not a mark.**
+///
+/// y-prosemirror builds a mention as an `XmlElement` beside the block's text,
+/// which is why `SetMark` cannot make one and this operation exists.
+#[test]
+fn a_mention_lands_as_an_element_beside_the_text() {
+    let document = opened(&body(&[("a", "paragraph", "see also")]));
+
+    apply(
+        &document,
+        &BlockEdit::InsertInline {
+            block_id: "a".to_owned(),
+            start: 8,
+            end: 8,
+            kind: "wikiLink".to_owned(),
+            text: "Cardamom".to_owned(),
+            attrs: inline_attrs(&[("target", "Cardamom")]),
+        },
+    )
+    .expect("insert a mention");
+
+    let block = extract_blocks(&document)
+        .expect("blocks")
+        .into_iter()
+        .find(|block| block.id.as_deref() == Some("a"))
+        .expect("a");
+
+    let mention = block
+        .inline
+        .iter()
+        .find(|run| run.marks.iter().any(|mark| mark == "wikiLink"))
+        .expect("the mention must be a run of its own");
+    assert_eq!(mention.text, "Cardamom");
+    // The reader resolves a wiki link by its target, so the attribute has to
+    // land where it looks for it.
+    assert_eq!(mention.target.as_deref(), Some("Cardamom"));
+    assert_eq!(text_of(&block), "see alsoCardamom");
+}
+
+/// A date mention carries its date, which is what a calendar would read.
+#[test]
+fn a_date_mention_carries_its_date() {
+    let document = opened(&body(&[("a", "paragraph", "due ")]));
+
+    apply(
+        &document,
+        &BlockEdit::InsertInline {
+            block_id: "a".to_owned(),
+            start: 4,
+            end: 4,
+            kind: "dateMention".to_owned(),
+            text: "tomorrow".to_owned(),
+            attrs: inline_attrs(&[("date", "2026-09-23"), ("remindMe", "true")]),
+        },
+    )
+    .expect("insert a date");
+
+    let rendered = canonical(&document);
+    assert!(rendered.contains("dateMention"), "{rendered}");
+    assert!(rendered.contains("date=\"2026-09-23\""), "{rendered}");
+    assert!(rendered.contains("remindMe=\"true\""), "{rendered}");
+}
+
+/// **The formatting after the insertion point survives.**
+///
+/// Splitting a run means rebuilding its tail, and a naive rebuild drops the
+/// bold the user already had from everything after their cursor — a loss
+/// nobody notices until much later.
+#[test]
+fn the_marks_after_the_insertion_point_survive_the_split() {
+    let document = opened(&body(&[("a", "paragraph", "plain bold")]));
+    apply(
+        &document,
+        &BlockEdit::SetMark {
+            block_id: "a".to_owned(),
+            start: 6,
+            end: 10,
+            mark: "bold".to_owned(),
+            value: None,
+        },
+    )
+    .expect("bold the second word");
+
+    // Insert right before the bold word.
+    apply(
+        &document,
+        &BlockEdit::InsertInline {
+            block_id: "a".to_owned(),
+            start: 6,
+            end: 6,
+            kind: "wikiLink".to_owned(),
+            text: "Link".to_owned(),
+            attrs: inline_attrs(&[("target", "Link")]),
+        },
+    )
+    .expect("insert");
+
+    let block = extract_blocks(&document)
+        .expect("blocks")
+        .into_iter()
+        .find(|block| block.id.as_deref() == Some("a"))
+        .expect("a");
+
+    assert_eq!(text_of(&block), "plain Linkbold");
+    let bold = block
+        .inline
+        .iter()
+        .find(|run| run.text == "bold")
+        .expect("the bold word must still be its own run");
+    assert!(
+        bold.marks.iter().any(|mark| mark == "bold"),
+        "the bold after the cursor was lost: {:?}",
+        block.inline
+    );
+    // And the text before it is still unmarked.
+    let plain = block
+        .inline
+        .iter()
+        .find(|run| run.text == "plain ")
+        .expect("the head");
+    assert!(plain.marks.is_empty());
+}
+
+/// A selection is replaced by the node, which is "turn this text into a
+/// mention".
+#[test]
+fn a_selection_is_replaced_by_the_node() {
+    let document = opened(&body(&[("a", "paragraph", "see Cardamom now")]));
+
+    apply(
+        &document,
+        &BlockEdit::InsertInline {
+            block_id: "a".to_owned(),
+            start: 4,
+            end: 12,
+            kind: "wikiLink".to_owned(),
+            text: "Cardamom".to_owned(),
+            attrs: inline_attrs(&[("target", "Cardamom")]),
+        },
+    )
+    .expect("replace the selection");
+
+    let block = extract_blocks(&document)
+        .expect("blocks")
+        .into_iter()
+        .find(|block| block.id.as_deref() == Some("a"))
+        .expect("a");
+    assert_eq!(text_of(&block), "see Cardamom now");
+    assert!(
+        block
+            .inline
+            .iter()
+            .any(|run| run.marks.iter().any(|mark| mark == "wikiLink")),
+        "{:?}",
+        block.inline
+    );
+}
+
+/// A range that ends before it starts, or lands outside the block's runs, is
+/// refused rather than inserted somewhere plausible.
+#[test]
+fn an_impossible_range_is_refused() {
+    let document = opened(&body(&[("a", "paragraph", "short")]));
+    let before = canonical(&document);
+
+    for (start, end) in [(4u32, 2u32), (99, 120)] {
+        assert!(
+            apply(
+                &document,
+                &BlockEdit::InsertInline {
+                    block_id: "a".to_owned(),
+                    start,
+                    end,
+                    kind: "wikiLink".to_owned(),
+                    text: "x".to_owned(),
+                    attrs: inline_attrs(&[("target", "x")]),
+                },
+            )
+            .is_err(),
+            "{start}..{end} must be refused"
+        );
+    }
+    assert_eq!(canonical(&document), before);
+}

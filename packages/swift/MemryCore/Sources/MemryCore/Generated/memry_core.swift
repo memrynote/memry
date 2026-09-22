@@ -12153,6 +12153,33 @@ public enum BlockEdit: Equatable, Hashable {
     case outdent(blockId: String
     )
     /**
+     * Replaces a range of one block's text with an **inline node** (N601,
+     * N602, N603).
+     *
+     * This is how a mention, a wiki link and a date reach the document:
+     * y-prosemirror carries an inline node as an `XmlElement` **sibling** of
+     * the block's text, not as a mark, so `SetMark` cannot make one.
+     *
+     * `start == end` inserts at the caret without removing anything.
+     *
+     * **The marks on the text after the insertion point are preserved**,
+     * which is the whole difficulty: splitting a run means rebuilding its
+     * tail, and a naive rebuild would drop the bold the user already had.
+     */
+    case insertInline(blockId: String, start: UInt32, end: UInt32, 
+        /**
+         * `wikiLink`, `dateMention`, `hashTag`, `linkMention`.
+         */kind: String, 
+        /**
+         * The text the node displays.
+         */text: String, 
+        /**
+         * The node's own attributes: `target` for a wiki link, `date` for a
+         * date mention. Written verbatim, because the reader looks for them
+         * by name.
+         */attrs: [String: String]
+    )
+    /**
      * Applies or removes an inline mark over a range within one block (N407).
      *
      * **This is what removes `SetText`'s documented limitation.** Replacing a
@@ -12244,13 +12271,16 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         case 16: return .outdent(blockId: try FfiConverterString.read(from: &buf)
         )
         
-        case 17: return .setMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf), value: try FfiConverterOptionString.read(from: &buf)
+        case 17: return .insertInline(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), kind: try FfiConverterString.read(from: &buf), text: try FfiConverterString.read(from: &buf), attrs: try FfiConverterDictionaryStringString.read(from: &buf)
         )
         
-        case 18: return .removeMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf)
+        case 18: return .setMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf), value: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 19: return .delete(blockId: try FfiConverterString.read(from: &buf)
+        case 19: return .removeMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 20: return .delete(blockId: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -12367,8 +12397,18 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             FfiConverterString.write(blockId, into: &buf)
             
         
-        case let .setMark(blockId,start,end,mark,value):
+        case let .insertInline(blockId,start,end,kind,text,attrs):
             writeInt(&buf, Int32(17))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterUInt32.write(start, into: &buf)
+            FfiConverterUInt32.write(end, into: &buf)
+            FfiConverterString.write(kind, into: &buf)
+            FfiConverterString.write(text, into: &buf)
+            FfiConverterDictionaryStringString.write(attrs, into: &buf)
+            
+        
+        case let .setMark(blockId,start,end,mark,value):
+            writeInt(&buf, Int32(18))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterUInt32.write(start, into: &buf)
             FfiConverterUInt32.write(end, into: &buf)
@@ -12377,7 +12417,7 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             
         
         case let .removeMark(blockId,start,end,mark):
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(19))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterUInt32.write(start, into: &buf)
             FfiConverterUInt32.write(end, into: &buf)
@@ -12385,7 +12425,7 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             
         
         case let .delete(blockId):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(20))
             FfiConverterString.write(blockId, into: &buf)
             
         }

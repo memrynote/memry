@@ -292,6 +292,89 @@ final class NoteEditorViewModel {
         )
     }
 
+    // MARK: - Inline nodes (N601, N602, N603)
+
+    /// Puts an inline node into a block, replacing `start..<end`.
+    ///
+    /// **Not a mark.** y-prosemirror carries a mention, a wiki link and a date
+    /// as elements beside the block's text, so `mark` cannot make one and the
+    /// core has its own operation for it.
+    ///
+    /// `start == end` inserts at the caret without removing anything.
+    func insertInline(
+        _ blockId: String,
+        from start: Int,
+        to end: Int,
+        kind: String,
+        text: String,
+        attrs: [String: String]
+    ) async {
+        await run(
+            .insertInline(
+                blockId: blockId,
+                start: UInt32(max(0, start)),
+                end: UInt32(max(0, end)),
+                kind: kind,
+                text: text,
+                attrs: attrs
+            )
+        )
+    }
+
+    /// A wiki link to `title` (N602).
+    ///
+    /// `displayAs` is what the link shows when it should not show the note's
+    /// own title — desktop's alias. Absent rather than equal to the title, so
+    /// a reader can tell "no alias" from "an alias that happens to match".
+    func insertWikiLink(
+        in blockId: String,
+        from start: Int,
+        to end: Int,
+        title: String,
+        displayAs: String? = nil,
+        embed: Bool = false
+    ) async {
+        var attrs = ["target": title]
+        if let displayAs, !displayAs.isEmpty, displayAs != title {
+            attrs["displayAs"] = displayAs
+        }
+        if embed {
+            // An embed shows the target's content rather than a link to it.
+            attrs["embed"] = "true"
+        }
+        await insertInline(
+            blockId,
+            from: start,
+            to: end,
+            kind: "wikiLink",
+            text: displayAs ?? title,
+            attrs: attrs
+        )
+    }
+
+    /// A date mention (N601). `remindMe` asks for a reminder on that date.
+    func insertDateMention(
+        in blockId: String,
+        from start: Int,
+        to end: Int,
+        date: Date,
+        label: String,
+        remindMe: Bool
+    ) async {
+        var attrs = ["date": NoteDates.string(from: date)]
+        if remindMe {
+            attrs["remindMe"] = "true"
+        }
+        await insertInline(
+            blockId,
+            from: start,
+            to: end,
+            kind: "dateMention",
+            text: label,
+            attrs: attrs
+        )
+    }
+
     // MARK: - Tables (N505)
 
     /// A cell is addressed by its table plus row and column, because a cell

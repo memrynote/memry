@@ -19,10 +19,12 @@
 //! blocks under the container are untouched, because a list item's children are
 //! their own blocks with their own ids.
 
+use std::collections::HashMap;
+
 use yrs::types::xml::XmlOut;
 use yrs::{
-    Any, GetString as _, ReadTxn as _, Text as _, TransactionMut, Xml as _, XmlElementPrelim,
-    XmlElementRef, XmlFragment as _, XmlTextPrelim,
+    Any, GetString as _, ReadTxn, Text as _, TransactionMut, Xml as _, XmlElementPrelim,
+    XmlElementRef, XmlFragment as _, XmlTextPrelim, XmlTextRef,
 };
 
 use crate::crdt::errors::CrdtError;
@@ -160,6 +162,31 @@ pub enum BlockEdit {
     Outdent {
         block_id: String,
     },
+    /// Replaces a range of one block's text with an **inline node** (N601,
+    /// N602, N603).
+    ///
+    /// This is how a mention, a wiki link and a date reach the document:
+    /// y-prosemirror carries an inline node as an `XmlElement` **sibling** of
+    /// the block's text, not as a mark, so `SetMark` cannot make one.
+    ///
+    /// `start == end` inserts at the caret without removing anything.
+    ///
+    /// **The marks on the text after the insertion point are preserved**,
+    /// which is the whole difficulty: splitting a run means rebuilding its
+    /// tail, and a naive rebuild would drop the bold the user already had.
+    InsertInline {
+        block_id: String,
+        start: u32,
+        end: u32,
+        /// `wikiLink`, `dateMention`, `hashTag`, `linkMention`.
+        kind: String,
+        /// The text the node displays.
+        text: String,
+        /// The node's own attributes: `target` for a wiki link, `date` for a
+        /// date mention. Written verbatim, because the reader looks for them
+        /// by name.
+        attrs: HashMap<String, String>,
+    },
     /// Applies or removes an inline mark over a range within one block (N407).
     ///
     /// **This is what removes `SetText`'s documented limitation.** Replacing a
@@ -255,6 +282,14 @@ pub fn apply(document: &Document, edit: &BlockEdit) -> Result<(), CrdtError> {
         } => move_block(txn, block_id, after_block_id.as_deref()),
         BlockEdit::Indent { block_id } => indent(txn, block_id),
         BlockEdit::Outdent { block_id } => outdent(txn, block_id),
+        BlockEdit::InsertInline {
+            block_id,
+            start,
+            end,
+            kind,
+            text,
+            attrs,
+        } => insert_inline(txn, block_id, *start, *end, kind, text, attrs),
         BlockEdit::SetMark {
             block_id,
             start,
@@ -1083,6 +1118,136 @@ fn restore_subtree(
 }
 
 // MARK: - Inline marks (N407)
+
+/// Replaces a range of a block's text with an inline node.
+///
+/// **An inline node is a sibling element, not a mark** — y-prosemirror builds
+/// one as an `XmlElement` beside the block's `XmlText` — so this splits the
+/// run the range falls in and puts the node between the two halves.
+///
+/// The tail is rebuilt **with its formatting**, read back through the same
+/// `diff` the reader uses. Rebuilding it as plain text would silently strip
+/// the bold a user already had from everything after their cursor, which is
+/// the kind of loss that is only noticed much later.
+#[allow(clippy::too_many_arguments)]
+fn insert_inline(
+    txn: &mut TransactionMut,
+    block_id: &str,
+    start: u32,
+    end: u32,
+    kind: &str,
+    text: &str,
+    attrs: &HashMap<String, String>,
+) -> Result<(), CrdtError> {
+    if end < start {
+        return Err(CrdtError::Undecodable {
+            doc_id: block_id.to_owned(),
+            what: "that range ends before it starts".to_owned(),
+        });
+    }
+    let (_, block) = locate(txn, block_id).ok_or_else(|| missing(block_id))?;
+
+    // The run the range falls in, and where it sits inside that run.
+    let children: Vec<XmlOut> = block.children(txn).collect();
+    let mut base = 0u32;
+    let mut found: Option<(u32, XmlTextRef, u32)> = None;
+    for (index, child) in children.iter().enumerate() {
+        let length = match child {
+            XmlOut::Text(run) => run.len(txn),
+            XmlOut::Element(element) => element_text_len(txn, element),
+            XmlOut::Fragment(_) => 0,
+        };
+        if let XmlOut::Text(run) = child
+            && start >= base
+            && end <= base + length
+        {
+            found = Some((index as u32, run.clone(), base));
+            break;
+        }
+        base += length;
+    }
+
+    let (index, run, base) = found.ok_or_else(|| CrdtError::Undecodable {
+        doc_id: block_id.to_owned(),
+        what: "that range does not fall inside one run of this block's text".to_owned(),
+    })?;
+
+    let local_start = start - base;
+    let local_end = end - base;
+
+    // The tail, with its formatting, before anything is removed.
+    let tail = formatted_tail(txn, &run, local_end);
+
+    // Everything from the insertion point to the end of this run goes; the
+    // tail comes back after the node.
+    let length = run.len(txn);
+    if length > local_start {
+        run.remove_range(txn, local_start, length - local_start);
+    }
+
+    let node = block.insert(txn, index + 1, XmlElementPrelim::empty(kind));
+    // Sorted, so two writes of the same node produce the same document.
+    let mut names: Vec<&String> = attrs.keys().collect();
+    names.sort();
+    for name in names {
+        node.insert_attribute(txn, name.as_str(), attrs[name].as_str());
+    }
+    if !text.is_empty() {
+        node.insert(txn, 0, XmlTextPrelim::new(text));
+    }
+
+    if !tail.is_empty() {
+        let rebuilt = block.insert(txn, index + 2, XmlTextPrelim::new(""));
+        let mut at = 0u32;
+        for (chunk, chunk_attrs) in tail {
+            match chunk_attrs {
+                Some(chunk_attrs) => {
+                    rebuilt.insert_with_attributes(txn, at, &chunk, *chunk_attrs);
+                }
+                None => rebuilt.insert(txn, at, &chunk),
+            }
+            at += chunk.chars().count() as u32;
+        }
+    }
+    Ok(())
+}
+
+/// The text an inline node displays, so an offset walk can step over it.
+fn element_text_len<T: ReadTxn>(txn: &T, element: &XmlElementRef) -> u32 {
+    element
+        .children(txn)
+        .map(|child| match child {
+            XmlOut::Text(run) => run.len(txn),
+            _ => 0,
+        })
+        .sum()
+}
+
+/// One run's content from `from` onward, as formatted chunks.
+fn formatted_tail(
+    txn: &TransactionMut,
+    run: &XmlTextRef,
+    from: u32,
+) -> Vec<(String, Option<Box<yrs::types::Attrs>>)> {
+    let mut out = Vec::new();
+    let mut seen = 0u32;
+    for chunk in run.diff(txn, yrs::types::text::YChange::identity) {
+        let yrs::Out::Any(Any::String(value)) = &chunk.insert else {
+            continue;
+        };
+        let length = value.chars().count() as u32;
+        let chunk_end = seen + length;
+        if chunk_end > from {
+            let skip = from.saturating_sub(seen) as usize;
+            let kept: String = value.chars().skip(skip).collect();
+            if !kept.is_empty() {
+                out.push((kept, chunk.attributes.clone()));
+            }
+        }
+        seen = chunk_end;
+    }
+    out
+}
 
 /// Applies or removes a mark over a range inside one block.
 ///

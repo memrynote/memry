@@ -239,9 +239,9 @@ after sync.
 **Depends on**: Phase F.
 
 - [x] N600 Tappable `#tag` plus the tag screen it needs; `NoteBlockView.swift` marks tags deliberately unlinked today because there is nowhere to go
-- [ ] N601 `dateMention`: the date picker, `remindMe`, and the date suggestions desktop offers
-- [ ] N602 Wiki link menu: note search, heading selection, `displayAs` alias, embed versus link, and creating a note from a broken link
-- [ ] N603 Paste-link menu: url, mention, embedded video, bookmark
+- [x] N601 `dateMention`: the date picker, `remindMe`, and the date suggestions desktop offers
+- [x] N602 Wiki link menu: note search, heading selection, `displayAs` alias, embed versus link, and creating a note from a broken link
+- [x] N603 Paste-link menu: url, mention, embedded video, bookmark
 - [x] N604 Review comments, **read only**: a new core read over the `criticMarkupMarks` root, rendered against the block the byte offsets point at. §12.5.1 forbids writing them, and the reader drops any element failing shape validation, so the shell must not normalise what it reads
 - [x] N605 [P] Tappable `inlineCheckbox` inside a table cell
 

@@ -370,6 +370,13 @@ final class NoteReadViewModel {
 
     /// The row's placeholder, matched exactly. An id identifies content and
     /// reads as noise, so an untitled note says so in words on both screens.
+    /// Every note in this vault, for the wiki-link search (N602).
+    ///
+    /// Read once when the note opens rather than on every keystroke in the
+    /// search field: a vault can hold thousands and the list does not change
+    /// while a menu is open.
+    private(set) var vaultNotes: [NoteSummary] = []
+
     /// The note's folder, or `nil` at the vault root.
     ///
     /// `nil` is the root rather than "unknown": the read has answered by the
@@ -427,5 +434,20 @@ final class NoteReadViewModel {
         phase = .ready(detail)
         await loadBlocks()
         await loadMetadata()
+        await loadVaultNotes()
+    }
+
+    /// The vault's notes, for the wiki-link search (N602).
+    ///
+    /// A failure leaves the list empty rather than failing the screen: not
+    /// being able to search for a link is much smaller than not being able to
+    /// read the note.
+    private func loadVaultNotes() async {
+        do {
+            vaultNotes = try await reader.list()
+        } catch {
+            Log.storage.error("the vault's notes could not be listed for linking")
+            vaultNotes = []
+        }
     }
 }
