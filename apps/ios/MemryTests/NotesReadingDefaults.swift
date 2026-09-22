@@ -22,6 +22,8 @@ extension NotesReading {
     /// No templates and no reminders, for the same reason: both are asserted
     /// in Rust against a real vault, and a fake answering with rows would
     /// claim this vault holds things nobody wrote.
+    func linkedTasks(noteId: String) async throws -> [LinkedTask] { [] }
+
     func templates() async throws -> [TemplateSummary] { [] }
 
     func reminders(noteId: String) async throws -> [ReminderSummary] { [] }

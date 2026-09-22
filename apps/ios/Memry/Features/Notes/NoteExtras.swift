@@ -333,3 +333,81 @@ struct NoteRemindersSection: View {
         }
     }
 }
+
+// MARK: - N807, the tasks linked to this note
+
+/// The tasks a note is linked to.
+@MainActor
+@Observable
+final class LinkedTasksViewModel {
+    private(set) var tasks: [LinkedTask] = []
+
+    private let noteId: String
+    private let reader: any NotesReading
+
+    init(noteId: String, reader: any NotesReading) {
+        self.noteId = noteId
+        self.reader = reader
+    }
+
+    func load() async {
+        do {
+            tasks = try await reader.linkedTasks(noteId: noteId)
+        } catch {
+            // A section that cannot load is smaller than a note that cannot
+            // open, so this stays empty rather than failing the screen.
+            Log.storage.error("this note's linked tasks could not be read")
+            tasks = []
+        }
+    }
+}
+
+struct LinkedTasksSection: View {
+    let model: LinkedTasksViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            Text("Tasks")
+                .font(Tokens.Typography.heading.font)
+                .foregroundStyle(Tokens.Text.primary.color)
+
+            if model.tasks.isEmpty {
+                Text("No task is linked to this note.")
+                    .font(Tokens.Typography.supporting.font)
+                    .foregroundStyle(Tokens.Text.secondary.color)
+            } else {
+                ForEach(model.tasks, id: \.id) { task in
+                    HStack(spacing: Tokens.Space.small) {
+                        Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(Tokens.Text.secondary.color)
+                        VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                            Text(task.title)
+                                .font(Tokens.Typography.body.font)
+                                .foregroundStyle(Tokens.Text.primary.color)
+                                .strikethrough(task.isDone)
+                            // Which relationship this is, because "written
+                            // here" and "mentions this note" are different
+                            // facts about the same list.
+                            Text(subtitle(for: task))
+                                .font(Tokens.Typography.caption.font)
+                                .foregroundStyle(Tokens.Text.secondary.color)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(
+                        "\(task.title), \(task.isDone ? "done" : "not done"), "
+                            + subtitle(for: task)
+                    )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .task { await model.load() }
+    }
+
+    private func subtitle(for task: LinkedTask) -> String {
+        let origin = task.fromThisNote ? "Written in this note" : "Mentions this note"
+        guard let due = task.dueDate else { return origin }
+        return "\(origin) · due \(due)"
+    }
+}

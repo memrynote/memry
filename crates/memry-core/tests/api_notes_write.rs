@@ -554,3 +554,121 @@ fn a_note_with_no_reminders_reads_empty() {
 
     assert!(vault.notes().reminders(note).expect("reminders").is_empty());
 }
+
+// MARK: - Linked tasks (N807)
+
+/// Writes a task row straight into the projection.
+///
+/// The projection is what the read queries, and `NewTask` carries no
+/// `source_note_id`, so seeding the row directly is the honest way to test
+/// the query rather than inventing a create path that does not exist.
+fn seed_task(
+    db: &Db,
+    id: &str,
+    title: &str,
+    source_note_id: Option<&str>,
+    linked: &str,
+    completed_at: Option<&str>,
+    archived_at: Option<&str>,
+) {
+    let id = id.to_owned();
+    let title = title.to_owned();
+    let source = source_note_id.map(str::to_owned);
+    let linked = linked.to_owned();
+    let completed = completed_at.map(str::to_owned);
+    let archived = archived_at.map(str::to_owned);
+    db.call_blocking(move |conn: &mut rusqlite::Connection| {
+        conn.execute(
+            "INSERT INTO tasks (
+                 id, title, project_id, priority, position,
+                 source_note_id, linked_note_ids, completed_at, archived_at
+             ) VALUES (?1, ?2, 'project-1', 0, 0, ?3, ?4, ?5, ?6)",
+            rusqlite::params![id, title, source, linked, completed, archived],
+        )
+        .expect("the task row");
+        Ok(())
+    })
+    .expect("the seed");
+}
+
+/// **Two different relationships, told apart.**
+///
+/// A task carries `source_note_id` for the note it was written in and
+/// `linked_note_ids` for every note it references. Collapsing the two would
+/// make "this note made this task" and "this task mentions this note" look
+/// the same.
+#[test]
+fn a_notes_linked_tasks_say_which_ones_came_from_it() {
+    let (dir, vault) = vault("linked-tasks");
+    let db = behind(&dir);
+
+    seed_task(&db, "t1", "Written here", Some("note-1"), "[]", None, None);
+    seed_task(&db, "t2", "Mentions it", None, "[\"note-1\"]", None, None);
+    seed_task(&db, "t3", "Unrelated", None, "[\"note-2\"]", None, None);
+
+    let found = vault
+        .notes()
+        .linked_tasks("note-1".to_string())
+        .expect("linked tasks");
+
+    let ids: Vec<&str> = found.iter().map(|task| task.id.as_str()).collect();
+    assert_eq!(ids.len(), 2, "{found:?}");
+    assert!(ids.contains(&"t1") && ids.contains(&"t2"));
+
+    let origin = found.iter().find(|task| task.id == "t1").expect("t1");
+    assert!(origin.from_this_note, "t1 was written in this note");
+    let mention = found.iter().find(|task| task.id == "t2").expect("t2");
+    assert!(!mention.from_this_note, "t2 only references it");
+}
+
+/// **A completed task stays, an archived one goes.**
+///
+/// An archive is not a to-do list, but a section that hid completed work
+/// would look like the work was never there.
+#[test]
+fn completed_tasks_stay_and_archived_ones_do_not() {
+    let (dir, vault) = vault("linked-tasks-state");
+    let db = behind(&dir);
+
+    seed_task(
+        &db,
+        "done",
+        "Done",
+        Some("note-1"),
+        "[]",
+        Some("2026-09-22"),
+        None,
+    );
+    seed_task(
+        &db,
+        "filed",
+        "Archived",
+        Some("note-1"),
+        "[]",
+        None,
+        Some("2026-09-22"),
+    );
+
+    let found = vault
+        .notes()
+        .linked_tasks("note-1".to_string())
+        .expect("linked tasks");
+
+    let ids: Vec<&str> = found.iter().map(|task| task.id.as_str()).collect();
+    assert_eq!(ids, ["done"], "{found:?}");
+    assert!(found[0].is_done);
+}
+
+/// A note nothing points at has no tasks, which is an answer rather than an
+/// error.
+#[test]
+fn a_note_with_no_linked_tasks_reads_empty() {
+    let (_dir, vault) = vault("linked-tasks-none");
+    assert!(
+        vault
+            .notes()
+            .linked_tasks("note-1".to_string())
+            .expect("linked tasks")
+            .is_empty()
+    );
+}

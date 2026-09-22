@@ -88,6 +88,9 @@ struct NoteReadView: View {
                 noteId: route.id, reader: reader, writer: writer
             )
         )
+        _linkedTasks = State(
+            initialValue: LinkedTasksViewModel(noteId: route.id, reader: reader)
+        )
         _model = State(initialValue: NoteReadViewModel(route: route, reader: reader, filler: filler))
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: route.id, filler: filler)
@@ -119,6 +122,9 @@ struct NoteReadView: View {
             initialValue: NoteRemindersViewModel(
                 noteId: model.route.id, reader: model.reader, writer: writer
             )
+        )
+        _linkedTasks = State(
+            initialValue: LinkedTasksViewModel(noteId: model.route.id, reader: model.reader)
         )
         _model = State(initialValue: model)
         _composer = State(
@@ -167,6 +173,9 @@ struct NoteReadView: View {
 
     /// What is set to remind the reader about this note (N804).
     @State private var reminders: NoteRemindersViewModel
+
+    /// The tasks linked to this note (N807).
+    @State private var linkedTasks: LinkedTasksViewModel
 
     /// The page menu's sheets and alert (N808).
     @State private var renaming = false
@@ -367,6 +376,7 @@ struct NoteReadView: View {
                     // N804, under the backlinks: both are about the note
                     // rather than in it.
                     NoteRemindersSection(model: reminders)
+                    LinkedTasksSection(model: linkedTasks)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

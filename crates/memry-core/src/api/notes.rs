@@ -14,7 +14,8 @@ use crate::crdt::errors::CrdtError;
 use crate::domain::attachments::{self, BlockAttachment, CachedAttachment};
 use crate::domain::note_meta::{self, NoteMetadata};
 use crate::domain::reads::{
-    self, FolderSummary, NoteDetail, NoteSummary, ReminderSummary, TagSummary, TemplateSummary,
+    self, FolderSummary, LinkedTask, NoteDetail, NoteSummary, ReminderSummary, TagSummary,
+    TemplateSummary,
 };
 use crate::storage::Db;
 
@@ -47,6 +48,17 @@ impl Notes {
     /// why one cannot be given an honest signature.
     pub fn list(&self) -> Result<Vec<NoteSummary>, StorageError> {
         self.db.call_blocking(|conn| reads::notes(conn))
+    }
+
+    /// The tasks linked to one note (N807).
+    ///
+    /// Both relationships in one list: a task carries `source_note_id` for the
+    /// note it was written in and `linked_note_ids` for the ones it
+    /// references. `from_this_note` tells them apart, because "this note made
+    /// this task" and "this task mentions this note" are different facts.
+    pub fn linked_tasks(&self, note_id: String) -> Result<Vec<LinkedTask>, StorageError> {
+        self.db
+            .call_blocking(move |conn| reads::tasks_for_note(conn, &note_id))
     }
 
     /// Every template a note can be made from (N803).

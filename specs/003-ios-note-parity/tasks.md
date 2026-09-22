@@ -270,7 +270,7 @@ after sync.
 - [x] N804 Reminders
 - [x] N805 Attachments list for a note
 - [x] N806 Folder CRUD — missing entirely: `crates/memry-core/src/api/notes_write.rs` offers `create`, `rename`, `move_to_folder`, `delete` and `edit_block` for notes, and nothing creates, renames or deletes a folder
-- [ ] N807 [P] Linked tasks section — blocked on the Tasks feature, which has no code
+- [x] N807 [P] Linked tasks section. **The "blocked on the Tasks feature, which has no code" note was stale**: `domain/tasks.rs` carries full CRUD and the `tasks` projection already has `source_note_id` and `linked_note_ids`
 - [x] N808 [P] Note page overflow menu: rename, move to folder, copy path, delete. **`bookmark` and `local-only` are deliberately absent**: `bookmark` is one of the twelve record types §5.3.1 says a conforming client omits from its subscription and never sees, and `localOnly` is a desktop cache column with no key in `NoteSyncPayloadSchema`. See `research.md`
 
 ---

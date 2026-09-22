@@ -3395,6 +3395,16 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func folders() throws  -> [FolderSummary]
     
     /**
+     * The tasks linked to one note (N807).
+     *
+     * Both relationships in one list: a task carries `source_note_id` for the
+     * note it was written in and `linked_note_ids` for the ones it
+     * references. `from_this_note` tells them apart, because "this note made
+     * this task" and "this task mentions this note" are different facts.
+     */
+    func linkedTasks(noteId: String) throws  -> [LinkedTask]
+    
+    /**
      * Every live note, newest first. No folder filter — [`reads::notes`] says
      * why one cannot be given an honest signature.
      */
@@ -3644,6 +3654,24 @@ open func folders()throws  -> [FolderSummary]  {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_folders(
             self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The tasks linked to one note (N807).
+     *
+     * Both relationships in one list: a task carries `source_note_id` for the
+     * note it was written in and `linked_note_ids` for the ones it
+     * references. `from_this_note` tells them apart, because "this note made
+     * this task" and "this task mentions this note" are different facts.
+     */
+open func linkedTasks(noteId: String)throws  -> [LinkedTask]  {
+    return try  FfiConverterSequenceTypeLinkedTask.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_linked_tasks(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),uniffiCallStatus
     )
 })
 }
@@ -9447,6 +9475,97 @@ public func FfiConverterTypeKeyMaterial_lift(_ buf: RustBuffer) throws -> KeyMat
 #endif
 public func FfiConverterTypeKeyMaterial_lower(_ value: KeyMaterial) -> RustBuffer {
     return FfiConverterTypeKeyMaterial.lower(value)
+}
+
+
+/**
+ * One task linked to a note (N807).
+ */
+public struct LinkedTask: Equatable, Hashable {
+    public var id: String
+    public var title: String
+    /**
+     * `true` once the task carries a `completed_at`.
+     */
+    public var isDone: Bool
+    /**
+     * The task's due date, as the payload spells it. `None` for a task with
+     * no date, which is not the same as one due today.
+     */
+    public var dueDate: String?
+    /**
+     * `true` when this note is the task's **origin** — the note it was
+     * written in — rather than one it merely references.
+     */
+    public var fromThisNote: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String, 
+        /**
+         * `true` once the task carries a `completed_at`.
+         */isDone: Bool, 
+        /**
+         * The task's due date, as the payload spells it. `None` for a task with
+         * no date, which is not the same as one due today.
+         */dueDate: String?, 
+        /**
+         * `true` when this note is the task's **origin** — the note it was
+         * written in — rather than one it merely references.
+         */fromThisNote: Bool) {
+        self.id = id
+        self.title = title
+        self.isDone = isDone
+        self.dueDate = dueDate
+        self.fromThisNote = fromThisNote
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension LinkedTask: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLinkedTask: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LinkedTask {
+        return
+            try LinkedTask(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                isDone: FfiConverterBool.read(from: &buf), 
+                dueDate: FfiConverterOptionString.read(from: &buf), 
+                fromThisNote: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LinkedTask, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterBool.write(value.isDone, into: &buf)
+        FfiConverterOptionString.write(value.dueDate, into: &buf)
+        FfiConverterBool.write(value.fromThisNote, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkedTask_lift(_ buf: RustBuffer) throws -> LinkedTask {
+    return try FfiConverterTypeLinkedTask.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkedTask_lower(_ value: LinkedTask) -> RustBuffer {
+    return FfiConverterTypeLinkedTask.lower(value)
 }
 
 
@@ -16031,6 +16150,31 @@ fileprivate struct FfiConverterSequenceTypeInlineRun: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeLinkedTask: FfiConverterRustBuffer {
+    typealias SwiftType = [LinkedTask]
+
+    public static func write(_ value: [LinkedTask], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLinkedTask.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LinkedTask] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LinkedTask]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLinkedTask.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeNoteProperty: FfiConverterRustBuffer {
     typealias SwiftType = [NoteProperty]
 
@@ -16818,6 +16962,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_linked_tasks() != 59020) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_list() != 25457) {

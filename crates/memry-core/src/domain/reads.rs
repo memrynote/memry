@@ -295,6 +295,61 @@ pub fn reminders_for(
     rows.collect::<Result<Vec<_>, _>>().map_err(failed)
 }
 
+/// One task linked to a note (N807).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct LinkedTask {
+    pub id: String,
+    pub title: String,
+    /// `true` once the task carries a `completed_at`.
+    pub is_done: bool,
+    /// The task's due date, as the payload spells it. `None` for a task with
+    /// no date, which is not the same as one due today.
+    pub due_date: Option<String>,
+    /// `true` when this note is the task's **origin** — the note it was
+    /// written in — rather than one it merely references.
+    pub from_this_note: bool,
+}
+
+/// The tasks a note is linked to (N807).
+///
+/// **Two different relationships, reported as one list with a flag.** A task
+/// carries `source_note_id` for the note it was created in and
+/// `linked_note_ids` for every note it references; desktop shows both, and
+/// collapsing the distinction would make "this note made this task" and "this
+/// task mentions this note" look the same.
+///
+/// Archived tasks are left out — an archive is not a to-do list — but
+/// completed ones are kept, because a section that hid them would look like
+/// the work was never there.
+pub fn tasks_for_note(conn: &Connection, note_id: &str) -> Result<Vec<LinkedTask>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT id, title, completed_at, due_date, source_note_id FROM tasks \
+             WHERE deleted_at IS NULL AND archived_at IS NULL AND ( \
+               source_note_id = ?1 \
+               OR EXISTS ( \
+                 SELECT 1 FROM json_each(COALESCE(linked_note_ids, '[]')) \
+                 WHERE json_each.value = ?1 \
+               ) \
+             ) \
+             ORDER BY COALESCE(due_date, '9999'), position, id",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map([note_id], |row| {
+            let source: Option<String> = row.get(4)?;
+            Ok(LinkedTask {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                is_done: row.get::<_, Option<String>>(2)?.is_some(),
+                due_date: row.get(3)?,
+                from_this_note: source.as_deref() == Some(note_id),
+            })
+        })
+        .map_err(failed)?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(failed)
+}
+
 fn read_summary(row: &Row<'_>) -> Result<NoteSummary, rusqlite::Error> {
     Ok(NoteSummary {
         id: row.get(0)?,
