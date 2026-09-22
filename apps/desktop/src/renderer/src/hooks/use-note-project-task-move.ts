@@ -127,7 +127,14 @@ export function useNoteProjectTaskMove(
           if (!Array.isArray(subtasks)) continue
           for (const subtask of subtasks) {
             if (subtask.projectId === prompt.projectId) continue
-            await tasksService.update({ id: subtask.id, projectId: prompt.projectId })
+            const moved = await tasksService.update({
+              id: subtask.id,
+              projectId: prompt.projectId
+            })
+            // Reported, not swallowed: a child that stayed behind is exactly
+            // the split this loop exists to prevent, so it must not end in a
+            // success toast.
+            if (!moved.success) throw new Error(moved.error ?? 'Task move failed')
           }
         }
         toast.success(

@@ -26,6 +26,7 @@ vi.mock('@/hooks/use-projects-list', () => ({
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+import { toast } from 'sonner'
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
@@ -142,6 +143,30 @@ describe('useNoteProjectTaskMove', () => {
       { id: 't2', projectId: 'work' },
       { id: 't3', projectId: 'work' }
     ])
+  })
+
+  it('reports a subtask that could not follow its parent instead of claiming success', async () => {
+    mocks.getLinkedTasks.mockResolvedValue([task('t1', 'inbox')])
+    mocks.getSubtasks.mockResolvedValue([task('t2', 'inbox', 't1')])
+    mocks.update.mockImplementation(({ id }: { id: string }) =>
+      Promise.resolve(id === 't2' ? { success: false, error: 'Task not found' } : { success: true })
+    )
+
+    const { result } = renderHook(() => useNoteProjectTaskMove('note-1', NOTE_BODY))
+
+    act(() => {
+      result.current.handleProjectPropertyChange([], ['Work'])
+    })
+    await waitFor(() => expect(result.current.prompt).not.toBeNull())
+
+    act(() => {
+      result.current.confirmMove()
+    })
+
+    // A child left behind is the parent/child split the subtask loop exists
+    // to prevent, so it must not end in a success toast.
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    expect(toast.success).not.toHaveBeenCalled()
   })
 
   it('leaves every task alone when the move is declined', async () => {

@@ -7,7 +7,7 @@ import {
   type ReactElement,
   type ReactNode
 } from 'react'
-import { tasksService, type Task } from '@/services/tasks-service'
+import { tasksService, onProjectUpdated, type Task } from '@/services/tasks-service'
 import { useTasksOptional } from '@/contexts/tasks'
 import {
   loadNoteTaskProjectContext,
@@ -113,12 +113,21 @@ export function TaskPrefetchProvider({
     if (!noteId) return
 
     let cancelled = false
-    void loadNoteTaskProjectContext(noteId).then((context) => {
-      if (!cancelled) setProjectContext(context)
-    })
+    const load = (): void => {
+      void loadNoteTaskProjectContext(noteId).then((context) => {
+        if (!cancelled) setProjectContext(context)
+      })
+    }
+    load()
+
+    // The `project` property is stored as project links, so editing it lands
+    // here as a project update. Without this subscription a draft row keeps
+    // showing the project the note had when it was opened.
+    const unsubscribe = onProjectUpdated(load)
 
     return () => {
       cancelled = true
+      unsubscribe()
     }
   }, [noteId])
 

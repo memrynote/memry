@@ -231,7 +231,10 @@ vi.mock('./insert-template', () => ({
 }))
 
 vi.mock('@/services/tasks-service', () => ({
-  tasksService: contentAreaMocks.tasksService
+  tasksService: contentAreaMocks.tasksService,
+  // The task prefetch provider re-reads the note's project links whenever a
+  // project changes, so the editor mounts a subscription here.
+  onProjectUpdated: () => vi.fn()
 }))
 
 vi.mock('@/sync/use-yjs-collaboration', () => ({

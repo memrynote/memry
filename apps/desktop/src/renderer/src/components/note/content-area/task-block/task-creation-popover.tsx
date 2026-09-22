@@ -39,12 +39,19 @@ export const TaskCreationPopover: FC<TaskCreationPopoverProps> = ({
     () => tasksCtx?.projects?.filter((p) => !p.isArchived) ?? [],
     [tasksCtx?.projects]
   )
-  // The note's own project decides the pre-selected one (#2271); until that
-  // read resolves the form stays unmounted rather than showing the inbox and
-  // then swapping under the user.
-  // null until the read settles, so the form mounts once with the right
-  // project instead of showing the inbox and swapping under the user.
+  // The note's own project decides the pre-selected one (#2271). Null until
+  // that read settles, so the form mounts once with the right project instead
+  // of showing the inbox and swapping under the user. Cleared on close too:
+  // otherwise the next open mounts the form against the previous note's
+  // answer and then remounts on the new one, throwing away a priority or due
+  // date the user had already picked.
   const [defaultProjectId, setDefaultProjectId] = useState<string | null>(null)
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen)
+    if (!isOpen) setDefaultProjectId(null)
+  }
+
   useEffect(() => {
     if (!isOpen) return
     let cancelled = false
