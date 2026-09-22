@@ -26,6 +26,19 @@ Progress lines, preview warnings and import errors are shown in your selected la
 | Todoist       | Project CSV `.csv`              | Tasks                 | See [Import from Todoist](./tasks/import-todoist.md)   |
 | TickTick      | Backup CSV `.csv`               | Tasks                 | See [Import from TickTick](./tasks/import-ticktick.md) |
 
+## Checklists Become Tasks
+
+A note you import that contains checkboxes brings its checklist across as **real tasks**, not just text. `- [ ] Pack bags` becomes an open task and `- [x] Book hotel` becomes a completed one, each linked back to the note it came from. Previously these stayed plain text until you opened the note and edited it, one checkbox at a time.
+
+- **A checkbox indented directly under another checkbox becomes its subtask.** Only one level deep; anything nested further becomes its own task.
+- **Where they land:** your default project from **Settings → Tasks**, or your **Inbox** if you have not set one. The lines keep their place and indentation in the note.
+- **What is left alone:** checkboxes inside code blocks, lines that are already Memry tasks, and [Obsidian Tasks](./tasks/import-obsidian.md) lines carrying a block link, an `🆔` id or a `⛔` dependency. Obsidian Tasks due dates, priorities and recurrence are read onto the task.
+- **Only new imports.** Notes you imported before this existed keep their plain checkboxes; open one and edit a checkbox to convert it.
+
+NotePlan is the exception: its `+` checklist lines stay plain checkboxes on purpose — see [NotePlan](#importing-from-noteplan).
+
+If a task cannot be created, that one line simply stays a checkbox and the rest of the import continues.
+
 ## Dropping Files onto the Sidebar
 
 For a handful of files, skip **Settings → Import** entirely: drag them from Finder or Explorer straight onto the sidebar. They are **copied** into your vault, so the originals can be moved or deleted afterwards without breaking anything.
