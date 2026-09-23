@@ -60,12 +60,12 @@ one-class change reviewable.
 | `payload-schemas.json`                  |                                 52 | `../scripts/vectors/payload-schemas.ts`     | `../src/__tests__/payload-schemas.test.ts`                            |
 | `device-linking.json`                   |                                  8 | `../scripts/vectors/device-linking.ts`      | `../src/__tests__/device-linking.test.ts` + the desktop parity suite  |
 | `text-extract.json`                     |                                 12 | `../scripts/vectors/text-extract.ts`        | `../src/__tests__/text-extract.test.ts`                               |
-| `note-blocks.json`                      |                                 30 | `../scripts/vectors/note-blocks.ts`         | `../src/__tests__/note-blocks.test.ts` + the Rust and iOS harnesses   |
-| `block-edit.json`                       |                                 10 | `../scripts/vectors/block-edit.ts`          | `../src/__tests__/block-edit.test.ts` + the Rust writer harness       |
+| `note-blocks.json`                      |                                 32 | `../scripts/vectors/note-blocks.ts`         | `../src/__tests__/note-blocks.test.ts` + the Rust and iOS harnesses   |
+| `block-edit.json`                       |                                 12 | `../scripts/vectors/block-edit.ts`          | `../src/__tests__/block-edit.test.ts` + the Rust writer harness       |
 | `attachment-manifest.json`              |                                  4 | `../scripts/vectors/attachment-manifest.ts` | `../src/__tests__/attachment-manifest.test.ts` + the Rust harness     |
-| `markdown-roundtrip/cases.json`         |                                 90 | `../scripts/vectors/markdown-roundtrip.ts`  | `../src/__tests__/markdown-roundtrip.test.ts`                         |
+| `markdown-roundtrip/cases.json`         |                                 96 | `../scripts/vectors/markdown-roundtrip.ts`  | `../src/__tests__/markdown-roundtrip.test.ts`                         |
 | `markdown-roundtrip/fuzz-families.json` |                         5 families | same                                        | same                                                                  |
-| **Total**                               | **324 cases plus 5 fuzz families** |                                             |                                                                       |
+| **Total**                               | **334 cases plus 5 fuzz families** |                                             |                                                                       |
 
 `crypto-vectors.json` is **frozen**: it is byte-for-byte as committed and no
 change in this feature touches it. Three suites consume it and none of them

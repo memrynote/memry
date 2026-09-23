@@ -10,12 +10,12 @@
     "fragmentName": "prosemirror",
     "authoredBy": "@blocknote/server-util blocksToYXmlFragment, the path desktop main calls",
     "registry": {
-      "blocks": 18,
+      "blocks": 20,
       "inline": 8,
       "styles": 7
     },
     "notClaimed": "this is not markdown and not a rendering; it is the block list a shell draws from",
-    "caseCount": 30
+    "caseCount": 32
   },
   "cases": [
     {
@@ -1059,6 +1059,48 @@
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"youtubeembed-0\"\n2 element youtubeEmbed title=\"\" videoId=\"\" videoUrl=\"https://www.youtube.com/watch?v=dQw4w9WgXcQ\""
     },
     {
+      "name": "diagram",
+      "pins": "a Mermaid diagram is plain-content source text, newlines and all; the rendering is never in the document",
+      "updateHex": "0106f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103076469616772616d0700f2da95eb0602060400f2da95eb06032067726170682054440a2020415b53746172745d202d2d3e20427b536869703f7d2800f2da95eb06010269640177096469616772616d2d3000",
+      "expectedBlocks": [
+        {
+          "id": "diagram-0",
+          "kind": "diagram",
+          "depth": 0,
+          "props": [],
+          "inline": [
+            {
+              "text": "graph TD\n  A[Start] --> B{Ship?}",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"diagram-0\"\n2 element diagram\n3 text \"graph TD\\n  A[Start] --> B{Ship?}\""
+    },
+    {
+      "name": "mathBlock",
+      "pins": "a math block is `content: none` — the LaTeX is the `latex` PROP, so a reader that only walks inline content shows an empty row",
+      "updateHex": "0105f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103096d617468426c6f636b2800f2da95eb0602056c617465780177205c696e745f305e3120785e32205c2c206478203d205c667261637b317d7b337d2800f2da95eb060102696401770b6d617468626c6f636b2d3000",
+      "expectedBlocks": [
+        {
+          "id": "mathblock-0",
+          "kind": "mathBlock",
+          "depth": 0,
+          "props": [
+            {
+              "name": "latex",
+              "value": "\\int_0^1 x^2 \\, dx = \\frac{1}{3}"
+            }
+          ],
+          "inline": []
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"mathblock-0\"\n2 element mathBlock latex=\"\\\\int_0^1 x^2 \\\\, dx = \\\\frac{1}{3}\""
+    },
+    {
       "name": "table",
       "pins": "THE SECOND REGRESSION: a mixed header/cell table with a set colwidth and a coloured cell, which a flat block list cannot express",
       "updateHex": "012df2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103057461626c650700f2da95eb060203087461626c65526f770700f2da95eb0603030b7461626c654865616465720700f2da95eb0604030e7461626c655061726167726170680700f2da95eb0605060400f2da95eb0606044e616d652800f2da95eb06040974657874436f6c6f7201770764656661756c742800f2da95eb06040f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06040d74657874416c69676e6d656e740177046c6566742800f2da95eb060407636f6c7370616e017d012800f2da95eb060407726f777370616e017d012800f2da95eb060408636f6c77696474680175017db40287f2da95eb0604030b7461626c654865616465720700f2da95eb0611030e7461626c655061726167726170680700f2da95eb0612060400f2da95eb06130556616c75652800f2da95eb06110974657874436f6c6f7201770764656661756c742800f2da95eb06110f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06110d74657874416c69676e6d656e740177046c6566742800f2da95eb061107636f6c7370616e017d012800f2da95eb061107726f777370616e017d0187f2da95eb060303087461626c65526f770700f2da95eb061e03097461626c6543656c6c0700f2da95eb061f030e7461626c655061726167726170680700f2da95eb0620060400f2da95eb062105616c7068612800f2da95eb061f0974657874436f6c6f7201770764656661756c742800f2da95eb061f0f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb061f0d74657874416c69676e6d656e740177046c6566742800f2da95eb061f07636f6c7370616e017d012800f2da95eb061f07726f777370616e017d012800f2da95eb061f08636f6c77696474680175017db40287f2da95eb061f03097461626c6543656c6c0700f2da95eb062d030e7461626c655061726167726170680700f2da95eb062e060400f2da95eb062f01312800f2da95eb062d0974657874436f6c6f7201770764656661756c742800f2da95eb062d0f6261636b67726f756e64436f6c6f7201770679656c6c6f772800f2da95eb062d0d74657874416c69676e6d656e7401770663656e7465722800f2da95eb062d07636f6c7370616e017d012800f2da95eb062d07726f777370616e017d012800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06010269640177077461626c652d3000",
@@ -1271,7 +1313,7 @@
     {
       "name": "inline: link",
       "pins": "a link carries its href as an attribute, not as text",
-      "updateHex": "010cf2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb0603047365652086f2da95eb0607046c696e6b717b2268726566223a2268747470733a2f2f6578616d706c652e636f6d2f61222c22746172676574223a225f626c616e6b222c2272656c223a226e6f6f70656e6572206e6f7265666572726572206e6f666f6c6c6f77222c22636c617373223a6e756c6c2c227469746c65223a6e756c6c7d84f2da95eb06080874686520646f637386f2da95eb0610046c696e6b046e756c6c2800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb060102696401770d696e6c696e652d6c696e6b2d3000",
+      "updateHex": "010cf2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb0603047365652086f2da95eb0607046c696e6b207b2268726566223a2268747470733a2f2f6578616d706c652e636f6d2f61227d84f2da95eb06080874686520646f637386f2da95eb0610046c696e6b046e756c6c2800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb060102696401770d696e6c696e652d6c696e6b2d3000",
       "expectedBlocks": [
         {
           "id": "inline-link-0",
@@ -1304,16 +1346,14 @@
                 "link"
               ],
               "markAttrs": {
-                "link.href": "https://example.com/a",
-                "link.target": "_blank",
-                "link.rel": "noopener noreferrer nofollow"
+                "link.href": "https://example.com/a"
               },
               "target": "https://example.com/a"
             }
           ]
         }
       ],
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-link-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"see \"\n3 text \"the docs\" link={\"class\":null,\"href\":\"https://example.com/a\",\"rel\":\"noopener noreferrer nofollow\",\"target\":\"_blank\",\"title\":null}"
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-link-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"see \"\n3 text \"the docs\" link={\"href\":\"https://example.com/a\"}"
     },
     {
       "name": "inline: wikiLink",

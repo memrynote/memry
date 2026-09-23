@@ -874,6 +874,16 @@ export const NOTE_BLOCK_CASES: readonly NoteBlockCase[] = [
     ]
   },
   {
+    name: 'diagram',
+    pins: 'a Mermaid diagram is plain-content source text, newlines and all; the rendering is never in the document',
+    blocks: [{ type: 'diagram', content: 'graph TD\n  A[Start] --> B{Ship?}' }]
+  },
+  {
+    name: 'mathBlock',
+    pins: 'a math block is `content: none` — the LaTeX is the `latex` PROP, so a reader that only walks inline content shows an empty row',
+    blocks: [{ type: 'mathBlock', props: { latex: '\\int_0^1 x^2 \\, dx = \\frac{1}{3}' } }]
+  },
+  {
     name: 'table',
     pins: 'THE SECOND REGRESSION: a mixed header/cell table with a set colwidth and a coloured cell, which a flat block list cannot express',
     blocks: [
