@@ -90,6 +90,16 @@ interface CalendarShellProps {
   googleConnectAction?: React.ReactNode
 }
 
+// One key per rendered period: prev/next remounts the grid. Week is keyed on
+// view only — its infinite scroller handles anchor changes itself.
+const PERIOD_KEY: Record<CalendarWorkspaceView, (anchorDate: string) => string> = {
+  day: (anchorDate) => `day:${anchorDate}`,
+  week: () => 'week',
+  month: (anchorDate) => `month:${anchorDate.slice(0, 7)}`,
+  year: (anchorDate) => `year:${anchorDate.slice(0, 4)}`,
+  timeline: (anchorDate) => `timeline:${anchorDate.slice(0, 7)}`
+}
+
 export function CalendarShell({
   view,
   anchorDate,
@@ -151,16 +161,7 @@ export function CalendarShell({
     setIsScrolled(target.scrollTop > 0)
   }, [])
 
-  // One key per rendered period: prev/next remounts the grid. Week is keyed on
-  // view only — its infinite scroller handles anchor changes itself.
-  const viewKey =
-    view === 'week'
-      ? 'week'
-      : view === 'day'
-        ? `day:${anchorDate}`
-        : view === 'month' || view === 'timeline'
-          ? `${view}:${anchorDate.slice(0, 7)}`
-          : `year:${anchorDate.slice(0, 4)}`
+  const viewKey = PERIOD_KEY[view](anchorDate)
   const renderedKeyRef = useRef(viewKey)
   if (renderedKeyRef.current !== viewKey) {
     // New period/view mounts unscrolled — drop the chrome edge with it
@@ -299,6 +300,45 @@ export function CalendarShell({
     </Popover>
   )
 
+  const toolbarActions =
+    view === 'timeline' ? null : (
+      <>
+        {googleConnectAction}
+        {refreshButton}
+        {filterPopover}
+      </>
+    )
+
+  const renderView: Record<CalendarWorkspaceView, () => React.JSX.Element> = {
+    day: () => (
+      <CalendarDayView {...chipViewProps} onMoveEvent={onMoveEvent} onQuickSave={onQuickSave} />
+    ),
+    week: () => (
+      <CalendarWeekView
+        {...chipViewProps}
+        onMoveEvent={onMoveEvent}
+        todayRequestKey={todayRequestKey}
+        onQuickSave={onQuickSave}
+        onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}
+      />
+    ),
+    month: () => <CalendarMonthView {...chipViewProps} onQuickSave={onQuickSave} />,
+    year: () => (
+      <CalendarYearView
+        {...viewProps}
+        onViewChange={onViewChange}
+        onAnchorChange={onAnchorChange}
+      />
+    ),
+    timeline: () => (
+      <CalendarTimelineView
+        anchorDate={anchorDate}
+        selectedTaskId={selectedItemId}
+        onSelectTask={onSelectTask}
+      />
+    )
+  }
+
   return (
     <div
       className="@container relative flex h-full min-h-0 flex-col bg-background"
@@ -319,15 +359,7 @@ export function CalendarShell({
           onToday={onToday}
           onCreateEvent={onCreateEvent}
           onSearchJump={onSearchJump}
-          extraActions={
-            view === 'timeline' ? null : (
-              <>
-                {googleConnectAction}
-                {refreshButton}
-                {filterPopover}
-              </>
-            )
-          }
+          extraActions={toolbarActions}
         />
       </div>
 
@@ -339,35 +371,7 @@ export function CalendarShell({
           </div>
         ) : (
           <div key={viewKey} className="h-full">
-            {view === 'day' ? (
-              <CalendarDayView
-                {...chipViewProps}
-                onMoveEvent={onMoveEvent}
-                onQuickSave={onQuickSave}
-              />
-            ) : view === 'week' ? (
-              <CalendarWeekView
-                {...chipViewProps}
-                onMoveEvent={onMoveEvent}
-                todayRequestKey={todayRequestKey}
-                onQuickSave={onQuickSave}
-                onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}
-              />
-            ) : view === 'month' ? (
-              <CalendarMonthView {...chipViewProps} onQuickSave={onQuickSave} />
-            ) : view === 'timeline' ? (
-              <CalendarTimelineView
-                anchorDate={anchorDate}
-                selectedTaskId={selectedItemId}
-                onSelectTask={onSelectTask}
-              />
-            ) : (
-              <CalendarYearView
-                {...viewProps}
-                onViewChange={onViewChange}
-                onAnchorChange={onAnchorChange}
-              />
-            )}
+            {renderView[view]()}
           </div>
         )}
       </div>
