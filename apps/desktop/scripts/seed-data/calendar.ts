@@ -167,10 +167,56 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
     description: 'Speaking on day 2 — see [[Conference Talk]].',
     location: 'Berlin, Germany',
     isAllDay: true,
-    startAt: allDayStart(130),
-    endAt: allDayEnd(132),
+    startAt: allDayStart(46),
+    endAt: allDayEnd(48),
     timezone: 'Europe/Berlin',
     colorId: 'ec4899'
+  },
+
+  // ========================================================================
+  // Multi-day blocks the timeline draws as bars (all-day)
+  // ========================================================================
+  {
+    id: generateId(),
+    title: 'Tokyo trip',
+    description: 'See [[Tokyo Trip]].',
+    location: 'Tokyo, Japan',
+    isAllDay: true,
+    startAt: allDayStart(-26),
+    endAt: allDayEnd(-19),
+    timezone: 'Asia/Tokyo',
+    colorId: 'ec4899'
+  },
+  {
+    id: generateId(),
+    title: 'Istanbul weekend',
+    description: 'See [[Istanbul]].',
+    location: 'Istanbul, Turkey',
+    isAllDay: true,
+    startAt: allDayStart(3),
+    endAt: allDayEnd(5),
+    timezone: 'Europe/Istanbul',
+    colorId: '0ea5e9'
+  },
+  {
+    id: generateId(),
+    title: 'Launch week',
+    description: 'Public launch on day one. See [[memrynote Launch]].',
+    isAllDay: true,
+    startAt: allDayStart(24),
+    endAt: allDayEnd(28),
+    timezone: 'America/Los_Angeles',
+    colorId: '6366f1'
+  },
+  {
+    id: generateId(),
+    title: 'Team offsite',
+    location: 'Half Moon Bay',
+    isAllDay: true,
+    startAt: allDayStart(33),
+    endAt: allDayEnd(34),
+    timezone: 'America/Los_Angeles',
+    colorId: '8b5cf6'
   },
 
   // ========================================================================
@@ -202,8 +248,8 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
     title: 'Iceland — Ring Road',
     description: 'See [[Iceland Ring Road]].',
     isAllDay: true,
-    startAt: allDayStart(96),
-    endAt: allDayEnd(105),
+    startAt: allDayStart(66),
+    endAt: allDayEnd(75),
     timezone: 'Atlantic/Reykjavik',
     visibility: 'private',
     colorId: 'ec4899'
@@ -368,8 +414,8 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
     title: 'Tokyo flight',
     description: 'See [[Tokyo Trip]].',
     isAllDay: false,
-    startAt: isoDateAt(-26, 16),
-    endAt: isoDateAt(-26, 23, 30),
+    startAt: isoDateAt(-27, 16),
+    endAt: isoDateAt(-27, 23, 30),
     timezone: 'America/Los_Angeles',
     colorId: 'ec4899'
   },

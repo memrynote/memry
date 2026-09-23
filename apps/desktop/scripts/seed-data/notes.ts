@@ -99,7 +99,9 @@ export const NOTE_IDS = {
   lifePeopleILearnFrom: generateNoteId(),
   weightSleepLog: generateNoteId(),
   bookShoeDog: generateNoteId(),
-  movieTheBear: generateNoteId()
+  movieTheBear: generateNoteId(),
+  // Kitchen-sink note (./ios-parity): every block, inline node and style
+  iosParityTest: generateNoteId()
 } as const
 
 export const FOLDER_CONFIGS: Array<{ path: string; icon: string }> = [

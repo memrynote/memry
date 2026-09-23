@@ -54,6 +54,11 @@ import { HOME_BOOKMARKS, HOME_PAGES } from './seed-data/home'
 import { CANVASES } from './seed-data/canvas'
 import { buildPropertiesFileData, PROPERTY_DEFINITION_ROWS } from './seed-data/properties'
 import { TAG_CATEGORIES, TAG_PALETTE } from './seed-data/tags'
+import {
+  IOS_PARITY_METADATA,
+  IOS_PARITY_NOTE,
+  writeIosParityAttachments
+} from './seed-data/ios-parity'
 
 interface CliArgs {
   vaultPath: string
@@ -146,7 +151,11 @@ async function main(): Promise<void> {
 
     // Files carry no Memry ids — canonical rows keep seeded ids stable
     // (task links reference NOTE_IDS) when the indexer adopts them by path
-    const noteMetaCount = insertNoteMetadata(db, [...NOTE_METADATA, ...JOURNAL_METADATA])
+    const noteMetaCount = insertNoteMetadata(db, [
+      ...NOTE_METADATA,
+      ...JOURNAL_METADATA,
+      IOS_PARITY_METADATA
+    ])
     console.log(`  → note_metadata: ${noteMetaCount}`)
 
     const projectCount = insertProjects(db, PROJECTS)
@@ -212,8 +221,11 @@ async function main(): Promise<void> {
     close()
   }
 
-  console.log(`  → Writing ${NOTES.length} note files`)
-  const notesWritten = writeNoteFiles(vaultPath, NOTES)
+  console.log(`  → Writing ${NOTES.length + 1} note files`)
+  const notesWritten = writeNoteFiles(vaultPath, [...NOTES, IOS_PARITY_NOTE])
+
+  const attachmentsWritten = writeIosParityAttachments(vaultPath)
+  console.log(`  → iOS Parity Test attachments: ${attachmentsWritten}`)
 
   console.log(`  → Writing ${JOURNAL_NOTES.length} journal files`)
   const journalsWritten = writeNoteFiles(vaultPath, JOURNAL_NOTES)

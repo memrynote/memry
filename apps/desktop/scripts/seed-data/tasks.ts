@@ -349,6 +349,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'Renew driver license',
     description: 'Online renewal — needs the old card number.',
     priority: 2,
+    startDate: dateOffset(9),
     dueDate: dateOffset(14),
     tags: ['admin']
   },
@@ -376,7 +377,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.inboxTodo,
     title: 'File 2025 tax extension paperwork',
     priority: 3,
-    dueDate: dateOffset(-3), // overdue
+    startDate: dateOffset(-9),
+    dueDate: dateOffset(-3),
     tags: ['admin']
   },
 
@@ -390,7 +392,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'Plan Istanbul weekend',
     description: 'Keep the trip simple: ferry, food, one museum, and room to wander.',
     priority: 3,
-    dueDate: dateOffset(0),
+    startDate: dateOffset(-5),
+    dueDate: dateOffset(2),
     dueTime: '20:00',
     sourceNoteId: NOTE_IDS.travelIstanbul,
     tags: ['travel', 'istanbul', 'planning'],
@@ -417,7 +420,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'Pick Kadıköy dinner spot',
     description: 'Choose one easy place and add it to the food notes.',
     priority: 2,
-    dueDate: dateOffset(0),
+    startDate: dateOffset(-1),
+    dueDate: dateOffset(1),
     dueTime: '18:00',
     parentKey: 'istanbul-plan-weekend',
     sourceNoteId: NOTE_IDS.weightFoodDiary,
@@ -430,7 +434,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.istanbulPlan,
     title: 'Pack light layers and charger pouch',
     priority: 1,
-    dueDate: dateOffset(1),
+    startDate: dateOffset(1),
+    dueDate: dateOffset(2),
     parentKey: 'istanbul-plan-weekend',
     sourceNoteId: NOTE_IDS.travelPackingList,
     tags: ['travel', 'packing'],
@@ -442,6 +447,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.istanbulDone,
     title: 'Save hotel address screenshot offline',
     priority: 1,
+    startDate: dateOffset(-3),
+    dueDate: dateOffset(-1),
     completedAt: datetimeOffset(-1, 21),
     tags: ['travel', 'istanbul'],
     noteRefs: [NOTE_IDS.travelIstanbul]
@@ -488,6 +495,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.istanbulPlan,
     title: 'Add Basilica Cistern tickets to wallet',
     priority: 2,
+    startDate: dateOffset(1),
     dueDate: dateOffset(2),
     sourceNoteId: NOTE_IDS.travelIstanbul,
     tags: ['travel', 'istanbul', 'museum'],
@@ -504,7 +512,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'Mobile read-only viewer',
     description: 'iOS + Android: open vault, read notes, tap wikilinks, zero edit.',
     priority: 2,
-    dueDate: dateOffset(30),
+    startDate: dateOffset(8),
+    dueDate: dateOffset(40),
     sourceNoteId: NOTE_IDS.projMemryRoadmap,
     tags: ['projects/memry', 'mobile'],
     noteRefs: [NOTE_IDS.projMemryLaunch, NOTE_IDS.projMemryRoadmap]
@@ -516,6 +525,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'Build public landing page',
     description: 'One page. Hero, three benefits, screenshot, waitlist.',
     priority: 3,
+    startDate: dateOffset(-6),
     dueDate: dateOffset(10),
     sourceNoteId: NOTE_IDS.projMemryGTM,
     tags: ['projects/memry', 'web', 'launch'],
@@ -528,6 +538,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'Decide on pricing',
     description: 'Free + paid sync? One-time? Open source + hosted? Pick one.',
     priority: 3,
+    startDate: dateOffset(-2),
     dueDate: dateOffset(5),
     sourceNoteId: NOTE_IDS.projMemryGTM,
     tags: ['projects/memry', 'gtm']
@@ -538,6 +549,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.memryBacklog,
     title: 'Draft Hacker News launch post',
     priority: 2,
+    startDate: dateOffset(14),
     dueDate: dateOffset(20),
     sourceNoteId: NOTE_IDS.projMemryGTM,
     tags: ['projects/memry', 'gtm', 'writing']
@@ -549,6 +561,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'CRDT sync v1',
     description: 'Yjs over the contract layer. End-to-end working between two devices.',
     priority: 3,
+    startDate: dateOffset(-30),
+    dueDate: dateOffset(-12),
     completedAt: datetimeOffset(-12, 18),
     sourceNoteId: NOTE_IDS.techCRDTArchitecture,
     tags: ['projects/memry', 'sync'],
@@ -560,6 +574,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.memryDone,
     title: 'Calendar v1 (local + Google)',
     priority: 2,
+    startDate: dateOffset(-45),
+    dueDate: dateOffset(-25),
     completedAt: datetimeOffset(-25, 14),
     sourceNoteId: NOTE_IDS.projMemryRoadmap,
     tags: ['projects/memry', 'calendar']
@@ -570,6 +586,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.memryDone,
     title: 'Inbox snooze with reason',
     priority: 1,
+    startDate: dateOffset(-16),
+    dueDate: dateOffset(-11),
     completedAt: datetimeOffset(-11, 11),
     tags: ['projects/memry', 'inbox']
   },
@@ -580,6 +598,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'Inbox AI filing suggestions',
     description: 'Suggest a destination folder + tags based on filing history.',
     priority: 2,
+    startDate: dateOffset(-14),
     dueDate: dateOffset(2),
     tags: ['projects/memry', 'inbox', 'ai']
   },
@@ -590,7 +609,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'Graph view: lazy load > 500 nodes',
     description: 'Hits a wall around 800 notes. Force-atlas runs at 4 fps. Lazy load.',
     priority: 1,
-    dueDate: dateOffset(35),
+    startDate: dateOffset(30),
     tags: ['projects/memry', 'perf']
   },
   {
@@ -600,7 +619,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'Recurring tasks: repeat-from-completed',
     description: 'When a recurring task is completed, schedule next from completion, not due date.',
     priority: 2,
-    dueDate: dateOffset(7),
+    startDate: dateOffset(3),
+    dueDate: dateOffset(12),
     tags: ['projects/memry', 'tasks']
   },
   {
@@ -609,7 +629,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.memryBacklog,
     title: 'Prep LocalFirst Conf talk slides',
     priority: 2,
-    dueDate: dateOffset(120),
+    startDate: dateOffset(30),
+    dueDate: dateOffset(44),
     sourceNoteId: NOTE_IDS.projConferenceTalk,
     tags: ['projects/memry', 'speaking'],
     noteRefs: [NOTE_IDS.projConferenceTalk]
@@ -621,7 +642,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'Stabilize Playwright e2e suite in CI',
     description: 'Flaky on xvfb timing. Pre-built electron bundle is the fix.',
     priority: 1,
-    dueDate: dateOffset(4),
+    startDate: dateOffset(-10),
+    dueDate: dateOffset(-1),
     tags: ['projects/memry', 'tests']
   },
 
@@ -632,6 +654,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.memryBacklog,
     title: 'iOS — wrap WKWebView',
     priority: 2,
+    startDate: dateOffset(14),
     dueDate: dateOffset(28),
     parentKey: 'memry-mobile-readonly',
     tags: ['projects/memry', 'mobile', 'ios']
@@ -642,7 +665,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.memryBacklog,
     title: 'Android — wrap WebView',
     priority: 2,
-    dueDate: dateOffset(35),
+    startDate: dateOffset(24),
+    dueDate: dateOffset(38),
     parentKey: 'memry-mobile-readonly',
     tags: ['projects/memry', 'mobile', 'android']
   },
@@ -651,10 +675,52 @@ const TASK_BUILDERS: TaskBuilder[] = [
     projectId: PROJECT_IDS.memry,
     statusId: STATUS_IDS.memryBacklog,
     title: 'Mobile — shared bundle build pipeline',
+    startDate: dateOffset(8),
+    dueDate: dateOffset(15),
     parentKey: 'memry-mobile-readonly',
     priority: 2,
-    dueDate: dateOffset(15),
     tags: ['projects/memry', 'mobile', 'tooling']
+  },
+
+  // Launch milestone the whole project converges on
+  {
+    key: 'memry-public-launch',
+    projectId: PROJECT_IDS.memry,
+    statusId: STATUS_IDS.memryBacklog,
+    title: 'Public launch',
+    description: 'IndieHackers + HN post go out the same morning.',
+    priority: 3,
+    dueDate: dateOffset(24),
+    tags: ['projects/memry', 'launch']
+  },
+  {
+    key: 'memry-timeline-view',
+    projectId: PROJECT_IDS.memry,
+    statusId: STATUS_IDS.memryReview,
+    title: 'Calendar timeline (Gantt) view',
+    description: 'Drag to reschedule, keyboard moves, Cmd+K actions.',
+    priority: 2,
+    startDate: dateOffset(-4),
+    dueDate: dateOffset(6),
+    tags: ['projects/memry', 'calendar']
+  },
+  // Checklist items in the iOS Parity Test note, filed in the note's project
+  {
+    key: 'parity-checked',
+    projectId: PROJECT_IDS.memry,
+    statusId: STATUS_IDS.memryDone,
+    title: 'Checked item',
+    completedAt: datetimeOffset(-2, 16),
+    sourceNoteId: NOTE_IDS.iosParityTest,
+    noteRefs: [NOTE_IDS.iosParityTest]
+  },
+  {
+    key: 'parity-unchecked',
+    projectId: PROJECT_IDS.memry,
+    statusId: STATUS_IDS.memryBacklog,
+    title: 'Unchecked item',
+    sourceNoteId: NOTE_IDS.iosParityTest,
+    noteRefs: [NOTE_IDS.iosParityTest]
   },
 
   // ========================================================================
@@ -666,6 +732,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.readingReading,
     title: 'Finish reading Sapiens',
     priority: 1,
+    startDate: dateOffset(-20),
     dueDate: dateOffset(21),
     sourceNoteId: NOTE_IDS.bookSapiens,
     tags: ['reading', 'nonfiction'],
@@ -677,6 +744,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.readingReading,
     title: 'Finish The Mystery Guest',
     priority: 0,
+    startDate: dateOffset(-8),
     dueDate: dateOffset(7),
     sourceNoteId: NOTE_IDS.bookMisteryHotel,
     tags: ['reading', 'fiction'],
@@ -688,6 +756,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.readingReading,
     title: 'Finish The Almanack of Naval Ravikant',
     priority: 0,
+    startDate: dateOffset(-3),
     dueDate: dateOffset(14),
     sourceNoteId: NOTE_IDS.bookAlmanackOfNaval,
     tags: ['reading', 'nonfiction'],
@@ -717,6 +786,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     projectId: PROJECT_IDS.reading,
     statusId: STATUS_IDS.readingDone,
     title: 'Read Project Hail Mary',
+    startDate: dateOffset(-40),
+    dueDate: dateOffset(-22),
     completedAt: datetimeOffset(-22, 21),
     sourceNoteId: NOTE_IDS.bookProjectHailMary,
     tags: ['reading', 'fiction', 'sci-fi'],
@@ -816,6 +887,8 @@ const TASK_BUILDERS: TaskBuilder[] = [
     projectId: PROJECT_IDS.fitness,
     statusId: STATUS_IDS.fitnessDone,
     title: 'Last week — completed split',
+    startDate: dateOffset(-11),
+    dueDate: dateOffset(-5),
     completedAt: datetimeOffset(-5, 19),
     tags: ['fitness']
   },
@@ -824,8 +897,34 @@ const TASK_BUILDERS: TaskBuilder[] = [
     projectId: PROJECT_IDS.fitness,
     statusId: STATUS_IDS.fitnessDone,
     title: 'Squat 140kg × 5 (PR)',
+    dueDate: dateOffset(-27),
     completedAt: datetimeOffset(-27, 18),
     tags: ['fitness', 'pr']
+  },
+
+  {
+    key: 'fit-cut-phase-2',
+    projectId: PROJECT_IDS.fitness,
+    statusId: STATUS_IDS.fitnessUpcoming,
+    title: 'Summer cut — phase 2',
+    description: '-0.5 kg a week, protein first. Track in [[Cutting Log]].',
+    priority: 2,
+    startDate: dateOffset(-21),
+    dueDate: dateOffset(35),
+    sourceNoteId: NOTE_IDS.weightCut2026,
+    tags: ['fitness', 'cut'],
+    noteRefs: [NOTE_IDS.weightCut2026, NOTE_IDS.weightCuttingLog]
+  },
+  {
+    key: 'fit-deload',
+    projectId: PROJECT_IDS.fitness,
+    statusId: STATUS_IDS.fitnessUpcoming,
+    title: 'Deload week',
+    priority: 0,
+    startDate: dateOffset(14),
+    dueDate: dateOffset(20),
+    sourceNoteId: NOTE_IDS.weightTrainingSplit,
+    tags: ['fitness', 'lift']
   },
 
   // ========================================================================
@@ -836,6 +935,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     projectId: PROJECT_IDS.tokyo,
     statusId: STATUS_IDS.tokyoDone,
     title: 'Book flights',
+    dueDate: dateOffset(-90),
     completedAt: datetimeOffset(-90, 14),
     sourceNoteId: NOTE_IDS.travelTokyoTrip,
     tags: ['travel/japan'],
@@ -846,6 +946,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     projectId: PROJECT_IDS.tokyo,
     statusId: STATUS_IDS.tokyoDone,
     title: 'Book hotel (Park Hyatt)',
+    dueDate: dateOffset(-85),
     completedAt: datetimeOffset(-85, 11),
     sourceNoteId: NOTE_IDS.travelTokyoTrip,
     tags: ['travel/japan']
@@ -855,6 +956,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     projectId: PROJECT_IDS.tokyo,
     statusId: STATUS_IDS.tokyoDone,
     title: 'JR Pass (7-day)',
+    dueDate: dateOffset(-50),
     completedAt: datetimeOffset(-50, 9),
     tags: ['travel/japan']
   },
@@ -863,6 +965,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     projectId: PROJECT_IDS.tokyo,
     statusId: STATUS_IDS.tokyoDone,
     title: 'Day trip — Kyoto',
+    dueDate: dateOffset(-23),
     completedAt: datetimeOffset(-23, 21),
     sourceNoteId: NOTE_IDS.travelKyotoDayTrip,
     tags: ['travel/japan'],
@@ -873,10 +976,23 @@ const TASK_BUILDERS: TaskBuilder[] = [
     projectId: PROJECT_IDS.tokyo,
     statusId: STATUS_IDS.tokyoDone,
     title: 'Coffee crawl',
+    dueDate: dateOffset(-21),
     completedAt: datetimeOffset(-21, 17),
     sourceNoteId: NOTE_IDS.travelTokyoCafes,
     tags: ['travel/japan', 'coffee'],
     noteRefs: [NOTE_IDS.travelTokyoCafes]
+  },
+  {
+    key: 'tokyo-photos',
+    projectId: PROJECT_IDS.tokyo,
+    statusId: STATUS_IDS.tokyoBooked,
+    title: 'Sort and caption trip photos',
+    priority: 0,
+    startDate: dateOffset(-10),
+    dueDate: dateOffset(9),
+    sourceNoteId: NOTE_IDS.travelTokyoTrip,
+    tags: ['travel/japan', 'photos'],
+    noteRefs: [NOTE_IDS.travelTokyoTrip]
   },
   {
     key: 'tokyo-thank-you',
@@ -918,6 +1034,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     statusId: STATUS_IDS.sideBuilding,
     title: 'Blog redesign — migrate to Astro',
     priority: 1,
+    startDate: dateOffset(5),
     dueDate: dateOffset(38),
     sourceNoteId: NOTE_IDS.projBlogRedesign,
     tags: ['side-projects', 'web'],
@@ -930,6 +1047,7 @@ const TASK_BUILDERS: TaskBuilder[] = [
     title: 'Rust CLI for vault stats',
     description: 'A vault-stats binary in Rust — note count, word count, link density.',
     priority: 0,
+    startDate: dateOffset(20),
     dueDate: dateOffset(50),
     sourceNoteId: NOTE_IDS.techRustNotes,
     tags: ['side-projects', 'rust'],
@@ -956,6 +1074,13 @@ const TASK_BUILDERS: TaskBuilder[] = [
 
 // Resolve task IDs and parent links
 const taskIdByKey = new Map<string, string>(TASK_BUILDERS.map((b) => [b.key, generateId()]))
+
+/** A seeded task's id, for notes that reference tasks by `{task:<id>}`. */
+export function taskIdForKey(key: string): string {
+  const id = taskIdByKey.get(key)
+  if (!id) throw new Error(`seed tasks: no task with key ${key}`)
+  return id
+}
 
 export const TASKS: SeedTask[] = TASK_BUILDERS.map((b, idx) => ({
   id: taskIdByKey.get(b.key)!,
