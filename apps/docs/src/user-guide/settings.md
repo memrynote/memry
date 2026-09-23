@@ -312,9 +312,11 @@ Zoom is the one Appearance setting that does **not** sync to your other devices,
 
 ### Global Capture
 
-Set a system-wide hotkey to focus the memrynote window from anywhere. macOS requires Accessibility permission.
+Set a system-wide hotkey that opens quick capture from any app. macOS requires Accessibility permission.
 
-If your chosen hotkey is already claimed by another app, memrynote keeps its built-in quick capture hotkey (`Cmd`/`Ctrl` + `Shift` + `Space`) registered as a fallback, so quick capture keeps working. Saving keyboard settings re-checks this, and releases the fallback once your own hotkey registers successfully.
+Until you set one, the built-in hotkey `Cmd`/`Ctrl` + `Shift` + `Space` opens quick capture. memrynote releases it once your own hotkey registers.
+
+If another app already holds the combination you press, the Global Capture row says so, nothing is saved, and your previous hotkey keeps working. The row also tells you when another app holds the built-in hotkey at launch, or when a saved hotkey cannot be used as a global shortcut. macOS does not report conflicts with other apps, so on a Mac a conflicting hotkey can register and still fire in the other app.
 
 ### Shortcut List
 
