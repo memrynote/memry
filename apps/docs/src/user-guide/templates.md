@@ -47,6 +47,14 @@ The body is what new notes start from, so `{{title}}` and the other variables be
 
 </div>
 
+### Tasks in a Template
+
+A checkbox in a template stays a plain checkbox. The template editor never turns it into a task, so writing a template adds nothing to your task list.
+
+A note made from the template gets its own copy of each checkbox. The note turns them into tasks of its own once you start editing it, so ticking or deleting a task in one note never touches another note made from the same template.
+
+Templates that an older version saved with task links, on this device or synced from another, are read as plain checkboxes too. The original tasks stay where they were.
+
 ### Saving
 
 A brand-new template is a **draft**: nothing is written until you press **Create Template** in the top right. The button stays disabled until the name is filled in.
@@ -140,7 +148,7 @@ The dialog has a single field, the template name. It arrives pre-filled with the
 
 What gets copied:
 
-- The note's body, exactly as it is written
+- The note's body, exactly as it is written, except that tasks become plain checkboxes (see [Tasks in a Template](#tasks-in-a-template))
 - The note's tags
 - The note's properties, with the two exceptions below
 
