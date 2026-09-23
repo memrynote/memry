@@ -580,6 +580,12 @@ export function createGoogleCalendarClient(
       if (isUpdate && input.ifMatch) {
         headers['If-Match'] = input.ifMatch
       }
+      const payload = toGoogleEventPayload(input.event)
+      // PATCH keeps any field it is not sent. A colour removed in Memry has to
+      // be cleared by name, or the next pull brings Google's copy back.
+      if (isUpdate && input.event.colorId === null) {
+        payload.colorId = null
+      }
       const response = await withAuthorizedResponse(accountId, {
         path: isUpdate
           ? `/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId!)}`
@@ -587,7 +593,7 @@ export function createGoogleCalendarClient(
         init: {
           method: isUpdate ? 'PATCH' : 'POST',
           headers,
-          body: JSON.stringify(toGoogleEventPayload(input.event))
+          body: JSON.stringify(payload)
         }
       })
 

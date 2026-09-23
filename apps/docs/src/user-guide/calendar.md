@@ -108,6 +108,22 @@ Quick Create (dragging on the grid) stays title-only and has no Project row; add
 saving, from the full event form. Event cards on a [canvas](/user-guide/canvas/overview) have no
 Project row either — open the event from the calendar to change its project.
 
+### Coloring an Event
+
+The event form has a **Color** row: **No color** plus red, orange, yellow, green, blue, purple,
+pink, and gray. Pick one and save, and the event's chip fills with that color in every calendar
+view. Search results and the year view's day list show the same color as a dot. **No color** puts
+the event back on the default event color. Canvas event cards have the same row.
+
+The color belongs to the event, not to a calendar or a tag, and it syncs to your other devices.
+If the event is on a connected Google calendar, the color is sent to Google too, and a color set
+in Google shows up in memrynote. Google has eleven event colors and memrynote eight, so a few of
+Google's show as their closest match: Lavender as purple, Sage as green, and Peacock as blue.
+Saving the event in memrynote without changing its color keeps the Google color exactly as it was.
+
+Only events you created or [promoted](#promote-external-events) can be colored. Tasks, reminders,
+notes, and events that stay on an external calendar keep their type colors.
+
 ## Scheduling Tasks by Drag
 
 Tasks can be scheduled and rescheduled by dragging, from two places:

@@ -55,6 +55,7 @@ function makeEvent(overrides: Partial<CalendarEventRecord> = {}): CalendarEventR
     reminders: null,
     visibility: null,
     colorId: null,
+    color: null,
     conferenceData: null,
     parentEventId: null,
     originalStartTime: null,
@@ -117,7 +118,7 @@ describe('CanvasEventEditor', () => {
   })
 
   it('saves via calendarService.updateEvent and calls onDone', async () => {
-    mocks.getEvent.mockResolvedValue(makeEvent())
+    mocks.getEvent.mockResolvedValue(makeEvent({ colorId: '9', color: 'blue' }))
     mocks.updateEvent.mockResolvedValue({ success: true })
     const onDone = vi.fn()
     render(<CanvasEventEditor eventId="ev1" onDone={onDone} />)
@@ -125,7 +126,7 @@ describe('CanvasEventEditor', () => {
     screen.getByTestId('save').click()
     await waitFor(() => expect(mocks.updateEvent).toHaveBeenCalled())
     const payload = mocks.updateEvent.mock.calls[0][0]
-    expect(payload).toMatchObject({ id: 'ev1', title: 'Standup', isAllDay: false })
+    expect(payload).toMatchObject({ id: 'ev1', title: 'Standup', isAllDay: false, color: 'blue' })
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
   })
 

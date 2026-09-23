@@ -14,6 +14,7 @@ import {
   toLocalDateString
 } from './date-utils'
 import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
+import { calendarEventColorVar } from '@/lib/calendar-event-colors'
 import { EVENT_TYPE_COLORS } from '@/lib/event-type-colors'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { CalendarWorkspaceView } from './calendar-toolbar'
@@ -240,7 +241,9 @@ export function CalendarYearView({
                     <span
                       className="size-2 shrink-0 rounded-full"
                       style={{
-                        backgroundColor: item.source.color ?? EVENT_TYPE_COLORS[item.visualType]
+                        backgroundColor: item.color
+                          ? calendarEventColorVar(item.color)
+                          : (item.source.color ?? EVENT_TYPE_COLORS[item.visualType])
                       }}
                     />
                     <span className="flex-1 truncate text-xs text-foreground">{item.title}</span>

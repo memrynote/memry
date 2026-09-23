@@ -21,7 +21,7 @@ function eventItem(overrides: Partial<CalendarProjectionItem> = {}): CalendarPro
     startAt: '2026-05-14T09:00',
     endAt: '2026-05-14T10:00',
     isAllDay: false,
-    color: '#64748b',
+    color: null,
     eventType: 'memry',
     sourceCalendarId: null,
     sourceCalendarName: null,
@@ -58,5 +58,32 @@ describe('CalendarItemChip', () => {
     const chip = screen.getByText('Planning').closest('[data-visual-type]')
     expect(chip).toHaveAttribute('data-triggered', 'true')
     expect(chip).toHaveClass('opacity-60')
+  })
+
+  it('paints a coloured event with its hue as the fill and ink for the title', () => {
+    render(<CalendarItemChip item={eventItem({ color: 'green' })} />)
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]') as HTMLElement
+    expect(chip).toHaveAttribute('data-event-color', 'green')
+    expect(chip.style.backgroundColor).toBe(
+      'color-mix(in srgb, var(--calendar-event-green) 20%, var(--background))'
+    )
+    expect(chip.style.color).toBe('var(--foreground)')
+  })
+
+  it('goes solid with the on-colour ink when a coloured event is selected', () => {
+    render(<CalendarItemChip item={eventItem({ color: 'red' })} isSelected />)
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]') as HTMLElement
+    expect(chip.style.backgroundColor).toBe('var(--calendar-event-red)')
+    expect(chip.style.color).toBe('var(--calendar-event-on-color)')
+  })
+
+  it('keeps the event-type colour for an event with no colour', () => {
+    render(<CalendarItemChip item={eventItem()} />)
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]') as HTMLElement
+    expect(chip).not.toHaveAttribute('data-event-color')
+    expect(chip.style.color).toBe('rgb(146, 206, 212)')
   })
 })

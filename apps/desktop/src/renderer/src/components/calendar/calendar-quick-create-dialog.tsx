@@ -84,7 +84,8 @@ export function CalendarQuickCreateDialog({
       startAt,
       endAt,
       targetCalendarId: null,
-      projectId: null
+      projectId: null,
+      color: null
     }
   }
 

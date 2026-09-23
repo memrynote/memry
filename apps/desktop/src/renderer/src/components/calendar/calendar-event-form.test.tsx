@@ -44,7 +44,8 @@ const draft: CalendarEventDraft = {
   endAt: '2026-03-16T10:00',
   isAllDay: false,
   targetCalendarId: null,
-  projectId: null
+  projectId: null,
+  color: null
 }
 
 const openStartDatePopover = (): HTMLElement => {
@@ -88,5 +89,53 @@ describe('CalendarEventForm date popover height', () => {
 
     expect(content.className).toContain('flex')
     expect(content.className).toContain('flex-col')
+  })
+})
+
+describe('CalendarEventForm colour', () => {
+  function renderForm(color: CalendarEventDraft['color']) {
+    const onDraftChange = vi.fn()
+    render(
+      <CalendarEventForm
+        mode="edit"
+        eventId="event-1"
+        draft={{ ...draft, color }}
+        isSaving={false}
+        onDraftChange={onDraftChange}
+        onSave={vi.fn()}
+        onDismiss={vi.fn()}
+        autoFocus={false}
+      />
+    )
+    return onDraftChange
+  }
+
+  it('marks the event colour as the pressed swatch', () => {
+    renderForm('blue')
+
+    expect(screen.getByRole('button', { name: 'event-color.blue' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    expect(screen.getByRole('button', { name: 'form.no-color' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
+  })
+
+  it('puts the picked colour on the draft', () => {
+    const onDraftChange = renderForm(null)
+
+    fireEvent.click(screen.getByRole('button', { name: 'event-color.pink' }))
+
+    expect(onDraftChange).toHaveBeenCalledWith({ ...draft, color: 'pink' })
+  })
+
+  it('clears the colour from the draft with No color', () => {
+    const onDraftChange = renderForm('green')
+
+    fireEvent.click(screen.getByRole('button', { name: 'form.no-color' }))
+
+    expect(onDraftChange).toHaveBeenCalledWith({ ...draft, color: null })
   })
 })

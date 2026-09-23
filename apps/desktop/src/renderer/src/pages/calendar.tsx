@@ -119,7 +119,8 @@ function createDraftFromAnchor(anchorDate: string): CalendarEventDraft {
     startAt: `${anchorDate}T09:00`,
     endAt: `${anchorDate}T10:00`,
     targetCalendarId: null,
-    projectId: null
+    projectId: null,
+    color: null
   }
 }
 
@@ -137,7 +138,8 @@ function createDraftFromItem(item: CalendarProjectionItem): CalendarEventDraft {
         : toLocalDateTimeInputValue(item.endAt)
       : '',
     targetCalendarId: item.binding?.remoteCalendarId ?? null,
-    projectId: null
+    projectId: null,
+    color: item.color ?? null
   }
 }
 
@@ -149,7 +151,8 @@ function toCreatePayload(draft: CalendarEventDraft) {
     endAt: draft.endAt ? localInputToIso(draft.endAt, draft.isAllDay) : null,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     isAllDay: draft.isAllDay,
-    targetCalendarId: draft.targetCalendarId
+    targetCalendarId: draft.targetCalendarId,
+    color: draft.color
   }
 }
 
@@ -551,7 +554,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
               : toLocalDateTimeInputValue(record.endAt)
             : '',
           targetCalendarId: record.targetCalendarId,
-          projectId: null
+          projectId: null,
+          color: record.color
         } satisfies CalendarEventDraft)
       : createDraftFromItem(source)
 

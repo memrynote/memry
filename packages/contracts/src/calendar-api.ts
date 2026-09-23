@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { CalendarChannels } from './ipc-channels.ts'
+import { CalendarEventColorSchema, type CalendarEventColor } from './calendar-event-colors.ts'
 
 export { CalendarChannels }
 
@@ -43,7 +44,8 @@ export const CreateCalendarEventSchema = z.object({
   isAllDay: z.boolean().default(false),
   recurrenceRule: JsonRecordSchema.optional().nullable(),
   recurrenceExceptions: z.array(z.string()).optional().nullable(),
-  targetCalendarId: z.string().nullable().optional()
+  targetCalendarId: z.string().nullable().optional(),
+  color: CalendarEventColorSchema.nullable().optional()
 })
 
 export const UpdateCalendarEventSchema = z.object({
@@ -57,7 +59,8 @@ export const UpdateCalendarEventSchema = z.object({
   isAllDay: z.boolean().optional(),
   recurrenceRule: JsonRecordSchema.optional().nullable(),
   recurrenceExceptions: z.array(z.string()).optional().nullable(),
-  targetCalendarId: z.string().nullable().optional()
+  targetCalendarId: z.string().nullable().optional(),
+  color: CalendarEventColorSchema.nullable().optional()
 })
 
 export const PromoteExternalEventSchema = z.object({
@@ -185,7 +188,9 @@ export interface CalendarEventRecord {
   attendees: CalendarEventAttendeeRecord[] | null
   reminders: CalendarEventRemindersRecord | null
   visibility: CalendarEventVisibility | null
+  /** Google Calendar's colour id, as stored and synced. Read `color` instead. */
   colorId: string | null
+  color: CalendarEventColor | null
   conferenceData: CalendarEventConferenceDataRecord | null
   parentEventId: string | null
   originalStartTime: string | null
@@ -276,13 +281,12 @@ export interface CalendarProjectionItem {
    * date isn't lost. Undefined/false for upcoming or non-`note_date` items.
    */
   isTriggered?: boolean
+  /** For `event` items: the colour the user gave the event. Undefined for other item types. */
+  color?: CalendarEventColor | null
 }
 
 export type CalendarProviderAccountConnectionStatus =
-  | 'connected'
-  | 'disconnected'
-  | 'reconnect_required'
-  | 'error'
+  'connected' | 'disconnected' | 'reconnect_required' | 'error'
 
 export interface CalendarProviderAccountStatus {
   accountId: string

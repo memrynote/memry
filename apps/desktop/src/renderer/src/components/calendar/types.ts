@@ -1,3 +1,5 @@
+import type { CalendarEventColor } from '@memry/contracts/calendar-event-colors'
+
 export interface CalendarEventDraft {
   title: string
   description: string
@@ -8,6 +10,7 @@ export interface CalendarEventDraft {
   targetCalendarId: string | null
   /** Create mode only: project to link the event to once it has an id. */
   projectId: string | null
+  color: CalendarEventColor | null
 }
 
 export interface AnchorRect {

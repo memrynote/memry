@@ -7,6 +7,7 @@ import type {
   CalendarRangeResponse,
   GetCalendarRangeInput
 } from '@memry/contracts/calendar-api'
+import { calendarEventColorFromColorId } from '@memry/contracts/calendar-event-colors'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
@@ -169,7 +170,8 @@ function loadMemryEvents(db: DataDb, input: GetCalendarRangeInput): CalendarProj
     editability,
     source: nativeSource('memrynote'),
     binding: bindings.get(row.id) ?? null,
-    snoozeOffsetMinutes: null
+    snoozeOffsetMinutes: null,
+    color: calendarEventColorFromColorId(row.colorId)
   }))
 }
 

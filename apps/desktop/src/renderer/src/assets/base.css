@@ -1642,6 +1642,23 @@
     /* Checkbox */
     --task-checkbox-done: #7b9e87;
 
+    /* ===== CALENDAR EVENT COLORS ===== */
+    /* The colours a user gives an event. Same hexes as the re-cut BlockNote
+       text palette (`.bn-root` above), so a red event and red text are one
+       red. Chips fill with the hue mixed into --background and keep ink for
+       the title; a selected chip goes solid with --calendar-event-on-color.
+       calendar-event-colors-css.test.ts holds both pairs to AA in every
+       theme. */
+    --calendar-event-red: #ba3f38;
+    --calendar-event-orange: #9d5b00;
+    --calendar-event-yellow: #7e7100;
+    --calendar-event-green: #007a44;
+    --calendar-event-blue: #0070a5;
+    --calendar-event-purple: #8550b8;
+    --calendar-event-pink: #b33e74;
+    --calendar-event-gray: #696969;
+    --calendar-event-on-color: #ffffff;
+
     /* Shadow */
     --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
 
@@ -1914,6 +1931,17 @@
 
     /* Checkbox */
     --task-checkbox-done: #7b9e87;
+
+    /* Calendar event colors */
+    --calendar-event-red: #da5c52;
+    --calendar-event-orange: #c07104;
+    --calendar-event-yellow: #998800;
+    --calendar-event-green: #199758;
+    --calendar-event-blue: #008ccd;
+    --calendar-event-purple: #a06cd5;
+    --calendar-event-pink: #d25a8f;
+    --calendar-event-gray: #838383;
+    --calendar-event-on-color: #121212;
 
     /* Shadow */
     --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);

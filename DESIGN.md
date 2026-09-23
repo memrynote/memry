@@ -183,7 +183,7 @@ Specialized colors are allowed when they encode a stable domain distinction:
 
 - Task priority, due-date, completion, progress, repeat, and token colors use the desktop `--task-*` family or the matching platform theme roles.
 - Graph nodes and edges use the desktop `--graph-*` family or the matching platform theme roles.
-- Calendar event types use the centralized calendar color mapping.
+- Calendar event types use the centralized calendar color mapping. An event the user colored uses the desktop `--calendar-event-*` family instead: the hue fills the chip and the title keeps ink.
 - Inbox types and Agent Chat mentions use their centralized type mappings.
 - User-created tags may use the user's chosen tag color.
 

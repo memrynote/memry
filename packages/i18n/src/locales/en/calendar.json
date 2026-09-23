@@ -78,7 +78,9 @@
     "project": "Project",
     "no-project": "No project",
     "remove-from-project": "Remove from {project}",
-    "project-update-failed": "Could not update the event's project"
+    "project-update-failed": "Could not update the event's project",
+    "color": "Color",
+    "no-color": "No color"
   },
   "delete-dialog": {
     "title": "Delete event?",
@@ -201,5 +203,15 @@
     "kindDateReminder": "Date reminder",
     "open": "Open note",
     "couldNotOpen": "Could not open note"
+  },
+  "event-color": {
+    "red": "Red",
+    "orange": "Orange",
+    "yellow": "Yellow",
+    "green": "Green",
+    "blue": "Blue",
+    "purple": "Purple",
+    "pink": "Pink",
+    "gray": "Gray"
   }
 }
