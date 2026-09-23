@@ -98,13 +98,88 @@ enum NotePropertyKind: String, CaseIterable, Sendable {
     case project
 
     /// The declared type, or `nil` for one this build does not know.
+    ///
+    /// **A list of `memry://` URIs is a relation whatever the definition
+    /// says**, which is desktop's own ladder (`resolvePropertyType` in
+    /// `vault/frontmatter.ts`): a relation's definition is never persisted,
+    /// so the stored type is absent or an inferred `text`, and the value is
+    /// the only reliable witness.
     static func of(_ property: NoteProperty) -> NotePropertyKind? {
-        property.typeName.flatMap { NotePropertyKind(rawValue: $0) }
+        if isRelationValue(property.valueJson) { return .relation }
+        return property.typeName.flatMap { NotePropertyKind(rawValue: $0) }
+    }
+
+    /// `memry://<kind>/<id>` strings, at least one, and nothing else.
+    static func isRelationValue(_ json: String) -> Bool {
+        guard
+            let parsed = try? JSONSerialization.jsonObject(with: Data(json.utf8)),
+            let values = parsed as? [String],
+            !values.isEmpty
+        else { return false }
+        return values.allSatisfy { $0.hasPrefix("memry://") }
     }
 
     /// Whether the editor offers a fixed set of choices.
     var isChoice: Bool {
         self == .status || self == .select || self == .multiselect
+    }
+}
+
+/// The choices a property definition declares, in the order it declares
+/// them.
+///
+/// Two shapes exist on the wire. A `select` or `multiselect` holds a list of
+/// options; a `status` holds **categories**, each with its own options
+/// (`.memry/properties.md`). Reading only the first shape gave every status an
+/// empty picker, which drew as a blank control with the note's value hidden.
+enum NotePropertyOptions {
+    /// Desktop's category order. JSON objects carry none, so it is restated
+    /// here; a category this build does not know follows, by name.
+    private static let statusOrder = ["todo", "in_progress", "done"]
+
+    /// Each option's palette colour name, by value. An option with no colour
+    /// is absent and draws in the neutral chip.
+    static func colors(of json: String?) -> [String: String] {
+        guard
+            let json,
+            let parsed = try? JSONSerialization.jsonObject(with: Data(json.utf8))
+        else { return [:] }
+        var objects: [[String: Any]] = parsed as? [[String: Any]] ?? []
+        if let categories = (parsed as? [String: Any])?["categories"] as? [String: Any] {
+            objects = categories.values.flatMap {
+                ($0 as? [String: Any])?["options"] as? [[String: Any]] ?? []
+            }
+        }
+        var out: [String: String] = [:]
+        for object in objects {
+            if let value = object["value"] as? String, let color = object["color"] as? String {
+                out[value] = color
+            }
+        }
+        return out
+    }
+
+    static func values(of json: String?) -> [String] {
+        guard
+            let json,
+            let parsed = try? JSONSerialization.jsonObject(with: Data(json.utf8))
+        else { return [] }
+        if let categories = (parsed as? [String: Any])?["categories"] as? [String: Any] {
+            let known = statusOrder.filter { categories[$0] != nil }
+            let rest = categories.keys.filter { !statusOrder.contains($0) }.sorted()
+            return (known + rest).flatMap { key in
+                list((categories[key] as? [String: Any])?["options"])
+            }
+        }
+        return list(parsed)
+    }
+
+    private static func list(_ value: Any?) -> [String] {
+        if let strings = value as? [String] { return strings }
+        if let objects = value as? [[String: Any]] {
+            return objects.compactMap { $0["value"] as? String ?? $0["name"] as? String }
+        }
+        return []
     }
 }
 

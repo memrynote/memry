@@ -93,8 +93,16 @@ struct NoteTitleEditor: View {
             Button {
                 pickingIcon = true
             } label: {
-                Text(icon ?? "◦")
-                    .font(Tokens.Typography.sectionTitle.font)
+                // No icon draws a quiet "add" glyph rather than a stray dot,
+                // which read as a rendering fault next to the title.
+                if let icon, !icon.isEmpty {
+                    Text(icon)
+                        .font(Tokens.Typography.sectionTitle.font)
+                } else {
+                    Image(systemName: "face.smiling")
+                        .font(Tokens.Typography.body.font)
+                        .foregroundStyle(Tokens.Text.tertiary.color)
+                }
             }
             .disabled(!canEdit)
             .accessibilityLabel(icon.map { "Icon, \($0)" } ?? "Add an icon")
@@ -183,11 +191,13 @@ struct NoteIconPicker: View {
     }
 }
 
-/// Tags, with add and remove (N705).
+/// Tags, with add and remove (N705), as desktop's coloured chips.
 struct NoteTagEditor: View {
     let tags: [String]
     /// Every tag in the vault, for the suggestions desktop offers.
     var suggestions: [String] = []
+    /// A tag's chosen colour, lowercased name to palette name or `#rrggbb`.
+    var colors: [String: String] = [:]
     let add: (String) -> Void
     let remove: (String) -> Void
 
@@ -205,26 +215,37 @@ struct NoteTagEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: Tokens.Space.small) { chips }
-                VStack(alignment: .leading, spacing: Tokens.Space.small) { chips }
-            }
-
-            HStack {
+            FlowLayout(spacing: Tokens.Space.small) {
+                ForEach(tags, id: \.self) { tag in
+                    // Spelled as the payload holds it: `Café` and `CAFÉ` are
+                    // two rows one layer down, and only matching folds case.
+                    Chip(text: tag, color: Tokens.Palette.color(colors[tag.lowercased()], tag: tag))
+                        .contextMenu {
+                            Button(role: .destructive) { remove(tag) } label: {
+                                Label("Remove the tag \(tag)", systemImage: "xmark")
+                            }
+                        }
+                        .accessibilityAction(named: "Remove the tag \(tag)") { remove(tag) }
+                }
                 TextField("Add a tag", text: $draft)
                     .font(Tokens.Typography.caption.font)
+                    .fixedSize()
                     .onSubmit(commit)
                     .accessibilityLabel("Add a tag")
-                if !draft.isEmpty {
-                    Button("Add", action: commit)
-                        .font(Tokens.Typography.caption.font)
-                }
             }
 
-            if !matching.isEmpty {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: Tokens.Space.small) { suggestionChips }
-                    VStack(alignment: .leading, spacing: Tokens.Space.small) { suggestionChips }
+            if !draft.isEmpty, !matching.isEmpty {
+                FlowLayout(spacing: Tokens.Space.small) {
+                    ForEach(matching, id: \.self) { tag in
+                        Button {
+                            add(tag)
+                            draft = ""
+                        } label: {
+                            Chip(text: tag, color: Tokens.Palette.color(colors[tag.lowercased()], tag: tag))
+                                .opacity(0.7)
+                        }
+                        .accessibilityLabel("Add the tag \(tag)")
+                    }
                 }
             }
         }
@@ -236,93 +257,145 @@ struct NoteTagEditor: View {
         add(trimmed)
         draft = ""
     }
+}
 
-    private var chips: some View {
-        ForEach(tags, id: \.self) { tag in
-            HStack(spacing: Tokens.Space.tight) {
-                // Spelled as the payload holds it: `Café` and `CAFÉ` are two
-                // rows one layer down, and only matching folds case.
-                Text(tag)
-                Button {
-                    remove(tag)
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                }
-                .accessibilityLabel("Remove the tag \(tag)")
-            }
-            .font(Tokens.Typography.caption.font)
-            .foregroundStyle(Tokens.Text.secondary.color)
-            .padding(.horizontal, Tokens.Space.small)
-            .padding(.vertical, Tokens.Space.tight)
-            .background(
-                RoundedRectangle(cornerRadius: Tokens.Radius.control)
-                    .fill(Tokens.Canvas.surface.color)
-            )
-        }
-    }
+/// A coloured chip: the hue as the label, the hue at the contract's alpha as
+/// the fill (`TAG_CHIP_FILL_ALPHA`).
+struct Chip: View {
+    let text: String
+    let color: Color
+    var symbol: String?
 
-    private var suggestionChips: some View {
-        ForEach(matching, id: \.self) { tag in
-            Button {
-                add(tag)
-                draft = ""
-            } label: {
-                Text(tag)
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.tint.color)
+    var body: some View {
+        HStack(spacing: Tokens.Space.tight) {
+            if let symbol {
+                Text(symbol).accessibilityHidden(true)
             }
-            .accessibilityLabel("Add the tag \(tag)")
+            Text(text)
         }
+        .font(Tokens.Typography.caption.font.weight(.medium))
+        .foregroundStyle(color)
+        .padding(.horizontal, Tokens.Space.small)
+        .padding(.vertical, 2)
+        .background(color.opacity(Tokens.Palette.chipFillAlpha), in: .rect(cornerRadius: Tokens.Radius.control))
     }
 }
 
-/// One property, edited against its declared type (N704).
+/// Lines of chips that wrap, which `HStack` cannot do.
+struct FlowLayout: Layout {
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = arrange(proposal.width ?? .infinity, subviews)
+        let height = rows.last.map { $0.y + $0.height } ?? 0
+        let width = rows.map(\.width).max() ?? 0
+        return CGSize(width: proposal.width ?? width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for row in arrange(bounds.width, subviews) {
+            var x = bounds.minX
+            for index in row.items {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(
+                    at: CGPoint(x: x, y: bounds.minY + row.y + (row.height - size.height) / 2),
+                    proposal: ProposedViewSize(size)
+                )
+                x += size.width + spacing
+            }
+        }
+    }
+
+    private struct Row {
+        var items: [Int] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+        var y: CGFloat = 0
+    }
+
+    private func arrange(_ maxWidth: CGFloat, _ subviews: Subviews) -> [Row] {
+        var rows: [Row] = [Row()]
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            var row = rows[rows.count - 1]
+            let needed = row.items.isEmpty ? size.width : row.width + spacing + size.width
+            if needed > maxWidth, !row.items.isEmpty {
+                let next = Row(items: [index], width: size.width, height: size.height, y: row.y + row.height + spacing)
+                rows.append(next)
+                continue
+            }
+            row.items.append(index)
+            row.width = needed
+            row.height = max(row.height, size.height)
+            rows[rows.count - 1] = row
+        }
+        return rows
+    }
+}
+
+/// One property, edited against its declared type (N704), laid out as
+/// desktop lays it out: a type glyph and the name in a label column, the
+/// value beside it — coloured chips for choices, relations and projects.
 ///
 /// **A property with no declared type still edits**, as text: one written
 /// before its definition arrived is legal (§13.7.1) and is exactly the case
-/// that would otherwise be unreachable.
+/// that would otherwise be unreachable. Clearing is in the row's context
+/// menu, where desktop keeps it, rather than a button on every row.
 struct NotePropertyEditor: View {
     let property: NoteProperty
     let commit: (String) -> Void
     let clear: () -> Void
+    /// A note's title and icon by id, for a relation's value.
+    var noteTitle: (String) -> String? = { _ in nil }
+    var noteIcon: (String) -> String? = { _ in nil }
 
     @State private var draft: String = ""
     @State private var loaded = false
 
     private var kind: NotePropertyKind? { NotePropertyKind.of(property) }
 
-    /// The choices a `status`, `select` or `multiselect` declares.
-    private var options: [String] {
-        guard
-            let json = property.optionsJson,
-            let parsed = try? JSONSerialization.jsonObject(with: Data(json.utf8))
-        else {
-            return []
+    private var options: [String] { NotePropertyOptions.values(of: property.optionsJson) }
+    private var optionColors: [String: String] { NotePropertyOptions.colors(of: property.optionsJson) }
+
+    private var symbol: String {
+        switch kind {
+        case .text: "textformat"
+        case .number: "number"
+        case .date: "calendar"
+        case .checkbox: "checkmark.square"
+        case .url: "link"
+        case .status, .select: "list.bullet"
+        case .multiselect: "tag"
+        case .relation: "arrow.up.right.square"
+        case .project: "folder"
+        case nil: "textformat"
         }
-        if let list = parsed as? [String] { return list }
-        if let objects = parsed as? [[String: Any]] {
-            return objects.compactMap { $0["name"] as? String ?? $0["value"] as? String }
-        }
-        return []
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-            HStack {
-                Text(property.name)
-                    .font(Tokens.Typography.label.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
-                Spacer()
-                Button {
-                    clear()
-                } label: {
-                    Image(systemName: "xmark.circle")
-                }
-                .accessibilityLabel("Clear \(property.name)")
+        HStack(alignment: .center, spacing: Tokens.Space.medium) {
+            HStack(spacing: Tokens.Space.small) {
+                // One lane for every glyph, so the names share an edge.
+                Image(systemName: symbol)
+                    .frame(width: Tokens.Space.inset, alignment: .center)
+                Text(property.name).lineLimit(1)
             }
+            .font(Tokens.Typography.supporting.font)
+            .foregroundStyle(Tokens.Text.secondary.color)
+            .frame(width: 118, alignment: .leading)
+            .accessibilityHidden(true)
+
             editor
+                .font(Tokens.Typography.supporting.font)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .contextMenu {
+            Button(role: .destructive, action: clear) {
+                Label("Clear \(property.name)", systemImage: "xmark.circle")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityAction(named: "Clear \(property.name)", clear)
         .onAppear {
             guard !loaded else { return }
             draft = NotePropertyJSON.decode(property)
@@ -330,22 +403,25 @@ struct NotePropertyEditor: View {
         }
     }
 
+    private var listed: [String] {
+        draft.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
     @ViewBuilder
     private var editor: some View {
         switch kind {
         case .checkbox:
-            Toggle(
-                property.name,
-                isOn: Binding(
-                    get: { draft == "true" },
-                    set: { on in
-                        draft = on ? "true" : "false"
-                        commit(draft)
-                    }
-                )
-            )
-            .labelsHidden()
+            Button {
+                draft = draft == "true" ? "false" : "true"
+                commit(draft)
+            } label: {
+                Image(systemName: draft == "true" ? "checkmark.square.fill" : "square")
+                    .foregroundStyle(draft == "true" ? Tokens.Tint.base.color : Tokens.Text.tertiary.color)
+            }
             .accessibilityLabel(property.name)
+            .accessibilityValue(draft == "true" ? "On" : "Off")
 
         case .date:
             DatePicker(
@@ -362,42 +438,100 @@ struct NotePropertyEditor: View {
             .labelsHidden()
             .accessibilityLabel(property.name)
 
-        case .status, .select where !options.isEmpty:
-            Picker(property.name, selection: Binding(
-                get: { draft },
-                set: { chosen in
-                    draft = chosen
-                    commit(chosen)
-                }
-            )) {
+        case .status where !options.isEmpty, .select where !options.isEmpty:
+            Menu {
                 ForEach(options, id: \.self) { option in
-                    Text(option).tag(option)
+                    Button(option) {
+                        draft = option
+                        commit(option)
+                    }
+                }
+            } label: {
+                chip(draft.isEmpty ? "Empty" : draft)
+            }
+            .accessibilityLabel(property.name)
+            .accessibilityValue(draft)
+
+        case .multiselect where !options.isEmpty:
+            Menu {
+                ForEach(options, id: \.self) { option in
+                    Button {
+                        var chosen = listed
+                        if let at = chosen.firstIndex(of: option) {
+                            chosen.remove(at: at)
+                        } else {
+                            chosen.append(option)
+                        }
+                        draft = chosen.joined(separator: ", ")
+                        commit(draft)
+                    } label: {
+                        Label(option, systemImage: listed.contains(option) ? "checkmark" : "")
+                    }
+                }
+            } label: {
+                FlowLayout(spacing: Tokens.Space.tight) {
+                    ForEach(listed.isEmpty ? ["Empty"] : listed, id: \.self) { chip($0) }
                 }
             }
-            .labelsHidden()
             .accessibilityLabel(property.name)
+            .accessibilityValue(draft)
+
+        case .relation:
+            // Note titles, not `memry://note/<id>`: the URI is the stored
+            // form and reads as noise. Read only here, because a relation is
+            // made by choosing a note, and a free-text field would let a typo
+            // write a URI that points nowhere.
+            FlowLayout(spacing: Tokens.Space.tight) {
+                ForEach(relations, id: \.id) { related in
+                    Chip(text: related.title, color: Tokens.Tint.base.color, symbol: related.icon)
+                }
+            }
+            .accessibilityLabel(property.name)
+            .accessibilityValue(relations.map(\.title).joined(separator: ", "))
+
+        case .project:
+            FlowLayout(spacing: Tokens.Space.tight) {
+                ForEach(listed, id: \.self) { name in
+                    Chip(text: name, color: Tokens.Text.primary.color)
+                }
+            }
+            .accessibilityLabel(property.name)
+            .accessibilityValue(draft)
 
         case .number:
-            TextField("", text: $draft)
+            TextField("Empty", text: $draft)
                 .keyboardType(.decimalPad)
                 .onSubmit { commit(draft) }
                 .accessibilityLabel(property.name)
 
         case .url:
-            TextField("", text: $draft)
+            TextField("Empty", text: $draft)
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
+                .foregroundStyle(Tokens.Text.tint.color)
                 .onSubmit { commit(draft) }
                 .accessibilityLabel(property.name)
 
         default:
-            // text, select without options, multiselect, relation, project,
-            // and any type this build has never heard of. A comma-separated
-            // list is how the two array types are typed, which the model
-            // turns back into a JSON array.
-            TextField("", text: $draft)
+            // text, a choice with no options, and any type this build has
+            // never heard of. A comma-separated list is how an array type is
+            // typed, which the model turns back into a JSON array.
+            TextField("Empty", text: $draft)
                 .onSubmit { commit(draft) }
                 .accessibilityLabel(property.name)
+        }
+    }
+
+    private func chip(_ value: String) -> Chip {
+        Chip(text: value, color: Tokens.Palette.color(optionColors[value], tag: value))
+    }
+
+    /// Each `memry://<kind>/<id>` in the value, as the title and icon of what
+    /// it points at when this vault knows it, and as the id when it does not.
+    private var relations: [(id: String, title: String, icon: String?)] {
+        listed.map { uri in
+            let id = uri.split(separator: "/").last.map(String.init) ?? uri
+            return (id, noteTitle(id) ?? id, noteIcon(id))
         }
     }
 
@@ -413,7 +547,8 @@ struct NotePropertyEditor: View {
     }
 }
 
-/// The editable metadata block: tags and the property editors.
+/// The editable metadata block: tags, then a collapsible "Properties · N"
+/// section, as desktop's note header has them.
 ///
 /// A sibling of `NoteMetaView` rather than a mode inside it. That view is the
 /// read surface and says so in its own header; giving it a second, editable
@@ -422,11 +557,18 @@ struct NoteMetadataEditors: View {
     let metadata: NoteMetadata
     let model: NoteMetadataViewModel
     let reload: () async -> Void
+    /// A note's title by id, so a relation reads as the notes it names.
+    var noteTitle: (String) -> String? = { _ in nil }
+    var noteIcon: (String) -> String? = { _ in nil }
+    var tagColors: [String: String] = [:]
+
+    @State private var showsProperties = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
             NoteTagEditor(
                 tags: metadata.tags,
+                colors: tagColors,
                 add: { tag in
                     Task {
                         _ = await model.addTag(tag, to: metadata.tags)
@@ -441,26 +583,51 @@ struct NoteMetadataEditors: View {
                 }
             )
 
-            ForEach(metadata.properties, id: \.name) { property in
-                NotePropertyEditor(
-                    property: property,
-                    commit: { input in
-                        Task {
-                            await model.setProperty(
-                                property.name,
-                                input: input,
-                                kind: NotePropertyKind.of(property)
-                            )
-                            await reload()
-                        }
-                    },
-                    clear: {
-                        Task {
-                            await model.clearProperty(property.name)
-                            await reload()
-                        }
+            if !metadata.properties.isEmpty {
+                Button {
+                    showsProperties.toggle()
+                } label: {
+                    HStack(spacing: Tokens.Space.small) {
+                        Image(systemName: "chevron.right")
+                            .rotationEffect(.degrees(showsProperties ? 90 : 0))
+                            .foregroundStyle(Tokens.Tint.base.color)
+                        Text("Properties · \(metadata.properties.count)")
+                            .foregroundStyle(Tokens.Text.secondary.color)
+                        Spacer()
                     }
-                )
+                    .font(Tokens.Typography.caption.font.weight(.medium))
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Properties, \(metadata.properties.count)")
+                .accessibilityValue(showsProperties ? "Expanded" : "Collapsed")
+
+                if showsProperties {
+                    Divider()
+                    ForEach(metadata.properties, id: \.name) { property in
+                        NotePropertyEditor(
+                            property: property,
+                            commit: { input in
+                                Task {
+                                    await model.setProperty(
+                                        property.name,
+                                        input: input,
+                                        kind: NotePropertyKind.of(property)
+                                    )
+                                    await reload()
+                                }
+                            },
+                            clear: {
+                                Task {
+                                    await model.clearProperty(property.name)
+                                    await reload()
+                                }
+                            },
+                            noteTitle: noteTitle,
+                            noteIcon: noteIcon
+                        )
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

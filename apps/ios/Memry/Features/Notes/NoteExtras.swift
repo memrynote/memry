@@ -294,7 +294,14 @@ struct NoteRemindersSection: View {
                             Text(reminder.title ?? "Reminder")
                                 .font(Tokens.Typography.body.font)
                                 .foregroundStyle(Tokens.Text.primary.color)
-                            Text(NoteInstants.label(for: reminder.remindAt))
+                            // An anchored `note_date` reminder carries no
+                            // instant on the wire: each device derives it
+                            // from the date pill it belongs to
+                            // (`reminder-handler.ts`). Said in words rather
+                            // than left as an empty line.
+                            Text(reminder.remindAt.isEmpty
+                                ? "Set by a date in this note"
+                                : NoteInstants.label(for: reminder.remindAt))
                                 .font(Tokens.Typography.caption.font)
                                 .foregroundStyle(Tokens.Text.secondary.color)
                         }

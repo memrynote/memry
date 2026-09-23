@@ -87,6 +87,12 @@ protocol NotesReading: Sendable {
     func attachments(id: String) async throws -> [CachedAttachment]
     /// The tasks linked to one note (N807).
     func linkedTasks(noteId: String) async throws -> [LinkedTask]
+    /// Every review comment and suggestion on one note (N604). Read only:
+    /// §12.5.1 forbids this client writing them.
+    func comments(id: String) async throws -> [ReviewComment]
+    /// The card a `taskBlock` draws for its task, or `nil` when this vault
+    /// does not hold the task.
+    func task(id: String) async throws -> TaskCard?
     /// Every template a note can be made from (N803).
     func templates() async throws -> [TemplateSummary]
     /// The reminders pointing at one note (N804).
@@ -153,6 +159,16 @@ struct CoreNotesReader: NotesReading {
     func attachments(id: String) async throws -> [CachedAttachment] {
         let vault = vault
         return try await executor.run { try vault.notes().attachments(id: id) }
+    }
+
+    func comments(id: String) async throws -> [ReviewComment] {
+        let vault = vault
+        return try await executor.run { try vault.notes().comments(id: id) }
+    }
+
+    func task(id: String) async throws -> TaskCard? {
+        let vault = vault
+        return try await executor.run { try vault.notes().task(taskId: id) }
     }
 
     func linkedTasks(noteId: String) async throws -> [LinkedTask] {

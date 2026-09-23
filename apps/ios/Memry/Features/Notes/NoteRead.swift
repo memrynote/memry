@@ -159,6 +159,10 @@ final class NoteReadViewModel {
     /// nothing because the answer has not arrived, the second draws nothing
     /// because there is nothing — and only the first may change on its own.
     private(set) var metadata: NoteMetadata?
+    /// The note's review comments and suggestions (N604), read only.
+    private(set) var comments: [ReviewComment] = []
+    /// Each task block's task, by task id, for the row desktop draws.
+    private(set) var taskCards: [String: TaskCard] = [:]
     private var hasLoaded = false
 
     init(
@@ -220,6 +224,31 @@ final class NoteReadViewModel {
         }
         await loadTables()
         await loadAttachments()
+        await loadComments()
+        await loadTaskCards()
+    }
+
+    /// A task block the vault holds no task for draws from its own props.
+    private func loadTaskCards() async {
+        var cards: [String: TaskCard] = [:]
+        for block in blocks where block.kind == "taskBlock" {
+            guard let id = block.props.first(where: { $0.name == "taskId" })?.value, !id.isEmpty
+            else { continue }
+            if let card = try? await reader.task(id: id) { cards[id] = card }
+        }
+        taskCards = cards
+    }
+
+    /// A failure leaves the list empty: not seeing a comment is much smaller
+    /// than not seeing the note.
+    private func loadComments() async {
+        do {
+            comments = try await reader.comments(id: route.id)
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("this note's review comments could not be read", .code(mapped.code))
+            comments = []
+        }
     }
 
     /// Binds every attachment-bearing block in the body.
@@ -255,6 +284,18 @@ final class NoteReadViewModel {
             else { continue }
             seen.append(url)
         }
+        // A table cell's inline image is a run, not a block: its address is
+        // the node's `src`. Without this it was never bound and drew a
+        // placeholder forever.
+        for block in blocks {
+            for run in block.inline where run.marks.contains("inlineImage") {
+                guard let src = run.markAttrs["inlineImage.src"] ?? run.target,
+                      !src.isEmpty,
+                      !seen.contains(src)
+                else { continue }
+                seen.append(src)
+            }
+        }
         return seen
     }
 
@@ -275,12 +316,10 @@ final class NoteReadViewModel {
     /// must not stop the other pictures in the note from arriving.
     func fetchWaitingAttachments() async {
         guard let filler else { return }
-        // `PathReachability` has no production producer yet (`ShellState`
-        // says so), and its own documented answer for "we have not seen a
-        // path" is `.cellular`: usable, metered, and the honest unknown. On an
-        // unwired build that means an unmetered-only attachment defers rather
-        // than spending a stranger's data plan, which is the safe direction
-        // for a default to fail in.
+        // The screen passes `PathReachability.forAttachments`. With none, the
+        // documented answer for "we have not seen a path" is `.cellular`:
+        // usable, metered, and the honest unknown, so an unmetered-only
+        // attachment defers rather than spending a stranger's data plan.
         let reachable = reachability?.current() ?? PathReachability.unknownPath
 
         var landed = false
@@ -375,7 +414,27 @@ final class NoteReadViewModel {
     /// Read once when the note opens rather than on every keystroke in the
     /// search field: a vault can hold thousands and the list does not change
     /// while a menu is open.
-    private(set) var vaultNotes: [NoteSummary] = []
+    private(set) var vaultNotes: [NoteSummary] = [] {
+        didSet {
+            vaultTitles = Set(vaultNotes.map { $0.title.lowercased() })
+        }
+    }
+    private var vaultTitles: Set<String> = []
+
+    /// Every tag's chosen colour, lowercased name to palette name or hex, so
+    /// a chip is the colour desktop draws it. Empty until read, which draws
+    /// each tag in the colour its name hashes to — desktop's own default.
+    private(set) var tagColors: [String: String] = [:]
+
+    /// Whether a wiki link's title names a note in this vault, or `nil` while
+    /// the list is unread — which draws every link as whole rather than
+    /// calling a good one broken. Titles only: a link naming a note by its
+    /// alias reads as broken here and still resolves on the tap.
+    var titleExists: ((String) -> Bool)? {
+        guard !vaultNotes.isEmpty else { return nil }
+        let titles = vaultTitles
+        return { titles.contains($0.lowercased()) }
+    }
 
     /// The note's text for an export (N802).
     ///
@@ -456,6 +515,15 @@ final class NoteReadViewModel {
         } catch {
             Log.storage.error("the vault's notes could not be listed for linking")
             vaultNotes = []
+        }
+        do {
+            var colors: [String: String] = [:]
+            for tag in try await reader.tags() {
+                if let color = tag.color, !color.isEmpty { colors[tag.name.lowercased()] = color }
+            }
+            tagColors = colors
+        } catch {
+            Log.storage.error("the vault's tag colours could not be read")
         }
     }
 }

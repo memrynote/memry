@@ -127,7 +127,7 @@ struct VaultBrowseTests {
         #expect(reader.callLog == ["folders", "folders"])
     }
 
-    @Test("notes in an unconfigured folder stay visible and the folder does not appear")
+    @Test("a folder with notes and no config row appears in the tree, holding them")
     func unconfiguredFolderNotesStayVisible() async {
         // `Projects` is configured. `Archive` holds a note and has no
         // `folder_config` row, which chapter 13 §13.7.10 allows.
@@ -141,10 +141,11 @@ struct VaultBrowseTests {
             Issue.record("the outline should have loaded")
             return
         }
-        // The folder is absent — Kaan's decision, with its cost accepted.
-        #expect(outline.folderRows.map(\.path) == ["Projects"])
-        // The note is not. This is the half the decision must never become.
-        #expect(outline.unplacedNotes.map(\.id) == ["b"])
+        // Derived from the note's own path, as desktop derives its tree from
+        // the directories on disk.
+        #expect(Set(outline.folderRows.map(\.path)) == ["Projects", "Archive"])
+        #expect(outline.node(at: "Archive")?.notes.map(\.id) == ["b"])
+        #expect(outline.unplacedNotes.isEmpty)
         #expect(outline.noteCount == 2)
     }
 
@@ -244,14 +245,26 @@ struct VaultBrowseTests {
         #expect(reader.callLog == ["folders", "list"])
     }
 
-    @Test("a note at the vault root is not confused with a note whose folder has no row")
+    @Test("a note at the vault root is not confused with a note in an unconfigured folder")
     func rootNotesAndStrandedNotesAreDifferent() {
         let outline = VaultOutline.build(
             folders: [],
             notes: [note("root"), note("stranded", in: "Archive")]
         )
         #expect(outline.rootNotes.map(\.id) == ["root"])
-        #expect(outline.unplacedNotes.map(\.id) == ["stranded"])
+        #expect(outline.node(at: "Archive")?.notes.map(\.id) == ["stranded"])
         #expect(outline.isEmpty == false)
+    }
+
+    @Test("a nested unconfigured folder brings its ancestors, and a configured one keeps its name")
+    func nestedFoldersAreDerivedWithTheirAncestors() {
+        let outline = VaultOutline.build(
+            folders: [FolderSummary(path: "books", parentPath: nil, name: "Reading", icon: "📚")],
+            notes: [note("deep", in: "books/2026/fiction")]
+        )
+        #expect(outline.folderRows.map(\.path) == ["books", "books/2026", "books/2026/fiction"])
+        #expect(outline.folderRows.map(\.depth) == [0, 1, 2])
+        #expect(outline.roots.first?.title == "Reading")
+        #expect(outline.node(at: "books/2026/fiction")?.notes.map(\.id) == ["deep"])
     }
 }

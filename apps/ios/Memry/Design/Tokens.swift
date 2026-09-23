@@ -477,4 +477,76 @@ enum Tokens {
             "pink": AdaptiveColor(light: 0xF4_DF_EB, dark: 0x34_20_2B)
         ]
     }
+
+    /// The tag and property-option palette, ported from
+    /// `packages/contracts/src/tag-colors.ts` — the one palette every surface
+    /// paints chips from, so a tag orange on desktop is orange here. One hex
+    /// per name, used as the label and at `chipFillAlpha` as the fill.
+    enum Palette {
+        static let chipFillAlpha = 0.12
+
+        /// In the contract's order, which the default-colour hash indexes.
+        static let names = [
+            "rose", "coral", "tangerine", "amber", "lemon", "sage", "emerald",
+            "mint", "teal", "cyan", "sky", "cobalt", "indigo", "violet",
+            "plum", "magenta", "slate", "sand", "stone", "mauve"
+        ]
+
+        private static let hex: [String: UInt32] = [
+            "rose": 0xE0_78_88, "coral": 0xD8_84_6C, "tangerine": 0xCC_94_56,
+            "amber": 0xC4_A4_4E, "lemon": 0xB8_B4_4C, "sage": 0x7C_B8_6C,
+            "emerald": 0x50_B8_88, "mint": 0x4C_C0_AC, "teal": 0x4A_B8_BE,
+            "cyan": 0x52_AA_CC, "sky": 0x64_A0_D8, "cobalt": 0x74_8C_E0,
+            "indigo": 0x8A_7C_D6, "violet": 0xA4_70_D0, "plum": 0xC0_6C_B0,
+            "magenta": 0xD4_6C_96, "slate": 0x84_94_A8, "sand": 0xAD_A0_88,
+            "stone": 0x94_94_90, "mauve": 0xA4_94_AA
+        ]
+
+        /// `getTagColors`: a palette name wins, a `#rrggbb` is used as-is,
+        /// and anything else takes the colour the name hashes to.
+        static func color(_ value: String?, tag: String? = nil) -> Color {
+            if let value, let rgb = hex[value] { return rgbColor(rgb) }
+            if let value, value.count == 7, value.hasPrefix("#"),
+               let rgb = UInt32(value.dropFirst(), radix: 16) {
+                return rgbColor(rgb)
+            }
+            if let tag { return rgbColor(hex[defaultName(for: tag)] ?? 0x94_94_90) }
+            return rgbColor(0x94_94_90)
+        }
+
+        /// `defaultTagColorName`, byte for byte: JavaScript's `hash * 31 +
+        /// charCodeAt` over UTF-16 units with 32-bit wrap, then
+        /// `Math.abs(hash) % 20`. Two devices that fold a name differently
+        /// disagree about the colour of every tag nobody picked one for.
+        static func defaultName(for tag: String) -> String {
+            var hash: Int32 = 0
+            for unit in tag.lowercased().utf16 {
+                hash = hash &* 31 &+ Int32(unit)
+            }
+            let index = Int(Int64(hash).magnitude % UInt64(names.count))
+            return names[index]
+        }
+
+        private static func rgbColor(_ rgb: UInt32) -> Color {
+            Color(
+                red: Double((rgb >> 16) & 0xFF) / 255,
+                green: Double((rgb >> 8) & 0xFF) / 255,
+                blue: Double(rgb & 0xFF) / 255
+            )
+        }
+    }
+
+    /// Code token colours: shiki's `github-light` and `github-dark`, the two
+    /// themes desktop's code blocks highlight with
+    /// (`packages/editor-schema/src/code-block.ts`), so a code block reads the
+    /// same on both surfaces.
+    enum Code {
+        static let keyword = AdaptiveColor(light: 0xD7_3A_49, dark: 0xF9_75_83)
+        static let function = AdaptiveColor(light: 0x6F_42_C1, dark: 0xB3_92_F0)
+        static let string = AdaptiveColor(light: 0x03_2F_62, dark: 0x9E_CB_FF)
+        static let constant = AdaptiveColor(light: 0x00_5C_C5, dark: 0x79_B8_FF)
+        static let variable = AdaptiveColor(light: 0xE3_62_09, dark: 0xFF_AB_70)
+        static let comment = AdaptiveColor(light: 0x6A_73_7D, dark: 0x6A_73_7D)
+        static let plain = AdaptiveColor(light: 0x24_29_2E, dark: 0xE1_E4_E8)
+    }
 }

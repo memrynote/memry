@@ -44,9 +44,14 @@ protocol VaultRegistry: Sendable {
 /// The production registry: the core's own `GET /sync/vaults`.
 struct CoreVaultRegistry: VaultRegistry {
     private let session: any AuthSessionProtocol
+    /// The account's master key, read when the list arrives. The registry
+    /// holds every vault name sealed under the vault key, so without it a
+    /// vault is shown by its placeholder rather than by ciphertext.
+    private let masterKey: @Sendable () -> Data?
 
-    init(session: any AuthSessionProtocol) {
+    init(session: any AuthSessionProtocol, masterKey: @escaping @Sendable () -> Data? = { nil }) {
         self.session = session
+        self.masterKey = masterKey
     }
 
     /// Awaited directly and **not** put on `CoreExecutor` (spec-defect 90):
@@ -56,7 +61,30 @@ struct CoreVaultRegistry: VaultRegistry {
         // Thrown onward unchanged so `ErrorMapping` sees the real `ApiError`.
         // A 401 the refresh could not rescue must read as an expired session,
         // never as an account with no vaults.
-        try await session.vaults()
+        let rows = try await session.vaults()
+        return Self.opened(rows, masterKey: masterKey())
+    }
+
+    /// Each sealed name opened, for the rows that carry one.
+    ///
+    /// A name that does not open stays absent, which the screen draws as
+    /// "Unnamed vault". The ciphertext is never offered as a name.
+    static func opened(_ rows: [VaultSummary], masterKey: Data?) -> [VaultSummary] {
+        rows.map { row in
+            guard row.name == nil,
+                  let masterKey,
+                  let sealed = row.encryptedName,
+                  let nonce = row.nameNonce
+            else { return row }
+            var named = row
+            named.name = decryptVaultName(
+                masterKey: masterKey,
+                vaultId: row.id,
+                encryptedName: sealed,
+                nameNonce: nonce
+            )
+            return named
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 import AVKit
 import MemryCore
+import PDFKit
 import QuickLook
 import SwiftUI
 
@@ -116,10 +117,27 @@ struct NoteAttachmentView: View {
                 // A real player, because a recording in a note is meant to be
                 // listened to in place. Video keeps its aspect ratio rather
                 // than a fixed box, so a portrait clip is not letterboxed.
-                VideoPlayer(player: AVPlayer(url: path))
-                    .frame(height: kind == "audio" ? 80 : 220)
-                    .clipShape(.rect(cornerRadius: Tokens.Radius.card))
+                MediaPlayer(url: path, isAudio: kind == "audio")
                     .accessibilityLabel("\(label), \(kind)")
+            } else if isPDF(path) {
+                // Read in place, as desktop shows it: a PDF in a note is
+                // there to be read, and a card that only opens it hides the
+                // one thing the reader came for. Full screen stays a tap away.
+                VStack(alignment: .leading, spacing: Tokens.Space.small) {
+                    PDFPreview(url: path)
+                        .frame(height: 420)
+                        .clipShape(.rect(cornerRadius: Tokens.Radius.card))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Tokens.Radius.card)
+                                .stroke(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline)
+                        )
+                        .accessibilityLabel("\(label), PDF")
+                    Button { previewing = path } label: {
+                        Label("Open \(label)", systemImage: "arrow.up.left.and.arrow.down.right")
+                            .font(Tokens.Typography.caption.font)
+                    }
+                    .quickLookPreview($previewing)
+                }
             } else {
                 Button { previewing = path } label: {
                     AttachmentCard(symbol: symbol, label: label, detail: measured ?? "Open")
@@ -143,6 +161,11 @@ struct NoteAttachmentView: View {
                 detail: "Two attachments share this name"
             )
         }
+    }
+
+    private func isPDF(_ path: URL) -> Bool {
+        path.pathExtension.lowercased() == "pdf"
+            || (name ?? "").lowercased().hasSuffix(".pdf")
     }
 
     private var symbol: String {
@@ -273,6 +296,48 @@ enum AttachmentPaths {
 }
 
 // MARK: - the pieces
+
+/// A video or a recording, playable in place.
+///
+/// The player is held in state: built in `body`, it was rebuilt on every
+/// re-render, and a note that re-read itself mid-playback stopped the clip.
+private struct MediaPlayer: View {
+    let url: URL
+    let isAudio: Bool
+    @State private var player: AVPlayer?
+
+    var body: some View {
+        VideoPlayer(player: player)
+            .aspectRatio(isAudio ? nil : 16 / 9, contentMode: .fit)
+            .frame(height: isAudio ? 64 : nil)
+            .clipShape(.rect(cornerRadius: Tokens.Radius.card))
+            .onAppear {
+                if player == nil { player = AVPlayer(url: url) }
+            }
+            .onDisappear { player?.pause() }
+    }
+}
+
+/// A PDF, laid out for reading inside the note.
+private struct PDFPreview: UIViewRepresentable {
+    let url: URL
+
+    func makeUIView(context: Context) -> PDFView {
+        let view = PDFView()
+        view.autoScales = true
+        view.displayMode = .singlePageContinuous
+        view.displayDirection = .vertical
+        view.backgroundColor = .clear
+        view.document = PDFDocument(url: url)
+        return view
+    }
+
+    func updateUIView(_ view: PDFView, context: Context) {
+        if view.document?.documentURL != url {
+            view.document = PDFDocument(url: url)
+        }
+    }
+}
 
 private struct LocalImage: View {
     let path: URL

@@ -91,7 +91,14 @@ struct NoteReadView: View {
         _linkedTasks = State(
             initialValue: LinkedTasksViewModel(noteId: route.id, reader: reader)
         )
-        _model = State(initialValue: NoteReadViewModel(route: route, reader: reader, filler: filler))
+        _model = State(
+            initialValue: NoteReadViewModel(
+                route: route,
+                reader: reader,
+                filler: filler,
+                reachability: PathReachability.forAttachments
+            )
+        )
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: route.id, filler: filler)
         )
@@ -304,7 +311,14 @@ struct NoteReadView: View {
                             NoteMetadataEditors(
                                 metadata: metadata,
                                 model: metadataModel,
-                                reload: { await model.reload() }
+                                reload: { await model.reload() },
+                                noteTitle: { id in
+                                    model.vaultNotes.first { $0.id == id }?.title
+                                },
+                                noteIcon: { id in
+                                    model.vaultNotes.first { $0.id == id }?.emoji
+                                },
+                                tagColors: model.tagColors
                             )
                         } else {
                             NoteMetaView(metadata: metadata)
@@ -368,6 +382,8 @@ struct NoteReadView: View {
                             tableEditing: tableEditing
                         )
                     }
+                    // Read only (N604): §12.5.1 forbids writing them.
+                    ReviewCommentsSection(comments: model.comments)
                     // Under the body, where desktop puts it and where a
                     // reader looks after finishing the note (N800).
                     if let open {
@@ -384,6 +400,12 @@ struct NoteReadView: View {
             .padding(.vertical, Tokens.Space.screenBlock)
         }
         .background(Tokens.Canvas.background.color)
+        .environment(\.noteTitleExists, model.titleExists)
+        .environment(\.taskCards, model.taskCards)
+        .environment(
+            \.reviewMarks,
+            ReviewMarkStyle.unambiguous(model.comments, in: model.exportText)
+        )
         .calmAnimation(.normal, value: model.phase)
         .modifier(
             NoteReadToolbar(

@@ -1,5 +1,6 @@
 import MemryCore
 import SwiftUI
+import UIKit
 
 // The note body, rendered from the core's blocks.
 //
@@ -56,12 +57,31 @@ struct NoteBlocksView: View {
     /// (N605). `nil` everywhere else.
     var checkboxBase: Int?
 
+    /// `true` inside a table cell, whose own `textColor` is the ink. Anywhere
+    /// else the body is drawn in the ordinary ink.
+    var inheritsInk = false
+
+    /// Toggles the reader has opened or closed on this screen, by row.
+    ///
+    /// A view state rather than a write: folding a toggle to read past it is
+    /// not an edit, and writing `open` for it would change the note on every
+    /// other device.
+    @State private var flipped: Set<Int> = []
+
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-            ForEach(NoteBlockList.rows(of: blocks), id: \.id) { row in
+            ForEach(NoteBlockList.rows(of: blocks, flipped: flipped), id: \.id) { row in
                 NoteBlockView(
                     block: row.block,
                     marker: row.marker,
+                    isOpen: row.isOpen,
+                    toggle: {
+                        if flipped.contains(row.id) {
+                            flipped.remove(row.id)
+                        } else {
+                            flipped.insert(row.id)
+                        }
+                    },
                     openTarget: openTarget,
                     tableContent: tableContent,
                     attachment: attachment,
@@ -75,6 +95,7 @@ struct NoteBlocksView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .modifier(BlockInk(color: inheritsInk ? nil : Tokens.Text.primary.color))
         // Wiki links are `AttributedString` links, so the platform already
         // draws and hits them — including for VoiceOver's link rotor, which a
         // tap gesture over styled text would never have reached. This is the
@@ -126,9 +147,17 @@ enum NoteBlockList {
         let block: Block
         /// The marker a numbered list item draws, already counted.
         let marker: String?
+        /// For a toggle, whether it is showing its body.
+        var isOpen = false
     }
 
-    static func rows(of blocks: [Block]) -> [Row] {
+    /// The rows to draw.
+    ///
+    /// A closed toggle hides everything nested under it, as desktop does:
+    /// its body arrives as the following blocks one depth deeper, and drawing
+    /// them anyway made "closed" mean nothing. `flipped` holds the toggles
+    /// the reader has opened or closed since, against the document's `open`.
+    static func rows(of blocks: [Block], flipped: Set<Int> = []) -> [Row] {
         var rows: [Row] = []
         // Per depth, so a nested list numbers itself and an outer list is not
         // disturbed by it.
@@ -139,13 +168,26 @@ enum NoteBlockList {
         // is dropped from the core — this is one surface choosing the richer
         // of two readings of the same content.
         var tableDepth: UInt32?
+        // The depth of the closed toggle whose body is being skipped.
+        var foldedDepth: UInt32?
 
         for (offset, block) in blocks.enumerated() {
+            if let depth = foldedDepth {
+                if block.depth > depth { continue }
+                foldedDepth = nil
+            }
             if let depth = tableDepth {
                 if block.depth > depth { continue }
                 tableDepth = nil
             }
             if block.kind == "table" { tableDepth = block.depth }
+
+            var isOpen = false
+            if block.kind == "toggleListItem" {
+                let stored = block.props.first { $0.name == "open" }?.value == "true"
+                isOpen = flipped.contains(offset) ? !stored : stored
+                if !isOpen { foldedDepth = block.depth }
+            }
 
             var marker: String?
             if block.kind == "numberedListItem" {
@@ -159,7 +201,7 @@ enum NoteBlockList {
                 counters = counters.filter { $0.key < block.depth }
             }
 
-            rows.append(Row(id: offset, block: block, marker: marker))
+            rows.append(Row(id: offset, block: block, marker: marker, isOpen: isOpen))
         }
         return rows
     }
@@ -171,6 +213,10 @@ struct NoteBlockView: View {
     /// The list marker this item draws, counted over its siblings by
     /// `NoteBlockList`. `nil` for everything that is not a numbered item.
     var marker: String?
+    /// For a toggle, whether its body is showing on this screen.
+    var isOpen = false
+    /// Opens or closes a toggle on this screen.
+    var toggle: (() -> Void)?
     var openTarget: ((String) -> Void)?
     var tableContent: ((String) -> TableContent?)?
     var attachment: ((String) -> BlockAttachment)?
@@ -182,12 +228,26 @@ struct NoteBlockView: View {
     /// address a checkbox with.
     var checkboxBase: Int?
 
+    /// Whether a wiki link's title names a note here, so a broken one can be
+    /// drawn as broken. `nil` until the vault's notes are read, which draws
+    /// every link as whole rather than guessing.
+    @Environment(\.noteTitleExists) private var titleExists
+    /// Review marks this block may carry, already narrowed to ones whose
+    /// text is unambiguous in the note (see `ReviewMarkStyle`).
+    @Environment(\.reviewMarks) private var reviewMarks
+    @Environment(\.taskCards) private var taskCards
+
     var body: some View {
         content
             // A block's own ink, when it declares one. Applied as a tint over
             // the whole block rather than per run: an inline `textColor`
             // wins because it sets its own foreground on the run.
-            .foregroundStyle(blockInk ?? Tokens.Text.primary.color)
+            //
+            // **Only when it declares one.** Otherwise the ink is inherited:
+            // the note sets the ordinary ink around the whole body, and a
+            // table cell sets its own `textColor` around its content, which
+            // a default applied here would paint over.
+            .modifier(BlockInk(color: blockInk))
             .padding(blockFill == nil ? 0 : Tokens.Space.small)
             .background(blockFill ?? .clear, in: .rect(cornerRadius: Tokens.Radius.control))
             // Indentation carries nesting, exactly as it does in the browse
@@ -212,14 +272,25 @@ struct NoteBlockView: View {
     private var content: some View {
         switch block.kind {
         case "heading":
+            // No ink of its own: the block's `textColor`, applied in `body`,
+            // is what a coloured heading is drawn in.
             Text(inline)
                 .font(headingRole.font)
-                .foregroundStyle(Tokens.Text.primary.color)
+                .multilineTextAlignment(alignment)
                 .accessibilityAddTraits(.isHeader)
         case "bulletListItem", "numberedListItem":
             ListItemRow(marker: marker ?? bullet, text: inline, alignment: alignment)
-        case "checkListItem", "taskBlock":
+        case "checkListItem":
             CheckItemRow(isChecked: flag("checked"), text: inline)
+        case "taskBlock":
+            // A task block is `content: none`: its words are the `title`
+            // prop. The task itself adds what desktop's row shows beside
+            // them; a task this vault does not hold draws from the props.
+            TaskBlockRow(
+                title: value("title") ?? "",
+                isChecked: flag("checked"),
+                card: value("taskId").flatMap { taskCards[$0] }
+            )
         case "quote":
             QuoteRow(text: inline)
         case "callout":
@@ -231,11 +302,9 @@ struct NoteBlockView: View {
         case "toggleListItem":
             // The children already arrive as their own blocks one level
             // deeper, so this draws the summary and the state — it does not
-            // own the body. A closed toggle still shows its children rather
-            // than hiding them: this screen reads a note, and a reader who
-            // cannot open a disclosure would simply lose the text. The
-            // chevron says which way the note was left.
-            ToggleSummaryRow(isOpen: flag("open"), text: inline, alignment: alignment)
+            // own the body. A closed toggle hides its children, as desktop
+            // does, and a tap opens it (`NoteBlockList.rows`).
+            ToggleSummaryRow(isOpen: isOpen, text: inline, alignment: alignment, toggle: toggle)
         case "audio", "video", "file":
             // Openable once the bytes are here, named when they are not.
             // Before these cases existed, audio and video fell through to
@@ -258,27 +327,22 @@ struct NoteBlockView: View {
                 tableId: block.id
             )
         case "bookmark":
-            // A bookmark carries its whole card in props — url, title, site —
-            // and needs nothing fetched, so it is a real link rather than a
-            // placeholder. The preview image is the one part that would need
-            // bytes, and it is left out rather than faked.
-            LinkCardRow(
+            // The page's own card once its metadata loads, as desktop draws
+            // it; the stored props or the address until then. An empty
+            // string is "not known", not a name: desktop writes `""` until it
+            // has fetched the page.
+            BookmarkCard(
                 url: value("url"),
                 title: value("title"),
-                subtitle: value("siteName") ?? value("domain"),
-                symbol: "bookmark"
+                subtitle: [value("siteName"), value("domain")]
+                    .compactMap { $0 }
+                    .first { !$0.isEmpty }
             )
         case "youtubeEmbed":
-            // Same: the video is somewhere else either way, so a link that
-            // opens it beats a grey box that does not. No inline player — the
-            // note body is not a video surface, and an embed that only works
-            // online would break the offline read this screen is for.
-            LinkCardRow(
-                url: value("videoUrl"),
-                title: value("title"),
-                subtitle: "Watch on YouTube",
-                symbol: "play.rectangle"
-            )
+            // The video's thumbnail with a play mark, which opens it. No
+            // inline player: an embed that only works online would break the
+            // offline read this screen is for.
+            YouTubeCard(videoUrl: value("videoUrl"), videoId: value("videoId"), title: value("title"))
         case "image", "inlineImage":
             // Real bytes when this device has them, a placeholder when it does
             // not. A block's url is a vault-relative path rather than an
@@ -297,17 +361,58 @@ struct NoteBlockView: View {
             // paragraph is a real `UITextView` (N300's answer) and what the
             // user types reaches `Notes.editBlock`. Without one, the same
             // block draws exactly as it always did.
-            if let editing, let id = block.id, block.kind == "paragraph" {
+            //
+            // **Only a paragraph of plain text is editable here.** The text
+            // view holds a `String`, and its commit is `SetText`, which
+            // replaces the block's whole inline content: a paragraph holding a
+            // bold word, a colour, a link or a wiki link would draw without
+            // them and lose them for good on the first keystroke, on every
+            // device. Such a paragraph draws read-only, with everything it
+            // holds, until the editor can edit a range rather than the whole.
+            //
+            // **Nor a paragraph a review mark covers.** The mark is drawn over
+            // the text, which a plain text view cannot show, and it is pinned
+            // by offsets into desktop's file: editing the text under it moves
+            // the words out from under the comment.
+            if let editing, let id = block.id, block.kind == "paragraph", isPlainText,
+               !reviewMarks.contains(where: { plainText.contains($0.visibleText) }) {
                 EditableBlockView(
                     text: editing.text(id, plainText),
                     role: .body,
+                    alignment: textViewAlignment,
+                    ink: blockInkName.flatMap { Tokens.Content.ink(named: $0) }
+                        .map { UIColor($0.color) },
                     commit: { editing.commit(id, $0, plainText) },
                     onReturn: { editing.insertAfter(id) }
                 )
+            } else if !inlineImages.isEmpty {
+                // A table cell's inline image (§12.7.1). It has no text, so
+                // as a run it drew as nothing; it is a picture beside the
+                // cell's words instead.
+                VStack(alignment: .leading, spacing: Tokens.Space.small) {
+                    if !inline.characters.isEmpty {
+                        Text(inline)
+                            .font(Tokens.Typography.body.font)
+                            .multilineTextAlignment(alignment)
+                    }
+                    ForEach(Array(inlineImages.enumerated()), id: \.offset) { _, image in
+                        NoteImageView(
+                            url: image.markAttrs["inlineImage.src"] ?? image.target,
+                            name: image.markAttrs["inlineImage.alt"],
+                            caption: nil,
+                            previewWidth: nil,
+                            resolve: attachment,
+                            remove: nil
+                        )
+                    }
+                }
             } else {
+                // No ink here: the block's own `textColor` comes from `body`.
+                // No font for a table cell's paragraph either: the cell sets
+                // the weight that makes a header a header.
                 Text(inline)
-                    .font(Tokens.Typography.body.font)
-                    .foregroundStyle(Tokens.Text.primary.color)
+                    .modifier(BodyFont(skip: block.kind == "tableParagraph"))
+                    .multilineTextAlignment(alignment)
             }
         }
     }
@@ -361,6 +466,30 @@ struct NoteBlockView: View {
         block.inline.map(\.text).joined()
     }
 
+    private var inlineImages: [InlineRun] {
+        block.inline.filter { $0.marks.contains("inlineImage") }
+    }
+
+    /// True when every run is unmarked text: nothing a `String` would lose.
+    private var isPlainText: Bool {
+        block.inline.allSatisfy { $0.marks.isEmpty }
+    }
+
+    private var blockInkName: String? {
+        value("textColor")
+    }
+
+    /// `textAlignment` for a text view, which unlike SwiftUI's `Text` can
+    /// justify.
+    private var textViewAlignment: NSTextAlignment {
+        switch value("textAlignment") {
+        case "center": .center
+        case "right": .right
+        case "justify": .justified
+        default: .natural
+        }
+    }
+
     /// The block's runs as one attributed string, marks applied.
     private var inline: AttributedString {
         var out = AttributedString()
@@ -370,174 +499,47 @@ struct NoteBlockView: View {
         for run in block.inline {
             let isCheckbox = run.marks.contains("inlineCheckbox")
             out.append(
-                NoteInline.attributed(run, checkboxOrdinal: isCheckbox ? ordinal : nil)
+                NoteInline.attributed(
+                    run,
+                    checkboxOrdinal: isCheckbox ? ordinal : nil,
+                    base: block.kind == "heading" ? headingRole.font : nil,
+                    titleExists: titleExists
+                )
             )
             if isCheckbox, let current = ordinal {
                 ordinal = current + 1
             }
         }
-        return out
+        return ReviewMarkStyle.apply(reviewMarks, to: out)
     }
 }
 
-/// Runs to attributed text. A free function so the mapping is asserted over
-/// values rather than through a rendered view.
-enum NoteInline {
-    /// The scheme a wiki link is carried under.
-    ///
-    /// A link rather than a tap gesture because a link is what the platform
-    /// understands: it draws it, hits it, and lists it in VoiceOver's link
-    /// rotor. The scheme is private to this app and never leaves it — the
-    /// handler above resolves it and hands the system nothing.
-    static let wikiScheme = "memry-wiki"
+/// The body font, or nothing so the surrounding font shows through.
+///
+/// A modifier rather than `.font(nil)`: a `nil` font is not "inherit", it
+/// resets to the system default and throws away the weight a header cell set.
+private struct BodyFont: ViewModifier {
+    let skip: Bool
 
-    /// The title a wiki-link URL carries, or `nil` for any other URL.
-    static func wikiTarget(of url: URL) -> String? {
-        guard url.scheme == wikiScheme else { return nil }
-        // The whole tail, percent-decoded: a note title is free text and can
-        // hold slashes, spaces and `#`, none of which survive being read as
-        // host-and-path.
-        let raw = url.absoluteString.dropFirst("\(wikiScheme)://".count)
-        return raw.removingPercentEncoding.map { $0 } ?? String(raw)
-    }
-
-    /// The scheme a tappable inline checkbox is carried under (N605).
-    ///
-    /// A link, like a tag, because that is the affordance the platform
-    /// already draws, hits and lists for VoiceOver. The URL carries the
-    /// checkbox's ordinal **within its cell**, which is how the core
-    /// addresses it: an inline checkbox has no id (§12.7.1).
-    static let checkboxScheme = "memry-check"
-
-    static func checkboxTarget(of url: URL) -> Int? {
-        guard url.scheme == checkboxScheme else { return nil }
-        return Int(url.absoluteString.dropFirst("\(checkboxScheme)://".count))
-    }
-
-    static func checkboxURL(ordinal: Int) -> URL? {
-        URL(string: "\(checkboxScheme)://\(ordinal)")
-    }
-
-    /// The scheme a `#tag` is carried under (N600).
-    ///
-    /// Its own scheme rather than reusing the wiki one: a tag and a note
-    /// title are different destinations, and a handler that had to guess
-    /// which it was holding would guess wrong on a note actually titled like
-    /// a tag.
-    static let tagScheme = "memry-tag"
-
-    /// The tag a tag URL carries, or `nil` for any other URL.
-    static func tagTarget(of url: URL) -> String? {
-        guard url.scheme == tagScheme else { return nil }
-        let raw = url.absoluteString.dropFirst("\(tagScheme)://".count)
-        return raw.removingPercentEncoding.map { $0 } ?? String(raw)
-    }
-
-    static func tagURL(for tag: String) -> URL? {
-        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty,
-              let encoded = trimmed.addingPercentEncoding(
-                  withAllowedCharacters: .alphanumerics
-              )
-        else { return nil }
-        return URL(string: "\(tagScheme)://\(encoded)")
-    }
-
-    /// A wiki link's URL, or `nil` when there is no target to point at.
-    static func wikiURL(for target: String) -> URL? {
-        let trimmed = target.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty,
-              let encoded = trimmed.addingPercentEncoding(
-                  withAllowedCharacters: .alphanumerics
-              )
-        else { return nil }
-        return URL(string: "\(wikiScheme)://\(encoded)")
-    }
-
-    /// A checkbox glyph, tappable only where a cell handed it an ordinal.
-    ///
-    /// A table cell cannot hold a block, so a checkbox inside one is an
-    /// inline node carrying no text (§12.7.1): it arrives as an empty run and
-    /// would otherwise draw as nothing. Outside a cell there is nothing to
-    /// address it with, and a box that looks tappable and does nothing is
-    /// worse than one that does not.
-    static func checkbox(_ run: InlineRun, ordinal: Int?) -> AttributedString {
-        let ticked = run.markAttrs["inlineCheckbox.checked"] == "true"
-        var glyph = AttributedString(ticked ? "\u{2611}" : "\u{2610}")
-        if let ordinal {
-            glyph.link = checkboxURL(ordinal: ordinal)
+    func body(content: Content) -> some View {
+        if skip {
+            content
+        } else {
+            content.font(Tokens.Typography.body.font)
         }
-        return glyph
     }
+}
 
-    /// A tag's name, which is its text without the `#` that displays it.
-    static func tagName(of run: InlineRun) -> String {
-        run.text.hasPrefix("#") ? String(run.text.dropFirst()) : run.text
-    }
+/// A block's declared ink, or nothing so the surrounding ink shows through.
+private struct BlockInk: ViewModifier {
+    let color: Color?
 
-    static func attributed(_ run: InlineRun, checkboxOrdinal: Int? = nil) -> AttributedString {
-        var piece = AttributedString(run.text)
-        var font = Tokens.Typography.body.font
-        for mark in run.marks {
-            switch mark {
-            case "bold": font = font.bold()
-            case "italic": font = font.italic()
-            case "code": font = Tokens.Typography.recoveryMaterial.font
-            case "strike": piece.strikethroughStyle = .single
-            case "underline": piece.underlineStyle = .single
-            case "textColor":
-                // The name is not the value. Until `mark_attrs` existed the
-                // core sent a bare `textColor` and red and blue arrived
-                // identical; now the value crosses and an unknown name
-                // leaves the text in the ordinary ink rather than guessing.
-                if let name = run.markAttrs[mark], let ink = Tokens.Content.ink(named: name) {
-                    piece.foregroundColor = ink.color
-                }
-            case "backgroundColor":
-                if let name = run.markAttrs[mark], let fill = Tokens.Content.fill(named: name) {
-                    piece.backgroundColor = fill.color
-                }
-            case "inlineCheckbox":
-                piece.append(checkbox(run, ordinal: checkboxOrdinal))
-            case "wikiLink", "linkMention":
-                piece.foregroundColor = Tokens.Text.tint.color
-                piece.underlineStyle = .single
-                // A link only where there is somewhere to go. The run's target
-                // is the note's **title** (chapter 12 §12.3), and resolving it
-                // happens on the tap: a note can hold many links, and looking
-                // every one of them up to draw the screen would be a query per
-                // link for an answer most are never asked for.
-                if let target = run.target, let url = wikiURL(for: target) {
-                    piece.link = url
-                }
-            case "link", "href":
-                piece.foregroundColor = Tokens.Text.tint.color
-                piece.underlineStyle = .single
-                // A real web address, left to the system.
-                if let target = run.target, let url = URL(string: target) {
-                    piece.link = url
-                }
-            case "hashTag":
-                // Linked now that there is somewhere to go (N600).
-                piece.foregroundColor = Tokens.Text.tint.color
-                piece.link = tagURL(for: tagName(of: run))
-            case "dateMention":
-                // Still marked and not linked: this build has no calendar to
-                // open, and a word that looks tappable and does nothing is
-                // worse than a word that does not.
-                piece.foregroundColor = Tokens.Text.tint.color
-            default:
-                // An unknown mark leaves the text alone rather than dropping
-                // it. Losing a word to a mark nobody taught this build is the
-                // failure; losing the emphasis is not.
-                break
-            }
+    func body(content: Content) -> some View {
+        if let color {
+            content.foregroundStyle(color)
+        } else {
+            content
         }
-        piece.font = font
-        if piece.foregroundColor == nil {
-            piece.foregroundColor = Tokens.Text.primary.color
-        }
-        return piece
     }
 }
 
@@ -570,8 +572,21 @@ private struct ToggleSummaryRow: View {
     let isOpen: Bool
     let text: AttributedString
     var alignment: TextAlignment = .leading
+    var toggle: (() -> Void)?
 
     var body: some View {
+        if let toggle {
+            row
+                .contentShape(.rect)
+                .onTapGesture(perform: toggle)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint(isOpen ? "Hides its contents" : "Shows its contents")
+        } else {
+            row
+        }
+    }
+
+    private var row: some View {
         HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
             Image(systemName: isOpen ? "chevron.down" : "chevron.right")
                 .font(Tokens.Typography.caption.font)
@@ -638,27 +653,41 @@ private struct CalloutRow: View {
         }
     }
 
-    /// The type is carried by the symbol as well as the tint, so a callout
-    /// still reads in greyscale and under a colour-blind eye.
-    private var tint: Color {
+    /// Desktop's callout colours: blue, amber, red and green, carried by the
+    /// symbol, a leading bar and a tinted fill. The symbol keeps the type
+    /// readable in greyscale and under a colour-blind eye.
+    private var hue: String {
         switch type {
-        case "warning", "error": Tokens.Interaction.destructive.color
-        case "success": Tokens.Text.primary.color
-        default: Tokens.Tint.base.color
+        case "warning": "yellow"
+        case "error": "red"
+        case "success": "green"
+        default: "blue"
         }
+    }
+
+    private var ink: Color {
+        (Tokens.Content.ink(named: hue) ?? Tokens.Text.secondary).color
+    }
+
+    private var fill: Color {
+        (Tokens.Content.fill(named: hue) ?? Tokens.Canvas.surface).color
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: Tokens.Space.medium) {
             Image(systemName: symbol)
                 .font(Tokens.Typography.body.font)
-                .foregroundStyle(tint)
+                .foregroundStyle(ink)
                 .accessibilityHidden(true)
             Text(text)
         }
         .padding(Tokens.Space.inset)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.card))
+        .background(fill)
+        .overlay(alignment: .leading) {
+            Rectangle().fill(ink).frame(width: 3).accessibilityHidden(true)
+        }
+        .clipShape(.rect(cornerRadius: Tokens.Radius.control))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(type) callout")
     }
@@ -678,73 +707,14 @@ private struct CodeRow: View {
             // Horizontal scroll, not wrapping: indentation is part of code,
             // and a wrapped line loses it.
             ScrollView(.horizontal, showsIndicators: false) {
-                Text(text)
+                // Coloured per language, as desktop's shiki colours it.
+                Text(CodeHighlighter.attributed(text, language: language))
                     .font(Tokens.Typography.recoveryMaterial.font)
-                    .foregroundStyle(Tokens.Text.primary.color)
                     .textSelection(.enabled)
             }
         }
         .padding(Tokens.Space.inset)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.card))
-    }
-}
-
-/// A bookmark or a video: a card that opens the address it holds.
-private struct LinkCardRow: View {
-    let url: String?
-    let title: String?
-    let subtitle: String?
-    let symbol: String
-
-    /// `nil` for a block whose url is missing or unparseable — an older
-    /// build's block, or one whose prop never arrived. It then draws as a
-    /// card that plainly does not open, rather than as a button that fails.
-    private var destination: URL? {
-        guard let url, !url.isEmpty else { return nil }
-        return URL(string: url)
-    }
-
-    private var label: String {
-        if let title, !title.isEmpty { return title }
-        // The address itself, which is the only other true name for it.
-        return url ?? "A link is here"
-    }
-
-    var body: some View {
-        if let destination {
-            Link(destination: destination) { card }
-                .accessibilityAddTraits(.isLink)
-        } else {
-            card
-        }
-    }
-
-    private var card: some View {
-        HStack(spacing: Tokens.Space.medium) {
-            Image(systemName: symbol)
-                .font(Tokens.Typography.body.font)
-                .foregroundStyle(Tokens.Text.secondary.color)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                Text(label)
-                    .font(Tokens.Typography.supporting.font)
-                    .foregroundStyle(Tokens.Text.primary.color)
-                    .lineLimit(2)
-                if let subtitle, !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(Tokens.Typography.caption.font)
-                        .foregroundStyle(Tokens.Text.secondary.color)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(Tokens.Space.inset)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(
-            RoundedRectangle(cornerRadius: Tokens.Radius.card)
-                .stroke(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline)
-        )
-        .accessibilityElement(children: .combine)
     }
 }

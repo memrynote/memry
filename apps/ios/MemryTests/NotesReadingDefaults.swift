@@ -26,6 +26,10 @@ extension NotesReading {
 
     func templates() async throws -> [TemplateSummary] { [] }
 
+    func comments(id: String) async throws -> [ReviewComment] { [] }
+
+    func task(id: String) async throws -> TaskCard? { nil }
+
     func reminders(noteId: String) async throws -> [ReminderSummary] { [] }
 
     func tags() async throws -> [TagSummary] { [] }

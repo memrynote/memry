@@ -72,6 +72,10 @@ struct NoteTableView: View {
                         }
                     }
                 }
+                // Each row as tall as its tallest cell and no taller: the
+                // cells fill their row, and without this the grid takes every
+                // height it is offered and the rows balloon.
+                .fixedSize(horizontal: false, vertical: true)
                 .overlay(
                     RoundedRectangle(cornerRadius: Tokens.Radius.control)
                         .stroke(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline)
@@ -178,7 +182,8 @@ struct NoteTableCellView: View {
         NoteBlocksView(
             blocks: cell.content,
             openTarget: openTarget,
-            checkboxBase: toggleCheckbox == nil ? nil : 0
+            checkboxBase: toggleCheckbox == nil ? nil : 0,
+            inheritsInk: true
         )
             // The cell's own handler, ahead of the note-wide one: a checkbox
             // link carries an ordinal that only means something here.
@@ -197,6 +202,13 @@ struct NoteTableCellView: View {
             .frame(minWidth: width, alignment: frameAlignment)
             .padding(.horizontal, Tokens.Space.medium)
             .padding(.vertical, Tokens.Space.small)
+            // Fill the row's height, so a cell beside a taller one (a picture,
+            // a wrapped line) keeps its fill and its border to the row's edge
+            // instead of floating in a gap.
+            .frame(
+                maxHeight: .infinity,
+                alignment: Alignment(horizontal: frameAlignment.horizontal, vertical: .top)
+            )
             .background(fill)
             .overlay(
                 Rectangle()

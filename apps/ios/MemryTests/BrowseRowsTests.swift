@@ -49,8 +49,9 @@ struct BrowseRowsTests {
     @Test("A closed folder contributes one row and no contents")
     func closedFolderHidesItsNotes() {
         let rows = Self.outline.browseRows(expanded: [], sort: .title)
-        #expect(rows.map(\.id) == ["folder:Work", "note:n3"])
-        guard case let .folder(_, noteCount, isExpanded) = rows[0].kind else {
+        // `Ghost` has no config row and is derived from its note's path.
+        #expect(rows.map(\.id) == ["folder:Ghost", "folder:Work", "note:n3"])
+        guard case let .folder(_, noteCount, isExpanded) = rows[1].kind else {
             Issue.record("first row is not a folder")
             return
         }
@@ -61,20 +62,23 @@ struct BrowseRowsTests {
     @Test("An open folder shows child folders before its own notes")
     func openFolderOrdersChildrenFirst() {
         let rows = Self.outline.browseRows(expanded: ["Work"], sort: .title)
-        #expect(rows.map(\.id) == ["folder:Work", "folder:Work/Interviews", "note:n1", "note:n3"])
+        #expect(
+            rows.map(\.id)
+                == ["folder:Ghost", "folder:Work", "folder:Work/Interviews", "note:n1", "note:n3"]
+        )
         // The child sits one level in; indentation is the only thing carrying
         // the hierarchy in a flat list.
-        #expect(rows[1].depth == 1)
         #expect(rows[2].depth == 1)
+        #expect(rows[3].depth == 1)
     }
 
-    @Test("A note whose folder has no record is never dropped")
+    @Test("A note whose folder has no record sits in a folder derived from its path")
     func unplacedNotesAreKept() {
         let outline = Self.outline
-        let placed = outline.browseRows(expanded: ["Work", "Work/Interviews"], sort: .title)
-        let unplaced = outline.unplacedRows(sort: .title)
-        #expect(unplaced.map(\.id) == ["note:n4"])
-        #expect(placed.count + unplaced.count == outline.noteCount + 2) // two folder rows
+        let rows = outline.browseRows(expanded: ["Ghost"], sort: .title)
+        #expect(rows.prefix(2).map(\.id) == ["folder:Ghost", "note:n4"])
+        #expect(outline.unplacedRows(sort: .title).isEmpty)
+        #expect(outline.allNotes.count == outline.noteCount)
     }
 
     @Test("Search is flat, case-insensitive and diacritic-insensitive")
