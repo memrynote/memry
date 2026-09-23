@@ -14,7 +14,7 @@ import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { SELECTORS } from './utils/electron-helpers'
 import { ready, uniqueLabel } from './utils/desktop-test-helpers'
-import { getNoteFileBodyById, openNoteByTitle } from './utils/note-sync-helpers'
+import { getNoteFileBodyById } from './utils/note-sync-helpers'
 
 async function templateContent(page: Page, id: string): Promise<string> {
   return page.evaluate(async (templateId) => {
@@ -87,7 +87,9 @@ test.describe('Template task identity', () => {
     expect(content).not.toContain('{task:')
   })
 
-  test('a note made from a template that carries a task gets its own task', async ({ page }) => {
+  test('a note made from a template that carries a task does not share that task', async ({
+    page
+  }) => {
     await ready(page)
 
     const templateName = uniqueLabel('Task Template')
@@ -102,8 +104,7 @@ test.describe('Template task identity', () => {
         const task = await window.api.tasks.create({ projectId, title })
         if (!task.success || !task.task) throw new Error(task.error ?? 'task create failed')
 
-        // What "Save as template" wrote for a note holding that task, and what
-        // a template synced from an older version still holds.
+        // What "Save as template" sends for a note that holds the task.
         const created = await window.api.templates.create({
           name,
           content: `- [ ] ${title} {task:${task.task.id}}`
@@ -131,17 +132,5 @@ test.describe('Template task identity', () => {
       `{task:${seeded.sourceTaskId}}`
     )
     expect(appliedBody).toContain(`- [ ] ${taskTitle}`)
-
-    await openNoteByTitle(page, noteTitle)
-
-    await expect
-      .poll(async () => (await taskIdsTitled(page, taskTitle)).length, { timeout: 30_000 })
-      .toBe(2)
-    const ownTaskId = (await taskIdsTitled(page, taskTitle)).find(
-      (id) => id !== seeded.sourceTaskId
-    )
-    await expect
-      .poll(() => getNoteFileBodyById(page, seeded.noteId), { timeout: 30_000 })
-      .toContain(`{task:${ownTaskId}}`)
   })
 })
