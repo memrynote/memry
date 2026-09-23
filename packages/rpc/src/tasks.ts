@@ -107,6 +107,7 @@ export interface Task {
   position: number
   dueDate: string | null
   dueTime: string | null
+  durationMinutes: number | null
   startDate: string | null
   repeatConfig: RepeatConfig | null
   repeatFrom: 'due' | 'completion' | null

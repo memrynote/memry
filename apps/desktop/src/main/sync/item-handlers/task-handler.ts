@@ -261,6 +261,9 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
             position: data.position ?? 0,
             dueDate: data.dueDate ?? null,
             dueTime: data.dueTime ?? null,
+            // Absent means a peer that predates the column, not a clear: `undefined`
+            // makes drizzle omit it, so the local block length survives that peer's edit.
+            durationMinutes: data.durationMinutes,
             startDate: data.startDate ?? null,
             repeatConfig: data.repeatConfig ?? null,
             repeatFrom: data.repeatFrom ?? null,
@@ -311,6 +314,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
           position: data.position ?? 0,
           dueDate: data.dueDate ?? null,
           dueTime: data.dueTime ?? null,
+          durationMinutes: data.durationMinutes ?? null,
           startDate: data.startDate ?? null,
           repeatConfig: data.repeatConfig ?? null,
           repeatFrom: data.repeatFrom ?? null,

@@ -22,6 +22,10 @@ Opening Calendar always lands on today, in that view. The date you navigate to i
 Day and week views show a current-time marker on today's grid; event chips remain the
 clickable target for opening or editing events.
 
+On the day and week grids each chip shows its title with its time range under it, for example
+**7:00 – 8:00 PM**. A chip too short for two lines shows the title only. While you drag or resize
+a chip, the range follows it, so you can see where it will land before you let go.
+
 ## What Shows Up
 
 | Source                                      | How it appears                                 |
@@ -136,13 +140,15 @@ colors unless you color the event.
 
 ## Scheduling Tasks by Drag
 
-Tasks can be scheduled and rescheduled by dragging, from two places:
+Tasks can be scheduled and rescheduled by dragging, from three places:
 
 - **A task chip already on the calendar** — drag it to another day (month view) or to a
   new day and time (week / day grid). Events still move and resize as before; this adds
   the same direct manipulation for task chips.
 - **A Tasks tab beside the calendar** in a [split view](/user-guide/tabs-split-view) —
   drag a task row straight onto the calendar.
+- **The [Day Panel](/user-guide/day-panel)'s task list** — drag a row onto the panel's own
+  day timeline, or onto the Calendar tab's grid.
 
 Where you drop decides the time:
 
@@ -156,6 +162,18 @@ The all-day row appears while you drag, even on days that have no all-day items,
 is always somewhere to drop a task to clear its time. Selecting several tasks first drags
 them together — one drop schedules them all. Moving a task chip on the time grid can be
 undone with **Cmd/Ctrl+Z**, like moving an event.
+
+### Time Blocks
+
+A task with a time is a block on the day and week grids. The block is the task itself, not a
+copy: a task created inside a note, in the Tasks tab, or from the journal is the same item on
+the calendar.
+
+- Drag the block to change its start.
+- Drag its top or bottom edge to change how long it runs. The length is saved on the task and
+  syncs to your other devices.
+- A task that was never resized is drawn one hour long.
+- Completing the task removes the block from the calendar. The task stays checked in its note.
 
 ## Notes with Dates
 
@@ -175,15 +193,14 @@ Hover a date in the Day Panel calendar to see a quick summary of that day: count
 
 ## Drag to Reschedule
 
-On the day and week timelines, drag an **event** to reschedule it:
+On the day and week timelines, drag an **event** or a **task block** to reschedule it:
 
 - Drag vertically to change the time.
 - In week view, drag across columns to move it to another day.
 - Drag the top or bottom edge to change the start or end time (resize).
 
-Times snap to 15-minute steps. Task chips are draggable too — see
-[Scheduling Tasks by Drag](#scheduling-tasks-by-drag) — while reminder and note chips stay
-put. If the event is linked to a connected Google calendar, the new time syncs there too.
+Times snap to 15-minute steps. See [Time Blocks](#time-blocks) for tasks. Reminder and note
+chips stay put. If the event is linked to a connected Google calendar, the new time syncs there too.
 
 Press **Cmd/Ctrl+Z** to undo a move or resize.
 

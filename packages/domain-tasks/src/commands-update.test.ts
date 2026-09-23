@@ -229,6 +229,26 @@ describe('createTasksCommands — update/delete/complete/archive task', () => {
       expect(deps.repository.updateTask).toHaveBeenCalledWith('task-1', { dueDate: null })
     })
 
+    it('reports a resized time block as a durationMinutes change', async () => {
+      const existing = createTask({ dueDate: '2026-09-21', dueTime: '09:00' })
+      const deps = buildDeps({
+        getTask: vi.fn(() => existing),
+        updateTask: vi.fn(() => createTask({ ...existing, durationMinutes: 90 }))
+      })
+      const commands = createTasksCommands(deps)
+
+      await commands.updateTask({
+        id: 'task-1',
+        dueDate: '2026-09-21',
+        dueTime: '09:00',
+        durationMinutes: 90
+      })
+
+      const publishCall = vi.mocked(deps.publisher.taskUpdated).mock.calls[0][0]
+      expect(publishCall.changedFields).toEqual(['durationMinutes'])
+      expect(publishCall.previous).toEqual({ durationMinutes: null })
+    })
+
     it('does not touch tags or links when not provided', async () => {
       const deps = buildDeps({
         getTask: vi.fn(() => createTask()),

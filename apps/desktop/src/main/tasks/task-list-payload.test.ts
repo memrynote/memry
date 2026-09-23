@@ -40,7 +40,8 @@ const TASK_SYNCABLE_FIELDS = [
   'repeatFrom',
   'sourceNoteId',
   'completedAt',
-  'archivedAt'
+  'archivedAt',
+  'durationMinutes'
 ]
 
 // Every field the renderer's `dbTaskToUiTask` reads off a `tasks:list` row

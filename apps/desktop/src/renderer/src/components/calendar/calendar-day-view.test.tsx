@@ -67,15 +67,23 @@ vi.mock('./calendar-item-chip', () => ({
   CalendarItemChip: ({
     item,
     isSelected,
+    layout,
+    appearance,
     onClick,
     onDeleteItem
   }: {
     item: CalendarProjectionItem
     isSelected: boolean
+    layout?: string
+    appearance?: string
     onClick?: (item: CalendarProjectionItem, rect: DOMRect) => void
     onDeleteItem?: (item: CalendarProjectionItem) => void
   }) => (
-    <div>
+    <div
+      data-testid={`chip-${item.projectionId}`}
+      data-layout={layout}
+      data-appearance={appearance}
+    >
       <button
         type="button"
         data-selected={isSelected ? 'true' : 'false'}
@@ -138,7 +146,8 @@ const droppableMocks = vi.hoisted(() => ({
 
 vi.mock('@dnd-kit/core', () => ({
   useDroppable: droppableMocks.useDroppable,
-  useDraggable: droppableMocks.useDraggable
+  useDraggable: droppableMocks.useDraggable,
+  useDndMonitor: vi.fn()
 }))
 
 function eventItem(overrides: Partial<CalendarProjectionItem>): CalendarProjectionItem {
@@ -370,5 +379,69 @@ describe('CalendarDayView all-day strip reveal during task drag', () => {
     expect(allDayCall).toBeDefined()
     expect(allDayCall?.data.dateKey).toBe('2026-05-14')
     expect(allDayCall?.data.dueTime).toBeNull()
+  })
+})
+
+describe('CalendarDayView density', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.marquee.selection = null
+    mocks.marquee.isDragging = false
+    mocks.dragContext = null
+  })
+
+  const allDayItem = eventItem({
+    projectionId: 'all-day',
+    sourceId: 'event-all-day',
+    title: 'Launch',
+    isAllDay: true,
+    startAt: '2026-05-14',
+    endAt: '2026-05-15'
+  })
+  const timedItem = eventItem({ projectionId: 'timed', sourceId: 'event-timed', title: 'Sync' })
+
+  function timedDroppableHourHeight(): unknown {
+    const calls = droppableMocks.useDroppable.mock.calls.map(
+      ([config]) => config as { data: Record<string, unknown> }
+    )
+    return calls.find((call) => call.data.timeBehavior === 'slot')?.data.hourHeight
+  }
+
+  it('draws Calendar tab timed items as filled blocks with their range, beside an All day label', () => {
+    render(
+      <CalendarDayView
+        anchorDate="2026-05-14"
+        items={[allDayItem, timedItem]}
+        selectedItemId={null}
+      />
+    )
+
+    expect(screen.getByTestId('chip-timed')).toHaveAttribute('data-layout', 'block')
+    expect(screen.getByTestId('chip-timed')).toHaveAttribute('data-appearance', 'fill')
+    expect(screen.getByText('time.all-day')).toBeInTheDocument()
+    expect(timedDroppableHourHeight()).toBe(48)
+  })
+
+  it('draws the compact timeline with shorter hours, bar blocks, and unlabelled all-day pills', () => {
+    render(
+      <CalendarDayView
+        anchorDate="2026-05-14"
+        items={[allDayItem, timedItem]}
+        selectedItemId={null}
+        density="compact"
+      />
+    )
+
+    expect(screen.getByTestId('calendar-view')).toHaveAttribute('data-density', 'compact')
+    expect(screen.getByTestId('chip-timed')).toHaveAttribute('data-appearance', 'bar')
+    expect(screen.getByTestId('chip-all-day')).toHaveAttribute('data-appearance', 'pill')
+    expect(screen.queryByText('time.all-day')).not.toBeInTheDocument()
+    expect(timedDroppableHourHeight()).toBe(40)
+    expect(mocks.scrollToCurrentTime).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Boolean),
+      expect.any(String),
+      40
+    )
   })
 })

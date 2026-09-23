@@ -23,7 +23,8 @@ export const TASK_SYNCABLE_FIELDS = [
   'repeatFrom',
   'sourceNoteId',
   'completedAt',
-  'archivedAt'
+  'archivedAt',
+  'durationMinutes'
 ] as const
 
 export const PROJECT_SYNCABLE_FIELDS = [

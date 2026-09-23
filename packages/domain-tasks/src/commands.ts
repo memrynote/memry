@@ -47,6 +47,7 @@ export interface TaskUpdateInput {
   parentId?: string | null
   dueDate?: string | null
   dueTime?: string | null
+  durationMinutes?: number | null
   startDate?: string | null
   repeatConfig?: Task['repeatConfig']
   repeatFrom?: Task['repeatFrom']
@@ -413,6 +414,7 @@ export function createTasksCommands({
         position,
         dueDate: input.dueDate ?? null,
         dueTime: input.dueTime ?? null,
+        durationMinutes: null,
         startDate: input.startDate ?? null,
         repeatConfig: input.repeatConfig ?? null,
         repeatFrom: input.repeatFrom ?? null,

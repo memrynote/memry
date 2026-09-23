@@ -43,6 +43,13 @@ function toLocalInstant(dateStr: string, timeStr: string | null): string {
   return new Date(year, month - 1, day, hours, minutes, 0, 0).toISOString()
 }
 
+// A timed task without a stored length keeps `endAt: null`, which every time
+// grid already draws at the default block length.
+function addMinutesToInstant(instant: string, minutes: number | null): string | null {
+  if (minutes === null) return null
+  return new Date(new Date(instant).getTime() + minutes * 60_000).toISOString()
+}
+
 function toLocalAllDayEnd(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number)
   return new Date(year, month - 1, day + 1, 0, 0, 0, 0).toISOString()
@@ -245,13 +252,14 @@ function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjec
 
   const editability: CalendarProjectionEditability = {
     canMove: true,
-    canResize: false,
+    canResize: true,
     canEditText: true,
     canDelete: true
   }
 
   return rows.map((row) => {
     const isAllDay = !row.dueTime
+    const startAt = toLocalInstant(row.dueDate!, row.dueTime ?? null)
 
     return {
       projectionId: `task:${row.id}`,
@@ -259,8 +267,10 @@ function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjec
       sourceId: row.id,
       title: row.title,
       descriptionPreview: getDescriptionPreview(row.description),
-      startAt: toLocalInstant(row.dueDate!, row.dueTime ?? null),
-      endAt: isAllDay ? toLocalAllDayEnd(row.dueDate!) : null,
+      startAt,
+      endAt: isAllDay
+        ? toLocalAllDayEnd(row.dueDate!)
+        : addMinutesToInstant(startAt, row.durationMinutes),
       isAllDay,
       timezone: LOCAL_TIMEZONE,
       visualType: 'task',

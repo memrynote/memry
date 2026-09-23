@@ -60,6 +60,38 @@ describe('CalendarItemChip', () => {
     expect(chip).toHaveClass('opacity-60')
   })
 
+  it('puts the time range under the title in the time-grid block layout', () => {
+    render(<CalendarItemChip item={eventItem()} layout="block" />)
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]')
+    expect(chip).toHaveClass('flex-col')
+    expect(screen.getByText('9:00 – 10:00 AM')).toBeInTheDocument()
+  })
+
+  it('keeps the start time beside the title in the inline layout', () => {
+    render(<CalendarItemChip item={eventItem()} />)
+
+    expect(screen.getByText('9:00 AM')).toBeInTheDocument()
+    expect(screen.queryByText('9:00 – 10:00 AM')).not.toBeInTheDocument()
+  })
+
+  it('draws the bar appearance in ink with a colored leading bar and the range', () => {
+    render(<CalendarItemChip item={eventItem()} layout="block" appearance="bar" />)
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]')
+    expect(chip).toHaveClass('border-s-[3px]')
+    expect(screen.getByText('Planning')).toHaveClass('text-foreground')
+    expect(screen.getByText('9:00 – 10:00 AM')).toBeInTheDocument()
+  })
+
+  it('draws the pill appearance as a dot and a title, without a time', () => {
+    render(<CalendarItemChip item={eventItem({ isAllDay: true })} appearance="pill" />)
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]')
+    expect(chip).toHaveClass('h-[22px]')
+    expect(screen.queryByText('time.all-day')).not.toBeInTheDocument()
+  })
+
   it('tints a coloured event with its colour and keeps ink for the title', () => {
     render(<CalendarItemChip item={eventItem({ color: 'sage', displayColor: '#33b679' })} />)
 

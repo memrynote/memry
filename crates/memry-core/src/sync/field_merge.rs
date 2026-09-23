@@ -43,11 +43,11 @@ use serde_json::{Map as JsonMap, Value as Json};
 
 use super::clock::{ClockOrder, VectorClock, clock_total, compare, has_offline_key, merge};
 
-/// `TASK_SYNCABLE_FIELDS`, 15 entries **in order** (§6.7).
+/// `TASK_SYNCABLE_FIELDS`, 16 entries **in order** (§6.7).
 ///
 /// The order is part of the contract: `conflictedFields` is consumed in order
 /// by activity logging (§6.5.3).
-pub const TASK_SYNCABLE_FIELDS: [&str; 15] = [
+pub const TASK_SYNCABLE_FIELDS: [&str; 16] = [
     "title",
     "description",
     "projectId",
@@ -63,6 +63,7 @@ pub const TASK_SYNCABLE_FIELDS: [&str; 15] = [
     "sourceNoteId",
     "completedAt",
     "archivedAt",
+    "durationMinutes",
 ];
 
 /// `PROJECT_SYNCABLE_FIELDS`, 9 entries in order (§6.7).

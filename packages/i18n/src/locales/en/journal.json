@@ -239,5 +239,11 @@
       "failedToLoadJournalSettings": "Failed to load journal settings",
       "failedToUpdateSettings": "Failed to update settings"
     }
+  },
+  "dayPanel": {
+    "openInCalendar": "Open in Calendar",
+    "addTask": "Add task",
+    "taskTitlePlaceholder": "Task title",
+    "addTaskFailed": "Could not create the task"
   }
 }

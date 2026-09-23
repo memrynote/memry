@@ -392,8 +392,13 @@ export const DragProvider = ({
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       const { active } = event
-      const draggedId = active.id as string
       const activeData = active.data.current
+      // A calendar-task draggable may namespace its id so the same task can be
+      // on screen twice; its payload names the task.
+      const draggedId =
+        activeData?.type === 'calendar-task' && typeof activeData.taskId === 'string'
+          ? activeData.taskId
+          : (active.id as string)
       const overlayWidth = active.rect.current.initial?.width
         ? Math.round(active.rect.current.initial.width)
         : null

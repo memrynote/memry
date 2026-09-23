@@ -14,6 +14,8 @@ import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useCalendarView } from '@/contexts/calendar-view-context'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { JournalDayPanel } from '@/components/journal'
+import { DayPanelTimeline } from './day-panel-timeline'
+import { DayPanelDayHeader } from './day-panel-day-header'
 import { useJournalHeatmap } from '@/hooks/use-journal'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import { useToday } from '@/hooks/use-today'
@@ -120,7 +122,6 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
 }
 
 function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element {
-  const { t, i18n } = useT('journal')
   const { t: tCommon } = useT('common')
   const { selectedDate, setDate, toggle } = useDayPanel()
   const { openTab } = useTabs()
@@ -129,6 +130,8 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
   const { settings: calendarPrefs } = useCalendarPreferences()
   const { isEnabled } = useFeatureFlags()
   const isCalendarTabActive = activeTab?.type === 'calendar'
+  // The Calendar tab already shows a time grid, so the panel keeps its list there.
+  const showTimeline = isEnabled('calendar') && !isCalendarTabActive
 
   const [hoveredEvent, setHoveredEvent] = useState<{ date: string; color: string | null }>({
     date: selectedDate,
@@ -148,10 +151,6 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
 
   const today = useToday()
   const selectedDateObj = parseISODate(selectedDate)
-  const dayPanelLabel =
-    selectedDate === today
-      ? t('date.relative.today')
-      : selectedDateObj.toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' })
   const currentYear = selectedDateObj.getFullYear()
   const { data: heatmapData } = useJournalHeatmap(currentYear)
 
@@ -284,7 +283,7 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
     >
       <DayPanelResizeRail />
 
-      <SidebarTabs dayLabel={dayPanelLabel} endAccessory={endAccessory}>
+      <SidebarTabs endAccessory={endAccessory}>
         {{
           day: (
             <div className="h-full overflow-y-auto pt-3">
@@ -302,10 +301,25 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
                   onTodayClick={handleTodayClick}
                 />
               </div>
-              <div className="h-px mx-4 bg-border/30" />
-              <div className="p-4">
-                <JournalDayPanel date={selectedDate} onHoverColor={handleHoverColor} />
+              <div className="h-px bg-border/60" />
+              <div className="pt-3.5">
+                <DayPanelDayHeader
+                  date={selectedDate}
+                  isToday={selectedDate === today}
+                  onOpenCalendar={isEnabled('calendar') ? navigateToCalendar : undefined}
+                />
               </div>
+              {showTimeline && (
+                <div className="pt-2">
+                  <DayPanelTimeline date={selectedDate} onOpenCalendar={navigateToCalendar} />
+                </div>
+              )}
+              <JournalDayPanel
+                date={selectedDate}
+                showSchedule={!showTimeline}
+                onHoverColor={handleHoverColor}
+                className="px-2 pt-[22px] pb-5"
+              />
             </div>
           ),
           agent: (

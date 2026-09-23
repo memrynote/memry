@@ -32,6 +32,7 @@ export const TaskSyncPayloadSchema = z.object({
   position: z.number().optional(),
   dueDate: z.string().nullable().optional(),
   dueTime: z.string().nullable().optional(),
+  durationMinutes: z.number().nullable().optional(),
   startDate: z.string().nullable().optional(),
   repeatConfig: z.unknown().nullable().optional(),
   repeatFrom: z.string().nullable().optional(),

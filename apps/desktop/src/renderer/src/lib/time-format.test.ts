@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatHour, formatTimeOfDay, formatTimeString } from './time-format'
+import { formatHour, formatTimeOfDay, formatTimeRange, formatTimeString } from './time-format'
 
 describe('formatHour', () => {
   describe('12h mode', () => {
@@ -82,5 +82,33 @@ describe('formatTimeString', () => {
 
   it('24h: noon 12:00 → 12:00', () => {
     expect(formatTimeString('12:00', '24h')).toBe('12:00')
+  })
+})
+
+describe('formatTimeRange', () => {
+  const at = (day: number, hours: number, minutes = 0) => new Date(2026, 8, day, hours, minutes)
+  // ICU spaces a range with thin and narrow no-break spaces; the words are what matter here.
+  const range = (...args: Parameters<typeof formatTimeRange>) =>
+    formatTimeRange(...args).replace(/[\u2009\u202f]/g, ' ')
+
+  it('writes the shared day period once in 12h mode', () => {
+    expect(range(at(23, 19), at(23, 20), '12h')).toBe('7:00 – 8:00 PM')
+  })
+
+  it('keeps both day periods when the range crosses noon', () => {
+    expect(range(at(23, 11), at(23, 13, 30), '12h')).toBe('11:00 AM – 1:30 PM')
+  })
+
+  it('writes two 24h times', () => {
+    expect(range(at(23, 9), at(23, 10, 30), '24h')).toBe('09:00 – 10:30')
+  })
+
+  it('falls back to two plain times across midnight instead of printing dates', () => {
+    expect(range(at(23, 23), at(24, 1), '12h')).toBe('11:00 PM – 1:00 AM')
+  })
+
+  it('shows only the start for an empty or inverted range', () => {
+    expect(range(at(23, 9), at(23, 9), '12h')).toBe('9:00 AM')
+    expect(range(at(23, 9), at(23, 8), '12h')).toBe('9:00 AM')
   })
 })

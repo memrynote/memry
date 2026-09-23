@@ -25,6 +25,26 @@ export function formatTimeOfDay(date: Date, format: ClockFormat): string {
   }).format(date)
 }
 
+/**
+ * "7:00 – 8:00 PM": Intl collapses the parts both ends share (the day
+ * period here) the way the locale writes a range. A range that crosses midnight
+ * falls back to two plain times, because Intl would print both full dates.
+ */
+export function formatTimeRange(start: Date, end: Date, format: ClockFormat): string {
+  if (end.getTime() <= start.getTime()) return formatTimeOfDay(start, format)
+  const formatter = new Intl.DateTimeFormat(getActiveLocale(), {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: format === '12h'
+  })
+  const sameDay =
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate()
+  if (!sameDay) return `${formatter.format(start)} \u2013 ${formatter.format(end)}`
+  return formatter.formatRange(start, end)
+}
+
 export function formatTimeString(time: string, format: ClockFormat): string {
   const [hours, minutes] = time.split(':').map(Number)
   // Stored times that are not `HH:mm` (an empty-ish value, `"9"`, anything an

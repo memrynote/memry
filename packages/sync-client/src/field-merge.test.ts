@@ -269,8 +269,8 @@ describe('field-merge', () => {
   })
 
   describe('mergeTaskFields', () => {
-    it('uses all 15 task syncable fields', () => {
-      expect(TASK_SYNCABLE_FIELDS).toHaveLength(15)
+    it('uses all 16 task syncable fields', () => {
+      expect(TASK_SYNCABLE_FIELDS).toHaveLength(16)
     })
 
     it('merges task with DeviceA offline status + DeviceB online dueDate', () => {

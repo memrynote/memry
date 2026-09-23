@@ -1,7 +1,6 @@
 import { useLayoutEffect, type RefObject } from 'react'
 import { useTabAutoPosition } from '@/hooks/use-tab-auto-position'
-
-const HOUR_HEIGHT = 96
+import { HOUR_HEIGHT } from './time-grid-constants'
 const VIEWPORT_RATIO = 0.4
 const FALLBACK_HOUR = 7
 
@@ -18,7 +17,8 @@ const FALLBACK_HOUR = 7
 export function useScrollToCurrentTime(
   scrollRef: RefObject<HTMLDivElement | null>,
   containsToday: boolean,
-  scrollKey: string
+  scrollKey: string,
+  hourHeight: number = HOUR_HEIGHT
 ): void {
   const mayAutoPosition = useTabAutoPosition(scrollKey)
 
@@ -27,13 +27,13 @@ export function useScrollToCurrentTime(
     if (!el) return
     if (!mayAutoPosition()) return
 
-    const targetOffset = containsToday ? offsetForNow() : FALLBACK_HOUR * HOUR_HEIGHT
+    const targetOffset = containsToday ? offsetForNow(hourHeight) : FALLBACK_HOUR * hourHeight
 
     el.scrollTop = Math.max(0, targetOffset - el.clientHeight * VIEWPORT_RATIO)
-  }, [scrollRef, containsToday, mayAutoPosition])
+  }, [scrollRef, containsToday, mayAutoPosition, hourHeight])
 }
 
-function offsetForNow(): number {
+function offsetForNow(hourHeight: number): number {
   const now = new Date()
-  return now.getHours() * HOUR_HEIGHT + now.getMinutes() * (HOUR_HEIGHT / 60)
+  return now.getHours() * hourHeight + now.getMinutes() * (hourHeight / 60)
 }

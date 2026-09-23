@@ -107,7 +107,7 @@ fn a_create_seeds_every_syncable_field_clock_from_the_document_clock() {
         let parsed: Value = serde_json::from_str(&stored).expect("valid JSON");
         assert_eq!(parsed["clock"], json!({"device-a": 1}));
         let clocks = parsed["fieldClocks"].as_object().expect("field clocks");
-        assert_eq!(clocks.len(), 15, "all fifteen (§6.7)");
+        assert_eq!(clocks.len(), 16, "all sixteen (§6.7)");
         assert_eq!(clocks["title"], json!({"device-a": 1}));
         assert_eq!(clocks["archivedAt"], json!({"device-a": 1}));
         // A create knows of no due time to clear, so the key is absent rather

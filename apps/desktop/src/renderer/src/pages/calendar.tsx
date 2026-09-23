@@ -19,7 +19,6 @@ import {
   addLocalYears,
   getMonthGridDays,
   getStartOfWeek,
-  localInputToIso,
   parseLocalDate,
   toLocalDateInputValue,
   toLocalDateString,
@@ -29,7 +28,7 @@ import {
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
 import { useDeleteCalendarEvent } from '@/hooks/use-calendar-mutations'
-import { useUndoTracker } from '@/hooks/use-undo'
+import { toCreatePayload, useCalendarGridActions } from '@/hooks/use-calendar-grid-actions'
 import {
   calendarService,
   promoteExternalCalendarEvent,
@@ -39,7 +38,6 @@ import {
 } from '@/services/calendar-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
-import { formatDateKey } from '@/lib/task-utils'
 import { tasksService } from '@/services/tasks-service'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useCalendarView } from '@/contexts/calendar-view-context'
@@ -145,19 +143,6 @@ function createDraftFromItem(item: CalendarProjectionItem): CalendarEventDraft {
   }
 }
 
-function toCreatePayload(draft: CalendarEventDraft) {
-  return {
-    title: draft.title.trim(),
-    description: draft.description.trim() || null,
-    startAt: localInputToIso(draft.startAt, draft.isAllDay),
-    endAt: draft.endAt ? localInputToIso(draft.endAt, draft.isAllDay) : null,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-    isAllDay: draft.isAllDay,
-    targetCalendarId: draft.targetCalendarId,
-    color: draft.color
-  }
-}
-
 function filterItems(
   items: CalendarProjectionItem[],
   options: {
@@ -181,13 +166,6 @@ function filterItems(
 
     return options.showMemryItems
   })
-}
-
-function dueDateTimeFromDate(date: Date): { dueDate: string; dueTime: string } {
-  return {
-    dueDate: formatDateKey(date),
-    dueTime: `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-  }
 }
 
 export function CalendarPage({ className: _className }: CalendarPageProps): React.JSX.Element {
@@ -301,7 +279,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   const [pendingDelete, setPendingDelete] = useState<CalendarProjectionItem | null>(null)
   const [addToProjectEventId, setAddToProjectEventId] = useState<string | null>(null)
   const deleteMutation = useDeleteCalendarEvent()
-  const { registerUndo } = useUndoTracker()
+  const { moveItem, quickCreate } = useCalendarGridActions()
 
   const { openForDayView, closeForDayView, setDate: setDayPanelDate } = useDayPanel()
 
@@ -851,83 +829,6 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
   }
 
-  const handleQuickSave = async (draft: CalendarEventDraft) => {
-    const result = await calendarService.createEvent(toCreatePayload(draft))
-    if (!result.success) {
-      throw new Error(result.error ?? 'Could not create event.')
-    }
-    await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
-  }
-
-  const commitEventTimes = async (id: string, startAt: string, endAt: string | null) => {
-    const result = await calendarService.updateEvent({
-      id,
-      startAt,
-      endAt,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-      isAllDay: false
-    })
-    if (!result.success) {
-      throw new Error(result.error ?? 'Could not update event.')
-    }
-    await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
-  }
-
-  const commitTaskSchedule = async (id: string, dueDate: string, dueTime: string) => {
-    const result = await tasksService.update({ id, dueDate, dueTime })
-    if (!result.success) {
-      throw new Error(result.error ?? 'Could not update task.')
-    }
-    await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
-  }
-
-  const handleMoveEvent = async (item: CalendarProjectionItem, startAt: string, endAt: string) => {
-    if (item.sourceType === 'task') {
-      const previousStartAt = item.startAt
-      const { dueDate, dueTime } = dueDateTimeFromDate(new Date(startAt))
-      try {
-        await commitTaskSchedule(item.sourceId, dueDate, dueTime)
-        registerUndo(getI18n().getFixedT(null, 'calendar')('undo.moveTask'), () => {
-          const previous = dueDateTimeFromDate(new Date(previousStartAt))
-          void commitTaskSchedule(item.sourceId, previous.dueDate, previous.dueTime).catch(
-            (err) => {
-              log.error('Failed to undo task reschedule', {
-                taskId: item.sourceId,
-                error: extractErrorMessage(err)
-              })
-            }
-          )
-        })
-      } catch (err) {
-        log.error('Failed to reschedule task', {
-          taskId: item.sourceId,
-          error: extractErrorMessage(err)
-        })
-      }
-      return
-    }
-
-    const previousStartAt = item.startAt
-    const previousEndAt = item.endAt
-    try {
-      await commitEventTimes(item.sourceId, startAt, endAt)
-      // Register undo so Cmd+Z restores the previous time (handled globally in App.tsx).
-      registerUndo(getI18n().getFixedT(null, 'calendar')('undo.moveEvent'), () => {
-        void commitEventTimes(item.sourceId, previousStartAt, previousEndAt).catch((err) => {
-          log.error('Failed to undo calendar event move', {
-            eventId: item.sourceId,
-            error: extractErrorMessage(err)
-          })
-        })
-      })
-    } catch (err) {
-      log.error('Failed to move calendar event', {
-        eventId: item.sourceId,
-        error: extractErrorMessage(err)
-      })
-    }
-  }
-
   const selectedItemId =
     popoverState?.eventId ??
     taskPopoverState?.item.sourceId ??
@@ -1005,7 +906,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onSelectItem={(...args) => void handleSelectItem(...args)}
         onDeleteItem={handleDeleteItem}
         onAddToProject={setAddToProjectEventId}
-        onMoveEvent={handleMoveEvent}
+        onMoveEvent={moveItem}
         inboxSnoozePopoverState={inboxSnoozePopoverState}
         onInboxSnoozeOpenInInbox={handleInboxSnoozeOpenInInbox}
         onInboxSnoozeUnsnooze={handleInboxSnoozeUnsnooze}
@@ -1021,7 +922,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onAnchorChange={(date) => setAnchorDate(date)}
         onWeekVisibleRangeChange={(startDate) => setAnchorDate(startDate)}
         onPopoverSave={() => void handlePopoverSave()}
-        onQuickSave={handleQuickSave}
+        onQuickSave={quickCreate}
         googleConnectAction={<GoogleCalendarConnectPrompt />}
       />
       <CalendarSubscribedEventPopover

@@ -13,6 +13,24 @@ import { GlobalDayPanel } from './global-day-panel'
 const journalPanelRenderCount = vi.hoisted(() => ({ current: 0 }))
 const mockUseCalendarRange = vi.hoisted(() => vi.fn())
 const mockUseJournalHeatmap = vi.hoisted(() => vi.fn())
+const activeTabOverride = vi.hoisted(() => ({ current: null as null | { type: string } }))
+
+vi.mock('@/contexts/tabs', async () => {
+  const actual = await vi.importActual<typeof import('@/contexts/tabs')>('@/contexts/tabs')
+  return {
+    ...actual,
+    useActiveTab: () => {
+      const real = actual.useActiveTab()
+      return activeTabOverride.current ?? real
+    }
+  }
+})
+
+vi.mock('./day-panel-timeline', () => ({
+  DayPanelTimeline: ({ date }: { date: string }) => (
+    <div data-testid="day-panel-timeline" data-date={date} />
+  )
+}))
 
 vi.mock('@/hooks/use-calendar-range', () => ({
   useCalendarRange: mockUseCalendarRange
@@ -46,9 +64,11 @@ vi.mock('@/components/journal', async () => {
   return {
     JournalDayPanel: ({
       date,
+      showSchedule,
       onHoverColor
     }: {
       date: string
+      showSchedule?: boolean
       onHoverColor?: (color: string | null) => void
     }) => {
       journalPanelRenderCount.current += 1
@@ -62,7 +82,8 @@ vi.mock('@/components/journal', async () => {
 
       return React.createElement('div', {
         'data-testid': 'journal-day-panel',
-        'data-date': date
+        'data-date': date,
+        'data-show-schedule': String(showSchedule)
       })
     }
   }
@@ -110,6 +131,22 @@ describe('GlobalDayPanel', () => {
     journalPanelRenderCount.current = 0
     mockUseCalendarRange.mockReturnValue({ items: [] })
     mockUseJournalHeatmap.mockReturnValue({ data: [] })
+    activeTabOverride.current = null
+  })
+
+  it('shows the day time grid under the calendar and hands it the schedule', async () => {
+    renderPanel()
+
+    expect(await screen.findByTestId('day-panel-timeline')).toBeInTheDocument()
+    expect(screen.getByTestId('journal-day-panel')).toHaveAttribute('data-show-schedule', 'false')
+  })
+
+  it('keeps the schedule list on the Calendar tab, which has its own time grid', () => {
+    activeTabOverride.current = { type: 'calendar' }
+    renderPanel()
+
+    expect(screen.queryByTestId('day-panel-timeline')).toBeNull()
+    expect(screen.getByTestId('journal-day-panel')).toHaveAttribute('data-show-schedule', 'true')
   })
 
   it('does not loop when the day summary clears the current hover color', () => {

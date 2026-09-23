@@ -114,6 +114,10 @@ vi.mock('@/components/tasks/date-picker-calendar', () => ({
   )
 }))
 
+vi.mock('@/components/day-panel/day-panel-timeline', () => ({
+  DayPanelTimeline: () => null
+}))
+
 vi.mock('@/components/journal', () => ({
   JournalDayPanel: ({
     date,

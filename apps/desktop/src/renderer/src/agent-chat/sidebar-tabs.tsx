@@ -25,8 +25,6 @@ const RIGHT_SIDEBAR_TABS: RightSidebarTab[] = ['day', 'agent']
 interface SidebarTabsProps {
   children: { day: ReactNode; agent: ReactNode }
   defaultTab?: RightSidebarTab
-  dayLabel?: string
-  agentLabel?: string
   endAccessory?: ReactNode
 }
 
@@ -43,8 +41,6 @@ function readInitialTab(defaultTab: RightSidebarTab): RightSidebarTab {
 export function SidebarTabs({
   children,
   defaultTab = 'day',
-  dayLabel,
-  agentLabel,
   endAccessory
 }: SidebarTabsProps): React.JSX.Element {
   const { t } = useT('common')
@@ -54,8 +50,6 @@ export function SidebarTabs({
   const dayTabLabel = t('agentChat.sidebar.day')
   const agentTabLabel = t('agentChat.sidebar.agent')
   const resolvedActive = aiEnabled ? active : active === 'agent' ? 'day' : active
-  const activeLabel =
-    resolvedActive === 'day' ? (dayLabel ?? dayTabLabel) : (agentLabel ?? agentTabLabel)
 
   useEffect(() => {
     try {
@@ -79,7 +73,7 @@ export function SidebarTabs({
         <div
           role="tablist"
           aria-label={t('agentChat.sidebar.label')}
-          className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-md border border-transparent bg-sidebar-surface p-0.5 hover:border-sidebar-border focus-within:border-sidebar-border"
+          className="inline-flex h-7 shrink-0 items-center gap-0.5"
         >
           <SidebarTabButton
             active={resolvedActive === 'day'}
@@ -117,12 +111,9 @@ export function SidebarTabs({
           data-slot="day-panel-header-actions"
           className="ms-auto flex shrink-0 items-center gap-2"
         >
+          {/* The Day tab names its day in the panel body, so the header stays empty there. */}
           <div className="flex h-9 min-w-0 items-center gap-1.5 pt-0.5">
-            {resolvedActive !== 'agent' ? (
-              <span className="min-w-0 truncate text-[13px] font-medium tracking-[-0.01em] text-foreground transition-colors duration-150">
-                {activeLabel}
-              </span>
-            ) : (
+            {resolvedActive === 'agent' && (
               <>
                 <AgentConversationActions />
                 <TooltipProvider delayDuration={300}>
@@ -304,10 +295,10 @@ function SidebarTabButton({
       title={label}
       onClick={onClick}
       className={cn(
-        'relative inline-flex size-6 items-center justify-center rounded-[5px] transition-colors',
+        'relative inline-flex size-[26px] items-center justify-center rounded-md transition-colors [&_svg]:size-[15px]',
         active
-          ? 'bg-background text-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground'
+          ? 'bg-surface-active text-foreground'
+          : 'text-text-tertiary hover:bg-surface-active/60 hover:text-foreground'
       )}
     >
       {children}

@@ -54,8 +54,6 @@ function testQueryClient(): QueryClient {
 
 function renderTabs(
   props: {
-    dayLabel?: string
-    agentLabel?: string
     defaultTab?: 'day' | 'agent'
   } = {}
 ) {
@@ -254,53 +252,34 @@ describe('SidebarTabs', () => {
     expect(screen.queryByRole('tab', { name: 'Agent' })).not.toBeInTheDocument()
   })
 
-  it('keeps the switch compact with icon-only tab buttons and one active label', async () => {
+  it('renders icon-only tabs on a bare row, marking the active one with a quiet fill', async () => {
     const user = userEvent.setup()
-    renderTabs({ dayLabel: 'Today' })
+    renderTabs()
 
     const tabSwitch = screen.getByRole('tablist', { name: 'Right sidebar' })
     const dayTab = screen.getByRole('tab', { name: 'Day' })
     const agentTab = screen.getByRole('tab', { name: 'Agent' })
 
-    expect(tabSwitch).toHaveClass('bg-sidebar-surface')
-    expect(tabSwitch).not.toHaveClass('bg-[#212021]')
+    expect(tabSwitch).not.toHaveClass('bg-sidebar-surface')
     expect(within(dayTab).queryByText('Day')).not.toBeInTheDocument()
     expect(within(agentTab).queryByText('Agent')).not.toBeInTheDocument()
-    expect(dayTab).toHaveClass('bg-background')
-    expect(dayTab).toHaveClass('text-foreground')
-    expect(dayTab).not.toHaveClass('bg-[#303030]')
-    expect(screen.getByText('Today')).toBeInTheDocument()
+    expect(dayTab).toHaveClass('bg-surface-active', 'text-foreground')
+    expect(agentTab).toHaveClass('text-text-tertiary')
+    expect(agentTab).not.toHaveClass('bg-surface-active')
 
     await user.click(agentTab)
 
-    expect(screen.queryByText('Agent')).not.toBeInTheDocument()
-    expect(within(agentTab).queryByText('Agent')).not.toBeInTheDocument()
-    expect(agentTab).toHaveClass('bg-background')
-    expect(agentTab).toHaveClass('text-foreground')
+    expect(agentTab).toHaveClass('bg-surface-active', 'text-foreground')
+    expect(dayTab).toHaveClass('text-text-tertiary')
   })
 
-  it('matches the active label typography and vertical rhythm to tab titles', () => {
-    renderTabs({ dayLabel: 'Today' })
+  it('leaves the header without a day label, since the panel body names the day', () => {
+    renderTabs()
 
-    const activeLabel = screen.getByText('Today')
-    const labelRow = activeLabel.parentElement
-
-    expect(activeLabel).toHaveClass('text-[13px]')
-    expect(activeLabel).toHaveClass('tracking-[-0.01em]')
-    expect(activeLabel).toHaveClass('font-medium')
-    expect(activeLabel).toHaveClass('text-foreground')
-    expect(activeLabel).not.toHaveClass('text-sidebar-foreground')
-    expect(labelRow).toHaveClass('h-9')
-    expect(labelRow).toHaveClass('pt-0.5')
-  })
-
-  it('places the day and agent switch before the active label', () => {
-    renderTabs({ dayLabel: 'Today' })
-
-    const tabSwitch = screen.getByRole('tablist', { name: 'Right sidebar' })
-    const activeLabel = screen.getByText('Today')
-
-    expect(tabSwitch.compareDocumentPosition(activeLabel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    const actions = document.querySelector('[data-slot="day-panel-header-actions"]')
+    expect(actions).not.toBeNull()
+    expect(actions?.textContent).toBe('')
+    expect(screen.queryByText('Today')).not.toBeInTheDocument()
   })
 
   it('restores the persisted active tab', () => {

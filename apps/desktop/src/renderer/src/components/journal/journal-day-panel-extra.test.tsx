@@ -83,20 +83,8 @@ vi.mock('@/components/tasks/inline-status-popover', () => ({
   )
 }))
 
-vi.mock('@/components/tasks/inline-priority-popover', () => ({
-  InlinePriorityPopover: ({ onPriorityChange }: any) => (
-    <button type="button" onClick={() => onPriorityChange('urgent')}>
-      set urgent
-    </button>
-  )
-}))
-
-vi.mock('@/components/tasks/subtask-progress-indicator', () => ({
-  SubtaskProgressIndicator: ({ completed, total }: { completed: number; total: number }) => (
-    <span>
-      subtasks:{completed}/{total}
-    </span>
-  )
+vi.mock('@/lib/note-task-project', () => ({
+  resolveProjectIdForNoteTask: vi.fn()
 }))
 
 describe('JournalDayPanel extra coverage', () => {
@@ -194,7 +182,6 @@ describe('JournalDayPanel extra coverage', () => {
     expect(screen.getByText('Take medicine')).toBeInTheDocument()
     expect(screen.getByText('-1h30m')).toBeInTheDocument()
     expect(screen.getByText('Ship tests')).toBeInTheDocument()
-    expect(screen.getByText('subtasks:1/3')).toBeInTheDocument()
 
     fireEvent.mouseEnter(screen.getByText('Planning').closest('div')!)
     expect(onHoverColor).toHaveBeenCalled()
@@ -208,9 +195,6 @@ describe('JournalDayPanel extra coverage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'set done' })[0])
     expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', statusId: 'done' })
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'set urgent' })[0])
-    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', priority: 4 })
-
     fireEvent.click(screen.getByText('Ship tests'))
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -223,27 +207,15 @@ describe('JournalDayPanel extra coverage', () => {
     expect(mocks.openTab).toHaveBeenCalledWith(expect.objectContaining({ type: 'tasks' }))
   })
 
-  it('returns null without content and collapses populated content from the header', () => {
+  it('keeps the task section with its add row on a day without tasks, and no header of its own', () => {
     mocks.scheduleItems = []
     mocks.tasks = []
-    const { container, rerender } = render(<JournalDayPanel date="2026-05-11" />)
-    expect(container).toBeEmptyDOMElement()
+    render(<JournalDayPanel date="2026-05-11" />)
 
-    mocks.scheduleItems = [
-      {
-        projectionId: 'event:1',
-        visualType: 'event',
-        startAt: '2026-05-11T09:00:00.000Z',
-        endAt: null,
-        isAllDay: false,
-        title: 'Only event',
-        source: { provider: null },
-        snoozeOffsetMinutes: null
-      }
-    ]
-    rerender(<JournalDayPanel date="2026-05-11" />)
-    expect(screen.getByText('Only event')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /May/ }))
-    expect(screen.queryByText('Only event')).not.toBeInTheDocument()
+    expect(screen.getByText('section.tasks')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dayPanel.addTask' })).toBeInTheDocument()
+    // The Day Panel's day header names the day now; the list does not repeat it.
+    expect(screen.queryByText('date.relative.today')).not.toBeInTheDocument()
+    expect(screen.queryByText(/May/)).not.toBeInTheDocument()
   })
 })
