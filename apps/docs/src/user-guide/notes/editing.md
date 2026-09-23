@@ -74,6 +74,10 @@ and a small toolbar appears in its top-right corner:
 PowerShell and KQL are in the picker and are saved to your file like any other
 language, but they currently render without colour.
 
+A fence with no language, or tagged with one the picker does not list, shows
+**Plain Text** in the picker and keeps its original tag in the file until you
+pick a language yourself.
+
 Highlighting follows your theme: the same block is light in the light theme and
 dark in the dark one, on the sidebar's own background rather than a black slab.
 Code text sits one notch below body text and scales with **Appearance → Font
@@ -385,7 +389,7 @@ To select whole blocks instead, start the drag **outside the text column**:
 - a block with no editable text of its own — a task, a file or a video
 - the empty area below the last block
 
-A selection box follows the pointer and every block it touches is highlighted, the same way selecting files works in a file manager. The box only appears once you have moved a few pixels, so a plain click in the margin still just puts the cursor at the end of the note.
+A selection box follows the pointer and every block it touches is highlighted, the same way selecting files works in a file manager. The box only appears once you have moved a few pixels, so a plain click in the margin still just puts the cursor at the end of the note. Only a click in the empty area **below** the last block starts a fresh line there; a click or a drag in the margin beside the text leaves the note as it is.
 
 A bookmark card is the one exception: its whole surface is a link, so clicking it opens the link and a drag has to begin in the margin beside it instead.
 
