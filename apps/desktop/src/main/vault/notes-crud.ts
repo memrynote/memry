@@ -33,9 +33,9 @@ import {
   ensureDirectory,
   listDirectories,
   generateNotePath,
-  generateUniquePath,
-  withTransientFsRetry
+  generateUniquePath
 } from './file-ops'
+import { moveDirectory } from './move-directory'
 import {
   getNoteCacheById,
   getNoteCacheByPath,
@@ -894,12 +894,7 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<vo
   const oldAbsPath = path.join(notesDir, oldPath)
   const newAbsPath = path.join(notesDir, newPath)
 
-  // Same sharing-violation window every other vault write already guards: on
-  // Windows an antivirus scanner or a cloud-sync client holds the directory
-  // for a moment and the rename fails EPERM. Without the retry that surfaced
-  // as a folder rename the user watched silently snap back.
-  const { rename } = await import('fs/promises')
-  await withTransientFsRetry(() => rename(oldAbsPath, newAbsPath), 'renameFolder')
+  await moveDirectory(oldAbsPath, newAbsPath)
 
   carryFolderPositions(getDatabase(), oldPath, newPath)
 }
