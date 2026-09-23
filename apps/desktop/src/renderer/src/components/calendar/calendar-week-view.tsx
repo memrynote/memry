@@ -544,6 +544,7 @@ export function CalendarWeekView({
                           <CalendarItemChip
                             item={item}
                             clockFormat={clockFormat}
+                            layout="block"
                             isSelected={
                               item.sourceType === 'event' && item.sourceId === selectedItemId
                             }
@@ -629,7 +630,12 @@ export function CalendarWeekView({
                       height: drag.height
                     }}
                   >
-                    <CalendarItemChip item={draggedItem} clockFormat={clockFormat} isSelected />
+                    <CalendarItemChip
+                      item={{ ...draggedItem, startAt: drag.startAt, endAt: drag.endAt }}
+                      clockFormat={clockFormat}
+                      layout="block"
+                      isSelected
+                    />
                   </div>
                 )
               })()}

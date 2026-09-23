@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { AlarmClock, Calendar2, CheckSquare3, NotificationSnooze, StickyNote } from '@/lib/icons'
 import { getEventBaseColor, getEventBgColor, getEventTextColor } from '@/lib/event-type-colors'
-import { formatTimeOfDay } from '@/lib/time-format'
+import { formatTimeOfDay, formatTimeRange } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
@@ -21,9 +21,25 @@ const VISUAL_TYPE_ICONS: Record<
   note_date: StickyNote
 }
 
-interface CalendarItemChipProps {
+/**
+ * `inline` is one line: title and start time side by side (month cells, all-day
+ * strips). `block` is a time-grid block: the title, then the time range under it,
+ * clipped away when the block is too short to hold a second line.
+ */
+export type CalendarItemChipLayout = 'inline' | 'block'
+
+/**
+ * `fill` is the Calendar page's tinted chip. `bar` and `pill` are the Day Panel's
+ * quieter forms: a block with a colored leading bar, and an all-day pill with a
+ * colored dot. Both keep the text in ink and let the color mark the type only.
+ */
+export type CalendarItemChipAppearance = 'fill' | 'bar' | 'pill'
+
+export interface CalendarItemChipProps {
   item: CalendarProjectionItem
   clockFormat?: ClockFormat
+  layout?: CalendarItemChipLayout
+  appearance?: CalendarItemChipAppearance
   isSelected?: boolean
   onClick?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
@@ -38,9 +54,23 @@ function canAddEventToProject(item: CalendarProjectionItem): boolean {
   return item.sourceType === 'event'
 }
 
+function timeRangeLabel(item: CalendarProjectionItem, clockFormat: ClockFormat): string {
+  const start = new Date(item.startAt)
+  return item.endAt
+    ? formatTimeRange(start, new Date(item.endAt), clockFormat)
+    : formatTimeOfDay(start, clockFormat)
+}
+
+/** The type color at 12% over the canvas: opaque, so grid lines stay behind it. */
+function quietBackground(color: string): string {
+  return `color-mix(in srgb, ${color} 12%, var(--background))`
+}
+
 export function CalendarItemChip({
   item,
   clockFormat = '12h',
+  layout = 'inline',
+  appearance = 'fill',
   isSelected = false,
   onClick,
   onDeleteItem,
@@ -55,27 +85,32 @@ export function CalendarItemChip({
   const VisualIcon = VISUAL_TYPE_ICONS[item.visualType]
   const deletable = Boolean(onDeleteItem) && canDeleteEvent(item)
   const addableToProject = Boolean(onAddToProject) && canAddEventToProject(item)
+  const isBlock = layout === 'block'
+  const baseColor = getEventBaseColor(item.visualType)
   const cls = cn(
-    'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] px-1 py-0.5 text-start @xl:px-2 @xl:py-1',
+    appearance === 'pill'
+      ? 'inline-flex h-[22px] max-w-full items-center gap-1.5 rounded-[5px] ps-[7px] pe-2 text-start'
+      : appearance === 'bar'
+        ? 'flex h-full w-full flex-col items-stretch gap-px overflow-hidden rounded-[4px] border-s-[3px] px-2 py-1 text-start'
+        : isBlock
+          ? 'flex h-full w-full flex-col items-stretch overflow-hidden rounded-[6px] px-1 py-0.5 text-start @xl:px-2 @xl:py-1'
+          : 'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] px-1 py-0.5 text-start @xl:px-2 @xl:py-1',
     'transition-[filter,transform] duration-100 ease-out',
     (onClick || deletable) &&
       'cursor-pointer hover:brightness-[1.06] active:scale-[0.98] active:brightness-[0.97]',
     // Fired note_date chips are kept but faded so the date isn't lost.
     item.isTriggered && 'opacity-60'
   )
-  const chipStyle = useMemo<React.CSSProperties>(
-    () =>
-      isSelected
-        ? {
-            backgroundColor: getEventBaseColor(item.visualType),
-            color: '#FFFFFF'
-          }
-        : {
-            backgroundColor: getEventBgColor(item.visualType),
-            color: getEventTextColor(item.visualType)
-          },
-    [item.visualType, isSelected]
-  )
+  const chipStyle = useMemo<React.CSSProperties>(() => {
+    if (isSelected) return { backgroundColor: baseColor, borderColor: baseColor, color: '#FFFFFF' }
+    if (appearance !== 'fill') {
+      return { backgroundColor: quietBackground(baseColor), borderColor: baseColor }
+    }
+    return {
+      backgroundColor: getEventBgColor(item.visualType),
+      color: getEventTextColor(item.visualType)
+    }
+  }, [item.visualType, isSelected, appearance, baseColor])
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -106,15 +141,70 @@ export function CalendarItemChip({
     ]
   )
 
-  const content = (
-    <>
-      <VisualIcon className="mt-0.5 size-3 shrink-0" />
-      <span className="flex-1 truncate text-xs font-semibold leading-[18px]">{item.title}</span>
-      <span className="hidden shrink-0 text-xs leading-[18px] opacity-75 @xl:inline">
-        {timeLabel}
-      </span>
-    </>
-  )
+  const content =
+    appearance === 'pill' ? (
+      <>
+        <span
+          aria-hidden="true"
+          className="size-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: isSelected ? '#FFFFFF' : baseColor }}
+        />
+        <span
+          className={cn(
+            'min-w-0 truncate text-xs font-medium leading-4',
+            !isSelected && 'text-foreground'
+          )}
+        >
+          {item.title}
+        </span>
+      </>
+    ) : appearance === 'bar' ? (
+      <>
+        <span className="flex min-w-0 items-center gap-[5px]">
+          {item.sourceType === 'task' && (
+            <span
+              aria-hidden="true"
+              className="size-[11px] shrink-0 rounded-full border-[1.5px]"
+              style={{ borderColor: isSelected ? '#FFFFFF' : baseColor }}
+            />
+          )}
+          <span
+            className={cn(
+              'min-w-0 truncate text-xs font-medium leading-4',
+              !isSelected && 'text-foreground'
+            )}
+          >
+            {item.title}
+          </span>
+        </span>
+        <span
+          className={cn(
+            'truncate text-[11px] leading-[14px] tabular-nums',
+            isSelected ? 'opacity-80' : 'text-muted-foreground'
+          )}
+        >
+          {timeRangeLabel(item, clockFormat)}
+        </span>
+      </>
+    ) : isBlock ? (
+      <>
+        <span className="flex min-w-0 items-start gap-0.5">
+          <VisualIcon className="mt-0.5 size-3 shrink-0" />
+          <span className="flex-1 truncate text-xs font-semibold leading-[18px]">{item.title}</span>
+        </span>
+        <span className="truncate text-[11px] leading-[14px] tabular-nums opacity-75">
+          {timeRangeLabel(item, clockFormat)}
+        </span>
+      </>
+    ) : (
+      <>
+        <VisualIcon className="mt-0.5 size-3 shrink-0" />
+        <span className="flex-1 truncate text-xs font-semibold leading-[18px]">{item.title}</span>
+        <span className="hidden shrink-0 text-xs leading-[18px] opacity-75 @xl:inline">
+          {timeLabel}
+        </span>
+      </>
+    )
 
   if (onClick || deletable) {
     return (

@@ -22,6 +22,10 @@ Opening Calendar always lands on today, in that view. The date you navigate to i
 Day and week views show a current-time marker on today's grid; event chips remain the
 clickable target for opening or editing events.
 
+On the day and week grids each chip shows its title with its time range under it, for example
+**7:00 – 8:00 PM**. A chip too short for two lines shows the title only. While you drag or resize
+a chip, the range follows it, so you can see where it will land before you let go.
+
 ## What Shows Up
 
 | Source                                      | How it appears                                 |
