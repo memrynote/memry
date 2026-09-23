@@ -1,71 +1,78 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CalendarTaskPopoverHeader } from './calendar-task-popover-header'
-import type { Status } from '@/data/tasks-data'
 
 const baseTask = {
   id: 't1',
   title: 'Review Q2 roadmap',
   completedAt: null,
-  parentId: null,
-  statusId: 'todo'
+  parentId: null
 }
-const statuses: Status[] = [
-  { id: 'todo', name: 'To Do', color: '#6b7280', type: 'todo', order: 0 },
-  { id: 'progress', name: 'In Progress', color: '#3b82f6', type: 'in_progress', order: 1 },
-  { id: 'done', name: 'Done', color: '#10b981', type: 'done', order: 2 }
-]
+
+const baseProps = {
+  task: baseTask,
+  parentTitle: null,
+  projectName: 'memrynote',
+  onToggleComplete: vi.fn(),
+  onOpenTask: vi.fn()
+}
 
 describe('CalendarTaskPopoverHeader', () => {
-  it('renders title', () => {
-    render(<CalendarTaskPopoverHeader task={baseTask} parentTitle={null} statuses={statuses} />)
+  it('renders the title under a Task · project label', () => {
+    render(<CalendarTaskPopoverHeader {...baseProps} />)
     expect(screen.getByText('Review Q2 roadmap')).toBeInTheDocument()
+    expect(screen.getByText('Task · memrynote')).toBeInTheDocument()
   })
 
   it('hides parent breadcrumb when no parent', () => {
-    render(<CalendarTaskPopoverHeader task={baseTask} parentTitle={null} statuses={statuses} />)
+    render(<CalendarTaskPopoverHeader {...baseProps} />)
     expect(screen.queryByTestId('parent-breadcrumb')).not.toBeInTheDocument()
   })
 
   it('renders parent breadcrumb when parent provided', () => {
     render(
       <CalendarTaskPopoverHeader
+        {...baseProps}
         task={{ ...baseTask, parentId: 'p' }}
         parentTitle="Q2 Planning"
-        statuses={statuses}
       />
     )
     expect(screen.getByTestId('parent-breadcrumb')).toHaveTextContent('Q2 Planning')
   })
 
-  it('shows strikethrough when completed', () => {
+  it('shows strikethrough and a checked box when completed', () => {
     render(
       <CalendarTaskPopoverHeader
+        {...baseProps}
         task={{ ...baseTask, completedAt: '2026-04-28T10:00:00Z' }}
-        parentTitle={null}
-        statuses={statuses}
       />
     )
     expect(screen.getByText('Review Q2 roadmap')).toHaveClass('line-through')
+    expect(screen.getByRole('checkbox', { name: /mark not done/i })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
   })
 
-  it('renders task status as a read-only icon', () => {
-    render(<CalendarTaskPopoverHeader task={baseTask} parentTitle={null} statuses={statuses} />)
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /status: to do/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /status/i })).not.toBeInTheDocument()
-    expect(screen.queryByText('To Do')).not.toBeInTheDocument()
+  it('completes the task from its checkbox in one click', async () => {
+    const onToggleComplete = vi.fn()
+    render(<CalendarTaskPopoverHeader {...baseProps} onToggleComplete={onToggleComplete} />)
+    await userEvent.click(screen.getByRole('checkbox', { name: /mark done/i }))
+    expect(onToggleComplete).toHaveBeenCalled()
   })
 
-  it('does not open a status dropdown when the status icon is clicked', async () => {
-    render(<CalendarTaskPopoverHeader task={baseTask} parentTitle={null} statuses={statuses} />)
-    await userEvent.click(screen.getByRole('img', { name: /status: to do/i }))
-    expect(screen.queryByRole('option', { name: /in progress/i })).not.toBeInTheDocument()
-  })
-
-  it('does not render the overflow action trigger', () => {
-    render(<CalendarTaskPopoverHeader task={baseTask} parentTitle={null} statuses={statuses} />)
-    expect(screen.queryByLabelText(/more actions/i)).not.toBeInTheDocument()
+  it('opens the task from the header and renders the overflow slot', async () => {
+    const onOpenTask = vi.fn()
+    render(
+      <CalendarTaskPopoverHeader
+        {...baseProps}
+        onOpenTask={onOpenTask}
+        menu={<button type="button">menu slot</button>}
+      />
+    )
+    await userEvent.click(screen.getByRole('button', { name: /open task/i }))
+    expect(onOpenTask).toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'menu slot' })).toBeInTheDocument()
   })
 })

@@ -3,7 +3,8 @@ import { CALENDAR_COLORS, calendarColorHex } from '@memry/contracts/calendar-col
 
 import {
   CALENDAR_COLOR_FILL_PERCENT,
-  calendarColorChipStyle,
+  CALENDAR_COLOR_META_PERCENT,
+  calendarColorChipVars,
   inkOnCalendarColor
 } from './calendar-colors'
 import { AA_SMALL_TEXT, THEMES, blend, contrastRatio, resolveColor } from '@tests/utils/contrast'
@@ -19,13 +20,19 @@ const ALL = [...PALETTE, ...CUSTOM]
 
 describe.each(THEMES)('calendar colours in %s', (theme) => {
   const background = resolveColor(theme, '--background')
+  const ink = resolveColor(theme, '--cal-ink')
 
   it.each(ALL)('keeps a resting %s chip title at AA', (_name, hex) => {
     const fill = blend(hex, background, CALENDAR_COLOR_FILL_PERCENT / 100)
 
-    expect(contrastRatio(resolveColor(theme, '--foreground'), fill)).toBeGreaterThanOrEqual(
-      AA_SMALL_TEXT
-    )
+    expect(contrastRatio(ink, fill)).toBeGreaterThanOrEqual(AA_SMALL_TEXT)
+  })
+
+  it.each(ALL)('keeps a resting %s chip time at AA', (_name, hex) => {
+    const fill = blend(hex, background, CALENDAR_COLOR_FILL_PERCENT / 100)
+    const meta = blend(hex, ink, CALENDAR_COLOR_META_PERCENT / 100)
+
+    expect(contrastRatio(meta, fill)).toBeGreaterThanOrEqual(AA_SMALL_TEXT)
   })
 })
 
@@ -34,18 +41,14 @@ describe('selected calendar colour chips', () => {
     expect(contrastRatio(inkOnCalendarColor(hex), hex)).toBeGreaterThanOrEqual(AA_SMALL_TEXT)
   })
 
-  it('tints at rest and goes solid when selected', () => {
-    expect(calendarColorChipStyle('#d50000', false)).toEqual({
-      backgroundColor: 'color-mix(in srgb, #d50000 20%, var(--background))',
-      color: 'var(--foreground)'
+  it('tints at rest and goes solid with readable ink when selected', () => {
+    expect(calendarColorChipVars('#d50000')).toEqual({
+      '--chip-rail': '#d50000',
+      '--chip-surface': 'color-mix(in srgb, #d50000 25%, var(--background))',
+      '--chip-meta': 'color-mix(in srgb, #d50000 35%, var(--cal-ink))',
+      '--chip-solid': '#d50000',
+      '--chip-solid-ink': '#ffffff'
     })
-    expect(calendarColorChipStyle('#d50000', true)).toEqual({
-      backgroundColor: '#d50000',
-      color: '#ffffff'
-    })
-    expect(calendarColorChipStyle('#f6bf26', true)).toEqual({
-      backgroundColor: '#f6bf26',
-      color: '#000000'
-    })
+    expect(calendarColorChipVars('#f6bf26')['--chip-solid-ink']).toBe('#000000')
   })
 })

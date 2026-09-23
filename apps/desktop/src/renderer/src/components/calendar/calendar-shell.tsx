@@ -247,7 +247,7 @@ export function CalendarShell({
                     <span
                       aria-hidden="true"
                       className="size-3 rounded-full ring-1 ring-border"
-                      style={{ backgroundColor: meta.swatchColor }}
+                      style={meta.swatchStyle}
                     />
                     {label}
                   </span>

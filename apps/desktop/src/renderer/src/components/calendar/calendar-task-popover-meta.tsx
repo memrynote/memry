@@ -2,7 +2,9 @@ import { Calendar, Repeat, AlertTriangle } from '@/lib/icons'
 import { formatTaskDue } from '@/lib/format-task-due'
 import { TagChip, type Tag } from '@/components/note/tags-row'
 import { PriorityIcon } from '@/components/tasks/task-icons'
+import { StatusIcon } from '@/components/tasks/status-icon'
 import { priorityConfig, type Priority } from '@/data/task-model'
+import type { Status } from '@/data/tasks-data'
 import { TaskDescriptionPreview } from '@/components/tasks/task-description-preview'
 import { cn } from '@/lib/utils'
 
@@ -12,12 +14,12 @@ export interface CalendarTaskPopoverMetaTask {
   endAt?: string | null
   isAllDay?: boolean
   priority: 0 | 1 | 2 | 3 | 4
+  statusId?: string | null
 }
 
 export interface CalendarTaskPopoverMetaProps {
   task: CalendarTaskPopoverMetaTask
-  projectName: string
-  projectColor: string
+  statuses?: Status[]
   tags: Tag[]
   repeatSummary: string | null
   description: string | null
@@ -29,10 +31,17 @@ export interface CalendarTaskPopoverMetaProps {
 const MAX_VISIBLE_TAGS = 3
 const PRIORITY_BY_NUMBER: readonly Priority[] = ['none', 'low', 'medium', 'high', 'urgent']
 
+const PILL_CLASS =
+  'inline-flex h-[26px] items-center gap-1.5 rounded-md border border-border px-2 text-xs text-foreground [&_svg]:size-3.5 [&_svg]:shrink-0'
+
+/**
+ * The task's properties as quiet pills under the title: when, how often,
+ * status, priority, tags. Indented to the title so the checkbox stays alone in
+ * its lane.
+ */
 export function CalendarTaskPopoverMeta({
   task,
-  projectName,
-  projectColor,
+  statuses = [],
   tags,
   repeatSummary,
   description,
@@ -51,87 +60,68 @@ export function CalendarTaskPopoverMeta({
   })
   const visibleTags = tags.slice(0, MAX_VISIBLE_TAGS)
   const overflowCount = Math.max(0, tags.length - MAX_VISIBLE_TAGS)
-  const showPriorityRow = task.priority > 0 || tags.length > 0
   const priorityKey = PRIORITY_BY_NUMBER[task.priority] ?? 'none'
   const priorityCfg = priorityConfig[priorityKey]
+  const status = statuses.find((candidate) => candidate.id === task.statusId)
+  const statusType = isCompleted ? 'done' : (status?.type ?? 'todo')
 
   return (
-    <div className="px-3 py-2 space-y-1.5 text-sm">
-      <div
-        data-testid="due-row"
-        className={cn('flex items-center gap-1.5', due.isOverdue && 'text-destructive')}
-      >
-        {due.isOverdue ? (
-          <AlertTriangle className="h-3.5 w-3.5" />
-        ) : (
-          <Calendar className="h-3.5 w-3.5" />
-        )}
-        <span>{due.label}</span>
-      </div>
-
-      {repeatSummary && (
-        <div
-          data-testid="recurrence-row"
-          className="flex items-center gap-1.5 text-muted-foreground"
-        >
-          <Repeat className="h-3.5 w-3.5" />
-          <span>{repeatSummary}</span>
-        </div>
-      )}
-
-      <div data-testid="project-row" className="flex items-center">
+    <div className="flex flex-col gap-2.5 pb-3.5 ps-[42px] pe-3.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <span
-          className="flex items-center rounded-sm py-0.5 px-2 gap-1.5 [font-synthesis:none]"
-          style={{ backgroundColor: `${projectColor}14` }}
+          data-testid="due-row"
+          className={cn(
+            PILL_CLASS,
+            'tabular-nums',
+            due.isOverdue && 'border-destructive/40 text-destructive'
+          )}
         >
-          <span
-            data-testid="project-color-swatch"
-            className="rounded-xs shrink-0 size-2"
-            style={{ backgroundColor: projectColor }}
-          />
-          <span className="text-[11px] font-medium leading-3.5" style={{ color: projectColor }}>
-            {projectName}
-          </span>
+          {due.isOverdue ? <AlertTriangle /> : <Calendar className="text-muted-foreground" />}
+          <span>{due.label}</span>
         </span>
-      </div>
 
-      {showPriorityRow && (
-        <div data-testid="priority-row" className="flex items-center gap-3">
-          {task.priority > 0 && (
-            <span className="flex items-center gap-1">
-              <PriorityIcon priority={priorityKey} />
-              <span
-                className="text-[11px] font-medium leading-3.5"
-                style={{ color: priorityCfg.color ?? 'var(--text-tertiary)' }}
-              >
-                {priorityCfg.label ?? priorityKey}
-              </span>
+        {repeatSummary && (
+          <span data-testid="recurrence-row" className={PILL_CLASS}>
+            <Repeat className="text-muted-foreground" />
+            <span>{repeatSummary}</span>
+          </span>
+        )}
+
+        {status && (
+          <span data-testid="status-row" className={PILL_CLASS}>
+            <span role="img" aria-label={`Status: ${status.name}`} className="inline-flex">
+              <StatusIcon type={statusType} color={status.color || '#6B7280'} size="sm" />
             </span>
-          )}
-          {tags.length > 0 && (
-            <span className="flex items-center gap-1.5 flex-wrap">
-              {visibleTags.map((tag) => (
-                <TagChip
-                  key={tag.id}
-                  tag={tag}
-                  onClick={onTagClick ? () => onTagClick(tag) : undefined}
-                />
-              ))}
-              {overflowCount > 0 && (
-                <span className="rounded-[10px] px-2 py-0.5 text-[11px]/3.5 font-medium text-muted-foreground">
-                  +{overflowCount}
-                </span>
-              )}
-            </span>
-          )}
-        </div>
-      )}
+            <span>{status.name}</span>
+          </span>
+        )}
+
+        {task.priority > 0 && (
+          <span data-testid="priority-row" className={PILL_CLASS}>
+            <PriorityIcon priority={priorityKey} />
+            <span>{priorityCfg.label ?? priorityKey}</span>
+          </span>
+        )}
+
+        {visibleTags.map((tag) => (
+          <TagChip
+            key={tag.id}
+            tag={tag}
+            onClick={onTagClick ? () => onTagClick(tag) : undefined}
+          />
+        ))}
+        {overflowCount > 0 && (
+          <span className="px-1 text-[11px] font-medium text-muted-foreground">
+            +{overflowCount}
+          </span>
+        )}
+      </div>
 
       {description && (
         <TaskDescriptionPreview
           data-testid="description"
           markdown={description}
-          className="line-clamp-3"
+          className="line-clamp-3 text-muted-foreground"
         />
       )}
     </div>

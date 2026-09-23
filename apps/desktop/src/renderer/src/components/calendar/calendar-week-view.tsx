@@ -398,7 +398,7 @@ export function CalendarWeekView({
                         <div key={item.projectionId} style={{ height: ALL_DAY_CHIP_HEIGHT }}>
                           <DraggableTaskChip
                             item={item}
-                            isSelected={false}
+                            isSelected={item.sourceId === selectedItemId}
                             onClick={onSelectItem}
                             onDeleteItem={onDeleteItem}
                             onAddToProject={onAddToProject}
@@ -447,9 +447,7 @@ export function CalendarWeekView({
                     <CalendarItemChip
                       item={bar.item}
                       clockFormat={clockFormat}
-                      isSelected={
-                        bar.item.sourceType === 'event' && bar.item.sourceId === selectedItemId
-                      }
+                      isSelected={bar.item.sourceId === selectedItemId}
                       onClick={onSelectItem}
                       onDeleteItem={onDeleteItem}
                       onAddToProject={onAddToProject}
@@ -544,9 +542,8 @@ export function CalendarWeekView({
                           <CalendarItemChip
                             item={item}
                             clockFormat={clockFormat}
-                            isSelected={
-                              item.sourceType === 'event' && item.sourceId === selectedItemId
-                            }
+                            layout="block"
+                            isSelected={item.sourceId === selectedItemId}
                             onClick={handleChipClick}
                             onDeleteItem={onDeleteItem}
                             onAddToProject={onAddToProject}
@@ -629,7 +626,12 @@ export function CalendarWeekView({
                       height: drag.height
                     }}
                   >
-                    <CalendarItemChip item={draggedItem} clockFormat={clockFormat} isSelected />
+                    <CalendarItemChip
+                      item={draggedItem}
+                      clockFormat={clockFormat}
+                      layout="block"
+                      isSelected
+                    />
                   </div>
                 )
               })()}

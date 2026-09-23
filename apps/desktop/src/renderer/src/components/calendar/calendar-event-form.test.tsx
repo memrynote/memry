@@ -60,7 +60,7 @@ const openStartDatePopover = (): HTMLElement => {
       autoFocus={false}
     />
   )
-  fireEvent.click(screen.getByText('form.start'))
+  fireEvent.click(screen.getByRole('button', { name: /^form.start:/ }))
   const content = document.querySelector<HTMLElement>('[data-radix-popper-content-wrapper] > *')
   expect(content).not.toBeNull()
   return content!

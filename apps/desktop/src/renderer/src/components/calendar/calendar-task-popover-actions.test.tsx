@@ -1,61 +1,112 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { CalendarTaskPopoverActions } from './calendar-task-popover-actions'
+import {
+  CalendarTaskPopoverActionBar,
+  CalendarTaskPopoverMenu,
+  CalendarTaskPopoverMoveRow
+} from './calendar-task-popover-actions'
 
-const baseProps = {
-  isCompleted: false,
-  isAllDay: false,
-  sourceNoteId: null as string | null,
-  onOpenTask: vi.fn(),
-  onOpenSourceNote: vi.fn(),
-  onSnooze: vi.fn(),
-  onRemoveDueDate: vi.fn(),
-  onPickDateTime: vi.fn(),
-  now: new Date('2026-04-29T12:00:00')
-}
+const NOON = new Date('2026-04-29T12:00:00')
 
-describe('CalendarTaskPopoverActions', () => {
-  it('renders Open task and Reschedule when not completed', () => {
-    render(<CalendarTaskPopoverActions {...baseProps} />)
-    expect(screen.getByRole('button', { name: /open task/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /reschedule/i })).toBeInTheDocument()
+describe('CalendarTaskPopoverMoveRow', () => {
+  it('reschedules in one click, without a date picker', async () => {
+    const onSnooze = vi.fn()
+    render(<CalendarTaskPopoverMoveRow isAllDay={false} onSnooze={onSnooze} now={NOON} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tomorrow' }))
+    expect(onSnooze).toHaveBeenCalledWith({ dueDate: '2026-04-30', dueTime: '09:00' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Next week' }))
+    expect(onSnooze).toHaveBeenLastCalledWith({ dueDate: '2026-05-04', dueTime: '09:00' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Later' }))
+    expect(onSnooze).toHaveBeenCalledTimes(3)
   })
 
-  it('hides Source note button when sourceNoteId is null', () => {
-    render(<CalendarTaskPopoverActions {...baseProps} />)
-    expect(screen.queryByRole('button', { name: /source note/i })).not.toBeInTheDocument()
+  it('drops Later after 19:00 and for all-day tasks', () => {
+    const { rerender } = render(
+      <CalendarTaskPopoverMoveRow
+        isAllDay={false}
+        onSnooze={vi.fn()}
+        now={new Date('2026-04-29T19:30:00')}
+      />
+    )
+    expect(screen.queryByRole('button', { name: 'Later' })).not.toBeInTheDocument()
+
+    rerender(<CalendarTaskPopoverMoveRow isAllDay onSnooze={vi.fn()} now={NOON} />)
+    expect(screen.queryByRole('button', { name: 'Later' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tomorrow' })).toBeInTheDocument()
+  })
+})
+
+describe('CalendarTaskPopoverMenu', () => {
+  const baseProps = {
+    isCompleted: false,
+    sourceNoteId: null as string | null,
+    onOpenSourceNote: vi.fn(),
+    onPickDateTime: vi.fn(),
+    onRemoveDueDate: vi.fn()
+  }
+
+  it('holds date editing and hides the source note without one', async () => {
+    const onRemoveDueDate = vi.fn()
+    render(<CalendarTaskPopoverMenu {...baseProps} onRemoveDueDate={onRemoveDueDate} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /more actions/i }))
+    expect(screen.queryByRole('menuitem', { name: /source note/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /pick date/i })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('menuitem', { name: /remove due date/i }))
+    expect(onRemoveDueDate).toHaveBeenCalled()
   })
 
-  it('shows Source note button when sourceNoteId is set', () => {
-    render(<CalendarTaskPopoverActions {...baseProps} sourceNoteId="n1" />)
-    expect(screen.getByRole('button', { name: /source note/i })).toBeInTheDocument()
+  it('offers the source note when there is one', async () => {
+    const onOpenSourceNote = vi.fn()
+    render(
+      <CalendarTaskPopoverMenu
+        {...baseProps}
+        sourceNoteId="note-1"
+        onOpenSourceNote={onOpenSourceNote}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /more actions/i }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /source note/i }))
+    expect(onOpenSourceNote).toHaveBeenCalled()
   })
 
-  it('hides Reschedule when completed', () => {
-    render(<CalendarTaskPopoverActions {...baseProps} isCompleted={true} />)
-    expect(screen.queryByRole('button', { name: /reschedule/i })).not.toBeInTheDocument()
+  it('drops date editing once the task is done', async () => {
+    render(<CalendarTaskPopoverMenu {...baseProps} isCompleted sourceNoteId="note-1" />)
+
+    await userEvent.click(screen.getByRole('button', { name: /more actions/i }))
+    expect(screen.queryByRole('menuitem', { name: /pick date/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /remove due date/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('CalendarTaskPopoverActionBar', () => {
+  it('completes on the start and opens on the end, showing the keys', async () => {
+    const onToggleComplete = vi.fn()
+    const onOpenTask = vi.fn()
+    render(
+      <CalendarTaskPopoverActionBar
+        isCompleted={false}
+        onToggleComplete={onToggleComplete}
+        onOpenTask={onOpenTask}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /complete/i }))
+    expect(onToggleComplete).toHaveBeenCalled()
+    await userEvent.click(screen.getByRole('button', { name: /^open/i }))
+    expect(onOpenTask).toHaveBeenCalled()
+    expect(screen.getAllByText('↵')).toHaveLength(2)
   })
 
-  it('opens reschedule submenu and calls onSnooze with target', async () => {
-    const props = { ...baseProps, onSnooze: vi.fn() }
-    render(<CalendarTaskPopoverActions {...props} />)
-    await userEvent.click(screen.getByRole('button', { name: /reschedule/i }))
-    await userEvent.click(screen.getByText(/Tomorrow/))
-    expect(props.onSnooze).toHaveBeenCalledWith({ dueDate: '2026-04-30', dueTime: '09:00' })
-  })
-
-  it('hides Later today after 19:00', async () => {
-    const props = { ...baseProps, now: new Date('2026-04-29T20:00:00') }
-    render(<CalendarTaskPopoverActions {...props} />)
-    await userEvent.click(screen.getByRole('button', { name: /reschedule/i }))
-    expect(screen.queryByText(/Later today/)).not.toBeInTheDocument()
-  })
-
-  it('Open task click calls onOpenTask', async () => {
-    const props = { ...baseProps, onOpenTask: vi.fn() }
-    render(<CalendarTaskPopoverActions {...props} />)
-    await userEvent.click(screen.getByRole('button', { name: /open task/i }))
-    expect(props.onOpenTask).toHaveBeenCalled()
+  it('reopens a completed task', () => {
+    render(
+      <CalendarTaskPopoverActionBar isCompleted onToggleComplete={vi.fn()} onOpenTask={vi.fn()} />
+    )
+    expect(screen.getByRole('button', { name: /mark not done/i })).toBeInTheDocument()
   })
 })

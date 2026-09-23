@@ -136,6 +136,7 @@
     "visibility": "Visibility:",
     "optional": "Optional",
     "join-meeting": "Join meeting",
+    "video-call": "Video call",
     "response": {
       "accepted": "Accepted",
       "declined": "Declined",
@@ -172,8 +173,27 @@
       "reschedule": "Reschedule"
     }
   },
+  "chip": {
+    "complete-task": "Complete {title}",
+    "task-completed": "Task completed",
+    "could-not-complete": "Could not complete task",
+    "duration-minutes": "{minutes}m",
+    "duration-hours": "{hours}h",
+    "duration-hours-minutes": "{hours}h {minutes}m"
+  },
+  "event-card": {
+    "kind": "Event",
+    "close": "Close"
+  },
   "task-popover": {
     "title-fallback": "Task details",
+    "kind": "Task",
+    "open": "Open",
+    "complete": "Complete",
+    "more-actions": "More actions",
+    "move": "Move",
+    "later": "Later",
+    "next-week": "Next week",
     "open-task": "Open task",
     "source-note": "Source note",
     "reschedule": "Reschedule",

@@ -33,6 +33,11 @@ export interface EventProjectFieldProps {
   /** Create mode only: writes the selection back into the draft. */
   onChange: (projectId: string | null) => void
   disabled?: boolean
+  /**
+   * Keep the "Project" label for screen readers only and render a borderless
+   * picker, for detail cards where a row icon already names the field.
+   */
+  hideLabel?: boolean
 }
 
 /**
@@ -47,7 +52,8 @@ export function EventProjectField({
   eventId,
   value,
   onChange,
-  disabled
+  disabled,
+  hideLabel = false
 }: EventProjectFieldProps): React.JSX.Element | null {
   const { t } = useT('calendar')
   const projects = useTasksOptional()?.projects ?? NO_PROJECTS
@@ -243,7 +249,9 @@ export function EventProjectField({
     // the chips alongside the picker would pop the dropdown open whenever the
     // user clicked a chip's name.
     <div className="flex flex-col gap-1 text-sm">
-      <span className="text-xs font-medium text-muted-foreground">{t('form.project')}</span>
+      <span className={hideLabel ? 'sr-only' : 'text-xs font-medium text-muted-foreground'}>
+        {t('form.project')}
+      </span>
       <div className="flex flex-wrap items-center gap-1.5">
         <ProjectPicker
           value={selectedId}
@@ -254,7 +262,11 @@ export function EventProjectField({
           searchable
           allowCreate={false}
           disabled={disabled}
-          className="min-w-[160px]"
+          className={
+            hideLabel
+              ? '-ms-1.5 h-7 min-w-0 border-0 bg-transparent px-1.5 text-[13px] shadow-none hover:bg-accent'
+              : 'min-w-[160px]'
+          }
         />
         {extraLinks.map((project) => (
           <span

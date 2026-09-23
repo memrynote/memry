@@ -117,7 +117,7 @@ export const CanvasEventEditor = ({
   }
 
   return (
-    <div className={cn('p-3', rootLayout)}>
+    <div className={cn('pt-3', rootLayout)}>
       <CalendarEventForm
         mode="edit"
         autoFocus={interactive}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const mockTask = {
@@ -72,6 +72,9 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
   useSidebarNavigation: () => ({ openSidebarItem: openSidebarItemMock })
 }))
 
+const toastMock = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn() }))
+vi.mock('sonner', () => ({ toast: toastMock }))
+
 import { CalendarTaskPopover } from './calendar-task-popover'
 
 const completeMock = vi.fn().mockResolvedValue({ id: 't1' })
@@ -138,14 +141,34 @@ describe('CalendarTaskPopover', () => {
   it('renders title and due', () => {
     render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
     expect(screen.getByText('Hello')).toBeInTheDocument()
-    expect(screen.getByText(/Tomorrow/)).toBeInTheDocument()
+    expect(screen.getByTestId('due-row')).toHaveTextContent(/Tomorrow/)
     expect(screen.getByRole('img', { name: /status: to do/i })).toBeInTheDocument()
-    expect(screen.queryByText('To Do')).not.toBeInTheDocument()
+    expect(screen.getByText('Task · memrynote')).toBeInTheDocument()
   })
 
-  it('does not render a completion checkbox for the task', () => {
-    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  it('completes the task from its checkbox, dismisses, and offers undo', async () => {
+    const onDismiss = vi.fn()
+    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
+
+    await userEvent.click(screen.getByTestId('task-popover-complete'))
+
+    expect(completeMock).toHaveBeenCalledWith({ id: 't1' })
+    await waitFor(() => expect(onDismiss).toHaveBeenCalled())
+    const [, options] = toastMock.mock.calls.at(-1) as [string, { action: { onClick: () => void } }]
+    options.action.onClick()
+    expect(uncompleteMock).toHaveBeenCalledWith('t1')
+  })
+
+  it('completes with Ctrl+Enter and opens the task with Enter', async () => {
+    const onDismiss = vi.fn()
+    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
+    const card = screen.getByTestId('calendar-task-popover')
+
+    fireEvent.keyDown(card, { key: 'Enter' })
+    expect(openTabMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'tasks' }))
+
+    fireEvent.keyDown(card, { key: 'Enter', ctrlKey: true })
+    expect(completeMock).toHaveBeenCalledWith({ id: 't1' })
   })
 
   it('keeps the status icon read-only', async () => {
@@ -158,7 +181,7 @@ describe('CalendarTaskPopover', () => {
 
   it('Open task opens the tasks tab filtered to the task project on the All tab', async () => {
     render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
-    await userEvent.click(screen.getByRole('button', { name: /open task/i }))
+    await userEvent.click(screen.getByRole('button', { name: /^open task$/i }))
     expect(openTabMock).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'tasks',
@@ -174,7 +197,7 @@ describe('CalendarTaskPopover', () => {
 
   it('Pick date & time opens the tasks tab filtered to the task project on the All tab', async () => {
     render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
-    await userEvent.click(screen.getByRole('button', { name: /reschedule/i }))
+    await userEvent.click(screen.getByRole('button', { name: /more actions/i }))
     await userEvent.click(screen.getByRole('menuitem', { name: /pick date.*time/i }))
     expect(openTabMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -220,18 +243,18 @@ describe('CalendarTaskPopover', () => {
 
     render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
 
-    await userEvent.click(screen.getByLabelText(/mark done/i))
+    const subtaskList = within(screen.getByRole('list'))
+    await userEvent.click(subtaskList.getByLabelText(/mark done/i))
     expect(completeMock).toHaveBeenCalledWith({ id: 'sub-1' })
 
-    await userEvent.click(screen.getByLabelText(/mark not done/i))
+    await userEvent.click(subtaskList.getByLabelText(/mark not done/i))
     expect(uncompleteMock).toHaveBeenCalledWith('sub-2')
 
-    await userEvent.click(screen.getByRole('button', { name: /reschedule/i }))
-    await userEvent.click(screen.getByRole('menuitem', { name: /tomorrow/i }))
+    await userEvent.click(screen.getByRole('button', { name: 'Tomorrow' }))
     await waitFor(() => expect(onDismiss).toHaveBeenCalled())
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }))
 
-    await userEvent.click(screen.getByRole('button', { name: /reschedule/i }))
+    await userEvent.click(screen.getByRole('button', { name: /more actions/i }))
     await userEvent.click(screen.getByRole('menuitem', { name: /remove due date/i }))
     expect(updateMock).toHaveBeenCalledWith({ id: 't1', dueDate: null, dueTime: null })
   })
@@ -244,9 +267,8 @@ describe('CalendarTaskPopover', () => {
 
     render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
 
-    await userEvent.click(screen.getByLabelText(/mark done/i))
-    await userEvent.click(screen.getByRole('button', { name: /reschedule/i }))
-    await userEvent.click(screen.getByRole('menuitem', { name: /tomorrow/i }))
+    await userEvent.click(within(screen.getByRole('list')).getByLabelText(/mark done/i))
+    await userEvent.click(screen.getByRole('button', { name: 'Tomorrow' }))
     await Promise.resolve()
 
     expect(onDismiss).not.toHaveBeenCalled()
@@ -261,7 +283,8 @@ describe('CalendarTaskPopover', () => {
       <CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />
     )
 
-    await userEvent.click(screen.getByRole('button', { name: /source note/i }))
+    await userEvent.click(screen.getByRole('button', { name: /more actions/i }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /source note/i }))
     await waitFor(() =>
       expect(openTabMock).toHaveBeenCalledWith(
         expect.objectContaining({
