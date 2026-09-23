@@ -82,7 +82,9 @@ for (const [tree, fillerNotes] of [
     await dragOnto(page, 'folder-notes/Beta', 'folder-notes/Delta')
 
     const onDisk = (rel: string) => fs.existsSync(path.join(testVaultPath, 'notes', rel))
-    await expect.poll(() => onDisk('Delta/Beta/Gamma/gamma-note.md'), { timeout: 15_000 }).toBe(true)
+    await expect
+      .poll(() => onDisk('Delta/Beta/Gamma/gamma-note.md'), { timeout: 15_000 })
+      .toBe(true)
     expect(onDisk('Beta')).toBe(false)
 
     await expect(row(page, 'folder-notes/Beta')).toHaveCount(0, { timeout: 15_000 })

@@ -16,7 +16,12 @@ test.describe('New note from this note (#2329)', () => {
 
     const sourceId = await page.evaluate(
       async ({ folder, title, tags, properties, icon }) => {
-        const created = await window.api.notes.create({ title, content: 'Kickoff body', folder, tags })
+        const created = await window.api.notes.create({
+          title,
+          content: 'Kickoff body',
+          folder,
+          tags
+        })
         const id = created.note?.id
         if (!id) throw new Error(created.error ?? 'source create failed')
         const iconed = await window.api.notes.update({ id, emoji: icon })

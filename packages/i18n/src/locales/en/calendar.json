@@ -78,7 +78,9 @@
     "project": "Project",
     "no-project": "No project",
     "remove-from-project": "Remove from {project}",
-    "project-update-failed": "Could not update the event's project"
+    "project-update-failed": "Could not update the event's project",
+    "color": "Color",
+    "default-color": "Default color"
   },
   "delete-dialog": {
     "title": "Delete event?",
@@ -201,6 +203,19 @@
     "kindDateReminder": "Date reminder",
     "open": "Open note",
     "couldNotOpen": "Could not open note"
+  },
+  "calendar-color": {
+    "tomato": "Tomato",
+    "flamingo": "Flamingo",
+    "tangerine": "Tangerine",
+    "banana": "Banana",
+    "sage": "Sage",
+    "basil": "Basil",
+    "peacock": "Peacock",
+    "blueberry": "Blueberry",
+    "lavender": "Lavender",
+    "grape": "Grape",
+    "graphite": "Graphite"
   },
   "subscribedEvent": {
     "kind": "Subscribed calendar",

@@ -800,6 +800,42 @@ describe('google calendar client — push channels (Task 7)', () => {
       })
     })
 
+    it('clears a removed event colour on update but leaves it out of a create', async () => {
+      const bodies: unknown[] = []
+      fetchMock.mockImplementation(async (_input, init) => {
+        bodies.push(JSON.parse(String(init?.body)))
+        return new Response(
+          JSON.stringify({
+            id: 'google-event-1',
+            status: 'confirmed',
+            start: { dateTime: '2026-05-10T10:00:00.000Z' },
+            end: { dateTime: '2026-05-10T11:00:00.000Z' }
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      })
+      const event = {
+        sourceType: 'event' as const,
+        sourceId: 'event-1',
+        title: 'Standup',
+        description: null,
+        location: null,
+        startAt: '2026-05-10T10:00:00.000Z',
+        endAt: '2026-05-10T11:00:00.000Z',
+        isAllDay: false,
+        timezone: 'UTC',
+        recurrence: null,
+        colorId: null
+      }
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      await client.upsertEvent({ calendarId: 'primary', eventId: 'google-event-1', event })
+      await client.upsertEvent({ calendarId: 'primary', eventId: null, event })
+
+      expect(bodies[0]).toHaveProperty('colorId', null)
+      expect(bodies[1]).not.toHaveProperty('colorId')
+    })
+
     it('covers delete tolerances and watch expiration fallback', async () => {
       fetchMock
         .mockResolvedValueOnce(new Response(null, { status: 404 }))

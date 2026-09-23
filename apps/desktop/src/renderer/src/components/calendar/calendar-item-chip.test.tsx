@@ -21,7 +21,7 @@ function eventItem(overrides: Partial<CalendarProjectionItem> = {}): CalendarPro
     startAt: '2026-05-14T09:00',
     endAt: '2026-05-14T10:00',
     isAllDay: false,
-    color: '#64748b',
+    color: null,
     eventType: 'memry',
     sourceCalendarId: null,
     sourceCalendarName: null,
@@ -58,5 +58,44 @@ describe('CalendarItemChip', () => {
     const chip = screen.getByText('Planning').closest('[data-visual-type]')
     expect(chip).toHaveAttribute('data-triggered', 'true')
     expect(chip).toHaveClass('opacity-60')
+  })
+
+  it('tints a coloured event with its colour and keeps ink for the title', () => {
+    render(<CalendarItemChip item={eventItem({ color: 'sage', displayColor: '#33b679' })} />)
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]') as HTMLElement
+    expect(chip).toHaveAttribute('data-event-color', '#33b679')
+    expect(chip.style.backgroundColor).toBe('color-mix(in srgb, #33b679 20%, var(--background))')
+    expect(chip.style.color).toBe('var(--foreground)')
+  })
+
+  it('goes solid with readable ink when a coloured event is selected', () => {
+    render(
+      <CalendarItemChip item={eventItem({ color: 'tomato', displayColor: '#d50000' })} isSelected />
+    )
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]') as HTMLElement
+    expect(chip.style.backgroundColor).toBe('rgb(213, 0, 0)')
+    expect(chip.style.color).toBe('rgb(255, 255, 255)')
+  })
+
+  it('paints an external event with the colour of its Google calendar', () => {
+    render(
+      <CalendarItemChip
+        item={eventItem({ visualType: 'external_event', color: null, displayColor: '#4285f4' })}
+      />
+    )
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]') as HTMLElement
+    expect(chip).toHaveAttribute('data-event-color', '#4285f4')
+    expect(chip.style.backgroundColor).toBe('color-mix(in srgb, #4285f4 20%, var(--background))')
+  })
+
+  it('keeps the event-type colour for an event with no colour', () => {
+    render(<CalendarItemChip item={eventItem()} />)
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]') as HTMLElement
+    expect(chip).not.toHaveAttribute('data-event-color')
+    expect(chip.style.color).toBe('rgb(146, 206, 212)')
   })
 })

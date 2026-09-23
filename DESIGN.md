@@ -183,7 +183,7 @@ Specialized colors are allowed when they encode a stable domain distinction:
 
 - Task priority, due-date, completion, progress, repeat, and token colors use the desktop `--task-*` family or the matching platform theme roles.
 - Graph nodes and edges use the desktop `--graph-*` family or the matching platform theme roles.
-- Calendar event types use the centralized calendar color mapping.
+- Calendar event types use the centralized calendar color mapping. An event with a Google Calendar colour (its own, or its Google calendar's) uses that colour instead, from Google's palette in `@memry/contracts/calendar-colors`: the colour tints the chip and the title keeps ink.
 - Inbox types and Agent Chat mentions use their centralized type mappings.
 - User-created tags may use the user's chosen tag color.
 

@@ -140,7 +140,9 @@ export function CalendarSearch({ onJump }: CalendarSearchProps): React.JSX.Eleme
                 <span
                   aria-hidden="true"
                   className="size-2.5 shrink-0 rounded-full ring-1 ring-border"
-                  style={{ backgroundColor: VISUAL_TYPE_META[item.visualType].dotColor }}
+                  style={{
+                    backgroundColor: item.displayColor ?? VISUAL_TYPE_META[item.visualType].dotColor
+                  }}
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm text-foreground">

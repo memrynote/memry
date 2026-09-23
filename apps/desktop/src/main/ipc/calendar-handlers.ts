@@ -35,6 +35,10 @@ import {
   type RetryCalendarSourceSyncResponse,
   type SetDefaultGoogleCalendarResponse
 } from '@memry/contracts/calendar-api'
+import {
+  calendarEventColorFromColorId,
+  colorIdForCalendarEventColor
+} from '@memry/contracts/calendar-colors'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
@@ -121,6 +125,7 @@ function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEven
     reminders: (row.reminders as CalendarEventRecord['reminders']) ?? null,
     visibility: (row.visibility as CalendarEventRecord['visibility']) ?? null,
     colorId: row.colorId ?? null,
+    color: calendarEventColorFromColorId(row.colorId),
     conferenceData: (row.conferenceData as CalendarEventRecord['conferenceData']) ?? null,
     parentEventId: row.parentEventId ?? null,
     originalStartTime: row.originalStartTime ?? null,
@@ -402,6 +407,7 @@ export function registerCalendarHandlers(): void {
             recurrenceRule: input.recurrenceRule ?? null,
             recurrenceExceptions: input.recurrenceExceptions ?? null,
             targetCalendarId: input.targetCalendarId ?? null,
+            colorId: colorIdForCalendarEventColor(input.color ?? null),
             createdAt: now,
             modifiedAt: now
           })
@@ -483,6 +489,15 @@ export function registerCalendarHandlers(): void {
         }
         if (Object.prototype.hasOwnProperty.call(input, 'targetCalendarId')) {
           changes.targetCalendarId = input.targetCalendarId ?? null
+        }
+        // The form sends the colour on every save. Re-saving the colour the
+        // event already has must not mark colorId as edited, or each save
+        // would bump its field clock and push it to Google again.
+        if (
+          Object.prototype.hasOwnProperty.call(input, 'color') &&
+          calendarEventColorFromColorId(existing.colorId) !== (input.color ?? null)
+        ) {
+          changes.colorId = colorIdForCalendarEventColor(input.color ?? null)
         }
 
         db.update(calendarEvents).set(changes).where(eq(calendarEvents.id, input.id)).run()

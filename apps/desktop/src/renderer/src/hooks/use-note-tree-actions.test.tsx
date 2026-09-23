@@ -411,9 +411,7 @@ describe('useNoteTreeActions', () => {
   })
 
   it('says so when a dropped folder cannot be moved (#2206)', async () => {
-    vi.mocked(notesService.renameFolder).mockRejectedValueOnce(
-      new Error('Failed to rename folder')
-    )
+    vi.mocked(notesService.renameFolder).mockRejectedValueOnce(new Error('Failed to rename folder'))
     const { result, deps } = renderActions()
 
     await act(async () => {
