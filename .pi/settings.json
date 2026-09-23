@@ -3,7 +3,7 @@
     "modelScope": {
       "enforce": true,
       "strict": true,
-      "allow": ["anthropic/*"]
+      "allow": ["anthropic/*", "llamacpp/tiel-coder-35b-a3b"]
     }
   },
   "observational-memory": {
