@@ -503,6 +503,8 @@ export const SettingsChannels = {
     TRIGGER_SYNC: 'settings:triggerSync',
     /** Register (or unregister) the OS-level global capture shortcut */
     REGISTER_GLOBAL_CAPTURE: 'settings:registerGlobalCapture',
+    /** Register a global capture binding, then save it only if the OS accepted it */
+    SET_GLOBAL_CAPTURE: 'settings:setGlobalCapture',
     /** Get status for the terminal `memrynote` command shim */
     GET_TERMINAL_COMMAND_STATUS: 'settings:getTerminalCommandStatus',
     /** Install the terminal `memrynote` command shim */

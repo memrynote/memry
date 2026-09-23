@@ -1420,7 +1420,10 @@
       "description": "Capture a note from anywhere",
       "permissionNeeded": "Permission needed",
       "active": "Active",
-      "permissionHint": "Global shortcuts require Accessibility permission. Go to System Settings → Privacy → Accessibility and enable memrynote."
+      "permissionHint": "Global shortcuts require Accessibility permission. Go to System Settings → Privacy → Accessibility and enable memrynote.",
+      "inUse": "{shortcut} is in use by another app. Pick a different combination.",
+      "unsupported": "{shortcut} can't be used as a global shortcut. Pick a different combination.",
+      "fallbackInUse": "The default shortcut {shortcut} is in use by another app. Set a different combination to use Global Capture."
     },
     "toasts": {
       "saveGlobalFailed": "Failed to save global capture shortcut",
