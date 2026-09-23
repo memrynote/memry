@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/contexts/auth-context'
 
-const SUPPORT_EMAIL = 'support@memrynote.com'
+const SUPPORT_EMAIL = 'kaan@memrynote.com'
 
 interface BillingStatus {
   email: string | null

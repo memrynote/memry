@@ -235,7 +235,7 @@ export function CheckoutPanel({
       <p className="mt-2 text-center text-xs text-muted">
         Need help?{' '}
         <a
-          href="mailto:billing@memrynote.com"
+          href="mailto:kaan@memrynote.com"
           className="text-terracotta underline-offset-2 hover:underline"
         >
           Contact us
@@ -429,7 +429,7 @@ function ChangeSummary({
         <p className="text-sm text-muted">
           Believer is a one-time purchase.{' '}
           <a
-            href="mailto:billing@memrynote.com"
+            href="mailto:kaan@memrynote.com"
             className="text-terracotta underline-offset-2 hover:underline"
           >
             Contact us

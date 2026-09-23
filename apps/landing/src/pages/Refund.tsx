@@ -19,8 +19,7 @@ export function RefundPage() {
           </li>
           <li>
             Request a refund inside the app or email{' '}
-            <a href="mailto:billing@memrynote.com">billing@memrynote.com</a> from the account
-            address.
+            <a href="mailto:kaan@memrynote.com">kaan@memrynote.com</a> from the account address.
           </li>
           <li>
             Paddle, our merchant of record, returns the money to your original payment method.
@@ -63,7 +62,7 @@ export function RefundPage() {
           </li>
           <li>
             <strong>Email:</strong> send a message from the address on your account to{' '}
-            <a href="mailto:billing@memrynote.com">billing@memrynote.com</a> with the subject
+            <a href="mailto:kaan@memrynote.com">kaan@memrynote.com</a> with the subject
             &ldquo;Refund request.&rdquo; Mention which plan you bought and we will take it from
             there.
           </li>
@@ -145,8 +144,8 @@ export function RefundPage() {
 
         <h2>10. Contact</h2>
         <p>
-          Billing questions: <a href="mailto:billing@memrynote.com">billing@memrynote.com</a>.
-          Everything else: <a href="mailto:hi@memrynote.com">hi@memrynote.com</a>.
+          Billing questions and anything else:{' '}
+          <a href="mailto:kaan@memrynote.com">kaan@memrynote.com</a>.
         </p>
       </LegalLayout>
     </>

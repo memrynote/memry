@@ -191,7 +191,7 @@ export function TermsPage() {
         <h2>15. Contact</h2>
         <p>
           Questions, complaints, or a legal notice? Email{' '}
-          <a href="mailto:hi@memrynote.com">hi@memrynote.com</a>. We aim to reply within five
+          <a href="mailto:kaan@memrynote.com">kaan@memrynote.com</a>. We aim to reply within five
           business days.
         </p>
       </LegalLayout>
