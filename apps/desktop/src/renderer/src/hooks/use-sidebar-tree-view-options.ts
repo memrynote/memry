@@ -37,18 +37,19 @@ function useSyncedSidebarFlag({ key, fallback, load, save }: SyncedFlagSource): 
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let mounted = true
-    const run = async (): Promise<void> => {
-      try {
-        const stored = await load()
-        if (mounted && typeof stored === 'boolean') setValueState(stored)
-      } catch (err) {
-        log.error(`Failed to load ${key}`, err)
-      }
-    }
-    void run()
+    let cancelled = false
+    // Starting from a resolved promise also routes a synchronous throw from
+    // `load` into the rejection handler.
+    Promise.resolve()
+      .then(load)
+      .then(
+        (stored) => {
+          if (!cancelled && typeof stored === 'boolean') setValueState(stored)
+        },
+        (err: unknown) => log.error(`Failed to load ${key}`, err)
+      )
     return () => {
-      mounted = false
+      cancelled = true
     }
   }, [key, load])
 
