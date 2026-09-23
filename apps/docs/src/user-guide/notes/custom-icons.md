@@ -13,9 +13,16 @@ Inside a note, the icon sits to the left of the title. Click it to change it, or
 the same picker. A note with no icon shows no placeholder there — set its first icon from the
 sidebar or from a folder row, and it then appears in the note itself.
 
-When a folder is open as a tab, you can also right-click any note row there and choose **Set Icon**
-(or **Remove Icon**, when the note already has one). That opens the same picker in a centred
-dialog, which is handy when the note's own icon is not on screen.
+When a folder is open as a tab, you can also right-click any note there and choose **Set Icon**
+(or **Remove Icon**, when the note already has one). This works in the Table, List, and Gallery
+layouts. That opens the same picker in a centred dialog, which is handy when the note's own icon is
+not on screen.
+
+To give many notes the same icon, for example to mark every meeting note, select them in the Table
+layout and choose **Set icon** in the bar at the bottom. The icon goes on every selected note. Tasks,
+inbox items, and files such as PDFs are skipped. When a selected note already has an icon, the picker
+also offers **Remove**. The confirmation has an **Undo** button that gives each note its previous
+icon back.
 
 - **Drop an image** anywhere on the panel,
 - **Click the upload area** and pick one or more files, or
