@@ -133,7 +133,7 @@ vi.mock('../inbox/suggestions', () => ({
 }))
 
 const mockWritePreferences = vi.fn()
-const mockGetCurrentVaultPath = vi.fn(() => '/test/vault')
+const mockGetCurrentVaultPath = vi.fn((): string | null => '/test/vault')
 vi.mock('../vault/vault-preferences', () => ({
   writePreferences: (...args: unknown[]) => mockWritePreferences(...args),
   PORTABLE_GENERAL_FIELDS: [
@@ -462,6 +462,80 @@ describe('settings-handlers', () => {
     const write = await invokeHandler(SettingsChannels.invoke.SET_SIDEBAR_NAV_COLLAPSED, true)
 
     expect(write).toEqual({ success: false, error: 'database is locked' })
+  })
+
+  describe.each([
+    {
+      name: 'notes-first',
+      key: 'sidebar.notesFirst',
+      get: SettingsChannels.invoke.GET_SIDEBAR_NOTES_FIRST,
+      set: SettingsChannels.invoke.SET_SIDEBAR_NOTES_FIRST,
+      fallback: false,
+      invalid: 'Invalid sidebar notes-first flag'
+    },
+    {
+      name: 'show-files',
+      key: 'sidebar.showFiles',
+      get: SettingsChannels.invoke.GET_SIDEBAR_SHOW_FILES,
+      set: SettingsChannels.invoke.SET_SIDEBAR_SHOW_FILES,
+      fallback: true,
+      invalid: 'Invalid sidebar show-files flag'
+    }
+  ])('sidebar $name flag', ({ key, get, set, fallback, invalid }) => {
+    it('reads an absent row as the default and a stored row as itself', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValueOnce(null)
+      await expect(invokeHandler(get)).resolves.toBe(fallback)
+      ;(settingsQueries.getSetting as Mock).mockReturnValueOnce(JSON.stringify(!fallback))
+      await expect(invokeHandler(get)).resolves.toBe(!fallback)
+    })
+
+    // `false` is a real value for both flags, so it must travel exactly as far
+    // as `true` does: stored, and broadcast to every window.
+    it.each([true, false])('writes %s, stores it and tells every window', async (value) => {
+      registerSettingsHandlers()
+
+      const write = await invokeHandler(set, value)
+
+      expect(write).toEqual({ success: true })
+      expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, key, String(value))
+      expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, { key, value })
+    })
+
+    it('refuses a non-boolean value', async () => {
+      registerSettingsHandlers()
+
+      const write = await invokeHandler(set, 'yes')
+
+      expect(write).toEqual({ success: false, error: invalid })
+      expect(settingsQueries.setSetting).not.toHaveBeenCalledWith({}, key, expect.anything())
+    })
+
+    it('reads the default and refuses to write with no vault open', async () => {
+      registerSettingsHandlers()
+      ;(getDatabase as Mock).mockImplementationOnce(() => {
+        throw new Error('no db')
+      })
+      await expect(invokeHandler(get)).resolves.toBe(fallback)
+      ;(getDatabase as Mock).mockImplementationOnce(() => {
+        throw new Error('no db')
+      })
+
+      const write = await invokeHandler(set, true)
+
+      expect(write).toEqual({ success: false, error: expect.any(String) })
+    })
+
+    it('answers with an error envelope when the write fails', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.setSetting as Mock).mockImplementationOnce(() => {
+        throw new Error('database is locked')
+      })
+
+      const write = await invokeHandler(set, true)
+
+      expect(write).toEqual({ success: false, error: 'database is locked' })
+    })
   })
 
   it('gets and sets AI settings', async () => {

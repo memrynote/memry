@@ -1375,6 +1375,12 @@ export interface SettingsClientAPI {
   /** Whether the sidebar's top nav block is collapsed; false means expanded. */
   getSidebarNavCollapsed(): Promise<boolean>
   setSidebarNavCollapsed(collapsed: boolean): Promise<{ success: boolean; error?: string }>
+  /** Whether the Collections tree lists a folder's notes before its subfolders; false by default. */
+  getSidebarNotesFirst(): Promise<boolean>
+  setSidebarNotesFirst(notesFirst: boolean): Promise<{ success: boolean; error?: string }>
+  /** Whether the Collections tree shows non-markdown vault files; true by default. */
+  getSidebarShowFiles(): Promise<boolean>
+  setSidebarShowFiles(showFiles: boolean): Promise<{ success: boolean; error?: string }>
   // AI Settings (local model - no API key needed)
   getAISettings(): Promise<AISettings>
   setAISettings(settings: Partial<AISettings>): Promise<{ success: boolean; error?: string }>

@@ -110,8 +110,11 @@ function SortableSidebarSection({
         aria-label={t('phaseF.componentsAppSidebar.reorderSection', { section: label })}
         // Sits in the gutter the section header already leaves free (the group is
         // px-2, the header button px-2 again), so revealing it shifts nothing.
+        // Sticky like the header it belongs to, so the grip stays beside the
+        // header while the section scrolls under it; `-mb-6` cancels its own
+        // height so it takes no room in the flow.
         className={cn(
-          'absolute start-0 top-0 z-10 flex h-6 w-3 cursor-grab items-center justify-center',
+          'sticky top-0 z-30 -mb-6 flex h-6 w-3 cursor-grab items-center justify-center',
           'text-sidebar-muted opacity-0 transition-opacity duration-150',
           'group-hover/section-drag:opacity-100 focus-visible:opacity-100 focus-visible:outline-none'
         )}

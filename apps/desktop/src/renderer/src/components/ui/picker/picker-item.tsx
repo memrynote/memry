@@ -17,6 +17,13 @@ export interface PickerItemProps extends Omit<
   indicator?: PickerIndicator
   indicatorColor?: string
   destructive?: boolean
+  /**
+   * Selection for a row that is a toggle rather than one of the picker's
+   * values. Overrides the match against the picker's `value`; pair it with an
+   * `onClick` that calls `preventDefault()` so the picker neither records the
+   * row as its value nor closes.
+   */
+  checked?: boolean
 }
 
 export const PickerItem = React.forwardRef<HTMLButtonElement, PickerItemProps>(
@@ -31,6 +38,7 @@ export const PickerItem = React.forwardRef<HTMLButtonElement, PickerItemProps>(
       indicator = 'none',
       indicatorColor,
       destructive = false,
+      checked,
       className,
       style,
       onClick,
@@ -40,9 +48,9 @@ export const PickerItem = React.forwardRef<HTMLButtonElement, PickerItemProps>(
   ) => {
     const { value: contextValue, onValueChange } = usePickerContext()
 
-    const isSelected = Array.isArray(contextValue)
-      ? contextValue.includes(value)
-      : contextValue === value
+    const isSelected =
+      checked ??
+      (Array.isArray(contextValue) ? contextValue.includes(value) : contextValue === value)
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
       onClick?.(e)

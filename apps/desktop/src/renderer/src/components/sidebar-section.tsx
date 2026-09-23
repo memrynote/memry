@@ -123,8 +123,17 @@ export const SidebarSection = ({
   return (
     <div className={cn('group/section', className)}>
       <SidebarGroup className="p-0 px-2">
-        {/* Section Header */}
-        <div className="flex items-center h-6 [font-synthesis:none]">
+        {/* Section Header. Sticks to the top of the sidebar's scroll area while
+            its section scrolls under it, and the next section's header pushes
+            it off. Opaque so rows do not show through; z-20 keeps it above the
+            tree's rows and drop indicators but under the section drag grip
+            (z-30), the reorder ghost and drop line, and the file-drop overlay.
+            Its height is SIDEBAR_SECTION_HEADER_HEIGHT, which the virtualized
+            tree leaves clear when it scrolls a row into view. */}
+        <div
+          data-testid={`sidebar-section-header-${id}`}
+          className="sticky top-0 z-20 flex items-center h-6 bg-sidebar [font-synthesis:none]"
+        >
           <button
             id={headerId}
             type="button"

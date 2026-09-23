@@ -10,6 +10,10 @@ import {
   getFoldersInParent,
   buildTreeFromNotes,
   collectAllFolderIds,
+  collectFolderSubtreeIds,
+  hideVaultFiles,
+  isVaultFile,
+  setFoldersExpanded,
   getFileIcon,
   getFileExtensionLabel,
   type FolderNode,
@@ -210,9 +214,135 @@ describe('collectAllFolderIds', () => {
   })
 })
 
+describe('collectFolderSubtreeIds', () => {
+  const deepTree = (): TreeStructure => ({
+    folders: [
+      {
+        name: 'P1',
+        path: 'P1',
+        notes: [],
+        children: [
+          {
+            name: 'Personal',
+            path: 'P1/Personal',
+            notes: [],
+            children: [
+              { name: 'Identity', path: 'P1/Personal/Identity', notes: [], children: [] },
+              { name: 'Health', path: 'P1/Personal/Health', notes: [], children: [] }
+            ]
+          },
+          { name: 'Work', path: 'P1/Work', notes: [], children: [] }
+        ]
+      },
+      // Shares a name prefix with P1 but is not below it.
+      { name: 'P10', path: 'P10', notes: [], children: [] }
+    ],
+    rootNotes: []
+  })
+
+  it('returns the folder itself first, then every folder below it', () => {
+    expect(collectFolderSubtreeIds(deepTree(), 'P1')).toEqual([
+      'folder-P1',
+      'folder-P1/Personal',
+      'folder-P1/Personal/Identity',
+      'folder-P1/Personal/Health',
+      'folder-P1/Work'
+    ])
+  })
+
+  it('stays inside a nested folder and leaves siblings and look-alikes out', () => {
+    expect(collectFolderSubtreeIds(deepTree(), 'P1/Personal')).toEqual([
+      'folder-P1/Personal',
+      'folder-P1/Personal/Identity',
+      'folder-P1/Personal/Health'
+    ])
+    expect(collectFolderSubtreeIds(deepTree(), 'P10')).toEqual(['folder-P10'])
+  })
+
+  it('returns just the folder for a leaf, and nothing for an unknown path', () => {
+    expect(collectFolderSubtreeIds(deepTree(), 'P1/Work')).toEqual(['folder-P1/Work'])
+    expect(collectFolderSubtreeIds(deepTree(), 'Nope')).toEqual([])
+    expect(collectFolderSubtreeIds(deepTree(), 'P1/Nope')).toEqual([])
+  })
+})
+
+describe('setFoldersExpanded', () => {
+  it('opens and closes only the listed ids', () => {
+    const start = new Set(['folder-Other', 'folder-A'])
+
+    expect([...setFoldersExpanded(start, ['folder-A', 'folder-A/B'], true)].sort()).toEqual([
+      'folder-A',
+      'folder-A/B',
+      'folder-Other'
+    ])
+    expect([...setFoldersExpanded(start, ['folder-A', 'folder-A/B'], false)]).toEqual([
+      'folder-Other'
+    ])
+  })
+
+  it('hands back the same set when nothing changes', () => {
+    const start = new Set(['folder-A'])
+    expect(setFoldersExpanded(start, ['folder-A'], true)).toBe(start)
+    expect(setFoldersExpanded(start, ['folder-B'], false)).toBe(start)
+  })
+})
+
 // ============================================================================
 // buildTreeFromNotes
 // ============================================================================
+
+describe('buildTreeFromNotes notesFirst', () => {
+  it('records the flag on the tree and leaves each group in sort order', () => {
+    const notes = [
+      createNote({ id: 'b', path: 'b.md', title: 'b' }),
+      createNote({ id: 'a', path: 'a.md', title: 'a' })
+    ]
+    const folders = [
+      { path: 'Z', icon: null },
+      { path: 'Y', icon: null }
+    ]
+
+    const off = buildTreeFromNotes(notes, folders, {}, 'name-asc')
+    const on = buildTreeFromNotes(notes, folders, {}, 'name-asc', true)
+
+    expect(off.notesFirst).toBe(false)
+    expect(on.notesFirst).toBe(true)
+    expect(on.rootNotes.map((n) => n.id)).toEqual(off.rootNotes.map((n) => n.id))
+    expect(on.folders.map((f) => f.path)).toEqual(['Y', 'Z'])
+  })
+})
+
+describe('hideVaultFiles', () => {
+  const md = createNote({ id: 'md', path: 'Docs/readme.md', fileType: 'markdown' })
+  const legacy = createNote({ id: 'legacy', path: 'Docs/old.md' })
+  const pdf = createNote({ id: 'pdf', path: 'Docs/paper.pdf', fileType: 'pdf' })
+  const png = createNote({ id: 'png', path: 'shot.png', fileType: 'image' })
+  const mp3 = createNote({ id: 'mp3', path: 'Media/Audio/song.mp3', fileType: 'audio' })
+
+  it('tells files from notes, treating a missing fileType as a note', () => {
+    expect([md, legacy, pdf, png, mp3].map(isVaultFile)).toEqual([false, false, true, true, true])
+  })
+
+  it('drops files at every level and keeps every folder, even one only holding files', () => {
+    const full = buildTreeFromNotes([md, legacy, pdf, png, mp3], [], {}, 'name-asc', true)
+    const visible = hideVaultFiles(full)
+
+    expect(visible.rootNotes).toEqual([])
+    expect(visible.folders.map((f) => f.path)).toEqual(['Docs', 'Media'])
+    expect(visible.folders[0].notes.map((n) => n.id).sort()).toEqual(['legacy', 'md'])
+    expect(visible.folders[1].children.map((f) => f.path)).toEqual(['Media/Audio'])
+    expect(visible.folders[1].children[0].notes).toEqual([])
+    expect(visible.notesFirst).toBe(true)
+  })
+
+  it('leaves the tree it was given untouched', () => {
+    const full = buildTreeFromNotes([md, pdf, png], [], {})
+    hideVaultFiles(full)
+
+    expect(full.rootNotes.map((n) => n.id)).toEqual(['png'])
+    expect(full.folders[0].notes.map((n) => n.id).sort()).toEqual(['md', 'pdf'])
+  })
+})
 
 describe('buildTreeFromNotes', () => {
   it('places notes in correct folders', () => {

@@ -82,6 +82,38 @@ Sort modes are saved per vault and sync, so another device that opens the same
 vault shows the same order. Each section syncs independently — changing
 Collections on one device and Tags on another keeps both changes.
 
+### Collections view options
+
+The Collections sort control has two more switches below the sort modes:
+
+- **Notes before folders** — each folder lists its own notes first and its
+  subfolders after them, at every level of the tree. Useful when a folder
+  holds an overview note you want right under the folder name instead of
+  below every subfolder. Off by default: folders come first, as they always
+  have. The sort mode still orders notes among notes and folders among
+  folders.
+- **Show files** — turn it off to hide PDFs, images, audio and video from the
+  tree so it lists only folders and notes. The files are still in the vault:
+  folder views, search, the graph and links show them as before, and a folder
+  stays in the tree even when it only holds files. Files you drop into the
+  sidebar while this is off are imported as usual, and the import message
+  says they are hidden in the tree. On by default.
+
+Both switches are saved per vault and sync, like sort modes.
+
+### Expanding a whole folder
+
+Clicking a folder's arrow opens one level. To open a folder and every folder
+inside it, right-click it and choose **Expand all subfolders**; **Collapse all
+subfolders** closes them again. <kbd>⌥</kbd>+click on a folder does the same
+in one step: on a closed folder it opens everything below it, on an open one
+it closes everything below it. The rest of the tree is left as it was. The
+button in the Collections header still expands or collapses the whole tree.
+
+Section headers stay pinned to the top of the sidebar while you scroll a long
+section, so its sort control, the expand/collapse button and **New note** /
+**New folder** are always within reach.
+
 ### Reordering the sections themselves
 
 The sections come in a fixed order, but you can change it. Hover a section

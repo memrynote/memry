@@ -342,7 +342,7 @@ app with no account, creating and editing a task, then signing in shipped
 
 **Fix.** `RecordSyncController.enqueueMutation` now calls `recoverPendingChange`
 before `applyLocalChange` (`packages/sync-core/src/record-sync.ts`), so every
-create *and* update of a record-shaped item rebinds and persists first. A row
+create _and_ update of a record-shaped item rebinds and persists first. A row
 with nothing offline about it returns `null` and is untouched. Pinned by
 `packages/sync-core/src/record-sync.test.ts` and the create-path case in
 `apps/desktop/src/main/sync/dirty-recovery.test.ts`.
@@ -478,7 +478,11 @@ in the schema comments:
   whole-list operation and the last device to drag wins rather than two partial
   orders interleaving (`packages/contracts/src/settings-sync.ts:97-100`);
 - `sidebar.navCollapsed` — one flag, one clock, because collapsing hides the
-  whole block at once (`packages/contracts/src/settings-sync.ts:102-105`).
+  whole block at once (`packages/contracts/src/settings-sync.ts:102-105`);
+- `sidebar.notesFirst` and `sidebar.showFiles` — one flag and one clock each,
+  same shape as `navCollapsed`: each is one whole-tree view choice for the
+  Collections tree, and absent means today's tree (folders first, files shown)
+  (`packages/contracts/src/settings-sync.ts:107-112`).
 
 By contrast `journal.weekdayTemplates.<day>` carries a clock per day, so two
 devices editing different days both keep their edit

@@ -179,6 +179,20 @@ export const settingsRpc = defineDomain({
       channel: SettingsChannels.invoke.SET_SIDEBAR_NAV_COLLAPSED,
       params: ['collapsed']
     }),
+    getSidebarNotesFirst: defineMethod<() => Promise<boolean>>({
+      channel: SettingsChannels.invoke.GET_SIDEBAR_NOTES_FIRST
+    }),
+    setSidebarNotesFirst: defineMethod<(notesFirst: boolean) => SuccessResponse>({
+      channel: SettingsChannels.invoke.SET_SIDEBAR_NOTES_FIRST,
+      params: ['notesFirst']
+    }),
+    getSidebarShowFiles: defineMethod<() => Promise<boolean>>({
+      channel: SettingsChannels.invoke.GET_SIDEBAR_SHOW_FILES
+    }),
+    setSidebarShowFiles: defineMethod<(showFiles: boolean) => SuccessResponse>({
+      channel: SettingsChannels.invoke.SET_SIDEBAR_SHOW_FILES,
+      params: ['showFiles']
+    }),
     getAISettings: defineMethod<() => Promise<AISettings>>({
       channel: SettingsChannels.invoke.GET_AI_SETTINGS
     }),

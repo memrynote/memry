@@ -26,6 +26,19 @@ const MODE_ICONS: Record<SidebarSortMode, React.ReactNode> = {
   'count-asc': <ArrowUpDown className="h-3.5 w-3.5" />
 }
 
+/**
+ * A checkable view option listed under the sort modes. Only Collections has
+ * any today (notes before folders, show files); every other surface passes
+ * none and keeps the plain sort menu.
+ */
+export interface SidebarViewOptionToggle {
+  /** Stable id; also the row's `data-testid` suffix. */
+  id: string
+  label: string
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+}
+
 export interface SidebarSortPickerProps {
   surface: SidebarSortSurface
   mode: SidebarSortMode
@@ -34,6 +47,9 @@ export interface SidebarSortPickerProps {
   labels: Record<SidebarSortMode, string>
   /** Localized "Sort <section>: <current mode>" for the trigger. */
   triggerLabel: string
+  viewOptions?: SidebarViewOptionToggle[]
+  /** Accessible name for the view options group; required with `viewOptions`. */
+  viewOptionsLabel?: string
 }
 
 export function SidebarSortPicker({
@@ -41,7 +57,9 @@ export function SidebarSortPicker({
   mode,
   onModeChange,
   labels,
-  triggerLabel
+  triggerLabel,
+  viewOptions,
+  viewOptionsLabel
 }: SidebarSortPickerProps): React.JSX.Element {
   return (
     <Picker value={mode} onValueChange={(value) => onModeChange(value as SidebarSortMode)}>
@@ -68,6 +86,31 @@ export function SidebarSortPicker({
             />
           ))}
         </Picker.List>
+        {viewOptions && viewOptions.length > 0 && (
+          <>
+            <Picker.Separator />
+            {/* Its own listbox: these rows are independent toggles, not more
+                sort modes, so the group is multi-select. */}
+            <Picker.List aria-label={viewOptionsLabel} aria-multiselectable>
+              {viewOptions.map((option) => (
+                <Picker.Item
+                  key={option.id}
+                  value={`view-option:${option.id}`}
+                  label={option.label}
+                  indicator="checkbox"
+                  checked={option.checked}
+                  data-testid={`sidebar-view-option-${option.id}`}
+                  onClick={(e) => {
+                    // A toggle, not a sort mode: keep the picker's value and
+                    // leave the menu open so both options can be set at once.
+                    e.preventDefault()
+                    option.onCheckedChange(!option.checked)
+                  }}
+                />
+              ))}
+            </Picker.List>
+          </>
+        )}
       </Picker.Content>
     </Picker>
   )

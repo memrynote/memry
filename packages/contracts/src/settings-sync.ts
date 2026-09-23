@@ -103,7 +103,13 @@ export const SyncedSettingsSchema = z.object({
       // once, so there is no per-row state for two devices to interleave.
       // Absent means expanded, which is every payload a build older than this
       // toggle writes.
-      navCollapsed: z.boolean().optional()
+      navCollapsed: z.boolean().optional(),
+      // Collections tree view options, one flag and one clock each, same shape
+      // as navCollapsed. Absent means today's tree: folders before notes, and
+      // files shown. A build older than these toggles writes neither field,
+      // and its schema drops both on parse instead of rejecting the payload.
+      notesFirst: z.boolean().optional(),
+      showFiles: z.boolean().optional()
     })
     .optional()
 })

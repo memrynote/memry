@@ -404,6 +404,14 @@ export const SettingsChannels = {
     GET_SIDEBAR_NAV_COLLAPSED: 'settings:getSidebarNavCollapsed',
     /** Set whether the sidebar's top nav block is collapsed */
     SET_SIDEBAR_NAV_COLLAPSED: 'settings:setSidebarNavCollapsed',
+    /** Get whether the Collections tree lists a folder's notes before its subfolders */
+    GET_SIDEBAR_NOTES_FIRST: 'settings:getSidebarNotesFirst',
+    /** Set whether the Collections tree lists a folder's notes before its subfolders */
+    SET_SIDEBAR_NOTES_FIRST: 'settings:setSidebarNotesFirst',
+    /** Get whether the Collections tree shows non-markdown vault files */
+    GET_SIDEBAR_SHOW_FILES: 'settings:getSidebarShowFiles',
+    /** Set whether the Collections tree shows non-markdown vault files */
+    SET_SIDEBAR_SHOW_FILES: 'settings:setSidebarShowFiles',
     /** Get AI settings (enabled flag) */
     GET_AI_SETTINGS: 'settings:getAISettings',
     /** Set AI settings */

@@ -96,6 +96,14 @@ import {
   writeSidebarNavCollapsed
 } from '../settings/sidebar-nav-store'
 import {
+  SIDEBAR_NOTES_FIRST_SETTINGS_KEY,
+  SIDEBAR_SHOW_FILES_SETTINGS_KEY,
+  readSidebarNotesFirst,
+  readSidebarShowFiles,
+  writeSidebarNotesFirst,
+  writeSidebarShowFiles
+} from '../settings/sidebar-tree-view-store'
+import {
   SIDEBAR_SORT_DEFAULTS,
   SidebarSortModeSchema,
   SidebarSortSurfaceSchema,
@@ -683,6 +691,64 @@ export function registerSettingsHandlers(): void {
       }
     }
   )
+
+  // Collections tree view options. Same contract as the nav flag above: no
+  // vault reads as the default the tree already draws, and a failed write
+  // answers with an envelope so the renderer can roll its optimistic toggle back.
+  const sidebarTreeViewFlags = [
+    {
+      getChannel: SettingsChannels.invoke.GET_SIDEBAR_NOTES_FIRST,
+      setChannel: SettingsChannels.invoke.SET_SIDEBAR_NOTES_FIRST,
+      key: SIDEBAR_NOTES_FIRST_SETTINGS_KEY,
+      fallback: false,
+      read: readSidebarNotesFirst,
+      write: writeSidebarNotesFirst,
+      invalidMessage: 'Invalid sidebar notes-first flag',
+      telemetrySetting: 'sidebarNotesFirst'
+    },
+    {
+      getChannel: SettingsChannels.invoke.GET_SIDEBAR_SHOW_FILES,
+      setChannel: SettingsChannels.invoke.SET_SIDEBAR_SHOW_FILES,
+      key: SIDEBAR_SHOW_FILES_SETTINGS_KEY,
+      fallback: true,
+      read: readSidebarShowFiles,
+      write: writeSidebarShowFiles,
+      invalidMessage: 'Invalid sidebar show-files flag',
+      telemetrySetting: 'sidebarShowFiles'
+    }
+  ] as const
+
+  for (const flag of sidebarTreeViewFlags) {
+    ipcMain.handle(flag.getChannel, () => {
+      const db = getDbOrNull()
+      if (!db) return flag.fallback
+      return flag.read(db)
+    })
+
+    ipcMain.handle(flag.setChannel, (_event, value: boolean) => {
+      const db = getDbOrNull()
+      if (!db) {
+        return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
+      }
+
+      if (typeof value !== 'boolean') {
+        return { success: false, error: flag.invalidMessage }
+      }
+
+      try {
+        const next = flag.write(db, value)
+        broadcastToAllWindows(SettingsChannels.events.CHANGED, { key: flag.key, value: next })
+        trackMainEvent('setting_changed', {
+          surface: 'settings',
+          action: 'changed',
+          dimensions: { setting: flag.telemetrySetting }
+        })
+        return { success: true }
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    })
+  }
 
   // Set journal settings
   ipcMain.handle(

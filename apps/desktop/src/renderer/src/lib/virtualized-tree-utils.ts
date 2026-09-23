@@ -31,6 +31,33 @@ export interface FolderNode {
 export interface TreeStructure {
   folders: FolderNode[]
   rootNotes: NoteListItem[]
+  /**
+   * Every level lists its notes before its subfolders (`sidebar.notesFirst`).
+   * Absent is folders first, the order the tree has always had.
+   */
+  notesFirst?: boolean
+}
+
+/** One child of a folder (or of the vault root) in display order. */
+export type FolderEntry =
+  { type: 'folder'; folder: FolderNode } | { type: 'note'; note: NoteListItem }
+
+/**
+ * A level's folders and notes merged into the order the tree draws them.
+ *
+ * The one place the folders-vs-notes order is decided: both sidebar trees
+ * render from this, keyboard navigation walks what they render, and the last
+ * entry is the level's last row whichever group it came from. Each group keeps
+ * the order the sort mode gave it.
+ */
+export function orderFolderEntries(
+  folders: FolderNode[],
+  notes: NoteListItem[],
+  notesFirst = false
+): FolderEntry[] {
+  const folderEntries = folders.map((folder): FolderEntry => ({ type: 'folder', folder }))
+  const noteEntries = notes.map((note): FolderEntry => ({ type: 'note', note }))
+  return notesFirst ? [...noteEntries, ...folderEntries] : [...folderEntries, ...noteEntries]
 }
 
 /**
@@ -71,6 +98,13 @@ export type TreeVirtualItem = FolderVirtualItem | NoteVirtualItem
 
 /** Height of a single tree row in pixels */
 export const TREE_ROW_HEIGHT = 28
+
+/**
+ * Height of a sidebar section header (`SidebarSection`, `h-6`). The header
+ * sticks to the top of the sidebar's scroll area, so anything scrolling a tree
+ * row into view has to leave this much room above it.
+ */
+export const SIDEBAR_SECTION_HEADER_HEIGHT = 24
 
 /** Virtualization threshold - only virtualize when item count exceeds this */
 export const VIRTUALIZATION_THRESHOLD = 100
@@ -131,45 +165,23 @@ export function flattenTree(tree: TreeStructure, expandedIds: Set<string>): Tree
       isExpanded
     })
 
-    // If expanded, process children
     if (isExpanded && hasChildren) {
-      // Process child folders first
-      folder.children.forEach((child, index) => {
-        const isChildLast = index === folder.children.length - 1 && folder.notes.length === 0
-        processFolder(child, level + 1, isChildLast)
-      })
-
-      // Then process notes in this folder
-      folder.notes.forEach((note, index) => {
-        const isNoteLast = index === folder.notes.length - 1
-        items.push({
-          id: note.id,
-          type: 'note',
-          note,
-          level: level + 1,
-          isLast: isNoteLast
-        })
-      })
+      processEntries(orderFolderEntries(folder.children, folder.notes, tree.notesFirst), level + 1)
     }
   }
 
-  // Process root folders
-  tree.folders.forEach((folder, index) => {
-    const isLast = index === tree.folders.length - 1 && tree.rootNotes.length === 0
-    processFolder(folder, 0, isLast)
-  })
-
-  // Process root notes
-  tree.rootNotes.forEach((note, index) => {
-    const isLast = index === tree.rootNotes.length - 1
-    items.push({
-      id: note.id,
-      type: 'note',
-      note,
-      level: 0,
-      isLast
+  function processEntries(entries: FolderEntry[], level: number): void {
+    entries.forEach((entry, index) => {
+      const isLast = index === entries.length - 1
+      if (entry.type === 'folder') {
+        processFolder(entry.folder, level, isLast)
+      } else {
+        items.push({ id: entry.note.id, type: 'note', note: entry.note, level, isLast })
+      }
     })
-  })
+  }
+
+  processEntries(orderFolderEntries(tree.folders, tree.rootNotes, tree.notesFirst), 0)
 
   return items
 }

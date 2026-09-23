@@ -29,7 +29,9 @@ import {
   Save,
   X,
   ExternalLink,
-  Smile
+  Smile,
+  ChevronsDown,
+  ChevronsUp
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
@@ -38,6 +40,7 @@ import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
   flattenTree,
   getAllFolderIds,
+  SIDEBAR_SECTION_HEADER_HEIGHT,
   TREE_ROW_HEIGHT,
   withPinnedIndex,
   type TreeStructure,
@@ -54,10 +57,12 @@ import {
 import { FolderIconButton } from '@/components/folder-icon-button'
 import { IconPickerButton } from '@/components/icon-picker-button'
 import {
+  collectFolderSubtreeIds,
   extractFolderFromPath,
   getDisplayName,
   getFileIcon,
-  remapExpandedFolderIds
+  remapExpandedFolderIds,
+  setFoldersExpanded
 } from '@/components/notes-tree-utils'
 import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
@@ -284,6 +289,8 @@ interface FolderRowProps {
   selectedCount: number
   draggable: boolean
   onToggleExpand: (folderId: string) => void
+  /** Open or close this folder and every folder below it. */
+  onSetSubtreeExpanded: (folderPath: string, expanded: boolean) => void
   onSelect: (folderId: string, event: React.MouseEvent) => void
   onOpenFolderView?: (folderPath: string, icon?: string | null) => void
   onCreateNote?: (folderPath: string) => void
@@ -323,6 +330,7 @@ function FolderRow({
   selectedCount,
   draggable,
   onToggleExpand,
+  onSetSubtreeExpanded,
   onSelect,
   onOpenFolderView,
   onCreateNote,
@@ -363,11 +371,24 @@ function FolderRow({
       // A click landing inside the rename input must not collapse or reselect
       // the row it is sitting in.
       if (isBeingRenamed) return
-      // Toggle expand/collapse when clicking folder row
-      onToggleExpand(item.id)
+      // Toggle expand/collapse when clicking folder row. Option/Alt takes the
+      // whole subtree along: closed opens everything below, open closes it.
+      if (e.altKey) {
+        onSetSubtreeExpanded(item.folder.path, !item.isExpanded)
+      } else {
+        onToggleExpand(item.id)
+      }
       onSelect(item.id, e)
     },
-    [isBeingRenamed, item.id, onSelect, onToggleExpand]
+    [
+      isBeingRenamed,
+      item.id,
+      item.folder.path,
+      item.isExpanded,
+      onSelect,
+      onToggleExpand,
+      onSetSubtreeExpanded
+    ]
   )
 
   // Middle-click opens the folder view in a background tab — same gesture the
@@ -580,6 +601,15 @@ function FolderRow({
             <ContextMenuItem onClick={() => onCreateFolder?.(item.folder.path)}>
               <FolderPlus className="me-2 h-4 w-4" />
               {t('tree.actions.newFolder')}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onSetSubtreeExpanded(item.folder.path, true)}>
+              <ChevronsUp className="me-2 h-4 w-4" />
+              {t('tree.actions.expandSubfolders')}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => onSetSubtreeExpanded(item.folder.path, false)}>
+              <ChevronsDown className="me-2 h-4 w-4" />
+              {t('tree.actions.collapseSubfolders')}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onSetFolderTemplate?.(item.folder.path)}>
@@ -1103,6 +1133,9 @@ export function VirtualizedNotesTree({
     estimateSize: () => TREE_ROW_HEIGHT,
     overscan: 10, // Render 10 extra items above/below viewport
     scrollMargin: usesExternalScroll ? scrollMargin : 0,
+    // The section header sticks to the top of the sidebar's scroll area, so a
+    // row scrolled "into view" right under it would still be covered.
+    scrollPaddingStart: usesExternalScroll ? SIDEBAR_SECTION_HEADER_HEIGHT : 0,
     rangeExtractor
   })
 
@@ -1204,6 +1237,14 @@ export function VirtualizedNotesTree({
       return next
     })
   }, [])
+
+  const handleSetSubtreeExpanded = useCallback(
+    (folderPath: string, expanded: boolean) => {
+      const ids = collectFolderSubtreeIds(tree, folderPath)
+      setExpandedIds((prev) => setFoldersExpanded(prev, ids, expanded))
+    },
+    [tree]
+  )
 
   // Handle item selection with shift/cmd support
   const handleSelect = useCallback(
@@ -1504,6 +1545,7 @@ export function VirtualizedNotesTree({
                   selectedCount={selectedCount}
                   draggable={draggable}
                   onToggleExpand={handleToggleExpand}
+                  onSetSubtreeExpanded={handleSetSubtreeExpanded}
                   onSelect={handleSelect}
                   onOpenFolderView={handleOpenFolderView}
                   onCreateNote={onCreateNote}

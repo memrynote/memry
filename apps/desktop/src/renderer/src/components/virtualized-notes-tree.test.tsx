@@ -550,6 +550,108 @@ describe('VirtualizedNotesTree', () => {
     expect(props.onDeleteNote).toHaveBeenCalledWith(workNote)
   })
 
+  describe('subtree expand and collapse', () => {
+    const deepNote = note('note-deep', 'Work/Project/Deep/Leaf.md')
+    const projectNote = note('note-project', 'Work/Project/Plan.md')
+    const deepTree: TreeStructure = {
+      folders: [
+        {
+          name: 'Work',
+          path: 'Work',
+          icon: null,
+          notes: [workNote],
+          children: [
+            {
+              name: 'Project',
+              path: 'Work/Project',
+              icon: null,
+              notes: [projectNote],
+              children: [
+                {
+                  name: 'Deep',
+                  path: 'Work/Project/Deep',
+                  icon: null,
+                  notes: [deepNote],
+                  children: []
+                }
+              ]
+            }
+          ]
+        },
+        { name: 'Other', path: 'Other', icon: null, children: [], notes: [] }
+      ],
+      rootNotes: [rootNote]
+    }
+    const folderRow = (name: string) =>
+      screen.getByText(name).closest('[role="treeitem"]') as HTMLElement
+    const storedExpanded = () =>
+      (JSON.parse(localStorage.getItem('sidebar-tree-expanded') ?? '[]') as string[]).sort()
+
+    beforeEach(() => {
+      localStorage.setItem('sidebar-tree-expanded', JSON.stringify(['folder-Other']))
+    })
+
+    it('opens and closes a folder and everything below it from its context menu', async () => {
+      const user = userEvent.setup()
+      renderTree({ tree: deepTree })
+
+      // Work's row comes first, so its pair of items does too.
+      await user.click(screen.getAllByRole('button', { name: 'Expand All Subfolders' })[0])
+      expect(screen.getByText('Leaf')).toBeInTheDocument()
+      expect(storedExpanded()).toEqual([
+        'folder-Other',
+        'folder-Work',
+        'folder-Work/Project',
+        'folder-Work/Project/Deep'
+      ])
+
+      await user.click(screen.getAllByRole('button', { name: 'Collapse All Subfolders' })[0])
+      expect(screen.queryByText('Project')).not.toBeInTheDocument()
+      // Only Work's subtree closed; the unrelated folder kept its state.
+      expect(storedExpanded()).toEqual(['folder-Other'])
+    })
+
+    it('Alt+click toggles the whole subtree, a plain click only the folder', () => {
+      renderTree({ tree: deepTree })
+
+      fireEvent.click(folderRow('Work'), { altKey: true })
+      expect(screen.getByText('Leaf')).toBeInTheDocument()
+
+      fireEvent.click(folderRow('Work'), { altKey: true })
+      expect(screen.queryByText('Project')).not.toBeInTheDocument()
+
+      // Reopening Work alone finds Project closed too: Alt+click took it along.
+      fireEvent.click(folderRow('Work'))
+      expect(screen.getByText('Project')).toBeInTheDocument()
+      expect(screen.queryByText('Plan')).not.toBeInTheDocument()
+      expect(storedExpanded()).toEqual(['folder-Other', 'folder-Work'])
+    })
+  })
+
+  // Row order is what keyboard navigation walks, so rendering it is the check.
+  it("lists a level's notes before its folders when the tree asks for it", () => {
+    localStorage.setItem('sidebar-tree-expanded', JSON.stringify(['folder-Work', 'folder-Archive']))
+    const rowIds = () =>
+      Array.from(document.querySelectorAll('[data-tree-node-id]')).map((row) =>
+        row.getAttribute('data-tree-node-id')
+      )
+
+    renderTree({ tree: { ...emptyFolderTree, notesFirst: true } })
+
+    expect(rowIds()).toEqual(['note-root', 'folder-Work', 'note-work', 'folder-Archive'])
+  })
+
+  // The sidebar's section header sticks over the top of the shared scroll
+  // area, so the virtualizer must not count a row under it as "in view".
+  it('keeps scrolled-to rows clear of the sticky section header', () => {
+    renderTree()
+    expect(mocks.virtualizerOptions).toMatchObject({ scrollPaddingStart: 0 })
+
+    const scrollContainerRef = { current: document.createElement('div') }
+    renderTree({ scrollContainerRef })
+    expect(mocks.virtualizerOptions).toMatchObject({ scrollPaddingStart: 24 })
+  })
+
   it('changes a note icon from its inline icon button', async () => {
     const user = userEvent.setup()
     const props = renderTree({ tree: iconTree, selectedIds: ['note-work'] })
