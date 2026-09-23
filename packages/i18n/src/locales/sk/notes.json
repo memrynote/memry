@@ -868,6 +868,10 @@
     "failed": "Nepodarilo sa uložiť šablónu",
     "loadFailed": "Nepodarilo sa načítať poznámku"
   },
+  "newNoteFromNote": {
+    "action": "Nová poznámka z tejto poznámky",
+    "created": "Vytvorené z poznámky {source}: {tagCount, plural, =0 {žiadne značky} one {# značka} few {# značky} many {# značky} other {# značiek}}, {propertyCount, plural, =0 {žiadne vlastnosti} one {# vlastnosť} few {# vlastnosti} many {# vlastnosti} other {# vlastností}}"
+  },
   "tagView": {
     "moreActions": "Ďalšie akcie",
     "pin": {

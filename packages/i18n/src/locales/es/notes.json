@@ -868,6 +868,10 @@
     "failed": "No se pudo guardar la plantilla",
     "loadFailed": "No se pudo leer esta nota"
   },
+  "newNoteFromNote": {
+    "action": "Nueva nota a partir de esta nota",
+    "created": "Creada con {tagCount, plural, =0 {ninguna etiqueta} one {# etiqueta} other {# etiquetas}} y {propertyCount, plural, =0 {ninguna propiedad} one {# propiedad} other {# propiedades}} de {source}"
+  },
   "tagView": {
     "moreActions": "Más acciones",
     "pin": {

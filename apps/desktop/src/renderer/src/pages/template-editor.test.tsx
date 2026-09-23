@@ -199,14 +199,17 @@ vi.mock('@/components/note/content-area', () => ({
   ContentArea: ({
     initialContent,
     editable,
+    runSideEffects,
     onMarkdownChange
   }: {
     initialContent: string
     editable?: boolean
+    runSideEffects?: boolean
     onMarkdownChange: (content: string) => void
   }) => (
     <textarea
       aria-label="template content"
+      data-run-side-effects={String(runSideEffects ?? true)}
       defaultValue={initialContent}
       disabled={!editable}
       onChange={(event) => onMarkdownChange(event.target.value)}
@@ -258,6 +261,17 @@ describe('TemplateEditorPage', () => {
 
     expect(screen.getByLabelText('template title')).toBeInTheDocument()
     expect(screen.queryByLabelText('description')).not.toBeInTheDocument()
+  })
+
+  // A template is not a note: a checkbox typed here must stay a checkbox, not
+  // mint a task row that no note holds (#2331).
+  it('mounts the editor without task side effects', () => {
+    render(<TemplateEditorPage />)
+
+    expect(screen.getByLabelText('template content')).toHaveAttribute(
+      'data-run-side-effects',
+      'false'
+    )
   })
 
   it('disables Create while the name is blank', () => {

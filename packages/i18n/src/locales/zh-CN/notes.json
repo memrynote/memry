@@ -868,6 +868,10 @@
     "failed": "保存模板失败",
     "loadFailed": "无法读取此笔记"
   },
+  "newNoteFromNote": {
+    "action": "从此笔记新建笔记",
+    "created": "已从 {source} 创建，含 {tagCount, plural, other {# 个标签}}和{propertyCount, plural, other {# 个属性}}"
+  },
   "tagView": {
     "moreActions": "更多操作",
     "pin": {

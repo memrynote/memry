@@ -1347,7 +1347,7 @@ describe('ContentArea', () => {
 
     const cold = await slashItems('')
 
-    expect(cold).toContainEqual(expect.objectContaining({ title: 'Insert template…' }))
+    expect(cold).toContainEqual(expect.objectContaining({ title: 'Insert template content…' }))
     expect(cold.some((item) => item.group === 'Templates')).toBe(false)
   })
 
@@ -1399,7 +1399,7 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
     await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
 
-    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template…')
+    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template content…')
     await act(async () => {
       row.onItemClick()
     })
@@ -1420,7 +1420,7 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
     await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
 
-    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template…')
+    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template content…')
     await act(async () => {
       row.onItemClick()
     })
@@ -1523,7 +1523,7 @@ describe('ContentArea', () => {
     })
 
     const cold = await slashItems('')
-    expect(cold.some((item) => item.title === 'Insert template…')).toBe(false)
+    expect(cold.some((item) => item.title === 'Insert template content…')).toBe(false)
     await expect(slashItems('meeting')).resolves.toEqual([])
   })
 
@@ -1667,6 +1667,20 @@ describe('ContentArea', () => {
       { type: 'text', text: BLOCKED_LINE, styles: {} }
     ])
     expect(contentAreaMocks.toastError).toHaveBeenCalled()
+  })
+
+  // The template editor mounts this way (#2331): a checkbox in a template is
+  // not a task, and a right-click must not mint one either.
+  it('leaves a right-clicked checkbox alone in an editor that runs no side effects', async () => {
+    render(<ContentArea runSideEffects={false} />)
+
+    fireEvent.contextMenu(screen.getByText('checklist target'))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    expect(contentAreaMocks.blocks.get('standalone').type).toBe('checkListItem')
   })
 
   it('ticks the box for a line the plugin had already marked done', async () => {

@@ -868,6 +868,10 @@
     "failed": "Nem sikerült menteni a sablont",
     "loadFailed": "Nem sikerült beolvasni a jegyzetet"
   },
+  "newNoteFromNote": {
+    "action": "Új jegyzet ebből a jegyzetből",
+    "created": "Létrehozva ebből: {source}, {tagCount, plural, =0 {címkék nélkül} one {# címkével} other {# címkével}} és {propertyCount, plural, =0 {tulajdonságok nélkül} one {# tulajdonsággal} other {# tulajdonsággal}}"
+  },
   "tagView": {
     "moreActions": "További műveletek",
     "pin": {

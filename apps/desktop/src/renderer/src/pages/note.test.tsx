@@ -327,6 +327,12 @@ vi.mock('@/components/note/mind-map/mind-map-canvas', () => ({
   }
 }))
 
+const createNoteFromNote = vi.hoisted(() => vi.fn())
+
+vi.mock('@/hooks/use-create-note-from-note', () => ({
+  useCreateNoteFromNote: () => createNoteFromNote
+}))
+
 vi.mock('@/hooks/use-sidebar-navigation', () => ({
   useSidebarNavigation: () => ({ openSidebarItem: mocks.openSidebarItem })
 }))
@@ -755,6 +761,26 @@ vi.mock('@/components/note/export-dialog', () => ({
     open ? <div>Export {noteTitle}</div> : null
 }))
 
+vi.mock('@/components/note/apply-template-to-note-dialog', () => ({
+  ApplyTemplateToNoteDialog: ({
+    isOpen,
+    noteId,
+    onClose
+  }: {
+    isOpen: boolean
+    noteId: string | null
+    onClose: () => void
+  }) =>
+    isOpen ? (
+      <div>
+        Apply template to {noteId}
+        <button type="button" onClick={onClose}>
+          Close apply template
+        </button>
+      </div>
+    ) : null
+}))
+
 vi.mock('@/components/note/version-history', () => ({
   VersionHistory: ({ open, noteTitle }: { open: boolean; noteTitle: string }) =>
     open ? <div>Version {noteTitle}</div> : null
@@ -881,6 +907,14 @@ describe('NotePage', () => {
         return Promise.resolve({ type: 'canvas', id: 'canvas-1', title: 'Sprint Board' })
       return Promise.resolve({ type: 'not-found' })
     })
+  })
+
+  it('creates a new note from this note through the more menu (#2329)', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'newNoteFromNote.action' }))
+
+    expect(createNoteFromNote).toHaveBeenCalledWith('note-1')
   })
 
   it('opens a canvas a wiki link names (#1983)', async () => {
@@ -1581,6 +1615,38 @@ describe('NotePage', () => {
       expect(mocks.contentAreaMounts).toBe(1)
       // ...and find still walks the editor, which is where the text is
       expect(mocks.findInPageEnabled).toBe(true)
+    })
+  })
+
+  describe('apply template', () => {
+    it('opens the full apply dialog for this note from the more menu', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(await screen.findByRole('button', { name: 'tree.actions.applyTemplate' }))
+      expect(screen.getByText('Apply template to note-1')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Close apply template' }))
+      expect(screen.queryByText('Apply template to note-1')).not.toBeInTheDocument()
+    })
+
+    it('hides apply and insert for a large file but keeps save as template', async () => {
+      mocks.noteState.note = {
+        ...note,
+        content: '',
+        contentOmitted: true,
+        sizeClass: 'large-file',
+        largeFile: { reason: 'file-bytes', fileBytes: 18_700_000, largestBlockBytes: null }
+      }
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('large-file-viewer')
+
+      expect(screen.getByRole('button', { name: 'editor.toolbar.saveAsTemplate' })).toBeVisible()
+      expect(
+        screen.queryByRole('button', { name: 'tree.actions.applyTemplate' })
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'editor.slashMenu.insertTemplate.title' })
+      ).not.toBeInTheDocument()
     })
   })
 

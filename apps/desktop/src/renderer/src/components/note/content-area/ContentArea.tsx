@@ -1835,7 +1835,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         if (!blockId) return
 
         const block = editor.getBlock(blockId)
-        if (!block || block.type !== 'checkListItem') return
+        if (!block || block.type !== 'checkListItem' || !runSideEffects) return
 
         e.preventDefault()
         convertCheckboxToTask(blockId)
@@ -1849,7 +1849,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       e.preventDefault()
       setImageMenuTarget({ x: e.clientX, y: e.clientY, ...image })
     },
-    [editor, convertCheckboxToTask, resolveImageFromElement]
+    [editor, convertCheckboxToTask, resolveImageFromElement, runSideEffects]
   )
 
   // Backspace-at-start guard for taskBlock neighbours.

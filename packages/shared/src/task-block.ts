@@ -43,26 +43,26 @@ export function serializeTaskBlock(props: TaskBlockProps): string {
   return `${indent}- [${check}] ${props.title} {task:${props.taskId}}`
 }
 
-function readSuffix(
-  trimmed: string,
-  open: number,
+/**
+ * Where `{task:` opens and its `}` closes, as indexes into right-trimmed text.
+ * The id between them may be empty; it never contains `}`.
+ */
+interface TaskSuffixSpan {
+  open: number
   close: number
-): { taskId: string; title: string } | null {
-  const taskId = trimmed.slice(open + TASK_BLOCK_SUFFIX_OPEN.length, close)
-  if (taskId.length === 0 || taskId.includes('}')) return null
-  return { taskId, title: trimmed.slice(0, open).trim() }
 }
 
 // Parsed by hand rather than with a regex: a greedy-class-plus-end-anchor regex
 // (`\{task:([^}]+)\}$`) backtracks quadratically on adversarial note content
 // with many `{task:` starts — flagged as polynomial ReDoS on uncontrolled
 // input. String ops keep it linear.
-export function parseTaskBlockSuffix(text: string): { taskId: string; title: string } | null {
-  const trimmed = text.trimEnd()
+function locateTaskSuffix(trimmed: string): TaskSuffixSpan | null {
   if (trimmed.endsWith('}')) {
     const open = trimmed.lastIndexOf(TASK_BLOCK_SUFFIX_OPEN)
-    if (open !== -1) return readSuffix(trimmed, open, trimmed.length - 1)
-    return null
+    if (open === -1) return null
+    const close = trimmed.length - 1
+    if (trimmed.slice(open, close).includes('}')) return null
+    return { open, close }
   }
 
   // Memry and the Obsidian Tasks plugin both want the end of the line. When a
@@ -77,38 +77,88 @@ export function parseTaskBlockSuffix(text: string): { taskId: string; title: str
   const close = trimmed.indexOf('}', open)
   if (close === -1) return null
   if (parseObsidianTaskFields(trimmed.slice(close + 1)).description !== '') return null
-  return readSuffix(trimmed, open, close)
+  return { open, close }
+}
+
+export function parseTaskBlockSuffix(text: string): { taskId: string; title: string } | null {
+  const trimmed = text.trimEnd()
+  const span = locateTaskSuffix(trimmed)
+  if (!span) return null
+  const taskId = trimmed.slice(span.open + TASK_BLOCK_SUFFIX_OPEN.length, span.close)
+  if (taskId.length === 0) return null
+  return { taskId, title: trimmed.slice(0, span.open).trim() }
+}
+
+/**
+ * Index where a checkbox line's text starts, or null for any other line. The
+ * one definition of a task line's shape, shared by the scan and the strip so
+ * the two can never disagree about what counts as one.
+ *
+ * Deliberately tolerant of what other editors emit: any list marker (`-`, `*`,
+ * `+`), any indentation, and an upper- or lower-case `x`.
+ */
+function checkboxTextStart(line: string): { checked: boolean; start: number } | null {
+  const trimmed = line.trimStart()
+  if (trimmed.length < 5) return null
+  const marker = trimmed[0]
+  if (marker !== '-' && marker !== '*' && marker !== '+') return null
+  if (trimmed[1] !== ' ' || trimmed[2] !== '[' || trimmed[4] !== ']') return null
+
+  const box = trimmed[3]
+  const checked = box === 'x' || box === 'X'
+  if (!checked && box !== ' ') return null
+  return { checked, start: line.length - trimmed.length + 5 }
 }
 
 // Markdown is the source of truth for a task's checkbox state: editing
 // `- [ ] … {task:id}` into `- [x] … {task:id}` in any external editor means the
 // task is done, and vice versa. Scans a note body for those lines so the
 // ingest paths (vault watcher, indexer) can reconcile the DB rows to match.
-//
-// Deliberately tolerant of what other editors emit: any list marker (`-`, `*`,
-// `+`), any indentation, and an upper- or lower-case `x`. Hand-parsed for the
-// same linear-time reason as parseTaskBlockSuffix.
 export function scanTaskCheckboxStates(markdown: string): Map<string, boolean> {
   const states = new Map<string, boolean>()
   if (!markdown.includes(TASK_BLOCK_SUFFIX_OPEN)) return states
 
   for (const line of markdown.split('\n')) {
-    const trimmed = line.trimStart()
-    if (trimmed.length < 5) continue
-    const marker = trimmed[0]
-    if (marker !== '-' && marker !== '*' && marker !== '+') continue
-    if (trimmed[1] !== ' ' || trimmed[2] !== '[' || trimmed[4] !== ']') continue
+    const checkbox = checkboxTextStart(line)
+    if (!checkbox) continue
 
-    const box = trimmed[3]
-    const checked = box === 'x' || box === 'X'
-    if (!checked && box !== ' ') continue
-
-    const parsed = parseTaskBlockSuffix(trimmed.slice(5))
+    const parsed = parseTaskBlockSuffix(line.slice(checkbox.start))
     if (!parsed) continue
-    states.set(parsed.taskId, checked)
+    states.set(parsed.taskId, checkbox.checked)
   }
 
   return states
+}
+
+// A template is a snapshot, so it must not carry a task's identity: a
+// `{task:<id>}` kept in a template put the SAME task into every note made from
+// it, and deleting that task anywhere left a dead row in all the others. This
+// turns every task line back into the plain checkbox it was typed as, so each
+// note converts it into a task of its own. The empty `{task:}` a task block
+// that never got an id writes goes too. Every other byte survives, including an
+// Obsidian Tasks tail and CRLF line ends.
+export function stripTaskBlockSuffixes(markdown: string): string {
+  if (!markdown.includes(TASK_BLOCK_SUFFIX_OPEN)) return markdown
+
+  return markdown
+    .split('\n')
+    .map((line) => {
+      const checkbox = checkboxTextStart(line)
+      if (!checkbox) return line
+
+      const text = line.slice(checkbox.start)
+      const trimmed = text.trimEnd()
+      const span = locateTaskSuffix(trimmed)
+      if (!span) return line
+
+      return (
+        line.slice(0, checkbox.start) +
+        trimmed.slice(0, span.open).trimEnd() +
+        trimmed.slice(span.close + 1) +
+        text.slice(trimmed.length)
+      )
+    })
+    .join('\n')
 }
 
 export function extractInlineText(content: unknown): string {

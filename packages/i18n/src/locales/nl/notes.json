@@ -868,6 +868,10 @@
     "failed": "Kan sjabloon niet opslaan",
     "loadFailed": "Kan deze notitie niet lezen"
   },
+  "newNoteFromNote": {
+    "action": "Nieuwe notitie op basis van deze notitie",
+    "created": "Gemaakt met {tagCount, plural, =0 {geen labels} one {# label} other {# labels}} en {propertyCount, plural, =0 {geen eigenschappen} one {# eigenschap} other {# eigenschappen}} uit {source}"
+  },
   "tagView": {
     "moreActions": "Meer acties",
     "pin": {

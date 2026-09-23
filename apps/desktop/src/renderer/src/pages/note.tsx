@@ -21,6 +21,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { SaveNoteAsTemplateDialog } from '@/components/note/save-note-as-template-dialog'
+import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { LargeFileViewer } from '@/components/note/large-file-viewer'
 import {
@@ -64,6 +65,7 @@ import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useOpenPage } from '@/hooks/use-open-target'
+import { useCreateNoteFromNote } from '@/hooks/use-create-note-from-note'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { ReminderPicker } from '@/components/reminder'
 import { useNoteReminders } from '@/hooks/use-note-reminders'
@@ -71,12 +73,14 @@ import {
   Bookmark2,
   MoreVertical,
   FilePaste,
+  FilePlus,
   Download,
   AlarmClock,
   Monitor,
   Maximize,
   ChartRelationship,
   Hierarchy,
+  LayoutTemplate,
   PenLine,
   Pencil,
   Save,
@@ -199,6 +203,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { openTab, setTabDeleted, updateTabTitleByEntityId, closeTab, saveTabState } = useTabs()
   const activeTab = useActiveTab()
   const { openSidebarItem } = useSidebarNavigation()
+  const createNoteFromNote = useCreateNoteFromNote()
   const queryClient = useQueryClient()
   const prefersReducedMotion = useReducedMotion()
 
@@ -244,6 +249,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isSaveAsTemplateOpen, setIsSaveAsTemplateOpen] = useState(false)
+  const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
@@ -1561,8 +1567,10 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'find') openFind()
           if (action === 'version-history') setIsVersionHistoryOpen(true)
           if (action === 'export') setIsExportDialogOpen(true)
+          if (action === 'apply-template') setIsApplyTemplateOpen(true)
           if (action === 'insert-template') openTemplateInsertRef.current?.()
           if (action === 'save-as-template') setIsSaveAsTemplateOpen(true)
+          if (action === 'new-note-from-note') void createNoteFromNote(note.id)
           if (action === 'rename') handleRename()
           if (action === 'move-to-folder') setIsMoveDialogOpen(true)
           if (action === 'copy-path') void handleCopyPath()
@@ -1615,19 +1623,32 @@ export function NotePage({ noteId }: NotePageProps) {
               label={t('editor.toolbar.export')}
               icon={<Download className="size-4" />}
             />
-            {/* A large file has no block editor behind it, so there is no
-                caret to insert a template at. */}
+            {/* A large file reads back with an empty body, so apply would
+                overwrite the whole file without the replace prompt. It also
+                has no block editor, so there is no caret to insert at. */}
             {!isLargeFile && (
-              <Picker.Item
-                value="insert-template"
-                label={t('editor.slashMenu.insertTemplate.title')}
-                icon={<PenLine className="size-4" />}
-              />
+              <>
+                <Picker.Item
+                  value="apply-template"
+                  label={t('tree.actions.applyTemplate')}
+                  icon={<LayoutTemplate className="size-4" />}
+                />
+                <Picker.Item
+                  value="insert-template"
+                  label={t('editor.slashMenu.insertTemplate.title')}
+                  icon={<PenLine className="size-4" />}
+                />
+              </>
             )}
             <Picker.Item
               value="save-as-template"
               label={t('editor.toolbar.saveAsTemplate')}
               icon={<Save className="size-4" />}
+            />
+            <Picker.Item
+              value="new-note-from-note"
+              label={t('newNoteFromNote.action')}
+              icon={<FilePlus className="size-4" />}
             />
             <Picker.Item
               value="full-width"
@@ -2001,6 +2022,12 @@ export function NotePage({ noteId }: NotePageProps) {
           void setCover(value, credit)
           setIsRepositioningCover(reposition)
         }}
+      />
+
+      <ApplyTemplateToNoteDialog
+        noteId={noteId}
+        isOpen={isApplyTemplateOpen}
+        onClose={() => setIsApplyTemplateOpen(false)}
       />
 
       <SaveNoteAsTemplateDialog

@@ -100,9 +100,11 @@ export interface ContentAreaProps {
    */
   notePath?: string
   /**
-   * When false, this editor does NOT run note-level task auto-conversion side
-   * effects (a sibling editor on the same note in this window owns them, R17).
-   * Defaults to true; standalone callers own their effects.
+   * When false, this editor writes no task rows: no checkbox conversion,
+   * automatic or by right-click, and no delete when a task block goes. Either a
+   * sibling editor on the same note in this window owns them (R17), or the body
+   * is not a note at all (the template editor). Defaults to true; standalone
+   * callers own their effects.
    */
   runSideEffects?: boolean
   /** Initial content as BlockNote blocks, HTML string, or markdown string */

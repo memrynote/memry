@@ -868,6 +868,10 @@
     "failed": "Gagal menyimpan templat",
     "loadFailed": "Tidak dapat membaca nota ini"
   },
+  "newNoteFromNote": {
+    "action": "Nota baharu daripada nota ini",
+    "created": "Dicipta daripada {source}: {tagCount, plural, =0 {tiada tag} other {# tag}}, {propertyCount, plural, =0 {tiada sifat} other {# sifat}}"
+  },
   "tagView": {
     "moreActions": "Tindakan lain",
     "pin": {

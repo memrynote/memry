@@ -868,6 +868,10 @@
     "failed": "Gagal menyimpan templat",
     "loadFailed": "Tidak dapat membaca catatan ini"
   },
+  "newNoteFromNote": {
+    "action": "Catatan baru dari catatan ini",
+    "created": "Dibuat dari {source}: {tagCount, plural, =0 {tanpa tanda} other {# tanda}}, {propertyCount, plural, =0 {tanpa properti} other {# properti}}"
+  },
   "tagView": {
     "moreActions": "Tindakan lainnya",
     "pin": {

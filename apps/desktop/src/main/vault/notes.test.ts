@@ -317,6 +317,34 @@ describe('notes operations', () => {
       expect(result.emoji).toBe('🚀')
     })
 
+    it('lets values copied from another note win over the folder default template (#2329)', async () => {
+      const folders = await import('./folders')
+      await folders.setFolderTemplate('Clients/A', 'meeting-notes')
+
+      const result = await notes.createNote({
+        title: 'Untitled',
+        folder: 'Clients/A',
+        tags: ['client-a', '2026'],
+        properties: { project: ['Project X'], status: 'Active', Priority: 'High' },
+        emoji: '📁'
+      })
+
+      expect(result.path).toBe('Clients/A/Untitled.md')
+      expect(result.emoji).toBe('📁')
+      expect(result.tags).toEqual(['meeting', 'client-a', '2026'])
+      expect(result.properties).toEqual({
+        date: null,
+        attendees: '',
+        status: 'Active',
+        project: ['Project X'],
+        Priority: 'High'
+      })
+      expect(result.content).toContain('## Attendees')
+
+      const reloaded = await notes.getNoteById(result.id)
+      expect(reloaded!.properties).toMatchObject({ project: ['Project X'], status: 'Active' })
+    })
+
     it('leaves the icon unset when the note uses no template', async () => {
       const result = await notes.createNote({ title: 'No Template' })
 

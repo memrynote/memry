@@ -441,6 +441,9 @@ function TemplateEditorSurface({
             stickyToolbar={editorSettings.toolbarMode === 'sticky'}
             onMarkdownChange={(markdown) => setFields({ content: markdown })}
             editable={!isBuiltIn}
+            // A template is not a note: its checkboxes stay checkboxes until a
+            // note is made from it, so no task row exists without a note.
+            runSideEffects={false}
           />
         </div>
       </div>

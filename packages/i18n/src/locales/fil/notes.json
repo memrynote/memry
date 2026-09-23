@@ -868,6 +868,10 @@
     "failed": "Nabigong i-save ang template",
     "loadFailed": "Hindi mabasa ang talang ito"
   },
+  "newNoteFromNote": {
+    "action": "Bagong tala mula sa talang ito",
+    "created": "Nagawa mula sa {source}: {tagCount, plural, =0 {walang tag} other {# na tag}}, {propertyCount, plural, =0 {walang katangian} other {# na katangian}}"
+  },
   "tagView": {
     "moreActions": "Higit pang pagkilos",
     "pin": {

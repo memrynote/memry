@@ -868,6 +868,10 @@
     "failed": "Не удалось сохранить шаблон",
     "loadFailed": "Не удалось прочитать заметку"
   },
+  "newNoteFromNote": {
+    "action": "Новая заметка из этой заметки",
+    "created": "Создано из заметки {source}: {tagCount, plural, =0 {без тегов} one {# тег} few {# тега} many {# тегов} other {# тега}}, {propertyCount, plural, =0 {без свойств} one {# свойство} few {# свойства} many {# свойств} other {# свойства}}"
+  },
   "tagView": {
     "moreActions": "Другие действия",
     "pin": {

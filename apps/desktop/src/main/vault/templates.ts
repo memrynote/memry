@@ -19,6 +19,7 @@ import { eq } from 'drizzle-orm'
 import { templates as templatesTable, type TemplateRow } from '@memry/db-schema/schema/templates'
 import { TemplatesChannels } from '@memry/contracts/ipc-channels'
 import { substituteTemplatePlaceholders } from '@memry/shared/template-placeholders'
+import { stripTaskBlockSuffixes } from '@memry/shared/task-block'
 import type {
   Template,
   TemplateListItem,
@@ -97,7 +98,9 @@ function rowToTemplate(row: TemplateRow): Template {
     // non-array here would throw "not iterable" at note-creation time.
     tags: Array.isArray(row.tags) ? row.tags : [],
     properties: Array.isArray(row.properties) ? (row.properties as TemplateProperty[]) : [],
-    content: row.content,
+    // Older versions and other devices stored task ids in the body. Reading
+    // them out here covers every row already written, local or synced.
+    content: stripTaskBlockSuffixes(row.content),
     createdAt: row.createdAt,
     modifiedAt: row.modifiedAt
   }
@@ -202,7 +205,7 @@ export async function createTemplate(input: TemplateCreateInput): Promise<Templa
     isBuiltIn: false,
     tags: input.tags ?? [],
     properties: (input.properties ?? []) as TemplateProperty[],
-    content: input.content ?? '',
+    content: stripTaskBlockSuffixes(input.content ?? ''),
     createdAt: now,
     modifiedAt: now
   }
@@ -257,7 +260,7 @@ export async function updateTemplate(input: TemplateUpdateInput): Promise<Templa
       input.properties === undefined
         ? existing.properties
         : (input.properties as TemplateProperty[]),
-    content: input.content ?? existing.content,
+    content: stripTaskBlockSuffixes(input.content ?? existing.content),
     modifiedAt: now
   }
 

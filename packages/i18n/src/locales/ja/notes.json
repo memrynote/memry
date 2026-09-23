@@ -868,6 +868,10 @@
     "failed": "テンプレートを保存できませんでした",
     "loadFailed": "メモを読み込めませんでした"
   },
+  "newNoteFromNote": {
+    "action": "このメモから新規メモ",
+    "created": "{source} から作成しました（{tagCount, plural, =0 {タグなし} other {#個のタグ}}、{propertyCount, plural, =0 {プロパティなし} other {#個のプロパティ}}）"
+  },
   "tagView": {
     "moreActions": "その他の操作",
     "pin": {
