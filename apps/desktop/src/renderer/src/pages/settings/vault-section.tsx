@@ -13,6 +13,7 @@ import {
 import { LargeNotesWarning } from '@/components/settings/large-notes-warning'
 import { DownloadVaultDialog } from '@/components/download-vault-dialog'
 import { VaultActivitySettings } from '@/components/settings/vault-activity'
+import type { SettingsFocusTarget } from '@/contexts/settings-modal-context'
 import type { AccountVaultInfo } from '../../../../preload/index.d'
 import {
   AlertDialog,
@@ -34,11 +35,12 @@ const STORAGE_COLORS: Record<string, string> = {
 }
 
 interface VaultSettingsProps {
-  /** Set when Settings was opened to bring the activity log into view. */
-  activityFocusRequestId?: number | null
+  /** Forwarded to the activity log, which scrolls itself into view for `vault-activity`. */
+  focusTarget?: SettingsFocusTarget | null
+  focusRequestId?: number
 }
 
-export function VaultSettings({ activityFocusRequestId = null }: VaultSettingsProps = {}) {
+export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProps) {
   const { t } = useT('settings')
   const { t: tCommon } = useT('common')
   const { data, loading, refresh } = useStorageUsage()
@@ -293,7 +295,7 @@ export function VaultSettings({ activityFocusRequestId = null }: VaultSettingsPr
         </SettingRow>
       </SettingsGroup>
 
-      <VaultActivitySettings focusRequestId={activityFocusRequestId} />
+      <VaultActivitySettings focusTarget={focusTarget} focusRequestId={focusRequestId} />
 
       <DownloadVaultDialog
         vault={vaultToDownload}

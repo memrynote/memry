@@ -22,6 +22,7 @@
  * @module vault/activity-log
  */
 
+import { randomBytes } from 'crypto'
 import fs from 'fs'
 import fsp from 'fs/promises'
 import path from 'path'
@@ -160,6 +161,21 @@ function scheduleWrite(s: ActivityState): void {
   }, WRITE_DELAY_MS)
 }
 
+/**
+ * Replace a file through a sibling temp file: unpredictable name, exclusive
+ * create, owner-only mode, so the write cannot be hijacked or half-read.
+ */
+async function writeFileAtomic(filePath: string, content: string): Promise<void> {
+  const tmpPath = path.join(path.dirname(filePath), `.${randomBytes(6).toString('hex')}.tmp`)
+  try {
+    await fsp.writeFile(tmpPath, content, { encoding: 'utf-8', mode: 0o600, flag: 'wx' })
+    await fsp.rename(tmpPath, filePath)
+  } catch (error) {
+    await fsp.rm(tmpPath, { force: true })
+    throw error
+  }
+}
+
 function writePending(s: ActivityState): Promise<void> {
   s.writeChain = s.writeChain
     .then(async () => {
@@ -169,14 +185,12 @@ function writePending(s: ActivityState): Promise<void> {
         s.needsRewrite = false
         s.pending = []
         const body = s.entries.map((entry) => JSON.stringify(entry)).join('\n')
-        const tmpPath = `${s.logPath}.tmp`
-        await fsp.writeFile(tmpPath, body ? `${body}\n` : '', 'utf-8')
-        await fsp.rename(tmpPath, s.logPath)
+        await writeFileAtomic(s.logPath, body ? `${body}\n` : '')
         return
       }
       const lines = s.pending
       s.pending = []
-      await fsp.appendFile(s.logPath, `${lines.join('\n')}\n`, 'utf-8')
+      await fsp.appendFile(s.logPath, `${lines.join('\n')}\n`, { encoding: 'utf-8', mode: 0o600 })
     })
     .catch((error: unknown) => {
       logger.warn('Failed to write the vault activity log', { error })
@@ -490,7 +504,7 @@ export async function prepareActivityLogFile(): Promise<string | null> {
   await flushActivityLog()
   try {
     await fsp.mkdir(path.dirname(s.logPath), { recursive: true })
-    await fsp.appendFile(s.logPath, '', 'utf-8')
+    await fsp.appendFile(s.logPath, '', { encoding: 'utf-8', mode: 0o600 })
   } catch (error) {
     logger.warn('Failed to create the vault activity log file', { error })
   }
@@ -510,7 +524,7 @@ export async function setActivityRetentionDays(days: VaultActivityRetentionDays)
     notifyChanged()
   }
   await fsp.mkdir(path.dirname(s.settingsPath), { recursive: true })
-  await fsp.writeFile(s.settingsPath, `${JSON.stringify({ retentionDays: days }, null, 2)}\n`)
+  await writeFileAtomic(s.settingsPath, `${JSON.stringify({ retentionDays: days }, null, 2)}\n`)
 }
 
 export async function clearActivity(): Promise<void> {

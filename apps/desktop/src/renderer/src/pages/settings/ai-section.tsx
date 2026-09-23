@@ -39,6 +39,7 @@ import {
   ACCENT_SWITCH
 } from '@/components/settings/settings-primitives'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import type { SettingsFocusTarget } from '@/contexts/settings-modal-context'
 
 const log = createLogger('Page:Settings:AI')
 
@@ -65,11 +66,10 @@ interface VoiceModelStatus {
 }
 
 type AssistantAdvancedPanel = 'agent-providers' | 'agent-mcp'
-type AssistantFocusTarget = 'voice-local-model'
-
 interface AISettingsProps {
   initialOpenPanel?: AssistantAdvancedPanel
-  focusTarget?: AssistantFocusTarget | null
+  /** Only `voice-local-model` targets this section; other targets are ignored. */
+  focusTarget?: SettingsFocusTarget | null
   focusRequestId?: number
 }
 

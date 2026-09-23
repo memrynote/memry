@@ -42,6 +42,7 @@ import { getActiveLocale } from '@/lib/active-locale'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
 import { useImporters } from '@/hooks/use-importers'
+import type { SettingsFocusTarget } from '@/contexts/settings-modal-context'
 import { useVaultActivity, vaultActivityKeys } from '@/hooks/use-vault-activity'
 import { COMPACT_SELECT, SettingsGroup, SettingRow } from './settings-primitives'
 import { describeVaultActivity, type VaultActivityTone } from './vault-activity-describe'
@@ -66,11 +67,13 @@ const TOGGLE_ITEM_CLASS =
   'rounded-none border-none px-3 h-7 text-xs/4 font-medium data-[state=on]:bg-[var(--tint)] data-[state=on]:text-white'
 
 interface VaultActivitySettingsProps {
-  /** Changes each time something asks Settings to bring this group into view. */
-  focusRequestId?: number | null
+  /** `vault-activity` when Settings was opened to bring this group into view. */
+  focusTarget?: SettingsFocusTarget | null
+  /** Changes on every such request, so a repeat request scrolls again. */
+  focusRequestId?: number
 }
 
-export function VaultActivitySettings({ focusRequestId = null }: VaultActivitySettingsProps) {
+export function VaultActivitySettings({ focusTarget, focusRequestId }: VaultActivitySettingsProps) {
   const { t } = useT('settings')
   const { t: tCommon } = useT('common')
   const queryClient = useQueryClient()
@@ -81,9 +84,9 @@ export function VaultActivitySettings({ focusRequestId = null }: VaultActivitySe
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (focusRequestId === null) return
+    if (focusTarget !== 'vault-activity' || !focusRequestId) return
     containerRef.current?.scrollIntoView({ block: 'start' })
-  }, [focusRequestId])
+  }, [focusTarget, focusRequestId])
 
   const importerNames = useMemo(
     () => new Map(importers.map((importer) => [importer.id, importer.name])),
