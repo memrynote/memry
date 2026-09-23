@@ -26,6 +26,47 @@ import { assertSpecKeysMatchNodeTypes, type SpecKeysMatchNodeTypes } from './spe
  */
 const CODE_BLOCK_DEFAULTS = { defaultLanguage: 'javascript' } as const
 
+type CodeBlockOptions = NonNullable<Parameters<typeof createCodeBlockSpec>[0]>
+type CodeBlockSpec = ReturnType<typeof createCodeBlockSpec>
+
+/**
+ * A code block whose `language` the picker does not list renders as Plain Text
+ * instead of taking the whole editor down.
+ *
+ * BlockNote 0.54's language picker throws `Language <x> is not supported` for
+ * any value missing from `supportedLanguages`, from inside the node view, so
+ * the error boundary replaces the entire note with "Editor Error". Memry
+ * stores whatever a fence was tagged with, and an untagged fence as `''`
+ * (#1909), so one bare ``` fence (an Obsidian Kanban settings block) or one
+ * tag the picker lacks was enough to make a note unopenable.
+ *
+ * Only what the picker is handed changes. `block.props.language` keeps its
+ * value, so the fence is written back exactly as it was read; the user just
+ * sees Plain Text selected until they pick something else.
+ */
+function renderUnlistedLanguageAsPlainText(
+  spec: CodeBlockSpec,
+  options: CodeBlockOptions
+): CodeBlockSpec {
+  const supported = options.supportedLanguages
+  if (!supported) return spec
+  const fallback = 'text' in supported ? 'text' : Object.keys(supported)[0]
+  if (fallback === undefined) return spec
+
+  const render = spec.implementation.render
+  return {
+    ...spec,
+    implementation: {
+      ...spec.implementation,
+      render(block, editor) {
+        if (block.props.language in supported) return render.call(this, block, editor)
+        const shown = { ...block, props: { ...block.props, language: fallback } }
+        return render.call(this, shown, editor)
+      }
+    }
+  }
+}
+
 /**
  * The one place a Memry BlockNote schema is built.
  *
@@ -56,7 +97,10 @@ export function createMemrySchema<Blocks extends BlockSpecs>(impl: {
 }) {
   const blockSpecs = {
     ...defaultBlockSpecs,
-    codeBlock: createCodeBlockSpec(impl.codeBlock ?? CODE_BLOCK_DEFAULTS),
+    codeBlock: renderUnlistedLanguageAsPlainText(
+      createCodeBlockSpec(impl.codeBlock ?? CODE_BLOCK_DEFAULTS),
+      impl.codeBlock ?? CODE_BLOCK_DEFAULTS
+    ),
     ...impl.blocks
   }
   const memryInlineSpecs = createMemryInlineContentSpecs(impl.inline)
