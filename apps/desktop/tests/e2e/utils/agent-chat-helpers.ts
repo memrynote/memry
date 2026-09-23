@@ -71,6 +71,11 @@ export async function approveAgentToolCall(page: Page, toolName: string | RegExp
     .getByTestId('agent-tool-call')
     .and(agentChat.getByRole('button', { name: toolName }))
   await expect(toolCall).toBeVisible({ timeout: 20_000 })
-  await toolCall.click()
-  await agentChat.getByRole('button', { name: 'Allow once' }).click()
+  // A call awaiting approval opens itself, so a blind click would fold the
+  // decision row away. Only open it when it is still collapsed.
+  if ((await toolCall.getAttribute('aria-expanded')) !== 'true') await toolCall.click()
+  // Plain argument cards say "Allow once" ("Apply once" for updates); a write
+  // with a change preview says "Apply" and stays disabled until the preview
+  // has loaded, which `click` waits out.
+  await agentChat.getByRole('button', { name: /^(Allow once|Apply once|Apply)$/ }).click()
 }
