@@ -809,8 +809,10 @@
     "copyLinks": "Links kopieren",
     "delete": "Löschen",
     "export": "Exportieren",
+    "iconUpdated": "{count, plural, one {Symbol für # Notiz aktualisiert} other {Symbol für # Notizen aktualisiert}}",
     "move": "Verschieben",
     "selected": "ausgewählt",
+    "setIcon": "Symbol festlegen",
     "tagNamePlaceholder": "Tag-Name",
     "toolbarAria": "Sammelaktionen"
   },

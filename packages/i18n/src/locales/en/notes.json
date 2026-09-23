@@ -1140,7 +1140,9 @@
     "export": "Export",
     "delete": "Delete",
     "clearAria": "Clear selection",
-    "copiedLinks": "Copied {count, plural, one {# link} other {# links}}"
+    "copiedLinks": "Copied {count, plural, one {# link} other {# links}}",
+    "setIcon": "Set icon",
+    "iconUpdated": "{count, plural, one {Icon updated on # note} other {Icon updated on # notes}}"
   },
   "applyTemplateConfirm": {
     "title": "Replace note content?",

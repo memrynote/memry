@@ -302,7 +302,7 @@ describe('useFolderView', () => {
     await act(async () => {
       await result.current.updateNoteProperty('n1', 'status', 'review')
       await result.current.updateNoteTags('n1', ['new'])
-      await result.current.updateNoteIcon('n1', '🚀')
+      await result.current.updateNoteIcons([{ noteId: 'n1', emoji: '🚀' }])
       result.current.removeNotesOptimistically(['n2'])
       await result.current.refresh()
     })
@@ -459,7 +459,7 @@ describe('useFolderView', () => {
 
     mocks.notesUpdate.mockResolvedValueOnce({ success: false, error: 'No icon' })
     await act(async () => {
-      await result.current.updateNoteIcon('n1', null)
+      await result.current.updateNoteIcons([{ noteId: 'n1', emoji: null }])
     })
     expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', emoji: null })
     expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToUpdateIcon')
@@ -473,6 +473,88 @@ describe('useFolderView', () => {
     await expect(result.current.updateFormula('Score', '1 + 2')).rejects.toThrow('formula failed')
     ;(window.api.folderView.setConfig as any).mockRejectedValueOnce(new Error('formula failed'))
     await expect(result.current.deleteFormula('Score')).rejects.toThrow('formula failed')
+  })
+
+  it('bulk-sets an icon with one write per note and returns an Undo that restores each one', async () => {
+    mocks.evaluateFilter.mockReturnValue(true)
+    ;(window.api.folderView as any) = folderApi({
+      listWithProperties: vi.fn().mockResolvedValue({
+        notes: [{ ...firstPage[0], emoji: '📚' }, firstPage[1]],
+        hasMore: false,
+        total: 2
+      })
+    })
+
+    const { result } = renderHook(() => useFolderView({ scope: workScope }), {
+      wrapper: makeWrapper()
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const icons = (): Array<[string, string | null]> =>
+      result.current.notes.map((note) => [note.id, note.emoji])
+
+    let undo: Awaited<ReturnType<typeof result.current.updateNoteIcons>> = []
+    await act(async () => {
+      undo = await result.current.updateNoteIcons([
+        { noteId: 'n1', emoji: '🚀' },
+        { noteId: 'n2', emoji: '🚀' }
+      ])
+      await vi.runOnlyPendingTimersAsync()
+    })
+
+    expect(mocks.notesUpdate.mock.calls).toEqual([
+      [{ id: 'n1', emoji: '🚀' }],
+      [{ id: 'n2', emoji: '🚀' }]
+    ])
+    expect(icons()).toEqual([
+      ['n1', '🚀'],
+      ['n2', '🚀']
+    ])
+    expect(undo).toEqual([
+      { noteId: 'n1', emoji: '📚' },
+      { noteId: 'n2', emoji: null }
+    ])
+
+    await act(async () => {
+      await result.current.updateNoteIcons(undo)
+      await vi.runOnlyPendingTimersAsync()
+    })
+
+    expect(mocks.notesUpdate.mock.calls.slice(2)).toEqual([
+      [{ id: 'n1', emoji: '📚' }],
+      [{ id: 'n2', emoji: null }]
+    ])
+    expect(icons()).toEqual([
+      ['n1', '📚'],
+      ['n2', null]
+    ])
+  })
+
+  it('rolls back only the notes whose icon write failed', async () => {
+    mocks.evaluateFilter.mockReturnValue(true)
+    mocks.notesUpdate.mockImplementation(({ id }: { id: string }) =>
+      Promise.resolve(id === 'n2' ? { success: false, error: 'disk full' } : { success: true })
+    )
+
+    const { result } = renderHook(() => useFolderView({ scope: workScope }), {
+      wrapper: makeWrapper()
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    let undo: Awaited<ReturnType<typeof result.current.updateNoteIcons>> = []
+    await act(async () => {
+      undo = await result.current.updateNoteIcons([
+        { noteId: 'n1', emoji: '🚀' },
+        { noteId: 'n2', emoji: '🚀' }
+      ])
+      await vi.runOnlyPendingTimersAsync()
+    })
+
+    expect(result.current.notes.map((note) => [note.id, note.emoji])).toEqual([
+      ['n1', '🚀'],
+      ['n2', null]
+    ])
+    expect(undo).toEqual([{ noteId: 'n1', emoji: null }])
+    expect(vi.mocked(toast.error).mock.calls).toEqual([['phaseI.toasts.failedToUpdateIcon']])
   })
 
   it('surfaces not-found and rolls back failed note edits', async () => {

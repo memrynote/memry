@@ -809,8 +809,10 @@
     "copyLinks": "复制链接",
     "delete": "删除",
     "export": "导出",
+    "iconUpdated": "{count, plural, other {已更新 # 条笔记的图标}}",
     "move": "移动",
     "selected": "已选择",
+    "setIcon": "设置图标",
     "tagNamePlaceholder": "标签名称",
     "toolbarAria": "批量操作"
   },

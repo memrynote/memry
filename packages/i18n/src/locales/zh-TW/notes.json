@@ -809,8 +809,10 @@
     "copyLinks": "複製連結",
     "delete": "刪除",
     "export": "匯出",
+    "iconUpdated": "{count, plural, other {已更新 # 則筆記的圖示}}",
     "move": "移動",
     "selected": "已選取",
+    "setIcon": "設定圖示",
     "tagNamePlaceholder": "標籤名稱",
     "toolbarAria": "批次操作"
   },

@@ -17,6 +17,7 @@ import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import { FolderViewEmptyState } from './folder-view-empty-state'
 import { TagChip } from '@/components/note/tags-row/TagChip'
 import { toTagChip, formatRelative, NoteCardKindIcon, type TagMetaMap } from './note-card-pieces'
+import { RowContextMenu, type RowMenuActions } from './row-context-menu'
 
 export interface FolderListViewProps {
   notes: NoteWithProperties[]
@@ -29,6 +30,11 @@ export interface FolderListViewProps {
   onTagClick?: (tag: string) => void
   onCreateNote?: () => void
   onClearAll?: () => void
+  /**
+   * Right-click actions for each row. Without them a row has no context menu,
+   * which is what the Home folder widget wants.
+   */
+  rowActions?: RowMenuActions
   /**
    * Names this scroller inside the owning tab, turning scroll restore on. Left
    * unset by callers that are not a tab's main content (the Home folder widget),
@@ -48,6 +54,7 @@ export function FolderListView({
   onTagClick,
   onCreateNote,
   onClearAll,
+  rowActions,
   scrollKey,
   className
 }: FolderListViewProps): React.JSX.Element {
@@ -85,51 +92,68 @@ export function FolderListView({
 
   return (
     <menu ref={scrollRef} className={cn('h-full overflow-auto py-1', className)}>
-      {visible.map((note) => (
-        <div
-          key={note.id}
-          role="button"
-          tabIndex={0}
-          onClick={() => onNoteOpen(note.id)}
-          onMouseDown={(e) => handleMiddleClick(e, () => onOpenInBackgroundTab?.(note.id))}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onNoteOpen(note.id)
-            }
-          }}
-          className={cn(
-            'group flex w-full cursor-pointer items-center gap-2.5 px-5 outline-none transition-colors hover:bg-muted/60 focus-visible:bg-muted/60',
-            rowH
-          )}
-        >
-          {note.emoji ? (
-            <span className="shrink-0 text-sm leading-none">{note.emoji}</span>
-          ) : (
-            <FileText className="size-[15px] shrink-0 text-muted-foreground/70" />
-          )}
-          <span className="shrink-0 truncate text-[13px] font-medium text-foreground/90">
-            {note.title || 'Untitled'}
-          </span>
-          <NoteCardKindIcon kind={note.kind} />
-          <div className="flex shrink-0 items-center gap-1.5">
-            {note.tags.slice(0, 3).map((tag) => (
-              <TagChip
-                key={tag}
-                tag={toTagChip(tag, tagMetaMap.get(tag.toLowerCase()))}
-                onClick={onTagClick ? () => onTagClick(tag) : undefined}
-              />
-            ))}
+      {visible.map((note) => {
+        const row = (
+          <div
+            key={note.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => onNoteOpen(note.id)}
+            onMouseDown={(e) => handleMiddleClick(e, () => onOpenInBackgroundTab?.(note.id))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onNoteOpen(note.id)
+              }
+            }}
+            className={cn(
+              'group flex w-full cursor-pointer items-center gap-2.5 px-5 outline-none transition-colors hover:bg-muted/60 focus-visible:bg-muted/60',
+              rowH
+            )}
+          >
+            {note.emoji ? (
+              <span className="shrink-0 text-sm leading-none">{note.emoji}</span>
+            ) : (
+              <FileText className="size-[15px] shrink-0 text-muted-foreground/70" />
+            )}
+            <span className="shrink-0 truncate text-[13px] font-medium text-foreground/90">
+              {note.title || 'Untitled'}
+            </span>
+            <NoteCardKindIcon kind={note.kind} />
+            <div className="flex shrink-0 items-center gap-1.5">
+              {note.tags.slice(0, 3).map((tag) => (
+                <TagChip
+                  key={tag}
+                  tag={toTagChip(tag, tagMetaMap.get(tag.toLowerCase()))}
+                  onClick={onTagClick ? () => onTagClick(tag) : undefined}
+                />
+              ))}
+            </div>
+            <div className="flex-1" />
+            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70">
+              {`${note.wordCount.toLocaleString()}w`}
+            </span>
+            <span className="w-16 shrink-0 text-end text-[11px] tabular-nums text-muted-foreground/60">
+              {formatRelative(note.modified)}
+            </span>
           </div>
-          <div className="flex-1" />
-          <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70">
-            {`${note.wordCount.toLocaleString()}w`}
-          </span>
-          <span className="w-16 shrink-0 text-end text-[11px] tabular-nums text-muted-foreground/60">
-            {formatRelative(note.modified)}
-          </span>
-        </div>
-      ))}
+        )
+        return rowActions ? (
+          <RowContextMenu
+            key={note.id}
+            note={note}
+            isPartOfSelection={false}
+            selectedCount={0}
+            selectedNoteIds={[]}
+            onNoteOpen={onNoteOpen}
+            {...rowActions}
+          >
+            {row}
+          </RowContextMenu>
+        ) : (
+          row
+        )
+      })}
     </menu>
   )
 }

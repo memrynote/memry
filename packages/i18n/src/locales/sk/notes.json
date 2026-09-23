@@ -809,8 +809,10 @@
     "copyLinks": "Kopírovať odkazy",
     "delete": "Odstrániť",
     "export": "Exportovať",
+    "iconUpdated": "{count, plural, one {Ikona aktualizovaná pri # poznámke} few {Ikona aktualizovaná pri # poznámkach} other {Ikona aktualizovaná pri # poznámkach}}",
     "move": "Presunúť",
     "selected": "vybraných",
+    "setIcon": "Nastaviť ikonu",
     "tagNamePlaceholder": "Názov značky",
     "toolbarAria": "Hromadné akcie"
   },

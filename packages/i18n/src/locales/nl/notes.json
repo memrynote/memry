@@ -809,8 +809,10 @@
     "copyLinks": "Links kopiëren",
     "delete": "Verwijderen",
     "export": "Exporteren",
+    "iconUpdated": "{count, plural, one {Pictogram bijgewerkt op # notitie} other {Pictogram bijgewerkt op # notities}}",
     "move": "Verplaatsen",
     "selected": "geselecteerd",
+    "setIcon": "Pictogram instellen",
     "tagNamePlaceholder": "Tagnaam",
     "toolbarAria": "Bulkacties"
   },

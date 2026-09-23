@@ -809,8 +809,10 @@
     "copyLinks": "Kopiér links",
     "delete": "Slet",
     "export": "Eksportér",
+    "iconUpdated": "{count, plural, one {Ikon opdateret på # note} other {Ikon opdateret på # noter}}",
     "move": "Flyt",
     "selected": "valgt",
+    "setIcon": "Indstil ikon",
     "tagNamePlaceholder": "Tagnavn",
     "toolbarAria": "Massehandlinger"
   },

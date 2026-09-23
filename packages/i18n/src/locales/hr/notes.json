@@ -809,8 +809,10 @@
     "copyLinks": "Kopiraj poveznice",
     "delete": "Izbriši",
     "export": "Izvezi",
+    "iconUpdated": "{count, plural, one {Ikona ažurirana na # bilješci} few {Ikona ažurirana na # bilješke} other {Ikona ažurirana na # bilješki}}",
     "move": "Premjesti",
     "selected": "odabrano",
+    "setIcon": "Postavi ikonu",
     "tagNamePlaceholder": "Naziv oznake",
     "toolbarAria": "Skupne radnje"
   },

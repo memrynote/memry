@@ -809,8 +809,10 @@
     "copyLinks": "Kopyahin ang mga link",
     "delete": "Tanggalin",
     "export": "I-export",
+    "iconUpdated": "{count, plural, one {Na-update ang icon sa # tala} other {Na-update ang icon sa # tala}}",
     "move": "Ilipat",
     "selected": "napili",
+    "setIcon": "Itakda ang icon",
     "tagNamePlaceholder": "Pangalan ng tag",
     "toolbarAria": "Mga bulk na aksyon"
   },
