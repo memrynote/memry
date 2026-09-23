@@ -181,7 +181,7 @@ Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` ju
 
 ## Inserting a Template
 
-`/` and **Insert template…**, or the <kbd>⋯</kbd> menu's **Insert template…**, drops a [template](/user-guide/templates)'s body in at the cursor. Choosing the row opens the picker. Type a query instead and matching templates appear as their own rows under **Templates**, so `/meeting` then <kbd>Enter</kbd> inserts Meeting Notes straight away.
+`/` and **Insert template content…**, or the <kbd>⋯</kbd> menu's **Insert template content…**, drops a [template](/user-guide/templates)'s body in at the cursor. Choosing the row opens the picker. Type a query instead and matching templates appear as their own rows under **Templates**, so `/meeting` then <kbd>Enter</kbd> inserts Meeting Notes straight away.
 
 The block handle offers the same thing: hover a block, click its <kbd>⋮⋮</kbd> handle, and **Insert template…** puts the template directly below that block.
 

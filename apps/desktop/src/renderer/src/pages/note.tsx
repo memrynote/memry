@@ -21,6 +21,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { SaveNoteAsTemplateDialog } from '@/components/note/save-note-as-template-dialog'
+import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { LargeFileViewer } from '@/components/note/large-file-viewer'
 import {
@@ -77,6 +78,7 @@ import {
   Maximize,
   ChartRelationship,
   Hierarchy,
+  LayoutTemplate,
   PenLine,
   Pencil,
   Save,
@@ -244,6 +246,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isSaveAsTemplateOpen, setIsSaveAsTemplateOpen] = useState(false)
+  const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
@@ -1561,6 +1564,7 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'find') openFind()
           if (action === 'version-history') setIsVersionHistoryOpen(true)
           if (action === 'export') setIsExportDialogOpen(true)
+          if (action === 'apply-template') setIsApplyTemplateOpen(true)
           if (action === 'insert-template') openTemplateInsertRef.current?.()
           if (action === 'save-as-template') setIsSaveAsTemplateOpen(true)
           if (action === 'rename') handleRename()
@@ -1615,14 +1619,22 @@ export function NotePage({ noteId }: NotePageProps) {
               label={t('editor.toolbar.export')}
               icon={<Download className="size-4" />}
             />
-            {/* A large file has no block editor behind it, so there is no
-                caret to insert a template at. */}
+            {/* A large file reads back with an empty body, so apply would
+                overwrite the whole file without the replace prompt. It also
+                has no block editor, so there is no caret to insert at. */}
             {!isLargeFile && (
-              <Picker.Item
-                value="insert-template"
-                label={t('editor.slashMenu.insertTemplate.title')}
-                icon={<PenLine className="size-4" />}
-              />
+              <>
+                <Picker.Item
+                  value="apply-template"
+                  label={t('tree.actions.applyTemplate')}
+                  icon={<LayoutTemplate className="size-4" />}
+                />
+                <Picker.Item
+                  value="insert-template"
+                  label={t('editor.slashMenu.insertTemplate.title')}
+                  icon={<PenLine className="size-4" />}
+                />
+              </>
             )}
             <Picker.Item
               value="save-as-template"
@@ -2001,6 +2013,12 @@ export function NotePage({ noteId }: NotePageProps) {
           void setCover(value, credit)
           setIsRepositioningCover(reposition)
         }}
+      />
+
+      <ApplyTemplateToNoteDialog
+        noteId={noteId}
+        isOpen={isApplyTemplateOpen}
+        onClose={() => setIsApplyTemplateOpen(false)}
       />
 
       <SaveNoteAsTemplateDialog

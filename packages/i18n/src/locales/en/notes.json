@@ -258,8 +258,8 @@
         "subtext": "Attach an image, video, or audio file"
       },
       "insertTemplate": {
-        "title": "Insert template…",
-        "subtext": "Add a template's content at the cursor",
+        "title": "Insert template content…",
+        "subtext": "Add only a template's body at the cursor",
         "group": "Templates",
         "empty": "That template has no content to insert",
         "failed": "Could not insert that template"
