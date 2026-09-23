@@ -523,6 +523,18 @@ describe('AppSidebar', () => {
     })
   })
 
+  it('reports an import that throws through the IPC error message', async () => {
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
+    mocks.importFiles.mockRejectedValueOnce(new Error('vault is read-only'))
+
+    await act(async () => {
+      await mocks.fileDrop.onDrop?.(['a.pdf'], '')
+    })
+
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('vault is read-only')
+  })
+
   // With "Show files" off a dropped PDF lands and then does not appear in the
   // tree, so the toast has to say why instead of reading as a failed import.
   it('explains a file import the sidebar hides while files are off', async () => {

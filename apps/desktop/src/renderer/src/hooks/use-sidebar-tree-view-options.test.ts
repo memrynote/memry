@@ -72,6 +72,23 @@ describe('useSidebarTreeViewOptions', () => {
     expect(result.current.showFiles).toBe(true)
   })
 
+  it('keeps the defaults when subscribing to changes throws', async () => {
+    const getSidebarNotesFirst = vi.fn(() => Promise.resolve(true))
+    withApi(
+      { getSidebarNotesFirst, getSidebarShowFiles: vi.fn(() => Promise.resolve(false)) },
+      () => {
+        throw new Error('no settings channel')
+      }
+    )
+
+    const { result, unmount } = renderHook(() => useSidebarTreeViewOptions())
+
+    // The stored values still load; only live updates are lost.
+    await waitFor(() => expect(result.current.notesFirst).toBe(true))
+    expect(result.current.showFiles).toBe(false)
+    expect(() => unmount()).not.toThrow()
+  })
+
   // A change synced in or made in another window. `false` must land too.
   it('follows settings changes for its own keys only, false included', async () => {
     // One subscription per flag, like the preload fans each change out to all.
