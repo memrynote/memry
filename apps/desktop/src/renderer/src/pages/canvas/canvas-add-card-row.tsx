@@ -16,6 +16,7 @@ import { priorityConfig } from '@/data/task-model'
 import { DB_PRIORITY_MAP } from '@/components/note/content-area/task-block/task-block-utils'
 import { formatEventTime } from './canvas-cards'
 import { formatDueDate, formatShortDate, type AddCardCandidate } from './canvas-add-card'
+import { FileKindIcon, fileFolder } from './canvas-reference-card'
 
 /** A metadata chip: never wider than its content, never wrapping mid-word. */
 function Meta({
@@ -51,6 +52,18 @@ function RowIcon({ candidate }: { candidate: AddCardCandidate }): React.JSX.Elem
       <CheckCircle className="size-4 shrink-0 text-primary" aria-hidden="true" />
     ) : (
       <Circle className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+    )
+  }
+
+  if (detail.type === 'file') {
+    return <FileKindIcon fileType={detail.fileType} className="size-4" />
+  }
+
+  if (detail.type === 'project') {
+    return (
+      <span className="flex size-4 shrink-0 items-center justify-center" aria-hidden="true">
+        <span className="size-2.5 rounded-full" style={{ backgroundColor: detail.color }} />
+      </span>
     )
   }
 
@@ -102,6 +115,26 @@ function RowMeta({
         {created ? <Meta>{createdLabel(created)}</Meta> : null}
       </div>
     )
+  }
+
+  if (detail.type === 'file') {
+    return (
+      <div className="flex items-center gap-2 text-xs text-text-tertiary">
+        <span className="truncate">{fileFolder(detail.path) || detail.path}</span>
+      </div>
+    )
+  }
+
+  if (detail.type === 'project') {
+    return detail.taskCount > 0 ? (
+      <div className="flex items-center gap-2 text-xs text-text-tertiary">
+        <Meta>
+          <span className="tabular-nums">
+            {detail.completedCount}/{detail.taskCount}
+          </span>
+        </Meta>
+      </div>
+    ) : null
   }
 
   return (

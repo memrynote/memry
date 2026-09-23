@@ -7,7 +7,7 @@
 
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
-import type { SearchResultItem } from '@memry/contracts/search-api'
+import type { NoteFileType, SearchResultItem } from '@memry/contracts/search-api'
 import { parseDueDate } from '@/lib/task-utils'
 import { entityKey } from './canvas-cards'
 
@@ -36,6 +36,8 @@ export type AddCardDetail =
       createdAt: string | null
     }
   | { type: 'calendar_event'; startAt: string; isAllDay: boolean }
+  | { type: 'project'; color: string; taskCount: number; completedCount: number }
+  | { type: 'file'; fileType: Exclude<NoteFileType, 'markdown'>; path: string }
 
 export interface AddCardCandidate {
   entityType: CanvasEntityType
@@ -46,25 +48,37 @@ export interface AddCardCandidate {
   onCanvas: boolean
 }
 
-export interface AddCardGroups {
-  note: AddCardCandidate[]
-  task: AddCardCandidate[]
-  calendar_event: AddCardCandidate[]
-}
+export type AddCardGroups = Record<CanvasEntityType, AddCardCandidate[]>
+
+/** Picker group order: the kinds a canvas holds most often come first. */
+export const ADD_CARD_GROUP_ORDER: readonly CanvasEntityType[] = [
+  'note',
+  'file',
+  'task',
+  'calendar_event',
+  'project'
+]
 
 /**
- * Notes and tasks from a quick-search response. Journal and inbox hits are
- * dropped — neither is a CanvasEntityType.
+ * Notes, filed files and tasks from a quick-search response. Journal and inbox
+ * hits are dropped — neither is a CanvasEntityType.
  */
 export function candidatesFromSearch(results: readonly SearchResultItem[]): AddCardCandidate[] {
   const out: AddCardCandidate[] = []
   for (const result of results) {
     if (result.metadata.type === 'note') {
       // A "note" hit can be a filed binary (pdf/image/audio/video — see #800).
-      // Canvas note cards render markdown previews and open the markdown
-      // editor, so a binary is not placeable. The picker's quick-search call
-      // already asks for markdown only (#874); this is the backstop.
-      if ((result.metadata.fileType ?? 'markdown') !== 'markdown') {
+      // It must never become a note card, which renders markdown and opens the
+      // markdown editor, so it is carded as a file.
+      const fileType = result.metadata.fileType ?? 'markdown'
+      if (fileType !== 'markdown') {
+        out.push({
+          entityType: 'file',
+          entityId: result.id,
+          title: result.title,
+          detail: { type: 'file', fileType, path: result.metadata.path },
+          onCanvas: false
+        })
         continue
       }
       out.push({
@@ -119,7 +133,7 @@ export function markOnCanvas(
 }
 
 export function groupCandidates(candidates: readonly AddCardCandidate[]): AddCardGroups {
-  const groups: AddCardGroups = { note: [], task: [], calendar_event: [] }
+  const groups: AddCardGroups = { note: [], file: [], task: [], calendar_event: [], project: [] }
   for (const candidate of candidates) {
     groups[candidate.entityType].push(candidate)
   }
@@ -158,6 +172,42 @@ export function candidatesFromEvents(
     detail: { type: 'calendar_event' as const, startAt: item.startAt, isAllDay: item.isAllDay },
     onCanvas: false
   }))
+}
+
+export interface AddCardProjectLike {
+  id: string
+  name: string
+  color: string
+  archivedAt: string | null
+  taskCount: number
+  completedCount: number
+}
+
+/**
+ * Projects are not in the search index, so the listed projects are filtered
+ * against the query here, as the link picker does. An archived project is not
+ * placeable: its card would open dangling.
+ */
+export function candidatesFromProjects(
+  projects: readonly AddCardProjectLike[],
+  query: string
+): AddCardCandidate[] {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return []
+  return projects
+    .filter((project) => !project.archivedAt && project.name.toLowerCase().includes(needle))
+    .map((project) => ({
+      entityType: 'project' as const,
+      entityId: project.id,
+      title: project.name,
+      detail: {
+        type: 'project' as const,
+        color: project.color,
+        taskCount: project.taskCount,
+        completedCount: project.completedCount
+      },
+      onCanvas: false
+    }))
 }
 
 /**

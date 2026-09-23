@@ -3,7 +3,8 @@
  *
  * A canvas is one Excalidraw scene stored as a single encrypted snapshot in
  * the data db. Item cards inside the scene reference real entities
- * (note / task / calendar_event) by id only — content is never snapshotted.
+ * (note / task / calendar_event / project / file) by id only — content is never
+ * snapshotted.
  * See docs/superpowers/specs/2026-07-17-spatial-canvas-design.md.
  *
  * @module contracts/canvas-api
@@ -21,8 +22,17 @@ export { CanvasChannels }
 // Types
 // ============================================================================
 
-/** Entity kinds a canvas card can reference. */
-export const CANVAS_ENTITY_TYPES = ['note', 'task', 'calendar_event'] as const
+/**
+ * Entity kinds a canvas card can reference. `file` is a filed binary (PDF,
+ * image, audio, video) in the vault, addressed by the same id as its index row.
+ *
+ * Append only. A card is a rectangle whose `customData.entityType` is one of
+ * these, and a build that does not know a kind treats that rectangle as a plain
+ * shape: it keeps it, and its customData, verbatim in the scene and leaves it
+ * out of `canvas_entity_refs`. That is what lets a canvas carrying a newer kind
+ * open, save and sync on an older build without losing the card.
+ */
+export const CANVAS_ENTITY_TYPES = ['note', 'task', 'calendar_event', 'project', 'file'] as const
 export type CanvasEntityType = (typeof CANVAS_ENTITY_TYPES)[number]
 
 /**

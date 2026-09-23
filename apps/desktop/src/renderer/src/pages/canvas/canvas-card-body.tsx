@@ -21,6 +21,7 @@ import { CanvasNoteBody } from './canvas-note-body'
 import { EmbeddedNoteEditor } from './embedded-note-editor'
 import { CanvasTaskEditor } from './canvas-task-editor'
 import { CanvasEventEditor } from './canvas-event-editor'
+import { FileCardView, ProjectCardView } from './canvas-reference-card'
 
 interface NoteCardHeaderProps {
   emoji: string | null
@@ -63,7 +64,7 @@ export const CanvasCardBody = ({
   state,
   interactive,
   onDone
-}: CanvasCardBodyProps): React.JSX.Element => {
+}: CanvasCardBodyProps): React.JSX.Element | null => {
   if (cardRef.entityType === 'note') {
     const note = state?.status === 'ready' && state.kind === 'note' ? state : null
     return (
@@ -89,6 +90,20 @@ export const CanvasCardBody = ({
 
   if (cardRef.entityType === 'task') {
     return <CanvasTaskEditor taskId={cardRef.entityId} interactive={interactive} />
+  }
+
+  // Projects and files are never edited in the card, so `interactive` does not
+  // apply: the body is the same read-only view in every state.
+  if (cardRef.entityType === 'project') {
+    return state?.status === 'ready' && state.kind === 'project' ? (
+      <ProjectCardView state={state} />
+    ) : null
+  }
+
+  if (cardRef.entityType === 'file') {
+    return state?.status === 'ready' && state.kind === 'file' ? (
+      <FileCardView state={state} media />
+    ) : null
   }
 
   return (

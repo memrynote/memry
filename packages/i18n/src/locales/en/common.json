@@ -445,7 +445,7 @@
       "allDay": "All day",
       "createNoteFailed": "Could not create note",
       "addCard": "Add card",
-      "addPlaceholder": "Search notes, tasks and events…",
+      "addPlaceholder": "Search notes, files, tasks, events and projects…",
       "addCreateNote": "Create note \"{query}\"",
       "addCreateNoteEmpty": "Create new note",
       "addEmpty": "Nothing found",

@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   quick: vi.fn(),
-  searchEvents: vi.fn()
+  searchEvents: vi.fn(),
+  projects: [] as unknown[]
 }))
 
 vi.mock('@/services/search-service', () => ({
@@ -17,15 +18,30 @@ vi.mock('@/services/search-service', () => ({
 vi.mock('@/services/calendar-service', () => ({
   calendarService: { searchEvents: (input: unknown) => mocks.searchEvents(input) }
 }))
+vi.mock('@/hooks/use-projects-list', () => ({
+  useProjectsList: () => ({ projects: mocks.projects, isLoading: false })
+}))
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
 }))
 
 import { useCanvasAddSearch } from './use-canvas-add-search'
 
+const NOTE_ROW = { id: 'n1', metadata: { type: 'note', fileType: 'markdown' } }
+const FILE_ROW = { id: 'f1', metadata: { type: 'note', fileType: 'pdf' } }
+const TASK_ROW = { id: 't1', metadata: { type: 'task' } }
+const FILED_TYPES = ['pdf', 'image', 'audio', 'video']
+
 describe('useCanvasAddSearch', () => {
   beforeEach(() => {
-    mocks.quick.mockReset().mockResolvedValue({ results: [{ id: 'n1' }], queryTimeMs: 1 })
+    // The binary-only call also returns task hits; the hook must keep its note rows only.
+    mocks.quick
+      .mockReset()
+      .mockImplementation(async (_text: string, fileTypes: string[]) =>
+        fileTypes.includes('markdown')
+          ? { results: [NOTE_ROW, TASK_ROW], queryTimeMs: 1 }
+          : { results: [FILE_ROW, TASK_ROW], queryTimeMs: 1 }
+      )
     mocks.searchEvents.mockReset().mockResolvedValue({ events: [{ id: 'e1' }] })
   })
 
@@ -50,15 +66,17 @@ describe('useCanvasAddSearch', () => {
     expect(result.current.events).toEqual([])
   })
 
-  it('queries both sources for the same query (#869)', async () => {
+  it('queries notes, filed files and events for the same query (#869)', async () => {
     // #given / #when — a real query
     const { result } = renderHook(() => useCanvasAddSearch(true, 'alpha'))
 
-    // #then — search and event search both run, both results land
-    await waitFor(() => expect(result.current.results).toEqual([{ id: 'n1' }]))
+    // #then — every source runs and its results land
+    await waitFor(() => expect(result.current.results).toEqual([NOTE_ROW, TASK_ROW]))
+    expect(result.current.files).toEqual([FILE_ROW])
     expect(result.current.events).toEqual([{ id: 'e1' }])
-    // The note file-type filter (#887) must survive alongside the event source.
+    // Notes and files are separate calls so each gets its own result cap (#874).
     expect(mocks.quick).toHaveBeenCalledWith('alpha', ['markdown'])
+    expect(mocks.quick).toHaveBeenCalledWith('alpha', FILED_TYPES)
     expect(mocks.searchEvents).toHaveBeenCalledWith({ query: 'alpha' })
     expect(result.current.loading).toBe(false)
   })
@@ -99,8 +117,8 @@ describe('useCanvasAddSearch', () => {
     rerender({ q: 'al' })
     rerender({ q: 'alp' })
 
-    // #then — one call each, for the last query only
-    await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(1))
+    // #then — one round of calls, for the last query only
+    await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(2))
     expect(mocks.quick).toHaveBeenCalledWith('alp', ['markdown'])
     expect(mocks.searchEvents).toHaveBeenCalledTimes(1)
     expect(mocks.searchEvents).toHaveBeenCalledWith({ query: 'alp' })
@@ -122,9 +140,9 @@ describe('useCanvasAddSearch', () => {
       expect(mocks.searchEvents).not.toHaveBeenCalled()
 
       // #when — the debounce window fully elapses
-      // #then — both sources are now called exactly once
+      // #then — each source is now called exactly once
       await vi.advanceTimersByTimeAsync(2)
-      expect(mocks.quick).toHaveBeenCalledTimes(1)
+      expect(mocks.quick).toHaveBeenCalledTimes(2)
       expect(mocks.searchEvents).toHaveBeenCalledTimes(1)
     } finally {
       vi.useRealTimers()
@@ -151,7 +169,7 @@ describe('useCanvasAddSearch', () => {
     const { result, rerender } = renderHook(({ q }) => useCanvasAddSearch(true, q), {
       initialProps: { q: 'stale' }
     })
-    await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(2))
     rerender({ q: 'fresh' })
 
     // #then — releasing the stale response while the newer query is still
@@ -174,6 +192,7 @@ describe('useCanvasAddSearch', () => {
     // #then — one source failing does not blank the other
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.results).toEqual([])
+    expect(result.current.files).toEqual([])
     expect(result.current.events).toEqual([{ id: 'e1' }])
   })
 
@@ -187,6 +206,6 @@ describe('useCanvasAddSearch', () => {
     // #then — the reverse direction holds too
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.events).toEqual([])
-    expect(result.current.results).toEqual([{ id: 'n1' }])
+    expect(result.current.results).toEqual([NOTE_ROW, TASK_ROW])
   })
 })
