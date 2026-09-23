@@ -96,7 +96,6 @@
     "src/main/ipc/agent-handlers.test.ts",
     "src/main/ipc/agent-lazy-handlers.test.ts",
     "src/main/ipc/bookmarks-handlers.test.ts",
-    "src/main/ipc/calendar-handlers.test.ts",
     "src/main/ipc/canvas-handlers.test.ts",
     "src/main/ipc/crypto-handlers.test.ts",
     "src/main/ipc/diagnostics-handlers.test.ts",

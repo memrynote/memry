@@ -809,8 +809,10 @@
     "copyLinks": "Kopiuj linki",
     "delete": "Usuń",
     "export": "Eksportuj",
+    "iconUpdated": "{count, plural, one {Zaktualizowano ikonę # notatki} few {Zaktualizowano ikonę # notatek} many {Zaktualizowano ikonę # notatek} other {Zaktualizowano ikonę # notatki}}",
     "move": "Przenieś",
     "selected": "wybrano",
+    "setIcon": "Ustaw ikonę",
     "tagNamePlaceholder": "Nazwa tagu",
     "toolbarAria": "Operacje zbiorcze"
   },

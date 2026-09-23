@@ -177,6 +177,39 @@ Dark mode uses lighter, more legible variants.
 
 ---
 
+## Calendar Colors
+
+Every calendar chip has the same anatomy: a 3px **rail** on the leading edge, a tinted **surface**, a title in `--cal-ink`, and a time/duration line in the hue's **meta** shade. The chip is painted through five custom properties (`--chip-rail`, `--chip-surface`, `--chip-meta`, `--chip-solid`, `--chip-solid-ink`) that both colour sources below resolve to.
+
+### Item-type hues
+
+Each item type owns one hue, mapped in `lib/event-type-colors.ts` (`EVENT_TYPE_HUES`). `note_date` shares the note hue and is drawn as a dashed outline.
+
+| Hue    | Item type           | Token family     |
+| ------ | ------------------- | ---------------- |
+| indigo | `event`             | `--cal-indigo-*` |
+| violet | `external_event`    | `--cal-violet-*` |
+| green  | `task`              | `--cal-green-*`  |
+| cyan   | `reminder`          | `--cal-cyan-*`   |
+| amber  | `snooze`            | `--cal-amber-*`  |
+| pink   | `note`, `note_date` | `--cal-pink-*`   |
+
+Each family has `-rail`, `-surface`, `-meta`, `-solid`, `-solid-ink`, declared in `base.css` for `:root` and overridden for `.dark`. They are literal per-theme values, not an alpha over `--background`: the old 50% alpha produced a different, washed-out colour on every canvas. `--cal-ink` is the chip title colour (`#1f1d1a` light, `#edebe8` dark). `EVENT_TYPE_COLORS` keeps the light rail hex for dots and swatches drawn outside a chip.
+
+`lib/event-type-colors.test.ts` holds, in every theme, the title on each surface, the meta on each surface, and the solid ink on each solid fill to 4.5:1.
+
+### Google colours
+
+Events with their own colour use Google Calendar's palette: the same 24 calendar colours Google shows, 11 of which an event can take on its own. The names, Google colour ids, and hexes live in `packages/contracts/src/calendar-colors.ts`. A Google calendar with a custom colour shows that hex. `calendarColorChipVars()` in `lib/calendar-colors.ts` maps a hex onto the chip properties:
+
+- The rail is the colour. The surface is 25% of the colour mixed into `--background`. The meta is 35% of the colour mixed into `--cal-ink`.
+- A selected chip goes solid, with black or white title ink, whichever contrasts more with that colour (`inkOnCalendarColor()`).
+- Picker swatches carry a `--border` edge, so light colours such as Banana stay visible on `--popover`.
+
+`lib/calendar-colors.test.ts` holds the resting title, the resting meta, and the selected title to 4.5:1 in every theme, for all 24 colours and for the custom-colour extremes (black, white, mid grey).
+
+---
+
 ## Sidebar
 
 | Token                          | Warm                        | White                       | Dark                     | Tailwind                          |

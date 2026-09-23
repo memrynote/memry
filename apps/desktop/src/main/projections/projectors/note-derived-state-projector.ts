@@ -3,7 +3,7 @@ import path from 'path'
 import { createLogger } from '../../lib/logger'
 import {
   backfillUnresolvedLinksByTitle,
-  deleteLinksToNote,
+  unresolveLinksToNote,
   deleteNoteCache,
   extractDateFromPath,
   getNoteCacheById,
@@ -131,7 +131,7 @@ function persistFileNote(note: Extract<NoteProjectionRecord, { kind: 'file' }>):
 }
 
 function deleteNote(db: IndexDb, noteId: string): void {
-  deleteLinksToNote(db, noteId)
+  unresolveLinksToNote(db, noteId)
   deleteNoteCache(db, noteId)
 }
 

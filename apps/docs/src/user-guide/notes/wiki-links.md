@@ -240,6 +240,20 @@ Each entry shows:
 - A timestamp
 - A click target to open the source note
 
+## Outgoing Links
+
+Below **Backlinks**, a collapsible **Outgoing links** section lists every note this note
+links to, in alphabetical order. It shows each `[[wiki link]]` once, however many times the
+note repeats it. Journal entries show the same section.
+
+Clicking an entry does exactly what clicking the link in the editor does. It opens the
+note, file, or canvas. A link whose target does not exist is not left out. It shows with
+a dashed underline and **Not created yet**, and clicking it offers to create the note, the
+same as a [broken link](#broken-links). Deleting a note turns links to it into
+**Not created yet** entries, and recreating a note with that title makes them live again.
+
+The list is read-only. To change what a note links to, edit the links in the note itself.
+
 ## Graph View
 
 The sidebar **Graph** entry opens a force-directed map of your notes and the links between them. Useful for finding orphan notes or unexpectedly large clusters.

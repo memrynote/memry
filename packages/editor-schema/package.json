@@ -10,8 +10,10 @@
     "./blocks": "./src/blocks/index.ts",
     "./code-block": "./src/code-block.ts",
     "./conformance": "./src/conformance.ts",
+    "./conformance-ydoc": "./src/conformance-ydoc.ts",
     "./note-refs": "./src/blocks/rewrite-note-refs.ts",
     "./parse-markdown": "./src/parse-markdown.ts",
+    "./registry-manifest.json": "./src/registry-manifest.json",
     "./server": "./src/server.ts"
   },
   "types": "./src/index.ts",
@@ -25,6 +27,8 @@
     "@memry/shared": "workspace:*"
   },
   "devDependencies": {
-    "@memry/typescript-config": "workspace:*"
+    "@blocknote/server-util": "0.54.2",
+    "@memry/typescript-config": "workspace:*",
+    "yjs": "^13.6.29"
   }
 }

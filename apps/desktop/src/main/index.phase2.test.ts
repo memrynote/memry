@@ -10,18 +10,20 @@ const setPathMock = vi.fn()
 const dotenvConfigMock = vi.fn(() => ({ error: undefined }))
 const registerAllHandlersMock = vi.fn()
 let globalCaptureRegistered = true
-let globalCaptureAppliedHandler: ((configuredRegistered: boolean) => void) | null = null
+interface QuickCaptureShortcutHostShape {
+  open: () => void
+  syncFallback: (configuredRegistered: boolean) => boolean
+}
+let quickCaptureShortcutHost: QuickCaptureShortcutHostShape | null = null
 // Mirrors the real module: applying the configured accelerator always reports the
 // outcome to the fallback owner in index.ts.
-const applyGlobalCaptureShortcutMock = vi.fn(() => {
-  globalCaptureAppliedHandler?.(globalCaptureRegistered)
-  return { registered: globalCaptureRegistered }
+const applyGlobalCaptureShortcutMock = vi.fn(() => ({
+  status: globalCaptureRegistered ? 'registered' : 'in_use',
+  fallbackRegistered: quickCaptureShortcutHost?.syncFallback(globalCaptureRegistered) ?? false
+}))
+const setQuickCaptureShortcutHostMock = vi.fn((host: QuickCaptureShortcutHostShape | null) => {
+  quickCaptureShortcutHost = host
 })
-const setGlobalCaptureAppliedHandlerMock = vi.fn(
-  (handler: ((configuredRegistered: boolean) => void) | null) => {
-    globalCaptureAppliedHandler = handler
-  }
-)
 const autoOpenLastVaultMock = vi.fn(async () => undefined)
 const closeVaultMock = vi.fn(async () => undefined)
 const vaultStatusChangedListeners: Array<(status: VaultStatus) => void> = []
@@ -178,7 +180,7 @@ vi.mock('./ipc', () => ({
 vi.mock('./ipc/settings-handlers', () => ({
   applyGlobalCaptureShortcut: applyGlobalCaptureShortcutMock,
   getMinimizeToTraySetting: () => false,
-  setGlobalCaptureAppliedHandler: setGlobalCaptureAppliedHandlerMock
+  setQuickCaptureShortcutHost: setQuickCaptureShortcutHostMock
 }))
 
 vi.mock('./vault', () => ({
@@ -526,7 +528,8 @@ describe('main index phase2 exports', () => {
     whenReadyMock.mockImplementation(() => new Promise<void>(() => {}))
     requestSingleInstanceLockMock.mockReturnValue(true)
     globalCaptureRegistered = true
-    globalCaptureAppliedHandler = null
+    quickCaptureShortcutHost = null
+    globalShortcutRegisterMock.mockReturnValue(true)
     getCurrentVaultPathMock.mockReturnValue(null)
     getStoredLocaleMock.mockReturnValue(null)
     getVaultsMock.mockReturnValue([])
@@ -1797,7 +1800,9 @@ describe('main index phase2 exports', () => {
 
     expect(fallbackRegistrations()).toHaveLength(1)
     // Without this wiring a later re-apply can never restore the fallback.
-    expect(setGlobalCaptureAppliedHandlerMock).toHaveBeenCalledWith(expect.any(Function))
+    expect(setQuickCaptureShortcutHostMock).toHaveBeenCalledWith(
+      expect.objectContaining({ open: expect.any(Function), syncFallback: expect.any(Function) })
+    )
 
     // Two further saves while the configured accelerator is still taken.
     applyGlobalCaptureShortcutMock()
@@ -1828,6 +1833,53 @@ describe('main index phase2 exports', () => {
     globalShortcutUnregisterMock.mockClear()
     applyGlobalCaptureShortcutMock()
     expect(globalShortcutUnregisterMock).not.toHaveBeenCalled()
+  })
+
+  it('opens the quick capture window when the configured accelerator fires', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+    const windowsBefore = browserWindows.length
+
+    quickCaptureShortcutHost?.open()
+
+    expect(browserWindows).toHaveLength(windowsBefore + 1)
+    expect(BrowserWindowMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ width: 480, height: 82, alwaysOnTop: true })
+    )
+  })
+
+  it('tells settings when another app owns the default quick-capture shortcut', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    globalCaptureRegistered = false
+    globalShortcutRegisterMock.mockReturnValue(false)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    expect(quickCaptureShortcutHost?.syncFallback(false)).toBe(false)
+
+    globalShortcutRegisterMock.mockReturnValue(true)
+    expect(quickCaptureShortcutHost?.syncFallback(false)).toBe(true)
+  })
+
+  it('applies the saved global capture binding once the vault opens', async () => {
+    // Keyboard settings live in the vault database, which is still closed when the
+    // startup apply runs, so that apply can only ever register the fallback.
+    whenReadyMock.mockResolvedValue(undefined)
+    globalCaptureRegistered = false
+
+    await importMainModule()
+    await flushReadyWork()
+    expect(globalShortcutUnregisterMock).not.toHaveBeenCalledWith('CommandOrControl+Shift+Space')
+
+    globalCaptureRegistered = true
+    for (const listener of [...vaultStatusChangedListeners]) {
+      listener({ isOpen: true, path: '/vault', isIndexing: false, indexProgress: 0, error: null })
+    }
+
+    expect(globalShortcutUnregisterMock).toHaveBeenCalledWith('CommandOrControl+Shift+Space')
   })
 
   it('loads quick capture from the dev renderer URL and wires load-failure logging', async () => {

@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Elimina dall'account",
       "deleteVaultFailed": "Impossibile eliminare il vault",
       "deleteVaultTitle": "Eliminare “{name}” dal tuo account?",
-      "removeVaultTitle": "Rimuovere “{name}” dalla lista?"
+      "removeVaultTitle": "Rimuovere “{name}” dalla lista?",
+      "missing": "Cartella non trovata"
     },
     "componentsWindowControls": {
       "searchK": "Cerca (⌘K)",

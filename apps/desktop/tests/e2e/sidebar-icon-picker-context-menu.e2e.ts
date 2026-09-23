@@ -7,11 +7,12 @@
  * (sidebar-icon-picker-scroll, sidebar-icon-picker-viewport) open the panel by
  * clicking the icon-button TRIGGER, so neither one exercises this entry point.
  *
- * The suspected race is a Radix one: the context menu unmounts and restores
- * focus to its trigger a tick after `onSelect` ran, and the popover the item
- * just opened is a child of that same trigger subtree — invisible to jsdom,
- * which runs neither the exit animation nor the focus-restore timer, so only a
- * live Electron run can answer it.
+ * The cause (#2340): the chosen menu stays mounted for its exit animation and
+ * its items still answer the pointer, so any pointer event reaching it pulls
+ * focus back into the menu and the popover closes as an outside interaction.
+ * One zero-distance pointermove after the click is enough, which is likely why
+ * Windows, with its trailing mouse move after a click, hit it on nearly every open. `page.click()` parks the mouse, so both
+ * specs keep the pointer moving after choosing the item, as a user does.
  *
  * NOTE ON THE ASSERTIONS: a bare `expect(picker).toBeVisible()` resolves on the
  * first frame and would pass even if the panel closes one frame later, i.e. it
@@ -28,6 +29,23 @@ const PICKER = 'Emoji and icon picker' // notes:menus.emoji.aria
 
 /** Long enough to cover the Radix exit animation AND the focus-restore tick. */
 const FOCUS_RESTORE_SETTLE_MS = 800
+
+/**
+ * Click the item, then keep the pointer moving across the fading menu, as in
+ * sidebar-folder-rename.e2e.ts. The first move is zero-distance, like the
+ * trailing mouse move Windows delivers after a click.
+ */
+async function clickMenuItemAndMoveOn(page: Page, label: string): Promise<void> {
+  const item = page.getByRole('menuitem', { name: label, exact: true })
+  await expect(item).toBeVisible()
+  const box = await item.boundingBox()
+  await item.click()
+  if (!box) return
+  for (let dy = 0; dy <= 48; dy += 6) {
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + dy)
+    await page.waitForTimeout(20)
+  }
+}
 
 async function openVault(page: Page): Promise<void> {
   await page
@@ -98,7 +116,7 @@ test.describe('Icon picker opened from a row context menu', () => {
     await row.click({ button: 'right' })
     const menu = page.locator('[data-testid="canvas-tree-menu"]')
     await expect(menu).toBeVisible()
-    await menu.getByRole('menuitem', { name: 'Set icon', exact: true }).click()
+    await clickMenuItemAndMoveOn(page, 'Set icon')
 
     await expectPickerToStayOpen(page)
   })
@@ -123,9 +141,7 @@ test.describe('Icon picker opened from a row context menu', () => {
     await expect(row).toBeVisible({ timeout: 30_000 })
 
     await row.click({ button: 'right' })
-    const item = page.getByRole('menuitem', { name: 'Set Icon', exact: true })
-    await expect(item).toBeVisible()
-    await item.click()
+    await clickMenuItemAndMoveOn(page, 'Set Icon')
 
     await expectPickerToStayOpen(page)
   })

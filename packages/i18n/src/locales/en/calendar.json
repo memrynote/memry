@@ -79,7 +79,9 @@
     "project": "Project",
     "no-project": "No project",
     "remove-from-project": "Remove from {project}",
-    "project-update-failed": "Could not update the event's project"
+    "project-update-failed": "Could not update the event's project",
+    "color": "Color",
+    "default-color": "Default color"
   },
   "delete-dialog": {
     "title": "Delete event?",
@@ -135,6 +137,7 @@
     "visibility": "Visibility:",
     "optional": "Optional",
     "join-meeting": "Join meeting",
+    "video-call": "Video call",
     "response": {
       "accepted": "Accepted",
       "declined": "Declined",
@@ -171,8 +174,27 @@
       "reschedule": "Reschedule"
     }
   },
+  "chip": {
+    "complete-task": "Complete {title}",
+    "task-completed": "Task completed",
+    "could-not-complete": "Could not complete task",
+    "duration-minutes": "{minutes}m",
+    "duration-hours": "{hours}h",
+    "duration-hours-minutes": "{hours}h {minutes}m"
+  },
+  "event-card": {
+    "kind": "Event",
+    "close": "Close"
+  },
   "task-popover": {
     "title-fallback": "Task details",
+    "kind": "Task",
+    "open": "Open",
+    "complete": "Complete",
+    "more-actions": "More actions",
+    "move": "Move",
+    "later": "Later",
+    "next-week": "Next week",
     "open-task": "Open task",
     "source-note": "Source note",
     "reschedule": "Reschedule",
@@ -297,5 +319,22 @@
     "undo": {
       "reschedule": "Reschedule \"{title}\""
     }
+  },
+  "calendar-color": {
+    "tomato": "Tomato",
+    "flamingo": "Flamingo",
+    "tangerine": "Tangerine",
+    "banana": "Banana",
+    "sage": "Sage",
+    "basil": "Basil",
+    "peacock": "Peacock",
+    "blueberry": "Blueberry",
+    "lavender": "Lavender",
+    "grape": "Grape",
+    "graphite": "Graphite"
+  },
+  "subscribedEvent": {
+    "kind": "Subscribed calendar",
+    "readOnly": "Read-only. Change it in the app that shares this calendar."
   }
 }

@@ -809,8 +809,10 @@
     "copyLinks": "링크 복사",
     "delete": "삭제",
     "export": "내보내기",
+    "iconUpdated": "{count, plural, other {노트 #개의 아이콘을 업데이트함}}",
     "move": "이동",
     "selected": "선택됨",
+    "setIcon": "아이콘 설정",
     "tagNamePlaceholder": "태그 이름",
     "toolbarAria": "일괄 작업"
   },

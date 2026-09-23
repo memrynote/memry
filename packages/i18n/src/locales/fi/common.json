@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Poista tililtä",
       "deleteVaultFailed": "Holvin poistaminen epäonnistui",
       "deleteVaultTitle": "Poistetaanko ”{name}” tililtäsi?",
-      "removeVaultTitle": "Poistetaanko ”{name}” listalta?"
+      "removeVaultTitle": "Poistetaanko ”{name}” listalta?",
+      "missing": "Kansiota ei löydy"
     },
     "componentsWindowControls": {
       "searchK": "Haku (⌘K)",

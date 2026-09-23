@@ -256,6 +256,10 @@ Link a Google account to show external events alongside vault events on the [Cal
 
 **Show memrynote events in Google Calendar** controls sync direction. Leave it on for two-way sync, or turn it off for [one-way (inbound only)](/user-guide/calendar#sync-direction) — Google events still appear in memrynote, but memrynote events are not pushed to Google.
 
+### Subscribed Calendars
+
+Paste a calendar's shared link (ICS or `webcal://`) and press **Subscribe** to add it to the [Calendar](/user-guide/calendar#subscribed-calendars) as a read-only calendar. Each subscription shows its host, when it last updated, and why the last update failed, with **Refresh** and **Remove** buttons.
+
 ### Week Start
 
 **Week Start** — Sunday or Monday. Sets the first day of the week everywhere in memrynote: the Calendar month, year, and mini views, the sidebar mini-calendar, task date pickers, task week filters, and relative date labels.
@@ -312,9 +316,11 @@ Zoom is the one Appearance setting that does **not** sync to your other devices,
 
 ### Global Capture
 
-Set a system-wide hotkey to focus the memrynote window from anywhere. macOS requires Accessibility permission.
+Set a system-wide hotkey that opens quick capture from any app. macOS requires Accessibility permission.
 
-If your chosen hotkey is already claimed by another app, memrynote keeps its built-in quick capture hotkey (`Cmd`/`Ctrl` + `Shift` + `Space`) registered as a fallback, so quick capture keeps working. Saving keyboard settings re-checks this, and releases the fallback once your own hotkey registers successfully.
+Until you set one, the built-in hotkey `Cmd`/`Ctrl` + `Shift` + `Space` opens quick capture. memrynote releases it once your own hotkey registers.
+
+If another app already holds the combination you press, the Global Capture row says so, nothing is saved, and your previous hotkey keeps working. The row also tells you when another app holds the built-in hotkey at launch, or when a saved hotkey cannot be used as a global shortcut. macOS does not report conflicts with other apps, so on a Mac a conflicting hotkey can register and still fire in the other app.
 
 ### Shortcut List
 

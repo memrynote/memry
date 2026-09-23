@@ -29,7 +29,7 @@ import {
   setNoteLinks,
   getOutgoingLinks,
   getIncomingLinks,
-  deleteLinksToNote,
+  unresolveLinksToNote,
   resolveNoteByTitle,
   getInboundLinkSourceIds,
   bulkInsertNotes,
@@ -359,8 +359,11 @@ describe('notes cache queries', () => {
     expect(getInboundLinkSourceIds(db, 'no-such-note', 'UNRESOLVED')).toEqual(['note-16'])
     expect(getInboundLinkSourceIds(db, 'no-such-note', 'Target')).toEqual([])
 
-    deleteLinksToNote(db, 'note-17')
+    unresolveLinksToNote(db, 'note-17')
     expect(getIncomingLinks(db, 'note-17')).toHaveLength(0)
+    expect(getOutgoingLinks(db, 'note-16')).toEqual(
+      expect.arrayContaining([{ sourceId: 'note-16', targetId: null, targetTitle: 'Target' }])
+    )
   })
 
   it('bulk inserts notes and clears cache', () => {

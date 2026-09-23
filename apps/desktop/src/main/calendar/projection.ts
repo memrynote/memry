@@ -1,12 +1,18 @@
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, lt, ne, or, sql } from 'drizzle-orm'
-import type {
-  CalendarProjectionBinding,
-  CalendarProjectionEditability,
-  CalendarProjectionItem,
-  CalendarProjectionSourceMeta,
-  CalendarRangeResponse,
-  GetCalendarRangeInput
+import {
+  ICS_CALENDAR_PROVIDER,
+  type CalendarProjectionBinding,
+  type CalendarProjectionEditability,
+  type CalendarProjectionItem,
+  type CalendarProjectionSourceMeta,
+  type CalendarRangeResponse,
+  type GetCalendarRangeInput
 } from '@memry/contracts/calendar-api'
+import {
+  calendarColorHex,
+  calendarDisplayHex,
+  calendarEventColorFromColorId
+} from '@memry/contracts/calendar-colors'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
@@ -115,7 +121,7 @@ function externalSource(row: typeof calendarSources.$inferSelect): CalendarProje
     provider: row.provider,
     calendarSourceId: row.id,
     title: row.title,
-    color: row.color ?? null,
+    color: calendarDisplayHex(row.color),
     kind: row.kind,
     isMemryManaged: row.isMemryManaged
   }
@@ -147,6 +153,7 @@ function loadMemryEvents(db: DataDb, input: GetCalendarRangeInput): CalendarProj
     'event',
     rows.map((row) => row.id)
   )
+  const calendarColors = rows.length > 0 ? loadGoogleCalendarColors(db) : new Map<string, string>()
 
   const editability: CalendarProjectionEditability = {
     canMove: true,
@@ -169,8 +176,46 @@ function loadMemryEvents(db: DataDb, input: GetCalendarRangeInput): CalendarProj
     editability,
     source: nativeSource('memrynote'),
     binding: bindings.get(row.id) ?? null,
-    snoozeOffsetMinutes: null
+    snoozeOffsetMinutes: null,
+    ...eventColors(
+      row.colorId,
+      calendarColors.get(bindings.get(row.id)?.remoteCalendarId ?? row.targetCalendarId ?? '')
+    )
   }))
+}
+
+/**
+ * An event shows its own colour, or else the colour of the calendar it lives
+ * on, as Google Calendar does.
+ */
+function eventColors(
+  colorId: string | null,
+  calendarHex: string | null | undefined
+): Pick<CalendarProjectionItem, 'color' | 'displayColor'> {
+  const color = calendarEventColorFromColorId(colorId)
+  return { color, displayColor: color ? calendarColorHex(color) : (calendarHex ?? null) }
+}
+
+/** Display colour of each synced Google calendar, keyed by its Google calendar id. */
+function loadGoogleCalendarColors(db: DataDb): Map<string, string> {
+  const rows = db
+    .select({ remoteId: calendarSources.remoteId, color: calendarSources.color })
+    .from(calendarSources)
+    .where(
+      and(
+        eq(calendarSources.provider, 'google'),
+        eq(calendarSources.kind, 'calendar'),
+        isNull(calendarSources.archivedAt)
+      )
+    )
+    .all()
+
+  const colors = new Map<string, string>()
+  for (const row of rows) {
+    const hex = calendarDisplayHex(row.color)
+    if (hex) colors.set(row.remoteId, hex)
+  }
+  return colors
 }
 
 function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjectionItem[] {
@@ -445,11 +490,19 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
     .orderBy(asc(calendarExternalEvents.startAt))
     .all()
 
-  const editability: CalendarProjectionEditability = {
+  // Google events become editable by promotion into a memrynote event. A
+  // subscribed feed has no write path at all, so its events are read-only.
+  const promotable: CalendarProjectionEditability = {
     canMove: true,
     canResize: true,
     canEditText: true,
     canDelete: true
+  }
+  const readOnly: CalendarProjectionEditability = {
+    canMove: false,
+    canResize: false,
+    canEditText: false,
+    canDelete: false
   }
 
   return rows.map(({ event, source }) => ({
@@ -463,10 +516,11 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
     isAllDay: event.isAllDay,
     timezone: event.timezone ?? source.timezone ?? LOCAL_TIMEZONE,
     visualType: 'external_event',
-    editability,
+    editability: source.provider === ICS_CALENDAR_PROVIDER ? readOnly : promotable,
     source: externalSource(source),
     binding: null,
-    snoozeOffsetMinutes: null
+    snoozeOffsetMinutes: null,
+    ...eventColors(event.colorId ?? null, calendarDisplayHex(source.color))
   }))
 }
 

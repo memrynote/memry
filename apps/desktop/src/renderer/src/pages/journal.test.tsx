@@ -138,6 +138,7 @@ vi.mock('@/hooks/use-notes-query', () => ({
         via: { kind: 'property', propertyName: 'father' }
       }
     ],
+    outgoing: [{ sourceId: 'j2026-01-15', targetId: 'note-2', targetTitle: 'Linked Note' }],
     isLoading: false
   }),
   useNoteTagsQuery: () => ({
@@ -487,6 +488,19 @@ describe('JournalPage', () => {
     // sitting earlier in the document.
     expect(scrolledInto).toHaveLength(1)
     expect(scrolledInto[0]?.hasAttribute('data-outside-pane')).toBe(false)
+  })
+
+  it("opens an entry's outgoing link through the wiki-link resolver", async () => {
+    render(<JournalPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Linked Note' }))
+
+    await waitFor(() =>
+      expect(mocks.openTab).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'note', entityId: 'note-2' })
+      )
+    )
+    expect(mocks.resolveWikiLink).toHaveBeenCalledWith('Linked Note')
   })
 
   it('jumps to a heading inside the entry for [[#Heading]] instead of opening a tab', () => {

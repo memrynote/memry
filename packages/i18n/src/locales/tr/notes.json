@@ -809,8 +809,10 @@
     "copyLinks": "Bağlantıları kopyala",
     "delete": "Sil",
     "export": "Dışa aktar",
+    "iconUpdated": "{count, plural, one {# notun simgesi güncellendi} other {# notun simgesi güncellendi}}",
     "move": "Taşı",
     "selected": "seçildi",
+    "setIcon": "Simge ayarla",
     "tagNamePlaceholder": "Etiket adı",
     "toolbarAria": "Toplu işlemler"
   },

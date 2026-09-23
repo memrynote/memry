@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest'
-import { POPOVER_WIDTH, computePopoverPosition } from './popover-position'
+import { act, renderHook } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
+import {
+  POPOVER_WIDTH,
+  computePopoverPosition,
+  useAnchoredPopoverPosition
+} from './popover-position'
 
 const VIEWPORT = { width: 1550, height: 900 }
 
@@ -59,5 +64,77 @@ describe('computePopoverPosition', () => {
     )
     expect(top).toBeGreaterThanOrEqual(8)
     expect(top).toBeLessThanOrEqual(VIEWPORT.height - 240)
+  })
+
+  it('slides up so the bottom edge stays on screen for a chip near the window bottom', () => {
+    const { top } = withViewport(() =>
+      computePopoverPosition({ x: 430, y: 700, width: 125, height: 48 }, { estimatedHeight: 560 })
+    )
+    expect(top + 560).toBeLessThanOrEqual(VIEWPORT.height - 8)
+  })
+
+  it('pins to the top margin and caps maxHeight when taller than the window', () => {
+    const { top, maxHeight } = computePopoverPosition(
+      { x: 430, y: 300, width: 125, height: 48 },
+      { estimatedHeight: 800, viewport: { width: 1200, height: 500 } }
+    )
+    expect(top).toBe(8)
+    expect(maxHeight).toBe(500 - 16)
+  })
+})
+
+describe('useAnchoredPopoverPosition', () => {
+  const originalHeight = window.innerHeight
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerHeight', { value: originalHeight, configurable: true })
+  })
+
+  function setViewportHeight(height: number): void {
+    Object.defineProperty(window, 'innerHeight', { value: height, configurable: true })
+  }
+
+  function fakePopover(contentHeight: number): HTMLDivElement {
+    const node = document.createElement('div')
+    Object.defineProperty(node, 'scrollHeight', { value: contentHeight })
+    Object.defineProperty(node, 'offsetHeight', { value: contentHeight })
+    Object.defineProperty(node, 'clientHeight', { value: contentHeight })
+    return node
+  }
+
+  const anchor = { x: 430, y: 300, width: 125, height: 48 }
+
+  it('uses the measured height, not the estimate, to keep the popover on screen', () => {
+    setViewportHeight(700)
+    const { result } = renderHook(() =>
+      useAnchoredPopoverPosition(anchor, { estimatedHeight: 200 })
+    )
+    expect(result.current.style.top).toBe(300)
+
+    act(() => result.current.ref(fakePopover(600)))
+
+    expect(result.current.style.top).toBe(700 - 8 - 600)
+    expect(result.current.style.overflowY).toBeUndefined()
+  })
+
+  it('scrolls when the window is too short, then expands again after the window grows', () => {
+    setViewportHeight(400)
+    const { result } = renderHook(() =>
+      useAnchoredPopoverPosition(anchor, { estimatedHeight: 200 })
+    )
+    act(() => result.current.ref(fakePopover(600)))
+
+    expect(result.current.style.top).toBe(8)
+    expect(result.current.style.maxHeight).toBe(400 - 16)
+    expect(result.current.style.overflowY).toBe('auto')
+
+    act(() => {
+      setViewportHeight(1000)
+      window.dispatchEvent(new Event('resize'))
+    })
+
+    expect(result.current.style.top).toBe(300)
+    expect(result.current.style.maxHeight).toBe(1000 - 16)
+    expect(result.current.style.overflowY).toBeUndefined()
   })
 })

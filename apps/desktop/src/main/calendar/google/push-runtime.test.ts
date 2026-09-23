@@ -16,7 +16,8 @@ const { loggerMock, runtimeMocks } = vi.hoisted(() => ({
     patchToServer: vi.fn(),
     postToServer: vi.fn(),
     requireDatabase: vi.fn(),
-    resolveDefaultGoogleAccountId: vi.fn()
+    resolveDefaultGoogleAccountId: vi.fn(),
+    resolveSyncServerUrl: vi.fn()
   }
 }))
 
@@ -28,6 +29,10 @@ vi.mock('../../sync/http-client', () => ({
   deleteFromServer: runtimeMocks.deleteFromServer,
   patchToServer: runtimeMocks.patchToServer,
   postToServer: runtimeMocks.postToServer
+}))
+
+vi.mock('@memry/sync-client/sync-server-url', () => ({
+  resolveSyncServerUrl: runtimeMocks.resolveSyncServerUrl
 }))
 
 vi.mock('../../sync/token-manager', () => ({
@@ -83,8 +88,8 @@ describe('createGooglePushRuntime (Task 11 — lifecycle wiring)', () => {
     vi.clearAllMocks()
     __testing_resetGooglePushRuntime()
     delete process.env.CALENDAR_PUSH_ENABLED
-    delete process.env.MEMRY_WEBHOOK_HMAC_KEY
     delete process.env.MEMRY_CALENDAR_WEBHOOK_URL
+    runtimeMocks.resolveSyncServerUrl.mockReturnValue('https://sync.memrynote.com')
     runtimeMocks.requireDatabase.mockReturnValue({ db: true })
     runtimeMocks.getValidAccessToken.mockResolvedValue('token-1')
     runtimeMocks.createGoogleCalendarClient.mockReturnValue({ client: true })
@@ -99,7 +104,6 @@ describe('createGooglePushRuntime (Task 11 — lifecycle wiring)', () => {
   afterEach(() => {
     __testing_resetGooglePushRuntime()
     delete process.env.CALENDAR_PUSH_ENABLED
-    delete process.env.MEMRY_WEBHOOK_HMAC_KEY
     delete process.env.MEMRY_CALENDAR_WEBHOOK_URL
   })
 
@@ -255,16 +259,40 @@ describe('createGooglePushRuntime (Task 11 — lifecycle wiring)', () => {
   })
 
   describe('production runtime wiring', () => {
-    it('returns null while the push feature flag or HMAC key is missing', () => {
-      process.env.CALENDAR_PUSH_ENABLED = '1'
+    it('is on by default and derives the webhook from the sync server URL', () => {
+      // #given a packaged-style env: only SYNC_SERVER_URL, no push-specific config
+      getOrInitGooglePushRuntime({ onActiveCountChange: vi.fn() })
+
+      // #then
+      const opts = runtimeMocks.createGoogleChannelManager.mock.calls[0][0]
+      expect(opts.webhookUrl).toBe('https://sync.memrynote.com/webhooks/google-calendar')
+      expect(opts.featureEnabled).toBe(true)
+      expect(opts).not.toHaveProperty('hashToken')
+    })
+
+    it('returns null when CALENDAR_PUSH_ENABLED=0 (kill switch)', () => {
+      process.env.CALENDAR_PUSH_ENABLED = '0'
 
       expect(getOrInitGooglePushRuntime({ onActiveCountChange: vi.fn() })).toBeNull()
       expect(getGooglePushRuntime()).toBeNull()
     })
 
+    it('returns null when Google cannot reach the webhook (non-https sync server)', () => {
+      runtimeMocks.resolveSyncServerUrl.mockReturnValue('http://localhost:8787')
+
+      expect(getOrInitGooglePushRuntime({ onActiveCountChange: vi.fn() })).toBeNull()
+    })
+
+    it('returns null when the sync server URL is not configured', () => {
+      runtimeMocks.resolveSyncServerUrl.mockImplementation(() => {
+        throw new Error('SYNC_SERVER_URL environment variable is not configured')
+      })
+
+      expect(getOrInitGooglePushRuntime({ onActiveCountChange: vi.fn() })).toBeNull()
+    })
+
     it('builds one production runtime with env webhook, server auth, and channel helpers', async () => {
-      process.env.CALENDAR_PUSH_ENABLED = '1'
-      process.env.MEMRY_WEBHOOK_HMAC_KEY = 'secret-key'
+      runtimeMocks.resolveSyncServerUrl.mockReturnValue('http://localhost:8787')
       process.env.MEMRY_CALENDAR_WEBHOOK_URL = ' https://example.test/hook '
       const onActiveCountChange = vi.fn()
 
@@ -295,7 +323,6 @@ describe('createGooglePushRuntime (Task 11 — lifecycle wiring)', () => {
         '/calendar/channels/ch%2F1',
         'token-1'
       )
-      await expect(opts.hashToken('plain-token')).resolves.toHaveLength(64)
       expect(opts.generateToken()).toHaveLength(64)
       expect(opts.generateChannelId()).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -303,8 +330,6 @@ describe('createGooglePushRuntime (Task 11 — lifecycle wiring)', () => {
     })
 
     it('throws on required server auth but skips best-effort delete without a token', async () => {
-      process.env.CALENDAR_PUSH_ENABLED = '1'
-      process.env.MEMRY_WEBHOOK_HMAC_KEY = 'secret-key'
       runtimeMocks.getValidAccessToken.mockResolvedValue(null)
 
       getOrInitGooglePushRuntime({ onActiveCountChange: vi.fn() })

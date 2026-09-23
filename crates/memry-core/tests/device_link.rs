@@ -417,11 +417,15 @@ async fn a_completed_link_stores_the_master_key_and_returns_the_vaults() {
             vaults: vec![
                 VaultSummary {
                     id: "vault-a".into(),
-                    name: None
+                    name: None,
+                    encrypted_name: None,
+                    name_nonce: None,
                 },
                 VaultSummary {
                     id: "vault-b".into(),
-                    name: None
+                    name: None,
+                    encrypted_name: None,
+                    name_nonce: None,
                 },
             ]
         }

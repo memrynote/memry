@@ -809,8 +809,10 @@
     "copyLinks": "Salin pautan",
     "delete": "Padam",
     "export": "Eksport",
+    "iconUpdated": "{count, plural, other {Ikon dikemas kini pada # nota}}",
     "move": "Alih",
     "selected": "dipilih",
+    "setIcon": "Tetapkan ikon",
     "tagNamePlaceholder": "Nama tag",
     "toolbarAria": "Tindakan pukal"
   },

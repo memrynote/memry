@@ -93,7 +93,9 @@ newer). Pairing and all capture modes work the same on each.
 
 The extension talks to the desktop app over a local loopback connection — nothing leaves your
 machine. The first capture prompts memrynote to show an **Allow / Deny** pairing dialog; approving it
-issues the extension a token. Until paired, the popup shows a needs-pairing state.
+issues the extension a token. Until paired, the popup shows a needs-pairing state. If you choose
+**Deny**, the popup says the pairing was declined right away instead of waiting; send again to get a
+new prompt.
 
 ### Capture modes
 
@@ -142,10 +144,18 @@ shortcut can't show a permission prompt.)
 
 ### Offline queue
 
-If memrynote is closed when you capture, the clip is saved to a local queue instead of being lost.
+If memrynote is closed when you capture, the popup offers to open it. The clip is saved to a local
+queue before the app opens, because the browser closes the popup as soon as memrynote takes focus.
+The extension then waits for memrynote, pairs if needed, and sends the clip. If the app takes longer
+than about 20 seconds to open your vault, the clip stays queued.
+
 The toolbar badge shows the pending count. The extension retries about once a minute and, the moment
 memrynote is open again, the queued clips sync into your inbox and the badge clears. The popup shows
 "Saved offline" so you know it's queued, not dropped.
+
+If memrynote is open but no vault is (the vault picker is showing), clips stay queued too. The popup
+says the clip lands in your inbox once a vault is open. A PDF clip can't be queued, so the popup asks
+you to open a vault and save again.
 
 ### Add & open
 

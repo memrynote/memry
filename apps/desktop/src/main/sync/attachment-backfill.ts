@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { getNoteMetadataById } from '@memry/storage-data'
+import { noteMetadata } from '@memry/db-schema/data-schema'
 import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { getCurrentVaultPath } from '../store'
@@ -45,12 +46,12 @@ export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
   let scanned = 0
   let queued = 0
 
-  let entries: fs.Dirent[]
+  let entries: fs.Dirent[] = []
   try {
     entries = fs.readdirSync(attachmentsRoot, { withFileTypes: true })
   } catch {
-    // No attachments folder yet is the normal state of a fresh vault.
-    return { scanned, queued }
+    // No attachments folder yet is the normal state of a fresh vault. The
+    // bodies can still embed files from elsewhere, so the scan goes on.
   }
 
   for (const entry of entries) {
@@ -97,8 +98,130 @@ export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
     }
   }
 
+  const referenced = backfillReferencedFilesWith(deps)
+  scanned += referenced.scanned
+  queued += referenced.queued
+
   if (queued > 0) {
     log.info('Queued attachments that never reached the server', { notes: scanned, files: queued })
+  }
+  return { scanned, queued }
+}
+
+/** `![alt](url)` — an image or media embed. */
+const EMBED_RE = /!\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g
+/** `<!-- file:{"url":…} -->` — the file block marker. */
+const FILE_MARKER_RE = /<!--\s*file:(\{.*?\})\s*-->/g
+/** `http:`, `data:`, `memry-file:` — anything with a scheme is not a vault path. */
+const HAS_SCHEME = /^[a-z][a-z0-9+.-]*:/i
+
+/**
+ * The vault-relative files a note body embeds, as absolute paths.
+ *
+ * The same two url shapes `resolveAttachment` reads: note-relative, and the
+ * root-relative `attachments/<noteId>/…` form. A url with a scheme or a leading
+ * slash is not a vault file, and a path that climbs out of the vault is dropped
+ * rather than resolved.
+ */
+export function referencedVaultFiles(
+  markdown: string,
+  vaultPath: string,
+  notePath: string,
+  noteId: string
+): string[] {
+  const urls: string[] = []
+  for (const match of markdown.matchAll(EMBED_RE)) urls.push(match[1])
+  for (const match of markdown.matchAll(FILE_MARKER_RE)) {
+    try {
+      const marker = JSON.parse(match[1]) as { url?: unknown }
+      if (typeof marker.url === 'string') urls.push(marker.url)
+    } catch {
+      // A marker that is not JSON is not a file block; leave it alone.
+    }
+  }
+
+  const root = path.resolve(vaultPath)
+  const noteDir = path.dirname(notePath)
+  const found = new Set<string>()
+  for (const raw of urls) {
+    if (HAS_SCHEME.test(raw) || raw.startsWith('/') || raw.startsWith('\\')) continue
+    let decoded = raw
+    try {
+      decoded = decodeURIComponent(raw)
+    } catch {
+      // Not percent-encoded after all; the raw spelling is the path.
+    }
+    const normalized = decoded.replace(/\\/g, '/')
+    const rootRelative =
+      normalized === `attachments/${noteId}` || normalized.startsWith(`attachments/${noteId}/`)
+    const absolute = path.resolve(root, rootRelative ? '' : noteDir, normalized)
+    const relative = path.relative(root, absolute)
+    if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) continue
+    found.add(absolute)
+  }
+  return [...found]
+}
+
+/**
+ * Queue the files a note's body embeds from anywhere in the vault.
+ *
+ * The folder scan above only sees `attachments/<noteId>/`, which is where
+ * desktop's own editor stores a file. A note written elsewhere — imported from
+ * another app, or a markdown file that points at `images/photo.png` — embeds
+ * files that live anywhere, and none of them was ever offered to the server,
+ * so every other device drew a placeholder for a picture it could never
+ * fetch. Same rule as the folder scan and for the same reason: only a note
+ * with no recorded references is considered, because an attachment id is
+ * random per upload and there is no asking whether a given file is already
+ * up there.
+ */
+function backfillReferencedFilesWith(deps: AttachmentBackfillDeps): {
+  scanned: number
+  queued: number
+} {
+  let scanned = 0
+  let queued = 0
+  let notes: Array<typeof noteMetadata.$inferSelect>
+  try {
+    notes = deps.db.select().from(noteMetadata).all()
+  } catch (error) {
+    log.warn('Note metadata unreadable during referenced-file backfill', { error })
+    return { scanned, queued }
+  }
+
+  const ownFolderRoot = path.join(path.resolve(deps.vaultPath), 'attachments')
+  for (const note of notes) {
+    if (note.localOnly) continue
+    if ((note.attachmentReferences ?? []).length > 0) continue
+    // A binary note's file IS the attachment; it has no body to scan.
+    if (!note.path.endsWith('.md')) continue
+    let markdown: string
+    try {
+      markdown = fs.readFileSync(path.join(deps.vaultPath, note.path), 'utf8')
+    } catch {
+      continue
+    }
+    const files = referencedVaultFiles(markdown, deps.vaultPath, note.path, note.id).filter(
+      // The folder scan owns this note's own folder; queuing it twice is
+      // harmless (an upsert) but says the same thing twice.
+      (file) => !file.startsWith(path.join(ownFolderRoot, note.id) + path.sep)
+    )
+    if (files.length === 0) continue
+    scanned++
+    for (const file of files) {
+      try {
+        if (!fs.statSync(file).isFile()) continue
+      } catch {
+        // Referenced and not on this device: nothing to upload.
+        continue
+      }
+      try {
+        enqueueUpload(deps.db, note.id, file)
+        queued++
+      } catch (error) {
+        log.warn('Failed to queue a referenced file', { noteId: note.id, error })
+      }
+    }
   }
   return { scanned, queued }
 }

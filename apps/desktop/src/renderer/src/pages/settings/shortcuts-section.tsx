@@ -7,7 +7,7 @@ import { Search, RotateCcw, X, AlertTriangle, Info } from '@/lib/icons'
 import { useKeyboardSettings } from '@/hooks/use-keyboard-settings'
 import { trackRendererLog } from '@/lib/telemetry-diagnostics'
 import { toast } from 'sonner'
-import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
+import type { GlobalCaptureResult, ShortcutBinding } from '@memry/contracts/settings-schemas'
 import type { ShortcutBindingDTO } from '../../../../preload/index.d'
 import {
   SHORTCUT_REGISTRY,
@@ -211,6 +211,11 @@ function ShortcutRow({
 const PLATFORM = window.navigator.platform.toLowerCase()
 const IS_MACOS = PLATFORM.includes('mac')
 
+const DEFAULT_GLOBAL_CAPTURE: ShortcutBindingDTO = {
+  key: 'Space',
+  modifiers: { meta: true, shift: true }
+}
+
 function getGlobalCaptureParts(binding: ShortcutBindingDTO): string[] {
   const { key, modifiers } = binding
   const parts: string[] = []
@@ -222,34 +227,118 @@ function getGlobalCaptureParts(binding: ShortcutBindingDTO): string[] {
   return parts
 }
 
-function GlobalCaptureRow({
-  binding,
-  onSave
-}: {
+function formatGlobalCapture(binding: ShortcutBindingDTO): string {
+  return getGlobalCaptureParts(binding).join(IS_MACOS ? '' : '+')
+}
+
+const ACCELERATOR_KEYS_BY_CODE: Record<string, string> = {
+  Space: 'Space',
+  Enter: 'Enter',
+  Tab: 'Tab',
+  Backspace: 'Backspace',
+  Delete: 'Delete',
+  ArrowUp: 'Up',
+  ArrowDown: 'Down',
+  ArrowLeft: 'Left',
+  ArrowRight: 'Right',
+  Home: 'Home',
+  End: 'End',
+  PageUp: 'PageUp',
+  PageDown: 'PageDown',
+  Minus: '-',
+  Equal: '=',
+  BracketLeft: '[',
+  BracketRight: ']',
+  Backslash: '\\',
+  Semicolon: ';',
+  Quote: "'",
+  Comma: ',',
+  Period: '.',
+  Slash: '/',
+  Backquote: '`'
+}
+
+/**
+ * Electron accelerators only accept ASCII key names, and `KeyboardEvent.key`
+ * breaks that: macOS reports Option+K as "˚" and Space as " ". Read the
+ * physical key instead.
+ */
+function acceleratorKey(event: KeyboardEvent): string | null {
+  const { code } = event
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3)
+  if (/^Digit\d$/.test(code)) return code.slice(5)
+  if (/^F\d{1,2}$/.test(code)) return code
+  return ACCELERATOR_KEYS_BY_CODE[code] ?? null
+}
+
+type GlobalCaptureRowStatus =
+  | { kind: 'unknown' }
+  | { kind: 'active' }
+  | { kind: 'permissionRequired' }
+  | { kind: 'rejected'; reason: 'in_use' | 'unsupported'; binding: ShortcutBindingDTO }
+  | { kind: 'fallbackInUse' }
+
+function toRowStatus(
+  result: GlobalCaptureResult,
   binding: ShortcutBindingDTO | null
-  onSave: (binding: ShortcutBindingDTO | null) => Promise<void>
-}): React.JSX.Element {
+): GlobalCaptureRowStatus {
+  switch (result.status) {
+    case 'registered':
+      return { kind: 'active' }
+    case 'permission_required':
+      return { kind: 'permissionRequired' }
+    case 'in_use':
+    case 'unsupported':
+      return binding ? { kind: 'rejected', reason: result.status, binding } : { kind: 'unknown' }
+    case 'unbound':
+      return result.fallbackRegistered ? { kind: 'unknown' } : { kind: 'fallbackInUse' }
+  }
+}
+
+const REJECTION_I18N_KEYS = {
+  in_use: 'shortcuts.globalCapture.inUse',
+  unsupported: 'shortcuts.globalCapture.unsupported'
+} as const
+
+function globalCaptureProblem(t: SettingsT, status: GlobalCaptureRowStatus): string | null {
+  if (status.kind === 'rejected') {
+    return t(REJECTION_I18N_KEYS[status.reason], { shortcut: formatGlobalCapture(status.binding) })
+  }
+  if (status.kind === 'fallbackInUse') {
+    return t('shortcuts.globalCapture.fallbackInUse', {
+      shortcut: formatGlobalCapture(DEFAULT_GLOBAL_CAPTURE)
+    })
+  }
+  return null
+}
+
+function GlobalCaptureRow({ binding }: { binding: ShortcutBindingDTO | null }): React.JSX.Element {
   const { t } = useT('settings')
   const [isCapturing, setIsCapturing] = useState(false)
-  const [permissionStatus, setPermissionStatus] = useState<'unknown' | 'granted' | 'required'>(
-    'unknown'
-  )
+  const [status, setStatus] = useState<GlobalCaptureRowStatus>({ kind: 'unknown' })
   const captureRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
     void window.api.settings.registerGlobalCapture().then((result) => {
-      if (cancelled) return
-      if (result.permissionRequired) {
-        setPermissionStatus('required')
-      } else if (result.registered) {
-        setPermissionStatus('granted')
-      }
+      if (!cancelled) setStatus(toRowStatus(result, binding))
     })
     return () => {
       cancelled = true
     }
   }, [binding])
+
+  const save = useCallback(
+    async (next: ShortcutBindingDTO | null): Promise<void> => {
+      try {
+        setStatus(toRowStatus(await window.api.settings.setGlobalCapture(next), next))
+      } catch {
+        trackRendererLog('warn', 'keyboard_settings_save_failed', 'Settings')
+        toast.error(t('shortcuts.toasts.saveGlobalFailed'))
+      }
+    },
+    [t]
+  )
 
   const startCapture = useCallback(() => setIsCapturing(true), [])
   const stopCapture = useCallback(() => setIsCapturing(false), [])
@@ -263,9 +352,10 @@ function GlobalCaptureRow({
         stopCapture()
         return
       }
-      if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) return
+      const key = acceleratorKey(e)
+      if (!key) return
       const newBinding: ShortcutBindingDTO = {
-        key: e.key,
+        key,
         modifiers: {
           meta: e.metaKey || e.ctrlKey || undefined,
           shift: e.shiftKey || undefined,
@@ -273,11 +363,11 @@ function GlobalCaptureRow({
         }
       }
       setIsCapturing(false)
-      void onSave(newBinding)
+      void save(newBinding)
     }
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [isCapturing, onSave, stopCapture])
+  }, [isCapturing, save, stopCapture])
 
   useEffect(() => {
     if (!isCapturing) return
@@ -290,6 +380,8 @@ function GlobalCaptureRow({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [isCapturing, stopCapture])
 
+  const problem = globalCaptureProblem(t, status)
+
   return (
     <>
       <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group">
@@ -297,13 +389,13 @@ function GlobalCaptureRow({
           <span className="font-medium text-[13px]/4 text-foreground">
             {t('shortcuts.globalCapture.title')}
           </span>
-          {permissionStatus === 'required' && (
+          {status.kind === 'permissionRequired' && (
             <Badge variant="destructive" className="text-[10px]/3 px-1.5 py-0 h-4 gap-1">
               <AlertTriangle className="w-3 h-3" />
               {t('shortcuts.globalCapture.permissionNeeded')}
             </Badge>
           )}
-          {permissionStatus === 'granted' && binding && (
+          {status.kind === 'active' && (
             <Badge
               variant="secondary"
               className="text-[10px]/3 px-1.5 py-0 h-4 bg-green-500/15 text-green-600 border-0"
@@ -360,7 +452,7 @@ function GlobalCaptureRow({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => void onSave(null)}
+                  onClick={() => void save(null)}
                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   title={t('shortcuts.clearTitle')}
                 >
@@ -371,7 +463,12 @@ function GlobalCaptureRow({
           )}
         </div>
       </div>
-      {permissionStatus === 'required' && IS_MACOS && (
+      {problem && (
+        <p role="alert" className="text-[10px]/3 text-destructive px-4 pb-2">
+          {problem}
+        </p>
+      )}
+      {status.kind === 'permissionRequired' && IS_MACOS && (
         <div className="flex items-start gap-2 mx-4 mb-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-[10px]/3 text-amber-800 dark:text-amber-300">
           <Info className="w-3 h-3 mt-0.5 shrink-0" />
           <span>{t('shortcuts.globalCapture.permissionHint')}</span>
@@ -388,17 +485,6 @@ export function ShortcutsSettings() {
 
   const overrides = settings.overrides
   const globalCapture = settings.globalCapture ?? null
-
-  const handleGlobalCaptureSave = useCallback(
-    async (binding: ShortcutBindingDTO | null): Promise<void> => {
-      const success = await updateSettings({ globalCapture: binding })
-      if (!success) {
-        trackRendererLog('warn', 'keyboard_settings_save_failed', 'Settings')
-        toast.error(t('shortcuts.toasts.saveGlobalFailed'))
-      }
-    },
-    [updateSettings, t]
-  )
 
   const handleRebind = useCallback(
     async (id: string, binding: ShortcutBinding): Promise<void> => {
@@ -506,7 +592,7 @@ export function ShortcutsSettings() {
       </div>
 
       <SettingsGroup label={t('shortcuts.globalCapture.title')}>
-        <GlobalCaptureRow binding={globalCapture} onSave={handleGlobalCaptureSave} />
+        <GlobalCaptureRow binding={globalCapture} />
       </SettingsGroup>
 
       {filteredGroups.length === 0 && (

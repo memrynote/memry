@@ -5,8 +5,10 @@ import type {
   EditorSettings,
   FeaturesSettings,
   GeneralSettings,
+  GlobalCaptureResult,
   InboxSettings,
   KeyboardShortcuts,
+  ShortcutBinding,
   SyncSettings,
   TaskSettings,
   VoiceTranscriptionSettings
@@ -353,15 +355,14 @@ export const settingsRpc = defineDomain({
     sendTestInboxReviewNotification: defineMethod<() => Promise<{ supported: boolean }>>({
       channel: SettingsChannels.invoke.SEND_TEST_INBOX_REVIEW_NOTIFICATION
     }),
-    registerGlobalCapture: defineMethod<
-      () => Promise<{
-        success: boolean
-        registered: boolean
-        permissionRequired?: boolean
-        error?: string
-      }>
-    >({
+    registerGlobalCapture: defineMethod<() => Promise<GlobalCaptureResult>>({
       channel: SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE
+    }),
+    setGlobalCapture: defineMethod<
+      (binding: ShortcutBinding | null) => Promise<GlobalCaptureResult>
+    >({
+      channel: SettingsChannels.invoke.SET_GLOBAL_CAPTURE,
+      params: ['binding']
     }),
     getTerminalCommandStatus: defineMethod<() => Promise<TerminalCommandStatus>>({
       channel: SettingsChannels.invoke.GET_TERMINAL_COMMAND_STATUS

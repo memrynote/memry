@@ -3,6 +3,7 @@ import type { SearchResultItem } from '@memry/contracts/search-api'
 import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
 import {
   candidatesFromEvents,
+  candidatesFromProjects,
   candidatesFromSearch,
   formatDueDate,
   formatShortDate,
@@ -127,8 +128,16 @@ describe('candidatesFromSearch', () => {
     expect(candidatesFromSearch([note])[0].detail).toMatchObject({ createdAt: null })
   })
 
-  it('drops filed binaries masquerading as notes (#800)', () => {
-    expect(candidatesFromSearch([noteHit('n2', 'Scan', 'pdf')])).toEqual([])
+  it('cards a filed binary as a file, never as a note (#800)', () => {
+    expect(candidatesFromSearch([noteHit('n2', 'Scan', 'pdf')])).toEqual([
+      {
+        entityType: 'file',
+        entityId: 'n2',
+        title: 'Scan',
+        detail: { type: 'file', fileType: 'pdf', path: 'notes/Scan.md' },
+        onCanvas: false
+      }
+    ])
   })
 
   it('drops journal and inbox hits', () => {
@@ -165,6 +174,38 @@ describe('markOnCanvas + groupCandidates', () => {
     expect(groups.note[0].onCanvas).toBe(false)
     expect(groups.task[0].onCanvas).toBe(true)
     expect(groups.calendar_event).toEqual([])
+  })
+})
+
+describe('candidatesFromProjects', () => {
+  const launch = {
+    id: 'p1',
+    name: 'Launch Plan',
+    color: '#3366ff',
+    archivedAt: null,
+    taskCount: 5,
+    completedCount: 2
+  }
+
+  it('matches live projects by name, case-insensitively', () => {
+    expect(
+      candidatesFromProjects(
+        [launch, { ...launch, id: 'p2', name: 'Old launch', archivedAt: '2026-01-01' }],
+        '  LAUNCH '
+      )
+    ).toEqual([
+      {
+        entityType: 'project',
+        entityId: 'p1',
+        title: 'Launch Plan',
+        detail: { type: 'project', color: '#3366ff', taskCount: 5, completedCount: 2 },
+        onCanvas: false
+      }
+    ])
+  })
+
+  it('offers no project for a blank query', () => {
+    expect(candidatesFromProjects([launch], '   ')).toEqual([])
   })
 })
 

@@ -164,6 +164,10 @@ export class UserSyncState extends DurableObject<Bindings> {
   private async handleBroadcast(request: Request): Promise<Response> {
     const body: {
       excludeDeviceId: string
+      // Deliver only to this device's sockets. Google push channels are
+      // per-device, so fanning a webhook out to every device made N devices
+      // run N syncs each per calendar change.
+      targetDeviceId?: string
       vaultId?: string
       cursor?: number
       type?: string
@@ -171,7 +175,9 @@ export class UserSyncState extends DurableObject<Bindings> {
       sourceId?: string
     } = await request.json()
 
-    const allSockets = this.ctx.getWebSockets()
+    const allSockets = body.targetDeviceId
+      ? this.ctx.getWebSockets(`device:${body.targetDeviceId}`)
+      : this.ctx.getWebSockets()
     let sent = 0
 
     const msgType = body.type ?? 'changes_available'

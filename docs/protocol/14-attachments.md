@@ -1,13 +1,22 @@
 # 14 — Attachments
 
-**Status**: normative, and **scoped read-only and deferred**. Every normative
+**Status**: normative, and **in scope in both directions**. Every normative
 sentence carries a `path:line` citation (chapter 00 §0.1).
 
-**Scope marker.** For this feature, `file`, `audio` and `video` blocks render
-their existing metadata in place; downloading their bytes is deferred; uploading
-any attachment is deferred. **Inline images are the exception**: their bytes
-download lazily on unmetered connections (FR-045). The chapter exists so the
-format is written down now and a later feature does not re-derive it.
+**Scope marker, moved by feature 003.** This chapter was written "scoped
+read-only and deferred": `file`, `audio` and `video` rendered their metadata in
+place, downloading their bytes was deferred, uploading anything was deferred,
+and inline images were the one exception. **That marker is gone.** A
+non-desktop client now downloads and uploads every attachment type, and two
+consequences follow that a reader must not miss:
+
+- **§14.8's standing condition has fired.** "A client that later gains the
+  ability to delete an attachment MUST dereference" — gaining it is exactly
+  what this change did, so dereferencing is now an obligation rather than an
+  omission that was merely correct.
+- **§14.5.1's three-route minimum described a read-only client.** It is still
+  true for one; a writing client needs the upload session routes and
+  `dereference` on top of those three.
 
 ## 14.1 Attachments are not records
 

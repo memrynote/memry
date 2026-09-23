@@ -36,6 +36,13 @@ protocol NotesWriting: Sendable {
     /// Tombstones the note. Not a row that vanishes: a delete has to reach the
     /// other devices, and a vanished row has nothing left to send.
     func delete(id: String) async throws
+    /// Creates a note from a template and returns its id (N803).
+    func createFromTemplate(templateId: String, title: String, folderPath: String?) async throws
+        -> String
+    /// Sets a reminder on a note and returns its id (N804).
+    func addReminder(noteId: String, remindAt: String, title: String?) async throws -> String
+    func dismissReminder(id: String) async throws
+    func snoozeReminder(id: String, until: String) async throws
 }
 
 /// The production writer: the core's own `NotesWriter`, over the shell's one
@@ -75,6 +82,30 @@ struct CoreNotesWriter: NotesWriting {
 
     func delete(id: String) async throws {
         try await executor.run { try writer().delete(id: id) }
+    }
+
+    func createFromTemplate(templateId: String, title: String, folderPath: String?) async throws
+        -> String
+    {
+        try await executor.run {
+            try writer().createFromTemplate(
+                templateId: templateId, title: title, folderPath: folderPath
+            )
+        }
+    }
+
+    func addReminder(noteId: String, remindAt: String, title: String?) async throws -> String {
+        try await executor.run {
+            try writer().addReminder(noteId: noteId, remindAt: remindAt, title: title)
+        }
+    }
+
+    func dismissReminder(id: String) async throws {
+        try await executor.run { try writer().dismissReminder(id: id) }
+    }
+
+    func snoozeReminder(id: String, until: String) async throws {
+        try await executor.run { try writer().snoozeReminder(id: id, until: until) }
     }
 }
 

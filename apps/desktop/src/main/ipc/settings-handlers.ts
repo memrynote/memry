@@ -21,13 +21,17 @@ import {
   CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
   CALENDAR_SETTINGS_DEFAULTS,
   FEATURES_SETTINGS_DEFAULTS,
-  INBOX_SETTINGS_DEFAULTS
+  INBOX_SETTINGS_DEFAULTS,
+  ShortcutBindingSchema
 } from '@memry/contracts/settings-schemas'
 import type {
   GeneralSettings,
   EditorSettings,
+  GlobalCaptureResult,
+  GlobalCaptureStatus,
   TaskSettings,
   KeyboardShortcuts,
+  ShortcutBinding,
   SyncSettings,
   BackupSettings,
   VoiceTranscriptionSettings,
@@ -1222,6 +1226,10 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE, async () => {
     return applyGlobalCaptureShortcut()
   })
+
+  ipcMain.handle(SettingsChannels.invoke.SET_GLOBAL_CAPTURE, (_event, binding: unknown) =>
+    saveGlobalCaptureShortcut(ShortcutBindingSchema.nullable().parse(binding))
+  )
 }
 
 // ============================================================================
@@ -1241,11 +1249,20 @@ function toElectronAccelerator(binding: {
   return parts.join('+')
 }
 
-export interface GlobalCaptureResult {
-  success: boolean
-  registered: boolean
-  permissionRequired?: boolean
-  error?: string
+/**
+ * `main/index.ts` owns the quick capture window and the hardcoded fallback
+ * accelerator. It hands both in so this module never imports the entrypoint.
+ */
+export interface QuickCaptureShortcutHost {
+  open: () => void
+  /** Releases the fallback while a configured binding is registered; returns whether it is held. */
+  syncFallback: (configuredRegistered: boolean) => boolean
+}
+
+let quickCaptureShortcutHost: QuickCaptureShortcutHost | null = null
+
+export function setQuickCaptureShortcutHost(host: QuickCaptureShortcutHost | null): void {
+  quickCaptureShortcutHost = host
 }
 
 /**
@@ -1255,53 +1272,85 @@ export interface GlobalCaptureResult {
  */
 let registeredGlobalCaptureAccelerator: string | null = null
 
-/** Notified after every apply so the quick capture fallback stays in step. */
-let globalCaptureAppliedHandler: ((configuredRegistered: boolean) => void) | null = null
-
-/**
- * Let `main/index.ts` keep its hardcoded quick capture fallback in step with the
- * configured accelerator without this module importing the entrypoint.
- */
-export function setGlobalCaptureAppliedHandler(
-  handler: ((configuredRegistered: boolean) => void) | null
-): void {
-  globalCaptureAppliedHandler = handler
-}
-
 /**
  * Read keyboard.globalCapture from settings and register/unregister OS shortcut.
- * Safe to call at startup and on settings change.
+ * Converges: re-applying an unchanged, registered binding does nothing, so it is
+ * safe to call at startup, on every vault status change, and on settings change.
  */
 export function applyGlobalCaptureShortcut(): GlobalCaptureResult {
-  const result = registerConfiguredGlobalCapture()
-  globalCaptureAppliedHandler?.(result.registered)
-  return result
+  return applyGlobalCaptureBinding(
+    readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS).globalCapture
+  )
 }
 
-function registerConfiguredGlobalCapture(): GlobalCaptureResult {
-  if (registeredGlobalCaptureAccelerator) {
-    globalShortcut.unregister(registeredGlobalCaptureAccelerator)
-    registeredGlobalCaptureAccelerator = null
-  }
+/**
+ * Register first, save second. A binding the OS refuses is never saved, and the
+ * previous binding is registered again, so a failed rebind leaves quick capture
+ * on the shortcut that worked before instead of on one that does nothing.
+ */
+function saveGlobalCaptureShortcut(binding: ShortcutBinding | null): GlobalCaptureResult {
+  if (!getDbOrNull()) throw new Error(getMainI18n().t('errors:ipc.noVaultOpen'))
 
-  const settings = readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS)
-  const binding = settings.globalCapture
-  if (!binding) {
-    return { success: true, registered: false }
-  }
-
-  if (process.platform === 'darwin') {
-    const hasPerm = systemPreferences.isTrustedAccessibilityClient(false)
-    if (!hasPerm) {
-      logger.warn('Global capture: accessibility permission not granted on macOS')
-      return { success: false, registered: false, permissionRequired: true }
+  const previous = readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS).globalCapture
+  const attempt = applyGlobalCaptureBinding(binding)
+  if (attempt.status === 'in_use' || attempt.status === 'unsupported') {
+    return {
+      status: attempt.status,
+      fallbackRegistered: applyGlobalCaptureBinding(previous).fallbackRegistered
     }
   }
 
+  writeGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS, { globalCapture: binding })
+  return attempt
+}
+
+function applyGlobalCaptureBinding(binding: ShortcutBinding | null): GlobalCaptureResult {
+  const status = registerGlobalCaptureBinding(binding)
+  const fallbackRegistered =
+    quickCaptureShortcutHost?.syncFallback(status === 'registered') ?? false
+  return { status, fallbackRegistered }
+}
+
+function releaseGlobalCaptureAccelerator(): void {
+  if (!registeredGlobalCaptureAccelerator) return
+  globalShortcut.unregister(registeredGlobalCaptureAccelerator)
+  registeredGlobalCaptureAccelerator = null
+}
+
+function registerGlobalCaptureBinding(binding: ShortcutBinding | null): GlobalCaptureStatus {
+  if (!binding) {
+    releaseGlobalCaptureAccelerator()
+    return 'unbound'
+  }
+
+  if (process.platform === 'darwin' && !systemPreferences.isTrustedAccessibilityClient(false)) {
+    logger.warn('Global capture: accessibility permission not granted on macOS')
+    releaseGlobalCaptureAccelerator()
+    return 'permission_required'
+  }
+
   const accelerator = toElectronAccelerator(binding)
-  const registered = globalShortcut.register(accelerator, () => {
-    broadcastToAllWindows('quick-capture:open')
-  })
+  if (accelerator === registeredGlobalCaptureAccelerator) return 'registered'
+
+  releaseGlobalCaptureAccelerator()
+  // The configured binding gets first claim on every accelerator, including the
+  // fallback's own: this process already holding it would make register() fail.
+  quickCaptureShortcutHost?.syncFallback(true)
+
+  let registered: boolean
+  try {
+    registered = globalShortcut.register(accelerator, () => quickCaptureShortcutHost?.open())
+  } catch (err) {
+    // Electron throws on accelerators it cannot parse, e.g. the non-ASCII keys
+    // macOS reports for Option combos, which older versions saved as-is.
+    logger.warn(`Global capture: ${accelerator} is not a valid accelerator`, err)
+    trackMainLog('warn', {
+      scope: 'Settings',
+      action: 'global_capture_register_failed',
+      errorCode: 'shortcut_unsupported'
+    })
+    return 'unsupported'
+  }
 
   if (!registered) {
     logger.warn(`Global capture: failed to register ${accelerator} (may be in use)`)
@@ -1310,16 +1359,12 @@ function registerConfiguredGlobalCapture(): GlobalCaptureResult {
       action: 'global_capture_register_failed',
       errorCode: 'shortcut_in_use'
     })
-    return {
-      success: false,
-      registered: false,
-      error: getMainI18n().t('errors:settings.shortcutInUse', { shortcut: accelerator })
-    }
+    return 'in_use'
   }
 
   registeredGlobalCaptureAccelerator = accelerator
   logger.info(`Global capture: registered ${accelerator}`)
-  return { success: true, registered: true }
+  return 'registered'
 }
 
 function writePortableGeneralToConfig(updates: Partial<GeneralSettings>): void {
@@ -1416,6 +1461,7 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.GET_INBOX_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_INBOX_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_GLOBAL_CAPTURE)
 
   logger.info('Settings handlers unregistered')
 }

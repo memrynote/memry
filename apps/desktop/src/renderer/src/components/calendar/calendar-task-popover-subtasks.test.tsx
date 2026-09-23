@@ -18,9 +18,13 @@ describe('CalendarTaskPopoverSubtasks', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('shows X of Y done counter', () => {
+  it('shows done progress as a bar and a count', () => {
     render(<CalendarTaskPopoverSubtasks subtasks={subtasks} onToggleSubtask={vi.fn()} />)
-    expect(screen.getByText('2 of 4 done')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: '2 of 4 done' })).toHaveAttribute(
+      'aria-valuenow',
+      '2'
+    )
+    expect(screen.getByText('2 / 4')).toBeInTheDocument()
   })
 
   it('renders all subtask titles', () => {

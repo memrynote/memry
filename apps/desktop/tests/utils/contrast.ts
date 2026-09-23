@@ -128,7 +128,7 @@ export function restingTextClass(className: string): string | null {
 }
 
 /** Composite `foreground` at `alpha` over `background`, both `#rrggbb`. */
-function blend(foreground: string, background: string, alpha: number): string {
+export function blend(foreground: string, background: string, alpha: number): string {
   const channel = (offset: number): string => {
     const f = parseInt(foreground.slice(offset, offset + 2), 16)
     const b = parseInt(background.slice(offset, offset + 2), 16)

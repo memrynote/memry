@@ -49,7 +49,8 @@ export function toDraft(event: CalendarEventRecord): CalendarEventDraft {
         : toLocalDateTimeInputValue(event.endAt)
       : '',
     targetCalendarId: event.targetCalendarId,
-    projectId: null
+    projectId: null,
+    color: event.color
   }
 }
 
@@ -103,7 +104,8 @@ export const CanvasEventEditor = ({
         endAt: draft.endAt ? localInputToIso(draft.endAt, draft.isAllDay) : null,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
         isAllDay: draft.isAllDay,
-        targetCalendarId: draft.targetCalendarId
+        targetCalendarId: draft.targetCalendarId,
+        color: draft.color
       })
       if (!result.success) {
         throw new Error(result.error ?? 'Could not save event.')
@@ -115,7 +117,7 @@ export const CanvasEventEditor = ({
   }
 
   return (
-    <div className={cn('p-3', rootLayout)}>
+    <div className={cn('pt-3', rootLayout)}>
       <CalendarEventForm
         mode="edit"
         autoFocus={interactive}

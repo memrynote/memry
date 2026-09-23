@@ -240,7 +240,10 @@ export function CalendarYearView({
                     <span
                       className="size-2 shrink-0 rounded-full"
                       style={{
-                        backgroundColor: item.source.color ?? EVENT_TYPE_COLORS[item.visualType]
+                        backgroundColor:
+                          item.displayColor ??
+                          item.source.color ??
+                          EVENT_TYPE_COLORS[item.visualType]
                       }}
                     />
                     <span className="flex-1 truncate text-xs text-foreground">{item.title}</span>

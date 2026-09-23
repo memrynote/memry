@@ -809,8 +809,10 @@
     "copyLinks": "העתק קישורים",
     "delete": "מחק",
     "export": "ייצא",
+    "iconUpdated": "{count, plural, one {האייקון עודכן ב־# פתק} other {האייקון עודכן ב־# פתקים}}",
     "move": "העבר",
     "selected": "נבחרו",
+    "setIcon": "הגדר אייקון",
     "tagNamePlaceholder": "שם תגית",
     "toolbarAria": "פעולות קבוצתיות"
   },

@@ -29,6 +29,7 @@ import type {
   Message
 } from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import type { GlobalCaptureResult } from '@memry/contracts/settings-schemas'
 import type {
   AppleNotesFoldersInput,
   AppleNotesFoldersResult,
@@ -92,6 +93,7 @@ export interface VaultInfo {
   lastOpened: string
   isDefault: boolean
   vaultUuid?: string
+  isMissing?: boolean
 }
 
 export type NoteFrontmatter = NotesRpc.Note['frontmatter']
@@ -1435,12 +1437,8 @@ export interface SettingsClientAPI {
   setGraphSettings(
     settings: Partial<GraphSettingsDTO>
   ): Promise<{ success: boolean; error?: string }>
-  registerGlobalCapture(): Promise<{
-    success: boolean
-    registered: boolean
-    permissionRequired?: boolean
-    error?: string
-  }>
+  registerGlobalCapture(): Promise<GlobalCaptureResult>
+  setGlobalCapture(binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult>
 }
 
 // Sync Auth API

@@ -1,10 +1,12 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useT } from '@memry/i18n/renderer'
+import { calendarColorHex } from '@memry/contracts/calendar-colors'
 
-import { cn } from '@/lib/utils'
+import { X } from '@/lib/icons'
 
-import { POPOVER_WIDTH, computePopoverPosition } from './popover-position'
+import { useAnchoredPopoverPosition } from './popover-position'
 import { CalendarEventForm } from './calendar-event-form'
+import { CALENDAR_CARD_CLASS, CARD_ICON_BUTTON_CLASS, CalendarCardHeader } from './calendar-card'
 import type { AnchorRect, CalendarEventDraft } from './types'
 import type {
   CalendarAttendee,
@@ -34,6 +36,8 @@ interface CalendarEventPopoverProps {
   readOnlyMetadata?: CalendarEventReadOnlyMetadata
 }
 
+const EVENT_POPOVER_WIDTH = 320
+
 export function CalendarEventPopover({
   anchorRect,
   mode,
@@ -47,8 +51,12 @@ export function CalendarEventPopover({
 }: CalendarEventPopoverProps): React.JSX.Element {
   const { t } = useT('calendar')
 
-  const { top, left } = computePopoverPosition(anchorRect, { estimatedHeight: 440 })
+  const position = useAnchoredPopoverPosition(anchorRect, {
+    width: EVENT_POPOVER_WIDTH,
+    estimatedHeight: 420
+  })
   const title = mode === 'create' ? t('form.create-calendar-event') : t('form.edit-calendar-event')
+  const dotColor = draft.color ? calendarColorHex(draft.color) : 'var(--cal-indigo-rail)'
 
   return (
     <DialogPrimitive.Root
@@ -78,15 +86,28 @@ export function CalendarEventPopover({
               e.preventDefault()
             }
           }}
-          className={cn(
-            'fixed z-50 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none'
-          )}
-          style={{ top, left, width: POPOVER_WIDTH }}
+          className={CALENDAR_CARD_CLASS}
+          ref={position.ref}
+          style={position.style}
         >
           <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
             {t('form.event-editor-description')}
           </DialogPrimitive.Description>
+
+          <CalendarCardHeader
+            dotStyle={{ backgroundColor: dotColor }}
+            label={mode === 'create' ? t('time.new-event') : t('event-card.kind')}
+            actions={
+              <DialogPrimitive.Close
+                className={CARD_ICON_BUTTON_CLASS}
+                aria-label={t('event-card.close')}
+                title={t('event-card.close')}
+              >
+                <X className="size-3.5" />
+              </DialogPrimitive.Close>
+            }
+          />
 
           <CalendarEventForm
             mode={mode}

@@ -4,13 +4,43 @@ import 'driver.js/dist/driver.css'
 import './tour.css'
 import { useT } from '@memry/i18n/renderer'
 import { useDayPanel } from '@/contexts/day-panel-context'
+import { createLogger } from '@/lib/logger'
 import { STAR_PROMPT_EVENT, STAR_PROMPT_KEY } from './star-prompt'
 
-export const TOUR_KEY = 'memry:onboarding:tour:v1'
+const log = createLogger('FirstRunTour')
 
 /**
- * First-launch interactive tour. Runs at most once per install:
- * the flag is set when the tour finishes OR is skipped (both destroy it).
+ * The renderer's record of the tour. Older app versions read only this one, so it
+ * is still written and a downgrade does not show the tour again.
+ */
+export const TOUR_KEY = 'memry:onboarding:tour:v1'
+
+async function recordOnboarded(): Promise<void> {
+  localStorage.setItem(TOUR_KEY, '1')
+  await window.api.settings.setGeneralSettings({ onboardingCompleted: true })
+}
+
+/**
+ * Renderer localStorage alone is not proof that someone is new: an update can
+ * hand the renderer an empty store while the vault comes through intact, and the
+ * tour then reads as a wiped profile. The vault's general settings survive that,
+ * and a vault that already holds notes belongs to someone who has used the app.
+ * Either older record, once found, is copied into the vault settings so it
+ * outlives the next localStorage loss.
+ */
+async function wasOnboarded(): Promise<boolean> {
+  const { onboardingCompleted } = await window.api.settings.getGeneralSettings()
+  if (onboardingCompleted) return true
+  const returning =
+    localStorage.getItem(TOUR_KEY) !== null ||
+    (await window.api.notes.list({ limit: 1, fields: 'tree' })).total > 0
+  if (returning) await recordOnboarded()
+  return returning
+}
+
+/**
+ * First-launch interactive tour, shown only to someone new (see `wasOnboarded`).
+ * Finishing OR skipping it (both destroy it) records it in both places.
  *
  * Steps whose target element is not mounted are skipped automatically, so the
  * tour degrades gracefully when a surface is absent (AI disabled → no Agent
@@ -25,18 +55,13 @@ export function useFirstRunTour(): void {
   // new `t` (it does on a language change): that would restart a running tour
   // from step 1. The labels the tour needs are read once, when it is built.
   useEffect(() => {
-    if (localStorage.getItem(TOUR_KEY)) return
-
     // driver.js appends an overlay <svg> to <body> and attaches its own
     // resize/scroll/keydown listeners; only destroy() takes those back down.
     let tour: Driver | undefined
     // Set by the cleanup so onDestroyed can tell an unmount-driven teardown from
     // the user finishing, skipping, or closing the tour.
     let unmounted = false
-
-    // Open the right Day Panel so its calendar + Agent steps have live targets,
-    // even for returning users whose saved layout has it closed.
-    openDayPanel()
+    let frame: number | undefined
 
     const prefersReducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -160,9 +185,7 @@ export function useFirstRunTour(): void {
         ? localizedProgress
         : '{{current}} / {{total}}'
 
-    // Defer one frame so the just-opened Day Panel has mounted before we test
-    // for each step's target element.
-    const frame = requestAnimationFrame(() => {
+    const drive = (): void => {
       const visibleSteps = steps.filter(
         (step) => typeof step.element !== 'string' || document.querySelector(step.element) !== null
       )
@@ -187,8 +210,9 @@ export function useFirstRunTour(): void {
           // leave the flag and the star prompt untouched so the tour still gets
           // its one run, exactly as it did before this cleanup existed.
           if (unmounted) return
-          // ponytail: localStorage, app-wide once; move to a per-vault setting if we ever need to re-show per vault
-          localStorage.setItem(TOUR_KEY, '1')
+          recordOnboarded().catch((err: unknown) => {
+            log.warn('Could not record the tour in the vault settings', err)
+          })
           // The tour lands here however it ended — finished, skipped, or closed —
           // so the star prompt is armed here too. Arm it only while unset: once
           // the user has answered ('done'), never ask again.
@@ -200,11 +224,27 @@ export function useFirstRunTour(): void {
       })
 
       tour.drive()
-    })
+    }
+
+    wasOnboarded().then(
+      (onboarded) => {
+        if (unmounted || onboarded) return
+        // Open the right Day Panel so its calendar + Agent steps have live targets,
+        // even for returning users whose saved layout has it closed.
+        openDayPanel()
+        // Defer one frame so the just-opened Day Panel has mounted before we test
+        // for each step's target element.
+        frame = requestAnimationFrame(drive)
+      },
+      // No answer is not proof of a new user: hold the tour back, ask again next launch.
+      (err: unknown) => {
+        log.warn('Could not read the onboarding record; holding the tour back', err)
+      }
+    )
 
     return () => {
       unmounted = true
-      cancelAnimationFrame(frame)
+      if (frame !== undefined) cancelAnimationFrame(frame)
       tour?.destroy()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-scoped, see above

@@ -1,7 +1,7 @@
 /**
- * The canvas "Add card" picker: search notes, tasks and events, or create a
- * new note. Filtering is ours (shouldFilter={false}) because results arrive
- * pre-filtered from two different sources.
+ * The canvas "Add card" picker: search notes, files, tasks, events and
+ * projects, or create a new note. Filtering is ours (shouldFilter={false})
+ * because results arrive pre-filtered from several sources.
  */
 
 import React, { useEffect, useMemo, useState } from 'react'
@@ -10,7 +10,9 @@ import { Plus } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import {
+  ADD_CARD_GROUP_ORDER,
   candidatesFromEvents,
+  candidatesFromProjects,
   candidatesFromSearch,
   groupCandidates,
   markOnCanvas,
@@ -44,7 +46,7 @@ export function CanvasAddCardDialog({
   const { t } = useT('common')
   const [query, setQuery] = useState('')
   const [value, setValue] = useState(CREATE_VALUE)
-  const { results, events, loading } = useCanvasAddSearch(open, query)
+  const { results, files, events, projects, loading } = useCanvasAddSearch(open, query)
 
   // Reset between openings so a stale query never greets the next open.
   useEffect(() => {
@@ -54,9 +56,21 @@ export function CanvasAddCardDialog({
   }, [open])
 
   const groups = useMemo(() => {
-    const merged = [...candidatesFromSearch(results), ...candidatesFromEvents(events)]
+    const merged = [
+      ...candidatesFromSearch([...results, ...files]),
+      ...candidatesFromEvents(events),
+      ...candidatesFromProjects(projects, query)
+    ]
     return groupCandidates(markOnCanvas(merged, onCanvasKeys))
-  }, [results, events, onCanvasKeys])
+  }, [results, files, events, projects, query, onCanvasKeys])
+
+  const groupHeadings: Record<CanvasEntityType, string> = {
+    note: t('canvas.card.addGroupNotes'),
+    file: t('canvas.link.groupFiles'),
+    task: t('canvas.card.addGroupTasks'),
+    calendar_event: t('canvas.card.addGroupEvents'),
+    project: t('canvas.link.groupProjects')
+  }
 
   // A blank query always highlights the create row — the hook clears `events`
   // in its own effect, so for one frame after the user clears the input the
@@ -69,7 +83,7 @@ export function CanvasAddCardDialog({
       setValue(CREATE_VALUE)
       return
     }
-    const first = groups.note[0] ?? groups.task[0] ?? groups.calendar_event[0]
+    const first = ADD_CARD_GROUP_ORDER.map((type) => groups[type][0]).find(Boolean)
     setValue(first ? entityKey(first.entityType, first.entityId) : CREATE_VALUE)
   }, [groups, query])
 
@@ -111,8 +125,7 @@ export function CanvasAddCardDialog({
     )
   }
 
-  const hasResults =
-    groups.note.length > 0 || groups.task.length > 0 || groups.calendar_event.length > 0
+  const hasResults = ADD_CARD_GROUP_ORDER.some((type) => groups[type].length > 0)
 
   return (
     <Command.Dialog
@@ -158,9 +171,11 @@ export function CanvasAddCardDialog({
             {t('canvas.card.addEmpty')}
           </div>
         ) : null}
-        {renderGroup(t('canvas.card.addGroupNotes'), groups.note)}
-        {renderGroup(t('canvas.card.addGroupTasks'), groups.task)}
-        {renderGroup(t('canvas.card.addGroupEvents'), groups.calendar_event)}
+        {ADD_CARD_GROUP_ORDER.map((type) => (
+          <React.Fragment key={type}>
+            {renderGroup(groupHeadings[type], groups[type])}
+          </React.Fragment>
+        ))}
       </Command.List>
     </Command.Dialog>
   )

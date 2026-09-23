@@ -51,6 +51,16 @@ final class PathReachability: Reachability {
     /// first real path arrives.
     static let unknownPath: Reachable = .cellular
 
+    /// The path an attachment download is judged against (FR-045).
+    ///
+    /// Its own monitor rather than the sync engine's, because nothing else
+    /// in the shell constructs one yet (`ShellState`), and without a real
+    /// path every attachment read `unknownPath` — metered — and an
+    /// unmetered-only picture never downloaded, on Wi-Fi or anywhere else.
+    /// The emitter drops its hint: a download asks `current()` at the moment
+    /// it starts and has no use for the transition.
+    static let forAttachments = PathReachability(emitter: CoreEventEmitter { _ in })
+
     private struct State {
         var reachable: Reachable
         /// The core's observer. Singular, as the trait's doc has it; a second

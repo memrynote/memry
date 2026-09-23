@@ -190,9 +190,7 @@ describe('TaskBlockRenderer', () => {
 
     const editor = makeEditor()
     const block = makeBlock()
-    const { rerender } = render(
-      <TaskBlockRenderer block={block} editor={editor} />
-    )
+    const { rerender } = render(<TaskBlockRenderer block={block} editor={editor} />)
 
     expect(
       screen.getByText('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.loading')
@@ -245,9 +243,7 @@ describe('TaskBlockRenderer', () => {
   it('edits titles, creates a following task block, and removes empty drafts', async () => {
     const editor = makeEditor()
     const block = makeBlock()
-    const { unmount } = render(
-      <TaskBlockRenderer block={block} editor={editor} />
-    )
+    const { unmount } = render(<TaskBlockRenderer block={block} editor={editor} />)
 
     fireEvent.click(screen.getByText('Loaded task'))
     const titleInput = screen.getByDisplayValue('Draft task')
@@ -279,9 +275,7 @@ describe('TaskBlockRenderer', () => {
     child.id = 'child-block'
     const editor = makeEditor([parent, child])
 
-    const { rerender } = render(
-      <TaskBlockRenderer block={child} editor={editor} />
-    )
+    const { rerender } = render(<TaskBlockRenderer block={child} editor={editor} />)
 
     fireEvent.click(screen.getByText('Loaded task'))
     fireEvent.keyDown(screen.getByDisplayValue('Child'), { key: 'Tab' })
@@ -337,9 +331,7 @@ describe('TaskBlockRenderer', () => {
     const block = makeBlock({ taskId: '', title: 'Draft title' })
     mocks.taskState.task = null
 
-    const { rerender } = render(
-      <TaskBlockRenderer block={block} editor={editor} />
-    )
+    const { rerender } = render(<TaskBlockRenderer block={block} editor={editor} />)
     expect(screen.getByDisplayValue('Draft title')).toBeInTheDocument()
 
     mocks.taskState.task = { ...task, title: 'Server title' }

@@ -44,7 +44,8 @@ const draft: CalendarEventDraft = {
   endAt: '2026-03-16T10:00',
   isAllDay: false,
   targetCalendarId: null,
-  projectId: null
+  projectId: null,
+  color: null
 }
 
 const openStartDatePopover = (): HTMLElement => {
@@ -59,7 +60,7 @@ const openStartDatePopover = (): HTMLElement => {
       autoFocus={false}
     />
   )
-  fireEvent.click(screen.getByText('form.start'))
+  fireEvent.click(screen.getByRole('button', { name: /^form.start:/ }))
   const content = document.querySelector<HTMLElement>('[data-radix-popper-content-wrapper] > *')
   expect(content).not.toBeNull()
   return content!
@@ -88,5 +89,53 @@ describe('CalendarEventForm date popover height', () => {
 
     expect(content.className).toContain('flex')
     expect(content.className).toContain('flex-col')
+  })
+})
+
+describe('CalendarEventForm colour', () => {
+  function renderForm(color: CalendarEventDraft['color']) {
+    const onDraftChange = vi.fn()
+    render(
+      <CalendarEventForm
+        mode="edit"
+        eventId="event-1"
+        draft={{ ...draft, color }}
+        isSaving={false}
+        onDraftChange={onDraftChange}
+        onSave={vi.fn()}
+        onDismiss={vi.fn()}
+        autoFocus={false}
+      />
+    )
+    return onDraftChange
+  }
+
+  it('marks the event colour as the pressed swatch', () => {
+    renderForm('peacock')
+
+    expect(screen.getByRole('button', { name: 'calendar-color.peacock' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    expect(screen.getByRole('button', { name: 'form.default-color' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
+  })
+
+  it('puts the picked colour on the draft', () => {
+    const onDraftChange = renderForm(null)
+
+    fireEvent.click(screen.getByRole('button', { name: 'calendar-color.flamingo' }))
+
+    expect(onDraftChange).toHaveBeenCalledWith({ ...draft, color: 'flamingo' })
+  })
+
+  it('clears the colour from the draft with Default color', () => {
+    const onDraftChange = renderForm('sage')
+
+    fireEvent.click(screen.getByRole('button', { name: 'form.default-color' }))
+
+    expect(onDraftChange).toHaveBeenCalledWith({ ...draft, color: null })
   })
 })

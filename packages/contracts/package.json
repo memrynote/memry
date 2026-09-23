@@ -14,6 +14,7 @@
     "./bookmarks-api": "./src/bookmarks-api.ts",
     "./calendar-api": "./src/calendar-api.ts",
     "./calendar-date": "./src/calendar-date.ts",
+    "./calendar-colors": "./src/calendar-colors.ts",
     "./canvas-api": "./src/canvas-api.ts",
     "./canvas-draw": "./src/canvas-draw.ts",
     "./canvas-folder-api": "./src/canvas-folder-api.ts",
@@ -83,6 +84,9 @@
     "./test-vectors/payload-schemas.json": "./test-vectors/payload-schemas.json",
     "./test-vectors/device-linking.json": "./test-vectors/device-linking.json",
     "./test-vectors/text-extract.json": "./test-vectors/text-extract.json",
+    "./test-vectors/note-blocks.json": "./test-vectors/note-blocks.json",
+    "./test-vectors/block-edit.json": "./test-vectors/block-edit.json",
+    "./test-vectors/attachment-manifest.json": "./test-vectors/attachment-manifest.json",
     "./test-vectors/markdown-roundtrip/cases.json": "./test-vectors/markdown-roundtrip/cases.json",
     "./test-vectors/markdown-roundtrip/fuzz-families.json": "./test-vectors/markdown-roundtrip/fuzz-families.json"
   },

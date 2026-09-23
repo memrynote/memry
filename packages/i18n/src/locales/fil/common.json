@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Tanggalin sa account",
       "deleteVaultFailed": "Hindi matanggal ang vault",
       "deleteVaultTitle": "Tanggalin ang “{name}” sa iyong account?",
-      "removeVaultTitle": "Alisin ang “{name}” sa listahan?"
+      "removeVaultTitle": "Alisin ang “{name}” sa listahan?",
+      "missing": "Hindi makita ang folder"
     },
     "componentsWindowControls": {
       "searchK": "Maghanap (⌘K)",

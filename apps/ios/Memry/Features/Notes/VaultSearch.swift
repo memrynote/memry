@@ -29,6 +29,8 @@ protocol VaultSearching: Sendable {
     func notes(query: String, limit: UInt32) async throws -> [SearchResult]
     /// Brings the index up to date. Idempotent, and safe on any schedule.
     func reindex() async throws
+    /// Every note linking to this one (N800).
+    func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink]
 }
 
 /// The production searcher: the core's own `Search`, over the shell's serial
@@ -54,6 +56,13 @@ struct CoreVaultSearch: VaultSearching {
     func reindex() async throws {
         let search = search
         _ = try await executor.run { try search.reindex() }
+    }
+
+    func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] {
+        let search = search
+        return try await executor.run {
+            try search.backlinks(noteId: noteId, order: order)
+        }
     }
 }
 
