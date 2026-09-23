@@ -672,3 +672,40 @@ fn a_note_with_no_linked_tasks_reads_empty() {
             .is_empty()
     );
 }
+
+/// **A task block's card carries its project, priority and date.** A
+/// `taskBlock` holds only the id and title (§12.7); desktop draws the rest
+/// from the task, and a phone that could not would show a bare checkbox.
+#[test]
+fn a_task_card_reads_its_project_and_state() {
+    let (dir, vault) = vault("task-card");
+    let db = behind(&dir);
+    seed_task(&db, "t1", "Renew licence", None, "[]", None, None);
+    db.call_blocking(|conn: &mut rusqlite::Connection| {
+        conn.execute(
+            "INSERT INTO projects (id, name, color, position) VALUES ('project-1', 'Inbox', '#6b7280', 0)",
+            [],
+        )
+        .expect("the project row");
+        conn.execute("UPDATE tasks SET priority = 3, due_date = '2026-10-03' WHERE id = 't1'", [])
+            .expect("the task fields");
+        Ok(())
+    })
+    .expect("the seed");
+
+    let card = vault
+        .notes()
+        .task("t1".to_string())
+        .expect("the read")
+        .expect("a card");
+    assert_eq!(card.title, "Renew licence");
+    assert!(!card.is_done);
+    assert_eq!(card.priority, 3);
+    assert_eq!(card.due_date.as_deref(), Some("2026-10-03"));
+    assert_eq!(card.project_name.as_deref(), Some("Inbox"));
+
+    assert_eq!(
+        vault.notes().task("gone".to_string()).expect("the read"),
+        None
+    );
+}

@@ -3494,6 +3494,12 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func tags() throws  -> [TagSummary]
     
     /**
+     * The card a `taskBlock` draws for its task: tick, priority, project
+     * and due date. `None` when this vault does not hold the task.
+     */
+    func task(taskId: String) throws  -> TaskCard?
+    
+    /**
      * Every template a note can be made from (N803).
      */
     func templates() throws  -> [TemplateSummary]
@@ -3824,6 +3830,20 @@ open func tags()throws  -> [TagSummary]  {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_tags(
             self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The card a `taskBlock` draws for its task: tick, priority, project
+     * and due date. `None` when this vault does not hold the task.
+     */
+open func task(taskId: String)throws  -> TaskCard?  {
+    return try  FfiConverterOptionTypeTaskCard.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_task(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(taskId),uniffiCallStatus
     )
 })
 }
@@ -11192,6 +11212,93 @@ public func FfiConverterTypeTagSummary_lower(_ value: TagSummary) -> RustBuffer 
 
 
 /**
+ * What a `taskBlock` in a note body shows beside its title.
+ *
+ * A task block carries only the task's id, title and tick (§12.7); desktop
+ * draws the rest — priority, project, due date — from the task itself, and
+ * this is that read.
+ */
+public struct TaskCard: Equatable, Hashable {
+    public var id: String
+    public var title: String
+    public var isDone: Bool
+    /**
+     * 0 for none, then 1 (low) to 4 (urgent), as the payload carries it.
+     */
+    public var priority: Int64
+    public var dueDate: String?
+    public var projectName: String?
+    public var projectColor: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String, isDone: Bool, 
+        /**
+         * 0 for none, then 1 (low) to 4 (urgent), as the payload carries it.
+         */priority: Int64, dueDate: String?, projectName: String?, projectColor: String?) {
+        self.id = id
+        self.title = title
+        self.isDone = isDone
+        self.priority = priority
+        self.dueDate = dueDate
+        self.projectName = projectName
+        self.projectColor = projectColor
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskCard: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskCard: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskCard {
+        return
+            try TaskCard(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                isDone: FfiConverterBool.read(from: &buf), 
+                priority: FfiConverterInt64.read(from: &buf), 
+                dueDate: FfiConverterOptionString.read(from: &buf), 
+                projectName: FfiConverterOptionString.read(from: &buf), 
+                projectColor: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskCard, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterBool.write(value.isDone, into: &buf)
+        FfiConverterInt64.write(value.priority, into: &buf)
+        FfiConverterOptionString.write(value.dueDate, into: &buf)
+        FfiConverterOptionString.write(value.projectName, into: &buf)
+        FfiConverterOptionString.write(value.projectColor, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskCard_lift(_ buf: RustBuffer) throws -> TaskCard {
+    return try FfiConverterTypeTaskCard.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskCard_lower(_ value: TaskCard) -> RustBuffer {
+    return FfiConverterTypeTaskCard.lower(value)
+}
+
+
+/**
  * One template a note can be made from (N803).
  */
 public struct TemplateSummary: Equatable, Hashable {
@@ -11263,17 +11370,47 @@ public struct VaultSummary: Equatable, Hashable {
     public var id: String
     /**
      * Absent rather than empty when the registry row carries no name.
+     *
+     * **Never the ciphertext.** The server holds a vault's name encrypted
+     * under the vault key (`vault-name-crypto.ts`), and until this was split
+     * out the encrypted base64 was reported here as the name and drawn on
+     * screen. The sealed form travels in [`Self::encrypted_name`] instead,
+     * and [`crate::api::crypto::decrypt_vault_name`] opens it.
      */
     public var name: String?
+    /**
+     * The name as the server holds it: XChaCha20-Poly1305 under the vault
+     * key, base64, with `vault-name-v1:<vaultUuid>` as associated data.
+     */
+    public var encryptedName: String?
+    /**
+     * The nonce `encrypted_name` was sealed with, base64.
+     */
+    public var nameNonce: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
     public init(id: String, 
         /**
          * Absent rather than empty when the registry row carries no name.
-         */name: String?) {
+         *
+         * **Never the ciphertext.** The server holds a vault's name encrypted
+         * under the vault key (`vault-name-crypto.ts`), and until this was split
+         * out the encrypted base64 was reported here as the name and drawn on
+         * screen. The sealed form travels in [`Self::encrypted_name`] instead,
+         * and [`crate::api::crypto::decrypt_vault_name`] opens it.
+         */name: String?, 
+        /**
+         * The name as the server holds it: XChaCha20-Poly1305 under the vault
+         * key, base64, with `vault-name-v1:<vaultUuid>` as associated data.
+         */encryptedName: String? = nil, 
+        /**
+         * The nonce `encrypted_name` was sealed with, base64.
+         */nameNonce: String? = nil) {
         self.id = id
         self.name = name
+        self.encryptedName = encryptedName
+        self.nameNonce = nameNonce
     }
 
     
@@ -11293,13 +11430,17 @@ public struct FfiConverterTypeVaultSummary: FfiConverterRustBuffer {
         return
             try VaultSummary(
                 id: FfiConverterString.read(from: &buf), 
-                name: FfiConverterOptionString.read(from: &buf)
+                name: FfiConverterOptionString.read(from: &buf), 
+                encryptedName: FfiConverterOptionString.read(from: &buf), 
+                nameNonce: FfiConverterOptionString.read(from: &buf)
         )
     }
 
     public static func write(_ value: VaultSummary, into buf: inout [UInt8]) {
         FfiConverterString.write(value.id, into: &buf)
         FfiConverterOptionString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.encryptedName, into: &buf)
+        FfiConverterOptionString.write(value.nameNonce, into: &buf)
     }
 }
 
@@ -15963,6 +16104,30 @@ fileprivate struct FfiConverterOptionTypeTableContent: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeTaskCard: FfiConverterRustBuffer {
+    typealias SwiftType = TaskCard?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTaskCard.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTaskCard.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionSequenceTypeBlock: FfiConverterRustBuffer {
     typealias SwiftType = [Block]?
 
@@ -16753,6 +16918,30 @@ public func decompressPayload(frame: Data)throws  -> Data  {
 })
 }
 /**
+ * A vault's name, opened from the sealed form the registry carries.
+ *
+ * The server never sees a vault name: desktop seals it under the vault key
+ * with `vault-name-v1:<vaultUuid>` as associated data
+ * (`apps/desktop/src/main/sync/vault-name-crypto.ts`), so the registry row
+ * holds only `encryptedName` and `nameNonce`. The associated data binds the
+ * name to its vault, which is what stops a server swapping two rows' names.
+ *
+ * `None` for anything that does not open — a malformed field, a wrong key, a
+ * name sealed for another vault. Desktop answers the same way, and a shell
+ * then says the vault has no readable name rather than drawing ciphertext.
+ */
+public func decryptVaultName(masterKey: Data, vaultId: String, encryptedName: String, nameNonce: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_decrypt_vault_name(
+        FfiConverterData.lower(masterKey),
+        FfiConverterString.lower(vaultId),
+        FfiConverterString.lower(encryptedName),
+        FfiConverterString.lower(nameNonce),uniffiCallStatus
+    )
+})
+}
+/**
  * Phrase and account salt to the 32-byte master key, chapter 01 §1.1.
  *
  * This is the Argon2id pass: 64 MiB and three iterations, and the one call in
@@ -16902,6 +17091,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_decompress_payload() != 43810) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_func_decrypt_vault_name() != 40557) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_func_derive_master_key() != 62810) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -17026,6 +17218,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_tags() != 21862) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_task() != 12002) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_templates() != 53193) {

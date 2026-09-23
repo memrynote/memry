@@ -88,6 +88,8 @@ fn read_vault_transfer(plaintext: &[u8]) -> Result<Vec<VaultSummary>, LinkingErr
                 .map(|id| VaultSummary {
                     id: id.to_string(),
                     name: None,
+                    encrypted_name: None,
+                    name_nonce: None,
                 })
                 .ok_or_else(|| LinkingError::InvalidVaultTransfer {
                     what: "a vault row carries no vaultUuid".into(),
@@ -109,11 +111,15 @@ mod tests {
             vec![
                 VaultSummary {
                     id: "v1".into(),
-                    name: None
+                    name: None,
+                    encrypted_name: None,
+                    name_nonce: None,
                 },
                 VaultSummary {
                     id: "v2".into(),
-                    name: None
+                    name: None,
+                    encrypted_name: None,
+                    name_nonce: None,
                 },
             ]
         );

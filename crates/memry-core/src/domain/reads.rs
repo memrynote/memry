@@ -310,6 +310,47 @@ pub struct LinkedTask {
     pub from_this_note: bool,
 }
 
+/// What a `taskBlock` in a note body shows beside its title.
+///
+/// A task block carries only the task's id, title and tick (§12.7); desktop
+/// draws the rest — priority, project, due date — from the task itself, and
+/// this is that read.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TaskCard {
+    pub id: String,
+    pub title: String,
+    pub is_done: bool,
+    /// 0 for none, then 1 (low) to 4 (urgent), as the payload carries it.
+    pub priority: i64,
+    pub due_date: Option<String>,
+    pub project_name: Option<String>,
+    pub project_color: Option<String>,
+}
+
+/// One task's card, or `None` for a task this vault does not hold — a block
+/// written on a device whose task has not synced here, or one since deleted.
+pub fn task_card(conn: &Connection, task_id: &str) -> Result<Option<TaskCard>, StorageError> {
+    conn.query_row(
+        "SELECT t.id, t.title, t.completed_at, t.priority, t.due_date, p.name, p.color \
+         FROM tasks t LEFT JOIN projects p ON p.id = t.project_id AND p.deleted_at IS NULL \
+         WHERE t.id = ?1 AND t.deleted_at IS NULL",
+        [task_id],
+        |row| {
+            Ok(TaskCard {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                is_done: row.get::<_, Option<String>>(2)?.is_some(),
+                priority: row.get(3)?,
+                due_date: row.get(4)?,
+                project_name: row.get(5)?,
+                project_color: row.get(6)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(failed)
+}
+
 /// The tasks a note is linked to (N807).
 ///
 /// **Two different relationships, reported as one list with a flag.** A task

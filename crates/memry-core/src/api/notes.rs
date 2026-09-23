@@ -15,7 +15,7 @@ use crate::domain::attachments::{self, BlockAttachment, CachedAttachment};
 use crate::domain::note_meta::{self, NoteMetadata};
 use crate::domain::reads::{
     self, FolderSummary, LinkedTask, NoteDetail, NoteSummary, ReminderSummary, TagSummary,
-    TemplateSummary,
+    TaskCard, TemplateSummary,
 };
 use crate::storage::Db;
 
@@ -59,6 +59,13 @@ impl Notes {
     pub fn linked_tasks(&self, note_id: String) -> Result<Vec<LinkedTask>, StorageError> {
         self.db
             .call_blocking(move |conn| reads::tasks_for_note(conn, &note_id))
+    }
+
+    /// The card a `taskBlock` draws for its task: tick, priority, project
+    /// and due date. `None` when this vault does not hold the task.
+    pub fn task(&self, task_id: String) -> Result<Option<TaskCard>, StorageError> {
+        self.db
+            .call_blocking(move |conn| reads::task_card(conn, &task_id))
     }
 
     /// Every template a note can be made from (N803).
