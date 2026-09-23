@@ -7,9 +7,7 @@ export interface StatusResponse {
   port: number | null
 }
 
-export interface PairResponse {
-  ok: boolean
-}
+export type PairResponse = { ok: true } | { ok: false; error: string }
 
 export type CaptureResponse = { ok: true; itemId: string } | { ok: false; error: string }
 
@@ -19,7 +17,7 @@ export type PopupMessage =
   | { type: 'GET_STATUS' }
   | { type: 'PAIR' }
   | { type: 'CAPTURE'; capture: ArticleCapture }
-  | { type: 'WAIT_FOR_SERVER' }
+  | { type: 'LAUNCH_AND_CAPTURE'; capture: ArticleCapture }
   | { type: 'GRAB_SCREENSHOT' }
   | { type: 'FETCH_PDF'; url: string }
   | { type: 'FLUSH_QUEUE' }
@@ -44,8 +42,7 @@ export interface PageMetrics {
 export type ScreenshotResponse = { ok: true; dataUrl: string } | { ok: false; error: string }
 
 export type FetchPdfResponse =
-  | { ok: true; dataUrl: string; filename: string }
-  | { ok: false; error: string }
+  { ok: true; dataUrl: string; filename: string } | { ok: false; error: string }
 
 export interface FlushResponse {
   flushed: number

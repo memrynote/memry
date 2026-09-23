@@ -1,6 +1,7 @@
 import http from 'node:http'
 import { app } from 'electron'
 import { ArticleCaptureSchema } from '@memry/contracts/capture-api'
+import { isDatabaseInitialized } from '../database'
 import { ingestArticleCapture } from '../inbox/ingest'
 import {
   getCaptureToken,
@@ -24,6 +25,9 @@ let currentPort: number | null = null
 let startInFlight: Promise<number> | null = null
 let requestPairConsent: ((origin: string) => Promise<boolean>) | null = null
 const pendingConsent = new Set<string>()
+// Origins whose last consent prompt was declined. The next /pair/claim reports it,
+// so the extension stops polling instead of waiting out the 120s window.
+const deniedConsent = new Set<string>()
 
 export function getCaptureServerPort(): number | null {
   return server?.listening ? currentPort : null
@@ -65,6 +69,10 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       json(res, 400, { error: 'missing-origin' })
       return
     }
+    if (deniedConsent.delete(origin)) {
+      json(res, 403, { error: 'pair-denied' })
+      return
+    }
     const claim = await claimPairing(origin)
     if (!claim) {
       json(res, 403, { error: 'pairing-window-closed' })
@@ -94,9 +102,11 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
     }
     if (requestPairConsent && !pendingConsent.has(origin)) {
       pendingConsent.add(origin)
+      deniedConsent.delete(origin)
       void requestPairConsent(origin)
         .then((allowed) => {
           if (allowed) openPairingWindow()
+          else deniedConsent.add(origin)
         })
         .finally(() => pendingConsent.delete(origin))
     }
@@ -118,6 +128,13 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
     if (!auth.ok) {
       req.resume() // drain body so the client receives the response cleanly
       json(res, 401, { error: auth.reason })
+      return
+    }
+    // The app is on the vault picker or switching vaults. A distinct code lets the
+    // extension keep the capture queued and tell the user to open a vault.
+    if (!isDatabaseInitialized()) {
+      req.resume()
+      json(res, 503, { error: 'vault-closed' })
       return
     }
     let body: string
@@ -204,6 +221,7 @@ export async function startCaptureServer(
 ): Promise<number> {
   requestPairConsent = deps.requestPairConsent ?? null
   pendingConsent.clear() // reset stale per-origin consent guards across restarts
+  deniedConsent.clear()
   if (server?.listening && currentPort !== null) return currentPort
   // Collapse concurrent starts: without this, two callers both pass the
   // listening check and bind two servers, orphaning the first.

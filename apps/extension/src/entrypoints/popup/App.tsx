@@ -94,8 +94,8 @@ export default function App() {
       dispatch({ type: 'APPROVE_START' })
       const pair: PairResponse = await browser.runtime
         .sendMessage({ type: 'PAIR' })
-        .catch(() => ({ ok: false }))
-      dispatch({ type: 'APPROVE_DONE', ok: pair.ok })
+        .catch(() => ({ ok: false, error: 'network' }))
+      dispatch({ type: 'APPROVE_DONE', result: pair })
       if (!pair.ok) return
     }
     dispatch({ type: 'SAVE_START' })
@@ -108,37 +108,15 @@ export default function App() {
     return result
   }
 
-  const onLaunchAndAdd = async (draftOverride?: ArticleCapture) => {
-    const draft = draftOverride ?? state.draft
+  // Opening memry:// moves focus to a new tab or to the app, and the browser
+  // closes this popup. The background owns the rest of the flow and persists the
+  // draft before the app opens. This popup only shows the outcome if it survives.
+  const onLaunchAndAdd = async (draft: ArticleCapture) => {
     dispatch({ type: 'LAUNCH_START' })
-    browser.tabs.create({ url: 'memry://open' }).catch(() => {})
-    const up: { ok: boolean } = await browser.runtime
-      .sendMessage({ type: 'WAIT_FOR_SERVER' })
-      .catch(() => ({ ok: false }))
-    if (up.ok) {
-      dispatch({ type: 'LAUNCH_DONE', ok: true })
-      const status = await fetchStatus()
-      dispatch({ type: 'STATUS', connection: status.connection, port: status.port })
-      await onAdd(
-        status.connection === 'app-closed' ? 'needs-pairing' : status.connection,
-        draft ?? undefined
-      )
-      return
-    }
-    // The server never came up in time. Don't drop the draft — hand it to the
-    // background, which queues it for the retry alarm (the badge shows the
-    // count) instead of losing it when the popup closes.
-    if (!draft) {
-      dispatch({ type: 'LAUNCH_DONE', ok: false })
-      return
-    }
-    dispatch({ type: 'SAVE_START' })
     const result: CaptureResponse = await browser.runtime
-      .sendMessage({ type: 'CAPTURE', capture: draft })
+      .sendMessage({ type: 'LAUNCH_AND_CAPTURE', capture: draft })
       .catch(() => ({ ok: false, error: 'network' }))
     dispatch({ type: 'SAVE_DONE', result })
-    // Mirror onAdd: if the server came up between the timeout and this CAPTURE,
-    // flash "Sent" and close. Offline-queued / error stay open.
     if (result.ok) setTimeout(() => window.close(), 600)
   }
 
@@ -168,7 +146,7 @@ export default function App() {
     const status = await fetchStatus()
     dispatch({ type: 'STATUS', connection: status.connection, port: status.port })
     if (status.connection === 'app-closed') {
-      await onLaunchAndAdd(draft ?? undefined)
+      if (draft) await onLaunchAndAdd(draft)
     } else {
       await onAdd(status.connection, draft ?? undefined)
     }
@@ -251,7 +229,11 @@ export default function App() {
               </svg>
             </span>
             <p className="text-[14px] font-medium text-foreground">Saved offline</p>
-            <p className="text-[12px] text-text-tertiary">Syncs the next time Memry opens.</p>
+            <p className="text-[12px] text-text-tertiary">
+              {state.queuedReason === 'vault-closed'
+                ? 'Lands in your Inbox once a vault is open in Memry.'
+                : 'Syncs the next time Memry opens.'}
+            </p>
           </div>
         )}
 

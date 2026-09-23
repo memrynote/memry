@@ -77,11 +77,25 @@ describe('probeServer', () => {
 })
 
 describe('claimToken', () => {
-  test('returns token on 200, null otherwise', async () => {
+  test('returns the token on 200 and null while the window is still closed', async () => {
     const good = vi.fn(async () => ok({ token: 't0ken', port: 7849 }))
-    expect(await claimToken(7849, good as unknown as typeof fetch)).toBe('t0ken')
-    const closed = vi.fn(async () => new Response('{}', { status: 403 }))
+    expect(await claimToken(7849, good as unknown as typeof fetch)).toEqual({
+      ok: true,
+      token: 't0ken'
+    })
+    const closed = vi.fn(
+      async () => new Response(JSON.stringify({ error: 'pairing-window-closed' }), { status: 403 })
+    )
     expect(await claimToken(7849, closed as unknown as typeof fetch)).toBeNull()
+  })
+  test('stops polling with pair-denied when the user declined in Memry', async () => {
+    const denied = vi.fn(
+      async () => new Response(JSON.stringify({ error: 'pair-denied' }), { status: 403 })
+    )
+    expect(await claimToken(7849, denied as unknown as typeof fetch)).toEqual({
+      ok: false,
+      error: 'pair-denied'
+    })
   })
 })
 
