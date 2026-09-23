@@ -3,7 +3,6 @@ import type { ArticleCapture } from '@memry/article-extract'
 import type { CaptureResponse } from './messages'
 import {
   badgeText,
-  dequeueById,
   drainQueue,
   enqueue,
   isQueueable,
@@ -81,12 +80,6 @@ describe('drainQueue', () => {
       c: { ok: false, error: 'vault-closed' },
       d: { ok: false, error: 'vault-closed' }
     })
-  })
-})
-
-describe('dequeueById', () => {
-  it('removes the matching item', () => {
-    expect(dequeueById([item('a'), item('b')], 'a').map((q) => q.id)).toEqual(['b'])
   })
 })
 

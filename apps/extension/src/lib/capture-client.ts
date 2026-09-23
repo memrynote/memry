@@ -53,20 +53,23 @@ export async function probeServer(
   return null
 }
 
+export type ClaimResult = { ok: true; token: string } | { ok: false; error: 'pair-denied' }
+
 // POST /pair/claim. The X-Memry-Capture header is required; Origin is attached
-// by Chrome automatically. Returns the token on 200, null on 400/403/etc.
+// by Chrome automatically. Null means "not yet" (window still closed, app
+// unreachable), so a poller keeps going; pair-denied ends the poll.
 export async function claimToken(
   port: number,
   fetchFn: typeof fetch = fetch
-): Promise<string | null> {
+): Promise<ClaimResult | null> {
   try {
     const res = await fetchFn(claimUrl(port), {
       method: 'POST',
       headers: { [CAPTURE_HEADER]: '1' }
     })
-    if (!res.ok) return null
-    const data = (await res.json()) as { token?: unknown }
-    return typeof data.token === 'string' ? data.token : null
+    const data = (await res.json().catch(() => ({}))) as { token?: unknown; error?: unknown }
+    if (!res.ok) return data.error === 'pair-denied' ? { ok: false, error: 'pair-denied' } : null
+    return typeof data.token === 'string' ? { ok: true, token: data.token } : null
   } catch {
     return null
   }

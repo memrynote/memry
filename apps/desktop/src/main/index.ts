@@ -1145,6 +1145,11 @@ async function showPairConsentDialog(origin: string): Promise<boolean> {
   const mainWindow = BrowserWindow.getAllWindows()[0]
   if (!mainWindow) return false
   if (mainWindow.isMinimized()) mainWindow.restore()
+  // The request comes from the browser, which stays frontmost. The dialog is a
+  // sheet on this window, so a hidden window or a background app hides it and
+  // the pairing silently times out.
+  if (!mainWindow.isVisible()) mainWindow.show()
+  if (process.platform === 'darwin') app.focus({ steal: true })
   mainWindow.focus()
   const t = getMainI18n().getFixedT(null, 'system')
   const { response } = await dialog.showMessageBox(mainWindow, {
