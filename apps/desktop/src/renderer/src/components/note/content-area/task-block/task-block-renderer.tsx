@@ -19,6 +19,14 @@ export interface TaskBlockProps {
   parentTaskId: string
 }
 
+/** Row edits made before the block had a task id, replayed once it has one. */
+interface PendingTaskUpdates {
+  statusId?: string
+  priority?: number
+  projectId?: string
+  completed?: boolean
+}
+
 export type TaskBlockInlineContent = string | { text?: string }
 
 export interface TaskBlock {
@@ -142,6 +150,14 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   const titleInputRef = useRef<HTMLInputElement>(null)
   const titleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skipBlurRef = useRef(false)
+
+  // What the user changed on a block whose task row does not exist yet. The
+  // block is a `taskBlock` from the moment the checkbox is rewritten, but its
+  // `taskId` only arrives when `tasks:create` resolves; every handler below
+  // used to drop the change on the floor in that window (#2271). Held here and
+  // applied the moment the id lands, so a project picked one keystroke too
+  // early is still the project the task is created into.
+  const pendingUpdatesRef = useRef<PendingTaskUpdates>({})
 
   const { projects, project, statuses } = resolveBlockProject(tasksCtx?.projects, task?.projectId)
   const isCompleted = task ? !!task.completedAt : checked
@@ -461,8 +477,17 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
 
   const handleToggleComplete = useCallback(
     async (taskIdArg: string) => {
-      if (!taskIdArg) return
       const newChecked = !isCompleted
+      // No row behind the block yet. A draft (`taskId: ''`) is one the
+      // create is still catching up with, so the tick lands on the markdown
+      // checkbox now and on the task once it exists. An unresolved
+      // `{task:<id>}` has nothing to tick and never gets one (#1907).
+      if (!taskIdArg) {
+        if (taskId) return
+        editor.updateBlock(block, { props: { ...block.props, checked: newChecked } })
+        pendingUpdatesRef.current.completed = newChecked
+        return
+      }
       editor.updateBlock(block, { props: { ...block.props, checked: newChecked } })
       // complete/uncomplete resolve a {success:false} envelope instead of
       // rejecting; a failure must revert the optimistic flip or the markdown
@@ -478,30 +503,55 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         )
       }
     },
-    [isCompleted, block, editor]
+    [isCompleted, block, editor, taskId]
   )
 
   const handleUpdateTask = useCallback(
     async (_taskId: string, updates: Partial<DisplayTask>) => {
-      if (!taskId) return
-      await tasksService.update({
-        id: taskId,
+      const changes = {
         ...(updates.statusId !== undefined && { statusId: updates.statusId }),
         ...(updates.priority !== undefined && {
           priority: PRIORITY_REVERSE[updates.priority] ?? 0
         })
-      })
+      }
+      if (!taskId) {
+        Object.assign(pendingUpdatesRef.current, changes)
+        return
+      }
+      await tasksService.update({ id: taskId, ...changes })
     },
     [taskId]
   )
 
   const handleProjectChange = useCallback(
     async (projectId: string) => {
-      if (!taskId) return
+      if (!taskId) {
+        pendingUpdatesRef.current.projectId = projectId
+        return
+      }
       await tasksService.update({ id: taskId, projectId })
     },
     [taskId]
   )
+
+  // Replay of the above. Runs on the id, not on the loaded task: the row
+  // exists as soon as `tasks:create` has handed the block an id, and waiting
+  // for the fetch would race the title write that follows it.
+  useEffect(() => {
+    if (!taskId) return
+    const { completed, projectId, ...updates } = pendingUpdatesRef.current
+    pendingUpdatesRef.current = {}
+    void (async () => {
+      // The project move goes first and alone. `updateTask` rewrites `statusId`
+      // to the destination project's equivalent status whenever `projectId`
+      // changes, so a combined payload would throw away the status the user
+      // picked in the same window.
+      if (projectId !== undefined) await tasksService.update({ id: taskId, projectId })
+      if (Object.keys(updates).length > 0) await tasksService.update({ id: taskId, ...updates })
+      if (completed === true) await tasksService.complete({ id: taskId })
+      else if (completed === false) await tasksService.uncomplete(taskId)
+    })()
+  }, [taskId])
 
   const handleRemoveGhost = useCallback(() => {
     editor.removeBlocks([block])
@@ -626,6 +676,11 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   // honour until the task resolves.
   const rowTask = displayTask ?? placeholderTask
   const hasResolvedTask = !!task
+  // A block with no id at all is a draft whose row is still being created, not
+  // the dead block #1907 was about (that one carries a `{task:<id>}` pointing
+  // at nothing). Its controls are live: what the user picks is queued and
+  // applied when the id arrives, which is the whole point of the queue above.
+  const isDraft = !taskId
 
   if (!project) {
     return (
@@ -653,7 +708,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           projects={projects}
           isCompleted={isCompleted}
           showProjectBadge
-          interactive={hasResolvedTask}
+          interactive={hasResolvedTask || isDraft}
           onToggleComplete={(...args) => void handleToggleComplete(...args)}
           onUpdateTask={(...args) => void handleUpdateTask(...args)}
           onProjectChange={(...args) => void handleProjectChange(...args)}

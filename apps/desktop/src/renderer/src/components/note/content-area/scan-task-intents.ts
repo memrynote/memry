@@ -77,6 +77,15 @@ function hasTaskSuffix(block: TaskIntentBlock): boolean {
   return parseTaskBlockSuffix(extractInlineText(block.content)) !== null
 }
 
+// A checkbox with nothing typed on it yet is not a task. Taken as a candidate,
+// `convertCheckboxToTask` rewrites it into a `taskBlock` with an empty title,
+// `tasks:create` is refused for exactly that empty title, and the block is left
+// holding `taskId: ''` with every control on it dead (#2271). The line becomes
+// a candidate again on the first character the user types.
+function hasCheckboxText(block: TaskIntentBlock): boolean {
+  return extractInlineText(block.content).trim().length > 0
+}
+
 // Three Obsidian Tasks constructs Memry cannot rewrite. Appending `{task:<id>}`
 // un-anchors the plugin's end-anchored field regexes, and `🆔` / `⛔` name lines
 // in files Memry has not read. Declining them leaves the bytes untouched.
@@ -151,7 +160,12 @@ export function analyzeTaskIntents(
         }
       }
 
-      if (isCheckListItem(b) && !dismissedBlockIds.has(b.id) && !hasTaskSuffix(b)) {
+      if (
+        isCheckListItem(b) &&
+        !dismissedBlockIds.has(b.id) &&
+        !hasTaskSuffix(b) &&
+        hasCheckboxText(b)
+      ) {
         if (parentTaskBlock && parentTaskBlock.props?.taskId) {
           if (!intents.subtaskCandidate && !isImportBlocked(b)) {
             intents.subtaskCandidate = {
