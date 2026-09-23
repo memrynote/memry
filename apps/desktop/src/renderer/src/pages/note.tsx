@@ -63,6 +63,7 @@ import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useOpenPage } from '@/hooks/use-open-target'
+import { useCreateNoteFromNote } from '@/hooks/use-create-note-from-note'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { ReminderPicker } from '@/components/reminder'
 import { useNoteReminders } from '@/hooks/use-note-reminders'
@@ -70,6 +71,7 @@ import {
   Bookmark2,
   MoreVertical,
   FilePaste,
+  FilePlus,
   Download,
   AlarmClock,
   Monitor,
@@ -197,6 +199,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { openTab, setTabDeleted, updateTabTitleByEntityId, closeTab, saveTabState } = useTabs()
   const activeTab = useActiveTab()
   const { openSidebarItem } = useSidebarNavigation()
+  const createNoteFromNote = useCreateNoteFromNote()
   const queryClient = useQueryClient()
   const prefersReducedMotion = useReducedMotion()
 
@@ -1550,6 +1553,7 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'export') setIsExportDialogOpen(true)
           if (action === 'insert-template') openTemplateInsertRef.current?.()
           if (action === 'save-as-template') setIsSaveAsTemplateOpen(true)
+          if (action === 'new-note-from-note') void createNoteFromNote(note.id)
           if (action === 'rename') handleRename()
           if (action === 'move-to-folder') setIsMoveDialogOpen(true)
           if (action === 'copy-path') void handleCopyPath()
@@ -1615,6 +1619,11 @@ export function NotePage({ noteId }: NotePageProps) {
               value="save-as-template"
               label={t('editor.toolbar.saveAsTemplate')}
               icon={<Save className="size-4" />}
+            />
+            <Picker.Item
+              value="new-note-from-note"
+              label={t('newNoteFromNote.action')}
+              icon={<FilePlus className="size-4" />}
             />
             <Picker.Item
               value="full-width"

@@ -327,6 +327,12 @@ vi.mock('@/components/note/mind-map/mind-map-canvas', () => ({
   }
 }))
 
+const createNoteFromNote = vi.hoisted(() => vi.fn())
+
+vi.mock('@/hooks/use-create-note-from-note', () => ({
+  useCreateNoteFromNote: () => createNoteFromNote
+}))
+
 vi.mock('@/hooks/use-sidebar-navigation', () => ({
   useSidebarNavigation: () => ({ openSidebarItem: mocks.openSidebarItem })
 }))
@@ -881,6 +887,14 @@ describe('NotePage', () => {
         return Promise.resolve({ type: 'canvas', id: 'canvas-1', title: 'Sprint Board' })
       return Promise.resolve({ type: 'not-found' })
     })
+  })
+
+  it('creates a new note from this note through the more menu (#2329)', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'newNoteFromNote.action' }))
+
+    expect(createNoteFromNote).toHaveBeenCalledWith('note-1')
   })
 
   it('opens a canvas a wiki link names (#1983)', async () => {

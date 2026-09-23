@@ -868,6 +868,10 @@
     "failed": "فشل حفظ القالب",
     "loadFailed": "تعذّرت قراءة هذه الملاحظة"
   },
+  "newNoteFromNote": {
+    "action": "ملاحظة جديدة من هذه الملاحظة",
+    "created": "أُنشئت من {source}: {tagCount, plural, =0 {بدون علامات} one {علامة واحدة} two {علامتان} few {# علامات} many {# علامة} other {# علامة}}، {propertyCount, plural, =0 {بدون خصائص} one {خاصية واحدة} two {خاصيتان} few {# خصائص} many {# خاصية} other {# خاصية}}"
+  },
   "tagView": {
     "moreActions": "المزيد من الإجراءات",
     "pin": {

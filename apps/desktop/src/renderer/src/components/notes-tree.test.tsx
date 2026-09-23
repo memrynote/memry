@@ -143,6 +143,12 @@ vi.mock('@/components/virtualized-notes-tree', () => ({
   VirtualizedNotesTree: () => <div data-testid="virtualized-tree">Virtualized Tree</div>
 }))
 
+const createNoteFromNote = vi.hoisted(() => vi.fn())
+
+vi.mock('@/hooks/use-create-note-from-note', () => ({
+  useCreateNoteFromNote: () => createNoteFromNote
+}))
+
 vi.mock('@/components/note/template-selector', () => ({
   TemplateSelector: () => <div data-testid="template-selector">Template Selector</div>
 }))
@@ -503,6 +509,27 @@ describe('T522: NotesTree - context menu', () => {
     await waitFor(() => {
       expect(screen.getByText(/set default template/i)).toBeInTheDocument()
     })
+  })
+
+  it('creates a new note from the right-clicked note (#2329)', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<NotesTree />)
+
+    await user.pointer({ target: screen.getByText('Meeting Notes'), keys: '[MouseRight]' })
+    await user.click(await screen.findByText('New note from this note'))
+
+    expect(createNoteFromNote).toHaveBeenCalledWith('note-1')
+  })
+
+  it('does not offer "New note from this note" on a non-markdown file', async () => {
+    setupMocks([createNote('pdf-1', 'Scan.pdf', { fileType: 'pdf' })], [])
+    const user = userEvent.setup()
+    renderWithProviders(<NotesTree />)
+
+    await user.pointer({ target: screen.getByText('Scan'), keys: '[MouseRight]' })
+
+    expect(await screen.findByText('Save as Template')).toBeInTheDocument()
+    expect(screen.queryByText('New note from this note')).not.toBeInTheDocument()
   })
 })
 
