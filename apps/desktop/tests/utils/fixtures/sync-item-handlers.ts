@@ -50,6 +50,7 @@ export function makeTaskPayload(overrides: Partial<TaskSyncPayload> = {}): TaskS
     position: 0,
     dueDate: null,
     dueTime: null,
+    durationMinutes: null,
     startDate: null,
     repeatConfig: null,
     repeatFrom: null,

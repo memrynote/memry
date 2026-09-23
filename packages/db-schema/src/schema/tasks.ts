@@ -21,6 +21,9 @@ export const tasks = sqliteTable(
 
     dueDate: text('due_date'),
     dueTime: text('due_time'),
+    // Length of the time block that starts at dueTime. Null keeps the default
+    // block length, which is what every task written before this column had.
+    durationMinutes: integer('duration_minutes'),
     startDate: text('start_date'),
 
     repeatConfig: text('repeat_config', { mode: 'json' }),

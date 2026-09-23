@@ -22,7 +22,8 @@
       "repeatFrom",
       "sourceNoteId",
       "completedAt",
-      "archivedAt"
+      "archivedAt",
+      "durationMinutes"
     ],
     "PROJECT_SYNCABLE_FIELDS": [
       "name",
@@ -84,7 +85,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": false,
         "conflictedFields": [],
@@ -133,7 +135,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": false,
         "conflictedFields": [],
@@ -184,7 +187,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": false,
         "conflictedFields": [],
@@ -233,7 +237,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": true,
         "conflictedFields": [
@@ -297,7 +302,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": true,
         "conflictedFields": [
@@ -362,7 +368,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": true,
         "conflictedFields": [
@@ -428,7 +435,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": true,
         "conflictedFields": [
@@ -493,7 +501,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": false,
         "conflictedFields": [],
@@ -544,7 +553,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": true,
         "conflictedFields": [
@@ -609,7 +619,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": false,
         "conflictedFields": [],
@@ -658,7 +669,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": true,
         "conflictedFields": [
@@ -722,7 +734,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": false,
         "conflictedFields": [],
@@ -766,7 +779,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": false,
         "conflictedFields": [],
@@ -804,7 +818,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": false,
         "conflictedFields": [],
@@ -854,7 +869,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": false,
         "conflictedFields": [],
@@ -899,7 +915,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": true,
         "conflictedFields": [
@@ -968,7 +985,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": false,
         "conflictedFields": [],
@@ -1017,7 +1035,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": false,
         "conflictedFields": [],
@@ -1066,7 +1085,8 @@
           "repeatFrom": {},
           "sourceNoteId": {},
           "completedAt": {},
-          "archivedAt": {}
+          "archivedAt": {},
+          "durationMinutes": {}
         },
         "hadConflicts": true,
         "conflictedFields": [

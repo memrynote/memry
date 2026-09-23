@@ -47,6 +47,9 @@ export const RepeatConfigSchema = z.object({
   createdAt: z.string()
 })
 
+/** Length of a task's calendar time block. One day at most: a block never spills past its day. */
+export const TaskDurationMinutesSchema = z.number().int().min(1).max(1440)
+
 export const TaskCreateSchema = z.object({
   projectId: z.string(),
   title: z.string().min(1).max(500),
@@ -83,6 +86,7 @@ export const TaskUpdateSchema = z.object({
     .string()
     .regex(/^\d{2}:\d{2}$/)
     .nullish(),
+  durationMinutes: TaskDurationMinutesSchema.nullish(),
   startDate: CalendarDateSchema.nullish(),
   isRepeating: z.boolean().optional(),
   repeatConfig: RepeatConfigSchema.nullish(),

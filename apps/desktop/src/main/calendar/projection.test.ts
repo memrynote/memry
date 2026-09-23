@@ -417,6 +417,35 @@ describe('getCalendarRangeProjection', () => {
     expect(result.items.some((item) => item.sourceId === 'external-hidden')).toBe(false)
   })
 
+  it('ends a timed task block at its stored length and leaves a task without one open-ended', () => {
+    const range = getLocalDayRange({ year: 2026, monthIndex: 3, day: 14 })
+
+    for (const [id, dueTime, durationMinutes] of [
+      ['task-block', '09:30', 90],
+      ['task-legacy', '14:00', null]
+    ] as const) {
+      db.run(sql`
+        INSERT INTO tasks (id, project_id, status_id, title, position, due_date, due_time, duration_minutes)
+        VALUES (${id}, ${projectId}, ${todoStatusId}, ${id}, ${0}, ${'2026-04-14'}, ${dueTime}, ${durationMinutes})
+      `)
+    }
+
+    const items = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      { ...range, includeUnselectedSources: false },
+      []
+    ).items
+    const block = items.find((item) => item.sourceId === 'task-block')
+    const legacy = items.find((item) => item.sourceId === 'task-legacy')
+
+    expect(block?.startAt).toBe(new Date(2026, 3, 14, 9, 30).toISOString())
+    expect(block?.endAt).toBe(new Date(2026, 3, 14, 11, 0).toISOString())
+    expect(block?.editability.canResize).toBe(true)
+    expect(legacy?.startAt).toBe(new Date(2026, 3, 14, 14, 0).toISOString())
+    expect(legacy?.endAt).toBeNull()
+  })
+
   it('includes unselected external sources when requested', () => {
     const range = getLocalDayRange({ year: 2026, monthIndex: 3, day: 14 })
 

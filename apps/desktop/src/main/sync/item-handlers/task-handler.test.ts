@@ -12,6 +12,7 @@ import {
 } from '@memry/sync-client/field-merge'
 import { taskHandler } from './task-handler'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import type { TaskSyncPayload } from '@memry/contracts/sync-payloads'
 import {
   TEST_PROJECT,
   TEST_STATUSES,
@@ -625,6 +626,98 @@ describe('taskHandler applyUpsert with tags/linkedNoteIds', () => {
 
     // #then — local tags preserved (not wiped)
     expect(getTagsForTask('task-omit-1')).toEqual(['keep-me'])
+  })
+})
+
+describe('taskHandler applyUpsert with durationMinutes', () => {
+  let testDb: TestDatabaseResult
+  let ctx: ApplyContext
+
+  beforeEach(() => {
+    testDb = createTestDataDb()
+    ctx = makeCtx(testDb)
+    testDb.db.insert(projects).values(TEST_PROJECT).run()
+    testDb.db.insert(statuses).values(TEST_STATUSES).run()
+    const clock = { 'device-A': 2 }
+    testDb.db
+      .insert(tasks)
+      .values({
+        id: 'task-block',
+        projectId: 'proj-1',
+        statusId: 'status-todo',
+        title: 'Focus block',
+        dueDate: '2026-09-21',
+        dueTime: '09:00',
+        durationMinutes: 45,
+        clock,
+        fieldClocks: initAllFieldClocks(clock, TASK_SYNCABLE_FIELDS)
+      })
+      .run()
+  })
+
+  afterEach(() => {
+    testDb.close()
+  })
+
+  // What a build that predates the column pushes: every other field, no key at all.
+  function olderPeerPayload(overrides: Partial<TaskSyncPayload>): TaskSyncPayload {
+    const { durationMinutes: _absent, ...payload } = makeTaskPayload(overrides)
+    return payload
+  }
+
+  function storedDuration(): number | null | undefined {
+    return testDb.db
+      .select({ durationMinutes: tasks.durationMinutes })
+      .from(tasks)
+      .where(eq(tasks.id, 'task-block'))
+      .get()?.durationMinutes
+  }
+
+  it('keeps the local block length when a peer that predates the field overwrites the task', () => {
+    const result = taskHandler.applyUpsert(
+      ctx,
+      'task-block',
+      olderPeerPayload({
+        title: 'Renamed on an older build',
+        dueDate: '2026-09-21',
+        dueTime: '09:00'
+      }),
+      { 'device-A': 2, 'device-B': 1 }
+    )
+
+    expect(result).toBe('applied')
+    expect(storedDuration()).toBe(45)
+  })
+
+  it('writes a remote block length and an explicit clear', () => {
+    taskHandler.applyUpsert(ctx, 'task-block', makeTaskPayload({ durationMinutes: 90 }), {
+      'device-A': 2,
+      'device-B': 1
+    })
+    expect(storedDuration()).toBe(90)
+
+    taskHandler.applyUpsert(ctx, 'task-block', makeTaskPayload({ durationMinutes: null }), {
+      'device-A': 2,
+      'device-B': 2
+    })
+    expect(storedDuration()).toBeNull()
+  })
+
+  it('keeps the local block length on a merge with a peer that never clocked the field', () => {
+    const { durationMinutes: _unclocked, ...olderPeerClocks } = initAllFieldClocks(
+      { 'device-B': 1 },
+      TASK_SYNCABLE_FIELDS
+    )
+
+    const result = taskHandler.applyUpsert(
+      ctx,
+      'task-block',
+      olderPeerPayload({ title: 'Concurrent rename', fieldClocks: olderPeerClocks }),
+      { 'device-B': 3 }
+    )
+
+    expect(['applied', 'conflict']).toContain(result)
+    expect(storedDuration()).toBe(45)
   })
 })
 

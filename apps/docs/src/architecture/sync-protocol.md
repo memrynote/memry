@@ -462,7 +462,7 @@ Inside the encrypted blob, tasks, projects, and agent conversations carry per-fi
 
 See `packages/sync-client/src/field-merge.ts` for the merge implementation and
 `docs/protocol/06-vector-clocks-and-field-merge.md` for the normative rules.
-`TASK_SYNCABLE_FIELDS` is 15 fields; `PROJECT_SYNCABLE_FIELDS` is 8; agent conversations merge
+`TASK_SYNCABLE_FIELDS` is 16 fields; `PROJECT_SYNCABLE_FIELDS` is 8; agent conversations merge
 `title`, `backend`, `backendModel`, `trustList`, and `pinned`.
 
 ## Property Definitions

@@ -164,6 +164,7 @@ export function mapTaskToGoogleInput(
   }
 
   const isAllDay = !row.dueTime
+  const startAt = toLocalDateTime(row.dueDate, row.dueTime ?? null)
 
   return {
     sourceType: 'task',
@@ -171,8 +172,12 @@ export function mapTaskToGoogleInput(
     title: row.title,
     description: row.description ?? null,
     location: null,
-    startAt: toLocalDateTime(row.dueDate, row.dueTime ?? null),
-    endAt: isAllDay ? toLocalAllDayEnd(row.dueDate) : null,
+    startAt,
+    endAt: isAllDay
+      ? toLocalAllDayEnd(row.dueDate)
+      : row.durationMinutes === null
+        ? null
+        : new Date(new Date(startAt).getTime() + row.durationMinutes * 60_000).toISOString(),
     isAllDay,
     timezone: LOCAL_TIMEZONE,
     recurrence: null
