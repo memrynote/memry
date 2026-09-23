@@ -161,6 +161,10 @@ vi.mock('@/hooks/use-notes-query', () => ({
         via: { kind: 'property', propertyName: 'father' }
       }
     ],
+    outgoing: [
+      { sourceId: 'note-1', targetId: 'existing-note', targetTitle: 'Existing Note' },
+      { sourceId: 'note-1', targetId: null, targetTitle: 'New Note' }
+    ],
     isLoading: false
   }),
   useNoteTagsQuery: () => ({
@@ -1229,6 +1233,31 @@ describe('NotePage', () => {
     mocks.resolveWikiLink.mockRejectedValueOnce(new Error('resolve failed'))
     fireEvent.click(screen.getByRole('button', { name: 'Internal note link' }))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('page.toast.openLinkedFailed'))
+  })
+
+  it('opens an outgoing link through the wiki-link path, asking before creating a missing one', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    const outgoing = within(
+      await screen.findByRole('region', { name: 'outgoingLinks.sectionAria' })
+    )
+
+    fireEvent.click(outgoing.getByRole('button', { name: 'Existing Note' }))
+    await waitFor(() =>
+      expect(mocks.openTab).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'note', entityId: 'existing-note' }),
+        { reuseActiveTab: true }
+      )
+    )
+
+    fireEvent.click(outgoing.getByRole('button', { name: 'New Note outgoingLinks.unresolved' }))
+    fireEvent.click(await screen.findByText('wikiLinkCreateDialog.create'))
+    await waitFor(() =>
+      expect(mocks.openTab).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'note', entityId: 'created-note' }),
+        { reuseActiveTab: true }
+      )
+    )
   })
 
   it('reacts to note events and find controls', async () => {
