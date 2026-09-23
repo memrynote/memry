@@ -43,7 +43,10 @@ vi.mock('@/services/tasks-service', () => ({
   },
   onTaskUpdated: mocks.onTaskUpdated,
   onTaskCompleted: mocks.onTaskCompleted,
-  onTaskDeleted: mocks.onTaskDeleted
+  onTaskDeleted: mocks.onTaskDeleted,
+  // The prefetch provider re-reads the note's project links on a project
+  // change, so it subscribes here.
+  onProjectUpdated: () => vi.fn()
 }))
 
 // Stands in for the real row: only an interactive row exposes the controls

@@ -1,9 +1,10 @@
-import { type FC, useState, useCallback, useMemo, useRef, type RefObject } from 'react'
+import { type FC, useState, useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
 import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { useTasksOptional } from '@/contexts/tasks'
 import { tasksService, type TaskCreateInput } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { resolveProjectIdForNoteTask } from '@/lib/note-task-project'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import { getI18n } from 'react-i18next'
@@ -38,14 +39,35 @@ export const TaskCreationPopover: FC<TaskCreationPopoverProps> = ({
     () => tasksCtx?.projects?.filter((p) => !p.isArchived) ?? [],
     [tasksCtx?.projects]
   )
-  const inboxProject = projects.find((p) => p.isDefault)
-  const defaultProjectId = inboxProject?.id ?? projects[0]?.id ?? ''
+  // The note's own project decides the pre-selected one (#2271). Null until
+  // that read settles, so the form mounts once with the right project instead
+  // of showing the inbox and swapping under the user. Cleared on close too:
+  // otherwise the next open mounts the form against the previous note's
+  // answer and then remounts on the new one, throwing away a priority or due
+  // date the user had already picked.
+  const [defaultProjectId, setDefaultProjectId] = useState<string | null>(null)
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen)
+    if (!isOpen) setDefaultProjectId(null)
+  }
+
+  useEffect(() => {
+    if (!isOpen) return
+    let cancelled = false
+    void resolveProjectIdForNoteTask({ noteId, projects }).then((projectId) => {
+      if (!cancelled) setDefaultProjectId(projectId ?? '')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, noteId, projects])
 
   return (
     <Popover open={isOpen} onOpenChange={(open) => !open && onCancel()}>
       <PopoverAnchor virtualRef={anchorRef as RefObject<HTMLElement>} />
       <PopoverContent side="bottom" align="start" sideOffset={6} className="w-72 p-3">
-        {isOpen && (
+        {isOpen && defaultProjectId !== null && (
           <TaskCreationPopoverForm
             key={`${title}-${noteId ?? ''}-${defaultProjectId}`}
             title={title}

@@ -14,7 +14,10 @@ vi.mock('@/services/tasks-service', () => ({
   tasksService: { get: mocks.get, getLinkedTasks: mocks.getLinkedTasks },
   onTaskUpdated: mocks.onTaskUpdated,
   onTaskCompleted: mocks.onTaskCompleted,
-  onTaskDeleted: mocks.onTaskDeleted
+  onTaskDeleted: mocks.onTaskDeleted,
+  // The prefetch provider re-reads the note's project links on a project
+  // change, so it subscribes here.
+  onProjectUpdated: () => vi.fn()
 }))
 
 import { useTaskBlockData } from './use-task-block-data'

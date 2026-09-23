@@ -54,6 +54,7 @@ import {
   type Note
 } from '@/hooks/use-notes-query'
 import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
+import { useNoteProjectTaskMove } from '@/hooks/use-note-project-task-move'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
@@ -93,6 +94,7 @@ import { Picker } from '@/components/ui/picker'
 import { Switch } from '@/components/ui/switch'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { WikiLinkCreateDialog } from '@/components/note/wiki-link-create-dialog'
+import { MoveNoteTasksDialog } from '@/components/note/move-note-tasks-dialog'
 import {
   NoteAttachmentsDialog,
   collectOriginalNames
@@ -345,6 +347,17 @@ export function NotePage({ noteId }: NotePageProps) {
     onBlocked: handlePropertyBlocked,
     includeExplicitType: true
   })
+
+  // Giving the note a project offers to bring the tasks already written in it
+  // along (#2271); the property write itself is unchanged.
+  const noteTaskMove = useNoteProjectTaskMove(noteId ?? null, note?.content ?? '', properties)
+  const handleNotePropertyChange = useCallback(
+    (propertyId: string, value: unknown) => {
+      handlePropertyChange(propertyId, value)
+      noteTaskMove.handlePropertyChange(propertyId, value)
+    },
+    [handlePropertyChange, noteTaskMove]
+  )
 
   const [propertiesCollapsed, togglePropertiesCollapsed, setPropertiesCollapsed] =
     usePropertiesCollapsed(noteId ?? '')
@@ -1806,7 +1819,7 @@ export function NotePage({ noteId }: NotePageProps) {
               newlyAddedPropertyId={newlyAddedPropertyId}
               isExpanded={!propertiesCollapsed}
               onToggleExpand={togglePropertiesCollapsed}
-              onPropertyChange={handlePropertyChange}
+              onPropertyChange={handleNotePropertyChange}
               onPropertyNameChange={handlePropertyNameChange}
               onPropertyOrderChange={handlePropertyOrderChange}
               onAddProperty={handleAddPropertyWithExpand}
@@ -2021,6 +2034,16 @@ export function NotePage({ noteId }: NotePageProps) {
         }
         noteTitle={note.title}
         onMove={(targetFolder) => void handleMoveToFolder(targetFolder)}
+      />
+
+      {/* Bring this note's existing tasks to its new project (#2271) */}
+      <MoveNoteTasksDialog
+        isOpen={noteTaskMove.prompt !== null}
+        taskCount={noteTaskMove.prompt?.taskIds.length ?? 0}
+        projectName={noteTaskMove.prompt?.projectName ?? ''}
+        isMoving={noteTaskMove.isMoving}
+        onConfirm={noteTaskMove.confirmMove}
+        onCancel={noteTaskMove.cancelMove}
       />
 
       {/* Broken wiki-link create confirmation (#1716) */}

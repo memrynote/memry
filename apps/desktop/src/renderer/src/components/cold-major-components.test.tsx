@@ -44,7 +44,7 @@ const mocks = vi.hoisted(() => ({
   dayPanelResizing: false,
   toggleDayPanel: vi.fn(),
   tabGroup: null as Record<string, any> | null,
-  logger: { error: vi.fn() }
+  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -110,7 +110,10 @@ vi.mock('@/contexts/tasks', () => ({
 vi.mock('@/services/tasks-service', () => ({
   tasksService: {
     create: (...args: unknown[]) => mocks.taskCreate(...args),
-    get: (...args: unknown[]) => mocks.taskGet(...args)
+    get: (...args: unknown[]) => mocks.taskGet(...args),
+    // The popover resolves its default project from the note's project links
+    // before it shows the form (#2271).
+    listForItem: () => Promise.resolve([])
   },
   onTaskUpdated: (callback: (event: unknown) => void) => {
     mocks.taskListeners.updated = callback
@@ -989,7 +992,8 @@ describe('cold major renderer components', () => {
         onCancel={onCancel}
       />
     )
-    fireEvent.click(screen.getByTitle('High'))
+    // The form mounts once the note's project has been resolved.
+    fireEvent.click(await screen.findByTitle('High'))
     fireEvent.change(screen.getByDisplayValue(''), { target: { value: '2026-05-12' } })
     fireEvent.click(screen.getByText('Create'))
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith('created-task', 'Created task'))
@@ -1011,7 +1015,7 @@ describe('cold major renderer components', () => {
         onCancel={onCancel}
       />
     )
-    fireEvent.click(screen.getByText('Create'))
+    fireEvent.click(await screen.findByText('Create'))
     expect(await screen.findByText('No create')).toBeInTheDocument()
     fireEvent.keyDown(screen.getByText('Failed task').parentElement!, { key: 'Escape' })
     expect(onCancel).toHaveBeenCalled()
