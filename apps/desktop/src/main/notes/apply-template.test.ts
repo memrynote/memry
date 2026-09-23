@@ -87,6 +87,25 @@ describe('buildTemplateApplyUpdate', () => {
     expect(u.content).toContain('## Notes')
   })
 
+  it('full mode: carries the icon, tags and project of a template onto a bare note (#2328)', () => {
+    const bare = { ...note, tags: [], properties: {}, emoji: null }
+    const withHeader: Template = {
+      ...template,
+      icon: '🚀',
+      tags: ['client'],
+      properties: [{ name: 'project', type: 'project', value: ['Alpha'] }],
+      content: 'Agenda'
+    }
+
+    expect(buildTemplateApplyUpdate(bare, withHeader, 'full')).toEqual({
+      id: 'n1',
+      content: 'Agenda',
+      tags: ['client'],
+      properties: { project: ['Alpha'] },
+      emoji: '🚀'
+    })
+  })
+
   it('always targets the note id', () => {
     expect(buildTemplateApplyUpdate(note, template, 'full').id).toBe('n1')
   })

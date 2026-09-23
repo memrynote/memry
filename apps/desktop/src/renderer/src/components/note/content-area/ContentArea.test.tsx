@@ -1327,7 +1327,7 @@ describe('ContentArea', () => {
 
     const cold = await slashItems('')
 
-    expect(cold).toContainEqual(expect.objectContaining({ title: 'Insert template…' }))
+    expect(cold).toContainEqual(expect.objectContaining({ title: 'Insert template content…' }))
     expect(cold.some((item) => item.group === 'Templates')).toBe(false)
   })
 
@@ -1379,7 +1379,7 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
     await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
 
-    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template…')
+    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template content…')
     await act(async () => {
       row.onItemClick()
     })
@@ -1400,7 +1400,7 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
     await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
 
-    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template…')
+    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template content…')
     await act(async () => {
       row.onItemClick()
     })
@@ -1503,7 +1503,7 @@ describe('ContentArea', () => {
     })
 
     const cold = await slashItems('')
-    expect(cold.some((item) => item.title === 'Insert template…')).toBe(false)
+    expect(cold.some((item) => item.title === 'Insert template content…')).toBe(false)
     await expect(slashItems('meeting')).resolves.toEqual([])
   })
 
