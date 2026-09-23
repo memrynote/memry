@@ -100,4 +100,30 @@ describe('CalendarTimelineView', () => {
     expect(screen.getByText('timeline.empty-title')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Launch' })).not.toBeInTheDocument()
   })
+
+  it('marks a start-only task with an outlined diamond and names its start date', () => {
+    workspace.tasks = [task('kickoff', 'Kickoff', new Date(2026, 2, 20), null)]
+
+    render(<CalendarTimelineView anchorDate="2026-03-15" selectedTaskId={null} />)
+
+    expect(screen.getByTestId('timeline-task-row')).toHaveAttribute(
+      'aria-label',
+      'Kickoff, timeline.starts|Mar 20'
+    )
+    const marker = screen.getByTestId('timeline-task-marker')
+    expect(marker.dataset.kind).toBe('start')
+    expect(marker.style.gridColumn).toBe('21 / 22')
+    expect(marker.style.backgroundColor).toBe('transparent')
+  })
+
+  it('names a date outside the shown year with its year', () => {
+    workspace.tasks = [task('carry', 'Carry over', new Date(2025, 11, 28), new Date(2026, 0, 4))]
+
+    render(<CalendarTimelineView anchorDate="2026-01-10" selectedTaskId={null} />)
+
+    expect(screen.getByTestId('timeline-task-row')).toHaveAttribute(
+      'aria-label',
+      'Carry over, timeline.span|Dec 28, 2025|Jan 4'
+    )
+  })
 })
