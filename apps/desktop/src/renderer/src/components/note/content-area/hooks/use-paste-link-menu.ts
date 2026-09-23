@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useState } from 'react'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { readBareUrl } from '../paste-url-link'
+import { isFromWhiteboard } from '../whiteboard-events'
 
 function detectEmbedProvider(url: string): string | null {
   if (extractYouTubeVideoId(url)) return 'youtube'
@@ -48,7 +49,8 @@ export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkM
     if (!container) return
 
     const handlePaste = (e: ClipboardEvent): void => {
-      if (state.isOpen) return
+      // A URL pasted onto a whiteboard goes onto the drawing, not the note.
+      if (state.isOpen || isFromWhiteboard(e)) return
 
       const text = readBareUrl(e.clipboardData?.getData('text/plain'))
       if (!text) return
@@ -121,7 +123,7 @@ export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkM
     const handleClickAway = (e: MouseEvent): void => {
       if (!state.isOpen) return
       const target = e.target as HTMLElement
-      if (target.closest('[data-paste-link-menu]')) return
+      if (target.closest('[data-inline-choice-menu]')) return
       close()
     }
 

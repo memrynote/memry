@@ -23,6 +23,12 @@ export const canvases = sqliteTable(
     folder: text('folder'),
     icon: text('icon'),
     /**
+     * The note whose inline `whiteboard` block created this canvas. Null is a
+     * free-standing canvas. Owned canvases stay out of the sidebar tree but are
+     * otherwise ordinary. No FK: a canvas may sync before its note.
+     */
+    ownerNoteId: text('owner_note_id'),
+    /**
      * LEGACY: vault-key-encrypted scene JSON. Written by app versions before
      * canvases became files; `''` once migrated. Kept (never dropped) so a user
      * who restores an old keychain can still recover a row we could not decrypt.

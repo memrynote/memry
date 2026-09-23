@@ -317,7 +317,7 @@ export function CanvasTree({
     setExpanded((previous) => rewriteExpandedFolderPaths(previous, from, to))
   }, [])
 
-  const { canvases, folders, isLoading, hasError } = useCanvasTree({
+  const { canvases, ownedCanvases, folders, isLoading, hasError } = useCanvasTree({
     onFolderPathChanged: handleFolderPathChanged
   })
 
@@ -392,9 +392,18 @@ export function CanvasTree({
    *
    * The rendered node carries the FILTERED count — right for its badge, and a
    * lie for a delete confirmation, which would then understate how much the
-   * user is about to destroy.
+   * user is about to destroy. Note-owned canvases are not rows but a folder
+   * delete takes them too, so they are counted here as well.
    */
-  const trueFolderCounts = React.useMemo(() => folderCanvasCounts(tree), [tree])
+  const trueFolderCounts = React.useMemo(
+    () =>
+      folderCanvasCounts(
+        ownedCanvases.length > 0
+          ? buildCanvasTree([...canvases, ...ownedCanvases], folders, sortMode)
+          : tree
+      ),
+    [tree, canvases, ownedCanvases, folders, sortMode]
+  )
 
   /** Focuses the first of `keys` that is actually on screen. */
   const focusRow = React.useCallback((keys: string[]): void => {

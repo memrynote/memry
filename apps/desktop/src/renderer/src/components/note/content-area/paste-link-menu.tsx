@@ -1,10 +1,10 @@
 import { memo } from 'react'
-import { Link, Play, Globe, Bookmark } from '@/lib/icons'
-import { cn } from '@/lib/utils'
+import { Link, Play, Globe, Bookmark, type AppIcon } from '@/lib/icons'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
+import { InlineChoiceMenu } from './inline-choice-menu'
 
-const OPTION_CONFIG: Record<PasteLinkOption, { icon: typeof Link; labelKey: string }> = {
+const OPTION_CONFIG: Record<PasteLinkOption, { icon: AppIcon; labelKey: string }> = {
   mention: { icon: Link, labelKey: 'menus.pasteLink.mention' },
   embed: { icon: Play, labelKey: 'menus.pasteLink.embedVideo' },
   bookmark: { icon: Bookmark, labelKey: 'menus.pasteLink.bookmark' },
@@ -26,39 +26,17 @@ export const PasteLinkMenu = memo(
     if (!isOpen) return null
 
     return (
-      <div
-        data-paste-link-menu
-        className="absolute z-50 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-md animate-in fade-in-0 zoom-in-95"
-        style={{ left: position.x, top: position.y }}
-      >
-        <p className="px-2 py-1 text-[11px] text-muted-foreground/60">
-          {t('menus.pasteLink.title')}
-        </p>
-        {options.map((option, index) => {
-          const { icon: Icon, labelKey } = OPTION_CONFIG[option]
-          const label = t(labelKey)
-          return (
-            <button
-              key={option}
-              type="button"
-              className={cn(
-                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm',
-                'transition-colors cursor-pointer',
-                index === selectedIndex
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-foreground hover:bg-accent/50'
-              )}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                onSelect(option)
-              }}
-            >
-              <Icon className="size-4 text-muted-foreground" />
-              {label}
-            </button>
-          )
-        })}
-      </div>
+      <InlineChoiceMenu
+        title={t('menus.pasteLink.title')}
+        position={position}
+        options={options.map((option) => ({
+          id: option,
+          icon: OPTION_CONFIG[option].icon,
+          label: t(OPTION_CONFIG[option].labelKey)
+        }))}
+        selectedIndex={selectedIndex}
+        onSelect={onSelect}
+      />
     )
   }
 )

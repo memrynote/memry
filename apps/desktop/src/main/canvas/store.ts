@@ -68,6 +68,8 @@ export interface CanvasCreateInput {
    */
   folder?: string | null
   icon?: string | null
+  /** The note whose inline whiteboard block owns this canvas. Null/absent is free-standing. */
+  ownerNoteId?: string | null
 }
 
 export interface CanvasUpdateInput {
@@ -85,13 +87,17 @@ export type CanvasUpdateResult =
   { ok: true; summary: CanvasSummary } | { ok: false; reason: CanvasUpdateFailure }
 
 function toSummary(
-  row: Pick<CanvasRow, 'id' | 'title' | 'folder' | 'icon' | 'createdAt' | 'updatedAt'>
+  row: Pick<
+    CanvasRow,
+    'id' | 'title' | 'folder' | 'icon' | 'ownerNoteId' | 'createdAt' | 'updatedAt'
+  >
 ): CanvasSummary {
   return {
     id: row.id,
     title: row.title,
     folder: row.folder ?? null,
     icon: row.icon ?? null,
+    ownerNoteId: row.ownerNoteId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt
   }
@@ -153,6 +159,7 @@ export function createCanvas(
   // point the index at a directory that does not exist.
   const folder = folderOfCanvasPath(filePath)
   const icon = input.icon ?? null
+  const ownerNoteId = input.ownerNoteId ?? null
 
   writeCanvasScene(vaultPath, filePath, id, scene, now, now)
 
@@ -164,6 +171,7 @@ export function createCanvas(
       filePath,
       folder,
       icon,
+      ownerNoteId,
       snapshotCiphertext: '',
       vectorClock: {},
       createdAt: now,
@@ -179,6 +187,7 @@ export function createCanvas(
     title: input.title ?? null,
     folder,
     icon,
+    ownerNoteId,
     createdAt: now,
     updatedAt: now,
     // Read back rather than echoing the input: callers must see the same
@@ -189,7 +198,9 @@ export function createCanvas(
 }
 
 /**
- * Copy a canvas into a new one beside it (same folder, same icon).
+ * Copy a canvas into a new one beside it (same folder, same icon). The copy is
+ * always free-standing: it was made from the sidebar or a tab, not by a note's
+ * whiteboard block, so no note embeds it and hiding it would lose it.
  *
  * The `canvas_assets` rows are copied too, and that is not optional: asset GC
  * (`assets/dedup-plan.ts`) decides a contentHash is orphaned when no OTHER
@@ -237,6 +248,7 @@ export function duplicateCanvas(
     title: copyTitle,
     folder,
     icon: row.icon,
+    ownerNoteId: null,
     scene
   })
 
@@ -462,6 +474,7 @@ export function listCanvases(db: DataDb, vaultId: string): CanvasSummary[] {
       title: canvases.title,
       folder: canvases.folder,
       icon: canvases.icon,
+      ownerNoteId: canvases.ownerNoteId,
       createdAt: canvases.createdAt,
       updatedAt: canvases.updatedAt
     })
@@ -485,6 +498,7 @@ export function listCanvasesWithCounts(db: DataDb, vaultId: string): CanvasSumma
       title: canvases.title,
       folder: canvases.folder,
       icon: canvases.icon,
+      ownerNoteId: canvases.ownerNoteId,
       createdAt: canvases.createdAt,
       updatedAt: canvases.updatedAt,
       itemCount: count(canvasEntityRefs.entityId)

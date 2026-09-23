@@ -16,7 +16,12 @@
  */
 
 import { serializeLinkMentionToken } from './inline/link-mention'
-import { serializeCalloutBlock, serializeMathBlock, serializeToggleBlock } from './blocks/markdown'
+import {
+  serializeCalloutBlock,
+  serializeMathBlock,
+  serializeToggleBlock,
+  serializeWhiteboard
+} from './blocks/markdown'
 import { serializeDateMentionToken, type DateMentionData } from '@memry/shared/date-mention'
 
 export interface RoundtripCase {
@@ -490,6 +495,37 @@ const diagramCases: RoundtripCase[] = [
 ]
 
 /**
+ * A whiteboard is `![whiteboard](memry://canvas/<id>)` on disk, claimed only
+ * as a whole line pointing at a canvas id. What the cases around the plain
+ * marker pin is the claim's edges: an image with the same alt text and an
+ * ordinary URL is somebody's image, and a marker quoted in a code block is
+ * documentation, not a board.
+ */
+const WHITEBOARD_ID = 'V1StGXR8_Z5jdHi6B-myT'
+
+const whiteboardCases: RoundtripCase[] = [
+  { name: 'whiteboard marker', markdown: serializeWhiteboard(WHITEBOARD_ID) },
+  {
+    name: 'whiteboard between paragraphs',
+    markdown: `Before\n\n${serializeWhiteboard(WHITEBOARD_ID)}\n\nAfter`
+  },
+  {
+    name: 'whiteboard in a toggle body',
+    markdown: serializeToggleBlock('Summary', serializeWhiteboard(WHITEBOARD_ID))
+  },
+  {
+    name: 'a whiteboard alt text on a non-canvas url stays an image',
+    markdown: '![whiteboard](https://example.com/board.png)'
+  },
+  {
+    // Tagged for the reason the math fence case gives: an untagged fence is a
+    // different, pre-existing gap between the two pipelines.
+    name: 'a whiteboard marker inside a code block stays code',
+    markdown: `\`\`\`text\n${serializeWhiteboard(WHITEBOARD_ID)}\n\`\`\``
+  }
+]
+
+/**
  * Spellings Memry never writes, from files it did not author (#1915). The
  * block tree cannot tell `* One` from `- One`, so `canonical` here records
  * the house style an EDITED region comes back in. What an untouched document
@@ -534,6 +570,7 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...containerCases,
   ...blockMarkerCases,
   ...diagramCases,
+  ...whiteboardCases,
   ...foreignSpellingCases
 ]
 
@@ -882,6 +919,11 @@ export const NOTE_BLOCK_CASES: readonly NoteBlockCase[] = [
     name: 'mathBlock',
     pins: 'a math block is `content: none` — the LaTeX is the `latex` PROP, so a reader that only walks inline content shows an empty row',
     blocks: [{ type: 'mathBlock', props: { latex: '\\int_0^1 x^2 \\, dx = \\frac{1}{3}' } }]
+  },
+  {
+    name: 'whiteboard',
+    pins: 'a whiteboard is `content: none` and holds only the `canvasId` PROP — the drawing lives in its own canvas file, never in the note',
+    blocks: [{ type: 'whiteboard', props: { canvasId: WHITEBOARD_ID } }]
   },
   {
     name: 'table',

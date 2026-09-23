@@ -10,12 +10,12 @@
     "fragmentName": "prosemirror",
     "authoredBy": "@blocknote/server-util blocksToYXmlFragment, the path desktop main calls",
     "registry": {
-      "blocks": 20,
+      "blocks": 21,
       "inline": 8,
       "styles": 7
     },
     "notClaimed": "this is not markdown and not a rendering; it is the block list a shell draws from",
-    "caseCount": 32
+    "caseCount": 33
   },
   "cases": [
     {
@@ -1099,6 +1099,26 @@
         }
       ],
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"mathblock-0\"\n2 element mathBlock latex=\"\\\\int_0^1 x^2 \\\\, dx = \\\\frac{1}{3}\""
+    },
+    {
+      "name": "whiteboard",
+      "pins": "a whiteboard is `content: none` and holds only the `canvasId` PROP — the drawing lives in its own canvas file, never in the note",
+      "updateHex": "0105f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030a7768697465626f6172642800f2da95eb06020863616e766173496401771556315374475852385f5a356a64486936422d6d79542800f2da95eb060102696401770c7768697465626f6172642d3000",
+      "expectedBlocks": [
+        {
+          "id": "whiteboard-0",
+          "kind": "whiteboard",
+          "depth": 0,
+          "props": [
+            {
+              "name": "canvasId",
+              "value": "V1StGXR8_Z5jdHi6B-myT"
+            }
+          ],
+          "inline": []
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"whiteboard-0\"\n2 element whiteboard canvasId=\"V1StGXR8_Z5jdHi6B-myT\""
     },
     {
       "name": "table",

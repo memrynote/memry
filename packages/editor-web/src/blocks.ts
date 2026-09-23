@@ -13,6 +13,7 @@ import {
   mathBlockConfig,
   taskBlockConfig,
   toggleListItemConfig,
+  whiteboardConfig,
   youtubeEmbedConfig
 } from '@memry/editor-schema/blocks'
 import { blockExternalHTML, diagramParsing } from '@memry/editor-schema/server'
@@ -20,12 +21,13 @@ import { getYouTubeThumbnailUrl } from '@memry/shared/youtube'
 import { icon, type IconName } from './icons.ts'
 
 /**
- * Touch presentation for Memry's seven custom blocks.
+ * Touch presentation for Memry's custom blocks.
  *
  * Every spec here takes its config and its `toExternalHTML` from
  * `@memry/editor-schema` unchanged, so the vault bytes are the ones the main
  * process already writes: `> [!info]`, `- [ ] title {task:id}`,
- * `<!-- file:{…} -->`, `![embed](url)`, `![bookmark](url)`, `<li><p>`. Only
+ * `<!-- file:{…} -->`, `![embed](url)`, `![bookmark](url)`,
+ * `![whiteboard](memry://canvas/<id>)`, `<li><p>`. Only
  * `render` is new, and `render` never reaches disk for these blocks — the
  * converter serializes them through `toExternalHTML`.
  *
@@ -384,6 +386,30 @@ export function createTouchBlockSpecs() {
         return { dom, contentDOM: code }
       },
       toExternalHTML: blockExternalHTML.diagram
+    })(),
+
+    /**
+     * A labelled card, not the drawing.
+     *
+     * The block is a pointer: the ink lives in the canvas's own `.excalidraw`
+     * file, which this bundle neither receives nor could draw — Excalidraw is
+     * megabytes of React in the same bundle that dropped shiki (#2032, #2044),
+     * and phones do not sync canvases yet. What the phone owes the note is
+     * the node itself, so y-prosemirror does not delete it, and the marker
+     * line on the way back out; the card says the board is here.
+     */
+    whiteboard: createBlockSpec(whiteboardConfig, {
+      render() {
+        const dom = document.createElement('div')
+        dom.className = 'whiteboard-block'
+
+        const glyph = span('whiteboard-icon')
+        glyph.appendChild(icon('whiteboard'))
+
+        dom.append(glyph, span('whiteboard-label', 'Whiteboard'))
+        return { dom }
+      },
+      toExternalHTML: blockExternalHTML.whiteboard
     })()
   }
 }

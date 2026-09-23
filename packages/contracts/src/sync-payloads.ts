@@ -191,6 +191,12 @@ export const CanvasSyncPayloadSchema = z.object({
    */
   folder: z.string().nullable().optional(),
   icon: z.string().nullable().optional(),
+  /**
+   * The note that owns this canvas (`CanvasSummary.ownerNoteId`). Absent means
+   * "not stated" — an older client's payload — and the apply side keeps what it
+   * already holds; null means free-standing.
+   */
+  ownerNoteId: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
   deletedAt: z.number().nullable().optional()
 })

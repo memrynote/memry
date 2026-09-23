@@ -127,7 +127,7 @@ function seedCanvas(
   id: string,
   scene: string,
   clock: VectorClock | null,
-  opts: { deletedAt?: number | null; title?: string | null } = {}
+  opts: { deletedAt?: number | null; title?: string | null; ownerNoteId?: string | null } = {}
 ): void {
   const now = Date.now()
   const filePath = `${CANVAS_DIR}/${id}.excalidraw`
@@ -142,6 +142,7 @@ function seedCanvas(
       vaultId: VAULT_ID,
       title: opts.title ?? 'My Canvas',
       filePath,
+      ownerNoteId: opts.ownerNoteId ?? null,
       snapshotCiphertext: '',
       vectorClock: {},
       createdAt: now,
@@ -1003,6 +1004,78 @@ describe('canvasHandler', () => {
       expect(result).toBe('skipped')
       expect(db.select().from(canvasAssets).all()).toHaveLength(before)
       expect(mockEnsureAssetsPresent).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('note ownership (ownerNoteId)', () => {
+    const ownerOf = (id: string): string | null | undefined =>
+      db.select().from(canvases).where(eq(canvases.id, id)).get()?.ownerNoteId
+
+    it('#given a remote create naming an owner #then stores it; without the key #then free-standing', () => {
+      const base = { vaultId: VAULT_ID, scene: sceneWith('note-1'), clock: { B: 1 } }
+
+      canvasHandler.applyUpsert(ctx, 'c1', { ...base, id: 'c1', ownerNoteId: 'note-9' }, { B: 1 })
+      canvasHandler.applyUpsert(ctx, 'c2', { ...base, id: 'c2' }, { B: 1 })
+
+      expect(ownerOf('c1')).toBe('note-9')
+      expect(ownerOf('c2')).toBeNull()
+    })
+
+    it.each([
+      // An older client never mentions owners; that must not free the board.
+      { label: 'absent', payload: {}, expected: 'note-1' },
+      { label: 'null', payload: { ownerNoteId: null }, expected: null },
+      { label: 'a note id', payload: { ownerNoteId: 'note-2' }, expected: 'note-2' }
+    ])(
+      '#given an owned canvas #when a remote update has ownerNoteId $label #then owner is $expected',
+      ({ payload, expected }) => {
+        seedCanvas(db, 'c1', sceneWith('note-old'), { A: 1 }, { ownerNoteId: 'note-1' })
+        const data: CanvasSyncPayload = {
+          id: 'c1',
+          vaultId: VAULT_ID,
+          scene: sceneWith('note-new'),
+          clock: { A: 1, B: 2 },
+          ...payload
+        }
+
+        expect(canvasHandler.applyUpsert(ctx, 'c1', data, { A: 1, B: 2 })).toBe('applied')
+        expect(ownerOf('c1')).toBe(expected)
+      }
+    )
+
+    it('#given owned and free-standing canvases #then the push states the owner, null included', () => {
+      seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 }, { ownerNoteId: 'note-1' })
+      seedCanvas(db, 'c2', sceneWith('note-1'), { A: 1 })
+
+      for (const [id, owner] of [
+        ['c1', 'note-1'],
+        // Present-and-null, not absent: absent reads as "not stated" and would
+        // leave a stale owner in place on the receiver.
+        ['c2', null]
+      ] as const) {
+        const pushed = JSON.parse(canvasHandler.buildPushPayload!(db, id, LOCAL_DEVICE, 'update')!)
+        expect(pushed).toHaveProperty('ownerNoteId', owner)
+      }
+    })
+
+    it('#given a concurrent edit of an owned canvas #then the conflict copy keeps the owner', () => {
+      seedCanvas(db, 'c1', sceneWith('note-local'), { A: 2 }, { ownerNoteId: 'note-1' })
+      const data: CanvasSyncPayload = {
+        id: 'c1',
+        vaultId: VAULT_ID,
+        scene: sceneWith('note-remote'),
+        clock: { B: 3 }
+      }
+
+      expect(canvasHandler.applyUpsert(ctx, 'c1', data, { B: 3 })).toBe('conflict')
+
+      const copy = db
+        .select()
+        .from(canvases)
+        .all()
+        .find((r) => r.id !== 'c1')!
+      expect(copy.ownerNoteId).toBe('note-1')
+      expect(ownerOf('c1')).toBe('note-1')
     })
   })
 })

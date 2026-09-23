@@ -92,7 +92,9 @@ export const LONG_PRESS_BLOCK_TYPES: ReadonlySet<string> = new Set([
   'divider',
   // The card shows LaTeX source the phone cannot edit, so nothing here competes
   // with the loupe for the gesture.
-  'mathBlock'
+  'mathBlock',
+  // A label-only card: no text of its own to compete for.
+  'whiteboard'
 ])
 
 /**
@@ -121,7 +123,8 @@ export const BLOCK_LABELS: Readonly<Record<string, string>> = {
   youtubeEmbed: 'YouTube embed',
   taskBlock: 'Task',
   mathBlock: 'Equation',
-  diagram: 'Diagram'
+  diagram: 'Diagram',
+  whiteboard: 'Whiteboard'
 }
 
 /** Block-level attachment, or an `inlineImage` in its content. Desktop's rule. */

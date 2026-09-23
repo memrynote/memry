@@ -5,6 +5,7 @@ import { AIExtension } from '@blocknote/xl-ai'
 import { DefaultChatTransport } from 'ai'
 import type { HighlightInfo } from '../types'
 import { scrollToAnchor } from '../scroll-to-anchor'
+import { isFromWhiteboard } from '../whiteboard-events'
 import { createLogger } from '@/lib/logger'
 
 const _log = createLogger('Hook:BlockNoteSetup')
@@ -168,6 +169,9 @@ export function useBlockNoteSetup({
     if (!onLinkClick) return
 
     const handleClick = (e: Event): void => {
+      // A link on a whiteboard is opened by the board's own handler; answering
+      // it here too opened every such link twice.
+      if (isFromWhiteboard(e)) return
       const mouseEvent = e as globalThis.MouseEvent
       const target = mouseEvent.target as HTMLElement
       const link = target.closest('a')

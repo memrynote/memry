@@ -156,6 +156,25 @@ export const mathBlockConfig = {
   content: 'none' as const
 }
 
+/**
+ * An Excalidraw canvas drawn inline in a note.
+ *
+ * The block holds a REFERENCE, never the drawing: the ink stays in its own
+ * `canvases/<Title>.excalidraw` file and syncs as a canvas, so one board can
+ * be embedded in several notes and still open in a tab of its own. A board
+ * created from a note's `/whiteboard` carries that note as its canvas-side
+ * `ownerNoteId`; the block itself does not care who owns what it shows.
+ *
+ * `canvasId` is the whole on-disk state (`![whiteboard](memry://canvas/<id>)`).
+ */
+export const whiteboardConfig = {
+  type: 'whiteboard' as const,
+  propSchema: {
+    canvasId: { default: '' }
+  },
+  content: 'none' as const
+}
+
 /** Node names of every custom block spec. The parity gate (#1433) will read this. */
 export const MEMRY_BLOCK_TYPES = [
   'taskBlock',
@@ -165,5 +184,6 @@ export const MEMRY_BLOCK_TYPES = [
   'bookmark',
   'toggleListItem',
   'mathBlock',
-  'diagram'
+  'diagram',
+  'whiteboard'
 ] as const

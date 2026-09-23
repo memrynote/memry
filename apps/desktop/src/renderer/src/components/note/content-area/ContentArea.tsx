@@ -55,6 +55,8 @@ import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-ind
 import { BodySyncPendingHint } from './body-sync-pending-hint'
 import { getCalloutSlashMenuItem } from './callout-block'
 import { getMathSlashMenuItem } from './math-block'
+import { getWhiteboardSlashMenuItem } from './whiteboard-block'
+import { isFromWhiteboard } from './whiteboard-events'
 import {
   orderSlashMenuItemsByGroup,
   withTableHeaderRow,
@@ -135,7 +137,7 @@ import { createInlineCheckboxContent } from '@memry/editor-schema/inline'
 import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
-import { MentionMenu, type MentionSuggestionItem } from './mention-menu'
+import { CanvasChoiceMenu, MentionMenu, type MentionSuggestionItem } from './mention-menu'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
@@ -1010,12 +1012,21 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [editor])
 
   // `@` quick-insert menu: a Date group (date + remind) when the query parses
-  // as a date, plus recent notes (insert as wiki links). The bound menu is
-  // memoized so it doesn't remount per render.
-  const { getMentionItems, handleMentionSelect, mentionHasMore, showMore } = useMentionSuggestions(
-    editor,
-    { onInsertDate: insertDatePill }
-  )
+  // as a date, plus recent notes (insert as wiki links) and canvases (a
+  // Mention / Embed choice). The bound menu is memoized so it doesn't remount
+  // per render.
+  const {
+    getMentionItems,
+    handleMentionSelect,
+    mentionHasMore,
+    showMore,
+    canvasChoice,
+    selectCanvasChoice
+  } = useMentionSuggestions(editor, {
+    onInsertDate: insertDatePill,
+    editorContainerRef,
+    canvasesEnabled: isFeatureEnabled('spatialCanvas')
+  })
   const MentionSuggestionMenu = useCallback(
     function BoundMentionMenu(props: SuggestionMenuProps<MentionSuggestionItem>) {
       return <MentionMenu {...props} hasMore={mentionHasMore} onShowMore={showMore} />
@@ -1898,6 +1909,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       // their own Backspace semantics handled inside the renderer.
       const target = e.target as HTMLElement | null
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
+      // Nor from a whiteboard: that Backspace deletes a shape, and the caret it
+      // would be read against is wherever the note last left it.
+      if (isFromWhiteboard(e)) return
 
       const tiptap = (editor as any)._tiptapEditor
       if (!tiptap) return
@@ -2287,6 +2301,22 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 const taskItem = isFeatureEnabled('tasks')
                   ? getTaskSlashMenuItem(editor, noteId)
                   : null
+                // `/whiteboard` makes a canvas this note owns, so it needs a
+                // note to own it; and, being a block, it has no place in a
+                // table cell for the same reason the diagram has none.
+                const whiteboardItem =
+                  noteId && !inCell && isFeatureEnabled('spatialCanvas')
+                    ? getWhiteboardSlashMenuItem(
+                        editor,
+                        noteId,
+                        {
+                          title: t('editor.whiteboard.title'),
+                          group: t('editor.whiteboard.group'),
+                          subtext: t('editor.whiteboard.subtext')
+                        },
+                        async () => (await fetchNote())?.title
+                      )
+                    : null
                 // `/date` and `/remind` both surface the same two-row Date group:
                 // a plain date and a "Remind me — <subtitle>" (aliases overlap so
                 // either trigger shows both). Selecting inserts a configurable pill.
@@ -2360,6 +2390,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   ...diagramItems,
                   calloutItem,
                   mathItem,
+                  ...(whiteboardItem ? [whiteboardItem] : []),
                   ...(taskItem ? [taskItem] : []),
                   ...dateItems,
                   linkToNoteItem,
@@ -2461,6 +2492,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             selectedIndex={pasteLinkState.selectedIndex}
             onSelect={handlePasteLinkOptionSelect}
           />
+
+          <CanvasChoiceMenu choice={canvasChoice} onSelect={selectCanvasChoice} />
 
           <DateMentionPopover
             open={dateMentionState.open}

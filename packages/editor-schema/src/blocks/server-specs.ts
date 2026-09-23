@@ -20,6 +20,8 @@
  *
  *   img[alt=embed]    → `![embed](url)`
  *   img[alt=bookmark] → `![bookmark](url)`
+ *   img[alt=whiteboard] → `![whiteboard](memry://canvas/<id>)`, nothing when
+ *                       the block points at no canvas
  *   comment node      → `<!-- file:{…} -->`, passed through raw
  *   blockquote        → `> [!type]` + one `> ` per content line
  *   checkbox li       → `- [ ] title {task:id}`
@@ -38,9 +40,15 @@ import {
   mathBlockConfig,
   taskBlockConfig,
   toggleListItemConfig,
+  whiteboardConfig,
   youtubeEmbedConfig
 } from './configs'
-import { fileBlockCommentData, serializeMathBlock, type FileBlockProps } from './markdown'
+import {
+  fileBlockCommentData,
+  serializeMathBlock,
+  whiteboardUrl,
+  type FileBlockProps
+} from './markdown'
 import { assertSpecKeysMatchNodeTypes } from '../spec-keys'
 
 /**
@@ -63,6 +71,17 @@ function youtubeEmbedDom(block: { props: { videoUrl: string } }): { dom: HTMLEle
 
 function bookmarkDom(block: { props: { url: string } }): { dom: HTMLElement } {
   return imageEmbedDom(block.props.url || '', 'bookmark')
+}
+
+/**
+ * An empty `canvasId` writes NOTHING rather than `![whiteboard](memry://canvas/)`:
+ * that line fails `WHITEBOARD_LINE_REGEX` and would come back as a plain image
+ * of a URL that loads nothing, so the block would silently change type on the
+ * next open. A board with no canvas has no state worth keeping.
+ */
+function whiteboardDom(block: { props: { canvasId: string } }): { dom: HTMLElement } {
+  if (!block.props.canvasId) return { dom: document.createElement('div') }
+  return imageEmbedDom(whiteboardUrl(block.props.canvasId), 'whiteboard')
 }
 
 /**
@@ -265,7 +284,8 @@ export const blockExternalHTML = {
   bookmark: bookmarkDom,
   toggleListItem: toggleListItemDom,
   mathBlock: mathBlockDom,
-  diagram: diagramDom
+  diagram: diagramDom,
+  whiteboard: whiteboardDom
 }
 
 /**
@@ -325,6 +345,10 @@ export function createServerBlockSpecs() {
       ...diagramParsing,
       render: blockExternalHTML.diagram,
       toExternalHTML: blockExternalHTML.diagram
+    })(),
+    whiteboard: createBlockSpec(whiteboardConfig, {
+      render: blockExternalHTML.whiteboard,
+      toExternalHTML: blockExternalHTML.whiteboard
     })()
   }
   assertSpecKeysMatchNodeTypes('blockSpecs (createServerBlockSpecs)', registered)

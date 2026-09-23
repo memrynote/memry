@@ -735,3 +735,67 @@ describe('0055_task_canvases migration', () => {
     sqlite.close()
   })
 })
+
+describe('0058_canvas_owner_note migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-canvas-owner-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('upgrades every canvas to free-standing, adopting only a well-formed captured owner', () => {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0058')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0058_canvas_owner_note')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: copy })
+
+    const insertCanvas = sqlite.prepare(
+      `INSERT INTO canvases (id, vault_id, title, snapshot_ciphertext, vector_clock, created_at, updated_at)
+       VALUES (?, 'v1', ?, '', '{}', 1, 2)`
+    )
+    const capture = sqlite.prepare(
+      'INSERT INTO sync_unknown_fields (type, item_id, fields, updated_at) VALUES (?, ?, ?, 1)'
+    )
+    for (const id of ['plain', 'captured', 'garbage', 'numeric', 'other-type']) {
+      insertCanvas.run(id, `Title ${id}`)
+    }
+    // What a pre-0058 build with #2183 keeps when a newer peer names an owner.
+    capture.run('canvas', 'captured', '{"ownerNoteId":"note-1","later":true}')
+    capture.run('canvas', 'garbage', '{not json')
+    capture.run('canvas', 'numeric', '{"ownerNoteId":5}')
+    capture.run('note', 'other-type', '{"ownerNoteId":"note-2"}')
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    const rows = sqlite
+      .prepare('SELECT id, title, owner_note_id FROM canvases ORDER BY id')
+      .all() as { id: string; title: string; owner_note_id: string | null }[]
+    expect(rows).toEqual([
+      { id: 'captured', title: 'Title captured', owner_note_id: 'note-1' },
+      { id: 'garbage', title: 'Title garbage', owner_note_id: null },
+      { id: 'numeric', title: 'Title numeric', owner_note_id: null },
+      { id: 'other-type', title: 'Title other-type', owner_note_id: null },
+      { id: 'plain', title: 'Title plain', owner_note_id: null }
+    ])
+    // The capture itself is left for the next apply to clear.
+    expect(sqlite.prepare('SELECT count(*) AS n FROM sync_unknown_fields').get()).toEqual({ n: 4 })
+    sqlite.close()
+  })
+})

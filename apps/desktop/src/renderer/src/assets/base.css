@@ -339,15 +339,16 @@
 
 /* ===== EMBED NODE-SELECTION ===== */
 /* Drop BlockNote's default 4px blue outline on node-selected embeds
-   (PDF/file, image, video, audio, YouTube, bookmark). Each embed already
-   reads as selected via its own chrome; the big blue border felt heavy. */
+   (PDF/file, image, video, audio, YouTube, bookmark, whiteboard). Each embed
+   already reads as selected via its own chrome; the big blue border felt heavy. */
 .bn-block-content.ProseMirror-selectednode:is(
     [data-content-type='file'],
     [data-content-type='image'],
     [data-content-type='video'],
     [data-content-type='audio'],
     [data-content-type='youtubeEmbed'],
-    [data-content-type='bookmark']
+    [data-content-type='bookmark'],
+    [data-content-type='whiteboard']
   )
   > *,
 .ProseMirror-selectednode
@@ -357,7 +358,8 @@
     [data-content-type='video'],
     [data-content-type='audio'],
     [data-content-type='youtubeEmbed'],
-    [data-content-type='bookmark']
+    [data-content-type='bookmark'],
+    [data-content-type='whiteboard']
   )
   > * {
   outline: none !important;
@@ -367,6 +369,26 @@
    hover (so a click surfaces them too). */
 .ProseMirror-selectednode [data-pdf-resize-handle] {
   opacity: 1;
+}
+
+/* ===== WHITEBOARD BLOCK ===== */
+/* The board is drawn inside ProseMirror's root, whose prose settings (kept
+   spaces, no ligatures) every descendant inherits. Excalidraw's own UI is laid
+   out against the page defaults, so the surface puts them back. */
+.whiteboard-surface {
+  white-space: normal;
+  word-wrap: normal;
+  font-variant-ligatures: normal;
+  font-feature-settings: normal;
+}
+
+/* Excalidraw's `.SVGLayer` (laser and eraser trails) is a fixed, full-viewport
+   layer that relies on inheriting `pointer-events: none`. BlockNote's shadcn
+   theme sets `.bn-shadcn svg { pointer-events: all }`, which inside the note
+   turns that layer's svg into a window-sized sheet swallowing every click —
+   the board's own header buttons included. */
+.whiteboard-surface .excalidraw .SVGLayer svg {
+  pointer-events: none;
 }
 
 /* ===== HEADING SIZES ===== */

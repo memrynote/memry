@@ -57,6 +57,7 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Toggle list (collapsible section — nest text, images, even other toggles inside it)
 - Code block (language picker: 50 languages, alphabetical)
 - Diagram (Mermaid)
+- Whiteboard (an inline canvas you draw on)
 - Divider
 - Image, file
 - Table
@@ -104,6 +105,39 @@ opens as one too.
 On the phone the block shows the Mermaid **source**, labelled, rather than the
 drawing — the renderer is far too heavy for the mobile editor. You can read and
 edit it there and the change syncs; the picture is drawn on the desktop.
+
+## Whiteboards
+
+`/whiteboard` (or `/canvas`, `/excalidraw`, `/draw`, `/sketch`, `/board`) creates
+a new canvas, titled after the note ("Meeting notes whiteboard"), and shows it
+right in the note. The drawing is read-only until you press **Edit**, which turns
+on the full drawing tools; changes save into the canvas as you draw, and **Done**
+saves at once. While you are not editing, scrolling passes through to the note,
+pinch or <kbd>Ctrl</kbd>+scroll zooms the drawing, and changes made elsewhere —
+in the canvas's own tab, or on another device — show up in the block. **Open in
+tab** opens the canvas full size.
+
+A canvas made this way belongs to its note, so it stays out of the sidebar's
+canvas list, but it is an ordinary canvas otherwise: `[[` finds it, it opens in a
+tab of its own, and other notes can show it too.
+
+To put an existing canvas in a note, type `@` and pick it. **Mention** inserts a
+link to it, the same `[[Canvas Title]]` link `[[` gives you; **Embed** shows the
+canvas inline, like `/whiteboard` does. One canvas can be embedded in any number
+of notes; they all show the same drawing, because there is only one. If the
+canvas is deleted or cannot be read, the block says so instead of drawing it.
+
+The note stores only a pointer to the drawing, one line of the form
+`![whiteboard](memry://canvas/<id>)`; the drawing itself stays in the canvas's own
+`.excalidraw` file under `canvases/`. The pointer uses the canvas's id rather than
+its title, so renaming a canvas never breaks a note that shows it. Other markdown
+apps see that line as an image they cannot load.
+
+A note shown as a card on a canvas shows its whiteboards as their title and
+**Open in tab** rather than as live drawings.
+
+On the phone the block shows a **Whiteboard** card rather than the drawing; the
+note keeps it, and the board is drawn on the desktop.
 
 ## Tables
 
@@ -369,7 +403,7 @@ applies to that one block, no matter what else is selected:
 
 Some entries are hidden when they do not apply. **Turn into** and **Comment** do not
 appear on blocks with no text of their own — files, images, embeds, bookmarks, tasks,
-equations and tables. **Move to…** is hidden on blocks that hold an attachment, because the
+equations, whiteboards and tables. **Move to…** is hidden on blocks that hold an attachment, because the
 file stays with the note that owns it and the embed would break on your other
 devices.
 

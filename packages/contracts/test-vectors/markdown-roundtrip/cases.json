@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 96,
+    "exportedCaseCount": 101,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 106,
+    "caseCount": 111,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -616,6 +616,41 @@
       "canonical": null,
       "pending": null,
       "sha256": "475b23404d03f12ef8e09be433317586630b97dcf9214ad12974756727f39037"
+    },
+    {
+      "name": "whiteboard marker",
+      "markdown": "![whiteboard](memry://canvas/V1StGXR8_Z5jdHi6B-myT)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "03f5263993da6f039fba541422a23ea36460e7bfa546e18f172160f839f716a3"
+    },
+    {
+      "name": "whiteboard between paragraphs",
+      "markdown": "Before\n\n![whiteboard](memry://canvas/V1StGXR8_Z5jdHi6B-myT)\n\nAfter",
+      "canonical": null,
+      "pending": null,
+      "sha256": "78ba2d67f11abb5830db3430d49dd3d1c80d196070a5d88ab056119474afccbb"
+    },
+    {
+      "name": "whiteboard in a toggle body",
+      "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n\n![whiteboard](memry://canvas/V1StGXR8_Z5jdHi6B-myT)\n\n</details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "144f37bf11b18eb05b772e2bfb52970da12eaf912ba3631edaeba292cd019eaa"
+    },
+    {
+      "name": "a whiteboard alt text on a non-canvas url stays an image",
+      "markdown": "![whiteboard](https://example.com/board.png)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "2c0bb368c7fdc945a282aec8ef3c005bab2b35187e941353050383e7a46939a6"
+    },
+    {
+      "name": "a whiteboard marker inside a code block stays code",
+      "markdown": "```text\n![whiteboard](memry://canvas/V1StGXR8_Z5jdHi6B-myT)\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "86dd52eda31de6005ca695c760e72bf4b710959cb7efe73f414a3a3dac7a4e74"
     },
     {
       "name": "asterisk bullets",

@@ -42,7 +42,9 @@ const MIGRATIONS = [
   '0035_spatial_canvas.sql',
   '0038_canvas_library_items.sql',
   '0045_canvas_files.sql',
-  '0048_canvas_folders.sql'
+  '0048_canvas_folders.sql',
+  '0057_sync_unknown_fields.sql',
+  '0058_canvas_owner_note.sql'
 ]
 
 function freshDb() {

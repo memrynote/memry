@@ -313,6 +313,30 @@ export function serializeBookmark(url: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// whiteboard — the same image-embed shape, pointing at the canvas by id
+// ---------------------------------------------------------------------------
+
+/**
+ * `memry://canvas/<id>` is the link every other surface already opens a canvas
+ * from, so a whiteboard line pasted as a link still resolves. By id, not by
+ * title: a rename must not break every note the board is embedded in.
+ */
+export const WHITEBOARD_LINE_REGEX = /^!\[whiteboard\]\(memry:\/\/canvas\/([A-Za-z0-9_-]+)\)$/
+
+export function serializeWhiteboard(canvasId: string): string {
+  return `![whiteboard](${whiteboardUrl(canvasId)})`
+}
+
+export function whiteboardUrl(canvasId: string): string {
+  return `memry://canvas/${canvasId}`
+}
+
+/** The canvas id a whole-line whiteboard marker points at, or null. */
+export function parseWhiteboardLine(line: string): string | null {
+  return line.match(WHITEBOARD_LINE_REGEX)?.[1] ?? null
+}
+
+// ---------------------------------------------------------------------------
 // file — an HTML comment carrying the props as JSON
 // ---------------------------------------------------------------------------
 

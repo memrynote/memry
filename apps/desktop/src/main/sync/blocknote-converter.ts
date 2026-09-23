@@ -7,6 +7,7 @@ import {
   EMBED_LINE_REGEX,
   FILE_BLOCK_LINE_REGEX,
   parseFileBlockMarker,
+  parseWhiteboardLine,
   serializeFileBlock,
   type FileBlockProps,
   readCalloutRun,
@@ -583,6 +584,17 @@ function isEmptyParagraph(block: Block): boolean {
   return !content || content.length === 0
 }
 
+/**
+ * A whiteboard pointing at no canvas, which the vault gets no line for (see
+ * `whiteboardDom` in server-specs.ts). Only a childless one: skipping a block
+ * with children would drop them with it.
+ */
+function isEmptyWhiteboard(block: Block): boolean {
+  if ((block.type as string) !== 'whiteboard' || block.children?.length) return false
+  const props: object = block.props
+  return !('canvasId' in props) || !props.canvasId
+}
+
 function createEmptyParagraph(): Block {
   // SAFETY: `Block` is a union discriminated on the schema's block types, with
   // `props` keyed per type, so no hand-written literal is assignable to it
@@ -1062,13 +1074,13 @@ async function parseQuoteRunAt(
 }
 
 /**
- * The three custom blocks whose on-disk form is a single marker line.
+ * The custom blocks whose on-disk form is a single marker line.
  *
  * Without this, the main process — which is what seeds a note's shared Y.Doc
  * from the vault file — parses each marker as something else and the block is
  * gone before the editor ever sees it: `<!-- file:{…} -->` is dropped outright
- * (an HTML comment BlockNote has no block for), and both `![…](url)` markers
- * become plain image blocks pointing at a page rather than an image.
+ * (an HTML comment BlockNote has no block for), and the `![…](url)` markers
+ * become plain image blocks pointing at a page or a canvas rather than an image.
  *
  * The renderer's own parser does exactly this (`splitByEmbedMarkers` in
  * markdown-utils.ts); it only ever runs on the non-collaborative path, so this
@@ -1080,7 +1092,7 @@ async function parseQuoteRunAt(
  */
 function parseCustomBlockMarkerLine(line: string): Block | null {
   // Matched exactly the way the renderer matches (markdown-utils.ts): `file` on
-  // the trimmed line, the two image markers on the raw one. Trimming those two
+  // the trimmed line, the three image markers on the raw one. Trimming those
   // as well would claim a marker indented under a list item, dropping the
   // nesting the parent preserved — and would make the same file parse to a
   // different document depending on which process read it.
@@ -1120,6 +1132,14 @@ function parseCustomBlockMarkerLine(line: string): Block | null {
     }
   }
 
+  // Only a `memry://canvas/<id>` target is claimed (`WHITEBOARD_LINE_REGEX`),
+  // so `![whiteboard](https://…)` stays somebody's image.
+  const canvasId = parseWhiteboardLine(line)
+  if (canvasId) {
+    // SAFETY: `whiteboard`'s one declared prop, a string.
+    return { type: 'whiteboard', props: { canvasId } } as unknown as Block
+  }
+
   return null
 }
 
@@ -1156,6 +1176,14 @@ async function blocksToMarkdownPreserving(
   }
 
   for (const block of blocks) {
+    if (isEmptyWhiteboard(block)) {
+      // Written as nothing at all, and skipped here rather than handed to the
+      // content group: its spec DOM is an empty `<div>`, and leaving it in the
+      // group would make the blank lines around it BlockNote's call instead of
+      // the gap accounting's. The renderer's twin skips it the same way.
+      continue
+    }
+
     // SAFETY: as above — `MarkedBlock` is the `{ type, props }` subset.
     const markers = sidecarMarkerLines(block as unknown as MarkedBlock)
 

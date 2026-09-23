@@ -136,6 +136,7 @@ function canvas(overrides: Partial<CanvasSummary> & { id: string }): CanvasSumma
     title: null,
     folder: null,
     icon: null,
+    ownerNoteId: null,
     createdAt: 1,
     updatedAt: 1,
     ...overrides
@@ -1273,6 +1274,45 @@ describe('CanvasTree', () => {
     renderTree({ onCountChange })
 
     await waitFor(() => expect(onCountChange).toHaveBeenCalledWith(2))
+  })
+
+  describe('note-owned canvases', () => {
+    it('leaves them out of the rows, the folder badge and the host count', async () => {
+      setData(
+        [
+          canvas({ id: 'c1', title: 'Alpha' }),
+          canvas({ id: 'c2', title: 'Board', ownerNoteId: 'note-1' }),
+          canvas({ id: 'c3', title: 'Plan', folder: 'Work' }),
+          canvas({ id: 'c4', title: 'Sketch', folder: 'Work', ownerNoteId: 'note-2' })
+        ],
+        [folder('Work')]
+      )
+      const onCountChange = vi.fn()
+      renderTree({ onCountChange })
+      const rows = await rowsRendered()
+
+      expect(rows.map((row) => row.dataset.rowKey)).toEqual(['folder:Work', 'canvas:c1'])
+      expect(screen.getByTestId('canvas-folder-count')).toHaveTextContent('1')
+      await waitFor(() => expect(onCountChange).toHaveBeenCalledWith(2))
+      expect(onCountChange).not.toHaveBeenCalledWith(4)
+    })
+
+    it('still counts them before a folder delete, which takes them too', async () => {
+      setData(
+        [
+          canvas({ id: 'c1', title: 'Plan', folder: 'Work' }),
+          canvas({ id: 'c2', title: 'Sketch', folder: 'Work', ownerNoteId: 'note-1' })
+        ],
+        [folder('Work')]
+      )
+      renderTree()
+      await rowsRendered()
+
+      fireEvent.click(within(openRowMenu('Work')).getByText('delete'))
+
+      const dialog = await screen.findByRole('alertdialog')
+      expect(within(dialog).getByText(/deleteFolderConfirmBody:2/)).toBeInTheDocument()
+    })
   })
 
   it('reports the folder the user is looking at to its host', async () => {

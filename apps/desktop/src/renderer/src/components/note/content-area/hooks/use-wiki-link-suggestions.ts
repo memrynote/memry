@@ -27,7 +27,7 @@ type NoteSuggestion = {
   fileSize?: number | null
 }
 
-function blockHasContent(block: any): boolean {
+export function blockHasContent(block: any): boolean {
   const content = block?.content
   if (typeof content === 'string') return content.trim().length > 0
   if (!Array.isArray(content)) return false

@@ -37,12 +37,14 @@ import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { splitMarkdownByBlockquoteRuns, serializeCalloutBlock } from './callout-block'
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
 import {
+  parseWhiteboardLine,
   readMathRun,
   resolveCalloutRun,
   resolveQuoteRun,
   serializeMathBlock,
   serializeQuoteBlock,
   serializeToggleBlock,
+  serializeWhiteboard,
   restoreDetailsMarkup,
   splitMarkdownByToggles,
   type ToggleBlockSegment
@@ -63,6 +65,21 @@ export function isEmptyParagraph(block: Block): boolean {
   if (block.children?.length) return false
   const content = block.content as unknown[]
   return !content || content.length === 0
+}
+
+/** Twin of main's `isEmptyWhiteboard`: a board with no canvas writes nothing. */
+function isEmptyWhiteboard(block: Block): boolean {
+  if ((block.type as string) !== 'whiteboard' || block.children?.length) return false
+  const props: object = block.props
+  return !('canvasId' in props) || !props.canvasId
+}
+
+/** The whiteboard's line, or nothing for a board with no canvas (see server-specs.ts). */
+function whiteboardMarkdown(block: Block): string {
+  const props: object = block.props
+  return 'canvasId' in props && typeof props.canvasId === 'string' && props.canvasId
+    ? serializeWhiteboard(props.canvasId)
+    : ''
 }
 
 const MARKDOWN_LIST_BLOCK_TYPES = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
@@ -154,7 +171,12 @@ async function serializeBlocksWithNestingMarkers(editor: any, blocks: Block[]): 
             // paragraph in the block spec's DOM, so a nested formula is written
             // from the shared serializer rather than through BlockNote.
             serializeMathBlock((block.props as { latex?: string }).latex ?? '')
-          : (await serializeBlocks(editor, [shallowBlock])).trim()
+          : (block.type as string) === 'whiteboard'
+            ? // Main writes this through the server spec's `<img>`; written from
+              // the shared serializer here so the bytes do not depend on the
+              // React spec's export HTML.
+              whiteboardMarkdown(block)
+            : (await serializeBlocks(editor, [shallowBlock])).trim()
     if (markdown) parts.push(markdown)
 
     for (const child of (block.children ?? []) as Block[]) {
@@ -459,6 +481,12 @@ async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block
             type: 'mathBlock' as const,
             props: { latex: part.latex }
           } as unknown as Block)
+        } else if (part.kind === 'whiteboard') {
+          // SAFETY: `whiteboard`'s one declared prop, a string.
+          blocks.push({
+            type: 'whiteboard' as const,
+            props: { canvasId: part.canvasId }
+          } as unknown as Block)
         } else {
           const parsed = await parseMarkdownChunkPreservingNesting(editor, part.text)
           if (parsed[0]) {
@@ -508,6 +536,10 @@ export async function serializeBlocksPreservingBlanks(
   }
 
   for (const block of blocks) {
+    // Skipped before anything is flushed, exactly where main skips it, so the
+    // blank lines around it are accounted the same way on both sides.
+    if (isEmptyWhiteboard(block)) continue
+
     // SAFETY: as in `applyMarkers` — the `{ type, props }` subset.
     const markers = sidecarMarkerLines(block as unknown as MarkedBlock)
 
@@ -543,6 +575,12 @@ export async function serializeBlocksPreservingBlanks(
       await flushContent()
       flushGap()
       segments.push({ type: 'content', text: serializeBookmark((block.props as any).url) })
+    } else if ((block.type as string) === 'whiteboard' && !block.children?.length) {
+      // With children it falls through to the nesting-marker path below, which
+      // is where main's content-group serialization sends it too.
+      await flushContent()
+      flushGap()
+      segments.push({ type: 'content', text: whiteboardMarkdown(block) })
     } else if ((block.type as string) === 'file') {
       await flushContent()
       flushGap()
@@ -628,6 +666,7 @@ type EmbedPart =
   | { kind: 'bookmark'; url: string }
   | { kind: 'file'; props: FileBlockProps }
   | { kind: 'math'; latex: string }
+  | { kind: 'whiteboard'; canvasId: string }
 
 const EMBED_LINE_REGEX = /^!\[embed\]\(([^)]+)\)$/
 const BOOKMARK_LINE_REGEX = /^!\[bookmark\]\(([^)]+)\)$/
@@ -636,10 +675,10 @@ const FILE_BLOCK_LINE_REGEX = /^<!-- file:\{[^}]+\} -->$/
 function splitByEmbedMarkers(text: string): EmbedPart[] {
   const lines = text.split('\n')
   const parts: EmbedPart[] = []
-  // Only the math claim is fence-guarded. The three marker branches below are
-  // unchanged, deliberately: they predate this tracker and main's twin leaves
-  // them unguarded too, so guarding them here would make the same file parse to
-  // a different document depending on which process read it.
+  // Only the math and whiteboard claims are fence-guarded. The three older
+  // marker branches below are unchanged, deliberately: they predate this tracker,
+  // so guarding them here would change how existing files parse. The whiteboard
+  // is new, so it matches main's guarded `parseCustomBlockMarkerLine` exactly.
   const fence = createFenceTracker()
   let buffer: string[] = []
   let pending: SidecarPatch[] = []
@@ -706,6 +745,18 @@ function splitByEmbedMarkers(text: string): EmbedPart[] {
     if (bookmarkMatch) {
       flushBuffer()
       parts.push({ kind: 'bookmark', url: bookmarkMatch[1] })
+      continue
+    }
+
+    // Matched on the raw line like the two image markers above, and only for a
+    // `memry://canvas/<id>` target. Main's twin is `parseCustomBlockMarkerLine`.
+    const canvasId = insideFence ? null : parseWhiteboardLine(line)
+    if (canvasId) {
+      flushBuffer()
+      // A whiteboard declares no colours or alignment, so a patch is a no-op;
+      // dropped as main drops it.
+      pending = []
+      parts.push({ kind: 'whiteboard', canvasId })
       continue
     }
     buffer.push(line)
