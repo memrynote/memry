@@ -70,6 +70,38 @@ function RowIcon({ candidate }: { candidate: AddCardCandidate }): React.JSX.Elem
   return <CalendarClock className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
 }
 
+function TaskRowMeta({
+  detail,
+  createdLabel
+}: {
+  detail: Extract<AddCardCandidate['detail'], { type: 'task' }>
+  createdLabel: (date: string) => string
+}): React.JSX.Element {
+  const priority = DB_PRIORITY_MAP[detail.priority] ?? 'none'
+  const due = formatDueDate(detail.dueDate)
+  const created = formatShortDate(detail.createdAt)
+  return (
+    <div className="flex items-center gap-2 text-xs text-text-tertiary">
+      <Meta>
+        <span
+          className="inline-block size-2 rounded-full"
+          style={{ backgroundColor: detail.projectColor }}
+          aria-hidden="true"
+        />
+        <span className="max-w-32 truncate">{detail.projectName}</span>
+      </Meta>
+      {detail.statusName ? <Meta>{detail.statusName}</Meta> : null}
+      {priority !== 'none' ? (
+        <Meta style={{ color: priorityConfig[priority].color ?? undefined }}>
+          {priorityConfig[priority].label}
+        </Meta>
+      ) : null}
+      {due ? <Meta>{due}</Meta> : null}
+      {created ? <Meta>{createdLabel(created)}</Meta> : null}
+    </div>
+  )
+}
+
 function RowMeta({
   candidate,
   createdLabel,
@@ -92,29 +124,7 @@ function RowMeta({
   }
 
   if (detail.type === 'task') {
-    const priority = DB_PRIORITY_MAP[detail.priority] ?? 'none'
-    const due = formatDueDate(detail.dueDate)
-    const created = formatShortDate(detail.createdAt)
-    return (
-      <div className="flex items-center gap-2 text-xs text-text-tertiary">
-        <Meta>
-          <span
-            className="inline-block size-2 rounded-full"
-            style={{ backgroundColor: detail.projectColor }}
-            aria-hidden="true"
-          />
-          <span className="max-w-32 truncate">{detail.projectName}</span>
-        </Meta>
-        {detail.statusName ? <Meta>{detail.statusName}</Meta> : null}
-        {priority !== 'none' ? (
-          <Meta style={{ color: priorityConfig[priority].color ?? undefined }}>
-            {priorityConfig[priority].label}
-          </Meta>
-        ) : null}
-        {due ? <Meta>{due}</Meta> : null}
-        {created ? <Meta>{createdLabel(created)}</Meta> : null}
-      </div>
-    )
+    return <TaskRowMeta detail={detail} createdLabel={createdLabel} />
   }
 
   if (detail.type === 'file') {

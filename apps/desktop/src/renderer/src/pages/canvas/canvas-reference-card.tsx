@@ -148,6 +148,18 @@ function FilePreview({ state, media }: { state: FileState; media: boolean }): Re
   )
 }
 
+/** The full-fidelity body of a project or file card; nothing while it loads or dangles. */
+export function ReferenceCardBody({
+  state
+}: {
+  state: CanvasEntityState | undefined
+}): React.JSX.Element | null {
+  if (state?.status !== 'ready') return null
+  if (state.kind === 'project') return <ProjectCardView state={state} />
+  if (state.kind === 'file') return <FileCardView state={state} media />
+  return null
+}
+
 export function FileCardView({
   state,
   media

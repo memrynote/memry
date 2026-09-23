@@ -15,13 +15,13 @@
 import React from 'react'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useT } from '@memry/i18n/renderer'
-import type { CanvasCardRef } from './canvas-cards'
 import type { CanvasEntityState } from './use-canvas-entities'
 import { CanvasNoteBody } from './canvas-note-body'
 import { EmbeddedNoteEditor } from './embedded-note-editor'
 import { CanvasTaskEditor } from './canvas-task-editor'
 import { CanvasEventEditor } from './canvas-event-editor'
-import { FileCardView, ProjectCardView } from './canvas-reference-card'
+import { ReferenceCardBody } from './canvas-reference-card'
+import { isEditableInPlace, type CanvasCardRef } from './canvas-cards'
 
 interface NoteCardHeaderProps {
   emoji: string | null
@@ -59,6 +59,37 @@ interface CanvasCardBodyProps {
   onDone?: () => void
 }
 
+const NoteCardBody = ({
+  noteId,
+  state,
+  interactive
+}: {
+  noteId: string
+  state: CanvasEntityState | undefined
+  interactive: boolean
+}): React.JSX.Element => {
+  const note = state?.status === 'ready' && state.kind === 'note' ? state : null
+  return (
+    <>
+      <NoteCardHeader emoji={note?.emoji ?? null} title={note?.title ?? ''} />
+      {/*
+          The inset lives here, on the wrapper both states share, so activation
+          cannot reflow a single line. It cannot live inside the editors: the app
+          zeroes `.bn-editor` padding-inline globally, which left note prose flush
+          against the card's rounded border on every side. px-3 also lines the
+          body up with the header title above it.
+        */}
+      <div data-canvas-note-content="" className="flex min-h-0 flex-1 flex-col px-3 pb-3">
+        {interactive ? (
+          <EmbeddedNoteEditor noteId={noteId} />
+        ) : (
+          <CanvasNoteBody markdown={note?.body ?? ''} noteId={noteId} />
+        )}
+      </div>
+    </>
+  )
+}
+
 export const CanvasCardBody = ({
   cardRef,
   state,
@@ -66,26 +97,7 @@ export const CanvasCardBody = ({
   onDone
 }: CanvasCardBodyProps): React.JSX.Element | null => {
   if (cardRef.entityType === 'note') {
-    const note = state?.status === 'ready' && state.kind === 'note' ? state : null
-    return (
-      <>
-        <NoteCardHeader emoji={note?.emoji ?? null} title={note?.title ?? ''} />
-        {/*
-          The inset lives here, on the wrapper both states share, so activation
-          cannot reflow a single line. It cannot live inside the editors: the app
-          zeroes `.bn-editor` padding-inline globally, which left note prose flush
-          against the card's rounded border on every side. px-3 also lines the
-          body up with the header title above it.
-        */}
-        <div data-canvas-note-content="" className="flex min-h-0 flex-1 flex-col px-3 pb-3">
-          {interactive ? (
-            <EmbeddedNoteEditor noteId={cardRef.entityId} />
-          ) : (
-            <CanvasNoteBody markdown={note?.body ?? ''} noteId={cardRef.entityId} />
-          )}
-        </div>
-      </>
-    )
+    return <NoteCardBody noteId={cardRef.entityId} state={state} interactive={interactive} />
   }
 
   if (cardRef.entityType === 'task') {
@@ -94,16 +106,8 @@ export const CanvasCardBody = ({
 
   // Projects and files are never edited in the card, so `interactive` does not
   // apply: the body is the same read-only view in every state.
-  if (cardRef.entityType === 'project') {
-    return state?.status === 'ready' && state.kind === 'project' ? (
-      <ProjectCardView state={state} />
-    ) : null
-  }
-
-  if (cardRef.entityType === 'file') {
-    return state?.status === 'ready' && state.kind === 'file' ? (
-      <FileCardView state={state} media />
-    ) : null
+  if (!isEditableInPlace(cardRef.entityType)) {
+    return <ReferenceCardBody state={state} />
   }
 
   return (
