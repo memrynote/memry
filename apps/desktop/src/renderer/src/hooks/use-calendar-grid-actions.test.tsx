@@ -120,7 +120,8 @@ describe('useCalendarGridActions', () => {
         startAt: '2026-09-21T09:00',
         endAt: '2026-09-21T09:15',
         targetCalendarId: null,
-        projectId: null
+        projectId: null,
+        color: null
       })
     )
 
@@ -131,7 +132,8 @@ describe('useCalendarGridActions', () => {
         startAt: at(9),
         endAt: at(9, 15),
         isAllDay: false,
-        targetCalendarId: null
+        targetCalendarId: null,
+        color: null
       })
     )
   })
@@ -148,7 +150,8 @@ describe('useCalendarGridActions', () => {
         startAt: '2026-09-21T09:00',
         endAt: '',
         targetCalendarId: null,
-        projectId: null
+        projectId: null,
+        color: null
       })
     ).rejects.toThrow('Calendar is read-only')
   })

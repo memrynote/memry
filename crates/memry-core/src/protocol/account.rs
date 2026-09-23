@@ -58,7 +58,20 @@ pub struct KeyMaterial {
 pub struct VaultSummary {
     pub id: String,
     /// Absent rather than empty when the registry row carries no name.
+    ///
+    /// **Never the ciphertext.** The server holds a vault's name encrypted
+    /// under the vault key (`vault-name-crypto.ts`), and until this was split
+    /// out the encrypted base64 was reported here as the name and drawn on
+    /// screen. The sealed form travels in [`Self::encrypted_name`] instead,
+    /// and [`crate::api::crypto::decrypt_vault_name`] opens it.
     pub name: Option<String>,
+    /// The name as the server holds it: XChaCha20-Poly1305 under the vault
+    /// key, base64, with `vault-name-v1:<vaultUuid>` as associated data.
+    #[uniffi(default = None)]
+    pub encrypted_name: Option<String>,
+    /// The nonce `encrypted_name` was sealed with, base64.
+    #[uniffi(default = None)]
+    pub name_nonce: Option<String>,
 }
 
 /// The signer key directory of chapter 01 §1.4.0.
@@ -205,7 +218,9 @@ fn read_vaults(body: &Json) -> Option<Vec<VaultSummary>> {
         // account.
         vaults.push(VaultSummary {
             id: text(row, &["vaultUuid", "vaultId", "id"])?,
-            name: text(row, &["name", "encryptedName"]),
+            name: text(row, &["name"]),
+            encrypted_name: text(row, &["encryptedName"]),
+            name_nonce: text(row, &["nameNonce"]),
         });
     }
     Some(vaults)
@@ -330,10 +345,14 @@ mod tests {
             VaultSummary {
                 id: "v1".to_string(),
                 name: Some("Work".to_string()),
+                encrypted_name: None,
+                name_nonce: None,
             },
             VaultSummary {
                 id: "v2".to_string(),
                 name: None,
+                encrypted_name: None,
+                name_nonce: None,
             },
         ];
         assert_eq!(read_vaults(&bare).as_deref(), Some(expected.as_slice()));

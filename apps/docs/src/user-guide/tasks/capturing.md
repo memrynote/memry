@@ -216,7 +216,7 @@ list while the note happens to be open.
 
 While a task is still loading, its row shows but its controls are inert for that moment. A control you can click is a control that works.
 
-A line that is *becoming* a task is the one exception, and it works the other way round: its row is live from the start, even in the moment before the task exists. Pick a project, a status or a priority, or tick it, and the choice is applied to the task as soon as it has been created — you never have to wait for the row to catch up with you.
+A line that is _becoming_ a task is the one exception, and it works the other way round: its row is live from the start, even in the moment before the task exists. Pick a project, a status or a priority, or tick it, and the choice is applied to the task as soon as it has been created — you never have to wait for the row to catch up with you.
 
 ## Rich Descriptions
 

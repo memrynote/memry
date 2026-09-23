@@ -809,8 +809,10 @@
     "copyLinks": "Kopier lenker",
     "delete": "Slett",
     "export": "Eksporter",
+    "iconUpdated": "{count, plural, one {Ikon oppdatert på # notat} other {Ikon oppdatert på # notater}}",
     "move": "Flytt",
     "selected": "valgt",
+    "setIcon": "Angi ikon",
     "tagNamePlaceholder": "Etikettnavn",
     "toolbarAria": "Masshandlinger"
   },

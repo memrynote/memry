@@ -1018,4 +1018,98 @@ describe('getCalendarRangeProjection', () => {
     expect(item!.startAt).toBe('2026-04-14T11:00:00.000Z')
     expect(item!.isTriggered).toBe(true)
   })
+
+  it('paints events with their own Google colour, else their calendar colour', () => {
+    const range = getLocalDayRange({ year: 2026, monthIndex: 3, day: 14 })
+    const clock = JSON.stringify({ 'device-a': 1 })
+    const at = '2026-04-12T08:00:00.000Z'
+
+    // Cobalt, as the Google API reports it (#9fc6e7), and a custom colour.
+    for (const [id, remoteId, color] of [
+      ['source-work', 'work@example.com', '#9fc6e7'],
+      ['source-custom', 'custom@example.com', '#123ABC']
+    ]) {
+      db.run(sql`
+        INSERT INTO calendar_sources (
+          id, provider, kind, account_id, remote_id, title, color, is_selected,
+          is_memry_managed, sync_status, clock, created_at, modified_at
+        )
+        VALUES (
+          ${id}, ${'google'}, ${'calendar'}, ${'google-account-1'}, ${remoteId}, ${id},
+          ${color}, ${1}, ${0}, ${'ok'}, ${clock}, ${at}, ${at}
+        )
+      `)
+    }
+
+    for (const [id, sourceId, colorId] of [
+      ['external-tomato', 'source-work', '11'],
+      ['external-plain', 'source-work', null],
+      ['external-custom', 'source-custom', null]
+    ]) {
+      db.run(sql`
+        INSERT INTO calendar_external_events (
+          id, source_id, remote_event_id, title, start_at, end_at, timezone, is_all_day,
+          status, color_id, clock, created_at, modified_at
+        )
+        VALUES (
+          ${id}, ${sourceId}, ${`remote-${id}`}, ${id}, ${'2026-04-14T13:00:00.000Z'},
+          ${'2026-04-14T14:00:00.000Z'}, ${'UTC'}, ${0}, ${'confirmed'}, ${colorId},
+          ${clock}, ${at}, ${at}
+        )
+      `)
+    }
+
+    for (const [id, colorId, targetCalendarId] of [
+      ['event-banana', '5', null],
+      ['event-bound', null, null],
+      ['event-targeted', null, 'work@example.com'],
+      ['event-local', null, null]
+    ]) {
+      db.run(sql`
+        INSERT INTO calendar_events (
+          id, title, start_at, end_at, timezone, is_all_day, color_id, target_calendar_id,
+          clock, created_at, modified_at
+        )
+        VALUES (
+          ${id}, ${id}, ${'2026-04-14T09:00:00.000Z'}, ${'2026-04-14T10:00:00.000Z'},
+          ${'UTC'}, ${0}, ${colorId}, ${targetCalendarId}, ${clock}, ${at}, ${at}
+        )
+      `)
+    }
+    for (const eventId of ['event-banana', 'event-bound']) {
+      db.run(sql`
+        INSERT INTO calendar_bindings (
+          id, source_type, source_id, provider, remote_calendar_id, remote_event_id,
+          ownership_mode, writeback_mode, clock, created_at, modified_at
+        )
+        VALUES (
+          ${`binding-${eventId}`}, ${'event'}, ${eventId}, ${'google'}, ${'work@example.com'},
+          ${`google-${eventId}`}, ${'memry_managed'}, ${'broad'}, ${clock}, ${at}, ${at}
+        )
+      `)
+    }
+
+    const result = getCalendarRangeProjection(
+      db as unknown as DataDb,
+      indexDb,
+      { startAt: range.startAt, endAt: range.endAt, includeUnselectedSources: false },
+      []
+    )
+    const colors = Object.fromEntries(
+      result.items.map((item) => [item.sourceId, [item.color, item.displayColor]])
+    )
+
+    expect(colors).toEqual({
+      'external-tomato': ['tomato', '#d50000'],
+      'external-plain': [null, '#4285f4'],
+      'external-custom': [null, '#123abc'],
+      'event-banana': ['banana', '#f6bf26'],
+      'event-bound': [null, '#4285f4'],
+      'event-targeted': [null, '#4285f4'],
+      'event-local': [null, null]
+    })
+    expect(result.items.find((item) => item.sourceId === 'external-plain')?.source.color).toBe(
+      '#4285f4'
+    )
+  })
 })

@@ -174,6 +174,20 @@ export const KEYBOARD_SHORTCUTS_DEFAULTS: KeyboardShortcuts = {
   globalCapture: null
 }
 
+/**
+ * What happened to the configured global capture binding on the last apply.
+ * `in_use`: the OS refused the accelerator because another app holds it.
+ * `unsupported`: Electron cannot parse the binding as an accelerator.
+ */
+export type GlobalCaptureStatus =
+  'unbound' | 'registered' | 'permission_required' | 'in_use' | 'unsupported'
+
+export interface GlobalCaptureResult {
+  status: GlobalCaptureStatus
+  /** Whether the built-in CommandOrControl+Shift+Space fallback holds quick capture. */
+  fallbackRegistered: boolean
+}
+
 // ============================================================================
 // Sync Settings
 // ============================================================================

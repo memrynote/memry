@@ -1415,6 +1415,29 @@ describe('notes operations', () => {
       expect(links.outgoing[0].targetId).toBeNull()
     })
 
+    it('keeps a link to a deleted note as unresolved, and resolves it again on re-create', async () => {
+      const target = await notes.createNote({ title: 'Doomed Target', content: 'Soon gone.' })
+      const source = await notes.createNote({
+        title: 'Survivor',
+        content: 'Points at [[Doomed Target]].'
+      })
+
+      await notes.deleteNote(target.id)
+
+      expect((await notes.getNoteLinks(source.id)).outgoing).toEqual([
+        { sourceId: source.id, targetId: null, targetTitle: 'Doomed Target' }
+      ])
+
+      const recreated = await notes.createNote({ title: 'Doomed Target', content: 'Back.' })
+
+      expect((await notes.getNoteLinks(source.id)).outgoing).toEqual([
+        { sourceId: source.id, targetId: recreated.id, targetTitle: 'Doomed Target' }
+      ])
+      expect((await notes.getNoteLinks(recreated.id)).incoming.map((bl) => bl.sourceId)).toEqual([
+        source.id
+      ])
+    })
+
     it('includes property-relation backlinks labeled with the property name', async () => {
       const { setPropertyRefs } = await import('@main/database/queries/notes')
 

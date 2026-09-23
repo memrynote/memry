@@ -30,7 +30,12 @@ import {
 } from '@/components/journal'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
-import { BacklinksSection, type Backlink, backlinkId } from '@/components/note/backlinks'
+import {
+  BacklinksSection,
+  OutgoingLinksSection,
+  type Backlink,
+  backlinkId
+} from '@/components/note/backlinks'
 
 import { TagsRow, type Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
@@ -208,10 +213,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [saveError, retrySave, dismissSaveError, commonT, t])
 
-  // Backlinks hook
-  const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinksQuery(
-    entry?.id ?? null
-  )
+  const {
+    incoming: rawBacklinks,
+    outgoing: outgoingLinks,
+    isLoading: backlinksLoading
+  } = useNoteLinksQuery(entry?.id ?? null)
 
   // Tags hook
   const { tags: allAvailableTags } = useNoteTagsQuery()
@@ -1123,13 +1129,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           />
                         </div>
 
-                        {entry && backlinks.length > 0 && (
-                          <div className="mt-6" data-marquee-ignore>
+                        {entry && (backlinks.length > 0 || outgoingLinks.length > 0) && (
+                          <div className="mt-6 flex flex-col gap-6" data-marquee-ignore>
                             <BacklinksSection
                               backlinks={backlinks}
                               isLoading={backlinksLoading}
                               initialCount={5}
                               onBacklinkClick={handleBacklinkClick}
+                            />
+                            <OutgoingLinksSection
+                              links={outgoingLinks}
+                              onLinkClick={(title) => void handleInternalLinkClick(title)}
                             />
                           </div>
                         )}

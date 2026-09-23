@@ -53,7 +53,7 @@ export {
   getOutgoingLinks,
   getIncomingLinks,
   getIncomingReferences,
-  deleteLinksToNote,
+  unresolveLinksToNote,
   resolveNoteByTitle,
   resolveNotesByTitles,
   getInboundLinkSourceIds,

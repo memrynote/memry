@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import type { ArticleCapture } from '@memry/article-extract'
+import type { CaptureResponse } from './messages'
 import {
   badgeText,
-  dequeueById,
+  drainQueue,
   enqueue,
   isQueueable,
   isRetryable,
@@ -16,6 +17,9 @@ describe('isRetryable', () => {
   it('retries only unreachable-server errors', () => {
     expect(isRetryable('app-closed')).toBe(true)
     expect(isRetryable('network')).toBe(true)
+  })
+  it('keeps a capture while the app has no vault open', () => {
+    expect(isRetryable('vault-closed')).toBe(true)
   })
   it('does not retry payload/auth/4xx/5xx failures', () => {
     expect(isRetryable('bad-token')).toBe(false)
@@ -40,9 +44,42 @@ describe('enqueue', () => {
   })
 })
 
-describe('dequeueById', () => {
-  it('removes the matching item', () => {
-    expect(dequeueById([item('a'), item('b')], 'a').map((q) => q.id)).toEqual(['b'])
+describe('drainQueue', () => {
+  const at = (id: string, url: string) => ({
+    id,
+    capture: { url } as unknown as ArticleCapture,
+    queuedAt: 0
+  })
+
+  it('settles delivered and rejected captures and keeps the rest once the vault is closed', async () => {
+    const replies: Record<string, CaptureResponse> = {
+      'https://a.test': { ok: true, itemId: 'item-a' },
+      'https://b.test': { ok: false, error: 'invalid-capture' },
+      'https://c.test': { ok: false, error: 'vault-closed' }
+    }
+    const posted: string[] = []
+
+    const result = await drainQueue(
+      [
+        at('a', 'https://a.test'),
+        at('b', 'https://b.test'),
+        at('c', 'https://c.test'),
+        at('d', 'https://d.test')
+      ],
+      async (capture) => {
+        posted.push(capture.url)
+        return replies[capture.url]
+      }
+    )
+
+    expect(posted).toEqual(['https://a.test', 'https://b.test', 'https://c.test'])
+    expect([...result.settled]).toEqual(['a', 'b'])
+    expect(Object.fromEntries(result.outcomes)).toEqual({
+      a: { ok: true, itemId: 'item-a' },
+      b: { ok: false, error: 'invalid-capture' },
+      c: { ok: false, error: 'vault-closed' },
+      d: { ok: false, error: 'vault-closed' }
+    })
   })
 })
 

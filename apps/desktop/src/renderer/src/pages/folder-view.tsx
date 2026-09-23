@@ -54,6 +54,7 @@ import { getTagSegments } from '@/lib/tag-utils'
 import { cn } from '@/lib/utils'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { useFolderView } from '@/hooks/use-folder-view'
+import { useFolderNoteIcons } from '@/hooks/use-folder-note-icons'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
 import {
   FOLDER_VIEW_STATE_KEYS,
@@ -196,7 +197,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     removeNotesOptimistically,
     updateNoteProperty,
     updateNoteTags,
-    updateNoteIcon
+    updateNoteIcons
   } = useFolderView({ scope, initialViewName: storedViewName ?? undefined })
 
   // Get first note for formula preview in editor
@@ -941,7 +942,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     () =>
       notes
         .filter((note) => selectedRowIds.has(note.id))
-        .map((note) => ({ id: note.id, kind: note.kind })),
+        .map((note) => ({ id: note.id, kind: note.kind, emoji: note.emoji })),
     [notes, selectedRowIds]
   )
 
@@ -989,6 +990,22 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       )
     },
     [selectedNoteIds, notes, updateNoteTags]
+  )
+
+  const { setRowIcon, setSelectionIcon } = useFolderNoteIcons({
+    notes,
+    selectedNoteIds,
+    updateNoteIcons
+  })
+
+  const rowActions = useMemo(
+    () => ({
+      onOpenInNewTab: handleOpenInNewTab,
+      onMoveToFolder: handleMoveRequest,
+      onDelete: handleDeleteRequest,
+      onSetIcon: setRowIcon
+    }),
+    [handleOpenInNewTab, handleMoveRequest, handleDeleteRequest, setRowIcon]
   )
 
   // ponytail: per-note native save dialog (cancel aborts the run). A single-folder
@@ -1299,6 +1316,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onTagClick={handleTagClick}
               onCreateNote={() => void handleCreateNote()}
               onClearAll={handleClearAll}
+              rowActions={rowActions}
               className="h-full"
             />
           ) : viewType === 'grid' ? (
@@ -1312,6 +1330,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onTagClick={handleTagClick}
               onCreateNote={() => void handleCreateNote()}
               onClearAll={handleClearAll}
+              rowActions={rowActions}
               className="h-full"
             />
           ) : activeView?.groupBy ? (
@@ -1333,7 +1352,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
               onTagRemove={handleTagRemove}
-              onSetIcon={(...args) => void updateNoteIcon(...args)}
+              onSetIcon={rowActions.onSetIcon}
               tagMetaMap={tagMetaMap}
               onPropertyUpdate={(...args) => void handlePropertyUpdate(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}
@@ -1370,7 +1389,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
               onTagRemove={handleTagRemove}
-              onSetIcon={(...args) => void updateNoteIcon(...args)}
+              onSetIcon={rowActions.onSetIcon}
               tagMetaMap={tagMetaMap}
               onPropertyUpdate={(...args) => void handlePropertyUpdate(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}
@@ -1410,6 +1429,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                 onMove={() => handleMoveRequest(selectedNoteIds)}
                 onCopyLinks={() => void handleCopyLinks()}
                 onAddTag={(tag) => void handleBulkAddTag(tag)}
+                onSetIcon={(icon) => void setSelectionIcon(icon)}
                 onExport={() => void handleBulkExport()}
                 onDelete={() => handleDeleteRequest(selectedNoteIds)}
                 onClear={handleClearSelection}

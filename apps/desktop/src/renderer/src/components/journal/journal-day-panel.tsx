@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDraggable } from '@dnd-kit/core'
 import { toast } from 'sonner'
+import { ICS_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
 import { cn } from '@/lib/utils'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import type {
@@ -85,6 +86,7 @@ function getScheduleLabel(item: CalendarProjectionItem): string | null {
     case 'event':
       return null
     case 'external_event':
+      if (item.source.provider === ICS_CALENDAR_PROVIDER) return item.source.title
       return item.source.provider ? capitalize(item.source.provider) : null
     case 'reminder':
       return item.snoozeOffsetMinutes !== null ? formatSnoozeOffset(item.snoozeOffsetMinutes) : null

@@ -3,7 +3,7 @@ import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
 
-import { POPOVER_WIDTH, computePopoverPosition } from './popover-position'
+import { useAnchoredPopoverPosition } from './popover-position'
 import { CalendarEventForm } from './calendar-event-form'
 import type { AnchorRect, CalendarEventDraft } from './types'
 import type {
@@ -47,7 +47,7 @@ export function CalendarEventPopover({
 }: CalendarEventPopoverProps): React.JSX.Element {
   const { t } = useT('calendar')
 
-  const { top, left } = computePopoverPosition(anchorRect, { estimatedHeight: 440 })
+  const position = useAnchoredPopoverPosition(anchorRect, { estimatedHeight: 560 })
   const title = mode === 'create' ? t('form.create-calendar-event') : t('form.edit-calendar-event')
 
   return (
@@ -81,7 +81,8 @@ export function CalendarEventPopover({
           className={cn(
             'fixed z-50 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none'
           )}
-          style={{ top, left, width: POPOVER_WIDTH }}
+          ref={position.ref}
+          style={position.style}
         >
           <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">

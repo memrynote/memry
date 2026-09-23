@@ -269,6 +269,29 @@ describe('use-notes-query', () => {
     await waitFor(() => expect(linksHook.result.current.incoming[0]?.title).toBe('Third'))
   })
 
+  it('refetches links when a note is created, so an unresolved outgoing link resolves', async () => {
+    mocks.notesService.getLinks.mockResolvedValueOnce({
+      outgoing: [{ sourceId: 'n1', targetId: null, targetTitle: 'Later' }],
+      incoming: []
+    })
+    const { result } = renderHook(() => useNoteLinksQuery('n1'), { wrapper })
+    await waitFor(() => expect(result.current.outgoing[0]?.targetId).toBeNull())
+
+    mocks.notesService.getLinks.mockResolvedValueOnce({
+      outgoing: [{ sourceId: 'n1', targetId: 'n9', targetTitle: 'Later' }],
+      incoming: []
+    })
+    await act(async () => {
+      mocks.handlers.created.forEach((handler) => handler())
+    })
+
+    await waitFor(() =>
+      expect(result.current.outgoing).toEqual([
+        { sourceId: 'n1', targetId: 'n9', targetTitle: 'Later' }
+      ])
+    )
+  })
+
   it('exposes note mutations and updates the affected query caches', async () => {
     queryClient.setQueryData(notesKeys.note('n1'), note('n1', 'First'))
     const { result } = renderHook(() => useNoteMutations(), { wrapper })

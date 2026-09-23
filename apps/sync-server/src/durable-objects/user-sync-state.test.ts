@@ -273,6 +273,43 @@ describe('UserSyncState', () => {
         })
       )
     })
+
+    it('delivers only to targetDeviceId when set', async () => {
+      // #given two connected devices for the same user
+      const doObj = createDO()
+      for (const deviceId of ['device-1', 'device-2']) {
+        hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+          userId: 'user-1',
+          deviceId,
+          exp: Math.floor(Date.now() / 1000) + 900
+        })
+        await doObj.fetch(connectRequest(`token-${deviceId}`))
+      }
+
+      // #when a calendar push is targeted at the device that owns the channel
+      const res = await doObj.fetch(
+        new Request('https://do.internal/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            excludeDeviceId: '',
+            targetDeviceId: 'device-2',
+            type: 'calendar_changes_available',
+            sourceId: 'google-calendar:abc'
+          })
+        })
+      )
+
+      // #then only device-2 receives it
+      expect(await res.json()).toEqual({ sent: 1 })
+      const ctx = getCtx(doObj)
+      const received = (deviceId: string) =>
+        (
+          ctx.getWebSockets(`device:${deviceId}`)[0] as unknown as MockWebSocket
+        ).sentMessages.filter((m) => m.includes('calendar_changes_available'))
+      expect(received('device-2')).toHaveLength(1)
+      expect(received('device-1')).toHaveLength(0)
+    })
   })
 
   describe('webSocketMessage (rate limiting)', () => {

@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Hapus dari akun",
       "deleteVaultFailed": "Tidak dapat menghapus brankas",
       "deleteVaultTitle": "Hapus “{name}” dari akun Anda?",
-      "removeVaultTitle": "Hapus “{name}” dari daftar?"
+      "removeVaultTitle": "Hapus “{name}” dari daftar?",
+      "missing": "Folder tidak ditemukan"
     },
     "componentsWindowControls": {
       "searchK": "Pencarian (⌘K)",

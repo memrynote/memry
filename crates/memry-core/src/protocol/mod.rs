@@ -2,6 +2,9 @@
 //! surface above them.
 
 pub mod account;
+pub mod attachment_manifest;
+pub mod attachment_upload;
+pub mod attachments;
 pub mod auth;
 pub mod compress;
 pub mod crdt_envelope;

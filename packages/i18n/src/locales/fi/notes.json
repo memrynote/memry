@@ -809,8 +809,10 @@
     "copyLinks": "Kopioi linkit",
     "delete": "Poista",
     "export": "Vie",
+    "iconUpdated": "{count, plural, one {Kuvake päivitetty # muistiinpanoon} other {Kuvake päivitetty # muistiinpanoon}}",
     "move": "Siirrä",
     "selected": "valittu",
+    "setIcon": "Aseta kuvake",
     "tagNamePlaceholder": "Tunnisteen nimi",
     "toolbarAria": "Joukkotoiminnot"
   },

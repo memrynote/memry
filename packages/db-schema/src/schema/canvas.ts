@@ -1,5 +1,6 @@
 import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import type { VectorClock } from '@memry/contracts/sync-api'
+import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 
 export const canvases = sqliteTable(
   'canvases',
@@ -91,7 +92,7 @@ export const canvasEntityRefs = sqliteTable(
     canvasId: text('canvas_id')
       .notNull()
       .references(() => canvases.id, { onDelete: 'cascade' }),
-    entityType: text('entity_type').$type<'note' | 'task' | 'calendar_event'>().notNull(),
+    entityType: text('entity_type').$type<CanvasEntityType>().notNull(),
     entityId: text('entity_id').notNull()
   },
   (table) => [

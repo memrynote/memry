@@ -6,7 +6,8 @@ describe('maskInlineTokens', () => {
     // #given the regression this exists for: BlockNote 0.51's parser applies
     // `_…_` emphasis inside a word, which CommonMark forbids, and rewrote a
     // Wikipedia URL's underscores as asterisks in the vault file.
-    const token = '((mention:https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FRust_%28programming_language%29))'
+    const token =
+      '((mention:https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FRust_%28programming_language%29))'
     const source = `A parenthesised article ${token} survives.`
 
     // #when

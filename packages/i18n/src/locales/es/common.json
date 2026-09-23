@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Eliminar de la cuenta",
       "deleteVaultFailed": "No se pudo eliminar la bóveda",
       "deleteVaultTitle": "¿Eliminar “{name}” de tu cuenta?",
-      "removeVaultTitle": "¿Quitar “{name}” de la lista?"
+      "removeVaultTitle": "¿Quitar “{name}” de la lista?",
+      "missing": "Carpeta no encontrada"
     },
     "componentsWindowControls": {
       "searchK": "Buscar (⌘K)",

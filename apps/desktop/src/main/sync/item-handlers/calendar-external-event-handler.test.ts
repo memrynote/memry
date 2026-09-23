@@ -493,4 +493,55 @@ describe('calendar external event handler — rich fields (M5 Codex P2c)', () =>
       clock: { 'device-a': 1 }
     })
   })
+
+  it('never seeds events mirrored from a subscribed ICS feed into the push queue (#1207)', () => {
+    const handler = getHandler('calendar_external_event')
+    testDb.db
+      .insert(calendarSources)
+      .values({
+        id: 'source-ics',
+        provider: 'ics',
+        kind: 'calendar',
+        remoteId: 'https://calendar.example.com/feed.ics',
+        title: 'Proton',
+        isSelected: true,
+        createdAt: '2026-04-18T12:00:00.000Z',
+        modifiedAt: '2026-04-18T12:00:00.000Z'
+      })
+      .run()
+    testDb.db
+      .insert(calendarExternalEvents)
+      .values([
+        {
+          id: 'external-ics',
+          sourceId: 'source-ics',
+          remoteEventId: 'uid-1',
+          title: 'From feed',
+          startAt: '2026-04-21T09:00:00.000Z',
+          isAllDay: false,
+          status: 'confirmed'
+        },
+        {
+          id: 'external-google',
+          sourceId: 'source-rich',
+          remoteEventId: 'google-1',
+          title: 'From Google',
+          startAt: '2026-04-21T10:00:00.000Z',
+          isAllDay: false,
+          status: 'confirmed'
+        }
+      ])
+      .run()
+
+    const queue = new SyncQueueManager(asSyncDb(testDb.db))
+    expect(handler?.seedUnclocked(testDb.db as unknown as DrizzleDb, 'device-a', queue)).toBe(1)
+    expect(queue.dequeue(10).map((item) => item.itemId)).toEqual(['external-google'])
+    expect(
+      testDb.db
+        .select({ clock: calendarExternalEvents.clock })
+        .from(calendarExternalEvents)
+        .where(eq(calendarExternalEvents.id, 'external-ics'))
+        .get()
+    ).toEqual({ clock: null })
+  })
 })

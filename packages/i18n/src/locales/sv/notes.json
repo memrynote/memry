@@ -809,8 +809,10 @@
     "copyLinks": "Kopiera länkar",
     "delete": "Radera",
     "export": "Exportera",
+    "iconUpdated": "{count, plural, one {Ikon uppdaterad på # anteckning} other {Ikon uppdaterad på # anteckningar}}",
     "move": "Flytta",
     "selected": "valda",
+    "setIcon": "Ställ in ikon",
     "tagNamePlaceholder": "Taggnamn",
     "toolbarAria": "Massåtgärder"
   },

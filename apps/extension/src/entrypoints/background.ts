@@ -22,12 +22,14 @@ import {
 import { bytesToDataUrl, planStitch } from '@/lib/capture-modes'
 import {
   badgeText,
-  dequeueById,
+  drainQueue,
   enqueue,
   isQueueable,
   isRetryable,
+  queuedError,
   type QueuedCapture
 } from '@/lib/capture-queue'
+import { launchAndCapture } from '@/lib/launch-capture'
 import {
   buildPdfDraft,
   checkPdfBytes,
@@ -80,21 +82,31 @@ async function getStatus(): Promise<StatusResponse> {
 
 async function pair(): Promise<PairResponse> {
   const found = await probe()
-  if (!found) return { ok: false }
+  if (!found) return { ok: false, error: 'app-closed' }
   const status = await requestPair(found.port)
-  if (status === 'error') return { ok: false }
+  if (status === 'error') return { ok: false, error: 'pair-failed' }
   // 'already-paired': token is available immediately — short 5s poll.
   // 'pending': desktop approval window opened; the user has 120s to Allow.
   const timeoutMs = status === 'already-paired' ? 5000 : 120_000
-  const token = await pollUntil(() => claimToken(found.port), { intervalMs: 1500, timeoutMs })
-  if (!token) return { ok: false }
-  await setToken(token)
+  const claim = await pollUntil(() => claimToken(found.port), { intervalMs: 1500, timeoutMs })
+  if (!claim) return { ok: false, error: 'pair-timeout' }
+  if (!claim.ok) return claim
+  await setToken(claim.token)
   return { ok: true }
 }
 
-async function waitForServer(): Promise<{ ok: boolean }> {
+async function ensurePaired(): Promise<PairResponse> {
+  const status = await getStatus()
+  return status.connection === 'ready' ? { ok: true } : pair()
+}
+
+async function waitForServer(): Promise<boolean> {
   const found = await pollUntil(() => probeServer(), { intervalMs: 800, timeoutMs: 20_000 })
-  return { ok: found !== null }
+  return found !== null
+}
+
+async function openApp(): Promise<void> {
+  await browser.tabs.create({ url: 'memry://open' }).catch(() => {})
 }
 
 async function capture(body: ArticleCapture): Promise<CaptureResponse> {
@@ -179,7 +191,12 @@ async function fetchPdf(url: string): Promise<FetchPdfResponse> {
 const QUEUE_KEY = 'memry:capture-queue'
 const FLUSH_ALARM = 'memry-flush'
 
-let flushing: Promise<FlushResponse> | null = null
+interface FlushResult {
+  outcomes: Map<string, CaptureResponse>
+  remaining: number
+}
+
+let flushing: Promise<FlushResult> | null = null
 
 async function readQueue(): Promise<QueuedCapture[]> {
   const r = await browser.storage.local.get(QUEUE_KEY)
@@ -208,6 +225,18 @@ async function flashErrorBadge(): Promise<void> {
   setTimeout(() => void restoreQueueBadge(), 2000)
 }
 
+// The outcome for flows the popup may not live to see: the keyboard shortcut and
+// the launch flow. A queued capture already shows its count badge.
+async function reportByBadge(res: CaptureResponse): Promise<void> {
+  if (res.ok) {
+    await browser.action.setBadgeText({ text: '✓' })
+    await browser.action.setBadgeBackgroundColor({ color: '#3B873E' })
+    setTimeout(() => void restoreQueueBadge(), 2000)
+  } else if (res.error !== 'queued' && res.error !== 'queued-vault-closed') {
+    await flashErrorBadge()
+  }
+}
+
 async function ensureFlushAlarm(): Promise<void> {
   const existing = await browser.alarms.get(FLUSH_ALARM)
   if (!existing) await browser.alarms.create(FLUSH_ALARM, { periodInMinutes: 1 })
@@ -217,47 +246,57 @@ async function stopFlushAlarm(): Promise<void> {
   await browser.alarms.clear(FLUSH_ALARM)
 }
 
+async function enqueueCapture(body: ArticleCapture): Promise<string> {
+  const id = crypto.randomUUID()
+  const queue = enqueue(await readQueue(), { id, capture: body, queuedAt: Date.now() })
+  await writeQueue(queue)
+  await setBadge(queue.length)
+  await ensureFlushAlarm()
+  return id
+}
+
 // Try the live server once and drain queued items oldest-first. Drop on success
 // or permanent failure; stop the pass (keep the rest) the moment the server is
-// unreachable again.
+// unreachable or has no vault open.
 // Re-entrancy guard: concurrent callers share ONE in-flight flush pass so the
 // same queued item is never POSTed twice.
-function flushQueue(): Promise<FlushResponse> {
+function flushQueue(): Promise<FlushResult> {
   if (flushing) return flushing
-  flushing = (async (): Promise<FlushResponse> => {
-    let queue = await readQueue()
+  flushing = (async (): Promise<FlushResult> => {
+    const queue = await readQueue()
     if (queue.length === 0) {
       await stopFlushAlarm()
-      return { flushed: 0, remaining: 0 }
+      return { outcomes: new Map(), remaining: 0 }
     }
     const found = await probe()
     const token = await getToken()
-    if (!found || !token) return { flushed: 0, remaining: queue.length }
-    let flushed = 0
-    for (const item of [...queue]) {
-      const res = await postCapture(found.port, token, item.capture)
-      if (res.ok) {
-        queue = dequeueById(queue, item.id)
-        flushed++
-      } else if (isRetryable(res.error)) {
-        break
-      } else {
-        console.warn('[memry] dropping unsendable queued capture', item.id, res.error)
-        queue = dequeueById(queue, item.id)
-      }
+    if (!found || !token) return { outcomes: new Map(), remaining: queue.length }
+    const { outcomes, settled } = await drainQueue(queue, (c) => postCapture(found.port, token, c))
+    for (const id of settled) {
+      const res = outcomes.get(id)
+      if (res && !res.ok) console.warn('[memry] dropping unsendable queued capture', id, res.error)
     }
-    await writeQueue(queue)
-    await setBadge(queue.length)
-    if (queue.length === 0) await stopFlushAlarm()
-    return { flushed, remaining: queue.length }
+    // Re-read so a capture enqueued while this pass was posting is not overwritten.
+    const remaining = (await readQueue()).filter((q) => !settled.has(q.id))
+    await writeQueue(remaining)
+    await setBadge(remaining.length)
+    if (remaining.length === 0) await stopFlushAlarm()
+    return { outcomes, remaining: remaining.length }
   })().finally(() => {
     flushing = null
   })
   return flushing
 }
 
-// Capture, or queue it for retry when the server is unreachable. Permanent
-// errors (bad token, invalid payload) pass straight through to the popup.
+async function deliverQueued(id: string): Promise<CaptureResponse> {
+  // A pass already in flight may have started after this id was enqueued.
+  const earlier = flushing ? (await flushing).outcomes.get(id) : undefined
+  if (earlier && (earlier.ok || !isRetryable(earlier.error))) return earlier
+  return (await flushQueue()).outcomes.get(id) ?? { ok: false, error: 'network' }
+}
+
+// Capture, or queue it for retry when the server is unreachable or has no vault
+// open. Permanent errors (bad token, invalid payload) pass straight through.
 async function captureOrQueue(body: ArticleCapture): Promise<CaptureResponse> {
   const res = await capture(body)
   if (res.ok) {
@@ -265,17 +304,16 @@ async function captureOrQueue(body: ArticleCapture): Promise<CaptureResponse> {
     return res
   }
   if (isRetryable(res.error) && isQueueable(body)) {
-    const queue = enqueue(await readQueue(), {
-      id: crypto.randomUUID(),
-      capture: body,
-      queuedAt: Date.now()
-    })
-    await writeQueue(queue)
-    await setBadge(queue.length)
-    await ensureFlushAlarm()
-    return { ok: false, error: 'queued' }
+    await enqueueCapture(body)
+    return { ok: false, error: queuedError(res.error) }
   }
   return res
+}
+
+async function flushForPopup(): Promise<FlushResponse> {
+  const { outcomes, remaining } = await flushQueue()
+  const flushed = [...outcomes.values()].filter((res) => res.ok).length
+  return { flushed, remaining }
 }
 
 export default defineBackground(() => {
@@ -290,14 +328,24 @@ export default defineBackground(() => {
         return pair()
       case 'CAPTURE':
         return captureOrQueue(message.capture)
-      case 'WAIT_FOR_SERVER':
-        return waitForServer()
+      case 'LAUNCH_AND_CAPTURE':
+        return launchAndCapture(message.capture, {
+          enqueue: enqueueCapture,
+          openApp,
+          waitForServer,
+          ensurePaired,
+          deliverQueued,
+          send: captureOrQueue
+        }).then(async (res) => {
+          await reportByBadge(res)
+          return res
+        })
       case 'GRAB_SCREENSHOT':
         return grabScreenshot()
       case 'FETCH_PDF':
         return fetchPdf(message.url)
       case 'FLUSH_QUEUE':
-        return flushQueue()
+        return flushForPopup()
       case 'REVOKE':
         return revoke()
       default:
@@ -343,15 +391,7 @@ export default defineBackground(() => {
     // 10MB storage.local cap — so it is simply lost, and the error badge is the
     // only signal the user gets. The same applies whenever the desktop app is
     // closed.
-    const res = await captureOrQueue(payload)
-    if (res.ok) {
-      await browser.action.setBadgeText({ text: '✓' })
-      await browser.action.setBadgeBackgroundColor({ color: '#3B873E' })
-      setTimeout(() => void restoreQueueBadge(), 2000)
-    } else if (res.error !== 'queued') {
-      // A queued save already set its own count badge inside captureOrQueue.
-      await flashErrorBadge()
-    }
+    await reportByBadge(await captureOrQueue(payload))
   })
 
   // Restore the badge + retry alarm whenever the service worker (re)starts.

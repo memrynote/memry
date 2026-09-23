@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   getNoteById: vi.fn(),
   getTaskById: vi.fn(),
   getCalendarEventById: vi.fn(),
+  getProjectById: vi.fn(),
+  getFileById: vi.fn(),
   assertSpatialCanvasEnabled: vi.fn(),
   invokeCanvasWrite: vi.fn()
 }))
@@ -25,8 +27,14 @@ vi.mock('../../../../canvas/store', () => ({
   listCanvases: mocks.listCanvases,
   listCanvasesWithCounts: mocks.listCanvasesWithCounts
 }))
-vi.mock('../../../../vault/notes', () => ({ getNoteById: mocks.getNoteById }))
+vi.mock('../../../../vault/notes', () => ({
+  getNoteById: mocks.getNoteById,
+  getFileById: mocks.getFileById
+}))
 vi.mock('../../../../database/queries/tasks', () => ({ getTaskById: mocks.getTaskById }))
+vi.mock('../../../../database/queries/projects', () => ({
+  getProjectById: mocks.getProjectById
+}))
 vi.mock('../../../../calendar/repositories/calendar-events-repository', () => ({
   getCalendarEventById: mocks.getCalendarEventById
 }))
@@ -181,6 +189,32 @@ describe('canvas handles', () => {
         { entity_type: 'calendar_event', entity_id: 'e1', title: 'Standup', missing: false }
       ])
       expect(JSON.stringify(detail)).not.toContain('"scene"')
+    })
+
+    it('resolves project and file cards, and reports a deleted one as missing', async () => {
+      mocks.getCanvas.mockReturnValue({
+        id: 'c1',
+        title: 'Roadmap',
+        createdAt: 1,
+        updatedAt: 5,
+        scene: sceneWith([
+          { entityType: 'project', entityId: 'p1' },
+          { entityType: 'file', entityId: 'f1' },
+          { entityType: 'file', entityId: 'f-gone' }
+        ])
+      })
+      mocks.getProjectById.mockReturnValue({ id: 'p1', name: 'Launch' })
+      mocks.getFileById.mockImplementation(async (id: string) =>
+        id === 'f1' ? { id: 'f1', title: 'Brief.pdf' } : null
+      )
+
+      const detail = await handles.read('c1')
+
+      expect(detail?.items).toEqual([
+        { entity_type: 'project', entity_id: 'p1', title: 'Launch', missing: false },
+        { entity_type: 'file', entity_id: 'f1', title: 'Brief.pdf', missing: false },
+        { entity_type: 'file', entity_id: 'f-gone', title: null, missing: true }
+      ])
     })
 
     it('reports a dangling card as missing rather than dropping it', async () => {

@@ -3,6 +3,7 @@ import * as ContextMenuPrimitive from '@radix-ui/react-context-menu'
 import { CheckIcon, ChevronRightIcon, CircleIcon } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
+import { inertWhileMenuCloses } from './closing-menu'
 
 function ContextMenu({ ...props }: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
   return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />
@@ -48,7 +49,7 @@ function ContextMenuSubTrigger({
         "focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground text-muted-foreground flex cursor-default items-center rounded-[5px] px-2 py-1.5 text-[13px] outline-hidden select-none data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
-      {...props}
+      {...inertWhileMenuCloses(props)}
     >
       {children}
       <ChevronRightIcon className="ms-auto" />
@@ -74,13 +75,10 @@ function ContextMenuSubContent({
 }
 
 /**
- * A closing menu is a corpse: `Presence` keeps it mounted for its exit
- * animation, and Radix answers pointer events that whole time — a pointer
- * leaving an item runs `onItemLeave`, which focuses the menu content again.
- * When the item just opened an inline rename field, that focus lands ~150ms
- * after the field did and blurs it, and a blur is a commit for those fields.
- * `pointer-events-none` while closed makes the corpse inert; the matching
- * `onCloseAutoFocus` guard below covers the separate unmount-restore path.
+ * A closing menu stays mounted for its exit animation. Its items are made
+ * inert by `inertWhileMenuCloses`, so the pointer cannot pull focus back into
+ * it; the `onCloseAutoFocus` guard below covers the separate unmount-restore
+ * path.
  */
 function ContextMenuContent({
   className,
@@ -124,7 +122,7 @@ function ContextMenuItem({
         "focus:bg-accent focus:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:!text-destructive [&_svg:not([class*='text-'])]:text-muted-foreground text-muted-foreground relative flex cursor-default items-center gap-2 rounded-[5px] px-2 py-1.5 text-[13px] outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
-      {...props}
+      {...inertWhileMenuCloses(props)}
     />
   )
 }
@@ -143,7 +141,7 @@ function ContextMenuCheckboxItem({
         className
       )}
       checked={checked}
-      {...props}
+      {...inertWhileMenuCloses(props)}
     >
       <span className="pointer-events-none absolute start-2 flex size-3.5 items-center justify-center">
         <ContextMenuPrimitive.ItemIndicator>
@@ -167,7 +165,7 @@ function ContextMenuRadioItem({
         "focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-[5px] py-1.5 pe-2 ps-8 text-[13px] outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
-      {...props}
+      {...inertWhileMenuCloses(props)}
     >
       <span className="pointer-events-none absolute start-2 flex size-3.5 items-center justify-center">
         <ContextMenuPrimitive.ItemIndicator>

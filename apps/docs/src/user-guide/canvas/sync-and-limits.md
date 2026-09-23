@@ -5,8 +5,14 @@
 With sync enabled, canvases sync across your devices end-to-end encrypted, like
 your notes. The server stores only ciphertext and never sees your board.
 
-Cards sync as references. The notes, tasks, and events they point at sync
-through their own channels, so a card on device B resolves to the same item.
+Cards sync as references. The notes, tasks, events, projects and files they
+point at sync through their own channels, so a card on device B resolves to the
+same item.
+
+A board with project or file cards still opens on a device running an older
+release of memrynote. That release shows those cards as plain boxes, keeps them
+on the board when you edit it there, and they come back as live cards once the
+device is updated.
 
 Opening a board is not an edit. Switching to a canvas tab and back leaves its
 modified date alone and pushes nothing to your other devices — only a change you
@@ -69,8 +75,6 @@ start memrynote and the board is still too large.
 - Canvas arrows do not create backlinks between notes.
 - There is no drag-in from the Tasks or Calendar pages — use **Add card**, as
   described in [Cards & Links](./cards-and-links.md).
-- Filed PDFs, images, and other binaries don't show up as note results in the
-  **Add card** picker — only markdown notes are searchable there.
 - Palm rejection and pen pressure depend on your hardware and OS.
 - The drawing toolbar's language comes from the underlying canvas engine and may
   differ from memrynote's interface language.

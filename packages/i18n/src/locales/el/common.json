@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Διαγραφή από τον λογαριασμό",
       "deleteVaultFailed": "Δεν ήταν δυνατή η διαγραφή του θησαυροφυλακίου",
       "deleteVaultTitle": "Διαγραφή του “{name}” από τον λογαριασμό σας;",
-      "removeVaultTitle": "Αφαίρεση του “{name}” από τη λίστα;"
+      "removeVaultTitle": "Αφαίρεση του “{name}” από τη λίστα;",
+      "missing": "Ο φάκελος δεν βρέθηκε"
     },
     "componentsWindowControls": {
       "searchK": "Αναζήτηση (⌘K)",

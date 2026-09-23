@@ -47,11 +47,34 @@ struct VaultTabsView<Notes: View>: View {
                 )
             }
             Tab("More", systemImage: "ellipsis") {
-                ComingSoonTab(
-                    title: "More",
-                    detail: "Settings, tags, bookmarks and templates are on your computer for now."
-                )
+                MoreTab()
             }
+        }
+        // The More tab holds the way out, so the shell stops drawing it over
+        // every screen of the vault.
+        .preference(key: SignOutHostedKey.self, value: true)
+    }
+}
+
+/// The account's own page inside a vault: what is not on the phone yet, and
+/// the way out.
+private struct MoreTab: View {
+    @Environment(AccountViewModel.self) private var account: AccountViewModel?
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                ContentUnavailableView {
+                    Label("More", systemImage: "hourglass")
+                } description: {
+                    Text("Settings, tags, bookmarks and templates are on your computer for now.")
+                }
+                if let account {
+                    SignOutBar(model: account)
+                }
+            }
+            .navigationTitle("More")
+            .background(Tokens.Canvas.background.color)
         }
     }
 }

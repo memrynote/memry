@@ -2,7 +2,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 vi.mock('electron', () => ({ app: { getVersion: () => '0.0.0' } }))
 
-const ingestSpy = vi.fn(async () => ({ itemId: 'item-9' }))
+let vaultOpen = true
+vi.mock('../database', () => ({ isDatabaseInitialized: () => vaultOpen }))
+
+// Mirrors the real ingest: requireDatabase() throws while no vault is open.
+const ingestSpy = vi.fn(async () => {
+  if (!vaultOpen) throw new Error('No vault is open. Please open a vault first.')
+  return { itemId: 'item-9' }
+})
 vi.mock('../inbox/ingest', () => ({ ingestArticleCapture: ingestSpy }))
 
 const TOKEN = 'b'.repeat(64)
@@ -31,6 +38,7 @@ describe('capture server', () => {
   let port: number
   beforeEach(async () => {
     windowOpen = true
+    vaultOpen = true
     origins.clear()
     ingestSpy.mockClear()
     openPairingWindowMock.mockClear()
@@ -123,6 +131,54 @@ describe('capture server', () => {
       }),
       'browser-extension'
     )
+  })
+
+  it('answers 503 vault-closed while the app sits on the vault picker', async () => {
+    origins.add('chrome-extension://abc')
+    vaultOpen = false
+    const cap = await req(port, '/capture', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        Origin: 'chrome-extension://abc',
+        'X-Memry-Capture': '1',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        url: 'https://example.com/p',
+        mode: 'article',
+        contentMarkdown: '# x',
+        excerpt: 'x',
+        extractionStatus: 'full',
+        properties: {
+          title: 'x',
+          source: 'https://example.com/p',
+          created: '2026-06-17T00:00:00.000Z',
+          tags: ['clippings']
+        }
+      })
+    })
+    expect(cap.status).toBe(503)
+    expect(await cap.json()).toEqual({ error: 'vault-closed' })
+  })
+
+  it('reports a declined pairing consent to the claiming extension', async () => {
+    const { stopCaptureServer: stop, startCaptureServer: start } = await import('./server')
+    await stop()
+    const newPort = await start({ requestPairConsent: async () => false })
+    const headers = { Origin: 'chrome-extension://ext-declined', 'X-Memry-Capture': '1' }
+
+    const r = await req(newPort, '/pair/request', { method: 'POST', headers })
+    expect(r.status).toBe(202)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    windowOpen = false
+
+    const claim = await req(newPort, '/pair/claim', { method: 'POST', headers })
+    expect(claim.status).toBe(403)
+    expect(await claim.json()).toEqual({ error: 'pair-denied' })
+
+    await stop()
+    port = await (await import('./server')).startCaptureServer()
   })
 
   it('rejects /capture without the custom header', async () => {

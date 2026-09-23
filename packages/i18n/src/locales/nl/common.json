@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Verwijderen uit account",
       "deleteVaultFailed": "Kan kluis niet verwijderen",
       "deleteVaultTitle": "“{name}” uit je account verwijderen?",
-      "removeVaultTitle": "“{name}” uit de lijst verwijderen?"
+      "removeVaultTitle": "“{name}” uit de lijst verwijderen?",
+      "missing": "Map niet gevonden"
     },
     "componentsWindowControls": {
       "searchK": "Zoeken (⌘K)",

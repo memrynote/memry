@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Törlés a fiókból",
       "deleteVaultFailed": "Nem sikerült törölni a tárat",
       "deleteVaultTitle": "Törlöd a(z) „{name}” tárat a fiókodból?",
-      "removeVaultTitle": "Eltávolítod a(z) „{name}” tárat a listáról?"
+      "removeVaultTitle": "Eltávolítod a(z) „{name}” tárat a listáról?",
+      "missing": "A mappa nem található"
     },
     "componentsWindowControls": {
       "searchK": "Keresés (⌘K)",

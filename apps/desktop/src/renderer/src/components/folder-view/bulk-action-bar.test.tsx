@@ -14,12 +14,36 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() }
 }))
 
+vi.mock('@/components/note/note-title/EmojiPicker', () => ({
+  EmojiPicker: ({
+    onSelect,
+    onRemove,
+    hasEmoji
+  }: {
+    onSelect: (icon: string) => void
+    onRemove: () => void
+    hasEmoji: boolean
+  }) => (
+    <div data-testid="emoji-picker">
+      <button type="button" onClick={() => onSelect('🚀')}>
+        pick-rocket
+      </button>
+      {hasEmoji && (
+        <button type="button" onClick={onRemove}>
+          picker-remove
+        </button>
+      )}
+    </div>
+  )
+}))
+
 describe('BulkActionBar', () => {
   it('renders selection count', () => {
     const handlers = {
       onMove: vi.fn(),
       onCopyLinks: vi.fn(),
       onAddTag: vi.fn(),
+      onSetIcon: vi.fn(),
       onExport: vi.fn(),
       onDelete: vi.fn(),
       onClear: vi.fn()
@@ -36,6 +60,7 @@ describe('BulkActionBar', () => {
       onMove,
       onCopyLinks: vi.fn(),
       onAddTag: vi.fn(),
+      onSetIcon: vi.fn(),
       onExport: vi.fn(),
       onDelete: vi.fn(),
       onClear: vi.fn()
@@ -55,6 +80,7 @@ describe('BulkActionBar', () => {
       onMove: vi.fn(),
       onCopyLinks: vi.fn(),
       onAddTag: vi.fn(),
+      onSetIcon: vi.fn(),
       onExport,
       onDelete: vi.fn(),
       onClear: vi.fn()
@@ -74,6 +100,7 @@ describe('BulkActionBar', () => {
       onMove: vi.fn(),
       onCopyLinks: vi.fn(),
       onAddTag: vi.fn(),
+      onSetIcon: vi.fn(),
       onExport: vi.fn(),
       onDelete,
       onClear: vi.fn()
@@ -93,6 +120,7 @@ describe('BulkActionBar', () => {
       onMove: vi.fn(),
       onCopyLinks: vi.fn(),
       onAddTag: vi.fn(),
+      onSetIcon: vi.fn(),
       onExport: vi.fn(),
       onDelete: vi.fn(),
       onClear
@@ -111,6 +139,7 @@ describe('BulkActionBar', () => {
       onMove: vi.fn(),
       onCopyLinks: vi.fn(),
       onAddTag: vi.fn(),
+      onSetIcon: vi.fn(),
       onExport: vi.fn(),
       onDelete: vi.fn(),
       onClear: vi.fn()
@@ -136,6 +165,7 @@ describe('BulkActionBar', () => {
       onMove: vi.fn(),
       onCopyLinks: vi.fn(),
       onAddTag,
+      onSetIcon: vi.fn(),
       onExport: vi.fn(),
       onDelete: vi.fn(),
       onClear: vi.fn()
@@ -158,6 +188,7 @@ describe('BulkActionBar', () => {
       onMove: vi.fn(),
       onCopyLinks: vi.fn(),
       onAddTag,
+      onSetIcon: vi.fn(),
       onExport: vi.fn(),
       onDelete: vi.fn(),
       onClear: vi.fn()
@@ -187,6 +218,7 @@ describe('BulkActionBar tag scope', () => {
     onMove: vi.fn(),
     onCopyLinks: vi.fn(),
     onAddTag: vi.fn(),
+    onSetIcon: vi.fn(),
     onExport: vi.fn(),
     onDelete: vi.fn(),
     onClear: vi.fn()
@@ -238,5 +270,71 @@ describe('BulkActionBar tag scope', () => {
 
     expect(screen.getByRole('button', { name: /delete/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /move/i })).toBeDisabled()
+  })
+})
+
+describe('BulkActionBar set icon', () => {
+  const props = {
+    availableTags: [],
+    onMove: vi.fn(),
+    onCopyLinks: vi.fn(),
+    onAddTag: vi.fn(),
+    onExport: vi.fn(),
+    onDelete: vi.fn(),
+    onClear: vi.fn()
+  }
+
+  it('applies the picked icon to the selection', async () => {
+    const onSetIcon = vi.fn()
+    render(
+      <BulkActionBar
+        {...props}
+        onSetIcon={onSetIcon}
+        count={2}
+        selectedRows={[
+          { id: 'note-1', emoji: null },
+          { id: 'note-2', emoji: null }
+        ]}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /set icon/i }))
+    await userEvent.click(await screen.findByText('pick-rocket'))
+
+    expect(onSetIcon.mock.calls).toEqual([['🚀']])
+    expect(screen.queryByText('picker-remove')).toBeNull()
+  })
+
+  it('offers Remove when a selected note has an icon, and clears it with null', async () => {
+    const onSetIcon = vi.fn()
+    render(
+      <BulkActionBar
+        {...props}
+        onSetIcon={onSetIcon}
+        count={2}
+        selectedRows={[
+          { id: 'note-1', emoji: '📚' },
+          { id: 'note-2', emoji: null }
+        ]}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /set icon/i }))
+    await userEvent.click(await screen.findByText('picker-remove'))
+
+    expect(onSetIcon.mock.calls).toEqual([[null]])
+  })
+
+  it('disables Set icon when the selection holds no notes', () => {
+    render(
+      <BulkActionBar
+        {...props}
+        onSetIcon={vi.fn()}
+        count={1}
+        selectedRows={[{ id: 'task-1', kind: 'task', emoji: '📚' }]}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /set icon/i })).toBeDisabled()
   })
 })

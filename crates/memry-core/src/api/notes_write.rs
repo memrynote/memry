@@ -25,14 +25,19 @@
 
 use std::sync::Arc;
 
-use crate::api::errors::{AuthError, StorageError};
+use crate::api::errors::{AuthError, PropertyWriteError, StorageError};
 use crate::crdt::body_edit::BlockEdit;
 use crate::crdt::errors::CrdtError;
 use crate::crypto::{keys, sodium};
 use crate::domain::body_write;
+use crate::domain::folders;
 use crate::domain::notes::{self, NewNote};
+use crate::domain::properties;
+use crate::domain::reminders;
+use crate::domain::templates;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
+use serde_json::Value;
 
 /// The write surface over one opened vault.
 #[derive(uniffi::Object)]
@@ -177,6 +182,273 @@ impl NotesWriter {
                 ))
             })
             .map_err(CrdtError::from)?
+    }
+
+    /// Sets or clears a note's icon (N701).
+    ///
+    /// The payload spells it `emoji` (§13.7.1); it is `icon` here because that
+    /// is what it is on every surface, and because nothing restricts it to an
+    /// emoji — a shell may store a symbol name.
+    ///
+    /// `nil` writes an explicit **null**, never an absent key: §13.4 says an
+    /// absent key means "this sender does not know", so dropping the key would
+    /// tell every other device nothing had changed rather than that the user
+    /// cleared their icon.
+    pub fn set_icon(&self, id: String, icon: Option<String>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::set_icon(conn, &id, icon.as_deref(), &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
+    /// Sets or clears a note's cover (N703).
+    ///
+    /// `coverImage` is not a field of the note schema. Writing it is safe
+    /// because §13.2 makes an unknown top-level payload key something every
+    /// conforming client carries, and §13.2.1 records how desktop does it —
+    /// so a cover written here survives an older desktop editing the note.
+    /// **No other client renders one today**, which is a product gap rather
+    /// than a protocol one.
+    ///
+    /// `nil` clears, writing an explicit null rather than removing the key.
+    pub fn set_cover(
+        &self,
+        id: String,
+        url: Option<String>,
+        offset_y: f64,
+    ) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::set_cover(conn, &id, url.as_deref(), offset_y, &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
+    /// Replaces a note's tags (N705).
+    ///
+    /// `tags` is a field of the note payload (§13.7.1); the tag rows one layer
+    /// down are a projection of it. Writing a *property* called `tags` would
+    /// create a second, unrelated thing no other client reads.
+    pub fn set_tags(&self, id: String, tags: Vec<String>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::set_tags(conn, &id, &tags, &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
+    /// Replaces a note's aliases (N706).
+    ///
+    /// Whole-array rather than add-one, because that is the shape of the field
+    /// and of §13.2's field-level merge. An alias is what lets a wiki link
+    /// resolve to a note by a name the note itself declares.
+    pub fn set_aliases(&self, id: String, aliases: Vec<String>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::set_aliases(conn, &id, &aliases, &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
+    /// Sets one property on a note (N700).
+    ///
+    /// The value crosses as **JSON text**, not as a typed union, for the same
+    /// reason `NoteProperty::value_json` is read that way: §13.7.1 lets a
+    /// property hold any JSON, and a closed enum here would have to drop or
+    /// coerce whatever did not fit. A shell serialises against the declared
+    /// `type_name` it already reads, which is what makes one call serve all
+    /// ten property types rather than ten calls.
+    ///
+    /// - Throws: `Retyped` when the edit would change a property's JSON type
+    ///   (FR-048). Deliberately not folded into a storage failure: a surface
+    ///   has to tell "that is not a valid value for this property" from "the
+    ///   disk is full", and a silent coercion would be invisible at the call
+    ///   site and permanent on the wire, since the merged payload is what
+    ///   every other device then reads.
+    pub fn set_property(
+        &self,
+        id: String,
+        name: String,
+        value_json: String,
+    ) -> Result<(), PropertyWriteError> {
+        let device_id = self.device_id.clone();
+        let value: Value =
+            serde_json::from_str(&value_json).map_err(|error| StorageError::Failed {
+                what: format!("that property value is not JSON: {error}"),
+            })?;
+        self.db
+            .call_blocking(move |conn| {
+                Ok(properties::set(
+                    conn,
+                    notes::ITEM_TYPE,
+                    &id,
+                    &name,
+                    value,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(PropertyWriteError::from)?
+            .map(|_| ())
+            .map_err(PropertyWriteError::from)
+    }
+
+    /// Clears one property, **leaving the key present and `null`** (§13.4).
+    ///
+    /// Not a removal: an absent key means "this sender does not know", so a
+    /// removed key would tell every other device nothing had changed rather
+    /// than that the user cleared it.
+    pub fn clear_property(&self, id: String, name: String) -> Result<(), PropertyWriteError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                Ok(properties::clear(
+                    conn,
+                    notes::ITEM_TYPE,
+                    &id,
+                    &name,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(PropertyWriteError::from)?
+            .map(|_| ())
+            .map_err(PropertyWriteError::from)
+    }
+
+    /// Creates a note from a template (N803).
+    ///
+    /// The template's content, tags and properties seed the new note, which
+    /// is what makes this different from a create plus a paste: the
+    /// properties arrive as properties rather than as text.
+    pub fn create_from_template(
+        &self,
+        template_id: String,
+        title: String,
+        folder_path: Option<String>,
+    ) -> Result<String, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            let note_id = Self::new_id();
+            templates::create_note(
+                conn,
+                &templates::NoteFromTemplate {
+                    template_id: &template_id,
+                    note_id: &note_id,
+                    title: &title,
+                    folder_path: folder_path.as_deref(),
+                },
+                &device_id,
+                now_ms(),
+            )?;
+            Ok(note_id)
+        })
+    }
+
+    // MARK: - Reminders (N804)
+
+    /// Sets a reminder on a note and returns its id.
+    ///
+    /// `remind_at` is an ISO **instant**, unlike a date mention's calendar
+    /// day: a reminder fires at a moment, and the moment is the same
+    /// everywhere.
+    pub fn add_reminder(
+        &self,
+        note_id: String,
+        remind_at: String,
+        title: Option<String>,
+    ) -> Result<String, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            let id = Self::new_id();
+            reminders::create(
+                conn,
+                &id,
+                &note_id,
+                &remind_at,
+                title.as_deref(),
+                &device_id,
+                now_ms(),
+            )?;
+            Ok(id)
+        })
+    }
+
+    /// Dismisses a reminder. A status change, never a delete: a dismissal has
+    /// to reach the other devices, and a row that vanished has nothing left
+    /// to send.
+    pub fn dismiss_reminder(&self, id: String) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            reminders::dismiss(conn, &id, &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
+    pub fn snooze_reminder(&self, id: String, until: String) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            reminders::snooze(conn, &id, &until, &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
+    // MARK: - Folders (N806)
+
+    /// Creates a `folder_config` at `path`.
+    ///
+    /// The whole folder domain existed and nothing could reach it, which is
+    /// what N806 records: the core could create, rename, move and delete a
+    /// folder, and no API method said so.
+    pub fn create_folder(&self, path: String, icon: Option<String>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            folders::create(conn, &path, icon.as_deref(), &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
+    /// Renames a folder in place, keeping its parent.
+    ///
+    /// - Returns: the ids of the notes whose `folderPath` was rewritten, so a
+    ///   shell can refresh exactly those rather than reloading the vault.
+    pub fn rename_folder(
+        &self,
+        path: String,
+        new_name: String,
+    ) -> Result<Vec<String>, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            Ok(folders::rename(conn, &path, &new_name, &device_id, now_ms())?.notes)
+        })
+    }
+
+    /// Moves a folder under `new_parent`, or to the vault root with `nil`.
+    pub fn move_folder(
+        &self,
+        path: String,
+        new_parent: Option<String>,
+    ) -> Result<Vec<String>, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            Ok(folders::move_to(conn, &path, new_parent.as_deref(), &device_id, now_ms())?.notes)
+        })
+    }
+
+    /// Tombstones a folder and every `folder_config` under it.
+    ///
+    /// **Throws when the subtree still holds a live note**, rather than
+    /// cascading. No chapter defines a cascading folder delete and a note
+    /// tombstone travels to every device in the vault: refusing costs a step
+    /// in the shell's flow, guessing costs the user their notes.
+    ///
+    /// - Returns: the paths that were tombstoned.
+    pub fn delete_folder(&self, path: String) -> Result<Vec<String>, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            Ok(folders::delete(conn, &path, &device_id, now_ms())?.folders)
+        })
     }
 
     /// The device identity these writes are recorded under. Exposed for the

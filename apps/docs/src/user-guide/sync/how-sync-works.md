@@ -196,6 +196,14 @@ A few limits:
   from the last device that holds a local copy — or remove those local copies first — to keep it
   gone.
 
+### Missing vault folders
+
+If a vault's folder is no longer reachable on this computer, the vault switcher keeps the vault in
+the list, greyed out and marked **Folder not found**. The folder may have been deleted, or it may sit
+on an external drive or network share that is not connected. memrynote never forgets a vault on its
+own, so a vault on an unplugged drive can be opened again once the drive is back. Use **Remove from
+list** to forget a folder you deleted on purpose.
+
 ## See Also
 
 - [Linking Another Device](/user-guide/sync/linking-devices)

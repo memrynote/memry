@@ -1,7 +1,7 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useCallback, useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { computePopoverPosition } from './popover-position'
+import { useAnchoredPopoverPosition } from './popover-position'
 import { CalendarTaskPopoverHeader } from './calendar-task-popover-header'
 import { CalendarTaskPopoverMeta } from './calendar-task-popover-meta'
 import { CalendarTaskPopoverSubtasks } from './calendar-task-popover-subtasks'
@@ -23,6 +23,8 @@ import type { RepeatConfig } from '@/services/tasks-service'
 
 const log = createLogger('CalendarTaskPopover')
 
+const TASK_POPOVER_WIDTH = 340
+
 export interface CalendarTaskPopoverProps {
   item: CalendarProjectionItem
   anchorRect: AnchorRect
@@ -43,6 +45,10 @@ export function CalendarTaskPopover({
   const { openTab } = useTabs()
   const { openSidebarItem } = useSidebarNavigation()
   const { t } = useT('calendar')
+  const position = useAnchoredPopoverPosition(anchorRect, {
+    width: TASK_POPOVER_WIDTH,
+    estimatedHeight: 320
+  })
 
   const isCompleted = !!task?.completedAt
   const taskProject = useMemo(
@@ -203,8 +209,6 @@ export function CalendarTaskPopover({
 
   if (!task) return null
 
-  const { top, left } = computePopoverPosition(anchorRect, { estimatedHeight: 320 })
-
   return (
     <DialogPrimitive.Root
       open
@@ -230,8 +234,9 @@ export function CalendarTaskPopover({
               e.preventDefault()
             }
           }}
+          ref={position.ref}
           className="fixed z-50 rounded-md border bg-popover text-popover-foreground shadow-md outline-none"
-          style={{ top, left, width: 340 }}
+          style={position.style}
         >
           <DialogPrimitive.Title className="sr-only">
             {t('task-popover.title-fallback')}

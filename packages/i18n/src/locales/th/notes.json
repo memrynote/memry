@@ -809,8 +809,10 @@
     "copyLinks": "คัดลอกลิงก์",
     "delete": "ลบ",
     "export": "ส่งออก",
+    "iconUpdated": "{count, plural, other {อัปเดตไอคอนของ # โน้ตแล้ว}}",
     "move": "ย้าย",
     "selected": "เลือกแล้ว",
+    "setIcon": "ตั้งค่าไอคอน",
     "tagNamePlaceholder": "ชื่อแท็ก",
     "toolbarAria": "การดำเนินการแบบกลุ่ม"
   },

@@ -24,7 +24,8 @@ export function toCreatePayload(draft: CalendarEventDraft) {
     endAt: draft.endAt ? localInputToIso(draft.endAt, draft.isAllDay) : null,
     timezone: localTimezone(),
     isAllDay: draft.isAllDay,
-    targetCalendarId: draft.targetCalendarId
+    targetCalendarId: draft.targetCalendarId,
+    color: draft.color
   }
 }
 

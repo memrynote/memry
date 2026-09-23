@@ -243,7 +243,7 @@ impl AuthSession {
     /// register anew. A `SecureStoreError::Locked` on the read is **not**
     /// "absent": returning it unchanged is what stops a locked keychain from
     /// silently minting a second identity.
-    fn signing_secret_key(&self) -> Result<Vec<u8>, AuthError> {
+    pub(crate) fn signing_secret_key(&self) -> Result<Vec<u8>, AuthError> {
         if let Some(existing) = self.store.get(SecureStoreKey::DeviceSigningKey)? {
             return Ok(existing);
         }
@@ -251,6 +251,18 @@ impl AuthSession {
         self.store
             .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())?;
         Ok(secret.to_vec())
+    }
+
+    /// This device's id, chapter 01 §1.5.
+    ///
+    /// Derived from the signing key rather than stored beside it, for the
+    /// reason the key's own doc gives: a second entry is a second thing that
+    /// can fall out of step, and a device id that disagreed with the key it
+    /// was minted from would sign manifests nobody can attribute.
+    pub(crate) fn device_id(&self) -> Result<String, AuthError> {
+        let secret = self.signing_secret_key()?;
+        let public = Self::signing_public_key(&secret)?;
+        Ok(crate::crypto::keys::local_device_id_hex(&public)?)
     }
 
     /// libsodium keeps the 32-byte public key in the tail of the 64-byte

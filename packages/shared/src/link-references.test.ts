@@ -201,7 +201,8 @@ describe('inlineLinkReferences', () => {
   it('resolves every reference spelling to an inline link', () => {
     // #given BlockNote 0.51's markdown parser does not implement reference
     // links, so the resolution has to happen before it sees the text.
-    const source = 'See [the docs][d], [docs][] and [docs].\n\n[d]: https://example.com\n[docs]: https://example.com/x'
+    const source =
+      'See [the docs][d], [docs][] and [docs].\n\n[d]: https://example.com\n[docs]: https://example.com/x'
     const { markdown, usages } = stripLinkReferenceDefinitions(source)
 
     // #when
@@ -221,7 +222,11 @@ describe('inlineLinkReferences', () => {
     const { markdown, definitions, usages } = stripLinkReferenceDefinitions(source)
 
     // #when
-    const roundTripped = restoreLinkReferences(inlineLinkReferences(markdown, usages), definitions, usages)
+    const roundTripped = restoreLinkReferences(
+      inlineLinkReferences(markdown, usages),
+      definitions,
+      usages
+    )
 
     // #then
     expect(roundTripped).toBe(source)

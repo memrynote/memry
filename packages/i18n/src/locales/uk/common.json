@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Видалити з облікового запису",
       "deleteVaultFailed": "Не вдалося видалити сховище",
       "deleteVaultTitle": "Видалити «{name}» з вашого облікового запису?",
-      "removeVaultTitle": "Вилучити «{name}» зі списку?"
+      "removeVaultTitle": "Вилучити «{name}» зі списку?",
+      "missing": "Теку не знайдено"
     },
     "componentsWindowControls": {
       "searchK": "Пошук (⌘K)",

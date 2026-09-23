@@ -491,4 +491,91 @@ pub enum SyncError {
     /// a body on. Permanent for this id, not a retryable fault.
     #[error("no live note `{id}` in this vault")]
     UnknownNote { id: String },
+
+    /// This device's own identity could not be read.
+    ///
+    /// Forwarded rather than flattened, exactly as the four above are: an
+    /// `AuthError` reaching the shell inside a sync is the same fact as one
+    /// reaching it inside a sign-in, and a second set of sentences for it
+    /// would be a second set to keep true.
+    ///
+    /// Reachable because a **write** needs a signing key and a device id where
+    /// a read does not: an attachment manifest is signed, so uploading one
+    /// asks for the identity that a pull never had to.
+    #[error("{source}")]
+    Auth {
+        #[from]
+        source: AuthError,
+    },
+
+    /// An attachment manifest could not be authenticated.
+    ///
+    /// **Its own variant, and never folded into [`SyncError::Api`] or
+    /// [`SyncError::Crypto`]** (chapter 14 §14.4.1). The manifest is the only
+    /// thing that names a file, so this is the one failure that means "the
+    /// server may be pointing this note's picture at somebody else's bytes"
+    /// rather than "something is broken". A shell must not offer a retry over
+    /// it, which is why it does not look like a transport fault.
+    ///
+    /// Also the answer for a signer device this vault cannot resolve, which
+    /// §14.4.1 makes a **hard failure rather than a fallback** — deliberately
+    /// unlike a record, where chapter 01 §1.4.0 leaves an unresolvable signer
+    /// *unverified* and refetches the directory.
+    #[error("the attachment manifest signed by `{device_id}` could not be verified")]
+    AttachmentUnverified { device_id: String },
+
+    /// The bytes arrived and were not the bytes the manifest describes.
+    ///
+    /// A failed chunk hash, a failed whole-file checksum, or a chunk that
+    /// would not decrypt. Separate from `AttachmentUnverified` because the
+    /// manifest was trustworthy and the transfer was not, so a retry is
+    /// reasonable here and is not there.
+    #[error("the attachment bytes failed their integrity check: {what}")]
+    AttachmentCorrupt { what: String },
+}
+
+/// Why a property write was refused, as the shell meets it.
+///
+/// A separate type from [`crate::domain::properties::PropertyError`] rather
+/// than a derive on it: that one carries `&'static str` discriminants, which
+/// do not cross the FFI, and reshaping a domain type to suit the binding
+/// generator would be the wrong direction of dependency.
+///
+/// [`Retyped`](PropertyWriteError::Retyped) stays a distinct case because it
+/// is the behaviour FR-048 names: a surface has to be able to say "that is
+/// not a valid value for this property" rather than "something went wrong".
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
+pub enum PropertyWriteError {
+    #[error(
+        "property `{name}` holds {existing} and the edit would make it {proposed}; a value edit never retypes a property (FR-048)"
+    )]
+    Retyped {
+        name: String,
+        existing: String,
+        proposed: String,
+    },
+
+    #[error(transparent)]
+    Storage {
+        #[from]
+        source: StorageError,
+    },
+}
+
+impl From<crate::domain::properties::PropertyError> for PropertyWriteError {
+    fn from(error: crate::domain::properties::PropertyError) -> Self {
+        use crate::domain::properties::PropertyError;
+        match error {
+            PropertyError::Retyped {
+                name,
+                existing,
+                proposed,
+            } => PropertyWriteError::Retyped {
+                name,
+                existing: existing.to_owned(),
+                proposed: proposed.to_owned(),
+            },
+            PropertyError::Storage(source) => PropertyWriteError::Storage { source },
+        }
+    }
 }

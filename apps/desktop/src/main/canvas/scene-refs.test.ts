@@ -35,13 +35,17 @@ describe('extractEntityRefsFromScene', () => {
           id: 'r3',
           type: 'rectangle',
           customData: { entityType: 'calendar_event', entityId: 'e1' }
-        }
+        },
+        { id: 'r4', type: 'rectangle', customData: { entityType: 'project', entityId: 'p1' } },
+        { id: 'r5', type: 'rectangle', customData: { entityType: 'file', entityId: 'f1' } }
       ])
     )
     expect(refs).toEqual([
       { entityType: 'note', entityId: 'n1' },
       { entityType: 'task', entityId: 't1' },
-      { entityType: 'calendar_event', entityId: 'e1' }
+      { entityType: 'calendar_event', entityId: 'e1' },
+      { entityType: 'project', entityId: 'p1' },
+      { entityType: 'file', entityId: 'f1' }
     ])
   })
 

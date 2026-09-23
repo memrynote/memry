@@ -452,7 +452,8 @@ jobs:
             tests/e2e/tasks.e2e.ts \
             tests/e2e/file-attachments-viewer.e2e.ts \
             tests/e2e/crdt-preflight-crash.e2e.ts \
-            tests/e2e/i18n.e2e.ts
+            tests/e2e/i18n.e2e.ts \
+            tests/e2e/sidebar-folder-drag.e2e.ts
 
       - name: Upload E2E artifacts
         if: always()

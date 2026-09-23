@@ -9,6 +9,17 @@ import {
   asClientDb
 } from '@tests/utils/test-db'
 import { CalendarChannels } from '@memry/contracts/ipc-channels'
+import type {
+  CalendarEventListResponse,
+  CalendarEventMutationResponse,
+  CalendarEventSearchResponse,
+  CalendarProviderMutationResponse,
+  CalendarProviderStatus,
+  CalendarRangeResponse,
+  CalendarSourceListResponse,
+  IcsCalendarMutationResponse,
+  RetryCalendarSourceSyncResponse
+} from '@memry/contracts/calendar-api'
 
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
@@ -17,28 +28,30 @@ const mockConnectGoogleCalendar = vi.fn()
 const mockDisconnectGoogleCalendar = vi.fn()
 const mockHasGoogleCalendarLocalAuth = vi.fn()
 const mockHasAnyGoogleCalendarLocalAuth = vi.fn()
-const mockListGoogleAccountIds = vi.fn(() => [] as string[])
-const mockResolveDefaultGoogleAccountId = vi.fn(() => null as string | null)
+const mockListGoogleAccountIds = vi.fn((..._args: unknown[]) => [] as string[])
+const mockResolveDefaultGoogleAccountId = vi.fn((..._args: unknown[]) => null as string | null)
 const mockDiscoverGoogleCalendarSources = vi.fn()
 const mockSyncGoogleCalendarNow = vi.fn()
 const mockSyncGoogleCalendarSource = vi.fn()
-const mockSyncLocalSourceToGoogleCalendar = vi.fn(async () => null)
-const mockStartGoogleCalendarSyncRunner = vi.fn(async () => {})
+const mockSyncLocalSourceToGoogleCalendar = vi.fn(async (..._args: unknown[]) => null)
+const mockStartGoogleCalendarSyncRunner = vi.fn(async (..._args: unknown[]) => {})
 const mockStopGoogleCalendarSyncRunner = vi.fn()
-const mockIsMemryUserSignedIn = vi.fn(async () => true)
+const mockIsMemryUserSignedIn = vi.fn(async (..._args: unknown[]) => true)
 const mockPushSelectionToggle = vi.fn()
 const mockListGoogleCalendars = vi.fn()
 const mockSetDefaultGoogleCalendar = vi.fn()
-const mockCreateGoogleCalendarClient = vi.fn((options: unknown) => ({ options }))
+const mockCreateGoogleCalendarClient = vi.fn((...args: unknown[]) => ({ options: args[0] }))
 const mockPromoteExternalEvent = vi.fn()
 
 const mockCalendarPromoteErrors = vi.hoisted(() => {
   class ExternalEventNotFoundError extends Error {}
   class ExternalEventSourceMissingError extends Error {}
+  class ExternalEventReadOnlyError extends Error {}
 
   return {
     ExternalEventNotFoundError,
-    ExternalEventSourceMissingError
+    ExternalEventSourceMissingError,
+    ExternalEventReadOnlyError
   }
 })
 
@@ -113,7 +126,8 @@ vi.mock('../calendar/google/push-runtime', () => ({
 vi.mock('../calendar/promote-external-event', () => ({
   promoteExternalEvent: (...args: unknown[]) => mockPromoteExternalEvent(...args),
   ExternalEventNotFoundError: mockCalendarPromoteErrors.ExternalEventNotFoundError,
-  ExternalEventSourceMissingError: mockCalendarPromoteErrors.ExternalEventSourceMissingError
+  ExternalEventSourceMissingError: mockCalendarPromoteErrors.ExternalEventSourceMissingError,
+  ExternalEventReadOnlyError: mockCalendarPromoteErrors.ExternalEventReadOnlyError
 }))
 
 vi.mock('../auth-state', () => ({
@@ -209,7 +223,10 @@ describe('calendar-handlers', () => {
       id: 'calendar-event-generated-id'
     })
 
-    const listed = await invokeHandler(CalendarChannels.invoke.LIST_EVENTS, {})
+    const listed = await invokeHandler<CalendarEventListResponse>(
+      CalendarChannels.invoke.LIST_EVENTS,
+      {}
+    )
     expect(listed.events).toEqual([
       expect.objectContaining({
         id: 'calendar-event-generated-id',
@@ -247,7 +264,10 @@ describe('calendar-handlers', () => {
       expect.any(String)
     )
 
-    const afterDelete = await invokeHandler(CalendarChannels.invoke.LIST_EVENTS, {})
+    const afterDelete = await invokeHandler<CalendarEventListResponse>(
+      CalendarChannels.invoke.LIST_EVENTS,
+      {}
+    )
     expect(afterDelete.events).toEqual([])
   })
 
@@ -309,6 +329,90 @@ describe('calendar-handlers', () => {
         targetCalendarId: 'home@group.calendar.google.com'
       })
     })
+  })
+
+  it('stores an event colour as its Google colour id and syncs only a real change', async () => {
+    registerCalendarHandlers()
+
+    const created = await invokeHandler<CalendarEventMutationResponse>(
+      CalendarChannels.invoke.CREATE_EVENT,
+      {
+        title: 'Standup',
+        startAt: '2026-04-12T09:00:00.000Z',
+        endAt: '2026-04-12T09:15:00.000Z',
+        timezone: 'UTC',
+        isAllDay: false,
+        color: 'basil'
+      }
+    )
+    expect(created.event).toEqual(expect.objectContaining({ color: 'basil', colorId: '10' }))
+
+    const range = await invokeHandler<CalendarRangeResponse>(CalendarChannels.invoke.GET_RANGE, {
+      startAt: '2026-04-12T00:00:00.000Z',
+      endAt: '2026-04-13T00:00:00.000Z'
+    })
+    expect(range.items).toEqual([
+      expect.objectContaining({ sourceId: 'calendar-event-generated-id', color: 'basil' })
+    ])
+
+    vi.mocked(enqueueLocalSyncUpdate).mockClear()
+    const recoloured = await invokeHandler<CalendarEventMutationResponse>(
+      CalendarChannels.invoke.UPDATE_EVENT,
+      { id: 'calendar-event-generated-id', color: 'tomato' }
+    )
+    expect(recoloured.event).toEqual(expect.objectContaining({ color: 'tomato', colorId: '11' }))
+    expect(enqueueLocalSyncUpdate).toHaveBeenCalledWith(
+      'calendar_event',
+      'calendar-event-generated-id',
+      ['colorId']
+    )
+
+    const cleared = await invokeHandler<CalendarEventMutationResponse>(
+      CalendarChannels.invoke.UPDATE_EVENT,
+      { id: 'calendar-event-generated-id', color: null }
+    )
+    expect(cleared.event).toEqual(expect.objectContaining({ color: null, colorId: null }))
+  })
+
+  it('does not mark the colour edited when the form re-saves the colour the event has', async () => {
+    registerCalendarHandlers()
+    await invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
+      title: 'Offsite',
+      startAt: '2026-04-12T09:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false
+    })
+    // Lavender, set in Google Calendar.
+    db.run(sql`UPDATE calendar_events SET color_id = '1' WHERE id = 'calendar-event-generated-id'`)
+    vi.mocked(enqueueLocalSyncUpdate).mockClear()
+
+    const saved = await invokeHandler<CalendarEventMutationResponse>(
+      CalendarChannels.invoke.UPDATE_EVENT,
+      { id: 'calendar-event-generated-id', title: 'Offsite day', color: 'lavender' }
+    )
+
+    expect(saved.event).toEqual(
+      expect.objectContaining({ title: 'Offsite day', color: 'lavender', colorId: '1' })
+    )
+    expect(enqueueLocalSyncUpdate).toHaveBeenCalledWith(
+      'calendar_event',
+      'calendar-event-generated-id',
+      ['title']
+    )
+  })
+
+  it('rejects a calendar-only colour on an event at the schema boundary', async () => {
+    registerCalendarHandlers()
+
+    await expect(
+      invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
+        title: 'Standup',
+        startAt: '2026-04-12T09:00:00.000Z',
+        timezone: 'UTC',
+        isAllDay: false,
+        color: 'cobalt'
+      })
+    ).rejects.toThrow()
   })
 
   it('returns projected range items for memrynote and imported provider events', async () => {
@@ -397,7 +501,7 @@ describe('calendar-handlers', () => {
       )
     `)
 
-    const result = await invokeHandler(CalendarChannels.invoke.GET_RANGE, {
+    const result = await invokeHandler<CalendarRangeResponse>(CalendarChannels.invoke.GET_RANGE, {
       startAt: '2026-04-12T00:00:00.000Z',
       endAt: '2026-04-13T00:00:00.000Z'
     })
@@ -486,17 +590,23 @@ describe('calendar-handlers', () => {
       )
     `)
 
-    const sources = await invokeHandler(CalendarChannels.invoke.LIST_SOURCES, {
-      provider: 'google'
-    })
+    const sources = await invokeHandler<CalendarSourceListResponse>(
+      CalendarChannels.invoke.LIST_SOURCES,
+      {
+        provider: 'google'
+      }
+    )
     expect(sources.sources).toEqual([
       expect.objectContaining({ id: 'google-account-1', kind: 'account' }),
       expect.objectContaining({ id: 'google-calendar-1', kind: 'calendar', isSelected: true })
     ])
 
-    const status = await invokeHandler(CalendarChannels.invoke.GET_PROVIDER_STATUS, {
-      provider: 'google'
-    })
+    const status = await invokeHandler<CalendarProviderStatus>(
+      CalendarChannels.invoke.GET_PROVIDER_STATUS,
+      {
+        provider: 'google'
+      }
+    )
     expect(status).toEqual({
       provider: 'google',
       connected: true,
@@ -536,9 +646,12 @@ describe('calendar-handlers', () => {
     mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(true)
     mockListGoogleAccountIds.mockReturnValue(['user@example.com'])
 
-    const connect = await invokeHandler(CalendarChannels.invoke.CONNECT_PROVIDER, {
-      provider: 'google'
-    })
+    const connect = await invokeHandler<CalendarProviderMutationResponse>(
+      CalendarChannels.invoke.CONNECT_PROVIDER,
+      {
+        provider: 'google'
+      }
+    )
     expect(connect).toEqual({
       success: true,
       status: {
@@ -565,9 +678,12 @@ describe('calendar-handlers', () => {
     })
     expect(mockConnectGoogleCalendar).toHaveBeenCalledTimes(1)
 
-    const sources = await invokeHandler(CalendarChannels.invoke.LIST_SOURCES, {
-      provider: 'google'
-    })
+    const sources = await invokeHandler<CalendarSourceListResponse>(
+      CalendarChannels.invoke.LIST_SOURCES,
+      {
+        provider: 'google'
+      }
+    )
     expect(sources.sources).toEqual([
       expect.objectContaining({ id: 'google-account:user@example.com', kind: 'account' }),
       expect.objectContaining({
@@ -579,9 +695,12 @@ describe('calendar-handlers', () => {
 
     mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(false)
 
-    const disconnect = await invokeHandler(CalendarChannels.invoke.DISCONNECT_PROVIDER, {
-      provider: 'google'
-    })
+    const disconnect = await invokeHandler<CalendarProviderMutationResponse>(
+      CalendarChannels.invoke.DISCONNECT_PROVIDER,
+      {
+        provider: 'google'
+      }
+    )
     expect(disconnect).toEqual({
       success: true,
       status: {
@@ -757,10 +876,13 @@ describe('calendar-handlers', () => {
       'work@example.com'
     )
 
-    const sources = await invokeHandler(CalendarChannels.invoke.LIST_SOURCES, {
-      provider: 'google',
-      kind: 'calendar'
-    })
+    const sources = await invokeHandler<CalendarSourceListResponse>(
+      CalendarChannels.invoke.LIST_SOURCES,
+      {
+        provider: 'google',
+        kind: 'calendar'
+      }
+    )
 
     // The account's other calendars have to reach the picker; otherwise there
     // is nothing for the user to turn on and only the primary ever syncs.
@@ -1001,6 +1123,15 @@ describe('calendar-handlers', () => {
         externalEventId: 'missing-external'
       })
     ).toEqual({ success: false, eventId: null, error: 'external missing' })
+
+    mockPromoteExternalEvent.mockImplementationOnce(() => {
+      throw new mockCalendarPromoteErrors.ExternalEventReadOnlyError('read-only subscription')
+    })
+    expect(
+      await invokeHandler(CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT, {
+        externalEventId: 'ics-external'
+      })
+    ).toEqual({ success: false, eventId: null, error: 'read-only subscription' })
   })
 
   it('returns one account in status.accounts per connected Google account (M6 T3)', async () => {
@@ -1037,9 +1168,12 @@ describe('calendar-handlers', () => {
       return accountId === 'alice@example.com'
     })
 
-    const status = await invokeHandler(CalendarChannels.invoke.GET_PROVIDER_STATUS, {
-      provider: 'google'
-    })
+    const status = await invokeHandler<CalendarProviderStatus>(
+      CalendarChannels.invoke.GET_PROVIDER_STATUS,
+      {
+        provider: 'google'
+      }
+    )
 
     expect(status.accounts).toHaveLength(2)
     expect(status.accounts).toEqual(
@@ -1086,9 +1220,12 @@ describe('calendar-handlers', () => {
       `)
     })
 
-    const result = await invokeHandler(CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC, {
-      sourceId: 'google-calendar:work'
-    })
+    const result = await invokeHandler<RetryCalendarSourceSyncResponse>(
+      CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC,
+      {
+        sourceId: 'google-calendar:work'
+      }
+    )
 
     expect(mockSyncGoogleCalendarSource).toHaveBeenCalledWith(
       expect.anything(),
@@ -1135,18 +1272,24 @@ describe('calendar-handlers', () => {
     mockHasGoogleCalendarLocalAuth.mockResolvedValue(true)
     mockListGoogleAccountIds.mockReturnValue(['alice@example.com', 'bob@example.com'])
 
-    const result = await invokeHandler(CalendarChannels.invoke.DISCONNECT_PROVIDER, {
-      provider: 'google',
-      accountId: 'alice@example.com'
-    })
+    const result = await invokeHandler<CalendarProviderMutationResponse>(
+      CalendarChannels.invoke.DISCONNECT_PROVIDER,
+      {
+        provider: 'google',
+        accountId: 'alice@example.com'
+      }
+    )
 
     expect(result.success).toBe(true)
     expect(mockDisconnectGoogleCalendar).toHaveBeenCalledTimes(1)
     expect(mockDisconnectGoogleCalendar).toHaveBeenCalledWith('alice@example.com')
 
-    const sources = await invokeHandler(CalendarChannels.invoke.LIST_SOURCES, {
-      provider: 'google'
-    })
+    const sources = await invokeHandler<CalendarSourceListResponse>(
+      CalendarChannels.invoke.LIST_SOURCES,
+      {
+        provider: 'google'
+      }
+    )
     const sourceIds = sources.sources.map((s: { id: string }) => s.id)
     // Alice's rows tombstoned (filtered out by listCalendarSources via archivedAt);
     // Bob's rows still active.
@@ -1189,10 +1332,13 @@ describe('calendar-handlers', () => {
     // It tombstones the rows rather than deleting them.
     mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(false)
     mockHasGoogleCalendarLocalAuth.mockResolvedValue(false)
-    const disconnected = await invokeHandler(CalendarChannels.invoke.DISCONNECT_PROVIDER, {
-      provider: 'google',
-      accountId: 'adam@example.com'
-    })
+    const disconnected = await invokeHandler<CalendarProviderMutationResponse>(
+      CalendarChannels.invoke.DISCONNECT_PROVIDER,
+      {
+        provider: 'google',
+        accountId: 'adam@example.com'
+      }
+    )
     expect(disconnected.status.connected).toBe(false)
 
     // Reconnecting the same account must bring it back. Before the fix the
@@ -1200,9 +1346,12 @@ describe('calendar-handlers', () => {
     // account row out and the user could never connect again.
     mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(true)
     mockHasGoogleCalendarLocalAuth.mockResolvedValue(true)
-    const reconnected = await invokeHandler(CalendarChannels.invoke.CONNECT_PROVIDER, {
-      provider: 'google'
-    })
+    const reconnected = await invokeHandler<CalendarProviderMutationResponse>(
+      CalendarChannels.invoke.CONNECT_PROVIDER,
+      {
+        provider: 'google'
+      }
+    )
 
     expect(reconnected.success).toBe(true)
     expect(reconnected.status.connected).toBe(true)
@@ -1215,9 +1364,12 @@ describe('calendar-handlers', () => {
     ])
     expect(reconnected.status.calendars.selected).toBe(1)
 
-    const sources = await invokeHandler(CalendarChannels.invoke.LIST_SOURCES, {
-      provider: 'google'
-    })
+    const sources = await invokeHandler<CalendarSourceListResponse>(
+      CalendarChannels.invoke.LIST_SOURCES,
+      {
+        provider: 'google'
+      }
+    )
     expect(sources.sources.map((source: { id: string }) => source.id)).toEqual([
       'google-account:adam@example.com',
       'google-calendar:adam@example.com'
@@ -1330,9 +1482,12 @@ describe('calendar-handlers', () => {
     })
 
     // #when — we search for a title substring
-    const found = await invokeHandler(CalendarChannels.invoke.SEARCH_EVENTS, {
-      query: 'quarterly'
-    })
+    const found = await invokeHandler<CalendarEventSearchResponse>(
+      CalendarChannels.invoke.SEARCH_EVENTS,
+      {
+        query: 'quarterly'
+      }
+    )
 
     // #then — the lean shape comes back, without the record's heavy fields
     expect(found.events).toEqual([
@@ -1369,9 +1524,144 @@ describe('calendar-handlers', () => {
     })
 
     // #when — we search for something else
-    const found = await invokeHandler(CalendarChannels.invoke.SEARCH_EVENTS, { query: 'retro' })
+    const found = await invokeHandler<CalendarEventSearchResponse>(
+      CalendarChannels.invoke.SEARCH_EVENTS,
+      { query: 'retro' }
+    )
 
     // #then — an empty list, not an error
     expect(found.events).toEqual([])
+  })
+
+  describe('subscribed ICS calendars (#1207)', () => {
+    const FEED_URL = 'https://club.example.com/fixtures.ics'
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d{3}/, '')
+    const FEED = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Test//EN',
+      'X-WR-CALNAME:Club fixtures',
+      'BEGIN:VEVENT',
+      'UID:match-1@club',
+      `DTSTART:${tomorrow}`,
+      'SUMMARY:Home match',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n')
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    function stubFetch(...responses: Array<() => Response>): void {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => {
+          const next = responses.shift()
+          if (!next) throw new TypeError('fetch failed')
+          return next()
+        })
+      )
+    }
+
+    function mirroredEventCount(): number {
+      return db.all<{ count: number }>(
+        sql`SELECT count(*) AS count FROM calendar_external_events`
+      )[0].count
+    }
+
+    it('rejects a link that is not a URL with a code the renderer localizes', async () => {
+      registerCalendarHandlers()
+
+      expect(
+        await invokeHandler<IcsCalendarMutationResponse>(
+          CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR,
+          {
+            url: 'club fixtures'
+          }
+        )
+      ).toEqual({
+        success: false,
+        source: null,
+        errorCode: 'invalid_url',
+        error: 'invalid_url'
+      })
+    })
+
+    it('subscribes, reports a failed refresh on the source, and unsubscribes', async () => {
+      registerCalendarHandlers()
+      stubFetch(
+        () => new Response(FEED, { status: 200 }),
+        () => new Response('', { status: 404 })
+      )
+
+      const subscribed = await invokeHandler<IcsCalendarMutationResponse>(
+        CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR,
+        {
+          url: 'webcal://club.example.com/fixtures.ics'
+        }
+      )
+      expect(subscribed).toMatchObject({
+        success: true,
+        source: { provider: 'ics', remoteId: FEED_URL, title: 'Club fixtures' }
+      })
+      expect(mirroredEventCount()).toBe(1)
+      const sourceId = subscribed.source!.id
+
+      expect(
+        await invokeHandler(CalendarChannels.invoke.REFRESH_ICS_CALENDAR, { sourceId })
+      ).toMatchObject({
+        success: false,
+        errorCode: 'not_found',
+        source: { id: sourceId, syncStatus: 'error', lastError: 'not_found' }
+      })
+
+      const removed = await invokeHandler<IcsCalendarMutationResponse>(
+        CalendarChannels.invoke.UNSUBSCRIBE_ICS_CALENDAR,
+        {
+          sourceId
+        }
+      )
+      expect(removed).toMatchObject({ success: true, source: { id: sourceId } })
+      expect(removed.source!.archivedAt).toEqual(expect.any(String))
+      expect(mirroredEventCount()).toBe(0)
+    })
+
+    it('hiding a subscribed calendar drops its local events without queueing sync deletes', async () => {
+      registerCalendarHandlers()
+      stubFetch(() => new Response(FEED, { status: 200 }))
+      const subscribed = await invokeHandler<IcsCalendarMutationResponse>(
+        CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR,
+        {
+          url: FEED_URL
+        }
+      )
+      expect(mirroredEventCount()).toBe(1)
+
+      const updated = await invokeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION, {
+        id: subscribed.source!.id,
+        isSelected: false
+      })
+
+      expect(updated).toMatchObject({ success: true, source: { isSelected: false } })
+      expect(mirroredEventCount()).toBe(0)
+      expect(vi.mocked(enqueueLocalSyncDelete).mock.calls).toEqual([])
+    })
+
+    it('refreshing a source that is not a subscription fails without touching it', async () => {
+      registerCalendarHandlers()
+
+      expect(
+        await invokeHandler(CalendarChannels.invoke.REFRESH_ICS_CALENDAR, {
+          sourceId: 'google-calendar:primary'
+        })
+      ).toEqual({
+        success: false,
+        error: 'Subscribed calendar not found: google-calendar:primary'
+      })
+    })
   })
 })

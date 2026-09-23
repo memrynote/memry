@@ -3,11 +3,12 @@
  *
  * Floating toolbar shown when one or more notes are selected in the folder
  * table view. Mirrors the Paper "Folder View — Linear" bulk-action design:
- * count pill, Move / Copy links / Add tag / Export, then Delete and a clear (X).
+ * count pill, Move / Copy links / Add tag / Set icon / Export, then Delete and
+ * a clear (X).
  */
 
-import { useMemo, useState } from 'react'
-import { Download, FolderInput, Link, Pin, Tag, Trash2, X } from '@/lib/icons'
+import { lazy, Suspense, useMemo, useState } from 'react'
+import { Download, FolderInput, Link, Pin, Smile, Tag, Trash2, X } from '@/lib/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
@@ -20,6 +21,10 @@ import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { toast } from 'sonner'
 
+const LazyEmojiPicker = lazy(async () => ({
+  default: (await import('@/components/note/note-title/EmojiPicker')).EmojiPicker
+}))
+
 const log = createLogger('Component:BulkActionBar')
 
 /**
@@ -30,6 +35,8 @@ const log = createLogger('Component:BulkActionBar')
 export interface BulkActionRow {
   id: string
   kind?: 'note' | 'task' | 'inbox'
+  /** The row's current icon, so the picker can offer Remove. */
+  emoji?: string | null
 }
 
 interface BulkActionBarProps {
@@ -48,6 +55,8 @@ interface BulkActionBarProps {
   onMove: () => void
   onCopyLinks: () => void
   onAddTag: (tag: string) => void
+  /** Apply one icon to every selected note, or remove it with `null` */
+  onSetIcon: (icon: string | null) => void
   onExport: () => void
   onDelete: () => void
   onClear: () => void
@@ -99,6 +108,7 @@ export function BulkActionBar({
   onMove,
   onCopyLinks,
   onAddTag,
+  onSetIcon,
   onExport,
   onDelete,
   onClear,
@@ -106,6 +116,7 @@ export function BulkActionBar({
 }: BulkActionBarProps): React.JSX.Element {
   const { t } = useT('notes')
   const [isPinning, setIsPinning] = useState(false)
+  const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
 
   // Only note rows can be pinned, deleted, or moved — task/inbox rows carry
   // no tag pin concept and aren't valid delete/move targets from here.
@@ -114,6 +125,9 @@ export function BulkActionBar({
     [selectedRows]
   )
   const hasNonNoteRow = noteRowIds.length < selectedRows.length
+  const selectionHasIcon = selectedRows.some(
+    (row) => (row.kind ?? 'note') === 'note' && !!row.emoji
+  )
 
   const handlePinSelected = async (): Promise<void> => {
     if (!scope || scope.kind !== 'tag' || noteRowIds.length === 0) return
@@ -168,6 +182,35 @@ export function BulkActionBar({
         tagMeta={tagMeta}
         onAddTag={onAddTag}
       />
+      <Popover open={isIconPickerOpen} onOpenChange={setIsIconPickerOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={noteRowIds.length === 0}
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+          >
+            <Smile className="size-3.5 shrink-0" />
+            {t('bulkActions.setIcon')}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="center"
+          side="top"
+          sideOffset={8}
+          className="w-auto border-0 bg-transparent p-0 shadow-none"
+        >
+          <Suspense fallback={null}>
+            <LazyEmojiPicker
+              isOpen
+              embedded
+              onClose={() => setIsIconPickerOpen(false)}
+              onSelect={(icon) => onSetIcon(icon)}
+              onRemove={() => onSetIcon(null)}
+              hasEmoji={selectionHasIcon}
+            />
+          </Suspense>
+        </PopoverContent>
+      </Popover>
       <BarButton icon={Download} label={t('bulkActions.export')} onClick={onExport} />
 
       {scope?.kind === 'tag' && (

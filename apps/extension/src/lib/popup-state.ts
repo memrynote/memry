@@ -1,5 +1,5 @@
 import type { ArticleCapture } from '@memry/article-extract'
-import type { CaptureMode, ConnectionState } from './messages'
+import type { CaptureMode, CaptureResponse, ConnectionState, PairResponse } from './messages'
 
 export type Phase =
   | 'extracting'
@@ -23,6 +23,7 @@ export interface PopupState {
   action: 'idle' | 'launching' | 'approving' | 'saving' | 'saved' | 'queued' | 'error'
   itemId: string | null
   errorMessage: string | null
+  queuedReason: 'app-closed' | 'vault-closed' | null
 }
 
 export type PopupAction =
@@ -30,11 +31,10 @@ export type PopupAction =
   | { type: 'STATUS'; connection: ConnectionState; port: number | null }
   | { type: 'EDIT'; draft: ArticleCapture }
   | { type: 'APPROVE_START' }
-  | { type: 'APPROVE_DONE'; ok: boolean }
+  | { type: 'APPROVE_DONE'; result: PairResponse }
   | { type: 'SAVE_START' }
-  | { type: 'SAVE_DONE'; result: { ok: true; itemId: string } | { ok: false; error: string } }
+  | { type: 'SAVE_DONE'; result: CaptureResponse }
   | { type: 'LAUNCH_START' }
-  | { type: 'LAUNCH_DONE'; ok: boolean }
   | { type: 'RETRY' }
   | { type: 'SET_MODE'; mode: CaptureMode }
 
@@ -47,7 +47,8 @@ export const initialState: PopupState = {
   port: null,
   action: 'idle',
   itemId: null,
-  errorMessage: null
+  errorMessage: null,
+  queuedReason: null
 }
 
 export function mapError(code: string): string {
@@ -60,7 +61,13 @@ export function mapError(code: string): string {
     case 'payload-too-large':
       return 'This page is too large to capture.'
     case 'pair-timeout':
-      return 'Pairing timed out. Try again.'
+      return 'Pairing timed out. Approve the request in Memry, then try again.'
+    case 'pair-denied':
+      return 'Pairing was declined in Memry. Send again to ask once more.'
+    case 'app-closed':
+      return 'Open Memry, then try again.'
+    case 'vault-closed':
+      return 'Open a vault in Memry, then save again.'
     case 'permission-denied':
       return 'Allow the access Memry asked for, then save again.'
     case 'pdf-fetch-failed':
@@ -93,29 +100,26 @@ export function reducer(state: PopupState, action: PopupAction): PopupState {
     case 'APPROVE_START':
       return { ...state, action: 'approving', errorMessage: null }
     case 'APPROVE_DONE':
-      return action.ok
+      return action.result.ok
         ? { ...state, action: 'idle' }
-        : {
-            ...state,
-            action: 'error',
-            errorMessage: 'Approve the Memry extension, then try again.'
-          }
+        : { ...state, action: 'error', errorMessage: mapError(action.result.error) }
     case 'SAVE_START':
       return { ...state, action: 'saving', errorMessage: null }
     case 'SAVE_DONE':
       if (action.result.ok) {
         return { ...state, action: 'saved', itemId: action.result.itemId }
       }
-      if (action.result.error === 'queued') {
-        return { ...state, action: 'queued', errorMessage: null }
+      if (action.result.error === 'queued' || action.result.error === 'queued-vault-closed') {
+        return {
+          ...state,
+          action: 'queued',
+          errorMessage: null,
+          queuedReason: action.result.error === 'queued' ? 'app-closed' : 'vault-closed'
+        }
       }
       return { ...state, action: 'error', errorMessage: mapError(action.result.error) }
     case 'LAUNCH_START':
       return { ...state, action: 'launching', errorMessage: null }
-    case 'LAUNCH_DONE':
-      return action.ok
-        ? { ...state, action: 'idle' }
-        : { ...state, action: 'error', errorMessage: 'Open Memry, then try again.' }
     case 'RETRY':
       return { ...state, action: 'idle', errorMessage: null }
     default:

@@ -45,7 +45,13 @@ import {
   type CoverPickerAnchor
 } from '@/components/note/cover-picker-dialog'
 import { useNoteCover } from '@/components/note/use-note-cover'
-import { BacklinksSection, Backlink, Mention, backlinkId } from '@/components/note/backlinks'
+import {
+  BacklinksSection,
+  OutgoingLinksSection,
+  Backlink,
+  Mention,
+  backlinkId
+} from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import {
   useNote,
@@ -197,7 +203,11 @@ export function NotePage({ noteId }: NotePageProps) {
   // TanStack Query hooks for data fetching with caching
   const { note, isLoading, error: noteError, refetch: refetchNote } = useNote(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote, moveNote } = useNoteMutations()
-  const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinksQuery(noteId ?? null)
+  const {
+    incoming: rawBacklinks,
+    outgoing: outgoingLinks,
+    isLoading: backlinksLoading
+  } = useNoteLinksQuery(noteId ?? null)
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
   const { tags: allAvailableTags } = useNoteTagsQuery()
   const { openTab, setTabDeleted, updateTabTitleByEntityId, closeTab, saveTabState } = useTabs()
@@ -1978,7 +1988,7 @@ export function NotePage({ noteId }: NotePageProps) {
           </div>
         )}
 
-        {/* Backlinks & linked tasks — separated from content and excluded
+        {/* Backlinks, outgoing links & linked tasks — separated from content and excluded
             from the marquee/focus-at-end zone. */}
         <div className="mt-10 flex flex-col gap-6" data-marquee-ignore>
           <BacklinksSection
@@ -1986,6 +1996,11 @@ export function NotePage({ noteId }: NotePageProps) {
             isLoading={backlinksLoading}
             initialCount={5}
             onBacklinkClick={handleBacklinkClick}
+          />
+
+          <OutgoingLinksSection
+            links={outgoingLinks}
+            onLinkClick={(title) => void handleInternalLinkClick(title)}
           />
 
           <LinkedTasksSection

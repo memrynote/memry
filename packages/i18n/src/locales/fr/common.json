@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Supprimer du compte",
       "deleteVaultFailed": "Impossible de supprimer le coffre",
       "deleteVaultTitle": "Supprimer « {name} » de votre compte ?",
-      "removeVaultTitle": "Retirer « {name} » de la liste ?"
+      "removeVaultTitle": "Retirer « {name} » de la liste ?",
+      "missing": "Dossier introuvable"
     },
     "componentsWindowControls": {
       "searchK": "Rechercher (⌘K)",

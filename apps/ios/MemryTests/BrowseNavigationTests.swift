@@ -118,11 +118,13 @@ struct BrowseSourceTests {
     )
     func theDestinationIsOutsideEveryLazyContainer() throws {
         let notesList = try BrowseSources.source(BrowseSources.notesList)
-        // Two since T157: `FolderRoute` and `NoteRoute`. The count is the
-        // point — it is what catches a third registration added next to the
-        // rows it pushes, which is the lazy-container bug R15 is about.
+        // Three since N600: `FolderRoute`, `NoteRoute` and `TagRoute`. The
+        // count is the point — it is what catches a registration added next
+        // to the rows it pushes, which is the lazy-container bug R15 is
+        // about. Raising it is only correct when the new one is in `body`,
+        // which the assertions below check for each route by name.
         let calls = notesList.components(separatedBy: ".navigationDestination(").count - 1
-        #expect(calls == 2)
+        #expect(calls == 3)
 
         guard let body = BrowseSources.bodyOfNotesListView(notesList) else {
             Issue.record("NotesListView.body could not be located in the source")
@@ -130,6 +132,7 @@ struct BrowseSourceTests {
         }
         #expect(body.contains(".navigationDestination(for: FolderRoute.self)"))
         #expect(body.contains(".navigationDestination(for: NoteRoute.self)"))
+        #expect(body.contains(".navigationDestination(for: TagRoute.self)"))
         // The assertion has teeth only because a lazy container really exists
         // in this file; if the rows stopped being lazy, this reminds the next
         // author that the rule is about them.

@@ -239,7 +239,7 @@ private struct OneVault: VaultRegistry {
 
 @Suite("T237 SyncError copy")
 struct ErrorMappingSyncTests {
-    /// Every one of the six variants, and none of them reaches the
+    /// Every one of the nine variants, and none of them reaches the
     /// unrecognised arm. `LinkingError` shipped uncovered and fell through to
     /// it until somebody noticed; this is the test that would have caught it.
     @Test("every SyncError variant has copy of its own")
@@ -250,7 +250,10 @@ struct ErrorMappingSyncTests {
             .SecureStore(source: .Locked),
             .Crypto(source: .DecryptionFailed),
             .Locked,
-            .UnknownNote(id: "n")
+            .UnknownNote(id: "n"),
+            .AttachmentUnverified(deviceId: "device-a"),
+            .AttachmentCorrupt(what: "chunk 2 failed its hash"),
+            .Auth(source: .MalformedToken(what: "device signing key is not 64 bytes"))
         ]
         for error in cases {
             // Through the funnel a `catch` block actually uses, not the
@@ -285,5 +288,39 @@ struct ErrorMappingSyncTests {
         for copy in [ErrorMapping.unknownNote, ErrorMapping.locked] {
             #expect(!copy.text.lowercased().contains("try again"))
         }
+    }
+
+    /// The distinction chapter 14 §14.4.1 rests on, and the reason the two
+    /// attachment failures are separate variants rather than one.
+    ///
+    /// A manifest that will not verify means the server may be offering
+    /// somebody else's bytes for this note's picture, and repeating the fetch
+    /// gets the same unverifiable manifest. Bytes that failed their hash mean
+    /// the manifest was trustworthy and the transfer was not, which is worth
+    /// trying again. A shell offering "try again" for the first would be
+    /// inviting the user to re-run an attack.
+    @Test("an unverifiable manifest is blocked and corrupt bytes are retryable")
+    func theTwoAttachmentFailuresOfferDifferentRecourse() {
+        #expect(
+            ErrorMapping.userFacing(SyncError.AttachmentUnverified(deviceId: "d")).recourse
+                == .blocked
+        )
+        #expect(
+            ErrorMapping.userFacing(SyncError.AttachmentCorrupt(what: "checksum")).recourse
+                == .retry
+        )
+    }
+
+    /// Constitution II. A device id identifies a user's hardware and a note id
+    /// identifies content; a string that reaches an alert can reach a
+    /// screenshot.
+    @Test("no attachment sentence echoes the payload it was given")
+    func attachmentCopyEchoesNoPayload() {
+        let unverified = ErrorMapping.userFacing(
+            SyncError.AttachmentUnverified(deviceId: "device-secret")
+        )
+        let corrupt = ErrorMapping.userFacing(SyncError.AttachmentCorrupt(what: "chunk-secret"))
+        #expect(!unverified.text.contains("device-secret"))
+        #expect(!corrupt.text.contains("chunk-secret"))
     }
 }

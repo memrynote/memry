@@ -1,4 +1,5 @@
-import { randomBytes, createHmac, randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
+import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { createLogger } from '../../lib/logger'
 import { deleteFromServer, patchToServer, postToServer } from '../../sync/http-client'
 import { getValidAccessToken } from '../../sync/token-manager'
@@ -10,7 +11,7 @@ import { getCalendarSourceById } from '../repositories/calendar-sources-reposito
 
 const log = createLogger('Calendar:GooglePushRuntime')
 
-const DEFAULT_WEBHOOK_URL = 'https://sync.memrynote.com/webhooks/google-calendar'
+const WEBHOOK_PATH = '/webhooks/google-calendar'
 const TTL_SECONDS = 7 * 24 * 60 * 60
 const ROTATION_MARGIN_SECONDS = 60 * 60
 
@@ -71,16 +72,28 @@ export function createGooglePushRuntime(manager: GoogleChannelManager): GooglePu
   }
 }
 
-function resolveWebhookUrl(): string {
-  return process.env.MEMRY_CALENDAR_WEBHOOK_URL?.trim() || DEFAULT_WEBHOOK_URL
+// Webhooks land on the same sync-server the channel is registered with, so a
+// staging build never registers on staging while Google pings production.
+// MEMRY_CALENDAR_WEBHOOK_URL overrides it for local dev behind a public tunnel.
+function resolveWebhookUrl(): string | null {
+  const override = process.env.MEMRY_CALENDAR_WEBHOOK_URL?.trim()
+  if (override) return override
+  try {
+    return `${resolveSyncServerUrl()}${WEBHOOK_PATH}`
+  } catch {
+    return null
+  }
 }
 
-function resolveHmacKey(): string {
-  return process.env.MEMRY_WEBHOOK_HMAC_KEY?.trim() ?? ''
-}
-
-function isPushFeatureEnabled(): boolean {
-  return process.env.CALENDAR_PUSH_ENABLED === '1' && resolveHmacKey().length > 0
+// Push is on by default wherever Google can reach the webhook: Google only
+// delivers to HTTPS with a valid certificate, so a plain http://localhost dev
+// server stays on the poll runner without any config. CALENDAR_PUSH_ENABLED=0
+// is the kill switch; the poll runner covers everything push would deliver.
+// Returns the webhook URL when push is enabled, null otherwise.
+function resolvePushWebhookUrl(): string | null {
+  if (process.env.CALENDAR_PUSH_ENABLED?.trim() === '0') return null
+  const url = resolveWebhookUrl()
+  return url?.startsWith('https://') ? url : null
 }
 
 export function resolvePushAccountIdForSource(sourceId: string, db = requireDatabase()): string {
@@ -93,9 +106,9 @@ export function resolvePushAccountIdForSource(sourceId: string, db = requireData
 }
 
 function buildProductionChannelManager(
+  webhookUrl: string,
   onActiveCountChange: (count: number) => void
 ): GoogleChannelManager {
-  const hmacKey = resolveHmacKey()
   return createGoogleChannelManager({
     client: {
       watchCalendar: async () => {
@@ -132,13 +145,12 @@ function buildProductionChannelManager(
         }
       )
     },
-    hashToken: async (plaintext) => createHmac('sha256', hmacKey).update(plaintext).digest('hex'),
     generateToken: () => randomBytes(32).toString('hex'),
     generateChannelId: () => randomUUID(),
-    webhookUrl: resolveWebhookUrl(),
+    webhookUrl,
     ttlSeconds: TTL_SECONDS,
     rotationMarginSeconds: ROTATION_MARGIN_SECONDS,
-    featureEnabled: isPushFeatureEnabled(),
+    featureEnabled: true,
     onActiveCountChange
   })
 }
@@ -148,9 +160,12 @@ let prodRuntime: GooglePushRuntime | null = null
 export function getOrInitGooglePushRuntime(opts: {
   onActiveCountChange: (count: number) => void
 }): GooglePushRuntime | null {
-  if (!isPushFeatureEnabled()) return null
+  const webhookUrl = resolvePushWebhookUrl()
+  if (!webhookUrl) return null
   if (!prodRuntime) {
-    prodRuntime = createGooglePushRuntime(buildProductionChannelManager(opts.onActiveCountChange))
+    prodRuntime = createGooglePushRuntime(
+      buildProductionChannelManager(webhookUrl, opts.onActiveCountChange)
+    )
   }
   return prodRuntime
 }

@@ -809,8 +809,10 @@
     "copyLinks": "Hivatkozások másolása",
     "delete": "Törlés",
     "export": "Exportálás",
+    "iconUpdated": "{count, plural, one {Ikon frissítve # jegyzeten} other {Ikon frissítve # jegyzeten}}",
     "move": "Áthelyezés",
     "selected": "kiválasztva",
+    "setIcon": "Ikon beállítása",
     "tagNamePlaceholder": "Címke neve",
     "toolbarAria": "Tömeges műveletek"
   },

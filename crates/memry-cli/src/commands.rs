@@ -414,10 +414,14 @@ mod tests {
             VaultSummary {
                 id: "v-1".to_string(),
                 name: Some("Work".to_string()),
+                encrypted_name: None,
+                name_nonce: None,
             },
             VaultSummary {
                 id: "v-2".to_string(),
                 name: None,
+                encrypted_name: None,
+                name_nonce: None,
             },
         ]);
         assert_eq!(rendered, "v-1\tWork\nv-2\t-\n");

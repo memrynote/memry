@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Șterge din cont",
       "deleteVaultFailed": "Nu s-a putut șterge seiful",
       "deleteVaultTitle": "Ștergi „{name}” din contul tău?",
-      "removeVaultTitle": "Elimini „{name}” din listă?"
+      "removeVaultTitle": "Elimini „{name}” din listă?",
+      "missing": "Dosarul nu a fost găsit"
     },
     "componentsWindowControls": {
       "searchK": "Căutați (⌘K)",

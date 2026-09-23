@@ -6,12 +6,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // shim as components/capture-bar/capture-bar.test.tsx.
 Element.prototype.scrollIntoView = vi.fn()
 
+interface Sources {
+  results: unknown[]
+  files?: unknown[]
+  events: unknown[]
+  projects?: unknown[]
+  loading: boolean
+}
+
 const mocks = vi.hoisted(() => ({
-  sources: {
-    results: [] as unknown[],
-    events: [] as unknown[],
-    loading: false
-  }
+  sources: { results: [], events: [], loading: false } as Sources
 }))
 
 // Production react-i18next hands back a referentially-stable `t` across
@@ -31,7 +35,11 @@ vi.mock('@memry/i18n/renderer', () => {
   }
 })
 vi.mock('./use-canvas-add-search', () => ({
-  useCanvasAddSearch: () => mocks.sources
+  useCanvasAddSearch: () => ({
+    ...mocks.sources,
+    files: mocks.sources.files ?? [],
+    projects: mocks.sources.projects ?? []
+  })
 }))
 
 import { CanvasAddCardDialog } from './canvas-add-card-dialog'
@@ -41,6 +49,17 @@ function noteResult(id: string, title: string) {
 }
 function taskResult(id: string, title: string) {
   return { id, type: 'task', title, metadata: { type: 'task', projectName: 'Inbox' } }
+}
+function fileResult(id: string, title: string) {
+  return {
+    id,
+    type: 'note',
+    title,
+    metadata: { type: 'note', path: `Docs/${title}`, tags: [], fileType: 'pdf' }
+  }
+}
+function project(id: string, name: string, archivedAt: string | null = null) {
+  return { id, name, color: '#3366ff', archivedAt, taskCount: 4, completedCount: 1 }
 }
 function eventItem(id: string, title: string) {
   return { id, title, startAt: '2026-07-22T09:00:00.000Z', endAt: null, isAllDay: false }
@@ -91,6 +110,34 @@ describe('CanvasAddCardDialog', () => {
     await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
     expect(screen.getByText('Ship it')).toBeInTheDocument()
     expect(screen.getByText('Standup')).toBeInTheDocument()
+  })
+
+  it('places a filed file as a file card and a project found by name', async () => {
+    mocks.sources = {
+      results: [],
+      files: [fileResult('f1', 'Brief.pdf')],
+      events: [],
+      projects: [
+        project('p1', 'Launch'),
+        project('p2', 'Archive me', '2026-01-01'),
+        project('p3', 'Other')
+      ],
+      loading: false
+    }
+    const props = setup()
+    fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'la' } })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('canvas-add-item-project:p1')).toBeInTheDocument()
+    )
+    expect(screen.queryByTestId('canvas-add-item-project:p2')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('canvas-add-item-project:p3')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('canvas-add-item-note:f1')).not.toBeInTheDocument()
+    expect(screen.getByText('Docs')).toBeInTheDocument()
+    expect(screen.getByText('1/4')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('canvas-add-item-file:f1'))
+    expect(props.onPick).toHaveBeenCalledWith('file', 'f1')
   })
 
   describe('row rendering', () => {

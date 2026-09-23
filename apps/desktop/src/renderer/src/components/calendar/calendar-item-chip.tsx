@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { AlarmClock, Calendar2, CheckSquare3, NotificationSnooze, StickyNote } from '@/lib/icons'
+import { calendarColorChipStyle, inkOnCalendarColor } from '@/lib/calendar-colors'
 import { getEventBaseColor, getEventBgColor, getEventTextColor } from '@/lib/event-type-colors'
 import { formatTimeOfDay, formatTimeRange } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
@@ -86,7 +87,10 @@ export function CalendarItemChip({
   const deletable = Boolean(onDeleteItem) && canDeleteEvent(item)
   const addableToProject = Boolean(onAddToProject) && canAddEventToProject(item)
   const isBlock = layout === 'block'
-  const baseColor = getEventBaseColor(item.visualType)
+  const displayColor = item.displayColor ?? undefined
+  // A calendar's own colour (Google palette, custom) wins over the type colour.
+  const baseColor = displayColor ?? getEventBaseColor(item.visualType)
+  const selectedInk = displayColor ? inkOnCalendarColor(displayColor) : '#FFFFFF'
   const cls = cn(
     appearance === 'pill'
       ? 'inline-flex h-[22px] max-w-full items-center gap-1.5 rounded-[5px] ps-[7px] pe-2 text-start'
@@ -102,15 +106,19 @@ export function CalendarItemChip({
     item.isTriggered && 'opacity-60'
   )
   const chipStyle = useMemo<React.CSSProperties>(() => {
-    if (isSelected) return { backgroundColor: baseColor, borderColor: baseColor, color: '#FFFFFF' }
     if (appearance !== 'fill') {
-      return { backgroundColor: quietBackground(baseColor), borderColor: baseColor }
+      return isSelected
+        ? { backgroundColor: baseColor, borderColor: baseColor, color: selectedInk }
+        : { backgroundColor: quietBackground(baseColor), borderColor: baseColor }
     }
-    return {
-      backgroundColor: getEventBgColor(item.visualType),
-      color: getEventTextColor(item.visualType)
-    }
-  }, [item.visualType, isSelected, appearance, baseColor])
+    if (displayColor) return calendarColorChipStyle(displayColor, isSelected)
+    return isSelected
+      ? { backgroundColor: baseColor, color: '#FFFFFF' }
+      : {
+          backgroundColor: getEventBgColor(item.visualType),
+          color: getEventTextColor(item.visualType)
+        }
+  }, [appearance, baseColor, displayColor, isSelected, item.visualType, selectedInk])
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -147,7 +155,7 @@ export function CalendarItemChip({
         <span
           aria-hidden="true"
           className="size-1.5 shrink-0 rounded-full"
-          style={{ backgroundColor: isSelected ? '#FFFFFF' : baseColor }}
+          style={{ backgroundColor: isSelected ? selectedInk : baseColor }}
         />
         <span
           className={cn(
@@ -165,7 +173,7 @@ export function CalendarItemChip({
             <span
               aria-hidden="true"
               className="size-[11px] shrink-0 rounded-full border-[1.5px]"
-              style={{ borderColor: isSelected ? '#FFFFFF' : baseColor }}
+              style={{ borderColor: isSelected ? selectedInk : baseColor }}
             />
           )}
           <span
@@ -223,6 +231,7 @@ export function CalendarItemChip({
         }}
         onContextMenu={deletable || addableToProject ? handleContextMenu : undefined}
         data-visual-type={item.visualType}
+        data-event-color={displayColor}
         data-triggered={item.isTriggered ? 'true' : undefined}
       >
         {content}
@@ -235,6 +244,7 @@ export function CalendarItemChip({
       className={cls}
       style={chipStyle}
       data-visual-type={item.visualType}
+      data-event-color={displayColor}
       data-triggered={item.isTriggered ? 'true' : undefined}
     >
       {content}

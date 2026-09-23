@@ -36,7 +36,7 @@ export function VaultSwitcher() {
   const { t: tPhaseF } = useT('common')
   const { isMobile, open: sidebarOpen, setOpen: setSidebarOpen, setOpenMobile } = useSidebar()
   const { status, isLoading, selectVault, switchVault } = useVault()
-  const { vaults, removeVault } = useVaultList()
+  const { vaults, removeVault, refresh: refreshVaults } = useVaultList()
   const { open: openSettings } = useSettingsModal()
   const { state: authState } = useAuth()
   const { accountVaults, refresh: refreshAccountVaults } = useAccountVaults()
@@ -54,6 +54,14 @@ export function VaultSwitcher() {
 
   const isAuthenticated = authState.status === 'authenticated'
   const remoteOnlyVaults = accountVaults.filter((vault) => !vault.localPath)
+
+  // The known-vaults list changes outside this component: a delete from the
+  // account in Settings prunes it, and folders can vanish from disk. Reload on
+  // every open so the switcher never offers a stale entry.
+  const refreshLists = useCallback(() => {
+    void refreshVaults()
+    if (isAuthenticated) void refreshAccountVaults()
+  }, [isAuthenticated, refreshVaults, refreshAccountVaults])
 
   const currentVaultName = status?.path
     ? status.path.split('/').pop() || 'Vault'
@@ -78,16 +86,8 @@ export function VaultSwitcher() {
       }
 
       setOpen(true)
-      if (isAuthenticated) void refreshAccountVaults()
-    }, [
-      open,
-      isMobile,
-      sidebarOpen,
-      setOpenMobile,
-      setSidebarOpen,
-      isAuthenticated,
-      refreshAccountVaults
-    ])
+      refreshLists()
+    }, [open, isMobile, sidebarOpen, setOpenMobile, setSidebarOpen, refreshLists])
   )
 
   // Runs for every close — Escape, an outside click, or picking a vault — because
@@ -138,7 +138,7 @@ export function VaultSwitcher() {
     openSettings('account')
   }, [openSettings])
 
-  const handleRemoveClick = (e: React.MouseEvent, vault: VaultInfo): void => {
+  const handleRemoveClick = (e: React.SyntheticEvent, vault: VaultInfo): void => {
     e.stopPropagation()
     setVaultToRemove(vault)
   }
@@ -151,7 +151,7 @@ export function VaultSwitcher() {
     }
   }
 
-  const handleDeleteClick = (e: React.MouseEvent, uuid: string, name: string): void => {
+  const handleDeleteClick = (e: React.SyntheticEvent, uuid: string, name: string): void => {
     e.stopPropagation()
     setDeleteError(null)
     setVaultToDelete({ uuid, name })
@@ -163,7 +163,7 @@ export function VaultSwitcher() {
     try {
       await window.api.vault.deleteFromAccount(vaultToDelete.uuid)
       setVaultToDelete(null)
-      await refreshAccountVaults()
+      await Promise.all([refreshAccountVaults(), refreshVaults()])
     } catch (err) {
       setDeleteError(
         extractErrorMessage(err, tPhaseF('phaseF.componentsVaultSwitcher.deleteVaultFailed'))
@@ -171,7 +171,7 @@ export function VaultSwitcher() {
     } finally {
       setDeleting(false)
     }
-  }, [vaultToDelete, refreshAccountVaults, tPhaseF])
+  }, [vaultToDelete, refreshAccountVaults, refreshVaults, tPhaseF])
 
   return (
     <SidebarMenu>
@@ -184,7 +184,7 @@ export function VaultSwitcher() {
           open={open}
           onOpenChange={(nextOpen) => {
             setOpen(nextOpen)
-            if (nextOpen && isAuthenticated) void refreshAccountVaults()
+            if (nextOpen) refreshLists()
           }}
         >
           <Picker.Trigger asChild>
@@ -219,12 +219,14 @@ export function VaultSwitcher() {
               {vaults.length > 0 ? (
                 vaults.map((vault) => {
                   const isActive = status?.path === vault.path
+                  const isMissing = !isActive && vault.isMissing === true
                   return (
                     <button
                       key={vault.path}
                       type="button"
-                      onClick={() => !isActive && void handleSwitchVault(vault.path)}
+                      onClick={() => !isActive && !isMissing && void handleSwitchVault(vault.path)}
                       data-active-vault={isActive ? 'true' : undefined}
+                      aria-disabled={isMissing || undefined}
                       className={cn(
                         'group/vault flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 transition-colors',
                         // Arrow keys walk these rows (see `picker-content.tsx`).
@@ -234,7 +236,7 @@ export function VaultSwitcher() {
                         // reads as highlighted. A ring here would collide with
                         // the popover edge and the row below it.
                         'focus:outline-none focus-visible:bg-accent',
-                        isActive ? 'cursor-default' : 'hover:bg-accent cursor-pointer'
+                        isActive || isMissing ? 'cursor-default' : 'hover:bg-accent cursor-pointer'
                       )}
                     >
                       <Check
@@ -246,21 +248,29 @@ export function VaultSwitcher() {
                       <span
                         className={cn(
                           'flex-1 truncate text-start',
-                          isActive ? 'font-medium' : 'text-muted-foreground'
+                          isActive ? 'font-medium' : 'text-muted-foreground',
+                          isMissing && 'opacity-60'
                         )}
                       >
                         {vault.name}
                       </span>
+                      {isMissing && (
+                        <span className="shrink-0 text-[10px] text-muted-foreground/60">
+                          {tPhaseF('phaseF.componentsVaultSwitcher.missing')}
+                        </span>
+                      )}
                       {!isActive && (
-                        <span className="flex items-center gap-0.5 opacity-0 group-hover/vault:opacity-100 transition-all">
+                        <span
+                          className={cn(
+                            'flex items-center gap-0.5 transition-all',
+                            isMissing ? 'opacity-100' : 'opacity-0 group-hover/vault:opacity-100'
+                          )}
+                        >
                           <span
                             role="button"
                             tabIndex={0}
                             onClick={(e) => handleRemoveClick(e, vault)}
-                            onKeyDown={(e) =>
-                              e.key === 'Enter' &&
-                              handleRemoveClick(e as unknown as React.MouseEvent, vault)
-                            }
+                            onKeyDown={(e) => e.key === 'Enter' && handleRemoveClick(e, vault)}
                             className="size-5 flex items-center justify-center rounded hover:bg-accent"
                             aria-label={`Remove ${vault.name} from list`}
                           >
@@ -273,11 +283,7 @@ export function VaultSwitcher() {
                               onClick={(e) => handleDeleteClick(e, vault.vaultUuid!, vault.name)}
                               onKeyDown={(e) =>
                                 e.key === 'Enter' &&
-                                handleDeleteClick(
-                                  e as unknown as React.MouseEvent,
-                                  vault.vaultUuid!,
-                                  vault.name
-                                )
+                                handleDeleteClick(e, vault.vaultUuid!, vault.name)
                               }
                               className="size-5 flex items-center justify-center rounded hover:bg-destructive/10"
                               aria-label={`Delete ${vault.name} from account`}
@@ -332,7 +338,7 @@ export function VaultSwitcher() {
                         onKeyDown={(e) =>
                           e.key === 'Enter' &&
                           handleDeleteClick(
-                            e as unknown as React.MouseEvent,
+                            e,
                             vault.vaultUuid,
                             vault.name ?? tPhaseF('phaseF.componentsVaultSwitcher.untitledVault')
                           )

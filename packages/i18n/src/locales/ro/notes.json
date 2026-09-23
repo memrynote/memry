@@ -809,8 +809,10 @@
     "copyLinks": "Copiază linkurile",
     "delete": "Șterge",
     "export": "Exportă",
+    "iconUpdated": "{count, plural, one {Pictogramă actualizată pe # notă} few {Pictogramă actualizată pe # note} other {Pictogramă actualizată pe # de note}}",
     "move": "Mută",
     "selected": "selectate",
+    "setIcon": "Setează pictograma",
     "tagNamePlaceholder": "Numele etichetei",
     "toolbarAria": "Acțiuni în bloc"
   },

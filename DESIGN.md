@@ -183,7 +183,7 @@ Specialized colors are allowed when they encode a stable domain distinction:
 
 - Task priority, due-date, completion, progress, repeat, and token colors use the desktop `--task-*` family or the matching platform theme roles.
 - Graph nodes and edges use the desktop `--graph-*` family or the matching platform theme roles.
-- Calendar event types use the centralized calendar color mapping.
+- Calendar event types use the centralized calendar color mapping. An event with a Google Calendar colour (its own, or its Google calendar's) uses that colour instead, from Google's palette in `@memry/contracts/calendar-colors`: the colour tints the chip and the title keeps ink.
 - Inbox types and Agent Chat mentions use their centralized type mappings.
 - User-created tags may use the user's chosen tag color.
 
@@ -219,6 +219,10 @@ Mobile preserves the same roles instead of copying desktop pixels:
 - Mono: code, recovery material, keyboard-like tokens, paths, and aligned technical values. The current mapping uses JetBrains Mono.
 
 Mobile uses its named type ramp under `apps/ios/Memry/Design/`. Respect Dynamic Type and platform text metrics. Do not scale desktop sizes mechanically or invent screen-local font sizes.
+
+The mobile ramp carries a dedicated run for the six heading levels a note body can hold, named `Typography.bodyHeadings`. They descend across six distinct Dynamic Type steps and sit **below** the screen title, because the note title is the dominant read on a note screen and a body heading that matched it would give the screen two. Extend this run rather than clamping heading levels onto fewer roles: a level four and a level six that render alike lose structure the note really carries.
+
+A note's own text and blocks can also carry one of nine named colours — gray, brown, red, orange, yellow, green, blue, purple, pink — for both ink and background fill. Mobile maps those **names** onto verified adaptive pairs in `Tokens.Content` and does not transcribe the editor's hex values, several of which fall below 4.5:1 on a light canvas. Every ink is measured against every surface and every fill, in both interface styles. An unrecognized colour name resolves to nothing and leaves the text in the ordinary ink rather than guessing.
 
 Desktop base headings use weight `600`, line height `1.3`, and letter spacing `-0.01em`. Use the desktop scale below before inventing a desktop value:
 

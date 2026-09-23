@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { ICS_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
 import {
   CalendarShell,
   type AnchorRect,
@@ -11,6 +12,7 @@ import { VISUAL_TYPE_ORDER } from '@/components/calendar/visual-type-meta'
 import { AgentAccessConsentDialog } from '@/components/calendar/agent-access-consent-dialog'
 import { PromoteExternalDialog } from '@/components/calendar/promote-external-dialog'
 import { CalendarTaskPopover } from '@/components/calendar/calendar-task-popover'
+import { CalendarSubscribedEventPopover } from '@/components/calendar/calendar-subscribed-event-popover'
 import {
   addLocalDays,
   addLocalMonths,
@@ -117,7 +119,8 @@ function createDraftFromAnchor(anchorDate: string): CalendarEventDraft {
     startAt: `${anchorDate}T09:00`,
     endAt: `${anchorDate}T10:00`,
     targetCalendarId: null,
-    projectId: null
+    projectId: null,
+    color: null
   }
 }
 
@@ -135,7 +138,8 @@ function createDraftFromItem(item: CalendarProjectionItem): CalendarEventDraft {
         : toLocalDateTimeInputValue(item.endAt)
       : '',
     targetCalendarId: item.binding?.remoteCalendarId ?? null,
-    projectId: null
+    projectId: null,
+    color: item.color ?? null
   }
 }
 
@@ -232,6 +236,10 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     anchorRect: AnchorRect
   } | null>(null)
   const [notePopoverState, setNotePopoverState] = useState<{
+    item: CalendarProjectionItem
+    anchorRect: AnchorRect
+  } | null>(null)
+  const [subscribedPopoverState, setSubscribedPopoverState] = useState<{
     item: CalendarProjectionItem
     anchorRect: AnchorRect
   } | null>(null)
@@ -530,7 +538,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
               : toLocalDateTimeInputValue(record.endAt)
             : '',
           targetCalendarId: record.targetCalendarId,
-          projectId: null
+          projectId: null,
+          color: record.color
         } satisfies CalendarEventDraft)
       : createDraftFromItem(source)
 
@@ -580,6 +589,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   }
 
   const handleSelectItem = async (item: CalendarProjectionItem, rect: AnchorRect) => {
+    setSubscribedPopoverState(null)
     if (item.sourceType === 'task') {
       setPopoverState(null)
       setInboxSnoozePopoverState(null)
@@ -629,6 +639,14 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     if (item.sourceType !== 'external_event') return
 
     setNotePopoverState(null)
+    // A subscribed feed is read-only end to end: no promote-to-edit.
+    if (item.source.provider === ICS_CALENDAR_PROVIDER) {
+      setPopoverState(null)
+      setTaskPopoverState(null)
+      setInboxSnoozePopoverState(null)
+      setSubscribedPopoverState({ item, anchorRect: rect })
+      return
+    }
     const settings = await window.api.settings.getCalendarGoogleSettings()
     // Promotion copies the event into native storage, where the agent can read it
     // regardless of the Google-events consent gate. While that consent is anything but
@@ -819,7 +837,9 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   return (
     <>
-      <AgentAccessConsentDialog hasImportedSources={importedSources.length > 0} />
+      <AgentAccessConsentDialog
+        hasImportedSources={importedSources.some((source) => source.provider === 'google')}
+      />
 
       <PromoteExternalDialog
         open={pendingPromote !== null}
@@ -904,6 +924,10 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onPopoverSave={() => void handlePopoverSave()}
         onQuickSave={quickCreate}
         googleConnectAction={<GoogleCalendarConnectPrompt />}
+      />
+      <CalendarSubscribedEventPopover
+        target={subscribedPopoverState}
+        onDismiss={() => setSubscribedPopoverState(null)}
       />
       {taskPopoverState && (
         <CalendarTaskPopover

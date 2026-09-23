@@ -177,6 +177,18 @@ Dark mode uses lighter, more legible variants.
 
 ---
 
+## Calendar Colors
+
+Calendar events use Google Calendar's palette, not theme tokens: the same 24 calendar colours Google shows, 11 of which an event can take on its own. The names, Google colour ids, and hexes live in `packages/contracts/src/calendar-colors.ts`. A Google calendar with a custom colour shows that hex. There are no CSS variables for these colours and no Tailwind mapping: chips set them inline through `calendarColorChipStyle()` in `lib/calendar-colors.ts`.
+
+- A resting chip fills with 20% of the colour mixed into `--background` and keeps `--foreground` for the title.
+- A selected chip goes solid, with black or white title ink, whichever contrasts more with that colour (`inkOnCalendarColor()`).
+- Picker swatches carry a `--border` edge, so light colours such as Banana stay visible on `--popover`.
+
+`lib/calendar-colors.test.ts` holds the resting title to 4.5:1 in every theme and the selected title to 4.5:1, for all 24 colours and for the custom-colour extremes (black, white, mid grey).
+
+---
+
 ## Sidebar
 
 | Token                          | Warm                        | White                       | Dark                     | Tailwind                          |

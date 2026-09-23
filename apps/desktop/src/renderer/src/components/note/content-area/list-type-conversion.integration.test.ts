@@ -74,11 +74,7 @@ describe('list type conversion on a multi-block selection', () => {
 
     toggleListType(editor, 'bulletListItem')
 
-    expect(blockTypes(editor)).toEqual([
-      'bulletListItem',
-      'bulletListItem',
-      'bulletListItem'
-    ])
+    expect(blockTypes(editor)).toEqual(['bulletListItem', 'bulletListItem', 'bulletListItem'])
     expect(blockText(editor, 0)).toBe('Milk')
     expect(blockText(editor, 2)).toBe('Bread')
   })
@@ -96,11 +92,7 @@ describe('list type conversion on a multi-block selection', () => {
     const checklist = mountEditor()
     selectPastedLines(checklist)
     toggleListType(checklist, 'checkListItem')
-    expect(blockTypes(checklist)).toEqual([
-      'checkListItem',
-      'checkListItem',
-      'checkListItem'
-    ])
+    expect(blockTypes(checklist)).toEqual(['checkListItem', 'checkListItem', 'checkListItem'])
   })
 
   it('toggles a list back to paragraphs when every selected block is already it', () => {
@@ -123,11 +115,7 @@ describe('list type conversion on a multi-block selection', () => {
     expect(isListTypeActive(editor, 'bulletListItem')).toBe(false)
 
     toggleListType(editor, 'bulletListItem')
-    expect(blockTypes(editor)).toEqual([
-      'bulletListItem',
-      'bulletListItem',
-      'bulletListItem'
-    ])
+    expect(blockTypes(editor)).toEqual(['bulletListItem', 'bulletListItem', 'bulletListItem'])
   })
 
   it('falls back to the cursor block when nothing is selected', () => {

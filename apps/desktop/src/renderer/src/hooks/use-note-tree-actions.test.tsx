@@ -410,6 +410,23 @@ describe('useNoteTreeActions', () => {
     await waitFor(() => expect(result.current.isMoving).toBe(false))
   })
 
+  it('says so when a dropped folder cannot be moved (#2206)', async () => {
+    vi.mocked(notesService.renameFolder).mockRejectedValueOnce(new Error('Failed to rename folder'))
+    const { result, deps } = renderActions()
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'folder-Other',
+        targetId: 'folder-Work',
+        position: 'inside'
+      })
+    })
+
+    expect(notesService.renameFolder).toHaveBeenCalledWith('Other', 'Work/Other')
+    expect(toast.error).toHaveBeenCalledWith('Failed to rename folder')
+    expect(deps.renameFolderPath).not.toHaveBeenCalled()
+  })
+
   // Issue #1644 — the preference is what the sidebar passes down; the reducer's
   // own behaviour is covered in tab-crud-reducer.test.ts.
   it('asks the reducer to reuse the active tab when new-tab opening is off', async () => {

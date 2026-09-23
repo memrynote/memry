@@ -698,6 +698,731 @@ function fuzzMixedDocumentMarkdown(random: () => number): string {
   return parts.join('\n\n\n')
 }
 
+/**
+ * The read-direction corpus (N102), for the `note-blocks` vector class.
+ *
+ * **Why it is here and not in `@memry/contracts`.** A vector has to come out
+ * of a production code path, and the production path that turns blocks into
+ * `prosemirror` bytes is BlockNote's own — which lives in this package's
+ * dependency, not in contracts. `conformance-ydoc.ts` beside this file does
+ * the authoring; contracts imports the result, the way it already imports
+ * `ROUNDTRIP_CASES`.
+ *
+ * **What it has to cover, and why the count is asserted.** FR-040's registry
+ * is 18 blocks, 8 inline types and 7 styles
+ * (`registry-manifest.json`, chapter 12 §12.9). `extract_blocks` had no vector
+ * class at all, and the self-consistency test it did have compared two walks
+ * of one port against each other — which agree whether or not either is
+ * right. That is precisely how dropping `divider` went unnoticed. So the
+ * corpus is checked against the manifest rather than eyeballed: a type nobody
+ * wrote a case for is a failing test.
+ */
+export interface NoteBlockCase {
+  name: string
+  /** What this case is here to catch, in one sentence. */
+  pins: string
+  /**
+   * BlockNote blocks, in the shape `blocksToYXmlFragment` takes. Loosely
+   * typed on purpose: pinning the precise generic here would make every case
+   * a type-level puzzle, and the schema validates them at authoring time.
+   */
+  blocks: unknown[]
+}
+
+/** A paragraph carrying one styled run, for the style cases. */
+function styled(text: string, styles: Record<string, unknown>): NoteBlockCase['blocks'] {
+  return [{ type: 'paragraph', content: [{ type: 'text', text, styles }] }]
+}
+
+export const NOTE_BLOCK_CASES: readonly NoteBlockCase[] = [
+  {
+    name: 'paragraph',
+    pins: 'the simplest block, and the one every unknown type falls back to',
+    blocks: [{ type: 'paragraph', content: 'One plain paragraph.' }]
+  },
+  {
+    name: 'headings at every level',
+    pins: 'all six levels survive as a `level` prop; the shell renders six, not three',
+    blocks: [1, 2, 3, 4, 5, 6].map((level) => ({
+      type: 'heading',
+      props: { level },
+      content: `Level ${level}`
+    }))
+  },
+  {
+    name: 'bulletListItem',
+    pins: 'a bullet list, including a nested child that arrives one depth deeper',
+    blocks: [
+      {
+        type: 'bulletListItem',
+        content: 'Outer',
+        children: [{ type: 'bulletListItem', content: 'Inner' }]
+      },
+      { type: 'bulletListItem', content: 'Second' }
+    ]
+  },
+  {
+    name: 'numberedListItem',
+    pins: 'three items that a shell must number 1, 2, 3 — the core emits no marker',
+    blocks: ['First', 'Second', 'Third'].map((content) => ({
+      type: 'numberedListItem',
+      content
+    }))
+  },
+  {
+    name: 'checkListItem',
+    pins: 'the `checked` prop, both ways',
+    blocks: [
+      { type: 'checkListItem', props: { checked: true }, content: 'Done' },
+      { type: 'checkListItem', props: { checked: false }, content: 'Not done' }
+    ]
+  },
+  {
+    name: 'divider',
+    pins: 'THE REGRESSION THIS CLASS EXISTS FOR: a divider must reach the shell as a block, between two paragraphs that prove it did not swallow them',
+    blocks: [
+      { type: 'paragraph', content: 'Above' },
+      { type: 'divider' },
+      { type: 'paragraph', content: 'Below' }
+    ]
+  },
+  {
+    name: 'quote',
+    pins: 'a quote is a block, not a paragraph with a marker',
+    blocks: [{ type: 'quote', content: 'Someone said this.' }]
+  },
+  {
+    name: 'callout',
+    pins: 'the callout `type` survives, which `extract_text` drops',
+    blocks: [
+      { type: 'callout', props: { type: 'warning' }, content: 'Mind the gap.' },
+      { type: 'callout', props: { type: 'info' }, content: 'For your information.' }
+    ]
+  },
+  {
+    name: 'codeBlock',
+    pins: 'the language survives and the newline inside the code is not a block break',
+    blocks: [
+      {
+        type: 'codeBlock',
+        props: { language: 'typescript' },
+        content: 'const x = 1\nconsole.log(x)'
+      }
+    ]
+  },
+  {
+    name: 'toggleListItem',
+    pins: 'the open state is a prop and the body arrives as a child one depth deeper',
+    blocks: [
+      {
+        type: 'toggleListItem',
+        content: 'Summary line',
+        children: [{ type: 'paragraph', content: 'Hidden body.' }]
+      }
+    ]
+  },
+  {
+    name: 'taskBlock',
+    pins: 'the Memry task block is `content: none` — its text is the `title` PROP, so a reader that only walks inline content shows an empty row',
+    blocks: [
+      {
+        type: 'taskBlock',
+        props: { taskId: 't1', title: 'A task in a note', checked: false }
+      }
+    ]
+  },
+  {
+    name: 'image',
+    pins: 'a picture block: the url, name and caption cross as props, the bytes do not',
+    blocks: [
+      {
+        type: 'image',
+        props: { url: 'attachment://a1.png', name: 'a1.png', caption: 'A picture' }
+      }
+    ]
+  },
+  {
+    name: 'video',
+    pins: 'metadata only, and the block must not fall through to an empty paragraph',
+    blocks: [{ type: 'video', props: { url: 'attachment://clip.mp4', name: 'clip.mp4' } }]
+  },
+  {
+    name: 'audio',
+    pins: 'same, for audio',
+    blocks: [{ type: 'audio', props: { url: 'attachment://note.m4a', name: 'note.m4a' } }]
+  },
+  {
+    name: 'file',
+    pins: 'a file block carries its own name and size and needs no bytes to render a row',
+    blocks: [{ type: 'file', props: { url: 'attachment://spec.pdf', name: 'spec.pdf' } }]
+  },
+  {
+    name: 'bookmark',
+    pins: 'a bookmark card is entirely props; nothing is fetched to draw it',
+    blocks: [
+      {
+        type: 'bookmark',
+        props: { url: 'https://example.com/a', title: 'Example', description: 'A site' }
+      }
+    ]
+  },
+  {
+    name: 'youtubeEmbed',
+    pins: 'the video url survives so a shell can offer to open it',
+    blocks: [
+      { type: 'youtubeEmbed', props: { videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' } }
+    ]
+  },
+  {
+    name: 'diagram',
+    pins: 'a Mermaid diagram is plain-content source text, newlines and all; the rendering is never in the document',
+    blocks: [{ type: 'diagram', content: 'graph TD\n  A[Start] --> B{Ship?}' }]
+  },
+  {
+    name: 'mathBlock',
+    pins: 'a math block is `content: none` — the LaTeX is the `latex` PROP, so a reader that only walks inline content shows an empty row',
+    blocks: [{ type: 'mathBlock', props: { latex: '\\int_0^1 x^2 \\, dx = \\frac{1}{3}' } }]
+  },
+  {
+    name: 'table',
+    pins: 'THE SECOND REGRESSION: a mixed header/cell table with a set colwidth and a coloured cell, which a flat block list cannot express',
+    blocks: [
+      {
+        type: 'table',
+        content: {
+          type: 'tableContent',
+          columnWidths: [180, undefined],
+          headerRows: 1,
+          rows: [
+            {
+              cells: [
+                {
+                  type: 'tableCell',
+                  content: [{ type: 'text', text: 'Name', styles: {} }],
+                  props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+                },
+                {
+                  type: 'tableCell',
+                  content: [{ type: 'text', text: 'Value', styles: {} }],
+                  props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+                }
+              ]
+            },
+            {
+              cells: [
+                {
+                  type: 'tableCell',
+                  content: [{ type: 'text', text: 'alpha', styles: {} }],
+                  props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+                },
+                {
+                  type: 'tableCell',
+                  content: [{ type: 'text', text: '1', styles: {} }],
+                  props: {
+                    colspan: 1,
+                    rowspan: 1,
+                    backgroundColor: 'yellow',
+                    textAlignment: 'center'
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    name: 'inline: link',
+    pins: 'a link carries its href as an attribute, not as text',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'see ', styles: {} },
+          { type: 'link', href: 'https://example.com/a', content: 'the docs' }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'inline: wikiLink',
+    pins: 'a wiki link points at a TITLE, and its alias is a separate prop',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'see ', styles: {} },
+          { type: 'wikiLink', props: { target: 'Dune Messiah', alias: 'the sequel' } }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'inline: hashTag',
+    pins: 'a tag is an inline node, not a `#` a shell has to parse back out of text',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'filed under ', styles: {} },
+          { type: 'hashTag', props: { tag: 'reading' } }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'inline: dateMention',
+    pins: 'the whole date payload survives, which Phase G needs and `extract_text` drops',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'due ', styles: {} },
+          {
+            type: 'dateMention',
+            props: {
+              anchorId: 'a1',
+              dateISO: '2026-08-14T09:00:00.000Z',
+              display: 'date',
+              remindMe: false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'inline: linkMention',
+    pins: 'the mention url, which encodes seven characters beyond encodeURIComponent',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'via ', styles: {} },
+          { type: 'linkMention', props: { url: "https://example.com/x_(y)*z!~'" } }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'inline: inlineImage and inlineCheckbox in a table cell',
+    pins: 'both inline types exist ONLY inside a table cell (§12.7.1), so this is the only shape that can carry them',
+    blocks: [
+      {
+        type: 'table',
+        content: {
+          type: 'tableContent',
+          rows: [
+            {
+              cells: [
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'inlineCheckbox', props: { checked: true } },
+                    { type: 'text', text: ' ', styles: {} },
+                    { type: 'inlineImage', props: { src: 'attachment://i.png', alt: 'i' } }
+                  ],
+                  props: { colspan: 1, rowspan: 1 }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    name: 'styles: the five boolean marks',
+    pins: 'bold, italic, underline, strike and code all survive as marks on the run',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'bold', styles: { bold: true } },
+          { type: 'text', text: ' italic', styles: { italic: true } },
+          { type: 'text', text: ' underline', styles: { underline: true } },
+          { type: 'text', text: ' strike', styles: { strike: true } },
+          { type: 'text', text: ' code', styles: { code: true } }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'styles: textColor and backgroundColor',
+    pins: 'THE THIRD REGRESSION: a colour mark must carry its VALUE, or red and blue arrive identical',
+    blocks: styled('red on yellow', { textColor: 'red', backgroundColor: 'yellow' })
+  },
+  {
+    name: 'styles: two colours in one paragraph',
+    pins: 'two runs of the same mark with different values, which a name-only reader collapses',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'red', styles: { textColor: 'red' } },
+          { type: 'text', text: ' and ', styles: {} },
+          { type: 'text', text: 'blue', styles: { textColor: 'blue' } }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'block props: alignment and colours',
+    pins: 'block-level textAlignment, textColor and backgroundColor, which `props_of` returned and nothing read',
+    blocks: [
+      {
+        type: 'paragraph',
+        props: { textAlignment: 'center', textColor: 'blue', backgroundColor: 'gray' },
+        content: 'Centred and coloured.'
+      }
+    ]
+  },
+  {
+    name: 'an empty document',
+    pins: 'no blocks at all is an empty list, never one empty paragraph',
+    blocks: []
+  },
+  {
+    name: 'a non-ASCII body',
+    pins: 'the walk is byte-transparent over UTF-8, including astral code points',
+    blocks: [{ type: 'paragraph', content: 'Grüße, 世界 — «citation» 🙂' }]
+  }
+]
+
+/**
+ * The write-direction corpus (N107), for the `block-edit` vector class.
+ *
+ * **What it compares, and why not update bytes.** A write case has to hold a
+ * document `yrs` produced against one `yjs` produced, and update bytes cannot
+ * do that: an update encodes `clientID` and per-client clocks, and struct
+ * ordering, origin ids and run-length packing are free choices an
+ * implementation may make differently while still converging. Two different
+ * updates that converge are *both correct*. So a case records a base
+ * document, one operation, and the **expected resulting document**, and a port
+ * applies the operation and re-renders through the canonical fragment form.
+ *
+ * **Both documents are authored through BlockNote.** That makes the assertion
+ * "the writer produces the document BlockNote would have produced", which is
+ * exactly what §12.5.0 demands: y-prosemirror answers a node its schema cannot
+ * construct by DELETING the element, silently, and the next desktop to open
+ * the note renders it without the block. A writer held only to its own idea of
+ * the shape cannot catch that.
+ *
+ * **Ids are explicit on every block**, because an operation that inserts or
+ * deletes one shifts every positional id after it, and the base and the
+ * expected result have to name the same blocks.
+ */
+export interface BlockEditCase {
+  name: string
+  pins: string
+  /** The document before the edit. */
+  base: unknown[]
+  /** The operation, in the shape the core's `BlockEdit` enum takes. */
+  op: BlockEditOp
+  /** The document the edit must produce. */
+  expected: unknown[]
+  /**
+   * Set when the case FAILS against the current writer because the fix it
+   * asserts has not landed yet. The Rust harness runs these inverted, so the
+   * moment the writer is fixed the case turns red and forces the flag's
+   * removal. Remove the flag, never the case — the same convention
+   * `ROUNDTRIP_CASES` uses.
+   */
+  pending?: { reason: string; task: string }
+}
+
+export type BlockEditOp =
+  | { kind: 'setText'; blockId: string; text: string }
+  | { kind: 'setProp'; blockId: string; name: string; value: string }
+  | { kind: 'insertParagraph'; afterBlockId?: string; text: string; newBlockId: string }
+  | { kind: 'setCellText'; tableId: string; row: number; column: number; text: string }
+  | {
+      kind: 'setCellProp'
+      tableId: string
+      row: number
+      column: number
+      name: string
+      value: string
+    }
+  | { kind: 'delete'; blockId: string }
+
+/** Two paragraphs, the base most cases start from. */
+const TWO_PARAGRAPHS: unknown[] = [
+  { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+  { id: 'p2', type: 'paragraph', content: 'Second paragraph.' }
+]
+
+const EDITABLE_TABLE = [
+  {
+    id: 'tbl1',
+    type: 'table',
+    content: {
+      type: 'tableContent',
+      columnWidths: [180, undefined],
+      headerRows: 1,
+      rows: [
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Name', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Value', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            }
+          ]
+        },
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'alpha', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: '1', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
+
+/** The same table with one body cell rewritten. */
+const TABLE_WITH_EDITED_CELL = [
+  {
+    id: 'tbl1',
+    type: 'table',
+    content: {
+      type: 'tableContent',
+      columnWidths: [180, undefined],
+      headerRows: 1,
+      rows: [
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Name', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Value', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            }
+          ]
+        },
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'alpha', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: '42', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
+
+/** The same table with one body cell given a background colour. */
+const TABLE_WITH_COLOURED_CELL = [
+  {
+    id: 'tbl1',
+    type: 'table',
+    content: {
+      type: 'tableContent',
+      columnWidths: [180, undefined],
+      headerRows: 1,
+      rows: [
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Name', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'Value', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            }
+          ]
+        },
+        {
+          cells: [
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: 'alpha', styles: {} }],
+              props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+            },
+            {
+              type: 'tableCell',
+              content: [{ type: 'text', text: '1', styles: {} }],
+              props: {
+                colspan: 1,
+                rowspan: 1,
+                backgroundColor: 'yellow',
+                textAlignment: 'left'
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
+
+export const BLOCK_EDIT_CASES: readonly BlockEditCase[] = [
+  {
+    name: 'setText replaces one block and leaves its sibling alone',
+    pins: 'the edit is scoped to the block it names; FR-041 rests on the untouched sibling',
+    base: TWO_PARAGRAPHS,
+    op: { kind: 'setText', blockId: 'p1', text: 'Rewritten.' },
+    expected: [
+      { id: 'p1', type: 'paragraph', content: 'Rewritten.' },
+      { id: 'p2', type: 'paragraph', content: 'Second paragraph.' }
+    ]
+  },
+  {
+    name: 'setText on an empty string empties the block without removing it',
+    pins: 'an emptied paragraph is still a paragraph, not a deleted block',
+    base: TWO_PARAGRAPHS,
+    op: { kind: 'setText', blockId: 'p2', text: '' },
+    expected: [
+      { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+      { id: 'p2', type: 'paragraph' }
+    ]
+  },
+  {
+    name: 'setText keeps a nested child, which lives in its own block',
+    pins: 'a list item’s children are their own blocks with their own ids and must survive a text replace',
+    base: [
+      {
+        id: 'l1',
+        type: 'bulletListItem',
+        content: 'Outer',
+        children: [{ id: 'l2', type: 'bulletListItem', content: 'Inner' }]
+      }
+    ],
+    op: { kind: 'setText', blockId: 'l1', text: 'Outer rewritten' },
+    expected: [
+      {
+        id: 'l1',
+        type: 'bulletListItem',
+        content: 'Outer rewritten',
+        children: [{ id: 'l2', type: 'bulletListItem', content: 'Inner' }]
+      }
+    ]
+  },
+  {
+    name: 'setProp ticks a check list item',
+    pins: 'a prop crosses as the string the document stores; the core does not know which props are numbers',
+    base: [{ id: 'c1', type: 'checkListItem', props: { checked: false }, content: 'A task' }],
+    op: { kind: 'setProp', blockId: 'c1', name: 'checked', value: 'true' },
+    expected: [{ id: 'c1', type: 'checkListItem', props: { checked: true }, content: 'A task' }]
+  },
+  {
+    name: 'setProp changes a callout type',
+    pins: 'the callout type is a prop rather than a separate block type',
+    base: [{ id: 'k1', type: 'callout', props: { type: 'info' }, content: 'Mind the gap.' }],
+    op: { kind: 'setProp', blockId: 'k1', name: 'type', value: 'warning' },
+    expected: [{ id: 'k1', type: 'callout', props: { type: 'warning' }, content: 'Mind the gap.' }]
+  },
+  {
+    name: 'setProp changes a heading level',
+    pins: 'all six levels are reachable by a prop edit, which is what the shell now renders',
+    base: [{ id: 'h1', type: 'heading', props: { level: 2 }, content: 'A heading' }],
+    op: { kind: 'setProp', blockId: 'h1', name: 'level', value: '5' },
+    expected: [{ id: 'h1', type: 'heading', props: { level: 5 }, content: 'A heading' }]
+  },
+  {
+    name: 'delete removes one block and nothing else',
+    pins: 'the surviving sibling is byte-identical, which is the whole of FR-041 for a delete',
+    base: [
+      { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+      { id: 'p2', type: 'paragraph', content: 'Second paragraph.' },
+      { id: 'p3', type: 'paragraph', content: 'Third paragraph.' }
+    ],
+    op: { kind: 'delete', blockId: 'p2' },
+    expected: [
+      { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+      { id: 'p3', type: 'paragraph', content: 'Third paragraph.' }
+    ]
+  },
+  {
+    name: 'delete takes a block’s children with it',
+    pins: 'children live inside the container, and leaving them behind would reparent a list’s items to the body',
+    base: [
+      {
+        id: 'l1',
+        type: 'bulletListItem',
+        content: 'Outer',
+        children: [{ id: 'l2', type: 'bulletListItem', content: 'Inner' }]
+      },
+      { id: 'p1', type: 'paragraph', content: 'After.' }
+    ],
+    op: { kind: 'delete', blockId: 'l1' },
+    expected: [{ id: 'p1', type: 'paragraph', content: 'After.' }]
+  },
+  {
+    name: 'insertParagraph after a block',
+    pins: 'THE §12.5.0 CASE: the writer must produce the node shape BlockNote produces, defaults included, or a peer cannot construct it',
+    base: TWO_PARAGRAPHS,
+    op: { kind: 'insertParagraph', afterBlockId: 'p1', text: 'Inserted.', newBlockId: 'p1a' },
+    expected: [
+      { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+      { id: 'p1a', type: 'paragraph', content: 'Inserted.' },
+      { id: 'p2', type: 'paragraph', content: 'Second paragraph.' }
+    ]
+  },
+  {
+    name: 'insertParagraph at the end of the body',
+    pins: 'an absent `after` appends, and the writer must locate the existing blockGroup rather than adding a second top-level child',
+    base: TWO_PARAGRAPHS,
+    op: { kind: 'insertParagraph', text: 'Appended.', newBlockId: 'p3' },
+    expected: [
+      { id: 'p1', type: 'paragraph', content: 'First paragraph.' },
+      { id: 'p2', type: 'paragraph', content: 'Second paragraph.' },
+      { id: 'p3', type: 'paragraph', content: 'Appended.' }
+    ]
+  },
+  {
+    name: 'setCellText rewrites one cell and leaves the rest of the table alone',
+    pins: 'a cell is addressed by table id plus row and column, because a cell carries no blockContainer id of its own (Q1)',
+    base: EDITABLE_TABLE,
+    op: { kind: 'setCellText', tableId: 'tbl1', row: 1, column: 1, text: '42' },
+    expected: TABLE_WITH_EDITED_CELL
+  },
+  {
+    name: 'setCellProp colours one cell',
+    pins: 'a cell colour is what desktop regenerates the table-colors marker from, so it has to land on the cell rather than on the table',
+    base: EDITABLE_TABLE,
+    op: {
+      kind: 'setCellProp',
+      tableId: 'tbl1',
+      row: 1,
+      column: 1,
+      name: 'backgroundColor',
+      value: 'yellow'
+    },
+    expected: TABLE_WITH_COLOURED_CELL
+  }
+]
+
 export interface FuzzFamily {
   name: string
   generate: (random: () => number) => string

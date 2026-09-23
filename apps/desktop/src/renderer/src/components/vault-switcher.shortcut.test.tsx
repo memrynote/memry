@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   removeVault: vi.fn().mockResolvedValue(undefined),
   openSettings: vi.fn(),
   refresh: vi.fn(),
+  refreshVaults: vi.fn().mockResolvedValue(undefined),
   setSidebarOpen: vi.fn(),
   setOpenMobile: vi.fn(),
   sidebarOpen: true,
@@ -124,7 +125,8 @@ vi.mock('@/hooks/use-vault', () => ({
       { path: '/vaults/Active', name: 'Active', vaultUuid: 'uuid-active' },
       { path: '/vaults/Old', name: 'Old', vaultUuid: 'uuid-old' }
     ],
-    removeVault: mocks.removeVault
+    removeVault: mocks.removeVault,
+    refresh: mocks.refreshVaults
   })
 }))
 vi.mock('@/hooks/use-account-vaults', () => ({

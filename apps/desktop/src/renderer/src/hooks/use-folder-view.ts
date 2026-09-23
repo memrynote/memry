@@ -78,6 +78,12 @@ export interface NoteWithProperties {
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
 }
 
+/** One note's icon write. `emoji: null` removes the icon. */
+export interface NoteIconChange {
+  noteId: string
+  emoji: string | null
+}
+
 export interface AvailableProperty {
   name: string
   type: string
@@ -245,8 +251,11 @@ interface UseFolderViewResult {
   updateNoteProperty: (noteId: string, propertyId: string, value: unknown) => Promise<void>
   /** Update tags on a note */
   updateNoteTags: (noteId: string, tags: string[]) => Promise<void>
-  /** Set (or clear, with `null`) a note's icon */
-  updateNoteIcon: (noteId: string, emoji: string | null) => Promise<void>
+  /**
+   * Set (or clear, with `null`) the icon on each note named. Resolves to the
+   * inverse of the writes that landed, which replays as Undo.
+   */
+  updateNoteIcons: (changes: readonly NoteIconChange[]) => Promise<NoteIconChange[]>
   /** Total unfiltered note count (for "showing X of Y") */
   unfilteredCount: number
 }
@@ -948,43 +957,65 @@ export function useFolderView({
   )
 
   /**
-   * Set or clear a note's icon with optimistic cache update.
+   * Set or clear icons with an optimistic cache update.
    *
-   * `null` removes the icon. The row's title cell reads `note.emoji`, so the
-   * optimistic write is what makes the new glyph appear before the IPC lands.
+   * `null` removes an icon. Each note gets its own `notesService.update`, so a
+   * bulk apply produces one sync push per note. A note whose write fails is
+   * rolled back alone, because restoring the whole cache snapshot would also
+   * revert the notes that succeeded.
    */
-  const updateNoteIcon = useCallback(
-    async (noteId: string, emoji: string | null) => {
-      const previousData = queryClient.getQueryData<InfiniteData<ListWithPropertiesResponse>>(
-        folderViewKeys.notes(scope)
-      )
+  const updateNoteIcons = useCallback(
+    async (changes: readonly NoteIconChange[]): Promise<NoteIconChange[]> => {
+      const key = folderViewKeys.notes(scope)
+      const previousEmoji = new Map<string, string | null>()
+      for (const page of queryClient.getQueryData<InfiniteData<ListWithPropertiesResponse>>(key)
+        ?.pages ?? []) {
+        for (const note of page.notes) previousEmoji.set(note.id, note.emoji ?? null)
+      }
 
-      queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
-        folderViewKeys.notes(scope),
-        (old) => {
+      const patchCache = (emojiById: ReadonlyMap<string, string | null>): void => {
+        queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(key, (old) => {
           if (!old) return old
           return {
             ...old,
             pages: old.pages.map((page) => ({
               ...page,
-              notes: page.notes.map((note) => (note.id === noteId ? { ...note, emoji } : note))
+              notes: page.notes.map((note) => {
+                const emoji = emojiById.get(note.id)
+                return emoji === undefined ? note : { ...note, emoji }
+              })
             }))
           }
-        }
+        })
+      }
+
+      patchCache(new Map(changes.map((change) => [change.noteId, change.emoji])))
+
+      const landed = await Promise.all(
+        changes.map(async ({ noteId, emoji }) => {
+          try {
+            const result = await notesService.update({ id: noteId, emoji })
+            if (!result.success) {
+              throw new Error(result.error ?? 'Failed to update icon')
+            }
+            return true
+          } catch (err) {
+            log.error('Failed to update icon:', { noteId, err })
+            return false
+          }
+        })
       )
 
-      try {
-        const result = await notesService.update({ id: noteId, emoji })
-        if (!result.success) {
-          throw new Error(result.error ?? 'Failed to update icon')
-        }
-      } catch (err) {
-        log.error('Failed to update icon:', err)
+      const inverse = (change: NoteIconChange): NoteIconChange => ({
+        noteId: change.noteId,
+        emoji: previousEmoji.get(change.noteId) ?? null
+      })
+      const failed = changes.filter((_, i) => !landed[i]).map(inverse)
+      if (failed.length > 0) {
         toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateIcon'))
-        if (previousData) {
-          queryClient.setQueryData(folderViewKeys.notes(scope), previousData)
-        }
+        patchCache(new Map(failed.map((change) => [change.noteId, change.emoji])))
       }
+      return changes.filter((_, i) => landed[i]).map(inverse)
     },
     [scope, queryClient]
   )
@@ -1204,7 +1235,7 @@ export function useFolderView({
     removeNotesOptimistically,
     updateNoteProperty,
     updateNoteTags,
-    updateNoteIcon
+    updateNoteIcons
   }
 }
 

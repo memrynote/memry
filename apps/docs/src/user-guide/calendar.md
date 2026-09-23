@@ -89,6 +89,10 @@ as the grid scrolls.
 
 Click an event to open the popover. Edit title, time, and description in place. The popover has a "Open in tab" action for full editing.
 
+Calendar popovers open beside the item you clicked and always stay inside the window. Near the
+bottom edge a popover shifts up just enough to fit. In a window shorter than the popover, it pins
+to the top edge and its contents scroll; resize the window and it moves or grows to match.
+
 ### Assigning a Project
 
 The event form (opened from **+** in the toolbar, or from an existing event) has a **Project**
@@ -111,6 +115,28 @@ it stays until you remove it with its **×**.
 Quick Create (dragging on the grid) stays title-only and has no Project row; add a project after
 saving, from the full event form. Event cards on a [canvas](/user-guide/canvas/overview) have no
 Project row either — open the event from the calendar to change its project.
+
+### Coloring an Event
+
+memrynote uses Google Calendar's colors, the same names and the same shades.
+
+The event form has a **Color** row with Google's eleven event colors: Tomato, Flamingo, Tangerine,
+Banana, Sage, Basil, Peacock, Blueberry, Lavender, Grape, and Graphite. Pick one and save, and the
+event's chip takes that color in every calendar view. Search results and the year view's day list
+show the same color as a dot. **Default color** removes the event's own color. Canvas event cards
+have the same row.
+
+The color belongs to the event and syncs to your other devices. If the event is on a connected
+Google calendar, the color is sent to Google too, and a color set in Google shows up in memrynote.
+
+Events from Google Calendar keep their Google colors in memrynote, including events you have not
+promoted. An event with no color of its own shows the color of its Google calendar, as it does in
+Google. That can be any of Google's 24 calendar colors (Cobalt, Pumpkin, and Radicchio among them)
+or a custom color you picked in Google. Calendar colors are set in Google Calendar; memrynote shows
+them but does not change them.
+
+Events on no Google calendar, tasks, reminders, notes, and subscribed calendars keep their type
+colors unless you color the event.
 
 ## Scheduling Tasks by Drag
 
@@ -225,9 +251,10 @@ calendar you have ticked — so accounts never drift out of step with each other
 "every sync" that refreshes the calendar list itself, as described under
 [Multiple Accounts and Calendars](#multiple-accounts-and-calendars).
 
-memrynote pulls about every 5 minutes in the background. When Google push notifications are active
-for your selected calendars, changes arrive as they happen and the background pull falls back to
-roughly every 30 minutes.
+Google notifies memrynote as soon as an event changes in one of your selected calendars, and the
+change shows up within seconds. The background pull then runs only about every 30 minutes, as a
+safety net for the few notifications Google drops. If notifications cannot be set up, memrynote
+pulls about every 5 minutes instead.
 
 Google returns a busy calendar in pages. Every pull follows all of them before it finishes, so a
 calendar full of repeating meetings cannot crowd your one-off appointments out of the results.
@@ -284,6 +311,40 @@ it cannot read, so it asks you to reconnect rather than syncing with something s
 
 Press **Connect** and sign in again. That writes fresh tokens over the unreadable ones, and your
 calendars, selections and existing events are untouched — only the sign-in is redone.
+
+## Subscribed Calendars
+
+Any calendar app that shares a calendar by link can show it in memrynote, read-only. That covers
+Proton Calendar, Apple iCloud, Outlook, Fastmail, Nextcloud, and published schedules such as
+sports fixtures or university timetables. No Google account or memrynote sign-in is needed.
+
+1. In the other app, copy the calendar's public or secret address. It ends in `.ics` or starts
+   with `webcal://`.
+2. Open [Settings → Calendar](/user-guide/settings#subscribed-calendars) → **Subscribed calendars**,
+   paste the link, and press **Subscribe**.
+
+memrynote downloads the calendar before saving it, so a wrong link is rejected with the reason
+(not a calendar, not found, access refused, unreachable) instead of leaving an empty calendar behind.
+
+**What you see.** Events from the last 90 days through the next year, including every instance of
+a repeating event with its skipped and moved dates. They appear on the calendar, the Day Panel,
+and the Home calendar widget with the subscription's name as their label, and the calendar page
+lists the subscription with your other imported calendars so you can hide it from view.
+
+**Read-only.** Subscribed events can't be moved, resized, edited, or deleted. Clicking one shows
+its details and where it comes from. To change an event, change it in the app that shares the
+calendar; memrynote picks the change up on its next refresh.
+
+**Refresh.** Each calendar is checked about once an hour, or on the schedule the calendar itself
+asks for (between 15 minutes and a day). An unchanged calendar costs one small request. Press
+**Refresh** next to a subscription to check now. If a refresh fails, the reason shows under the
+subscription and the events you already had stay on the calendar.
+
+**Across devices.** The subscription syncs to your other devices, end-to-end encrypted like the
+rest of your vault; each device downloads the calendar itself. The events are never uploaded.
+**Remove** unsubscribes on every device and clears the events.
+
+Treat a secret calendar link like a password: anyone who has it can read that calendar.
 
 ## Day Cell Click Behavior
 

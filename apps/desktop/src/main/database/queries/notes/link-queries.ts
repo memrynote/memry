@@ -77,8 +77,14 @@ export function getIncomingReferences(db: IndexDb, noteId: string): IncomingRefe
   return [...wikiLinks, ...propertyLinks]
 }
 
-export function deleteLinksToNote(db: IndexDb, targetId: string): void {
-  db.delete(noteLinks).where(eq(noteLinks.targetId, targetId)).run()
+/**
+ * The target note is gone, but every `[[Title]]` pointing at it is still in its
+ * source's text. Keep those rows as unresolved links instead of deleting them,
+ * so the source's outgoing links and the graph still show them, and
+ * `backfillUnresolvedLinksByTitle` re-resolves them if the title comes back.
+ */
+export function unresolveLinksToNote(db: IndexDb, targetId: string): void {
+  db.update(noteLinks).set({ targetId: null }).where(eq(noteLinks.targetId, targetId)).run()
 }
 
 export function resolveNoteByTitle(db: IndexDb, title: string): NoteCache | undefined {

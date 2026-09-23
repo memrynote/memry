@@ -26,13 +26,17 @@
 
 pub mod blocks;
 pub mod body_edit;
+pub mod canonical;
+pub mod comments;
 pub mod errors;
 pub mod lifecycle;
+pub mod node_shapes;
 pub mod registry;
 pub mod snapshots;
 pub mod text_extract;
 pub mod update_log;
 
+pub use canonical::canonical_fragment;
 pub use errors::CrdtError;
 pub use lifecycle::{DocumentLifecycle, DocumentState, LifecycleConfig};
 pub use registry::{Document, DocumentRegistry, NOTE_DOC_ROOTS, client_id_from_device_id};

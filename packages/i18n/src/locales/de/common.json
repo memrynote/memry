@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Aus Konto löschen",
       "deleteVaultFailed": "Der Tresor konnte nicht gelöscht werden",
       "deleteVaultTitle": "„{name}“ aus deinem Konto löschen?",
-      "removeVaultTitle": "„{name}“ aus der Liste entfernen?"
+      "removeVaultTitle": "„{name}“ aus der Liste entfernen?",
+      "missing": "Ordner nicht gefunden"
     },
     "componentsWindowControls": {
       "searchK": "Suche (⌘K)",

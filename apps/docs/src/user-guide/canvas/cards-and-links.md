@@ -1,7 +1,8 @@
 # Cards & Links
 
-A **card** is a live reference to a note, task, or calendar event placed on a
-canvas. The canvas stores the reference, never a copy of your content.
+A **card** is a live reference to a note, task, calendar event, project, or a
+file filed in your vault (PDF, image, audio or video) placed on a canvas. The
+canvas stores the reference, never a copy of your content.
 
 ## Adding cards
 
@@ -9,8 +10,8 @@ canvas. The canvas stores the reference, never a copy of your content.
   task list, and events from the Calendar all drop straight onto the board and
   become a card where you let go. A dashed outline shows the canvas is ready to
   take the drop.
-- **Click "Add card"** at the bottom of the canvas to search your notes, tasks
-  and events, or to create a new note without leaving the board. "Create
+- **Click "Add card"** at the bottom of the canvas to search your notes, files,
+  tasks, events and projects, or to create a new note without leaving the board. "Create
   note …" is always the first option, and typing a title carries it into the
   new note. The picker opens over a dimmed canvas; press <kbd>Esc</kbd> or
   click outside it to go back to the board.
@@ -36,19 +37,22 @@ clusters on the board. The **Add card** picker behaves differently: pick
 something that is already on the board and it scrolls to the card you have
 instead, marked with an **On canvas** badge.
 
-Files you have filed into your vault — PDFs, images, audio and video — do not
-appear in the picker. A note card renders your note's own content, so those
-open in the file viewer instead. They never take up room in the search results, so a
-matching note is always shown even when many filed files share its name.
+Files you have filed into your vault — PDFs, images, audio and video — have
+their own **Files** group. Notes and files are searched separately, so a
+matching note is always shown even when many filed files share its name. A file
+dragged from the sidebar also becomes a file card, never a note card.
 
-Results are grouped into Notes, Tasks and Events, and each row is labelled the
-way the rest of the app labels it, so you can tell at a glance what you are
-about to place:
+Results are grouped into Notes, Files, Tasks, Events and Projects, and each row
+is labelled the way the rest of the app labels it, so you can tell at a glance
+what you are about to place:
 
 - **Notes** show the note's own icon, its folder path and when it was created.
+- **Files** show their type icon, as the sidebar does, and the folder they are in.
 - **Tasks** show a checkmark when they are done, plus their project, status,
   priority and due date.
 - **Events** show a clock and the event's date and time.
+- **Projects** show their colour and how many of their tasks are done. Archived
+  projects are not offered.
 
 A card added from the picker lands in the middle of your view, or in the
 nearest free spot beside it when something is already there. Add three tasks
@@ -58,8 +62,7 @@ one point.
 ## Removing cards
 
 Select a card and press <kbd>Backspace</kbd> to take it off the board. Only the
-card goes — the note, task or event itself is untouched and stays wherever it
-lives.
+card goes — the item itself is untouched and stays wherever it lives.
 
 Cards render their item exactly as the editor does — a note shows its real
 formatting (headings, lists, checkboxes, linked task blocks, images, callouts
@@ -71,8 +74,17 @@ card updates.
 A note card is sized to its own content: a short note stays compact, while a
 longer one grows to a readable height and scrolls inside its frame.
 
+A **project card** shows the project's colour, name and description, how many of
+its tasks are done, and how many are overdue. The counts move as you complete,
+add or move tasks anywhere in the app.
+
+A **file card** shows an image's or video's first frame, or the type icon for a
+PDF or audio file, with the file's name, type, size and folder. Rename or move
+the file and the card follows it.
+
 If the underlying item is deleted, the card stays but is marked as deleted, so
-you never lose the spatial context.
+you never lose the spatial context. An archived project or task reads the same
+way.
 
 ## Editing on the canvas
 
@@ -107,13 +119,17 @@ Click **Open in tab to edit** to jump there.
 
 This applies to note cards only — task and event cards always edit in place.
 
+Project and file cards have nothing to edit on the board. Double-click one and it
+opens: a project on its project page, a file in its viewer.
+
 ## Opening an item in a tab
 
 Every card has an **↗ Open in tab** button. It opens a note in a note tab, a
-task in the Tasks page with its detail drawer, and an event focused in the
-Calendar.
+task in the Tasks page with its detail drawer, an event focused in the
+Calendar, a project on its project page, and a file in the viewer for its type.
 
-Double-click edits in place; ↗ opens a tab. The two never trigger each other.
+On a note, task or event card, double-click edits in place and ↗ opens a tab.
+The two never trigger each other.
 
 ## Links on a shape
 

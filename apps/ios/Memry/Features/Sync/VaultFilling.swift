@@ -74,6 +74,44 @@ protocol VaultFilling: Sendable {
     /// Throws `SyncError.UnknownNote` for a note this vault holds no **live**
     /// record of. That refusal is **permanent**; no copy may call it retryable.
     func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary
+
+    /// Fetches one attachment's bytes (chapter 14, FR-045).
+    ///
+    /// - Parameter reachable: **the shell's observation, not its policy.**
+    ///   Only the shell can see the current path; the core decides what that
+    ///   means, so the unmetered-by-default rule and its per-item override
+    ///   live in one place rather than being re-argued here.
+    ///
+    /// **A deferred fetch is not a failure.** A picture waiting for an
+    /// unmetered path is FR-045 working, and the summary says so rather than
+    /// throwing; a caller that showed an error there would report a fault for
+    /// correct behaviour.
+    func fetchAttachment(
+        attachmentId: String,
+        reachable: Reachable
+    ) async throws -> AttachmentFetchSummary
+
+    /// Uploads a file and attaches it to a note (chapter 14 §14.2–§14.5).
+    ///
+    /// One call for the whole chain, because every step is useless alone: a
+    /// shell that could stop between them would leave chunks in R2 that no
+    /// manifest names.
+    ///
+    /// - Returns: the new attachment id.
+    func uploadAttachment(
+        noteId: String,
+        filename: String,
+        mimeType: String,
+        bytes: Data
+    ) async throws -> String
+
+    /// Detaches an attachment and releases its bytes (§14.8).
+    ///
+    /// **Dereferencing is not optional.** A client that dropped the reference
+    /// without telling the server would leak the user's own quota, silently
+    /// and permanently. The core also checks whether another note still holds
+    /// the attachment before releasing anything.
+    func detachAttachment(noteId: String, attachmentId: String) async throws
 }
 
 /// The production filler: the core's own `VaultSync`.
@@ -106,6 +144,31 @@ struct CoreVaultFiller: VaultFilling {
     /// round trips rather than tens.
     func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
         try await sync.fetchNoteBody(noteId: noteId)
+    }
+
+    func fetchAttachment(
+        attachmentId: String,
+        reachable: Reachable
+    ) async throws -> AttachmentFetchSummary {
+        try await sync.fetchAttachment(attachmentId: attachmentId, reachable: reachable)
+    }
+
+    func uploadAttachment(
+        noteId: String,
+        filename: String,
+        mimeType: String,
+        bytes: Data
+    ) async throws -> String {
+        try await sync.uploadAttachment(
+            noteId: noteId,
+            filename: filename,
+            mimeType: mimeType,
+            bytes: bytes
+        )
+    }
+
+    func detachAttachment(noteId: String, attachmentId: String) async throws {
+        try await sync.detachAttachment(noteId: noteId, attachmentId: attachmentId)
     }
 }
 

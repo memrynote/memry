@@ -70,6 +70,18 @@ describe('getCardRefs / extractEntityRefs', () => {
       { entityType: 'task', entityId: 't1' }
     ])
   })
+
+  it('saves project and file cards as refs, and keeps an unknown kind out of them', () => {
+    const elements: CardElement[] = [
+      rect({ id: 'p', customData: { entityType: 'project', entityId: 'p1' } }),
+      rect({ id: 'f', customData: { entityType: 'file', entityId: 'f1' } }),
+      rect({ id: 'x', customData: { entityType: 'kind-from-a-newer-build', entityId: 'x1' } })
+    ]
+    expect(extractEntityRefs(elements)).toEqual([
+      { entityType: 'project', entityId: 'p1' },
+      { entityType: 'file', entityId: 'f1' }
+    ])
+  })
 })
 
 describe('overlayTransform', () => {

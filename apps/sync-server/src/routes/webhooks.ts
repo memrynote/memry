@@ -182,6 +182,7 @@ webhooks.post('/google-calendar', async (c) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           excludeDeviceId: '',
+          targetDeviceId: channel.device_id,
           type: 'calendar_changes_available',
           sourceId: channel.source_id
         })

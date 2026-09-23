@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,7 @@ import { Inbox, Bell, Clock } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 import type { AnchorRect } from './types'
-import { POPOVER_WIDTH, computePopoverPosition } from './popover-position'
+import { useAnchoredPopoverPosition } from './popover-position'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
 interface CalendarInboxSnoozePopoverProps {
@@ -33,8 +33,17 @@ export function CalendarInboxSnoozePopover({
   onDismiss
 }: CalendarInboxSnoozePopoverProps): React.JSX.Element {
   const { t } = useT('calendar')
-  const containerRef = useRef<HTMLDivElement>(null)
-  const { top, left } = computePopoverPosition(anchorRect, { estimatedHeight: 220 })
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const { ref: positionRef, style: positionStyle } = useAnchoredPopoverPosition(anchorRect, {
+    estimatedHeight: 220
+  })
+  const setContainer = useCallback(
+    (node: HTMLDivElement | null) => {
+      containerRef.current = node
+      positionRef(node)
+    },
+    [positionRef]
+  )
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -59,11 +68,11 @@ export function CalendarInboxSnoozePopover({
 
   return (
     <div
-      ref={containerRef}
+      ref={setContainer}
       role="dialog"
       aria-label={t('phaseI.inboxSnoozePopover.title')}
       data-testid="calendar-inbox-snooze-popover"
-      style={{ position: 'fixed', top, left, width: POPOVER_WIDTH }}
+      style={{ position: 'fixed', ...positionStyle }}
       className={cn(
         'z-50 rounded-lg border border-border bg-popover p-4 text-popover-foreground shadow-lg',
         'flex flex-col gap-3'
