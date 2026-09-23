@@ -4,7 +4,8 @@
     "week": "Week",
     "month": "Month",
     "monthGridLabel": "Month grid",
-    "year": "Year"
+    "year": "Year",
+    "timeline": "Timeline"
   },
   "undo": {
     "moveEvent": "Move event",
@@ -223,6 +224,101 @@
     "kindDateReminder": "Date reminder",
     "open": "Open note",
     "couldNotOpen": "Could not open note"
+  },
+  "timeline": {
+    "label": "Scheduled work on a timeline",
+    "tasks-column": "Tasks",
+    "span": "{start} – {end}",
+    "due": "Due {date}",
+    "starts": "Starts {date}",
+    "starts-short": "{date} →",
+    "no-date": "No date",
+    "today": "Today",
+    "overdue": "overdue",
+    "untitled": "Untitled",
+    "days": "{count, plural, one {# day} other {# days}}",
+    "events": "Events",
+    "schedule-hint": "Click to set a date, drag to set a range",
+    "empty-title": "Nothing on the timeline here",
+    "empty-body": "Tasks with a start or due date, and all-day or multi-day events, appear here. Turn on tasks without dates in Display to schedule them by dragging.",
+    "status": {
+      "todo": "To do",
+      "in_progress": "In progress",
+      "done": "Done"
+    },
+    "priority": {
+      "urgent": "Urgent",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "none": "No priority"
+    },
+    "zoom": {
+      "label": "Zoom",
+      "weeks": "Weeks",
+      "months": "Months",
+      "quarters": "Quarters"
+    },
+    "group-by": {
+      "project": "Project",
+      "status": "Status",
+      "priority": "Priority",
+      "none": "No grouping"
+    },
+    "group-by-label": "By {group}",
+    "order-by": {
+      "start": "Start date",
+      "due": "Due date",
+      "title": "Title"
+    },
+    "display": {
+      "button": "Display",
+      "group-by": "Group by",
+      "order-by": "Order by",
+      "show": "Show",
+      "show-events": "Events",
+      "show-undated": "Tasks without dates",
+      "show-completed": "Completed tasks",
+      "show-subtasks": "Subtasks"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# task} other {# tasks}} · {events, plural, one {# event} other {# events}}",
+      "open": "Open",
+      "move": "Move",
+      "resize": "Resize",
+      "actions": "Actions",
+      "select": "Select",
+      "today": "Today"
+    },
+    "actions": {
+      "search": "Search actions…",
+      "search-projects": "Search projects…",
+      "empty": "No matching action",
+      "no-projects": "No matching project",
+      "open": "Open task",
+      "open-in-tasks": "Open in Tasks",
+      "schedule": "Schedule",
+      "set-start": "Set start date",
+      "set-due": "Set due date",
+      "move-later": "Move one week later",
+      "move-earlier": "Move one week earlier",
+      "clear-dates": "Clear dates",
+      "clear-start": "Clear start date",
+      "clear-due": "Clear due date",
+      "task": "Task",
+      "complete": "Mark complete",
+      "uncomplete": "Mark incomplete",
+      "change-project": "Change project",
+      "page": {
+        "root": "Actions",
+        "start": "Start date",
+        "due": "Due date",
+        "project": "Project"
+      }
+    },
+    "undo": {
+      "reschedule": "Reschedule \"{title}\""
+    }
   },
   "calendar-color": {
     "tomato": "Tomato",

@@ -9,6 +9,13 @@ import {
   type CalendarWorkspaceView
 } from '@/components/calendar'
 import { VISUAL_TYPE_ORDER } from '@/components/calendar/visual-type-meta'
+import {
+  DEFAULT_TIMELINE_SETTINGS,
+  getTimelineWindow,
+  stepTimelineAnchor,
+  type TimelineSettings,
+  type TimelineZoom
+} from '@/components/calendar/timeline-model'
 import { AgentAccessConsentDialog } from '@/components/calendar/agent-access-consent-dialog'
 import { PromoteExternalDialog } from '@/components/calendar/promote-external-dialog'
 import { CalendarTaskPopover } from '@/components/calendar/calendar-task-popover'
@@ -53,6 +60,7 @@ import {
   parseCalendarBoolean,
   parseCalendarView,
   parseImportedSourceIds,
+  parseTimelineSettings,
   parseVisualTypes,
   readGlobalCalendarView,
   resolveAnchorSync,
@@ -79,7 +87,8 @@ function getTodayDate(): string {
 function getRangeForView(
   view: CalendarWorkspaceView,
   anchorDate: string,
-  weekStartsOn: 0 | 1
+  weekStartsOn: 0 | 1,
+  timelineZoom: TimelineZoom
 ): {
   startAt: string
   endAt: string
@@ -99,6 +108,14 @@ function getRangeForView(
     }
   }
 
+  if (view === 'timeline') {
+    const window = getTimelineWindow(anchorDate, timelineZoom, weekStartsOn)
+    return {
+      startAt: toStartOfLocalDayIso(window.start),
+      endAt: toStartOfLocalDayIso(addLocalDays(window.end, 1))
+    }
+  }
+
   if (view === 'month') {
     const gridDays = getMonthGridDays(anchorDate, weekStartsOn)
     return {
@@ -111,6 +128,17 @@ function getRangeForView(
   const start = new Date(date.getFullYear(), 0, 1)
   const end = new Date(date.getFullYear() + 1, 0, 1)
   return { startAt: start.toISOString(), endAt: end.toISOString() }
+}
+
+const PERIOD_STEP: Record<
+  CalendarWorkspaceView,
+  (date: string, direction: 1 | -1, timelineZoom: TimelineZoom) => string
+> = {
+  day: (date, direction) => addLocalDays(date, direction),
+  week: (date, direction) => addLocalDays(date, 7 * direction),
+  month: (date, direction) => addLocalMonths(date, direction),
+  year: (date, direction) => addLocalYears(date, direction),
+  timeline: (date, direction, timelineZoom) => stepTimelineAnchor(date, timelineZoom, direction)
 }
 
 function createDraftFromAnchor(anchorDate: string): CalendarEventDraft {
@@ -242,6 +270,11 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     defaultValue: VISUAL_TYPE_ORDER,
     parse: parseVisualTypes
   })
+  const [timelineSettings, setTimelineSettings] = useTabViewState<TimelineSettings>({
+    key: CALENDAR_VIEW_STATE_KEYS.timeline,
+    defaultValue: DEFAULT_TIMELINE_SETTINGS,
+    parse: parseTimelineSettings
+  })
   const [popoverState, setPopoverState] = useState<{
     mode: 'create' | 'edit'
     eventId: string | null
@@ -254,7 +287,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     anchorRect: AnchorRect
   } | null>(null)
   const [taskPopoverState, setTaskPopoverState] = useState<{
-    item: CalendarProjectionItem
+    taskId: string
     anchorRect: AnchorRect
   } | null>(null)
   const [notePopoverState, setNotePopoverState] = useState<{
@@ -364,13 +397,13 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   const rangeInput = useMemo(
     () => ({
-      ...getRangeForView(view, anchorDate, weekStartsOn),
+      ...getRangeForView(view, anchorDate, weekStartsOn, timelineSettings.zoom),
       includeUnselectedSources: true
     }),
-    [view, anchorDate, weekStartsOn]
+    [view, anchorDate, weekStartsOn, timelineSettings.zoom]
   )
 
-  const rangeQuery = useCalendarRange(rangeInput)
+  const rangeQuery = useCalendarRange(rangeInput, { keepPrevious: view === 'timeline' })
 
   const { data: sourcesData, isLoading: sourcesIsLoading } = useQuery({
     queryKey: ['calendar', 'sources'],
@@ -518,21 +551,11 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   }, [anchorDate, calendarCreateEventToken])
 
   const handlePrevious = () => {
-    setAnchorDate((current) => {
-      if (view === 'day') return addLocalDays(current, -1)
-      if (view === 'week') return addLocalDays(current, -7)
-      if (view === 'month') return addLocalMonths(current, -1)
-      return addLocalYears(current, -1)
-    })
+    setAnchorDate((current) => PERIOD_STEP[view](current, -1, timelineSettings.zoom))
   }
 
   const handleNext = () => {
-    setAnchorDate((current) => {
-      if (view === 'day') return addLocalDays(current, 1)
-      if (view === 'week') return addLocalDays(current, 7)
-      if (view === 'month') return addLocalMonths(current, 1)
-      return addLocalYears(current, 1)
-    })
+    setAnchorDate((current) => PERIOD_STEP[view](current, 1, timelineSettings.zoom))
   }
 
   const handleToday = () => {
@@ -610,13 +633,17 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
   }
 
+  const handleSelectTask = (taskId: string, rect: AnchorRect) => {
+    setPopoverState(null)
+    setInboxSnoozePopoverState(null)
+    setNotePopoverState(null)
+    setTaskPopoverState({ taskId, anchorRect: rect })
+  }
+
   const handleSelectItem = async (item: CalendarProjectionItem, rect: AnchorRect) => {
     setSubscribedPopoverState(null)
     if (item.sourceType === 'task') {
-      setPopoverState(null)
-      setInboxSnoozePopoverState(null)
-      setNotePopoverState(null)
-      setTaskPopoverState({ item, anchorRect: rect })
+      handleSelectTask(item.sourceId, rect)
       return
     }
 
@@ -930,7 +957,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   const selectedItemId =
     popoverState?.eventId ??
-    taskPopoverState?.item.sourceId ??
+    taskPopoverState?.taskId ??
     inboxSnoozePopoverState?.item.sourceId ??
     null
 
@@ -960,7 +987,9 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         anchorDate={anchorDate}
         items={filteredItems}
         importedSources={importedSources}
-        isLoading={rangeQuery.isLoading || sourcesIsLoading}
+        // Timeline draws tasks from the workspace, which is already loaded; its
+        // events fill in when the range arrives rather than blanking the view.
+        isLoading={view === 'timeline' ? false : rangeQuery.isLoading || sourcesIsLoading}
         showMemryItems={showMemryItems}
         showImportedCalendars={showImportedCalendars}
         selectedImportedSourceIds={selectedImportedSourceIds}
@@ -1003,6 +1032,10 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
           )
         }
         onSelectItem={(...args) => void handleSelectItem(...args)}
+        onSelectTask={handleSelectTask}
+        weekStartsOn={weekStartsOn}
+        timelineSettings={timelineSettings}
+        onTimelineSettingsChange={setTimelineSettings}
         onDeleteItem={handleDeleteItem}
         onAddToProject={setAddToProjectEventId}
         onMoveEvent={handleMoveEvent}
@@ -1030,7 +1063,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       />
       {taskPopoverState && (
         <CalendarTaskPopover
-          item={taskPopoverState.item}
+          taskId={taskPopoverState.taskId}
           anchorRect={taskPopoverState.anchorRect}
           onDismiss={() => setTaskPopoverState(null)}
         />

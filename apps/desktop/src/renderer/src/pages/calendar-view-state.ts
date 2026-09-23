@@ -23,13 +23,20 @@
 
 import type { CalendarWorkspaceView } from '@/components/calendar'
 import { VISUAL_TYPE_ORDER } from '@/components/calendar/visual-type-meta'
+import {
+  DEFAULT_TIMELINE_SETTINGS,
+  TIMELINE_GROUP_BYS,
+  TIMELINE_ORDER_BYS,
+  TIMELINE_ZOOMS,
+  type TimelineSettings
+} from '@/components/calendar/timeline-model'
 import type { CalendarProjectionVisualType } from '@/services/calendar-service'
 
 /** Pre-existing GLOBAL key. Still read, and still written, so a rollback works. */
 export const CALENDAR_VIEW_STORAGE_KEY = 'calendar-view'
 
 export const CALENDAR_VIEW_STATE_KEYS = {
-  /** Day / week / month / year. */
+  /** Day / week / month / year / timeline. */
   view: 'calendarView',
   /** The date the view is centred on, as `YYYY-MM-DD`. */
   anchorDate: 'calendarAnchorDate',
@@ -40,7 +47,9 @@ export const CALENDAR_VIEW_STATE_KEYS = {
   /** The user's explicit source selection. `null` means "has not chosen". */
   importedSourceIds: 'calendarImportedSourceIds',
   /** Which kinds of item are shown. */
-  visualTypes: 'calendarVisualTypes'
+  visualTypes: 'calendarVisualTypes',
+  /** Timeline zoom, grouping, ordering and what it shows. */
+  timeline: 'calendarTimeline'
 } as const
 
 /**
@@ -54,7 +63,7 @@ export const CALENDAR_SCROLL_KEYS = {
   year: 'calendar-year'
 } as const
 
-export const CALENDAR_VIEWS: CalendarWorkspaceView[] = ['day', 'week', 'month', 'year']
+export const CALENDAR_VIEWS: CalendarWorkspaceView[] = ['day', 'week', 'month', 'year', 'timeline']
 
 export const parseCalendarView = (raw: unknown): CalendarWorkspaceView | undefined =>
   typeof raw === 'string' && (CALENDAR_VIEWS as string[]).includes(raw)
@@ -144,6 +153,35 @@ export const parseVisualTypes = (raw: unknown): CalendarProjectionVisualType[] |
           typeof value === 'string' && (VISUAL_TYPE_ORDER as string[]).includes(value)
       )
     : undefined
+
+function pickOption<T extends string>(raw: unknown, options: readonly T[], fallback: T): T {
+  return typeof raw === 'string' && (options as readonly string[]).includes(raw)
+    ? (raw as T)
+    : fallback
+}
+
+function pickBoolean(raw: unknown, fallback: boolean): boolean {
+  return typeof raw === 'boolean' ? raw : fallback
+}
+
+/**
+ * Field by field, so a setting a later build adds (or one an older build never
+ * wrote) falls back to its default without discarding the rest.
+ */
+export const parseTimelineSettings = (raw: unknown): TimelineSettings | undefined => {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined
+  const value = raw as Record<string, unknown>
+  const d = DEFAULT_TIMELINE_SETTINGS
+  return {
+    zoom: pickOption(value.zoom, TIMELINE_ZOOMS, d.zoom),
+    groupBy: pickOption(value.groupBy, TIMELINE_GROUP_BYS, d.groupBy),
+    orderBy: pickOption(value.orderBy, TIMELINE_ORDER_BYS, d.orderBy),
+    showEvents: pickBoolean(value.showEvents, d.showEvents),
+    showUndated: pickBoolean(value.showUndated, d.showUndated),
+    showCompleted: pickBoolean(value.showCompleted, d.showCompleted),
+    showSubtasks: pickBoolean(value.showSubtasks, d.showSubtasks)
+  }
+}
 
 /**
  * The sources actually shown: every synced source until the user picks a

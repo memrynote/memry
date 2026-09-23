@@ -9,13 +9,14 @@ import { parseLocalDate } from './date-utils'
 import { CalendarSearch } from './calendar-search'
 import type { AnchorRect } from './types'
 
-export type CalendarWorkspaceView = 'day' | 'week' | 'month' | 'year'
+export type CalendarWorkspaceView = 'day' | 'week' | 'month' | 'year' | 'timeline'
 
 const VIEW_LABEL_KEYS: Record<CalendarWorkspaceView, `view.${CalendarWorkspaceView}`> = {
   day: 'view.day',
   week: 'view.week',
   month: 'view.month',
-  year: 'view.year'
+  year: 'view.year',
+  timeline: 'view.timeline'
 }
 
 const VIEW_OPTIONS = Object.keys(VIEW_LABEL_KEYS) as CalendarWorkspaceView[]
@@ -29,6 +30,8 @@ interface CalendarToolbarProps {
   onToday: () => void
   onCreateEvent: (anchorRect: AnchorRect) => void
   onSearchJump: (item: CalendarProjectionItem) => void
+  /** View-specific controls right after the title (the timeline's zoom). */
+  leadingActions?: React.ReactNode
   extraActions?: React.ReactNode
 }
 
@@ -41,6 +44,7 @@ export function CalendarToolbar({
   onToday,
   onCreateEvent,
   onSearchJump,
+  leadingActions,
   extraActions
 }: CalendarToolbarProps): React.JSX.Element {
   const { t, i18n } = useT('calendar')
@@ -61,6 +65,8 @@ export function CalendarToolbar({
           </>
         )}
       </h2>
+
+      {leadingActions}
 
       <div className="min-w-2 flex-1" />
 

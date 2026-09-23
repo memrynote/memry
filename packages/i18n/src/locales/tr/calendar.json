@@ -3,7 +3,8 @@
     "day": "Gün",
     "week": "Hafta",
     "month": "Ay",
-    "year": "Yıl"
+    "year": "Yıl",
+    "timeline": "Zaman çizelgesi"
   },
   "toolbar": {
     "create-event": "Etkinlik oluştur",
@@ -198,5 +199,100 @@
   "undo": {
     "moveEvent": "Etkinliği taşı",
     "moveTask": "Görevi yeniden planla"
+  },
+  "timeline": {
+    "label": "Zaman çizelgesindeki planlı işler",
+    "tasks-column": "Görevler",
+    "span": "{start} – {end}",
+    "due": "Bitiş {date}",
+    "starts": "Başlangıç {date}",
+    "starts-short": "{date} →",
+    "no-date": "Tarih yok",
+    "today": "Bugün",
+    "overdue": "gecikmiş",
+    "untitled": "Adsız",
+    "days": "{count, plural, one {# gün} other {# gün}}",
+    "events": "Etkinlikler",
+    "schedule-hint": "Tarih için tıkla, aralık için sürükle",
+    "empty-title": "Zaman çizelgesinde burada bir şey yok",
+    "empty-body": "Başlangıç veya bitiş tarihi olan görevler ile tüm gün ya da birden çok gün süren etkinlikler burada görünür. Tarihsiz görevleri sürükleyerek planlamak için Görünüm'den açın.",
+    "status": {
+      "todo": "Yapılacak",
+      "in_progress": "Devam ediyor",
+      "done": "Tamamlandı"
+    },
+    "priority": {
+      "urgent": "Acil",
+      "high": "Yüksek",
+      "medium": "Orta",
+      "low": "Düşük",
+      "none": "Öncelik yok"
+    },
+    "zoom": {
+      "label": "Yakınlaştırma",
+      "weeks": "Haftalar",
+      "months": "Aylar",
+      "quarters": "Çeyrekler"
+    },
+    "group-by": {
+      "project": "Proje",
+      "status": "Durum",
+      "priority": "Öncelik",
+      "none": "Gruplama yok"
+    },
+    "group-by-label": "{group} ile",
+    "order-by": {
+      "start": "Başlangıç tarihi",
+      "due": "Bitiş tarihi",
+      "title": "Başlık"
+    },
+    "display": {
+      "button": "Görünüm",
+      "group-by": "Grupla",
+      "order-by": "Sırala",
+      "show": "Göster",
+      "show-events": "Etkinlikler",
+      "show-undated": "Tarihsiz görevler",
+      "show-completed": "Tamamlanan görevler",
+      "show-subtasks": "Alt görevler"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# görev} other {# görev}} · {events, plural, one {# etkinlik} other {# etkinlik}}",
+      "open": "Aç",
+      "move": "Taşı",
+      "resize": "Boyutlandır",
+      "actions": "Eylemler",
+      "select": "Seç",
+      "today": "Bugün"
+    },
+    "actions": {
+      "search": "Eylem ara…",
+      "search-projects": "Proje ara…",
+      "empty": "Eşleşen eylem yok",
+      "no-projects": "Eşleşen proje yok",
+      "open": "Görevi aç",
+      "open-in-tasks": "Görevler'de aç",
+      "schedule": "Planla",
+      "set-start": "Başlangıç tarihi ayarla",
+      "set-due": "Bitiş tarihi ayarla",
+      "move-later": "Bir hafta ileri al",
+      "move-earlier": "Bir hafta geri al",
+      "clear-dates": "Tarihleri temizle",
+      "clear-start": "Başlangıç tarihini temizle",
+      "clear-due": "Bitiş tarihini temizle",
+      "task": "Görev",
+      "complete": "Tamamlandı olarak işaretle",
+      "uncomplete": "Tamamlanmadı olarak işaretle",
+      "change-project": "Projeyi değiştir",
+      "page": {
+        "root": "Eylemler",
+        "start": "Başlangıç tarihi",
+        "due": "Bitiş tarihi",
+        "project": "Proje"
+      }
+    },
+    "undo": {
+      "reschedule": "\"{title}\" yeniden planla"
+    }
   }
 }

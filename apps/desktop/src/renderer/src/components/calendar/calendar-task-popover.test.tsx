@@ -82,29 +82,6 @@ const uncompleteMock = vi.fn().mockResolvedValue({ id: 't1' })
 const updateMock = vi.fn().mockResolvedValue({ id: 't1' })
 const noteGetMock = vi.fn().mockResolvedValue(null)
 
-const baseItem = {
-  projectionId: 'p:t1',
-  sourceId: 't1',
-  sourceType: 'task' as const,
-  title: 'Hello',
-  descriptionPreview: null,
-  startAt: '2026-04-30T14:00:00',
-  endAt: null,
-  isAllDay: false,
-  timezone: 'UTC',
-  visualType: 'task' as const,
-  editability: 'full' as const,
-  source: {
-    provider: null,
-    calendarSourceId: null,
-    title: null,
-    color: null,
-    kind: null,
-    isMemryManaged: true
-  },
-  binding: null,
-  snoozeOffsetMinutes: null
-}
 const baseAnchor = { x: 100, y: 100, width: 80, height: 22 }
 
 describe('CalendarTaskPopover', () => {
@@ -139,7 +116,7 @@ describe('CalendarTaskPopover', () => {
   })
 
   it('renders title and due', () => {
-    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
+    render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={vi.fn()} />)
     expect(screen.getByText('Hello')).toBeInTheDocument()
     expect(screen.getByTestId('due-row')).toHaveTextContent(/Tomorrow/)
     expect(screen.getByRole('img', { name: /status: to do/i })).toBeInTheDocument()
@@ -148,7 +125,7 @@ describe('CalendarTaskPopover', () => {
 
   it('completes the task from its checkbox, dismisses, and offers undo', async () => {
     const onDismiss = vi.fn()
-    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
+    render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={onDismiss} />)
 
     await userEvent.click(screen.getByTestId('task-popover-complete'))
 
@@ -161,7 +138,7 @@ describe('CalendarTaskPopover', () => {
 
   it('completes with Ctrl+Enter and opens the task with Enter', async () => {
     const onDismiss = vi.fn()
-    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
+    render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={onDismiss} />)
     const card = screen.getByTestId('calendar-task-popover')
 
     fireEvent.keyDown(card, { key: 'Enter' })
@@ -172,7 +149,7 @@ describe('CalendarTaskPopover', () => {
   })
 
   it('keeps the status icon read-only', async () => {
-    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
+    render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={vi.fn()} />)
     await userEvent.click(screen.getByRole('img', { name: /status: to do/i }))
     expect(screen.queryByRole('option', { name: /in progress/i })).not.toBeInTheDocument()
     expect(updateMock).not.toHaveBeenCalled()
@@ -180,7 +157,7 @@ describe('CalendarTaskPopover', () => {
   })
 
   it('Open task opens the tasks tab filtered to the task project on the All tab', async () => {
-    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
+    render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: /^open task$/i }))
     expect(openTabMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -196,7 +173,7 @@ describe('CalendarTaskPopover', () => {
   })
 
   it('Pick date & time opens the tasks tab filtered to the task project on the All tab', async () => {
-    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
+    render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: /more actions/i }))
     await userEvent.click(screen.getByRole('menuitem', { name: /pick date.*time/i }))
     expect(openTabMock).toHaveBeenCalledWith(
@@ -214,7 +191,7 @@ describe('CalendarTaskPopover', () => {
 
   it('Escape calls onDismiss', async () => {
     const onDismiss = vi.fn()
-    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
+    render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={onDismiss} />)
     await userEvent.keyboard('{Escape}')
     expect(onDismiss).toHaveBeenCalled()
   })
@@ -223,7 +200,7 @@ describe('CalendarTaskPopover', () => {
     mockTask.tags = ['#focus']
     try {
       const onDismiss = vi.fn()
-      render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
+      render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={onDismiss} />)
       await userEvent.click(screen.getByText('focus'))
       expect(openSidebarItemMock).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'tag', entityId: 'focus', color: 'rose' })
@@ -241,7 +218,7 @@ describe('CalendarTaskPopover', () => {
       { id: 'sub-2', title: 'Send review', completedAt: '2026-04-29T12:00:00Z' }
     ]
 
-    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
+    render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={onDismiss} />)
 
     const subtaskList = within(screen.getByRole('list'))
     await userEvent.click(subtaskList.getByLabelText(/mark done/i))
@@ -265,7 +242,7 @@ describe('CalendarTaskPopover', () => {
     completeMock.mockRejectedValueOnce(new Error('nope'))
     updateMock.mockRejectedValueOnce(new Error('nope'))
 
-    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
+    render(<CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={onDismiss} />)
 
     await userEvent.click(within(screen.getByRole('list')).getByLabelText(/mark done/i))
     await userEvent.click(screen.getByRole('button', { name: 'Tomorrow' }))
@@ -280,7 +257,7 @@ describe('CalendarTaskPopover', () => {
     noteGetMock.mockResolvedValueOnce({ id: 'note-1', title: 'Source note', path: '/source.md' })
 
     const { rerender } = render(
-      <CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />
+      <CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={onDismiss} />
     )
 
     await userEvent.click(screen.getByRole('button', { name: /more actions/i }))
@@ -296,13 +273,7 @@ describe('CalendarTaskPopover', () => {
     )
     expect(onDismiss).toHaveBeenCalled()
 
-    rerender(
-      <CalendarTaskPopover
-        item={{ ...baseItem, sourceId: 'missing' }}
-        anchorRect={baseAnchor}
-        onDismiss={vi.fn()}
-      />
-    )
+    rerender(<CalendarTaskPopover taskId="missing" anchorRect={baseAnchor} onDismiss={vi.fn()} />)
     expect(screen.queryByTestId('calendar-task-popover')).not.toBeInTheDocument()
   })
 
@@ -310,7 +281,7 @@ describe('CalendarTaskPopover', () => {
     for (const frequency of ['daily', 'weekly', 'monthly', 'yearly'] as const) {
       mockTask.repeatConfig = { frequency, interval: 1, endType: 'never' }
       const { unmount } = render(
-        <CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />
+        <CalendarTaskPopover taskId="t1" anchorRect={baseAnchor} onDismiss={vi.fn()} />
       )
       expect(screen.getByTestId('calendar-task-popover')).toBeInTheDocument()
       unmount()

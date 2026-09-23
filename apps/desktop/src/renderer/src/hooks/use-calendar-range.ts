@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   calendarService,
   type GetCalendarRangeInput,
@@ -25,10 +25,21 @@ export const calendarRangeKeys = {
  * about a change while something was rendering it — and only the active tab of a
  * group is mounted, so a background board never caught up.
  */
-export function useCalendarRange(input: GetCalendarRangeInput) {
+export function useCalendarRange(
+  input: GetCalendarRangeInput,
+  options: {
+    /**
+     * Keep showing the previous range while the next one loads. The timeline
+     * slides its range as it scrolls; without this its events would blink out
+     * on every slide.
+     */
+    keepPrevious?: boolean
+  } = {}
+) {
   const query = useQuery<CalendarRangeResponse>({
     queryKey: calendarRangeKeys.range(input),
-    queryFn: () => calendarService.getRange(input)
+    queryFn: () => calendarService.getRange(input),
+    placeholderData: options.keepPrevious ? keepPreviousData : undefined
   })
 
   return {

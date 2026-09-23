@@ -10,6 +10,9 @@ import { CalendarEventPopover, type CalendarEventReadOnlyMetadata } from './cale
 import { CalendarInboxSnoozePopover } from './calendar-inbox-snooze-popover'
 import { CalendarNotePopover } from './calendar-note-popover'
 import { CalendarMonthView } from './calendar-month-view'
+import { CalendarTimelineView } from './calendar-timeline-view'
+import { TimelineDisplayPopover, TimelineZoomControl } from './timeline-controls'
+import { DEFAULT_TIMELINE_SETTINGS, type TimelineSettings } from './timeline-model'
 import { CalendarToolbar, type CalendarWorkspaceView } from './calendar-toolbar'
 import { CalendarWeekView } from './calendar-week-view'
 import { CalendarYearView } from './calendar-year-view'
@@ -24,6 +27,8 @@ import { VISUAL_TYPE_META, VISUAL_TYPE_ORDER } from './visual-type-meta'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('CalendarShell')
+
+const ignoreTimelineSettings = (): void => {}
 
 interface CalendarShellProps {
   view: CalendarWorkspaceView
@@ -71,6 +76,12 @@ interface CalendarShellProps {
   onToggleImportedSource: (sourceId: string) => void
   onToggleVisualType: (visualType: CalendarProjectionVisualType) => void
   onSelectItem: (item: CalendarProjectionItem, rect: AnchorRect) => void
+  onSelectTask?: (taskId: string, rect: AnchorRect) => void
+  weekStartsOn?: 0 | 1
+  timelineSettings?: TimelineSettings
+  onTimelineSettingsChange?: (
+    next: TimelineSettings | ((previous: TimelineSettings) => TimelineSettings)
+  ) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
   onAddToProject?: (eventId: string) => void
   onMoveEvent?: (
@@ -86,6 +97,17 @@ interface CalendarShellProps {
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
   /** Toolbar CTA shown while Google Calendar is unlinked; injected by the page so the shell stays query-free. */
   googleConnectAction?: React.ReactNode
+}
+
+// One key per rendered period: prev/next remounts the grid. Week is keyed on
+// view only — its infinite scroller handles anchor changes itself.
+const PERIOD_KEY: Record<CalendarWorkspaceView, (anchorDate: string) => string> = {
+  day: (anchorDate) => `day:${anchorDate}`,
+  week: () => 'week',
+  month: (anchorDate) => `month:${anchorDate.slice(0, 7)}`,
+  year: (anchorDate) => `year:${anchorDate.slice(0, 4)}`,
+  // Timeline scrolls continuously and slides its own window, like week.
+  timeline: () => 'timeline'
 }
 
 export function CalendarShell({
@@ -121,6 +143,10 @@ export function CalendarShell({
   onToggleImportedSource,
   onToggleVisualType,
   onSelectItem,
+  onSelectTask,
+  weekStartsOn = 1,
+  timelineSettings = DEFAULT_TIMELINE_SETTINGS,
+  onTimelineSettingsChange = ignoreTimelineSettings,
   onDeleteItem,
   onAddToProject,
   onMoveEvent,
@@ -148,16 +174,7 @@ export function CalendarShell({
     setIsScrolled(target.scrollTop > 0)
   }, [])
 
-  // One key per rendered period: prev/next remounts the grid. Week is keyed on
-  // view only — its infinite scroller handles anchor changes itself.
-  const viewKey =
-    view === 'week'
-      ? 'week'
-      : view === 'day'
-        ? `day:${anchorDate}`
-        : view === 'month'
-          ? `month:${anchorDate.slice(0, 7)}`
-          : `year:${anchorDate.slice(0, 4)}`
+  const viewKey = PERIOD_KEY[view](anchorDate)
   const renderedKeyRef = useRef(viewKey)
   if (renderedKeyRef.current !== viewKey) {
     // New period/view mounts unscrolled — drop the chrome edge with it
@@ -296,6 +313,54 @@ export function CalendarShell({
     </Popover>
   )
 
+  const toolbarActions =
+    view === 'timeline' ? (
+      <TimelineDisplayPopover settings={timelineSettings} onChange={onTimelineSettingsChange} />
+    ) : (
+      <>
+        {googleConnectAction}
+        {refreshButton}
+        {filterPopover}
+      </>
+    )
+
+  const renderView: Record<CalendarWorkspaceView, () => React.JSX.Element> = {
+    day: () => (
+      <CalendarDayView {...chipViewProps} onMoveEvent={onMoveEvent} onQuickSave={onQuickSave} />
+    ),
+    week: () => (
+      <CalendarWeekView
+        {...chipViewProps}
+        onMoveEvent={onMoveEvent}
+        todayRequestKey={todayRequestKey}
+        onQuickSave={onQuickSave}
+        onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}
+      />
+    ),
+    month: () => <CalendarMonthView {...chipViewProps} onQuickSave={onQuickSave} />,
+    year: () => (
+      <CalendarYearView
+        {...viewProps}
+        onViewChange={onViewChange}
+        onAnchorChange={onAnchorChange}
+      />
+    ),
+    timeline: () => (
+      <CalendarTimelineView
+        anchorDate={anchorDate}
+        weekStartsOn={weekStartsOn}
+        settings={timelineSettings}
+        items={items}
+        openItemId={selectedItemId}
+        todayRequestKey={todayRequestKey}
+        onAnchorChange={onAnchorChange}
+        onSettingsChange={onTimelineSettingsChange}
+        onOpenTask={onSelectTask}
+        onOpenEvent={onSelectItem}
+      />
+    )
+  }
+
   return (
     <div
       className="@container relative flex h-full min-h-0 flex-col bg-background"
@@ -316,13 +381,15 @@ export function CalendarShell({
           onToday={onToday}
           onCreateEvent={onCreateEvent}
           onSearchJump={onSearchJump}
-          extraActions={
-            <>
-              {googleConnectAction}
-              {refreshButton}
-              {filterPopover}
-            </>
+          leadingActions={
+            view === 'timeline' ? (
+              <TimelineZoomControl
+                zoom={timelineSettings.zoom}
+                onChange={(zoom) => onTimelineSettingsChange((current) => ({ ...current, zoom }))}
+              />
+            ) : null
           }
+          extraActions={toolbarActions}
         />
       </div>
 
@@ -334,29 +401,7 @@ export function CalendarShell({
           </div>
         ) : (
           <div key={viewKey} className="h-full">
-            {view === 'day' ? (
-              <CalendarDayView
-                {...chipViewProps}
-                onMoveEvent={onMoveEvent}
-                onQuickSave={onQuickSave}
-              />
-            ) : view === 'week' ? (
-              <CalendarWeekView
-                {...chipViewProps}
-                onMoveEvent={onMoveEvent}
-                todayRequestKey={todayRequestKey}
-                onQuickSave={onQuickSave}
-                onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}
-              />
-            ) : view === 'month' ? (
-              <CalendarMonthView {...chipViewProps} onQuickSave={onQuickSave} />
-            ) : (
-              <CalendarYearView
-                {...viewProps}
-                onViewChange={onViewChange}
-                onAnchorChange={onAnchorChange}
-              />
-            )}
+            {renderView[view]()}
           </div>
         )}
       </div>
