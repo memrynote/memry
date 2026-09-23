@@ -809,8 +809,10 @@
     "copyLinks": "Links kopieren",
     "delete": "Löschen",
     "export": "Exportieren",
+    "iconUpdated": "{count, plural, one {Symbol für # Notiz aktualisiert} other {Symbol für # Notizen aktualisiert}}",
     "move": "Verschieben",
     "selected": "ausgewählt",
+    "setIcon": "Symbol festlegen",
     "tagNamePlaceholder": "Tag-Name",
     "toolbarAria": "Sammelaktionen"
   },
@@ -867,6 +869,10 @@
     "edit": "Vorlage bearbeiten",
     "failed": "Vorlage konnte nicht gespeichert werden",
     "loadFailed": "Notiz konnte nicht gelesen werden"
+  },
+  "newNoteFromNote": {
+    "action": "Neue Notiz aus dieser Notiz",
+    "created": "Erstellt mit {tagCount, plural, =0 {keinen Tags} one {# Tag} other {# Tags}} und {propertyCount, plural, =0 {keinen Eigenschaften} one {# Eigenschaft} other {# Eigenschaften}} aus {source}"
   },
   "tagView": {
     "moreActions": "Weitere Aktionen",

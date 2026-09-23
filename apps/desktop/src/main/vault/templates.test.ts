@@ -172,6 +172,64 @@ describe('templates CRUD', () => {
   })
 })
 
+// A template is a snapshot. Every note made from one that kept a `{task:<id>}`
+// suffix pointed at the same task, so deleting it anywhere left a "Task
+// deleted" row in every other note (#2331).
+describe('templates never carry a task identity', () => {
+  const TASK_BODY = '## Chores\n\n- [ ] Call the plumber {task:t1}\n  - [x] Book a slot {task:t2}'
+  const PLAIN_BODY = '## Chores\n\n- [ ] Call the plumber\n  - [x] Book a slot'
+
+  beforeEach(() => {
+    testDb = createTestDataDb()
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    testDb.close()
+  })
+
+  function storedContent(id: string): string | undefined {
+    return testDb.db.select().from(templatesTable).where(eq(templatesTable.id, id)).get()?.content
+  }
+
+  it('stores a note body saved as a template without its task ids', async () => {
+    const created = await createTemplate({ name: 'Chores', content: TASK_BODY })
+
+    expect(created.content).toBe(PLAIN_BODY)
+    expect(storedContent(created.id)).toBe(PLAIN_BODY)
+  })
+
+  it('stores an edited template body without task ids', async () => {
+    const created = await createTemplate({ name: 'Chores', content: 'v1' })
+
+    const updated = await updateTemplate({ id: created.id, content: TASK_BODY })
+
+    expect(updated.content).toBe(PLAIN_BODY)
+    expect(storedContent(created.id)).toBe(PLAIN_BODY)
+  })
+
+  it('reads a row an older version or another device wrote with task ids as plain checkboxes', async () => {
+    const now = new Date().toISOString()
+    testDb.db
+      .insert(templatesTable)
+      .values({
+        id: 'legacy-template',
+        name: 'Legacy',
+        tags: [],
+        properties: [],
+        content: TASK_BODY,
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+
+    const template = await getTemplate('legacy-template')
+
+    expect(template?.content).toBe(PLAIN_BODY)
+    expect(applyTemplate(template!, 'New note').content).toBe(PLAIN_BODY)
+  })
+})
+
 describe('applyTemplate', () => {
   it('replaces the {{title}} placeholder, copies tags, and flattens properties', () => {
     const result = applyTemplate(

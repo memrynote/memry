@@ -310,6 +310,7 @@ export function createGeneratedRpcApi({
       "setInboxSettings": ((settings) => invoke("settings:setInboxSettings", settings)) as GeneratedRpcApi["settings"]["setInboxSettings"],
       "sendTestInboxReviewNotification": (() => invoke("settings:sendTestInboxReviewNotification")) as GeneratedRpcApi["settings"]["sendTestInboxReviewNotification"],
       "registerGlobalCapture": (() => invoke("settings:registerGlobalCapture")) as GeneratedRpcApi["settings"]["registerGlobalCapture"],
+      "setGlobalCapture": ((binding) => invoke("settings:setGlobalCapture", binding)) as GeneratedRpcApi["settings"]["setGlobalCapture"],
       "getTerminalCommandStatus": (() => invoke("settings:getTerminalCommandStatus")) as GeneratedRpcApi["settings"]["getTerminalCommandStatus"],
       "installTerminalCommand": (() => invoke("settings:installTerminalCommand")) as GeneratedRpcApi["settings"]["installTerminalCommand"],
       "uninstallTerminalCommand": (() => invoke("settings:uninstallTerminalCommand")) as GeneratedRpcApi["settings"]["uninstallTerminalCommand"],
@@ -333,6 +334,9 @@ export function createGeneratedRpcApi({
       "setDefaultGoogleCalendar": ((input) => invoke("calendar:set-default-google-calendar", input)) as GeneratedRpcApi["calendar"]["setDefaultGoogleCalendar"],
       "promoteExternalEvent": ((input) => invoke("calendar:promote-external-event", input)) as GeneratedRpcApi["calendar"]["promoteExternalEvent"],
       "retryGoogleCalendarSourceSync": ((input) => invoke("calendar:retry-google-source-sync", input)) as GeneratedRpcApi["calendar"]["retryGoogleCalendarSourceSync"],
+      "subscribeIcsCalendar": ((input) => invoke("calendar:subscribe-ics", input)) as GeneratedRpcApi["calendar"]["subscribeIcsCalendar"],
+      "unsubscribeIcsCalendar": ((input) => invoke("calendar:unsubscribe-ics", input)) as GeneratedRpcApi["calendar"]["unsubscribeIcsCalendar"],
+      "refreshIcsCalendar": ((input) => invoke("calendar:refresh-ics", input)) as GeneratedRpcApi["calendar"]["refreshIcsCalendar"],
     },
     "canvas": {
       "create": ((input) => invoke("canvas:create", input ?? {})) as GeneratedRpcApi["canvas"]["create"],

@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Xóa khỏi tài khoản",
       "deleteVaultFailed": "Không thể xóa kho",
       "deleteVaultTitle": "Xóa “{name}” khỏi tài khoản của bạn?",
-      "removeVaultTitle": "Gỡ “{name}” khỏi danh sách?"
+      "removeVaultTitle": "Gỡ “{name}” khỏi danh sách?",
+      "missing": "Không tìm thấy thư mục"
     },
     "componentsWindowControls": {
       "searchK": "  \nTìm kiếm (⌘K)  ",

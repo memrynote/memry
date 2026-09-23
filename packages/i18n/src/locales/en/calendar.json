@@ -213,5 +213,9 @@
     "purple": "Purple",
     "pink": "Pink",
     "gray": "Gray"
+  },
+  "subscribedEvent": {
+    "kind": "Subscribed calendar",
+    "readOnly": "Read-only. Change it in the app that shares this calendar."
   }
 }

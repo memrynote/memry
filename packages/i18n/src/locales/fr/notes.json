@@ -809,8 +809,10 @@
     "copyLinks": "Copier les liens",
     "delete": "Supprimer",
     "export": "Exporter",
+    "iconUpdated": "{count, plural, one {Icône mise à jour sur # note} other {Icône mise à jour sur # notes}}",
     "move": "Déplacer",
     "selected": "sélectionné(s)",
+    "setIcon": "Définir l'icône",
     "tagNamePlaceholder": "Nom de l'étiquette",
     "toolbarAria": "Actions groupées"
   },
@@ -867,6 +869,10 @@
     "edit": "Modifier le modèle",
     "failed": "Échec de l'enregistrement du modèle",
     "loadFailed": "Impossible de lire cette note"
+  },
+  "newNoteFromNote": {
+    "action": "Nouvelle note à partir de cette note",
+    "created": "Créée avec {tagCount, plural, =0 {aucune balise} one {# balise} other {# balises}} et {propertyCount, plural, =0 {aucune propriété} one {# propriété} other {# propriétés}} depuis {source}"
   },
   "tagView": {
     "moreActions": "Plus d'actions",

@@ -809,8 +809,10 @@
     "copyLinks": "Salin tautan",
     "delete": "Hapus",
     "export": "Ekspor",
+    "iconUpdated": "{count, plural, one {Ikon diperbarui pada # catatan} other {Ikon diperbarui pada # catatan}}",
     "move": "Pindahkan",
     "selected": "dipilih",
+    "setIcon": "Atur ikon",
     "tagNamePlaceholder": "Nama tag",
     "toolbarAria": "Aksi massal"
   },
@@ -867,6 +869,10 @@
     "edit": "Edit templat",
     "failed": "Gagal menyimpan templat",
     "loadFailed": "Tidak dapat membaca catatan ini"
+  },
+  "newNoteFromNote": {
+    "action": "Catatan baru dari catatan ini",
+    "created": "Dibuat dari {source}: {tagCount, plural, =0 {tanpa tanda} other {# tanda}}, {propertyCount, plural, =0 {tanpa properti} other {# properti}}"
   },
   "tagView": {
     "moreActions": "Tindakan lainnya",

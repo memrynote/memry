@@ -809,8 +809,10 @@
     "copyLinks": "Kopioi linkit",
     "delete": "Poista",
     "export": "Vie",
+    "iconUpdated": "{count, plural, one {Kuvake päivitetty # muistiinpanoon} other {Kuvake päivitetty # muistiinpanoon}}",
     "move": "Siirrä",
     "selected": "valittu",
+    "setIcon": "Aseta kuvake",
     "tagNamePlaceholder": "Tunnisteen nimi",
     "toolbarAria": "Joukkotoiminnot"
   },
@@ -867,6 +869,10 @@
     "edit": "Muokkaa mallia",
     "failed": "Mallin tallentaminen epäonnistui",
     "loadFailed": "Muistiinpanoa ei voitu lukea"
+  },
+  "newNoteFromNote": {
+    "action": "Uusi muistiinpano tästä muistiinpanosta",
+    "created": "Luotu muistiinpanosta {source}: {tagCount, plural, =0 {ei tunnisteita} one {# tunniste} other {# tunnistetta}}, {propertyCount, plural, =0 {ei ominaisuuksia} one {# ominaisuus} other {# ominaisuutta}}"
   },
   "tagView": {
     "moreActions": "Lisää toimintoja",

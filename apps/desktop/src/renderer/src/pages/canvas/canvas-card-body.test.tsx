@@ -6,7 +6,12 @@ import type { CanvasCardRef } from './canvas-cards'
 import type { CanvasEntityState } from './use-canvas-entities'
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key.split('.').at(-1) ?? key })
+  useT: () => ({
+    t: (key: string, vars?: Record<string, unknown>) => {
+      const last = key.split('.').at(-1) ?? key
+      return vars ? `${last}:${Object.values(vars).join('/')}` : last
+    }
+  })
 }))
 
 // Stub the leaves: this test is about which body an entity type gets and how
@@ -121,6 +126,98 @@ describe('CanvasCardBody', () => {
     expect(active!.className).toBe(idleClass)
     expect(idleClass).toContain('px-3')
     expect(idleClass).toContain('pb-3')
+  })
+
+  it('renders a project as its name, description, progress and overdue count', () => {
+    render(
+      <CanvasCardBody
+        cardRef={ref({ entityType: 'project', entityId: 'p1' })}
+        state={{
+          status: 'ready',
+          kind: 'project',
+          title: 'Launch',
+          color: '#3366ff',
+          description: 'Ship v2 to everyone',
+          taskCount: 4,
+          completedCount: 1,
+          overdueCount: 2
+        }}
+        interactive={false}
+      />
+    )
+    expect(screen.getByText('Launch')).toBeInTheDocument()
+    expect(screen.getByText('Ship v2 to everyone')).toBeInTheDocument()
+    expect(screen.getByText('doneOf:1/4')).toBeInTheDocument()
+    expect(screen.getByText('25%')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '25')
+    expect(screen.getByText('2')).toBeInTheDocument()
+  })
+
+  it('says a project has no tasks instead of drawing an empty bar', () => {
+    render(
+      <CanvasCardBody
+        cardRef={ref({ entityType: 'project', entityId: 'p1' })}
+        state={{
+          status: 'ready',
+          kind: 'project',
+          title: 'Empty',
+          color: '#3366ff',
+          description: null,
+          taskCount: 0,
+          completedCount: 0,
+          overdueCount: 0
+        }}
+        interactive={false}
+      />
+    )
+    expect(screen.getByText('projectNoTasks')).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  })
+
+  it('previews an image file from the vault and names its type, size and folder', () => {
+    const { container } = render(
+      <CanvasCardBody
+        cardRef={ref({ entityType: 'file', entityId: 'f1' })}
+        state={{
+          status: 'ready',
+          kind: 'file',
+          title: 'Whiteboard',
+          fileType: 'image',
+          path: 'Meetings/Q3/Whiteboard.png',
+          absolutePath: '/vault/Meetings/Q3/Whiteboard.png',
+          fileSize: 2048
+        }}
+        interactive={false}
+      />
+    )
+    expect(container.querySelector('img')).toHaveAttribute(
+      'src',
+      'memry-file://local/vault/Meetings/Q3/Whiteboard.png'
+    )
+    expect(screen.getByText('Whiteboard')).toBeInTheDocument()
+    expect(screen.getByText('PNG')).toBeInTheDocument()
+    expect(screen.getByText('2 KB')).toBeInTheDocument()
+    expect(screen.getByText('Meetings/Q3')).toBeInTheDocument()
+  })
+
+  it('shows a PDF by its type icon rather than loading it into the card', () => {
+    const { container } = render(
+      <CanvasCardBody
+        cardRef={ref({ entityType: 'file', entityId: 'f1' })}
+        state={{
+          status: 'ready',
+          kind: 'file',
+          title: 'Brief',
+          fileType: 'pdf',
+          path: 'Brief.pdf',
+          absolutePath: '/vault/Brief.pdf',
+          fileSize: null
+        }}
+        interactive={false}
+      />
+    )
+    expect(container.querySelector('img, video, iframe')).toBeNull()
+    expect(screen.getByText('PDF')).toBeInTheDocument()
   })
 
   it('falls back to an empty body while the note is still loading', () => {

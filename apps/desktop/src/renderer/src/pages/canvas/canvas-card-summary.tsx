@@ -15,6 +15,7 @@ import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { renderTaskDescriptionMarkdown } from '@/components/tasks/task-description-preview'
 import { useT } from '@memry/i18n/renderer'
 import { formatEventTime } from './canvas-cards'
+import { FileCardView, ProjectCardView } from './canvas-reference-card'
 import type { CanvasEntityState } from './use-canvas-entities'
 
 function formatDueDate(dueDate: string | null): string | null {
@@ -79,6 +80,14 @@ export const CanvasCardSummary = ({ state }: CanvasCardSummaryProps): React.JSX.
         ) : null}
       </div>
     )
+  }
+
+  if (state.kind === 'project') {
+    return <ProjectCardView state={state} />
+  }
+
+  if (state.kind === 'file') {
+    return <FileCardView state={state} media={false} />
   }
 
   return (

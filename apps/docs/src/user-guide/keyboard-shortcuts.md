@@ -196,4 +196,4 @@ Open [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts),
 
 Editor formatting rows (Bold, Italic, Underline) are shown for reference and cannot be reassigned: the note editor owns those keys.
 
-You can also set a **Global Capture** hotkey there to bring memrynote to focus from any app (macOS requires Accessibility permission).
+You can also set a **Global Capture** hotkey there to open quick capture from any app (macOS requires Accessibility permission).

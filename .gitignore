@@ -102,4 +102,19 @@ packages/swift/MemryCore/.swiftpm/
 # xcode-build-server's BSP config, written by `xcode-build-server config`. It
 # records the absolute workspace path and this machine's DerivedData hash, so a
 # committed copy points every other checkout at one developer's build root.
+#
+# The repo-root copy is the one sourcekit-lsp actually reads. An editor or agent
+# that opens the monorepo root resolves its Swift language server against that
+# root, never against apps/ios, so a config living only beside the Xcode project
+# is invisible to it -- and without a compile database SourceKit cannot resolve
+# UIKit, MemryCore, or even a type declared in the same target, reporting phantom
+# errors on files nobody has touched. Regenerate both with:
+#
+#   cd apps/ios && xcode-build-server config -project Memry.xcodeproj -scheme Memry
+#   cp buildServer.json ../../buildServer.json
 apps/ios/buildServer.json
+buildServer.json
+
+# xcode-build-server's compile database, regenerated from a build log. Same
+# reasoning as buildServer.json above: it names one developer's DerivedData.
+.compile

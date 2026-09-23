@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   removeNotesOptimistically: vi.fn(),
   updateNoteProperty: vi.fn(),
   updateNoteTags: vi.fn(),
+  updateNoteIcons: vi.fn(),
+  toastSuccess: vi.fn(),
   setActiveViewIndex: vi.fn(),
   updateView: vi.fn(),
   addView: vi.fn(),
@@ -161,8 +163,13 @@ vi.mock('@/hooks/use-folder-view', () => ({
     refresh: mocks.refresh,
     removeNotesOptimistically: mocks.removeNotesOptimistically,
     updateNoteProperty: mocks.updateNoteProperty,
-    updateNoteTags: mocks.updateNoteTags
+    updateNoteTags: mocks.updateNoteTags,
+    updateNoteIcons: mocks.updateNoteIcons
   })
+}))
+
+vi.mock('sonner', () => ({
+  toast: { success: mocks.toastSuccess, error: vi.fn() }
 }))
 
 vi.mock('@/components/ui/button', () => ({
@@ -485,6 +492,7 @@ vi.mock('@/components/folder-view/bulk-action-bar', () => ({
     onDelete,
     onMove,
     onAddTag,
+    onSetIcon,
     onClear
   }: {
     scope?: { kind: string }
@@ -493,6 +501,7 @@ vi.mock('@/components/folder-view/bulk-action-bar', () => ({
     onDelete: () => void
     onMove: () => void
     onAddTag: (tag: string) => void
+    onSetIcon: (icon: string | null) => void
     onClear: () => void
   }) => (
     <div>
@@ -507,6 +516,9 @@ vi.mock('@/components/folder-view/bulk-action-bar', () => ({
       </button>
       <button type="button" onClick={() => onAddTag('urgent')}>
         Bulk add tag
+      </button>
+      <button type="button" onClick={() => onSetIcon('x')}>
+        Bulk set icon
       </button>
       <button type="button" onClick={onClear}>
         Clear bulk selection
@@ -881,8 +893,8 @@ describe('FolderViewPage bulk action bar wiring', () => {
     expect(await screen.findByTestId('bulk-scope-kind')).toHaveTextContent('tag')
     const selectedRowsJson = screen.getByTestId('bulk-selected-rows').textContent
     expect(JSON.parse(selectedRowsJson ?? '[]')).toEqual([
-      { id: 'note-1' },
-      { id: 'task-1', kind: 'task' }
+      { id: 'note-1', emoji: 'x' },
+      { id: 'task-1', kind: 'task', emoji: null }
     ])
   })
 
@@ -956,6 +968,66 @@ describe('FolderViewPage tag mutations stay note-only', () => {
     )
     expect(mocks.updateNoteTags).toHaveBeenCalledWith('note-2', ['work', 'urgent'])
     expect(mocks.updateNoteTags).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('FolderViewPage bulk set icon', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.folderState.isLoading = false
+    mocks.folderState.error = null
+    mocks.folderState.folderNotFound = false
+    mocks.folderState.activeView = null
+    mocks.updateNoteIcons.mockImplementation(
+      async (changes: Array<{ noteId: string; emoji: string | null }>) =>
+        changes.map(({ noteId }) => ({ noteId, emoji: `was-${noteId}` }))
+    )
+  })
+
+  it('writes only the notes whose icon changes and offers an Undo that replays the old icons', async () => {
+    mocks.folderState.notes = [note, secondNote]
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Select two notes' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bulk set icon' }))
+
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledTimes(1))
+    expect(mocks.updateNoteIcons.mock.calls).toEqual([[[{ noteId: 'note-2', emoji: 'x' }]]])
+
+    const [message, options] = mocks.toastSuccess.mock.calls[0] as [
+      unknown,
+      { action: { onClick: () => void } }
+    ]
+    expect(message).toBe(1)
+    options.action.onClick()
+    expect(mocks.updateNoteIcons.mock.calls[1]).toEqual([
+      [{ noteId: 'note-2', emoji: 'was-note-2' }]
+    ])
+  })
+
+  it('skips a task row in a mixed selection', async () => {
+    mocks.folderState.notes = [{ ...note, emoji: null }, taskRow]
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Select mixed rows' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bulk set icon' }))
+
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledTimes(1))
+    expect(mocks.updateNoteIcons.mock.calls).toEqual([[[{ noteId: 'note-1', emoji: 'x' }]]])
+  })
+
+  it('skips a PDF row, whose metadata the main process refuses to write', async () => {
+    mocks.folderState.notes = [
+      { ...note, emoji: null },
+      { ...secondNote, fileType: 'pdf' }
+    ]
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Select two notes' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bulk set icon' }))
+
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledTimes(1))
+    expect(mocks.updateNoteIcons.mock.calls).toEqual([[[{ noteId: 'note-1', emoji: 'x' }]]])
   })
 })
 

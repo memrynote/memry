@@ -38,6 +38,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { lazy, Suspense, useState } from 'react'
+import { isMetadataEditableRow } from './row-metadata-editability'
 
 const LazyEmojiPicker = lazy(async () => ({
   default: (await import('@/components/note/note-title/EmojiPicker')).EmojiPicker
@@ -68,6 +69,12 @@ interface RowContextMenuProps {
   onSetIcon?: (noteId: string, icon: string | null) => void
 }
 
+/** The row actions a host view wires into the menu, all optional. */
+export type RowMenuActions = Pick<
+  RowContextMenuProps,
+  'onOpenInNewTab' | 'onMoveToFolder' | 'onDelete' | 'onSetIcon'
+>
+
 /**
  * Context menu for table rows with single and bulk actions.
  */
@@ -96,6 +103,9 @@ export function RowContextMenu({
   // but tag view can show task and inbox rows too — those must never offer
   // (or invoke) these actions.
   const isNote = (note.kind ?? 'note') === 'note'
+  // The main process refuses metadata writes on a PDF/image/audio/video row,
+  // so an icon item there could only ever fail.
+  const canSetIcon = isMetadataEditableRow(note) && !!onSetIcon
 
   // The bulk items act on `selectedNoteIds` (the note-only subset of the
   // selection), so they must be labelled with that count and hidden entirely
@@ -168,7 +178,7 @@ export function RowContextMenu({
   }
 
   const handleSetIcon = (icon: string | null): void => {
-    if (!isNote) return
+    if (!canSetIcon) return
     onSetIcon?.(note.id, icon)
   }
 
@@ -254,13 +264,13 @@ export function RowContextMenu({
 
                 {tPhaseF('phaseF.componentsFolderViewRowContextMenu.copyLink')}
               </ContextMenuItem>
-              {isNote && onSetIcon && (
+              {canSetIcon && (
                 <ContextMenuItem onClick={() => setIsIconPickerOpen(true)}>
                   <Smile className="me-2 h-4 w-4" />
                   {tPhaseF('tree.actions.setIcon')}
                 </ContextMenuItem>
               )}
-              {isNote && onSetIcon && note.emoji && (
+              {canSetIcon && note.emoji && (
                 <ContextMenuItem onClick={() => handleSetIcon(null)}>
                   <X className="me-2 h-4 w-4" />
                   {tPhaseF('tree.actions.removeIcon')}

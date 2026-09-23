@@ -809,8 +809,10 @@
     "copyLinks": "คัดลอกลิงก์",
     "delete": "ลบ",
     "export": "ส่งออก",
+    "iconUpdated": "{count, plural, other {อัปเดตไอคอนของ # โน้ตแล้ว}}",
     "move": "ย้าย",
     "selected": "เลือกแล้ว",
+    "setIcon": "ตั้งค่าไอคอน",
     "tagNamePlaceholder": "ชื่อแท็ก",
     "toolbarAria": "การดำเนินการแบบกลุ่ม"
   },
@@ -867,6 +869,10 @@
     "edit": "แก้ไขเทมเพลต",
     "failed": "ไม่สามารถบันทึกเทมเพลตได้",
     "loadFailed": "ไม่สามารถอ่านโน้ตนี้ได้"
+  },
+  "newNoteFromNote": {
+    "action": "โน้ตใหม่จากโน้ตนี้",
+    "created": "สร้างจาก {source}: {tagCount, plural, =0 {ไม่มีแท็ก} other {# แท็ก}}, {propertyCount, plural, =0 {ไม่มีคุณสมบัติ} other {# คุณสมบัติ}}"
   },
   "tagView": {
     "moreActions": "การดำเนินการเพิ่มเติม",

@@ -258,8 +258,8 @@
         "subtext": "Attach an image, video, or audio file"
       },
       "insertTemplate": {
-        "title": "Insert template…",
-        "subtext": "Add a template's content at the cursor",
+        "title": "Insert template content…",
+        "subtext": "Add only a template's body at the cursor",
         "group": "Templates",
         "empty": "That template has no content to insert",
         "failed": "Could not insert that template"
@@ -454,6 +454,13 @@
     "showMore": "Show {count} more backlinks",
     "more": "{count} more",
     "viaProperty": "{property} → {title}"
+  },
+  "outgoingLinks": {
+    "summary": "{count, plural, one {# outgoing link} other {# outgoing links}}",
+    "sectionAria": "Outgoing links",
+    "unresolved": "Not created yet",
+    "showMore": "Show {count} more outgoing links",
+    "more": "{count} more"
   },
   "comments": {
     "railAria": "Comments",
@@ -1140,7 +1147,9 @@
     "export": "Export",
     "delete": "Delete",
     "clearAria": "Clear selection",
-    "copiedLinks": "Copied {count, plural, one {# link} other {# links}}"
+    "copiedLinks": "Copied {count, plural, one {# link} other {# links}}",
+    "setIcon": "Set icon",
+    "iconUpdated": "{count, plural, one {Icon updated on # note} other {Icon updated on # notes}}"
   },
   "applyTemplateConfirm": {
     "title": "Replace note content?",
@@ -1163,6 +1172,10 @@
     "edit": "Edit template",
     "failed": "Failed to save template",
     "loadFailed": "Couldn't read this note"
+  },
+  "newNoteFromNote": {
+    "action": "New note from this note",
+    "created": "Created with {tagCount, plural, =0 {no tags} one {# tag} other {# tags}} and {propertyCount, plural, =0 {no properties} one {# property} other {# properties}} from {source}"
   },
   "tags": {
     "hubTitle": "Tags",

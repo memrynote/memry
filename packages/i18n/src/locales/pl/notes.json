@@ -809,8 +809,10 @@
     "copyLinks": "Kopiuj linki",
     "delete": "Usuń",
     "export": "Eksportuj",
+    "iconUpdated": "{count, plural, one {Zaktualizowano ikonę # notatki} few {Zaktualizowano ikonę # notatek} many {Zaktualizowano ikonę # notatek} other {Zaktualizowano ikonę # notatki}}",
     "move": "Przenieś",
     "selected": "wybrano",
+    "setIcon": "Ustaw ikonę",
     "tagNamePlaceholder": "Nazwa tagu",
     "toolbarAria": "Operacje zbiorcze"
   },
@@ -867,6 +869,10 @@
     "edit": "Edytuj szablon",
     "failed": "Nie udało się zapisać szablonu",
     "loadFailed": "Nie udało się odczytać notatki"
+  },
+  "newNoteFromNote": {
+    "action": "Nowa notatka z tej notatki",
+    "created": "Utworzono z notatki {source}: {tagCount, plural, =0 {brak tagów} one {# tag} few {# tagi} many {# tagów} other {# tagu}}, {propertyCount, plural, =0 {brak właściwości} one {# właściwość} few {# właściwości} many {# właściwości} other {# właściwości}}"
   },
   "tagView": {
     "moreActions": "Więcej akcji",

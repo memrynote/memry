@@ -121,6 +121,7 @@ interface VirtualizedNotesTreeProps {
   /** Callback when a template should be applied to a note */
   onApplyTemplateToNote?: (note: NoteListItem) => void
   onSaveNoteAsTemplate?: (note: NoteListItem) => void
+  onNewNoteFromNote?: (note: NoteListItem) => void
   /** Callback when a note should be deleted */
   onDeleteNote?: (note: NoteListItem) => void
   /** Callback when opening a note externally */
@@ -650,6 +651,7 @@ interface NoteRowProps {
   isRenaming?: boolean
   onApplyTemplateToNote?: (note: NoteListItem) => void
   onSaveNoteAsTemplate?: (note: NoteListItem) => void
+  onNewNoteFromNote?: (note: NoteListItem) => void
   onDeleteNote?: (note: NoteListItem) => void
   onOpenExternal?: (note: NoteListItem) => void
   onRevealInFinder?: (note: NoteListItem) => void
@@ -686,6 +688,7 @@ function NoteRow({
   isRenaming,
   onApplyTemplateToNote,
   onSaveNoteAsTemplate,
+  onNewNoteFromNote,
   onDeleteNote,
   onOpenExternal,
   onRevealInFinder,
@@ -892,6 +895,12 @@ function NoteRow({
               <Save className="me-2 h-4 w-4" />
               {t('tree.actions.saveAsTemplate')}
             </ContextMenuItem>
+            {(item.note.fileType ?? 'markdown') === 'markdown' && (
+              <ContextMenuItem onClick={() => onNewNoteFromNote?.(item.note)}>
+                <FilePlus className="me-2 h-4 w-4" />
+                {t('newNoteFromNote.action')}
+              </ContextMenuItem>
+            )}
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onIconPickerOpenChange?.(item.note.id)}>
               <Smile className="me-2 h-4 w-4" />
@@ -943,6 +952,7 @@ export function VirtualizedNotesTree({
   onRenameNote,
   onApplyTemplateToNote,
   onSaveNoteAsTemplate,
+  onNewNoteFromNote,
   onDeleteNote,
   onOpenExternal,
   onRevealInFinder,
@@ -1541,6 +1551,7 @@ export function VirtualizedNotesTree({
                   isRenaming={isRenaming}
                   onApplyTemplateToNote={onApplyTemplateToNote}
                   onSaveNoteAsTemplate={onSaveNoteAsTemplate}
+                  onNewNoteFromNote={onNewNoteFromNote}
                   onDeleteNote={onDeleteNote}
                   onOpenExternal={onOpenExternal}
                   onRevealInFinder={onRevealInFinder}

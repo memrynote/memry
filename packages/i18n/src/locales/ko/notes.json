@@ -809,8 +809,10 @@
     "copyLinks": "링크 복사",
     "delete": "삭제",
     "export": "내보내기",
+    "iconUpdated": "{count, plural, other {노트 #개의 아이콘을 업데이트함}}",
     "move": "이동",
     "selected": "선택됨",
+    "setIcon": "아이콘 설정",
     "tagNamePlaceholder": "태그 이름",
     "toolbarAria": "일괄 작업"
   },
@@ -867,6 +869,10 @@
     "edit": "템플릿 편집",
     "failed": "템플릿을 저장하지 못했습니다",
     "loadFailed": "메모를 읽지 못했습니다"
+  },
+  "newNoteFromNote": {
+    "action": "이 메모로 새 메모 만들기",
+    "created": "{source}에서 만들었습니다 · 태그 {tagCount, plural, =0 {없음} other {#개}}, 속성 {propertyCount, plural, =0 {없음} other {#개}}"
   },
   "tagView": {
     "moreActions": "더 보기",

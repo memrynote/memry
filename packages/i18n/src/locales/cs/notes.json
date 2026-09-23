@@ -809,8 +809,10 @@
     "copyLinks": "Kopírovat odkazy",
     "delete": "Smazat",
     "export": "Exportovat",
+    "iconUpdated": "{count, plural, one {Ikona aktualizována u # poznámky} few {Ikona aktualizována u # poznámek} other {Ikona aktualizována u # poznámek}}",
     "move": "Přesunout",
     "selected": "vybráno",
+    "setIcon": "Nastavit ikonu",
     "tagNamePlaceholder": "Název značky",
     "toolbarAria": "Hromadné akce"
   },
@@ -867,6 +869,10 @@
     "edit": "Upravit šablonu",
     "failed": "Šablonu se nepodařilo uložit",
     "loadFailed": "Poznámku se nepodařilo načíst"
+  },
+  "newNoteFromNote": {
+    "action": "Nová poznámka z této poznámky",
+    "created": "Vytvořeno z poznámky {source}: {tagCount, plural, =0 {žádné značky} one {# značka} few {# značky} many {# značky} other {# značek}}, {propertyCount, plural, =0 {žádné vlastnosti} one {# vlastnost} few {# vlastnosti} many {# vlastnosti} other {# vlastností}}"
   },
   "tagView": {
     "moreActions": "Další akce",

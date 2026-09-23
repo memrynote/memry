@@ -809,8 +809,10 @@
     "copyLinks": "Kopier lenker",
     "delete": "Slett",
     "export": "Eksporter",
+    "iconUpdated": "{count, plural, one {Ikon oppdatert på # notat} other {Ikon oppdatert på # notater}}",
     "move": "Flytt",
     "selected": "valgt",
+    "setIcon": "Angi ikon",
     "tagNamePlaceholder": "Etikettnavn",
     "toolbarAria": "Masshandlinger"
   },
@@ -867,6 +869,10 @@
     "edit": "Rediger mal",
     "failed": "Kunne ikke lagre malen",
     "loadFailed": "Kunne ikke lese notatet"
+  },
+  "newNoteFromNote": {
+    "action": "Nytt notat fra dette notatet",
+    "created": "Opprettet med {tagCount, plural, =0 {ingen tagger} one {# tag} other {# tagger}} og {propertyCount, plural, =0 {ingen egenskaper} one {# egenskap} other {# egenskaper}} fra {source}"
   },
   "tagView": {
     "moreActions": "Flere handlinger",

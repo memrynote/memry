@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "從帳戶刪除",
       "deleteVaultFailed": "無法刪除保險庫",
       "deleteVaultTitle": "要從您的帳戶刪除「{name}」嗎？",
-      "removeVaultTitle": "要將「{name}」從清單中移除嗎？"
+      "removeVaultTitle": "要將「{name}」從清單中移除嗎？",
+      "missing": "找不到資料夾"
     },
     "componentsWindowControls": {
       "searchK": "搜尋 (⌘K)",

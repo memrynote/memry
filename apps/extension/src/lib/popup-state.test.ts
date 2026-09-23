@@ -44,7 +44,7 @@ test('approve then save lifecycle', () => {
   s = reducer(s, { type: 'STATUS', connection: 'needs-pairing', port: 7849 })
   s = reducer(s, { type: 'APPROVE_START' })
   expect(selectPhase(s)).toBe('approving')
-  s = reducer(s, { type: 'APPROVE_DONE', ok: true })
+  s = reducer(s, { type: 'APPROVE_DONE', result: { ok: true } })
   s = reducer(s, { type: 'SAVE_START' })
   expect(selectPhase(s)).toBe('saving')
   s = reducer(s, { type: 'SAVE_DONE', result: { ok: true, itemId: 'i1' } })
@@ -55,9 +55,16 @@ test('declined approval surfaces an error', () => {
   let s = reducer(initialState, { type: 'DRAFT_READY', draft })
   s = reducer(s, { type: 'STATUS', connection: 'needs-pairing', port: 7849 })
   s = reducer(s, { type: 'APPROVE_START' })
-  s = reducer(s, { type: 'APPROVE_DONE', ok: false })
+  s = reducer(s, { type: 'APPROVE_DONE', result: { ok: false, error: 'pair-denied' } })
   expect(selectPhase(s)).toBe('error')
-  expect(s.errorMessage).toContain('Memry')
+  expect(s.errorMessage).toBe('Pairing was declined in Memry. Send again to ask once more.')
+})
+
+test('an unanswered approval times out with its own message', () => {
+  let s = reducer(initialState, { type: 'APPROVE_START' })
+  s = reducer(s, { type: 'APPROVE_DONE', result: { ok: false, error: 'pair-timeout' } })
+  expect(selectPhase(s)).toBe('error')
+  expect(s.errorMessage).toBe('Pairing timed out. Approve the request in Memry, then try again.')
 })
 
 test('save lifecycle: saving -> saved', () => {
@@ -97,20 +104,19 @@ describe('launch lifecycle', () => {
     expect(selectPhase(s)).toBe('launching')
   })
 
-  test('LAUNCH_DONE ok:true leaves launching', () => {
-    let s = reducer(initialState, { type: 'DRAFT_READY', draft: null })
-    s = reducer(s, { type: 'STATUS', connection: 'app-closed', port: null })
-    s = reducer(s, { type: 'LAUNCH_START' })
-    s = reducer(s, { type: 'LAUNCH_DONE', ok: true })
-    expect(selectPhase(s)).toBe('app-closed')
-  })
-
-  test('LAUNCH_DONE ok:false surfaces error with message', () => {
+  test('an app that never came up surfaces an error with message', () => {
     let s = reducer(initialState, { type: 'STATUS', connection: 'app-closed', port: null })
     s = reducer(s, { type: 'LAUNCH_START' })
-    s = reducer(s, { type: 'LAUNCH_DONE', ok: false })
+    s = reducer(s, { type: 'SAVE_DONE', result: { ok: false, error: 'app-closed' } })
     expect(selectPhase(s)).toBe('error')
     expect(s.errorMessage).toBe('Open Memry, then try again.')
+  })
+
+  test('an app on the vault picker asks for a vault instead of failing silently', () => {
+    let s = reducer(initialState, { type: 'LAUNCH_START' })
+    s = reducer(s, { type: 'SAVE_DONE', result: { ok: false, error: 'vault-closed' } })
+    expect(selectPhase(s)).toBe('error')
+    expect(s.errorMessage).toBe('Open a vault in Memry, then save again.')
   })
 })
 
@@ -133,6 +139,16 @@ describe('offline queue state', () => {
     expect(s.action).toBe('queued')
     expect(s.errorMessage).toBeNull()
     expect(selectPhase(s)).toBe('queued')
+    expect(s.queuedReason).toBe('app-closed')
+  })
+
+  it('a capture held until a vault opens is queued with that reason', () => {
+    const s = reducer(initialState, {
+      type: 'SAVE_DONE',
+      result: { ok: false, error: 'queued-vault-closed' }
+    })
+    expect(selectPhase(s)).toBe('queued')
+    expect(s.queuedReason).toBe('vault-closed')
   })
 
   it('SAVE_DONE with a real error still maps to error', () => {

@@ -618,6 +618,32 @@
         "retrying": "Retrying…",
         "retryNow": "Retry now"
       }
+    },
+    "subscriptions": {
+      "name": "Subscribed calendars",
+      "description": "Add a read-only calendar by its shared link (ICS or webcal), such as a Proton, iCloud, Outlook, or Fastmail calendar. It is checked for changes about once an hour.",
+      "urlLabel": "Calendar link",
+      "urlPlaceholder": "webcal:// or https:// calendar link",
+      "subscribe": "Subscribe",
+      "subscribing": "Subscribing…",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing…",
+      "remove": "Remove",
+      "readOnly": "Read-only",
+      "updatedAt": "Updated {time}",
+      "notCheckedYet": "Not checked yet",
+      "keptEvents": "Events already on your calendar stay until the next successful update.",
+      "errors": {
+        "invalid_url": "That is not a calendar link. Paste an address that starts with webcal://, https://, or http://.",
+        "unreachable": "Couldn't reach this calendar. Check the link and your internet connection.",
+        "timeout": "The calendar took too long to respond. Try again in a moment.",
+        "not_found": "No calendar was found at this link. It may have been deleted, or its sharing link changed.",
+        "unauthorized": "The calendar refused access. Copy a fresh sharing link from your calendar app.",
+        "http_error": "The calendar server returned an error. Try again later.",
+        "too_large": "This calendar is too large to add. Share a smaller calendar instead.",
+        "not_a_calendar": "This link does not return a calendar. Copy the ICS or webcal link from your calendar app's sharing settings.",
+        "unknown": "Couldn't update this calendar ({code}). Try again later."
+      }
     }
   },
   "account": {
@@ -1420,7 +1446,10 @@
       "description": "Capture a note from anywhere",
       "permissionNeeded": "Permission needed",
       "active": "Active",
-      "permissionHint": "Global shortcuts require Accessibility permission. Go to System Settings → Privacy → Accessibility and enable memrynote."
+      "permissionHint": "Global shortcuts require Accessibility permission. Go to System Settings → Privacy → Accessibility and enable memrynote.",
+      "inUse": "{shortcut} is in use by another app. Pick a different combination.",
+      "unsupported": "{shortcut} can't be used as a global shortcut. Pick a different combination.",
+      "fallbackInUse": "The default shortcut {shortcut} is in use by another app. Set a different combination to use Global Capture."
     },
     "toasts": {
       "saveGlobalFailed": "Failed to save global capture shortcut",

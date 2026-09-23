@@ -19,6 +19,7 @@ import {
   ACCENT_SWITCH
 } from '@/components/settings/settings-primitives'
 import { GoogleCalendarConnection } from '@/components/settings/google-calendar-connection'
+import { IcsCalendarSubscriptions } from '@/components/settings/ics-calendar-subscriptions'
 import type { CalendarSettings } from '@memry/contracts/settings-schemas'
 
 const GLOBAL_CLICK_OPTIONS = [
@@ -89,6 +90,10 @@ export function CalendarSettingsSection() {
 
       <SettingsGroup label={t('calendar.google.name')}>
         <GoogleCalendarConnection />
+      </SettingsGroup>
+
+      <SettingsGroup label={t('calendar.subscriptions.name')}>
+        <IcsCalendarSubscriptions />
       </SettingsGroup>
 
       <SettingsGroup label={t('calendar.groups.weekStart')}>

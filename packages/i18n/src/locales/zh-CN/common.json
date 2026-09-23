@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "从账户中删除",
       "deleteVaultFailed": "无法删除保险库",
       "deleteVaultTitle": "从你的账户中删除“{name}”？",
-      "removeVaultTitle": "从列表中移除“{name}”？"
+      "removeVaultTitle": "从列表中移除“{name}”？",
+      "missing": "未找到文件夹"
     },
     "componentsWindowControls": {
       "searchK": "搜索 (⌘K)",

@@ -19,8 +19,9 @@ import { getCanvas, listCanvases, listCanvasesWithCounts } from '../../../canvas
 import { summarizeScene } from '../../../canvas/summary'
 import { getCanvasContext } from '../../../canvas/vault-key'
 import type { DataDb } from '../../../database'
+import { getProjectById } from '../../../database/queries/projects'
 import { getTaskById } from '../../../database/queries/tasks'
-import { getNoteById } from '../../../vault/notes'
+import { getFileById, getNoteById } from '../../../vault/notes'
 import { AgentToolError } from '../errors'
 import { assertSpatialCanvasEnabled } from './canvas-flag'
 import { invokeCanvasWrite } from './canvas-write'
@@ -106,17 +107,32 @@ async function resolveCanvasItem(
   dataDb: DataDb,
   ref: CanvasEntityRefLike
 ): Promise<CanvasItemSummary> {
-  const base = { entity_type: ref.entityType, entity_id: ref.entityId }
-  if (ref.entityType === 'note') {
-    const note = await getNoteById(ref.entityId)
-    return { ...base, title: note?.title ?? null, missing: !note }
+  const title = await resolveCanvasItemTitle(dataDb, ref)
+  return {
+    entity_type: ref.entityType,
+    entity_id: ref.entityId,
+    title,
+    missing: title === null
   }
-  if (ref.entityType === 'task') {
-    const task = getTaskById(dataDb, ref.entityId)
-    return { ...base, title: task?.title ?? null, missing: !task }
+}
+
+/** The entity's title, or null when it no longer exists. */
+async function resolveCanvasItemTitle(
+  dataDb: DataDb,
+  ref: CanvasEntityRefLike
+): Promise<string | null> {
+  switch (ref.entityType) {
+    case 'note':
+      return (await getNoteById(ref.entityId))?.title ?? null
+    case 'task':
+      return getTaskById(dataDb, ref.entityId)?.title ?? null
+    case 'calendar_event':
+      return getCalendarEventById(dataDb, ref.entityId)?.title ?? null
+    case 'project':
+      return getProjectById(dataDb, ref.entityId)?.name ?? null
+    case 'file':
+      return (await getFileById(ref.entityId))?.title ?? null
   }
-  const event = getCalendarEventById(dataDb, ref.entityId)
-  return { ...base, title: event?.title ?? null, missing: !event }
 }
 
 /** Refuse to mint a card pointing at nothing — the UI picker cannot, so neither can an agent. */

@@ -209,9 +209,7 @@ describe('file block helpers', () => {
     const Render = (createFileBlock as any).render
 
     const { container, rerender } = render(
-      <Render
-        block={{ props: { url: '', name: '', size: 0, mimeType: '' } }}
-      />
+      <Render block={{ props: { url: '', name: '', size: 0, mimeType: '' } }} />
     )
     expect(
       screen.getByText('phaseF.componentsNoteContentAreaFileBlock.noFileAttached')

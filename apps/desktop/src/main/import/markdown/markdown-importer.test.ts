@@ -261,7 +261,9 @@ describe('markdownImporter (integration)', () => {
 
     const insertProject = (id: string, name: string, isInbox: number, position: number): void => {
       dataDb.sqlite
-        .prepare('INSERT INTO projects (id, name, color, position, is_inbox) VALUES (?, ?, ?, ?, ?)')
+        .prepare(
+          'INSERT INTO projects (id, name, color, position, is_inbox) VALUES (?, ?, ?, ?, ?)'
+        )
         .run(id, name, '#6366f1', position, isInbox)
     }
 
@@ -403,7 +405,9 @@ describe('markdownImporter (integration)', () => {
         expect(summary.failed).toHaveLength(1)
         // No note was written, so its tasks must not outlive the attempt.
         expect(listTaskRows()).toEqual([])
-        expect(dataDb.sqlite.prepare('SELECT count(*) AS n FROM task_notes').get()).toEqual({ n: 0 })
+        expect(dataDb.sqlite.prepare('SELECT count(*) AS n FROM task_notes').get()).toEqual({
+          n: 0
+        })
       } finally {
         fs.rmSync(root, { recursive: true, force: true })
       }

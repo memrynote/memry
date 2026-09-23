@@ -809,8 +809,10 @@
     "copyLinks": "Copiază linkurile",
     "delete": "Șterge",
     "export": "Exportă",
+    "iconUpdated": "{count, plural, one {Pictogramă actualizată pe # notă} few {Pictogramă actualizată pe # note} other {Pictogramă actualizată pe # de note}}",
     "move": "Mută",
     "selected": "selectate",
+    "setIcon": "Setează pictograma",
     "tagNamePlaceholder": "Numele etichetei",
     "toolbarAria": "Acțiuni în bloc"
   },
@@ -867,6 +869,10 @@
     "edit": "Editează șablonul",
     "failed": "Nu s-a putut salva șablonul",
     "loadFailed": "Nota nu a putut fi citită"
+  },
+  "newNoteFromNote": {
+    "action": "Notă nouă din această notă",
+    "created": "Creată din {source}: {tagCount, plural, =0 {nicio etichetă} one {# etichetă} few {# etichete} other {# de etichete}}, {propertyCount, plural, =0 {nicio proprietate} one {# proprietate} few {# proprietăți} other {# de proprietăți}}"
   },
   "tagView": {
     "moreActions": "Mai multe acțiuni",

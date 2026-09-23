@@ -809,8 +809,10 @@
     "copyLinks": "复制链接",
     "delete": "删除",
     "export": "导出",
+    "iconUpdated": "{count, plural, other {已更新 # 条笔记的图标}}",
     "move": "移动",
     "selected": "已选择",
+    "setIcon": "设置图标",
     "tagNamePlaceholder": "标签名称",
     "toolbarAria": "批量操作"
   },
@@ -867,6 +869,10 @@
     "edit": "编辑模板",
     "failed": "保存模板失败",
     "loadFailed": "无法读取此笔记"
+  },
+  "newNoteFromNote": {
+    "action": "从此笔记新建笔记",
+    "created": "已从 {source} 创建，含 {tagCount, plural, other {# 个标签}}和{propertyCount, plural, other {# 个属性}}"
   },
   "tagView": {
     "moreActions": "更多操作",

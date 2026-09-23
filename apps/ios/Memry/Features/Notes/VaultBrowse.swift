@@ -70,6 +70,45 @@ protocol NotesReading: Sendable {
     ///   distinction `NoteBody.present` draws one level down, and the reason
     ///   the two are not collapsed here.
     func blocks(id: String) async throws -> [Block]?
+    /// One table's rows, cells and column widths, by the block id
+    /// ``blocks(id:)`` reported for the `table` block.
+    ///
+    /// - Returns: `nil` when there is no such table — no such note, or a
+    ///   block id holding something else. A flat block list carries one
+    ///   dimension and a table is two, which is why this is a second read
+    ///   rather than a field.
+    func table(id: String, blockId: String) async throws -> TableContent?
+    /// Every attachment this vault knows one note references.
+    ///
+    /// - Returns: an **empty list is not "this note has no attachments"**. It
+    ///   is also what a note whose references have never arrived looks like,
+    ///   because an absent `attachmentReferences` means "this sender does not
+    ///   know" (chapter 13 §13.4).
+    func attachments(id: String) async throws -> [CachedAttachment]
+    /// The tasks linked to one note (N807).
+    func linkedTasks(noteId: String) async throws -> [LinkedTask]
+    /// Every review comment and suggestion on one note (N604). Read only:
+    /// §12.5.1 forbids this client writing them.
+    func comments(id: String) async throws -> [ReviewComment]
+    /// The card a `taskBlock` draws for its task, or `nil` when this vault
+    /// does not hold the task.
+    func task(id: String) async throws -> TaskCard?
+    /// Every template a note can be made from (N803).
+    func templates() async throws -> [TemplateSummary]
+    /// The reminders pointing at one note (N804).
+    func reminders(noteId: String) async throws -> [ReminderSummary]
+    /// Every tag in the vault, with its note count (N600).
+    func tags() async throws -> [TagSummary]
+    /// The live notes carrying one tag (N600). Matched case-insensitively by
+    /// the column's own collation, which is ASCII-only and matches desktop.
+    func notesTagged(_ tag: String) async throws -> [NoteSummary]
+    /// What one body block's `url` points at.
+    ///
+    /// A block carries a vault-relative path rather than an attachment id, so
+    /// the core binds the two by the basename of the signed manifest's
+    /// filename. Four answers, because a remote image is ordinary content and
+    /// an ambiguous name is refused rather than guessed.
+    func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment
 }
 
 /// The production reader: the core's own `Notes`, over the shell's one serial
@@ -109,6 +148,59 @@ struct CoreNotesReader: NotesReading {
     func blocks(id: String) async throws -> [Block]? {
         let vault = vault
         return try await executor.run { try vault.notes().blocks(id: id) }
+    }
+
+    /// Same queue, same document, same reasons.
+    func table(id: String, blockId: String) async throws -> TableContent? {
+        let vault = vault
+        return try await executor.run { try vault.notes().table(id: id, blockId: blockId) }
+    }
+
+    func attachments(id: String) async throws -> [CachedAttachment] {
+        let vault = vault
+        return try await executor.run { try vault.notes().attachments(id: id) }
+    }
+
+    func comments(id: String) async throws -> [ReviewComment] {
+        let vault = vault
+        return try await executor.run { try vault.notes().comments(id: id) }
+    }
+
+    func task(id: String) async throws -> TaskCard? {
+        let vault = vault
+        return try await executor.run { try vault.notes().task(taskId: id) }
+    }
+
+    func linkedTasks(noteId: String) async throws -> [LinkedTask] {
+        let vault = vault
+        return try await executor.run { try vault.notes().linkedTasks(noteId: noteId) }
+    }
+
+    func templates() async throws -> [TemplateSummary] {
+        let vault = vault
+        return try await executor.run { try vault.notes().templates() }
+    }
+
+    func reminders(noteId: String) async throws -> [ReminderSummary] {
+        let vault = vault
+        return try await executor.run { try vault.notes().reminders(noteId: noteId) }
+    }
+
+    func tags() async throws -> [TagSummary] {
+        let vault = vault
+        return try await executor.run { try vault.notes().tags() }
+    }
+
+    func notesTagged(_ tag: String) async throws -> [NoteSummary] {
+        let vault = vault
+        return try await executor.run { try vault.notes().notesTagged(tag: tag) }
+    }
+
+    func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment {
+        let vault = vault
+        return try await executor.run {
+            try vault.notes().attachmentForBlock(id: id, url: url)
+        }
     }
 
     /// One indexed row plus the vault's property definitions — no CRDT apply,
@@ -161,6 +253,12 @@ final class VaultBrowseViewModel {
     /// device's identity from cannot write, and the affordances are hidden
     /// rather than shown failing. See `VaultWrite.swift`.
     let writer: (any NotesWriting)?
+    /// The body write surface, `nil` on a vault with no identity to sign
+    /// with — the same condition that leaves ``writer`` absent.
+    let editor: (any BlockEditing)?
+    /// The metadata write surface (title, icon, tags, properties, aliases).
+    /// `nil` on a vault with no identity to sign with, like ``writer``.
+    let metadataWriter: (any NoteMetadataWriting)?
 
     /// Full-text search over this vault, or `nil` when the index could be
     /// neither opened nor rebuilt.
@@ -169,6 +267,9 @@ final class VaultBrowseViewModel {
     /// still works, and the search field falls back to matching titles in the
     /// outline this screen already holds.
     let search: VaultSearchViewModel?
+    /// The raw search surface, for the reads that are not a query — the
+    /// backlinks section (N800) is one.
+    let searcher: (any VaultSearching)?
 
     /// The last failed write, for the screen to show and dismiss. Separate
     /// from ``phase`` because a failed write leaves the vault readable: the
@@ -181,11 +282,16 @@ final class VaultBrowseViewModel {
         reader: any NotesReading,
         filler: (any VaultFilling)? = nil,
         writer: (any NotesWriting)? = nil,
+        editor: (any BlockEditing)? = nil,
+        metadataWriter: (any NoteMetadataWriting)? = nil,
         search: (any VaultSearching)? = nil
     ) {
         self.reader = reader
         self.filler = filler
         self.writer = writer
+        self.editor = editor
+        self.metadataWriter = metadataWriter
+        self.searcher = search
         self.search = search.map { VaultSearchViewModel(search: $0) }
     }
 
@@ -202,6 +308,10 @@ final class VaultBrowseViewModel {
             filler: filler,
             // No store, no identity, no writes — and no buttons offering them.
             writer: store.map { CoreNotesWriter(vault: vault, store: $0, executor: executor) },
+            editor: store.map { CoreBlockEditor(vault: vault, store: $0, executor: executor) },
+            metadataWriter: store.map {
+                CoreNoteMetadataWriter(vault: vault, store: $0, executor: executor)
+            },
             // A vault whose index will not open is still a vault worth
             // browsing, so this failure is absorbed into "no full-text search"
             // rather than into "no screen".

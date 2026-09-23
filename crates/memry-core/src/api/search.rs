@@ -20,6 +20,8 @@
 
 use std::path::PathBuf;
 
+use rusqlite::OptionalExtension as _;
+
 use crate::api::errors::StorageError;
 use crate::domain::search::{self, HitKind, SearchHit};
 use crate::storage::{Db, open_index};
@@ -74,6 +76,33 @@ pub struct ReindexSummary {
     pub corrupt_skipped: u32,
 }
 
+/// One note that links to another (N800).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Backlink {
+    /// The note doing the linking.
+    pub source_id: String,
+    pub source_title: String,
+    /// The title the link actually spells, which is not always the target's
+    /// current title: a note renamed after being linked to keeps the old
+    /// spelling in the link until the source is edited.
+    pub target_title: String,
+    /// `true` when the link is a `linkMention` carried in a property rather
+    /// than written in the body, which desktop labels differently ("property
+    /// → title") because it is not a sentence the user wrote.
+    pub via_property: bool,
+}
+
+/// How a backlink list is ordered (N800), matching desktop's three.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BacklinkOrder {
+    /// Most recently touched first, which is the default a reader wants.
+    Recent,
+    /// Alphabetical by the linking note's title.
+    Title,
+    /// Oldest first, for reading a thread of notes in the order it grew.
+    Oldest,
+}
+
 /// The search surface over one opened vault.
 #[derive(uniffi::Object)]
 pub struct Search {
@@ -95,6 +124,119 @@ impl Search {
 
 #[uniffi::export]
 impl Search {
+    /// Every note linking to this one (N800).
+    ///
+    /// **Answerable only since the link projection landed.** `note_links`
+    /// existed in the index schema and nothing wrote a row into it, so this
+    /// query would have returned an empty list forever and read as "no note
+    /// links here".
+    ///
+    /// Matched on the **title** rather than only on a resolved id, so a link
+    /// written before its target existed still counts once the target is
+    /// created — which is the case `target_id` being nullable exists for.
+    pub fn backlinks(
+        &self,
+        note_id: String,
+        order: BacklinkOrder,
+    ) -> Result<Vec<Backlink>, StorageError> {
+        let index = self.index.clone();
+        self.data.call_blocking(move |data| {
+            let title: Option<String> = data
+                .query_row(
+                    "SELECT title FROM notes WHERE id = ?1 AND deleted_at IS NULL",
+                    rusqlite::params![&note_id],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })?;
+            // No such note is an empty list rather than an error: a note that
+            // is not here has nothing linking to it that this vault can name.
+            let Some(title) = title else {
+                return Ok(Vec::new());
+            };
+
+            let sources: Vec<(String, String)> = index.call_blocking(|index| {
+                let mut statement = index
+                    .prepare(
+                        "SELECT source_id, target_title FROM note_links \
+                         WHERE target_id = ?1 OR target_title = ?2",
+                    )
+                    .map_err(|error| StorageError::Failed {
+                        what: error.to_string(),
+                    })?;
+                let rows = statement
+                    .query_map(rusqlite::params![&note_id, &title], |row| {
+                        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                    })
+                    .map_err(|error| StorageError::Failed {
+                        what: error.to_string(),
+                    })?;
+                rows.collect::<Result<Vec<_>, _>>()
+                    .map_err(|error| StorageError::Failed {
+                        what: error.to_string(),
+                    })
+            })?;
+
+            // The source's own title and timestamps live in `data.db`, so the
+            // two halves are joined here rather than in SQL: the index and the
+            // data are separate databases on purpose.
+            let mut out = Vec::new();
+            for (source_id, target_title) in sources {
+                if source_id == note_id {
+                    // A note linking to itself is not a backlink.
+                    continue;
+                }
+                let row = data
+                    .query_row(
+                        "SELECT title, COALESCE(modified_at, created_at, 0) FROM notes \
+                         WHERE id = ?1 AND deleted_at IS NULL",
+                        rusqlite::params![&source_id],
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+                    )
+                    .optional()
+                    .map_err(|error| StorageError::Failed {
+                        what: error.to_string(),
+                    })?;
+                // A tombstoned source is skipped: its link is gone with it.
+                let Some((source_title, stamp)) = row else {
+                    continue;
+                };
+                out.push((
+                    Backlink {
+                        source_id,
+                        source_title,
+                        target_title,
+                        // Nothing writes property-sourced links yet, so this
+                        // is honestly false rather than guessed: see
+                        // `research.md`.
+                        via_property: false,
+                    },
+                    stamp,
+                ));
+            }
+
+            match order {
+                BacklinkOrder::Recent => out.sort_by(|a, b| {
+                    b.1.cmp(&a.1)
+                        .then_with(|| a.0.source_id.cmp(&b.0.source_id))
+                }),
+                BacklinkOrder::Oldest => out.sort_by(|a, b| {
+                    a.1.cmp(&b.1)
+                        .then_with(|| a.0.source_id.cmp(&b.0.source_id))
+                }),
+                BacklinkOrder::Title => out.sort_by(|a, b| {
+                    a.0.source_title
+                        .to_lowercase()
+                        .cmp(&b.0.source_title.to_lowercase())
+                        .then_with(|| a.0.source_id.cmp(&b.0.source_id))
+                }),
+            }
+            Ok(out.into_iter().map(|(backlink, _)| backlink).collect())
+        })
+    }
+
     /// Notes and journals matching `query`, best first.
     ///
     /// A query carrying no searchable term returns **empty, not everything**:

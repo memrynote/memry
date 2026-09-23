@@ -211,6 +211,50 @@ describe('canvasHandler', () => {
       expect(refs[0]).toMatchObject({ entityType: 'note', entityId: 'note-1' })
     })
 
+    it('#given a remote scene with project and file cards #then indexes both and a push carries them back out', () => {
+      const scene = JSON.stringify({
+        type: 'excalidraw',
+        version: 2,
+        source: 'test',
+        elements: [
+          {
+            id: 'rect-p',
+            type: 'rectangle',
+            customData: { entityType: 'project', entityId: 'p1' }
+          },
+          { id: 'rect-f', type: 'rectangle', customData: { entityType: 'file', entityId: 'f1' } },
+          {
+            id: 'rect-future',
+            type: 'rectangle',
+            customData: { entityType: 'kind-from-a-newer-build', entityId: 'x1' }
+          }
+        ],
+        appState: {},
+        files: {}
+      })
+      const data: CanvasSyncPayload = { id: 'c1', vaultId: VAULT_ID, scene, clock: { B: 1 } }
+
+      expect(canvasHandler.applyUpsert(ctx, 'c1', data, { B: 1 })).toBe('applied')
+
+      const refs = db
+        .select()
+        .from(canvasEntityRefs)
+        .where(eq(canvasEntityRefs.canvasId, 'c1'))
+        .all()
+      expect(refs.map((r) => `${r.entityType}:${r.entityId}`).sort()).toEqual([
+        'file:f1',
+        'project:p1'
+      ])
+      const pushed = JSON.parse(canvasHandler.buildPushPayload!(db, 'c1', 'device-B', 'update')!)
+      const elements = (JSON.parse(pushed.scene) as { elements: { customData: unknown }[] })
+        .elements
+      expect(elements.map((e) => e.customData)).toEqual([
+        { entityType: 'project', entityId: 'p1' },
+        { entityType: 'file', entityId: 'f1' },
+        { entityType: 'kind-from-a-newer-build', entityId: 'x1' }
+      ])
+    })
+
     it('#given a payload without a scene #then skips (D5) and never clobbers local ink', () => {
       seedCanvas(db, 'c1', sceneWith('note-keep'), { A: 1 })
       const data: CanvasSyncPayload = { id: 'c1', vaultId: VAULT_ID, clock: { A: 1, B: 5 } }

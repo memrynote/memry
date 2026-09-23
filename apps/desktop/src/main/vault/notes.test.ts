@@ -317,6 +317,34 @@ describe('notes operations', () => {
       expect(result.emoji).toBe('🚀')
     })
 
+    it('lets values copied from another note win over the folder default template (#2329)', async () => {
+      const folders = await import('./folders')
+      await folders.setFolderTemplate('Clients/A', 'meeting-notes')
+
+      const result = await notes.createNote({
+        title: 'Untitled',
+        folder: 'Clients/A',
+        tags: ['client-a', '2026'],
+        properties: { project: ['Project X'], status: 'Active', Priority: 'High' },
+        emoji: '📁'
+      })
+
+      expect(result.path).toBe('Clients/A/Untitled.md')
+      expect(result.emoji).toBe('📁')
+      expect(result.tags).toEqual(['meeting', 'client-a', '2026'])
+      expect(result.properties).toEqual({
+        date: null,
+        attendees: '',
+        status: 'Active',
+        project: ['Project X'],
+        Priority: 'High'
+      })
+      expect(result.content).toContain('## Attendees')
+
+      const reloaded = await notes.getNoteById(result.id)
+      expect(reloaded!.properties).toMatchObject({ project: ['Project X'], status: 'Active' })
+    })
+
     it('leaves the icon unset when the note uses no template', async () => {
       const result = await notes.createNote({ title: 'No Template' })
 
@@ -1385,6 +1413,29 @@ describe('notes operations', () => {
       expect(links.outgoing.length).toBe(1)
       expect(links.outgoing[0].targetTitle).toBe('Non Existent Page')
       expect(links.outgoing[0].targetId).toBeNull()
+    })
+
+    it('keeps a link to a deleted note as unresolved, and resolves it again on re-create', async () => {
+      const target = await notes.createNote({ title: 'Doomed Target', content: 'Soon gone.' })
+      const source = await notes.createNote({
+        title: 'Survivor',
+        content: 'Points at [[Doomed Target]].'
+      })
+
+      await notes.deleteNote(target.id)
+
+      expect((await notes.getNoteLinks(source.id)).outgoing).toEqual([
+        { sourceId: source.id, targetId: null, targetTitle: 'Doomed Target' }
+      ])
+
+      const recreated = await notes.createNote({ title: 'Doomed Target', content: 'Back.' })
+
+      expect((await notes.getNoteLinks(source.id)).outgoing).toEqual([
+        { sourceId: source.id, targetId: recreated.id, targetTitle: 'Doomed Target' }
+      ])
+      expect((await notes.getNoteLinks(recreated.id)).incoming.map((bl) => bl.sourceId)).toEqual([
+        source.id
+      ])
     })
 
     it('includes property-relation backlinks labeled with the property name', async () => {

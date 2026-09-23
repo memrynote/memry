@@ -809,8 +809,10 @@
     "copyLinks": "Kopyahin ang mga link",
     "delete": "Tanggalin",
     "export": "I-export",
+    "iconUpdated": "{count, plural, one {Na-update ang icon sa # tala} other {Na-update ang icon sa # tala}}",
     "move": "Ilipat",
     "selected": "napili",
+    "setIcon": "Itakda ang icon",
     "tagNamePlaceholder": "Pangalan ng tag",
     "toolbarAria": "Mga bulk na aksyon"
   },
@@ -867,6 +869,10 @@
     "edit": "I-edit ang template",
     "failed": "Nabigong i-save ang template",
     "loadFailed": "Hindi mabasa ang talang ito"
+  },
+  "newNoteFromNote": {
+    "action": "Bagong tala mula sa talang ito",
+    "created": "Nagawa mula sa {source}: {tagCount, plural, =0 {walang tag} other {# na tag}}, {propertyCount, plural, =0 {walang katangian} other {# na katangian}}"
   },
   "tagView": {
     "moreActions": "Higit pang pagkilos",

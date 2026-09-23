@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Padam daripada akaun",
       "deleteVaultFailed": "Peti besi tidak dapat dipadamkan",
       "deleteVaultTitle": "Padam “{name}” daripada akaun anda?",
-      "removeVaultTitle": "Alih keluar “{name}” daripada senarai?"
+      "removeVaultTitle": "Alih keluar “{name}” daripada senarai?",
+      "missing": "Folder tidak ditemui"
     },
     "componentsWindowControls": {
       "searchK": "Cari (⌘K)",

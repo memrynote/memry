@@ -38,7 +38,7 @@ import { registerAllHandlers } from './ipc'
 import {
   applyGlobalCaptureShortcut,
   getMinimizeToTraySetting,
-  setGlobalCaptureAppliedHandler
+  setQuickCaptureShortcutHost
 } from './ipc/settings-handlers'
 import {
   applyTraySetting,
@@ -77,6 +77,7 @@ import { stopImageProcessing } from './image-processing/bridge'
 import { getEmbeddingWorkerCrashContext, stopEmbeddingModel } from './lib/embeddings'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
+import { startIcsCalendarRunner, stopIcsCalendarRunner } from './calendar/ics/ics-runner'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
 import { getLogShip, installLogShip } from './telemetry/log-ship'
@@ -170,6 +171,7 @@ import { getHeadlessCliArgs, runHeadlessCli } from './cli/headless'
 import { reconcileBillingAndSync, startBillingCheckout } from './billing/paddle-billing'
 import { openPairingWindow } from './capture/pairing'
 import { startCaptureServer, stopCaptureServer } from './capture/server'
+import { showPairConsentDialog } from './capture/consent-dialog'
 import { stopChatServer } from './ai-inline/ai-chat-server'
 import {
   startLoginShellPathAugmentation,
@@ -809,9 +811,10 @@ function createWindow(): void {
     if (mainWindow.isDestroyed()) return
     if (status.isOpen) {
       // Settings live in the vault's database, so this is the first point the
-      // tray preference can be read. applyTraySetting converges, so the repeat
-      // calls a vault switch produces are no-ops.
+      // tray preference and the saved global capture binding can be read. Both
+      // converge, so the repeat calls a vault switch produces are no-ops.
       applyTraySetting(getMinimizeToTraySetting())
+      applyGlobalCaptureShortcut()
       // Grow from the compact picker to the app window, but never fight a window
       // the user has already sized/moved/maximized (or that we just restored):
       // only act on the genuine picker → main transition.
@@ -1139,24 +1142,6 @@ export const registerOAuthState = (state: string): void => {
 
 function openAccountSettings(mainWindow: BrowserWindow): void {
   mainWindow.webContents.send(SettingsChannels.events.OPEN_SECTION, 'account')
-}
-
-async function showPairConsentDialog(origin: string): Promise<boolean> {
-  const mainWindow = BrowserWindow.getAllWindows()[0]
-  if (!mainWindow) return false
-  if (mainWindow.isMinimized()) mainWindow.restore()
-  mainWindow.focus()
-  const t = getMainI18n().getFixedT(null, 'system')
-  const { response } = await dialog.showMessageBox(mainWindow, {
-    type: 'question',
-    buttons: [t('dialog.pair.buttonAllow'), t('dialog.pair.buttonDeny')],
-    defaultId: 0,
-    cancelId: 1,
-    title: t('dialog.pair.title'),
-    message: t('dialog.pair.message'),
-    detail: origin
-  })
-  return response === 0
 }
 
 function handleDeepLink(url: string): void {
@@ -1743,9 +1728,12 @@ const appReady = app.whenReady().then(async () => {
   // Sync callbacks (queue, snapshot push) attach later when auth is ready.
 
   // Register global shortcut for quick capture from keyboard settings (fallback: hardcoded default).
-  // The handler also runs on every later re-apply (keyboard settings save), so a save can no
+  // The host also runs on every later re-apply (keyboard settings save), so a save can no
   // longer leave quick capture with no working shortcut at all.
-  setGlobalCaptureAppliedHandler(syncQuickCaptureFallbackShortcut)
+  setQuickCaptureShortcutHost({
+    open: showQuickCaptureWindow,
+    syncFallback: syncQuickCaptureFallbackShortcut
+  })
   applyGlobalCaptureShortcut()
   registerQuickCaptureTestHooks()
 
@@ -1826,6 +1814,7 @@ const appReady = app.whenReady().then(async () => {
           errorCode: error instanceof Error ? error.name : 'UnknownError'
         })
       }
+      startIcsCalendarRunner()
       void startGoogleCalendarSyncRunner().catch((error) => {
         mainLog.warn('Google Calendar sync runner failed to start:', error)
         trackMainLog('warn', {
@@ -2037,17 +2026,18 @@ function unregisterQuickCaptureFallbackShortcut(): void {
  * Keep the hardcoded fallback shortcut in step with the configured global capture
  * accelerator. Runs at startup and after every keyboard settings save, so saving
  * settings can no longer drop the fallback (or report one that is not registered).
+ * Returns whether the fallback is held, so Settings can say when another app owns it.
  */
-function syncQuickCaptureFallbackShortcut(configuredRegistered: boolean): void {
+function syncQuickCaptureFallbackShortcut(configuredRegistered: boolean): boolean {
   quickCaptureShortcutRegistration.configuredRegistered = configuredRegistered
 
   if (configuredRegistered) {
     unregisterQuickCaptureFallbackShortcut()
     quickCaptureShortcutRegistration.registered = true
-    return
+  } else {
+    registerQuickCaptureShortcut()
   }
-
-  registerQuickCaptureShortcut()
+  return quickCaptureShortcutRegistration.fallbackRegistered
 }
 
 function registerQuickCaptureTestHooks(): void {
@@ -2302,6 +2292,9 @@ app.on('before-quit', (event) => {
 
         shutdownLog.info('stopping Google Calendar sync runner...')
         stopGoogleCalendarSyncRunner()
+
+        shutdownLog.info('stopping calendar feed runner...')
+        stopIcsCalendarRunner()
       }
     },
     {

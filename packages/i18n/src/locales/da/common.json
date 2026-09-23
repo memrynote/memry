@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Slet fra konto",
       "deleteVaultFailed": "Boksen kunne ikke slettes",
       "deleteVaultTitle": "Vil du slette “{name}” fra din konto?",
-      "removeVaultTitle": "Vil du fjerne “{name}” fra listen?"
+      "removeVaultTitle": "Vil du fjerne “{name}” fra listen?",
+      "missing": "Mappen blev ikke fundet"
     },
     "componentsWindowControls": {
       "searchK": "Søg (⌘K)",

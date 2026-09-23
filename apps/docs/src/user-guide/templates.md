@@ -47,6 +47,14 @@ The body is what new notes start from, so `{{title}}` and the other variables be
 
 </div>
 
+### Tasks in a Template
+
+A checkbox in a template stays a plain checkbox. The template editor never turns it into a task, so writing a template adds nothing to your task list.
+
+A note made from the template gets its own copy of each checkbox. The note turns them into tasks of its own once you start editing it, so ticking or deleting a task in one note never touches another note made from the same template.
+
+Templates that an older version saved with task links, on this device or synced from another, are read as plain checkboxes too. The original tasks stay where they were.
+
 ### Saving
 
 A brand-new template is a **draft**: nothing is written until you press **Create Template** in the top right. The button stays disabled until the name is filled in.
@@ -95,9 +103,12 @@ Templates aren't just for new notes — you can apply one to a note you already 
 
 Applying **replaces** the note's body, and can write the template's tags and properties too. To drop a template into a note without touching what's already there, use [Inserting a Template at the Cursor](#inserting-a-template-at-the-cursor) instead.
 
-Open the picker from the sidebar tree — right-click a note → **Apply Template**. Pick a template and confirm with **Apply Template**.
+Open the picker from either:
 
-The note page's <kbd>⋯</kbd> menu no longer applies a template over the body; its **Insert template…** item inserts at the cursor instead.
+- The sidebar tree, right-click a note and choose **Apply Template**
+- The note page's <kbd>⋯</kbd> menu, **Apply Template**
+
+Pick a template and confirm with **Apply Template**. The <kbd>⋯</kbd> menu also has **Insert template content…**, which adds only the body at the cursor.
 
 - If the note is **empty**, the template's content is applied right away.
 - If the note **already has content**, you're warned that applying will replace it, with two choices:
@@ -110,7 +121,7 @@ The note page's <kbd>⋯</kbd> menu no longer applies a template over the body; 
 
 ## Inserting a Template at the Cursor
 
-In a [note you are writing](/user-guide/notes/editing#inserting-a-template), type `/` and pick **Insert template…**, or use the note page's <kbd>⋯</kbd> menu → **Insert template…**. Either opens the same picker; choose a template and its body is inserted where the cursor was. There is no overwrite prompt — a template from these surfaces is always added, never a replacement.
+In a [note you are writing](/user-guide/notes/editing#inserting-a-template), type `/` and pick **Insert template content…**, or use the note page's <kbd>⋯</kbd> menu → **Insert template content…**. Either opens the same picker; choose a template and its body is inserted where the cursor was. There is no overwrite prompt — a template from these surfaces is always added, never a replacement.
 
 Type a query after the slash and matching templates also appear as their own rows under **Templates**, so `/meeting` then <kbd>Enter</kbd> inserts Meeting Notes directly. Those rows show up only once you have typed a query.
 
@@ -131,13 +142,13 @@ Open the action from either:
 - The sidebar tree, right-click a note and choose **Save as Template**
 - The note page's <kbd>⋯</kbd> menu, **Save as Template**
 
-In the sidebar it sits directly under **Apply Template**; in the <kbd>⋯</kbd> menu, under **Insert template…**.
+In the sidebar it sits directly under **Apply Template**; in the <kbd>⋯</kbd> menu, under **Insert template content…**.
 
 The dialog has a single field, the template name. It arrives pre-filled with the note's title and already selected, so you can type over it or press <kbd>Enter</kbd> to save at once. Under the field is a one-line summary of how many tags and properties the template will carry.
 
 What gets copied:
 
-- The note's body, exactly as it is written
+- The note's body, exactly as it is written, except that tasks become plain checkboxes (see [Tasks in a Template](#tasks-in-a-template))
 - The note's tags
 - The note's properties, with the two exceptions below
 

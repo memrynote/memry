@@ -809,8 +809,10 @@
     "copyLinks": "Sao chép liên kết",
     "delete": "Xóa",
     "export": "Xuất",
+    "iconUpdated": "{count, plural, other {Đã cập nhật biểu tượng cho # ghi chú}}",
     "move": "Di chuyển",
     "selected": "đã chọn",
+    "setIcon": "Đặt biểu tượng",
     "tagNamePlaceholder": "Tên thẻ",
     "toolbarAria": "Thao tác hàng loạt"
   },
@@ -867,6 +869,10 @@
     "edit": "Chỉnh sửa mẫu",
     "failed": "Không lưu được mẫu",
     "loadFailed": "Không đọc được ghi chú này"
+  },
+  "newNoteFromNote": {
+    "action": "Ghi chú mới từ ghi chú này",
+    "created": "Đã tạo từ {source}: {tagCount, plural, =0 {không có thẻ} other {# thẻ}}, {propertyCount, plural, =0 {không có thuộc tính} other {# thuộc tính}}"
   },
   "tagView": {
     "moreActions": "Thao tác khác",

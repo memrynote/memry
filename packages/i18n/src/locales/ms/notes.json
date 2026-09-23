@@ -809,8 +809,10 @@
     "copyLinks": "Salin pautan",
     "delete": "Padam",
     "export": "Eksport",
+    "iconUpdated": "{count, plural, other {Ikon dikemas kini pada # nota}}",
     "move": "Alih",
     "selected": "dipilih",
+    "setIcon": "Tetapkan ikon",
     "tagNamePlaceholder": "Nama tag",
     "toolbarAria": "Tindakan pukal"
   },
@@ -867,6 +869,10 @@
     "edit": "Edit templat",
     "failed": "Gagal menyimpan templat",
     "loadFailed": "Tidak dapat membaca nota ini"
+  },
+  "newNoteFromNote": {
+    "action": "Nota baharu daripada nota ini",
+    "created": "Dicipta daripada {source}: {tagCount, plural, =0 {tiada tag} other {# tag}}, {propertyCount, plural, =0 {tiada sifat} other {# sifat}}"
   },
   "tagView": {
     "moreActions": "Tindakan lain",

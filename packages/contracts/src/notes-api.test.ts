@@ -49,6 +49,19 @@ describe('NoteCreateSchema', () => {
       }
     })
 
+    it('keeps the properties and icon a note copied from another note carries', () => {
+      const result = NoteCreateSchema.safeParse({
+        title: 'Untitled',
+        properties: { Project: 'Project X', Priority: 3, Done: false },
+        emoji: '📁'
+      })
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.properties).toEqual({ Project: 'Project X', Priority: 3, Done: false })
+        expect(result.data.emoji).toBe('📁')
+      }
+    })
+
     it('should accept title at maximum length (200 chars)', () => {
       const longTitle = 'a'.repeat(200)
       const result = NoteCreateSchema.safeParse({

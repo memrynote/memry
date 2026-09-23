@@ -45,7 +45,7 @@ order the rows are listed) still open each one, and so does the tab bar's
 Like sort modes, this is saved per vault and syncs, so another device that
 opens the same vault folds its rows away too.
 
-Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a row decides what happens: the top and bottom edges reorder around that row, while the middle of a folder row drops the item **into** that folder. An empty folder takes a drop the same as a full one, so a folder you just created is ready to receive notes immediately. Notes hold no children, so dropping on a note always reorders. Reordering applies while the section is in **Manual** sort — see below; dropping _into_ a folder works whatever the sort.
+Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a row decides what happens: the top and bottom edges reorder around that row, while the middle of a folder row drops the item **into** that folder. An empty folder takes a drop the same as a full one, so a folder you just created is ready to receive notes immediately. Notes hold no children, so dropping on a note always reorders. Reordering applies while the section is in **Manual** sort — see below; dropping _into_ a folder works whatever the sort. A moved folder takes everything inside it along, subfolders included. If a folder cannot be moved, for example because a folder with the same name is already there, a message says so and the folder stays where it was.
 
 ### Sorting a section
 

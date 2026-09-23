@@ -23,6 +23,7 @@ import {
   NoteCardKindIcon,
   type TagMetaMap
 } from './note-card-pieces'
+import { RowContextMenu, type RowMenuActions } from './row-context-menu'
 
 export interface FolderGalleryViewProps {
   notes: NoteWithProperties[]
@@ -34,6 +35,11 @@ export interface FolderGalleryViewProps {
   onTagClick?: (tag: string) => void
   onCreateNote?: () => void
   onClearAll?: () => void
+  /**
+   * Right-click actions for each card. Without them a card has no context
+   * menu, which is what the Home folder widget wants.
+   */
+  rowActions?: RowMenuActions
   /**
    * Names this scroller inside the owning tab, turning scroll restore on. Left
    * unset by callers that are not a tab's main content (the Home folder widget),
@@ -52,6 +58,7 @@ export function FolderGalleryView({
   onTagClick,
   onCreateNote,
   onClearAll,
+  rowActions,
   scrollKey,
   className
 }: FolderGalleryViewProps): React.JSX.Element {
@@ -90,62 +97,81 @@ export function FolderGalleryView({
       ref={scrollRef}
       className={cn('flex h-full flex-wrap content-start gap-4 overflow-auto p-[18px]', className)}
     >
-      {visible.map((note) => (
-        <div
-          key={note.id}
-          role="button"
-          tabIndex={0}
-          onClick={() => onNoteOpen(note.id)}
-          onMouseDown={(e) => handleMiddleClick(e, () => onOpenInBackgroundTab?.(note.id))}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onNoteOpen(note.id)
-            }
-          }}
-          className="flex w-[272px] cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/40"
-        >
+      {visible.map((note) => {
+        const card = (
           <div
-            className={cn(
-              'flex h-[90px] items-center justify-center',
-              pastelFor(note.emoji || note.title || note.id)
-            )}
+            key={note.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => onNoteOpen(note.id)}
+            onMouseDown={(e) => handleMiddleClick(e, () => onOpenInBackgroundTab?.(note.id))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onNoteOpen(note.id)
+              }
+            }}
+            className="flex w-[272px] cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/40"
           >
-            <span className="text-[34px] leading-none">{note.emoji || '📄'}</span>
-          </div>
-          <div className="flex flex-col gap-2 p-3">
-            {note.kind === 'task' || note.kind === 'inbox' ? (
-              <div className="flex items-center gap-1.5">
-                <NoteCardKindIcon kind={note.kind} />
+            <div
+              className={cn(
+                'flex h-[90px] items-center justify-center',
+                pastelFor(note.emoji || note.title || note.id)
+              )}
+            >
+              <span className="text-[34px] leading-none">{note.emoji || '📄'}</span>
+            </div>
+            <div className="flex flex-col gap-2 p-3">
+              {note.kind === 'task' || note.kind === 'inbox' ? (
+                <div className="flex items-center gap-1.5">
+                  <NoteCardKindIcon kind={note.kind} />
+                  <span className="line-clamp-2 text-[13px] font-semibold leading-[17px] text-foreground">
+                    {note.title || 'Untitled'}
+                  </span>
+                </div>
+              ) : (
                 <span className="line-clamp-2 text-[13px] font-semibold leading-[17px] text-foreground">
                   {note.title || 'Untitled'}
                 </span>
+              )}
+              {note.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {note.tags.slice(0, 3).map((tag) => (
+                    <TagChip
+                      key={tag}
+                      tag={toTagChip(tag, tagMetaMap.get(tag.toLowerCase()))}
+                      onClick={onTagClick ? () => onTagClick(tag) : undefined}
+                    />
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
+                <Folder className="size-3 shrink-0" />
+                <span className="truncate">
+                  {note.folder ? note.folder.replace(/^\//, '') : '—'}
+                </span>
+                <div className="flex-1" />
+                <span className="tabular-nums">{formatRelative(note.modified)}</span>
               </div>
-            ) : (
-              <span className="line-clamp-2 text-[13px] font-semibold leading-[17px] text-foreground">
-                {note.title || 'Untitled'}
-              </span>
-            )}
-            {note.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {note.tags.slice(0, 3).map((tag) => (
-                  <TagChip
-                    key={tag}
-                    tag={toTagChip(tag, tagMetaMap.get(tag.toLowerCase()))}
-                    onClick={onTagClick ? () => onTagClick(tag) : undefined}
-                  />
-                ))}
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
-              <Folder className="size-3 shrink-0" />
-              <span className="truncate">{note.folder ? note.folder.replace(/^\//, '') : '—'}</span>
-              <div className="flex-1" />
-              <span className="tabular-nums">{formatRelative(note.modified)}</span>
             </div>
           </div>
-        </div>
-      ))}
+        )
+        return rowActions ? (
+          <RowContextMenu
+            key={note.id}
+            note={note}
+            isPartOfSelection={false}
+            selectedCount={0}
+            selectedNoteIds={[]}
+            onNoteOpen={onNoteOpen}
+            {...rowActions}
+          >
+            {card}
+          </RowContextMenu>
+        ) : (
+          card
+        )
+      })}
     </div>
   )
 }

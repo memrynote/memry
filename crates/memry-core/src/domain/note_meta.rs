@@ -22,7 +22,7 @@
 //! is the same rule the block walker follows for unknown blocks.
 
 use rusqlite::Connection;
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
 use crate::domain::{notes, properties, tags};
@@ -60,6 +60,27 @@ pub struct NoteMetadata {
     /// The note's other names, for the wiki-link resolver and for a shell that
     /// wants to show them. Empty when the payload carries none.
     pub aliases: Vec<String>,
+    /// The note's icon, which the payload spells `emoji` (§13.7.1).
+    ///
+    /// Named `icon` here because that is what it is on every surface, and
+    /// because the field is not restricted to an emoji — a shell may put a
+    /// symbol name in it. `None` covers both an absent key and an explicit
+    /// `null`, which mean the same thing for a value nobody has set.
+    pub icon: Option<String>,
+    /// The note's cover, as **preserved unknown payload data** (FR-033).
+    ///
+    /// **`coverImage` is not a field of the note schema.** §13.7.1 does not
+    /// list it, desktop has no cover feature, and `payload-schemas.json` uses
+    /// this exact key as its canonical *unknown key* case — the thing a
+    /// conforming client must carry untouched rather than understand. So it
+    /// is surfaced as the JSON text the payload holds rather than parsed into
+    /// a typed field: inventing a schema for a key the specification does not
+    /// define would make this client the only one that thinks it is defined.
+    ///
+    /// `None` when the payload carries no such key. A shell renders it if it
+    /// recognises the shape and ignores it otherwise; either way the bytes
+    /// survive, which is what FR-033 asks for.
+    pub cover_json: Option<String>,
 }
 
 /// Reads one note's metadata.
@@ -93,11 +114,50 @@ pub fn metadata(conn: &Connection, id: &str) -> Result<Option<NoteMetadata>, Sto
     // table the reader has to re-scan every time.
     properties.sort_by(|a, b| a.name.cmp(&b.name));
 
+    let payload = note_payload(conn, id)?;
     Ok(Some(NoteMetadata {
         tags,
         properties,
         aliases: aliases(conn, id)?,
+        icon: payload
+            .as_ref()
+            .and_then(|object| object.get("emoji"))
+            .and_then(|value| value.as_str())
+            .map(str::to_owned),
+        cover_json: payload
+            .as_ref()
+            .and_then(|object| object.get("coverImage"))
+            .filter(|value| !value.is_null())
+            .map(|value| value.to_string()),
     }))
+}
+
+/// One note's stored payload object, or `None` when it has none yet.
+///
+/// Read rather than projected because the two values above live in different
+/// places: `emoji` is a schema field with its own column, while `coverImage`
+/// is an unknown key that only exists in the payload. Taking both from the
+/// payload keeps them consistent with each other.
+fn note_payload(conn: &Connection, id: &str) -> Result<Option<Map<String, Value>>, StorageError> {
+    let Some(row) = crate::storage::repositories::sync_items::load(conn, notes::ITEM_TYPE, id)?
+    else {
+        return Ok(None);
+    };
+    let Some(raw) = row.payload else {
+        return Ok(None);
+    };
+    match serde_json::from_str::<Value>(&raw) {
+        Ok(Value::Object(object)) => Ok(Some(object)),
+        // A payload that will not read is a hard error for the same reason
+        // the tag reader gives: a silent empty would be written back as the
+        // truth by the next edit.
+        Ok(other) => Err(StorageError::Failed {
+            what: format!("note `{id}` has a payload that is not an object: {other}"),
+        }),
+        Err(error) => Err(StorageError::Failed {
+            what: format!("note `{id}` has a payload that will not parse: {error}"),
+        }),
+    }
 }
 
 /// A note's `aliases` array, or empty.
