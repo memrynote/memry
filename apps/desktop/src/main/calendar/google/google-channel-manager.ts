@@ -8,15 +8,17 @@ type GoogleChannelClient = Pick<GoogleCalendarClient, 'watchCalendar' | 'stopCha
 export interface GoogleChannelManagerDeps {
   client: GoogleChannelClient
   resolveClient?(input: { sourceId: string; calendarId: string }): GoogleChannelClient
+  // The plaintext channel token goes to sync-server over the authenticated
+  // TLS request; the server stores only HMAC(WEBHOOK_HMAC_KEY, token). The key
+  // stays server-side, so it never has to ship inside the desktop bundle.
   registerOnServer(input: {
     channelId: string
     sourceId: string
-    tokenHash: string
+    token: string
     expiresAt: number
   }): Promise<void>
   attachResourceId(input: { channelId: string; resourceId: string }): Promise<void>
   deleteOnServer(input: { channelId: string }): Promise<void>
-  hashToken(plaintext: string): Promise<string>
   generateToken(): string
   generateChannelId(): string
   webhookUrl: string
@@ -54,13 +56,12 @@ export function createGoogleChannelManager(deps: GoogleChannelManagerDeps): Goog
   async function registerFresh(sourceId: string, calendarId: string): Promise<ChannelState> {
     const channelId = deps.generateChannelId()
     const plaintextToken = deps.generateToken()
-    const tokenHash = await deps.hashToken(plaintextToken)
     const nowMs = (deps.now ?? Date.now)()
     const expirationMs = nowMs + deps.ttlSeconds * 1000
     const expiresAt = Math.floor(nowMs / 1000) + deps.ttlSeconds
     const client = deps.resolveClient?.({ sourceId, calendarId }) ?? deps.client
 
-    await deps.registerOnServer({ channelId, sourceId, tokenHash, expiresAt })
+    await deps.registerOnServer({ channelId, sourceId, token: plaintextToken, expiresAt })
 
     const watchResult = await client.watchCalendar({
       calendarId,

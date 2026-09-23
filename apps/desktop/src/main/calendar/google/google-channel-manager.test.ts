@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { loggerMock } = vi.hoisted(() => ({
@@ -45,9 +44,6 @@ function buildDeps(overrides: Partial<GoogleChannelManagerDeps> = {}): HarnessDe
     registerOnServer: vi.fn(async () => {}),
     attachResourceId: vi.fn(async () => {}),
     deleteOnServer: vi.fn(async () => {}),
-    hashToken: vi.fn(async (plaintext: string) =>
-      createHash('sha256').update(plaintext).digest('hex')
-    ),
     generateToken: vi.fn(() => `token-${++tokenCounter}`),
     generateChannelId: vi.fn(() => `channel-${++channelCounter}`),
     webhookUrl: 'https://sync.memry.io/webhooks/google-calendar',
@@ -71,7 +67,7 @@ describe('google-channel-manager', () => {
   })
 
   describe('ensureChannelForSource', () => {
-    it('registers hash on sync-server, watches Google, then PATCHes resourceId', async () => {
+    it('registers the token on sync-server, watches Google, then PATCHes resourceId', async () => {
       const deps = buildDeps()
       const mgr = createGoogleChannelManager(deps)
 
@@ -81,13 +77,13 @@ describe('google-channel-manager', () => {
       const registerArg = deps.registerOnServer.mock.calls[0]![0] as {
         channelId: string
         sourceId: string
-        tokenHash: string
+        token: string
         expiresAt: number
       }
       expect(registerArg.channelId).toBe('channel-1')
       expect(registerArg.sourceId).toBe('src-1')
-      expect(registerArg.tokenHash).toBe(createHash('sha256').update('token-1').digest('hex'))
-      expect(registerArg.tokenHash).toMatch(/^[0-9a-f]{64}$/)
+      // sync-server hashes the token itself; the client never holds the HMAC key.
+      expect(registerArg.token).toBe('token-1')
       expect(registerArg.expiresAt).toBe(Math.floor(FIXED_NOW_MS / 1000) + TTL_SECONDS)
 
       expect(deps.client.watchCalendar).toHaveBeenCalledTimes(1)
@@ -271,7 +267,7 @@ describe('google-channel-manager', () => {
   })
 
   describe('security', () => {
-    it('never stores the plaintext token anywhere retrievable after registration', async () => {
+    it('hands sync-server and Google the same token and keeps no copy on the manager surface', async () => {
       const deps = buildDeps()
       const mgr = createGoogleChannelManager(deps)
 
@@ -279,10 +275,12 @@ describe('google-channel-manager', () => {
 
       // Whole manager surface must not leak token-1. getActiveChannelCount exposes only a number.
       expect(JSON.stringify({ count: mgr.getActiveChannelCount() })).not.toContain('token-1')
-      // sync-server received the hash, not the plaintext.
-      const registerArg = deps.registerOnServer.mock.calls[0]![0] as { tokenHash: string }
-      expect(registerArg.tokenHash).not.toContain('token-1')
-      expect(registerArg.tokenHash).toMatch(/^[0-9a-f]{64}$/)
+      // The webhook verifies Google's X-Goog-Channel-Token against the server-side
+      // HMAC of what was registered, so both must receive the identical token.
+      const registerArg = deps.registerOnServer.mock.calls[0]![0] as { token: string }
+      const watchArg = deps.client.watchCalendar.mock.calls[0]![0] as { token: string }
+      expect(registerArg.token).toBe(watchArg.token)
+      expect(registerArg).not.toHaveProperty('tokenHash')
     })
   })
 })
