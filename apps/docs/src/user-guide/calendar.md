@@ -14,7 +14,7 @@ Switch between Day, Week, Month, Year, and Timeline from the calendar toolbar.
 | Week     | Default; one screen of context                 |
 | Month    | Bird's-eye plan                                |
 | Year     | Capacity / planning view                       |
-| Timeline | Scheduled tasks by project, Gantt style        |
+| Timeline | Scheduled work as a Gantt chart                |
 
 The current view persists per tab.
 
@@ -25,25 +25,70 @@ clickable target for opening or editing events.
 
 ## Timeline
 
-Timeline lays out one month of scheduled tasks as a Gantt chart. Each project with dated
-tasks in that month gets a group, with one row per task, and the days of the month run across
-the top. The previous and next buttons move a month at a time.
+Timeline is a Gantt chart of scheduled work. Tasks are listed on the left, grouped by project,
+and the days run across the top in one continuous strip. Scroll sideways to move through time;
+the title follows the month you are looking at. The previous and next buttons step by a week,
+a month or a quarter, depending on the zoom.
 
-| Task dates                      | How it appears                          |
-| ------------------------------- | --------------------------------------- |
-| Start date and a later due date | A bar from the start day to the due day |
-| Due date only, or start = due   | A filled diamond on the due day         |
-| Start date only                 | An outlined diamond on the start day    |
+| Zoom     | Shows                                          |
+| -------- | ---------------------------------------------- |
+| Weeks    | Each day with its weekday                      |
+| Months   | Each day; the default                          |
+| Quarters | Week starts only, for planning across the year |
 
-A bar that begins before or ends after the month is cut at the edge of the month, with a square
-end on that side. The thin line next to each project name spans all of that project's rows.
-Completed tasks, archived tasks, and tasks in archived projects are left out.
+| Task dates                      | How it appears                                                 |
+| ------------------------------- | -------------------------------------------------------------- |
+| Start date and a later due date | A bar from the start day to the due day                        |
+| Due date only, or start = due   | A diamond on the due day                                       |
+| Start date only                 | A bar that fades out: the work has started, its end is not set |
+| No date                         | An empty row you can schedule by clicking or dragging on it    |
 
-Click a row to open the same task popover as a task chip. Use it to reschedule the task or open
-it in Tasks. To draw a task as a bar, set its start date in the task's detail drawer.
+An open task whose due date has passed shows its date in red, with a dashed line from where it
+should have ended to today. It stays listed while today is on screen, even if its bar is out of
+view. The thin line next to each group heading spans all of that group's work. Click a heading
+to collapse it.
 
-Timeline shows tasks only. Events, reminders, and notes stay in the other views, so the calendar
-filter and Google refresh buttons are hidden while Timeline is open.
+All-day and multi-day events appear in an **Events** group at the top. Double-click one, or
+select it and press Enter, to open it. Timed events, reminders, and notes stay in the other
+views.
+
+### Rescheduling
+
+- Drag a bar to move it; drag either end to change the start or due date. Escape cancels a drag.
+- Drag across an empty row to give a task a start and due date; click it to set only a due date.
+- Every change can be undone with Cmd+Z.
+
+### Keyboard
+
+Click a row, or press ↓, to select. The bar along the bottom shows the selected task and the
+keys that act on it.
+
+| Key              | Does                                  |
+| ---------------- | ------------------------------------- |
+| ↑ ↓, Home, End   | Select a row                          |
+| Enter            | Open the task (or event)              |
+| Cmd+Enter        | Open the task in Tasks                |
+| Shift+← →        | Move the task a day                   |
+| Option+← →       | Move the due date a day               |
+| Option+Shift+← → | Move the start date a day             |
+| W, Shift+W       | Move the task a week later or earlier |
+| S, D             | Set the start or due date             |
+| C                | Mark complete (or incomplete)         |
+| P                | Move to another project               |
+| Backspace        | Clear the dates                       |
+| T                | Scroll to today                       |
+| Cmd+K            | All actions for the selected task     |
+| Escape           | Clear the selection                   |
+
+While the timeline has focus, Cmd+K opens its action panel instead of search. Cmd+P still
+opens search. In right-to-left languages the arrows follow the timeline's direction.
+
+### Display
+
+**Display** in the toolbar sets the zoom, grouping (project, status, priority, or none),
+ordering (start date, due date, or title), and what is shown: events, tasks without dates,
+completed tasks, and subtasks. Subtasks are listed under their parent. These settings are kept
+per tab. Archived tasks and tasks in archived projects are never shown.
 
 ## What Shows Up
 

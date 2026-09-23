@@ -11,6 +11,8 @@ import { CalendarInboxSnoozePopover } from './calendar-inbox-snooze-popover'
 import { CalendarNotePopover } from './calendar-note-popover'
 import { CalendarMonthView } from './calendar-month-view'
 import { CalendarTimelineView } from './calendar-timeline-view'
+import { TimelineDisplayPopover, TimelineZoomControl } from './timeline-controls'
+import { DEFAULT_TIMELINE_SETTINGS, type TimelineSettings } from './timeline-model'
 import { CalendarToolbar, type CalendarWorkspaceView } from './calendar-toolbar'
 import { CalendarWeekView } from './calendar-week-view'
 import { CalendarYearView } from './calendar-year-view'
@@ -25,6 +27,8 @@ import { VISUAL_TYPE_META, VISUAL_TYPE_ORDER } from './visual-type-meta'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('CalendarShell')
+
+const ignoreTimelineSettings = (): void => {}
 
 interface CalendarShellProps {
   view: CalendarWorkspaceView
@@ -73,6 +77,11 @@ interface CalendarShellProps {
   onToggleVisualType: (visualType: CalendarProjectionVisualType) => void
   onSelectItem: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onSelectTask?: (taskId: string, rect: AnchorRect) => void
+  weekStartsOn?: 0 | 1
+  timelineSettings?: TimelineSettings
+  onTimelineSettingsChange?: (
+    next: TimelineSettings | ((previous: TimelineSettings) => TimelineSettings)
+  ) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
   onAddToProject?: (eventId: string) => void
   onMoveEvent?: (
@@ -97,7 +106,8 @@ const PERIOD_KEY: Record<CalendarWorkspaceView, (anchorDate: string) => string> 
   week: () => 'week',
   month: (anchorDate) => `month:${anchorDate.slice(0, 7)}`,
   year: (anchorDate) => `year:${anchorDate.slice(0, 4)}`,
-  timeline: (anchorDate) => `timeline:${anchorDate.slice(0, 7)}`
+  // Timeline scrolls continuously and slides its own window, like week.
+  timeline: () => 'timeline'
 }
 
 export function CalendarShell({
@@ -134,6 +144,9 @@ export function CalendarShell({
   onToggleVisualType,
   onSelectItem,
   onSelectTask,
+  weekStartsOn = 1,
+  timelineSettings = DEFAULT_TIMELINE_SETTINGS,
+  onTimelineSettingsChange = ignoreTimelineSettings,
   onDeleteItem,
   onAddToProject,
   onMoveEvent,
@@ -301,7 +314,9 @@ export function CalendarShell({
   )
 
   const toolbarActions =
-    view === 'timeline' ? null : (
+    view === 'timeline' ? (
+      <TimelineDisplayPopover settings={timelineSettings} onChange={onTimelineSettingsChange} />
+    ) : (
       <>
         {googleConnectAction}
         {refreshButton}
@@ -333,8 +348,15 @@ export function CalendarShell({
     timeline: () => (
       <CalendarTimelineView
         anchorDate={anchorDate}
-        selectedTaskId={selectedItemId}
-        onSelectTask={onSelectTask}
+        weekStartsOn={weekStartsOn}
+        settings={timelineSettings}
+        items={items}
+        openItemId={selectedItemId}
+        todayRequestKey={todayRequestKey}
+        onAnchorChange={onAnchorChange}
+        onSettingsChange={onTimelineSettingsChange}
+        onOpenTask={onSelectTask}
+        onOpenEvent={onSelectItem}
       />
     )
   }
@@ -359,6 +381,14 @@ export function CalendarShell({
           onToday={onToday}
           onCreateEvent={onCreateEvent}
           onSearchJump={onSearchJump}
+          leadingActions={
+            view === 'timeline' ? (
+              <TimelineZoomControl
+                zoom={timelineSettings.zoom}
+                onChange={(zoom) => onTimelineSettingsChange((current) => ({ ...current, zoom }))}
+              />
+            ) : null
+          }
           extraActions={toolbarActions}
         />
       </div>

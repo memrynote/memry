@@ -1,250 +1,700 @@
-import { useMemo } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { useTasksOptional } from '@/contexts/tasks'
-import type { Task } from '@/data/task-model'
-import type { Project } from '@/data/tasks-data'
+import { useTabActionsOptional } from '@/contexts/tabs'
+import { isMac } from '@/hooks/use-keyboard-shortcuts'
+import { LOCAL_COMMAND_MENU_ATTR } from '@/hooks/use-search-shortcut'
 import { CalendarDays } from '@/lib/icons'
-import { cn } from '@/lib/utils'
-import { isWeekend, parseLocalDate, toLocalDateString } from './date-utils'
+import type { CalendarProjectionItem } from '@/services/calendar-service'
+import { dayIndexFromDate, toLocalDateString } from './date-utils'
+import { TimelineActionBar } from './timeline-action-bar'
+import { TimelineGroupBySelect } from './timeline-controls'
 import {
+  TimelineActionPanel,
+  type TimelinePanelPage,
+  type TimelineTaskAction
+} from './timeline-action-panel'
+import {
+  TIMELINE_AXIS_HEIGHT,
+  TIMELINE_LIST_WIDTH,
+  TimelineAxis,
+  TimelineGrid,
+  TimelineTodayLine
+} from './timeline-axis'
+import {
+  TIMELINE_DAY_WIDTH,
+  applyTimelineEdit,
   buildTimelineGroups,
-  getMonthDays,
-  type TimelineBar,
-  type TimelineSchedule
+  dateAtOffset,
+  dayOffset,
+  getTimelineWindow,
+  isSameTimelinePeriod,
+  shapeBounds,
+  timelinePeriodStart,
+  type TimelineDates,
+  type TimelineEdit,
+  type TimelineRow,
+  type TimelineSettings,
+  type TimelineTaskRow,
+  type TimelineZoom
 } from './timeline-model'
+import {
+  TimelineEventRowView,
+  TimelineGroupHeader,
+  TimelineTaskRowView,
+  useDayFormatter,
+  useDescribeShape
+} from './timeline-rows'
 import type { AnchorRect } from './types'
+import { useTimelineDrag } from './use-timeline-drag'
+import { useTimelineTaskActions } from './use-timeline-task-actions'
+import type { Task } from '@/data/task-model'
 
-const NO_TASKS: Task[] = []
-const NO_PROJECTS: Project[] = []
-
-function barColumns(bar: TimelineBar): React.CSSProperties {
-  return { gridColumn: `${bar.columnStart + 2} / ${bar.columnEnd + 3}`, gridRow: 1 }
-}
+/** Where the date being navigated to sits, as a share of the visible track. */
+const FOCUS_FRACTION = 0.25
+const NO_ITEMS: CalendarProjectionItem[] = []
 
 interface CalendarTimelineViewProps {
   anchorDate: string
-  selectedTaskId: string | null
-  onSelectTask?: (taskId: string, rect: AnchorRect) => void
+  weekStartsOn?: 0 | 1
+  settings: TimelineSettings
+  items?: CalendarProjectionItem[]
+  /** Task or event whose popover the page has open. */
+  openItemId?: string | null
+  todayRequestKey?: number
+  onAnchorChange?: (date: string) => void
+  onSettingsChange?: (settings: TimelineSettings) => void
+  onOpenTask?: (taskId: string, rect: AnchorRect) => void
+  onOpenEvent?: (item: CalendarProjectionItem, rect: AnchorRect) => void
 }
 
+function rowDomId(key: string): string {
+  return `timeline-row-${key.replace(/[^a-zA-Z0-9_-]/g, '_')}`
+}
+
+function toAnchorRect(rect: DOMRect): AnchorRect {
+  return { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
+}
+
+function isInteractiveTarget(target: EventTarget, root: Element): boolean {
+  if (!(target instanceof Element) || target === root) return false
+  return target.closest('button, input, textarea, select, [contenteditable="true"]') !== null
+}
+
+function getInline(el: HTMLElement, rtl: boolean): number {
+  return rtl ? -el.scrollLeft : el.scrollLeft
+}
+
+function setInline(el: HTMLElement, x: number, rtl: boolean): void {
+  el.scrollLeft = rtl ? -x : x
+}
+
+/**
+ * Gantt view of scheduled work: a sticky task list on the start side, a
+ * continuous day axis on the other. Scrolling past a period moves the
+ * calendar's anchor, and the laid-out window slides with it.
+ */
 export function CalendarTimelineView({
   anchorDate,
-  selectedTaskId,
-  onSelectTask
+  weekStartsOn = 1,
+  settings,
+  items = NO_ITEMS,
+  openItemId = null,
+  todayRequestKey,
+  onAnchorChange,
+  onSettingsChange,
+  onOpenTask,
+  onOpenEvent
 }: CalendarTimelineViewProps): React.JSX.Element {
-  const { t, i18n } = useT('calendar')
-  const tasksContext = useTasksOptional()
-  const tasks = tasksContext?.tasks ?? NO_TASKS
-  const projects = tasksContext?.projects ?? NO_PROJECTS
+  const { t } = useT('calendar')
+  const actions = useTimelineTaskActions()
+  const tabActions = useTabActionsOptional()
+  const today = toLocalDateString(new Date())
+  const { zoom } = settings
+  const dayWidth = TIMELINE_DAY_WIDTH[zoom]
+  const formatDay = useDayFormatter(today)
+  const describe = useDescribeShape(formatDay)
 
-  const days = useMemo(() => getMonthDays(anchorDate), [anchorDate])
-  const groups = useMemo(() => buildTimelineGroups(tasks, projects, days), [tasks, projects, days])
-  const todayColumn = days.indexOf(toLocalDateString(new Date()))
-  const gridTemplateColumns = `minmax(10rem, 16rem) repeat(${days.length}, minmax(1.75rem, 1fr))`
-
-  const weekdayFormat = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { weekday: 'narrow' }),
-    [i18n.language]
+  const timelineWindow = useMemo(
+    () => getTimelineWindow(anchorDate, zoom, weekStartsOn),
+    [anchorDate, zoom, weekStartsOn]
   )
-  const windowYear = days[0].slice(0, 4)
-  const formatDay = (day: string): string =>
-    new Intl.DateTimeFormat(i18n.language, {
-      month: 'short',
-      day: 'numeric',
-      year: day.startsWith(windowYear) ? undefined : 'numeric'
-    }).format(parseLocalDate(day))
-  const describeSchedule = (schedule: TimelineSchedule): string => {
-    switch (schedule.kind) {
-      case 'span':
-        return t('timeline.span', {
-          start: formatDay(schedule.startDate),
-          end: formatDay(schedule.dueDate)
-        })
-      case 'due':
-        return t('timeline.due', { date: formatDay(schedule.dueDate) })
-      case 'start':
-        return t('timeline.starts', { date: formatDay(schedule.startDate) })
+  const trackWidth = timelineWindow.dayCount * dayWidth
+
+  const groups = useMemo(
+    () =>
+      buildTimelineGroups({
+        tasks: actions.tasks,
+        projects: actions.projects,
+        events: items,
+        window: timelineWindow,
+        today,
+        settings
+      }),
+    [actions.tasks, actions.projects, items, timelineWindow, today, settings]
+  )
+
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
+  const visibleRows = useMemo(
+    () => groups.flatMap((group) => (collapsed.has(group.key) ? [] : group.rows)),
+    [groups, collapsed]
+  )
+  const taskRowCount = useMemo(
+    () => groups.reduce((n, g) => n + g.rows.filter((row) => row.type === 'task').length, 0),
+    [groups]
+  )
+  const eventRowCount = groups.find((group) => group.key === 'events')?.rows.length ?? 0
+
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const selectedRow = visibleRows.find((row) => row.key === selectedKey) ?? null
+  const selectedTaskRow = selectedRow?.type === 'task' ? selectedRow : null
+
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelPage, setPanelPage] = useState<TimelinePanelPage>('root')
+
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const isRtl = useCallback(
+    () => (scrollRef.current ? getComputedStyle(scrollRef.current).direction === 'rtl' : false),
+    []
+  )
+
+  // ---------------------------------------------------------------------------
+  // Scroll <-> anchor
+  //
+  // The anchor decides which window is laid out. Toolbar steps and Today move
+  // the anchor and the view scrolls to it; scrolling past a period moves the
+  // anchor, the window slides, and the scroll offset is compensated so nothing
+  // on screen jumps.
+  // ---------------------------------------------------------------------------
+  const latestRef = useRef({ anchorDate, timelineWindow, dayWidth, zoom, weekStartsOn })
+  useLayoutEffect(() => {
+    latestRef.current = { anchorDate, timelineWindow, dayWidth, zoom, weekStartsOn }
+  })
+  const emittedAnchorRef = useRef<string | null>(null)
+  const focusDateRef = useRef(anchorDate)
+  const pendingScrollDateRef = useRef<string | null>(null)
+  const syncRef = useRef<{
+    anchor: string
+    windowStart: string
+    zoom: TimelineZoom
+    todayKey: number | undefined
+  } | null>(null)
+  const frameRef = useRef(0)
+
+  const focusPx = useCallback((): number => {
+    const el = scrollRef.current
+    if (!el) return 0
+    return Math.max(0, el.clientWidth - TIMELINE_LIST_WIDTH) * FOCUS_FRACTION
+  }, [])
+
+  const scrollToDate = useCallback(
+    (date: string): void => {
+      const el = scrollRef.current
+      if (!el) return
+      const { timelineWindow: win, dayWidth: width } = latestRef.current
+      setInline(el, Math.max(0, dayOffset(date, win) * width - focusPx()), isRtl())
+    },
+    [focusPx, isRtl]
+  )
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const previous = syncRef.current
+    syncRef.current = {
+      anchor: anchorDate,
+      windowStart: timelineWindow.start,
+      zoom,
+      todayKey: todayRequestKey
+    }
+    const pending = pendingScrollDateRef.current
+    pendingScrollDateRef.current = null
+
+    if (!previous) {
+      scrollToDate(
+        anchorDate === today ? today : timelinePeriodStart(anchorDate, zoom, weekStartsOn)
+      )
+      return
+    }
+    if (previous.todayKey !== todayRequestKey) {
+      scrollToDate(today)
+      return
+    }
+    if (pending) {
+      scrollToDate(pending)
+      return
+    }
+    if (previous.zoom !== zoom) {
+      scrollToDate(focusDateRef.current)
+      return
+    }
+    if (previous.anchor === anchorDate && previous.windowStart === timelineWindow.start) return
+    if (anchorDate === emittedAnchorRef.current) {
+      const shiftDays =
+        dayIndexFromDate(previous.windowStart) - dayIndexFromDate(timelineWindow.start)
+      if (shiftDays !== 0) {
+        const rtl = isRtl()
+        setInline(el, getInline(el, rtl) + shiftDays * dayWidth, rtl)
+      }
+      return
+    }
+    if (
+      previous.windowStart === timelineWindow.start &&
+      isSameTimelinePeriod(previous.anchor, anchorDate, zoom, weekStartsOn)
+    ) {
+      return
+    }
+    scrollToDate(timelinePeriodStart(anchorDate, zoom, weekStartsOn))
+  }, [
+    anchorDate,
+    timelineWindow.start,
+    zoom,
+    todayRequestKey,
+    today,
+    weekStartsOn,
+    dayWidth,
+    scrollToDate,
+    isRtl
+  ])
+
+  const handleScroll = (): void => {
+    if (frameRef.current) return
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = 0
+      const el = scrollRef.current
+      if (!el) return
+      const latest = latestRef.current
+      const offset = Math.floor((getInline(el, isRtl()) + focusPx()) / latest.dayWidth)
+      const clamped = Math.min(Math.max(offset, 0), latest.timelineWindow.dayCount - 1)
+      const date = dateAtOffset(clamped, latest.timelineWindow)
+      focusDateRef.current = date
+      if (!isSameTimelinePeriod(date, latest.anchorDate, latest.zoom, latest.weekStartsOn)) {
+        emittedAnchorRef.current = date
+        onAnchorChange?.(date)
+      }
+    })
+  }
+
+  /** Scroll a day into view, moving the anchor first when it is outside the window. */
+  const revealDay = useCallback(
+    (date: string): void => {
+      const el = scrollRef.current
+      if (!el) return
+      const { timelineWindow: win, dayWidth: width } = latestRef.current
+      if (date < win.start || date > win.end) {
+        pendingScrollDateRef.current = date
+        onAnchorChange?.(date)
+        return
+      }
+      const rtl = isRtl()
+      const x = dayOffset(date, win) * width
+      const visibleStart = getInline(el, rtl)
+      const visibleEnd = visibleStart + el.clientWidth - TIMELINE_LIST_WIDTH
+      if (x < visibleStart || x + width > visibleEnd) scrollToDate(date)
+    },
+    [onAnchorChange, isRtl, scrollToDate]
+  )
+
+  // ---------------------------------------------------------------------------
+  // Writes
+  // ---------------------------------------------------------------------------
+
+  const commitDates = useCallback(
+    (task: Task, dates: TimelineDates): void => {
+      actions.setDates(task, dates)
+      const first = dates.startDate ?? dates.dueDate
+      if (first) revealDay(first)
+    },
+    [actions, revealDay]
+  )
+
+  const drag = useTimelineDrag({
+    window: timelineWindow,
+    dayWidth,
+    scrollRef,
+    listWidth: TIMELINE_LIST_WIDTH,
+    isRtl,
+    onCommit: commitDates
+  })
+
+  const nudge = (row: TimelineTaskRow, edit: TimelineEdit, delta: number): void => {
+    if (row.shape.kind === 'none') return
+    commitDates(row.task, applyTimelineEdit(row.shape, edit, delta))
+  }
+
+  const setDateField = (task: Task, field: 'start' | 'due', date: string | null): void => {
+    const start = task.startDate ? toLocalDateString(task.startDate) : null
+    const due = task.dueDate ? toLocalDateString(task.dueDate) : null
+    if (field === 'start') {
+      // A start after the due date pulls the due date along.
+      commitDates(task, { startDate: date, dueDate: date && due && date > due ? date : due })
+    } else {
+      // A due date before the start drops the start: the task is now a milestone.
+      commitDates(task, { startDate: date && start && start > date ? null : start, dueDate: date })
     }
   }
 
-  if (groups.length === 0) {
-    return (
-      <div
-        className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center"
-        data-testid="calendar-view"
-        data-view="timeline"
-      >
-        <CalendarDays className="size-5 text-text-tertiary" aria-hidden="true" />
-        <p className="text-sm font-medium text-foreground">{t('timeline.empty-title')}</p>
-        <p className="max-w-sm text-xs text-text-secondary">{t('timeline.empty-body')}</p>
-      </div>
-    )
+  // ---------------------------------------------------------------------------
+  // Selection and opening
+  // ---------------------------------------------------------------------------
+
+  const focusGrid = (): void => scrollRef.current?.focus({ preventScroll: true })
+
+  const select = (key: string): void => {
+    setSelectedKey(key)
+    focusGrid()
   }
 
+  const moveSelection = (to: number): void => {
+    const row = visibleRows[Math.min(Math.max(to, 0), visibleRows.length - 1)]
+    if (!row) return
+    setSelectedKey(row.key)
+    document.getElementById(rowDomId(row.key))?.scrollIntoView?.({ block: 'nearest' })
+    const bounds =
+      row.type === 'task' ? shapeBounds(row.shape) : { first: row.start, last: row.end }
+    if (bounds) revealDay(bounds.first)
+  }
+
+  const rowRect = (row: TimelineRow): AnchorRect => {
+    const el = document.getElementById(rowDomId(row.key))
+    const target =
+      el?.querySelector(
+        '[data-testid="timeline-task-bar"], [data-testid="timeline-task-milestone"], [data-testid="timeline-event-bar"]'
+      ) ??
+      el?.querySelector('[role="gridcell"]') ??
+      el
+    return target
+      ? toAnchorRect(target.getBoundingClientRect())
+      : { x: 0, y: 0, width: 0, height: 0 }
+  }
+
+  const openRow = (row: TimelineRow): void => {
+    if (row.type === 'task') onOpenTask?.(row.task.id, rowRect(row))
+    else onOpenEvent?.(row.item, rowRect(row))
+  }
+
+  const openInTasks = (task: Task): void => {
+    tabActions?.openTab({
+      type: 'tasks',
+      title: 'Tasks',
+      icon: 'CheckSquare',
+      path: '/tasks',
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false,
+      viewState: {
+        openTaskId: task.id,
+        selectedProjectId: task.projectId,
+        activeInternalTab: 'all',
+        activeTab: 'all'
+      }
+    })
+  }
+
+  const runAction = (row: TimelineTaskRow, action: TimelineTaskAction): void => {
+    switch (action) {
+      case 'open':
+        openRow(row)
+        return
+      case 'open-in-tasks':
+        openInTasks(row.task)
+        return
+      case 'move-later':
+        nudge(row, 'move', 7)
+        return
+      case 'move-earlier':
+        nudge(row, 'move', -7)
+        return
+      case 'clear-dates':
+        commitDates(row.task, { startDate: null, dueDate: null })
+        return
+      case 'complete':
+        actions.complete(row.task.id)
+        return
+      case 'uncomplete':
+        actions.uncomplete(row.task.id)
+    }
+  }
+
+  const openPanel = (page: TimelinePanelPage): void => {
+    setPanelPage(page)
+    setPanelOpen(true)
+  }
+
+  const scrollToToday = (): void => {
+    const { timelineWindow: win } = latestRef.current
+    if (today >= win.start && today <= win.end) {
+      scrollToDate(today)
+    } else {
+      pendingScrollDateRef.current = today
+      onAnchorChange?.(today)
+    }
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (isInteractiveTarget(event.target, event.currentTarget)) return
+    const mod = isMac ? event.metaKey : event.ctrlKey
+    const { key, shiftKey, altKey } = event
+    const index = selectedRow ? visibleRows.indexOf(selectedRow) : -1
+    const arrow = key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : 0
+    // Arrows follow the timeline's direction, which runs leftward in RTL.
+    const step = isRtl() ? -arrow : arrow
+    let handled = true
+
+    if (key === 'ArrowDown' && !mod && !altKey) {
+      moveSelection(index + 1)
+    } else if (key === 'ArrowUp' && !mod && !altKey) {
+      moveSelection(index < 0 ? 0 : index - 1)
+    } else if (key === 'Home' && !mod) {
+      moveSelection(0)
+    } else if (key === 'End' && !mod) {
+      moveSelection(visibleRows.length - 1)
+    } else if (key === 'Escape' && selectedRow) {
+      setSelectedKey(null)
+    } else if ((key === 't' || key === 'T') && !mod && !altKey && !shiftKey) {
+      scrollToToday()
+    } else if (key === 'Enter' && selectedRow) {
+      if (mod && selectedTaskRow) openInTasks(selectedTaskRow.task)
+      else openRow(selectedRow)
+    } else if (selectedTaskRow && step !== 0 && altKey && !mod) {
+      nudge(selectedTaskRow, shiftKey ? 'resize-start' : 'resize-end', step)
+    } else if (selectedTaskRow && step !== 0 && shiftKey && !mod) {
+      nudge(selectedTaskRow, 'move', step)
+    } else if (selectedTaskRow && mod && !altKey && key.toLowerCase() === 'k') {
+      openPanel('root')
+    } else if (selectedTaskRow && !mod && !altKey) {
+      switch (key.toLowerCase()) {
+        case 'w':
+          nudge(selectedTaskRow, 'move', shiftKey ? -7 : 7)
+          break
+        case 's':
+          openPanel('start')
+          break
+        case 'd':
+          openPanel('due')
+          break
+        case 'p':
+          openPanel('project')
+          break
+        case 'c':
+          runAction(selectedTaskRow, selectedTaskRow.isCompleted ? 'uncomplete' : 'complete')
+          break
+        case 'backspace':
+        case 'delete':
+          if (selectedTaskRow.shape.kind !== 'none') runAction(selectedTaskRow, 'clear-dates')
+          else handled = false
+          break
+        default:
+          handled = false
+      }
+    } else {
+      handled = false
+    }
+
+    if (handled) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  const geometry = { window: timelineWindow, dayWidth }
+  const openTaskKey = openItemId ? `task:${openItemId}` : null
+  const isRowSelected = (row: TimelineRow): boolean =>
+    row.key === selectedKey ||
+    row.key === openTaskKey ||
+    (row.type === 'event' && row.item.sourceId === openItemId)
+
+  const selection = selectedRow
+    ? selectedRow.type === 'task'
+      ? {
+          kind: 'task' as const,
+          title: selectedRow.task.title || t('timeline.untitled'),
+          detail: describe(selectedRow.shape, selectedRow.isOverdue),
+          color: selectedRow.color
+        }
+      : {
+          kind: 'event' as const,
+          title: selectedRow.item.title,
+          detail: describe(
+            selectedRow.start === selectedRow.end
+              ? { kind: 'due', date: selectedRow.start }
+              : { kind: 'span', start: selectedRow.start, end: selectedRow.end }
+          ),
+          color: selectedRow.color
+        }
+    : null
+
   return (
-    <div
-      className="h-full overflow-auto"
-      data-calendar-scroll
-      data-testid="calendar-view"
-      data-view="timeline"
-    >
+    <div className="flex h-full flex-col" data-testid="calendar-view" data-view="timeline">
       <div
-        className="relative w-full min-w-max pb-6"
-        role="region"
+        ref={scrollRef}
+        role="grid"
+        tabIndex={0}
         aria-label={t('timeline.label')}
+        aria-activedescendant={selectedRow ? rowDomId(selectedRow.key) : undefined}
+        data-calendar-scroll
+        {...{ [LOCAL_COMMAND_MENU_ATTR]: '' }}
+        onScroll={handleScroll}
+        onKeyDown={handleKeyDown}
+        className="min-h-0 flex-1 overflow-auto overscroll-x-contain outline-none"
       >
-        <div
-          aria-hidden="true"
-          className="sticky top-0 z-20 grid border-b border-border bg-background"
-          style={{ gridTemplateColumns }}
-        >
-          <div className="sticky start-0 z-10 flex items-end bg-background ps-4 pe-2 pb-1.5 text-xs font-medium text-text-tertiary">
-            {t('timeline.tasks-column')}
-          </div>
-          {days.map((day, index) => (
-            <div
-              key={day}
-              className={cn(
-                'flex flex-col items-center gap-0.5 py-1.5 text-center',
-                isWeekend(day) ? 'text-text-tertiary' : 'text-text-secondary'
-              )}
-            >
-              <span className="text-[10px] leading-none">
-                {weekdayFormat.format(parseLocalDate(day))}
-              </span>
-              <span
-                className={cn(
-                  'inline-flex size-5 items-center justify-center rounded-full text-xs tabular-nums',
-                  index === todayColumn && 'bg-tint font-semibold text-tint-foreground'
-                )}
-              >
-                {Number(day.slice(8))}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="relative">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 grid"
-            style={{ gridTemplateColumns }}
-          >
-            {days.map((day, index) => (
-              <div
-                key={day}
-                style={{ gridColumn: index + 2, gridRow: 1 }}
-                className={cn(
-                  index === todayColumn ? 'bg-tint/10' : isWeekend(day) && 'bg-surface/70'
-                )}
-              />
-            ))}
-          </div>
-
-          {groups.map((group) => (
-            <section key={group.projectId} aria-label={group.name} className="pt-2">
-              <div className="relative grid h-8 items-center" style={{ gridTemplateColumns }}>
-                <div className="sticky start-0 z-10 flex h-full min-w-0 items-center gap-2 bg-background ps-4 pe-2">
-                  <span
-                    aria-hidden="true"
-                    className="size-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: group.color }}
-                  />
-                  <h3 className="truncate text-[13px] font-medium text-foreground">{group.name}</h3>
-                  <span className="shrink-0 text-[11px] tabular-nums text-text-tertiary">
-                    {t('timeline.task-count', { count: group.rows.length })}
-                  </span>
-                </div>
-                <div
-                  aria-hidden="true"
-                  data-testid="timeline-project-bar"
-                  className={cn(
-                    'relative mx-0.5 h-1 rounded-full opacity-40',
-                    group.bar.continuesBefore && 'ms-0 rounded-s-none',
-                    group.bar.continuesAfter && 'me-0 rounded-e-none'
-                  )}
-                  style={{ ...barColumns(group.bar), backgroundColor: group.color }}
+        <div className="relative min-h-full" style={{ width: TIMELINE_LIST_WIDTH + trackWidth }}>
+          <TimelineAxis
+            {...geometry}
+            zoom={zoom}
+            weekStartsOn={weekStartsOn}
+            today={today}
+            listLabel={t('timeline.tasks-column')}
+            listCount={taskRowCount}
+            listTrailing={
+              onSettingsChange && (
+                <TimelineGroupBySelect
+                  variant="header"
+                  value={settings.groupBy}
+                  onChange={(groupBy) => onSettingsChange({ ...settings, groupBy })}
                 />
-              </div>
+              )
+            }
+          />
 
-              <ul>
-                {group.rows.map((row) => {
-                  const label = `${row.title}, ${describeSchedule(row.schedule)}`
-                  const isSelected = row.taskId === selectedTaskId
-                  return (
-                    <li
-                      key={row.taskId}
-                      className="group relative grid h-8 items-center"
-                      style={{ gridTemplateColumns }}
-                    >
-                      <button
-                        type="button"
-                        aria-label={label}
-                        title={label}
-                        aria-haspopup="dialog"
-                        aria-expanded={isSelected}
-                        data-testid="timeline-task-row"
-                        onClick={(event) => {
-                          const rect = event.currentTarget.getBoundingClientRect()
-                          onSelectTask?.(row.taskId, {
-                            x: rect.left,
-                            y: rect.top,
-                            width: rect.width,
-                            height: rect.height
-                          })
-                        }}
-                        className={cn(
-                          'absolute inset-0 transition-colors duration-100 ease-out',
-                          'hover:bg-surface-active/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
-                          isSelected && 'bg-surface-active/60'
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          'pointer-events-none sticky start-0 z-10 flex h-full min-w-0 items-center bg-background ps-8 pe-2',
-                          'transition-colors duration-100 ease-out group-hover:bg-surface-active',
-                          isSelected && 'bg-surface-active'
-                        )}
-                      >
-                        <span className="truncate text-[13px] text-text-secondary">
-                          {row.title}
-                        </span>
-                      </span>
-                      {row.schedule.kind === 'span' ? (
-                        <div
-                          aria-hidden="true"
-                          data-testid="timeline-task-bar"
-                          className={cn(
-                            'pointer-events-none relative mx-0.5 h-5 rounded-md opacity-80',
-                            row.bar.continuesBefore && 'ms-0 rounded-s-none',
-                            row.bar.continuesAfter && 'me-0 rounded-e-none'
-                          )}
-                          style={{ ...barColumns(row.bar), backgroundColor: group.color }}
-                        />
-                      ) : (
-                        <div
-                          aria-hidden="true"
-                          data-testid="timeline-task-marker"
-                          data-kind={row.schedule.kind}
-                          className="pointer-events-none relative size-2.5 rotate-45 justify-self-center rounded-[2px] border-2"
-                          style={{
-                            ...barColumns(row.bar),
-                            borderColor: group.color,
-                            backgroundColor:
-                              row.schedule.kind === 'due' ? group.color : 'transparent'
-                          }}
-                        />
+          <div
+            className="relative pb-10"
+            style={{ minHeight: `calc(100% - ${TIMELINE_AXIS_HEIGHT}px)` }}
+          >
+            <TimelineGrid {...geometry} zoom={zoom} today={today} />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 z-10 w-px bg-border"
+              style={{ insetInlineStart: TIMELINE_LIST_WIDTH - 1 }}
+            />
+
+            {groups.length === 0 ? (
+              <div
+                className="sticky start-0 flex flex-col items-center justify-center gap-2 px-6 py-20 text-center"
+                style={{ width: 'min(100%, 40rem)' }}
+              >
+                <CalendarDays className="size-5 text-text-tertiary" aria-hidden="true" />
+                <p className="text-sm font-medium text-foreground">{t('timeline.empty-title')}</p>
+                <p className="max-w-sm text-xs text-text-secondary">{t('timeline.empty-body')}</p>
+              </div>
+            ) : (
+              groups.map((group) => {
+                const isCollapsed = collapsed.has(group.key)
+                return (
+                  <div key={group.key} role="rowgroup" aria-label={groupLabel(group, t)}>
+                    <TimelineGroupHeader
+                      {...geometry}
+                      group={group}
+                      collapsed={isCollapsed}
+                      onToggle={() =>
+                        setCollapsed((current) => {
+                          const next = new Set(current)
+                          if (next.has(group.key)) next.delete(group.key)
+                          else next.add(group.key)
+                          return next
+                        })
+                      }
+                    />
+                    {!isCollapsed &&
+                      group.rows.map((row) =>
+                        row.type === 'task' ? (
+                          <TimelineTaskRowView
+                            key={row.key}
+                            {...geometry}
+                            row={row}
+                            domId={rowDomId(row.key)}
+                            today={today}
+                            isSelected={isRowSelected(row)}
+                            preview={
+                              drag.preview?.taskId === row.task.id ? drag.preview.dates : null
+                            }
+                            formatDay={formatDay}
+                            describe={describe}
+                            onSelect={() => select(row.key)}
+                            onOpen={() => openRow(row)}
+                            onBarPointerDown={(event, edit) => {
+                              select(row.key)
+                              drag.startEdit(event, row.task, row.shape, edit)
+                            }}
+                            onSchedulePointerDown={(event) => drag.startSchedule(event, row.task)}
+                            dayFromPointer={drag.dayFromPointer}
+                          />
+                        ) : (
+                          <TimelineEventRowView
+                            key={row.key}
+                            {...geometry}
+                            row={row}
+                            domId={rowDomId(row.key)}
+                            isSelected={isRowSelected(row)}
+                            formatDay={formatDay}
+                            onSelect={() => select(row.key)}
+                            onOpen={() => openRow(row)}
+                          />
+                        )
                       )}
-                    </li>
-                  )
-                })}
-              </ul>
-            </section>
-          ))}
+                  </div>
+                )
+              })
+            )}
+
+            <TimelineTodayLine {...geometry} today={today} />
+          </div>
         </div>
       </div>
+
+      <TimelineActionBar
+        selection={selection}
+        summary={t('timeline.bar.summary', { tasks: taskRowCount, events: eventRowCount })}
+        renderActionsTrigger={(trigger) => (
+          <TimelineActionPanel
+            open={panelOpen}
+            onOpenChange={(open) => {
+              setPanelOpen(open)
+              if (open) setPanelPage('root')
+            }}
+            page={panelPage}
+            onPageChange={setPanelPage}
+            task={selectedTaskRow?.task ?? null}
+            taskColor={selectedTaskRow?.color ?? 'var(--color-tint)'}
+            projects={actions.projects}
+            weekStartsOn={weekStartsOn}
+            onAction={(action) => selectedTaskRow && runAction(selectedTaskRow, action)}
+            onSetDate={(field, date) =>
+              selectedTaskRow && setDateField(selectedTaskRow.task, field, date)
+            }
+            onMoveToProject={(projectId) =>
+              selectedTaskRow && actions.moveToProject(selectedTaskRow.task.id, projectId)
+            }
+            onCloseAutoFocus={focusGrid}
+          >
+            {trigger}
+          </TimelineActionPanel>
+        )}
+      />
     </div>
   )
+}
+
+function groupLabel(
+  group: ReturnType<typeof buildTimelineGroups>[number],
+  t: (key: string) => string
+): string {
+  switch (group.heading.kind) {
+    case 'project':
+      return group.heading.name
+    case 'events':
+      return t('timeline.events')
+    case 'status':
+      return t(`timeline.status.${group.heading.status}`)
+    case 'priority':
+      return t(`timeline.priority.${group.heading.priority}`)
+    case 'all':
+      return t('timeline.tasks-column')
+  }
 }
 
 export default CalendarTimelineView

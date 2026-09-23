@@ -8,6 +8,7 @@ import {
   parseCalendarBoolean,
   parseCalendarView,
   parseImportedSourceIds,
+  parseTimelineSettings,
   parseVisualTypes,
   resolveAnchorSync,
   resolveSelectedSourceIds,
@@ -252,5 +253,27 @@ describe('resolveAnchorSync', () => {
         storedAnchor: '2026-01-05'
       })
     ).toEqual({ clearAwaiting: false, write: '2026-03-02' })
+  })
+})
+
+describe('parseTimelineSettings', () => {
+  it('rejects anything that is not a settings object', () => {
+    expect(parseTimelineSettings(null)).toBeUndefined()
+    expect(parseTimelineSettings('months')).toBeUndefined()
+    expect(parseTimelineSettings([])).toBeUndefined()
+  })
+
+  it('keeps valid fields and defaults unknown or missing ones', () => {
+    expect(
+      parseTimelineSettings({ zoom: 'weeks', groupBy: 'galaxy', showCompleted: true, extra: 1 })
+    ).toEqual({
+      zoom: 'weeks',
+      groupBy: 'project',
+      orderBy: 'start',
+      showEvents: true,
+      showUndated: true,
+      showCompleted: true,
+      showSubtasks: false
+    })
   })
 })

@@ -30,6 +30,8 @@ interface CalendarToolbarProps {
   onToday: () => void
   onCreateEvent: (anchorRect: AnchorRect) => void
   onSearchJump: (item: CalendarProjectionItem) => void
+  /** View-specific controls right after the title (the timeline's zoom). */
+  leadingActions?: React.ReactNode
   extraActions?: React.ReactNode
 }
 
@@ -42,6 +44,7 @@ export function CalendarToolbar({
   onToday,
   onCreateEvent,
   onSearchJump,
+  leadingActions,
   extraActions
 }: CalendarToolbarProps): React.JSX.Element {
   const { t, i18n } = useT('calendar')
@@ -62,6 +65,8 @@ export function CalendarToolbar({
           </>
         )}
       </h2>
+
+      {leadingActions}
 
       <div className="min-w-2 flex-1" />
 
