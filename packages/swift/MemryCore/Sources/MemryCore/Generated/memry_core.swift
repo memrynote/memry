@@ -7608,22 +7608,6 @@ public func FfiConverterTypeVault_lower(_ value: Vault) -> UInt64 {
 public protocol VaultSyncProtocol: AnyObject, Sendable {
     
     /**
-     * Detaches an attachment from a note and releases its bytes (N215, N212).
-     *
-     * **Dereferencing is not optional here.** §14.8: "a client that later
-     * gains the ability to delete an attachment MUST dereference", and
-     * gaining it is exactly what this phase did. A client that dropped the
-     * reference without telling the server would leak the user's own quota,
-     * silently and permanently.
-     *
-     * The reference is dropped **before** the chunks are released, so a
-     * failure between the two leaves bytes nothing points at — reachable
-     * only by a later sweep — rather than a note pointing at bytes that are
-     * gone.
-     */
-    func detachAttachment(noteId: String, attachmentId: String) async throws 
-    
-    /**
      * Fetches one attachment's bytes into `images/` (N206's data half).
      *
      * **`reachable` is the shell's observation and the policy is the core's.**
@@ -7708,6 +7692,22 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
     func isFirstSyncComplete() throws  -> Bool
     
     /**
+     * Detaches an attachment from a note and releases its bytes (N215, N212).
+     *
+     * **Dereferencing is not optional here.** §14.8: "a client that later
+     * gains the ability to delete an attachment MUST dereference", and
+     * gaining it is exactly what this phase did. A client that dropped the
+     * reference without telling the server would leak the user's own quota,
+     * silently and permanently.
+     *
+     * The reference is dropped **before** the chunks are released, so a
+     * failure between the two leaves bytes nothing points at — reachable
+     * only by a later sweep — rather than a note pointing at bytes that are
+     * gone.
+     */
+    func detachAttachment(noteId: String, attachmentId: String) async throws 
+    
+    /**
      * Uploads a file and attaches it to a note (N214).
      *
      * The whole chain of §14.2–§14.5 in one call, because every step is
@@ -7785,36 +7785,6 @@ open class VaultSync: VaultSyncProtocol, @unchecked Sendable {
 
     
 
-    
-    /**
-     * Detaches an attachment from a note and releases its bytes (N215, N212).
-     *
-     * **Dereferencing is not optional here.** §14.8: "a client that later
-     * gains the ability to delete an attachment MUST dereference", and
-     * gaining it is exactly what this phase did. A client that dropped the
-     * reference without telling the server would leak the user's own quota,
-     * silently and permanently.
-     *
-     * The reference is dropped **before** the chunks are released, so a
-     * failure between the two leaves bytes nothing points at — reachable
-     * only by a later sweep — rather than a note pointing at bytes that are
-     * gone.
-     */
-open func detachAttachment(noteId: String, attachmentId: String)async throws   {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_memry_core_fn_method_vaultsync_detach_attachment(
-                        self.uniffiCloneHandle(),FfiConverterString.lower(noteId),FfiConverterString.lower(attachmentId)
-                )
-            },
-            pollFunc: ffi_memry_core_rust_future_poll_void,
-            completeFunc: ffi_memry_core_rust_future_complete_void,
-            freeFunc: ffi_memry_core_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: FfiConverterTypeSyncError_lift
-        )
-}
     
     /**
      * Fetches one attachment's bytes into `images/` (N206's data half).
@@ -7947,6 +7917,36 @@ open func isFirstSyncComplete()throws  -> Bool  {
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Detaches an attachment from a note and releases its bytes (N215, N212).
+     *
+     * **Dereferencing is not optional here.** §14.8: "a client that later
+     * gains the ability to delete an attachment MUST dereference", and
+     * gaining it is exactly what this phase did. A client that dropped the
+     * reference without telling the server would leak the user's own quota,
+     * silently and permanently.
+     *
+     * The reference is dropped **before** the chunks are released, so a
+     * failure between the two leaves bytes nothing points at — reachable
+     * only by a later sweep — rather than a note pointing at bytes that are
+     * gone.
+     */
+open func detachAttachment(noteId: String, attachmentId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_detach_attachment(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(noteId),FfiConverterString.lower(attachmentId)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
 }
     
     /**
@@ -17316,9 +17316,6 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_syncprogresslistener_progress() != 60104) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_detach_attachment() != 43929) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_memry_core_checksum_method_vaultsync_fetch_attachment() != 11177) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -17331,7 +17328,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_is_first_sync_complete() != 42151) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 13377) {
+    if (uniffi_memry_core_checksum_method_vaultsync_detach_attachment() != 19928) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 60438) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_id() != 63291) {
