@@ -21,6 +21,7 @@ import {
 } from '@/components/kibo-ui/tree'
 import { useNoteTreeData } from '@/hooks/use-note-tree-data'
 import { useNoteTreeActions } from '@/hooks/use-note-tree-actions'
+import { useCreateNoteFromNote } from '@/hooks/use-create-note-from-note'
 import { NoteTreeDeleteDialog, NoteTreeTemplateSelector } from '@/components/note-tree-dialogs'
 import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { SaveNoteAsTemplateDialog } from '@/components/note/save-note-as-template-dialog'
@@ -250,6 +251,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   const [pendingRevealNoteId, setPendingRevealNoteId] = useState<string | null>(null)
   const [applyTemplateNote, setApplyTemplateNote] = useState<NoteListItem | null>(null)
   const [saveAsTemplateNote, setSaveAsTemplateNote] = useState<NoteListItem | null>(null)
+  const createNoteFromNote = useCreateNoteFromNote()
   // Mirrors `pendingRevealNoteId` for the virtualized-tree effect below, which
   // needs a non-state read of the pending id so it isn't itself reactive state
   // driving an effect (see the effect's comment).
@@ -410,6 +412,12 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                     <Save className="me-2 h-4 w-4" />
                     {t('tree.actions.saveAsTemplate')}
                   </ContextMenuItem>
+                  {(note.fileType ?? 'markdown') === 'markdown' && (
+                    <ContextMenuItem onClick={() => void createNoteFromNote(note.id)}>
+                      <FilePlus className="me-2 h-4 w-4" />
+                      {t('newNoteFromNote.action')}
+                    </ContextMenuItem>
+                  )}
                   <ContextMenuSeparator />
                   <ContextMenuItem onClick={() => actions.setIconPickerNoteId(note.id)}>
                     <Smile className="me-2 h-4 w-4" />
@@ -691,6 +699,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           isRenaming={actions.isRenaming}
           onApplyTemplateToNote={setApplyTemplateNote}
           onSaveNoteAsTemplate={setSaveAsTemplateNote}
+          onNewNoteFromNote={(note) => void createNoteFromNote(note.id)}
           onDeleteNote={actions.handleDeleteClick}
           onOpenExternal={(...args) => void actions.handleOpenExternal(...args)}
           onRevealInFinder={(...args) => void actions.handleRevealInFinder(...args)}

@@ -275,6 +275,8 @@ export interface NoteCreateInput {
   folder?: string
   tags?: string[]
   template?: string
+  properties?: Record<string, unknown>
+  emoji?: string | null
 }
 
 export interface NoteUpdateInput {

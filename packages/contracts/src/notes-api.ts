@@ -140,7 +140,9 @@ export const NoteCreateSchema = z.object({
   content: z.string().default(''),
   folder: z.string().optional(), // Subfolder path relative to notes/
   tags: z.array(z.string().max(50)).max(50).optional(),
-  template: z.string().optional() // Template ID to use
+  template: z.string().optional(), // Template ID to use
+  properties: z.record(z.string(), z.unknown()).optional(),
+  emoji: z.string().nullable().optional()
 })
 
 export const NoteUpdateSchema = z.object({

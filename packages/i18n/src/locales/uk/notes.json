@@ -868,6 +868,10 @@
     "failed": "Не вдалося зберегти шаблон",
     "loadFailed": "Не вдалося прочитати нотатку"
   },
+  "newNoteFromNote": {
+    "action": "Нова нотатка з цієї нотатки",
+    "created": "Створено з нотатки {source}: {tagCount, plural, =0 {без тегів} one {# тег} few {# теги} many {# тегів} other {# тега}}, {propertyCount, plural, =0 {без властивостей} one {# властивість} few {# властивості} many {# властивостей} other {# властивості}}"
+  },
   "tagView": {
     "moreActions": "Більше дій",
     "pin": {

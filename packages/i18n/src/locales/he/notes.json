@@ -868,6 +868,10 @@
     "failed": "שמירת התבנית נכשלה",
     "loadFailed": "לא ניתן לקרוא את ההערה"
   },
+  "newNoteFromNote": {
+    "action": "הערה חדשה מהערה זו",
+    "created": "נוצרה מתוך {source}: {tagCount, plural, =0 {ללא תגים} one {תג אחד} other {# תגים}}, {propertyCount, plural, =0 {ללא נכסים} one {נכס אחד} other {# נכסים}}"
+  },
   "tagView": {
     "moreActions": "פעולות נוספות",
     "pin": {

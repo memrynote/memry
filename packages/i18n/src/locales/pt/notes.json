@@ -868,6 +868,10 @@
     "failed": "Falha ao guardar o modelo",
     "loadFailed": "Não foi possível ler esta nota"
   },
+  "newNoteFromNote": {
+    "action": "Nova nota a partir desta nota",
+    "created": "Criada com {tagCount, plural, =0 {nenhuma etiqueta} one {# etiqueta} other {# etiquetas}} e {propertyCount, plural, =0 {nenhuma propriedade} one {# propriedade} other {# propriedades}} de {source}"
+  },
   "tagView": {
     "moreActions": "Mais ações",
     "pin": {

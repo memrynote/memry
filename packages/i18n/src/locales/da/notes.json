@@ -868,6 +868,10 @@
     "failed": "Skabelonen kunne ikke gemmes",
     "loadFailed": "Noten kunne ikke læses"
   },
+  "newNoteFromNote": {
+    "action": "Ny note fra denne note",
+    "created": "Oprettet med {tagCount, plural, =0 {ingen tags} one {# tag} other {# tags}} og {propertyCount, plural, =0 {ingen egenskaber} one {# egenskab} other {# egenskaber}} fra {source}"
+  },
   "tagView": {
     "moreActions": "Flere handlinger",
     "pin": {

@@ -868,6 +868,10 @@
     "failed": "Şablon kaydedilemedi",
     "loadFailed": "Bu not okunamadı"
   },
+  "newNoteFromNote": {
+    "action": "Bu nottan yeni not",
+    "created": "{source} notundan oluşturuldu: {tagCount, plural, =0 {etiket yok} one {# etiket} other {# etiket}}, {propertyCount, plural, =0 {özellik yok} one {# özellik} other {# özellik}}"
+  },
   "tagView": {
     "moreActions": "Daha fazla işlem",
     "pin": {

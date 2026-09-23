@@ -868,6 +868,10 @@
     "failed": "儲存範本失敗",
     "loadFailed": "無法讀取這則筆記"
   },
+  "newNoteFromNote": {
+    "action": "從此筆記新增筆記",
+    "created": "已從 {source} 建立，含 {tagCount, plural, other {# 個標籤}}和{propertyCount, plural, other {# 個屬性}}"
+  },
   "tagView": {
     "moreActions": "更多操作",
     "pin": {

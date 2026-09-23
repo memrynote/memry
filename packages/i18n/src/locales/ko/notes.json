@@ -868,6 +868,10 @@
     "failed": "템플릿을 저장하지 못했습니다",
     "loadFailed": "메모를 읽지 못했습니다"
   },
+  "newNoteFromNote": {
+    "action": "이 메모로 새 메모 만들기",
+    "created": "{source}에서 만들었습니다 · 태그 {tagCount, plural, =0 {없음} other {#개}}, 속성 {propertyCount, plural, =0 {없음} other {#개}}"
+  },
   "tagView": {
     "moreActions": "더 보기",
     "pin": {

@@ -318,6 +318,17 @@ describe('VirtualizedNotesTree', () => {
     )
   })
 
+  it('offers "New note from this note" on markdown notes only (#2329)', () => {
+    const onNewNoteFromNote = vi.fn()
+    renderTree({ onNewNoteFromNote })
+
+    const items = screen.getAllByRole('button', { name: 'New note from this note' })
+    expect(items).toHaveLength(1)
+
+    fireEvent.click(items[0])
+    expect(onNewNoteFromNote).toHaveBeenCalledWith(workNote)
+  })
+
   // #1644 — the virtualized tree opens tabs itself, so it must honour the
   // preference the non-virtualized tree gets through useNoteTreeActions.
   it('asks the reducer to reuse the active tab when new-tab opening is off', async () => {

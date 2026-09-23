@@ -868,6 +868,10 @@
     "failed": "Spremanje predloška nije uspjelo",
     "loadFailed": "Bilješku nije moguće pročitati"
   },
+  "newNoteFromNote": {
+    "action": "Nova bilješka iz ove bilješke",
+    "created": "Stvoreno iz bilješke {source}: {tagCount, plural, =0 {bez oznaka} one {# oznaka} few {# oznake} other {# oznaka}}, {propertyCount, plural, =0 {bez svojstava} one {# svojstvo} few {# svojstva} other {# svojstava}}"
+  },
   "tagView": {
     "moreActions": "Više radnji",
     "pin": {

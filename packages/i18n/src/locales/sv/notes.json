@@ -868,6 +868,10 @@
     "failed": "Det gick inte att spara mallen",
     "loadFailed": "Det gick inte att läsa anteckningen"
   },
+  "newNoteFromNote": {
+    "action": "Ny anteckning från den här anteckningen",
+    "created": "Skapad med {tagCount, plural, =0 {inga taggar} one {# tagg} other {# taggar}} och {propertyCount, plural, =0 {inga egenskaper} one {# egenskap} other {# egenskaper}} från {source}"
+  },
   "tagView": {
     "moreActions": "Fler åtgärder",
     "pin": {

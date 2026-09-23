@@ -11,6 +11,7 @@ memrynote's editor is built on **BlockNote** — a block-based rich text editor 
 | <kbd>⌘</kbd>+<kbd>N</kbd>                | Untitled note in the current folder   |
 | Sidebar **+** affordance                 | Same, scoped to the section you click |
 | From a [Template](/user-guide/templates) | New note seeded with template content |
+| **New note from this note**              | Same folder, icon, tags, properties   |
 | `[[New title]]` in another note          | Linked note created on first save     |
 
 The new note opens in a tab, and its row in the sidebar opens a name field with `Untitled`
@@ -29,6 +30,20 @@ menu.
 Every way of making a note does this: <kbd>⌘</kbd>+<kbd>N</kbd>, the sidebar's **New** button, the
 **New note** icon on the Collections header, the tab bar's **+**, and **New note** on a folder's
 right-click menu — including when that folder is closed. All of them open the name field too.
+
+### New note from this note
+
+When follow-up notes share a note's classification (a meeting note or a checklist under a project
+note), right-click the note in the sidebar or open its `⋯` menu and choose **New note from this
+note**. The new note lands in the same folder with the source note's icon, tags, and properties, an
+empty body, and the name field open. A toast confirms what came across, for example "Created with 2
+tags and 3 properties from Project X".
+
+The copy happens once. Editing either note afterwards never changes the other. If the source note
+belongs to a [project](/user-guide/projects) through its `project` property, the new note joins that
+project too. If the folder has a default template, the template body fills the empty body. Where the
+template and the source note set the same property or icon, the source note wins, and tags from both
+are kept.
 
 ## Block Types
 
@@ -306,6 +321,7 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 - **Export** — export the note to PDF or HTML. Both formats embed the note's images in the exported file itself, so the PDF prints them and an exported `.html` keeps them after you move or send it
 - **Insert template…** — insert a template's body at the cursor, leaving the rest of the note untouched
 - **Save as template** — create a new custom template from this note's body, tags, and properties (see [Templates](/user-guide/templates#saving-a-note-as-a-template))
+- **New note from this note** — create a note in the same folder with this note's icon, tags, and properties (see [New note from this note](#new-note-from-this-note))
 - **Full width** — toggle the wide editor layout
 
 **File actions**

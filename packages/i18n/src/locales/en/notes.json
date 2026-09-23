@@ -1164,6 +1164,10 @@
     "failed": "Failed to save template",
     "loadFailed": "Couldn't read this note"
   },
+  "newNoteFromNote": {
+    "action": "New note from this note",
+    "created": "Created with {tagCount, plural, =0 {no tags} one {# tag} other {# tags}} and {propertyCount, plural, =0 {no properties} one {# property} other {# properties}} from {source}"
+  },
   "tags": {
     "hubTitle": "Tags",
     "openHub": "Open tag hub"
