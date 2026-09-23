@@ -240,7 +240,7 @@ When the upload fails because you're offline or the server is unreachable, Memry
 
 ### Catching Up an Attachment That Was Never Offered
 
-A note whose attachments were never handed to the server at all — because they were added while a build could not queue them — is picked up on the next start. MemryNote looks for notes that sync but have no attachment on the server, and queues the files sitting in their `<vault>/attachments/` folder. Nothing is re-uploaded that already made it: a note with even one attachment on the server is left alone, so your storage is never spent on a second copy of a file that is already there. Local-only notes are never included.
+A note whose attachments were never handed to the server at all — because they were added while a build could not queue them — is picked up on the next start. MemryNote looks for notes that sync but have no attachment on the server, and queues the files sitting in their `<vault>/attachments/` folder. It also queues any file elsewhere in the vault that the note's body embeds, such as an imported note pointing at `images/photo.png` next to it, so pictures and PDFs that were never saved through the editor still reach your other devices. Links to the web and paths outside the vault are ignored. Nothing is re-uploaded that already made it: a note with even one attachment on the server is left alone, so your storage is never spent on a second copy of a file that is already there. Local-only notes are never included.
 
 You do not have to do anything for this. Open the app on the device that has the files, leave it connected, and the notes catch up on their own — a broken image or a PDF that would not load on your other devices starts working once the upload lands.
 
