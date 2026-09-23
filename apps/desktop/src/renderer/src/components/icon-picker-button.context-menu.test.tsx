@@ -20,9 +20,10 @@ vi.mock('@/components/note/note-title/EmojiPicker', () => ({
  * animation and its items still answer the pointer. Any pointer event reaching
  * the closing menu moves focus back into it: a move over an item focuses the
  * item, a leave focuses the menu. The picker's popover reads that focus as an
- * outside interaction and closes. Windows delivers a trailing `pointermove`
- * right after the click even when the mouse did not move, so there it happens
- * on nearly every open. Elsewhere it takes a mouse move during the fade.
+ * outside interaction and closes. One zero-distance pointermove is enough, and
+ * Windows delivers a mouse move right after a click even when the mouse stayed
+ * put, which is the likely reason it hit nearly every open there. Elsewhere it
+ * takes a mouse move during the fade.
  */
 const EXIT_ANIMATION = `
   [data-slot='context-menu-content'][data-state='open'] { animation-name: menu-in; }

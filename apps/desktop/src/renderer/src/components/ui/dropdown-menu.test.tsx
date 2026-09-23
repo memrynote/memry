@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +43,8 @@ const expectHeightCappedBy = (element: HTMLElement, cssVar: string): void => {
 }
 
 const AVAILABLE_HEIGHT = '--radix-dropdown-menu-content-available-height'
+
+const MOUSE = { pointerType: 'mouse', pointerId: 1 } as const
 
 const openRootMenu = (): HTMLElement => {
   fireEvent.pointerDown(screen.getByText('trigger'), { button: 0, ctrlKey: false })
@@ -93,5 +95,60 @@ describe('DropdownMenuSubContent', () => {
     expectHeightCappedBy(subContent, AVAILABLE_HEIGHT)
     expect(subContent.className).toContain('overflow-y-auto')
     expect(subContent.className).not.toContain('overflow-hidden')
+  })
+})
+
+/**
+ * A chosen menu stays mounted while it fades out. A pointer event reaching it
+ * then must not pull focus back from the field the item just focused (#2340).
+ */
+describe('DropdownMenuItem while its menu closes', () => {
+  let style: HTMLStyleElement
+
+  beforeEach(() => {
+    style = document.createElement('style')
+    style.textContent = `
+      [data-radix-menu-content][data-state='open'] { animation-name: menu-in; }
+      [data-radix-menu-content][data-state='closed'] { animation-name: menu-out; }
+    `
+    document.head.appendChild(style)
+  })
+
+  afterEach(() => {
+    style.remove()
+  })
+
+  it.each([
+    ['a trailing pointermove', (item: HTMLElement) => fireEvent.pointerMove(item, MOUSE)],
+    [
+      'the pointer leaving the item',
+      (item: HTMLElement) => fireEvent.pointerOut(item, { ...MOUSE, relatedTarget: document.body })
+    ]
+  ])('keeps focus on the field after %s', (_name, afterClick) => {
+    render(
+      <>
+        <input aria-label="name" />
+        <DropdownMenu>
+          <DropdownMenuTrigger>trigger</DropdownMenuTrigger>
+          <DropdownMenuContent data-testid="content">
+            <DropdownMenuItem>Rename</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </>
+    )
+
+    openRootMenu()
+    const item = screen.getByRole('menuitem', { name: 'Rename' })
+    fireEvent.pointerMove(item, MOUSE)
+    fireEvent.click(item)
+    expect(screen.getByTestId('content').getAttribute('data-state')).toBe('closed')
+    // The field the item opens takes focus a frame after the menu closed, as the
+    // sidebar rename field does.
+    const field = screen.getByLabelText('name')
+    field.focus()
+
+    afterClick(item)
+
+    expect(document.activeElement).toBe(field)
   })
 })
