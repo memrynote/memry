@@ -57,11 +57,15 @@ import { getCalloutSlashMenuItem } from './callout-block'
 import { getMathSlashMenuItem } from './math-block'
 import { getWhiteboardSlashMenuItem } from './whiteboard-block'
 import { isFromWhiteboard } from './whiteboard-events'
+import { withTableHeaderRow, type TableInsertEditor } from './slash-menu-utils'
 import {
-  orderSlashMenuItemsByGroup,
-  withTableHeaderRow,
-  type TableInsertEditor
-} from './slash-menu-utils'
+  buildSlashMenuItems,
+  readSlashMenuRecents,
+  recordSlashMenuRecent,
+  withSecondaryActions,
+  type SlashMenuItem
+} from './slash-menu-model'
+import { SlashMenu, SlashMenuFallbackContext, type SlashMenuFallbacks } from './slash-menu'
 import { getTaskSlashMenuItem } from './task-block'
 import { TaskPrefetchProvider } from './task-block/task-prefetch-context'
 import { tasksService } from '@/services/tasks-service'
@@ -2025,6 +2029,20 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     scanOpenedContent()
   }, [editor])
 
+  // What the `/` menu offers when nothing matches: the query is handed on
+  // rather than thrown away.
+  const slashMenuFallbacks: SlashMenuFallbacks = {
+    // Same hand-over as the `Link to note` row, with the query already typed
+    // into the `[[` search.
+    linkToNote: (query) => {
+      editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
+        deleteTriggerCharacter: true
+      })
+      editor.insertInlineContent(query)
+    },
+    askAI: aiEnabled && aiReady ? () => getAISlashMenuItems(editor)[0]?.onItemClick() : null
+  }
+
   // Memry's `file` block renders its own URL, so BlockNote's resolver never
   // reaches it. Handing the same resolver down the tree is what lets a
   // note-relative PDF/attachment ref load — see `note-file-url-context`.
@@ -2178,235 +2196,291 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             />
             {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
             <FilePanelController filePanel={VaultFilePanel} />
-            <SuggestionMenuController
-              triggerCharacter="/"
-              getItems={async (query) => {
-                // An image BLOCK cannot live in a table cell: BlockNote puts it
-                // after the whole table and takes the caret with it, leaving the
-                // cell empty (#1640). Same row, same label — inside a cell it
-                // picks a file and inserts the inline node instead.
-                const inCell = isSelectionInTableCell(editor)
-                const defaults = withTableHeaderRow(
-                  getDefaultReactSlashMenuItems(editor).map((item) => {
-                    // Same reasoning for `/check`: `checkListItem` is a BLOCK,
-                    // so inside a cell BlockNote puts the checklist after the
-                    // whole table. Inside a cell the item inserts the inline
-                    // node at the caret instead — same row, same label.
-                    if ((item as { key?: string }).key === 'check_list') {
-                      return inCell
-                        ? {
-                            ...item,
-                            onItemClick: () =>
-                              editor.insertInlineContent([createInlineCheckboxContent(false)])
-                          }
-                        : item
-                    }
-                    // Every attachment command opens the same picker (#2161).
-                    // BlockNote's own items insert an empty block and pop the
-                    // file panel, which can only upload — so a file already in
-                    // the vault had to be found through a separate "existing
-                    // attachment" command the user had to know existed. The
-                    // picker offers upload and the vault's own files together,
-                    // narrowed to the kind that was asked for.
-                    const key = (item as { key?: string }).key
-                    if (key === 'image') {
-                      // `img` and `picture` already ship as image aliases;
-                      // `photo` did not, and is what people actually type.
-                      const withPhoto = {
-                        ...item,
-                        aliases: [...(item.aliases ?? []), 'photo']
+            <SlashMenuFallbackContext value={slashMenuFallbacks}>
+              <SuggestionMenuController<(query: string) => Promise<SlashMenuItem[]>>
+                triggerCharacter="/"
+                suggestionMenuComponent={SlashMenu}
+                onItemClick={(item: SlashMenuItem) => {
+                  recordSlashMenuRecent(item.id)
+                  item.onItemClick()
+                }}
+                getItems={async (query): Promise<SlashMenuItem[]> => {
+                  // An image BLOCK cannot live in a table cell: BlockNote puts it
+                  // after the whole table and takes the caret with it, leaving the
+                  // cell empty (#1640). Same row, same label — inside a cell it
+                  // picks a file and inserts the inline node instead.
+                  const inCell = isSelectionInTableCell(editor)
+                  const defaults = withTableHeaderRow(
+                    getDefaultReactSlashMenuItems(editor).map((item) => {
+                      // Same reasoning for `/check`: `checkListItem` is a BLOCK,
+                      // so inside a cell BlockNote puts the checklist after the
+                      // whole table. Inside a cell the item inserts the inline
+                      // node at the caret instead — same row, same label.
+                      if ((item as { key?: string }).key === 'check_list') {
+                        return inCell
+                          ? {
+                              ...item,
+                              onItemClick: () =>
+                                editor.insertInlineContent([createInlineCheckboxContent(false)])
+                            }
+                          : item
                       }
-                      return inCell
-                        ? { ...withPhoto, onItemClick: pickImageForCell }
-                        : { ...withPhoto, onItemClick: () => openAttachmentPicker('image') }
-                    }
-                    if (key === 'video' || key === 'audio') {
-                      return { ...item, onItemClick: () => openAttachmentPicker('media') }
-                    }
-                    if (key === 'file') {
-                      return {
-                        ...item,
-                        aliases: [...(item.aliases ?? []), 'attachment', 'upload'],
-                        onItemClick: () => openAttachmentPicker('file')
+                      // Every attachment command opens the same picker (#2161).
+                      // BlockNote's own items insert an empty block and pop the
+                      // file panel, which can only upload — so a file already in
+                      // the vault had to be found through a separate "existing
+                      // attachment" command the user had to know existed. The
+                      // picker offers upload and the vault's own files together,
+                      // narrowed to the kind that was asked for.
+                      const key = (item as { key?: string }).key
+                      if (key === 'image') {
+                        // `img` and `picture` already ship as image aliases;
+                        // `photo` did not, and is what people actually type.
+                        const withPhoto = {
+                          ...item,
+                          aliases: [...(item.aliases ?? []), 'photo']
+                        }
+                        return inCell
+                          ? { ...withPhoto, onItemClick: pickImageForCell }
+                          : { ...withPhoto, onItemClick: () => openAttachmentPicker('image') }
                       }
-                    }
-                    return item
-                  }),
-                  // SAFETY: `updateBlock` is typed against the whole schema
-                  // union, so a helper that only ever writes table content
-                  // cannot state its parameter in terms the editor's own
-                  // signature accepts. The editor is the real BlockNote editor
-                  // and the helper only calls members `TableInsertEditor`
-                  // declares.
-                  editor as unknown as TableInsertEditor
-                )
-                // `/pdf` and `/media` are the same item as `/file` — same
-                // picker, same insert — relabelled and pre-narrowed, because
-                // "attach a PDF" or "add a picture or a video" is what people
-                // are actually after and neither word matched anything before.
-                const fileItem = defaults.find((item) => (item as { key?: string }).key === 'file')
-                const kindItems = fileItem
-                  ? [
-                      {
-                        ...fileItem,
-                        key: 'pdf',
-                        title: t('editor.slashMenu.pdf.title'),
-                        subtext: t('editor.slashMenu.pdf.subtext'),
-                        aliases: ['pdf', 'document'],
-                        onItemClick: () => openAttachmentPicker('pdf')
-                      },
-                      {
-                        ...fileItem,
-                        key: 'media',
-                        title: t('editor.slashMenu.media.title'),
-                        subtext: t('editor.slashMenu.media.subtext'),
-                        // No `photo`/`picture` here: both are already image aliases, and a
-                        // second row under the same word makes the user choose
-                        // between two things that do the same thing.
-                        aliases: ['media', 'video', 'audio', 'movie'],
-                        onItemClick: () => openAttachmentPicker('media')
+                      if (key === 'video' || key === 'audio') {
+                        return { ...item, onItemClick: () => openAttachmentPicker('media') }
                       }
-                    ]
-                  : []
-                const aiItems = aiEnabled && aiReady ? getAISlashMenuItems(editor) : []
-                // `/mermaid` — upstream's own item, so the insert seeds the same
-                // starter `graph TD` the preview needs something to draw from,
-                // and the aliases (mermaid, flowchart, chart, graph) come with
-                // it. Only the two strings a reader sees are Memry's, because
-                // the package's dictionary is English-only and the rest of this
-                // menu is translated.
-                //
-                // Excluded inside a table cell for the same reason as the
-                // template item: a diagram is a BLOCK, so BlockNote lands it
-                // after the whole table and takes the caret with it (#1640),
-                // and unlike image and check there is no inline form to fall
-                // back to.
-                const diagramItems = inCell
-                  ? []
-                  : getDiagramSlashMenuItems(editor).map((item) => ({
-                      ...item,
-                      title: t('editor.diagram.title'),
-                      subtext: t('editor.diagram.subtext')
-                    }))
-                const calloutItem = getCalloutSlashMenuItem(editor, {
-                  title: t('editor.callout.title'),
-                  group: t('editor.callout.group'),
-                  subtext: t('editor.callout.subtext')
-                })
-                const mathItem = getMathSlashMenuItem(editor, {
-                  title: t('editor.math.title'),
-                  group: t('editor.math.group'),
-                  subtext: t('editor.math.subtext')
-                })
-                const taskItem = isFeatureEnabled('tasks')
-                  ? getTaskSlashMenuItem(editor, noteId)
-                  : null
-                // `/whiteboard` makes a canvas this note owns, so it needs a
-                // note to own it; and, being a block, it has no place in a
-                // table cell for the same reason the diagram has none.
-                const whiteboardItem =
-                  noteId && !inCell && isFeatureEnabled('spatialCanvas')
-                    ? getWhiteboardSlashMenuItem(
-                        editor,
-                        noteId,
-                        {
-                          title: t('editor.whiteboard.title'),
-                          group: t('editor.whiteboard.group'),
-                          subtext: t('editor.whiteboard.subtext')
-                        },
-                        async () => (await fetchNote())?.title
-                      )
-                    : null
-                // `/date` and `/remind` both surface the same two-row Date group:
-                // a plain date and a "Remind me — <subtitle>" (aliases overlap so
-                // either trigger shows both). Selecting inserts a configurable pill.
-                const suggestion = buildDateSuggestions('')
-                const dateAliases = ['date', 'remind', 'reminder', 'when']
-                const dateItems = suggestion
-                  ? [
-                      {
-                        title: suggestion.dateLabel,
-                        onItemClick: () => insertDatePill(suggestion.dateValue),
-                        aliases: dateAliases,
-                        group: 'Basic blocks',
-                        subtext: 'Insert a date'
-                      },
-                      {
-                        title: 'Remind me',
-                        onItemClick: () => insertDatePill(suggestion.remindValue),
-                        aliases: dateAliases,
-                        group: 'Basic blocks',
-                        subtext: suggestion.remindSubtitle
+                      if (key === 'file') {
+                        return {
+                          ...item,
+                          aliases: [...(item.aliases ?? []), 'attachment', 'upload'],
+                          onItemClick: () => openAttachmentPicker('file')
+                        }
                       }
-                    ]
-                  : []
-                // `/link` types `[[` for you and hands over to the wiki-link
-                // menu that trigger already owns — one search UI, one place `#`
-                // heading support lives, and the row teaches the shortcut. The
-                // trigger characters have to enter the doc through the suggestion
-                // plugin's own opener; inserting the text some other way leaves
-                // the plugin with no state and no menu.
-                const linkToNoteItem = {
-                  title: t('editor.slashMenu.linkToNote.title'),
-                  onItemClick: () =>
-                    editor
-                      .getExtension(SuggestionMenu)
-                      ?.openSuggestionMenu('[[', { deleteTriggerCharacter: true }),
-                  aliases: ['link', 'wiki', 'wikilink', 'note', 'backlink'],
-                  group: 'Basic blocks',
-                  subtext: t('editor.slashMenu.linkToNote.subtext')
-                }
-                // A template is a block insert. Inside a table cell it lands
-                // after the whole table and takes the caret with it (#1640), and
-                // unlike image and check there is no inline form to fall back to.
-                const insertTemplateItem = {
-                  title: t('editor.slashMenu.insertTemplate.title'),
-                  onItemClick: () =>
-                    setTemplateAnchor({
-                      blockId: editor.getTextCursorPosition().block.id,
-                      placement: 'replace-if-empty'
+                      return item
                     }),
-                  aliases: ['template', 'templates', 'snippet', 'insert'],
-                  group: 'Basic blocks',
-                  subtext: t('editor.slashMenu.insertTemplate.subtext')
-                }
-                const templateItems =
-                  query && !inCell
-                    ? templateList.map((template) => ({
-                        title: template.name,
-                        onItemClick: () =>
-                          void insertTemplate(template.id, {
-                            blockId: editor.getTextCursorPosition().block.id,
-                            placement: 'replace-if-empty'
-                          }),
-                        aliases: [] as string[],
-                        group: t('editor.slashMenu.insertTemplate.group'),
-                        subtext: template.description
-                      }))
+                    // SAFETY: `updateBlock` is typed against the whole schema
+                    // union, so a helper that only ever writes table content
+                    // cannot state its parameter in terms the editor's own
+                    // signature accepts. The editor is the real BlockNote editor
+                    // and the helper only calls members `TableInsertEditor`
+                    // declares.
+                    editor as unknown as TableInsertEditor
+                  )
+                  // `/pdf` and `/media` are the same item as `/file` — same
+                  // picker, same insert — relabelled and pre-narrowed, because
+                  // "attach a PDF" or "add a picture or a video" is what people
+                  // are actually after and neither word matched anything before.
+                  const fileItem = defaults.find(
+                    (item) => (item as { key?: string }).key === 'file'
+                  )
+                  const kindItems = fileItem
+                    ? [
+                        {
+                          ...fileItem,
+                          key: 'pdf',
+                          title: t('editor.slashMenu.pdf.title'),
+                          subtext: t('editor.slashMenu.pdf.subtext'),
+                          aliases: ['pdf', 'document'],
+                          onItemClick: () => openAttachmentPicker('pdf')
+                        },
+                        {
+                          ...fileItem,
+                          key: 'media',
+                          title: t('editor.slashMenu.media.title'),
+                          subtext: t('editor.slashMenu.media.subtext'),
+                          // No `photo`/`picture` here: both are already image aliases, and a
+                          // second row under the same word makes the user choose
+                          // between two things that do the same thing.
+                          aliases: ['media', 'video', 'audio', 'movie'],
+                          onItemClick: () => openAttachmentPicker('media')
+                        }
+                      ]
                     : []
-                const all = orderSlashMenuItemsByGroup([
-                  ...defaults,
-                  ...kindItems,
-                  ...diagramItems,
-                  calloutItem,
-                  mathItem,
-                  ...(whiteboardItem ? [whiteboardItem] : []),
-                  ...(taskItem ? [taskItem] : []),
-                  ...dateItems,
-                  linkToNoteItem,
-                  ...(inCell ? [] : [insertTemplateItem]),
-                  ...aiItems,
-                  ...templateItems
-                ])
-                if (!query) return all
-                const lower = query.toLowerCase()
-                return all.filter(
-                  (item) =>
-                    item.title.toLowerCase().includes(lower) ||
-                    item.aliases?.some((a) => a.toLowerCase().includes(lower))
-                )
-              }}
-            />
+                  const aiItems = aiEnabled && aiReady ? getAISlashMenuItems(editor) : []
+                  // `/mermaid` — upstream's own item, so the insert seeds the same
+                  // starter `graph TD` the preview needs something to draw from,
+                  // and the aliases (mermaid, flowchart, chart, graph) come with
+                  // it. Only the two strings a reader sees are Memry's, because
+                  // the package's dictionary is English-only and the rest of this
+                  // menu is translated.
+                  //
+                  // Excluded inside a table cell for the same reason as the
+                  // template item: a diagram is a BLOCK, so BlockNote lands it
+                  // after the whole table and takes the caret with it (#1640),
+                  // and unlike image and check there is no inline form to fall
+                  // back to.
+                  const diagramItems = inCell
+                    ? []
+                    : getDiagramSlashMenuItems(editor).map((item) => ({
+                        ...item,
+                        title: t('editor.diagram.title'),
+                        subtext: t('editor.diagram.subtext')
+                      }))
+                  const calloutItem = getCalloutSlashMenuItem(editor, {
+                    title: t('editor.callout.title'),
+                    group: t('editor.callout.group'),
+                    subtext: t('editor.callout.subtext')
+                  })
+                  const mathItem = getMathSlashMenuItem(editor, {
+                    title: t('editor.math.title'),
+                    group: t('editor.math.group'),
+                    subtext: t('editor.math.subtext')
+                  })
+                  const taskItem = isFeatureEnabled('tasks')
+                    ? getTaskSlashMenuItem(editor, noteId)
+                    : null
+                  // `/whiteboard` makes a canvas this note owns, so it needs a
+                  // note to own it; and, being a block, it has no place in a
+                  // table cell for the same reason the diagram has none.
+                  const whiteboardItem =
+                    noteId && !inCell && isFeatureEnabled('spatialCanvas')
+                      ? getWhiteboardSlashMenuItem(
+                          editor,
+                          noteId,
+                          {
+                            title: t('editor.whiteboard.title'),
+                            group: t('editor.whiteboard.group'),
+                            subtext: t('editor.whiteboard.subtext')
+                          },
+                          async () => (await fetchNote())?.title
+                        )
+                      : null
+                  // `/date` and `/remind` both surface the same two-row Date group:
+                  // a plain date and a "Remind me — <subtitle>" (aliases overlap so
+                  // either trigger shows both). Selecting inserts a configurable pill.
+                  const suggestion = buildDateSuggestions('')
+                  const dateAliases = ['date', 'remind', 'reminder', 'when']
+                  const dateItems = suggestion
+                    ? [
+                        {
+                          id: 'date',
+                          title: suggestion.dateLabel,
+                          onItemClick: () => insertDatePill(suggestion.dateValue),
+                          aliases: dateAliases,
+                          group: 'Basic blocks',
+                          subtext: 'Insert a date'
+                        },
+                        {
+                          id: 'remind',
+                          title: 'Remind me',
+                          onItemClick: () => insertDatePill(suggestion.remindValue),
+                          aliases: dateAliases,
+                          group: 'Basic blocks',
+                          subtext: suggestion.remindSubtitle
+                        }
+                      ]
+                    : []
+                  // `/link` types `[[` for you and hands over to the wiki-link
+                  // menu that trigger already owns — one search UI, one place `#`
+                  // heading support lives, and the row teaches the shortcut. The
+                  // trigger characters have to enter the doc through the suggestion
+                  // plugin's own opener; inserting the text some other way leaves
+                  // the plugin with no state and no menu.
+                  const linkToNoteItem = {
+                    title: t('editor.slashMenu.linkToNote.title'),
+                    onItemClick: () =>
+                      editor
+                        .getExtension(SuggestionMenu)
+                        ?.openSuggestionMenu('[[', { deleteTriggerCharacter: true }),
+                    aliases: ['link', 'wiki', 'wikilink', 'note', 'backlink'],
+                    group: 'Basic blocks',
+                    subtext: t('editor.slashMenu.linkToNote.subtext')
+                  }
+                  // A template is a block insert. Inside a table cell it lands
+                  // after the whole table and takes the caret with it (#1640), and
+                  // unlike image and check there is no inline form to fall back to.
+                  const insertTemplateItem = {
+                    title: t('editor.slashMenu.insertTemplate.title'),
+                    onItemClick: () =>
+                      setTemplateAnchor({
+                        blockId: editor.getTextCursorPosition().block.id,
+                        placement: 'replace-if-empty'
+                      }),
+                    aliases: ['template', 'templates', 'snippet', 'insert'],
+                    group: 'Basic blocks',
+                    subtext: t('editor.slashMenu.insertTemplate.subtext')
+                  }
+                  const templateItems =
+                    query && !inCell
+                      ? templateList.map((template) => ({
+                          id: `template:${template.id}`,
+                          title: template.name,
+                          onItemClick: () =>
+                            void insertTemplate(template.id, {
+                              blockId: editor.getTextCursorPosition().block.id,
+                              placement: 'replace-if-empty'
+                            }),
+                          aliases: [] as string[],
+                          group: t('editor.slashMenu.insertTemplate.group'),
+                          subtext: template.description
+                        }))
+                      : []
+                  // Every row carries a stable id: recents are stored by it, and
+                  // it decides the row's icon, group and position (see
+                  // `slash-menu-model`). BlockNote's own rows already have one in
+                  // `key`.
+                  const items: SlashMenuItem[] = [
+                    ...defaults.map((item) => ({
+                      ...item,
+                      id: (item as { key?: string }).key ?? item.title
+                    })),
+                    ...kindItems.map((item) => ({ ...item, id: item.key })),
+                    ...diagramItems.map((item, index) => ({
+                      ...item,
+                      id: index === 0 ? 'diagram' : `diagram_${index}`
+                    })),
+                    { ...calloutItem, id: 'callout' },
+                    { ...mathItem, id: 'math' },
+                    ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),
+                    ...(taskItem ? [{ ...taskItem, id: 'task' }] : []),
+                    ...dateItems,
+                    { ...linkToNoteItem, id: 'link_to_note' },
+                    ...(inCell ? [] : [{ ...insertTemplateItem, id: 'insert_template' }]),
+                    ...aiItems.map((item) => ({ ...item, id: 'ai' })),
+                    ...templateItems
+                  ]
+                  return buildSlashMenuItems({
+                    items: withSecondaryActions(items, [
+                      {
+                        from: 'heading',
+                        to: 'toggle_heading',
+                        label: t('editor.slashMenu.secondary.asToggleHeading')
+                      },
+                      {
+                        from: 'heading_2',
+                        to: 'toggle_heading_2',
+                        label: t('editor.slashMenu.secondary.asToggleHeading')
+                      },
+                      {
+                        from: 'heading_3',
+                        to: 'toggle_heading_3',
+                        label: t('editor.slashMenu.secondary.asToggleHeading')
+                      },
+                      {
+                        from: 'check_list',
+                        to: 'task',
+                        label: t('editor.slashMenu.secondary.asLinkedTask')
+                      },
+                      {
+                        from: 'date',
+                        to: 'remind',
+                        label: t('editor.slashMenu.secondary.asReminder')
+                      }
+                    ]),
+                    query,
+                    recentIds: readSlashMenuRecents(),
+                    labels: {
+                      recent: t('editor.slashMenu.groups.recent'),
+                      bestMatch: t('editor.slashMenu.groups.bestMatch'),
+                      blocks: t('editor.slashMenu.groups.blocks'),
+                      headings: t('editor.slashMenu.groups.headings'),
+                      insert: t('editor.slashMenu.groups.insert'),
+                      media: t('editor.slashMenu.groups.media'),
+                      ai: t('editor.slashMenu.groups.ai'),
+                      templates: t('editor.slashMenu.insertTemplate.group')
+                    }
+                  })
+                }}
+              />
+            </SlashMenuFallbackContext>
             <SuggestionMenuController
               triggerCharacter="[["
               getItems={getWikiLinkItems}

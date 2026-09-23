@@ -276,6 +276,31 @@
       "disabledBody": "Turn on Canvas in Settings › Features to see and edit this whiteboard. The drawing is kept either way."
     },
     "slashMenu": {
+      "aria": "Blocks and actions",
+      "groups": {
+        "recent": "Recent",
+        "bestMatch": "Best match",
+        "blocks": "Blocks",
+        "headings": "More headings",
+        "insert": "Insert",
+        "media": "Media",
+        "ai": "AI"
+      },
+      "secondary": {
+        "asToggleHeading": "As toggle",
+        "asLinkedTask": "As linked task",
+        "asReminder": "As reminder"
+      },
+      "actions": {
+        "insert": "Insert",
+        "open": "Open"
+      },
+      "matchesAlias": "matches",
+      "noMatch": "No blocks match “{query}”",
+      "fallback": {
+        "linkTo": "Link to",
+        "askAI": "Ask AI"
+      },
       "pdf": {
         "title": "PDF",
         "subtext": "Attach a PDF and read it inline"
