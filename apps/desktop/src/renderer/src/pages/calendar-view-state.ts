@@ -29,7 +29,7 @@ import type { CalendarProjectionVisualType } from '@/services/calendar-service'
 export const CALENDAR_VIEW_STORAGE_KEY = 'calendar-view'
 
 export const CALENDAR_VIEW_STATE_KEYS = {
-  /** Day / week / month / year. */
+  /** Day / week / month / year / timeline. */
   view: 'calendarView',
   /** The date the view is centred on, as `YYYY-MM-DD`. */
   anchorDate: 'calendarAnchorDate',
@@ -54,7 +54,7 @@ export const CALENDAR_SCROLL_KEYS = {
   year: 'calendar-year'
 } as const
 
-export const CALENDAR_VIEWS: CalendarWorkspaceView[] = ['day', 'week', 'month', 'year']
+export const CALENDAR_VIEWS: CalendarWorkspaceView[] = ['day', 'week', 'month', 'year', 'timeline']
 
 export const parseCalendarView = (raw: unknown): CalendarWorkspaceView | undefined =>
   typeof raw === 'string' && (CALENDAR_VIEWS as string[]).includes(raw)

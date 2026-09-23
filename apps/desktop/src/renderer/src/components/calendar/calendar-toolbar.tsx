@@ -9,13 +9,14 @@ import { parseLocalDate } from './date-utils'
 import { CalendarSearch } from './calendar-search'
 import type { AnchorRect } from './types'
 
-export type CalendarWorkspaceView = 'day' | 'week' | 'month' | 'year'
+export type CalendarWorkspaceView = 'day' | 'week' | 'month' | 'year' | 'timeline'
 
 const VIEW_LABEL_KEYS: Record<CalendarWorkspaceView, `view.${CalendarWorkspaceView}`> = {
   day: 'view.day',
   week: 'view.week',
   month: 'view.month',
-  year: 'view.year'
+  year: 'view.year',
+  timeline: 'view.timeline'
 }
 
 const VIEW_OPTIONS = Object.keys(VIEW_LABEL_KEYS) as CalendarWorkspaceView[]

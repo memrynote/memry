@@ -10,6 +10,7 @@ import { CalendarEventPopover, type CalendarEventReadOnlyMetadata } from './cale
 import { CalendarInboxSnoozePopover } from './calendar-inbox-snooze-popover'
 import { CalendarNotePopover } from './calendar-note-popover'
 import { CalendarMonthView } from './calendar-month-view'
+import { CalendarTimelineView } from './calendar-timeline-view'
 import { CalendarToolbar, type CalendarWorkspaceView } from './calendar-toolbar'
 import { CalendarWeekView } from './calendar-week-view'
 import { CalendarYearView } from './calendar-year-view'
@@ -71,6 +72,7 @@ interface CalendarShellProps {
   onToggleImportedSource: (sourceId: string) => void
   onToggleVisualType: (visualType: CalendarProjectionVisualType) => void
   onSelectItem: (item: CalendarProjectionItem, rect: AnchorRect) => void
+  onSelectTask?: (taskId: string, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
   onAddToProject?: (eventId: string) => void
   onMoveEvent?: (
@@ -121,6 +123,7 @@ export function CalendarShell({
   onToggleImportedSource,
   onToggleVisualType,
   onSelectItem,
+  onSelectTask,
   onDeleteItem,
   onAddToProject,
   onMoveEvent,
@@ -155,8 +158,8 @@ export function CalendarShell({
       ? 'week'
       : view === 'day'
         ? `day:${anchorDate}`
-        : view === 'month'
-          ? `month:${anchorDate.slice(0, 7)}`
+        : view === 'month' || view === 'timeline'
+          ? `${view}:${anchorDate.slice(0, 7)}`
           : `year:${anchorDate.slice(0, 4)}`
   const renderedKeyRef = useRef(viewKey)
   if (renderedKeyRef.current !== viewKey) {
@@ -317,11 +320,13 @@ export function CalendarShell({
           onCreateEvent={onCreateEvent}
           onSearchJump={onSearchJump}
           extraActions={
-            <>
-              {googleConnectAction}
-              {refreshButton}
-              {filterPopover}
-            </>
+            view === 'timeline' ? null : (
+              <>
+                {googleConnectAction}
+                {refreshButton}
+                {filterPopover}
+              </>
+            )
           }
         />
       </div>
@@ -350,6 +355,12 @@ export function CalendarShell({
               />
             ) : view === 'month' ? (
               <CalendarMonthView {...chipViewProps} onQuickSave={onQuickSave} />
+            ) : view === 'timeline' ? (
+              <CalendarTimelineView
+                anchorDate={anchorDate}
+                selectedTaskId={selectedItemId}
+                onSelectTask={onSelectTask}
+              />
             ) : (
               <CalendarYearView
                 {...viewProps}

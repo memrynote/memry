@@ -37,9 +37,10 @@ describe('calendar view-state keys', () => {
 })
 
 describe('parseCalendarView', () => {
-  it('accepts the four views and nothing else', () => {
+  it('accepts the five views and nothing else', () => {
     expect(parseCalendarView('week')).toBe('week')
     expect(parseCalendarView('year')).toBe('year')
+    expect(parseCalendarView('timeline')).toBe('timeline')
     expect(parseCalendarView('agenda')).toBeUndefined()
     expect(parseCalendarView(null)).toBeUndefined()
     expect(parseCalendarView(2)).toBeUndefined()

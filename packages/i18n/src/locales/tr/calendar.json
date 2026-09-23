@@ -3,7 +3,8 @@
     "day": "Gün",
     "week": "Hafta",
     "month": "Ay",
-    "year": "Yıl"
+    "year": "Yıl",
+    "timeline": "Zaman çizelgesi"
   },
   "toolbar": {
     "create-event": "Etkinlik oluştur",
@@ -198,5 +199,15 @@
   "undo": {
     "moveEvent": "Etkinliği taşı",
     "moveTask": "Görevi yeniden planla"
+  },
+  "timeline": {
+    "label": "Projeye göre planlanmış görevler",
+    "tasks-column": "Görevler",
+    "task-count": "{count, plural, one {# görev} other {# görev}}",
+    "span": "{start} – {end}",
+    "due": "Bitiş {date}",
+    "starts": "Başlangıç {date}",
+    "empty-title": "Bu ay planlanmış görev yok",
+    "empty-body": "Bu ay içinde başlangıç veya bitiş tarihi olan görevler burada görünür. Bir görevi çubuk olarak görmek için iki tarihi de verin."
   }
 }

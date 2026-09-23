@@ -311,15 +311,9 @@ vi.mock('@/components/calendar/promote-external-dialog', () => ({
 }))
 
 vi.mock('@/components/calendar/calendar-task-popover', () => ({
-  CalendarTaskPopover: ({
-    item,
-    onDismiss
-  }: {
-    item: CalendarProjectionItem
-    onDismiss: () => void
-  }) => (
+  CalendarTaskPopover: ({ taskId, onDismiss }: { taskId: string; onDismiss: () => void }) => (
     <div>
-      <span>task popover:{item.title}</span>
+      <span>task popover:{taskId}</span>
       <button type="button" onClick={onDismiss}>
         dismiss task
       </button>
@@ -575,9 +569,9 @@ describe('CalendarPage callback coverage', () => {
     await waitFor(() => expect(mocks.createEvent).toHaveBeenCalledTimes(2))
 
     fireEvent.click(screen.getByText('select task'))
-    expect(screen.getByText('task popover:Task due')).toBeInTheDocument()
+    expect(screen.getByText('task popover:task-1')).toBeInTheDocument()
     fireEvent.click(screen.getByText('dismiss task'))
-    expect(screen.queryByText('task popover:Task due')).not.toBeInTheDocument()
+    expect(screen.queryByText('task popover:task-1')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('select external'))
     fireEvent.click(await screen.findByText('promote remember'))

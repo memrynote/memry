@@ -397,7 +397,7 @@ describe('CalendarPage', () => {
     })
   })
 
-  it('switches between day, week, month, and year views', async () => {
+  it('switches between day, week, month, year, and timeline views', async () => {
     const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
 
@@ -414,6 +414,28 @@ describe('CalendarPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Year' }))
     expect(screen.getByTestId('calendar-view')).toHaveAttribute('data-view', 'year')
+
+    await user.click(screen.getByRole('button', { name: 'Timeline' }))
+    expect(screen.getByTestId('calendar-view')).toHaveAttribute('data-view', 'timeline')
+  })
+
+  it('restores the timeline view and steps it a month at a time without calendar filters', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('calendar-view', 'timeline')
+    const now = new Date()
+    const nextMonth = new Intl.DateTimeFormat('en', { month: 'long' }).format(
+      new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    )
+
+    renderWithProviders(<CalendarPage />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('calendar-view')).toHaveAttribute('data-view', 'timeline')
+    )
+    expect(screen.queryByRole('button', { name: 'Filter calendars' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Next period' }))
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(nextMonth)
   })
 
   it('restores a persisted view and wires period navigation controls', async () => {

@@ -97,7 +97,7 @@ function getRangeForView(
     }
   }
 
-  if (view === 'month') {
+  if (view === 'month' || view === 'timeline') {
     const gridDays = getMonthGridDays(anchorDate, weekStartsOn)
     return {
       startAt: toStartOfLocalDayIso(gridDays[0]),
@@ -109,6 +109,14 @@ function getRangeForView(
   const start = new Date(date.getFullYear(), 0, 1)
   const end = new Date(date.getFullYear() + 1, 0, 1)
   return { startAt: start.toISOString(), endAt: end.toISOString() }
+}
+
+const PERIOD_STEP: Record<CalendarWorkspaceView, (date: string, direction: 1 | -1) => string> = {
+  day: (date, direction) => addLocalDays(date, direction),
+  week: (date, direction) => addLocalDays(date, 7 * direction),
+  month: (date, direction) => addLocalMonths(date, direction),
+  year: (date, direction) => addLocalYears(date, direction),
+  timeline: (date, direction) => addLocalMonths(date, direction)
 }
 
 function createDraftFromAnchor(anchorDate: string): CalendarEventDraft {
@@ -249,7 +257,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     anchorRect: AnchorRect
   } | null>(null)
   const [taskPopoverState, setTaskPopoverState] = useState<{
-    item: CalendarProjectionItem
+    taskId: string
     anchorRect: AnchorRect
   } | null>(null)
   const [notePopoverState, setNotePopoverState] = useState<{
@@ -509,21 +517,11 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   }, [anchorDate, calendarCreateEventToken])
 
   const handlePrevious = () => {
-    setAnchorDate((current) => {
-      if (view === 'day') return addLocalDays(current, -1)
-      if (view === 'week') return addLocalDays(current, -7)
-      if (view === 'month') return addLocalMonths(current, -1)
-      return addLocalYears(current, -1)
-    })
+    setAnchorDate((current) => PERIOD_STEP[view](current, -1))
   }
 
   const handleNext = () => {
-    setAnchorDate((current) => {
-      if (view === 'day') return addLocalDays(current, 1)
-      if (view === 'week') return addLocalDays(current, 7)
-      if (view === 'month') return addLocalMonths(current, 1)
-      return addLocalYears(current, 1)
-    })
+    setAnchorDate((current) => PERIOD_STEP[view](current, 1))
   }
 
   const handleToday = () => {
@@ -600,12 +598,16 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
   }
 
+  const handleSelectTask = (taskId: string, rect: AnchorRect) => {
+    setPopoverState(null)
+    setInboxSnoozePopoverState(null)
+    setNotePopoverState(null)
+    setTaskPopoverState({ taskId, anchorRect: rect })
+  }
+
   const handleSelectItem = async (item: CalendarProjectionItem, rect: AnchorRect) => {
     if (item.sourceType === 'task') {
-      setPopoverState(null)
-      setInboxSnoozePopoverState(null)
-      setNotePopoverState(null)
-      setTaskPopoverState({ item, anchorRect: rect })
+      handleSelectTask(item.sourceId, rect)
       return
     }
 
@@ -911,7 +913,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   const selectedItemId =
     popoverState?.eventId ??
-    taskPopoverState?.item.sourceId ??
+    taskPopoverState?.taskId ??
     inboxSnoozePopoverState?.item.sourceId ??
     null
 
@@ -982,6 +984,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
           )
         }
         onSelectItem={(...args) => void handleSelectItem(...args)}
+        onSelectTask={handleSelectTask}
         onDeleteItem={handleDeleteItem}
         onAddToProject={setAddToProjectEventId}
         onMoveEvent={handleMoveEvent}
@@ -1005,7 +1008,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       />
       {taskPopoverState && (
         <CalendarTaskPopover
-          item={taskPopoverState.item}
+          taskId={taskPopoverState.taskId}
           anchorRect={taskPopoverState.anchorRect}
           onDismiss={() => setTaskPopoverState(null)}
         />

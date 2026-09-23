@@ -4,7 +4,8 @@
     "week": "Week",
     "month": "Month",
     "monthGridLabel": "Month grid",
-    "year": "Year"
+    "year": "Year",
+    "timeline": "Timeline"
   },
   "undo": {
     "moveEvent": "Move event",
@@ -201,5 +202,15 @@
     "kindDateReminder": "Date reminder",
     "open": "Open note",
     "couldNotOpen": "Could not open note"
+  },
+  "timeline": {
+    "label": "Scheduled tasks by project",
+    "tasks-column": "Tasks",
+    "task-count": "{count, plural, one {# task} other {# tasks}}",
+    "span": "{start} – {end}",
+    "due": "Due {date}",
+    "starts": "Starts {date}",
+    "empty-title": "No scheduled tasks this month",
+    "empty-body": "Tasks with a start or due date in this month appear here. Give a task both dates to see it as a bar."
   }
 }

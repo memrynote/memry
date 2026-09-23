@@ -1,19 +1,20 @@
 # Calendar
 
-Day, week, month, and year views over events and date-bound tasks.
+Day, week, month, year, and timeline views over events and date-bound tasks.
 
 <!-- screenshot: week view with tasks and events -->
 
 ## Views
 
-Switch between Day, Week, Month, and Year from the calendar toolbar.
+Switch between Day, Week, Month, Year, and Timeline from the calendar toolbar.
 
-| View  | Best for                                       |
-| ----- | ---------------------------------------------- |
-| Day   | Hour-by-hour detail; appointments back-to-back |
-| Week  | Default; one screen of context                 |
-| Month | Bird's-eye plan                                |
-| Year  | Capacity / planning view                       |
+| View     | Best for                                       |
+| -------- | ---------------------------------------------- |
+| Day      | Hour-by-hour detail; appointments back-to-back |
+| Week     | Default; one screen of context                 |
+| Month    | Bird's-eye plan                                |
+| Year     | Capacity / planning view                       |
+| Timeline | Scheduled tasks by project, Gantt style        |
 
 The current view persists per tab.
 
@@ -21,6 +22,28 @@ Opening Calendar always lands on today, in that view. The date you navigate to i
 
 Day and week views show a current-time marker on today's grid; event chips remain the
 clickable target for opening or editing events.
+
+## Timeline
+
+Timeline lays out one month of scheduled tasks as a Gantt chart. Each project with dated
+tasks in that month gets a group, with one row per task, and the days of the month run across
+the top. The previous and next buttons move a month at a time.
+
+| Task dates                      | How it appears                          |
+| ------------------------------- | --------------------------------------- |
+| Start date and a later due date | A bar from the start day to the due day |
+| Due date only, or start = due   | A filled diamond on the due day         |
+| Start date only                 | An outlined diamond on the start day    |
+
+A bar that begins before or ends after the month is cut at the edge of the month, with a square
+end on that side. The thin line next to each project name spans all of that project's rows.
+Completed tasks, archived tasks, and tasks in archived projects are left out.
+
+Click a row to open the same task popover as a task chip. Use it to reschedule the task or open
+it in Tasks. To draw a task as a bar, set its start date in the task's detail drawer.
+
+Timeline shows tasks only. Events, reminders, and notes stay in the other views, so the calendar
+filter and Google refresh buttons are hidden while Timeline is open.
 
 ## What Shows Up
 

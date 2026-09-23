@@ -16,7 +16,6 @@ import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { tasksService } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { SnoozeTarget } from '@/lib/snooze-options'
 import type { AnchorRect } from './types'
 import type { RepeatConfig } from '@/services/tasks-service'
@@ -24,18 +23,18 @@ import type { RepeatConfig } from '@/services/tasks-service'
 const log = createLogger('CalendarTaskPopover')
 
 export interface CalendarTaskPopoverProps {
-  item: CalendarProjectionItem
+  taskId: string
   anchorRect: AnchorRect
   onDismiss: () => void
 }
 
 export function CalendarTaskPopover({
-  item,
+  taskId,
   anchorRect,
   onDismiss
 }: CalendarTaskPopoverProps): React.JSX.Element | null {
-  const { data: task } = useTask(item.sourceId)
-  const { data: subtasks = [] } = useSubtasks(item.sourceId)
+  const { data: task } = useTask(taskId)
+  const { data: subtasks = [] } = useSubtasks(taskId)
   const { data: project } = useProject(task?.projectId ?? null)
   const { data: parentTask } = useTask(task?.parentId ?? null)
   const { tags: allTags } = useNoteTagsQuery({ enabled: (task?.tags?.length ?? 0) > 0 })
@@ -128,14 +127,14 @@ export function CalendarTaskPopover({
       isPreview: false,
       isDeleted: false,
       viewState: {
-        openTaskId: item.sourceId,
+        openTaskId: taskId,
         selectedProjectId: task.projectId,
         activeInternalTab: 'all',
         activeTab: 'all'
       }
     })
     onDismiss()
-  }, [openTab, item.sourceId, task, onDismiss])
+  }, [openTab, taskId, task, onDismiss])
 
   const handleOpenSourceNote = useCallback((): void => {
     if (!task?.sourceNoteId) return
