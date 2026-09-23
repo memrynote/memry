@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Eliminar da conta",
       "deleteVaultFailed": "Não foi possível eliminar o cofre",
       "deleteVaultTitle": "Eliminar “{name}” da sua conta?",
-      "removeVaultTitle": "Remover “{name}” da lista?"
+      "removeVaultTitle": "Remover “{name}” da lista?",
+      "missing": "Pasta não encontrada"
     },
     "componentsWindowControls": {
       "searchK": "Pesquisar (⌘K)",

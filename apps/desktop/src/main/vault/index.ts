@@ -204,7 +204,9 @@ function toVaultInfo(stored: StoredVaultInfo): VaultInfo {
     noteCount: stored.noteCount,
     taskCount: stored.taskCount,
     lastOpened: stored.lastOpened,
-    isDefault: stored.isDefault
+    isDefault: stored.isDefault,
+    vaultUuid: stored.vaultUuid,
+    isMissing: !isValidDirectory(stored.path)
   }
 }
 

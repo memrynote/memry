@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Удалить из аккаунта",
       "deleteVaultFailed": "Не удалось удалить хранилище",
       "deleteVaultTitle": "Удалить «{name}» из вашего аккаунта?",
-      "removeVaultTitle": "Убрать «{name}» из списка?"
+      "removeVaultTitle": "Убрать «{name}» из списка?",
+      "missing": "Папка не найдена"
     },
     "componentsWindowControls": {
       "searchK": "Поиск (⌘К)",

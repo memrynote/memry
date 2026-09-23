@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Smazat z účtu",
       "deleteVaultFailed": "Trezor se nepodařilo smazat",
       "deleteVaultTitle": "Smazat „{name}“ z vašeho účtu?",
-      "removeVaultTitle": "Odebrat „{name}“ ze seznamu?"
+      "removeVaultTitle": "Odebrat „{name}“ ze seznamu?",
+      "missing": "Složka nenalezena"
     },
     "componentsWindowControls": {
       "searchK": "Hledat (⌘K)",

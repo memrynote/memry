@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "حذف من الحساب",
       "deleteVaultFailed": "تعذّر حذف الخزنة",
       "deleteVaultTitle": "حذف “{name}” من حسابك؟",
-      "removeVaultTitle": "إزالة “{name}” من القائمة؟"
+      "removeVaultTitle": "إزالة “{name}” من القائمة؟",
+      "missing": "المجلد غير موجود"
     },
     "componentsWindowControls": {
       "searchK": "بحث (⌘K)",

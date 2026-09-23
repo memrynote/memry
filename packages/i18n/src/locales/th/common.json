@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "ลบออกจากบัญชี",
       "deleteVaultFailed": "ไม่สามารถลบคลังได้",
       "deleteVaultTitle": "ลบ “{name}” ออกจากบัญชีของคุณ?",
-      "removeVaultTitle": "นำ “{name}” ออกจากรายการ?"
+      "removeVaultTitle": "นำ “{name}” ออกจากรายการ?",
+      "missing": "ไม่พบโฟลเดอร์"
     },
     "componentsWindowControls": {
       "searchK": "  \nค้นหา (⌘K)  ",

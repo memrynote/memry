@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Odstrániť z účtu",
       "deleteVaultFailed": "Trezor sa nepodarilo odstrániť",
       "deleteVaultTitle": "Odstrániť „{name}“ z vášho účtu?",
-      "removeVaultTitle": "Odstrániť „{name}“ zo zoznamu?"
+      "removeVaultTitle": "Odstrániť „{name}“ zo zoznamu?",
+      "missing": "Priečinok sa nenašiel"
     },
     "componentsWindowControls": {
       "searchK": "Vyhľadávanie (⌘K)",

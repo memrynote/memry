@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "계정에서 삭제",
       "deleteVaultFailed": "보관함을 삭제할 수 없습니다",
       "deleteVaultTitle": "계정에서 “{name}” 보관함을 삭제하시겠습니까?",
-      "removeVaultTitle": "목록에서 “{name}” 보관함을 제거하시겠습니까?"
+      "removeVaultTitle": "목록에서 “{name}” 보관함을 제거하시겠습니까?",
+      "missing": "폴더를 찾을 수 없음"
     },
     "componentsWindowControls": {
       "searchK": "검색(⌘K)",

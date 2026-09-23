@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "アカウントから削除",
       "deleteVaultFailed": "保管庫を削除できませんでした",
       "deleteVaultTitle": "「{name}」をアカウントから削除しますか？",
-      "removeVaultTitle": "「{name}」を一覧から削除しますか？"
+      "removeVaultTitle": "「{name}」を一覧から削除しますか？",
+      "missing": "フォルダが見つかりません"
     },
     "componentsWindowControls": {
       "searchK": "検索(⌘K)",
