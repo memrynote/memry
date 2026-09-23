@@ -271,6 +271,41 @@ describe('useBlockNoteSetup', () => {
     expect(editor.setTextCursorPosition).toHaveBeenCalledWith('trailing', 'end')
   })
 
+  it('adds no block for a press in the gutter beside the text, only below it', () => {
+    // #given a note ending in content, whose last block ends at y=200. Every
+    // block marquee starts with a press in the gutter beside the column, and
+    // that press also reaches focusAtEnd.
+    const { editor } = createEditor()
+    editor.document = [
+      { id: 'first', type: 'paragraph', content: [{ type: 'text', text: 'a' }] },
+      { id: 'last', type: 'paragraph', content: [{ type: 'text', text: 'b' }] }
+    ]
+    const lastEl = document.createElement('div')
+    lastEl.setAttribute('data-id', 'last')
+    lastEl.getBoundingClientRect = () => ({ bottom: 200 }) as DOMRect
+    const editorRoot = document.createElement('div')
+    editorRoot.appendChild(lastEl)
+    Object.assign(editor, { domElement: editorRoot })
+    const focusAtEndRef: React.RefObject<((clickY?: number) => void) | null> = { current: null }
+
+    renderHook(() =>
+      useBlockNoteSetup({ editor, spellCheck: true, focusAtEndRef, editorContainerRef })
+    )
+
+    // #when the press lands beside the last block
+    focusAtEndRef.current?.(150)
+
+    // #then the caret goes to the end of it and the note is not modified
+    expect(editor.insertBlocks).not.toHaveBeenCalled()
+    expect(editor.setTextCursorPosition).toHaveBeenCalledWith('last', 'end')
+
+    // #when the press lands in the empty space below it
+    focusAtEndRef.current?.(260)
+
+    // #then a fresh paragraph takes the caret
+    expect(editor.insertBlocks).toHaveBeenCalledTimes(1)
+  })
+
   /**
    * Wiki links are deliberately NOT in this listener any more.
    *

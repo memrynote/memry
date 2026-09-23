@@ -413,7 +413,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const noteContentWidth = isFullWidth ? undefined : EDITOR_NORMAL_CONTENT_WIDTH
 
   // Focus editor at end when clicking empty space
-  const focusAtEndRef = useRef<(() => void) | null>(null)
+  const focusAtEndRef = useRef<((clickY?: number) => void) | null>(null)
 
   // Opens the editor's template picker at the caret. The overflow menu used to
   // apply a template over the whole body behind an overwrite prompt; a template
@@ -455,7 +455,7 @@ export function NotePage({ noteId }: NotePageProps) {
       // start rule's "is there text here". See marquee-hit-test.ts.
       if (!isOutsideAllBlocks(target)) return
       event.preventDefault()
-      focusAtEndRef.current?.()
+      focusAtEndRef.current?.(event.clientY)
     }
     marqueeZoneEl.addEventListener('mousedown', handler)
     return () => marqueeZoneEl.removeEventListener('mousedown', handler)

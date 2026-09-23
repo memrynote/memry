@@ -208,17 +208,18 @@ test.describe('Marquee selection — block types', () => {
     ])
     await expect(page.locator(TASK_BLOCK_SELECTOR)).toHaveCount(1)
 
-    const startCount = await getBlockCount(page)
     await marqueeAcross(page, 0, 0)
 
     await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(1)
 
     // The marquee-side Backspace handler operates on the selectedBlockIds set
     // directly via editor.removeBlocks, so what matters end-to-end is that
-    // Backspace removes the highlighted block.
+    // Backspace removes the highlighted block. Asserted on the taskBlock, not
+    // the block count: it is the only block, a document never goes empty, and
+    // since BlockNote 0.51 there is no real trailing block, so removing it
+    // leaves one empty paragraph and the count stays at 1.
     await page.keyboard.press('Backspace')
-    await page.waitForTimeout(300)
-    expect(await getBlockCount(page)).toBeLessThan(startCount)
+    await expect(page.locator(TASK_BLOCK_SELECTOR)).toHaveCount(0)
   })
 
   test('2. multiple adjacent taskBlocks — highlight survives, Backspace deletes all', async ({

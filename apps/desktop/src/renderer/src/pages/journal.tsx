@@ -286,7 +286,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   const showEditorLoading = isDataPending && showLoadingSpinner
 
-  const focusAtEndRef = useRef<(() => void) | null>(null)
+  const focusAtEndRef = useRef<((clickY?: number) => void) | null>(null)
 
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
@@ -427,7 +427,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       // start rule's "is there text here". See marquee-hit-test.ts.
       if (!isOutsideAllBlocks(target)) return
       event.preventDefault()
-      focusAtEndRef.current?.()
+      focusAtEndRef.current?.(event.clientY)
     }
     marqueeZoneEl.addEventListener('mousedown', handler)
     return () => marqueeZoneEl.removeEventListener('mousedown', handler)

@@ -163,7 +163,7 @@ export interface ContentAreaProps {
    */
   onInlineTagsChange?: (tags: string[], origin: InlineTagsOrigin) => void
   /** Ref that receives a focusAtEnd function to focus the editor at the end of the document */
-  focusAtEndRef?: React.RefObject<(() => void) | null>
+  focusAtEndRef?: React.RefObject<((clickY?: number) => void) | null>
   /**
    * Ref that receives a function opening the template picker at the caret, so
    * surfaces outside the editor (the note's overflow menu) reach the same

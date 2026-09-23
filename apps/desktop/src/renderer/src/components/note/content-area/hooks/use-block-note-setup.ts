@@ -13,7 +13,7 @@ interface BlockNoteSetupParams {
   editor: any
   aiPort?: number | null
   spellCheck?: boolean
-  focusAtEndRef?: React.RefObject<(() => void) | null>
+  focusAtEndRef?: React.RefObject<((clickY?: number) => void) | null>
   editorContainerRef: React.RefObject<HTMLDivElement | null>
   onLinkClick?: (href: string) => void
   initialHighlight?: HighlightInfo
@@ -107,12 +107,28 @@ export function useBlockNoteSetup({
   // focusAtEndRef assignment
   useEffect(() => {
     if (!focusAtEndRef) return
-    focusAtEndRef.current = () => {
+    focusAtEndRef.current = (clickY) => {
       editor.focus()
       const blocks = editor.document
       if (blocks.length === 0) return
 
       const lastBlock = blocks[blocks.length - 1]
+      // Only a click BELOW the last block is "start writing here". The same
+      // mousedown handler also fires in the gutter beside the column, which is
+      // where every block marquee starts, and inserting there appended a blank
+      // paragraph to the note on each marquee drag. Beside the text, keep the
+      // caret at the end of what is already written.
+      if (clickY !== undefined) {
+        const root: HTMLElement | undefined = editor.domElement
+        const lastEl = Array.from(root?.querySelectorAll<HTMLElement>('[data-id]') ?? []).find(
+          (el) => el.getAttribute('data-id') === lastBlock.id
+        )
+        if (lastEl && clickY <= lastEl.getBoundingClientRect().bottom) {
+          editor.setTextCursorPosition(lastBlock.id, 'end')
+          return
+        }
+      }
+
       // A click in the empty space below the note means "start writing here",
       // and until BlockNote 0.51 that worked by accident: every document
       // carried a real trailing empty paragraph, so the last block WAS an
