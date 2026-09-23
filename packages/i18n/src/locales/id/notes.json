@@ -809,8 +809,10 @@
     "copyLinks": "Salin tautan",
     "delete": "Hapus",
     "export": "Ekspor",
+    "iconUpdated": "{count, plural, one {Ikon diperbarui pada # catatan} other {Ikon diperbarui pada # catatan}}",
     "move": "Pindahkan",
     "selected": "dipilih",
+    "setIcon": "Atur ikon",
     "tagNamePlaceholder": "Nama tag",
     "toolbarAria": "Aksi massal"
   },

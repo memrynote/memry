@@ -809,8 +809,10 @@
     "copyLinks": "Sao chép liên kết",
     "delete": "Xóa",
     "export": "Xuất",
+    "iconUpdated": "{count, plural, other {Đã cập nhật biểu tượng cho # ghi chú}}",
     "move": "Di chuyển",
     "selected": "đã chọn",
+    "setIcon": "Đặt biểu tượng",
     "tagNamePlaceholder": "Tên thẻ",
     "toolbarAria": "Thao tác hàng loạt"
   },

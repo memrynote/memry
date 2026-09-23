@@ -809,8 +809,10 @@
     "copyLinks": "Copiar enlaces",
     "delete": "Eliminar",
     "export": "Exportar",
+    "iconUpdated": "{count, plural, one {Icono actualizado en # nota} other {Icono actualizado en # notas}}",
     "move": "Mover",
     "selected": "seleccionadas",
+    "setIcon": "Establecer icono",
     "tagNamePlaceholder": "Nombre de la etiqueta",
     "toolbarAria": "Acciones en lote"
   },

@@ -809,8 +809,10 @@
     "copyLinks": "リンクをコピー",
     "delete": "削除",
     "export": "エクスポート",
+    "iconUpdated": "{count, plural, other {#件のノートのアイコンを更新しました}}",
     "move": "移動",
     "selected": "選択中",
+    "setIcon": "アイコンを設定",
     "tagNamePlaceholder": "タグ名",
     "toolbarAria": "一括操作"
   },

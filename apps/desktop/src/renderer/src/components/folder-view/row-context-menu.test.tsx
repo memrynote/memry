@@ -308,6 +308,37 @@ describe('RowContextMenu', () => {
     expect(screen.queryByText('removeIcon')).toBeNull()
   })
 
+  it('hides the icon actions on a PDF row, whose metadata cannot be written', () => {
+    const { unmount } = render(
+      <RowContextMenu
+        note={makeNote({ fileType: 'pdf', emoji: '📚' })}
+        isPartOfSelection={false}
+        selectedCount={1}
+        selectedNoteIds={['note-1']}
+        onSetIcon={vi.fn()}
+      >
+        <div>row</div>
+      </RowContextMenu>
+    )
+    expect(screen.queryByText('setIcon')).toBeNull()
+    expect(screen.queryByText('removeIcon')).toBeNull()
+    unmount()
+
+    render(
+      <RowContextMenu
+        note={makeNote({ fileType: 'markdown', emoji: '📚' })}
+        isPartOfSelection={false}
+        selectedCount={1}
+        selectedNoteIds={['note-1']}
+        onSetIcon={vi.fn()}
+      >
+        <div>row</div>
+      </RowContextMenu>
+    )
+    expect(screen.getByText('setIcon')).toBeInTheDocument()
+    expect(screen.getByText('removeIcon')).toBeInTheDocument()
+  })
+
   it('does not offer bulk Delete or Move when the selection holds no notes', () => {
     const onDelete = vi.fn()
     const onMoveToFolder = vi.fn()
