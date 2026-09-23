@@ -614,6 +614,9 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      ical.js:
+        specifier: 2.2.1
+        version: 2.2.1
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -9834,6 +9837,9 @@ packages:
 
   i18next@23.16.8:
     resolution: {integrity: sha512-06r/TitrM88Mg5FdUXAKL96dJMzgqLE5dv3ryBAra4KCwD9mJ4ndOTS95ZuymIGoE+2hzfdaMak2X11/es7ZWg==}
+
+  ical.js@2.2.1:
+    resolution: {integrity: sha512-yK/UlPbEs316igb/tjRgbFA8ZV75rCsBJp/hWOatpyaPNlgw0dGDmU+FoicOcwX4xXkeXOkYiOmCqNPFpNPkQg==}
 
   iconv-lite@0.4.24:
     resolution: {integrity: sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA==}
@@ -24624,6 +24630,8 @@ snapshots:
   i18next@23.16.8:
     dependencies:
       '@babel/runtime': 7.29.7
+
+  ical.js@2.2.1: {}
 
   iconv-lite@0.4.24:
     dependencies:

@@ -6,11 +6,13 @@ import {
   ListCalendarEventsSchema,
   ListGoogleCalendarsSchema,
   GetCalendarRangeSchema,
+  IcsCalendarSourceRequestSchema,
   ListCalendarSourcesSchema,
   PromoteExternalEventSchema,
   RetryCalendarSourceSyncSchema,
   SearchCalendarEventsSchema,
   SetDefaultGoogleCalendarSchema,
+  SubscribeIcsCalendarSchema,
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
   type CalendarChangedEvent,
@@ -27,6 +29,8 @@ import {
   type CalendarSourceListResponse,
   type CalendarSourceMutationResponse,
   type CalendarSourceRecord,
+  type IcsCalendarMutationResponse,
+  type IcsFeedErrorCode,
   type ListGoogleCalendarsResponse,
   type PromoteExternalEventResponse,
   type RetryCalendarSourceSyncResponse,
@@ -52,6 +56,8 @@ export type ListGoogleCalendarsInput = z.input<typeof ListGoogleCalendarsSchema>
 export type PromoteExternalEventInput = z.input<typeof PromoteExternalEventSchema>
 export type SetDefaultGoogleCalendarInput = z.input<typeof SetDefaultGoogleCalendarSchema>
 export type RetryCalendarSourceSyncInput = z.input<typeof RetryCalendarSourceSyncSchema>
+export type SubscribeIcsCalendarInput = z.input<typeof SubscribeIcsCalendarSchema>
+export type IcsCalendarSourceRequest = z.input<typeof IcsCalendarSourceRequestSchema>
 
 export type {
   CalendarChangedEvent,
@@ -68,6 +74,8 @@ export type {
   CalendarSourceListResponse,
   CalendarSourceMutationResponse,
   CalendarSourceRecord,
+  IcsCalendarMutationResponse,
+  IcsFeedErrorCode,
   ListGoogleCalendarsResponse,
   PromoteExternalEventResponse,
   RetryCalendarSourceSyncResponse,
@@ -174,6 +182,24 @@ export const calendarRpc = defineDomain({
       (input: RetryCalendarSourceSyncInput) => Promise<RetryCalendarSourceSyncResponse>
     >({
       channel: CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC,
+      params: ['input']
+    }),
+    subscribeIcsCalendar: defineMethod<
+      (input: SubscribeIcsCalendarInput) => Promise<IcsCalendarMutationResponse>
+    >({
+      channel: CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR,
+      params: ['input']
+    }),
+    unsubscribeIcsCalendar: defineMethod<
+      (input: IcsCalendarSourceRequest) => Promise<IcsCalendarMutationResponse>
+    >({
+      channel: CalendarChannels.invoke.UNSUBSCRIBE_ICS_CALENDAR,
+      params: ['input']
+    }),
+    refreshIcsCalendar: defineMethod<
+      (input: IcsCalendarSourceRequest) => Promise<IcsCalendarMutationResponse>
+    >({
+      channel: CalendarChannels.invoke.REFRESH_ICS_CALENDAR,
       params: ['input']
     })
   },

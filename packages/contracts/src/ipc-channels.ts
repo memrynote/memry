@@ -740,7 +740,11 @@ export const CalendarChannels = {
     /** M2: persist the onboarding choice for default target Google calendar */
     SET_DEFAULT_GOOGLE_CALENDAR: 'calendar:set-default-google-calendar',
     /** M6: re-run sync for a single calendar source (Retry button on sync-health UI) */
-    RETRY_GOOGLE_CALENDAR_SOURCE_SYNC: 'calendar:retry-google-source-sync'
+    RETRY_GOOGLE_CALENDAR_SOURCE_SYNC: 'calendar:retry-google-source-sync',
+    /** #1207: subscribe to a read-only calendar feed by URL (ICS / webcal) */
+    SUBSCRIBE_ICS_CALENDAR: 'calendar:subscribe-ics',
+    UNSUBSCRIBE_ICS_CALENDAR: 'calendar:unsubscribe-ics',
+    REFRESH_ICS_CALENDAR: 'calendar:refresh-ics'
   },
   events: {
     CHANGED: 'calendar:changed'

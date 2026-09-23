@@ -1,4 +1,5 @@
-import { eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, ne, or } from 'drizzle-orm'
+import { ICS_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import type {
@@ -279,11 +280,21 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
   }
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
+    // Events mirrored from a subscribed ICS feed are device-local: each device
+    // reads the feed itself and only the source row syncs. They stay unclocked,
+    // and this sweep must not turn them into pushes.
     const items = db
-      .select()
+      .select({ event: calendarExternalEvents })
       .from(calendarExternalEvents)
-      .where(isNull(calendarExternalEvents.clock))
+      .leftJoin(calendarSources, eq(calendarExternalEvents.sourceId, calendarSources.id))
+      .where(
+        and(
+          isNull(calendarExternalEvents.clock),
+          or(isNull(calendarSources.provider), ne(calendarSources.provider, ICS_CALENDAR_PROVIDER))
+        )
+      )
       .all()
+      .map((row) => row.event)
     for (const item of items) {
       const nextClock = this.stampFirstClock(db, item.id, deviceId)
       queue.enqueue({
