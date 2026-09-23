@@ -97,7 +97,7 @@ export function BlogIndexPage() {
 
   return (
     <>
-      <PageHead page="blog" collectionJsonLd={jsonLd} />
+      <PageHead page="blog" pageJsonLd={jsonLd} />
       <PageHero
         tint="sand"
         eyebrow="The memrynote journal & publication"

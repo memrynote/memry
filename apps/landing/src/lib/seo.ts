@@ -98,6 +98,12 @@ export const PAGE_META: Record<string, PageMeta> = {
       'Built for knowledge workers, students, freelancers, and personal productivity. One app that adapts to how you think.',
     path: '/use-cases'
   },
+  about: {
+    title: 'About memrynote — The Private, Local-First Notes App and Its Founder',
+    description:
+      'memrynote is a local-first, end-to-end encrypted workspace for notes, tasks, journal, and calendar, built independently by Kaan Karaca. Key facts, pricing, and FAQ.',
+    path: '/about'
+  },
   security: {
     title: 'Security: End-to-End Encrypted, Zero-Knowledge Sync',
     description:
@@ -317,6 +323,7 @@ function getOrganizationJsonLdObject() {
       url: `${BASE_URL}/favicon.svg`
     },
     sameAs: [GITHUB_URL, TWITTER_DEV_URL, REDDIT_URL],
+    foundingDate: '2025',
     founder: {
       '@type': 'Person',
       name: 'Kaan Karaca',
@@ -454,6 +461,33 @@ export function getJsonLd(): string {
       getOrganizationJsonLdObject(),
       getSoftwareApplicationJsonLdObject(),
       getFaqPageJsonLdObject()
+    ]
+  })
+}
+
+// AboutPage graph for /about: the page, the Organization it describes, and the page's FAQ.
+export function getAboutPageJsonLd(faqs: readonly { question: string; answer: string }[]): string {
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'AboutPage',
+        '@id': `${BASE_URL}${PAGE_META.about.path}#page`,
+        url: `${BASE_URL}${PAGE_META.about.path}`,
+        name: PAGE_META.about.title,
+        description: PAGE_META.about.description,
+        about: { '@id': ORGANIZATION_ID },
+        isPartOf: { '@id': `${BASE_URL}/#website` }
+      },
+      getOrganizationJsonLdObject(),
+      {
+        '@type': 'FAQPage',
+        mainEntity: faqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: { '@type': 'Answer', text: faq.answer }
+        }))
+      }
     ]
   })
 }

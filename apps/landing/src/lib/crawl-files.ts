@@ -60,6 +60,7 @@ export function buildLlmsTxt(): string {
     '## Key pages',
     '',
     page('/', PAGE_META.home.description),
+    page('/about', PAGE_META.about.description),
     page('/features', PAGE_META.features.description),
     page('/security', PAGE_META.security.description),
     page('/pricing', PAGE_META.pricing.description),

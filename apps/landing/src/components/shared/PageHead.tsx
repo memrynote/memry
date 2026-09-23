@@ -22,11 +22,11 @@ interface PageHeadProps {
   faqs?: readonly { question: string; answer: string }[]
   // When set (blog post), emits Article Schema.org and article og tags.
   article?: BlogPost
-  // When set (e.g. blog index), emits a CollectionPage Schema.org graph.
-  collectionJsonLd?: string
+  // Page-specific Schema.org graph (e.g. CollectionPage on the blog index, AboutPage on /about).
+  pageJsonLd?: string
 }
 
-export function PageHead({ page, jsonLd, faqs, article, collectionJsonLd }: PageHeadProps) {
+export function PageHead({ page, jsonLd, faqs, article, pageJsonLd }: PageHeadProps) {
   const meta = PAGE_META[page]
   const canonical = getCanonicalUrl(meta.path)
   const breadcrumb = getBreadcrumbJsonLd(page)
@@ -66,7 +66,7 @@ export function PageHead({ page, jsonLd, faqs, article, collectionJsonLd }: Page
         <script type="application/ld+json">{getAlternativeJsonLd(faqs)}</script>
       )}
       {article && <script type="application/ld+json">{getArticleJsonLd(article)}</script>}
-      {collectionJsonLd && <script type="application/ld+json">{collectionJsonLd}</script>}
+      {pageJsonLd && <script type="application/ld+json">{pageJsonLd}</script>}
       {breadcrumb && <script type="application/ld+json">{breadcrumb}</script>}
     </Helmet>
   )

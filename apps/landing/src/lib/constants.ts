@@ -139,6 +139,7 @@ export const FOOTER_LINKS = {
     { label: 'Compare all', href: '/compare' }
   ],
   resources: [
+    { label: 'About', href: '/about' },
     { label: 'Blog', href: '/blog' },
     { label: 'Docs', href: DOCS_URL },
     { label: 'Terms of Service', href: '/terms' },

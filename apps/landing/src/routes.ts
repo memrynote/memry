@@ -97,6 +97,7 @@ export const PAGE_ROUTES: readonly { path: string; Component: PageComponent }[] 
   },
   { path: '/cli', Component: lazyPage(() => import('@/pages/Cli'), 'CliPage') },
   { path: '/use-cases', Component: lazyPage(() => import('@/pages/UseCases'), 'UseCasesPage') },
+  { path: '/about', Component: lazyPage(() => import('@/pages/About'), 'AboutPage') },
   { path: '/security', Component: lazyPage(() => import('@/pages/Security'), 'SecurityPage') },
   { path: '/compare', Component: lazyPage(() => import('@/pages/ComparePage'), 'ComparePage') },
   { path: '/obsidian-alternative', Component: AlternativePages.obsidian },

@@ -583,14 +583,16 @@ h6 {
   font-weight: 500;
 }
 
-.legal-prose a {
+.legal-prose a,
+.about-page :is(p, dd) a {
   color: var(--color-terracotta);
   text-decoration: underline;
   text-underline-offset: 3px;
   transition: color 0.2s;
 }
 
-.legal-prose a:hover {
+.legal-prose a:hover,
+.about-page :is(p, dd) a:hover {
   color: var(--color-terracotta-dark);
 }
 
@@ -598,6 +600,22 @@ h6 {
   border: 0;
   border-top: 1px solid var(--color-border);
   margin: 2.5rem 0;
+}
+
+/* About page: linked H3s read as headings, and section anchors clear the fixed header. */
+.about-page h2 {
+  scroll-margin-top: 6rem;
+}
+
+.about-page h3 a {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-terracotta) 40%, transparent);
+  text-underline-offset: 5px;
+  transition: color 0.2s;
+}
+
+.about-page h3 a:hover {
+  color: var(--color-terracotta);
 }
 
 /* Sticky scroll container */

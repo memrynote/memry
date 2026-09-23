@@ -17,6 +17,7 @@ import { WebClipperFeaturePage } from '@/pages/WebClipper'
 import { DownloadDesktopPage } from '@/pages/DownloadDesktop'
 import { CliPage } from '@/pages/Cli'
 import { UseCasesPage } from '@/pages/UseCases'
+import { AboutPage } from '@/pages/About'
 import { SecurityPage } from '@/pages/Security'
 import { PricingPage } from '@/pages/Pricing'
 import { ChangelogPage } from '@/pages/Changelog'
@@ -81,6 +82,7 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/download/desktop': () => <DownloadDesktopPage />,
   '/cli': () => <CliPage />,
   '/use-cases': () => <UseCasesPage />,
+  '/about': () => <AboutPage />,
   '/security': () => <SecurityPage />,
   '/compare': () => <ComparePage />,
   '/obsidian-alternative': () => <ObsidianAlternativePage />,
