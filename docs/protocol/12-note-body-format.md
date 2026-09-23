@@ -565,9 +565,10 @@ are not plain CommonMark:
 | structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                                | `:165-170`                     |
 | youtube embed    | `![embed](videoUrl)`                                                                                                            | `:304`, `:307`                 |
 | bookmark         | `![bookmark](url)`                                                                                                              | `:305`, `:311`                 |
-| file             | `<!-- file:{…} -->`, an HTML comment with JSON props                                                                            | `:349`, `:358`, `:399`         |
-| math             | `$$` alone on its line, the LaTeX source, then `$$`; the body's blank lines are dropped                                         | `:428`, `:440-449`             |
-| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open` | `:518`, `:525-526`, `:566-598` |
+| whiteboard       | `![whiteboard](memry://canvas/<id>)`, the canvas by id; a block with no canvas writes no line                                   | `:324`, `:326-332`, `:335-337` |
+| file             | `<!-- file:{…} -->`, an HTML comment with JSON props                                                                            | `:373`, `:382`, `:423`         |
+| math             | `$$` alone on its line, the LaTeX source, then `$$`; the body's blank lines are dropped                                         | `:452`, `:464-473`             |
+| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open` | `:542`, `:549-550`, `:590-622` |
 
 **Claiming rules matter as much as the forms:**
 
@@ -581,14 +582,21 @@ are not plain CommonMark:
   or nested (`:220-226`);
 - a math run is claimed only when it OWNS its paragraph at both ends and
   `serializeMathBlock` reproduces it byte for byte
-  (`packages/editor-schema/src/blocks/markdown.ts:478-496`), so a one-line
+  (`packages/editor-schema/src/blocks/markdown.ts:502-520`), so a one-line
   `$$x$$`, an indented fence, a fence with trailing spaces and an unterminated
   one all stay the author's markdown;
 - **the file marker's JSON key order is fixed** as `url, name, size, mimeType`,
   then `width` and `height` only when greater than zero and `align` only when set
-  and not `left`, so legacy markers stay byte-identical (`:384-399`);
+  and not `left`, so legacy markers stay byte-identical (`:408-423`);
 - the comment-terminator escape replaces only the `>` in `-->` and `--!>` with
-  `>`, so a filename containing `--` keeps its bytes (`:373`).
+  `>`, so a filename containing `--` keeps its bytes (`:397`);
+- a whiteboard is claimed only as a WHOLE, unindented line whose target is
+  `memry://canvas/` followed by an id in `[A-Za-z0-9_-]+` (`:324`), and never
+  inside a code fence: `![whiteboard](https://…)` is somebody's image and stays
+  an `image` block. The marker names the canvas by id, not title, so renaming a
+  canvas rewrites no note. A whiteboard whose `canvasId` is empty is written as
+  NOTHING, because `![whiteboard](memry://canvas/)` fails the claim and would
+  re-open as an image; the block is dropped rather than changing type.
 
 ## 12.7 Inline grammar
 
@@ -655,16 +663,16 @@ in-fragment, not a root.
 
 ## 12.9 The type registry FR-040 enumerates
 
-**Normative.** `createMemrySchema` produces exactly **35** types
+**Normative.** `createMemrySchema` produces exactly **36** types
 (`packages/editor-schema/src/schema.ts:52-77`), checked in as
 `packages/editor-schema/src/registry-manifest.json` and asserted in both
 directions by `packages/editor-schema/src/__tests__/registry-parity.test.ts`.
 
-| Group          | Count | Types                                                                                                                                                                                                                                                    |
-| -------------- | ----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| blocks         |    20 | `audio`, `bookmark`, `bulletListItem`, `callout`, `checkListItem`, `codeBlock`, `diagram`, `divider`, `file`, `heading`, `image`, `mathBlock`, `numberedListItem`, `paragraph`, `quote`, `table`, `taskBlock`, `toggleListItem`, `video`, `youtubeEmbed` |
-| inline content |     8 | `dateMention`, `hashTag`, `inlineCheckbox`, `inlineImage`, `link`, `linkMention`, `text`, `wikiLink`                                                                                                                                                     |
-| styles         |     7 | `backgroundColor`, `bold`, `code`, `italic`, `strike`, `textColor`, `underline`                                                                                                                                                                          |
+| Group          | Count | Types                                                                                                                                                                                                                                                                  |
+| -------------- | ----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| blocks         |    21 | `audio`, `bookmark`, `bulletListItem`, `callout`, `checkListItem`, `codeBlock`, `diagram`, `divider`, `file`, `heading`, `image`, `mathBlock`, `numberedListItem`, `paragraph`, `quote`, `table`, `taskBlock`, `toggleListItem`, `video`, `whiteboard`, `youtubeEmbed` |
+| inline content |     8 | `dateMention`, `hashTag`, `inlineCheckbox`, `inlineImage`, `link`, `linkMention`, `text`, `wikiLink`                                                                                                                                                                   |
+| styles         |     7 | `backgroundColor`, `bold`, `code`, `italic`, `strike`, `textColor`, `underline`                                                                                                                                                                                        |
 
 `file` and `toggleListItem` are Memry specifications overriding BlockNote
 defaults of the same name
@@ -692,6 +700,15 @@ A diagram's source is LITERAL text (`content: 'plain'`, `meta.code`), so the
 markdown-parse repairs that strip the pretty-printer's indentation out of prose
 skip it, exactly as they skip a code block
 (`packages/editor-schema/src/parse-markdown.ts`, `LITERAL_TEXT_BLOCK_TYPES`).
+
+`whiteboard` holds a REFERENCE, not a drawing: its only prop is `canvasId`, and
+the ink lives in the canvas's own `canvases/<Title>.excalidraw` file, synced as a
+canvas item. One canvas may be embedded by any number of notes. A client that
+does not draw canvases MUST still build the node (y-prosemirror deletes a node
+its schema cannot build, and the delete replicates) and MUST write back the
+§12.6 marker unchanged; the
+mobile WebView draws a labelled card and nothing else
+(`packages/editor-web/src/blocks.ts`).
 
 **The registration invariant**: every spec is registered under its own
 `config.type`, enforced at construction for blocks and inline content alike

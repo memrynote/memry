@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { MentionMenu, type MentionSuggestionItem } from './mention-menu'
+import { CanvasChoiceMenu, MentionMenu, type MentionSuggestionItem } from './mention-menu'
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
@@ -12,7 +12,11 @@ vi.mock('@memry/i18n/renderer', () => ({
         'menus.mention.showMore': 'Show more',
         'menus.mention.loading': 'Loading notes...',
         'menus.mention.empty': 'No notes found',
-        'menus.mention.aria': 'Date and note suggestions'
+        'menus.mention.aria': 'Date and note suggestions',
+        'menus.mention.canvases': 'Canvases',
+        'menus.mention.choiceTitle': 'Insert canvas as',
+        'menus.mention.choiceMention': 'Mention',
+        'menus.mention.choiceEmbed': 'Embed'
       }
       return messages[key] ?? key
     }
@@ -35,6 +39,7 @@ const remindItem: MentionSuggestionItem = {
 }
 const noteA: MentionSuggestionItem = { kind: 'note', id: 'n1', title: 'Q3 Roadmap' }
 const noteB: MentionSuggestionItem = { kind: 'note', id: 'n2', title: 'Meeting prep' }
+const canvasA: MentionSuggestionItem = { kind: 'canvas', id: 'cv1', title: 'Roadmap Board' }
 
 function renderMenu(props: Partial<React.ComponentProps<typeof MentionMenu>> = {}) {
   const onItemClick = vi.fn()
@@ -173,5 +178,60 @@ describe('MentionMenu Tab selection', () => {
     const { onItemClick } = renderMenu({ selectedIndex: 1 })
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
     expect(onItemClick).not.toHaveBeenCalled()
+  })
+})
+
+describe('MentionMenu canvases', () => {
+  it('renders canvases under their own group after the notes', () => {
+    renderMenu({ items: [noteA, canvasA] })
+    const options = screen.getAllByRole('option')
+    expect(options.map((option) => option.textContent)).toEqual(['Q3 Roadmap', 'Roadmap Board'])
+    expect(screen.getByText('Canvases')).toBeInTheDocument()
+    // Separated from the notes above it, like the Date group is.
+    expect(screen.getByRole('separator')).toBeInTheDocument()
+  })
+
+  it('shows no canvas group when no canvas matched', () => {
+    renderMenu({ items: [noteA, noteB] })
+    expect(screen.queryByText('Canvases')).not.toBeInTheDocument()
+  })
+
+  it('calls onItemClick with the clicked canvas, by click or Tab', () => {
+    const { onItemClick } = renderMenu({ items: [noteA, canvasA], selectedIndex: 1 })
+    fireEvent.click(screen.getByText('Roadmap Board'))
+    expect(onItemClick).toHaveBeenCalledWith(canvasA)
+
+    onItemClick.mockClear()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).toHaveBeenCalledWith(canvasA)
+  })
+})
+
+describe('CanvasChoiceMenu', () => {
+  const choice = {
+    canvas: { id: 'cv1', title: 'Roadmap Board' },
+    position: { x: 10, y: 20 },
+    selectedIndex: 1
+  }
+
+  it('renders nothing without an open choice', () => {
+    render(<CanvasChoiceMenu choice={null} onSelect={vi.fn()} />)
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('offers Mention then Embed, marking the highlighted one', () => {
+    render(<CanvasChoiceMenu choice={choice} onSelect={vi.fn()} />)
+    expect(screen.getByRole('listbox', { name: 'Insert canvas as' })).toBeInTheDocument()
+    const options = screen.getAllByRole('option')
+    expect(options.map((option) => option.textContent)).toEqual(['Mention', 'Embed'])
+    expect(options[1]).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('picks on mousedown so the editor keeps the caret', () => {
+    const onSelect = vi.fn()
+    render(<CanvasChoiceMenu choice={choice} onSelect={onSelect} />)
+    const embed = screen.getByRole('option', { name: 'Embed' })
+    expect(fireEvent.mouseDown(embed)).toBe(false)
+    expect(onSelect).toHaveBeenCalledWith('embed')
   })
 })

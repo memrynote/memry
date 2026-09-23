@@ -106,6 +106,7 @@ function canvas(overrides: Partial<CanvasSummary> & { id: string }): CanvasSumma
     title: null,
     folder: null,
     icon: null,
+    ownerNoteId: null,
     createdAt: 1,
     updatedAt: 1,
     ...overrides

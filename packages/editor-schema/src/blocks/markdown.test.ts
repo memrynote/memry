@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
+  parseWhiteboardLine,
   readMathRun,
   readStructuredQuoteRun,
   restoreDetailsMarkup,
   serializeMathBlock,
   serializeQuoteBlock,
   serializeToggleBlock,
-  splitMarkdownByToggles
+  serializeWhiteboard,
+  splitMarkdownByToggles,
+  whiteboardUrl
 } from './markdown'
 
 /**
@@ -113,6 +116,45 @@ describe('readMathRun', () => {
 
   it('does not start a run on anything but a fence', () => {
     expect(runOf('Cost is $$5\n$$')).toBeNull()
+  })
+})
+
+describe('whiteboard marker', () => {
+  const id = 'V1StGXR8_Z5jdHi6B-myT'
+
+  it('points at the canvas by id through the memry:// link', () => {
+    expect(whiteboardUrl(id)).toBe(`memry://canvas/${id}`)
+    expect(serializeWhiteboard(id)).toBe(`![whiteboard](memry://canvas/${id})`)
+  })
+
+  it('reads back the id it wrote', () => {
+    expect(parseWhiteboardLine(serializeWhiteboard(id))).toBe(id)
+  })
+
+  it('refuses a marker with no id', () => {
+    // #given what serializing an empty canvasId would write. Claiming it would
+    // make a block that points at nothing; the writers emit no line instead.
+    expect(parseWhiteboardLine(serializeWhiteboard(''))).toBeNull()
+  })
+
+  it('refuses a whiteboard alt text on anything but a canvas link', () => {
+    // #given somebody's image with an unlucky alt text: it stays an image
+    expect(parseWhiteboardLine('![whiteboard](https://example.com/board.png)')).toBeNull()
+    expect(parseWhiteboardLine('![whiteboard](memry://note/abc)')).toBeNull()
+  })
+
+  it('claims only a whole, unindented line', () => {
+    // #given an indented marker belongs to the list item above it, and a
+    // marker inside a sentence is an inline image
+    expect(parseWhiteboardLine(`  ${serializeWhiteboard(id)}`)).toBeNull()
+    expect(parseWhiteboardLine(`${serializeWhiteboard(id)} `)).toBeNull()
+    expect(parseWhiteboardLine(`See ${serializeWhiteboard(id)}`)).toBeNull()
+  })
+
+  it('refuses an id carrying characters a canvas id never has', () => {
+    // #given `)` or `/` would let the capture run past the id
+    expect(parseWhiteboardLine('![whiteboard](memry://canvas/a/b)')).toBeNull()
+    expect(parseWhiteboardLine('![whiteboard](memry://canvas/a b)')).toBeNull()
   })
 })
 

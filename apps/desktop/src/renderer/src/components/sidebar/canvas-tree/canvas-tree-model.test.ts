@@ -17,7 +17,7 @@ import {
 } from './canvas-tree-model'
 
 function canvas(id: string, title: string | null, folder: string | null = null): CanvasSummary {
-  return { id, title, folder, icon: null, createdAt: 0, updatedAt: 0 }
+  return { id, title, folder, icon: null, ownerNoteId: null, createdAt: 0, updatedAt: 0 }
 }
 
 function folder(path: string, icon: string | null = null): CanvasFolder {

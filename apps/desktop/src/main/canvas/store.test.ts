@@ -27,7 +27,9 @@ const MIGRATIONS = [
   '0035_spatial_canvas.sql',
   '0036_canvas_assets.sql',
   '0045_canvas_files.sql',
-  '0048_canvas_folders.sql'
+  '0048_canvas_folders.sql',
+  '0057_sync_unknown_fields.sql',
+  '0058_canvas_owner_note.sql'
 ]
 
 function freshDb() {
@@ -280,6 +282,34 @@ describe('canvas store', () => {
 
     const listed = listCanvases(db, 'vault-1')
     expect(listed.map((x) => x.id)).toEqual([a.id])
+  })
+
+  it('keeps a note-owned canvas in every listing, with its owner', () => {
+    const owned = createCanvas(db, vault, 'vault-1', { title: 'Board', ownerNoteId: 'note-1' })
+    const free = createCanvas(db, vault, 'vault-1', { title: 'Free' })
+
+    expect(owned.ownerNoteId).toBe('note-1')
+    expect(free.ownerNoteId).toBeNull()
+    // Hiding owned boards is the sidebar's call; every other surface lists them.
+    const expected = [
+      { id: owned.id, ownerNoteId: 'note-1' },
+      { id: free.id, ownerNoteId: null }
+    ]
+    for (const listed of [listCanvases(db, 'vault-1'), listCanvasesWithCounts(db, 'vault-1')]) {
+      expect(listed).toEqual(
+        expect.arrayContaining(expected.map((e) => expect.objectContaining(e)))
+      )
+      expect(listed).toHaveLength(2)
+    }
+    expect(getCanvas(db, vault, owned.id)?.ownerNoteId).toBe('note-1')
+
+    // An edit leaves ownership alone.
+    const updated = updateCanvas(db, vault, owned.id, { title: 'Renamed', scene: SCENE })
+    expect(updated.ok && updated.summary.ownerNoteId).toBe('note-1')
+
+    // The index carries it; the document format does not change.
+    const onDisk = fs.readFileSync(path.join(vault, getCanvasFilePath(db, owned.id)!), 'utf8')
+    expect(JSON.stringify(readCanvasMeta(onDisk))).not.toContain('note-1')
   })
 
   describe('canvas folders', () => {
@@ -607,6 +637,21 @@ describe('canvas store', () => {
       expect(fs.existsSync(path.join(vault, CANVAS_DIR, 'Work', 'Plan 2.excalidraw'))).toBe(true)
       // The original is untouched.
       expect(elementsOf(getCanvas(db, vault, original.id)?.scene)).toEqual([{ id: 'r1' }])
+    })
+
+    it('makes a free-standing copy of a note-owned canvas', () => {
+      const original = createCanvas(db, vault, 'vault-1', {
+        title: 'Board',
+        scene: SCENE,
+        ownerNoteId: 'note-1'
+      })
+
+      const copy = duplicateCanvas(db, vault, 'vault-1', original.id)
+
+      // Nothing embeds the copy, so hiding it from the sidebar would lose it.
+      expect(copy!.ownerNoteId).toBeNull()
+      expect(getCanvas(db, vault, copy!.id)?.ownerNoteId).toBeNull()
+      expect(getCanvas(db, vault, original.id)?.ownerNoteId).toBe('note-1')
     })
 
     it('refuses to duplicate a canvas whose document cannot be read', () => {

@@ -1,3 +1,4 @@
+import { type Block } from '@blocknote/core'
 import { describe, expect, it, vi } from 'vitest'
 import {
   isEmptyParagraph,
@@ -793,6 +794,96 @@ describe('toggle blocks (#1643)', () => {
     const blocks = await parseMarkdownPreservingBlanks(textEditor, markdown)
 
     expect(blocks.some((block) => block.type === 'toggleListItem')).toBe(false)
+  })
+})
+
+describe('whiteboard blocks', () => {
+  const ID = 'V1StGXR8_Z5jdHi6B-myT'
+  // The vault bytes, spelled out: main's twin (blocknote-converter.test.ts)
+  // asserts the same strings, which is what holds the two writers together.
+  const MARKER = `![whiteboard](memry://canvas/${ID})`
+
+  type TextBlock = { content?: Array<{ text?: string }> }
+
+  /** Text in, text out, one paragraph per chunk. */
+  const textEditor = {
+    tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
+      markdown
+        .split(/\n\n+/)
+        .filter((chunk) => chunk.trim())
+        .map((chunk) => ({
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: chunk.trim(), styles: {} }],
+          children: []
+        }))
+    ),
+    blocksToMarkdownLossy: vi.fn(async (blocks: TextBlock[]) =>
+      blocks
+        .map((block) => block.content?.map((c) => c.text ?? '').join('') ?? '')
+        .filter(Boolean)
+        .join('\n\n')
+    )
+  }
+
+  const paragraph = (text: string, children: unknown[] = []) => ({
+    type: 'paragraph',
+    props: {},
+    content: [{ type: 'text', text, styles: {} }],
+    children
+  })
+
+  const whiteboard = (canvasId: string) => ({
+    type: 'whiteboard',
+    props: { canvasId },
+    children: []
+  })
+
+  const serialize = (blocks: unknown[]): Promise<string> =>
+    serializeBlocksPreservingBlanks(textEditor, blocks as Block[])
+
+  it('parses the marker into a whiteboard block', async () => {
+    const blocks = await parseMarkdownPreservingBlanks(textEditor, `Before\n\n${MARKER}\n\nAfter`)
+
+    expect(blocks.map((block) => block.type)).toEqual(['paragraph', 'whiteboard', 'paragraph'])
+    expect(blocks[1]).toMatchObject({ props: { canvasId: ID } })
+  })
+
+  it('leaves a marker inside a code fence as code', async () => {
+    const markdown = `\`\`\`md\n${MARKER}\n\`\`\``
+
+    const blocks = await parseMarkdownPreservingBlanks(textEditor, markdown)
+
+    expect(blocks.some((block) => (block.type as string) === 'whiteboard')).toBe(false)
+  })
+
+  it('leaves a whiteboard alt text on a non-canvas URL alone', async () => {
+    const blocks = await parseMarkdownPreservingBlanks(
+      textEditor,
+      '![whiteboard](https://example.com/board.png)'
+    )
+
+    expect(blocks.some((block) => (block.type as string) === 'whiteboard')).toBe(false)
+  })
+
+  it('writes the marker between paragraphs', async () => {
+    expect(await serialize([paragraph('Before'), whiteboard(ID), paragraph('After')])).toBe(
+      `Before\n\n${MARKER}\n\nAfter`
+    )
+  })
+
+  it('writes a whiteboard with no canvas as nothing at all', async () => {
+    // #given the block's default props. `![whiteboard](memry://canvas/)` would
+    // re-open as a plain image of a URL that loads nothing.
+    expect(await serialize([paragraph('Before'), whiteboard(''), paragraph('After')])).toBe(
+      'Before\n\nAfter'
+    )
+  })
+
+  it('writes a whiteboard nested under a paragraph as the same marker main writes', async () => {
+    expect(await serialize([paragraph('Parent', [whiteboard(ID)])])).toBe(
+      `Parent\n\n<!-- memry:block-nesting-level=1 -->\n\n${MARKER}\n\n<!-- memry:block-nesting-level=0 -->`
+    )
   })
 })
 

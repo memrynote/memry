@@ -57,7 +57,9 @@ const NON_TEXT_BLOCK_TYPES = new Set([
   // A formula's text is LaTeX source, which is edited in its own popup. Turn
   // Into would hand that source to a paragraph, and a comment has no run of
   // prose to anchor to.
-  'mathBlock'
+  'mathBlock',
+  // A drawing, whose only state is the canvas id it points at.
+  'whiteboard'
 ])
 
 /**

@@ -53,6 +53,13 @@ export interface CanvasSummary {
    * it opens.
    */
   unreadable?: boolean
+  /**
+   * The note this canvas was created in (a note's `/whiteboard`), or null for a
+   * free-standing canvas. An owned canvas stays out of the sidebar tree — it
+   * lives in its note — but it is still an ordinary canvas: any other note can
+   * mention or embed it, and it opens in a tab like any other.
+   */
+  ownerNoteId: string | null
   createdAt: number
   updatedAt: number
 }
@@ -88,7 +95,9 @@ export const CanvasCreateSchema = z.object({
   scene: z.string().optional(),
   /** Path relative to `canvases/`, forward-slashed. Null/absent is the root. */
   folder: z.string().nullable().optional(),
-  icon: z.string().nullable().optional()
+  icon: z.string().nullable().optional(),
+  /** See `CanvasSummary.ownerNoteId`. Absent/null creates a free-standing canvas. */
+  ownerNoteId: z.string().min(1).nullable().optional()
 })
 
 export const CanvasUpdateSchema = z.object({

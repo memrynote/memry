@@ -252,6 +252,29 @@
       "sourceLabel": "LaTeX source",
       "hint": "LaTeX. Press Escape when you are done."
     },
+    "whiteboard": {
+      "title": "Whiteboard",
+      "group": "Media",
+      "subtext": "Draw on a canvas that lives in this note",
+      "defaultName": "Whiteboard",
+      "noteName": "{note} whiteboard",
+      "untitled": "Untitled whiteboard",
+      "loading": "Loading whiteboard…",
+      "openInTab": "Open in tab",
+      "edit": "Edit",
+      "done": "Done",
+      "surfaceLabel": "Drawing: {title}",
+      "createFailed": "Could not create the whiteboard. Nothing was added to the note.",
+      "loadFailed": "Could not load this whiteboard. The drawing itself is untouched.",
+      "noCanvas": "This whiteboard has no canvas. Remove the block, or add a new one with /whiteboard.",
+      "nested": "Open this whiteboard in its own tab to see the drawing.",
+      "missingTitle": "This whiteboard is not available",
+      "missingBody": "Its canvas was deleted, or has not reached this device yet. If it is still syncing, it appears here on its own.",
+      "unreadableTitle": "This whiteboard cannot be opened here",
+      "unreadableBody": "Its canvas file is missing from the vault or cannot be read on this device. Nothing was deleted.",
+      "disabledTitle": "Canvas is turned off",
+      "disabledBody": "Turn on Canvas in Settings › Features to see and edit this whiteboard. The drawing is kept either way."
+    },
     "slashMenu": {
       "pdf": {
         "title": "PDF",
@@ -390,7 +413,11 @@
       "date": "Date",
       "remindMe": "Remind me",
       "dateHint": "Keep typing a date…",
-      "showMore": "Show more"
+      "showMore": "Show more",
+      "canvases": "Canvases",
+      "choiceTitle": "Insert canvas as",
+      "choiceMention": "Mention",
+      "choiceEmbed": "Embed"
     },
     "tags": {
       "aria": "Tag suggestions",

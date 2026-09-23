@@ -53,6 +53,7 @@ import { isImageFile } from './use-editor-file-upload'
 // pair that drifts — a header cell is its own node type, and only one copy
 // would remember.
 import { isSelectionInTableCell } from '../table-cell-paste'
+import { isFromWhiteboard } from '../whiteboard-events'
 
 const log = createLogger('Hook:TableCellImage')
 
@@ -310,6 +311,9 @@ export function useTableCellImage({
       Array.from(data?.files ?? []).filter(isImageFile)
 
     const onPaste = (e: ClipboardEvent): void => {
+      // The caret this reads can sit in a cell while the paste lands on a
+      // whiteboard, whose own handler must receive it.
+      if (isFromWhiteboard(e)) return
       const files = imageFilesFrom(e.clipboardData)
       if (files.length > 0) {
         if (!isSelectionInTableCell(editor)) return

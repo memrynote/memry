@@ -39,7 +39,15 @@ const ICON_PATHS = {
   ],
   // One node branching into two — a flowchart at glyph size, which is what a
   // Mermaid source is most often a picture of.
-  diagram: ['M9 3h6v4H9z', 'M3 17h5v4H3z', 'M16 17h5v4h-5z', 'M12 7v4', 'M5.5 17v-3h13v3']
+  diagram: ['M9 3h6v4H9z', 'M3 17h5v4H3z', 'M16 17h5v4h-5z', 'M12 7v4', 'M5.5 17v-3h13v3'],
+  // A board on a stand with one freehand stroke across it: a drawing, not a
+  // picture, which is the difference from an image block.
+  whiteboard: [
+    'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    'M12 17v4',
+    'M8 21h8',
+    'M7 12c1.5-3 3-3 4-1s2.5 2 4-2'
+  ]
 } as const
 
 export type IconName = keyof typeof ICON_PATHS

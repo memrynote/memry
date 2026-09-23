@@ -1900,6 +1900,21 @@ const BLOCK_CASES = [
       content: [{ type: 'text', text: 'graph TD\n    A[Start] --> B[Stop]', styles: {} }],
       children: []
     }
+  },
+  {
+    type: 'whiteboard',
+    // Literal: main never calls `serializeWhiteboard` — this line comes out of
+    // BlockNote's HTML→markdown step over the server spec's `<img>` — while the
+    // renderer's save path writes it with that function. The literal pins both
+    // to the vault format. The id is a real nanoid, `_` and `-` included, which
+    // would be escaped anywhere in prose but must not be inside the URL.
+    markdown: '![whiteboard](memry://canvas/V1StGXR8_Z5jdHi6B-myT)',
+    block: {
+      id: 'blk',
+      type: 'whiteboard',
+      props: { canvasId: 'V1StGXR8_Z5jdHi6B-myT' },
+      children: []
+    }
   }
 ] as const
 
@@ -2467,6 +2482,79 @@ describe('custom block markers are not claimed out of context', () => {
     // #then rejected, and in constant-ish time rather than seconds
     expect(parsed).toBeNull()
     expect(performance.now() - started).toBeLessThan(50)
+  })
+})
+
+describe('whiteboard blocks', () => {
+  const MARKER = '![whiteboard](memry://canvas/V1StGXR8_Z5jdHi6B-myT)'
+
+  const paragraph = (text: string, children: unknown[] = []) => ({
+    id: `p-${text}`,
+    type: 'paragraph',
+    props: { backgroundColor: 'default', textColor: 'default', textAlignment: 'left' },
+    content: [{ type: 'text', text, styles: {} }],
+    children
+  })
+
+  const whiteboard = (canvasId: string) => ({
+    id: `wb-${canvasId}`,
+    type: 'whiteboard',
+    props: { canvasId },
+    children: []
+  })
+
+  async function serialize(blocks: unknown[]): Promise<string | null> {
+    const doc = new Y.Doc()
+    expect(blocksToYFragment(blocks as never, doc.getXmlFragment(CRDT_FRAGMENT_NAME))).toBe(true)
+    writeMarkdownSourceToYDoc(doc, null)
+    return await yDocToMarkdown(doc)
+  }
+
+  async function parse(markdown: string): Promise<unknown[]> {
+    const blocks = await markdownToBlocks(markdown)
+    expect(blocks).not.toBeNull()
+    return blocks!
+  }
+
+  it('parses the marker into a whiteboard block', async () => {
+    // #given / #when
+    const blocks = await parse(`Before\n\n${MARKER}\n\nAfter`)
+
+    // #then
+    expect(blocks[1]).toMatchObject({
+      type: 'whiteboard',
+      props: { canvasId: 'V1StGXR8_Z5jdHi6B-myT' }
+    })
+  })
+
+  it('writes a whiteboard with no canvas as nothing at all', async () => {
+    // #given the block's default props. Writing `![whiteboard](memry://canvas/)`
+    // instead would re-open as a plain image of a URL that loads nothing.
+    // #when / #then
+    expect(await serialize([paragraph('Before'), whiteboard(''), paragraph('After')])).toBe(
+      'Before\n\nAfter'
+    )
+  })
+
+  it('writes a whiteboard nested under a paragraph as the same marker', async () => {
+    // #given a whiteboard indented under a paragraph, which bypasses the
+    // top-level walk. Pinned byte-for-byte: the renderer's twin in
+    // markdown-utils.test.ts asserts the same string.
+    // #when / #then
+    expect(await serialize([paragraph('Parent', [whiteboard('V1StGXR8_Z5jdHi6B-myT')])])).toBe(
+      `Parent\n\n<!-- memry:block-nesting-level=1 -->\n\n${MARKER}\n\n<!-- memry:block-nesting-level=0 -->`
+    )
+  })
+
+  it('leaves a whiteboard alt text on a non-canvas URL as an image', async () => {
+    // #given
+    const markdown = '![whiteboard](https://example.com/board.png)'
+
+    // #when
+    const blocks = await parse(markdown)
+
+    // #then
+    expect(blocks[0]).toMatchObject({ type: 'image' })
   })
 })
 

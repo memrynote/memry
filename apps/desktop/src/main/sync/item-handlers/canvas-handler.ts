@@ -197,6 +197,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
             // folder is always the on-disk-canonical one.
             folder: folderOfCanvasPath(filePath),
             icon: data.icon ?? null,
+            ownerNoteId: data.ownerNoteId ?? null,
             snapshotCiphertext: '',
             vectorClock: {},
             createdAt: now,
@@ -297,6 +298,9 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
           // misses it. Reading it back canonicalizes too (`CON` → `CON canvas`).
           folder: folderOfCanvasPath(filePath),
           icon: data.icon !== undefined ? data.icon : existing.icon,
+          // Absent is an older client that never heard of owners, not a
+          // request to free the canvas: keep ours. Null is a real clear.
+          ownerNoteId: data.ownerNoteId !== undefined ? data.ownerNoteId : existing.ownerNoteId,
           snapshotCiphertext: '',
           clock: resolution.mergedClock,
           updatedAt: now,
@@ -420,6 +424,9 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       scene,
       folder: row.folder ?? null,
       icon: row.icon ?? null,
+      // Always stated, null included: a present key beats any stale capture of
+      // it in sync_unknown_fields, and tells the receiver "free-standing".
+      ownerNoteId: row.ownerNoteId ?? null,
       clock: row.clock ?? {},
       deletedAt: row.deletedAt ?? null
     })
@@ -497,6 +504,11 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
         // Read back off the allocated path, the same invariant every other
         // placement write in this module holds to.
         folder: folderOfCanvasPath(copyPath),
+        // Kept: the copy is a fork of that note's whiteboard, and surfacing it
+        // in the sidebar would promote a note-internal board to a top-level
+        // canvas the user never made. It stays findable via `[[`/@, and its
+        // document sits next to the winner's on disk.
+        ownerNoteId: existing.ownerNoteId,
         snapshotCiphertext: '',
         vectorClock: {},
         createdAt: now,

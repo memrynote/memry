@@ -55,6 +55,7 @@ import {
   mathBlockConfig,
   taskBlockConfig,
   toggleListItemConfig,
+  whiteboardConfig,
   youtubeEmbedConfig
 } from './blocks'
 import { createServerBlockSpecs, createServerInlineSpecs } from './server'
@@ -75,7 +76,8 @@ const BLOCK_CONFIGS: Record<MemryBlockType, { type: string; propSchema: object }
   bookmark: bookmarkConfig,
   toggleListItem: toggleListItemConfig,
   mathBlock: mathBlockConfig,
-  diagram: diagramConfig
+  diagram: diagramConfig,
+  whiteboard: whiteboardConfig
 }
 
 const INLINE_CONFIGS: Record<MemryInlineType, { type: string; propSchema: object }> = {
@@ -166,6 +168,14 @@ const BLOCK_FIXTURES: Record<MemryBlockType, unknown> = {
     id: 'blk',
     type: 'mathBlock',
     props: { latex: '\\begin{aligned}\na &= b + c\n\\end{aligned}' },
+    children: []
+  },
+  // A real nanoid, `_` and `-` included: both are markdown-significant in
+  // prose, and the id is only safe because it sits inside the image's URL.
+  whiteboard: {
+    id: 'blk',
+    type: 'whiteboard',
+    props: { canvasId: 'V1StGXR8_Z5jdHi6B-myT' },
     children: []
   }
 }

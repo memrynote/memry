@@ -1366,10 +1366,17 @@ writes the same bytes out again, and a fence written by Obsidian or GitHub opens
 diagram. What the parse rule adds is priority — it runs before `codeBlock`'s, which would
 otherwise claim every `<pre><code>`.
 
+`whiteboard` is a pointer, not a drawing: its one prop is `canvasId`, the drawing stays in
+the canvas's own `.excalidraw` file, and the note holds one
+`![whiteboard](memry://canvas/<id>)` line. Main writes that line through the server spec's
+`<img>` like `bookmark`; a whiteboard with no `canvasId` writes nothing rather than a marker
+that would re-open as a plain image.
+
 Main is also the parser. A note's Y.Doc is seeded from its vault file in the main process
 (`crdt-provider.ts`), and the renderer does not parse markdown when a Yjs fragment is
-present — so the `<!-- file:… -->`, `![embed](…)` and `![bookmark](…)` marker lines are
-recognised there, using the same rules the renderer uses on its own save path. Markers
+present — so the `<!-- file:… -->`, `![embed](…)`, `![bookmark](…)` and
+`![whiteboard](memry://canvas/…)` marker lines are recognised there, using the same rules
+the renderer uses on its own save path. Markers
 inside a code fence are the author's text and stay text; the fence tracker follows
 CommonMark, so a longer fence quoting a shorter one is not mistaken for a closing one.
 

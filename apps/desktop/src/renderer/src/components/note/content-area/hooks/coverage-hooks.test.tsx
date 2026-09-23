@@ -125,7 +125,7 @@ describe('coverage hooks around note editing', () => {
 
     act(() => paste(container, 'https://memry.test/second'))
     const menu = document.createElement('button')
-    menu.dataset.pasteLinkMenu = 'true'
+    menu.dataset.inlineChoiceMenu = 'true'
     document.body.append(menu)
     act(() => menu.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })))
     expect(result.current.state.isOpen).toBe(true)

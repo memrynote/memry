@@ -6,7 +6,16 @@
  * public/excalidraw-asset-path.js) because the CSP blocks Excalidraw's CDN.
  */
 
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, {
+  useCallback,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 import {
   Excalidraw,
   serializeAsJSON,
@@ -68,6 +77,7 @@ import {
   type CanvasViewport,
   type ViewportAppState
 } from './canvas-viewport'
+import { InsideCanvasSurfaceContext } from './canvas-surface-context'
 
 const log = createLogger('SpatialCanvas')
 
@@ -102,13 +112,41 @@ interface LinkableElement {
   customData?: { entityType?: string } | null
 }
 
+/** What a host that embeds the editor can ask of it. */
+export interface CanvasEditorHandle {
+  /** Persist pending changes now rather than waiting out the autosave debounce. */
+  flush: () => Promise<void>
+}
+
 interface CanvasEditorProps {
   canvasId: string
   /** Serialized scene as stored (serializeAsJSON output), '' when never drawn on. */
   initialScene: string
+  /**
+   * Set when the canvas is drawn inside a note (a whiteboard block) rather than
+   * in a canvas tab of its own.
+   *
+   * The note's tab is not this canvas's, so the camera is neither restored from
+   * nor written to tab state — two boards in one note would share one slot —
+   * and the drawing is framed to fit the block instead. `editing: false` is view
+   * mode: nothing on the surface can change, so its onChange feeds no autosave
+   * (opening a note full of boards writes nothing) and it does not claim live
+   * ownership of the canvas: an open canvas tab, which can change, is the
+   * editor an agent write must reach.
+   */
+  embed?: { editing: boolean }
+  ref?: React.Ref<CanvasEditorHandle>
 }
 
-export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): React.JSX.Element => {
+export const CanvasEditor = ({
+  canvasId,
+  initialScene,
+  embed,
+  ref
+}: CanvasEditorProps): React.JSX.Element => {
+  const embedded = embed !== undefined
+  const viewMode = embed?.editing === false
+  const embedInstanceId = useId()
   const { t } = useT('common')
   const { resolvedTheme } = useTheme()
   const { openTab } = useTabActions()
@@ -174,13 +212,14 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   /**
    * Mount-time snapshot of that camera. `initialData` is read once, from
    * componentDidMount, so reading the live value inside `loadInitialData` would
-   * only churn the callback's identity on every write we make ourselves.
+   * only churn the callback's identity on every write we make ourselves. An
+   * embedded board starts from none (see `embed`).
    */
-  const restoredViewportRef = useRef(storedViewport)
+  const restoredViewportRef = useRef(embedded ? null : storedViewport)
   /** Live camera, mirrored out of onChange. The only thing teardown may persist. */
-  const viewportRef = useRef(storedViewport)
+  const viewportRef = useRef(restoredViewportRef.current)
   /** Last camera actually written, so a commit that changes nothing is skipped. */
-  const committedViewportRef = useRef(storedViewport)
+  const committedViewportRef = useRef(restoredViewportRef.current)
   const viewportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const setStoredViewportRef = useRef(setStoredViewport)
 
@@ -208,7 +247,8 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
    */
   const recordViewport = useCallback(
     (appState: ViewportAppState & { isLoading?: boolean }): void => {
-      if (appState.isLoading) {
+      // The tab state belongs to the note an embedded board sits in.
+      if (embedded || appState.isLoading) {
         return
       }
       const next = viewportFromAppState(appState)
@@ -220,7 +260,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         viewportTimerRef.current = setTimeout(commitViewport, VIEWPORT_SAVE_THROTTLE_MS)
       }
     },
-    [commitViewport]
+    [commitViewport, embedded]
   )
 
   // Final write at teardown, from the REF — never from the API. On a tab switch
@@ -266,6 +306,27 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       scrollToContent: viewport === null
     } satisfies ExcalidrawInitialDataState
   }, [initialScene])
+
+  // An embedded board has no camera of its own, and `scrollToContent` only
+  // centres the drawing at 100%: a sketch wider than the block would open
+  // cropped. So it is framed whole, once, as soon as initialData has landed —
+  // which can already have happened by the time the API reaches this effect.
+  useEffect(() => {
+    if (!api || !embedded) return
+    let framed = false
+    const frame = (): void => {
+      framed = true
+      if (api.getSceneElements().length === 0) return
+      api.scrollToContent(undefined, { fitToContent: true, animate: false })
+    }
+    if (!api.getAppState().isLoading) {
+      frame()
+      return
+    }
+    return api.onChange((_elements, appState) => {
+      if (!framed && !appState.isLoading) frame()
+    })
+  }, [api, embedded])
 
   // An image whose upload failed is not re-attempted on the very next save
   // (see canvas-externalize); a change in sync state — auth restored, network
@@ -445,7 +506,12 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     // PR #747 lesson: the debounce window must survive quit. The registry's
     // flush runs on the main process's app:request-flush handshake and on
     // beforeunload, so the last strokes are persisted before shutdown/reload.
-    const registryKey = `canvas:${canvasId}`
+    // An embedded board is keyed per instance: the same canvas can be open in
+    // its tab and in any number of notes at once, and a shared key would let
+    // the first of them to unmount unregister the others' flush.
+    const registryKey = embedded
+      ? `canvas:${canvasId}:embed:${embedInstanceId}`
+      : `canvas:${canvasId}`
     registerPendingSave(registryKey, () => persister.flush())
     persisterRef.current = persister
     return () => {
@@ -453,7 +519,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       void persister.flush()
       persisterRef.current = null
     }
-  }, [canvasId, initialScene, corrupt])
+  }, [canvasId, initialScene, corrupt, embedded, embedInstanceId])
 
   /**
    * Excalidraw's link bubble prints `element.link` verbatim, so a link to a note
@@ -534,8 +600,9 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   // Agent MCP writes to THIS canvas must reach this live instance rather than a
   // headless read-modify-write, or our next autosave overwrites them (#916 §2e).
   // Main is told which window owns the canvas so it can route the write here.
+  // A board in view mode stays out of it (see `embed`).
   useEffect(() => {
-    if (!api || corrupt) return
+    if (!api || corrupt || viewMode) return
 
     const handle: LiveCanvasHandle = {
       getElements: () => api.getSceneElements() as unknown as SceneEditElement[],
@@ -556,7 +623,17 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       unregisterLiveCanvas(canvasId, handle)
       void window.api.canvas.liveClosed(canvasId)
     }
-  }, [api, canvasId, corrupt])
+  }, [api, canvasId, corrupt, viewMode])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      flush: async () => {
+        await persisterRef.current?.flush()
+      }
+    }),
+    []
+  )
 
   // The library is vault-global, not per canvas: Excalidraw keeps one shared
   // collection, and this editor remounts per canvas id, so anything held in
@@ -785,17 +862,20 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
    * holds across ordinary renders — one unstable link is enough to churn the
    * prop, and this is the prop that must never churn.
    */
-  const changeHandlersRef = useRef({ recordViewport, interceptLinkEditor })
+  const changeHandlersRef = useRef({ recordViewport, interceptLinkEditor, viewMode })
   useLayoutEffect(() => {
-    changeHandlersRef.current = { recordViewport, interceptLinkEditor }
-  }, [recordViewport, interceptLinkEditor])
+    changeHandlersRef.current = { recordViewport, interceptLinkEditor, viewMode }
+  }, [recordViewport, interceptLinkEditor, viewMode])
 
   // Stable for the same reason `handleApi` is: `onChange` is shallow-compared
   // by Excalidraw's memo, and it is the half of the loop that writes state.
   const handleChange = useCallback<
     NonNullable<React.ComponentProps<typeof Excalidraw>['onChange']>
   >((_elements, appState) => {
-    persisterRef.current?.notifyChange()
+    // View mode cannot change the scene, yet Excalidraw still reports every
+    // pan and zoom; the first such report after mount would pay for a save
+    // whenever the stored bytes differ from this build's serialization.
+    if (!changeHandlersRef.current.viewMode) persisterRef.current?.notifyChange()
     changeHandlersRef.current.recordViewport(appState)
     changeHandlersRef.current.interceptLinkEditor(appState)
   }, [])
@@ -845,50 +925,56 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   }
 
   return (
-    <div
-      ref={wrapperRef}
-      className="relative h-full w-full"
-      data-canvas-editor={canvasId}
-      onKeyDownCapture={handleKeyDownCapture}
-    >
-      <Excalidraw
-        excalidrawAPI={handleApi}
-        initialData={loadInitialData}
-        // The vault is the only store: hide Excalidraw's own file actions
-        // (open .excalidraw, save to disk) so they can't bypass — or, via
-        // loadScene, silently replace — the vault-persisted scene.
-        UIOptions={{
-          canvasActions: {
-            export: false,
-            loadScene: false,
-            saveToActiveFile: false
-          }
-        }}
-        onChange={handleChange}
-        onLinkOpen={handleLinkOpen}
-        // Three Memry themes exist (light/dark/white); anything not dark maps
-        // to Excalidraw's light theme.
-        theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
-        langCode={langCode}
-      />
-      {api ? (
-        <>
-          <CanvasCardLayer
-            excalidrawAPI={api}
-            wrapperRef={wrapperRef}
-            onSceneMutated={() => persisterRef.current?.notifyChange()}
-          />
-          {/* A saved mind map's boxes keep their href out of `element.link`,
-              where the library would paint a glyph on every one of them; this
-              is the affordance they carry instead. */}
-          <CanvasNodeLinkLayer excalidrawAPI={api} wrapperRef={wrapperRef} onOpen={openHref} />
-        </>
-      ) : null}
-      <CanvasLinkDialog
-        open={linkPickerOpen}
-        onOpenChange={setLinkPickerOpen}
-        onPick={(href) => applyLink(href)}
-      />
-    </div>
+    <InsideCanvasSurfaceContext.Provider value>
+      <div
+        ref={wrapperRef}
+        className="relative h-full w-full"
+        data-canvas-editor={canvasId}
+        onKeyDownCapture={handleKeyDownCapture}
+      >
+        <Excalidraw
+          excalidrawAPI={handleApi}
+          initialData={loadInitialData}
+          // The vault is the only store: hide Excalidraw's own file actions
+          // (open .excalidraw, save to disk) so they can't bypass — or, via
+          // loadScene, silently replace — the vault-persisted scene.
+          UIOptions={{
+            canvasActions: {
+              export: false,
+              loadScene: false,
+              saveToActiveFile: false
+            }
+          }}
+          onChange={handleChange}
+          onLinkOpen={handleLinkOpen}
+          // Controlled only when embedded, where the block's Edit/Done owns it:
+          // a defined value also hides Excalidraw's own view-mode toggle, which
+          // a canvas tab keeps.
+          viewModeEnabled={embedded ? viewMode : undefined}
+          // Three Memry themes exist (light/dark/white); anything not dark maps
+          // to Excalidraw's light theme.
+          theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
+          langCode={langCode}
+        />
+        {api ? (
+          <>
+            <CanvasCardLayer
+              excalidrawAPI={api}
+              wrapperRef={wrapperRef}
+              onSceneMutated={() => persisterRef.current?.notifyChange()}
+            />
+            {/* A saved mind map's boxes keep their href out of `element.link`,
+                where the library would paint a glyph on every one of them; this
+                is the affordance they carry instead. */}
+            <CanvasNodeLinkLayer excalidrawAPI={api} wrapperRef={wrapperRef} onOpen={openHref} />
+          </>
+        ) : null}
+        <CanvasLinkDialog
+          open={linkPickerOpen}
+          onOpenChange={setLinkPickerOpen}
+          onPick={(href) => applyLink(href)}
+        />
+      </div>
+    </InsideCanvasSurfaceContext.Provider>
   )
 }

@@ -3,23 +3,47 @@
  *
  * Dual-intent quick-insert: when the query parses as a date, a "Date" group
  * (a plain-date row + a "Remind me — <subtitle>" row) is shown on top; the
- * most-recently-modified notes follow and insert as wiki links. A "Show more"
- * footer reveals the full note list. The footer is a plain button — NOT a menu
- * item — because selecting any item closes the menu and clears the query.
+ * most-recently-modified notes follow and insert as wiki links, then a small
+ * "Canvases" group. A "Show more" footer reveals the full note list. The footer
+ * is a plain button — NOT a menu item — because selecting any item closes the
+ * menu and clears the query.
+ *
+ * A canvas can land two ways (a link, or the live board embedded as a
+ * whiteboard block), so picking one opens `CanvasChoiceMenu` at the caret
+ * instead of inserting straight away.
  */
 
 import { Fragment, useEffect } from 'react'
 import type { SuggestionMenuProps } from '@blocknote/react'
-import { AlarmClock, Clock, FileText } from '@/lib/icons'
+import { AlarmClock, Clock, FileText, Link, PenTool, type AppIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import type { DateMentionValue } from './date-mention-popover'
+import { InlineChoiceMenu } from './inline-choice-menu'
 
 export type MentionSuggestionItem =
   | { kind: 'date'; label: string; value: DateMentionValue }
   | { kind: 'remind'; subtitle: string; value: DateMentionValue }
   | { kind: 'date-hint' }
   | { kind: 'note'; id: string; title: string; lastEdited?: string }
+  | { kind: 'canvas'; id: string; title: string }
+
+export type CanvasChoiceOption = 'mention' | 'embed'
+
+/** The Mention / Embed popover state for a canvas picked from the `@` menu. */
+export interface CanvasChoiceState {
+  canvas: { id: string; title: string }
+  position: { x: number; y: number }
+  selectedIndex: number
+}
+
+/** Mention first: it is what every other `@` pick does, so it is the default. */
+export const CANVAS_CHOICE_OPTIONS: readonly CanvasChoiceOption[] = ['mention', 'embed']
+
+const CANVAS_CHOICE_CONFIG: Record<CanvasChoiceOption, { icon: AppIcon; labelKey: string }> = {
+  mention: { icon: Link, labelKey: 'menus.mention.choiceMention' },
+  embed: { icon: PenTool, labelKey: 'menus.mention.choiceEmbed' }
+}
 
 export type MentionMenuProps = SuggestionMenuProps<MentionSuggestionItem> & {
   hasMore: boolean
@@ -85,6 +109,7 @@ export function MentionMenu({
 
   const hasDateGroup = items.some((item) => item.kind === 'date' || item.kind === 'remind')
   const firstNoteIndex = items.findIndex((item) => item.kind === 'note')
+  const firstCanvasIndex = items.findIndex((item) => item.kind === 'canvas')
 
   return (
     <div
@@ -152,6 +177,31 @@ export function MentionMenu({
             )
           }
 
+          if (item.kind === 'canvas') {
+            return (
+              <Fragment key={`canvas-${item.id}`}>
+                {index === firstCanvasIndex && (
+                  <>
+                    {index > 0 && <hr className="my-1 h-px border-0 bg-border" />}
+                    <div className="mention-menu-group px-2 py-1 text-xs font-medium text-muted-foreground">
+                      {t('menus.mention.canvases')}
+                    </div>
+                  </>
+                )}
+                <button
+                  type="button"
+                  className={itemClassName(isSelected)}
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => onItemClick?.(item)}
+                >
+                  <PenTool className="size-3.5 shrink-0" />
+                  <span className="truncate">{item.title}</span>
+                </button>
+              </Fragment>
+            )
+          }
+
           const divider =
             hasDateGroup && index === firstNoteIndex ? (
               <hr className="my-1 h-px border-0 bg-border" />
@@ -190,5 +240,30 @@ export function MentionMenu({
         )}
       </div>
     </div>
+  )
+}
+
+interface CanvasChoiceMenuProps {
+  choice: CanvasChoiceState | null
+  onSelect: (option: CanvasChoiceOption) => void
+}
+
+/** Mention / Embed for a canvas picked from the `@` menu; keyboard lives in the hook. */
+export function CanvasChoiceMenu({ choice, onSelect }: CanvasChoiceMenuProps) {
+  const { t } = useT('notes')
+  if (!choice) return null
+
+  return (
+    <InlineChoiceMenu
+      title={t('menus.mention.choiceTitle')}
+      position={choice.position}
+      options={CANVAS_CHOICE_OPTIONS.map((option) => ({
+        id: option,
+        icon: CANVAS_CHOICE_CONFIG[option].icon,
+        label: t(CANVAS_CHOICE_CONFIG[option].labelKey)
+      }))}
+      selectedIndex={choice.selectedIndex}
+      onSelect={onSelect}
+    />
   )
 }

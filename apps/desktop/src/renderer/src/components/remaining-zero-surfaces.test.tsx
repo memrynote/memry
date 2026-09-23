@@ -296,7 +296,7 @@ describe('remaining zero renderer surfaces', () => {
         onSelect={onPasteSelect}
       />
     )
-    expect(document.querySelector('[data-paste-link-menu]')).toBeNull()
+    expect(document.querySelector('[data-inline-choice-menu]')).toBeNull()
     rerender(
       <PasteLinkMenu
         isOpen

@@ -62,7 +62,14 @@ export interface CanvasTreeOptions {
 }
 
 export interface CanvasTreeData {
+  /** The canvases the tree shows — every canvas not owned by a note. */
   canvases: CanvasSummary[]
+  /**
+   * Note-owned canvases (`/whiteboard` boards). Not rows — they live in their
+   * note — but still files under a folder path, so a folder delete takes them
+   * too and its confirmation has to count them.
+   */
+  ownedCanvases: CanvasSummary[]
   folders: CanvasFolder[]
   isLoading: boolean
   hasError: boolean
@@ -71,6 +78,7 @@ export interface CanvasTreeData {
 
 export function useCanvasTree({ onFolderPathChanged }: CanvasTreeOptions = {}): CanvasTreeData {
   const [canvases, setCanvases] = React.useState<CanvasSummary[]>([])
+  const [ownedCanvases, setOwnedCanvases] = React.useState<CanvasSummary[]>([])
   const [folders, setFolders] = React.useState<CanvasFolder[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [hasError, setHasError] = React.useState(false)
@@ -81,7 +89,17 @@ export function useCanvasTree({ onFolderPathChanged }: CanvasTreeOptions = {}): 
         canvasService.list(),
         canvasFolderService.list()
       ])
-      setCanvases(canvasResult.canvases)
+      // A note-owned canvas lives in its note, not in the tree. Split here, at
+      // the source, so every visible tree number — the section count, folder
+      // badges, the filter threshold — is about rows the user can see.
+      const visible: CanvasSummary[] = []
+      const owned: CanvasSummary[] = []
+      for (const canvas of canvasResult.canvases) {
+        if (canvas.ownerNoteId) owned.push(canvas)
+        else visible.push(canvas)
+      }
+      setCanvases(visible)
+      setOwnedCanvases(owned)
       setFolders(folderResult.folders)
       setHasError(false)
     } catch (err) {
@@ -163,5 +181,5 @@ export function useCanvasTree({ onFolderPathChanged }: CanvasTreeOptions = {}): 
     }
   }, [scheduleRefresh])
 
-  return { canvases, folders, isLoading, hasError, refresh }
+  return { canvases, ownedCanvases, folders, isLoading, hasError, refresh }
 }
