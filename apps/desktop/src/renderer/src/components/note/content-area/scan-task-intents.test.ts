@@ -46,6 +46,34 @@ describe('analyzeTaskIntents', () => {
       expect(result.subtaskCandidate).toBeNull()
     })
 
+    // #2271 — an empty checkbox taken as a candidate is rewritten into a
+    // taskBlock whose title is empty, `tasks:create` refuses that title, and
+    // the block is stranded on `taskId: ''`. The line the user is still
+    // typing is not a task yet.
+    it('should not mark a checkbox with no text as a candidate', () => {
+      // #given a `- [ ] ` the user has typed nothing on, top level and nested
+      const blocks = [tb('tb1', 'task-1'), cl('cl1', ''), cl('cl2', '   ')]
+      blocks[0].children = [cl('cl3', '')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.standaloneCandidate).toBeNull()
+      expect(result.subtaskCandidate).toBeNull()
+    })
+
+    it('should mark the checkbox as a candidate as soon as it has text', () => {
+      // #given the same line, one keystroke later
+      const blocks = [cl('cl1', 'B')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.standaloneCandidate).toEqual({ blockId: 'cl1' })
+    })
+
     it('should ignore dismissed checkboxes', () => {
       // #given
       const blocks = [cl('cl1', 'Buy milk')]

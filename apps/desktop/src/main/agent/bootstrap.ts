@@ -8,6 +8,7 @@ import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { markExpectedCondition } from '../telemetry/expected-conditions'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
+import { AntigravityCliBackend } from './backends/antigravity-cli-backend'
 import { ClaudeCliBackend } from './backends/claude-cli-backend'
 import { CodexCliBackend } from './backends/codex-cli-backend'
 import { getLocalProviderApiKey } from './backends/local-provider-keychain'
@@ -22,7 +23,9 @@ import {
 } from './backends/local-openai-compatible-backend'
 import { createAgentBackendRegistry } from './backends/registry'
 import { AgentToolBridge } from './backends/tool-bridge'
-import type { ClaudeCliSpawnInput, CodexCliSpawnInput } from './backends/types'
+import type { AgyCliSpawnInput, ClaudeCliSpawnInput, CodexCliSpawnInput } from './backends/types'
+import { detectAgyBinary } from './cli/agy-binary'
+import { agyBridgeRuntime, spawnAgyTurn } from './cli/agy-spawn'
 import { detectClaudeBinary } from './cli/claude-binary'
 import { detectCodexBinary } from './cli/codex-binary'
 import { spawnCodexTurn } from './cli/codex-spawn'
@@ -31,8 +34,15 @@ import { spawnClaudeTurn } from './cli/spawn'
 import { getPublicStatus } from './mcp/lifecycle'
 import { createVaultServiceHandles } from './mcp/tools/handles-adapter'
 import { ALL_TOOL_NAMES } from './mcp/tools/schemas'
+import { buildPreviewDiffResponse } from './preview'
 import { AgentRuntime } from './runtime/runtime'
-import { getAgentPreferences, setAgentPreferences } from './settings'
+import {
+  getAgentPreferences,
+  getAlwaysAllowedTools,
+  grantAlwaysAllowedTool,
+  revokeAlwaysAllowedTool,
+  setAgentPreferences
+} from './settings'
 import { createConversationStore } from './storage/conversation-store'
 import {
   createEphemeralConversationStore,
@@ -43,17 +53,6 @@ import { getOrCreateVaultUuid } from './storage/vault-id'
 
 const logger = createLogger('AgentBootstrap')
 const ALLOWED_AGENT_TOOLS = ALL_TOOL_NAMES.map((name) => `mcp__memry__${name}`).join(',')
-
-function mergeContent(
-  current: string,
-  mode: 'append' | 'prepend' | 'replace',
-  next: string
-): string {
-  if (mode === 'replace') return next
-  if (!current) return next
-  if (!next) return current
-  return mode === 'append' ? `${current}\n\n${next}` : `${next}\n\n${current}`
-}
 
 export interface AgentHandle {
   shutdown: () => Promise<void>
@@ -224,6 +223,61 @@ export async function startAgent(): Promise<AgentHandle> {
     }
   }
 
+  const spawnAgyAdapter = async ({
+    prompt,
+    writeGrant,
+    windowId,
+    model,
+    permissions,
+    purpose = 'turn'
+  }: AgyCliSpawnInput) => {
+    const binary = await detectAgyBinary()
+    if (!binary.detected || !binary.meetsMinimum) {
+      throw markExpectedCondition(new Error(binary.installHint ?? 'Antigravity CLI unavailable'))
+    }
+
+    const status = purpose === 'turn' ? getPublicStatus() : null
+    if (purpose === 'turn' && (!status?.url || !status['token'])) {
+      throw new Error('Agent MCP server not running')
+    }
+
+    const sub = await spawnAgyTurn({
+      binaryPath: 'agy',
+      prompt,
+      model,
+      ...(permissions ? { permissions } : {}),
+      bridge: agyBridgeRuntime(),
+      ...(status?.url && status['token'] && writeGrant
+        ? {
+            mcp: {
+              serverUrl: status.url,
+              authorizationValue: status['token'],
+              writeGrant,
+              windowId
+            }
+          }
+        : {})
+    })
+
+    const stdout = sub.proc.stdout
+    const stderr = sub.proc.stderr
+    if (!stdout || !stderr) {
+      throw new Error('Antigravity subprocess stdio unavailable')
+    }
+    const exitCodePromise = new Promise<number>((resolve) => {
+      sub.proc.once('exit', (code) => resolve(code ?? 0))
+    })
+
+    return {
+      stdout,
+      stderr,
+      pid: sub.pid,
+      kill: createEscalatingKill(sub.proc),
+      waitExit: () => exitCodePromise,
+      cleanup: sub.cleanup
+    }
+  }
+
   const toolBridge = new AgentToolBridge()
   const localBackend = new LocalOpenAICompatibleBackend({
     getSettings: getLocalProviderSettings,
@@ -233,10 +287,19 @@ export async function startAgent(): Promise<AgentHandle> {
   const backends = createAgentBackendRegistry({
     claude: new ClaudeCliBackend({ spawn: spawnClaudeAdapter }),
     codex: new CodexCliBackend({ spawn: spawnCodexAdapter }),
+    antigravity: new AntigravityCliBackend({ spawn: spawnAgyAdapter }),
     local: localBackend
   })
 
-  const runtime = new AgentRuntime({ conversations, messages, getPreferences: getAgentPreferences })
+  const runtime = new AgentRuntime({
+    conversations,
+    messages,
+    getPreferences: getAgentPreferences,
+    getVaultTrustList: () => getAlwaysAllowedTools(vaultId),
+    grantVaultTool: (toolName) => {
+      grantAlwaysAllowedTool(vaultId, toolName)
+    }
+  })
   runtime.install()
 
   registerAgentHandlers({
@@ -245,13 +308,14 @@ export async function startAgent(): Promise<AgentHandle> {
     messages,
     backends,
     historyPersisted,
-    previewNoteUpdate: async (input) => {
-      const note = await handles.notes.read(input.id)
-      if (!note) throw new Error(`Note not found: ${input.id}`)
-      return {
-        title: note.title,
-        current: note.content_markdown,
-        candidate: mergeContent(note.content_markdown, input.mode, input.content_markdown)
+    buildPreview: async (input) => buildPreviewDiffResponse(input, handles),
+    toolGrants: {
+      list: () => getAlwaysAllowedTools(vaultId),
+      grant: (toolName) => {
+        grantAlwaysAllowedTool(vaultId, toolName)
+      },
+      revoke: (toolName) => {
+        revokeAlwaysAllowedTool(vaultId, toolName)
       }
     },
     localProvider: {

@@ -254,11 +254,22 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   // needs a non-state read of the pending id so it isn't itself reactive state
   // driving an effect (see the effect's comment).
   const pendingRevealNoteIdRef = useRef<string | null>(null)
+  // Set by a reveal that asked for `rename`, cleared the first time a reveal
+  // completes: RevealHandler's effect can run more than once for one request,
+  // and re-opening the input would wipe what the user has already typed.
+  const pendingRenameOnRevealRef = useRef(false)
+  // Pulled off `actions` so the reveal callback depends on this one function
+  // rather than the whole action bag, which is a new object every render.
+  const { handleRenameById } = actions
 
   const handleRevealComplete = useCallback(
     (noteId: string) => {
       setSelectedIds([noteId])
       notifyTargetFolderChange([noteId])
+      if (pendingRenameOnRevealRef.current) {
+        pendingRenameOnRevealRef.current = false
+        handleRenameById(noteId)
+      }
       setTimeout(() => {
         const element = document.querySelector(`[data-tree-node-id="${noteId}"]`)
         if (element) {
@@ -270,12 +281,14 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
       pendingRevealNoteIdRef.current = null
       setPendingRevealNoteId(null)
     },
-    [notifyTargetFolderChange]
+    [notifyTargetFolderChange, handleRenameById]
   )
 
   useEffect(() => {
-    const handleRevealInSidebar = (event: CustomEvent<{ path: string; entityId?: string }>) => {
-      const { entityId } = event.detail
+    const handleRevealInSidebar = (
+      event: CustomEvent<{ path: string; entityId?: string; rename?: boolean }>
+    ) => {
+      const { entityId, rename } = event.detail
       if (!entityId) return
       // Deliberately not checked against `noteMap`: a note created a moment ago
       // is not in the tree query yet, and dropping the request here is what used
@@ -294,6 +307,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
       }
 
       pendingRevealNoteIdRef.current = entityId
+      pendingRenameOnRevealRef.current = rename === true
       setPendingRevealNoteId(entityId)
 
       // The virtualized tree has no RevealHandler (see below) — if the note is

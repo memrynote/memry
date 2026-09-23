@@ -13,7 +13,11 @@ memrynote's editor is built on **BlockNote** — a block-based rich text editor 
 | From a [Template](/user-guide/templates) | New note seeded with template content |
 | `[[New title]]` in another note          | Linked note created on first save     |
 
-The new note opens in a tab. The title field has focus.
+The new note opens in a tab, and its row in the sidebar opens a name field with `Untitled`
+already selected: type the name, press <kbd>Enter</kbd>, and it is named. Press <kbd>Esc</kbd> —
+or click away without typing — and it stays `Untitled`. It is the same field as **Rename** on the
+row's right-click menu, so naming a new note is no longer a second step you have to remember.
+New folders and subfolders open that field the same way.
 
 The sidebar follows along: the folder the note landed in is opened — nested folders included — and
 the note is scrolled into view and briefly highlighted, so you can see where it went without going
@@ -24,7 +28,7 @@ menu.
 
 Every way of making a note does this: <kbd>⌘</kbd>+<kbd>N</kbd>, the sidebar's **New** button, the
 **New note** icon on the Collections header, the tab bar's **+**, and **New note** on a folder's
-right-click menu — including when that folder is closed.
+right-click menu — including when that folder is closed. All of them open the name field too.
 
 ## Block Types
 
@@ -34,8 +38,10 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Heading 1 through 6
 - Bullet list, numbered list, check list
 - Quote, callout
+- Equation (a LaTeX formula on its own line)
 - Toggle list (collapsible section — nest text, images, even other toggles inside it)
-- Code block (language picker: 50 languages, alphabetical, including PowerShell and KQL)
+- Code block (language picker: 50 languages, alphabetical)
+- Diagram (Mermaid)
 - Divider
 - Image, file
 - Table
@@ -47,13 +53,38 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 and a small toolbar appears in its top-right corner:
 
 - the **language picker**, which sets the syntax highlighting — 50 languages,
-  alphabetical, Plain Text first, including PowerShell and KQL
+  alphabetical, Plain Text first
 - **Copy code**, which puts the whole block on the clipboard
+
+PowerShell and KQL are in the picker and are saved to your file like any other
+language, but they currently render without colour.
 
 Highlighting follows your theme: the same block is light in the light theme and
 dark in the dark one, on the sidebar's own background rather than a black slab.
 Code text sits one notch below body text and scales with **Appearance → Font
 Size**.
+
+## Diagrams
+
+`/mermaid` (or `/diagram`, `/flowchart`, `/chart`, `/graph`) inserts a
+[Mermaid](https://mermaid.js.org) diagram, starting from a two-box flowchart so
+there is something on the page to edit. The block shows the **drawing**; click it
+to open the source and edit it, and the picture redraws as you type. Source with
+a mistake in it keeps showing the last diagram that worked, with the error
+underneath, so a half-typed line does not blank the page.
+
+Flowcharts, sequence diagrams, Gantt charts, state diagrams, pie charts — whatever
+Mermaid draws.
+
+A diagram is stored as an ordinary ` ```mermaid ` code fence, the same notation
+Obsidian, GitHub and GitLab use. Nothing extra is written beside it, so a diagram
+you make here shows up as a diagram there, a fence written there opens as a
+diagram here, and a fence written by a Memry version that predates this block
+opens as one too.
+
+On the phone the block shows the Mermaid **source**, labelled, rather than the
+drawing — the renderer is far too heavy for the mobile editor. You can read and
+edit it there and the change syncs; the picture is drawn on the desktop.
 
 ## Tables
 
@@ -213,6 +244,34 @@ Two shapes are deliberately left alone rather than adopted:
   literal text, so nothing is lost; close the block by hand and it becomes a real toggle
   on the next open.
 
+## Equations
+
+`/math` — or `/equation`, `/latex`, `/formula` — inserts an equation block. Click it to open the source box, type LaTeX, and
+press <kbd>Esc</kbd> when you are done; the block shows the typeset formula the moment
+you close the box. LaTeX that does not parse shows the error instead of a formula, with
+your source still in the box.
+
+The file keeps the source, not the rendering:
+
+```md
+$$
+E = mc^2
+$$
+```
+
+That is the same block form Obsidian, GitHub and Pandoc read, so an equation written
+here is an equation there, and one written there opens here as a block.
+
+Two shapes are deliberately left alone:
+
+- `$$E = mc^2$$` written on a single line stays the text its author wrote. Adopting it
+  would rewrite the line into the three-line form the next time the note was saved.
+- A `$$` that starts or ends in the middle of a paragraph, or that is never closed,
+  stays text for the same reason.
+
+On iPhone and iPad an equation shows its LaTeX source rather than the typeset formula.
+The formula is unchanged in the file, and the same note shows it typeset on the desktop.
+
 ## Folding a bullet list
 
 Any bullet with something nested under it can be folded. Hover the line and a small
@@ -289,8 +348,8 @@ applies to that one block, no matter what else is selected:
 | **Comment**                     | Opens a comment on the block, in the same review sidebar as a comment on selected text.                                                                         |
 
 Some entries are hidden when they do not apply. **Turn into** and **Comment** do not
-appear on blocks with no text of their own — files, images, embeds, bookmarks, tasks
-and tables. **Move to…** is hidden on blocks that hold an attachment, because the
+appear on blocks with no text of their own — files, images, embeds, bookmarks, tasks,
+equations and tables. **Move to…** is hidden on blocks that hold an attachment, because the
 file stays with the note that owns it and the embed would break on your other
 devices.
 
@@ -615,8 +674,12 @@ is that nothing is _lost_ on the way through:
   clickable link while the note is open. Definitions are gathered at the end of the file.
 - **A code fence with no language keeps no language.** A bare ` ` ``` fence is not given one,
   which is what an Obsidian Kanban board's settings block needs to keep working.
+- **An indented code block stays a code block.** A run of lines indented four spaces or one tab
+  stays code, and a line break inside a table cell keeps its row intact rather than cutting the
+  table off there.
 
 Within an edited region some cosmetic details are normalized to one house style: `*` and `+`
-bullets become `-`, `_em_` becomes `*em*`, an underlined `Title` heading becomes `# Title`, and a
-`~~~` fence becomes a ` ``` ` one. These change how that region is spelled, never what it says.
+bullets become `-`, `_em_` becomes `*em*`, an underlined `Title` heading becomes `# Title`, a
+`~~~` fence becomes a ` ``` ` one, and an indented code block is rewritten as a fenced one.
+A line break pasted into a table cell becomes a space, because a table row is one line. These change how that region is spelled, never what it says.
 A note carrying review comments or tracked changes is written in house style throughout.

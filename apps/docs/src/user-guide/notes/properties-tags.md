@@ -148,6 +148,7 @@ A note or journal entry joins a project through its **`project` property**, not 
 
 - **Renaming or deleting a project** rewrites the `project` value in every linked note's frontmatter — a rename updates the name in place, a delete removes it from the list.
 - Dragging a note or journal entry onto a project in the sidebar sets this same property.
+- **Tasks written in the note follow it.** A task you create inside the note is filed in the note's project — see [Capturing Tasks](/user-guide/tasks/capturing#which-project-a-note-s-task-lands-in). When you give the note a project from this row and the note already holds tasks filed elsewhere, memrynote asks once whether to move them across; declining leaves them where they are.
 - **In a [folder view](/user-guide/folder-view) column**, each project shows as a pill with the project's color and icon; clicking one opens that project's page, the way clicking a tag opens its tag page. The cell is read-only there — a `project` value is a list of project _names_, so editing it as free text in a table would point the note at a project that doesn't exist. Add, remove, and rename projects from the note's property row or the project itself.
 
 ::: tip First open after upgrading

@@ -230,6 +230,20 @@
       "error": "Error",
       "success": "Success"
     },
+    "diagram": {
+      "title": "Diagram",
+      "subtext": "Flowchart, sequence or Gantt chart from Mermaid source"
+    },
+    "math": {
+      "title": "Equation",
+      "group": "Basic blocks",
+      "subtext": "Write a formula in LaTeX",
+      "empty": "Add an equation",
+      "edit": "Edit equation",
+      "placeholder": "E = mc^2",
+      "sourceLabel": "LaTeX source",
+      "hint": "LaTeX. Press Escape when you are done."
+    },
     "slashMenu": {
       "pdf": {
         "title": "PDF",
@@ -544,6 +558,15 @@
     "projectSearch": "Search projects",
     "projectEmpty": "No projects",
     "projectRemove": "Remove from {name}"
+  },
+  "moveNoteTasks": {
+    "title": "Move this note's tasks?",
+    "description": "{count, plural, one {# task in this note belongs to another project} other {# tasks in this note belong to other projects}}. Move {count, plural, one {it} other {them}} to {project}?",
+    "subtaskNote": "Subtasks move with their parent task.",
+    "cancel": "Keep as is",
+    "confirm": "{count, plural, one {Move task} other {Move tasks}}",
+    "success": "{count, plural, one {Moved # task to {project}} other {Moved # tasks to {project}}}",
+    "failed": "Could not move the note's tasks"
   },
   "cover": {
     "add": "Add cover",

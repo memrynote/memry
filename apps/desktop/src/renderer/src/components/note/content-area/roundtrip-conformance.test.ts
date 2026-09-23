@@ -8,7 +8,7 @@
  * the corpus is the same fact as them agreeing with each other.
  */
 
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { BlockNoteEditor, type Block } from '@blocknote/core'
 import {
   FUZZ_FAMILIES,
@@ -23,6 +23,34 @@ vi.mock('react-pdf', () => ({
   Page: () => null,
   pdfjs: { GlobalWorkerOptions: { workerSrc: '' } }
 }))
+
+// Same reason, one layer down: serializing a diagram block mounts the block's
+// React view, whose effect draws the Mermaid source into a preview. Mermaid
+// measures text through `SVGElement.getBBox`, which jsdom does not implement,
+// so the real one can only fail here — after loading ~3 MB to do it. The bytes
+// this suite asserts come from `toExternalHTML`, which never reaches the
+// preview, so the picture is stubbed and the fence is still the real thing.
+vi.mock('mermaid', () => ({
+  default: {
+    initialize: () => undefined,
+    parse: () => Promise.resolve(true),
+    render: () => Promise.resolve({ svg: '<svg/>' })
+  }
+}))
+
+// That preview's effect is asynchronous, so its state update lands after the
+// serialization call it belongs to has returned. `@testing-library/react`,
+// imported by the shared DOM setup, marks the whole renderer project an act
+// environment, which turns each such update into an act() warning — here,
+// around assertions that never look at a rendered node.
+//
+// In a `beforeAll`, not at module scope: RTL registers its own `beforeAll` that
+// sets the flag, and a hook registered later is the only thing that runs after
+// it. Nothing in this file asserts on UI, so it opts out rather than wrapping a
+// string comparison in `act`.
+beforeAll(() => {
+  ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = false
+})
 
 import { editorSchema } from './editor-schema'
 import { parseMarkdownPreservingBlanks, serializeBlocksPreservingBlanks } from './markdown-utils'

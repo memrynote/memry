@@ -7,7 +7,7 @@
     "source": "packages/editor-schema/src/conformance.ts",
     "seed": "0x1848",
     "casesPerFamily": 48,
-    "familyCount": 5
+    "familyCount": 6
   },
   "families": [
     {
@@ -20,6 +20,10 @@
     },
     {
       "name": "callout bodies",
+      "pending": null
+    },
+    {
+      "name": "math sources",
       "pending": null
     },
     {

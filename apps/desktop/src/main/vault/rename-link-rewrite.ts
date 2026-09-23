@@ -189,6 +189,9 @@ async function rewriteSource(
     emitNoteEvent(JournalChannels.events.ENTRY_UPDATED, {
       date: journalDate,
       entry: {
+        // Same reason as the watcher's external-edit payload: the renderer keys
+        // task links off this id, so it may not go missing (#2271).
+        id: sourceId,
         date: journalDate,
         content: parsed.content,
         tags: syncResult.tags,

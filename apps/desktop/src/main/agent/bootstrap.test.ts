@@ -48,6 +48,35 @@ const mocks = vi.hoisted(() => ({
     },
     cleanup: vi.fn()
   })),
+  detectAgyBinary: vi.fn<
+    () => Promise<{
+      detected: boolean
+      version: string | null
+      meetsMinimum: boolean
+      minimumRequired: string
+      installHint: string | null
+    }>
+  >(async () => ({
+    detected: true,
+    version: '1.2.7',
+    meetsMinimum: true,
+    minimumRequired: '1.2.7',
+    installHint: null
+  })),
+  spawnAgyTurn: vi.fn(async () => ({
+    pid: 9,
+    proc: {
+      stdout: (async function* () {})(),
+      stderr: (async function* () {})(),
+      kill: vi.fn(),
+      once: vi.fn()
+    },
+    cleanup: vi.fn()
+  })),
+  agyBridgeRuntime: vi.fn(() => ({
+    command: '/Apps/MemryNote',
+    scriptPath: '/Apps/out/main/agy-mcp-bridge.js'
+  })),
   spawnCodexTurn: vi.fn(async () => ({
     pid: 8,
     proc: {
@@ -116,6 +145,11 @@ vi.mock('./cli/claude-binary', () => ({ detectClaudeBinary: mocks.detectClaudeBi
 vi.mock('./cli/codex-binary', () => ({ detectCodexBinary: mocks.detectCodexBinary }))
 vi.mock('./cli/spawn', () => ({ spawnClaudeTurn: mocks.spawnClaudeTurn }))
 vi.mock('./cli/codex-spawn', () => ({ spawnCodexTurn: mocks.spawnCodexTurn }))
+vi.mock('./cli/agy-binary', () => ({ detectAgyBinary: mocks.detectAgyBinary }))
+vi.mock('./cli/agy-spawn', () => ({
+  spawnAgyTurn: mocks.spawnAgyTurn,
+  agyBridgeRuntime: mocks.agyBridgeRuntime
+}))
 vi.mock('./backends/local-provider-settings', () => ({
   getLocalProviderSettings: mocks.getLocalProviderSettings,
   setLocalProviderSettings: mocks.setLocalProviderSettings
@@ -310,20 +344,88 @@ describe('startAgent', () => {
     )
   })
 
+  it('adapts Antigravity subprocess spawn with native MCP only for normal turns', async () => {
+    await startAgent()
+    const deps = mocks.registerAgentHandlers.mock.calls[0][0]
+
+    await deps.backends.get('antigravity_cli').runTurn({
+      prompt: 'hello',
+      conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
+      windowId: 'window-1',
+      options: { backend: 'antigravity_cli', model: 'gemini-3.1-pro-high' }
+    })
+    await deps.backends.get('antigravity_cli').generateTitle({
+      prompt: 'title',
+      conversationId: 'conversation-1',
+      windowId: 'window-1',
+      options: { backend: 'antigravity_cli' }
+    })
+
+    expect(mocks.spawnAgyTurn).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        binaryPath: 'agy',
+        prompt: 'hello',
+        model: 'gemini-3.1-pro-high',
+        bridge: { command: '/Apps/MemryNote', scriptPath: '/Apps/out/main/agy-mcp-bridge.js' },
+        mcp: {
+          serverUrl: 'http://127.0.0.1:54321',
+          authorizationValue: 'local-auth-value',
+          writeGrant: TEST_GRANT,
+          windowId: 'window-1'
+        }
+      })
+    )
+    // A title run carries no write grant, so it gets no MCP wiring and its
+    // bridge would report that no turn is active.
+    expect(mocks.spawnAgyTurn).toHaveBeenNthCalledWith(
+      2,
+      expect.not.objectContaining({ mcp: expect.anything() })
+    )
+  })
+
+  it('refuses an Antigravity turn with install guidance when agy is missing', async () => {
+    mocks.detectAgyBinary.mockResolvedValueOnce({
+      detected: false,
+      version: null,
+      meetsMinimum: false,
+      minimumRequired: '1.2.7',
+      installHint: 'Install Antigravity CLI (agy) from https://antigravity.google/docs/cli'
+    })
+    await startAgent()
+    const deps = mocks.registerAgentHandlers.mock.calls[0][0]
+
+    await expect(
+      deps.backends.get('antigravity_cli').runTurn({
+        prompt: 'hello',
+        conversationId: 'conversation-1',
+        writeGrant: TEST_GRANT,
+        windowId: 'window-1',
+        options: { backend: 'antigravity_cli' }
+      })
+    ).rejects.toThrow(/Install Antigravity CLI/)
+    expect(mocks.spawnAgyTurn).not.toHaveBeenCalled()
+  })
+
   it('previews note updates for agent diff approvals', async () => {
     await startAgent()
     const deps = mocks.registerAgentHandlers.mock.calls[0][0]
 
-    const preview = await deps.previewNoteUpdate({
-      id: 'note-1',
-      mode: 'append',
-      content_markdown: 'new'
+    const preview = await deps.buildPreview({
+      toolName: 'vault_update_note',
+      args: { id: 'note-1', mode: 'append', content_markdown: 'new' }
     })
 
-    expect(preview).toEqual({
+    expect(preview).toMatchObject({
       title: 'Note',
       current: 'old',
-      candidate: 'old\n\nnew'
+      candidate: 'old\n\nnew',
+      preview: {
+        kind: 'body',
+        item: { type: 'note', id: 'note-1' },
+        body: { current: 'old', candidate: 'old\n\nnew' }
+      }
     })
   })
 

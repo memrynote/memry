@@ -204,7 +204,8 @@ describe('SyncEngine', () => {
         encryptedData: 'ed-base64',
         dataNonce: 'dn-base64',
         signature: 'sig-base64',
-        signerDeviceId: 'device-1'
+        signerDeviceId: 'device-1',
+        clock: { 'device-1': 1 }
       }
 
       vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockReturnValue({

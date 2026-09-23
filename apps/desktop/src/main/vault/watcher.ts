@@ -668,6 +668,11 @@ export class VaultWatcher {
       emitEvent(JournalChannels.events.ENTRY_UPDATED, {
         date: journalDate,
         entry: {
+          // The renderer caches this payload as the open entry, and the journal
+          // editor passes its id to every task it creates. Omitting the id left
+          // that entry id undefined after any on-disk edit, so a task created
+          // in the day afterwards was linked to nothing (#2271).
+          id: cached.id,
           date: journalDate,
           content: parsed.content,
           tags,

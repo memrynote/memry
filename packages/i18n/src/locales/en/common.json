@@ -93,7 +93,9 @@
     "daysAgo": "{count, plural, one {# day ago} other {# days ago}}",
     "tomorrow": "Tomorrow",
     "daysOverdue": "{count, plural, one {# day overdue} other {# days overdue}}",
-    "daysLate": "{count, plural, one {#d late} other {#d late}}"
+    "daysLate": "{count, plural, one {#d late} other {#d late}}",
+    "inDays": "{count, plural, one {in # day} other {in # days}}",
+    "inWeeks": "{count, plural, one {in # week} other {in # weeks}}"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Every day} other {Every # days}}",
@@ -143,20 +145,96 @@
       "allowOnce": "Allow once",
       "editAndApply": "Edit and apply",
       "editAndAllow": "Edit and allow",
-      "allowAlways": "Allow always",
+      "allowAlways": "Always allow",
       "applyEdits": "Apply edits",
-      "deny": "Deny",
-      "invalidJson": "Enter valid JSON before applying edits."
+      "deny": "Reject",
+      "invalidJson": "Enter valid JSON before applying edits.",
+      "thisTool": "this tool",
+      "alwaysAllowHint": "Always allow covers {tool}. Every other tool still asks, and deletes always ask.",
+      "alwaysInChat": "Always allow in this chat",
+      "alwaysInChatHint": "Ends when the conversation ends",
+      "alwaysInVault": "Always allow in this vault",
+      "alwaysInVaultHint": "Revocable in Settings \u203a Agent",
+      "deletesAlwaysAsk": "Deletes always ask"
     },
     "diff": {
-      "previewError": "Could not preview note diff",
-      "description": "The agent wants to update {title}. Review the current and candidate content before applying it.",
-      "fallbackTitle": "this note",
+      "previewError": "Could not preview this change",
+      "description": "The agent wants to update {title}. Review the change before applying it.",
+      "fallbackTitle": "this item",
       "current": "Current",
       "candidate": "Candidate",
       "loading": "Loading...",
       "apply": "Apply",
-      "applyEdited": "Apply edited"
+      "applyEdited": "Apply edited",
+      "editBody": "Edit before applying"
+    },
+    "preview": {
+      "unset": "not set",
+      "yes": "yes",
+      "no": "no",
+      "noChange": "Nothing this preview can name would change.",
+      "willBeLost": "Will be lost",
+      "unchangedLines": "{count, plural, one {# unchanged line} other {# unchanged lines}}",
+      "item": {
+        "note": "Note",
+        "folder": "Folder",
+        "task": "Task",
+        "journal": "Journal",
+        "inbox": "Inbox",
+        "project": "Project",
+        "status": "Status",
+        "canvas": "Canvas"
+      },
+      "intent": {
+        "create": "new",
+        "update": "update",
+        "delete": "delete",
+        "move": "move",
+        "reorder": "reorder"
+      },
+      "field": {
+        "archived": "Archived",
+        "arguments": "Arguments",
+        "color": "Color",
+        "completed": "Completed",
+        "description": "Description",
+        "due": "Due",
+        "dueTime": "Due time",
+        "duplicateOf": "Copy of",
+        "edits": "Edits",
+        "elements": "Elements",
+        "folder": "Folder",
+        "icon": "Icon",
+        "isDefault": "Default",
+        "isDone": "Done state",
+        "items": "Items",
+        "name": "Name",
+        "operation": "Operation",
+        "order": "Order",
+        "parent": "Parent",
+        "path": "Path",
+        "position": "Position",
+        "priority": "Priority",
+        "project": "Project",
+        "removed": "Removed",
+        "repeatFrom": "Repeat from",
+        "snoozeReason": "Snooze reason",
+        "snoozedUntil": "Snoozed until",
+        "start": "Start",
+        "status": "Status",
+        "tags": "Tags",
+        "title": "Title"
+      },
+      "loss": {
+        "words": "{count, plural, one {# word} other {# words}}",
+        "tags": "{count, plural, one {# tag} other {# tags}}",
+        "notes": "{count, plural, one {# note} other {# notes}}",
+        "folders": "{count, plural, one {# folder} other {# folders}}",
+        "files": "{count, plural, one {# file} other {# files}}",
+        "events": "{count, plural, one {# event} other {# events}}",
+        "tasks": "{count, plural, one {# task} other {# tasks}}",
+        "due": "due {value}"
+      }
     },
     "composer": {
       "currentNote": "Current note",
@@ -188,6 +266,7 @@
         "label": "Provider",
         "claude": "Claude",
         "codex": "Codex",
+        "antigravity": "Antigravity",
         "local": "Local"
       },
       "access": {

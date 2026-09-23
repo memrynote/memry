@@ -2,15 +2,15 @@
  * #1907 — a checkbox line Memry has no `tasks` row for must never be dressed
  * as a task it cannot act on.
  *
- * Two ways a `taskBlock` ends up with nothing behind it:
- *   - `taskId: ''`, when `convertCheckboxToTask` rewrote the checkbox but the
- *     create never landed (older builds left these in real vaults);
- *   - a `{task:<id>}` suffix whose id resolves to no row (vault copied between
- *     installs), before the async lookup settles into the deleted-task row.
+ * A `{task:<id>}` suffix whose id resolves to no row (a vault copied between
+ * installs) renders a full `TaskRow` built from `placeholderTask` (`id: ''`),
+ * whose every handler early-returns on the empty id, until the async lookup
+ * settles into the deleted-task row. Nothing on it may claim to act on a task.
  *
- * In both the block used to render a full `TaskRow` built from `placeholderTask`
- * (`id: ''`), whose every handler early-returns on the empty id.
+ * The other id-less shape, `taskId: ''`, is a draft the create has not caught
+ * up with. #2271 separates it from this rule: see the draft test below.
  */
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import type React from 'react'
@@ -43,7 +43,10 @@ vi.mock('@/services/tasks-service', () => ({
   },
   onTaskUpdated: mocks.onTaskUpdated,
   onTaskCompleted: mocks.onTaskCompleted,
-  onTaskDeleted: mocks.onTaskDeleted
+  onTaskDeleted: mocks.onTaskDeleted,
+  // The prefetch provider re-reads the note's project links on a project
+  // change, so it subscribes here.
+  onProjectUpdated: () => vi.fn()
 }))
 
 // Stands in for the real row: only an interactive row exposes the controls
@@ -119,7 +122,7 @@ function makeEditor(document: TaskBlock[]): TaskBlockEditor {
 function renderBlock(block: TaskBlock): ReturnType<typeof render> {
   return render(
     <TaskPrefetchProvider noteId="note-1">
-      <TaskBlockRenderer block={block} editor={makeEditor([block])} contentRef={null} />
+      <TaskBlockRenderer block={block} editor={makeEditor([block])} />
     </TaskPrefetchProvider>
   )
 }
@@ -147,16 +150,26 @@ describe('taskBlock with no tasks row behind it', () => {
     expect(screen.queryByText('project')).toBeNull()
   })
 
-  it('offers no task controls for a block whose conversion never produced an id', () => {
-    // #given a half-converted checkbox left behind by an older build
+  // #2271 revisits the `taskId: ''` half of the rule. That block is a draft
+  // whose create has not resolved yet, not a dead one: the id is coming, and
+  // the picker the user reaches for while it is in flight now holds the
+  // choice until it arrives (see `task-block-renderer.test.tsx`). Writing
+  // nothing against the empty id is still the invariant — the controls are
+  // live, the service calls are not.
+  it('keeps the controls live on a draft whose id has not arrived, and writes nothing yet', () => {
+    // #given a checkbox rewritten to a taskBlock, create still in flight
     // #when it renders
     renderBlock(makeBlock({ taskId: '' }))
 
-    // #then nothing in it claims to act on a task
+    // #then the row is usable
     const row = screen.getByTestId('task-row')
-    expect(row.getAttribute('data-interactive')).toBe('false')
-    expect(screen.queryByText('toggle')).toBeNull()
-    expect(screen.queryByText('project')).toBeNull()
+    expect(row.getAttribute('data-interactive')).toBe('true')
+
+    // #and nothing it offers reaches a service with an empty id
+    screen.getByText('priority').click()
+    screen.getByText('project').click()
+    expect(mocks.update).not.toHaveBeenCalled()
+    expect(mocks.complete).not.toHaveBeenCalled()
   })
 
   it('never hands a control an empty task id', () => {

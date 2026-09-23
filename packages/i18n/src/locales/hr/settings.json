@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Ollama (lokalno)",
         "openai": "OpenAI",
-        "anthropic": "antropski"
+        "anthropic": "antropski",
+        "google": "Google Gemini"
       },
       "model": "Model",
       "modelDescription": "Jezični model za prepisivanje i sažimanje",

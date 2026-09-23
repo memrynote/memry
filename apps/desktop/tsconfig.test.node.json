@@ -166,7 +166,6 @@
     "src/main/test-hooks.test.ts",
     "src/main/updater.test.ts",
     "src/main/vault/index.test.ts",
-    "src/main/vault/indexer.test.ts",
     "src/main/vault/note-sync.test.ts",
     "src/main/vault/notes.test.ts",
     "src/main/vault/resolve-embed.test.ts",

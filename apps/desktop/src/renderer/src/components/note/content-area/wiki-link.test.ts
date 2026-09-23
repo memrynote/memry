@@ -6,6 +6,7 @@ import {
   hasWikiLinkMarks,
   parseWikiLinkText
 } from './wiki-link'
+import { renderInlineSpec } from './inline-spec-render.test-helper'
 
 describe('wiki-link inline content spec', () => {
   it('parses wiki text and creates inline content payloads', () => {
@@ -23,7 +24,7 @@ describe('wiki-link inline content spec', () => {
   })
 
   it('renders, parses, and serializes wiki-link DOM nodes', () => {
-    const render = (WikiLink as any).implementation.render({
+    const render = renderInlineSpec('wikiLink', WikiLink, {
       props: { target: 'Daily Note', alias: 'Today' }
     })
     expect(render.dom.textContent).toBe('Today')
@@ -105,7 +106,7 @@ describe('wiki-link inline content spec', () => {
     })
 
     it('keeps the chip attributes and applies the marks inside it', () => {
-      const dom = (WikiLink as any).implementation.render({
+      const dom = renderInlineSpec('wikiLink', WikiLink, {
         props: { target: 'A', alias: 'b', bold: true, code: true, textColor: 'red' }
       }).dom
 
@@ -121,7 +122,7 @@ describe('wiki-link inline content spec', () => {
     })
 
     it('sets no colour attributes when the link is not coloured', () => {
-      const dom = (WikiLink as any).implementation.render({
+      const dom = renderInlineSpec('wikiLink', WikiLink, {
         props: { target: 'A', alias: '', textColor: 'default', backgroundColor: 'default' }
       }).dom
       expect(dom).not.toHaveAttribute('data-text-color')

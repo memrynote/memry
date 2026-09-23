@@ -48,7 +48,7 @@ Until you accept, your original text is unchanged.
 
 Dismissing the menu while a transformation is still streaming cancels the request to
 the provider. Nothing keeps generating in the background, so a run you walked away
-from stops consuming local model time (Ollama) or API tokens (OpenAI, Anthropic).
+from stops consuming local model time (Ollama) or API tokens (OpenAI, Anthropic, Google Gemini).
 
 ## Provider
 
@@ -57,12 +57,13 @@ Inline AI uses whichever provider you configured in [Settings → AI Inline](/us
 - **Ollama** — runs models locally; free; private; requires you to have Ollama running
 - **OpenAI** — uses GPT models via API; needs an API key
 - **Anthropic** — uses Claude models via API; needs an API key
+- **Google Gemini** — uses Gemini models via the Google AI API; needs an API key
 
 See [Provider Setup](/user-guide/ai/provider-setup) for configuring each.
 
 ## Privacy
 
-Requests go to whichever provider you chose. With **Ollama**, your text never leaves your machine. With **OpenAI** or **Anthropic**, the request goes to their API — review their data policies before sending sensitive content.
+Requests go to whichever provider you chose. With **Ollama**, your text never leaves your machine. With **OpenAI**, **Anthropic**, or **Google Gemini**, the request goes to their API — review their data policies before sending sensitive content.
 
 memrynote never proxies these requests through the sync server. The connection is direct from your device to the provider.
 

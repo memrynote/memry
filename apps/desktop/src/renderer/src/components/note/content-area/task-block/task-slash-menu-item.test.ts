@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   listProjects: vi.fn(),
-  create: vi.fn()
+  create: vi.fn(),
+  listForItem: vi.fn(),
+  getTaskSettings: vi.fn()
 }))
 
 // Keep the import graph light: the slash-menu item logic is what's under test,
@@ -18,7 +20,8 @@ vi.mock('./task-block-renderer', () => ({
 vi.mock('@/services/tasks-service', () => ({
   tasksService: {
     listProjects: mocks.listProjects,
-    create: mocks.create
+    create: mocks.create,
+    listForItem: mocks.listForItem
   }
 }))
 
@@ -44,6 +47,10 @@ function makeEditor(block: FakeBlock) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.listForItem.mockResolvedValue([])
+  mocks.getTaskSettings.mockResolvedValue({ defaultProjectId: null })
+  const settingsMock = window.api.settings as unknown as Record<string, unknown>
+  settingsMock.getTaskSettings = mocks.getTaskSettings
 })
 
 describe('getTaskSlashMenuItem', () => {
@@ -87,5 +94,27 @@ describe('getTaskSlashMenuItem', () => {
       block,
       expect.objectContaining({ props: expect.objectContaining({ taskId: 'task-123' }) })
     )
+  })
+
+  it('creates the task in the project the note belongs to, not the inbox (#2271)', async () => {
+    // #given a note linked to a project, and an inbox that is not it
+    mocks.listProjects.mockResolvedValue({
+      projects: [
+        { id: 'inbox', name: 'Inbox', isInbox: true, archivedAt: null },
+        { id: 'work', name: 'Work', isInbox: false, archivedAt: null }
+      ]
+    })
+    mocks.listForItem.mockResolvedValue([{ id: 'work', name: 'Work' }])
+    mocks.getTaskSettings.mockResolvedValue({ defaultProjectId: 'inbox' })
+    mocks.create.mockResolvedValue({ success: true, task: { id: 'task-9', title: 'Buy milk' } })
+    const block: FakeBlock = { id: 'b1', content: [{ text: 'Buy milk' }], props: {} }
+    const { editor } = makeEditor(block)
+
+    // #when the user selects /task in that note
+    await getTaskSlashMenuItem(editor, 'note-1').onItemClick()
+
+    // #then the note's project wins over both the settings default and the inbox
+    expect(mocks.listForItem).toHaveBeenCalledWith('note', 'note-1')
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'work' }))
   })
 })

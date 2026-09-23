@@ -68,6 +68,10 @@ const mockGetUserMedia = vi.fn()
 const readyBackendStatuses = {
   claude_cli: { backend: 'claude_cli', available: true },
   codex_cli: { backend: 'codex_cli', available: true },
+  // Left unavailable on purpose: these cases assert what the Claude and Codex
+  // sections show, and a third detected CLI would add a second model list to
+  // every by-name query here.
+  antigravity_cli: { backend: 'antigravity_cli', available: false, reason: 'missing_binary' },
   local_openai_compatible: { backend: 'local_openai_compatible', available: true }
 }
 
@@ -526,9 +530,11 @@ describe('Composer', () => {
 
     expect(await screen.findByRole('menuitem', { name: 'Sonnet' })).toBeInTheDocument()
     expect(screen.getByText('Codex')).toBeInTheDocument()
+    // One row per undetected CLI: Codex here, plus Antigravity from the shared
+    // fixture.
     expect(
-      screen.getByRole('menuitem', { name: 'Not detected — set up in Settings…' })
-    ).toBeInTheDocument()
+      screen.getAllByRole('menuitem', { name: 'Not detected — set up in Settings…' })
+    ).toHaveLength(2)
     expect(screen.queryByRole('menuitem', { name: 'GPT-5.5' })).not.toBeInTheDocument()
   })
 
@@ -545,7 +551,10 @@ describe('Composer', () => {
         backendStatuses: {
           ...readyBackendStatuses,
           claude_cli: { backend: 'claude_cli', ...agentUnavailable },
-          codex_cli: { backend: 'codex_cli', ...agentUnavailable }
+          codex_cli: { backend: 'codex_cli', ...agentUnavailable },
+          // A runtime that cannot start takes every CLI backend with it, which
+          // is what main reports when the vault key is unavailable.
+          antigravity_cli: { backend: 'antigravity_cli', ...agentUnavailable }
         }
       },
       createConversation: mockCreateConversation,
@@ -560,7 +569,7 @@ describe('Composer', () => {
       await screen.findAllByRole('menuitem', {
         name: 'Agent unavailable — open Settings…'
       })
-    ).toHaveLength(2)
+    ).toHaveLength(3)
     expect(
       screen.queryByRole('menuitem', { name: 'Not detected — set up in Settings…' })
     ).not.toBeInTheDocument()
@@ -622,6 +631,55 @@ describe('Composer', () => {
       text: 'create a task',
       attachments: [],
       backendOptions: { backend: 'codex_cli', reasoningEffort: 'high', model: 'gpt-5.5' }
+    })
+  })
+
+  it('sends an Antigravity model with no effort field, and offers no effort control', async () => {
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        inFlight: {},
+        conversations: {},
+        backendStatuses: {
+          ...readyBackendStatuses,
+          antigravity_cli: { backend: 'antigravity_cli', available: true }
+        }
+      },
+      createConversation: mockCreateConversation,
+      sendTurn: mockSendTurn,
+      cancelTurn: mockCancelTurn
+    })
+    vi.mocked(window.api.agent.listBackendModels).mockImplementation(async ({ backend }) => ({
+      backend,
+      supportsCustomModel: true,
+      models:
+        backend === 'antigravity_cli'
+          ? [{ id: 'gemini-3.1-pro-high', label: 'Gemini 3.1 Pro (High)' }]
+          : []
+    }))
+    renderComposer('conversation-1')
+
+    await openModelSubmenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Gemini 3.1 Pro (High)' }))
+
+    // The model id names its own reasoning tier, so a separate effort row
+    // would contradict the pick.
+    await waitFor(() =>
+      expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('Gemini 3.1 Pro (High)')
+    )
+    expect(screen.getByTestId('agent-model-trigger')).not.toHaveTextContent('·')
+    await openSettingsMenu()
+    expect(screen.queryByRole('menuitem', { name: /^effort/i })).not.toBeInTheDocument()
+    closeMenus()
+
+    await setPromptText('summarise my week')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'summarise my week',
+      attachments: [],
+      backendOptions: { backend: 'antigravity_cli', model: 'gemini-3.1-pro-high' }
     })
   })
 
@@ -832,7 +890,12 @@ describe('Composer', () => {
 
     await setPromptText('summarize @plan')
     fireEvent.click(await screen.findByRole('option', { name: /planning note/i }))
-    expect(screen.getByTestId('agent-mention-note-note-1')).toHaveTextContent('@Planning note')
+    // `findBy`, not `getBy`: the mention is a tiptap React node view, and
+    // from @tiptap/react 3.31 its portal renders on a later tick than the
+    // transaction that inserted the node.
+    expect(await screen.findByTestId('agent-mention-note-note-1')).toHaveTextContent(
+      '@Planning note'
+    )
     expect(screen.queryByRole('button', { name: /remove.*planning note/i })).not.toBeInTheDocument()
     await submitPrompt()
 
@@ -913,7 +976,7 @@ describe('Composer', () => {
     await userEvent.keyboard('{Enter}')
 
     expect(mockSendTurn).not.toHaveBeenCalled()
-    expect(screen.getByTestId('agent-mention-note-note-3')).toHaveTextContent('@Gamma note')
+    expect(await screen.findByTestId('agent-mention-note-note-3')).toHaveTextContent('@Gamma note')
     expect(mockSearchQuery).toHaveBeenCalledWith({ text: '', limit: 20 })
     await submitPrompt()
 
@@ -1100,7 +1163,7 @@ describe('Composer', () => {
       fireEvent.click(await screen.findByRole('option', { name: new RegExp(label, 'i') }))
     }
 
-    expect(screen.getByTestId('agent-mention-note-note-1')).toHaveClass('bg-sky-500/10')
+    expect(await screen.findByTestId('agent-mention-note-note-1')).toHaveClass('bg-sky-500/10')
     expect(screen.getByTestId('agent-mention-task-task-1')).toHaveClass('bg-emerald-500/10')
     expect(screen.getByTestId('agent-mention-journal-2026-05-10')).toHaveClass('bg-rose-500/10')
     expect(screen.getByTestId('agent-mention-inbox-inbox-1')).toHaveClass('bg-amber-500/10')
@@ -1155,7 +1218,7 @@ describe('Composer', () => {
 
     await setPromptText('summarize @star wars')
     fireEvent.click(await screen.findByRole('option', { name: /star wars movies/i }))
-    expect(screen.getByTestId('agent-mention-note-note-1')).toBeInTheDocument()
+    expect(await screen.findByTestId('agent-mention-note-note-1')).toBeInTheDocument()
 
     await userEvent.keyboard('{Backspace}{Backspace}')
 
@@ -1199,7 +1262,7 @@ describe('Composer', () => {
 
     await setPromptText('@star wars')
     fireEvent.click(await screen.findByRole('option', { name: /star wars movies/i }))
-    const mention = screen.getByTestId('agent-mention-note-note-1')
+    const mention = await screen.findByTestId('agent-mention-note-note-1')
     expect(mention).toBeInTheDocument()
 
     fireEvent.mouseDown(mention)

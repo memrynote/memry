@@ -53,7 +53,11 @@ const NON_TEXT_BLOCK_TYPES = new Set([
   'youtubeEmbed',
   'bookmark',
   'taskBlock',
-  'table'
+  'table',
+  // A formula's text is LaTeX source, which is edited in its own popup. Turn
+  // Into would hand that source to a paragraph, and a comment has no run of
+  // prose to anchor to.
+  'mathBlock'
 ])
 
 /**

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  inlineLinkReferences,
   restoreLinkReferences,
   stripLinkReferenceDefinitions,
   type LinkReferenceDefinition,
@@ -193,5 +194,52 @@ describe('adversarial input', () => {
       { label: 'd', destination: 'https://example.com', text: 'the docs', raw: '[the docs][d]' }
     ])
     expect(ms).toBeLessThan(BUDGET_MS)
+  })
+})
+
+describe('inlineLinkReferences', () => {
+  it('resolves every reference spelling to an inline link', () => {
+    // #given BlockNote 0.51's markdown parser does not implement reference
+    // links, so the resolution has to happen before it sees the text.
+    const source =
+      'See [the docs][d], [docs][] and [docs].\n\n[d]: https://example.com\n[docs]: https://example.com/x'
+    const { markdown, usages } = stripLinkReferenceDefinitions(source)
+
+    // #when
+    const inlinedText = inlineLinkReferences(markdown, usages)
+
+    // #then — the trailing newline is the blank line the stripped definition
+    // block left behind, which the parser ignores.
+    expect(inlinedText).toBe(
+      'See [the docs](https://example.com), [docs](https://example.com/x) and [docs](https://example.com/x).\n'
+    )
+  })
+
+  it('is the inverse of restoreLinkReferences', () => {
+    // #given the pair is what keeps a foreign file's spelling: the parse sees
+    // ordinary links, and the author's reference form comes back on write.
+    const source = 'See [a][d] and [b][d].\n\n[d]: https://example.com'
+    const { markdown, definitions, usages } = stripLinkReferenceDefinitions(source)
+
+    // #when
+    const roundTripped = restoreLinkReferences(
+      inlineLinkReferences(markdown, usages),
+      definitions,
+      usages
+    )
+
+    // #then
+    expect(roundTripped).toBe(source)
+  })
+
+  it('wraps a destination that could not be read back bare', () => {
+    const source = 'See [x][d].\n\n[d]: <https://example.com/a b>'
+    const { markdown, usages } = stripLinkReferenceDefinitions(source)
+
+    expect(inlineLinkReferences(markdown, usages)).toBe('See [x](<https://example.com/a b>).\n')
+  })
+
+  it('leaves text with no usages untouched', () => {
+    expect(inlineLinkReferences('Plain [text] here.', [])).toBe('Plain [text] here.')
   })
 })

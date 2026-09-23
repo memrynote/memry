@@ -106,8 +106,8 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Sayfalar\u0131 Yeni Sekmede A\u00e7",
-        "description": "Bir sayfaya t\u0131klamak ya da yeni sayfa olu\u015fturmak \u2014 notlar, klas\u00f6rler, projeler, canvas\u0027lar, etiketler, yer imleri \u2014 onu yeni bir sekmede a\u00e7ar. Kapal\u0131yken mevcut sekme yeniden kullan\u0131l\u0131r; not i\u00e7indeki ba\u011flant\u0131lar\u0131 takip etmek de dahil. Sabitlenmi\u015f sekmeler asla de\u011fi\u015ftirilmez. \"Yeni Sekmede A\u00e7\", \"Yan Tarafta A\u00e7\" ve orta t\u0131k her zaman yeni sekme a\u00e7ar."
+        "label": "Sayfaları Yeni Sekmede Aç",
+        "description": "Bir sayfaya tıklamak ya da yeni sayfa oluşturmak — notlar, klasörler, projeler, canvas'lar, etiketler, yer imleri — onu yeni bir sekmede açar. Kapalıyken mevcut sekme yeniden kullanılır; not içindeki bağlantıları takip etmek de dahil. Sabitlenmiş sekmeler asla değiştirilmez. \"Yeni Sekmede Aç\", \"Yan Tarafta Aç\" ve orta tık her zaman yeni sekme açar."
       },
       "restoreSession": {
         "label": "Başlangıçta Oturumu Geri Yükle",
@@ -884,7 +884,8 @@
       "providers": {
         "ollama": "Ollama (Yerel)",
         "openai": "OpenAI",
-        "anthropic": "Antropik"
+        "anthropic": "Antropik",
+        "google": "Google Gemini"
       },
       "model": "Modeli",
       "modelDescription": "Yeniden yazma ve özetleme için dil modeli",
@@ -1333,6 +1334,13 @@
         "alwaysAllow": "Her zaman izin ver",
         "askBeforeChanges": "Değişikliklerden önce sor"
       }
+    },
+    "alwaysAllowed": {
+      "group": "Her zaman izinli",
+      "description": "Bu kasada kalıcı izin verdiğin araçlar. Silmelere hiçbir zaman kalıcı izin verilemez.",
+      "empty": "Her zaman izinli araç yok. Her değişiklik yine sorulur.",
+      "revoke": "Geri al",
+      "revokeLabel": "{tool} için kalıcı izni geri al"
     }
   },
   "commandLine": {

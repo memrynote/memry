@@ -1,8 +1,8 @@
 import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type { QueueClearedEvent, SyncStatusChangedEvent } from '@memry/contracts/ipc-events'
-import type { PushResponse, SyncItemType } from '@memry/contracts/sync-api'
-import { RECORD_CLOCK_REQUIRED_ITEM_TYPES } from '@memry/contracts/sync-api'
+import type { PushItem, PushResponse, SyncItemType } from '@memry/contracts/sync-api'
+import { RECORD_CLOCK_REQUIRED_ITEM_TYPES, RecordPushItemSchema } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { encryptPushBatch } from '../sync-crypto-batch'
 import { getHandler, getRemoteSyncAdapter } from '../item-handlers'
@@ -209,7 +209,7 @@ export class PushCoordinator {
           }
 
           timer.startPhase('encrypt')
-          const pushItems = await encryptPushBatch(
+          const encryptedItems = await encryptPushBatch(
             dedupedItems,
             vaultKey,
             signingKeys.secretKey,
@@ -224,6 +224,14 @@ export class PushCoordinator {
             }
           )
           timer.endPhase(dedupedItems.length)
+
+          const pushItems = this.dropUnsendableItems(encryptedItems, rejectedThisCycle)
+          if (pushItems.length === 0) {
+            // Everything this batch held was retired above, so there is nothing
+            // to send. `continue` instead of `break`: the next dequeue skips
+            // the rows just rejected and the rest of the queue still drains.
+            continue
+          }
 
           timer.startPhase('network')
           let response: RetryResult<PushResponse>
@@ -699,25 +707,111 @@ export class PushCoordinator {
    * untouched; the invented first clock is not persisted (deletes and orphans
    * have no row to persist to), which matches buildDeletePayload's own
    * `{ id, clock: increment({}, deviceId) }` fallback.
+   *
+   * A payload that is not a JSON OBJECT used to leave here untouched — the
+   * repair gave up on exactly the input it exists for, and the clock-less item
+   * still went out and 400'd the batch (#2320). A delete is rebuilt from
+   * nothing instead, because a tombstone carries no body worth keeping and
+   * `{ id, clock }` is already its documented fallback shape. A create/update
+   * is NOT: inventing a body for one would push an empty record over the
+   * server's copy and blank every field it holds. Those stay untouched here
+   * and are retired by `dropUnsendableItems` before the request instead.
    */
   private ensureRequiredClock(
-    item: { itemId: string; type: string },
+    item: { itemId: string; type: string; operation: string },
     payload: string,
     deviceId: string
   ): string {
     if (!RECORD_CLOCK_REQUIRED_TYPE_SET.has(item.type)) return payload
+
+    let parsed: Record<string, unknown> | null = null
     try {
-      const parsed = JSON.parse(payload) as Record<string, unknown> | null
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return payload
-      const clock = parsed.clock
-      if (clock && typeof clock === 'object' && !Array.isArray(clock)) return payload
-      log.info('Push: stamped missing clock on outgoing payload', {
+      const value: unknown = JSON.parse(payload)
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        parsed = value as Record<string, unknown>
+      }
+    } catch {
+      parsed = null
+    }
+
+    if (!parsed) {
+      if (item.operation !== 'delete') {
+        log.error('Push: payload is not a JSON object and cannot be clock-stamped', {
+          itemId: item.itemId.slice(0, 8),
+          type: item.type,
+          operation: item.operation
+        })
+        return payload
+      }
+      log.warn('Push: rebuilt an unreadable delete payload around a first clock', {
         itemId: item.itemId.slice(0, 8),
         type: item.type
       })
-      return JSON.stringify({ ...parsed, clock: { [deviceId]: 1 } })
-    } catch {
-      return payload
+      return JSON.stringify({ id: item.itemId, clock: { [deviceId]: 1 } })
     }
+
+    const clock = parsed.clock
+    if (clock && typeof clock === 'object' && !Array.isArray(clock)) return payload
+    log.info('Push: stamped missing clock on outgoing payload', {
+      itemId: item.itemId.slice(0, 8),
+      type: item.type
+    })
+    return JSON.stringify({ ...parsed, clock: { [deviceId]: 1 } })
+  }
+
+  /**
+   * Drop items the server can only refuse, BEFORE the request.
+   *
+   * `/sync/push` used to answer one schema-invalid item with a request-level
+   * 400 that named no item: nothing was marked, the same batch was dequeued
+   * next cycle, and a vault stopped syncing entirely (#2320). The server now
+   * rejects per item, but a client that keeps producing such an item would
+   * still burn a round trip per cycle on a verdict that can never change, and
+   * an OLD server answers the whole batch with the old 400. Validating against
+   * the same contract the server uses makes the rejection local and final.
+   *
+   * Verdict only: the original item is what gets sent, never `safeParse`'s
+   * output. `RecordPushItemSchema` omits `stateVector`, so sending the parsed
+   * value would strip the CRDT state vector off every note on the wire.
+   */
+  private dropUnsendableItems(
+    pushItems: Array<{ queueId: string; pushItem: PushItem }>,
+    rejectedThisCycle: Set<string>
+  ): Array<{ queueId: string; pushItem: PushItem }> {
+    const sendable: Array<{ queueId: string; pushItem: PushItem }> = []
+    let dropped = 0
+
+    for (const entry of pushItems) {
+      const verdict = RecordPushItemSchema.safeParse(entry.pushItem)
+      if (verdict.success) {
+        sendable.push(entry)
+        continue
+      }
+
+      const reason = verdict.error.issues[0]?.message ?? 'validation failed'
+      log.error('Push: item cannot satisfy the sync contract, dropping it', {
+        queueId: entry.queueId.slice(0, 8),
+        itemId: entry.pushItem.id.slice(0, 8),
+        type: entry.pushItem.type,
+        reason
+      })
+      this.ctx.deps.queue.markFailed(entry.queueId, `Invalid push item: ${reason}`)
+      rejectedThisCycle.add(entry.queueId)
+      dropped++
+    }
+
+    if (dropped > 0) {
+      trackMainEvent('sync_error', {
+        surface: 'sync',
+        action: 'push_item_invalid',
+        result: 'failed',
+        errorCode: 'push_item_invalid',
+        source: 'push',
+        metrics: { itemCount: dropped },
+        dimensions: { transport: 'record' }
+      })
+    }
+
+    return sendable
   }
 }

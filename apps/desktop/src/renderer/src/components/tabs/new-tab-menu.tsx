@@ -67,8 +67,10 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
           { groupId }
         )
         // The expand above is a guess from the selection; this reveals where
-        // the note actually landed, and scrolls it into view.
-        revealNoteInSidebar(result.note.id)
+        // the note actually landed, and scrolls it into view. `rename` opens the
+        // row's name input there so `Untitled Note` does not have to be renamed
+        // as a separate second step (#2272).
+        revealNoteInSidebar(result.note.id, { rename: true })
       }
     } catch (error) {
       log.error('Failed to create new note', error)

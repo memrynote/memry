@@ -3,9 +3,23 @@
  * wider hole behind it).
  *
  * The `<details>` family is out of that hole as of #1883's fix — the toggle
- * splitter escapes every `<details>`/`<summary>` line it declines, so those
- * bytes reach the parser as text and come back whole. Everything else here is
- * still lost, which is what the wider hole means.
+ * splitter hides the `<` of every `<details>`/`<summary>` line it declines, so
+ * those bytes reach the parser as text and come back whole.
+ *
+ * The hole itself narrowed sharply with BlockNote 0.51, whose rewritten
+ * markdown parser converts much of the HTML the old one discarded: `<img>`,
+ * `<video>`, `<hr>`, `<a href>` and `<table>` now come back as their markdown
+ * equivalents instead of as nothing, and a `<div>` keeps its inner text rather
+ * than taking the note's whole body with it. What is left below is the
+ * genuinely unmappable remainder — `<iframe>`, `<script>`, a bare comment.
+ * The values here were re-measured against 0.54, not adjusted by hand.
+ *
+ * Nothing in this file is a promise: it is still a record of what the pipeline
+ * does today, and the point is that it goes red when that moves.
+ *
+ * Note that the improvement direction matters for the vault. An HTML-only body
+ * used to be emptied outright on the first write-back after an edit; most of
+ * those bodies now survive.
  *
  * The pair below is exactly what the app runs — `markdownToYFragment` seeds the
  * doc on note open, `yDocToMarkdown` re-serializes the WHOLE doc on the first
@@ -52,26 +66,31 @@ interface Probe {
 }
 
 /**
- * A note whose body is ONLY an HTML block loses everything. Pass 1 leaves three
- * newlines where the block was, pass 2 turns those into the empty string, and
- * `yDocToMarkdown`'s empty-conversion guard never fires because the fragment
- * really does hold the (empty) paragraphs it converted.
+ * A note whose body is ONLY an HTML block. Most of these now keep their
+ * content: 0.51's parser maps the tag onto a block where it can, so the
+ * wrapper goes and the text, image or table stays.
+ *
+ * The three that still empty have nothing to map onto. For those, pass 1
+ * leaves three newlines where the block was, pass 2 turns those into the empty
+ * string, and `yDocToMarkdown`'s empty-conversion guard never fires because
+ * the fragment really does hold the (empty) paragraphs it converted.
  */
 const HTML_ONLY_BODY: Probe[] = [
-  { name: '<div> on one line', markdown: '<div class="x">Body</div>', pass1: '\n\n\n', pass2: '' },
-  { name: '<p> paragraph', markdown: '<p>Body</p>', pass1: '\n\n\n', pass2: '' },
-  { name: '<center> block', markdown: '<center>Body</center>', pass1: '\n\n\n', pass2: '' },
+  { name: '<div> on one line', markdown: '<div class="x">Body</div>', pass1: 'Body' },
+  { name: '<p> paragraph', markdown: '<p>Body</p>', pass1: 'Body' },
+  { name: '<center> block', markdown: '<center>Body</center>', pass1: 'Body' },
   {
+    // Kept verbatim: the parser has no figure block, and the whole thing is
+    // one inline HTML run rather than a block it would drop.
     name: '<figure> with a caption',
     markdown: '<figure>\n<img src="a.png">\n<figcaption>Cap</figcaption>\n</figure>',
-    pass1: '\n\n\n',
-    pass2: ''
+    pass1: '<figure><img src="a.png"><figcaption>Cap</figcaption></figure>'
   },
   {
+    // Becomes a real markdown table, header row and all.
     name: 'raw HTML table',
     markdown: '<table>\n<tr><td>a</td></tr>\n</table>',
-    pass1: '\n\n\n',
-    pass2: ''
+    pass1: '|   |\n| - |\n| a |'
   },
   {
     name: '<iframe> embed',
@@ -79,15 +98,10 @@ const HTML_ONLY_BODY: Probe[] = [
     pass1: '\n\n\n',
     pass2: ''
   },
-  {
-    name: '<video> embed',
-    markdown: '<video src="a.mp4" controls></video>',
-    pass1: '\n\n\n',
-    pass2: ''
-  },
-  { name: 'raw <img>', markdown: '<img src="a.png" alt="A">', pass1: '\n\n\n', pass2: '' },
-  { name: '<hr /> self-closing', markdown: '<hr />', pass1: '\n\n\n', pass2: '' },
-  { name: '<br> alone on a line', markdown: '<br>', pass1: '\n\n\n', pass2: '' },
+  { name: '<video> embed', markdown: '<video src="a.mp4" controls></video>', pass1: '![](a.mp4)' },
+  { name: 'raw <img>', markdown: '<img src="a.png" alt="A">', pass1: '![A](a.png)' },
+  { name: '<hr /> self-closing', markdown: '<hr />', pass1: '***' },
+  { name: '<br> alone on a line', markdown: '<br>', pass1: '' },
   { name: 'a plain HTML comment', markdown: '<!-- a note to self -->', pass1: '\n\n\n', pass2: '' },
   { name: '<script> block', markdown: '<script>alert(1)</script>', pass1: '\n\n\n', pass2: '' }
 ]
@@ -100,22 +114,34 @@ const BLOCK_LEVEL_IN_CONTEXT: Probe[] = [
     pass1: 'Body'
   },
   {
+    // The inner text used to go with the wrapper, taking a paragraph out of
+    // the middle of the note; it stays now.
     name: 'html block between two paragraphs',
     markdown: 'Before\n\n<div class="x">Body</div>\n\nAfter',
-    pass1: 'Before\n\nAfter'
+    pass1: 'Before\n\nBody\n\nAfter'
   },
   {
     name: 'blockquote whose only content is html',
     markdown: '> <div>Body</div>',
-    pass1: '>'
+    pass1: '> Body'
   }
 ]
 
-/** Inline tags lose the markup and keep the text, so `<a href>` loses its link. */
+/**
+ * An inline tag with no equivalent loses its markup and keeps its text. The
+ * ones the editor does model — `<a href>`, `<u>`, `<br>` — now survive as the
+ * link, the underline and the line break they always meant.
+ */
 const INLINE_LEVEL: Probe[] = [
   { name: '<kbd>', markdown: 'Press <kbd>Cmd</kbd> now.', pass1: 'Press Cmd now.' },
   { name: '<sup>', markdown: 'Text<sup>1</sup> here.', pass1: 'Text1 here.' },
-  { name: '<u>', markdown: 'An <u>underlined</u> word.', pass1: 'An underlined word.' },
+  {
+    // Underline is a real style in the schema, and the span is the spelling
+    // Memry already writes for it.
+    name: '<u>',
+    markdown: 'An <u>underlined</u> word.',
+    pass1: 'An <span style="text-decoration:underline">underlined</span> word.'
+  },
   { name: '<mark>', markdown: 'A <mark>marked</mark> word.', pass1: 'A marked word.' },
   {
     name: '<abbr title>',
@@ -123,14 +149,16 @@ const INLINE_LEVEL: Probe[] = [
     pass1: 'Use HTML.'
   },
   {
-    name: '<a href> loses the destination',
+    name: '<a href> keeps the destination',
     markdown: 'See <a href="https://example.com">this</a>.',
-    pass1: 'See this.'
+    pass1: 'See [this](https://example.com).'
   },
-  { name: '<br> mid-paragraph', markdown: 'One<br>Two', pass1: 'OneTwo' },
+  { name: '<br> mid-paragraph', markdown: 'One<br>Two', pass1: 'One\nTwo' },
   { name: 'in a list item', markdown: '- <kbd>A</kbd> item', pass1: '- A item' },
   { name: 'in a heading', markdown: '# Title <sup>x</sup>', pass1: '# Title x' },
-  { name: 'an HTML entity is decoded', markdown: 'A &amp; B', pass1: 'A & B' }
+  // The entity is no longer decoded on the way through, so the author's bytes
+  // come back exactly as written.
+  { name: 'an HTML entity is left alone', markdown: 'A &amp; B', pass1: null }
 ]
 
 const SURVIVORS: Probe[] = [

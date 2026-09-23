@@ -27,22 +27,82 @@ import {
 
 const log = createLogger('Page:Settings:AIInline')
 
+const PROVIDER_LABEL_KEYS: Record<AIInlineSettings['provider'], string> = {
+  ollama: 'ai.inline.providers.ollama',
+  openai: 'ai.inline.providers.openai',
+  anthropic: 'ai.inline.providers.anthropic',
+  google: 'ai.inline.providers.google'
+}
+
 const PROVIDER_OPTIONS = [
-  { value: 'ollama', labelKey: 'ai.inline.providers.ollama' },
-  { value: 'openai', labelKey: 'ai.inline.providers.openai' },
-  { value: 'anthropic', labelKey: 'ai.inline.providers.anthropic' }
+  { value: 'ollama', labelKey: PROVIDER_LABEL_KEYS.ollama },
+  { value: 'openai', labelKey: PROVIDER_LABEL_KEYS.openai },
+  { value: 'anthropic', labelKey: PROVIDER_LABEL_KEYS.anthropic },
+  { value: 'google', labelKey: PROVIDER_LABEL_KEYS.google }
 ] as const
 
 const MODEL_PRESETS: Record<string, string[]> = {
   ollama: ['qwen2.5:7b', 'llama3.2', 'llama3.1', 'mistral', 'gemma2', 'phi3'],
   openai: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o4-mini'],
-  anthropic: ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001']
+  anthropic: ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
+  google: [
+    'gemini-3.8-flash',
+    'gemini-3.5-flash',
+    'gemini-3.1-pro-preview',
+    'gemini-2.5-flash',
+    'gemini-2.5-pro'
+  ]
 }
 
 const BASE_URL_DEFAULTS: Record<string, string> = {
   ollama: 'http://localhost:11434/v1',
   openai: '',
-  anthropic: ''
+  anthropic: '',
+  google: ''
+}
+
+/**
+ * Live Ollama catalogue for the selected endpoint, or null while the provider
+ * is something else (or Ollama is unreachable, which is a normal state and
+ * leaves the caller on its presets).
+ */
+function useOllamaModels(provider: AIInlineSettings['provider'], baseUrl: string): string[] | null {
+  const [models, setModels] = useState<string[] | null>(null)
+
+  useEffect(() => {
+    if (provider !== 'ollama') return
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = (await window.electron.ipcRenderer.invoke('ai-inline:list-ollama-models')) as {
+          success: boolean
+          models?: string[]
+        }
+        // The provider or endpoint may have changed while the probe was in
+        // flight, in which case this late answer describes the old one.
+        if (cancelled) return
+        if (res.success && res.models?.length) setModels(res.models)
+      } catch {
+        // unreachable Ollama → keep preset fallback
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [provider, baseUrl])
+
+  return models
+}
+
+/** Presets for the provider, with a hand-typed model kept at the top. */
+function modelChoices(
+  provider: AIInlineSettings['provider'],
+  selectedModel: string,
+  ollamaModels: string[] | null
+): string[] {
+  const presets =
+    provider === 'ollama' ? (ollamaModels ?? MODEL_PRESETS.ollama) : (MODEL_PRESETS[provider] ?? [])
+  return selectedModel && !presets.includes(selectedModel) ? [selectedModel, ...presets] : presets
 }
 
 export function AIInlineSettings(): React.JSX.Element {
@@ -53,7 +113,6 @@ export function AIInlineSettings(): React.JSX.Element {
   const [isTesting, setIsTesting] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
   const [serverPort, setServerPort] = useState<number | null>(null)
-  const [ollamaModels, setOllamaModels] = useState<string[] | null>(null)
 
   useEffect(() => {
     async function load(): Promise<void> {
@@ -73,24 +132,7 @@ export function AIInlineSettings(): React.JSX.Element {
     void load()
   }, [])
 
-  useEffect(() => {
-    if (settings.provider !== 'ollama') return
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = (await window.electron.ipcRenderer.invoke('ai-inline:list-ollama-models')) as {
-          success: boolean
-          models?: string[]
-        }
-        if (!cancelled && res.success && res.models?.length) setOllamaModels(res.models)
-      } catch {
-        // unreachable Ollama → keep preset fallback
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [settings.provider, settings.baseUrl])
+  const ollamaModels = useOllamaModels(settings.provider, settings.baseUrl)
 
   const updateSetting = useCallback(
     async (updates: Partial<AIInlineSettings>) => {
@@ -182,14 +224,7 @@ export function AIInlineSettings(): React.JSX.Element {
   }
 
   const needsApiKey = settings.provider !== 'ollama'
-  const baseModels =
-    settings.provider === 'ollama'
-      ? (ollamaModels ?? MODEL_PRESETS.ollama)
-      : (MODEL_PRESETS[settings.provider] ?? [])
-  const models =
-    settings.model && !baseModels.includes(settings.model)
-      ? [settings.model, ...baseModels]
-      : baseModels
+  const models = modelChoices(settings.provider, settings.model, ollamaModels)
 
   return (
     <SettingsGroup label={t('ai.groups.inline')}>
@@ -253,10 +288,7 @@ export function AIInlineSettings(): React.JSX.Element {
                   onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
                   onBlur={() => void updateSetting({ apiKey: settings.apiKey })}
                   placeholder={t('ai.inline.apiKeyPlaceholder', {
-                    provider:
-                      settings.provider === 'openai'
-                        ? t('ai.inline.providers.openai')
-                        : t('ai.inline.providers.anthropic')
+                    provider: t(PROVIDER_LABEL_KEYS[settings.provider])
                   })}
                   className="flex-1 h-7 text-xs/4"
                 />

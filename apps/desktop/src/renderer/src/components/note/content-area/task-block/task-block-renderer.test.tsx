@@ -190,9 +190,7 @@ describe('TaskBlockRenderer', () => {
 
     const editor = makeEditor()
     const block = makeBlock()
-    const { rerender } = render(
-      <TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />
-    )
+    const { rerender } = render(<TaskBlockRenderer block={block} editor={editor} />)
 
     expect(
       screen.getByText('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.loading')
@@ -201,7 +199,7 @@ describe('TaskBlockRenderer', () => {
     mocks.projects = [project]
     mocks.taskState.task = { ...task, title: 'Removed task' }
     mocks.taskState.isDeleted = true
-    rerender(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
 
     expect(screen.getByText('Removed task')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button'))
@@ -211,7 +209,7 @@ describe('TaskBlockRenderer', () => {
   it('forwards row actions to services and opens the task tab', async () => {
     const editor = makeEditor()
     const block = makeBlock()
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={block} editor={editor} />)
 
     fireEvent.click(screen.getByText('toggle'))
     await act(async () => Promise.resolve())
@@ -245,9 +243,7 @@ describe('TaskBlockRenderer', () => {
   it('edits titles, creates a following task block, and removes empty drafts', async () => {
     const editor = makeEditor()
     const block = makeBlock()
-    const { unmount } = render(
-      <TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />
-    )
+    const { unmount } = render(<TaskBlockRenderer block={block} editor={editor} />)
 
     fireEvent.click(screen.getByText('Loaded task'))
     const titleInput = screen.getByDisplayValue('Draft task')
@@ -266,7 +262,7 @@ describe('TaskBlockRenderer', () => {
     const emptyBlock = makeBlock({ taskId: '', title: '' })
     mocks.taskState.task = null
     unmount()
-    render(<TaskBlockRenderer block={emptyBlock} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={emptyBlock} editor={editor} />)
 
     const emptyInput = screen.getByDisplayValue('')
     fireEvent.keyDown(emptyInput, { key: 'Backspace' })
@@ -279,9 +275,7 @@ describe('TaskBlockRenderer', () => {
     child.id = 'child-block'
     const editor = makeEditor([parent, child])
 
-    const { rerender } = render(
-      <TaskBlockRenderer block={child} editor={editor} contentRef={vi.fn()} />
-    )
+    const { rerender } = render(<TaskBlockRenderer block={child} editor={editor} />)
 
     fireEvent.click(screen.getByText('Loaded task'))
     fireEvent.keyDown(screen.getByDisplayValue('Child'), { key: 'Tab' })
@@ -301,7 +295,7 @@ describe('TaskBlockRenderer', () => {
     const nestedParent = { ...parent, children: [nestedChild] }
     const nestedEditor = makeEditor([nestedParent])
 
-    rerender(<TaskBlockRenderer block={nestedChild} editor={nestedEditor} contentRef={vi.fn()} />)
+    rerender(<TaskBlockRenderer block={nestedChild} editor={nestedEditor} />)
     fireEvent.click(screen.getByText('Loaded task'))
     fireEvent.keyDown(screen.getByDisplayValue('Child'), { key: 'Tab', shiftKey: true })
 
@@ -324,7 +318,7 @@ describe('TaskBlockRenderer', () => {
       completedAt: '2026-01-02T00:00:00.000Z'
     }
 
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={block} editor={editor} />)
     await act(async () => Promise.resolve())
 
     expect(editor.updateBlock).toHaveBeenCalledWith(block, {
@@ -337,13 +331,11 @@ describe('TaskBlockRenderer', () => {
     const block = makeBlock({ taskId: '', title: 'Draft title' })
     mocks.taskState.task = null
 
-    const { rerender } = render(
-      <TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />
-    )
+    const { rerender } = render(<TaskBlockRenderer block={block} editor={editor} />)
     expect(screen.getByDisplayValue('Draft title')).toBeInTheDocument()
 
     mocks.taskState.task = { ...task, title: 'Server title' }
-    rerender(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
     await act(async () => Promise.resolve())
 
     expect(mocks.update).toHaveBeenCalledWith({ id: '', title: 'Draft title' })
@@ -361,7 +353,7 @@ describe('TaskBlockRenderer', () => {
       completedAt: '2026-01-02T00:00:00.000Z'
     }
 
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={block} editor={editor} />)
 
     fireEvent.click(screen.getByText('Loaded task'))
     const titleInput = screen.getByDisplayValue('Draft task')
@@ -387,7 +379,7 @@ describe('TaskBlockRenderer', () => {
     const editor = makeEditor([paragraph, block])
     mocks.taskState.task = null
 
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={block} editor={editor} />)
 
     const input = screen.getByDisplayValue('')
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -405,7 +397,7 @@ describe('TaskBlockRenderer', () => {
     const editor = makeEditor([paragraph, block])
     mocks.taskState.task = null
 
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    render(<TaskBlockRenderer block={block} editor={editor} />)
 
     fireEvent.keyDown(screen.getByDisplayValue(''), { key: 'Backspace' })
 
@@ -415,21 +407,63 @@ describe('TaskBlockRenderer', () => {
     expect(editor.focus).toHaveBeenCalled()
   })
 
-  it('guards task row actions when no task id exists', async () => {
+  // #2271 — the block is a `taskBlock` from the moment the checkbox is
+  // rewritten, but its `taskId` only arrives when `tasks:create` resolves.
+  // Edits made in that window used to be dropped without a trace: the project
+  // picker looked live and did nothing.
+  it('writes nothing while no task id exists and replays the edits when one arrives', async () => {
     const editor = makeEditor()
-    const block = makeBlock({ taskId: '', title: '' })
+    const draft = makeBlock({ taskId: '', title: 'Draft task' })
     mocks.taskState.task = null
 
-    render(<TaskBlockRenderer block={block} editor={editor} contentRef={vi.fn()} />)
+    const { rerender } = render(<TaskBlockRenderer block={draft} editor={editor} />)
 
-    fireEvent.click(screen.getByText('toggle'))
     fireEvent.click(screen.getByText('priority'))
+    fireEvent.click(screen.getByText('status'))
     fireEvent.click(screen.getByText('project'))
     await act(async () => Promise.resolve())
 
-    expect(editor.updateBlock).not.toHaveBeenCalled()
-    expect(mocks.complete).not.toHaveBeenCalled()
-    expect(mocks.uncomplete).not.toHaveBeenCalled()
+    // #then nothing is written against the empty id
     expect(mocks.update).not.toHaveBeenCalled()
+    expect(mocks.complete).not.toHaveBeenCalled()
+
+    // #when the create lands and the block is handed its id
+    const created = makeBlock({ taskId: 'task-9', title: 'Draft task' })
+    rerender(<TaskBlockRenderer block={created} editor={editor} />)
+    await act(async () => Promise.resolve())
+
+    // The project move is its own call, and it goes first: `updateTask`
+    // rewrites `statusId` to the destination project's equivalent status
+    // whenever `projectId` changes, so a combined payload would lose the
+    // status picked in the same window.
+    expect(mocks.update).toHaveBeenNthCalledWith(1, { id: 'task-9', projectId: 'project-2' })
+    expect(mocks.update).toHaveBeenNthCalledWith(2, {
+      id: 'task-9',
+      priority: 4,
+      statusId: 'done'
+    })
+  })
+
+  it('replays a completion ticked before the task id arrived', async () => {
+    const editor = makeEditor()
+    const draft = makeBlock({ taskId: '', title: 'Draft task' })
+    mocks.taskState.task = null
+
+    const { rerender } = render(<TaskBlockRenderer block={draft} editor={editor} />)
+
+    fireEvent.click(screen.getByText('toggle'))
+    await act(async () => Promise.resolve())
+
+    // The markdown checkbox is the source of truth, so the tick shows now
+    expect(editor.updateBlock).toHaveBeenCalledWith(draft, {
+      props: { ...draft.props, checked: true }
+    })
+    expect(mocks.complete).not.toHaveBeenCalled()
+
+    const created = makeBlock({ taskId: 'task-9', title: 'Draft task', checked: true })
+    rerender(<TaskBlockRenderer block={created} editor={editor} />)
+    await act(async () => Promise.resolve())
+
+    expect(mocks.complete).toHaveBeenCalledWith({ id: 'task-9' })
   })
 })

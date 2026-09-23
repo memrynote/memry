@@ -10,9 +10,11 @@ import {
   serializeFileBlock,
   type FileBlockProps,
   readCalloutRun,
+  readMathRun,
   readStructuredQuoteRun,
   resolveCalloutRun,
   resolveQuoteRun,
+  serializeMathBlock,
   serializeQuoteBlock,
   serializeToggleBlock,
   splitMarkdownByToggles,
@@ -59,6 +61,7 @@ import {
   normalizeSerializedMarkdown,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
+import { parseMarkdownToBlocks } from './blocknote-parse-breaks'
 import {
   createBlockNestingMarker,
   restoreBlockNesting,
@@ -66,6 +69,7 @@ import {
 } from '@memry/shared/block-nesting'
 import { createFenceTracker, listCodeFenceInfoStrings } from '@memry/shared/markdown-fences'
 import {
+  inlineLinkReferences,
   readLinkReferencesFromYDoc,
   restoreLinkReferences,
   stripLinkReferenceDefinitions,
@@ -443,7 +447,17 @@ export async function prepareFragmentSeed(
   // bracket text to CommonMark, not a link, and the note would open with every
   // reference link dead on screen.
   const references = stripLinkReferenceDefinitions(parsed.plainText)
-  const blocks = await markdownToBlocks(parsed.plainText, notePath)
+  // Definitions stripped and usages resolved to inline links BEFORE the
+  // editor sees the text. Up to BlockNote 0.50 this passed `parsed.plainText`
+  // whole, because remark resolved the references itself and swallowed the
+  // definition lines. 0.51's hand-written parser does neither, so the
+  // definitions came back as literal paragraphs on top of the copy
+  // `restoreLinkReferences` appends, and every open added another block of
+  // them to the file.
+  const blocks = await markdownToBlocks(
+    inlineLinkReferences(references.markdown, references.usages),
+    notePath
+  )
   if (!blocks) return null
   // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes so the renderer
   // binds the custom block on first paint instead of a raw checkbox.
@@ -570,6 +584,11 @@ function isEmptyParagraph(block: Block): boolean {
 }
 
 function createEmptyParagraph(): Block {
+  // SAFETY: `Block` is a union discriminated on the schema's block types, with
+  // `props` keyed per type, so no hand-written literal is assignable to it
+  // without naming the whole schema. Every literal cast in this file is this
+  // same case: the fields are exactly what the named `type` declares, and the
+  // serializer round-trip tests are what actually check them.
   return {
     type: 'paragraph',
     content: [],
@@ -621,15 +640,15 @@ async function parseMarkdownChunkPreservingNesting(
   if (chunks.length === 0) return []
 
   if (chunks.length === 1 && chunks[0].level === 0) {
-    return editor.tryParseMarkdownToBlocks(chunks[0].text)
+    return parseMarkdownToBlocks(editor, chunks[0].text)
   }
 
   const blocks: Block[] = []
   const levels: number[] = []
 
   for (const chunk of chunks) {
-    const parsed = await editor.tryParseMarkdownToBlocks(chunk.text)
-    blocks.push(...(parsed as Block[]))
+    const parsed = await parseMarkdownToBlocks(editor, chunk.text)
+    blocks.push(...parsed)
     levels.push(...parsed.map(() => chunk.level))
   }
 
@@ -660,7 +679,14 @@ async function serializeBlocksWithNestingMarkers(
     const markdown =
       (block.type as string) === 'file'
         ? serializeFileBlock(block.props as FileBlockProps)
-        : (await serializeBlocks(editor, [shallowBlock] as PartialBlock[])).trim()
+        : (block.type as string) === 'mathBlock'
+          ? // Same reason as `file`: the `$$` fence is three lines of ONE
+            // paragraph in the spec's DOM, and a nested block that serializes
+            // through BlockNote alone depends on its `<br>` handling to keep
+            // them. Written from the shared serializer instead, so a nested
+            // formula reaches the vault as the same bytes as a top-level one.
+            serializeMathBlock((block.props as { latex?: string }).latex ?? '')
+          : (await serializeBlocks(editor, [shallowBlock] as PartialBlock[])).trim()
     if (markdown) parts.push(markdown)
 
     for (const child of (block.children ?? []) as Block[]) {
@@ -693,6 +719,9 @@ async function serializeToggle(editor: ServerBlockNoteEditor, block: Block): Pro
   // target block's propSchema, and a paragraph has no `open` to compare with —
   // it throws there, which returns null for the whole document.
   const { open: isOpen, ...summaryProps } = block.props as { open?: boolean }
+  // SAFETY: a paragraph carrying the toggle's own content and its props minus
+  // `open`, which was destructured off above precisely because a paragraph's
+  // propSchema has no such key.
   const summaryBlock = {
     ...block,
     type: 'paragraph',
@@ -723,6 +752,8 @@ function isStructuredQuote(block: Block): boolean {
  * this function is about to add.
  */
 async function serializeQuote(editor: ServerBlockNoteEditor, block: Block): Promise<string> {
+  // SAFETY: the quote's own inline content as a bare paragraph, so it is
+  // serialized without the `> ` that `serializeQuoteBlock` adds below.
   const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
   const children = (block.children ?? []) as Block[]
   const inner = await blocksToMarkdownPreserving(editor, [own, ...children])
@@ -799,9 +830,11 @@ async function parseToggleSegment(
   editor: ServerBlockNoteEditor,
   segment: ToggleBlockSegment
 ): Promise<Block> {
-  const parsedSummary = await editor.tryParseMarkdownToBlocks(segment.summary)
+  const parsedSummary = await parseMarkdownToBlocks(editor, segment.summary)
   const colors = segment.colorsMarker ? parseBlockColorsMarker(segment.colorsMarker) : null
 
+  // SAFETY: `toggleListItem` as the renderer's own spec declares it — block
+  // colours plus `open`, summary as inline content, body as children.
   return {
     type: 'toggleListItem',
     id: crypto.randomUUID(),
@@ -840,7 +873,12 @@ async function parseContentWithMarkers(
   let pending: SidecarPatch[] = []
 
   const applyPending = (block: Block | undefined): void => {
-    if (block) for (const apply of pending) apply(block as unknown as MarkedBlock)
+    if (block) {
+      // SAFETY: `MarkedBlock` is the `{ type, props }` subset the sidecar
+      // patches read and write; every `Block` has both.
+      const marked = block as unknown as MarkedBlock
+      for (const apply of pending) apply(marked)
+    }
     pending = []
   }
 
@@ -871,6 +909,8 @@ async function parseContentWithMarkers(
       const claimed = await parseCalloutRunAt(editor, lines, i, atParagraphStart)
       if (claimed) {
         await flushBuffer()
+        // SAFETY: `callout` as its spec declares it; `claimed.type` is one of
+        // the callout kinds `parseCalloutRunAt` recognises.
         const callout = {
           type: 'callout',
           props: { type: claimed.type },
@@ -885,9 +925,32 @@ async function parseContentWithMarkers(
         continue
       }
 
+      // A `$$` fence claims nothing a callout or a quote could have claimed, so
+      // it is read after both. `readMathRun` demands the run own its whole
+      // paragraph and re-serialize byte-for-byte, which is what keeps someone
+      // else's `$$` notation on the untouched path.
+      const math = readMathRun(lines, i, atParagraphStart)
+      if (math) {
+        await flushBuffer()
+        // SAFETY: `mathBlock` as its spec declares it - one string prop.
+        const block = {
+          type: 'mathBlock',
+          props: { latex: math.latex }
+        } as unknown as Block
+        applyPending(block)
+        blocks.push(block)
+        for (let consumed = i + 1; consumed < math.end; consumed++) {
+          fence.consume(lines[consumed])
+        }
+        i = math.end - 1
+        continue
+      }
+
       const quoted = atParagraphStart ? await parseQuoteRunAt(editor, lines, i) : null
       if (quoted) {
         await flushBuffer()
+        // SAFETY: `quote` as its spec declares it, with the run's parsed
+        // content and children.
         const quote = {
           type: 'quote',
           props: {},
@@ -958,7 +1021,7 @@ async function parseCalloutRunAt(
 
   const claimed = await resolveCalloutRun(
     run,
-    async (md) => (await editor.tryParseMarkdownToBlocks(md)) as never[],
+    async (md) => (await parseMarkdownToBlocks(editor, md)) as never[],
     async (block) => serializeBlocks(editor, [block as PartialBlock])
   )
   if (!claimed) return null
@@ -990,7 +1053,7 @@ async function parseQuoteRunAt(
 
   const claimed = await resolveQuoteRun(
     run,
-    async (md) => (await editor.tryParseMarkdownToBlocks(md)) as never[],
+    async (md) => (await parseMarkdownToBlocks(editor, md)) as never[],
     async (parsed) => serializeBlocks(editor, parsed as PartialBlock[])
   )
   if (!claimed) return null
@@ -1024,7 +1087,10 @@ function parseCustomBlockMarkerLine(line: string): Block | null {
   const trimmed = line.trim()
   if (FILE_BLOCK_LINE_REGEX.test(trimmed)) {
     const props = parseFileBlockMarker(trimmed)
-    if (props) return { type: 'file', props } as unknown as Block
+    if (props) {
+      // SAFETY: `parseFileBlockMarker` returns exactly the `file` spec's props.
+      return { type: 'file', props } as unknown as Block
+    }
   }
 
   const embed = line.match(EMBED_LINE_REGEX)
@@ -1032,6 +1098,7 @@ function parseCustomBlockMarkerLine(line: string): Block | null {
     const videoId = extractYouTubeVideoId(embed[1])
     // A non-YouTube `![embed](…)` has no video to play; it stays an image.
     if (videoId) {
+      // SAFETY: `youtubeEmbed`'s two declared props, both strings.
       return { type: 'youtubeEmbed', props: { videoId, videoUrl: embed[1] } } as unknown as Block
     }
   }
@@ -1044,6 +1111,8 @@ function parseCustomBlockMarkerLine(line: string): Block | null {
     // for the same reason; this is its counterpart.
     const parsed = parseHttpUrl(url)
     if (parsed) {
+      // SAFETY: `bookmark`'s two required props; the rest of its propSchema
+      // has defaults and is rehydrated at render time.
       return {
         type: 'bookmark',
         props: { url, domain: parsed.hostname.replace(/^www\./, '') }
@@ -1087,6 +1156,7 @@ async function blocksToMarkdownPreserving(
   }
 
   for (const block of blocks) {
+    // SAFETY: as above — `MarkedBlock` is the `{ type, props }` subset.
     const markers = sidecarMarkerLines(block as unknown as MarkedBlock)
 
     if ((block.type as string) === 'taskBlock') {
@@ -1095,9 +1165,13 @@ async function blocksToMarkdownPreserving(
       // following line (tight list) so a re-parse re-nests them under the parent.
       await flushContentGroup()
       flushGap()
+      // SAFETY: both casts are guarded by the `type === 'taskBlock'` checks
+      // that wrap them, and `TaskBlockProps` is that spec's own prop shape.
       const lines = [serializeTaskBlock(block.props as unknown as TaskBlockProps)]
       for (const child of (block.children ?? []) as Block[]) {
         if ((child.type as string) === 'taskBlock') {
+          // SAFETY: guarded by the `taskBlock` check above; `TaskBlockProps`
+          // is that spec's own prop shape.
           lines.push(serializeTaskBlock(child.props as unknown as TaskBlockProps))
         }
       }
@@ -1114,6 +1188,19 @@ async function blocksToMarkdownPreserving(
       await flushContentGroup()
       flushGap()
       segments.push({ type: 'content', text: serializeFileBlock(block.props as FileBlockProps) })
+    } else if ((block.type as string) === 'mathBlock') {
+      // Emitted here rather than left to the block spec for the same reason as
+      // `file`: the spec's DOM is a paragraph whose `<br>`s BlockNote happens
+      // to turn into newlines today, and the fence only works as three lines.
+      // Byte-identical to the renderer's twin in markdown-utils.ts.
+      await flushContentGroup()
+      flushGap()
+      const latex = (block.props as { latex?: string }).latex ?? ''
+      const mathMd = serializeMathBlock(latex)
+      segments.push({
+        type: 'content',
+        text: markers.length > 0 ? `${markers.join('\n')}\n${mathMd}` : mathMd
+      })
     } else if ((block.type as string) === 'toggleListItem') {
       await flushContentGroup()
       flushGap()

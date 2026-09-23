@@ -103,6 +103,8 @@ Typing in the picker searches your whole vault rather than filtering the handful
 
 Notes and canvases are stored as separate links, so a task keeps its note links unchanged when you add a canvas — including on a device still running an older version of Memry, which simply does not show the canvas half.
 
+A task you create inside a [journal entry](/user-guide/journal/daily-entries) is related to that day, and clicking it opens the Journal on that date. If a related item points at something that is no longer in the vault at all, Memry tells you instead of opening an empty document.
+
 ## Tags
 
 Tasks take tags from the same pool as your notes — one tag means one thing across the app,
@@ -145,6 +147,31 @@ Selecting a checklist item in a note offers a "Convert to task" action in the in
 
 A checklist item that is already ticked becomes a task that is already done — so a note you imported with `- [x] Book flights` in it does not reopen work you finished elsewhere.
 
+## Which Project a Note's Task Lands In
+
+A task written inside a note — `/task`, a checklist line that converts, or a new task block — is filed in the note's own project. The first answer that applies wins:
+
+| Checked                                                                             | Example                                                    |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| The parent task's project, for a subtask                                            | A line indented under another task                         |
+| A `+project` marker on the line                                                     | `- [ ] Ship the beta +Memry`                               |
+| The note's [`project` property](/user-guide/notes/properties-tags#project-property) | A note with `project: Website Redesign` in its frontmatter |
+| Your **Settings → Tasks → Default project**                                         | No project on the note                                     |
+| Inbox, then your first project                                                      | No default set                                             |
+
+Archived projects are skipped: a note whose only project is archived falls through to your default. If the note names several projects, the first one it was linked to is used — the same one every other single-select surface calls "the" note's project.
+
+### Bringing Existing Tasks Across
+
+Giving a note a project only changes where _new_ tasks go. If the note already holds tasks filed somewhere else, memrynote asks once whether to move them:
+
+- **Move tasks** — the note's top-level tasks move to the new project, and their subtasks come with them so a parent and its children never end up split. Each task keeps its status, matched to the equivalent status in the new project.
+- **Keep as is** — nothing moves.
+
+Only tasks actually written in the note (`{task:…}` lines) are offered; a task merely linked to the note under **Related** is left alone. Removing a project from a note never prompts — there is no destination to move to.
+
+Tasks filed before this behaviour existed are not moved for you. Change them from the task row's project picker, or from the prompt above the next time you set the note's project.
+
 ## The Checkbox in the File Wins
 
 A note's tasks live in the note's own Markdown file, as checklist lines carrying the task id:
@@ -171,7 +198,7 @@ Any list marker works (`-`, `*`, `+`), as does an uppercase `- [X]`. Other marke
 
 A checklist line is only a task once memrynote has a task for it. Two cases where it does not, both common in a vault you brought over from somewhere else:
 
-A **plain checkbox with no `{task:…}` suffix** — the shape Obsidian and most other editors write — is turned into a task as you go. If that cannot happen, because there is no project to create it in or the task could not be saved, the line stays a plain checklist item. It keeps its text and its tick, and memrynote tries again the next time you open the note. It never sits there looking like a task you cannot touch.
+A **plain checkbox with no `{task:…}` suffix** — the shape Obsidian and most other editors write — is turned into a task as you go, once it has something on it to name the task with. An empty `- [ ]` you have just typed is left as a checkbox until you write the title; a line of nothing but markers (`- [ ] #errand`) stays a checkbox too, since there is no title left after the markers are read off. If the task cannot be saved — no project to create it in, or the vault is not open — the line stays a plain checklist item, keeping its text and its tick, and memrynote tries again on your next edit. It never sits there looking like a task you cannot touch.
 
 A **`{task:…}` suffix naming a task that is not in this vault** — usually a note copied out of another install, where the ids belong to that install's tasks — shows as "Task deleted", with a button to take the line out of the note. Its text and its tick are left exactly as they are in the file; nothing is rewritten and nothing is deleted until you ask.
 
@@ -188,6 +215,8 @@ inside the editor removes the line directly, so this only shows up when you dele
 list while the note happens to be open.
 
 While a task is still loading, its row shows but its controls are inert for that moment. A control you can click is a control that works.
+
+A line that is _becoming_ a task is the one exception, and it works the other way round: its row is live from the start, even in the moment before the task exists. Pick a project, a status or a priority, or tick it, and the choice is applied to the task as soon as it has been created — you never have to wait for the row to catch up with you.
 
 ## Rich Descriptions
 

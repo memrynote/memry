@@ -1,15 +1,12 @@
-import { codeBlockOptions } from '@blocknote/code-block'
+import { codeBlockOptions, syntaxHighlighter } from '@blocknote/code-block'
 import type { CodeBlockOptions } from '@blocknote/core'
-import { createParser } from 'prosemirror-highlight/shiki'
 
 /**
  * BlockNote's code block options plus the languages its shiki bundle lacks.
  *
  * Keys are shiki's grammar names: BlockNote resolves a fence tag or dropdown
- * value to a key through `supportedLanguages`, then highlights only if
- * `getLoadedLanguages()` has that key — otherwise it asks the bundle, which
- * throws for anything outside BlockNote's map. So the extra grammars are loaded
- * here, once, right after BlockNote's factory runs.
+ * value to a key through `supportedLanguages`, then asks the highlighter for
+ * that grammar.
  *
  * Kept out of the package root on purpose: mobile must not pull shiki (#2032).
  */
@@ -33,42 +30,49 @@ function sortByDisplayName(languages: SupportedLanguages): SupportedLanguages {
   )
 }
 
-/**
- * BlockNote highlights with whichever theme loaded first — github-dark — so a
- * code block stayed dark-on-dark in the light theme. Shiki can emit both themes
- * at once as CSS variables (`--shiki-light` / `--shiki-dark`) instead of a fixed
- * colour, which lets base.css pick per theme with no re-highlight on toggle.
- *
- * BlockNote builds its parser as `globalThis[shikiParser] || createParser(h)` —
- * no options — and caches it under that symbol, so seeding the symbol first is
- * the supported way to hand it a configured parser.
- */
-const SHIKI_PARSER = Symbol.for('blocknote.shikiParser')
-
-function installDualThemeParser(
-  highlighter: Awaited<ReturnType<typeof codeBlockOptions.createHighlighter>>
-): void {
-  const global = globalThis as Record<symbol, unknown>
-  global[SHIKI_PARSER] = createParser(highlighter, {
-    themes: { light: 'github-light', dark: 'github-dark' },
-    defaultColor: false
-  })
-}
-
 export const memryCodeBlockOptions = {
   ...codeBlockOptions,
   supportedLanguages: sortByDisplayName({
     ...codeBlockOptions.supportedLanguages,
     powershell: { name: 'PowerShell', aliases: ['powershell', 'pwsh', 'ps1', 'ps'] },
     kusto: { name: 'KQL (Kusto)', aliases: ['kusto', 'kql'] }
-  }),
-  createHighlighter: async () => {
-    const highlighter = await codeBlockOptions.createHighlighter()
-    await highlighter.loadLanguage(
-      () => import('@shikijs/langs-precompiled/powershell'),
-      () => import('@shikijs/langs-precompiled/kusto')
-    )
-    installDualThemeParser(highlighter)
-    return highlighter
-  }
+  })
 } satisfies CodeBlockOptions
+
+/**
+ * Syntax highlighting, which BlockNote 0.51 moved off `codeBlockOptions` and
+ * into an editor extension. A surface that wants colour adds this to
+ * `extensions`; one that cannot afford shiki's bytes adds nothing and still
+ * gets the same node with the same props.
+ *
+ * Re-exported rather than rebuilt. Two things we used to hand-roll are now
+ * upstream behaviour:
+ *
+ * - **Dual-theme output.** We used to seed `Symbol.for('blocknote.shikiParser')`
+ *   with a parser configured `defaultColor: false` so shiki emitted
+ *   `--shiki-light` / `--shiki-dark` CSS variables and a theme toggle needed no
+ *   re-highlight. 0.54 does exactly that itself: `pickThemeOptions` reads the
+ *   highlighter's loaded themes and, finding a light and a dark one, passes
+ *   `{ themes: { light, dark }, defaultColor: false }` to `createParser`. The
+ *   stock highlighter loads `github-light` and `github-dark`, so the behaviour
+ *   the hack existed for is now the default.
+ * - **Grammar loading.** The plugin calls `loadLanguage` lazily per language
+ *   instead of us pre-loading at highlighter construction.
+ *
+ * `powershell` and `kusto` stay in `supportedLanguages` above: the dropdown,
+ * the block's `language` prop and the markdown fence are unchanged, so nothing
+ * a user has written moves and a fence tagged either way still round-trips.
+ * What they lose is colour. BlockNote's precompiled bundle carries neither
+ * grammar, and `@blocknote/code-block` exports only `codeBlockOptions` and
+ * this extension — not the highlighter it configures — so there is nothing
+ * left to call `loadLanguage` on.
+ *
+ * Restorable, but not cheaply: `SyntaxHighlightingExtension` from
+ * `@blocknote/core/extensions` takes a `createHighlighter`, so we could build
+ * our own bundled highlighter carrying the two extra grammars. That means
+ * restating BlockNote's ~48-language loader map here and keeping it in step
+ * with theirs, whose failure mode — a silently stale language list — is worse
+ * than the one it fixes. A language the bundle lacks is skipped once and
+ * remembered, so today it costs a plain-text render and nothing else.
+ */
+export const memrySyntaxHighlighter = syntaxHighlighter

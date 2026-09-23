@@ -109,6 +109,7 @@ export function dbTaskToUiTask(dbTask: Task): UiTask {
     dueTime: dbTask.dueTime,
     isRepeating: !!dbTask.repeatConfig,
     repeatConfig: dbRepeatConfigToUiRepeatConfig(dbTask.repeatConfig),
+    repeatFrom: dbTask.repeatFrom ?? null,
     linkedNoteIds: dbTask.linkedNoteIds ?? [],
     linkedCanvasIds: dbTask.linkedCanvasIds ?? [],
     sourceNoteId: dbTask.sourceNoteId ?? null,
@@ -353,7 +354,7 @@ export function useTaskWorkspaceMutations() {
           dueTime: task.dueTime || null,
           isRepeating: task.isRepeating,
           repeatConfig: toServiceRepeatConfig(task.repeatConfig),
-          repeatFrom: null,
+          repeatFrom: task.repeatFrom ?? null,
           tags: task.tags,
           linkedNoteIds: task.linkedNoteIds,
           linkedCanvasIds: task.linkedCanvasIds
@@ -416,6 +417,7 @@ export function useTaskWorkspaceMutations() {
               dueTime: 'dueTime' in otherUpdates ? otherUpdates.dueTime : undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
+              repeatFrom: otherUpdates.repeatFrom,
               linkedNoteIds: otherUpdates.linkedNoteIds,
               linkedCanvasIds: otherUpdates.linkedCanvasIds,
               tags: otherUpdates.tags
@@ -464,6 +466,7 @@ export function useTaskWorkspaceMutations() {
               dueTime: 'dueTime' in otherUpdates ? otherUpdates.dueTime : undefined,
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
+              repeatFrom: otherUpdates.repeatFrom,
               linkedNoteIds: otherUpdates.linkedNoteIds,
               linkedCanvasIds: otherUpdates.linkedCanvasIds,
               tags: otherUpdates.tags
@@ -499,6 +502,7 @@ export function useTaskWorkspaceMutations() {
           dueTime: 'dueTime' in updates ? updates.dueTime : undefined,
           isRepeating: updates.isRepeating,
           repeatConfig: toServiceRepeatConfig(updates.repeatConfig),
+          repeatFrom: updates.repeatFrom,
           linkedNoteIds: updates.linkedNoteIds,
           linkedCanvasIds: updates.linkedCanvasIds,
           tags: updates.tags

@@ -15,8 +15,14 @@ import {
   createTestJournalEntry,
   type TestVaultResult
 } from '@tests/utils/test-vault'
-import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  asClientDb,
+  createTestDataDb,
+  createTestIndexDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import type { VaultConfig } from '@memry/contracts/vault-api'
+import { generateJournalId } from '@memry/contracts/journal-api'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
 import { getNoteProperties } from '../database/queries/notes/property-queries'
@@ -37,6 +43,7 @@ vi.mock('./index', () => ({
     excludePatterns: ['.git', 'node_modules', '.trash'],
     defaultNoteFolder: 'notes',
     journalFolder: 'journal',
+    journalDateFormat: 'YYYY-MM-DD',
     attachmentsFolder: 'attachments'
   })),
   emitIndexProgress: vi.fn((progress: number, counts?: { indexed: number; total: number }) => {
@@ -111,7 +118,7 @@ describe('indexer', () => {
     vaultIndex = await import('./index')
 
     // Inject test database - spyOn ensures type compatibility
-    vi.spyOn(database, 'getDatabase').mockReturnValue(dataDb.db)
+    vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(dataDb.db))
     vi.spyOn(database, 'getIndexDatabase').mockReturnValue(testDb.db)
 
     // Mock FTS update (simplified for tests)
@@ -179,6 +186,7 @@ describe('indexer', () => {
         excludePatterns: ['.git', 'node_modules', 'archive'],
         defaultNoteFolder: 'notes',
         journalFolder: 'journal',
+        journalDateFormat: 'YYYY-MM-DD',
         attachmentsFolder: 'attachments'
       })
 
@@ -375,6 +383,32 @@ describe('indexer', () => {
 
       expect(result.indexed).toBe(1)
       // The indexer should detect this as a journal entry based on path
+    })
+
+    // The root of #2271: a journal file the scanner reaches first is cached
+    // under a fresh note id, while `readJournalEntry` always reports the
+    // deterministic `j<date>`. Anything the renderer keys off the entry id —
+    // the `linkedNoteIds` of a task created inside the day, bookmarks,
+    // backlinks, properties — resolves through this row, so the two ids have to
+    // be reconciled before the id leaves the main process.
+    it('#2271: caches a scanned journal file under a fresh note id, not j<date>', async () => {
+      fs.mkdirSync(tempVault.journalDir, { recursive: true })
+      fs.writeFileSync(
+        path.join(tempVault.journalDir, '2026-01-15.md'),
+        '---\ndate: 2026-01-15\n---\n\nScanned before the app ever opened this day',
+        'utf8'
+      )
+
+      await indexer.indexVault(tempVault.path)
+
+      const row = testDb.db
+        .select()
+        .from(noteCache)
+        .where(eq(noteCache.path, 'journal/2026-01-15.md'))
+        .get()
+
+      expect(row?.date).toBe('2026-01-15')
+      expect(row?.id).not.toBe(generateJournalId('2026-01-15'))
     })
 
     it('T374: indexes files with duplicate legacy ids as separate notes, never writing files', async () => {

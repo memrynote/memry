@@ -65,8 +65,16 @@
 
 /* ===== BLOCKNOTE EDITOR CUSTOMIZATION ===== */
 /* Override BlockNote's CSS variables + defaults to match app theme.
-   Uses CSS inheritance (not a wildcard * rule) so Shiki inline token styles still work. */
-:root .bn-container {
+   Uses CSS inheritance (not a wildcard * rule) so Shiki inline token styles still work.
+
+   Declared on `.bn-root`, not `.bn-container`. BlockNote 0.48 split the two:
+   `.bn-container` is the editor body alone, while `.bn-root` also covers the
+   floating UI, which 0.48 portals to `document.body` with only `bn-root` on
+   it. Left on `.bn-container` these variables stopped reaching the colour
+   picker in the formatting toolbar — the one menu whose whole job is showing
+   this palette. The editor element carries both classes, so the body is
+   unaffected either way. */
+:root .bn-root {
   --bn-colors-editor-text: var(--foreground);
   --bn-colors-editor-background: var(--background);
 
@@ -108,7 +116,7 @@
   --bn-colors-highlights-pink-text: #b33e74;
 }
 
-/* The dark palette lives on `.bn-container[data-color-scheme=dark]` (0,2,0) in
+/* The dark palette lives on `.bn-root[data-color-scheme=dark]` (0,2,0) in
    @blocknote/shadcn, so this needs the extra attribute to win on specificity
    rather than on stylesheet order.
 
@@ -116,7 +124,7 @@
    missed AA; green again had no chroma (0.037); and gray #bebdb8 sat 0.009 from
    the #bcbab6 body text, close enough that "gray" was not a distinguishable
    colour at all. */
-:root .bn-container[data-color-scheme='dark'] {
+:root .bn-root[data-color-scheme='dark'] {
   --bn-colors-highlights-gray-text: #838383;
   --bn-colors-highlights-brown-text: #aa6f55;
   --bn-colors-highlights-red-text: #da5c52;
@@ -284,13 +292,15 @@
 }
 
 /* ===== TYPOGRAPHY OVERRIDES ===== */
-/* Override BlockNote's Inter font with system font stack */
+/* Override BlockNote's Inter font with system font stack.
+   `.bn-root` for the same reason as the palette above: the floating menus are
+   portalled out of `.bn-container` and would otherwise render in Inter. */
 :root .bn-default-styles,
-:root .bn-container {
+:root .bn-root {
   font-family: var(--font-sans) !important;
 }
 
-:root .bn-container {
+:root .bn-root {
   --bn-font-family: var(--font-sans);
 }
 
@@ -2516,6 +2526,27 @@ del.bn-inline-content {
 .dark del,
 .dark del.bn-inline-content {
   color: rgba(168, 166, 161, 0.35) !important;
+}
+
+/*
+ * Agent approval previews reuse the in-editor AI diff language above rather
+ * than inventing a second one. Named tokens because the approval card is a
+ * component rather than an editor node, so it cannot inherit those ins/del
+ * rules, and warm rather than GitHub green because the card is something the
+ * user reads to decide, not a CI log.
+ */
+:root {
+  --diff-add: #2d7a6a;
+  --diff-add-surface: rgba(74, 158, 142, 0.12);
+  --diff-del: #7d766a;
+  --diff-del-surface: rgba(125, 118, 106, 0.1);
+}
+
+.dark {
+  --diff-add: #7dd3c4;
+  --diff-add-surface: rgba(90, 191, 173, 0.15);
+  --diff-del: #a8a6a1;
+  --diff-del-surface: rgba(168, 166, 161, 0.12);
 }
 
 /* AI agent cursor — warm accent */

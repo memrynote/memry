@@ -39,7 +39,8 @@ describe('SyncEngine', () => {
           encryptedData: 'ed',
           dataNonce: 'dn',
           signature: 'sig',
-          signerDeviceId: 'device-1'
+          signerDeviceId: 'device-1',
+          clock: { 'device-1': 1 }
         },
         sizeBytes: 100
       })
@@ -94,7 +95,8 @@ describe('SyncEngine', () => {
           encryptedData: 'ed',
           dataNonce: 'dn',
           signature: 'sig',
-          signerDeviceId: 'device-1'
+          signerDeviceId: 'device-1',
+          clock: { 'device-1': 1 }
         },
         sizeBytes: 100
       })
@@ -147,7 +149,8 @@ describe('SyncEngine', () => {
           encryptedData: 'ed',
           dataNonce: 'dn',
           signature: 'sig',
-          signerDeviceId: 'device-1'
+          signerDeviceId: 'device-1',
+          clock: { 'device-1': 1 }
         },
         sizeBytes: 100
       })
@@ -197,7 +200,8 @@ describe('SyncEngine', () => {
           encryptedData: 'ed',
           dataNonce: 'dn',
           signature: 'sig',
-          signerDeviceId: 'device-1'
+          signerDeviceId: 'device-1',
+          clock: { 'device-1': 1 }
         },
         sizeBytes: 100
       })
@@ -245,7 +249,8 @@ describe('SyncEngine', () => {
           encryptedData: 'ed',
           dataNonce: 'dn',
           signature: 'sig',
-          signerDeviceId: 'device-1'
+          signerDeviceId: 'device-1',
+          clock: { 'device-1': 1 }
         },
         sizeBytes: 100
       })
@@ -322,7 +327,8 @@ describe('SyncEngine', () => {
               encryptedData: 'ed',
               dataNonce: 'dn',
               signature: 'sig',
-              signerDeviceId: 'device-1'
+              signerDeviceId: 'device-1',
+              clock: { 'device-1': 1 }
             },
             sizeBytes: 100
           }

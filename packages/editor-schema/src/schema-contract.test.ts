@@ -33,6 +33,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import { BlockNoteEditor } from '@blocknote/core'
 import { createMemrySchema } from './schema'
 import {
   MEMRY_INLINE_CONTENT_TYPES,
@@ -49,7 +50,9 @@ import {
   MEMRY_BLOCK_TYPES,
   bookmarkConfig,
   calloutConfig,
+  diagramConfig,
   fileBlockConfig,
+  mathBlockConfig,
   taskBlockConfig,
   toggleListItemConfig,
   youtubeEmbedConfig
@@ -70,7 +73,9 @@ const BLOCK_CONFIGS: Record<MemryBlockType, { type: string; propSchema: object }
   file: fileBlockConfig,
   youtubeEmbed: youtubeEmbedConfig,
   bookmark: bookmarkConfig,
-  toggleListItem: toggleListItemConfig
+  toggleListItem: toggleListItemConfig,
+  mathBlock: mathBlockConfig,
+  diagram: diagramConfig
 }
 
 const INLINE_CONFIGS: Record<MemryInlineType, { type: string; propSchema: object }> = {
@@ -143,6 +148,25 @@ const BLOCK_FIXTURES: Record<MemryBlockType, unknown> = {
     props: { textAlignment: 'left', textColor: 'default', backgroundColor: 'default', open: true },
     content: [{ type: 'text', text: 'Details', styles: {} }],
     children: []
+  },
+  // `plain` content: unstyled text runs, the same shape a code block's source
+  // takes. The source is multi-line on purpose — a diagram's newlines are the
+  // syntax, and they only survive the fence because the node is `code`.
+  diagram: {
+    id: 'blk',
+    type: 'diagram',
+    props: {},
+    content: [{ type: 'text', text: 'graph TD\n    A[Start] --> B[Stop]', styles: {} }],
+    children: []
+  },
+  // Multi-line, not a one-liner: the fence's three lines are what the `<br>`
+  // separators exist for, and a single-line formula would pass against a DOM
+  // that dropped them.
+  mathBlock: {
+    id: 'blk',
+    type: 'mathBlock',
+    props: { latex: '\\begin{aligned}\na &= b + c\n\\end{aligned}' },
+    children: []
   }
 }
 
@@ -188,7 +212,7 @@ const INLINE_FIXTURES: Record<MemryInlineType, unknown> = {
 interface AnySpec {
   config: { type: string; propSchema: object }
   implementation: {
-    render: (node: unknown, editor: unknown) => { dom: HTMLElement }
+    render: (node: unknown, update: unknown, editor?: unknown) => { dom: HTMLElement }
     toExternalHTML?: (
       node: unknown,
       editor: unknown,
@@ -207,6 +231,24 @@ function serverInlineSpecs(): Record<string, AnySpec> {
 
 function serverSchema() {
   return createMemrySchema({ blocks: createServerBlockSpecs(), inline: createServerInlineSpecs() })
+}
+
+/**
+ * An editor on the server schema, for the inline `render` calls below.
+ *
+ * From BlockNote 0.51 a custom inline spec's `implementation.render` is a
+ * wrapper: it rebuilds the ProseMirror node from the inline content before
+ * handing it to our implementation, and that needs a real `editor.pmSchema`
+ * (reached through `pmSchema.cached.blockNoteEditor`). Called without one it
+ * throws before any of our code runs, which would turn every assertion here
+ * into the same unrelated TypeError.
+ */
+let cachedRenderEditor: { pmSchema: unknown } | null = null
+function renderEditor(): unknown {
+  cachedRenderEditor ??= BlockNoteEditor.create({ schema: serverSchema() } as never) as unknown as {
+    pmSchema: unknown
+  }
+  return cachedRenderEditor
 }
 
 const sorted = (values: readonly string[]): string[] => [...values].sort()
@@ -312,7 +354,7 @@ describe('every server implementation emits exactly what it serializes', () => {
     const node = INLINE_FIXTURES[type]
 
     // #when
-    const rendered = impl.render(node, null)
+    const rendered = impl.render(node, null, renderEditor())
     const external = impl.toExternalHTML?.(node, null, { nestingLevel: 0 })
 
     // #then — `linkMention` shipped an `<a>` chip here and rewrote every
@@ -355,7 +397,7 @@ describe('every server implementation emits exactly what it serializes', () => {
     )
 
     // #when / #then
-    expect(() => impl.render({ type, props }, null)).not.toThrow()
+    expect(() => impl.render({ type, props }, null, renderEditor())).not.toThrow()
   })
 })
 

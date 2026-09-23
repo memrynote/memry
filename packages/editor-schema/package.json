@@ -12,6 +12,7 @@
     "./conformance": "./src/conformance.ts",
     "./conformance-ydoc": "./src/conformance-ydoc.ts",
     "./note-refs": "./src/blocks/rewrite-note-refs.ts",
+    "./parse-markdown": "./src/parse-markdown.ts",
     "./registry-manifest.json": "./src/registry-manifest.json",
     "./server": "./src/server.ts"
   },
@@ -21,14 +22,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
-    "@blocknote/code-block": "^0.47.1",
-    "@blocknote/core": "^0.47.1",
-    "@memry/shared": "workspace:*",
-    "@shikijs/langs-precompiled": "^3",
-    "prosemirror-highlight": "^0.13.0"
+    "@blocknote/code-block": "^0.54.2",
+    "@blocknote/core": "^0.54.2",
+    "@memry/shared": "workspace:*"
   },
   "devDependencies": {
-    "@blocknote/server-util": "0.47.1",
+    "@blocknote/server-util": "0.54.2",
     "@memry/typescript-config": "workspace:*",
     "yjs": "^13.6.29"
   }

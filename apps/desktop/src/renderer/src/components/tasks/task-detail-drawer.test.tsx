@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
@@ -168,6 +168,7 @@ const createTask = (overrides: Partial<Task> = {}): Task => ({
   dueTime: null,
   isRepeating: false,
   repeatConfig: null,
+  repeatFrom: null,
   linkedNoteIds: [],
   sourceNoteId: null,
   tags: [],
@@ -325,6 +326,67 @@ describe('TaskDetailDrawer — editable properties', () => {
 
       const dueDateBtn = screen.getByRole('button', { name: /due:.*click to change/i })
       expect(dueDateBtn).toBeInTheDocument()
+    })
+  })
+
+  // The badges only ever render an absolute date, so "Apr 15" alone never says
+  // whether that is tomorrow or next month (#1861).
+  describe('relative date hints', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date(2026, 3, 13, 10, 0))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('shows how far away the due date is', () => {
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
+
+      expect(screen.getByText('in 2 days')).toBeInTheDocument()
+    })
+
+    it('shows how late an overdue task is', () => {
+      renderWithI18n(
+        <TaskDetailDrawer {...defaultProps} task={createTask({ dueDate: new Date(2026, 3, 10) })} />
+      )
+
+      expect(screen.getByText('3 days overdue')).toBeInTheDocument()
+    })
+
+    it('reads a past start date as elapsed rather than overdue', () => {
+      renderWithI18n(
+        <TaskDetailDrawer
+          {...defaultProps}
+          task={createTask({ dueDate: null, startDate: new Date(2026, 3, 10) })}
+        />
+      )
+
+      expect(screen.getByText('3 days ago')).toBeInTheDocument()
+      expect(screen.queryByText('3 days overdue')).not.toBeInTheDocument()
+    })
+
+    it('drops both hints once the task is completed', () => {
+      renderWithI18n(
+        <TaskDetailDrawer
+          {...defaultProps}
+          task={createTask({
+            startDate: new Date(2026, 3, 10),
+            completedAt: new Date(2026, 3, 12)
+          })}
+        />
+      )
+
+      expect(screen.queryByText('in 2 days')).not.toBeInTheDocument()
+      expect(screen.queryByText('3 days ago')).not.toBeInTheDocument()
+    })
+
+    it('says nothing when there is no date at all', () => {
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} task={createTask({ dueDate: null })} />)
+
+      expect(screen.queryByText(/^in \d/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/overdue$/)).not.toBeInTheDocument()
     })
   })
 

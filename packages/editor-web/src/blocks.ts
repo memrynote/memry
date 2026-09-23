@@ -8,17 +8,19 @@ import {
   bookmarkConfig,
   calloutConfig,
   CALLOUT_TYPE_VALUES,
+  diagramConfig,
   fileBlockConfig,
+  mathBlockConfig,
   taskBlockConfig,
   toggleListItemConfig,
   youtubeEmbedConfig
 } from '@memry/editor-schema/blocks'
-import { blockExternalHTML } from '@memry/editor-schema/server'
+import { blockExternalHTML, diagramParsing } from '@memry/editor-schema/server'
 import { getYouTubeThumbnailUrl } from '@memry/shared/youtube'
 import { icon, type IconName } from './icons.ts'
 
 /**
- * Touch presentation for Memry's six custom blocks.
+ * Touch presentation for Memry's seven custom blocks.
  *
  * Every spec here takes its config and its `toExternalHTML` from
  * `@memry/editor-schema` unchanged, so the vault bytes are the ones the main
@@ -285,6 +287,35 @@ export function createTouchBlockSpecs() {
       toExternalHTML: blockExternalHTML.bookmark
     })(),
 
+    /**
+     * The formula's SOURCE, not a rendering.
+     *
+     * KaTeX is 264 KB of JavaScript plus a 1.1 MB font family, and this bundle
+     * is the one that already dropped shiki for costing 3.4 MB of 4.4 MB and
+     * 3.2 s of the WebView's JS thread on every note open (#2032, #2044).
+     * Registering the spec is the part that is not optional — a node type this
+     * schema cannot build is DELETED from the shared Y.Doc by y-prosemirror —
+     * and registration is what the config and `toExternalHTML` above give it.
+     * So the phone shows what the vault file holds, in the source's own
+     * monospace, and the formula is a formula again on desktop.
+     */
+    mathBlock: createBlockSpec(mathBlockConfig, {
+      render(block) {
+        const dom = document.createElement('div')
+        dom.className = 'math-block'
+
+        const glyph = span('math-icon')
+        glyph.appendChild(icon('sigma'))
+
+        const body = span('math-source', block.props.latex || 'Empty equation')
+        if (!block.props.latex) body.setAttribute('data-empty', 'true')
+
+        dom.append(glyph, body)
+        return { dom }
+      },
+      toExternalHTML: blockExternalHTML.mathBlock
+    })(),
+
     toggleListItem: createBlockSpec(
       toggleListItemConfig,
       {
@@ -310,6 +341,49 @@ export function createTouchBlockSpecs() {
       // an override replaces the whole spec object. Reused rather than
       // reimplemented: the handler they call is not public surface.
       defaultToggleSpec.extensions as ExtensionFactoryInstance[] | undefined
-    )()
+    )(),
+
+    diagram: createBlockSpec(diagramConfig, {
+      // `code` makes the source's newlines literal, as they are inside the
+      // fence this block is on disk. Desktop's spec says the same thing; a
+      // phone that disagreed would reflow somebody's diagram on the first edit.
+      meta: { code: true, defining: true },
+      // The parse half is the shared one, so a ```` ```mermaid ```` fence read
+      // on a phone becomes the same block it becomes on a desktop — and,
+      // through `runsBefore`, still loses `js` and every other fence to
+      // `codeBlock`.
+      ...diagramParsing,
+      /**
+       * The SOURCE, labelled — not the picture.
+       *
+       * Desktop draws the diagram because it already ships mermaid; the phone
+       * does not, and will not: the renderer is ~3 MB of JavaScript in a bundle
+       * that dropped shiki over 3.4 MB and a 3.2 s parse on the WebView's one
+       * thread (#2032, #2044). A reader who opens a note on a phone sees the
+       * Mermaid source, can edit it, and it syncs; the drawing waits for a
+       * screen that can afford it.
+       *
+       * That makes the label load-bearing rather than decorative: without it,
+       * a diagram is indistinguishable from an untagged code block, and the
+       * reader has no way to know the same note draws a picture on the desktop.
+       */
+      render() {
+        const dom = document.createElement('div')
+        dom.className = 'diagram-block'
+
+        const label = span('diagram-label')
+        label.appendChild(icon('diagram'))
+        label.appendChild(span('diagram-label-text', 'Mermaid'))
+
+        const pre = document.createElement('pre')
+        pre.className = 'diagram-source'
+        const code = document.createElement('code')
+        pre.appendChild(code)
+
+        dom.append(label, pre)
+        return { dom, contentDOM: code }
+      },
+      toExternalHTML: blockExternalHTML.diagram
+    })()
   }
 }

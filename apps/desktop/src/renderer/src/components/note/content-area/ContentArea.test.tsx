@@ -19,12 +19,14 @@ const contentAreaMocks = vi.hoisted(() => ({
   analyzeTaskIntents: vi.fn(),
   tasksService: {
     listProjects: vi.fn(),
+    listForItem: vi.fn(),
     get: vi.fn(),
     create: vi.fn(),
     complete: vi.fn(),
     update: vi.fn(),
     delete: vi.fn()
   },
+  getTaskSettings: vi.fn(),
   notesService: {
     uploadAttachment: vi.fn(),
     get: vi.fn()
@@ -229,7 +231,10 @@ vi.mock('./insert-template', () => ({
 }))
 
 vi.mock('@/services/tasks-service', () => ({
-  tasksService: contentAreaMocks.tasksService
+  tasksService: contentAreaMocks.tasksService,
+  // The task prefetch provider re-reads the note's project links whenever a
+  // project changes, so the editor mounts a subscription here.
+  onProjectUpdated: () => vi.fn()
 }))
 
 vi.mock('@/sync/use-yjs-collaboration', () => ({
@@ -476,6 +481,15 @@ function resetEditor(): void {
       if ('props' in update) block.props = { ...block.props, ...(update.props as object) }
     }),
     insertBlocks: vi.fn(),
+    // `getDiagramSlashMenuItems` only offers its row when the editor's schema
+    // actually carries the block, so the stub has to say whether it does. The
+    // real schema does (`editor-schema.ts`), and the parity gate in
+    // `editor-schema.test.ts` is what proves that; here it only has to be
+    // present so the row is built. The empty `dictionary` is what makes the
+    // package fall back to its bundled English strings — which ContentArea then
+    // relabels with Memry's own, so nothing in this file reads them.
+    schema: { blockSchema: { diagram: {} } },
+    dictionary: {},
     getExtension: vi.fn(() => ({ openSuggestionMenu: contentAreaMocks.openSuggestionMenu })),
     getTextCursorPosition: vi.fn(() => ({ block: urlBlock })),
     prosemirrorView: {
@@ -493,6 +507,17 @@ function resetEditor(): void {
       registerPlugin: contentAreaMocks.registerPlugin,
       unregisterPlugin: vi.fn()
     }
+  }
+}
+
+// The real analyzer refuses to re-offer a block that was added to
+// `dismissedBlocksRef`, and that set is private to ContentArea. Standing in for
+// it here is what makes a retry test a retry test: a draft the code dismissed
+// on a failed attempt is one this never offers again.
+function draftUnlessDismissed(_blocks: unknown, dismissed: Set<string>) {
+  return {
+    ...emptyIntents(new Set()),
+    draftTaskBlock: dismissed.has('draft') ? null : { blockId: 'draft', title: 'Draft title' }
   }
 }
 
@@ -541,6 +566,10 @@ describe('ContentArea', () => {
     contentAreaMocks.tasksService.listProjects.mockResolvedValue({
       projects: [{ id: 'project-1', name: 'Inbox', isDefault: true }]
     })
+    contentAreaMocks.tasksService.listForItem.mockResolvedValue([])
+    contentAreaMocks.getTaskSettings.mockResolvedValue({ defaultProjectId: null })
+    ;(window.api.settings as unknown as Record<string, unknown>).getTaskSettings =
+      contentAreaMocks.getTaskSettings
     contentAreaMocks.tasksService.get.mockResolvedValue({
       id: 'parent-task',
       projectId: 'project-1'
@@ -1222,6 +1251,52 @@ describe('ContentArea', () => {
     )
   })
 
+  it('offers the diagram row under /mermaid, in Memry’s words', async () => {
+    // #given the row comes from `@blocknote/diagram-block`, which carries the
+    // aliases (mermaid, flowchart, chart, graph) and the insert; only the two
+    // strings a reader sees are Memry's, because the package's dictionary is
+    // English-only and the rest of this menu is translated.
+    render(<ContentArea noteId="note-1" />)
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+
+    // #when the word the issue named, which is an ALIAS — the title is "Diagram"
+    const items = await slashController.getItems('mermaid')
+
+    // #then
+    expect(items).toEqual([
+      expect.objectContaining({
+        title: 'Diagram',
+        subtext: 'Flowchart, sequence or Gantt chart from Mermaid source'
+      })
+    ])
+  })
+
+  it('drops the diagram row while the caret is in a table cell', async () => {
+    // #given a caret inside a cell. A diagram is a BLOCK, so BlockNote lands it
+    // after the whole table and takes the caret with it (#1640) — and unlike
+    // image and check there is no inline form to offer instead.
+    contentAreaMocks.editor.transact = (run: (tr: unknown) => unknown) =>
+      run({
+        selection: {
+          $from: {
+            depth: 3,
+            node: (depth: number) => ({
+              type: { name: ['table', 'tableRow', 'tableCell'][depth - 1] }
+            })
+          }
+        }
+      })
+    render(<ContentArea noteId="note-1" />)
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+
+    // #when / #then
+    expect(await slashController.getItems('mermaid')).toEqual([])
+  })
+
   it('registers the wiki-link edit plugin, prepended, through the undo-safe wrapper', () => {
     render(<ContentArea noteId="note-1" />)
 
@@ -1550,6 +1625,30 @@ describe('ContentArea', () => {
     // The plugin fields left the block, so the markdown line the `{task:<id>}`
     // suffix lands on is the description alone.
     expect(contentAreaMocks.blocks.get('obsidian-check').props.title).toBe('Buy milk #Errand')
+  })
+
+  it('creates a converted checkbox in the project the note belongs to (#2271)', async () => {
+    // #given a note linked to a project that is not the inbox
+    contentAreaMocks.tasksService.listProjects.mockResolvedValue({
+      projects: [
+        { id: 'project-1', name: 'Inbox', isDefault: true, isArchived: false },
+        { id: 'project-2', name: 'Work', isDefault: false, isArchived: false }
+      ]
+    })
+    contentAreaMocks.tasksService.listForItem.mockResolvedValue([{ id: 'project-2', name: 'Work' }])
+    contentAreaMocks.getTaskSettings.mockResolvedValue({ defaultProjectId: 'project-1' })
+
+    render(<ContentArea noteId="note-1" />)
+
+    // #when a checklist line in it is converted to a task
+    fireEvent.contextMenu(screen.getByText('checklist target'))
+
+    // #then the note's project wins over the settings default and the inbox
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
+    expect(contentAreaMocks.tasksService.listForItem).toHaveBeenCalledWith('note', 'note-1')
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'project-2' })
+    )
   })
 
   it('refuses a line the plugin needs intact, however the conversion is asked for', async () => {
@@ -1952,6 +2051,198 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
       expect.objectContaining({ projectId: 'project-default', parentId: 'parent-task' })
     )
+  })
+
+  // #2271 — the stranded `{task:}` lines in real vaults. The block is
+  // rewritten to a `taskBlock` before the row exists, and an empty line has no
+  // title to create from, so the create is refused and the block keeps
+  // `taskId: ''` — a task-looking row whose every control is dead.
+  it('leaves a checkbox with no text alone instead of converting it into an id-less task block', async () => {
+    vi.useFakeTimers()
+    const empty = createBlock('empty-line', {
+      type: 'checkListItem',
+      content: []
+    })
+    // The analyzer declines empty lines, so only a direct caller (the context
+    // menu) reaches the converter with one. Mocked here as if it had.
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'empty-line' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'empty-line' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    expect(empty.type).toBe('checkListItem')
+    // Not even transiently: the rewrite is what strands the block.
+    expect(contentAreaMocks.editor.updateBlock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'empty-line' }),
+      expect.objectContaining({ type: 'taskBlock' })
+    )
+  })
+
+  // Same stranding, one step later: the line has text, but quick-add eats all
+  // of it. The block was already rewritten optimistically, so #1991's "leave
+  // it as a checkbox" only holds if the checkbox is put back.
+  it('restores the checkbox when the line is nothing but quick-add tokens', async () => {
+    vi.useFakeTimers()
+    const tokensOnly = createBlock('tokens-line', {
+      type: 'checkListItem',
+      content: [{ type: 'text', text: '#errand', styles: {} }]
+    })
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'tokens-line' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'tokens-line' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    expect(tokensOnly.type).toBe('checkListItem')
+    expect(tokensOnly.content).toEqual([{ type: 'text', text: '#errand', styles: {} }])
+  })
+
+  // The draft path used to mark the block dismissed on the way in and never
+  // take it back, so a draft that could not be created *yet* was never
+  // created at all: the block in the report with an empty title and no id.
+  it('retries a draft task once the projects it needs have loaded', async () => {
+    contentAreaMocks.tasksService.listProjects.mockResolvedValueOnce({ projects: [] })
+    contentAreaMocks.analyzeTaskIntents.mockImplementation(draftUnlessDismissed)
+
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.click(screen.getByText('change'))
+    await waitFor(() => expect(contentAreaMocks.tasksService.listProjects).toHaveBeenCalledTimes(1))
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('change'))
+    await waitFor(() =>
+      expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Draft title' })
+      )
+    )
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries a draft task after the project lookup rejects', async () => {
+    contentAreaMocks.tasksService.listProjects.mockRejectedValueOnce(new Error('no vault open'))
+    contentAreaMocks.analyzeTaskIntents.mockImplementation(draftUnlessDismissed)
+
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.click(screen.getByText('change'))
+    await waitFor(() => expect(contentAreaMocks.tasksService.listProjects).toHaveBeenCalledTimes(1))
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('change'))
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1))
+  })
+
+  it('creates a draft task once even when onChange fires repeatedly', async () => {
+    contentAreaMocks.analyzeTaskIntents.mockImplementation(draftUnlessDismissed)
+
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.click(screen.getByText('change'))
+    fireEvent.click(screen.getByText('change'))
+    fireEvent.click(screen.getByText('change'))
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1)
+  })
+
+  // The renderer rewrites the block's title prop on a debounce while the user
+  // types, and each write is another onChange. Keying de-duplication on the
+  // title alone would let "Buy mil" and "Buy milk" mint two rows for one block.
+  it('creates one row for a draft whose title changes while the create is in flight', async () => {
+    let releaseProjects: (value: { projects: unknown[] }) => void = () => {}
+    contentAreaMocks.tasksService.listProjects.mockReturnValueOnce(
+      new Promise((resolve) => {
+        releaseProjects = resolve
+      })
+    )
+    const titles = ['Buy mil', 'Buy milk']
+    let seen = 0
+    contentAreaMocks.analyzeTaskIntents.mockImplementation(() => ({
+      ...emptyIntents(new Set()),
+      draftTaskBlock: {
+        blockId: 'draft',
+        title: titles[Math.min(seen++, titles.length - 1)]
+      }
+    }))
+
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.click(screen.getByText('change'))
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      releaseProjects({ projects: [{ id: 'project-1', name: 'Inbox', isDefault: true }] })
+      await Promise.resolve()
+    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1))
+
+    // The second onChange saw a different title, so the attempt key alone would
+    // have let it through; only the in-flight guard holds it back.
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1)
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Buy mil' })
+    )
+  })
+
+  // The row is tickable while the create is in flight (the draft controls are
+  // live so a project picked early is not lost). Writing a hardcoded `checked`
+  // back with the new id would clear that tick, and the markdown reconciler
+  // would then un-complete the row it belongs to.
+  it('keeps a tick made while the draft create was in flight', async () => {
+    contentAreaMocks.analyzeTaskIntents.mockImplementation(draftUnlessDismissed)
+    contentAreaMocks.tasksService.create.mockImplementation(async () => {
+      const live = contentAreaMocks.blocks.get('draft')
+      live.props = { ...live.props, checked: true }
+      return { success: true, task: { id: 'created-task', title: 'Draft title' } }
+    })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await waitFor(() =>
+      expect(contentAreaMocks.blocks.get('draft').props.taskId).toBe('created-task')
+    )
+    expect(contentAreaMocks.blocks.get('draft').props.checked).toBe(true)
   })
 
   it('focuses the previous task title instead of letting Backspace delete task blocks', () => {

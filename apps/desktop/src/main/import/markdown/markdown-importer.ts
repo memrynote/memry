@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { createNote } from '../../vault/notes-crud'
+import { createImportedNote } from '../_shared/imported-note'
 import { generateNoteId } from '../../lib/id'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
@@ -120,7 +120,7 @@ export const markdownImporter: Importer = {
           realRoots
         })
 
-        await createNote({
+        await createImportedNote({
           id: noteId,
           title: noteTitle,
           content: rewritten,

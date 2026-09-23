@@ -207,13 +207,9 @@ describe('file block helpers', () => {
 
   it('renders empty, generic, transfer, and pdf previews through the block spec', () => {
     const Render = (createFileBlock as any).render
-    const contentRef = vi.fn()
 
     const { container, rerender } = render(
-      <Render
-        contentRef={contentRef}
-        block={{ props: { url: '', name: '', size: 0, mimeType: '' } }}
-      />
+      <Render block={{ props: { url: '', name: '', size: 0, mimeType: '' } }} />
     )
     expect(
       screen.getByText('phaseF.componentsNoteContentAreaFileBlock.noFileAttached')
@@ -224,7 +220,6 @@ describe('file block helpers', () => {
     }
     rerender(
       <Render
-        contentRef={contentRef}
         block={{
           props: {
             url: '/vault/manual.pdf',
@@ -241,7 +236,6 @@ describe('file block helpers', () => {
 
     rerender(
       <Render
-        contentRef={contentRef}
         block={{
           props: {
             url: 'memry-file://local/Users/kaan/vault/notes/voice.wav',
@@ -262,7 +256,6 @@ describe('file block helpers', () => {
     // #2190: a video attachment plays inline instead of offering a download.
     rerender(
       <Render
-        contentRef={contentRef}
         block={{
           props: {
             url: 'memry-file://local/Users/kaan/vault/notes/demo.mp4',
@@ -283,7 +276,6 @@ describe('file block helpers', () => {
 
     rerender(
       <Render
-        contentRef={contentRef}
         block={{
           props: {
             url: '/vault/manual.pdf',
@@ -330,7 +322,7 @@ describe('file block helpers', () => {
       }
     }
 
-    render(<Render contentRef={vi.fn()} editor={{ updateBlock }} block={block} />)
+    render(<Render editor={{ updateBlock }} block={block} />)
     fireEvent.click(screen.getAllByText('load pdf')[0])
 
     const handle = screen.getByRole('slider')
@@ -346,7 +338,6 @@ describe('file block helpers', () => {
 
     render(
       <Render
-        contentRef={vi.fn()}
         block={{
           props: {
             url: '/vault/manual.pdf',
@@ -383,7 +374,6 @@ describe('file block helpers', () => {
 
     render(
       <Render
-        contentRef={vi.fn()}
         block={{
           props: {
             url: '/vault/manual.pdf',
@@ -413,7 +403,7 @@ describe('file block helpers', () => {
       }
     }
 
-    render(<Render contentRef={vi.fn()} editor={{ updateBlock }} block={block} />)
+    render(<Render editor={{ updateBlock }} block={block} />)
     fireEvent.click(screen.getAllByText('load pdf')[0])
     fireEvent.click(screen.getByLabelText('phaseF.componentsNoteContentAreaFileBlock.alignRight'))
 
@@ -436,7 +426,7 @@ describe('FileBlock url resolution', () => {
     const block = {
       props: { url, name: 'manual.pdf', size: 2048, mimeType: 'application/pdf' }
     }
-    const ui = <Render contentRef={vi.fn()} editor={{ updateBlock: vi.fn() }} block={block} />
+    const ui = <Render editor={{ updateBlock: vi.fn() }} block={block} />
     const result = render(
       resolveFileUrl ? (
         <NoteFileUrlProvider resolveFileUrl={resolveFileUrl}>{ui}</NoteFileUrlProvider>
@@ -494,7 +484,7 @@ describe('FileBlock missing attachment card (#1713)', () => {
     }
     return render(
       <NoteFileUrlProvider resolveFileUrl={async (url) => url} noteId="note1">
-        <Render contentRef={vi.fn()} editor={{ updateBlock: vi.fn() }} block={block} />
+        <Render editor={{ updateBlock: vi.fn() }} block={block} />
       </NoteFileUrlProvider>
     )
   }
@@ -567,7 +557,7 @@ describe('FileBlock rename (#1714)', () => {
     const Render = (createFileBlock as any).render
     render(
       <NoteFileUrlProvider resolveFileUrl={async (url) => url} noteId="note1">
-        <Render contentRef={vi.fn()} editor={{ updateBlock }} block={block} />
+        <Render editor={{ updateBlock }} block={block} />
       </NoteFileUrlProvider>
     )
 

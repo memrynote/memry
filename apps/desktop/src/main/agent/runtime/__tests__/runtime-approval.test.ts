@@ -311,14 +311,16 @@ describe('AgentRuntime approval gate', () => {
       toolCallId: 'gate-100-i',
       name: 'vault_create_task',
       args: { title: 'Task' },
-      requiresDiff: false
+      requiresDiff: true,
+      previewKind: 'fields'
     })
     expect(runtime.getPendingApproval('gate-100-i')).toEqual({
       conversationId: 'conversation-1',
       toolCallId: 'gate-100-i',
       name: 'vault_create_task',
       args: { title: 'Task' },
-      requiresDiff: false
+      requiresDiff: true,
+      previewKind: 'fields'
     })
 
     runtime.resolveApproval('gate-100-i', { kind: 'allow_always' })

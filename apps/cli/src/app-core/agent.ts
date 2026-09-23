@@ -47,6 +47,17 @@ const CLI_MODEL_OPTIONS: Record<AgentCliBackendId, AgentBackendModelList> = {
       { id: 'gpt-5.4', label: 'GPT-5.4' },
       { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' }
     ]
+  },
+  antigravity_cli: {
+    backend: 'antigravity_cli',
+    supportsCustomModel: true,
+    models: [
+      { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)' },
+      { id: 'gemini-3.8-flash-medium', label: 'Gemini 3.8 Flash (Medium)' },
+      { id: 'gemini-3.1-pro-high', label: 'Gemini 3.1 Pro (High)' },
+      { id: 'gemini-3.1-pro-low', label: 'Gemini 3.1 Pro (Low)' },
+      { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (Thinking)' }
+    ]
   }
 }
 
@@ -86,7 +97,7 @@ function firstOutputLine(stdout: string | Buffer | null, stderr: string | Buffer
 }
 
 function probeCliBackend(
-  command: 'claude' | 'codex',
+  command: 'claude' | 'codex' | 'agy',
   backend: AgentCliBackendId
 ): AgentBackendStatus {
   const result = spawnSync(command, ['--version'], {
@@ -164,6 +175,7 @@ export function createAgentService(settings: SettingsService): AgentService {
       return {
         claude_cli: probeCliBackend('claude', 'claude_cli'),
         codex_cli: probeCliBackend('codex', 'codex_cli'),
+        antigravity_cli: probeCliBackend('agy', 'antigravity_cli'),
         local_openai_compatible: {
           backend: 'local_openai_compatible',
           available: false,

@@ -220,7 +220,9 @@ const AppContent = (): React.JSX.Element => {
         })
         // Where the note landed is only knowable from the created note, so the
         // sidebar is told to reveal it rather than guessing at the folder.
-        revealNoteInSidebar(result.note.id)
+        // `rename` opens the row's name input there, so the ⌘N note does not
+        // have to be renamed off `Untitled` as a separate step (#2272).
+        revealNoteInSidebar(result.note.id, { rename: true })
       }
     } catch (error) {
       log.error('Failed to create new note:', error)

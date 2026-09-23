@@ -2,6 +2,7 @@ import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'reac
 import { AlertTriangle, ArrowUpRight, Loader2, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useTaskBlockData } from './use-task-block-data'
+import { useTaskPrefetch } from './task-prefetch-context'
 import { serviceTaskToDisplayTask, PRIORITY_REVERSE } from './task-block-utils'
 import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
@@ -17,6 +18,14 @@ export interface TaskBlockProps {
   title: string
   checked: boolean
   parentTaskId: string
+}
+
+/** Row edits made before the block had a task id, replayed once it has one. */
+interface PendingTaskUpdates {
+  statusId?: string
+  priority?: number
+  projectId?: string
+  completed?: boolean
 }
 
 export type TaskBlockInlineContent = string | { text?: string }
@@ -47,10 +56,14 @@ export interface TaskBlockEditor {
   getTextCursorPosition: () => { block: TaskBlock }
 }
 
+/**
+ * No `contentRef`: BlockNote 0.54 stopped handing one to a block declared
+ * `content: "none"`, which this one is. There was never a content DOM to
+ * attach it to — the ref only ever landed on our own wrapper.
+ */
 interface TaskBlockRendererProps {
   block: TaskBlock
   editor: unknown
-  contentRef: React.Ref<HTMLDivElement>
 }
 
 const BLOCKNOTE_OVERRIDES = `
@@ -73,15 +86,64 @@ const BLOCKNOTE_OVERRIDES = `
   }
 `
 
-export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
-  block,
-  editor: editorInput,
-  contentRef
-}) => {
+/**
+ * Which project and status set a block renders against: the task's own project,
+ * then the project a draft in this note would be created in, and the first
+ * project the context knows as a last resort. Resolved outside the component so
+ * this fallback chain is not part of its control flow.
+ */
+const resolveBlockProject = (
+  contextProjects: Project[] | undefined,
+  taskProjectId: string | undefined,
+  draftProjectId: string | null
+): { projects: Project[]; project: Project | undefined; statuses: Status[] } => {
+  const projects = contextProjects ?? []
+  const fallback =
+    projects.find((p) => p.id === draftProjectId) ??
+    projects.find((p: Project & { isInbox?: boolean }) => p.isDefault || p.isInbox) ??
+    projects[0]
+  const project = projects.find((p) => p.id === taskProjectId) ?? fallback
+
+  return { projects, project, statuses: project?.statuses ?? defaultStatuses }
+}
+
+/**
+ * The row still has to render before a task exists behind the block — a line
+ * the user is typing, or one whose task has not loaded yet. Kept out of the
+ * component so its own fallbacks stay out of the renderer body.
+ */
+const makePlaceholderTask = (
+  title: string,
+  project: Project | undefined,
+  statuses: Status[]
+): DisplayTask => ({
+  id: '',
+  title,
+  description: '',
+  projectId: project?.id ?? '',
+  statusId: statuses[0]?.id ?? '',
+  priority: 'none',
+  dueDate: null,
+  dueTime: null,
+  isRepeating: false,
+  repeatConfig: null,
+  repeatFrom: null,
+  linkedNoteIds: [],
+  sourceNoteId: null,
+  tags: [],
+  parentId: null,
+  subtaskIds: [],
+  createdAt: new Date(),
+  completedAt: null,
+  archivedAt: null
+})
+
+export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: editorInput }) => {
   const editor = editorInput as TaskBlockEditor
   const { t: tPhaseF } = useT('notes')
   const { taskId, title, checked, parentTaskId } = block.props
   const { task, isLoading: _isLoading, isDeleted } = useTaskBlockData(taskId)
+  const { draftProjectId } = useTaskPrefetch()
   const tasksCtx = useTasksOptional()
   const { openTab } = useTabActions()
   const syncingRef = useRef(false)
@@ -94,35 +156,24 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   const titleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skipBlurRef = useRef(false)
 
-  const projects = tasksCtx?.projects ?? []
-  const defaultProject =
-    projects.find((p: Project & { isInbox?: boolean }) => p.isDefault || p.isInbox) ?? projects[0]
-  const project = projects.find((p) => p.id === task?.projectId) ?? defaultProject
-  const statuses: Status[] = project?.statuses ?? defaultStatuses
+  // What the user changed on a block whose task row does not exist yet. The
+  // block is a `taskBlock` from the moment the checkbox is rewritten, but its
+  // `taskId` only arrives when `tasks:create` resolves; every handler below
+  // used to drop the change on the floor in that window (#2271). Held here and
+  // applied the moment the id lands, so a project picked one keystroke too
+  // early is still the project the task is created into.
+  const pendingUpdatesRef = useRef<PendingTaskUpdates>({})
+
+  const { projects, project, statuses } = resolveBlockProject(
+    tasksCtx?.projects,
+    task?.projectId,
+    draftProjectId
+  )
   const isCompleted = task ? !!task.completedAt : checked
 
-  const placeholderTask: import('@/data/task-model').Task = useMemo(
-    () => ({
-      id: '',
-      title,
-      description: '',
-      projectId: project?.id ?? '',
-      statusId: statuses[0]?.id ?? '',
-      priority: 'none' as const,
-      dueDate: null,
-      dueTime: null,
-      isRepeating: false,
-      repeatConfig: null,
-      linkedNoteIds: [],
-      sourceNoteId: null,
-      tags: [],
-      parentId: null,
-      subtaskIds: [],
-      createdAt: new Date(),
-      completedAt: null,
-      archivedAt: null
-    }),
-    [project?.id, statuses, title]
+  const placeholderTask = useMemo(
+    () => makePlaceholderTask(title, project, statuses),
+    [project, statuses, title]
   )
 
   const displayTask = useMemo(
@@ -187,7 +238,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   useEffect(() => {
     if (!task || syncingRef.current) return
     const needsUpdate =
-      task.title !== block.props.title || !!task.completedAt !== block.props.checked
+      task.title !== block.props.title || Boolean(task.completedAt) !== block.props.checked
     if (!needsUpdate) return () => {}
     let cancelled = false
     queueMicrotask(() => {
@@ -435,8 +486,17 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
 
   const handleToggleComplete = useCallback(
     async (taskIdArg: string) => {
-      if (!taskIdArg) return
       const newChecked = !isCompleted
+      // No row behind the block yet. A draft (`taskId: ''`) is one the
+      // create is still catching up with, so the tick lands on the markdown
+      // checkbox now and on the task once it exists. An unresolved
+      // `{task:<id>}` has nothing to tick and never gets one (#1907).
+      if (!taskIdArg) {
+        if (taskId) return
+        editor.updateBlock(block, { props: { ...block.props, checked: newChecked } })
+        pendingUpdatesRef.current.completed = newChecked
+        return
+      }
       editor.updateBlock(block, { props: { ...block.props, checked: newChecked } })
       // complete/uncomplete resolve a {success:false} envelope instead of
       // rejecting; a failure must revert the optimistic flip or the markdown
@@ -452,30 +512,55 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
         )
       }
     },
-    [isCompleted, block, editor]
+    [isCompleted, block, editor, taskId]
   )
 
   const handleUpdateTask = useCallback(
     async (_taskId: string, updates: Partial<DisplayTask>) => {
-      if (!taskId) return
-      await tasksService.update({
-        id: taskId,
+      const changes = {
         ...(updates.statusId !== undefined && { statusId: updates.statusId }),
         ...(updates.priority !== undefined && {
           priority: PRIORITY_REVERSE[updates.priority] ?? 0
         })
-      })
+      }
+      if (!taskId) {
+        Object.assign(pendingUpdatesRef.current, changes)
+        return
+      }
+      await tasksService.update({ id: taskId, ...changes })
     },
     [taskId]
   )
 
   const handleProjectChange = useCallback(
     async (projectId: string) => {
-      if (!taskId) return
+      if (!taskId) {
+        pendingUpdatesRef.current.projectId = projectId
+        return
+      }
       await tasksService.update({ id: taskId, projectId })
     },
     [taskId]
   )
+
+  // Replay of the above. Runs on the id, not on the loaded task: the row
+  // exists as soon as `tasks:create` has handed the block an id, and waiting
+  // for the fetch would race the title write that follows it.
+  useEffect(() => {
+    if (!taskId) return
+    const { completed, projectId, ...updates } = pendingUpdatesRef.current
+    pendingUpdatesRef.current = {}
+    void (async () => {
+      // The project move goes first and alone. `updateTask` rewrites `statusId`
+      // to the destination project's equivalent status whenever `projectId`
+      // changes, so a combined payload would throw away the status the user
+      // picked in the same window.
+      if (projectId !== undefined) await tasksService.update({ id: taskId, projectId })
+      if (Object.keys(updates).length > 0) await tasksService.update({ id: taskId, ...updates })
+      if (completed === true) await tasksService.complete({ id: taskId })
+      else if (completed === false) await tasksService.uncomplete(taskId)
+    })()
+  }, [taskId])
 
   const handleRemoveGhost = useCallback(() => {
     editor.removeBlocks([block])
@@ -569,7 +654,6 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   if (isDeleted) {
     return (
       <div
-        ref={contentRef}
         contentEditable={false}
         className={cn(
           'flex items-center gap-3 rounded-md bg-stone-100 py-[7px] text-sm text-muted-foreground opacity-60 dark:bg-stone-800/50',
@@ -601,12 +685,15 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   // honour until the task resolves.
   const rowTask = displayTask ?? placeholderTask
   const hasResolvedTask = !!task
-  const rowProject = project ?? defaultProject
+  // A block with no id at all is a draft whose row is still being created, not
+  // the dead block #1907 was about (that one carries a `{task:<id>}` pointing
+  // at nothing). Its controls are live: what the user picks is queued and
+  // applied when the id arrives, which is the whole point of the queue above.
+  const isDraft = !taskId
 
-  if (!rowProject) {
+  if (!project) {
     return (
       <div
-        ref={contentRef}
         contentEditable={false}
         className={cn(
           'flex items-center gap-3 rounded-md py-[7px] text-sm text-muted-foreground',
@@ -621,20 +708,16 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   }
 
   return (
-    <div
-      ref={contentRef}
-      contentEditable={false}
-      className="w-full outline-none [&_*]:outline-none"
-    >
+    <div contentEditable={false} className="w-full outline-none [&_*]:outline-none">
       <style>{BLOCKNOTE_OVERRIDES}</style>
       <div className={cn(parentTaskId && 'ms-7')}>
         <TaskRow
           task={rowTask}
-          project={rowProject}
+          project={project}
           projects={projects}
           isCompleted={isCompleted}
           showProjectBadge
-          interactive={hasResolvedTask}
+          interactive={hasResolvedTask || isDraft}
           onToggleComplete={(...args) => void handleToggleComplete(...args)}
           onUpdateTask={(...args) => void handleUpdateTask(...args)}
           onProjectChange={(...args) => void handleProjectChange(...args)}

@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Ollama (local)",
         "openai": "OpenAI",
-        "anthropic": "antropică"
+        "anthropic": "antropică",
+        "google": "Google Gemini"
       },
       "model": "Model",
       "modelDescription": "Model de limbă pentru rescrie și rezumat",

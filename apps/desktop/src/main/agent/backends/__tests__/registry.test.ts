@@ -31,13 +31,23 @@ describe('agent backend registry', () => {
       getStatus: vi.fn(async () => ({ available: true })),
       probeCapabilities: vi.fn()
     }
+    const antigravity = {
+      id: 'antigravity_cli' as const,
+      runTurn: vi.fn(),
+      generateTitle: vi.fn(),
+      summarize: vi.fn(),
+      cancel: vi.fn(),
+      getStatus: vi.fn(async () => ({ available: true })),
+      probeCapabilities: vi.fn()
+    }
 
-    const registry = createAgentBackendRegistry({ claude, codex, local })
+    const registry = createAgentBackendRegistry({ claude, codex, antigravity, local })
 
     expect(registry.get('claude_cli')).toBe(claude)
     expect(registry.get('local_openai_compatible')).toBe(local)
     expect(registry.get('codex_cli')).toBe(codex)
-    expect(registry.list()).toEqual([claude, codex, local])
+    expect(registry.get('antigravity_cli')).toBe(antigravity)
+    expect(registry.list()).toEqual([claude, codex, antigravity, local])
     expect(() => registry.get('ollama' as never)).toThrow(/Unknown agent backend/)
   })
 })

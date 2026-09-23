@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
   AgentAccessMode,
   AgentBackendStatus,
+  AgentCliBackendId,
   AgentLocalProviderPreset,
   AgentLocalProviderProbeResult,
   AgentLocalProviderSettings,
@@ -30,6 +31,37 @@ import {
 import { RefreshCw } from '@/lib/icons'
 import { trackTelemetry } from '@/lib/telemetry'
 
+type Translate = (key: string, vars?: Record<string, string | number>) => string
+
+/** One row per CLI backend; the rows differ only in their labels. */
+const CLI_AGENT_ROWS: Array<{ backend: AgentCliBackendId; key: string }> = [
+  { backend: 'claude_cli', key: 'claude' },
+  { backend: 'codex_cli', key: 'codex' },
+  { backend: 'antigravity_cli', key: 'antigravity' }
+]
+
+function cliStatusText(cli: AgentBackendStatus | undefined, t: Translate): string {
+  if (!cli) return t('agentProviders.cliAgents.status.notDetected')
+  // The agent runtime is down for the whole session (vault key unavailable);
+  // the CLI was never probed, so "Not detected" would be a guess \u2014 and a wrong
+  // one whenever the CLI is in fact installed.
+  if (cli.reason === 'agent_unavailable') {
+    return t('agentProviders.cliAgents.status.runtimeUnavailable')
+  }
+  if (cli.available) {
+    return cli.version
+      ? t('agentProviders.cliAgents.status.detected', { version: cli.version })
+      : t('agentProviders.cliAgents.status.detectedNoVersion')
+  }
+  if (cli.version && cli.minimumRequired) {
+    return t('agentProviders.cliAgents.status.belowMinimum', {
+      version: cli.version,
+      minimum: cli.minimumRequired
+    })
+  }
+  return t('agentProviders.cliAgents.status.notDetected')
+}
+
 const PRESET_DEFAULTS: Record<Exclude<AgentLocalProviderPreset, 'custom'>, string> = {
   ollama: 'http://localhost:11434/v1',
   lm_studio: 'http://localhost:1234/v1',
@@ -50,6 +82,7 @@ export function AgentProvidersSection({
   const [status, setStatus] = useState<AgentLocalProviderProbeResult | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
+  const [alwaysAllowed, setAlwaysAllowed] = useState<string[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -64,6 +97,17 @@ export function AgentProvidersSection({
     void window.api.agent.getBackendStatuses().then((statuses) => {
       if (!cancelled) setBackendStatuses(statuses)
     })
+    // A standing approval the user cannot find is a standing approval they
+    // cannot take back, so this list is not optional chrome.
+    void window.api.agent
+      .getToolGrants()
+      .then((grants) => {
+        if (!cancelled) setAlwaysAllowed(grants.tools)
+      })
+      .catch(() => {
+        // The agent runtime starts lazily; an empty list is the honest state
+        // until it answers, and the next visit to this page re-reads it.
+      })
     return () => {
       cancelled = true
     }
@@ -145,6 +189,17 @@ export function AgentProvidersSection({
     })
   }, [])
 
+  const revokeAlwaysAllowed = useCallback(async (toolName: string) => {
+    await window.api.agent.editTrustList({ remove: [toolName], scope: 'vault' })
+    const grants = await window.api.agent.getToolGrants()
+    setAlwaysAllowed(grants.tools)
+    void trackTelemetry('setting_changed', {
+      surface: 'settings',
+      action: 'changed',
+      objectType: 'agent_tool_grant_revoked'
+    })
+  }, [])
+
   const changeAccessMode = useCallback(async (accessMode: AgentAccessMode) => {
     setPreferences((current) => (current ? { ...current, accessMode } : current))
     const saved = await window.api.agent.setPreferences({ accessMode })
@@ -169,28 +224,6 @@ export function AgentProvidersSection({
 
   const connectionError =
     status && (!status.connected || !status.modelAvailable) ? status.detail : null
-
-  const cliStatusText = (cli: AgentBackendStatus | undefined): string => {
-    if (!cli) return t('agentProviders.cliAgents.status.notDetected')
-    // The agent runtime is down for the whole session (vault key unavailable);
-    // the CLI was never probed, so "Not detected" would be a guess — and a wrong
-    // one whenever the CLI is in fact installed.
-    if (cli.reason === 'agent_unavailable') {
-      return t('agentProviders.cliAgents.status.runtimeUnavailable')
-    }
-    if (cli.available) {
-      return cli.version
-        ? t('agentProviders.cliAgents.status.detected', { version: cli.version })
-        : t('agentProviders.cliAgents.status.detectedNoVersion')
-    }
-    if (cli.version && cli.minimumRequired) {
-      return t('agentProviders.cliAgents.status.belowMinimum', {
-        version: cli.version,
-        minimum: cli.minimumRequired
-      })
-    }
-    return t('agentProviders.cliAgents.status.notDetected')
-  }
 
   if (!settings || !preferences) return null
 
@@ -248,35 +281,51 @@ export function AgentProvidersSection({
         </SettingRow>
       </SettingsGroup>
 
+      <SettingsGroup label={t('agentProviders.alwaysAllowed.group')}>
+        <SettingRow
+          label={t('agentProviders.alwaysAllowed.group')}
+          description={t('agentProviders.alwaysAllowed.description')}
+        >
+          <span className="text-xs/4 text-muted-foreground">{alwaysAllowed.length}</span>
+        </SettingRow>
+        {alwaysAllowed.length === 0 ? (
+          <SettingRow label={t('agentProviders.alwaysAllowed.empty')}>
+            <span />
+          </SettingRow>
+        ) : (
+          alwaysAllowed.map((toolName) => (
+            <SettingRow key={toolName} label={toolName}>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t('agentProviders.alwaysAllowed.revokeLabel', { tool: toolName })}
+                onClick={() => void revokeAlwaysAllowed(toolName)}
+              >
+                {t('agentProviders.alwaysAllowed.revoke')}
+              </Button>
+            </SettingRow>
+          ))
+        )}
+      </SettingsGroup>
+
       <SettingsGroup label={t('agentProviders.groups.cliAgents')}>
-        <SettingRow
-          label={t('agentProviders.cliAgents.claude.label')}
-          description={t('agentProviders.cliAgents.claude.description')}
-        >
-          <span
-            className={
-              backendStatuses?.claude_cli.available
-                ? 'text-xs/4 text-green-600'
-                : 'text-xs/4 text-muted-foreground'
-            }
+        {CLI_AGENT_ROWS.map((row) => (
+          <SettingRow
+            key={row.backend}
+            label={t(`agentProviders.cliAgents.${row.key}.label`)}
+            description={t(`agentProviders.cliAgents.${row.key}.description`)}
           >
-            {cliStatusText(backendStatuses?.claude_cli)}
-          </span>
-        </SettingRow>
-        <SettingRow
-          label={t('agentProviders.cliAgents.codex.label')}
-          description={t('agentProviders.cliAgents.codex.description')}
-        >
-          <span
-            className={
-              backendStatuses?.codex_cli.available
-                ? 'text-xs/4 text-green-600'
-                : 'text-xs/4 text-muted-foreground'
-            }
-          >
-            {cliStatusText(backendStatuses?.codex_cli)}
-          </span>
-        </SettingRow>
+            <span
+              className={
+                backendStatuses?.[row.backend]?.available
+                  ? 'text-xs/4 text-green-600'
+                  : 'text-xs/4 text-muted-foreground'
+              }
+            >
+              {cliStatusText(backendStatuses?.[row.backend], t)}
+            </span>
+          </SettingRow>
+        ))}
       </SettingsGroup>
 
       <SettingsGroup label={t('agentProviders.groups.local')}>

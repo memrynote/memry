@@ -95,20 +95,58 @@ export function ConfirmationRejected({
 
 export type ConfirmationActionsProps = ComponentProps<'div'>
 
+/**
+ * Reads from the inline start, not the end. The action the user takes most is
+ * first under the thing they just read, and the destructive one is pushed to
+ * the far end by a spacer so it cannot be hit on the way to Approve.
+ */
 export function ConfirmationActions({
   className,
   ...props
 }: ConfirmationActionsProps): React.JSX.Element {
-  return (
-    <div className={cn('flex flex-wrap items-center justify-end gap-2', className)} {...props} />
-  )
+  return <div className={cn('flex flex-wrap items-center gap-1.5', className)} {...props} />
 }
 
-export type ConfirmationActionProps = ComponentProps<typeof Button>
+export function ConfirmationActionsSpacer(): React.JSX.Element {
+  return <div aria-hidden className="grow" />
+}
+
+/**
+ * `primary` is the tint, because approving is the creation action on this card
+ * and the tint is what Memry uses for those. `quiet-destructive` deliberately
+ * has no fill and no border: rejecting is one click and the card already says
+ * what it would undo, so a red block would shout louder than the change it is
+ * about.
+ */
+export type ConfirmationActionTone = 'primary' | 'secondary' | 'quiet-destructive'
+
+const TONE_CLASSES: Record<ConfirmationActionTone, string> = {
+  primary: 'bg-tint text-tint-foreground hover:bg-tint-hover px-[13px] font-medium',
+  secondary:
+    'border border-border bg-transparent text-text-secondary hover:bg-surface hover:text-foreground px-3',
+  'quiet-destructive':
+    'bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive px-2.5'
+}
+
+export type ConfirmationActionProps = Omit<ComponentProps<typeof Button>, 'variant'> & {
+  tone?: ConfirmationActionTone
+}
 
 export function ConfirmationAction({
   className,
+  tone = 'secondary',
   ...props
 }: ConfirmationActionProps): React.JSX.Element {
-  return <Button className={cn('h-8 px-3 text-sm', className)} type="button" {...props} />
+  return (
+    <Button
+      variant="ghost"
+      className={cn(
+        'h-auto rounded-[7px] py-1.5 text-xs font-normal',
+        TONE_CLASSES[tone],
+        className
+      )}
+      type="button"
+      {...props}
+    />
+  )
 }

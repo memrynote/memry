@@ -11,6 +11,7 @@ import { Schema } from '@tiptap/pm/model'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { EditorState, TextSelection } from '@tiptap/pm/state'
 import type { Transaction } from '@tiptap/pm/state'
+import type { EditorView } from '@tiptap/pm/view'
 import { describe, expect, it, vi } from 'vitest'
 import {
   activeRunWikiLink,
@@ -49,6 +50,21 @@ function stateWith(nodes: ProseMirrorNode[], cursorAt: number): EditorState {
   const doc = schema.node('doc', null, [schema.node('paragraph', null, nodes)])
   const state = EditorState.create({ doc, plugins: [createWikiLinkEditPlugin()] })
   return state.apply(state.tr.setSelection(TextSelection.create(state.doc, cursorAt)))
+}
+
+/**
+ * A plugin whose mounted view reports focus.
+ *
+ * `decorations` paints only for a focused editor — the caret it exists for is
+ * an editing caret, and a document that has merely been opened still carries a
+ * selection (see `mountedView` in the plugin). Every case below is about where
+ * that caret is, so the harness supplies the focus rather than each test.
+ */
+function focusedPlugin(): ReturnType<typeof createWikiLinkEditPlugin> {
+  const plugin = createWikiLinkEditPlugin()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(plugin.spec as any).view({ hasFocus: () => true })
+  return plugin
 }
 
 function chip(attrs: Record<string, unknown>): ProseMirrorNode {
@@ -250,7 +266,7 @@ describe('wiki-link edit plugin', () => {
 
   it('dims both bracket pairs while the caret is inside the run', () => {
     const opened = keyDown(stateWith([chip({ target: 'A' })], 2), 'Backspace').state
-    const plugin = createWikiLinkEditPlugin()
+    const plugin = focusedPlugin()
 
     const decorations = plugin.props.decorations!.call(plugin, opened)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -263,9 +279,70 @@ describe('wiki-link edit plugin', () => {
     ])
   })
 
+  it('paints nothing in an editor nobody is typing in', () => {
+    // #given a note that merely opened. Promoting its wiki links replaces the
+    // whole document, and ProseMirror leaves the selection at the end of it —
+    // beside the chip, when the last thing in the note is a wiki link.
+    //
+    // Up to BlockNote 0.50 every document carried a trailing empty paragraph,
+    // so that position was beside nothing. 0.51 made the trailing block a
+    // widget rather than a node, and the note opened showing raw `[[…]]` over
+    // a hidden chip without the user touching it.
+    const state = stateWith([schema.text('a '), chip({ target: 'A' })], 4)
+    const unfocused = createWikiLinkEditPlugin()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(unfocused.spec as any).view({ hasFocus: () => false })
+
+    // #then nothing is painted, and the same caret in a focused editor is
+    // still the editing affordance it has always been.
+    expect(unfocused.props.decorations!.call(unfocused, state)).toBeNull()
+    const focused = focusedPlugin()
+    expect(focused.props.decorations!.call(focused, state)).not.toBeNull()
+  })
+
+  it('paints nothing again once the view it was mounted on is gone', () => {
+    // #given a pane that unmounts. Nothing else clears the captured view, and
+    // a stale one would answer `hasFocus` for an editor that no longer exists.
+    const state = stateWith([schema.text('a '), chip({ target: 'A' })], 4)
+    const plugin = createWikiLinkEditPlugin()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mounted = (plugin.spec as any).view({ hasFocus: () => true })
+    expect(plugin.props.decorations!.call(plugin, state)).not.toBeNull()
+
+    // #when
+    mounted.destroy()
+
+    // #then
+    expect(plugin.props.decorations!.call(plugin, state)).toBeNull()
+  })
+
+  it('asks ProseMirror to repaint on focus and on blur', () => {
+    // #given focus changes what `decorations` answers but changes no document
+    // state, so ProseMirror would never recompute on its own \u2014 the chip would
+    // stay hidden until the next keystroke.
+    const dispatched: Transaction[] = []
+    const plugin = createWikiLinkEditPlugin()
+    const tr = stateWith([chip({ target: 'A' })], 2).tr
+    const view = {
+      hasFocus: () => true,
+      state: { tr },
+      dispatch: (next: Transaction) => dispatched.push(next)
+    } as unknown as EditorView
+
+    // #when
+    const onFocus = plugin.props.handleDOMEvents!.focus!
+    const onBlur = plugin.props.handleDOMEvents!.blur!
+
+    // #then the event is not claimed \u2014 ProseMirror's own focus handling has to
+    // keep running \u2014 and an empty transaction asks for the repaint.
+    expect(onFocus.call(plugin, view, new Event('focus') as FocusEvent)).toBe(false)
+    expect(onBlur.call(plugin, view, new Event('blur') as FocusEvent)).toBe(false)
+    expect(dispatched).toEqual([tr, tr])
+  })
+
   it('paints nothing once the caret leaves the run', () => {
     const state = stateWith([schema.text('[[A]] tail')], 8)
-    const plugin = createWikiLinkEditPlugin()
+    const plugin = focusedPlugin()
 
     expect(isEditingWikiLinkText(state)).toBe(false)
     expect(plugin.props.decorations!.call(plugin, state)).toBeNull()
@@ -301,7 +378,7 @@ describe('wiki-link edit plugin', () => {
 describe('markdown shown beside the caret', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function decorationsOf(state: EditorState): any[] {
-    const plugin = createWikiLinkEditPlugin()
+    const plugin = focusedPlugin()
     const set = plugin.props.decorations!.call(plugin, state)
     if (!set) return []
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -537,8 +614,13 @@ describe('pressing a chip follows the link', () => {
     const view = {
       state: stateWith([schema.text('a '), chip(attrs), schema.text(' b')], 1),
       dispatch: (tr: Transaction) => dispatched.push(tr),
-      posAtCoords: () => (inside < 0 ? null : { pos: inside, inside })
+      posAtCoords: () => (inside < 0 ? null : { pos: inside, inside }),
+      // Focused: this describes a user pressing a chip in the editor they are
+      // working in, and `decorations` paints only for a focused editor.
+      hasFocus: () => true
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(plugin.spec as any).view(view)
 
     function fire(type: 'mousedown' | 'mouseup', props: Partial<MouseEvent> = {}) {
       let prevented = false

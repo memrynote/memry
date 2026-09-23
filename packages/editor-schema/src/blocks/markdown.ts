@@ -417,6 +417,85 @@ export function parseFileBlockMarker(marker: string): FileBlockProps | null {
 }
 
 // ---------------------------------------------------------------------------
+// mathBlock — a `$$` fence around the LaTeX source
+// ---------------------------------------------------------------------------
+
+/**
+ * The fence line. `$$` on a line of its own is the block form Obsidian, Pandoc
+ * and GitHub all read, so a formula written here is a formula there — which is
+ * the whole reason the source and not a rendering is what reaches the file.
+ */
+const MATH_FENCE_LINE = '$$'
+
+/**
+ * `$$` / source / `$$`, with the body's blank lines dropped.
+ *
+ * Dropping them is not cosmetic. Every parse in both pipelines splits on blank
+ * lines BEFORE any block reader runs (`splitMarkdownPreservingBlanks`), so a
+ * body carrying one arrives as two fragments and no reader can claim the run:
+ * the block would come back as literal `$$` text on the next open. A blank line
+ * is also invalid inside LaTeX math mode, so nothing a formula can mean is lost
+ * by refusing to write one.
+ */
+export function serializeMathBlock(latex: string): string {
+  const body = latex
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0)
+    .join('\n')
+  return body
+    ? `${MATH_FENCE_LINE}\n${body}\n${MATH_FENCE_LINE}`
+    : `${MATH_FENCE_LINE}\n${MATH_FENCE_LINE}`
+}
+
+export interface MathRun {
+  /** The formula source, verbatim between the fences. */
+  latex: string
+  /** The run's original lines, for the caller that declines it. */
+  raw: string
+  /** Index of the first line after the run. */
+  end: number
+}
+
+/**
+ * Read one math run starting at `lines[start]`, or null.
+ *
+ * Claimed by proof, the same rule `resolveCalloutRun` applies: the run becomes
+ * a block only when `serializeMathBlock` writes those exact bytes back. So the
+ * only shape claimed is the one Memry writes, and `$$ x $$` on one line, an
+ * indented `$$` inside a list item, a fence with trailing spaces, or a body
+ * carrying a blank line all stay the author's markdown — which matters because
+ * `$$` is somebody else's notation too, and write-back byte-compares.
+ *
+ * An unterminated `$$` is refused whole rather than swallowing the rest of the
+ * note, exactly as an unterminated `<details>` is.
+ *
+ * The run must also OWN its paragraph, at both ends. A fence that starts or
+ * stops mid-paragraph belongs to that paragraph's bytes, and claiming it would
+ * split one paragraph into two blocks — which the write-back rejoins with a
+ * blank line between them, rewriting a file Memry never wrote.
+ */
+export function readMathRun(
+  lines: readonly string[],
+  start: number,
+  atParagraphStart: boolean
+): MathRun | null {
+  if (!atParagraphStart) return null
+  if (lines[start] !== MATH_FENCE_LINE) return null
+
+  let end = start + 1
+  while (end < lines.length && lines[end] !== MATH_FENCE_LINE) end++
+  if (end >= lines.length) return null
+  if (end + 1 < lines.length && lines[end + 1].trim() !== '') return null
+
+  const raw = lines.slice(start, end + 1).join('\n')
+  const latex = lines.slice(start + 1, end).join('\n')
+  if (serializeMathBlock(latex) !== raw) return null
+
+  return { latex, raw, end: end + 1 }
+}
+
+// ---------------------------------------------------------------------------
 // toggleListItem — `<details data-memry-toggle>` wrapping a `<summary>` and the
 // collapsed body
 // ---------------------------------------------------------------------------
@@ -526,33 +605,55 @@ export function serializeToggleBlock(
 const DETAILS_MARKUP_LINE_REGEX = /^(?:<details(?:\s[^>]*)?>|<summary>.*<\/summary>|<\/details>)$/
 
 /**
- * Escape a `<details>` markup line that no toggle claimed, so CommonMark reads
- * it as text rather than as a raw HTML block.
+ * The `<` of a declined `<details>` line, while it crosses the parser.
+ *
+ * A markdown backslash escape used to do this job: `\<details>` parsed to the
+ * text `<details>` and the serializer wrote it back bare. BlockNote 0.51's
+ * parser does not implement `\<` — measured, it keeps the backslash in the
+ * text and reads the rest of the line as raw HTML, so
+ * `\<details data-memry-toggle>` came back as a paragraph holding a lone
+ * backslash with the markup gone. Escaping the `>` too got the line through
+ * intact but kept the backslash, writing `\<details …>` into the vault.
+ *
+ * So the `<` travels as a token instead, the same shape as the hard-break mask
+ * in `empty-lines.ts`: ordinary text to any parser, restored once the blocks
+ * exist. Nothing needs escaping on the way out — a text node holding
+ * `<details>` serializes to `<details>` bare.
+ */
+const DETAILS_LT_TOKEN = 'MEMRYDLT;'
+
+/**
+ * Hide the `<` of a `<details>` markup line that no toggle claimed, so the
+ * parser reads the line as text rather than dropping it as a raw HTML block.
  *
  * BlockNote's markdown parser has no block for raw HTML and drops it, which is
  * how an unterminated toggle lost its open and summary lines on the next
  * write-back (#1883) — and how a hand-written Obsidian `<details>` lost all
  * three, despite the promise above that it is left as its author wrote it.
- * Escaped, the line parses as an ordinary paragraph and remark writes the
- * backslash back out as nothing, so the author's bytes survive every save.
  *
- * Every `<` on the line is escaped, not just the leading one: a
+ * Every `<` on the line is hidden, not just the leading one: a
  * `<summary>x</summary>` whose closing tag stays raw loses that tag to the same
  * parser and comes back as `<summary>x`.
  *
- * The author's own backslashes are doubled FIRST, because a `\` already sitting
- * in front of a `<` would otherwise pair with the escape being added:
- * `<summary>C:\<path></summary>` became `...C:\\<path>...`, CommonMark read the
- * `\\` as one literal backslash, and `<path>` was left raw for the parser to
- * drop — the exact loss this function exists to prevent. Doubling costs nothing
- * on the way out: CommonMark reads `\\` back as one backslash and remark writes
- * a literal backslash bare, so a line with a backslash anywhere else is
- * byte-identical either way. Measured both directions, `<summary>a\b</summary>`
- * and `<summary>C:\Users\me</summary>` included.
+ * The author's own backslashes are left exactly as written. The old escape had
+ * to double them so a `\` already in front of a `<` could not pair with the
+ * backslash being added; nothing is added now, so there is nothing to pair
+ * with and `<summary>C:\<path></summary>` survives as its author wrote it.
  */
 function escapeDetailsMarkup(line: string): string {
   if (!DETAILS_MARKUP_LINE_REGEX.test(line)) return line
-  return line.replace(/\\/g, '\\\\').replace(/</g, '\\<')
+  return line.split('<').join(DETAILS_LT_TOKEN)
+}
+
+/**
+ * Put back every `<` that `escapeDetailsMarkup` hid, for one inline text run.
+ *
+ * Callers apply this to the blocks their parse produced. A token that reaches
+ * a block unrestored is written into the user's file as literal text, so this
+ * runs over every parsed run rather than only the ones expected to carry one.
+ */
+export function restoreDetailsMarkup(text: string): string {
+  return text.includes(DETAILS_LT_TOKEN) ? text.split(DETAILS_LT_TOKEN).join('<') : text
 }
 
 /**

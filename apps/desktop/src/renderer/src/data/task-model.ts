@@ -18,6 +18,15 @@ export type MonthlyType = 'dayOfMonth' | 'weekPattern'
 
 export type RepeatEndType = 'never' | 'date' | 'count'
 
+/**
+ * Which date the next occurrence is measured from. `due` keeps a fixed cadence
+ * (a daily task completed three days late is still due tomorrow); `completion`
+ * restarts the interval on the day the task was actually finished, which is what
+ * Obsidian writes as `when done` and what habit tracking wants. Null means `due`,
+ * so rows written before this was honored keep their existing behavior.
+ */
+export type RepeatAnchor = 'due' | 'completion'
+
 export interface RepeatConfig {
   // Base frequency
   frequency: RepeatFrequency
@@ -62,6 +71,7 @@ export interface Task {
   // Repeating
   isRepeating: boolean
   repeatConfig: RepeatConfig | null
+  repeatFrom: RepeatAnchor | null
 
   // Linking
   linkedNoteIds: string[] // connections to notes
@@ -198,6 +208,7 @@ export const createDefaultTask = (
   dueTime: null,
   isRepeating: false,
   repeatConfig: null,
+  repeatFrom: null,
   linkedNoteIds: [],
   linkedCanvasIds: [],
   sourceNoteId: null,

@@ -441,6 +441,11 @@ describe('notePlanImporter (real production deps)', () => {
     expect(child?.parentId).toBe(kickoff?.id)
     expect(child?.sourceNoteId).toBe(kickoff?.sourceNoteId)
 
+    // A `+` checklist stays a plain checkbox. This importer does not go through
+    // the shared checklist-to-task step precisely because that step cannot tell
+    // a NotePlan checklist from a NotePlan task once both are `- [ ]`.
+    expect(rows.some((t) => t.title === 'Agenda shared')).toBe(false)
+
     // The journal entry was actually written through the real DB-backed path.
     expect(fs.existsSync(path.join(tempVault.path, 'journal', '2026-08-12.md'))).toBe(true)
   })

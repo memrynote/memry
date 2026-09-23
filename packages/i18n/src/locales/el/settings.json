@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Ollama (τοπικό)",
         "openai": "OpenAI",
-        "anthropic": "Ανθρωπικό"
+        "anthropic": "Ανθρωπικό",
+        "google": "Google Gemini"
       },
       "model": "Μοντέλο",
       "modelDescription": "Μοντέλο γλώσσας για επανεγγραφή και περίληψη",

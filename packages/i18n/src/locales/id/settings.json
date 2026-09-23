@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "Ollama (Lokal)",
         "openai": "OpenAI",
-        "anthropic": "Antropis"
+        "anthropic": "Antropis",
+        "google": "Google Gemini"
       },
       "model": "Model",
       "modelDescription": "Model bahasa untuk menulis ulang dan meringkas",

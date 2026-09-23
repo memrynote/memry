@@ -46,6 +46,10 @@ When the journal editor is focused, arrow keys stay inside the editor. Press <kb
 
 See [Calendar Navigation](/user-guide/journal/calendar-navigation) for the larger views.
 
+## Tasks Written in a Day
+
+A task you create inside a journal entry — from the `/task` block or by turning a checkbox into one — is related to that day. Opening it from the task's **Related** section takes you back to the entry it came from, including for journal files Memry first found on disk rather than creating itself.
+
 ## Wiki Linking from Today
 
 You can wiki-link to other journal entries: `[[2026-05-07]]` resolves to that day's entry. Backlinks work the same as for notes.

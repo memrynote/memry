@@ -880,7 +880,8 @@
       "providers": {
         "ollama": "올라마(로컬)",
         "openai": "오픈AI",
-        "anthropic": "인류학"
+        "anthropic": "인류학",
+        "google": "Google Gemini"
       },
       "model": "모델",
       "modelDescription": "재작성 및 요약을 위한 언어 모델",

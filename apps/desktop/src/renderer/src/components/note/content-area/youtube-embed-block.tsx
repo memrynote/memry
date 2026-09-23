@@ -42,26 +42,26 @@ function YouTubePlayer({ videoId, title }: { videoId: string; title?: string }) 
   )
 }
 
+// No `contentRef`: BlockNote 0.54 stopped handing one to a block declared
+// `content: "none"`, which this one is.
 function YoutubeEmbedBlockRender({
-  block,
-  contentRef
+  block
 }: {
   block: { props: { videoId: string; videoUrl: string } }
-  contentRef: React.Ref<HTMLDivElement>
 }) {
   const { t: tPhaseF } = useT('notes')
   const { videoId, videoUrl } = block.props
 
   if (!videoId) {
     return (
-      <div ref={contentRef} className="p-2 text-muted-foreground text-sm">
+      <div className="p-2 text-muted-foreground text-sm">
         {tPhaseF('phaseF.componentsNoteContentAreaYoutubeEmbedBlock.noVideoUrl')}
       </div>
     )
   }
 
   return (
-    <div ref={contentRef} className="youtube-embed-block my-2" contentEditable={false}>
+    <div className="youtube-embed-block my-2" contentEditable={false}>
       <YouTubePlayer videoId={videoId} />
       {videoUrl && (
         <a

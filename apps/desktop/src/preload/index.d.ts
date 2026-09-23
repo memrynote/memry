@@ -17,6 +17,8 @@ import type {
   AgentLocalProviderSettingsUpdate,
   AgentPreferences,
   AgentPreferencesUpdate,
+  AgentToolGrants,
+  AlwaysAllowScope,
   ApproveToolRequest,
   BackendStatusesResponse,
   PreviewDiffRequest,
@@ -298,7 +300,16 @@ export interface TaskFiltersConfig {
 }
 
 export interface TaskSortConfig {
-  field: 'dueDate' | 'priority' | 'status' | 'createdAt' | 'title' | 'project' | 'completedAt'
+  field:
+    | 'dueDate'
+    | 'priority'
+    | 'status'
+    | 'createdAt'
+    | 'title'
+    | 'project'
+    | 'completedAt'
+    | 'folder'
+    | 'note'
   direction: 'asc' | 'desc'
 }
 
@@ -1781,10 +1792,12 @@ interface AgentClientAPI {
   approveTool: (input: ApproveToolRequest) => Promise<{ ok: boolean }>
   previewDiff: (input: PreviewDiffRequest) => Promise<PreviewDiffResponse>
   editTrustList: (input: {
-    conversationId: string
+    conversationId?: string
     add?: string[]
     remove?: string[]
+    scope?: AlwaysAllowScope
   }) => Promise<Conversation | null>
+  getToolGrants: () => Promise<AgentToolGrants>
   getBackendStatuses: () => Promise<BackendStatusesResponse>
   listBackendModels: (input: AgentBackendModelListRequest) => Promise<AgentBackendModelList>
   getLocalProviderSettings: () => Promise<AgentLocalProviderSettings>

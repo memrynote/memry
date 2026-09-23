@@ -55,6 +55,7 @@ export function serviceTaskToDisplayTask(task: ServiceTask, fallbackStatusId: st
     dueTime: task.dueTime ?? null,
     isRepeating: task.repeatConfig !== null,
     repeatConfig,
+    repeatFrom: task.repeatFrom ?? null,
     linkedNoteIds: task.linkedNoteIds ?? [],
     sourceNoteId: task.sourceNoteId,
     tags: task.tags ?? [],

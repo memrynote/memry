@@ -735,6 +735,7 @@ const task: Task = {
   dueTime: null,
   isRepeating: false,
   repeatConfig: null,
+  repeatFrom: null,
   linkedNoteIds: ['note-1'],
   sourceNoteId: null,
   tags: [],

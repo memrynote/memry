@@ -547,4 +547,30 @@ describe('useNoteTreeActions', () => {
     })
     expect(result.current.isMoving).toBe(false)
   })
+
+  it('opens inline rename on everything it creates from a folder menu', async () => {
+    // Creating from a folder's context menu used to leave `Untitled` behind and
+    // make naming it a separate second step (#2272).
+    const mutations = createMutations()
+    const { result, deps } = renderActions({ mutations })
+
+    mutations.createNote.mutateAsync.mockResolvedValueOnce({
+      success: true,
+      note: createNote('created', 'Work/Untitled 1.md')
+    })
+    await act(async () => {
+      await result.current.handleCreateNoteInFolder('Work')
+    })
+    expect(result.current.renamingNoteId).toBe('created')
+    // The name comes off the created path, not the requested title: blurring
+    // without typing must not rename `Untitled 1` back onto `Untitled`.
+    expect(result.current.renameValue).toBe('Untitled 1')
+
+    await act(async () => {
+      await result.current.handleCreateSubfolder('Work')
+    })
+    expect(deps.expandFolderPath).toHaveBeenLastCalledWith('Work')
+    expect(result.current.renamingFolderPath).toBe('Work/Untitled Folder')
+    expect(result.current.folderRenameValue).toBe('Untitled Folder')
+  })
 })

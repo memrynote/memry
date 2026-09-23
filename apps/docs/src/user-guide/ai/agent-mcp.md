@@ -38,7 +38,8 @@ edge while the chat content stays centered, and the tab name is the only convers
 that workspace view. Assistant responses render as full-width text in both the sidebar and popped-out
 tabs instead of bordered bubbles, with text aligned to the prompt input. For Claude CLI, memrynote checks
 that `claude` is available on `PATH`, that it reports version `2.1.0` or newer, and that the Agent
-disclosure has been accepted; the Codex CLI is detected the same way. On macOS and Linux, memrynote
+disclosure has been accepted; the Codex CLI and the Antigravity CLI (`agy`, version `1.2.7` or
+newer) are detected the same way. On macOS and Linux, memrynote
 resolves your login shell's `PATH` at startup, so CLIs installed in shell-managed locations
 (`~/.local/bin`, Homebrew, nvm, volta) are still found when the app is launched from the Dock or
 Finder rather than from a terminal. These checks run in the background rather than pausing the app,
@@ -46,13 +47,29 @@ and a successful check is reused for a few minutes so a burst of turns does not 
 check is never remembered: if you install or upgrade a CLI while memrynote is running, the next
 message or provider check picks it up without a restart. If the CLI is removed, replaced, or loses
 its executable bit between that check and the moment a turn actually starts, the turn ends right
-away with a `Claude CLI failed to start: ...` (or `Codex CLI failed to start: ...`) error naming the
+away with a `Claude CLI failed to start: ...` (or `Codex CLI failed to start: ...`,
+`Antigravity CLI failed to start: ...`) error naming the
 reason, and the conversation is free to accept a new message as soon as the CLI is back.
-A CLI that is not detected is not hidden: the composer's model picker still lists the Claude and
-Codex sections with a muted "Not detected — set up in Settings…" row that opens
+A CLI that is not detected is not hidden: the composer's model picker still lists the Claude, Codex
+and Antigravity sections with a muted "Not detected — set up in Settings…" row that opens
 [Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions), where a
 CLI agents group shows the live detection status of each CLI (version when found) alongside install
-and sign-in instructions (`claude login` / `codex login`).
+and sign-in instructions (`claude login` / `codex login` / a first interactive `agy` run).
+
+Antigravity models carry their own reasoning tier in the model id (`gemini-3.1-pro-high` versus
+`-low`), so picking an Antigravity model replaces the separate reasoning control rather than adding
+to it. Any model id your Google account can reach can be typed in, not only the listed presets.
+
+Unlike the other two CLIs, Antigravity has no per-run configuration flag: it reads MCP servers from
+`~/.gemini/config/mcp_config.json` and tool permissions from a project file, both at process start.
+So the first Antigravity turn registers one app-managed entry named `memry` in that file (every
+other MCP server there is preserved) and writes a `memry-agent-vault` / `memry-agent-computer`
+project that grants the vault tools and denies shell commands. No credential is written to either
+file: the endpoint token and the turn's single-use write capability travel in the spawned process's
+environment, which the bridge it launches inherits. A `mcp_config.json` that cannot be parsed is
+left untouched and the turn fails with a message naming the file. If you already had an MCP server
+named `memry` there, it is replaced by the app-managed one. Your own `agy` sessions also list the
+`memry` server; outside a running memrynote turn its tools report that no turn is active.
 For local models, configure a compatible server in
 [Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions) first.
 If the global AI switch is off in [Settings -> AI](/user-guide/settings#ai), the Agent tab and Agent
@@ -286,8 +303,8 @@ with `PERMISSION_DENIED` and the reason that writes need a running memrynote Age
 id is not a credential: knowing one, even a real one, does not let a client write.
 
 External clients still see the write tools listed. They are advertised to every client because
-memrynote's own Claude CLI, Codex CLI, and local-model backends discover their tools from that same
-list. Calling one without an active turn fails rather than writes.
+memrynote's own Claude CLI, Codex CLI, Antigravity CLI, and local-model backends discover their
+tools from that same list. Calling one without an active turn fails rather than writes.
 
 A write is only approved for a conversation that still exists. A conversation that has been deleted —
 including one deleted on another device and carried here by sync — no longer counts as an existing
@@ -338,8 +355,8 @@ counts only matching rows. Omit `file_types` to search every file type.
 Notes indexed by older memrynote versions have no recorded file type; those are always treated as
 markdown, so upgrading never hides existing notes.
 
-Create, update, delete, archive, move, and reorder tools require Agent Chat context. They can be
-auto-accepted or shown for inline approval depending on the Agent Permissions setting:
+Create, update, delete, archive, move, and reorder tools require Agent Chat context. They pause for
+inline approval unless you set the Agent Permissions confirmation to **Always allow**:
 
 - `vault_create_note`
 - `vault_rename_note`
@@ -512,17 +529,55 @@ native-only. See [Calendar → Google Data and AI Features](/user-guide/calendar
 Google user data is never used to train or improve AI models, in line with the Google API Services
 User Data Policy (Limited Use).
 
-By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
-tool as compact, subdued text with a readable label such as `Reading note` or `Creating task`.
-Click the label to open or close the details area with the raw MCP tool name, parameters, and
-results.
+Read tool calls are accepted automatically. The chat shows each one as compact, subdued text with a
+readable label such as `Reading note` or `Reading tasks`. Click the label to open or close the
+details area with the raw MCP tool name, parameters, and results.
 
-If you switch tool confirmations to **Ask first** in settings, memrynote pauses the turn and shows inline
-approval controls inside the tool row. You can allow the request once, allow create tools always for
-that conversation, deny it, or edit the arguments before allowing. Note updates load a before/after
-diff before the write is applied. Write requests that present no active-turn capability — every
-external MCP client, and any call arriving after its turn ended — continue to be denied, whichever
-confirmation setting you choose.
+Changes are different. **Ask before changes** is the default, so memrynote pauses the turn and shows
+inline approval controls inside the tool row. A row waiting on you opens itself and folds back once
+you answer, so a paused turn is never hidden behind a collapsed summary. You can approve the request
+once, grant it a standing approval, reject it, or edit it before approving. Write requests that
+present no active-turn capability — every external MCP client, and any call arriving after its turn
+ended — continue to be denied, whichever confirmation setting you choose.
+
+A paused request always shows what it would change, in the shape that fits the item:
+
+- **Field changes** for tasks, projects, statuses, inbox items, tags, moves and renames. Each
+  changed column is one row: the value now, then the value the agent proposes. A value that is not
+  set yet reads as such rather than as an empty string.
+- **A body diff** for note and journal markdown, and for the text of a new note or inbox item. The
+  changed words are highlighted in place and long runs of untouched lines are collapsed, so a
+  one-word edit in a long note reads as a one-word edit.
+- **What would be lost** for deletes. A delete has no "after", so the card names the item and what
+  goes with it instead.
+
+Each preview reads the item as it stands right now, not as the agent last saw it, so the value in
+the "before" position is what the write is actually about to land on. Field rows list only the
+columns that move: an agent request often repeats every column it read, and those are left out.
+
+A body diff also offers **Edit before applying**, which opens the proposed markdown in a text box.
+Applying from there replaces the whole body with what you see, so an append you edited is applied as
+the finished document rather than appended a second time. Field changes and deletes have no text
+box; use **Edit and allow** on the tool row to change raw arguments instead.
+
+### Always allow
+
+**Always allow** on a paused request asks how long it should last:
+
+- **Always allow in this chat** ends with the conversation. Nothing survives it.
+- **Always allow in this vault** outlives the chat and is listed under Settings → Agent →
+  **Always allowed**, where **Revoke** takes it back. The list is per vault and stays on this
+  machine; it is never synced.
+
+**Deletes always ask.** A standing approval is a promise about work you can still look at
+afterwards, and a delete is the one write where that is not true, so the gate refuses to trust a
+delete tool at either scope and the menu says so.
+
+If you prefer the old behaviour, set tool confirmations to **Always allow** in
+Settings → Agent. That setting is per install and applies to every conversation.
+
+If you had never touched this setting before upgrading, you now get asked where you previously did
+not. An explicit **Always allow** choice you made earlier is kept.
 
 Stopping the turn while an approval is waiting counts as a denial: the pending request is refused,
 the tool never runs, and the approval controls disappear. Nothing is written to your vault.
@@ -582,8 +637,9 @@ of guessing.
 
 The MCP server binds only to localhost. Read tools still expose the content they return to the
 client you configure, so only paste the token into clients you trust on this machine. Write tools
-still require an active Agent Chat conversation context, and the in-app tool confirmation setting
-decides whether that conversation pauses for approval or accepts the call automatically.
+still require an active Agent Chat conversation context, and by default that conversation pauses and
+shows you the change before it is written. The in-app tool confirmation setting is what decides
+that; setting it to **Always allow** accepts the call without a preview.
 
 Provider privacy depends on the selected backend:
 

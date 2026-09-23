@@ -47,34 +47,46 @@ Schedule a task to repeat on a fixed cadence.
 - **Daily** — every N days
 - **Weekly** — chosen weekdays (e.g. Mon / Wed / Fri)
 - **Monthly** — same date every month, or "first Monday"
-- **Custom** — any cron-like rule
+- **Yearly** — every N years
 
-Set a `repeat count` to cap the number of occurrences (e.g. "weekly for 6 weeks").
+The custom picker combines those: a frequency, an interval, the weekdays or the monthly
+pattern, and an end condition. It is not a cron expression — there is no minute or hour
+field, because recurrence lands on a date and the time of day comes from the task's own
+due time.
+
+End the series never, on a date, or after a number of occurrences ("weekly for 6 weeks").
+The picker previews the next five dates as you change the rule.
 
 You can also type the cadence straight into quick-add — `Team sync every monday` — instead of opening the picker. See [Capturing Tasks](/user-guide/tasks/capturing#repeats).
 
 ### How Completion Works
 
-When you mark a recurring task done, memrynote generates the **next occurrence** based on the rule and the current date.
+When you mark a recurring task done, memrynote closes that instance and creates a **new
+task** for the next date in the rule. You end up with one completed record per cycle, each
+with its own completion date, rather than a single task you keep reopening. The completed
+instance moves to the Completed view; the fresh one appears in the active list.
 
-The completed instance moves to the Completed view; the next instance appears in the active list.
+Editing a recurring task edits the series. There is no per-occurrence override and no
+"skip this occurrence" action yet; to skip a cycle, move the due date forward by hand.
 
-### Editing the Series vs One Occurrence
+### Which Date the Next Occurrence Counts From
 
-Editing a recurring task:
+By default the cadence is fixed: the next date is measured from the **due date**, so a
+daily task due Monday and finished on Thursday is still due Tuesday. A task can instead be
+anchored to its **completion date**, which restarts the interval on the day you actually
+finished — finishing Monday's daily task on Thursday then schedules Friday. That is what
+habit tracking usually wants.
 
-- Edit the **series** — affects all future occurrences
-- Edit just **this occurrence** — overrides for that single instance only
-
-The picker asks which mode you want when you make a change to a recurring task.
-
-### Skipping an Occurrence
-
-Right-click → "Skip this occurrence" advances the recurrence without creating a completed instance.
+The anchor has no picker in the app yet. It is set by the importers and the CLI: an
+Obsidian task written as `🔁 every day when done` keeps its completion anchor through
+[Obsidian import](/user-guide/tasks/import-obsidian), and `memrynote tasks create` takes
+`--repeat-from completion`. Tasks with no anchor recorded keep the fixed cadence.
 
 ## Combining Subtasks and Recurrence
 
-Recurring **parent** tasks regenerate clean subtask lists each cycle (using the parent's subtask template). This is great for routines like a weekly review with the same five subtasks.
+Completing a recurring parent also completes its open subtasks, and those completed
+subtasks stay with the instance that owned them. The next occurrence starts without
+subtasks; there is no subtask template that regenerates each cycle.
 
 Recurring **subtasks** of a non-recurring parent are unusual but supported.
 

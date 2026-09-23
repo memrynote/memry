@@ -29,6 +29,14 @@ const backendStatuses: BackendStatusesResponse = {
     reason: null,
     detail: null
   },
+  antigravity_cli: {
+    backend: 'antigravity_cli',
+    available: true,
+    version: '1.2.7',
+    minimumRequired: '1.2.7',
+    reason: null,
+    detail: null
+  },
   local_openai_compatible: {
     backend: 'local_openai_compatible',
     available: true,
@@ -297,7 +305,8 @@ describe('agentReducer', () => {
       toolCallId: 'tool-1',
       name: 'vault_create_task',
       args: { title: 'Buy milk' },
-      requiresDiff: false
+      requiresDiff: false,
+      previewKind: 'none'
     }
 
     const queued = agentReducer(initialAgentState, { type: 'event', event })
@@ -334,7 +343,8 @@ describe('agentReducer', () => {
       toolCallId: 'tool-1',
       name: 'vault_create_task',
       args: { title: 'Buy milk' },
-      requiresDiff: false
+      requiresDiff: false,
+      previewKind: 'none'
     }
 
     const next = agentReducer(state, { type: 'event', event })
@@ -366,7 +376,8 @@ describe('agentReducer', () => {
       toolCallId: 'tool-1',
       name: 'vault_create_task',
       args: { title: 'Buy milk' },
-      requiresDiff: false
+      requiresDiff: false,
+      previewKind: 'none'
     }
     const queued = agentReducer(
       {
@@ -732,7 +743,8 @@ describe('agentReducer', () => {
           toolCallId: 'tool-1',
           name: 'vault_create_task',
           args: { title: 'Buy milk' },
-          requiresDiff: false
+          requiresDiff: false,
+          previewKind: 'none'
         }
       }
     )

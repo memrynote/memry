@@ -30,7 +30,7 @@ export type ActivityLevel = z.infer<typeof ActivityLevelSchema>
  * Full journal entry with content
  */
 export const JournalEntrySchema = z.object({
-  id: z.string(), // j{YYYY-MM-DD}
+  id: z.string(), // note_cache id; j{YYYY-MM-DD} only when the entry was first created in-app
   date: z.string(), // YYYY-MM-DD
   content: z.string(), // Markdown content (without frontmatter)
   wordCount: z.number().int().nonnegative(),
