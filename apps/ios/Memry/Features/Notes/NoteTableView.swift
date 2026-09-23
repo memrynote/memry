@@ -289,6 +289,54 @@ struct NoteTableEditing {
     let setCellCheckbox: (String, Int, Int, Int, Bool) -> Void
 }
 
+extension NoteTableEditing {
+    /// Every table edit through the note's editor, re-reading the note after
+    /// each so the grid shows the document rather than a guess.
+    @MainActor
+    init(editor: NoteEditorViewModel, reload: @escaping @MainActor () async -> Void) {
+        self.init(
+            insertRow: { tableId, row in
+                Task { @MainActor in
+                    await editor.insertRow(tableId, at: row)
+                    await reload()
+                }
+            },
+            deleteRow: { tableId, row in
+                Task { @MainActor in
+                    await editor.deleteRow(tableId, at: row)
+                    await reload()
+                }
+            },
+            insertColumn: { tableId, column in
+                Task { @MainActor in
+                    await editor.insertColumn(tableId, at: column)
+                    await reload()
+                }
+            },
+            deleteColumn: { tableId, column in
+                Task { @MainActor in
+                    await editor.deleteColumn(tableId, at: column)
+                    await reload()
+                }
+            },
+            setCellColour: { tableId, row, column, colour in
+                Task { @MainActor in
+                    await editor.setCellProp(tableId, row: row, column: column, "backgroundColor", colour)
+                    await reload()
+                }
+            },
+            setCellCheckbox: { tableId, row, column, index, checked in
+                Task { @MainActor in
+                    await editor.setCellCheckbox(
+                        tableId, row: row, column: column, index: index, checked: checked
+                    )
+                    await reload()
+                }
+            }
+        )
+    }
+}
+
 /// The row and column actions, attached to a cell.
 private struct NoteTableCellActions: ViewModifier {
     let editing: NoteTableEditing?

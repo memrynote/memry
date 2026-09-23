@@ -172,7 +172,7 @@ enum CodeHighlighter {
 
         static func of(_ language: String?) -> Rules {
             let key = (language ?? "").lowercased()
-            if ["", "text", "plaintext", "plain", "txt", "markdown", "md"].contains(key) {
+            if ["", "text", "plaintext", "plain", "txt", "markdown", "md", "mermaid", "latex"].contains(key) {
                 // Prose in a code block. Colouring `#` as a comment would
                 // grey out every markdown heading in it.
                 return Rules(constants: [])
