@@ -50,7 +50,9 @@ export function BookmarkBlockRender({ block }: { block: { props: BookmarkProps }
   }
 
   return (
-    <div className="bookmark-block my-2" contentEditable={false}>
+    // `.bn-block-content` is a flex row; without `min-w-0` this flex item's
+    // min-width is the nowrap title's full length and the card overflows.
+    <div className="bookmark-block my-2 w-full min-w-0" contentEditable={false}>
       <a
         href={url}
         target="_blank"
