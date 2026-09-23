@@ -121,6 +121,13 @@ background (`apps/sync-server/src/routes/linking.ts:166`, `:269`), so a client
 MUST also poll (chapter 03 §3.4) and MUST NOT make linking depend on a socket
 frame arriving.
 
+`calendar_changes_available` is targeted too: the webhook route broadcasts
+with `targetDeviceId` set to the device that registered the Google push channel
+(`apps/sync-server/src/routes/webhooks.ts`), so only that device's socket
+receives it. Push channels are per-device, and each device runs its own sync
+against Google. It is advisory in the same way: Google itself drops a small
+share of notifications, so a client MUST keep polling the calendar provider.
+
 **Disposition of Q09.3: answered** (this section).
 
 ### 9.5.2 `heartbeat` — Q09.2

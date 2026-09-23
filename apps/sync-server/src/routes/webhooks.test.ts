@@ -235,7 +235,7 @@ describe('POST /webhooks/google-calendar', () => {
     expect(broadcastFetch).not.toHaveBeenCalled()
   })
 
-  it('fans out to the user DO with type=calendar_changes_available + sourceId when state=exists', async () => {
+  it('broadcasts calendar_changes_available + sourceId to the channel-owning device when state=exists', async () => {
     // #given
     const hash = await hashChannelToken(WEBHOOK_HMAC_KEY, 'secret-token')
     const { env, broadcastFetch } = createEnv({ channelRow: makeChannelRow({ token_hash: hash }) })
@@ -265,7 +265,8 @@ describe('POST /webhooks/google-calendar', () => {
     expect(forwardedBody).toMatchObject({
       type: 'calendar_changes_available',
       sourceId: 'google-calendar:abc',
-      excludeDeviceId: ''
+      excludeDeviceId: '',
+      targetDeviceId: 'device-1'
     })
   })
 

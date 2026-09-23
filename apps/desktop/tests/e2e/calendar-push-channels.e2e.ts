@@ -3,17 +3,17 @@
  *
  * This suite is flag-gated and will be SKIPPED until all of the following are set:
  *   - GOOGLE_CALENDAR_E2E=1                  (global opt-in)
- *   - CALENDAR_PUSH_ENABLED=1                (toggles the desktop feature flag)
- *   - MEMRY_WEBHOOK_HMAC_KEY=<key>           (must match sync-server binding)
+ *   - SYNC_SERVER_URL=https://...            (push is on whenever the webhook is HTTPS;
+ *                                             CALENDAR_PUSH_ENABLED=0 turns it off)
  *   - GOOGLE_CALENDAR_E2E_REFRESH_TOKEN=<…>  (refresh token for the CI test account)
  *   - GOOGLE_CALENDAR_E2E_CLIENT_ID=<…>      (OAuth client the refresh token belongs to)
  *   - GOOGLE_CALENDAR_E2E_CLIENT_SECRET=<…>  (optional: only if the client is confidential)
  *   - GOOGLE_CALENDAR_E2E_CALENDAR_ID=<…>    (test calendar the spec creates/deletes events on)
  *
- * Ops prerequisites (one-time, not yet done as of 2026-04-19):
- *   1. sync.memry.io HTTPS webhook endpoint reachable from Google.
- *   2. The domain verified in Google Cloud Console → APIs → Domain verification.
- *   3. sync-server deployed with matching MEMRY_WEBHOOK_HMAC_KEY binding.
+ * Ops prerequisites:
+ *   1. The sync-server HTTPS webhook endpoint reachable from Google.
+ *   2. sync-server deployed with a WEBHOOK_HMAC_KEY secret. The desktop sends the
+ *      plaintext channel token; only the server holds the key.
  *
  * Once the above is green, the tests below exercise the full round-trip:
  *   - connect → channel registered → resourceId stored server-side

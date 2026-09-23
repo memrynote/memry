@@ -212,9 +212,10 @@ calendar you have ticked — so accounts never drift out of step with each other
 "every sync" that refreshes the calendar list itself, as described under
 [Multiple Accounts and Calendars](#multiple-accounts-and-calendars).
 
-memrynote pulls about every 5 minutes in the background. When Google push notifications are active
-for your selected calendars, changes arrive as they happen and the background pull falls back to
-roughly every 30 minutes.
+Google notifies memrynote as soon as an event changes in one of your selected calendars, and the
+change shows up within seconds. The background pull then runs only about every 30 minutes, as a
+safety net for the few notifications Google drops. If notifications cannot be set up, memrynote
+pulls about every 5 minutes instead.
 
 Google returns a busy calendar in pages. Every pull follows all of them before it finishes, so a
 calendar full of repeating meetings cannot crowd your one-off appointments out of the results.
