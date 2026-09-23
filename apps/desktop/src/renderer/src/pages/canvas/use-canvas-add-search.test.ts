@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   quick: vi.fn(),
   searchEvents: vi.fn(),
-  projects: [] as unknown[]
+  listProjects: vi.fn()
 }))
 
 vi.mock('@/services/search-service', () => ({
@@ -18,8 +18,8 @@ vi.mock('@/services/search-service', () => ({
 vi.mock('@/services/calendar-service', () => ({
   calendarService: { searchEvents: (input: unknown) => mocks.searchEvents(input) }
 }))
-vi.mock('@/hooks/use-projects-list', () => ({
-  useProjectsList: () => ({ projects: mocks.projects, isLoading: false })
+vi.mock('@/services/tasks-service', () => ({
+  tasksService: { listProjects: () => mocks.listProjects() }
 }))
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
@@ -43,6 +43,31 @@ describe('useCanvasAddSearch', () => {
           : { results: [FILE_ROW, TASK_ROW], queryTimeMs: 1 }
       )
     mocks.searchEvents.mockReset().mockResolvedValue({ events: [{ id: 'e1' }] })
+    mocks.listProjects.mockReset().mockResolvedValue({ projects: [] })
+  })
+
+  it('relists projects on every opening, so one created after mount is findable', async () => {
+    mocks.listProjects.mockResolvedValueOnce({ projects: [{ id: 'p-old', name: 'Old' }] })
+    const { result, rerender } = renderHook(({ open }) => useCanvasAddSearch(open, ''), {
+      initialProps: { open: true }
+    })
+    await waitFor(() => expect(result.current.projects).toEqual([{ id: 'p-old', name: 'Old' }]))
+
+    rerender({ open: false })
+    mocks.listProjects.mockResolvedValueOnce({
+      projects: [
+        { id: 'p-old', name: 'Old' },
+        { id: 'p-new', name: 'New' }
+      ]
+    })
+    rerender({ open: true })
+
+    await waitFor(() =>
+      expect(result.current.projects).toEqual([
+        { id: 'p-old', name: 'Old' },
+        { id: 'p-new', name: 'New' }
+      ])
+    )
   })
 
   it('does not query anything while closed', async () => {

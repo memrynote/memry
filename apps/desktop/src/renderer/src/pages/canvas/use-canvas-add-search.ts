@@ -4,8 +4,9 @@
  * Notes, tasks and filed files come from quick-search; events come from
  * calendar:search-events (#869). Both are query-driven and share one debounce,
  * so every event is reachable — the old ±90-day getRange window is gone.
- * Projects are not in the search index, so they are listed once and the dialog
- * filters them against the query.
+ * Projects are not in the search index, so they are listed on every opening
+ * and the dialog filters them against the query. Per opening, not per mount: a
+ * project created while the canvas was already open must still be findable.
  */
 
 import { useEffect, useState } from 'react'
@@ -13,8 +14,7 @@ import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
 import type { NoteFileType, SearchResultItem } from '@memry/contracts/search-api'
 import { calendarService } from '@/services/calendar-service'
 import { searchService } from '@/services/search-service'
-import type { ProjectWithStats } from '@/services/tasks-service'
-import { useProjectsList } from '@/hooks/use-projects-list'
+import { tasksService, type ProjectWithStats } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('SpatialCanvas')
@@ -48,8 +48,27 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
   const [results, setResults] = useState<SearchResultItem[]>([])
   const [files, setFiles] = useState<SearchResultItem[]>([])
   const [events, setEvents] = useState<CalendarEventSearchItem[]>([])
+  const [projects, setProjects] = useState<ProjectWithStats[]>([])
   const [loading, setLoading] = useState(false)
-  const { projects } = useProjectsList()
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    tasksService.listProjects().then(
+      (response) => {
+        if (!cancelled) setProjects(response.projects)
+      },
+      (err) => {
+        if (!cancelled) {
+          log.error('Canvas add-card: project list failed', err)
+          setProjects([])
+        }
+      }
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   useEffect(() => {
     const trimmed = query.trim()
