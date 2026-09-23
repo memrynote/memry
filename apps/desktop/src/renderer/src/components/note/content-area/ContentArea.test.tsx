@@ -1669,6 +1669,20 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.toastError).toHaveBeenCalled()
   })
 
+  // The template editor mounts this way (#2331): a checkbox in a template is
+  // not a task, and a right-click must not mint one either.
+  it('leaves a right-clicked checkbox alone in an editor that runs no side effects', async () => {
+    render(<ContentArea runSideEffects={false} />)
+
+    fireEvent.contextMenu(screen.getByText('checklist target'))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    expect(contentAreaMocks.blocks.get('standalone').type).toBe('checkListItem')
+  })
+
   it('ticks the box for a line the plugin had already marked done', async () => {
     render(<ContentArea noteId="note-1" />)
 

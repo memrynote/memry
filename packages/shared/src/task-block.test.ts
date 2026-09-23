@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { parseTaskBlockSuffix, scanTaskCheckboxStates, serializeTaskBlock } from './task-block'
+import {
+  parseTaskBlockSuffix,
+  scanTaskCheckboxStates,
+  serializeTaskBlock,
+  stripTaskBlockSuffixes
+} from './task-block'
 
 describe('scanTaskCheckboxStates', () => {
   it('returns an empty map when the note has no task lines', () => {
@@ -83,5 +88,52 @@ describe('parseTaskBlockSuffix with an Obsidian Tasks tail', () => {
     expect(scanTaskCheckboxStates('- [x] Buy milk {task:abc} ✅ 2026-09-05')).toEqual(
       new Map([['abc', true]])
     )
+  })
+})
+
+describe('stripTaskBlockSuffixes', () => {
+  it('turns task lines back into plain checkboxes and keeps every other byte', () => {
+    const md = [
+      '# Weekly review',
+      '',
+      '- [ ] Call the plumber {task:a1}',
+      '  - [x] Book a slot {task:b2}',
+      '* [ ] Other marker {task:c3}',
+      'Prose that mentions {task:d4} stays.',
+      '- [ ] plain checkbox'
+    ].join('\n')
+
+    expect(stripTaskBlockSuffixes(md)).toBe(
+      [
+        '# Weekly review',
+        '',
+        '- [ ] Call the plumber',
+        '  - [x] Book a slot',
+        '* [ ] Other marker',
+        'Prose that mentions {task:d4} stays.',
+        '- [ ] plain checkbox'
+      ].join('\n')
+    )
+  })
+
+  it('drops the empty suffix a task block that never got an id wrote', () => {
+    expect(stripTaskBlockSuffixes('- [ ] Draft task {task:}')).toBe('- [ ] Draft task')
+  })
+
+  it('keeps an Obsidian Tasks tail that follows the suffix', () => {
+    expect(stripTaskBlockSuffixes('- [x] Buy milk {task:abc} ✅ 2026-09-05')).toBe(
+      '- [x] Buy milk ✅ 2026-09-05'
+    )
+  })
+
+  it('keeps CRLF line endings and a missing final newline', () => {
+    expect(stripTaskBlockSuffixes('- [ ] One {task:a}\r\n- [ ] Two {task:b}')).toBe(
+      '- [ ] One\r\n- [ ] Two'
+    )
+  })
+
+  it('returns the input unchanged when there is nothing to strip', () => {
+    const md = '- [ ] Buy milk {task:abc} and then some prose'
+    expect(stripTaskBlockSuffixes(md)).toBe(md)
   })
 })
