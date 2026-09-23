@@ -186,12 +186,16 @@ export function SettingsPage() {
             {activeSection === 'tasks' && <TasksSettings />}
             {activeSection === 'inbox' && <InboxSettings />}
             {activeSection === 'calendar' && <CalendarSettingsSection />}
-            {activeSection === 'vault' && <VaultSettings />}
+            {activeSection === 'vault' && (
+              <VaultSettings
+                activityFocusRequestId={focusTarget === 'vault-activity' ? focusRequestId : null}
+              />
+            )}
             {activeSection === 'appearance' && <AppearanceSettings />}
             {isAssistantSection && (
               <AISettings
                 initialOpenPanel={initialAssistantPanel}
-                focusTarget={focusTarget}
+                focusTarget={focusTarget === 'voice-local-model' ? focusTarget : null}
                 focusRequestId={focusRequestId}
               />
             )}

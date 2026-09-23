@@ -49,6 +49,10 @@ import {
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
 import { getStatus as getVaultStatus } from '../vault/index'
+import {
+  recordAttachmentDownloadFailure,
+  recordAttachmentUploadFailure
+} from '../sync/sync-activity'
 
 import {
   getDevicePublicKey,
@@ -484,6 +488,8 @@ export function registerAttachmentHandlers(): void {
           invalidateCachedEntitlementLimits()
         }
 
+        recordAttachmentUploadFailure(diskPath, category, message)
+
         broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
           noteId,
           diskPath,
@@ -580,6 +586,7 @@ export function registerAttachmentHandlers(): void {
           // Mirrors the upload path above — a download-side outage (auth, R2,
           // decrypt) must not repeat the 58-day blindness the upload path had.
           trackMainError('sync_attachments', 'attachment_download_failed', err)
+          recordAttachmentDownloadFailure(diskPath, message)
           broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
             noteId,
             diskPath,

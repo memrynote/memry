@@ -27,6 +27,11 @@ const mocks = vi.hoisted(() => ({
   openIncidentReport: vi.fn()
 }))
 
+// The activity log has its own tests and needs a query client this suite does not build.
+vi.mock('@/components/settings/vault-activity', () => ({
+  VaultActivitySettings: () => null
+}))
+
 vi.mock('@/components/diagnostics/incident-report-provider', () => ({
   useReportIncident: () => mocks.openIncidentReport
 }))

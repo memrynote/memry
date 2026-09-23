@@ -914,7 +914,8 @@
     "groups": {
       "storageUsage": "Depolama Kullanımı",
       "location": "Konum",
-      "accountVaults": "Hesabınızdaki kasalar"
+      "accountVaults": "Hesabınızdaki kasalar",
+      "activity": "Etkinlik"
     },
     "loadingStorage": "Depolama bilgisi yükleniyor...",
     "signInStorage": "Depolama kullanımını görüntülemek için oturum açın",
@@ -946,6 +947,62 @@
       "deleteTitle": "“{name}” hesabınızdan silinsin mi?",
       "empty": "Hesabınıza henüz senkronize edilmiş kasa yok.",
       "itemsCount": "{count} öğe"
+    },
+    "activity": {
+      "description": "Memry dışında kasaya eklenen veya kasadan silinen dosyalar, içe aktarmalar ve atlanan ya da başarısız olan her şey. Yalnızca bu cihazda tutulur.",
+      "retention": {
+        "label": "Kasa etkinliği",
+        "days": "{count, plural, one {# gün tut} other {# gün tut}}"
+      },
+      "filter": {
+        "all": "Tümü",
+        "problems": "Atlanan ve başarısız"
+      },
+      "reveal": "Günlük dosyasını göster",
+      "clear": "Temizle",
+      "clearTitle": "Kasa etkinliği temizlensin mi?",
+      "clearBody": "Bu cihazdaki etkinlik günlüğünün tüm kayıtları silinir. Dosyalarınıza dokunulmaz.",
+      "clearConfirm": "Etkinliği temizle",
+      "empty": "Henüz kayıt yok. Kasa klasörüne eklediğiniz dosyalar, içe aktarmalar ve Memry'nin atladığı her şey burada görünecek.",
+      "emptyProblems": "Atlanan veya başarısız olan bir şey yok.",
+      "unavailable": "Etkinliğini görmek için bir kasa açın.",
+      "loadFailed": "Kasa etkinliği yüklenemedi",
+      "actionFailed": "Kasa etkinliği güncellenemedi",
+      "showItems": "{count, plural, one {# öğeyi göster} other {# öğeyi göster}}",
+      "toastAction": "Ayrıntılar",
+      "entry": {
+        "added": "Eklendi: {path}",
+        "removed": "Silindi: {path}",
+        "renamed": "Yeniden adlandırıldı: {oldPath} → {path}",
+        "skipped": "Atlandı: {path}",
+        "skippedUnsupported": "Memry {ext} dosyalarını açmıyor, dosya olduğu gibi bırakıldı.",
+        "readFailed": "Okunamadı: {path}",
+        "indexFailed": "Eklenemedi: {path}",
+        "copyFailed": "Kasaya kopyalanamadı: {path}",
+        "uploadFailed": "Yüklenemedi: {path}",
+        "uploadFailedHint": "Yükleme başarılı olana kadar bu cihazda kalır.",
+        "downloadFailed": "İndirilemedi: {path}",
+        "fileTooLarge": "Senkronize etmek için çok büyük: {path}",
+        "noteTooLarge": "“{title}” senkronize etmek için çok büyük",
+        "noteTooLargeUnnamed": "Bir not senkronize etmek için çok büyük",
+        "importFailed": "{importer} içe aktarması başarısız oldu",
+        "failedGeneric": "Bir sorun oluştu: {path}",
+        "failedGenericUnnamed": "Bir sorun oluştu",
+        "scan": "Memry kapalıyken yapılan değişiklikler bulundu",
+        "indexRebuilt": "Arama dizini oluşturuldu",
+        "import": "{importer} içe aktarması",
+        "importCanceled": "{importer} içe aktarması, iptal edildi",
+        "unknown": "Tanınmayan etkinlik"
+      },
+      "counts": {
+        "added": "{count, plural, one {# yeni dosya} other {# yeni dosya}}",
+        "indexed": "{count, plural, one {# dosya dizinlendi} other {# dosya dizinlendi}}",
+        "imported": "{count, plural, one {# içe aktarıldı} other {# içe aktarıldı}}",
+        "attachments": "{count, plural, one {# ek} other {# ek}}",
+        "skipped": "{count, plural, one {# atlandı} other {# atlandı}}",
+        "unsupported": "{count, plural, one {# desteklenmeyen dosya atlandı} other {# desteklenmeyen dosya atlandı}}",
+        "failed": "{count, plural, one {# başarısız} other {# başarısız}}"
+      }
     }
   },
   "tags": {

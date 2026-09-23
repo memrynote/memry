@@ -12,6 +12,7 @@ import {
 } from '@/components/settings/settings-primitives'
 import { LargeNotesWarning } from '@/components/settings/large-notes-warning'
 import { DownloadVaultDialog } from '@/components/download-vault-dialog'
+import { VaultActivitySettings } from '@/components/settings/vault-activity'
 import type { AccountVaultInfo } from '../../../../preload/index.d'
 import {
   AlertDialog,
@@ -32,7 +33,12 @@ const STORAGE_COLORS: Record<string, string> = {
   other: '#8c8c8c'
 }
 
-export function VaultSettings() {
+interface VaultSettingsProps {
+  /** Set when Settings was opened to bring the activity log into view. */
+  activityFocusRequestId?: number | null
+}
+
+export function VaultSettings({ activityFocusRequestId = null }: VaultSettingsProps = {}) {
   const { t } = useT('settings')
   const { t: tCommon } = useT('common')
   const { data, loading, refresh } = useStorageUsage()
@@ -286,6 +292,8 @@ export function VaultSettings() {
           </Button>
         </SettingRow>
       </SettingsGroup>
+
+      <VaultActivitySettings focusRequestId={activityFocusRequestId} />
 
       <DownloadVaultDialog
         vault={vaultToDownload}

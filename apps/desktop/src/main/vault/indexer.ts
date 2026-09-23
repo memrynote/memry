@@ -36,6 +36,12 @@ import { getNoteMetadataByPath } from '@memry/storage-data'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
+import {
+  createScanActivity,
+  recordScanActivity,
+  SCAN_COLLECT_LIMIT,
+  type ScanActivity
+} from './activity-log'
 
 const logger = createLogger('Indexer')
 
@@ -49,6 +55,15 @@ interface IndexResult {
   errors: number
   /** True when `shouldStop` ended the walk before every file was visited. */
   cancelled: boolean
+  /** What the walk found, for the vault activity log. */
+  activity: ScanActivity
+}
+
+type IndexFailure = { reason: 'read-failed' | 'index-failed'; message?: string }
+type IndexFileOutcome = 'indexed' | 'skipped' | IndexFailure
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 export interface IndexVaultOptions {
@@ -62,6 +77,11 @@ export interface IndexVaultOptions {
   shouldStop?: () => boolean
   /** Paths whose frontmatter changed before this pass and must be re-read. */
   forcePaths?: readonly string[]
+  /**
+   * Record the walk in the vault activity log. `rebuild` marks a walk over an
+   * emptied index, where every file reads as new. Omitted: nothing is recorded.
+   */
+  activity?: 'scan' | 'rebuild'
 }
 
 // ============================================================================
@@ -74,11 +94,13 @@ export interface IndexVaultOptions {
  * @param dirPath - Directory to scan
  * @param basePath - Vault root path for relative path calculation
  * @param excludePatterns - Patterns to exclude from scanning
+ * @param activity - Collects unsupported files for the vault activity log
  */
 async function findVaultFiles(
   dirPath: string,
   basePath: string,
-  excludePatterns: string[] = []
+  excludePatterns: string[] = [],
+  activity?: ScanActivity
 ): Promise<string[]> {
   const files: string[] = []
 
@@ -96,7 +118,7 @@ async function findVaultFiles(
 
       if (entry.isDirectory()) {
         // Recursively scan subdirectories
-        const subFiles = await findVaultFiles(fullPath, basePath, excludePatterns)
+        const subFiles = await findVaultFiles(fullPath, basePath, excludePatterns, activity)
         files.push(...subFiles)
       } else if (entry.isFile()) {
         const supported = isSupportedPath(fullPath)
@@ -105,6 +127,12 @@ async function findVaultFiles(
           files.push(normalizeRelativePath(path.relative(basePath, fullPath)))
         } else {
           logger.debug(`Skipping unsupported file: ${entry.name}`)
+          if (activity) {
+            activity.unsupportedCount++
+            if (activity.unsupported.length < SCAN_COLLECT_LIMIT) {
+              activity.unsupported.push(normalizeRelativePath(path.relative(basePath, fullPath)))
+            }
+          }
         }
       }
     }
@@ -127,13 +155,13 @@ async function indexFile(
   vaultPath: string,
   relativePath: string,
   forcePaths: ReadonlySet<string>
-): Promise<'indexed' | 'skipped' | 'error'> {
+): Promise<IndexFileOutcome> {
   const absolutePath = path.join(vaultPath, relativePath)
   const fileType = getFileType(getExtension(absolutePath))
 
   if (!fileType) {
     logger.warn(`Unsupported file type: ${relativePath}`)
-    return 'error'
+    return { reason: 'index-failed', message: 'Unsupported file type' }
   }
 
   try {
@@ -154,7 +182,7 @@ async function indexFile(
     return await indexNonMarkdownFile(vaultPath, relativePath, absolutePath, fileType, db)
   } catch (error) {
     logger.error(`Error indexing file ${relativePath}:`, error)
-    return 'error'
+    return { reason: 'index-failed', message: errorText(error) }
   }
 }
 
@@ -166,7 +194,7 @@ async function indexMarkdownFile(
   relativePath: string,
   absolutePath: string,
   db: ReturnType<typeof getIndexDatabase>
-): Promise<'indexed' | 'error'> {
+): Promise<'indexed' | IndexFailure> {
   // Read the file directly (not via safeRead) so the errno survives into the
   // log — ENOENT (vanished mid-scan), EACCES (permissions) and ELOOP (broken
   // symlink) all present as "could not read" otherwise (#844).
@@ -176,7 +204,7 @@ async function indexMarkdownFile(
   } catch (error) {
     const code = error instanceof Error && 'code' in error ? String(error.code) : 'UNKNOWN'
     logger.warn(`Could not read file: ${relativePath} (${code})`)
-    return 'error'
+    return { reason: 'read-failed', message: code }
   }
 
   // Path unknown to the index cache (indexFile skips known paths). Prefer the
@@ -225,7 +253,7 @@ async function indexMarkdownFile(
     }
   } catch (syncError) {
     logger.error(`Sync failed for ${relativePath}:`, syncError)
-    return 'error'
+    return { reason: 'index-failed', message: errorText(syncError) }
   }
 
   return 'indexed'
@@ -282,14 +310,14 @@ async function indexNonMarkdownFile(
   absolutePath: string,
   fileType: 'pdf' | 'image' | 'audio' | 'video',
   db: ReturnType<typeof getIndexDatabase>
-): Promise<'indexed' | 'error'> {
+): Promise<'indexed' | IndexFailure> {
   try {
     await indexBinaryFile(db, relativePath, absolutePath, fileType)
     logger.debug(`Successfully indexed: ${relativePath} (${fileType})`)
     return 'indexed'
   } catch (error) {
     logger.error(`Error indexing file ${relativePath}:`, error)
-    return 'error'
+    return { reason: 'index-failed', message: errorText(error) }
   }
 }
 
@@ -341,11 +369,13 @@ export async function indexVault(
   const forcePaths = new Set(options.forcePaths ?? [])
   const config = getConfig()
   const excludePatterns = config.excludePatterns ?? []
+  const activity = createScanActivity()
   const result: IndexResult = {
     indexed: 0,
     skipped: 0,
     errors: 0,
-    cancelled: false
+    cancelled: false,
+    activity
   }
 
   // Scan the entire vault root. findVaultFiles skips dotfolders (.memry,
@@ -360,7 +390,7 @@ export async function indexVault(
     try {
       const folderStat = await stat(folder)
       if (folderStat.isDirectory()) {
-        const files = await findVaultFiles(folder, vaultPath, scanExcludes)
+        const files = await findVaultFiles(folder, vaultPath, scanExcludes, activity)
         allFiles.push(...files)
       }
     } catch {
@@ -373,6 +403,7 @@ export async function indexVault(
 
   if (allFiles.length === 0) {
     emitIndexProgress(100)
+    if (options.activity && !shouldStop()) recordScanActivity(activity, options.activity)
     return result
   }
 
@@ -401,16 +432,26 @@ export async function indexVault(
 
   const statuses = await withConcurrency(tasks, INDEX_CONCURRENCY)
 
-  for (const { status } of statuses) {
+  for (const { i, status } of statuses) {
+    if (typeof status === 'object') {
+      result.errors++
+      activity.failedCount++
+      if (activity.failed.length < SCAN_COLLECT_LIMIT) {
+        activity.failed.push({ path: allFiles[i], ...status })
+      }
+      continue
+    }
     switch (status) {
       case 'indexed':
         result.indexed++
+        // A forced path was already known; only a first-time index is new.
+        if (!forcePaths.has(allFiles[i])) {
+          activity.addedCount++
+          if (activity.added.length < SCAN_COLLECT_LIMIT) activity.added.push(allFiles[i])
+        }
         break
       case 'skipped':
         result.skipped++
-        break
-      case 'error':
-        result.errors++
         break
       case 'cancelled':
         break
@@ -428,6 +469,14 @@ export async function indexVault(
         `${result.errors} errors, ${allFiles.length - completed} remaining`
     )
     return result
+  }
+
+  if (options.activity) {
+    // Nothing was already in the index: a first open (or an index lost some
+    // other way). Every file reads as new, and listing them as "added" would
+    // claim the user just put them there.
+    const firstBuild = result.skipped === 0 && activity.addedCount > 0
+    recordScanActivity(activity, firstBuild ? 'rebuild' : options.activity)
   }
 
   const indexingMessage = `Indexing complete: ${result.indexed} indexed, ${result.skipped} skipped, ${result.errors} errors`
@@ -533,7 +582,7 @@ export async function rebuildIndex(vaultPath: string): Promise<RebuildResult> {
 
   // Re-index all files
   logger.debug('Re-indexing all files')
-  const result = await indexVault(vaultPath)
+  const result = await indexVault(vaultPath, { activity: 'rebuild' })
 
   const duration = Date.now() - startTime
   logger.info(`Rebuild complete: ${result.indexed} files in ${duration}ms`)

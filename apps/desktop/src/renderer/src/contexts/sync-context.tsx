@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { useAuth } from './auth-context'
 import { onVaultStatusChanged } from '@/services/vault-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { requestOpenSettings } from '@/lib/settings-navigation'
 import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
 import { VaultRecoveryDialog } from '@/components/sync/vault-recovery-dialog'
 import { SessionExpiredDialog } from '@/components/sync/session-expired-dialog'
@@ -373,6 +374,13 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
 
     const cleanups: Array<() => void> = []
 
+    // These toasts vanish in ten seconds; the same failures are kept in the
+    // vault activity log, so the toast offers the way back to them.
+    const activityAction = (): { label: string; onClick: () => void } => ({
+      label: tSettings('vault.activity.toastAction'),
+      onClick: () => requestOpenSettings('vault:activity')
+    })
+
     cleanups.push(
       window.api.onSyncStatusChanged((event) => {
         if (cancelled) return
@@ -398,7 +406,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
             event.errorNoteTitle
               ? t('sync.noteTooLargeNamed', { title: event.errorNoteTitle })
               : t('sync.noteTooLarge'),
-            { duration: 10000 }
+            { duration: 10000, action: activityAction() }
           )
         }
       })
@@ -413,11 +421,14 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         // "it stays on this device" hides it. Older main processes send no
         // category, so anything else keeps the generic message.
         if (event.errorCategory === 'file_too_large') {
-          toast.error(t('sync.fileTooLarge'), { duration: 10000 })
+          toast.error(t('sync.fileTooLarge'), { duration: 10000, action: activityAction() })
           return
         }
         const filename = event.diskPath.split(/[\\/]/).pop() ?? event.diskPath
-        toast.error(t('sync.attachmentUploadFailed', { filename }), { duration: 10000 })
+        toast.error(t('sync.attachmentUploadFailed', { filename }), {
+          duration: 10000,
+          action: activityAction()
+        })
       })
     )
 
@@ -566,7 +577,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       cancelled = true
       for (const cleanup of cleanups) cleanup()
     }
-  }, [authState.status, t])
+  }, [authState.status, t, tSettings])
 
   // Progress and conflict entries used to accumulate for the whole session and
   // only cleared on logout. Sweep them on a timer; the reducer returns the same

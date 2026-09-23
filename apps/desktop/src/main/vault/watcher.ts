@@ -60,6 +60,7 @@ import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown
 import { enqueueJournalDelete } from '../journal/runtime-effects'
 import { syncNoteCreate, syncNoteDelete, syncNoteUpdate } from '../notes/runtime-effects'
 import { normalizeRelativePath } from '../lib/paths'
+import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 
 const logger = createLogger('Watcher')
 
@@ -213,7 +214,15 @@ export class VaultWatcher {
 
         // For files, only watch supported file types (md, pdf, images, audio, video)
         if (stats?.isFile()) {
-          return !isSupportedPath(filePath)
+          const supported = isSupportedPath(filePath)
+          // Before `ready` this is the initial walk over files that were
+          // already there; the open-time scan reports those. After it, an
+          // unsupported file is one the user just put in the vault, and
+          // ignoring it silently is what #2359 was about.
+          if (!supported && this.isReady && this.vaultPath) {
+            recordSkippedFile(path.relative(this.vaultPath, filePath), 'watcher')
+          }
+          return !supported
         }
 
         return false
@@ -342,6 +351,13 @@ export class VaultWatcher {
       // so it has to be countable rather than left to a promise nobody awaits.
       logger.error('Failed to add file', { path: absolutePath, error })
       trackMainError('vault', 'file_add', error)
+      recordActivity({
+        kind: 'failed',
+        source: 'watcher',
+        path: toActivityPath(absolutePath),
+        reason: 'index-failed',
+        message: error.message
+      })
       this.onError?.(error)
     }
   }
@@ -423,6 +439,8 @@ export class VaultWatcher {
     })
 
     enqueueIngestBackfill({ noteId, absolutePath, relativePath, fileBytes: stats.size })
+
+    if (claimed === null) recordActivity({ kind: 'added', source: 'watcher', path: relativePath })
   }
 
   /**
@@ -479,6 +497,8 @@ export class VaultWatcher {
     await flushProjectionEvents()
 
     processRename(id, oldPath, relativePath)
+
+    recordActivity({ kind: 'renamed', source: 'watcher', path: relativePath, oldPath })
 
     if (this.vaultPath) {
       enqueueIngestBackfill({
@@ -549,6 +569,8 @@ export class VaultWatcher {
     })
 
     attachmentEvents.emitSaved({ noteId: id, diskPath: absolutePath })
+
+    if (claimedId === null) recordActivity({ kind: 'added', source: 'watcher', path: relativePath })
   }
 
   /**
@@ -775,6 +797,8 @@ export class VaultWatcher {
 
           deleteNoteFromCache(db, cached.id)
           void flushProjectionEvents()
+
+          recordActivity({ kind: 'removed', source: 'watcher', path: relativePath })
 
           // Emit delete event
           emitEvent(NotesChannels.events.DELETED, {

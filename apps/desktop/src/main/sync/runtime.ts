@@ -123,6 +123,7 @@ import {
 import { SyncWorkerBridge } from './worker-bridge'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import { store } from '../store'
+import { recordSyncStatusActivity } from './sync-activity'
 
 const log = createLogger('SyncRuntime')
 
@@ -157,6 +158,7 @@ function emitVaultRecoveryNeeded(event: VaultRecoveryNeededEvent): void {
 }
 
 function emitSyncStatus(event: SyncStatusChangedEvent): void {
+  recordSyncStatusActivity(event)
   broadcastToAllWindows(EVENT_CHANNELS.STATUS_CHANGED, event)
 }
 
@@ -817,6 +819,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       }
 
       const emitFn = (channel: string, data: unknown): void => {
+        if (channel === EVENT_CHANNELS.STATUS_CHANGED) recordSyncStatusActivity(data)
         broadcastToAllWindows(channel, data)
       }
 

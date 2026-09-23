@@ -49,6 +49,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterCryptoHandlers: vi.fn(),
   registerRecentsHandlers: vi.fn(),
   unregisterRecentsHandlers: vi.fn(),
+  registerVaultActivityHandlers: vi.fn(),
+  unregisterVaultActivityHandlers: vi.fn(),
   registerSearchHandlers: vi.fn(),
   unregisterSearchHandlers: vi.fn(),
   registerGraphHandlers: vi.fn(),
@@ -158,6 +160,10 @@ vi.mock('./crypto-handlers', () => ({
 vi.mock('./recents-handlers', () => ({
   registerRecentsHandlers: hoisted.registerRecentsHandlers,
   unregisterRecentsHandlers: hoisted.unregisterRecentsHandlers
+}))
+vi.mock('./vault-activity-handlers', () => ({
+  registerVaultActivityHandlers: hoisted.registerVaultActivityHandlers,
+  unregisterVaultActivityHandlers: hoisted.unregisterVaultActivityHandlers
 }))
 vi.mock('./search-handlers', () => ({
   registerSearchHandlers: hoisted.registerSearchHandlers,

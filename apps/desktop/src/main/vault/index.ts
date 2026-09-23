@@ -53,6 +53,7 @@ import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
 import { indexVault, rebuildIndex, resetIndexDatabase } from './indexer'
+import { closeActivityLog, openActivityLog } from './activity-log'
 import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
@@ -456,7 +457,8 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
     // fast for subsequent opens of an up-to-date vault.
     const result = await indexVault(vaultPath, {
       shouldStop: isStale,
-      ...(forcePaths.length > 0 ? { forcePaths } : {})
+      ...(forcePaths.length > 0 ? { forcePaths } : {}),
+      activity: recoveredReason ? 'rebuild' : 'scan'
     })
     if (result.cancelled || isStale()) return
 
@@ -618,6 +620,9 @@ async function openVault(vaultPath: string): Promise<void> {
   // holder) resolve the real config.json instead of the closed-vault fallback —
   // otherwise the initial index uses default journal config + empty excludes.
   updateStatus({ isIndexing: true, indexProgress: 0, path: vaultPath })
+
+  // Before the watcher and the background walk, which both record into it.
+  openActivityLog(vaultPath)
 
   // The file walk must not block the open (#1832: measured ~72.5s per 1,000
   // notes, fully blocking first open). The awaited work below only guarantees
@@ -969,6 +974,9 @@ export async function closeVault(): Promise<void> {
 
   await stopSyncRuntime()
 
+  // After everything that records into it has stopped.
+  await closeActivityLog()
+
   PropertyDefinitionsService.destroy()
 
   invalidateVaultConfigCache()
@@ -1126,7 +1134,7 @@ export async function reindex(): Promise<void> {
   updateStatus({ isIndexing: true, indexProgress: 0 })
 
   try {
-    await indexVault(currentStatus.path)
+    await indexVault(currentStatus.path, { activity: 'scan' })
     updateStatus({ isIndexing: false, indexProgress: 100 })
     drainDeferredEmbeddings()
   } catch (error) {

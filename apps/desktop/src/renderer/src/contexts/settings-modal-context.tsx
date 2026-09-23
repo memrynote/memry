@@ -23,7 +23,7 @@ export type SettingsSection =
   | 'account'
   | 'features'
 
-export type SettingsFocusTarget = 'voice-local-model'
+export type SettingsFocusTarget = 'voice-local-model' | 'vault-activity'
 
 const DEFAULT_SECTION: SettingsSection = 'account'
 
@@ -45,6 +45,9 @@ function parseSettingsTarget(section?: string): {
 } {
   if (section === 'ai:voice-local-model') {
     return { section: 'ai', focusTarget: 'voice-local-model' }
+  }
+  if (section === 'vault:activity') {
+    return { section: 'vault', focusTarget: 'vault-activity' }
   }
 
   return { section: (section as SettingsSection) ?? DEFAULT_SECTION, focusTarget: null }

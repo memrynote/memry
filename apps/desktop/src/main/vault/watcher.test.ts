@@ -18,7 +18,11 @@ import { BrowserWindow } from 'electron'
 import { parseNote, serializeNote } from './frontmatter'
 import { trackPendingDelete, clearAllPendingDeletes, hasPendingDeletes } from './rename-tracker'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
-import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
+import {
+  flushProjectionEvents,
+  startProjectionRuntime,
+  stopProjectionRuntime
+} from '../projections'
 
 const mockWatch = vi.hoisted(() => vi.fn())
 const baseConfig: VaultConfig = {
@@ -120,6 +124,7 @@ import { scanMarkdownFile } from './file-scan'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { trackMainError } from '../telemetry/diagnostics'
 import { VaultWatcher, getWatcher, startWatcher, stopWatcher } from './watcher'
+import { closeActivityLog, listActivity, openActivityLog } from './activity-log'
 
 describe('vault watcher', () => {
   let vault: ReturnType<typeof createTestVault>
@@ -147,6 +152,7 @@ describe('vault watcher', () => {
   })
 
   afterEach(async () => {
+    await closeActivityLog()
     await stopProjectionRuntime({ drain: true })
     clearIngestBackfill()
     clearAllPendingDeletes()
@@ -517,6 +523,70 @@ describe('vault watcher', () => {
     trigger('ready')
     await startPromise
     await watcher.stop()
+  })
+
+  it('logs an unsupported file dropped in after the initial walk, once', async () => {
+    const listeners = new Map<string, Array<(...args: unknown[]) => void>>()
+    const mockWatcher = {
+      on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        listeners.set(event, [...(listeners.get(event) ?? []), handler])
+        return mockWatcher
+      }),
+      once: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        listeners.set(event, [...(listeners.get(event) ?? []), handler])
+        return mockWatcher
+      }),
+      close: vi.fn().mockResolvedValue(undefined)
+    }
+    mockWatch.mockReturnValue(mockWatcher)
+    openActivityLog(vault.path)
+
+    const watcher = new VaultWatcher()
+    const startPromise = watcher.start({ vaultPath: vault.path })
+    const ignored = mockWatch.mock.calls[0][1].ignored as (
+      filePath: string,
+      stats?: { isFile: () => boolean }
+    ) => boolean
+    const file = { isFile: () => true }
+
+    // The initial walk sees files that were already there: the open-time scan
+    // owns those, so the watcher stays quiet.
+    expect(ignored(path.join(vault.path, 'notes', 'old.docx'), file)).toBe(true)
+    for (const handler of listeners.get('ready') ?? []) handler()
+    await startPromise
+
+    expect(ignored(path.join(vault.path, 'notes', 'new.docx'), file)).toBe(true)
+    expect(ignored(path.join(vault.path, 'notes', 'new.docx'), file)).toBe(true)
+
+    expect(listActivity()).toEqual([
+      expect.objectContaining({
+        kind: 'skipped',
+        source: 'watcher',
+        path: 'notes/new.docx',
+        reason: 'unsupported-type'
+      })
+    ])
+    await watcher.stop()
+  })
+
+  it('logs files added and removed outside the app', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    openActivityLog(vault.path)
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+
+    const imagePath = path.join(vault.notesDir, 'photo.png')
+    fs.writeFileSync(imagePath, Buffer.from('image'))
+    await watcher.handleFileAdd(imagePath)
+
+    watcher.handleFileDelete(imagePath)
+    await vi.advanceTimersByTimeAsync(5_000)
+    await flushProjectionEvents()
+
+    expect(listActivity().map((entry) => [entry.kind, entry.path])).toEqual([
+      ['removed', 'notes/photo.png'],
+      ['added', 'notes/photo.png']
+    ])
   })
 
   it('adds and updates non-markdown files as attachment notes', async () => {

@@ -1,4 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 
 vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: () => [] }
@@ -12,6 +15,7 @@ import { runImport, previewImport, cancelImport } from './runner'
 import { registerImporter, __resetRegistry } from './registry'
 import { flushProjectionEvents } from '../projections'
 import type { Importer } from './types'
+import { closeActivityLog, listActivity, openActivityLog } from '../vault/activity-log'
 
 describe('runner', () => {
   beforeEach(() => {
@@ -72,6 +76,72 @@ describe('runner', () => {
       'boom'
     )
     expect(flushProjectionEvents).toHaveBeenCalledTimes(1)
+  })
+
+  describe('vault activity', () => {
+    let vaultPath: string
+
+    beforeEach(() => {
+      vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-import-activity-'))
+      openActivityLog(vaultPath)
+    })
+
+    afterEach(async () => {
+      await closeActivityLog()
+      fs.rmSync(vaultPath, { recursive: true, force: true })
+    })
+
+    it('records one entry per run naming what failed and what was skipped', async () => {
+      registerImporter({
+        id: 'notion',
+        name: 'Notion',
+        descriptionKey: 'k.n',
+        fileSpec: { label: 'N', extensions: ['zip'], allowMultiple: false },
+        run: async (_input, ctx) => {
+          ctx.reportImported()
+          ctx.reportSkipped('Locked page', { code: 'locked', message: 'Page is locked' })
+          ctx.reportFailed('Broken page', new Error('bad html'))
+          return ctx.toSummary()
+        }
+      })
+
+      await runImport({ importId: 'ra', importerId: 'notion', sourcePaths: ['a.zip'] })
+
+      expect(listActivity()).toEqual([
+        expect.objectContaining({
+          kind: 'import',
+          source: 'import',
+          importer: 'notion',
+          counts: { imported: 1, attachments: 0, skipped: 1, failed: 1 },
+          items: ['Broken page \u2014 bad html', 'Locked page \u2014 Page is locked']
+        })
+      ])
+    })
+
+    it('records a run that threw as a failure', async () => {
+      registerImporter({
+        id: 'bear',
+        name: 'Bear',
+        descriptionKey: 'k.b',
+        fileSpec: { label: 'B', extensions: ['bear2bk'], allowMultiple: false },
+        run: async () => {
+          throw new Error('corrupt archive')
+        }
+      })
+
+      await expect(
+        runImport({ importId: 'rb', importerId: 'bear', sourcePaths: [] })
+      ).rejects.toThrow('corrupt archive')
+
+      expect(listActivity()).toEqual([
+        expect.objectContaining({
+          kind: 'failed',
+          importer: 'bear',
+          reason: 'import-failed',
+          message: 'corrupt archive'
+        })
+      ])
+    })
   })
 
   it('throws for unknown importer id', async () => {

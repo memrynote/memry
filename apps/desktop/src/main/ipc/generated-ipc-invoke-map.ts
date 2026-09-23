@@ -473,6 +473,10 @@ export interface MainIpcInvokeHandlers {
   "updater:set-auto-check": (...args: [boolean]) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
   "updater:set-auto-download": (...args: [boolean]) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
   "updater:skip-version": (...args: [string]) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
+  "vault-activity:clear": (...args: []) => Awaited<Promise<{ cleared: true; }>>
+  "vault-activity:list": (...args: [{ limit?: number | undefined; filter?: "all" | "problems" | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-activity-api").ListVaultActivityResult>>
+  "vault-activity:reveal": (...args: []) => Awaited<Promise<{ revealed: false; } | { revealed: true; }>>
+  "vault-activity:set-retention": (...args: [{ days: 7 | 90 | 30; }]) => Awaited<Promise<{ retentionDays: 7 | 90 | 30; }>>
   "vault:close": (...args: []) => Awaited<Promise<void>>
   "vault:delete-from-account": (...args: [string]) => Awaited<Promise<void>>
   "vault:download-remote": (...args: [{ vaultUuid: string; parentPath?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>
