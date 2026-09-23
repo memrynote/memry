@@ -30,11 +30,17 @@
 use std::collections::HashMap;
 
 use yrs::types::text::YChange;
-use yrs::{ReadTxn, Text as _, Xml as _, XmlElementRef, XmlFragment, XmlOut, XmlTextRef};
+use yrs::{Any, Out, ReadTxn, Text as _, Xml as _, XmlElementRef, XmlFragment, XmlOut, XmlTextRef};
 
 use super::errors::CrdtError;
 use super::registry::Document;
 use super::text_extract::BODY_FRAGMENT;
+
+mod inline;
+mod tables;
+
+use inline::*;
+use tables::*;
 
 /// One block of a note body.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -74,10 +80,92 @@ pub struct InlineRun {
     /// for an inline node its tag — `wikiLink`, `hashTag`, `dateMention`,
     /// `linkMention`.
     pub marks: Vec<String>,
+    /// What each mark **says**, which the name alone does not.
+    ///
+    /// `bold` is the whole statement; `textColor` is not, and until this
+    /// existed a red word and a blue word reached the shell as the same bare
+    /// `textColor`. Values are flattened into one flat map rather than nested,
+    /// because the FFI carries a `Map<String, String>` and a shell asking "what
+    /// colour" wants one lookup:
+    ///
+    /// - a mark whose attributes are empty — every boolean style — is **not**
+    ///   in the map at all; its presence in [`Self::marks`] is the whole fact;
+    /// - BlockNote stores a string-valued style's value under one attribute
+    ///   named `stringValue`, and that one is normalised to the bare mark name,
+    ///   so `textColor` reads as `textColor -> "red"` and no shell ever learns
+    ///   BlockNote's spelling;
+    /// - anything else is keyed `mark.attribute`, so a link's `href` is
+    ///   `link.href`, and a nested object or array is its JSON rather than
+    ///   being dropped (FR-033);
+    /// - an inline **node**'s own attributes are here too, under its tag —
+    ///   `wikiLink.displayAs`, `dateMention.date` — because those are lost
+    ///   otherwise and Phase G needs them.
+    pub mark_attrs: HashMap<String, String>,
     /// What the run points at, when it points at anything: a URL for a link, a
     /// wiki target for a wiki link, a tag name, an ISO date. The shell decides
     /// what to do with it; the core does not resolve it.
     pub target: Option<String>,
+}
+
+/// One table's structure, which a flat block list cannot carry.
+///
+/// A table's cells reach [`extract_blocks`] as blocks like any other, because
+/// dropping them would lose their text and break the walk this module is held
+/// to. But a flat list with a depth number cannot say **which row** a cell is
+/// in, how wide a column is, or which cells are headers, so a shell reading
+/// only that list draws a table as a column of loose paragraphs. This is the
+/// second read that answers those questions.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct TableContent {
+    /// The `blockContainer` id of the table itself, which is the handle an
+    /// edit addresses. `None` for a table written without one.
+    pub block_id: Option<String>,
+    /// One entry per column, in the document's own units, `None` where the
+    /// column has never been resized.
+    ///
+    /// Taken from the first row's `colwidth` attributes, the way BlockNote
+    /// derives `columnWidths`. They are **not** pixels on this screen: a
+    /// column sized on a desktop window is wider than a phone, so a shell
+    /// applies them proportionally (N011).
+    pub column_widths: Vec<Option<f64>>,
+    /// How many rows are entirely `tableHeader`, counted the way BlockNote
+    /// counts them: any fully-header row, not only leading ones.
+    pub header_rows: u32,
+    /// How many columns are entirely `tableHeader`, same rule.
+    pub header_cols: u32,
+    pub rows: Vec<TableRow>,
+}
+
+/// One row of a table.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct TableRow {
+    pub cells: Vec<TableCell>,
+}
+
+/// One cell of a table.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct TableCell {
+    /// **Q1's answer, recorded where it cannot be missed: a cell carries no
+    /// `blockContainer` id.** BlockNote builds a cell as
+    /// `tableCell > tableParagraph`, with no container and no id anywhere in
+    /// between, so a cell cannot be addressed the way every other block is.
+    /// An edit reaches one by the table's id plus its row and column
+    /// (N402), and this field exists to say so rather than leaving the next
+    /// reader to rediscover it from a fixture.
+    pub block_id: Option<String>,
+    /// `true` when the document spells this cell `tableHeader`.
+    pub is_header: bool,
+    pub colspan: u32,
+    pub rowspan: u32,
+    pub background_color: Option<String>,
+    pub text_color: Option<String>,
+    pub text_alignment: Option<String>,
+    /// This cell's own `colwidth`, one entry per column it spans.
+    pub colwidth: Vec<Option<f64>>,
+    /// The cell's content, as blocks. Normally one `tableParagraph`; a cell
+    /// holding something this build does not know keeps it rather than
+    /// flattening it to text (FR-033).
+    pub content: Vec<Block>,
 }
 
 /// The body as blocks.
@@ -88,9 +176,25 @@ pub fn extract_blocks(document: &Document) -> Result<Vec<Block>, CrdtError> {
     document.read(|txn| {
         let mut blocks = Vec::new();
         if let Some(fragment) = txn.get_xml_fragment(BODY_FRAGMENT) {
-            walk(&fragment, txn, 0, &mut blocks);
+            walk(&fragment, txn, 0, &mut blocks, true);
         }
         blocks
+    })
+}
+
+/// One table's structure, by the `blockContainer` id of the table block.
+///
+/// `None` for an id this body does not hold **and** for an id that holds
+/// something other than a table: the caller asked about a table and there is
+/// none, which is one answer rather than two.
+pub fn extract_table(
+    document: &Document,
+    block_id: &str,
+) -> Result<Option<TableContent>, CrdtError> {
+    document.read(|txn| {
+        let fragment = txn.get_xml_fragment(BODY_FRAGMENT)?;
+        let table = find_table(&fragment, txn, block_id)?;
+        Some(table_content(&table, txn, block_id))
     })
 }
 
@@ -101,6 +205,7 @@ pub fn extract_blocks(document: &Document) -> Result<Vec<Block>, CrdtError> {
 pub fn blocks_to_text(blocks: &[Block]) -> String {
     blocks
         .iter()
+        .filter(|block| !TEXT_DROPPED.contains(&block.kind.as_str()))
         .filter_map(|block| {
             let text: String = block.inline.iter().map(|run| run.text.as_str()).collect();
             let line = format!("{}{}", marker(block), text);
@@ -133,9 +238,31 @@ fn marker(block: &Block) -> String {
 // MARK: - The walk
 
 /// Structural nodes that carry no block of their own.
-const CONTAINERS: [&str; 4] = ["blockContainer", "blockGroup", "table", "tableRow"];
-/// Blocks whose own content is dropped entirely.
-const SKIPPED: [&str; 1] = ["divider"];
+///
+/// **`table` and `tableRow` are deliberately not here, and `extract_text`'s
+/// list is deliberately different.** Treating them as containers is what made
+/// a table unrecoverable: every cell of every row arrived at one depth, with
+/// no row boundary, no column count and the table's own `blockContainer` id
+/// stuck on the first cell. A shell could not tell a two-by-three table from
+/// six paragraphs. They are blocks here, so the table keeps its id and its
+/// rows keep their boundaries; the text walk still sees them as containers,
+/// because a table contributes one line per cell and nothing of its own — and
+/// both of those produce the same bytes, which `tests/crdt_blocks.rs` checks.
+const CONTAINERS: [&str; 2] = ["blockContainer", "blockGroup"];
+/// Blocks `extract_text` drops entirely (chapter 12 §12.1.3).
+///
+/// **Only the text walk drops them.** A `divider` is a real block a shell has
+/// to draw, and dropping it here is what made `NoteBlockView`'s `case
+/// "divider"` unreachable — the block never left the core. It is emitted like
+/// any other block now, and [`blocks_to_text`] skips it so the two walks still
+/// agree byte for byte.
+const TEXT_DROPPED: [&str; 1] = ["divider"];
+/// The attribute BlockNote stores a string-valued style's value under.
+///
+/// `createStyleSpecFromTipTapMark` builds every string style with a single
+/// `stringValue` attribute, so `textColor="red"` arrives as
+/// `{ stringValue: "red" }`. Normalised away in [`flatten_mark_attrs`].
+const STRING_VALUE_ATTR: &str = "stringValue";
 /// Node names that are inline content rather than blocks.
 const INLINE_NODES: [&str; 6] = [
     "wikiLink",
@@ -154,14 +281,21 @@ fn is_inline_node(name: &str) -> bool {
     INLINE_NODES.contains(&name)
 }
 
-fn walk<F, T>(node: &F, txn: &T, depth: u32, blocks: &mut Vec<Block>)
+/// `at_root` marks the fragment's own children.
+///
+/// It exists for one node: chapter 12 §12.5.0 says the fragment's single
+/// top-level child is **always** a `blockGroup`, so that one is structural in
+/// the same way the fragment is and must not count as nesting. Without this,
+/// every top-level block in a real BlockNote document reported `depth: 1`,
+/// and a shell indenting by depth drew the whole note one step in.
+fn walk<F, T>(node: &F, txn: &T, depth: u32, blocks: &mut Vec<Block>, at_root: bool)
 where
     F: XmlFragment,
     T: ReadTxn,
 {
     for child in node.children(txn) {
         match child {
-            XmlOut::Element(element) => walk_element(&element, txn, depth, blocks),
+            XmlOut::Element(element) => walk_element(&element, txn, depth, blocks, at_root),
             // Loose text directly under the fragment has no block of its own.
             // `extract_text` emits it as a line, so it becomes a paragraph
             // here rather than disappearing.
@@ -182,18 +316,21 @@ where
     }
 }
 
-fn walk_element<T: ReadTxn>(element: &XmlElementRef, txn: &T, depth: u32, blocks: &mut Vec<Block>) {
+fn walk_element<T: ReadTxn>(
+    element: &XmlElementRef,
+    txn: &T,
+    depth: u32,
+    blocks: &mut Vec<Block>,
+    at_root: bool,
+) {
     let tag = element.tag().clone();
     let name: &str = tag.as_ref();
 
-    if SKIPPED.contains(&name) {
-        return;
-    }
-
     if is_container(name) {
         // A `blockContainer` holds one block plus, sometimes, a `blockGroup`
-        // of children; only the group is a level deeper.
-        let deeper = if name == "blockGroup" {
+        // of children; only the group is a level deeper — except the one the
+        // fragment always carries, which is structure rather than nesting.
+        let deeper = if name == "blockGroup" && !at_root {
             depth + 1
         } else {
             depth
@@ -202,7 +339,7 @@ fn walk_element<T: ReadTxn>(element: &XmlElementRef, txn: &T, depth: u32, blocks
         // shell addresses, so it is carried down one level.
         let container_id = attribute(element, txn, "id");
         let before = blocks.len();
-        walk(element, txn, deeper, blocks);
+        walk(element, txn, deeper, blocks, false);
         if let Some(id) = container_id
             && let Some(first) = blocks.get_mut(before)
             && first.id.is_none()
@@ -228,7 +365,7 @@ fn walk_element<T: ReadTxn>(element: &XmlElementRef, txn: &T, depth: u32, blocks
             let inner_tag = inner.tag().clone();
             let inner_name: &str = inner_tag.as_ref();
             if !is_inline_node(inner_name) {
-                walk_element(&inner, txn, depth + 1, blocks);
+                walk_element(&inner, txn, depth + 1, blocks, false);
             }
         }
     }
@@ -254,118 +391,4 @@ fn props_of<T: ReadTxn>(element: &XmlElementRef, txn: &T) -> Vec<BlockProp> {
     // one.
     props.sort_by(|left, right| left.name.cmp(&right.name));
     props
-}
-
-/// The block's own inline content, flattened into runs.
-fn inline_runs<T: ReadTxn>(element: &XmlElementRef, txn: &T) -> Vec<InlineRun> {
-    let mut runs = Vec::new();
-    collect_runs(element, txn, &[], &mut runs);
-    runs
-}
-
-fn collect_runs<T: ReadTxn>(
-    element: &XmlElementRef,
-    txn: &T,
-    inherited: &[String],
-    runs: &mut Vec<InlineRun>,
-) {
-    for child in element.children(txn) {
-        match child {
-            XmlOut::Text(text) => {
-                for mut run in runs_of_text(&text, txn) {
-                    run.marks = merge(inherited, &run.marks);
-                    if !run.text.is_empty() {
-                        runs.push(run);
-                    }
-                }
-            }
-            XmlOut::Element(inner) => {
-                let tag = inner.tag().clone();
-                let name: &str = tag.as_ref();
-                if !is_inline_node(name) {
-                    // A nested block. It contributes its own entry, not this
-                    // block's text — folding it in would merge two paragraphs.
-                    continue;
-                }
-                let mut marks = inherited.to_vec();
-                marks.push(name.to_owned());
-                let target = inline_target(&inner, txn);
-                let before = runs.len();
-                collect_runs(&inner, txn, &marks, runs);
-                for run in runs[before..].iter_mut() {
-                    if run.target.is_none() {
-                        run.target = target.clone();
-                    }
-                }
-                // An inline node with no text of its own — an image, a
-                // checkbox — is still a run, or the shell never hears about it.
-                if runs.len() == before {
-                    runs.push(InlineRun {
-                        text: String::new(),
-                        marks,
-                        target,
-                    });
-                }
-            }
-            XmlOut::Fragment(_) => {}
-        }
-    }
-}
-
-/// Where an inline node points, by the attribute its own type uses.
-fn inline_target<T: ReadTxn>(element: &XmlElementRef, txn: &T) -> Option<String> {
-    for name in ["target", "href", "url", "tag", "date", "src", "noteId"] {
-        if let Some(value) = attribute(element, txn, name) {
-            return Some(value);
-        }
-    }
-    None
-}
-
-/// One `XmlText`'s deltas, as runs. Marks are y-prosemirror's text attributes.
-fn runs_of_text<T: ReadTxn>(text: &XmlTextRef, txn: &T) -> Vec<InlineRun> {
-    let mut runs = Vec::new();
-    for chunk in text.diff(txn, YChange::identity) {
-        let mut marks: Vec<String> = Vec::new();
-        let mut target: Option<String> = None;
-        if let Some(attrs) = chunk.attributes {
-            let mut entries: Vec<(&str, String)> = attrs
-                .iter()
-                .map(|(key, value)| (key.as_ref(), value.to_string()))
-                .collect();
-            entries.sort_by(|left, right| left.0.cmp(right.0));
-            for (key, value) in entries {
-                marks.push(key.to_owned());
-                if key == "link" || key == "href" {
-                    target = Some(unquote(&value));
-                }
-            }
-        }
-        runs.push(InlineRun {
-            text: unquote(&chunk.insert.to_string(txn)),
-            marks,
-            target,
-        });
-    }
-    runs
-}
-
-/// `yrs::Out`'s `to_string` quotes a string value; the text itself is wanted.
-fn unquote(value: &str) -> String {
-    value
-        .strip_prefix('"')
-        .and_then(|rest| rest.strip_suffix('"'))
-        .map(|inner| inner.replace("\\\"", "\""))
-        .unwrap_or_else(|| value.to_owned())
-}
-
-fn merge(inherited: &[String], own: &[String]) -> Vec<String> {
-    let mut marks = inherited.to_vec();
-    let mut seen: HashMap<&str, ()> = inherited.iter().map(|mark| (mark.as_str(), ())).collect();
-    for mark in own {
-        if seen.insert(mark.as_str(), ()).is_none() {
-            marks.push(mark.clone());
-        }
-    }
-    marks
 }

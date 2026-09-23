@@ -1,0 +1,1891 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "note-blocks",
+    "chapter": "docs/protocol/12-note-body-format.md §12.5.0, §12.9",
+    "extractor": "packages/contracts/scripts/extract-blocks.ts",
+    "canonical": "packages/contracts/scripts/fragment-canonical.ts",
+    "fragmentName": "prosemirror",
+    "authoredBy": "@blocknote/server-util blocksToYXmlFragment, the path desktop main calls",
+    "registry": {
+      "blocks": 20,
+      "inline": 8,
+      "styles": 7
+    },
+    "notClaimed": "this is not markdown and not a rendering; it is the block list a shell draws from",
+    "caseCount": 32
+  },
+  "cases": [
+    {
+      "name": "paragraph",
+      "pins": "the simplest block, and the one every unknown type falls back to",
+      "updateHex": "0109f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb0603144f6e6520706c61696e207061726167726170682e2800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb060102696401770b7061726167726170682d3000",
+      "expectedBlocks": [
+        {
+          "id": "paragraph-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "One plain paragraph.",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"paragraph-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"One plain paragraph.\""
+    },
+    {
+      "name": "headings at every level",
+      "pins": "all six levels survive as a `level` prop; the shell renders six, not three",
+      "updateHex": "013df2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030768656164696e670700f2da95eb0602060400f2da95eb0603074c6576656c20312800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0602056c6576656c017d012800f2da95eb06020c6973546f67676c6561626c6501792800f2da95eb060102696401771968656164696e67732d61742d65766572792d6c6576656c2d3087f2da95eb0601030e626c6f636b436f6e7461696e65720700f2da95eb0611030768656164696e670700f2da95eb0612060400f2da95eb0613074c6576656c20322800f2da95eb06120f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06120974657874436f6c6f7201770764656661756c742800f2da95eb06120d74657874416c69676e6d656e740177046c6566742800f2da95eb0612056c6576656c017d022800f2da95eb06120c6973546f67676c6561626c6501792800f2da95eb061102696401771968656164696e67732d61742d65766572792d6c6576656c2d3187f2da95eb0611030e626c6f636b436f6e7461696e65720700f2da95eb0621030768656164696e670700f2da95eb0622060400f2da95eb0623074c6576656c20332800f2da95eb06220f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06220974657874436f6c6f7201770764656661756c742800f2da95eb06220d74657874416c69676e6d656e740177046c6566742800f2da95eb0622056c6576656c017d032800f2da95eb06220c6973546f67676c6561626c6501792800f2da95eb062102696401771968656164696e67732d61742d65766572792d6c6576656c2d3287f2da95eb0621030e626c6f636b436f6e7461696e65720700f2da95eb0631030768656164696e670700f2da95eb0632060400f2da95eb0633074c6576656c20342800f2da95eb06320f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06320974657874436f6c6f7201770764656661756c742800f2da95eb06320d74657874416c69676e6d656e740177046c6566742800f2da95eb0632056c6576656c017d042800f2da95eb06320c6973546f67676c6561626c6501792800f2da95eb063102696401771968656164696e67732d61742d65766572792d6c6576656c2d3387f2da95eb0631030e626c6f636b436f6e7461696e65720700f2da95eb0641030768656164696e670700f2da95eb0642060400f2da95eb0643074c6576656c20352800f2da95eb06420f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06420974657874436f6c6f7201770764656661756c742800f2da95eb06420d74657874416c69676e6d656e740177046c6566742800f2da95eb0642056c6576656c017d052800f2da95eb06420c6973546f67676c6561626c6501792800f2da95eb064102696401771968656164696e67732d61742d65766572792d6c6576656c2d3487f2da95eb0641030e626c6f636b436f6e7461696e65720700f2da95eb0651030768656164696e670700f2da95eb0652060400f2da95eb0653074c6576656c20362800f2da95eb06520f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06520974657874436f6c6f7201770764656661756c742800f2da95eb06520d74657874416c69676e6d656e740177046c6566742800f2da95eb0652056c6576656c017d062800f2da95eb06520c6973546f67676c6561626c6501792800f2da95eb065102696401771968656164696e67732d61742d65766572792d6c6576656c2d3500",
+      "expectedBlocks": [
+        {
+          "id": "headings-at-every-level-0",
+          "kind": "heading",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "isToggleable",
+              "value": "false"
+            },
+            {
+              "name": "level",
+              "value": "1"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Level 1",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "headings-at-every-level-1",
+          "kind": "heading",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "isToggleable",
+              "value": "false"
+            },
+            {
+              "name": "level",
+              "value": "2"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Level 2",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "headings-at-every-level-2",
+          "kind": "heading",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "isToggleable",
+              "value": "false"
+            },
+            {
+              "name": "level",
+              "value": "3"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Level 3",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "headings-at-every-level-3",
+          "kind": "heading",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "isToggleable",
+              "value": "false"
+            },
+            {
+              "name": "level",
+              "value": "4"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Level 4",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "headings-at-every-level-4",
+          "kind": "heading",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "isToggleable",
+              "value": "false"
+            },
+            {
+              "name": "level",
+              "value": "5"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Level 5",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "headings-at-every-level-5",
+          "kind": "heading",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "isToggleable",
+              "value": "false"
+            },
+            {
+              "name": "level",
+              "value": "6"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Level 6",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"headings-at-every-level-0\"\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"Level 1\"\n1 element blockContainer id=\"headings-at-every-level-1\"\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Level 2\"\n1 element blockContainer id=\"headings-at-every-level-2\"\n2 element heading backgroundColor=\"default\" isToggleable=false level=3 textAlignment=\"left\" textColor=\"default\"\n3 text \"Level 3\"\n1 element blockContainer id=\"headings-at-every-level-3\"\n2 element heading backgroundColor=\"default\" isToggleable=false level=4 textAlignment=\"left\" textColor=\"default\"\n3 text \"Level 4\"\n1 element blockContainer id=\"headings-at-every-level-4\"\n2 element heading backgroundColor=\"default\" isToggleable=false level=5 textAlignment=\"left\" textColor=\"default\"\n3 text \"Level 5\"\n1 element blockContainer id=\"headings-at-every-level-5\"\n2 element heading backgroundColor=\"default\" isToggleable=false level=6 textAlignment=\"left\" textColor=\"default\"\n3 text \"Level 6\""
+    },
+    {
+      "name": "bulletListItem",
+      "pins": "a bullet list, including a nested child that arrives one depth deeper",
+      "updateHex": "011af2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030e62756c6c65744c6973744974656d0700f2da95eb0602060400f2da95eb0603054f757465722800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c65667487f2da95eb0602030a626c6f636b47726f75700700f2da95eb060c030e626c6f636b436f6e7461696e65720700f2da95eb060d030e62756c6c65744c6973744974656d0700f2da95eb060e060400f2da95eb060f05496e6e65722800f2da95eb060e0f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb060e0974657874436f6c6f7201770764656661756c742800f2da95eb060e0d74657874416c69676e6d656e740177046c6566742800f2da95eb060d02696401771262756c6c65746c6973746974656d2d302d302800f2da95eb060102696401771062756c6c65746c6973746974656d2d3087f2da95eb0601030e626c6f636b436f6e7461696e65720700f2da95eb061a030e62756c6c65744c6973744974656d0700f2da95eb061b060400f2da95eb061c065365636f6e642800f2da95eb061b0f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb061b0974657874436f6c6f7201770764656661756c742800f2da95eb061b0d74657874416c69676e6d656e740177046c6566742800f2da95eb061a02696401771062756c6c65746c6973746974656d2d3100",
+      "expectedBlocks": [
+        {
+          "id": "bulletlistitem-0",
+          "kind": "bulletListItem",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Outer",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "bulletlistitem-0-0",
+          "kind": "bulletListItem",
+          "depth": 1,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Inner",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "bulletlistitem-1",
+          "kind": "bulletListItem",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Second",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"bulletlistitem-0\"\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Outer\"\n2 element blockGroup\n3 element blockContainer id=\"bulletlistitem-0-0\"\n4 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"Inner\"\n1 element blockContainer id=\"bulletlistitem-1\"\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Second\""
+    },
+    {
+      "name": "numberedListItem",
+      "pins": "three items that a shell must number 1, 2, 3 — the core emits no marker",
+      "updateHex": "011cf2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103106e756d62657265644c6973744974656d0700f2da95eb0602060400f2da95eb06030546697273742800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0602057374617274017f2800f2da95eb06010269640177126e756d62657265646c6973746974656d2d3087f2da95eb0601030e626c6f636b436f6e7461696e65720700f2da95eb060e03106e756d62657265644c6973744974656d0700f2da95eb060f060400f2da95eb0610065365636f6e642800f2da95eb060f0f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb060f0974657874436f6c6f7201770764656661756c742800f2da95eb060f0d74657874416c69676e6d656e740177046c6566742800f2da95eb060f057374617274017f2800f2da95eb060e0269640177126e756d62657265646c6973746974656d2d3187f2da95eb060e030e626c6f636b436f6e7461696e65720700f2da95eb061c03106e756d62657265644c6973744974656d0700f2da95eb061d060400f2da95eb061e0554686972642800f2da95eb061d0f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb061d0974657874436f6c6f7201770764656661756c742800f2da95eb061d0d74657874416c69676e6d656e740177046c6566742800f2da95eb061d057374617274017f2800f2da95eb061c0269640177126e756d62657265646c6973746974656d2d3200",
+      "expectedBlocks": [
+        {
+          "id": "numberedlistitem-0",
+          "kind": "numberedListItem",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "start",
+              "value": "undefined"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "First",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "numberedlistitem-1",
+          "kind": "numberedListItem",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "start",
+              "value": "undefined"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Second",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "numberedlistitem-2",
+          "kind": "numberedListItem",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "start",
+              "value": "undefined"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Third",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"numberedlistitem-0\"\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"First\"\n1 element blockContainer id=\"numberedlistitem-1\"\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Second\"\n1 element blockContainer id=\"numberedlistitem-2\"\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Third\""
+    },
+    {
+      "name": "checkListItem",
+      "pins": "the `checked` prop, both ways",
+      "updateHex": "0113f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030d636865636b4c6973744974656d0700f2da95eb0602060400f2da95eb060304446f6e652800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb060207636865636b656401782800f2da95eb060102696401770f636865636b6c6973746974656d2d3087f2da95eb0601030e626c6f636b436f6e7461696e65720700f2da95eb060d030d636865636b4c6973744974656d0700f2da95eb060e060400f2da95eb060f084e6f7420646f6e652800f2da95eb060e0f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb060e0974657874436f6c6f7201770764656661756c742800f2da95eb060e0d74657874416c69676e6d656e740177046c6566742800f2da95eb060e07636865636b656401792800f2da95eb060d02696401770f636865636b6c6973746974656d2d3100",
+      "expectedBlocks": [
+        {
+          "id": "checklistitem-0",
+          "kind": "checkListItem",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "checked",
+              "value": "true"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Done",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "checklistitem-1",
+          "kind": "checkListItem",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "checked",
+              "value": "false"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Not done",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"checklistitem-0\"\n2 element checkListItem backgroundColor=\"default\" checked=true textAlignment=\"left\" textColor=\"default\"\n3 text \"Done\"\n1 element blockContainer id=\"checklistitem-1\"\n2 element checkListItem backgroundColor=\"default\" checked=false textAlignment=\"left\" textColor=\"default\"\n3 text \"Not done\""
+    },
+    {
+      "name": "divider",
+      "pins": "THE REGRESSION THIS CLASS EXISTS FOR: a divider must reach the shell as a block, between two paragraphs that prove it did not swallow them",
+      "updateHex": "0114f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb06030541626f76652800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017709646976696465722d3087f2da95eb0601030e626c6f636b436f6e7461696e65720700f2da95eb060d0307646976696465722800f2da95eb060d026964017709646976696465722d3187f2da95eb060d030e626c6f636b436f6e7461696e65720700f2da95eb061003097061726167726170680700f2da95eb0611060400f2da95eb06120542656c6f772800f2da95eb06110f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06110974657874436f6c6f7201770764656661756c742800f2da95eb06110d74657874416c69676e6d656e740177046c6566742800f2da95eb0610026964017709646976696465722d3200",
+      "expectedBlocks": [
+        {
+          "id": "divider-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Above",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "divider-1",
+          "kind": "divider",
+          "depth": 0,
+          "props": [],
+          "inline": []
+        },
+        {
+          "id": "divider-2",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Below",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"divider-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Above\"\n1 element blockContainer id=\"divider-1\"\n2 element divider\n1 element blockContainer id=\"divider-2\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Below\""
+    },
+    {
+      "name": "quote",
+      "pins": "a quote is a block, not a paragraph with a marker",
+      "updateHex": "0108f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030571756f74650700f2da95eb0602060400f2da95eb060312536f6d656f6e65207361696420746869732e2800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb060102696401770771756f74652d3000",
+      "expectedBlocks": [
+        {
+          "id": "quote-0",
+          "kind": "quote",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Someone said this.",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"quote-0\"\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"Someone said this.\""
+    },
+    {
+      "name": "callout",
+      "pins": "the callout `type` survives, which `extract_text` drops",
+      "updateHex": "0111f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030763616c6c6f75740700f2da95eb0602060400f2da95eb06030d4d696e6420746865206761702e2800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb060204747970650177077761726e696e672800f2da95eb060102696401770963616c6c6f75742d3087f2da95eb0601030e626c6f636b436f6e7461696e65720700f2da95eb0615030763616c6c6f75740700f2da95eb0616060400f2da95eb061715466f7220796f757220696e666f726d6174696f6e2e2800f2da95eb06160d74657874416c69676e6d656e740177046c6566742800f2da95eb06160974657874436f6c6f7201770764656661756c742800f2da95eb06160474797065017704696e666f2800f2da95eb061502696401770963616c6c6f75742d3100",
+      "expectedBlocks": [
+        {
+          "id": "callout-0",
+          "kind": "callout",
+          "depth": 0,
+          "props": [
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            },
+            {
+              "name": "type",
+              "value": "warning"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Mind the gap.",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "callout-1",
+          "kind": "callout",
+          "depth": 0,
+          "props": [
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            },
+            {
+              "name": "type",
+              "value": "info"
+            }
+          ],
+          "inline": [
+            {
+              "text": "For your information.",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"callout-0\"\n2 element callout textAlignment=\"left\" textColor=\"default\" type=\"warning\"\n3 text \"Mind the gap.\"\n1 element blockContainer id=\"callout-1\"\n2 element callout textAlignment=\"left\" textColor=\"default\" type=\"info\"\n3 text \"For your information.\""
+    },
+    {
+      "name": "codeBlock",
+      "pins": "the language survives and the newline inside the code is not a block break",
+      "updateHex": "0107f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb06010309636f6465426c6f636b0700f2da95eb0602060400f2da95eb06031a636f6e73742078203d20310a636f6e736f6c652e6c6f672878292800f2da95eb0602086c616e677561676501770a747970657363726970742800f2da95eb060102696401770b636f6465626c6f636b2d3000",
+      "expectedBlocks": [
+        {
+          "id": "codeblock-0",
+          "kind": "codeBlock",
+          "depth": 0,
+          "props": [
+            {
+              "name": "language",
+              "value": "typescript"
+            }
+          ],
+          "inline": [
+            {
+              "text": "const x = 1\nconsole.log(x)",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"codeblock-0\"\n2 element codeBlock language=\"typescript\"\n3 text \"const x = 1\\nconsole.log(x)\""
+    },
+    {
+      "name": "toggleListItem",
+      "pins": "the open state is a prop and the body arrives as a child one depth deeper",
+      "updateHex": "0113f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030e746f67676c654c6973744974656d0700f2da95eb0602060400f2da95eb06030c53756d6d617279206c696e652800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0602046f70656e017987f2da95eb0602030a626c6f636b47726f75700700f2da95eb0614030e626c6f636b436f6e7461696e65720700f2da95eb061503097061726167726170680700f2da95eb0616060400f2da95eb06170c48696464656e20626f64792e2800f2da95eb06160f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06160974657874436f6c6f7201770764656661756c742800f2da95eb06160d74657874416c69676e6d656e740177046c6566742800f2da95eb0615026964017712746f67676c656c6973746974656d2d302d302800f2da95eb0601026964017710746f67676c656c6973746974656d2d3000",
+      "expectedBlocks": [
+        {
+          "id": "togglelistitem-0",
+          "kind": "toggleListItem",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "open",
+              "value": "false"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Summary line",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": "togglelistitem-0-0",
+          "kind": "paragraph",
+          "depth": 1,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Hidden body.",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"togglelistitem-0\"\n2 element toggleListItem backgroundColor=\"default\" open=false textAlignment=\"left\" textColor=\"default\"\n3 text \"Summary line\"\n2 element blockGroup\n3 element blockContainer id=\"togglelistitem-0-0\"\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"Hidden body.\""
+    },
+    {
+      "name": "taskBlock",
+      "pins": "the Memry task block is `content: none` — its text is the `title` PROP, so a reader that only walks inline content shows an empty row",
+      "updateHex": "0108f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097461736b426c6f636b2800f2da95eb0602067461736b496401770274312800f2da95eb0602057469746c6501771041207461736b20696e2061206e6f74652800f2da95eb060207636865636b656401792800f2da95eb06020c706172656e745461736b49640177002800f2da95eb060102696401770b7461736b626c6f636b2d3000",
+      "expectedBlocks": [
+        {
+          "id": "taskblock-0",
+          "kind": "taskBlock",
+          "depth": 0,
+          "props": [
+            {
+              "name": "checked",
+              "value": "false"
+            },
+            {
+              "name": "parentTaskId",
+              "value": ""
+            },
+            {
+              "name": "taskId",
+              "value": "t1"
+            },
+            {
+              "name": "title",
+              "value": "A task in a note"
+            }
+          ],
+          "inline": []
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"taskblock-0\"\n2 element taskBlock checked=false parentTaskId=\"\" taskId=\"t1\" title=\"A task in a note\""
+    },
+    {
+      "name": "image",
+      "pins": "a picture block: the url, name and caption cross as props, the bytes do not",
+      "updateHex": "010bf2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb06010305696d6167652800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb0602046e616d6501770661312e706e672800f2da95eb06020375726c0177136174746163686d656e743a2f2f61312e706e672800f2da95eb06020763617074696f6e0177094120706963747572652800f2da95eb06020b73686f775072657669657701782800f2da95eb06020c707265766965775769647468017f2800f2da95eb0601026964017707696d6167652d3000",
+      "expectedBlocks": [
+        {
+          "id": "image-0",
+          "kind": "image",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "caption",
+              "value": "A picture"
+            },
+            {
+              "name": "name",
+              "value": "a1.png"
+            },
+            {
+              "name": "previewWidth",
+              "value": "undefined"
+            },
+            {
+              "name": "showPreview",
+              "value": "true"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "url",
+              "value": "attachment://a1.png"
+            }
+          ],
+          "inline": []
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"image-0\"\n2 element image backgroundColor=\"default\" caption=\"A picture\" name=\"a1.png\" showPreview=true textAlignment=\"left\" url=\"attachment://a1.png\""
+    },
+    {
+      "name": "video",
+      "pins": "metadata only, and the block must not fall through to an empty paragraph",
+      "updateHex": "010bf2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb06010305766964656f2800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb0602046e616d65017708636c69702e6d70342800f2da95eb06020375726c0177156174746163686d656e743a2f2f636c69702e6d70342800f2da95eb06020763617074696f6e0177002800f2da95eb06020b73686f775072657669657701782800f2da95eb06020c707265766965775769647468017f2800f2da95eb0601026964017707766964656f2d3000",
+      "expectedBlocks": [
+        {
+          "id": "video-0",
+          "kind": "video",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "caption",
+              "value": ""
+            },
+            {
+              "name": "name",
+              "value": "clip.mp4"
+            },
+            {
+              "name": "previewWidth",
+              "value": "undefined"
+            },
+            {
+              "name": "showPreview",
+              "value": "true"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "url",
+              "value": "attachment://clip.mp4"
+            }
+          ],
+          "inline": []
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"video-0\"\n2 element video backgroundColor=\"default\" caption=\"\" name=\"clip.mp4\" showPreview=true textAlignment=\"left\" url=\"attachment://clip.mp4\""
+    },
+    {
+      "name": "audio",
+      "pins": "same, for audio",
+      "updateHex": "0109f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb06010305617564696f2800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb0602046e616d650177086e6f74652e6d34612800f2da95eb06020375726c0177156174746163686d656e743a2f2f6e6f74652e6d34612800f2da95eb06020763617074696f6e0177002800f2da95eb06020b73686f775072657669657701782800f2da95eb0601026964017707617564696f2d3000",
+      "expectedBlocks": [
+        {
+          "id": "audio-0",
+          "kind": "audio",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "caption",
+              "value": ""
+            },
+            {
+              "name": "name",
+              "value": "note.m4a"
+            },
+            {
+              "name": "showPreview",
+              "value": "true"
+            },
+            {
+              "name": "url",
+              "value": "attachment://note.m4a"
+            }
+          ],
+          "inline": []
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"audio-0\"\n2 element audio backgroundColor=\"default\" caption=\"\" name=\"note.m4a\" showPreview=true url=\"attachment://note.m4a\""
+    },
+    {
+      "name": "file",
+      "pins": "a file block carries its own name and size and needs no bytes to render a row",
+      "updateHex": "010bf2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030466696c652800f2da95eb06020375726c0177156174746163686d656e743a2f2f737065632e7064662800f2da95eb0602046e616d65017708737065632e7064662800f2da95eb06020473697a65017d002800f2da95eb0602086d696d65547970650177002800f2da95eb0602057769647468017d002800f2da95eb060206686569676874017d002800f2da95eb060205616c69676e0177046c6566742800f2da95eb060102696401770666696c652d3000",
+      "expectedBlocks": [
+        {
+          "id": "file-0",
+          "kind": "file",
+          "depth": 0,
+          "props": [
+            {
+              "name": "align",
+              "value": "left"
+            },
+            {
+              "name": "height",
+              "value": "0"
+            },
+            {
+              "name": "mimeType",
+              "value": ""
+            },
+            {
+              "name": "name",
+              "value": "spec.pdf"
+            },
+            {
+              "name": "size",
+              "value": "0"
+            },
+            {
+              "name": "url",
+              "value": "attachment://spec.pdf"
+            },
+            {
+              "name": "width",
+              "value": "0"
+            }
+          ],
+          "inline": []
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"file-0\"\n2 element file align=\"left\" height=0 mimeType=\"\" name=\"spec.pdf\" size=0 url=\"attachment://spec.pdf\" width=0"
+    },
+    {
+      "name": "bookmark",
+      "pins": "a bookmark card is entirely props; nothing is fetched to draw it",
+      "updateHex": "010bf2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb06010308626f6f6b6d61726b2800f2da95eb06020375726c01771568747470733a2f2f6578616d706c652e636f6d2f612800f2da95eb060206646f6d61696e0177002800f2da95eb0602057469746c650177074578616d706c652800f2da95eb06020b6465736372697074696f6e0177064120736974652800f2da95eb060205696d6167650177002800f2da95eb06020766617669636f6e0177002800f2da95eb060208736974654e616d650177002800f2da95eb060102696401770a626f6f6b6d61726b2d3000",
+      "expectedBlocks": [
+        {
+          "id": "bookmark-0",
+          "kind": "bookmark",
+          "depth": 0,
+          "props": [
+            {
+              "name": "description",
+              "value": "A site"
+            },
+            {
+              "name": "domain",
+              "value": ""
+            },
+            {
+              "name": "favicon",
+              "value": ""
+            },
+            {
+              "name": "image",
+              "value": ""
+            },
+            {
+              "name": "siteName",
+              "value": ""
+            },
+            {
+              "name": "title",
+              "value": "Example"
+            },
+            {
+              "name": "url",
+              "value": "https://example.com/a"
+            }
+          ],
+          "inline": []
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"bookmark-0\"\n2 element bookmark description=\"A site\" domain=\"\" favicon=\"\" image=\"\" siteName=\"\" title=\"Example\" url=\"https://example.com/a\""
+    },
+    {
+      "name": "youtubeEmbed",
+      "pins": "the video url survives so a shell can offer to open it",
+      "updateHex": "0107f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030c796f7574756265456d6265642800f2da95eb060207766964656f49640177002800f2da95eb060208766964656f55726c01772b68747470733a2f2f7777772e796f75747562652e636f6d2f77617463683f763d64517734773957675863512800f2da95eb0602057469746c650177002800f2da95eb060102696401770e796f7574756265656d6265642d3000",
+      "expectedBlocks": [
+        {
+          "id": "youtubeembed-0",
+          "kind": "youtubeEmbed",
+          "depth": 0,
+          "props": [
+            {
+              "name": "title",
+              "value": ""
+            },
+            {
+              "name": "videoId",
+              "value": ""
+            },
+            {
+              "name": "videoUrl",
+              "value": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            }
+          ],
+          "inline": []
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"youtubeembed-0\"\n2 element youtubeEmbed title=\"\" videoId=\"\" videoUrl=\"https://www.youtube.com/watch?v=dQw4w9WgXcQ\""
+    },
+    {
+      "name": "diagram",
+      "pins": "a Mermaid diagram is plain-content source text, newlines and all; the rendering is never in the document",
+      "updateHex": "0106f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103076469616772616d0700f2da95eb0602060400f2da95eb06032067726170682054440a2020415b53746172745d202d2d3e20427b536869703f7d2800f2da95eb06010269640177096469616772616d2d3000",
+      "expectedBlocks": [
+        {
+          "id": "diagram-0",
+          "kind": "diagram",
+          "depth": 0,
+          "props": [],
+          "inline": [
+            {
+              "text": "graph TD\n  A[Start] --> B{Ship?}",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"diagram-0\"\n2 element diagram\n3 text \"graph TD\\n  A[Start] --> B{Ship?}\""
+    },
+    {
+      "name": "mathBlock",
+      "pins": "a math block is `content: none` — the LaTeX is the `latex` PROP, so a reader that only walks inline content shows an empty row",
+      "updateHex": "0105f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103096d617468426c6f636b2800f2da95eb0602056c617465780177205c696e745f305e3120785e32205c2c206478203d205c667261637b317d7b337d2800f2da95eb060102696401770b6d617468626c6f636b2d3000",
+      "expectedBlocks": [
+        {
+          "id": "mathblock-0",
+          "kind": "mathBlock",
+          "depth": 0,
+          "props": [
+            {
+              "name": "latex",
+              "value": "\\int_0^1 x^2 \\, dx = \\frac{1}{3}"
+            }
+          ],
+          "inline": []
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"mathblock-0\"\n2 element mathBlock latex=\"\\\\int_0^1 x^2 \\\\, dx = \\\\frac{1}{3}\""
+    },
+    {
+      "name": "table",
+      "pins": "THE SECOND REGRESSION: a mixed header/cell table with a set colwidth and a coloured cell, which a flat block list cannot express",
+      "updateHex": "012df2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103057461626c650700f2da95eb060203087461626c65526f770700f2da95eb0603030b7461626c654865616465720700f2da95eb0604030e7461626c655061726167726170680700f2da95eb0605060400f2da95eb0606044e616d652800f2da95eb06040974657874436f6c6f7201770764656661756c742800f2da95eb06040f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06040d74657874416c69676e6d656e740177046c6566742800f2da95eb060407636f6c7370616e017d012800f2da95eb060407726f777370616e017d012800f2da95eb060408636f6c77696474680175017db40287f2da95eb0604030b7461626c654865616465720700f2da95eb0611030e7461626c655061726167726170680700f2da95eb0612060400f2da95eb06130556616c75652800f2da95eb06110974657874436f6c6f7201770764656661756c742800f2da95eb06110f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06110d74657874416c69676e6d656e740177046c6566742800f2da95eb061107636f6c7370616e017d012800f2da95eb061107726f777370616e017d0187f2da95eb060303087461626c65526f770700f2da95eb061e03097461626c6543656c6c0700f2da95eb061f030e7461626c655061726167726170680700f2da95eb0620060400f2da95eb062105616c7068612800f2da95eb061f0974657874436f6c6f7201770764656661756c742800f2da95eb061f0f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb061f0d74657874416c69676e6d656e740177046c6566742800f2da95eb061f07636f6c7370616e017d012800f2da95eb061f07726f777370616e017d012800f2da95eb061f08636f6c77696474680175017db40287f2da95eb061f03097461626c6543656c6c0700f2da95eb062d030e7461626c655061726167726170680700f2da95eb062e060400f2da95eb062f01312800f2da95eb062d0974657874436f6c6f7201770764656661756c742800f2da95eb062d0f6261636b67726f756e64436f6c6f7201770679656c6c6f772800f2da95eb062d0d74657874416c69676e6d656e7401770663656e7465722800f2da95eb062d07636f6c7370616e017d012800f2da95eb062d07726f777370616e017d012800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06010269640177077461626c652d3000",
+      "expectedBlocks": [
+        {
+          "id": "table-0",
+          "kind": "table",
+          "depth": 0,
+          "props": [
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": []
+        },
+        {
+          "id": null,
+          "kind": "tableRow",
+          "depth": 1,
+          "props": [],
+          "inline": []
+        },
+        {
+          "id": null,
+          "kind": "tableHeader",
+          "depth": 2,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "colspan",
+              "value": "1"
+            },
+            {
+              "name": "colwidth",
+              "value": "[180]"
+            },
+            {
+              "name": "rowspan",
+              "value": "1"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": []
+        },
+        {
+          "id": null,
+          "kind": "tableParagraph",
+          "depth": 3,
+          "props": [],
+          "inline": [
+            {
+              "text": "Name",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": null,
+          "kind": "tableHeader",
+          "depth": 2,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "colspan",
+              "value": "1"
+            },
+            {
+              "name": "rowspan",
+              "value": "1"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": []
+        },
+        {
+          "id": null,
+          "kind": "tableParagraph",
+          "depth": 3,
+          "props": [],
+          "inline": [
+            {
+              "text": "Value",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": null,
+          "kind": "tableRow",
+          "depth": 1,
+          "props": [],
+          "inline": []
+        },
+        {
+          "id": null,
+          "kind": "tableCell",
+          "depth": 2,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "colspan",
+              "value": "1"
+            },
+            {
+              "name": "colwidth",
+              "value": "[180]"
+            },
+            {
+              "name": "rowspan",
+              "value": "1"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": []
+        },
+        {
+          "id": null,
+          "kind": "tableParagraph",
+          "depth": 3,
+          "props": [],
+          "inline": [
+            {
+              "text": "alpha",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": null,
+          "kind": "tableCell",
+          "depth": 2,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "yellow"
+            },
+            {
+              "name": "colspan",
+              "value": "1"
+            },
+            {
+              "name": "rowspan",
+              "value": "1"
+            },
+            {
+              "name": "textAlignment",
+              "value": "center"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": []
+        },
+        {
+          "id": null,
+          "kind": "tableParagraph",
+          "depth": 3,
+          "props": [],
+          "inline": [
+            {
+              "text": "1",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"table-0\"\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 colwidth=[180] rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"Name\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"Value\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 colwidth=[180] rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"alpha\"\n4 element tableCell backgroundColor=\"yellow\" colspan=1 rowspan=1 textAlignment=\"center\" textColor=\"default\"\n5 element tableParagraph\n6 text \"1\""
+    },
+    {
+      "name": "inline: link",
+      "pins": "a link carries its href as an attribute, not as text",
+      "updateHex": "010cf2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb0603047365652086f2da95eb0607046c696e6b207b2268726566223a2268747470733a2f2f6578616d706c652e636f6d2f61227d84f2da95eb06080874686520646f637386f2da95eb0610046c696e6b046e756c6c2800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb060102696401770d696e6c696e652d6c696e6b2d3000",
+      "expectedBlocks": [
+        {
+          "id": "inline-link-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "see ",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": "the docs",
+              "marks": [
+                "link"
+              ],
+              "markAttrs": {
+                "link.href": "https://example.com/a"
+              },
+              "target": "https://example.com/a"
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-link-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"see \"\n3 text \"the docs\" link={\"href\":\"https://example.com/a\"}"
+    },
+    {
+      "name": "inline: wikiLink",
+      "pins": "a wiki link points at a TITLE, and its alias is a separate prop",
+      "updateHex": "0113f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb0603047365652087f2da95eb0603030877696b694c696e6b2800f2da95eb06080674617267657401770c44756e65204d6573736961682800f2da95eb060805616c69617301770a7468652073657175656c2800f2da95eb060804626f6c6401792800f2da95eb0608066974616c696301792800f2da95eb060809756e6465726c696e6501792800f2da95eb060806737472696b6501792800f2da95eb060804636f646501792800f2da95eb06080974657874436f6c6f7201770764656661756c742800f2da95eb06080f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017711696e6c696e652d77696b696c696e6b2d3000",
+      "expectedBlocks": [
+        {
+          "id": "inline-wikilink-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "see ",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": "",
+              "marks": [
+                "wikiLink"
+              ],
+              "markAttrs": {
+                "wikiLink.target": "Dune Messiah",
+                "wikiLink.alias": "the sequel",
+                "wikiLink.bold": "false",
+                "wikiLink.italic": "false",
+                "wikiLink.underline": "false",
+                "wikiLink.strike": "false",
+                "wikiLink.code": "false",
+                "wikiLink.textColor": "default",
+                "wikiLink.backgroundColor": "default"
+              },
+              "target": "Dune Messiah"
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-wikilink-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"see \"\n3 element wikiLink alias=\"the sequel\" backgroundColor=\"default\" bold=false code=false italic=false strike=false target=\"Dune Messiah\" textColor=\"default\" underline=false"
+    },
+    {
+      "name": "inline: hashTag",
+      "pins": "a tag is an inline node, not a `#` a shell has to parse back out of text",
+      "updateHex": "010df2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb06030c66696c656420756e6465722087f2da95eb06030307686173685461672800f2da95eb06100374616701770772656164696e672800f2da95eb061005636f6c6f720177002800f2da95eb06100469636f6e0177002800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017710696e6c696e652d686173687461672d3000",
+      "expectedBlocks": [
+        {
+          "id": "inline-hashtag-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "filed under ",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": "",
+              "marks": [
+                "hashTag"
+              ],
+              "markAttrs": {
+                "hashTag.tag": "reading",
+                "hashTag.color": "",
+                "hashTag.icon": ""
+              },
+              "target": "reading"
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-hashtag-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"filed under \"\n3 element hashTag color=\"\" icon=\"\" tag=\"reading\""
+    },
+    {
+      "name": "inline: dateMention",
+      "pins": "the whole date payload survives, which Phase G needs and `extract_text` drops",
+      "updateHex": "0110f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb0603046475652087f2da95eb0603030b646174654d656e74696f6e2800f2da95eb060808616e63686f72496401770261312800f2da95eb0608076461746549534f017718323032362d30382d31345430393a30303a30302e3030305a2800f2da95eb06080768617354696d6501792800f2da95eb06080a64617465466f726d617401770872656c61746976652800f2da95eb06080672656d696e640177046e6f6e652800f2da95eb06080a74696d65466f726d617401770673797374656d2800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017714696e6c696e652d646174656d656e74696f6e2d3000",
+      "expectedBlocks": [
+        {
+          "id": "inline-datemention-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "due ",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": "",
+              "marks": [
+                "dateMention"
+              ],
+              "markAttrs": {
+                "dateMention.anchorId": "a1",
+                "dateMention.dateISO": "2026-08-14T09:00:00.000Z",
+                "dateMention.hasTime": "false",
+                "dateMention.dateFormat": "relative",
+                "dateMention.remind": "none",
+                "dateMention.timeFormat": "system"
+              },
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-datemention-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"due \"\n3 element dateMention anchorId=\"a1\" dateFormat=\"relative\" dateISO=\"2026-08-14T09:00:00.000Z\" hasTime=false remind=\"none\" timeFormat=\"system\""
+    },
+    {
+      "name": "inline: linkMention",
+      "pins": "the mention url, which encodes seven characters beyond encodeURIComponent",
+      "updateHex": "010ff2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb0603047669612087f2da95eb0603030b6c696e6b4d656e74696f6e2800f2da95eb06080375726c01771e68747470733a2f2f6578616d706c652e636f6d2f785f2879292a7a217e272800f2da95eb060806646f6d61696e0177002800f2da95eb0608057469746c650177002800f2da95eb06080766617669636f6e0177002800f2da95eb060808736974654e616d650177002800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017714696e6c696e652d6c696e6b6d656e74696f6e2d3000",
+      "expectedBlocks": [
+        {
+          "id": "inline-linkmention-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "via ",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": "",
+              "marks": [
+                "linkMention"
+              ],
+              "markAttrs": {
+                "linkMention.url": "https://example.com/x_(y)*z!~'",
+                "linkMention.domain": "",
+                "linkMention.title": "",
+                "linkMention.favicon": "",
+                "linkMention.siteName": ""
+              },
+              "target": "https://example.com/x_(y)*z!~'"
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-linkmention-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"via \"\n3 element linkMention domain=\"\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://example.com/x_(y)*z!~'\""
+    },
+    {
+      "name": "inline: inlineImage and inlineCheckbox in a table cell",
+      "pins": "both inline types exist ONLY inside a table cell (§12.7.1), so this is the only shape that can carry them",
+      "updateHex": "0115f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103057461626c650700f2da95eb060203087461626c65526f770700f2da95eb060303097461626c6543656c6c0700f2da95eb0604030e7461626c655061726167726170680700f2da95eb0605030e696e6c696e65436865636b626f782800f2da95eb060607636865636b6564017887f2da95eb0606060400f2da95eb0608012087f2da95eb0608030b696e6c696e65496d6167652800f2da95eb060a037372630177126174746163686d656e743a2f2f692e706e672800f2da95eb060a03616c74017701692800f2da95eb060a057769647468017d002800f2da95eb06040974657874436f6c6f7201770764656661756c742800f2da95eb06040f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06040d74657874416c69676e6d656e740177046c6566742800f2da95eb060407636f6c7370616e017d012800f2da95eb060407726f777370616e017d012800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb0601026964017737696e6c696e652d696e6c696e65696d6167652d616e642d696e6c696e65636865636b626f782d696e2d612d7461626c652d63656c6c2d3000",
+      "expectedBlocks": [
+        {
+          "id": "inline-inlineimage-and-inlinecheckbox-in-a-table-cell-0",
+          "kind": "table",
+          "depth": 0,
+          "props": [
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": []
+        },
+        {
+          "id": null,
+          "kind": "tableRow",
+          "depth": 1,
+          "props": [],
+          "inline": []
+        },
+        {
+          "id": null,
+          "kind": "tableCell",
+          "depth": 2,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "colspan",
+              "value": "1"
+            },
+            {
+              "name": "rowspan",
+              "value": "1"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": []
+        },
+        {
+          "id": null,
+          "kind": "tableParagraph",
+          "depth": 3,
+          "props": [],
+          "inline": [
+            {
+              "text": "",
+              "marks": [
+                "inlineCheckbox"
+              ],
+              "markAttrs": {
+                "inlineCheckbox.checked": "true"
+              },
+              "target": null
+            },
+            {
+              "text": " ",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": "",
+              "marks": [
+                "inlineImage"
+              ],
+              "markAttrs": {
+                "inlineImage.src": "attachment://i.png",
+                "inlineImage.alt": "i",
+                "inlineImage.width": "0"
+              },
+              "target": "attachment://i.png"
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-inlineimage-and-inlinecheckbox-in-a-table-cell-0\"\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 element inlineCheckbox checked=true\n6 text \" \"\n6 element inlineImage alt=\"i\" src=\"attachment://i.png\" width=0"
+    },
+    {
+      "name": "styles: the five boolean marks",
+      "pins": "bold, italic, underline, strike and code all survive as marks on the run",
+      "updateHex": "0117f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060600f2da95eb060304626f6c64027b7d84f2da95eb060404626f6c6486f2da95eb060804626f6c64046e756c6c86f2da95eb0609066974616c6963027b7d84f2da95eb060a07206974616c696386f2da95eb0611066974616c6963046e756c6c86f2da95eb061209756e6465726c696e65027b7d84f2da95eb06130a20756e6465726c696e6586f2da95eb061d09756e6465726c696e65046e756c6c86f2da95eb061e06737472696b65027b7d84f2da95eb061f0720737472696b6586f2da95eb062606737472696b65046e756c6c86f2da95eb062704636f6465027b7d84f2da95eb06280520636f646586f2da95eb062d04636f6465046e756c6c2800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb060102696401771f7374796c65732d7468652d666976652d626f6f6c65616e2d6d61726b732d3000",
+      "expectedBlocks": [
+        {
+          "id": "styles-the-five-boolean-marks-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "bold",
+              "marks": [
+                "bold"
+              ],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": " italic",
+              "marks": [
+                "italic"
+              ],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": " underline",
+              "marks": [
+                "underline"
+              ],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": " strike",
+              "marks": [
+                "strike"
+              ],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": " code",
+              "marks": [
+                "code"
+              ],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"styles-the-five-boolean-marks-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"bold\" bold={}\n3 text \" italic\" italic={}\n3 text \" underline\" underline={}\n3 text \" strike\" strike={}\n3 text \" code\" code={}"
+    },
+    {
+      "name": "styles: textColor and backgroundColor",
+      "pins": "THE THIRD REGRESSION: a colour mark must carry its VALUE, or red and blue arrive identical",
+      "updateHex": "010df2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060600f2da95eb06030974657874436f6c6f72157b22737472696e6756616c7565223a22726564227d86f2da95eb06040f6261636b67726f756e64436f6c6f72187b22737472696e6756616c7565223a2279656c6c6f77227d84f2da95eb06050d726564206f6e2079656c6c6f7786f2da95eb06120974657874436f6c6f72046e756c6c86f2da95eb06130f6261636b67726f756e64436f6c6f72046e756c6c2800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb06010269640177267374796c65732d74657874636f6c6f722d616e642d6261636b67726f756e64636f6c6f722d3000",
+      "expectedBlocks": [
+        {
+          "id": "styles-textcolor-and-backgroundcolor-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "red on yellow",
+              "marks": [
+                "backgroundColor",
+                "textColor"
+              ],
+              "markAttrs": {
+                "backgroundColor": "yellow",
+                "textColor": "red"
+              },
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"styles-textcolor-and-backgroundcolor-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"red on yellow\" backgroundColor={\"stringValue\":\"yellow\"} textColor={\"stringValue\":\"red\"}"
+    },
+    {
+      "name": "styles: two colours in one paragraph",
+      "pins": "two runs of the same mark with different values, which a name-only reader collapses",
+      "updateHex": "010ff2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060600f2da95eb06030974657874436f6c6f72157b22737472696e6756616c7565223a22726564227d84f2da95eb06040372656486f2da95eb06070974657874436f6c6f72046e756c6c84f2da95eb06080520616e642086f2da95eb060d0974657874436f6c6f72167b22737472696e6756616c7565223a22626c7565227d84f2da95eb060e04626c756586f2da95eb06120974657874436f6c6f72046e756c6c2800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb06010269640177257374796c65732d74776f2d636f6c6f7572732d696e2d6f6e652d7061726167726170682d3000",
+      "expectedBlocks": [
+        {
+          "id": "styles-two-colours-in-one-paragraph-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "red",
+              "marks": [
+                "textColor"
+              ],
+              "markAttrs": {
+                "textColor": "red"
+              },
+              "target": null
+            },
+            {
+              "text": " and ",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": "blue",
+              "marks": [
+                "textColor"
+              ],
+              "markAttrs": {
+                "textColor": "blue"
+              },
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"styles-two-colours-in-one-paragraph-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"red\" textColor={\"stringValue\":\"red\"}\n3 text \" and \"\n3 text \"blue\" textColor={\"stringValue\":\"blue\"}"
+    },
+    {
+      "name": "block props: alignment and colours",
+      "pins": "block-level textAlignment, textColor and backgroundColor, which `props_of` returned and nothing read",
+      "updateHex": "0109f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb06031543656e7472656420616e6420636f6c6f757265642e2800f2da95eb06020f6261636b67726f756e64436f6c6f72017704677261792800f2da95eb06020974657874436f6c6f72017704626c75652800f2da95eb06020d74657874416c69676e6d656e7401770663656e7465722800f2da95eb0601026964017723626c6f636b2d70726f70732d616c69676e6d656e742d616e642d636f6c6f7572732d3000",
+      "expectedBlocks": [
+        {
+          "id": "block-props-alignment-and-colours-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "gray"
+            },
+            {
+              "name": "textAlignment",
+              "value": "center"
+            },
+            {
+              "name": "textColor",
+              "value": "blue"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Centred and coloured.",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"block-props-alignment-and-colours-0\"\n2 element paragraph backgroundColor=\"gray\" textAlignment=\"center\" textColor=\"blue\"\n3 text \"Centred and coloured.\""
+    },
+    {
+      "name": "an empty document",
+      "pins": "no blocks at all is an empty list, never one empty paragraph",
+      "updateHex": "0000",
+      "expectedBlocks": [],
+      "expectedCanonical": ""
+    },
+    {
+      "name": "a non-ASCII body",
+      "pins": "the walk is byte-transparent over UTF-8, including astral code points",
+      "updateHex": "0109f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb0603254772c3bcc39f652c20e4b896e7958c20e2809420c2ab6369746174696f6ec2bb20f09f99822800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017712612d6e6f6e2d61736369692d626f64792d3000",
+      "expectedBlocks": [
+        {
+          "id": "a-non-ascii-body-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Grüße, 世界 — «citation» 🙂",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"a-non-ascii-body-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Grüße, 世界 — «citation» 🙂\""
+    }
+  ]
+}

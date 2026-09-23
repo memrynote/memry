@@ -147,13 +147,23 @@ struct AccountShell<Content: View>: View {
     let account: AccountViewModel?
     @ViewBuilder var content: () -> Content
 
+    /// Set by a screen that offers the way out itself — the vault's More tab.
+    /// The bar then stays off every other screen, where it sat over the
+    /// content it was not about.
+    @State private var hostedElsewhere = false
+
     var body: some View {
         if let account {
             switch AccountPresentation.of(state: state, hasNotice: account.hasNotice) {
             case .revoked:
                 RevokedView(model: account)
             case .wayOut:
-                content().safeAreaInset(edge: .bottom) { SignOutBar(model: account) }
+                content()
+                    .environment(account)
+                    .onPreferenceChange(SignOutHostedKey.self) { hostedElsewhere = $0 }
+                    .safeAreaInset(edge: .bottom) {
+                        if !hostedElsewhere { SignOutBar(model: account) }
+                    }
             case .noticeOnly:
                 content().safeAreaInset(edge: .bottom) {
                     SignOutBar(model: account, canSignOut: false)
@@ -164,6 +174,18 @@ struct AccountShell<Content: View>: View {
         } else {
             content()
         }
+    }
+}
+
+/// `true` when a screen inside the shell hosts the sign-out control itself.
+///
+/// FR-025 asks for the way out to be reachable from every signed-in screen,
+/// not drawn on every one: inside an open vault it lives in the More tab, one
+/// tap from anywhere, instead of over every note.
+struct SignOutHostedKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
     }
 }
 

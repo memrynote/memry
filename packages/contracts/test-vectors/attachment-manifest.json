@@ -1,0 +1,158 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "attachment-manifest",
+    "chapter": "docs/protocol/14-attachments.md §14.4, §14.4.1, §14.9",
+    "writer": "packages/sync-client/src/push/attachment-manifest.ts",
+    "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+    "fileKeyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+    "manifestNonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+    "keyNonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+    "signerSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+    "signerPublicKeyB64": "tTPYrZ/Pvd4LSBwbM03cPFNBL9YUVk5+Wv0CA2jTgsM=",
+    "signerDeviceId": "164d71d9ac7df04847bcd966ea29f814",
+    "signatureOrder": "canonical CBOR sorts by key length then bytewise, so the signed order is keyNonce, manifestNonce, encryptedFileKey, encryptedManifest — NOT the CBOR_FIELD_ORDER listing order",
+    "notClaimed": "the signature covers the four envelope fields only; the manifest body is pinned separately as manifestJson",
+    "caseCount": 4
+  },
+  "cases": [
+    {
+      "name": "a single-chunk image",
+      "pins": "the ordinary case: one chunk, and the manifest JSON field order",
+      "manifest": {
+        "id": "att-single",
+        "filename": "picture.png",
+        "mimeType": "image/png",
+        "size": 12,
+        "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "chunks": [
+          {
+            "index": 0,
+            "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "encryptedHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "size": 12
+          }
+        ],
+        "chunkSize": 8388608,
+        "createdAt": 1760000000000
+      },
+      "manifestJson": "{\"id\":\"att-single\",\"filename\":\"picture.png\",\"mimeType\":\"image/png\",\"size\":12,\"checksum\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"chunks\":[{\"index\":0,\"hash\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"encryptedHash\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"size\":12}],\"chunkSize\":8388608,\"createdAt\":1760000000000}",
+      "envelope": {
+        "encryptedManifest": "SD4ngtTgB+cCcf15vSv7sm8ixJE1EXWvj6txtV47VHq+5fcHnWaEHeeLkB7qOMKeyHEMxXUqhELufo+jMCVOq679aMm/AbSRx+bR1qB5/ZIQLVCSIN1sfST+akpHKX0JBNVdFtcNvjJ9db8oud/xJdgTEh55ZaYdqGXNwwhn+1hupso9b6XxeA980btEsTNMOu+Wpv4IfZvD/mSohoyugAdQC88jA+uwHseqgQYOqfk6Sn7CrwSQ3AfNdyWT1gs4rmNTgkh4Fl5/Nn4HyGR1NBpq772LcdEQgGHr4K0Fb7DJ4+KFOY3Bc+jnvca02epvPOGmDCUv2RCbqNAuv4H9JbXdLHe6IQVF8/0AZ1WcQxqjzEnF7UXCl4uwoydvmnM+7z+1i1E/CXxz8P/Cd0Xa94MDGZ/j/UFoqTTXQh0BvQWnv9f4qxqvkD11xLh+vRM5NKebfPxGIAlw2MkQBYfgElLT+m+1jq5+3ScrG/rg6ZO8Dq0ehrBZgFJRxEpB5Aq3jhphhwrmpYsECdiVdwypUW+UupLnfjc=",
+        "manifestNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+        "encryptedFileKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+        "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+        "manifestSignature": "rAKktK6Xn6u+i6csmCQxfUex/Fu7nubTFhLb7oQr/3pyzCYXLI3dZsbE/pb7UmOEVMtG3Z53QSgmwBAwuWbnCg==",
+        "signerDeviceId": "164d71d9ac7df04847bcd966ea29f814"
+      },
+      "roundTrips": true
+    },
+    {
+      "name": "a multi-chunk file with a short final chunk",
+      "pins": "§14.2 the final chunk is short; a reader sizes each chunk from chunks[j].size and never from chunkSize",
+      "manifest": {
+        "id": "att-multi",
+        "filename": "recording.m4a",
+        "mimeType": "audio/mp4",
+        "size": 8388615,
+        "checksum": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "chunks": [
+          {
+            "index": 0,
+            "hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "encryptedHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "size": 8388608
+          },
+          {
+            "index": 1,
+            "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "encryptedHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "size": 7
+          }
+        ],
+        "chunkSize": 8388608,
+        "createdAt": 1760000000001
+      },
+      "manifestJson": "{\"id\":\"att-multi\",\"filename\":\"recording.m4a\",\"mimeType\":\"audio/mp4\",\"size\":8388615,\"checksum\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"chunks\":[{\"index\":0,\"hash\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"encryptedHash\":\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"size\":8388608},{\"index\":1,\"hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"encryptedHash\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"size\":7}],\"chunkSize\":8388608,\"createdAt\":1760000000001}",
+      "envelope": {
+        "encryptedManifest": "SD4ngtTgB+cCcf1noSnotygsytU6FHykgKd58kYjBG+06fEWhm3NQ+TY0xDkd8aawEAhzGBtnFqlcpugPGURqLnrZsfuG6eOgP7a3L9jpsxEexfDNtgrJG3sfkYEcj4MAdBYE9IIuzd4cLotvNr0IN0WFxt8YKMYrWDIxg1i/l1ro884aqD0fQp51L5BtDZJP+qTo/sNeJ7GuCzugYC/zEABSp0NFqKqUpmUggZd97F9Wj2L9wqIlgTcfWXLlgw/qWRUhU9/EVl4MXkAz2NyMx1t6LqMdtYXh2bs56oCaLfO5OWCPorGdO/gusGz3u1oO+ahCyIo3hfc4ZcutIetcOfMJ3CAOQZZtKNqZUWXAkPiyUzA6EDHko61piJqn3Y76jqwjlQ6DHl29frHckDf8oYGHJrm+ERtrDHSRxgEuACiutL9rh+qlThwwfw0+QY2KOCVZL4dJzF+wJJLSNG9cQPUszat3/MigGk5GefuqIm4HLFZ2NMdklhQw0xB5Aq3jhphhwrm6InAbGBIvcWonxvNQ87cCAPrIdfKnf0jPwmEFZDB8PnUxB/6tVeQ3xJVKsr6+KAdkgTHCTCfu0pduAQNgtL3GjqyAqm/X7qu/JuEEQsoBtPF6X5IT1RwoJFbKa/+P1Wg6V2qmR0pkbcw+NiJ3sBOw9IEKH5hxUEW2DggymgVDXC4MXtP4p0ytIsn5R4QV3vKIYtK9Rf/CACwdMsZQHs8s0OVkk0s1Z/Q4RWIERcaBC59y/v0SZz/0kPgfH7I1QLWkeEVsN3YdGMUbcb52QA=",
+        "manifestNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+        "encryptedFileKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+        "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+        "manifestSignature": "0Y3+aGX/4LE5vk8sf5AZYKaVjOMD4nfyb3001WXLkANmQclXUnF2yZzWXi3/MRJdnfhKE8rHOl16oTUTbQapAg==",
+        "signerDeviceId": "164d71d9ac7df04847bcd966ea29f814"
+      },
+      "roundTrips": true
+    },
+    {
+      "name": "a writer that chose a different chunk size",
+      "pins": "§14.9 CHUNK_SIZE is a desktop constant, not a contract constant: a reader MUST NOT assume 8 MiB",
+      "manifest": {
+        "id": "att-chunked",
+        "filename": "notes.pdf",
+        "mimeType": "application/pdf",
+        "size": 3,
+        "checksum": "2222222222222222222222222222222222222222222222222222222222222222",
+        "chunks": [
+          {
+            "index": 0,
+            "hash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "encryptedHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "size": 2
+          },
+          {
+            "index": 1,
+            "hash": "5555555555555555555555555555555555555555555555555555555555555555",
+            "encryptedHash": "6666666666666666666666666666666666666666666666666666666666666666",
+            "size": 1
+          }
+        ],
+        "chunkSize": 2,
+        "createdAt": 1760000000002
+      },
+      "manifestJson": "{\"id\":\"att-chunked\",\"filename\":\"notes.pdf\",\"mimeType\":\"application/pdf\",\"size\":3,\"checksum\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"chunks\":[{\"index\":0,\"hash\":\"3333333333333333333333333333333333333333333333333333333333333333\",\"encryptedHash\":\"4444444444444444444444444444444444444444444444444444444444444444\",\"size\":2},{\"index\":1,\"hash\":\"5555555555555555555555555555555555555555555555555555555555555555\",\"encryptedHash\":\"6666666666666666666666666666666666666666666666666666666666666666\",\"size\":1}],\"chunkSize\":2,\"createdAt\":1760000000002}",
+      "envelope": {
+        "encryptedManifest": "SD4ngtTgB+cCcf1pvDDytW9kyp9xHnCmhKR9vRkjTCi56fcXnC3aCe/OnhClPMaW+VwF0DIynAH3Y4KtNmtKrKaxa5uoDuzYx6+Jnul5pMlZbFiJMNMlNHPyKREEei5aV4YORYRe7WEuJux76oyidotAQU0qNvVO+zaekFs0qAs99ZluPPaiK1wvgugX4mAfabzF9a1bLsiQ7nq418b3zA9LXJsTC+vjK9jtkEpQ/K06GC+d5U7LjQ2NL2XCh1pp/zIC0xkpRw8uZy9WmTUkZUs7vuzaIIBB0TC6sfxUPuGYsrPUaNyQIrm27JfliLs+bbD3XXR+iEGKt8F4886tOavKO2qCNBNJmaZRbBTFAk30mx6SuhKVwNzn9HA4zSRpuGji3AZoXiskp6iVIBKNoNRUTsi0qhY//mOAFUpW6lLw6ICv/E34x2oik65mq1RyYuDKL7cRf25uh4YDUoDlJV7RvXe+mr8uhGJzAezgv9TsWuxO18QYl11VxklE4Q+yix9kgg/j7YzFaWVNuMCtmh7IRsvZDQbuJNLPmPgmOgyBEJXE9fzRwRr/sFKV2gBJOJ+kq+JUwFyACBadulsP9kNf/IWyRC6+Fq64WL2p+5yDFgwvAdTC7nlPSFN3p5ZcLqj5OFKn7lqtnhoulrA3/9+O2cdJxNUDL3lmwkYR3z8n2XUGTyjzZWhX/8Ic8dMhr1FJQXWPeY0Auku4eQq4dIhXHSxF/1efm1Y4ht2FsFHdRWZeFGnThAJyWVX/SLmMdEOyuZeJ",
+        "manifestNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+        "encryptedFileKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+        "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+        "manifestSignature": "M+/K/ulbLfqfcdfZa10qwuODsfefVg8ou8U//xutis3eTVkNwPffBUuUMGpnpXwNaBaQ05EODC+In0BO3uYQCA==",
+        "signerDeviceId": "164d71d9ac7df04847bcd966ea29f814"
+      },
+      "roundTrips": true
+    },
+    {
+      "name": "a filename carrying non-ASCII and a quote",
+      "pins": "the manifest body is JSON: a quote must escape and UTF-8 must survive identically on both ports",
+      "manifest": {
+        "id": "att-utf8",
+        "filename": "Grüße \"2026\" 世界.txt",
+        "mimeType": "text/plain",
+        "size": 5,
+        "checksum": "7777777777777777777777777777777777777777777777777777777777777777",
+        "chunks": [
+          {
+            "index": 0,
+            "hash": "8888888888888888888888888888888888888888888888888888888888888888",
+            "encryptedHash": "9999999999999999999999999999999999999999999999999999999999999999",
+            "size": 5
+          }
+        ],
+        "chunkSize": 8388608,
+        "createdAt": 1760000000003
+      },
+      "manifestJson": "{\"id\":\"att-utf8\",\"filename\":\"Grüße \\\"2026\\\" 世界.txt\",\"mimeType\":\"text/plain\",\"size\":5,\"checksum\":\"7777777777777777777777777777777777777777777777777777777777777777\",\"chunks\":[{\"index\":0,\"hash\":\"8888888888888888888888888888888888888888888888888888888888888888\",\"encryptedHash\":\"9999999999999999999999999999999999999999999999999999999999999999\",\"size\":5}],\"chunkSize\":8388608,\"createdAt\":1760000000003}",
+      "envelope": {
+        "encryptedManifest": "SD4ngtTgB+cCcf1/oCOk/CYijto/HXerjK8+6l5GBMlrRRwXz1+IX7nehG7qdU9LO8LgOT58xhSlP8ypPGdbkbCvIcn2SrqRnajPlOA695RXYhmSPMorZTyqJwlFIHkLDsdJGpRW/WQrI+l+74mnc45FREgvM/BL/jOblV4xrQ448JxrOfOnLlkqh+0S52UabLnA8KheK82V63+90tPs2VsUHsJPT/77XIGskVFa8qY6GETK5U/EmgDXN33BmEsyrXJZwhA4TAQlbCRdkj4vbkAwtefRK4tK2juxuvdfNeqTubjfY9ebKbK955zug7A1Zrv8Vn91g0qBvMpz6dq3ZP2RcSvKeFQB86JMZ0SGUA2ly2LH/U6Dzsrq+X01wClktWXv0QtlUyYpqqWYLR+ArdlZQ8W5pxsy826NGEdb51/95Y2i8UD1ymcvnqNrpllpd/uAf/RNZG1l2IZaA4DxJBmTqjDSmr8ljWR1SIWr8IT7VeFI2skbklBM0R8DsVvz204Qwxjs6Y7GbGBIvcWonxvNQIPzfkcZXCcRbiVVTsjqOoxo",
+        "manifestNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+        "encryptedFileKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+        "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA",
+        "manifestSignature": "5AMR74dnONjumZqBCdYy16WUcAUhokMgykuUEeaybO+WcpoEXCl7emWhVjJrCsu67gIXxVOTQNyvyVRsKmhUDw==",
+        "signerDeviceId": "164d71d9ac7df04847bcd966ea29f814"
+      },
+      "roundTrips": true
+    }
+  ]
+}

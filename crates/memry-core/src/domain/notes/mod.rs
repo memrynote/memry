@@ -33,7 +33,7 @@
 //! reserved device id outright, which is §6.6 made structural rather than
 //! remembered.
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
@@ -46,6 +46,12 @@ use crate::storage::repositories::{
 };
 use crate::sync::clock::{self, OFFLINE_CLOCK_DEVICE_ID, VectorClock};
 use crate::sync::outbox::{self, Durable};
+
+mod attachments;
+mod metadata;
+
+pub use attachments::*;
+pub use metadata::*;
 
 /// The `(type, _)` half of every key this module writes.
 pub const ITEM_TYPE: &str = "note";

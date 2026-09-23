@@ -1,0 +1,546 @@
+//! The local attachment cache and what connects a note to it (N203, N204).
+//!
+//! The `attachments` table is data-model §A.4's: one row per attachment id,
+//! carrying the decrypted manifest, the notes that reference it, and where the
+//! bytes are once they have arrived.
+//!
+//! ## Two rules here are protocol, not policy
+//!
+//! **An absent `attachmentReferences` means "this sender does not know", never
+//! "this note has no attachments"** (§14.7, chapter 13 §13.4). The field is
+//! `.nullable().optional()`, so an older client pushing a note it edited omits
+//! it entirely. [`merge_note_references`] therefore takes an `Option` and
+//! **does nothing at all** when it is `None` — it does not clear the local
+//! list. Treating absence as emptiness would delete a note's pictures from
+//! this device's view because a different device did not mention them.
+//!
+//! **Quota is reserved against ciphertext size, not plaintext** (§14.8), so
+//! `remote_size` is the ciphertext figure and the cache budget is measured in
+//! it. A cache sized against `manifest.size` under-counts by a nonce and a tag
+//! per chunk.
+//!
+//! ## Eviction, and the one thing the core cannot do
+//!
+//! **Eviction clears `local_path` and never removes a row, and never touches a
+//! pinned row** (data-model §A.4). The row is what remembers the manifest and
+//! the note references; deleting it would turn an evicted picture into an
+//! unknown one.
+//!
+//! **This module holds a database handle and nothing else**, so it cannot
+//! unlink a file — even though the core does know the vault directory, because
+//! `Vault::open` takes one. [`evict_to_budget`] therefore clears the column
+//! and **returns the paths**, and the caller that holds the directory unlinks
+//! them in the same pass.
+//!
+//! The row is cleared first, deliberately. If the unlink never happens the
+//! bytes are orphaned on disk while the row says "not downloaded", so a later
+//! download rewrites the file — a disk-space leak, not a data fault, and
+//! [`orphan_candidates`] is how a sweep reclaims it. Unlinking first and
+//! clearing second would invert that into a row pointing at a file that is
+//! gone, which every reader would meet as a corrupt cache.
+
+use rusqlite::{Connection, OptionalExtension as _};
+
+use crate::api::errors::StorageError;
+use crate::seams::reachability::Reachable;
+
+/// One cached attachment.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CachedAttachment {
+    pub attachment_id: String,
+    /// The decrypted manifest JSON, verbatim.
+    ///
+    /// Stored as the bytes it arrived as rather than as parsed columns,
+    /// because §14.4's field set may grow and a column per field would drop
+    /// whatever this build does not know (FR-033).
+    pub manifest: Option<String>,
+    /// Note ids referencing this attachment.
+    pub note_refs: Vec<String>,
+    /// **Ciphertext** size, which is what quota is reserved against (§14.8).
+    pub remote_size: Option<i64>,
+    /// Relative to the shell's `images/` directory. `None` until downloaded,
+    /// and `None` again after eviction.
+    pub local_path: Option<String>,
+    pub downloaded_at: Option<i64>,
+    /// FR-045's per-item override. `true` by default: bytes wait for an
+    /// unmetered path unless the user asked for this one specifically.
+    pub unmetered_only: bool,
+    /// Exempt from eviction.
+    pub pinned: bool,
+    pub filename: Option<String>,
+    pub mime_type: Option<String>,
+}
+
+fn failed(error: rusqlite::Error) -> StorageError {
+    StorageError::Failed {
+        what: error.to_string(),
+    }
+}
+
+fn read_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CachedAttachment> {
+    let refs: Option<String> = row.get("note_refs")?;
+    Ok(CachedAttachment {
+        attachment_id: row.get("attachment_id")?,
+        manifest: row.get("manifest")?,
+        note_refs: refs
+            .as_deref()
+            .and_then(|json| serde_json::from_str::<Vec<String>>(json).ok())
+            .unwrap_or_default(),
+        remote_size: row.get("remote_size")?,
+        local_path: row.get("local_path")?,
+        downloaded_at: row.get("downloaded_at")?,
+        unmetered_only: row.get::<_, i64>("unmetered_only")? != 0,
+        pinned: row.get::<_, i64>("pinned")? != 0,
+        filename: row.get("filename")?,
+        mime_type: row.get("mime_type")?,
+    })
+}
+
+const COLUMNS: &str = "attachment_id, manifest, note_refs, remote_size, local_path, \
+                       downloaded_at, unmetered_only, pinned, filename, mime_type";
+
+/// One attachment by id, or `None` when this device has never heard of it.
+pub fn get(
+    conn: &Connection,
+    attachment_id: &str,
+) -> Result<Option<CachedAttachment>, StorageError> {
+    conn.query_row(
+        &format!("SELECT {COLUMNS} FROM attachments WHERE attachment_id = ?1"),
+        rusqlite::params![attachment_id],
+        read_row,
+    )
+    .optional()
+    .map_err(failed)
+}
+
+/// Records a manifest this device has fetched and opened.
+///
+/// Upsert rather than insert: a manifest is re-fetched when a note is opened
+/// on a device that evicted the bytes, and the row's `pinned` and
+/// `unmetered_only` are the **user's** settings and must survive that.
+pub fn put_manifest(
+    conn: &Connection,
+    attachment_id: &str,
+    manifest_json: &str,
+    remote_size: i64,
+    filename: &str,
+    mime_type: &str,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "INSERT INTO attachments \
+           (attachment_id, manifest, remote_size, filename, mime_type, note_refs) \
+         VALUES (?1, ?2, ?3, ?4, ?5, COALESCE((SELECT note_refs FROM attachments WHERE attachment_id = ?1), '[]')) \
+         ON CONFLICT(attachment_id) DO UPDATE SET \
+           manifest = excluded.manifest, \
+           remote_size = excluded.remote_size, \
+           filename = excluded.filename, \
+           mime_type = excluded.mime_type",
+        rusqlite::params![attachment_id, manifest_json, remote_size, filename, mime_type],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Records that the bytes are on disk.
+pub fn record_download(
+    conn: &Connection,
+    attachment_id: &str,
+    local_path: &str,
+    downloaded_at: i64,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "UPDATE attachments SET local_path = ?2, downloaded_at = ?3 WHERE attachment_id = ?1",
+        rusqlite::params![attachment_id, local_path, downloaded_at],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// FR-045's explicit per-item override.
+pub fn set_unmetered_only(
+    conn: &Connection,
+    attachment_id: &str,
+    unmetered_only: bool,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "UPDATE attachments SET unmetered_only = ?2 WHERE attachment_id = ?1",
+        rusqlite::params![attachment_id, i64::from(unmetered_only)],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Marks a row exempt from eviction.
+pub fn set_pinned(
+    conn: &Connection,
+    attachment_id: &str,
+    pinned: bool,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "UPDATE attachments SET pinned = ?2 WHERE attachment_id = ?1",
+        rusqlite::params![attachment_id, i64::from(pinned)],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// FR-045's metered policy: whether these bytes may be fetched right now.
+///
+/// A pure function of the row and the path, so the decision is testable
+/// without a network and cannot drift between callers.
+///
+/// `Cellular` is the only interesting case. `Offline` is never a download, and
+/// on `Wifi` the override is irrelevant — the setting says "not on metered
+/// data", not "only when I ask".
+pub fn may_download(attachment: &CachedAttachment, reachable: Reachable) -> bool {
+    may_download_with(attachment.unmetered_only, reachable)
+}
+
+/// The same rule, for a caller that has the setting but no row yet.
+///
+/// An attachment referenced by a note this device has never fetched has no row
+/// until the reference merge creates one, and the answer must be the same
+/// either way: FR-045's default is unmetered-only, so `true` is what an absent
+/// row means.
+pub fn may_download_with(unmetered_only: bool, reachable: Reachable) -> bool {
+    match reachable {
+        Reachable::Offline => false,
+        Reachable::Wifi => true,
+        Reachable::Cellular => !unmetered_only,
+    }
+}
+
+// MARK: - N204, what connects a note to a manifest
+
+/// Merges a note's `attachmentReferences` into the cache.
+///
+/// **`None` does nothing** (§14.7). The field is nullable and optional, so a
+/// client that does not know about attachments pushes a note without it, and
+/// clearing the local list on that would delete a note's pictures from this
+/// device because another device stayed quiet. `Some(vec![])` is different and
+/// does clear: that sender knows, and says there are none.
+pub fn merge_note_references(
+    conn: &Connection,
+    note_id: &str,
+    references: Option<&[String]>,
+) -> Result<(), StorageError> {
+    let Some(references) = references else {
+        // "This sender does not know." Not an empty list, and not a reason to
+        // forget what another sender told us.
+        return Ok(());
+    };
+
+    // Drop this note from every row, then add it back where it belongs, so a
+    // reference the note no longer carries stops pointing at it.
+    let existing: Vec<CachedAttachment> = conn
+        .prepare(&format!("SELECT {COLUMNS} FROM attachments"))
+        .map_err(failed)?
+        .query_map([], read_row)
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+
+    for row in existing {
+        let wanted = references.contains(&row.attachment_id);
+        let present = row.note_refs.iter().any(|id| id == note_id);
+        if wanted == present {
+            continue;
+        }
+        let mut refs = row.note_refs.clone();
+        if wanted {
+            refs.push(note_id.to_owned());
+        } else {
+            refs.retain(|id| id != note_id);
+        }
+        refs.sort();
+        refs.dedup();
+        write_refs(conn, &row.attachment_id, &refs)?;
+    }
+
+    // A reference to an attachment this device has never fetched still gets a
+    // row, so the note can show a placeholder and a later fetch has somewhere
+    // to land. An id with no manifest is "known about, not yet pulled".
+    for attachment_id in references {
+        if get(conn, attachment_id)?.is_none() {
+            conn.execute(
+                "INSERT INTO attachments (attachment_id, note_refs) VALUES (?1, ?2)",
+                rusqlite::params![
+                    attachment_id,
+                    serde_json::to_string(&[note_id]).unwrap_or_else(|_| "[]".to_owned())
+                ],
+            )
+            .map_err(failed)?;
+        }
+    }
+    Ok(())
+}
+
+fn write_refs(conn: &Connection, attachment_id: &str, refs: &[String]) -> Result<(), StorageError> {
+    conn.execute(
+        "UPDATE attachments SET note_refs = ?2 WHERE attachment_id = ?1",
+        rusqlite::params![
+            attachment_id,
+            serde_json::to_string(refs).unwrap_or_else(|_| "[]".to_owned())
+        ],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Every attachment one note references.
+///
+/// **An empty list is not "this note has no attachments"** unless a sender
+/// said so: it is also what a note whose references have never arrived looks
+/// like. The caller that needs the difference reads the note payload's own
+/// field, which is the only place the distinction lives (§14.7).
+pub fn for_note(conn: &Connection, note_id: &str) -> Result<Vec<CachedAttachment>, StorageError> {
+    let rows = conn
+        .prepare(&format!("SELECT {COLUMNS} FROM attachments"))
+        .map_err(failed)?
+        .query_map([], read_row)
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+
+    Ok(rows
+        .into_iter()
+        .filter(|row| row.note_refs.iter().any(|id| id == note_id))
+        .collect())
+}
+
+// MARK: - N206a, binding a body block to an attachment
+
+/// What a block's `url` resolved to.
+///
+/// Four answers rather than an `Option`, because a shell draws each one
+/// differently and collapsing them would make a remote image look like a
+/// failed download.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BlockAttachment {
+    /// The url carries a scheme or is absolute, so it is **not** a vault
+    /// attachment. Desktop refuses to resolve these and calls a remote image
+    /// "ordinary content, not a defect"; the shell loads it as a web resource.
+    Remote { url: String },
+    /// Exactly one of this note's attachments matches.
+    Bound { attachment: CachedAttachment },
+    /// No reference matches. Either the references have not arrived yet, or
+    /// this build has not fetched that manifest.
+    Unknown,
+    /// More than one of this note's attachments has that basename.
+    ///
+    /// **Refused rather than guessed.** Desktop cannot tell them apart either
+    /// — both materialise to the same path and one overwrites the other — and
+    /// picking one here risks showing the wrong picture, which is worse than
+    /// showing a placeholder.
+    Ambiguous { basename: String },
+}
+
+/// Percent-decoding, enough for a vault path.
+///
+/// Block urls are commonly percent-encoded (`my%20file.pdf`), and desktop
+/// decodes before resolving. An undecodable sequence is left as written,
+/// exactly as desktop's `try/catch` does.
+fn percent_decode(value: &str) -> String {
+    let bytes = value.as_bytes();
+    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' && index + 2 < bytes.len() {
+            let hex = std::str::from_utf8(&bytes[index + 1..index + 3]).ok();
+            if let Some(byte) = hex.and_then(|hex| u8::from_str_radix(hex, 16).ok()) {
+                out.push(byte);
+                index += 3;
+                continue;
+            }
+        }
+        out.push(bytes[index]);
+        index += 1;
+    }
+    String::from_utf8(out).unwrap_or_else(|_| value.to_owned())
+}
+
+/// The last path segment, with Windows separators normalised the way desktop
+/// normalises them.
+fn basename(path: &str) -> String {
+    path.replace('\\', "/")
+        .rsplit('/')
+        .next()
+        .unwrap_or(path)
+        .to_owned()
+}
+
+/// Whether a url names something outside the vault.
+///
+/// The same three shapes desktop refuses: a scheme, a leading `/`, a leading
+/// `\`.
+fn is_remote(url: &str) -> bool {
+    url.starts_with('/')
+        || url.starts_with('\\')
+        || url
+            .split_once("://")
+            .map(|(scheme, _)| {
+                !scheme.is_empty()
+                    && scheme
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+            })
+            .unwrap_or(false)
+        || url.starts_with("data:")
+}
+
+/// Binds one body block's `url` to one of the note's attachments (Q4).
+///
+/// **The rule, and why it is this one.** Desktop writes an embedded
+/// attachment to `<vault>/attachments/<noteId>/<basename(manifest.filename)>`,
+/// and resolves a block's url against the vault treating
+/// `attachments/<noteId>/…` as root-relative. The file it writes for an
+/// attachment id and the file a block's url names are therefore the same path,
+/// and the only varying part is the manifest's basename. `research.md` §Q4
+/// carries the citations.
+///
+/// Scoped to **this note's** references, which is why two notes both holding a
+/// `screenshot.png` never collide: each has its own directory.
+pub fn resolve_for_block(
+    conn: &Connection,
+    note_id: &str,
+    url: &str,
+) -> Result<BlockAttachment, StorageError> {
+    if url.is_empty() {
+        return Ok(BlockAttachment::Unknown);
+    }
+    if is_remote(url) {
+        return Ok(BlockAttachment::Remote {
+            url: url.to_owned(),
+        });
+    }
+
+    let wanted = basename(&percent_decode(url));
+    let matches: Vec<CachedAttachment> = for_note(conn, note_id)?
+        .into_iter()
+        .filter(|row| {
+            row.filename
+                .as_deref()
+                .map(|name| basename(name) == wanted)
+                .unwrap_or(false)
+        })
+        .collect();
+
+    Ok(match matches.len() {
+        0 => BlockAttachment::Unknown,
+        1 => BlockAttachment::Bound {
+            attachment: matches.into_iter().next().unwrap_or_else(|| unreachable!()),
+        },
+        _ => BlockAttachment::Ambiguous { basename: wanted },
+    })
+}
+
+/// How many **other** notes still reference one attachment.
+///
+/// Asked before releasing chunks: a picture embedded in two notes must not
+/// lose its bytes because one of them dropped it. Desktop's reference merge
+/// is union-only for the same reason.
+pub fn for_note_count_excluding(
+    conn: &Connection,
+    attachment_id: &str,
+    excluding_note: &str,
+) -> Result<usize, StorageError> {
+    Ok(get(conn, attachment_id)?
+        .map(|row| {
+            row.note_refs
+                .iter()
+                .filter(|id| id.as_str() != excluding_note)
+                .count()
+        })
+        .unwrap_or(0))
+}
+
+// MARK: - N203, the bounded cache
+
+/// What one eviction pass decided.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Eviction {
+    /// Paths the caller must unlink, relative to `images/`.
+    pub paths: Vec<String>,
+    /// Ciphertext bytes the pass reclaimed.
+    pub reclaimed: i64,
+}
+
+/// Evicts least-recently-downloaded bytes until the cache fits `budget_bytes`.
+///
+/// Oldest `downloaded_at` first, which is the cheapest defensible order: it
+/// needs no access tracking, and a picture nobody has opened since it arrived
+/// is the one a user misses least.
+///
+/// **Never removes a row and never touches a pinned one.** A pinned row that
+/// alone exceeds the budget is left alone and the pass returns under-budget
+/// rather than breaking the promise; a cache cannot both honour a pin and
+/// guarantee a ceiling, and the pin is the explicit instruction.
+pub fn evict_to_budget(conn: &Connection, budget_bytes: i64) -> Result<Eviction, StorageError> {
+    let mut rows = conn
+        .prepare(&format!(
+            "SELECT {COLUMNS} FROM attachments \
+             WHERE local_path IS NOT NULL \
+             ORDER BY downloaded_at IS NULL DESC, downloaded_at ASC"
+        ))
+        .map_err(failed)?
+        .query_map([], read_row)
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+
+    let mut total: i64 = rows.iter().map(|row| row.remote_size.unwrap_or(0)).sum();
+    let mut eviction = Eviction {
+        paths: Vec::new(),
+        reclaimed: 0,
+    };
+
+    for row in rows.drain(..) {
+        if total <= budget_bytes {
+            break;
+        }
+        if row.pinned {
+            continue;
+        }
+        let Some(path) = row.local_path.clone() else {
+            continue;
+        };
+        let size = row.remote_size.unwrap_or(0);
+        conn.execute(
+            "UPDATE attachments SET local_path = NULL, downloaded_at = NULL \
+             WHERE attachment_id = ?1",
+            rusqlite::params![row.attachment_id],
+        )
+        .map_err(failed)?;
+        total -= size;
+        eviction.reclaimed += size;
+        eviction.paths.push(path);
+    }
+
+    Ok(eviction)
+}
+
+/// The ciphertext bytes this cache currently holds on disk.
+pub fn cached_bytes(conn: &Connection) -> Result<i64, StorageError> {
+    conn.query_row(
+        "SELECT COALESCE(SUM(remote_size), 0) FROM attachments WHERE local_path IS NOT NULL",
+        [],
+        |row| row.get(0),
+    )
+    .map_err(failed)
+}
+
+/// Every path the cache believes is on disk.
+///
+/// For the sweep that reclaims bytes orphaned when a shell died between
+/// [`evict_to_budget`] clearing a column and unlinking the file: anything in
+/// `images/` that is not in this list is unreferenced.
+pub fn orphan_candidates(conn: &Connection) -> Result<Vec<String>, StorageError> {
+    let paths = conn
+        .prepare("SELECT local_path FROM attachments WHERE local_path IS NOT NULL")
+        .map_err(failed)?
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    Ok(paths)
+}

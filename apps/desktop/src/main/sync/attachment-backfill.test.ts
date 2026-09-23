@@ -6,7 +6,7 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { upsertNoteMetadata } from '@memry/storage-data'
 import { runMigrations } from '../database/migrate'
-import { backfillUnsyncedAttachmentsWith } from './attachment-backfill'
+import { backfillUnsyncedAttachmentsWith, referencedVaultFiles } from './attachment-backfill'
 import { listPendingUploads } from './attachment-outbox'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -111,6 +111,62 @@ describe('attachment backfill', () => {
     backfillUnsyncedAttachmentsWith({ db, vaultPath })
 
     expect(listPendingUploads(db)).toHaveLength(1)
+  })
+
+  const writeNote = (id: string, body: string): void => {
+    fs.mkdirSync(path.join(vaultPath, 'notes'), { recursive: true })
+    fs.writeFileSync(path.join(vaultPath, 'notes', `${id}.md`), body)
+  }
+
+  const writeVaultFile = (relative: string): string => {
+    const file = path.join(vaultPath, relative)
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, 'bytes')
+    return file
+  }
+
+  it('queues a file the body embeds from outside the note folder', () => {
+    // An imported note: its picture sits beside it, not in attachments/<id>/,
+    // so the folder scan never saw it and no other device could fetch it.
+    addNote('note-f')
+    const picture = writeVaultFile('notes/images/photo.png')
+    const pdf = writeVaultFile('docs/spec.pdf')
+    writeNote(
+      'note-f',
+      [
+        '![A photo](images/photo.png)',
+        '<!-- file:{"url":"../docs/spec.pdf","name":"spec.pdf"} -->',
+        '![remote](https://example.com/x.png)',
+        '![missing](images/gone.png)'
+      ].join('\n\n')
+    )
+
+    const result = backfillUnsyncedAttachmentsWith({ db, vaultPath })
+
+    expect(result.queued).toBe(2)
+    expect(
+      listPendingUploads(db)
+        .map((row) => row.diskPath)
+        .sort()
+    ).toEqual([picture, pdf].sort())
+  })
+
+  it('does not scan the body of a note that already has references', () => {
+    addNote('note-g', { attachmentReferences: ['already-uploaded'] })
+    writeVaultFile('notes/images/other.png')
+    writeNote('note-g', '![x](images/other.png)')
+
+    expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+  })
+
+  it('reads the root-relative attachments form and refuses a path out of the vault', () => {
+    const files = referencedVaultFiles(
+      '![a](attachments/n1/a%20b.png)\n\n![b](../../etc/passwd)\n\n![c](/abs.png)',
+      vaultPath,
+      'notes/n1.md',
+      'n1'
+    )
+    expect(files).toEqual([path.join(path.resolve(vaultPath), 'attachments', 'n1', 'a b.png')])
   })
 
   it('returns empty for a vault with no attachments folder at all', () => {

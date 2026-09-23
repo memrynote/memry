@@ -1302,6 +1302,34 @@ the text may even return the new words. The block is simply gone the next time t
 opened. Any client writing into a body has to find the existing `blockGroup` and append
 inside it, and refuse a top-level layout it does not recognise rather than guess.
 
+### Two conformance classes make that a red build
+
+The trap above used to be documented and unenforced, so a second client reading or writing
+a body could diverge and nothing would say so. Two vector classes under
+`packages/contracts/test-vectors/` now hold every port to the same document.
+
+`note-blocks.json` is the **read** direction: document bytes in, the block list a shell
+renders out. Its corpus is authored through BlockNote's own `blocksToYXmlFragment` — the
+path main already calls — so the bytes are the bytes a real note carries rather than a
+hand-built approximation. Coverage is asserted against `registry-manifest.json`, so a node
+type added to the schema with no case is a failing test. That gap was not theoretical: a
+`divider` was being dropped before it left the core, and inline colour values never crossed
+at all. Both passed the only test that existed, which compared the block walk against the
+text walk of the _same_ port — two readings that agree with each other whether or not
+either is right.
+
+`block-edit.json` is the **write** direction: a base document, one operation, and the
+document the operation must leave behind, both authored through BlockNote. The assertion is
+therefore "the writer produces the document BlockNote would have produced", which is the
+only form of the rule above that a test can actually check.
+
+Neither class compares Yjs update bytes, and that is deliberate. An update encodes
+`clientID` and per-client clocks, and struct ordering, origin ids and run-length packing are
+free choices an implementation may make differently while still converging — two different
+updates that converge are both correct. So the classes compare the resulting **document**,
+through a canonical textual rendering of the fragment (node names, nesting, attributes
+sorted, text) that every port emits identically.
+
 The package owns each node's config, `parse` and `toExternalHTML` — the half that decides
 what reaches the vault file — and each process supplies its own presentation. The renderer
 gives the editor chip; the main process gives an implementation that emits the node's plain

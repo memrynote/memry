@@ -5,25 +5,16 @@
 //! input — rule 2 of `packages/contracts/test-vectors/README.md` — and nothing
 //! here recomputes an expectation.
 //!
-//! ## One case is asserted against the chapter rather than against the file
+//! ## The canonical-comparison case no longer needs an override
 //!
-//! `object-values-same-content-different-key-order` is recorded as the
-//! **shipped TypeScript behaves today**: `JSON.stringify` is key-order
-//! sensitive, so `{a:1,b:2}` and `{b:2,a:1}` "differ" and a conflict is
-//! reported. The vector's own `pins` text says so and says the case exists to
-//! measure the change.
-//!
-//! Chapter 06 §6.4.2 is a **decision dated 2026-09-13** that mandates a
-//! canonical comparison, and chapter 00 §0.1 makes the chapter the thing a
-//! second implementation builds against. The core therefore implements the
-//! canonical rule, the two disagree on exactly this case, and the assertion
-//! below spells out both values rather than quietly skipping it. Everything
-//! else about the case — the winner, the merged value, the merged clock — is
-//! asserted from the file unchanged, because §6.4.3 says the conflict flag is
-//! the only thing the decision moves.
-//!
-//! When #2185 lands in `packages/sync-client`, the generator reproduces the
-//! flipped value and this override is deleted with no change to the Rust.
+//! `object-values-same-content-different-key-order` used to be asserted
+//! against chapter 06 §6.4.2 rather than against the file, because the shipped
+//! TypeScript still compared `JSON.stringify` output and reported `{a:1,b:2}`
+//! against `{b:2,a:1}` as a conflict. #2185 landed in `packages/sync-client`
+//! (`fix(sync-client): compare field values canonically instead of
+//! JSON.stringify`), the generator re-emitted the case with
+//! `hadConflicts: false`, and the override was deleted as its own comment
+//! predicted. The case is now asserted from the file like every other one.
 
 mod support;
 
@@ -37,10 +28,6 @@ use memry_core::sync::field_merge::{
 };
 use serde_json::{Map as JsonMap, Value as Json, json};
 use support::vector_file;
-
-/// The one case where the committed file records pre-#2185 TypeScript and the
-/// chapter records the decision.
-const CANONICAL_COMPARISON_CASE: &str = "object-values-same-content-different-key-order";
 
 #[test]
 fn field_merge_cases_match_the_committed_vectors() {
@@ -75,24 +62,6 @@ fn field_merge_cases_match_the_committed_vectors() {
             expected["mergedFieldClocks"],
             "{name}: merged field clocks"
         );
-
-        if name == CANONICAL_COMPARISON_CASE {
-            // §6.4.2: the two objects are equal under the canonical form, so
-            // `differ` is false and the conflict does not fire. The committed
-            // file carries the pre-decision value, which is asserted here so
-            // the disagreement is visible rather than skipped.
-            assert_eq!(
-                expected["hadConflicts"],
-                json!(true),
-                "{name}: the file is expected to still carry the pre-#2185 value"
-            );
-            assert!(
-                !result.had_conflicts,
-                "{name}: #2185's canonical comparison removes this false positive"
-            );
-            assert!(result.conflicts.is_empty());
-            continue;
-        }
 
         assert_eq!(
             json!(result.had_conflicts),

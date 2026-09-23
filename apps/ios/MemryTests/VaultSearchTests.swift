@@ -15,6 +15,11 @@ import Testing
 @Suite("Vault search")
 struct VaultSearchTests {
     private final class ScriptedSearch: VaultSearching, @unchecked Sendable {
+        /// N800. Empty rather than scripted: the backlink query is asserted
+        /// in Rust against a real index, and a fake answering with rows would
+        /// claim links this vault does not hold.
+        func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }
+
         let queries = Mutex([String]())
         let reindexes = Mutex(0)
         private let hits: [SearchResult]

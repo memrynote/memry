@@ -352,6 +352,30 @@ is empty; and **refuse** a top-level layout it does not recognise rather than
 guess. Refusing is correct because the alternatives are a deletion the user
 never sees and a document a peer cannot construct.
 
+**`block-edit.json` is the class that enforces this**, by recording a base
+document, one operation and the document the operation must leave behind, both
+authored through BlockNote. A writer is held to producing what BlockNote would
+have produced, which is the only statement of the rule that a test can check;
+a writer held to its own idea of the shape cannot catch a node its peer will
+delete. Its expectations are compared through the canonical rendering below
+rather than through update bytes.
+
+**Two writer defects that class found on its first run, recorded so they are
+not rediscovered as surprises.** The reference core's append path put a
+`blockContainer` beside the existing `blockGroup` as a second top-level child
+— exactly the deletion this section warns about. And its prop write stored
+every value as a **string**, so `checked` became `"true"` where BlockNote
+writes the boolean `true`; since a non-empty string is truthy, an unticked box
+written as `"false"` reads as ticked by anything testing the prop for truth. A
+conforming writer MUST write a prop in its **declared type**, not as text.
+
+**A block's declared props are written explicitly, not omitted.** The paragraph
+BlockNote's own writer produces carries `backgroundColor`, `textAlignment` and
+`textColor` at their declared defaults; the sentence below about omitting
+defaults describes the hand-built fixtures, not the reference writer. A client
+that omits them produces a document that renders identically and is **not**
+canonically identical, so it cannot be held to byte parity with desktop.
+
 **Each `blockContainer` carries an `id` attribute, a v4 UUID.** BlockNote's
 writer stamps one on every block; its reader tolerates a missing id by
 generating one, and desktop separately repairs containers lacking one on note
@@ -359,11 +383,17 @@ open — that repair exists because empty-string ids produced an editor error. A
 writer SHOULD write a v4-shaped id; a reader MUST NOT fail on a block without
 one.
 
-**A block's `props` are omitted when they equal their declared defaults.**
-`textColor`, `backgroundColor` and `textAlignment` are declared with defaults,
-so a node carrying no attributes reads identically to one carrying the defaults.
-Omitting them is what keeps a minimally-written block byte-comparable with the
-committed fixtures.
+**A block's `props` MAY be omitted when they equal their declared defaults, and
+a reader MUST accept either spelling.** `textColor`, `backgroundColor` and
+`textAlignment` are declared with defaults, so a node carrying no attributes
+reads identically to one carrying them, and omitting them is what keeps the
+hand-built fixtures small.
+
+**This is a reader's tolerance, not a writer's licence — see the paragraph
+above.** BlockNote's own writer emits the defaults explicitly, so a writer that
+omits them produces a document that renders identically and is not canonically
+identical to desktop's. The two statements are easy to read as one rule and are
+not: a reader accepts both spellings, a writer produces exactly one of them.
 
 **The committed fixtures are deliberately smaller than this, and two of them
 disagree with it.** `text-extract.json`'s `a plain paragraph document` is
@@ -372,6 +402,30 @@ case is `prosemirror > paragraph` with no container at all. Both are hand-built
 and correct for what they pin — `extract_text`'s walk, and that the transport
 does not inspect the bytes — and neither is the layout above. **This section,
 not a fixture, is the authority on what a writer produces.**
+
+**`note-blocks.json` is the fixture that does carry this layout**, because its
+corpus is authored through BlockNote's own `blocksToYXmlFragment` rather than
+by hand: every case is a real `blockGroup > blockContainer > <block>` tree, and
+the top-level `blockGroup` above is visible in each one. It pins the **read**
+direction — document bytes in, a block list out — across the TypeScript, Rust
+and Swift ports, and its coverage is asserted against `registry-manifest.json`
+so a type in the §12.9 table with no case is a failing test.
+
+**Two facts about this layout that a reader must not get wrong, each now
+pinned by that class.** First, **the top-level `blockGroup` is structure, not
+nesting**: a walk that counts it as a level reports every top-level block one
+deeper than it is, and a shell that indents by depth draws the whole note
+indented. Second, a client comparing two documents **must not compare update
+bytes** to decide they are the same. An update encodes `clientID` and
+per-client clocks, and struct ordering, origin ids and run-length packing are
+free choices; two different updates that converge are both correct. Documents
+are compared through a canonical rendering of the fragment — node names,
+nesting, attributes sorted, text — which is what `note-blocks.json`'s
+`expectedCanonical` field carries and what the write-direction class compares.
+An attribute whose value is null or undefined is omitted from that rendering,
+because y-prosemirror writes an `undefined` attribute (`numberedListItem`
+carries `start: undefined`) while skipping a `null` one, and a port that
+rendered one and dropped the other would report a false mismatch.
 
 **Normative, and stronger than the question assumes: a conforming client MUST
 preserve every root present in the update stream, including roots this

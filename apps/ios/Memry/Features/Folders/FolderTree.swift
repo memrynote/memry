@@ -4,19 +4,19 @@ import MemryCore
 // T156, the value half. One vault's browse hierarchy, built from two core
 // snapshots and nothing else.
 //
-// **The tree shows only configured folders** (spec-defect 124, Kaan's
-// decision). `Notes.folders()` is the `folder_config` projection: a folder can
-// hold notes and carry no config record (chapter 13 §13.7.10), so this is the
-// set someone has configured rather than the set that exists. The accepted
-// cost is that a folder created on another device, or never configured, is
-// absent from the tree.
+// **The tree shows every folder a note lives in**, configured or not. This
+// replaces spec-defect 124's "configured folders only" (Kaan, reversed after
+// seeing a vault whose `books/`, `projects/` and `travel/` all landed in one
+// "outside the folder list" heap). `Notes.folders()` is the `folder_config`
+// projection, and a folder can hold notes and carry no config record (chapter
+// 13 §13.7.10) — which on a vault that grew on desktop is most of them. Such a
+// folder, and every ancestor of it, is derived from the notes' own
+// `folderPath`, exactly as desktop's tree is derived from the directories on
+// disk. A configured folder keeps its own name and icon.
 //
-// **What that decision must never become.** The notes in such a folder are
-// real and stay visible — they land in ``VaultOutline/unplacedNotes`` and are
-// rendered in their own section. Dropping them, or pretending they sit at the
-// vault root, would be "an unparseable read renders as an empty one" in
-// another costume, which is the one bug shape this codebase has already
-// shipped twice.
+// ``VaultOutline/unplacedNotes`` stays, and stays empty: every note with a
+// folder now has a folder to sit in. It is kept rather than removed so a note
+// the tree somehow cannot place is still drawn, never dropped.
 //
 // **Every configured folder appears exactly once**, including two the
 // projection cannot place: a folder whose `parentPath` has no config row
@@ -140,10 +140,12 @@ extension VaultOutline {
     /// so a row can be rendered without a second FFI crossing — `list()` costs
     /// a crossing and must never be per row.
     static func build(folders: [FolderSummary], notes: [NoteSummary]) -> VaultOutline {
-        let index = FolderIndex(folders)
+        let index = FolderIndex(folders + derivedFolders(configured: folders, notes: notes))
         let placement = NotePlacement(notes: notes, configured: index.paths)
         var visited: Set<String> = []
-        var roots = index.rootPaths.compactMap { node($0, index, placement, &visited) }
+        var roots = sortedByTitle(index.rootPaths, index).compactMap {
+            node($0, index, placement, &visited)
+        }
         // A configured folder the walk above never reached is caught in a
         // parent cycle. It is promoted rather than dropped: this tree may omit
         // a folder nobody configured, and may omit nothing else.
@@ -166,10 +168,47 @@ extension VaultOutline {
     ) -> FolderNode? {
         guard let folder = index.byPath[path], visited.insert(path).inserted else { return nil }
         var children: [FolderNode] = []
-        for child in index.childrenOf[path] ?? [] {
+        for child in sortedByTitle(index.childrenOf[path] ?? [], index) {
             if let node = node(child, index, placement, &visited) { children.append(node) }
         }
         return FolderNode(folder: folder, children: children, notes: placement.byFolder[path] ?? [])
+    }
+}
+
+extension VaultOutline {
+    /// A folder for every note path, and every ancestor of one, that has no
+    /// `folder_config` row. Parent before child, so the index keeps the core's
+    /// ordering promise; the last path segment is the name, as on disk.
+    static func derivedFolders(
+        configured: [FolderSummary],
+        notes: [NoteSummary]
+    ) -> [FolderSummary] {
+        var known = Set(configured.map(\.path))
+        var derived: [FolderSummary] = []
+        let paths = Set(notes.compactMap(\.folderPath)).sorted()
+        for path in paths {
+            let segments = path.split(separator: "/").map(String.init)
+            for depth in segments.indices {
+                let current = segments[...depth].joined(separator: "/")
+                guard !current.isEmpty, known.insert(current).inserted else { continue }
+                let parent = depth == 0 ? nil : segments[..<depth].joined(separator: "/")
+                derived.append(
+                    FolderSummary(path: current, parentPath: parent, name: segments[depth], icon: nil)
+                )
+            }
+        }
+        return derived
+    }
+}
+
+/// Siblings in the order a reader scans for them: by name, as desktop's file
+/// tree lists directories. The config's order is parent-before-child, which
+/// says nothing about siblings, and derived folders have no order at all.
+private func sortedByTitle(_ paths: [String], _ index: FolderIndex) -> [String] {
+    paths.sorted { left, right in
+        let leftName = index.byPath[left]?.name ?? left
+        let rightName = index.byPath[right]?.name ?? right
+        return leftName.localizedStandardCompare(rightName) == .orderedAscending
     }
 }
 

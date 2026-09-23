@@ -13,13 +13,14 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use memry_core::api::search::BacklinkOrder;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
-use yrs::{ReadTxn as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
+use yrs::{ReadTxn as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
 
 const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-a";
@@ -205,4 +206,262 @@ fn a_reindex_is_idempotent() {
         1,
         "a second pass must not double the note"
     );
+}
+
+// MARK: - Backlinks (N800)
+
+/// A body update carrying one wiki link to `target`.
+///
+/// The link is a mark with a target, which is how `extract_blocks` reports one
+/// and what the projection reads.
+fn link_update(doc_id: &str, text: &str, target: &str) -> Vec<u8> {
+    let captured: Arc<std::sync::Mutex<Vec<Vec<u8>>>> = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let sink: UpdateSink = {
+        let captured = Arc::clone(&captured);
+        Arc::new(move |_, bytes: &[u8]| captured.lock().expect("lock").push(bytes.to_vec()))
+    };
+    let document = DocumentRegistry::new("device-peer", sink)
+        .get_or_open(doc_id)
+        .expect("open");
+    document
+        .write(|txn| {
+            let fragment = txn
+                .get_xml_fragment("prosemirror")
+                .expect("the root is typed at open");
+            let group = fragment.push_back(txn, XmlElementPrelim::empty("blockGroup"));
+            let container = group.push_back(txn, XmlElementPrelim::empty("blockContainer"));
+            let paragraph = container.push_back(txn, XmlElementPrelim::empty("paragraph"));
+            let link = paragraph.push_back(txn, XmlElementPrelim::empty("wikiLink"));
+            link.insert_attribute(txn, "target", target);
+            link.push_back(txn, XmlTextPrelim::new(text));
+        })
+        .expect("a write transaction");
+    captured
+        .lock()
+        .expect("lock")
+        .first()
+        .cloned()
+        .expect("one update")
+}
+
+fn write_linking_note(db: &Db, id: &str, title: &str, target: &str) {
+    db.call_blocking(|conn: &mut Connection| {
+        let note = NewNote {
+            id,
+            title,
+            folder_path: None,
+            content: "",
+            tags: &[],
+            properties: None,
+        };
+        notes::create(conn, &note, DEVICE, NOW)?;
+        update_log::append_server_update(conn, id, 1, &link_update(id, target, target), NOW)
+            .expect("the body update");
+        Ok(())
+    })
+    .expect("the write");
+}
+
+/// **The projection is what makes this answerable at all.**
+///
+/// `note_links` existed in the index schema and nothing wrote a row into it,
+/// so this query would have returned an empty list forever and read as "no
+/// note links here" rather than "nothing populates the table".
+#[test]
+fn a_note_knows_which_notes_link_to_it() {
+    let (db, vault) = vault("backlinks");
+    write_note(&db, "target", "Cardamom", "the spice itself");
+    write_linking_note(&db, "source", "Groceries", "Cardamom");
+
+    let search = vault.search().expect("search");
+    search.reindex().expect("the reindex");
+
+    let found = search
+        .backlinks("target".to_string(), BacklinkOrder::Recent)
+        .expect("backlinks");
+
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].source_id, "source");
+    assert_eq!(found[0].source_title, "Groceries");
+    assert_eq!(found[0].target_title, "Cardamom");
+}
+
+/// A link written before its target exists still counts once the target is
+/// created, which is what the nullable `target_id` is for.
+#[test]
+fn a_link_written_before_its_target_existed_still_counts() {
+    let (db, vault) = vault("backlinks-forward");
+    write_linking_note(&db, "source", "Groceries", "Cardamom");
+
+    let search = vault.search().expect("search");
+    search.reindex().expect("the reindex");
+
+    // The note the link names does not exist yet.
+    write_note(&db, "target", "Cardamom", "the spice itself");
+    search.reindex().expect("the second reindex");
+
+    let found = search
+        .backlinks("target".to_string(), BacklinkOrder::Recent)
+        .expect("backlinks");
+    assert_eq!(
+        found.len(),
+        1,
+        "the forward reference must resolve: {found:?}"
+    );
+}
+
+/// A note that stopped linking somewhere really stops: the projection deletes
+/// the source's rows before inserting, so an edit that removed a link does not
+/// leave a backlink behind.
+///
+/// **Authored as a real deletion rather than a second insert.** Yjs updates
+/// are additive, so appending another body update leaves the original link in
+/// the document and the backlink correctly survives — the first version of
+/// this test appended one and was wrong about Yjs, not about the projection.
+#[test]
+fn removing_a_link_removes_the_backlink() {
+    let (db, vault) = vault("backlinks-removed");
+    write_note(&db, "target", "Cardamom", "the spice itself");
+    let link = link_update("source", "Cardamom", "Cardamom");
+    db.call_blocking(|conn: &mut Connection| {
+        let note = NewNote {
+            id: "source",
+            title: "Groceries",
+            folder_path: None,
+            content: "",
+            tags: &[],
+            properties: None,
+        };
+        notes::create(conn, &note, DEVICE, NOW)?;
+        update_log::append_server_update(conn, "source", 1, &link, NOW).expect("the body");
+        Ok(())
+    })
+    .expect("the write");
+
+    let search = vault.search().expect("search");
+    search.reindex().expect("the reindex");
+    assert_eq!(
+        search
+            .backlinks("target".to_string(), BacklinkOrder::Recent)
+            .expect("backlinks")
+            .len(),
+        1
+    );
+
+    // The user deletes the paragraph the link was in.
+    let removal = removal_update("source", &[link]);
+    db.call_blocking(|conn: &mut Connection| {
+        update_log::append_server_update(conn, "source", 2, &removal, NOW).expect("the removal");
+        Ok(())
+    })
+    .expect("the write");
+    search.reindex().expect("the second reindex");
+
+    assert!(
+        search
+            .backlinks("target".to_string(), BacklinkOrder::Recent)
+            .expect("backlinks")
+            .is_empty(),
+        "a link the source no longer makes must not survive"
+    );
+}
+
+/// The three orders desktop offers, each asserted rather than assumed.
+#[test]
+fn the_three_sort_orders_each_order_differently() {
+    let (db, vault) = vault("backlinks-order");
+    write_note(&db, "target", "Cardamom", "the spice");
+    write_linking_note(&db, "older", "Zebra", "Cardamom");
+    write_linking_note(&db, "newer", "Apple", "Cardamom");
+    // `newer` really is newer, so "recent" has something to order by.
+    db.call_blocking(|conn: &mut Connection| {
+        conn.execute(
+            "UPDATE notes SET modified_at = ?2 WHERE id = ?1",
+            rusqlite::params!["newer", NOW + 5_000],
+        )
+        .expect("the stamp");
+        conn.execute(
+            "UPDATE notes SET modified_at = ?2 WHERE id = ?1",
+            rusqlite::params!["older", NOW - 5_000],
+        )
+        .expect("the stamp");
+        Ok(())
+    })
+    .expect("the stamps");
+
+    let search = vault.search().expect("search");
+    search.reindex().expect("the reindex");
+
+    let ids = |order| {
+        search
+            .backlinks("target".to_string(), order)
+            .expect("backlinks")
+            .into_iter()
+            .map(|backlink| backlink.source_id)
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(ids(BacklinkOrder::Recent), ["newer", "older"]);
+    assert_eq!(ids(BacklinkOrder::Oldest), ["older", "newer"]);
+    // By the linking note's title: Apple before Zebra.
+    assert_eq!(ids(BacklinkOrder::Title), ["newer", "older"]);
+}
+
+/// A note linking to itself is not a backlink, and a note that is not here
+/// has an empty list rather than an error.
+#[test]
+fn a_self_link_is_not_a_backlink_and_a_missing_note_is_empty() {
+    let (db, vault) = vault("backlinks-self");
+    write_linking_note(&db, "self", "Cardamom", "Cardamom");
+
+    let search = vault.search().expect("search");
+    search.reindex().expect("the reindex");
+
+    assert!(
+        search
+            .backlinks("self".to_string(), BacklinkOrder::Recent)
+            .expect("backlinks")
+            .is_empty(),
+        "a note linking to itself is not a backlink"
+    );
+    assert!(
+        search
+            .backlinks("no-such-note".to_string(), BacklinkOrder::Recent)
+            .expect("backlinks")
+            .is_empty()
+    );
+}
+
+/// An update that empties the body fragment, given everything already in it.
+///
+/// A real deletion, which is the only way to take content out of a Yjs
+/// document: appending another update adds to it.
+fn removal_update(doc_id: &str, prior: &[Vec<u8>]) -> Vec<u8> {
+    let captured: Arc<std::sync::Mutex<Vec<Vec<u8>>>> = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let sink: UpdateSink = {
+        let captured = Arc::clone(&captured);
+        Arc::new(move |_, bytes: &[u8]| captured.lock().expect("lock").push(bytes.to_vec()))
+    };
+    let document = DocumentRegistry::new("device-peer", sink)
+        .get_or_open(doc_id)
+        .expect("open");
+    for blob in prior {
+        document.apply_durable_update(blob).expect("prior");
+    }
+    captured.lock().expect("lock").clear();
+    document
+        .write(|txn| {
+            let fragment = txn
+                .get_xml_fragment("prosemirror")
+                .expect("the root is typed at open");
+            let length = fragment.len(txn);
+            fragment.remove_range(txn, 0, length);
+        })
+        .expect("a write transaction");
+    captured
+        .lock()
+        .expect("lock")
+        .first()
+        .cloned()
+        .expect("one update")
 }

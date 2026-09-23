@@ -170,6 +170,16 @@ impl ApiRequest {
         self
     }
 
+    /// Raw bytes as the body, for a request that is not JSON.
+    ///
+    /// An attachment chunk is `nonce ‖ ciphertext` and goes up as-is:
+    /// base64-ing it through [`Self::json`] would inflate every upload by a
+    /// third for no reader's benefit.
+    pub fn body(mut self, bytes: Vec<u8>) -> Self {
+        self.body = Some(bytes);
+        self
+    }
+
     pub fn auth(mut self, auth: Auth) -> Self {
         self.auth = auth;
         self
@@ -389,6 +399,25 @@ impl HttpClient {
         // condition that cannot change within a deployment.
         if status == 501 && code == "BOOTSTRAP_UNAVAILABLE" {
             return Outcome::Fatal(ApiError::BootstrapUnavailable);
+        }
+
+        // Chapter 14 §14.6: `STORAGE_PRESIGN_UNAVAILABLE` is typed and
+        // **permanent for that deployment**, and a client MUST NOT retry the
+        // presign route on a timer. It arrives as a 503, so without this it
+        // falls into the retryable-5xx branch below and every presign call
+        // spends a full ladder on a condition that cannot change — the same
+        // reasoning the 501 above is lifted out for.
+        //
+        // Kept as a `Status` carrying the code rather than given its own
+        // variant, because the caller's correct response is not to fail: it
+        // switches to the proxied path and records that this deployment does
+        // not presign.
+        if code == "STORAGE_PRESIGN_UNAVAILABLE" {
+            return Outcome::Fatal(ApiError::Status {
+                status,
+                code: body.code,
+                message,
+            });
         }
 
         match (status, code.as_str()) {

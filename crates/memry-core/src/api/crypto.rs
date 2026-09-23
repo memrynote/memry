@@ -131,3 +131,80 @@ pub fn decompress_payload(frame: Vec<u8>) -> Result<Vec<u8>, CompressError> {
 pub fn core_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
+
+/// A vault's name, opened from the sealed form the registry carries.
+///
+/// The server never sees a vault name: desktop seals it under the vault key
+/// with `vault-name-v1:<vaultUuid>` as associated data
+/// (`apps/desktop/src/main/sync/vault-name-crypto.ts`), so the registry row
+/// holds only `encryptedName` and `nameNonce`. The associated data binds the
+/// name to its vault, which is what stops a server swapping two rows' names.
+///
+/// `None` for anything that does not open — a malformed field, a wrong key, a
+/// name sealed for another vault. Desktop answers the same way, and a shell
+/// then says the vault has no readable name rather than drawing ciphertext.
+#[uniffi::export]
+pub fn decrypt_vault_name(
+    master_key: Vec<u8>,
+    vault_id: String,
+    encrypted_name: String,
+    name_nonce: String,
+) -> Option<String> {
+    let vault_key = keys::derive_vault_key(&master_key).ok()?;
+    let ciphertext = keys::base64_decode(&encrypted_name).ok()?;
+    let nonce = keys::base64_decode(&name_nonce).ok()?;
+    let aad = format!("vault-name-v1:{vault_id}");
+    let plaintext =
+        crate::crypto::sodium::aead_decrypt(&ciphertext, Some(aad.as_bytes()), &nonce, &vault_key)
+            .ok()?;
+    String::from_utf8(plaintext.to_vec()).ok()
+}
+
+#[cfg(test)]
+mod vault_name_tests {
+    use super::*;
+    use base64::Engine as _;
+    use base64::engine::general_purpose::STANDARD;
+
+    fn seal(master: &[u8], vault_id: &str, name: &str) -> (String, String) {
+        let key = keys::derive_vault_key(master).expect("vault key");
+        let nonce = [7u8; 24];
+        let aad = format!("vault-name-v1:{vault_id}");
+        let sealed = crate::crypto::sodium::aead_encrypt(
+            name.as_bytes(),
+            Some(aad.as_bytes()),
+            &nonce,
+            &key,
+        )
+        .expect("seal");
+        (STANDARD.encode(sealed), STANDARD.encode(nonce))
+    }
+
+    #[test]
+    fn a_sealed_name_opens_to_its_plaintext() {
+        let master = vec![3u8; 32];
+        let (name, nonce) = seal(&master, "v1", "MemryNote");
+        assert_eq!(
+            decrypt_vault_name(master, "v1".into(), name, nonce).as_deref(),
+            Some("MemryNote")
+        );
+    }
+
+    /// The associated data is the vault id, so a name moved onto another
+    /// vault's row does not open — which is the point of binding it.
+    #[test]
+    fn a_name_sealed_for_another_vault_does_not_open() {
+        let master = vec![3u8; 32];
+        let (name, nonce) = seal(&master, "v1", "MemryNote");
+        assert_eq!(decrypt_vault_name(master, "v2".into(), name, nonce), None);
+    }
+
+    #[test]
+    fn a_wrong_key_does_not_open() {
+        let (name, nonce) = seal(&[3u8; 32], "v1", "MemryNote");
+        assert_eq!(
+            decrypt_vault_name(vec![4u8; 32], "v1".into(), name, nonce),
+            None
+        );
+    }
+}

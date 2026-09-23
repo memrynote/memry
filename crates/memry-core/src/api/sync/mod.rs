@@ -49,16 +49,24 @@
 //! Nothing on this surface accepts a key, returns a key, or names one, which is
 //! what keeps `core-api.md`'s "none of the B3 objects exposes a key" true.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use zeroize::Zeroizing;
 
 use crate::api::auth::AuthSession;
-use crate::api::errors::SyncError;
+use crate::api::errors::{StorageError, SyncError};
 use crate::crypto::keys;
+use crate::crypto::sodium;
+use crate::domain::attachments;
+use crate::domain::notes;
 use crate::domain::reads;
+use crate::protocol;
 use crate::protocol::account::{self, AccountCipher};
+use crate::protocol::attachment_upload;
+use crate::protocol::attachments as protocol_attachments;
 use crate::protocol::types::Declaration;
+use crate::seams::reachability::Reachable;
 use crate::storage::Db;
 use crate::sync::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use crate::sync::bootstrap::BootstrapClient;
@@ -68,6 +76,10 @@ use crate::sync::first_sync::{
 };
 use crate::sync::first_sync_store::read_meta;
 use crate::sync::pull::PullLoop;
+
+mod attachments_io;
+
+use attachments_io::*;
 
 impl From<FirstSyncError> for SyncError {
     fn from(error: FirstSyncError) -> Self {
@@ -190,6 +202,14 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
+/// 128 bits of libsodium randomness, hex.
+fn hex_id() -> String {
+    sodium::random_bytes(16)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
 fn count(value: usize) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
 }
@@ -221,6 +241,23 @@ pub struct BodyFetchSummary {
     pub stopped: bool,
 }
 
+/// What one attachment fetch did.
+///
+/// `deferred` is not a failure. FR-045 asks for lazy, unmetered-by-default
+/// downloads, so "waiting for wifi" is the feature working; a shell that met
+/// an error there would report a fault for correct behaviour.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct AttachmentFetchSummary {
+    pub downloaded: bool,
+    /// The metered policy said not now (FR-045).
+    pub deferred: bool,
+    /// Plaintext bytes written. Zero when deferred.
+    pub bytes: u64,
+    /// Relative to the vault's `images/` directory, when the bytes are there
+    /// — which includes the deferred case if an earlier fetch succeeded.
+    pub local_path: Option<String>,
+}
+
 impl From<BodyPullReport> for BodyFetchSummary {
     fn from(report: BodyPullReport) -> Self {
         Self {
@@ -240,14 +277,24 @@ pub struct VaultSync {
     vault_id: String,
     db: Db,
     session: Arc<AuthSession>,
+    /// The vault directory, for the one thing sync writes outside the
+    /// database: attachment bytes live in `images/` as sandbox files rather
+    /// than as blobs (data-model §A.4).
+    directory: String,
 }
 
 impl VaultSync {
-    pub(crate) fn over(vault_id: String, db: Db, session: Arc<AuthSession>) -> Self {
+    pub(crate) fn over(
+        vault_id: String,
+        db: Db,
+        session: Arc<AuthSession>,
+        directory: String,
+    ) -> Self {
         Self {
             vault_id,
             db,
             session,
+            directory,
         }
     }
 
@@ -385,5 +432,104 @@ impl VaultSync {
         .pull_document(&note_id)
         .await?;
         Ok(report.into())
+    }
+
+    /// Fetches one attachment's bytes into `images/` (N206's data half).
+    ///
+    /// **`reachable` is the shell's observation and the policy is the core's.**
+    /// Only the shell can see the current path; only one place should decide
+    /// what that means, and FR-045's rule — lazy, unmetered by default, with
+    /// an explicit per-item override — lives in
+    /// [`crate::domain::attachments::may_download`] where a test can reach it
+    /// without a network.
+    ///
+    /// **Deferring is a normal outcome, not an error.** A picture waiting for
+    /// wifi is exactly what FR-045 asks for, so it comes back as
+    /// `deferred: true` with no bytes written. A shell that met an error there
+    /// would show a failure for working behaviour.
+    ///
+    /// The verification order of §14.4.1 is not this function's to choose: it
+    /// calls [`crate::protocol::attachments::fetch_manifest`], which checks
+    /// the signature before unwrapping the file key, and an unresolvable
+    /// signer is refused there rather than skipped.
+    pub async fn fetch_attachment(
+        &self,
+        attachment_id: String,
+        reachable: Reachable,
+    ) -> Result<AttachmentFetchSummary, SyncError> {
+        // The row carries the user's override, and its absence means the
+        // default: FR-045 starts every attachment unmetered-only.
+        let wanted = attachment_id.clone();
+        let cached = self
+            .db
+            .call(move |conn| Ok(attachments::get(conn, &wanted)))
+            .await??;
+        let unmetered_only = cached.as_ref().is_none_or(|row| row.unmetered_only);
+
+        if !attachments::may_download_with(unmetered_only, reachable) {
+            return Ok(AttachmentFetchSummary {
+                downloaded: false,
+                deferred: true,
+                bytes: 0,
+                local_path: cached.and_then(|row| row.local_path),
+            });
+        }
+
+        let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
+        let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
+        let directory = account::device_directory(&self.session.http()).await?;
+
+        let (manifest, file_key) = protocol_attachments::fetch_manifest(
+            &self.session.http(),
+            &attachment_id,
+            &vault_key,
+            &DirectorySigners(directory),
+        )
+        .await
+        .map_err(attachment_error)?;
+
+        let bytes = self.download_chunks(&manifest, &file_key).await?;
+        let local_path = self.write_bytes(&attachment_id, &bytes)?;
+
+        let manifest_json =
+            protocol::attachment_manifest::manifest_json(&manifest).map_err(|error| {
+                SyncError::AttachmentCorrupt {
+                    what: error.to_string(),
+                }
+            })?;
+        let manifest_text = String::from_utf8_lossy(&manifest_json).into_owned();
+        // Ciphertext, because §14.8 reserves quota against it and the cache
+        // budget is measured in the same figure.
+        let remote_size: i64 = manifest
+            .chunks
+            .iter()
+            .map(|chunk| chunk.size as i64 + 24 + 16)
+            .sum();
+        let id = attachment_id.clone();
+        let filename = manifest.filename.clone();
+        let mime_type = manifest.mime_type.clone();
+        let stored = local_path.clone();
+        let now = now_ms();
+        self.db
+            .call(move |conn| {
+                attachments::put_manifest(
+                    conn,
+                    &id,
+                    &manifest_text,
+                    remote_size,
+                    &filename,
+                    &mime_type,
+                )?;
+                attachments::record_download(conn, &id, &stored, now)?;
+                Ok(())
+            })
+            .await?;
+
+        Ok(AttachmentFetchSummary {
+            downloaded: true,
+            deferred: false,
+            bytes: bytes.len() as u64,
+            local_path: Some(local_path),
+        })
     }
 }

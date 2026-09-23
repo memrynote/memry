@@ -181,7 +181,11 @@ final class AuthStartup {
     func vaultModel(for state: AuthState) -> VaultSelectionViewModel? {
         guard state == .registered, let session else { return nil }
         return VaultSelectionViewModel(
-            registry: CoreVaultRegistry(session: session),
+            registry: CoreVaultRegistry(session: session) { [emitter, keychainItems] in
+                // A read that throws is a locked phone, and the list then
+                // shows placeholders rather than failing.
+                try? Keychain(emitter: emitter, items: keychainItems).get(key: .masterKey)
+            },
             opener: CoreVaultOpener(
                 files: VaultFiles(emitter: emitter),
                 executor: executor
