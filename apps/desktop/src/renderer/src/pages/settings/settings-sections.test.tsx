@@ -295,6 +295,10 @@ vi.mock('@/hooks/use-calendar-preferences', () => ({
 // Query + calendar-service stack. This suite covers the preference controls, so
 // stub it out rather than stand up a QueryClientProvider for it here — it has
 // its own test in google-calendar-connection.test.tsx.
+vi.mock('@/components/settings/ics-calendar-subscriptions', () => ({
+  IcsCalendarSubscriptions: () => null
+}))
+
 vi.mock('@/components/settings/google-calendar-connection', () => ({
   GoogleCalendarConnection: () => null
 }))

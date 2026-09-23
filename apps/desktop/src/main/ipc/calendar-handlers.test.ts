@@ -35,10 +35,12 @@ const mockPromoteExternalEvent = vi.fn()
 const mockCalendarPromoteErrors = vi.hoisted(() => {
   class ExternalEventNotFoundError extends Error {}
   class ExternalEventSourceMissingError extends Error {}
+  class ExternalEventReadOnlyError extends Error {}
 
   return {
     ExternalEventNotFoundError,
-    ExternalEventSourceMissingError
+    ExternalEventSourceMissingError,
+    ExternalEventReadOnlyError
   }
 })
 
@@ -113,7 +115,8 @@ vi.mock('../calendar/google/push-runtime', () => ({
 vi.mock('../calendar/promote-external-event', () => ({
   promoteExternalEvent: (...args: unknown[]) => mockPromoteExternalEvent(...args),
   ExternalEventNotFoundError: mockCalendarPromoteErrors.ExternalEventNotFoundError,
-  ExternalEventSourceMissingError: mockCalendarPromoteErrors.ExternalEventSourceMissingError
+  ExternalEventSourceMissingError: mockCalendarPromoteErrors.ExternalEventSourceMissingError,
+  ExternalEventReadOnlyError: mockCalendarPromoteErrors.ExternalEventReadOnlyError
 }))
 
 vi.mock('../auth-state', () => ({
@@ -1001,6 +1004,15 @@ describe('calendar-handlers', () => {
         externalEventId: 'missing-external'
       })
     ).toEqual({ success: false, eventId: null, error: 'external missing' })
+
+    mockPromoteExternalEvent.mockImplementationOnce(() => {
+      throw new mockCalendarPromoteErrors.ExternalEventReadOnlyError('read-only subscription')
+    })
+    expect(
+      await invokeHandler(CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT, {
+        externalEventId: 'ics-external'
+      })
+    ).toEqual({ success: false, eventId: null, error: 'read-only subscription' })
   })
 
   it('returns one account in status.accounts per connected Google account (M6 T3)', async () => {
@@ -1373,5 +1385,125 @@ describe('calendar-handlers', () => {
 
     // #then — an empty list, not an error
     expect(found.events).toEqual([])
+  })
+
+  describe('subscribed ICS calendars (#1207)', () => {
+    const FEED_URL = 'https://club.example.com/fixtures.ics'
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d{3}/, '')
+    const FEED = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Test//EN',
+      'X-WR-CALNAME:Club fixtures',
+      'BEGIN:VEVENT',
+      'UID:match-1@club',
+      `DTSTART:${tomorrow}`,
+      'SUMMARY:Home match',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n')
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    function stubFetch(...responses: Array<() => Response>): void {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => {
+          const next = responses.shift()
+          if (!next) throw new TypeError('fetch failed')
+          return next()
+        })
+      )
+    }
+
+    function mirroredEventCount(): number {
+      return db.all<{ count: number }>(
+        sql`SELECT count(*) AS count FROM calendar_external_events`
+      )[0].count
+    }
+
+    it('rejects a link that is not a URL with a code the renderer localizes', async () => {
+      registerCalendarHandlers()
+
+      expect(
+        await invokeHandler(CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR, {
+          url: 'club fixtures'
+        })
+      ).toEqual({
+        success: false,
+        source: null,
+        errorCode: 'invalid_url',
+        error: 'invalid_url'
+      })
+    })
+
+    it('subscribes, reports a failed refresh on the source, and unsubscribes', async () => {
+      registerCalendarHandlers()
+      stubFetch(
+        () => new Response(FEED, { status: 200 }),
+        () => new Response('', { status: 404 })
+      )
+
+      const subscribed = await invokeHandler(CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR, {
+        url: 'webcal://club.example.com/fixtures.ics'
+      })
+      expect(subscribed).toMatchObject({
+        success: true,
+        source: { provider: 'ics', remoteId: FEED_URL, title: 'Club fixtures' }
+      })
+      expect(mirroredEventCount()).toBe(1)
+      const sourceId = subscribed.source.id
+
+      expect(
+        await invokeHandler(CalendarChannels.invoke.REFRESH_ICS_CALENDAR, { sourceId })
+      ).toMatchObject({
+        success: false,
+        errorCode: 'not_found',
+        source: { id: sourceId, syncStatus: 'error', lastError: 'not_found' }
+      })
+
+      const removed = await invokeHandler(CalendarChannels.invoke.UNSUBSCRIBE_ICS_CALENDAR, {
+        sourceId
+      })
+      expect(removed).toMatchObject({ success: true, source: { id: sourceId } })
+      expect(removed.source.archivedAt).toEqual(expect.any(String))
+      expect(mirroredEventCount()).toBe(0)
+    })
+
+    it('hiding a subscribed calendar drops its local events without queueing sync deletes', async () => {
+      registerCalendarHandlers()
+      stubFetch(() => new Response(FEED, { status: 200 }))
+      const subscribed = await invokeHandler(CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR, {
+        url: FEED_URL
+      })
+      expect(mirroredEventCount()).toBe(1)
+
+      const updated = await invokeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION, {
+        id: subscribed.source.id,
+        isSelected: false
+      })
+
+      expect(updated).toMatchObject({ success: true, source: { isSelected: false } })
+      expect(mirroredEventCount()).toBe(0)
+      expect(vi.mocked(enqueueLocalSyncDelete).mock.calls).toEqual([])
+    })
+
+    it('refreshing a source that is not a subscription fails without touching it', async () => {
+      registerCalendarHandlers()
+
+      expect(
+        await invokeHandler(CalendarChannels.invoke.REFRESH_ICS_CALENDAR, {
+          sourceId: 'google-calendar:primary'
+        })
+      ).toEqual({
+        success: false,
+        error: 'Subscribed calendar not found: google-calendar:primary'
+      })
+    })
   })
 })

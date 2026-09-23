@@ -334,6 +334,9 @@ export function createGeneratedRpcApi({
       "setDefaultGoogleCalendar": ((input) => invoke("calendar:set-default-google-calendar", input)) as GeneratedRpcApi["calendar"]["setDefaultGoogleCalendar"],
       "promoteExternalEvent": ((input) => invoke("calendar:promote-external-event", input)) as GeneratedRpcApi["calendar"]["promoteExternalEvent"],
       "retryGoogleCalendarSourceSync": ((input) => invoke("calendar:retry-google-source-sync", input)) as GeneratedRpcApi["calendar"]["retryGoogleCalendarSourceSync"],
+      "subscribeIcsCalendar": ((input) => invoke("calendar:subscribe-ics", input)) as GeneratedRpcApi["calendar"]["subscribeIcsCalendar"],
+      "unsubscribeIcsCalendar": ((input) => invoke("calendar:unsubscribe-ics", input)) as GeneratedRpcApi["calendar"]["unsubscribeIcsCalendar"],
+      "refreshIcsCalendar": ((input) => invoke("calendar:refresh-ics", input)) as GeneratedRpcApi["calendar"]["refreshIcsCalendar"],
     },
     "canvas": {
       "create": ((input) => invoke("canvas:create", input ?? {})) as GeneratedRpcApi["canvas"]["create"],

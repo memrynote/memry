@@ -1,11 +1,12 @@
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, lt, ne, or, sql } from 'drizzle-orm'
-import type {
-  CalendarProjectionBinding,
-  CalendarProjectionEditability,
-  CalendarProjectionItem,
-  CalendarProjectionSourceMeta,
-  CalendarRangeResponse,
-  GetCalendarRangeInput
+import {
+  ICS_CALENDAR_PROVIDER,
+  type CalendarProjectionBinding,
+  type CalendarProjectionEditability,
+  type CalendarProjectionItem,
+  type CalendarProjectionSourceMeta,
+  type CalendarRangeResponse,
+  type GetCalendarRangeInput
 } from '@memry/contracts/calendar-api'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
@@ -445,11 +446,19 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
     .orderBy(asc(calendarExternalEvents.startAt))
     .all()
 
-  const editability: CalendarProjectionEditability = {
+  // Google events become editable by promotion into a memrynote event. A
+  // subscribed feed has no write path at all, so its events are read-only.
+  const promotable: CalendarProjectionEditability = {
     canMove: true,
     canResize: true,
     canEditText: true,
     canDelete: true
+  }
+  const readOnly: CalendarProjectionEditability = {
+    canMove: false,
+    canResize: false,
+    canEditText: false,
+    canDelete: false
   }
 
   return rows.map(({ event, source }) => ({
@@ -463,7 +472,7 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
     isAllDay: event.isAllDay,
     timezone: event.timezone ?? source.timezone ?? LOCAL_TIMEZONE,
     visualType: 'external_event',
-    editability,
+    editability: source.provider === ICS_CALENDAR_PROVIDER ? readOnly : promotable,
     source: externalSource(source),
     binding: null,
     snoozeOffsetMinutes: null

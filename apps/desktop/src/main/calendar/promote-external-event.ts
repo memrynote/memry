@@ -1,8 +1,9 @@
 import { eq } from 'drizzle-orm'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
-import type {
-  PromoteExternalEventInput,
-  PromoteExternalEventResponse
+import {
+  ICS_CALENDAR_PROVIDER,
+  type PromoteExternalEventInput,
+  type PromoteExternalEventResponse
 } from '@memry/contracts/calendar-api'
 import { createLogger } from '../lib/logger'
 import { generateId } from '../lib/id'
@@ -36,6 +37,13 @@ export class ExternalEventSourceMissingError extends Error {
   }
 }
 
+export class ExternalEventReadOnlyError extends Error {
+  constructor(externalEventId: string) {
+    super(`External calendar event ${externalEventId} comes from a read-only subscription`)
+    this.name = 'ExternalEventReadOnlyError'
+  }
+}
+
 export function promoteExternalEvent(
   db: DataDb,
   input: PromoteExternalEventInput
@@ -48,6 +56,11 @@ export function promoteExternalEvent(
   const sourceRow = getCalendarSourceById(db, mirror.sourceId)
   if (!sourceRow) {
     throw new ExternalEventSourceMissingError(input.externalEventId, mirror.sourceId)
+  }
+  // Promotion binds the copy to the remote event for Google writeback. A
+  // subscribed feed has nowhere to write back to.
+  if (sourceRow.provider === ICS_CALENDAR_PROVIDER) {
+    throw new ExternalEventReadOnlyError(input.externalEventId)
   }
 
   const remoteCalendarId = sourceRow.remoteId

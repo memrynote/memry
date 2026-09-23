@@ -77,6 +77,7 @@ import { stopImageProcessing } from './image-processing/bridge'
 import { getEmbeddingWorkerCrashContext, stopEmbeddingModel } from './lib/embeddings'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
+import { startIcsCalendarRunner, stopIcsCalendarRunner } from './calendar/ics/ics-runner'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
 import { getLogShip, installLogShip } from './telemetry/log-ship'
@@ -1813,6 +1814,7 @@ const appReady = app.whenReady().then(async () => {
           errorCode: error instanceof Error ? error.name : 'UnknownError'
         })
       }
+      startIcsCalendarRunner()
       void startGoogleCalendarSyncRunner().catch((error) => {
         mainLog.warn('Google Calendar sync runner failed to start:', error)
         trackMainLog('warn', {
@@ -2290,6 +2292,9 @@ app.on('before-quit', (event) => {
 
         shutdownLog.info('stopping Google Calendar sync runner...')
         stopGoogleCalendarSyncRunner()
+
+        shutdownLog.info('stopping calendar feed runner...')
+        stopIcsCalendarRunner()
       }
     },
     {

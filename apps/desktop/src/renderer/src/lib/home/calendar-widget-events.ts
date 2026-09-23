@@ -1,3 +1,4 @@
+import { ICS_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import { getEventBaseColor } from '@/lib/event-type-colors'
 import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
@@ -33,6 +34,7 @@ function formatSnoozeOffset(minutes: number): string {
 function getMetaLabel(item: CalendarProjectionItem): string | null {
   switch (item.visualType) {
     case 'external_event':
+      if (item.source.provider === ICS_CALENDAR_PROVIDER) return item.source.title
       return item.source.provider ? capitalize(item.source.provider) : null
     case 'reminder':
       return item.snoozeOffsetMinutes !== null ? formatSnoozeOffset(item.snoozeOffsetMinutes) : null

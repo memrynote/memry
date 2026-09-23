@@ -76,6 +76,7 @@ import { getGooglePushRuntime } from '../calendar/google/push-runtime'
 import {
   promoteExternalEvent,
   ExternalEventNotFoundError,
+  ExternalEventReadOnlyError,
   ExternalEventSourceMissingError
 } from '../calendar/promote-external-event'
 import { isMemryUserSignedIn } from '../auth-state'
@@ -90,6 +91,13 @@ import {
   syncCalendarSourceUpdate
 } from '../calendar/runtime-effects'
 import { getMainI18n } from '../lib/main-i18n'
+import { mapCalendarSource } from '../calendar/calendar-source-record'
+import { registerCalendarIcsHandlers, unregisterCalendarIcsHandlers } from './calendar-ics-handlers'
+import {
+  isIcsCalendarSource,
+  purgeIcsCalendarEvents,
+  refreshIcsCalendarSource
+} from '../calendar/ics/ics-subscriptions'
 
 const log = createLogger('IPC:Calendar')
 
@@ -132,31 +140,6 @@ function toEventSearchItem(row: typeof calendarEvents.$inferSelect): CalendarEve
     startAt: row.startAt,
     endAt: row.endAt ?? null,
     isAllDay: row.isAllDay
-  }
-}
-
-function mapCalendarSource(row: typeof calendarSources.$inferSelect): CalendarSourceRecord {
-  return {
-    id: row.id,
-    provider: row.provider,
-    kind: row.kind,
-    accountId: row.accountId ?? null,
-    remoteId: row.remoteId,
-    title: row.title,
-    timezone: row.timezone ?? null,
-    color: row.color ?? null,
-    isPrimary: row.isPrimary,
-    isSelected: row.isSelected,
-    isMemryManaged: row.isMemryManaged,
-    syncCursor: row.syncCursor ?? null,
-    syncStatus: row.syncStatus,
-    lastSyncedAt: row.lastSyncedAt ?? null,
-    lastError: row.lastError ?? null,
-    metadata: row.metadata ?? null,
-    archivedAt: row.archivedAt ?? null,
-    syncedAt: row.syncedAt ?? null,
-    createdAt: row.createdAt,
-    modifiedAt: row.modifiedAt
   }
 }
 
@@ -397,6 +380,7 @@ async function disconnectGoogleAccount(
 }
 
 export function registerCalendarHandlers(): void {
+  registerCalendarIcsHandlers()
   ipcMain.handle(
     CalendarChannels.invoke.CREATE_EVENT,
     createValidatedHandler(
@@ -625,6 +609,17 @@ export function registerCalendarHandlers(): void {
           isSelected: input.isSelected,
           modifiedAt: new Date().toISOString()
         })
+
+        if (isIcsCalendarSource(existing)) {
+          if (!input.isSelected) {
+            purgeIcsCalendarEvents(db, existing.id)
+          } else if (!existing.isSelected) {
+            void refreshIcsCalendarSource(db, existing.id).catch((err) => {
+              log.warn('Immediate refresh after enabling a subscribed calendar failed', err)
+            })
+          }
+          return { success: true, source: updated }
+        }
 
         // Turning a calendar off takes its events with it. Nothing polls an
         // unselected source, so anything left behind would sit on the calendar
@@ -1000,6 +995,9 @@ export function registerCalendarHandlers(): void {
             trackMainError('calendar', 'promote_external_event', err)
             return { success: false, eventId: null, error: err.message }
           }
+          if (err instanceof ExternalEventReadOnlyError) {
+            return { success: false, eventId: null, error: err.message }
+          }
           throw err
         }
       }, 'errors:calendar.promoteExternalEventFailed')
@@ -1008,6 +1006,7 @@ export function registerCalendarHandlers(): void {
 }
 
 export function unregisterCalendarHandlers(): void {
+  unregisterCalendarIcsHandlers()
   ipcMain.removeHandler(CalendarChannels.invoke.CREATE_EVENT)
   ipcMain.removeHandler(CalendarChannels.invoke.GET_EVENT)
   ipcMain.removeHandler(CalendarChannels.invoke.UPDATE_EVENT)

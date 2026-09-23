@@ -112,6 +112,45 @@ export const RetryCalendarSourceSyncSchema = z.object({
 
 export type RetryCalendarSourceSyncInput = z.infer<typeof RetryCalendarSourceSyncSchema>
 
+/** `calendar_sources.provider` for read-only calendars subscribed by URL (#1207). */
+export const ICS_CALENDAR_PROVIDER = 'ics'
+
+/**
+ * Why a feed could not be fetched or read. Stored as `calendar_sources.last_error`
+ * for ICS sources, so each device's renderer localizes it rather than showing a
+ * message written in another device's language.
+ */
+export const IcsFeedErrorCodeSchema = z.enum([
+  'invalid_url',
+  'unreachable',
+  'timeout',
+  'not_found',
+  'unauthorized',
+  'http_error',
+  'too_large',
+  'not_a_calendar'
+])
+
+export const SubscribeIcsCalendarSchema = z.object({
+  url: z.string().trim().min(1).max(4096),
+  title: z.string().trim().max(200).optional()
+})
+
+export const IcsCalendarSourceRequestSchema = z.object({
+  sourceId: z.string().min(1)
+})
+
+export type IcsFeedErrorCode = z.infer<typeof IcsFeedErrorCodeSchema>
+export type SubscribeIcsCalendarInput = z.infer<typeof SubscribeIcsCalendarSchema>
+export type IcsCalendarSourceRequest = z.infer<typeof IcsCalendarSourceRequestSchema>
+
+export interface IcsCalendarMutationResponse {
+  success: boolean
+  source: CalendarSourceRecord | null
+  errorCode?: IcsFeedErrorCode
+  error?: string
+}
+
 export interface RetryCalendarSourceSyncResponse {
   success: boolean
   source: CalendarSourceRecord | null
@@ -279,10 +318,7 @@ export interface CalendarProjectionItem {
 }
 
 export type CalendarProviderAccountConnectionStatus =
-  | 'connected'
-  | 'disconnected'
-  | 'reconnect_required'
-  | 'error'
+  'connected' | 'disconnected' | 'reconnect_required' | 'error'
 
 export interface CalendarProviderAccountStatus {
   accountId: string

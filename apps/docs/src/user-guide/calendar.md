@@ -268,6 +268,40 @@ it cannot read, so it asks you to reconnect rather than syncing with something s
 Press **Connect** and sign in again. That writes fresh tokens over the unreadable ones, and your
 calendars, selections and existing events are untouched — only the sign-in is redone.
 
+## Subscribed Calendars
+
+Any calendar app that shares a calendar by link can show it in memrynote, read-only. That covers
+Proton Calendar, Apple iCloud, Outlook, Fastmail, Nextcloud, and published schedules such as
+sports fixtures or university timetables. No Google account or memrynote sign-in is needed.
+
+1. In the other app, copy the calendar's public or secret address. It ends in `.ics` or starts
+   with `webcal://`.
+2. Open [Settings → Calendar](/user-guide/settings#subscribed-calendars) → **Subscribed calendars**,
+   paste the link, and press **Subscribe**.
+
+memrynote downloads the calendar before saving it, so a wrong link is rejected with the reason
+(not a calendar, not found, access refused, unreachable) instead of leaving an empty calendar behind.
+
+**What you see.** Events from the last 90 days through the next year, including every instance of
+a repeating event with its skipped and moved dates. They appear on the calendar, the Day Panel,
+and the Home calendar widget with the subscription's name as their label, and the calendar page
+lists the subscription with your other imported calendars so you can hide it from view.
+
+**Read-only.** Subscribed events can't be moved, resized, edited, or deleted. Clicking one shows
+its details and where it comes from. To change an event, change it in the app that shares the
+calendar; memrynote picks the change up on its next refresh.
+
+**Refresh.** Each calendar is checked about once an hour, or on the schedule the calendar itself
+asks for (between 15 minutes and a day). An unchanged calendar costs one small request. Press
+**Refresh** next to a subscription to check now. If a refresh fails, the reason shows under the
+subscription and the events you already had stay on the calendar.
+
+**Across devices.** The subscription syncs to your other devices, end-to-end encrypted like the
+rest of your vault; each device downloads the calendar itself. The events are never uploaded.
+**Remove** unsubscribes on every device and clears the events.
+
+Treat a secret calendar link like a password: anyone who has it can read that calendar.
+
 ## Day Cell Click Behavior
 
 [Settings → Calendar](/user-guide/settings#calendar) lets you choose what clicking a date does by default:
