@@ -113,6 +113,52 @@ describe('CanvasCard', () => {
     expect(screen.getByText('Standup')).toBeInTheDocument()
   })
 
+  it('summarizes an image file without loading the image', () => {
+    const state: CanvasEntityState = {
+      status: 'ready',
+      kind: 'file',
+      title: 'Whiteboard',
+      fileType: 'image',
+      path: 'Meetings/Whiteboard.png',
+      absolutePath: '/vault/Meetings/Whiteboard.png',
+      fileSize: null
+    }
+    const { container } = render(
+      <CanvasCard
+        cardRef={ref({ entityType: 'file', entityId: 'f1' })}
+        state={state}
+        onRedirect={vi.fn()}
+        rich={false}
+      />
+    )
+    expect(screen.getByText('Whiteboard')).toBeInTheDocument()
+    expect(screen.getByText('Meetings')).toBeInTheDocument()
+    expect(container.querySelector('img, video')).toBeNull()
+  })
+
+  it('summarizes a project with its name', () => {
+    const state: CanvasEntityState = {
+      status: 'ready',
+      kind: 'project',
+      title: 'Launch',
+      color: '#3366ff',
+      description: null,
+      taskCount: 0,
+      completedCount: 0,
+      overdueCount: 0
+    }
+    render(
+      <CanvasCard
+        cardRef={ref({ entityType: 'project', entityId: 'p1' })}
+        state={state}
+        onRedirect={vi.fn()}
+        rich={false}
+      />
+    )
+    expect(screen.getByText('Launch')).toBeInTheDocument()
+    expect(screen.getByText('projectNoTasks')).toBeInTheDocument()
+  })
+
   it('renders a dangling state for deleted entities', () => {
     render(<CanvasCard cardRef={ref()} state={{ status: 'dangling' }} onRedirect={vi.fn()} />)
     expect(screen.getByText('deleted')).toBeInTheDocument()
