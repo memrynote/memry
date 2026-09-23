@@ -502,12 +502,16 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
    * menu is up. The menu's items read their row and column indices from that
    * state, not from a prop.
    *
-   * Opening it is a `pointerdown` on the anchor, not a synthetic `Enter` on it,
-   * even though Radix opens on either: the anchor lives inside the table, so a
-   * bubbling `Enter` reaches ProseMirror's own keydown handler on the way out
-   * and splits the block under the caret. `pointerdown` is inert for
-   * ProseMirror, and `fakeEvent` is the flag `@blocknote/shadcn`'s trigger
-   * wrapper looks for to let one through to Radix.
+   * Opening it is a synthetic `click` on the anchor, not a synthetic `Enter`:
+   * the anchor lives inside the table, so a bubbling `Enter` reaches
+   * ProseMirror's own keydown handler on the way out and splits the block under
+   * the caret. ProseMirror has no `click` handler, so a click is inert there.
+   *
+   * It is a click and not the `pointerdown` this used to send because
+   * `@blocknote/shadcn` 0.54 builds its menus on Base UI, not Radix. Base UI's
+   * trigger opens on `mousedown` for a pointer and on `click` when no pointer
+   * preceded it, which is exactly the keyboard case; a lone `pointerdown` only
+   * records a pointer type and opens nothing.
    */
   const openKeyboardMenu = useCallback((): boolean => {
     const cell = focusCellRef.current
@@ -516,9 +520,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
 
     pointExtensionAtCell(cell)
     tableHandles.freezeHandles()
-    const press = new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })
-    ;(press as PointerEvent & { fakeEvent?: boolean }).fakeEvent = true
-    trigger.dispatchEvent(press)
+    trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }))
     return true
   }, [tableHandles])
 
@@ -560,11 +562,33 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
     editor.focus()
   }, [editor])
 
+  /**
+   * Whether an open menu still pins the overlay.
+   *
+   * A menu's table can be replaced under it (a document swap, an undo, a synced
+   * edit), which unmounts the menu along with its wrapper and never reports it
+   * closed. That is the ordinary path, not a race: BlockNote 0.54's colour items
+   * leave the cell menu open after a pick. A pin whose cell is gone is dropped
+   * here; kept, it would hold every hover off and no handle would show again in
+   * this editor.
+   */
+  const isMenuPinned = useCallback((): boolean => {
+    const pinned = openBarRef.current
+    if (!pinned) return false
+    const anchor =
+      pinned === KEYBOARD_MENU_KEY ? keyboardTriggerRef.current : hoveredCellRef.current
+    if (anchor?.isConnected) return true
+    openBarRef.current = null
+    keyboardMenuOpenRef.current = false
+    tableHandles.unfreezeHandles()
+    return false
+  }, [tableHandles])
+
   useEffect(() => {
     if (!containerEl) return
 
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (openBarRef.current) return
+      if (isMenuPinned()) return
       if (!isTableMenuShortcut(event)) return
       if (!openKeyboardMenu()) return
       // Capture phase, so this lands before ProseMirror's own handler on
@@ -575,13 +599,13 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
 
     containerEl.addEventListener('keydown', handleKeyDown, true)
     return () => containerEl.removeEventListener('keydown', handleKeyDown, true)
-  }, [containerEl, openKeyboardMenu])
+  }, [containerEl, openKeyboardMenu, isMenuPinned])
 
   useEffect(() => {
     if (!containerEl) return
 
     const handlePointerOver = (event: PointerEvent): void => {
-      if (openBarRef.current) return
+      if (isMenuPinned()) return
       const target = event.target
       if (!(target instanceof Element)) return
       // A bar sits on a border line, which is outside every cell — a pointer
@@ -607,7 +631,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
     }
 
     const handlePointerLeave = (): void => {
-      if (openBarRef.current) return
+      if (isMenuPinned()) return
       hoveredCellRef.current = null
       setGeometry(null)
     }
@@ -618,7 +642,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
       containerEl.removeEventListener('pointerover', handlePointerOver)
       containerEl.removeEventListener('pointerleave', handlePointerLeave)
     }
-  }, [containerEl])
+  }, [containerEl, isMenuPinned])
 
   // A column drag-resize, a window resize or a row growing under typing all
   // move the border lines the bars and the ring are pinned to.
