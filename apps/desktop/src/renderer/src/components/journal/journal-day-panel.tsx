@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDraggable } from '@dnd-kit/core'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import type {
@@ -18,38 +19,19 @@ import {
 import { useTasksContext } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
 import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
-import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
-import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
-import type { Priority } from '@/data/task-model'
 import type { Status, Project } from '@/data/tasks-data'
-import { ChevronDown } from '@/lib/icons'
+import { GripVertical, Plus } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { getEventBaseColor } from '@/lib/event-type-colors'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { localDayRange } from '@/lib/local-day-range'
-import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
+import { resolveProjectIdForNoteTask } from '@/lib/note-task-project'
+import { formatTimeOfDay, formatTimeString, type ClockFormat } from '@/lib/time-format'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('JournalDayPanel')
-
-const PRIORITY_NUM_TO_KEY: Record<number, Priority> = {
-  0: 'none',
-  1: 'low',
-  2: 'medium',
-  3: 'high',
-  4: 'urgent'
-}
-
-const COMPLETED_COLOR = '#7B9E87'
-
-const PRIORITY_REVERSE_MAP: Record<Priority, number> = {
-  none: 0,
-  low: 1,
-  medium: 2,
-  high: 3,
-  urgent: 4
-}
 
 type ScheduleRowKind = Exclude<CalendarProjectionVisualType, 'task'>
 
@@ -132,68 +114,150 @@ function toScheduleEvent(
 interface TaskRowProps {
   task: TaskListItem
   statuses: Status[]
+  clockFormat: ClockFormat
   onToggleComplete: (id: string, isCompleted: boolean) => void
   onStatusChange: (id: string, statusId: string) => void
-  onPriorityChange: (id: string, priority: Priority) => void
   onNavigate: (taskId: string, projectId: string) => void
 }
 
+/**
+ * One line: status, title, and a fixed trailing slot. The slot shows the task's
+ * time when it has one; on hover it shows the drag handle instead, since the
+ * row can be dragged onto the timeline above.
+ */
 function TaskRow({
   task,
   statuses,
+  clockFormat,
   onToggleComplete,
   onStatusChange,
-  onPriorityChange,
   onNavigate
 }: TaskRowProps) {
   const isCompleted = !!task.completedAt
-  const priority = PRIORITY_NUM_TO_KEY[task.priority] ?? 'none'
-  const statusColor = isCompleted
-    ? COMPLETED_COLOR
-    : (statuses.find((s) => s.id === task.statusId)?.color ?? '#A0A0A8')
+  const timeLabel = task.dueTime ? formatTimeString(task.dueTime, clockFormat) : null
 
   return (
     <div
-      className="flex flex-col gap-0.5 py-[5px] -mx-1.5 px-1.5 rounded-md transition-colors hover:bg-accent/60 cursor-pointer"
+      data-testid="day-panel-task-row"
+      className="group flex h-8 cursor-pointer items-center gap-2.5 rounded-md px-2.5 transition-colors hover:bg-surface"
       onClick={() => onNavigate(task.id, task.projectId)}
     >
-      <div className="flex items-center gap-2 w-full">
-        <div onClick={(e) => e.stopPropagation()}>
-          <InlineStatusPopover
-            statusId={task.statusId ?? ''}
-            statuses={statuses}
-            isCompleted={isCompleted}
-            onStatusChange={(sid) => onStatusChange(task.id, sid)}
-            onToggleComplete={() => onToggleComplete(task.id, isCompleted)}
-          />
-        </div>
-        <div onClick={(e) => e.stopPropagation()}>
-          <InlinePriorityPopover
-            priority={priority}
-            onPriorityChange={(p) => onPriorityChange(task.id, p)}
-          />
-        </div>
-        <span
-          className={cn(
-            'text-[13px] font-medium truncate min-w-0 text-start',
-            isCompleted
-              ? 'text-muted-foreground/60 line-through [text-underline-position:from-font]'
-              : 'text-foreground/90'
-          )}
-        >
-          {task.title}
-        </span>
+      <div
+        className="flex size-4 shrink-0 items-center justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <InlineStatusPopover
+          statusId={task.statusId ?? ''}
+          statuses={statuses}
+          isCompleted={isCompleted}
+          onStatusChange={(sid) => onStatusChange(task.id, sid)}
+          onToggleComplete={() => onToggleComplete(task.id, isCompleted)}
+        />
       </div>
-
-      {(task.subtaskCount ?? 0) > 0 && (
-        <div className="ps-[52px]">
-          <SubtaskProgressIndicator
-            completed={task.completedSubtaskCount ?? 0}
-            total={task.subtaskCount ?? 0}
-            accentColor={statusColor}
+      <span
+        className={cn(
+          'min-w-0 flex-1 truncate text-start text-[13px]',
+          isCompleted
+            ? 'text-muted-foreground/60 line-through [text-underline-position:from-font]'
+            : 'text-foreground'
+        )}
+      >
+        {task.title}
+      </span>
+      <div className="flex w-[52px] shrink-0 items-center justify-end">
+        {timeLabel && (
+          <span
+            className={cn(
+              'whitespace-nowrap text-xs tabular-nums text-text-tertiary',
+              !isCompleted && 'group-hover:hidden'
+            )}
+          >
+            {timeLabel}
+          </span>
+        )}
+        {!isCompleted && (
+          <GripVertical
+            aria-hidden="true"
+            className="hidden size-3 text-text-tertiary group-hover:block"
           />
-        </div>
-      )}
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface AddTaskRowProps {
+  onCreate: (title: string) => Promise<boolean>
+}
+
+/** "+ Add task": opens an inline field; Enter creates a task due on the panel's day. */
+function AddTaskRow({ onCreate }: AddTaskRowProps) {
+  const { t } = useT('journal')
+  const [isEditing, setIsEditing] = useState(false)
+  const [title, setTitle] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const label = t('dayPanel.addTask')
+
+  const close = () => {
+    setIsEditing(false)
+    setTitle('')
+  }
+
+  const submit = async () => {
+    const trimmed = title.trim()
+    if (!trimmed) {
+      close()
+      return
+    }
+    setIsSaving(true)
+    const created = await onCreate(trimmed)
+    setIsSaving(false)
+    // Stay open after a create so several tasks can be typed in a row.
+    if (created) setTitle('')
+  }
+
+  if (!isEditing) {
+    return (
+      <button
+        type="button"
+        data-testid="day-panel-add-task"
+        onClick={() => setIsEditing(true)}
+        className="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-start text-text-tertiary transition-colors hover:bg-surface hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <span className="flex size-4 shrink-0 items-center justify-center">
+          <Plus className="size-[13px]" aria-hidden="true" />
+        </span>
+        <span className="text-[13px]">{label}</span>
+      </button>
+    )
+  }
+
+  return (
+    <div className="flex h-8 items-center gap-2.5 rounded-md bg-surface px-2.5">
+      <span className="flex size-4 shrink-0 items-center justify-center text-text-tertiary">
+        <Plus className="size-[13px]" aria-hidden="true" />
+      </span>
+      <input
+        autoFocus
+        aria-label={label}
+        placeholder={t('dayPanel.taskTitlePlaceholder')}
+        value={title}
+        disabled={isSaving}
+        onChange={(e) => setTitle(e.target.value)}
+        onBlur={() => {
+          if (!title.trim()) close()
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+            e.preventDefault()
+            void submit()
+          } else if (e.key === 'Escape') {
+            e.preventDefault()
+            close()
+          }
+        }}
+        className="min-w-0 flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-text-tertiary"
+      />
     </div>
   )
 }
@@ -207,14 +271,21 @@ function TaskRow({
 function DraggableTaskRow(props: TaskRowProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `day-panel-task:${props.task.id}`,
-    data: { type: 'calendar-task', sourceType: 'calendar', taskId: props.task.id },
+    // Title and length let the timeline preview the block before the drop.
+    data: {
+      type: 'calendar-task',
+      sourceType: 'calendar',
+      taskId: props.task.id,
+      title: props.task.title,
+      durationMinutes: props.task.durationMinutes ?? null
+    },
     disabled: Boolean(props.task.completedAt)
   })
 
   return (
     <div
       ref={setNodeRef}
-      className={cn('touch-none', isDragging && 'opacity-40')}
+      className={cn('touch-none', isDragging && 'opacity-35')}
       {...attributes}
       {...listeners}
     >
@@ -271,9 +342,8 @@ export function JournalDayPanel({
   showSchedule = true,
   onHoverColor
 }: JournalDayPanelProps) {
-  const { t, i18n } = useT('journal')
+  const { t } = useT('journal')
   const { isEnabled } = useFeatureFlags()
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const { projects } = useTasksContext()
   const { openTab } = useTabActions()
   const queryClient = useQueryClient()
@@ -378,16 +448,31 @@ export function JournalDayPanel({
     }
   }, [])
 
-  const handlePriorityChange = useCallback(async (id: string, priority: Priority) => {
-    try {
-      await tasksService.update({
-        id,
-        priority: PRIORITY_REVERSE_MAP[priority] as 0 | 1 | 2 | 3 | 4
-      })
-    } catch (err) {
-      log.error('Failed to update task priority', err)
-    }
-  }, [])
+  const handleCreateTask = useCallback(
+    async (title: string): Promise<boolean> => {
+      const failed = t('dayPanel.addTaskFailed')
+      try {
+        // No note here, so this resolves to Settings > Tasks default, then inbox.
+        const projectId = await resolveProjectIdForNoteTask({ noteId: null, projects })
+        if (!projectId) {
+          toast.error(failed)
+          return false
+        }
+        const result = await tasksService.create({ projectId, title, dueDate: date })
+        if (!result.success) {
+          toast.error(result.error ?? failed)
+          return false
+        }
+        void queryClient.invalidateQueries({ queryKey: ['journal-day-panel', 'tasks', date] })
+        return true
+      } catch (err) {
+        log.error('Failed to create task', err)
+        toast.error(extractErrorMessage(err, failed))
+        return false
+      }
+    },
+    [date, projects, queryClient, t]
+  )
 
   const handleNavigateToOverdue = useCallback(() => {
     openTab({
@@ -423,80 +508,58 @@ export function JournalDayPanel({
   )
 
   const hasSchedule = showSchedule && isEnabled('calendar') && schedule.length > 0
-  const hasContent = hasSchedule || (isEnabled('tasks') && tasks.length > 0)
-  if (!hasContent) return null
+  const showTasks = isEnabled('tasks')
+  if (!hasSchedule && !showTasks) return null
 
   return (
-    <div className={cn('[font-synthesis:none] flex flex-col gap-2.5 antialiased', className)}>
-      <button
-        type="button"
-        className="flex items-center justify-between w-full"
-        onClick={() => setIsCollapsed((v) => !v)}
-      >
-        <span className="tracking-[0.06em] uppercase inline-block text-muted-foreground font-semibold shrink-0 text-[11px]">
-          {isToday ? t('date.relative.today') : formatShortDate(date, i18n.language)}
-        </span>
-        <ChevronDown
-          className={cn(
-            'size-4 text-foreground/70 shrink-0 transition-transform duration-200',
-            !isCollapsed && 'rotate-180'
-          )}
-        />
-      </button>
+    <div className={cn('[font-synthesis:none] flex flex-col gap-4 antialiased', className)}>
+      {hasSchedule && (
+        <div className="flex flex-col gap-1 px-2.5">
+          {schedule.map((event) => (
+            <ScheduleRow key={event.id} event={event} onHoverColor={onHoverColor} />
+          ))}
+        </div>
+      )}
 
-      {!isCollapsed && (
-        <>
-          {hasSchedule && (
-            <div className="flex flex-col gap-1">
-              {schedule.map((event) => (
-                <ScheduleRow key={event.id} event={event} onHoverColor={onHoverColor} />
-              ))}
-            </div>
-          )}
-
-          {isEnabled('tasks') && tasks.length > 0 && (
-            <div className="flex flex-col pt-1 gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="tracking-[0.06em] uppercase inline-block text-muted-foreground font-semibold text-[11px]">
-                  {t('section.tasks')}
-                </span>
-                {overdueCount > 0 && isToday && (
-                  <button
-                    type="button"
-                    onClick={handleNavigateToOverdue}
-                    className="flex items-center gap-1 rounded-full bg-destructive/10 px-1.5 py-0.5 transition-colors hover:bg-destructive/15 cursor-pointer"
-                  >
-                    <span className="size-1 shrink-0 rounded-full bg-destructive" />
-                    <span className="text-[10px] font-medium text-destructive">
-                      {t('count.overdue', { count: overdueCount })}
-                    </span>
-                  </button>
-                )}
-              </div>
-              {tasks.map((task) => {
-                const proj = projectMap.get(task.projectId)
-                const statuses = proj?.statuses ?? []
-                return (
-                  <DraggableTaskRow
-                    key={task.id}
-                    task={task}
-                    statuses={statuses}
-                    onToggleComplete={(...args) => void handleToggleComplete(...args)}
-                    onStatusChange={(...args) => void handleStatusChange(...args)}
-                    onPriorityChange={(...args) => void handlePriorityChange(...args)}
-                    onNavigate={handleNavigateToTask}
-                  />
-                )
-              })}
-            </div>
-          )}
-        </>
+      {showTasks && (
+        <section data-testid="day-panel-tasks" className="flex flex-col">
+          <div className="flex h-7 items-center justify-between gap-2 px-2.5">
+            <h3 className="flex items-baseline gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">
+                {t('section.tasks')}
+              </span>
+              {tasks.length > 0 && (
+                <span className="text-xs tabular-nums text-text-tertiary">{tasks.length}</span>
+              )}
+            </h3>
+            {overdueCount > 0 && isToday && (
+              <button
+                type="button"
+                onClick={handleNavigateToOverdue}
+                className="shrink-0 rounded-sm text-xs font-medium text-destructive underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {t('count.overdue', { count: overdueCount })}
+              </button>
+            )}
+          </div>
+          {tasks.map((task) => {
+            const proj = projectMap.get(task.projectId)
+            const statuses = proj?.statuses ?? []
+            return (
+              <DraggableTaskRow
+                key={task.id}
+                task={task}
+                statuses={statuses}
+                clockFormat={clockFormat}
+                onToggleComplete={(...args) => void handleToggleComplete(...args)}
+                onStatusChange={(...args) => void handleStatusChange(...args)}
+                onNavigate={handleNavigateToTask}
+              />
+            )
+          })}
+          <AddTaskRow onCreate={handleCreateTask} />
+        </section>
       )}
     </div>
   )
-}
-
-function formatShortDate(iso: string, locale: string): string {
-  const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
 }

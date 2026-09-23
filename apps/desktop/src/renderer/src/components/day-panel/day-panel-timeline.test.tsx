@@ -26,13 +26,15 @@ vi.mock('@/components/calendar/calendar-day-view', () => ({
   CalendarDayView: ({
     anchorDate,
     items,
+    density,
     onSelectItem
   }: {
     anchorDate: string
     items: CalendarProjectionItem[]
+    density?: string
     onSelectItem: (item: CalendarProjectionItem, rect: DOMRect) => void
   }) => (
-    <div data-testid="grid" data-date={anchorDate}>
+    <div data-testid="grid" data-date={anchorDate} data-density={density}>
       {items.map((item) => (
         <button
           key={item.projectionId}
@@ -78,6 +80,7 @@ describe('DayPanelTimeline', () => {
     render(<DayPanelTimeline date="2026-09-21" onOpenCalendar={vi.fn()} />)
 
     expect(screen.getByTestId('grid')).toHaveAttribute('data-date', '2026-09-21')
+    expect(screen.getByTestId('grid')).toHaveAttribute('data-density', 'compact')
     expect(screen.getByRole('button', { name: 'Write the brief' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Team offsite' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Call the bank' })).toBeNull()

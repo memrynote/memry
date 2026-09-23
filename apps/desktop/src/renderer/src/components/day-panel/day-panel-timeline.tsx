@@ -11,7 +11,7 @@ interface DayPanelTimelineProps {
 }
 
 /**
- * The selected day's time grid, under the Day Panel's month calendar. Tasks
+ * The selected day's time grid, under the Day Panel's day header. Tasks
  * dragged here from the panel's task list become time blocks on the same task.
  */
 export function DayPanelTimeline({
@@ -31,11 +31,7 @@ export function DayPanelTimeline({
   )
 
   return (
-    <section
-      aria-label={t('view.day')}
-      data-testid="day-panel-timeline"
-      className="h-80 overflow-hidden rounded-md border border-border"
-    >
+    <section aria-label={t('view.day')} data-testid="day-panel-timeline">
       <CalendarDayView
         anchorDate={date}
         items={gridItems}
@@ -43,6 +39,7 @@ export function DayPanelTimeline({
         onSelectItem={() => onOpenCalendar(date)}
         onMoveEvent={moveItem}
         onQuickSave={quickCreate}
+        density="compact"
       />
     </section>
   )

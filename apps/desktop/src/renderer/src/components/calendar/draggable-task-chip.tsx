@@ -1,12 +1,13 @@
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { CalendarItemChip } from './calendar-item-chip'
+import { CalendarItemChip, type CalendarItemChipAppearance } from './calendar-item-chip'
 import { cn } from '@/lib/utils'
 import type { AnchorRect } from './types'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
 interface DraggableTaskChipProps {
   item: CalendarProjectionItem
+  appearance?: CalendarItemChipAppearance
   isSelected: boolean
   onClick?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
@@ -19,6 +20,7 @@ interface DraggableTaskChipProps {
  */
 export function DraggableTaskChip({
   item,
+  appearance,
   isSelected,
   onClick,
   onDeleteItem,
@@ -30,6 +32,7 @@ export function DraggableTaskChip({
     return (
       <DraggableTaskChipInner
         item={item}
+        appearance={appearance}
         isSelected={isSelected}
         onClick={onClick}
         onDeleteItem={onDeleteItem}
@@ -42,6 +45,7 @@ export function DraggableTaskChip({
     return (
       <DraggableCanvasChipInner
         item={item}
+        appearance={appearance}
         isSelected={isSelected}
         onClick={onClick}
         onDeleteItem={onDeleteItem}
@@ -53,6 +57,7 @@ export function DraggableTaskChip({
   return (
     <CalendarItemChip
       item={item}
+      appearance={appearance}
       isSelected={isSelected}
       onClick={onClick}
       onDeleteItem={onDeleteItem}
@@ -72,6 +77,7 @@ export function DraggableTaskChip({
  */
 function DraggableCanvasChipInner({
   item,
+  appearance,
   isSelected,
   onClick,
   onDeleteItem,
@@ -101,6 +107,7 @@ function DraggableCanvasChipInner({
     >
       <CalendarItemChip
         item={item}
+        appearance={appearance}
         isSelected={isSelected}
         onClick={onClick}
         onDeleteItem={onDeleteItem}
@@ -112,6 +119,7 @@ function DraggableCanvasChipInner({
 
 function DraggableTaskChipInner({
   item,
+  appearance,
   isSelected,
   onClick,
   onDeleteItem,
@@ -139,6 +147,7 @@ function DraggableTaskChipInner({
     >
       <CalendarItemChip
         item={item}
+        appearance={appearance}
         isSelected={isSelected}
         onClick={onClick}
         onDeleteItem={onDeleteItem}

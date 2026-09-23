@@ -236,5 +236,11 @@
       "failedToLoadJournalSettings": "Günlük ayarları yüklenemedi",
       "failedToUpdateSettings": "Ayarlar güncellenemedi"
     }
+  },
+  "dayPanel": {
+    "openInCalendar": "Takvimde aç",
+    "addTask": "Görev ekle",
+    "taskTitlePlaceholder": "Görev başlığı",
+    "addTaskFailed": "Görev oluşturulamadı"
   }
 }
