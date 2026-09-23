@@ -256,6 +256,10 @@ Link a Google account to show external events alongside vault events on the [Cal
 
 **Show memrynote events in Google Calendar** controls sync direction. Leave it on for two-way sync, or turn it off for [one-way (inbound only)](/user-guide/calendar#sync-direction) — Google events still appear in memrynote, but memrynote events are not pushed to Google.
 
+### Subscribed Calendars
+
+Paste a calendar's shared link (ICS or `webcal://`) and press **Subscribe** to add it to the [Calendar](/user-guide/calendar#subscribed-calendars) as a read-only calendar. Each subscription shows its host, when it last updated, and why the last update failed, with **Refresh** and **Remove** buttons.
+
 ### Week Start
 
 **Week Start** — Sunday or Monday. Sets the first day of the week everywhere in memrynote: the Calendar month, year, and mini views, the sidebar mini-calendar, task date pickers, task week filters, and relative date labels.

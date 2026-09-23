@@ -666,6 +666,61 @@ describe('CalendarPage', () => {
     expect(await screen.findByRole('dialog', { name: 'Edit calendar event' })).toBeInTheDocument()
   })
 
+  it('shows a subscribed-feed event read-only instead of promoting it for editing', async () => {
+    const user = userEvent.setup()
+    const icsItem: CalendarProjectionItem = {
+      projectionId: 'external_event:ics-1',
+      sourceType: 'external_event',
+      sourceId: 'ics-1',
+      title: 'Club match',
+      descriptionPreview: null,
+      startAt: isoAtLocalTime(15, 0, 1),
+      endAt: isoAtLocalTime(16, 0, 1),
+      isAllDay: false,
+      timezone: 'UTC',
+      visualType: 'external_event',
+      editability: { canMove: false, canResize: false, canEditText: false, canDelete: false },
+      source: {
+        provider: 'ics',
+        calendarSourceId: 'ics-calendar:club',
+        title: 'Club fixtures',
+        color: null,
+        kind: 'calendar',
+        isMemryManaged: false
+      },
+      binding: null
+    }
+    mockListSources.mockResolvedValue({
+      sources: [
+        {
+          ...SAMPLE_SOURCES[0],
+          id: 'ics-calendar:club',
+          provider: 'ics',
+          accountId: null,
+          remoteId: 'https://club.example.com/fixtures.ics',
+          title: 'Club fixtures',
+          color: null
+        }
+      ]
+    })
+    mockUseCalendarRange.mockReturnValue({
+      data: mockRangeResponse([icsItem]),
+      items: [icsItem],
+      isLoading: false,
+      isFetching: false,
+      error: null
+    })
+
+    renderWithProviders(<CalendarPage />)
+    await user.click(await screen.findByText('Club match'))
+
+    const popover = await screen.findByTestId('calendar-subscribed-event-popover')
+    expect(popover).toHaveTextContent('Subscribed calendar · Club fixtures')
+    expect(popover).toHaveTextContent('Read-only. Change it in the app that shares this calendar.')
+    expect(mockPromoteExternal).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog', { name: 'Edit calendar event' })).not.toBeInTheDocument()
+  })
+
   it('deletes a memrynote-native event via the right-click menu without Google wording', async () => {
     const showContextMenu = vi.mocked(window.api.showContextMenu)
     showContextMenu.mockResolvedValueOnce('delete')
