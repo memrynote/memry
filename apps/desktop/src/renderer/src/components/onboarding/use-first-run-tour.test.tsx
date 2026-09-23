@@ -221,6 +221,21 @@ describe('useFirstRunTour', () => {
       expect(vault.onboardingCompleted).toBe(true)
     })
 
+    it('still records the tour locally and arms the star prompt when the vault write fails', async () => {
+      window.api.settings.setGeneralSettings = vi.fn(async () => {
+        throw new Error('vault closed')
+      })
+
+      renderHook(() => useFirstRunTour())
+      await settle()
+      capturedConfig?.onDestroyed?.()
+      await settle()
+
+      expect(localStorage.getItem(TOUR_KEY)).toBe('1')
+      expect(localStorage.getItem(STAR_PROMPT_KEY)).toBe('pending')
+      expect(vault.onboardingCompleted).toBe(false)
+    })
+
     it('holds the tour back when the onboarding record cannot be read', async () => {
       window.api.settings.getGeneralSettings = vi.fn(async () => {
         throw new Error('no vault open')
