@@ -9,11 +9,22 @@ import { localDayRange } from '@/lib/local-day-range'
 import { JournalDayPanel } from './journal-day-panel'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
-const { mockUseCalendarRange, mockListTasks, mockGetStats, mockOpenTab } = vi.hoisted(() => ({
-  mockUseCalendarRange: vi.fn(),
-  mockListTasks: vi.fn(),
-  mockGetStats: vi.fn(),
-  mockOpenTab: vi.fn()
+const { mockUseCalendarRange, mockListTasks, mockGetStats, mockOpenTab, mockUseDraggable } =
+  vi.hoisted(() => ({
+    mockUseCalendarRange: vi.fn(),
+    mockListTasks: vi.fn(),
+    mockGetStats: vi.fn(),
+    mockOpenTab: vi.fn(),
+    mockUseDraggable: vi.fn((_config: unknown) => ({
+      attributes: {},
+      listeners: {},
+      setNodeRef: vi.fn(),
+      isDragging: false
+    }))
+  }))
+
+vi.mock('@dnd-kit/core', () => ({
+  useDraggable: mockUseDraggable
 }))
 
 vi.mock('@/hooks/use-calendar-range', () => ({
@@ -80,7 +91,8 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
       kind: 'calendar',
       isMemryManaged: false
     },
-    binding: null
+    binding: null,
+    snoozeOffsetMinutes: null
   },
   {
     projectionId: 'reminder:reminder-1',
@@ -102,7 +114,8 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
       kind: null,
       isMemryManaged: true
     },
-    binding: null
+    binding: null,
+    snoozeOffsetMinutes: null
   }
 ]
 
@@ -122,6 +135,7 @@ describe('JournalDayPanel', () => {
     mockListTasks.mockReset()
     mockGetStats.mockReset()
     mockOpenTab.mockReset()
+    mockUseDraggable.mockClear()
 
     mockUseCalendarRange.mockReturnValue({
       data: { items: SAMPLE_ITEMS },
@@ -148,4 +162,65 @@ describe('JournalDayPanel', () => {
     expect(screen.getByText('Customer call')).toBeInTheDocument()
     expect(screen.getByText('Medication reminder')).toBeInTheDocument()
   })
+
+  it('leaves the schedule to the time grid and keeps the task list when showSchedule is off', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [makeTask({ id: 'task-1', title: 'Draft brief' })] })
+
+    renderPanel(<JournalDayPanel date="2026-04-14" showSchedule={false} />)
+
+    expect(await screen.findByText('Draft brief')).toBeInTheDocument()
+    expect(screen.queryByText('Customer call')).toBeNull()
+  })
+
+  it('makes each open task draggable onto a time grid as that task, and holds completed ones', async () => {
+    mockListTasks.mockResolvedValue({
+      tasks: [
+        makeTask({ id: 'task-open', title: 'Draft brief' }),
+        makeTask({
+          id: 'task-done',
+          title: 'Send invoice',
+          completedAt: '2026-04-14T08:00:00.000Z'
+        })
+      ]
+    })
+
+    renderPanel(<JournalDayPanel date="2026-04-14" />)
+    await screen.findByText('Send invoice')
+
+    const configs = mockUseDraggable.mock.calls.map(([config]) => config)
+    expect(configs).toContainEqual({
+      id: 'day-panel-task:task-open',
+      data: { type: 'calendar-task', sourceType: 'calendar', taskId: 'task-open' },
+      disabled: false
+    })
+    expect(configs).toContainEqual({
+      id: 'day-panel-task:task-done',
+      data: { type: 'calendar-task', sourceType: 'calendar', taskId: 'task-done' },
+      disabled: true
+    })
+  })
 })
+
+function makeTask(overrides: Record<string, unknown>) {
+  return {
+    projectId: 'project-1',
+    statusId: 'todo',
+    parentId: null,
+    description: null,
+    priority: 0,
+    position: 0,
+    dueDate: '2026-04-14',
+    dueTime: null,
+    durationMinutes: null,
+    startDate: null,
+    repeatConfig: null,
+    repeatFrom: null,
+    sourceNoteId: null,
+    completedAt: null,
+    archivedAt: null,
+    createdAt: '2026-04-12T08:00:00.000Z',
+    modifiedAt: '2026-04-12T08:00:00.000Z',
+    tags: [],
+    ...overrides
+  }
+}

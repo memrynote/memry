@@ -14,6 +14,7 @@ import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useCalendarView } from '@/contexts/calendar-view-context'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { JournalDayPanel } from '@/components/journal'
+import { DayPanelTimeline } from './day-panel-timeline'
 import { useJournalHeatmap } from '@/hooks/use-journal'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import { useToday } from '@/hooks/use-today'
@@ -129,6 +130,8 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
   const { settings: calendarPrefs } = useCalendarPreferences()
   const { isEnabled } = useFeatureFlags()
   const isCalendarTabActive = activeTab?.type === 'calendar'
+  // The Calendar tab already shows a time grid, so the panel keeps its list there.
+  const showTimeline = isEnabled('calendar') && !isCalendarTabActive
 
   const [hoveredEvent, setHoveredEvent] = useState<{ date: string; color: string | null }>({
     date: selectedDate,
@@ -303,8 +306,17 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
                 />
               </div>
               <div className="h-px mx-4 bg-border/30" />
+              {showTimeline && (
+                <div className="px-4 pt-4">
+                  <DayPanelTimeline date={selectedDate} onOpenCalendar={navigateToCalendar} />
+                </div>
+              )}
               <div className="p-4">
-                <JournalDayPanel date={selectedDate} onHoverColor={handleHoverColor} />
+                <JournalDayPanel
+                  date={selectedDate}
+                  showSchedule={!showTimeline}
+                  onHoverColor={handleHoverColor}
+                />
               </div>
             </div>
           ),

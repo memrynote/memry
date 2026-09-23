@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useDraggable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import type {
@@ -197,6 +198,31 @@ function TaskRow({
   )
 }
 
+/**
+ * Drags the row onto a calendar time grid (this panel's or the Calendar tab's)
+ * to schedule the same task. The draggable id is namespaced because a Tasks
+ * tab row may register the bare task id in the same DndContext; drag-context
+ * reads the task from `data.taskId`.
+ */
+function DraggableTaskRow(props: TaskRowProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `day-panel-task:${props.task.id}`,
+    data: { type: 'calendar-task', sourceType: 'calendar', taskId: props.task.id },
+    disabled: Boolean(props.task.completedAt)
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn('touch-none', isDragging && 'opacity-40')}
+      {...attributes}
+      {...listeners}
+    >
+      <TaskRow {...props} />
+    </div>
+  )
+}
+
 interface ScheduleRowProps {
   event: ScheduleEvent
   onHoverColor?: (color: string | null) => void
@@ -234,10 +260,17 @@ function ScheduleRow({ event, onHoverColor }: ScheduleRowProps) {
 interface JournalDayPanelProps {
   date: string
   className?: string
+  /** Off where a time grid for the same day already shows these items. */
+  showSchedule?: boolean
   onHoverColor?: (color: string | null) => void
 }
 
-export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPanelProps) {
+export function JournalDayPanel({
+  date,
+  className,
+  showSchedule = true,
+  onHoverColor
+}: JournalDayPanelProps) {
   const { t, i18n } = useT('journal')
   const { isEnabled } = useFeatureFlags()
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -389,8 +422,8 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
     [openTab, t]
   )
 
-  const hasContent =
-    (isEnabled('calendar') && schedule.length > 0) || (isEnabled('tasks') && tasks.length > 0)
+  const hasSchedule = showSchedule && isEnabled('calendar') && schedule.length > 0
+  const hasContent = hasSchedule || (isEnabled('tasks') && tasks.length > 0)
   if (!hasContent) return null
 
   return (
@@ -413,7 +446,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
 
       {!isCollapsed && (
         <>
-          {isEnabled('calendar') && schedule.length > 0 && (
+          {hasSchedule && (
             <div className="flex flex-col gap-1">
               {schedule.map((event) => (
                 <ScheduleRow key={event.id} event={event} onHoverColor={onHoverColor} />
@@ -444,7 +477,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
                 const proj = projectMap.get(task.projectId)
                 const statuses = proj?.statuses ?? []
                 return (
-                  <TaskRow
+                  <DraggableTaskRow
                     key={task.id}
                     task={task}
                     statuses={statuses}

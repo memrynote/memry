@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { parseLocalDate, toLocalDateKey } from './date-utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
-import { HOUR_HEIGHT, SNAP_MINUTES } from './time-grid-constants'
+import { DEFAULT_BLOCK_MINUTES, HOUR_HEIGHT, SNAP_MINUTES } from './time-grid-constants'
 
 const MOVE_THRESHOLD_PX = 4
-const DEFAULT_DURATION_MINUTES = 60
 export const MINUTES_IN_DAY = 1440
 
 function clamp(value: number, min: number, max: number): number {
@@ -95,7 +94,7 @@ function minutesOfDay(iso: string): number {
 
 function durationMinutes(item: CalendarProjectionItem, snap: number): number {
   const start = new Date(item.startAt).getTime()
-  const end = item.endAt ? new Date(item.endAt).getTime() : start + DEFAULT_DURATION_MINUTES * 60000
+  const end = item.endAt ? new Date(item.endAt).getTime() : start + DEFAULT_BLOCK_MINUTES * 60000
   return Math.max((end - start) / 60000, snap)
 }
 

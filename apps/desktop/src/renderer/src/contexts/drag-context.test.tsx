@@ -6,9 +6,9 @@ const dndMocks = vi.hoisted(() => ({
   latestProps: null as null | Record<string, any>,
   useSensor: vi.fn((sensor: unknown, config?: unknown) => ({ sensor, config })),
   useSensors: vi.fn((...sensors: unknown[]) => sensors),
-  closestCenter: vi.fn(() => [{ id: 'closest' }]),
-  pointerWithin: vi.fn(() => []),
-  rectIntersection: vi.fn(() => [])
+  closestCenter: vi.fn((): unknown[] => [{ id: 'closest' }]),
+  pointerWithin: vi.fn((): unknown[] => []),
+  rectIntersection: vi.fn((): unknown[] => [])
 }))
 
 vi.mock('@dnd-kit/core', () => ({
@@ -57,7 +57,7 @@ const task = (id: string, title = id): Task =>
     createdAt: new Date(),
     completedAt: null,
     archivedAt: null
-  }) as Task
+  }) as unknown as Task
 
 describe('DragProvider', () => {
   beforeEach(() => {
@@ -172,6 +172,31 @@ describe('DragProvider', () => {
       dndMocks.latestProps?.onDragCancel()
     })
     expect(callbacks.cancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('resolves a namespaced calendar-task draggable to the task it carries', () => {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <DragProvider tasks={[task('task-7', 'Plan the week')]} selectedIds={new Set()}>
+        {children}
+      </DragProvider>
+    )
+
+    const { result } = renderHook(() => useDragContext(), { wrapper })
+
+    act(() => {
+      dndMocks.latestProps?.onDragStart({
+        active: {
+          id: 'day-panel-task:task-7',
+          data: { current: { type: 'calendar-task', sourceType: 'calendar', taskId: 'task-7' } },
+          rect: { current: { initial: { width: 240 } } }
+        }
+      })
+    })
+
+    expect(result.current.dragState.activeId).toBe('task-7')
+    expect(result.current.dragState.activeIds).toEqual(['task-7'])
+    expect(result.current.dragState.draggedTasks.map((t) => t.title)).toEqual(['Plan the week'])
+    expect(result.current.dragState.sourceType).toBe('calendar')
   })
 
   it('allows manual state updates through the context value', () => {

@@ -1,7 +1,6 @@
 import { useLayoutEffect, type RefObject } from 'react'
 import { useTabAutoPosition } from '@/hooks/use-tab-auto-position'
-
-const HOUR_HEIGHT = 96
+import { HOUR_HEIGHT } from './time-grid-constants'
 const VIEWPORT_RATIO = 0.4
 const FALLBACK_HOUR = 7
 

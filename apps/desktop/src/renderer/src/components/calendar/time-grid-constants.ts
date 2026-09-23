@@ -13,3 +13,6 @@ export const HOUR_HEIGHT = 48
 
 /** Marquee/drag snapping granularity, in minutes. */
 export const SNAP_MINUTES = 15
+
+/** Length a timed item without an end is drawn and dragged at. */
+export const DEFAULT_BLOCK_MINUTES = 60
