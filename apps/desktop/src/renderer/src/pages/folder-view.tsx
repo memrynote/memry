@@ -54,6 +54,7 @@ import { getTagSegments } from '@/lib/tag-utils'
 import { cn } from '@/lib/utils'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { useFolderView } from '@/hooks/use-folder-view'
+import { useFolderNoteIcons } from '@/hooks/use-folder-note-icons'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
 import {
   FOLDER_VIEW_STATE_KEYS,
@@ -991,43 +992,20 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     [selectedNoteIds, notes, updateNoteTags]
   )
 
-  // Writes only the notes whose icon actually changes: a PDF/image row has no
-  // metadata the main process will write, and a note already on this icon
-  // would only spend a sync push. Resolves to the Undo changes.
-  const applyIcon = useCallback(
-    async (noteIds: readonly string[], emoji: string | null) => {
-      const ids = new Set(noteIds)
-      const changes = notes
-        .filter((note) => ids.has(note.id) && isMetadataEditableRow(note) && note.emoji !== emoji)
-        .map((note) => ({ noteId: note.id, emoji }))
-      return changes.length > 0 ? updateNoteIcons(changes) : []
-    },
-    [notes, updateNoteIcons]
-  )
-
-  const handleBulkSetIcon = useCallback(
-    async (emoji: string | null) => {
-      const undo = await applyIcon(selectedNoteIds, emoji)
-      if (undo.length === 0) return
-      toast.success(t('bulkActions.iconUpdated', { count: undo.length }), {
-        duration: 10000,
-        action: {
-          label: tCommon('action.undo'),
-          onClick: () => void updateNoteIcons(undo)
-        }
-      })
-    },
-    [applyIcon, selectedNoteIds, updateNoteIcons, t, tCommon]
-  )
+  const { setRowIcon, setSelectionIcon } = useFolderNoteIcons({
+    notes,
+    selectedNoteIds,
+    updateNoteIcons
+  })
 
   const rowActions = useMemo(
     () => ({
       onOpenInNewTab: handleOpenInNewTab,
       onMoveToFolder: handleMoveRequest,
       onDelete: handleDeleteRequest,
-      onSetIcon: (noteId: string, icon: string | null) => void applyIcon([noteId], icon)
+      onSetIcon: setRowIcon
     }),
-    [handleOpenInNewTab, handleMoveRequest, handleDeleteRequest, applyIcon]
+    [handleOpenInNewTab, handleMoveRequest, handleDeleteRequest, setRowIcon]
   )
 
   // ponytail: per-note native save dialog (cancel aborts the run). A single-folder
@@ -1451,7 +1429,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                 onMove={() => handleMoveRequest(selectedNoteIds)}
                 onCopyLinks={() => void handleCopyLinks()}
                 onAddTag={(tag) => void handleBulkAddTag(tag)}
-                onSetIcon={(icon) => void handleBulkSetIcon(icon)}
+                onSetIcon={(icon) => void setSelectionIcon(icon)}
                 onExport={() => void handleBulkExport()}
                 onDelete={() => handleDeleteRequest(selectedNoteIds)}
                 onClear={handleClearSelection}
