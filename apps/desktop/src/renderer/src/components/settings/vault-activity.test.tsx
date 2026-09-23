@@ -6,21 +6,28 @@ import type { ListVaultActivityResult } from '@memry/contracts/vault-activity-ap
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, vars?: Record<string, unknown>) =>
-      vars?.path ? `${key}:${String(vars.path)}` : key
+      vars?.path
+        ? `${key}:${String(vars.path)}`
+        : vars?.importer
+          ? `${key}:${String(vars.importer)}`
+          : key
   })
 }))
 
 vi.mock('@/hooks/use-importers', () => ({
-  useImporters: () => ({ importers: [], isLoading: false })
+  useImporters: () => ({ importers: [{ id: 'notion', name: 'Notion' }], isLoading: false })
 }))
+
+const toastMock = vi.hoisted(() => ({ error: vi.fn() }))
+vi.mock('sonner', () => ({ toast: toastMock }))
 
 import { VaultActivitySettings } from './vault-activity'
 
-function renderActivity(): void {
+function renderActivity(props: Parameters<typeof VaultActivitySettings>[0] = {}): void {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <VaultActivitySettings />
+      <VaultActivitySettings {...props} />
     </QueryClientProvider>
   )
 }
@@ -110,6 +117,107 @@ describe('VaultActivitySettings', () => {
     expect(window.api.vaultActivity.clear).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('vault.activity.clearConfirm'))
     await waitFor(() => expect(window.api.vaultActivity.clear).toHaveBeenCalled())
+  })
+
+  it('names the importer and expands a summary into its items', async () => {
+    window.api.vaultActivity.list = vi.fn().mockResolvedValue(
+      result({
+        entries: [
+          {
+            v: 1,
+            id: 'i',
+            at: '2026-01-01T10:00:00.000Z',
+            kind: 'import',
+            source: 'import',
+            importer: 'notion',
+            counts: { imported: 1, failed: 1 },
+            items: ['Broken page \u2014 bad html']
+          }
+        ]
+      })
+    )
+
+    renderActivity()
+
+    expect(await screen.findByText('vault.activity.entry.import:Notion')).toBeInTheDocument()
+    expect(screen.getByText('Broken page \u2014 bad html')).toBeInTheDocument()
+  })
+
+  it('scrolls itself into view when Settings asks for it', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    window.api.vaultActivity.list = vi.fn().mockResolvedValue(result({}))
+
+    renderActivity({ focusTarget: 'vault-activity', focusRequestId: 1 })
+
+    await screen.findByText('vault.activity.empty')
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
+  })
+
+  it('does not scroll for another section focus target', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    window.api.vaultActivity.list = vi.fn().mockResolvedValue(result({}))
+
+    renderActivity({ focusTarget: 'voice-local-model', focusRequestId: 1 })
+
+    await screen.findByText('vault.activity.empty')
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it('shows a load failure in place of the list', async () => {
+    window.api.vaultActivity.list = vi.fn().mockRejectedValue(new Error('disk gone'))
+
+    renderActivity()
+
+    expect(await screen.findByText('disk gone')).toBeInTheDocument()
+  })
+
+  it('reports a failed reveal or clear with a toast', async () => {
+    window.api.vaultActivity.list = vi.fn().mockResolvedValue(
+      result({
+        entries: [
+          {
+            v: 1,
+            id: 'a',
+            at: '2026-01-01T10:00:00.000Z',
+            kind: 'added',
+            source: 'scan',
+            path: 'a.md'
+          }
+        ]
+      })
+    )
+    window.api.vaultActivity.reveal = vi.fn().mockRejectedValue(new Error('no finder'))
+    window.api.vaultActivity.clear = vi.fn().mockRejectedValue(new Error('read-only'))
+
+    renderActivity()
+
+    await screen.findByText('vault.activity.entry.added:a.md')
+    fireEvent.click(screen.getByText('vault.activity.reveal'))
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('no finder'))
+
+    fireEvent.click(screen.getByText('vault.activity.clear'))
+    fireEvent.click(screen.getByText('vault.activity.clearConfirm'))
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('read-only'))
+  })
+
+  it('refetches when the main process says the log changed', async () => {
+    let onChanged: (() => void) | undefined
+    window.api.onVaultActivityChanged = vi.fn((callback: () => void) => {
+      onChanged = callback
+      return () => {}
+    })
+    window.api.vaultActivity.list = vi.fn().mockResolvedValue(result({}))
+
+    renderActivity()
+
+    await screen.findByText('vault.activity.empty')
+    const calls = vi.mocked(window.api.vaultActivity.list).mock.calls.length
+    onChanged?.()
+    await waitFor(() =>
+      expect(vi.mocked(window.api.vaultActivity.list).mock.calls.length).toBeGreaterThan(calls)
+    )
   })
 
   it('says to open a vault when none is open', async () => {

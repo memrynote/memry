@@ -82,6 +82,12 @@ interface ActivityState {
 }
 
 let state: ActivityState | null = null
+/**
+ * Logs closed but still writing, by vault path. Reopening one of these before
+ * its last write lands must not read the file mid-write: it resumes the
+ * in-memory state and queues behind the same write chain instead.
+ */
+const closing = new Map<string, ActivityState>()
 let changedTimer: NodeJS.Timeout | null = null
 
 function isRetentionDays(value: unknown): value is VaultActivityRetentionDays {
@@ -206,6 +212,13 @@ export function openActivityLog(vaultPath: string): void {
   if (state?.vaultPath === vaultPath) return
   if (state) void closeActivityLog()
 
+  const resumed = closing.get(vaultPath)
+  if (resumed) {
+    closing.delete(vaultPath)
+    state = resumed
+    return
+  }
+
   const memryDir = path.join(vaultPath, MEMRY_DIR)
   const logPath = path.join(memryDir, LOG_FILE)
   const settingsPath = path.join(memryDir, SETTINGS_FILE)
@@ -246,7 +259,9 @@ export async function closeActivityLog(): Promise<void> {
     clearTimeout(s.writeTimer)
     s.writeTimer = null
   }
+  closing.set(s.vaultPath, s)
   await writePending(s)
+  if (closing.get(s.vaultPath) === s) closing.delete(s.vaultPath)
 }
 
 /** Resolve buffered writes. Test and shutdown helper. */

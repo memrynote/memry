@@ -15,10 +15,13 @@ import {
   createScanActivity,
   flushActivityLog,
   getActivityRetentionDays,
+  isActivityLogOpen,
   listActivity,
+  MAX_ACTIVITY_ENTRIES,
   openActivityLog,
   prepareActivityLogFile,
   recordActivity,
+  recordDropCopyFailure,
   recordScanActivity,
   recordSkippedFile,
   setActivityRetentionDays,
@@ -257,6 +260,103 @@ describe('vault activity log', () => {
     openActivityLog(vaultPath)
     expect(toActivityPath(path.join(vaultPath, 'notes', 'a.pdf'))).toBe('notes/a.pdf')
     expect(toActivityPath(path.join(os.tmpdir(), 'elsewhere', 'b.pdf'))).toBe('b.pdf')
+  })
+
+  it('does nothing to the log helpers while no vault is open', async () => {
+    expect(isActivityLogOpen()).toBe(false)
+    expect(await prepareActivityLogFile()).toBeNull()
+    await setActivityRetentionDays(7)
+    await clearActivity()
+    expect(recordSkippedFile('a.docx', 'watcher')).toBe(false)
+    expect(toActivityPath('notes\\a.md')).toBe('notes/a.md')
+  })
+
+  it('switches to another vault without mixing their entries', async () => {
+    openActivityLog(vaultPath)
+    recordActivity({ kind: 'added', source: 'watcher', path: 'first.md' })
+    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-activity-other-'))
+    try {
+      openActivityLog(other)
+      expect(listActivity()).toEqual([])
+      await closeActivityLog()
+      openActivityLog(vaultPath)
+      expect(listActivity().map((entry) => entry.path)).toEqual(['first.md'])
+    } finally {
+      fs.rmSync(other, { recursive: true, force: true })
+    }
+  })
+
+  it('bounds long messages and item lists, and drops undefined fields', () => {
+    openActivityLog(vaultPath)
+    recordActivity({
+      kind: 'import',
+      source: 'import',
+      message: 'x'.repeat(2000),
+      items: Array.from({ length: 80 }, (_, i) => `item ${i}`),
+      path: undefined
+    })
+    const [entry] = listActivity()
+    expect(entry.message?.length).toBeLessThan(600)
+    expect(entry.items).toHaveLength(50)
+    expect(entry).not.toHaveProperty('path')
+  })
+
+  it('records a sidebar drop that could not be copied', () => {
+    openActivityLog(vaultPath)
+    recordDropCopyFailure('report.pdf', 'EACCES')
+    expect(listActivity()[0]).toMatchObject({
+      kind: 'failed',
+      source: 'drop',
+      path: 'report.pdf',
+      reason: 'copy-failed',
+      message: 'EACCES'
+    })
+  })
+
+  it('compacts the log once it grows well past the entry cap', async () => {
+    openActivityLog(vaultPath)
+    for (let i = 0; i < MAX_ACTIVITY_ENTRIES + 501; i++) {
+      recordActivity({ kind: 'added', source: 'watcher', path: `n${i}.md` })
+    }
+    expect(listActivity({ limit: 1000 })).toHaveLength(1000)
+    await flushActivityLog()
+    const lines = readLogLines()
+    expect(lines).toHaveLength(MAX_ACTIVITY_ENTRIES)
+    expect(lines.at(-1)?.path).toBe(`n${MAX_ACTIVITY_ENTRIES + 500}.md`)
+  })
+
+  it('keeps recording in memory when the file cannot be written', async () => {
+    fs.mkdirSync(logPath)
+    openActivityLog(vaultPath)
+    recordActivity({ kind: 'added', source: 'watcher', path: 'a.md' })
+    await expect(flushActivityLog()).resolves.toBeUndefined()
+    expect(listActivity()).toHaveLength(1)
+  })
+
+  it('prunes the open log when retention shrinks', async () => {
+    const now = Date.now()
+    writeLogLines([
+      {
+        v: 1,
+        id: 'twenty-days',
+        at: new Date(now - 20 * DAY_MS).toISOString(),
+        kind: 'skipped',
+        source: 'scan',
+        path: 'old.docx',
+        reason: 'unsupported-type'
+      },
+      { v: 1, id: 'today', at: new Date(now).toISOString(), kind: 'added', source: 'watcher' }
+    ])
+    openActivityLog(vaultPath)
+    expect(listActivity()).toHaveLength(2)
+
+    await setActivityRetentionDays(7)
+    await flushActivityLog()
+
+    expect(listActivity().map((entry) => entry.id)).toEqual(['today'])
+    expect(readLogLines().map((line) => line.id)).toEqual(['today'])
+    // The pruned skip may be reported again.
+    expect(recordSkippedFile('old.docx', 'scan')).toBe(true)
   })
 
   describe('recordScanActivity', () => {

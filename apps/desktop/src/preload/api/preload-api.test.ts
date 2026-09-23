@@ -30,6 +30,7 @@ import { syncOps, cryptoApi, syncAttachments, syncCrdt } from './sync-ops'
 import { tagsApi, tagEvents } from './tags'
 import { updaterApi, updaterEvents } from './updater'
 import { vaultApi, vaultEvents } from './vault'
+import { vaultActivityApi, vaultActivityEvents } from './vault-activity'
 import { applyStartupTheme, getStartupThemeSync, THEME_STORAGE_KEY } from '../lib/startup-theme'
 
 const electronMock = vi.hoisted(() => ({
@@ -211,6 +212,26 @@ describe('preload api wrappers', () => {
 
     Object.defineProperty(globalThis, 'window', { configurable: true, value: originalWindow })
     Object.defineProperty(globalThis, 'document', { configurable: true, value: originalDocument })
+  })
+
+  it('routes the vault activity log through its IPC channels', async () => {
+    await expectInvoke(() => vaultActivityApi.list(), 'vault-activity:list', {})
+    await expectInvoke(
+      () => vaultActivityApi.list({ limit: 5, filter: 'problems' }),
+      'vault-activity:list',
+      { limit: 5, filter: 'problems' }
+    )
+    await expectInvoke(() => vaultActivityApi.clear(), 'vault-activity:clear')
+    await expectInvoke(() => vaultActivityApi.setRetention(90), 'vault-activity:set-retention', {
+      days: 90
+    })
+    await expectInvoke(() => vaultActivityApi.reveal(), 'vault-activity:reveal')
+    // The change event carries no payload; the callback is called bare.
+    expectSubscribe(
+      () => vaultActivityEvents.onVaultActivityChanged(callback),
+      'vault-activity:changed',
+      noPayload
+    )
   })
 
   it('routes note-adjacent preload APIs through their IPC channels', async () => {

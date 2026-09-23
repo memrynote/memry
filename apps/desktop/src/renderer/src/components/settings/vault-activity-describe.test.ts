@@ -94,6 +94,55 @@ describe('describeVaultActivity', () => {
     expect(result.tone).toBe('warning')
   })
 
+  it('covers removal, a failed or canceled import, and kinds from a newer build', () => {
+    expect(
+      describeVaultActivity(entry({ kind: 'removed', path: 'a.md' }), t, importerName)
+    ).toEqual({
+      title: 'vault.activity.entry.removed({"path":"a.md"})',
+      tone: 'neutral'
+    })
+    expect(
+      describeVaultActivity(
+        entry({
+          kind: 'failed',
+          source: 'import',
+          importer: 'notion',
+          reason: 'import-failed',
+          message: 'boom'
+        }),
+        t,
+        importerName
+      )
+    ).toEqual({
+      title: 'vault.activity.entry.importFailed({"importer":"Notion"})',
+      detail: 'boom',
+      tone: 'error'
+    })
+    const canceled = describeVaultActivity(
+      entry({
+        kind: 'import',
+        source: 'import',
+        importer: 'bear',
+        reason: 'import-canceled',
+        counts: { failed: 1 }
+      }),
+      t,
+      importerName
+    )
+    expect(canceled.title).toBe('vault.activity.entry.importCanceled({"importer":"bear"})')
+    expect(canceled.tone).toBe('error')
+    const unknown = describeVaultActivity(
+      entry({ kind: 'teleported' as VaultActivityEntry['kind'], path: 'x.md' }),
+      t,
+      importerName
+    )
+    expect(unknown).toEqual({
+      title: 'vault.activity.entry.unknown',
+      detail: 'x.md',
+      tone: 'neutral'
+    })
+  })
+
   it('does not call a rebuilt index "new files"', () => {
     const result = describeVaultActivity(
       entry({ kind: 'scan', source: 'scan', reason: 'index-rebuilt', counts: { added: 12 } }),

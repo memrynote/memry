@@ -181,6 +181,35 @@ describe('indexer', () => {
       }
     })
 
+    it('records files that could not be read or indexed as failures', async () => {
+      const activityLog = await import('./activity-log')
+      activityLog.openActivityLog(tempVault.path)
+      try {
+        createTestNote(tempVault, { title: 'Known', content: 'Content' })
+        await indexer.indexVault(tempVault.path, { activity: 'scan' })
+
+        const lockedPath = createTestNote(tempVault, { title: 'Locked', content: 'Secret' })
+        unreadablePaths.set(lockedPath, 'EACCES')
+        fs.writeFileSync(path.join(tempVault.notesDir, 'scan.pdf'), '%PDF-1.4')
+        await indexer.indexVault(tempVault.path, { activity: 'scan' })
+
+        const entries = activityLog.listActivity()
+        expect(entries).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              kind: 'failed',
+              path: 'notes/Locked.md',
+              reason: 'read-failed',
+              message: 'EACCES'
+            }),
+            expect.objectContaining({ kind: 'added', path: 'notes/scan.pdf' })
+          ])
+        )
+      } finally {
+        await activityLog.closeActivityLog()
+      }
+    })
+
     it('T374: indexes files in journal/ folder', async () => {
       // Create journal entries
       createTestJournalEntry(tempVault, '2026-01-15', 'Journal content for today')
