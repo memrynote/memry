@@ -33,6 +33,8 @@ npx -y react-doctor@latest .
 ```
 
 - Run the narrowest command that covers the change; run `pnpm test:desktop` before declaring a broad change done.
+- `test:e2e` does not build the app. Playwright loads `apps/desktop/out/main/index.js`, so run `pnpm --filter @memry/desktop exec electron-vite build` after your last code change and before E2E. A fresh worktree has no `out/` and fails with `Cannot find module .../out/main/index.js`; an existing `out/` may be stale. CI builds in a separate step, which is why the build is not part of `pretest:e2e`.
+- Run a single spec with `pnpm --filter @memry/desktop test:e2e <spec-name>`, once. Do not loop on E2E.
 - Never run `build:release` or signing/notarization commands unless the user asks.
 
 ## Process Boundary
