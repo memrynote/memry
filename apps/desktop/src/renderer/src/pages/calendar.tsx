@@ -1020,13 +1020,10 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onQuickSave={handleQuickSave}
         googleConnectAction={<GoogleCalendarConnectPrompt />}
       />
-      {subscribedPopoverState && (
-        <CalendarSubscribedEventPopover
-          item={subscribedPopoverState.item}
-          anchorRect={subscribedPopoverState.anchorRect}
-          onDismiss={() => setSubscribedPopoverState(null)}
-        />
-      )}
+      <CalendarSubscribedEventPopover
+        target={subscribedPopoverState}
+        onDismiss={() => setSubscribedPopoverState(null)}
+      />
       {taskPopoverState && (
         <CalendarTaskPopover
           item={taskPopoverState.item}

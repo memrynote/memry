@@ -10,10 +10,9 @@ import type { CalendarProjectionItem } from '@/services/calendar-service'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-interface CalendarSubscribedEventPopoverProps {
+interface SubscribedEventTarget {
   item: CalendarProjectionItem
   anchorRect: AnchorRect
-  onDismiss: () => void
 }
 
 function whenLabel(item: CalendarProjectionItem, locale: string): string {
@@ -43,19 +42,18 @@ function whenLabel(item: CalendarProjectionItem, locale: string): string {
  * Events from a subscribed feed have no write path, so selecting one shows
  * what it is and where it comes from instead of opening an editor.
  */
-export function CalendarSubscribedEventPopover({
+function SubscribedEventPopover({
   item,
   anchorRect,
   onDismiss
-}: CalendarSubscribedEventPopoverProps): React.JSX.Element {
+}: SubscribedEventTarget & { onDismiss: () => void }): React.JSX.Element {
   const { t, i18n } = useT('calendar')
   const containerRef = useRef<HTMLDivElement>(null)
   const { top, left } = computePopoverPosition(anchorRect, { estimatedHeight: 180 })
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
-      if (!containerRef.current) return
-      if (containerRef.current.contains(event.target as Node)) return
+      if (event.target instanceof Node && containerRef.current?.contains(event.target)) return
       onDismiss()
     }
     function handleKey(event: KeyboardEvent) {
@@ -100,6 +98,17 @@ export function CalendarSubscribedEventPopover({
       <p className="text-xs text-muted-foreground">{t('subscribedEvent.readOnly')}</p>
     </div>
   )
+}
+
+/** Renders nothing until a subscribed event is selected. */
+export function CalendarSubscribedEventPopover({
+  target,
+  onDismiss
+}: {
+  target: SubscribedEventTarget | null
+  onDismiss: () => void
+}): React.JSX.Element | null {
+  return target ? <SubscribedEventPopover {...target} onDismiss={onDismiss} /> : null
 }
 
 export default CalendarSubscribedEventPopover
