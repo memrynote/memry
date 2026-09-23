@@ -536,6 +536,13 @@ describe('ContentArea', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
+    // The editor scans the content it opened with once on mount, before any
+    // `change`. That first call gets empty intents here, so the values a test
+    // queues with `mockReturnValueOnce` still land on the changes it fires.
+    contentAreaMocks.analyzeTaskIntents
+      .mockReset()
+      .mockReturnValue(emptyIntents())
+      .mockReturnValueOnce(emptyIntents())
     contentAreaMocks.suggestionControllers = []
     contentAreaMocks.sideMenuControllers = []
     contentAreaMocks.pasteSelect = null
@@ -1578,6 +1585,30 @@ describe('ContentArea', () => {
     })
 
     expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+  })
+
+  // y-prosemirror renders the Y.Doc into the view while it mounts, before
+  // BlockNoteView subscribes `onChange`, so the content a note opens with never
+  // produces a change. An Obsidian Tasks line in a file written outside Memry
+  // is exactly that content.
+  it('converts a checkbox the note opened with, without waiting for a change', async () => {
+    vi.useFakeTimers()
+    contentAreaMocks.analyzeTaskIntents.mockReset().mockReturnValue({
+      ...emptyIntents(new Set()),
+      standaloneCandidate: { blockId: 'standalone' }
+    })
+
+    render(<ContentArea noteId="note-1" />)
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Standalone', linkedNoteIds: ['note-1'] })
+    )
   })
 
   it('imports an Obsidian Tasks checkbox into the task it describes', async () => {

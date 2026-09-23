@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createPortal } from 'react-dom'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
   GridSuggestionMenuController,
@@ -1932,6 +1932,85 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return () => container.removeEventListener('keydown', handleKeyDown, true)
   }, [editor])
 
+  // Turns the editor's block tree into task side effects: checkbox → task
+  // conversion, draft taskBlock creation, subtask re-parenting and deletes.
+  // A non-owner editor (a sibling on the same note in this window, R17) must
+  // not run it — exactly one editor owns task auto-conversion.
+  const applyTaskIntents = (): void => {
+    if (!runSideEffects) return
+
+    const intents = analyzeTaskIntents(editor.document as any[], dismissedBlocksRef.current)
+
+    // Subtasks are unambiguous (the user already structured them as
+    // children of a taskBlock) and convert immediately. Standalone
+    // checkboxes are debounced so the user has time to press Tab to
+    // promote them into a subtask before the read-only taskBlock
+    // renderer steals focus.
+    if (intents.subtaskCandidate) {
+      cancelPendingConvert()
+      convertCheckboxToSubtask(
+        intents.subtaskCandidate.blockId,
+        intents.subtaskCandidate.parentTaskId
+      )
+    } else if (intents.standaloneCandidate) {
+      schedulePendingConvert(intents.standaloneCandidate.blockId)
+    } else if (
+      pendingConvertBlockIdRef.current &&
+      !intents.currentTaskIds.has(pendingConvertBlockIdRef.current)
+    ) {
+      cancelPendingConvert()
+    }
+
+    if (intents.draftTaskBlock) {
+      createTaskForDraftBlock(intents.draftTaskBlock.blockId, intents.draftTaskBlock.title)
+    }
+
+    // Tab-indented (demote): a top-level taskBlock that became a
+    // child of another taskBlock via Tab. Wire up parentTaskId in the
+    // block prop AND in the DB row.
+    for (const demoted of intents.demotedTaskBlocks) {
+      const block = editor.getBlock(demoted.blockId)
+      if (!block) continue
+      editor.updateBlock(block, {
+        props: { ...block.props, parentTaskId: demoted.newParentTaskId }
+      })
+      void tasksService.update({
+        id: demoted.taskId,
+        parentId: demoted.newParentTaskId
+      })
+    }
+
+    // Shift+Tab promoted: a top-level taskBlock that still carries a
+    // stale parentTaskId. Clear both block prop and DB linkage.
+    for (const orphan of intents.unindentedTaskBlocks) {
+      const block = editor.getBlock(orphan.blockId)
+      if (!block) continue
+      editor.updateBlock(block, {
+        props: { ...block.props, parentTaskId: '' }
+      })
+      void tasksService.update({ id: orphan.taskId, parentId: null })
+    }
+
+    for (const prevId of knownTaskBlockIdsRef.current) {
+      if (!intents.currentTaskIds.has(prevId)) {
+        void tasksService.delete(prevId)
+      }
+    }
+    knownTaskBlockIdsRef.current = intents.currentTaskIds
+  }
+
+  // The content a note opens with never reaches `onChange`. y-prosemirror
+  // (1.3, BlockNote 0.52+) renders the Y.Doc into ProseMirror synchronously
+  // while the view mounts, and the view mounts from a ref callback, before
+  // BlockNoteView's effect has subscribed `onChange`. Older y-prosemirror
+  // deferred that first render a tick, so the subscription caught it. Without
+  // this scan, a checkbox that arrived with the file (an Obsidian Tasks line)
+  // stays a plain checkbox until the user happens to type in the note.
+  const scanOpenedContent = useEffectEvent(applyTaskIntents)
+  useEffect(() => {
+    scanOpenedContent()
+  }, [editor])
+
   // Memry's `file` block renders its own URL, so BlockNote's resolver never
   // reaches it. Handing the same resolver down the tree is what lets a
   // note-relative PDF/attachment ref load — see `note-file-url-context`.
@@ -2038,76 +2117,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             editable={editable}
             onChange={(): void => {
               void handleChange()
-
-              // A non-owner editor (a sibling on the same note in this window, R17)
-              // must not run task auto-conversion — exactly one editor owns it.
-              // Rendering + Yjs binding above are unaffected.
-              if (!runSideEffects) return
-
-              const intents = analyzeTaskIntents(
-                editor.document as any[],
-                dismissedBlocksRef.current
-              )
-
-              // Subtasks are unambiguous (the user already structured them as
-              // children of a taskBlock) and convert immediately. Standalone
-              // checkboxes are debounced so the user has time to press Tab to
-              // promote them into a subtask before the read-only taskBlock
-              // renderer steals focus.
-              if (intents.subtaskCandidate) {
-                cancelPendingConvert()
-                convertCheckboxToSubtask(
-                  intents.subtaskCandidate.blockId,
-                  intents.subtaskCandidate.parentTaskId
-                )
-              } else if (intents.standaloneCandidate) {
-                schedulePendingConvert(intents.standaloneCandidate.blockId)
-              } else if (
-                pendingConvertBlockIdRef.current &&
-                !intents.currentTaskIds.has(pendingConvertBlockIdRef.current)
-              ) {
-                cancelPendingConvert()
-              }
-
-              if (intents.draftTaskBlock) {
-                createTaskForDraftBlock(
-                  intents.draftTaskBlock.blockId,
-                  intents.draftTaskBlock.title
-                )
-              }
-
-              // Tab-indented (demote): a top-level taskBlock that became a
-              // child of another taskBlock via Tab. Wire up parentTaskId in the
-              // block prop AND in the DB row.
-              for (const demoted of intents.demotedTaskBlocks) {
-                const block = editor.getBlock(demoted.blockId)
-                if (!block) continue
-                editor.updateBlock(block, {
-                  props: { ...block.props, parentTaskId: demoted.newParentTaskId }
-                })
-                void tasksService.update({
-                  id: demoted.taskId,
-                  parentId: demoted.newParentTaskId
-                })
-              }
-
-              // Shift+Tab promoted: a top-level taskBlock that still carries a
-              // stale parentTaskId. Clear both block prop and DB linkage.
-              for (const orphan of intents.unindentedTaskBlocks) {
-                const block = editor.getBlock(orphan.blockId)
-                if (!block) continue
-                editor.updateBlock(block, {
-                  props: { ...block.props, parentTaskId: '' }
-                })
-                void tasksService.update({ id: orphan.taskId, parentId: null })
-              }
-
-              for (const prevId of knownTaskBlockIdsRef.current) {
-                if (!intents.currentTaskIds.has(prevId)) {
-                  void tasksService.delete(prevId)
-                }
-              }
-              knownTaskBlockIdsRef.current = intents.currentTaskIds
+              applyTaskIntents()
             }}
             theme={editorTheme}
             formattingToolbar={false}
