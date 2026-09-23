@@ -184,6 +184,12 @@ An empty folder cannot produce a phantom, so this class of bug hides until a fol
 
 Related: folder expanded state is keyed by the `folder-<path>` node id and persisted, in both renderers. A path change must **remap** those keys (`remapExpandedFolderIds`, exposed as `renameNode` on both tree handles), or the folder and everything open inside it collapse on rename and the dead ids linger in storage.
 
+## Windows: The Vault Watcher Locks Every Folder That Has a Subfolder
+
+chokidar watches the vault with one `fs.watch` per directory, and on Windows each of those is an open directory handle. Windows refuses to rename a directory while anything beneath it is open, so `fs.rename` of any vault folder that contains a subfolder fails `EPERM` for as long as the watcher runs. Retrying never helps. A folder with no subfolder renames fine, which makes the failure look like it only hits "certain folders" (#2206).
+
+Move vault folders with `moveDirectory` (`src/main/vault/move-directory.ts`), never a bare `fs.rename`. It falls back to an entry-by-entry move into a dot-named staging directory, which the watcher ignores, and renames that into place last, so the watcher still sees one complete folder appear and keeps each note's identity. The canvas folder store (`canvas/folder-store.ts`) still uses `renameSync` and has the same exposure.
+
 ## Editor-Zone Mousedown Handlers Steal Focus from BlockNote Menus
 
 BlockNote's shadcn menus (drag-handle menu, side menu, toolbars and their nested dropdowns) render **inline inside `.bn-container`, not portaled**. Any editor-zone mousedown handler — such as the "click the marquee zone to focus the editor at end" handler in `note.tsx` / `journal.tsx`, or the marquee selection hook — therefore also sees clicks on menu items. If such a handler focuses the editor on mousedown, the menu unmounts between `pointerdown` and `pointerup`, so the item's click never lands and the action silently does nothing (for example, drag-handle Colors/Delete appear to do nothing).

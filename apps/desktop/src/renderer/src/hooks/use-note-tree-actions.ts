@@ -742,7 +742,16 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         await refreshFolderTree()
         return true
       } catch (err) {
+        // A drop that does nothing reads as "this folder cannot be dragged"
+        // (#2206); say it failed, the way a context-menu rename does.
+        trackRendererError('folder_move_failed', err)
         log.error('Failed to move folder', err)
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRenameFolder')
+          )
+        )
         return false
       }
     },
