@@ -295,6 +295,7 @@ describe('useFirstRunTour', () => {
       unmount()
 
       expect(localStorage.getItem(TOUR_KEY)).toBeNull()
+      expect(vault.onboardingCompleted).toBe(false)
       expect(localStorage.getItem(STAR_PROMPT_KEY)).toBeNull()
       expect(announced).not.toHaveBeenCalled()
 
