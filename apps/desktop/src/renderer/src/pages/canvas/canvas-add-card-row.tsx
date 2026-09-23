@@ -16,6 +16,7 @@ import { priorityConfig } from '@/data/task-model'
 import { DB_PRIORITY_MAP } from '@/components/note/content-area/task-block/task-block-utils'
 import { formatEventTime } from './canvas-cards'
 import { formatDueDate, formatShortDate, type AddCardCandidate } from './canvas-add-card'
+import { FileKindIcon, fileFolder } from './canvas-reference-card'
 
 /** A metadata chip: never wider than its content, never wrapping mid-word. */
 function Meta({
@@ -54,7 +55,51 @@ function RowIcon({ candidate }: { candidate: AddCardCandidate }): React.JSX.Elem
     )
   }
 
+  if (detail.type === 'file') {
+    return <FileKindIcon fileType={detail.fileType} className="size-4" />
+  }
+
+  if (detail.type === 'project') {
+    return (
+      <span className="flex size-4 shrink-0 items-center justify-center" aria-hidden="true">
+        <span className="size-2.5 rounded-full" style={{ backgroundColor: detail.color }} />
+      </span>
+    )
+  }
+
   return <CalendarClock className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+}
+
+function TaskRowMeta({
+  detail,
+  createdLabel
+}: {
+  detail: Extract<AddCardCandidate['detail'], { type: 'task' }>
+  createdLabel: (date: string) => string
+}): React.JSX.Element {
+  const priority = DB_PRIORITY_MAP[detail.priority] ?? 'none'
+  const due = formatDueDate(detail.dueDate)
+  const created = formatShortDate(detail.createdAt)
+  return (
+    <div className="flex items-center gap-2 text-xs text-text-tertiary">
+      <Meta>
+        <span
+          className="inline-block size-2 rounded-full"
+          style={{ backgroundColor: detail.projectColor }}
+          aria-hidden="true"
+        />
+        <span className="max-w-32 truncate">{detail.projectName}</span>
+      </Meta>
+      {detail.statusName ? <Meta>{detail.statusName}</Meta> : null}
+      {priority !== 'none' ? (
+        <Meta style={{ color: priorityConfig[priority].color ?? undefined }}>
+          {priorityConfig[priority].label}
+        </Meta>
+      ) : null}
+      {due ? <Meta>{due}</Meta> : null}
+      {created ? <Meta>{createdLabel(created)}</Meta> : null}
+    </div>
+  )
 }
 
 function RowMeta({
@@ -79,29 +124,27 @@ function RowMeta({
   }
 
   if (detail.type === 'task') {
-    const priority = DB_PRIORITY_MAP[detail.priority] ?? 'none'
-    const due = formatDueDate(detail.dueDate)
-    const created = formatShortDate(detail.createdAt)
+    return <TaskRowMeta detail={detail} createdLabel={createdLabel} />
+  }
+
+  if (detail.type === 'file') {
     return (
       <div className="flex items-center gap-2 text-xs text-text-tertiary">
-        <Meta>
-          <span
-            className="inline-block size-2 rounded-full"
-            style={{ backgroundColor: detail.projectColor }}
-            aria-hidden="true"
-          />
-          <span className="max-w-32 truncate">{detail.projectName}</span>
-        </Meta>
-        {detail.statusName ? <Meta>{detail.statusName}</Meta> : null}
-        {priority !== 'none' ? (
-          <Meta style={{ color: priorityConfig[priority].color ?? undefined }}>
-            {priorityConfig[priority].label}
-          </Meta>
-        ) : null}
-        {due ? <Meta>{due}</Meta> : null}
-        {created ? <Meta>{createdLabel(created)}</Meta> : null}
+        <span className="truncate">{fileFolder(detail.path) || detail.path}</span>
       </div>
     )
+  }
+
+  if (detail.type === 'project') {
+    return detail.taskCount > 0 ? (
+      <div className="flex items-center gap-2 text-xs text-text-tertiary">
+        <Meta>
+          <span className="tabular-nums">
+            {detail.completedCount}/{detail.taskCount}
+          </span>
+        </Meta>
+      </div>
+    ) : null
   }
 
   return (

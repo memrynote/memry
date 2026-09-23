@@ -18,9 +18,27 @@ import { getActiveLocale } from '@/lib/active-locale'
 /** The custom drag MIME a card drop consumes ({ entityType, entityId } JSON). */
 export const CANVAS_ITEM_DRAG_MIME = 'application/x-memry-canvas-item'
 
-/** Default card rectangle size in scene units (task + calendar event). */
+/** Default card rectangle size in scene units (task, calendar event, project). */
 export const CARD_DEFAULT_WIDTH = 260
 export const CARD_DEFAULT_HEIGHT = 168
+
+/** A file card is taller than the compact card so its preview has room above the metadata. */
+export const CARD_FILE_HEIGHT = 240
+
+/**
+ * Kinds a double-click edits in place. Every other kind is a reference to
+ * something with its own surface, so a double-click opens that surface instead.
+ * A kind added later stays out of this set until it has an in-card editor.
+ */
+const IN_PLACE_EDITABLE: ReadonlySet<CanvasEntityType> = new Set<CanvasEntityType>([
+  'note',
+  'task',
+  'calendar_event'
+])
+
+export function isEditableInPlace(entityType: CanvasEntityType): boolean {
+  return IN_PLACE_EDITABLE.has(entityType)
+}
 
 /**
  * The largest a note card opens at. A task or event card shows a handful of
@@ -91,17 +109,17 @@ export function noteCardSize(markdown: string): { width: number; height: number 
 
 /**
  * The rectangle size for a new card. Notes are measured from `noteMarkdown`;
- * every other type is a fixed compact card. An unknown note body yields the
- * compact card — the safe floor, since a card that opens too small is one drag
+ * files get the taller preview card; every other type is a fixed compact card.
+ * An unknown note body yields the compact card — the safe floor, since a card that opens too small is one drag
  * from right, while one that opens too large has already covered the canvas.
  */
 export function cardDefaultSize(
   entityType: CanvasEntityType,
   noteMarkdown = ''
 ): { width: number; height: number } {
-  return entityType === 'note'
-    ? noteCardSize(noteMarkdown)
-    : { width: CARD_DEFAULT_WIDTH, height: CARD_DEFAULT_HEIGHT }
+  if (entityType === 'note') return noteCardSize(noteMarkdown)
+  if (entityType === 'file') return { width: CARD_DEFAULT_WIDTH, height: CARD_FILE_HEIGHT }
+  return { width: CARD_DEFAULT_WIDTH, height: CARD_DEFAULT_HEIGHT }
 }
 
 /** Minimal element shape the card logic reads (subset of ExcalidrawElement). */

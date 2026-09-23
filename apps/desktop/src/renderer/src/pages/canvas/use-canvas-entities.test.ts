@@ -9,10 +9,17 @@ const mocks = vi.hoisted(() => ({
   notesGet: vi.fn(),
   tasksGet: vi.fn(),
   calGet: vi.fn(),
+  fileGet: vi.fn(),
+  listProjects: vi.fn(),
   cb: {
     noteUpdated: null as ((e: { id: string }) => void) | null,
     noteRenamed: null as ((e: { id: string }) => void) | null,
     noteDeleted: null as ((e: { id: string }) => void) | null,
+    noteMoved: null as ((e: { id: string }) => void) | null,
+    taskCreated: null as (() => void) | null,
+    taskMoved: null as (() => void) | null,
+    projectUpdated: null as ((e: { id: string }) => void) | null,
+    projectDeleted: null as ((e: { id: string }) => void) | null,
     taskUpdated: null as ((e: { id: string }) => void) | null,
     taskCompleted: null as ((e: { id: string }) => void) | null,
     taskDeleted: null as ((e: { id: string }) => void) | null,
@@ -21,7 +28,14 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/services/notes-service', () => ({
-  notesService: { get: (id: string) => mocks.notesGet(id) },
+  notesService: {
+    get: (id: string) => mocks.notesGet(id),
+    getFile: (id: string) => mocks.fileGet(id)
+  },
+  onNoteMoved: (cb: (e: { id: string }) => void) => {
+    mocks.cb.noteMoved = cb
+    return () => {}
+  },
   onNoteUpdated: (cb: (e: { id: string }) => void) => {
     mocks.cb.noteUpdated = cb
     return () => {}
@@ -37,7 +51,26 @@ vi.mock('@/services/notes-service', () => ({
 }))
 
 vi.mock('@/services/tasks-service', () => ({
-  tasksService: { get: (id: string) => mocks.tasksGet(id) },
+  tasksService: {
+    get: (id: string) => mocks.tasksGet(id),
+    listProjects: () => mocks.listProjects()
+  },
+  onTaskCreated: (cb: () => void) => {
+    mocks.cb.taskCreated = cb
+    return () => {}
+  },
+  onTaskMoved: (cb: () => void) => {
+    mocks.cb.taskMoved = cb
+    return () => {}
+  },
+  onProjectUpdated: (cb: (e: { id: string }) => void) => {
+    mocks.cb.projectUpdated = cb
+    return () => {}
+  },
+  onProjectDeleted: (cb: (e: { id: string }) => void) => {
+    mocks.cb.projectDeleted = cb
+    return () => {}
+  },
   onTaskUpdated: (cb: (e: { id: string }) => void) => {
     mocks.cb.taskUpdated = cb
     return () => {}
@@ -73,11 +106,37 @@ function ref(entityType: CanvasEntityType, entityId: string): CanvasCardRef {
   }
 }
 
+function project(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'p1',
+    name: 'Launch',
+    color: '#3366ff',
+    description: 'Ship v2',
+    archivedAt: null,
+    taskCount: 4,
+    completedCount: 1,
+    overdueCount: 0,
+    ...overrides
+  }
+}
+
+function file(overrides: { id: string; title: string; path: string }) {
+  return {
+    ...overrides,
+    absolutePath: `/vault/${overrides.path}`,
+    fileType: 'pdf',
+    mimeType: 'application/pdf',
+    fileSize: 2048
+  }
+}
+
 describe('useCanvasEntities', () => {
   beforeEach(() => {
     mocks.notesGet.mockReset()
     mocks.tasksGet.mockReset()
     mocks.calGet.mockReset()
+    mocks.fileGet.mockReset()
+    mocks.listProjects.mockReset()
   })
 
   it('loads note, task, and event entities into a keyed map', async () => {
@@ -174,6 +233,110 @@ describe('useCanvasEntities', () => {
     act(() => mocks.cb.taskDeleted?.({ id: 't1' }))
     await waitFor(() =>
       expect(result.current.get(entityKey('task', 't1'))).toEqual({ status: 'dangling' })
+    )
+  })
+
+  it('loads a project with its task counts and a filed file with its metadata', async () => {
+    mocks.listProjects.mockResolvedValue({ projects: [project({ id: 'p1', name: 'Launch' })] })
+    mocks.fileGet.mockResolvedValue(file({ id: 'f1', title: 'Brief', path: 'Docs/Brief.pdf' }))
+
+    const { result } = renderHook(() =>
+      useCanvasEntities([ref('project', 'p1'), ref('file', 'f1')])
+    )
+
+    await waitFor(() => {
+      expect(result.current.get(entityKey('project', 'p1'))).toEqual({
+        status: 'ready',
+        kind: 'project',
+        title: 'Launch',
+        color: '#3366ff',
+        description: 'Ship v2',
+        taskCount: 4,
+        completedCount: 1,
+        overdueCount: 0
+      })
+      expect(result.current.get(entityKey('file', 'f1'))).toEqual({
+        status: 'ready',
+        kind: 'file',
+        title: 'Brief',
+        fileType: 'pdf',
+        path: 'Docs/Brief.pdf',
+        absolutePath: '/vault/Docs/Brief.pdf',
+        fileSize: 2048
+      })
+    })
+  })
+
+  it('dangles a project that is gone or archived, and a file that no longer resolves', async () => {
+    mocks.listProjects.mockResolvedValue({
+      projects: [project({ id: 'p2', archivedAt: '2026-01-01' })]
+    })
+    mocks.fileGet.mockResolvedValue(null)
+
+    const { result } = renderHook(() =>
+      useCanvasEntities([ref('project', 'p1'), ref('project', 'p2'), ref('file', 'f1')])
+    )
+
+    await waitFor(() => {
+      expect(result.current.get(entityKey('project', 'p1'))).toEqual({ status: 'dangling' })
+      expect(result.current.get(entityKey('project', 'p2'))).toEqual({ status: 'dangling' })
+      expect(result.current.get(entityKey('file', 'f1'))).toEqual({ status: 'dangling' })
+    })
+  })
+
+  it('follows a file through rename and move, then dangles it on delete', async () => {
+    mocks.fileGet.mockResolvedValue(file({ id: 'f1', title: 'Brief', path: 'Docs/Brief.pdf' }))
+    const { result } = renderHook(() => useCanvasEntities([ref('file', 'f1')]))
+    await waitFor(() =>
+      expect(result.current.get(entityKey('file', 'f1'))).toMatchObject({ title: 'Brief' })
+    )
+
+    mocks.fileGet.mockResolvedValue(file({ id: 'f1', title: 'Final', path: 'Docs/Final.pdf' }))
+    act(() => mocks.cb.noteRenamed?.({ id: 'f1' }))
+    await waitFor(() =>
+      expect(result.current.get(entityKey('file', 'f1'))).toMatchObject({ title: 'Final' })
+    )
+
+    mocks.fileGet.mockResolvedValue(file({ id: 'f1', title: 'Final', path: 'Archive/Final.pdf' }))
+    act(() => mocks.cb.noteMoved?.({ id: 'f1' }))
+    await waitFor(() =>
+      expect(result.current.get(entityKey('file', 'f1'))).toMatchObject({
+        path: 'Archive/Final.pdf'
+      })
+    )
+
+    act(() => mocks.cb.noteDeleted?.({ id: 'f1' }))
+    await waitFor(() =>
+      expect(result.current.get(entityKey('file', 'f1'))).toEqual({ status: 'dangling' })
+    )
+  })
+
+  it('rereads project counts when a task changes, and dangles the project on delete', async () => {
+    mocks.listProjects.mockResolvedValue({ projects: [project({ id: 'p1' })] })
+    const { result } = renderHook(() => useCanvasEntities([ref('project', 'p1')]))
+    await waitFor(() =>
+      expect(result.current.get(entityKey('project', 'p1'))).toMatchObject({ completedCount: 1 })
+    )
+
+    mocks.listProjects.mockResolvedValue({
+      projects: [project({ id: 'p1', completedCount: 2 })]
+    })
+    act(() => mocks.cb.taskCompleted?.({ id: 'some-task' }))
+    await waitFor(() =>
+      expect(result.current.get(entityKey('project', 'p1'))).toMatchObject({ completedCount: 2 })
+    )
+
+    mocks.listProjects.mockResolvedValue({
+      projects: [project({ id: 'p1', name: 'Renamed', completedCount: 2 })]
+    })
+    act(() => mocks.cb.projectUpdated?.({ id: 'p1' }))
+    await waitFor(() =>
+      expect(result.current.get(entityKey('project', 'p1'))).toMatchObject({ title: 'Renamed' })
+    )
+
+    act(() => mocks.cb.projectDeleted?.({ id: 'p1' }))
+    await waitFor(() =>
+      expect(result.current.get(entityKey('project', 'p1'))).toEqual({ status: 'dangling' })
     )
   })
 

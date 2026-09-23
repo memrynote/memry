@@ -65,6 +65,7 @@ const mocks = vi.hoisted(() => {
     openTab: vi.fn(),
     notesCreate: vi.fn(),
     notesGet: vi.fn(),
+    notesGetFile: vi.fn(),
     entities: new Map<string, unknown>(),
     lockReason: null as string | null,
     // Cached per lockReason value so the returned reference is stable across
@@ -98,7 +99,8 @@ vi.mock('@/services/notes-service', () => ({
   notesService: {
     create: (input: unknown) => mocks.notesCreate(input),
     // A new card is sized from the note's body, so placement reads it first.
-    get: (id: string) => mocks.notesGet(id)
+    get: (id: string) => mocks.notesGet(id),
+    getFile: (id: string) => mocks.notesGetFile(id)
   }
 }))
 vi.mock('./use-canvas-entities', async () => {
@@ -165,7 +167,13 @@ vi.mock('./canvas-add-card-dialog', () => ({
     ) : null
 }))
 
-function cardEl(id: string, entityId: string, x = 0, y = 0): CardElement {
+function cardEl(
+  id: string,
+  entityId: string,
+  x = 0,
+  y = 0,
+  entityType: string = 'note'
+): CardElement {
   return {
     id,
     type: 'rectangle',
@@ -174,7 +182,7 @@ function cardEl(id: string, entityId: string, x = 0, y = 0): CardElement {
     width: 260,
     height: 168,
     angle: 0,
-    customData: { entityType: 'note', entityId }
+    customData: { entityType, entityId }
   }
 }
 
@@ -231,6 +239,8 @@ describe('CanvasCardLayer', () => {
     mocks.notesCreate.mockReset()
     mocks.notesGet.mockReset()
     mocks.notesGet.mockResolvedValue({ id: 'n', content: '' })
+    mocks.notesGetFile.mockReset()
+    mocks.notesGetFile.mockResolvedValue(null)
     mocks.entities = new Map()
     mocks.lockReason = null
   })
@@ -315,6 +325,36 @@ describe('CanvasCardLayer', () => {
     expect(tiny).toEqual(noteCardSize('hey'))
     expect(big.width).toBeGreaterThan(tiny.width)
     expect(big.height).toBeGreaterThan(tiny.height)
+  })
+
+  it('cards a filed binary dragged from the note tree as a file, not a note', async () => {
+    // The sidebar tags every non-folder row as a note; a PDF must still land
+    // as a file card so it opens in the viewer (#800).
+    mocks.notesGetFile.mockImplementation(async (id: string) =>
+      id === 'scan' ? { id: 'scan', fileType: 'pdf' } : null
+    )
+    const { api, updateScene } = makeApi([])
+    render(<Harness api={api} />)
+    const drop = new Event('drop', { bubbles: true, cancelable: true })
+    Object.defineProperty(drop, 'dataTransfer', {
+      value: {
+        types: [CANVAS_ITEM_DRAG_MIME],
+        getData: (t: string) =>
+          t === CANVAS_ITEM_DRAG_MIME
+            ? JSON.stringify({ entityType: 'note', entityId: 'scan' })
+            : ''
+      }
+    })
+    Object.defineProperty(drop, 'clientX', { value: 120 })
+    Object.defineProperty(drop, 'clientY', { value: 80 })
+    screen.getByTestId('wrapper').dispatchEvent(drop)
+
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
+    const created = updateScene.mock.calls[0][0].elements.find(
+      (e: { customData?: { entityId?: string } }) => e.customData?.entityId === 'scan'
+    )
+    expect(created.customData).toEqual({ entityType: 'file', entityId: 'scan' })
+    expect({ width: created.width, height: created.height }).toEqual({ width: 260, height: 240 })
   })
 
   it('ignores drops without the canvas MIME', async () => {
@@ -431,6 +471,49 @@ describe('CanvasCardLayer', () => {
       'active'
     )
     expect(mocks.openTab).not.toHaveBeenCalled()
+  })
+
+  it('opens a project card on dblclick instead of activating it', async () => {
+    mocks.entities = new Map([
+      ['project:p1', { status: 'ready', kind: 'project', title: 'Launch' }]
+    ])
+    const { api, fire } = makeApi([cardEl('e1', 'p1', 100, 100, 'project')])
+    render(<Harness api={api} />)
+    fire()
+    const dbl = new MouseEvent('dblclick', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 150,
+      clientY: 150
+    })
+    screen.getByTestId('wrapper').dispatchEvent(dbl)
+
+    expect(dbl.defaultPrevented).toBe(true)
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'project',
+        entityId: 'p1',
+        title: 'Launch',
+        path: '/project/p1'
+      })
+    )
+    expect(document.querySelector('[data-canvas-active-card="e1"]')).not.toBeInTheDocument()
+  })
+
+  it('opens a file card in the file viewer on dblclick', async () => {
+    mocks.entities = new Map([['file:f1', { status: 'ready', kind: 'file', title: 'Brief' }]])
+    const { api, fire } = makeApi([cardEl('e1', 'f1', 100, 100, 'file')])
+    render(<Harness api={api} />)
+    fire()
+    screen
+      .getByTestId('wrapper')
+      .dispatchEvent(
+        new MouseEvent('dblclick', { bubbles: true, cancelable: true, clientX: 150, clientY: 150 })
+      )
+
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'file', entityId: 'f1', title: 'Brief', path: '/file/f1' })
+    )
   })
 
   it('Escape deactivates the active card', async () => {

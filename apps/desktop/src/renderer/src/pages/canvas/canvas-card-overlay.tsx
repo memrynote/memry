@@ -40,6 +40,7 @@ import {
   computeVisibleCardIds,
   findFreeCardCenter,
   getCardRefs,
+  isEditableInPlace,
   makeCardSkeleton,
   overlayTransform,
   readCanvasDragItem,
@@ -69,6 +70,23 @@ const EXIT_PADDING = 500
 
 /** Stable empty default so the drop handler's deps do not change every render. */
 const EMPTY_DRAGGED_TASKS: readonly { id: string }[] = []
+
+/**
+ * The sidebar tree tags every non-folder row as a note, filed binaries
+ * included, because it cannot tell the two apart without a read. A binary
+ * opens in the file viewer, never the markdown editor (#800), so a dropped one
+ * becomes a file card. A failed read keeps the note card the drag asked for.
+ */
+async function resolveDroppedRef(ref: CanvasEntityRef): Promise<CanvasEntityRef> {
+  if (ref.entityType !== 'note') return ref
+  try {
+    const file = await notesService.getFile(ref.entityId)
+    return file ? { entityType: 'file', entityId: ref.entityId } : ref
+  } catch (err) {
+    log.error('Failed to read dropped canvas item', { entityId: ref.entityId, error: err })
+    return ref
+  }
+}
 
 interface CanvasCardLayerProps {
   excalidrawAPI: ExcalidrawImperativeAPI
@@ -307,7 +325,9 @@ export const CanvasCardLayer = ({
   const redirect = useCallback(
     (card: CanvasCardRef): void => {
       const state = entitiesRef.current.get(entityKey(card.entityType, card.entityId))
-      const title = state?.status === 'ready' && state.kind === 'note' ? state.title : undefined
+      // Only kinds whose tab is titled after the item read this; the rest name
+      // their own tab ('Tasks', 'Calendar').
+      const title = state?.status === 'ready' ? state.title : undefined
       const startAt =
         state?.status === 'ready' && state.kind === 'calendar_event' ? state.startAt : null
       // A card opens through the same `memry://` grammar as an agent-chat link
@@ -529,14 +549,16 @@ export const CanvasCardLayer = ({
         { clientX: e.clientX, clientY: e.clientY },
         appState
       )
-      // The size read is async, but the drop point is not — capture it here.
-      void resolveCardSize(item.entityType, item.entityId).then((size) => {
-        createCardElement(item.entityType, item.entityId, scene.x, scene.y, size)
+      // The reads are async, but the drop point is not — capture it here.
+      void resolveDroppedRef(item).then(async (ref) => {
+        const size = await resolveCardSize(ref.entityType, ref.entityId)
+        createCardElement(ref.entityType, ref.entityId, scene.x, scene.y, size)
       })
     }
 
     // dblclick activates the hit card (↗ redirect stays the only way to open a
-    // tab — skip when the dblclick landed on that button, matrix #20).
+    // tab for an editable card — skip when the dblclick landed on that button,
+    // matrix #20). A card with nothing to edit in place opens its item instead.
     const onDblClick = (e: MouseEvent): void => {
       if ((e.target as Element | null)?.closest('[data-canvas-redirect]')) {
         return
@@ -551,6 +573,10 @@ export const CanvasCardLayer = ({
       if (hit) {
         e.preventDefault()
         e.stopPropagation()
+        if (!isEditableInPlace(hit.entityType)) {
+          redirect(hit)
+          return
+        }
         // No live fragment for this note in this window + the note already live
         // elsewhere => stay read-only. Not because a second editor would be
         // non-collaborative — with a fragment it shares the tab's Y.Doc — but
@@ -646,6 +672,7 @@ export const CanvasCardLayer = ({
     createCardElement,
     resolveCardSize,
     dispatchActive,
+    redirect,
     setClaimFailedTick
   ])
 

@@ -10,12 +10,23 @@
  */
 
 import { useEffect, useMemo, useReducer, useRef } from 'react'
-import { notesService, onNoteUpdated, onNoteDeleted, onNoteRenamed } from '@/services/notes-service'
+import {
+  notesService,
+  onNoteUpdated,
+  onNoteDeleted,
+  onNoteRenamed,
+  onNoteMoved,
+  type FileMetadata
+} from '@/services/notes-service'
 import {
   tasksService,
+  onTaskCreated,
   onTaskUpdated,
   onTaskDeleted,
-  onTaskCompleted
+  onTaskCompleted,
+  onTaskMoved,
+  onProjectUpdated,
+  onProjectDeleted
 } from '@/services/tasks-service'
 import { calendarService, onCalendarChanged } from '@/services/calendar-service'
 import { createLogger } from '@/lib/logger'
@@ -37,6 +48,26 @@ export type CanvasEntityState =
       startAt: string
       endAt: string | null
       isAllDay: boolean
+    }
+  | {
+      status: 'ready'
+      kind: 'project'
+      title: string
+      color: string
+      description: string | null
+      taskCount: number
+      completedCount: number
+      overdueCount: number
+    }
+  | {
+      status: 'ready'
+      kind: 'file'
+      title: string
+      fileType: FileMetadata['fileType']
+      /** Vault-relative, so the card can say which folder the file lives in. */
+      path: string
+      absolutePath: string
+      fileSize: number | null
     }
 
 export { entityKey }
@@ -83,47 +114,77 @@ function shallowEqual(a: CanvasEntityState, b: CanvasEntityState): boolean {
   )
 }
 
+const DANGLING: CanvasEntityState = { status: 'dangling' }
+
 async function loadEntity(
   entityType: CanvasEntityType,
   entityId: string
 ): Promise<CanvasEntityState> {
-  if (entityType === 'note') {
-    const note = await notesService.get(entityId)
-    if (!note) {
-      return { status: 'dangling' }
+  switch (entityType) {
+    case 'note': {
+      const note = await notesService.get(entityId)
+      if (!note) return DANGLING
+      return {
+        status: 'ready',
+        kind: 'note',
+        title: note.title,
+        emoji: note.emoji ?? null,
+        body: note.content
+      }
     }
-    return {
-      status: 'ready',
-      kind: 'note',
-      title: note.title,
-      emoji: note.emoji ?? null,
-      body: note.content
+    case 'task': {
+      const task = await tasksService.get(entityId)
+      if (!task || task.archivedAt) return DANGLING
+      return {
+        status: 'ready',
+        kind: 'task',
+        title: task.title,
+        completed: task.completedAt !== null,
+        dueDate: task.dueDate
+      }
     }
-  }
-  if (entityType === 'task') {
-    const task = await tasksService.get(entityId)
-    if (!task || task.archivedAt) {
-      return { status: 'dangling' }
+    case 'calendar_event': {
+      const event = await calendarService.getEvent(entityId)
+      if (!event || event.archivedAt) return DANGLING
+      return {
+        status: 'ready',
+        kind: 'calendar_event',
+        title: event.title,
+        startAt: event.startAt,
+        endAt: event.endAt,
+        isAllDay: event.isAllDay
+      }
     }
-    return {
-      status: 'ready',
-      kind: 'task',
-      title: task.title,
-      completed: task.completedAt !== null,
-      dueDate: task.dueDate
+    case 'project': {
+      // The list is the one read that carries task counts; projects are few, so
+      // reading all of them to find one costs less than a second round trip.
+      const { projects } = await tasksService.listProjects()
+      const project = projects.find((candidate) => candidate.id === entityId)
+      if (!project || project.archivedAt) return DANGLING
+      return {
+        status: 'ready',
+        kind: 'project',
+        title: project.name,
+        color: project.color,
+        description: project.description,
+        taskCount: project.taskCount,
+        completedCount: project.completedCount,
+        overdueCount: project.overdueCount
+      }
     }
-  }
-  const event = await calendarService.getEvent(entityId)
-  if (!event || event.archivedAt) {
-    return { status: 'dangling' }
-  }
-  return {
-    status: 'ready',
-    kind: 'calendar_event',
-    title: event.title,
-    startAt: event.startAt,
-    endAt: event.endAt,
-    isAllDay: event.isAllDay
+    case 'file': {
+      const file = await notesService.getFile(entityId)
+      if (!file) return DANGLING
+      return {
+        status: 'ready',
+        kind: 'file',
+        title: file.title,
+        fileType: file.fileType,
+        path: file.path,
+        absolutePath: file.absolutePath,
+        fileSize: file.fileSize
+      }
+    }
   }
 }
 
@@ -216,19 +277,49 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
         })
     }
 
+    const markDangling = (entityType: CanvasEntityType, entityId: string): void => {
+      const key = entityKey(entityType, entityId)
+      if (has(key)) dispatch({ type: 'set', key, state: DANGLING })
+    }
+    // A project card shows task counts, and a task event does not say which
+    // project it moved counts in (a delete carries only the task id), so every
+    // held project card rereads.
+    const refreshProjects = (): void => {
+      for (const ref of wantedRef.current.values()) {
+        if (ref.entityType === 'project') refresh('project', ref.entityId)
+      }
+    }
+    // Notes and filed files share one id space and one event stream; `refresh`
+    // only rereads the kind a card actually holds.
+    const refreshNoteOrFile = (id: string): void => {
+      refresh('note', id)
+      refresh('file', id)
+    }
+
     const unsubscribes = [
-      onNoteUpdated((event) => refresh('note', event.id)),
-      onNoteRenamed((event) => refresh('note', event.id)),
+      onNoteUpdated((event) => refreshNoteOrFile(event.id)),
+      onNoteRenamed((event) => refreshNoteOrFile(event.id)),
+      onNoteMoved((event) => refresh('file', event.id)),
       onNoteDeleted((event) => {
-        const key = entityKey('note', event.id)
-        if (has(key)) dispatch({ type: 'set', key, state: { status: 'dangling' } })
+        markDangling('note', event.id)
+        markDangling('file', event.id)
       }),
-      onTaskUpdated((event) => refresh('task', event.id)),
-      onTaskCompleted((event) => refresh('task', event.id)),
+      onTaskCreated(refreshProjects),
+      onTaskUpdated((event) => {
+        refresh('task', event.id)
+        refreshProjects()
+      }),
+      onTaskCompleted((event) => {
+        refresh('task', event.id)
+        refreshProjects()
+      }),
+      onTaskMoved(refreshProjects),
       onTaskDeleted((event) => {
-        const key = entityKey('task', event.id)
-        if (has(key)) dispatch({ type: 'set', key, state: { status: 'dangling' } })
+        markDangling('task', event.id)
+        refreshProjects()
       }),
+      onProjectUpdated((event) => refresh('project', event.id)),
+      onProjectDeleted((event) => markDangling('project', event.id)),
       onCalendarChanged((event) => {
         if (event.entityType === 'calendar_event') {
           refresh('calendar_event', event.id)

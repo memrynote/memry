@@ -10,6 +10,7 @@ import type {
   CanvasElementEdit,
   CanvasElementView
 } from '@memry/contracts/canvas-draw'
+import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
 /**
@@ -110,7 +111,7 @@ export interface CurrentNoteSnapshot {
   tags: string[]
 }
 
-export type CanvasEntityKind = 'note' | 'task' | 'calendar_event'
+export type CanvasEntityKind = CanvasEntityType
 
 /**
  * One entity sitting on a canvas. `missing` marks a card whose entity no longer
