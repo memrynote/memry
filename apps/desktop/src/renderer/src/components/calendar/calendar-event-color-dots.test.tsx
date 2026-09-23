@@ -83,7 +83,7 @@ describe('event colour dots', () => {
       act(() => vi.advanceTimersByTime(250))
 
       expect(dotBeside('Standup').style.backgroundColor).toBe('rgb(213, 0, 0)')
-      expect(dotBeside('Review').style.backgroundColor).toBe('rgb(146, 206, 212)')
+      expect(dotBeside('Review').style.backgroundColor).toBe('rgb(62, 99, 221)')
     } finally {
       vi.useRealTimers()
     }

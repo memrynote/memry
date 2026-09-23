@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CalendarTaskPopoverMeta } from './calendar-task-popover-meta'
 import type { Tag } from '@/components/note/tags-row'
+import type { Status } from '@/data/tasks-data'
 
 const NOW = new Date('2026-04-29T10:00:00')
 
@@ -11,10 +12,9 @@ const baseProps = {
     dueDate: '2026-04-30',
     dueTime: '14:00',
     projectId: 'p1',
-    priority: 0 as 0 | 1 | 2 | 3 | 4
+    priority: 0 as 0 | 1 | 2 | 3 | 4,
+    statusId: 'todo'
   },
-  projectName: 'memrynote',
-  projectColor: '#6366F1',
   tags: [] as Tag[],
   repeatSummary: null,
   description: null,
@@ -23,10 +23,24 @@ const baseProps = {
 }
 
 describe('CalendarTaskPopoverMeta', () => {
-  it('renders due row + project always', () => {
+  it('renders the due pill', () => {
     render(<CalendarTaskPopoverMeta {...baseProps} />)
-    expect(screen.getByText(/Tomorrow/)).toBeInTheDocument()
-    expect(screen.getByText('memrynote')).toBeInTheDocument()
+    expect(screen.getByTestId('due-row')).toHaveTextContent(/Tomorrow/)
+  })
+
+  it('shows the task status as a read-only pill', () => {
+    const statuses: Status[] = [
+      { id: 'todo', name: 'To Do', color: '#6b7280', type: 'todo', order: 0 }
+    ]
+    render(<CalendarTaskPopoverMeta {...baseProps} statuses={statuses} />)
+    expect(screen.getByRole('img', { name: /status: to do/i })).toBeInTheDocument()
+    expect(screen.getByTestId('status-row')).toHaveTextContent('To Do')
+    expect(screen.queryByRole('button', { name: /status/i })).not.toBeInTheDocument()
+  })
+
+  it('hides the status pill when the project has no statuses', () => {
+    render(<CalendarTaskPopoverMeta {...baseProps} />)
+    expect(screen.queryByTestId('status-row')).not.toBeInTheDocument()
   })
 
   it('hides recurrence when no summary', () => {
@@ -93,14 +107,6 @@ describe('CalendarTaskPopoverMeta', () => {
     }
     render(<CalendarTaskPopoverMeta {...props} />)
     expect(screen.getByTestId('due-row')).toHaveClass('text-destructive')
-  })
-
-  it('renders project as a colored pill (swatch + tinted text)', () => {
-    render(<CalendarTaskPopoverMeta {...baseProps} projectColor="#6366F1" />)
-    expect(screen.getByTestId('project-color-swatch')).toHaveStyle({
-      backgroundColor: '#6366F1'
-    })
-    expect(screen.getByText('memrynote')).toHaveStyle({ color: '#6366F1' })
   })
 
   it('invokes onTagClick with the clicked tag', async () => {

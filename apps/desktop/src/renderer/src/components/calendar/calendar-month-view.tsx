@@ -193,9 +193,7 @@ export function CalendarMonthView({
               >
                 <CalendarItemChip
                   item={bar.item}
-                  isSelected={
-                    bar.item.sourceType === 'event' && bar.item.sourceId === selectedItemId
-                  }
+                  isSelected={bar.item.sourceId === selectedItemId}
                   onClick={onSelectItem}
                   onDeleteItem={onDeleteItem}
                   onAddToProject={onAddToProject}

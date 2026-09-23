@@ -22,6 +22,37 @@ Opening Calendar always lands on today, in that view. The date you navigate to i
 Day and week views show a current-time marker on today's grid; event chips remain the
 clickable target for opening or editing events.
 
+## Reading a Chip
+
+Every item on the calendar is a chip with a colored bar on its leading edge. The bar and the
+chip's tint tell you what kind of item it is; the title is always plain dark text (light text in
+dark mode) so it stays readable in every theme.
+
+| Color  | Item                                   |
+| ------ | -------------------------------------- |
+| Indigo | Events created in memrynote            |
+| Violet | Events from Google Calendar            |
+| Green  | Tasks                                  |
+| Cyan   | Reminders                              |
+| Amber  | Snoozed inbox items                    |
+| Pink   | Notes; a dated note has a dashed frame |
+
+An event with its own color, or on a colored Google calendar, uses that color instead (see
+[Coloring an Event](#coloring-an-event)).
+
+In the day and week views, an item 45 minutes or longer shows its start and end time and its
+length under the title (for example `10:00 – 11:30 · 1h 30m`). Shorter items keep to one line,
+with the start time after the title when the chip is wide enough. Events that have already ended
+fade. Overdue tasks do not; they still need doing.
+
+The chip you opened turns solid until you close its card, so you can see which item the card
+belongs to.
+
+### Completing a Task from the Calendar
+
+Task chips have a checkbox. Click it to complete the task without opening anything. A
+notification appears with **Undo** in case it was the wrong one.
+
 ## What Shows Up
 
 | Source                                      | How it appears                                 |
@@ -83,7 +114,13 @@ as the grid scrolls.
 
 ## Event Detail Popover
 
-Click an event to open the popover. Edit title, time, and description in place. The popover has a "Open in tab" action for full editing.
+Click an event to open its card. Edit the title, time, and notes in place. The start and end
+times read as one line (`Wed, Sep 23 · 10:00 AM – 11:30 AM`) followed by the event's length;
+click either time to change it. Project, Google calendar, color, and notes sit below as rows,
+and a Google Meet link appears as a **Join meeting** button.
+
+The bar at the bottom shows the keys: press **Enter** in the title, or **⌘ Enter** (Ctrl Enter
+on Windows and Linux) from any field, to save. **Esc** closes the card without saving.
 
 Calendar popovers open beside the item you clicked and always stay inside the window. Near the
 bottom edge a popover shifts up just enough to fit. In a window shorter than the popover, it pins
@@ -133,6 +170,23 @@ them but does not change them.
 
 Events on no Google calendar, tasks, reminders, notes, and subscribed calendars keep their type
 colors unless you color the event.
+
+## Task Detail Popover
+
+Click a task chip to open its card. It shows the task's project, its due date, repeat, status,
+priority, tags, the start of its description, and its subtasks with a progress bar.
+
+The common actions take one click:
+
+- **Complete** — the checkbox beside the title, or **⌘ Enter** (Ctrl Enter). The card closes and
+  a notification offers **Undo**.
+- **Move** — **Later** (about three hours from now, no later than 8 PM; not offered after 7 PM or for
+  all-day tasks), **Tomorrow**, or **Next week** (Monday)
+  reschedule the task straight away. Hover a button to see the exact time it moves to.
+- **Open** — the arrow in the header, or **Enter**, opens the task in the Tasks tab.
+
+The **⋯** menu holds the rest: open the note the task came from, pick an exact date and time, or
+remove the due date.
 
 ## Scheduling Tasks by Drag
 

@@ -1,11 +1,17 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
+import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { useAnchoredPopoverPosition } from './popover-position'
+import { CALENDAR_CARD_CLASS, isModEnter } from './calendar-card'
 import { CalendarTaskPopoverHeader } from './calendar-task-popover-header'
 import { CalendarTaskPopoverMeta } from './calendar-task-popover-meta'
 import { CalendarTaskPopoverSubtasks } from './calendar-task-popover-subtasks'
-import { CalendarTaskPopoverActions } from './calendar-task-popover-actions'
+import {
+  CalendarTaskPopoverActionBar,
+  CalendarTaskPopoverMenu,
+  CalendarTaskPopoverMoveRow
+} from './calendar-task-popover-actions'
 import { useTask } from '@/hooks/use-task'
 import { useSubtasks } from '@/hooks/use-subtasks'
 import { useProject } from '@/hooks/use-project'
@@ -23,7 +29,7 @@ import type { RepeatConfig } from '@/services/tasks-service'
 
 const log = createLogger('CalendarTaskPopover')
 
-const TASK_POPOVER_WIDTH = 340
+const TASK_POPOVER_WIDTH = 320
 
 export interface CalendarTaskPopoverProps {
   item: CalendarProjectionItem
@@ -45,10 +51,20 @@ export function CalendarTaskPopover({
   const { openTab } = useTabs()
   const { openSidebarItem } = useSidebarNavigation()
   const { t } = useT('calendar')
+  const { t: tCommon } = useT('common')
   const position = useAnchoredPopoverPosition(anchorRect, {
     width: TASK_POPOVER_WIDTH,
-    estimatedHeight: 320
+    estimatedHeight: 340
   })
+  const contentRef = useRef<HTMLDivElement | null>(null)
+  const positionRef = position.ref
+  const setContentRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      contentRef.current = node
+      positionRef(node)
+    },
+    [positionRef]
+  )
 
   const isCompleted = !!task?.completedAt
   const taskProject = useMemo(
@@ -108,6 +124,35 @@ export function CalendarTaskPopover({
     },
     [task, onDismiss, t]
   )
+
+  const handleToggleComplete = useCallback((): void => {
+    if (!task) return
+    const taskId = task.id
+    if (task.completedAt) {
+      tasksService.uncomplete(taskId).catch((err: unknown) => {
+        toast.error(extractErrorMessage(err, t('task-popover.errors.could-not-save')))
+      })
+      return
+    }
+    tasksService
+      .complete({ id: taskId })
+      .then(() => {
+        onDismiss()
+        toast(t('chip.task-completed'), {
+          action: {
+            label: tCommon('action.undo'),
+            onClick: () => {
+              tasksService.uncomplete(taskId).catch((err: unknown) => {
+                log.error('undo complete failed:', err)
+              })
+            }
+          }
+        })
+      })
+      .catch((err: unknown) => {
+        toast.error(extractErrorMessage(err, t('task-popover.errors.could-not-save')))
+      })
+  }, [task, onDismiss, t, tCommon])
 
   const handleRemoveDueDate = useCallback((): void => {
     if (!task) return
@@ -222,6 +267,23 @@ export function CalendarTaskPopover({
           data-testid="calendar-task-popover"
           aria-label={task.title}
           aria-describedby={undefined}
+          tabIndex={-1}
+          onOpenAutoFocus={(e) => {
+            // Focus the card itself, not its first button, so ↵ and ⌘↵ reach the
+            // card's own shortcuts instead of pressing whichever button got focus.
+            e.preventDefault()
+            contentRef.current?.focus()
+          }}
+          onKeyDown={(e) => {
+            if (e.target !== e.currentTarget) return
+            if (isModEnter(e)) {
+              e.preventDefault()
+              handleToggleComplete()
+            } else if (e.key === 'Enter') {
+              e.preventDefault()
+              handleOpenTask()
+            }
+          }}
           onPointerDownOutside={(e) => {
             const target = e.target as HTMLElement | null
             if (target?.closest('[data-radix-popper-content-wrapper]')) {
@@ -234,8 +296,8 @@ export function CalendarTaskPopover({
               e.preventDefault()
             }
           }}
-          ref={position.ref}
-          className="fixed z-50 rounded-md border bg-popover text-popover-foreground shadow-md outline-none"
+          ref={setContentRef}
+          className={CALENDAR_CARD_CLASS}
           style={position.style}
         >
           <DialogPrimitive.Title className="sr-only">
@@ -244,12 +306,22 @@ export function CalendarTaskPopover({
           <CalendarTaskPopoverHeader
             task={task}
             parentTitle={parentTask?.title ?? null}
-            statuses={taskProject?.statuses ?? []}
+            projectName={taskProject?.name ?? project?.name ?? ''}
+            onToggleComplete={handleToggleComplete}
+            onOpenTask={handleOpenTask}
+            menu={
+              <CalendarTaskPopoverMenu
+                isCompleted={isCompleted}
+                sourceNoteId={task.sourceNoteId}
+                onOpenSourceNote={handleOpenSourceNote}
+                onPickDateTime={handlePickDateTime}
+                onRemoveDueDate={handleRemoveDueDate}
+              />
+            }
           />
           <CalendarTaskPopoverMeta
             task={task}
-            projectName={taskProject?.name ?? project?.name ?? ''}
-            projectColor={taskProject?.color ?? project?.color ?? '#6B7280'}
+            statuses={taskProject?.statuses ?? []}
             tags={taskTags}
             repeatSummary={summarizeRepeat(task.repeatConfig, t)}
             description={task.description}
@@ -257,15 +329,13 @@ export function CalendarTaskPopover({
             onTagClick={handleTagClick}
           />
           <CalendarTaskPopoverSubtasks subtasks={subtasks} onToggleSubtask={handleToggleSubtask} />
-          <CalendarTaskPopoverActions
+          {!isCompleted && (
+            <CalendarTaskPopoverMoveRow isAllDay={!task.dueTime} onSnooze={handleSnooze} />
+          )}
+          <CalendarTaskPopoverActionBar
             isCompleted={isCompleted}
-            isAllDay={!task.dueTime}
-            sourceNoteId={task.sourceNoteId}
+            onToggleComplete={handleToggleComplete}
             onOpenTask={handleOpenTask}
-            onOpenSourceNote={handleOpenSourceNote}
-            onSnooze={handleSnooze}
-            onRemoveDueDate={handleRemoveDueDate}
-            onPickDateTime={handlePickDateTime}
           />
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

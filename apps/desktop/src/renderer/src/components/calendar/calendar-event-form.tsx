@@ -1,10 +1,8 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { getI18n } from 'react-i18next'
 
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
 import { DatePickerContent } from '@/components/tasks/date-picker-content'
@@ -15,7 +13,7 @@ import {
 } from '@memry/contracts/calendar-colors'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { inkOnCalendarColor } from '@/lib/calendar-colors'
-import { CalendarIcon, Check } from '@/lib/icons'
+import { AlignLeft, Calendar2, Check, Folder, Palette } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { type ClockFormat, formatTimeString } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
@@ -24,6 +22,14 @@ import { toLocalDateString } from './date-utils'
 import { CalendarPicker } from './calendar-picker'
 import { CalendarEventMetadata } from './calendar-event-metadata'
 import { EventProjectField } from './event-project-field'
+import {
+  CalendarCardAction,
+  CalendarCardActionBar,
+  CalendarCardSection,
+  MOD_KEY_LABEL,
+  isModEnter
+} from './calendar-card'
+import { formatDurationShort } from './chip-duration'
 import { useGoogleCalendars } from '@/hooks/use-google-calendars'
 import type { CalendarEventDraft } from './types'
 import type { CalendarEventReadOnlyMetadata } from './calendar-event-popover'
@@ -77,15 +83,24 @@ function formatDateLabel(
   locale: string,
   pickDateLabel: string
 ): string {
-  const datePart = extractDatePart(value, isAllDay)
-  if (!datePart) return pickDateLabel
-  const [y, m, d] = datePart.split('-').map(Number)
-  if (!y || !m || !d) return pickDateLabel
+  const date = draftValueToDate(value, isAllDay)
+  if (!date) return pickDateLabel
+  const sameYear = date.getFullYear() === new Date().getFullYear()
   return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
     day: 'numeric',
     month: 'short',
-    year: 'numeric'
-  }).format(new Date(y, m - 1, d))
+    ...(sameYear ? {} : { year: 'numeric' })
+  }).format(date)
+}
+
+/** Minutes between two timed draft values (`YYYY-MM-DDTHH:mm`), or null. */
+function draftDurationMinutes(draft: CalendarEventDraft): number | null {
+  if (draft.isAllDay || !draft.startAt || !draft.endAt) return null
+  const minutes = Math.round(
+    (new Date(draft.endAt).getTime() - new Date(draft.startAt).getTime()) / 60_000
+  )
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : null
 }
 
 interface DateTimeFieldProps {
@@ -96,6 +111,8 @@ interface DateTimeFieldProps {
   clockFormat: ClockFormat
   locale: string
   pickDateLabel: string
+  /** Hide the date when it repeats the start's, so a same-day range reads "Tue, Sep 22 · 10:00 – 11:30". */
+  hideDate?: boolean
 }
 
 function DateTimeField({
@@ -105,29 +122,38 @@ function DateTimeField({
   onChange,
   clockFormat,
   locale,
-  pickDateLabel
+  pickDateLabel,
+  hideDate = false
 }: DateTimeFieldProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const date = draftValueToDate(value, isAllDay)
   const time = draftValueToTime(value, isAllDay)
   const dateLabel = formatDateLabel(value, isAllDay, locale, pickDateLabel)
   const timeLabel = time ? formatTimeString(time, clockFormat) : null
+  const showDate = !hideDate || isAllDay || !timeLabel
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
+          aria-label={`${label}: ${[dateLabel, isAllDay ? null : timeLabel].filter(Boolean).join(' ')}`}
           className={cn(
-            'flex w-full items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-sm',
-            'transition-colors hover:bg-accent focus:outline-none focus:ring-1 focus:ring-ring'
+            'inline-flex h-7 items-center gap-1.5 rounded-[5px] px-1.5 text-[13px] text-foreground tabular-nums',
+            'transition-colors hover:bg-accent focus:outline-none focus-visible:ring-1 focus-visible:ring-(--tint-ring)'
           )}
         >
-          <span className="text-xs font-medium text-muted-foreground">{label}</span>
-          <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <span>{dateLabel}</span>
-            {!isAllDay && timeLabel && <span className="text-muted-foreground">{timeLabel}</span>}
-          </span>
+          {showDate && <span>{dateLabel}</span>}
+          {!isAllDay && timeLabel && (
+            <>
+              {showDate && (
+                <span aria-hidden className="text-muted-foreground">
+                  ·
+                </span>
+              )}
+              <span>{timeLabel}</span>
+            </>
+          )}
         </button>
       </PopoverTrigger>
       {/* Same cap as the due-date badge: a raw `PopoverContent` never applies
@@ -135,7 +161,7 @@ function DateTimeField({
           event popover that can itself sit low in the calendar grid. */}
       <PopoverContent
         className="w-auto p-0 overflow-clip flex flex-col max-h-(--radix-popover-content-available-height)"
-        align="end"
+        align="start"
         sideOffset={6}
       >
         <DatePickerContent
@@ -157,6 +183,37 @@ function DateTimeField({
         />
       </PopoverContent>
     </Popover>
+  )
+}
+
+/** A detail row: a fixed 16px icon lane, then the control. */
+function DetailRow({
+  icon,
+  children,
+  align = 'center'
+}: {
+  icon: ReactNode
+  children: ReactNode
+  align?: 'center' | 'start'
+}): React.JSX.Element {
+  return (
+    <div
+      className={cn(
+        'flex min-h-8 gap-2.5 px-2',
+        align === 'center' ? 'items-center' : 'items-start py-1.5'
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'flex w-4 shrink-0 justify-center text-muted-foreground [&_svg]:size-4',
+          align === 'start' && 'pt-0.5'
+        )}
+      >
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
   )
 }
 
@@ -216,118 +273,167 @@ export function CalendarEventForm({
     })
   }
 
+  const endValue = draft.endAt || draft.startAt
+  const sameDay =
+    extractDatePart(draft.startAt, draft.isAllDay) === extractDatePart(endValue, draft.isAllDay)
+  const durationMinutes = draftDurationMinutes(draft)
+  const saveLabel = isSaving
+    ? tCommon('state.saving')
+    : mode === 'create'
+      ? tCommon('button.create')
+      : tCommon('button.save')
+
   return (
-    <div className="space-y-3">
-      <Input
-        ref={titleRef}
-        placeholder={t('form.new-event-placeholder')}
-        value={draft.title}
-        onChange={(e) => onDraftChange({ ...draft, title: e.target.value })}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && draft.title.trim()) {
-            e.preventDefault()
-            void submit()
-          }
-        }}
-        disabled={isSaving}
-      />
-
-      <EventProjectField
-        mode={mode}
-        eventId={eventId}
-        value={draft.projectId}
-        onChange={(projectId) => onDraftChange({ ...draft, projectId })}
-        disabled={isSaving}
-      />
-
-      <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
-        <span className="flex items-center gap-2 text-muted-foreground">
-          <CalendarIcon size={14} />
-          {t('time.all-day')}
-        </span>
-        <Checkbox
-          checked={draft.isAllDay}
-          onCheckedChange={(checked) => handleAllDayToggle(checked === true)}
-          aria-label={t('time.all-day')}
+    <div
+      className="flex flex-col"
+      onKeyDown={(e) => {
+        // ⌘↵ saves from any field, including the notes textarea where a plain
+        // ↵ has to stay a newline.
+        if (isModEnter(e) && draft.title.trim()) {
+          e.preventDefault()
+          void submit()
+        }
+      }}
+    >
+      <div className="flex flex-col gap-1.5 px-3.5 pb-3">
+        <input
+          ref={titleRef}
+          placeholder={t('form.new-event-placeholder')}
+          value={draft.title}
+          onChange={(e) => onDraftChange({ ...draft, title: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !isModEnter(e) && draft.title.trim()) {
+              e.preventDefault()
+              void submit()
+            }
+          }}
+          disabled={isSaving}
+          className={cn(
+            'w-full bg-transparent text-[17px] leading-[22px] font-semibold tracking-[-0.01em] text-(--cal-ink) outline-none',
+            'placeholder:font-medium placeholder:text-muted-foreground disabled:opacity-50'
+          )}
         />
-      </label>
 
-      <DateTimeField
-        label={t('form.start')}
-        value={draft.startAt}
-        isAllDay={draft.isAllDay}
-        onChange={(next) => onDraftChange({ ...draft, startAt: next })}
-        clockFormat={clockFormat}
-        locale={i18n.language}
-        pickDateLabel={t('time.pick-a-date')}
-      />
-
-      <DateTimeField
-        label={t('form.end')}
-        value={draft.endAt || draft.startAt}
-        isAllDay={draft.isAllDay}
-        onChange={(next) => onDraftChange({ ...draft, endAt: next })}
-        clockFormat={clockFormat}
-        locale={i18n.language}
-        pickDateLabel={t('time.pick-a-date')}
-      />
-
-      <Textarea
-        placeholder={t('form.notes-url-placeholder')}
-        value={draft.description}
-        onChange={(e) => onDraftChange({ ...draft, description: e.target.value })}
-        disabled={isSaving}
-        rows={3}
-        className="resize-none text-sm"
-      />
-
-      <EventColorField
-        value={draft.color}
-        onChange={(color) => onDraftChange({ ...draft, color })}
-        disabled={isSaving}
-      />
-
-      <TargetCalendarField
-        value={draft.targetCalendarId}
-        onChange={(next) => onDraftChange({ ...draft, targetCalendarId: next })}
-        disabled={isSaving}
-      />
-
-      {readOnlyMetadata && mode === 'edit' && (
-        <div className="border-t border-border pt-3">
-          <CalendarEventMetadata {...readOnlyMetadata} />
+        <div className="-ms-1.5 flex flex-wrap items-center gap-x-0.5">
+          <DateTimeField
+            label={t('form.start')}
+            value={draft.startAt}
+            isAllDay={draft.isAllDay}
+            onChange={(next) => onDraftChange({ ...draft, startAt: next })}
+            clockFormat={clockFormat}
+            locale={i18n.language}
+            pickDateLabel={t('time.pick-a-date')}
+          />
+          <span aria-hidden className="text-[13px] text-muted-foreground">
+            –
+          </span>
+          <DateTimeField
+            label={t('form.end')}
+            value={endValue}
+            isAllDay={draft.isAllDay}
+            onChange={(next) => onDraftChange({ ...draft, endAt: next })}
+            clockFormat={clockFormat}
+            locale={i18n.language}
+            pickDateLabel={t('time.pick-a-date')}
+            hideDate={sameDay}
+          />
+          {durationMinutes !== null && (
+            <span className="px-1.5 text-[13px] text-muted-foreground tabular-nums">
+              {formatDurationShort(durationMinutes, t)}
+            </span>
+          )}
         </div>
-      )}
+
+        <label className="flex w-fit cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+          <Checkbox
+            checked={draft.isAllDay}
+            onCheckedChange={(checked) => handleAllDayToggle(checked === true)}
+            aria-label={t('time.all-day')}
+            className="size-3.5 rounded-[4px]"
+          />
+          {t('time.all-day')}
+        </label>
+      </div>
+
+      <CalendarCardSection className="flex flex-col gap-0.5 px-1.5 py-1.5">
+        {/* EventProjectField renders nothing for an unsaved edit (canvas cards
+            mount the form without an id), so skip its row too. */}
+        {(mode === 'create' || eventId) && (
+          <DetailRow icon={<Folder />}>
+            <EventProjectField
+              mode={mode}
+              eventId={eventId}
+              value={draft.projectId}
+              onChange={(projectId) => onDraftChange({ ...draft, projectId })}
+              disabled={isSaving}
+              hideLabel
+            />
+          </DetailRow>
+        )}
+
+        <TargetCalendarField
+          value={draft.targetCalendarId}
+          onChange={(next) => onDraftChange({ ...draft, targetCalendarId: next })}
+          disabled={isSaving}
+        />
+
+        <DetailRow icon={<Palette />}>
+          <EventColorField
+            value={draft.color}
+            onChange={(color) => onDraftChange({ ...draft, color })}
+            disabled={isSaving}
+          />
+        </DetailRow>
+
+        <DetailRow icon={<AlignLeft />} align="start">
+          <Textarea
+            placeholder={t('form.notes-url-placeholder')}
+            value={draft.description}
+            onChange={(e) => onDraftChange({ ...draft, description: e.target.value })}
+            disabled={isSaving}
+            rows={2}
+            className="min-h-0 resize-none border-0 bg-transparent p-0 text-[13px] shadow-none focus-visible:ring-0"
+          />
+        </DetailRow>
+      </CalendarCardSection>
+
+      {readOnlyMetadata && mode === 'edit' && <CalendarEventMetadata {...readOnlyMetadata} />}
 
       {errorMessage && (
-        <p data-testid="event-edit-error" role="alert" className="text-xs text-destructive">
+        <p
+          data-testid="event-edit-error"
+          role="alert"
+          className="border-t border-border/70 px-3.5 py-2 text-xs text-destructive"
+        >
           {errorMessage}
         </p>
       )}
 
-      <div className="flex items-center justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onDismiss} disabled={isSaving}>
-          {tCommon('button.cancel')}
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          data-testid="event-edit-save"
-          disabled={!draft.title.trim() || isSaving}
-          onPointerDown={(e) => {
-            if (e.button !== 0) return
-            e.preventDefault()
-            void submit()
-          }}
-          onClick={() => void submit()}
-        >
-          {isSaving
-            ? tCommon('state.saving')
-            : mode === 'create'
-              ? tCommon('button.create')
-              : tCommon('button.save')}
-        </Button>
-      </div>
+      <CalendarCardActionBar
+        start={
+          <CalendarCardAction
+            emphasis
+            data-testid="event-edit-save"
+            label={saveLabel}
+            keys={[MOD_KEY_LABEL, '↵']}
+            disabled={!draft.title.trim() || isSaving}
+            onPointerDown={(e) => {
+              if (e.button !== 0) return
+              e.preventDefault()
+              void submit()
+            }}
+            onClick={() => void submit()}
+          />
+        }
+        end={
+          <CalendarCardAction
+            label={tCommon('button.cancel')}
+            keys={['Esc']}
+            onClick={onDismiss}
+            disabled={isSaving}
+          />
+        }
+      />
     </div>
   )
 }
@@ -344,7 +450,7 @@ function EventColorField({ value, onChange, disabled }: EventColorFieldProps) {
   // Google's event colours, in Google's order. Light ones (Banana) sit close to
   // the popover, so every swatch carries a border to keep its edge visible.
   const swatchClass = cn(
-    'flex size-5 items-center justify-center rounded-full border border-border',
+    'flex size-[18px] items-center justify-center rounded-full border border-border',
     'transition-transform duration-100 hover:scale-110 focus:outline-none',
     'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
     'focus-visible:ring-offset-popover disabled:pointer-events-none'
@@ -352,11 +458,11 @@ function EventColorField({ value, onChange, disabled }: EventColorFieldProps) {
   const defaultLabel = t('form.default-color')
 
   return (
-    <div className="flex flex-col gap-1 text-sm">
-      <span id={labelId} className="text-xs font-medium text-muted-foreground">
+    <div className="flex items-center">
+      <span id={labelId} className="sr-only">
         {t('form.color')}
       </span>
-      <div role="group" aria-labelledby={labelId} className="flex flex-wrap gap-1.5">
+      <div role="group" aria-labelledby={labelId} className="flex flex-wrap gap-1">
         <button
           type="button"
           className={cn(swatchClass, 'bg-background text-foreground')}
@@ -414,17 +520,20 @@ function TargetCalendarField({ value, onChange, disabled }: TargetCalendarFieldP
     : t('form.use-memry-calendar-default')
 
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="text-xs font-medium text-muted-foreground">{t('form.google-calendar')}</span>
-      <CalendarPicker
-        calendars={calendars}
-        value={value}
-        onChange={onChange}
-        isLoading={isLoading}
-        disabled={disabled}
-        defaultOptionLabel={defaultLabel}
-      />
-    </label>
+    <DetailRow icon={<Calendar2 />}>
+      <label className="flex flex-col text-sm">
+        <span className="sr-only">{t('form.google-calendar')}</span>
+        <CalendarPicker
+          calendars={calendars}
+          value={value}
+          onChange={onChange}
+          isLoading={isLoading}
+          disabled={disabled}
+          defaultOptionLabel={defaultLabel}
+          className="h-7 -ms-1.5 border-0 bg-transparent px-1.5 text-[13px] shadow-none hover:bg-accent"
+        />
+      </label>
+    </DetailRow>
   )
 }
 

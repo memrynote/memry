@@ -1,7 +1,14 @@
-import type { CSSProperties } from 'react'
+import type { ChipColorVars } from './event-type-colors'
 
 /** Share of the colour in a resting chip's fill; the rest is --background. */
-export const CALENDAR_COLOR_FILL_PERCENT = 20
+export const CALENDAR_COLOR_FILL_PERCENT = 25
+
+/**
+ * Share of the colour in a resting chip's time/duration text; the rest is
+ * --cal-ink. Low enough that the text clears AA on the tinted fill for every
+ * Google colour and the custom extremes, high enough to keep the hue.
+ */
+export const CALENDAR_COLOR_META_PERCENT = 35
 
 const DARK_INK = '#000000'
 const LIGHT_INK = '#ffffff'
@@ -28,14 +35,17 @@ export function inkOnCalendarColor(hex: string): string {
 }
 
 /**
- * A coloured item's chip. At rest the colour tints the chip and the title
- * keeps the theme's ink; selected, the chip goes solid.
+ * Chip colour variables for an item with its own `#rrggbb` (an event colour or
+ * its Google calendar's colour). Same shape as `eventTypeChipVars`: the colour
+ * is the rail, a tint of it is the surface, the title keeps --cal-ink, and the
+ * chip goes solid when selected.
  */
-export function calendarColorChipStyle(hex: string, isSelected: boolean): CSSProperties {
-  return isSelected
-    ? { backgroundColor: hex, color: inkOnCalendarColor(hex) }
-    : {
-        backgroundColor: `color-mix(in srgb, ${hex} ${CALENDAR_COLOR_FILL_PERCENT}%, var(--background))`,
-        color: 'var(--foreground)'
-      }
+export function calendarColorChipVars(hex: string): ChipColorVars {
+  return {
+    '--chip-rail': hex,
+    '--chip-surface': `color-mix(in srgb, ${hex} ${CALENDAR_COLOR_FILL_PERCENT}%, var(--background))`,
+    '--chip-meta': `color-mix(in srgb, ${hex} ${CALENDAR_COLOR_META_PERCENT}%, var(--cal-ink))`,
+    '--chip-solid': hex,
+    '--chip-solid-ink': inkOnCalendarColor(hex)
+  }
 }

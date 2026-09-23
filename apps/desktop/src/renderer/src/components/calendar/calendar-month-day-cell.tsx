@@ -77,7 +77,7 @@ export function CalendarMonthDayCell({
           <DraggableTaskChip
             key={item.projectionId}
             item={item}
-            isSelected={item.sourceType === 'event' && item.sourceId === selectedItemId}
+            isSelected={item.sourceId === selectedItemId}
             onClick={onSelectItem}
             onDeleteItem={onDeleteItem}
             onAddToProject={onAddToProject}

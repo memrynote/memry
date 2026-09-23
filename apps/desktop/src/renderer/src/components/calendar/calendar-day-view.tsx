@@ -115,7 +115,7 @@ export function CalendarDayView({
               <div key={item.projectionId} className="min-w-[140px]">
                 <DraggableTaskChip
                   item={item}
-                  isSelected={item.sourceType === 'event' && item.sourceId === selectedItemId}
+                  isSelected={item.sourceId === selectedItemId}
                   onClick={onSelectItem}
                   onDeleteItem={onDeleteItem}
                   onAddToProject={onAddToProject}
@@ -179,7 +179,8 @@ export function CalendarDayView({
                     <CalendarItemChip
                       item={item}
                       clockFormat={clockFormat}
-                      isSelected={item.sourceType === 'event' && item.sourceId === selectedItemId}
+                      layout="block"
+                      isSelected={item.sourceId === selectedItemId}
                       onClick={handleChipClick}
                       onDeleteItem={onDeleteItem}
                       onAddToProject={onAddToProject}
@@ -209,7 +210,12 @@ export function CalendarDayView({
                       className="pointer-events-none absolute inset-x-0 z-30 px-0.5 @xl:px-1"
                       style={{ top: drag.top, height: drag.height }}
                     >
-                      <CalendarItemChip item={draggedItem} clockFormat={clockFormat} isSelected />
+                      <CalendarItemChip
+                        item={draggedItem}
+                        clockFormat={clockFormat}
+                        layout="block"
+                        isSelected
+                      />
                     </div>
                   )
                 })()}

@@ -2549,6 +2549,88 @@ del.bn-inline-content {
   --diff-del-surface: rgba(168, 166, 161, 0.12);
 }
 
+/*
+ * Calendar item hues. Colour paints a chip's 3px rail and its surface; the
+ * title stays in --cal-ink so it reads the same on every theme. Each theme has
+ * its own literal values instead of an alpha over --background, because the
+ * old 50% alpha turned into a different, washed-out colour on every canvas.
+ *
+ * rail     the saturated identity colour (rail, dots, swatches)
+ * surface  the resting chip fill
+ * meta     time and duration text on the surface (AA on surface)
+ * solid    the fill of the one selected chip
+ * solid-ink  title ink on solid (AA on solid)
+ *
+ * lib/event-type-colors.test.ts holds every pair to AA.
+ */
+:root {
+  --cal-ink: #1f1d1a;
+
+  --cal-indigo-rail: #3e63dd;
+  --cal-indigo-surface: #e1e9ff;
+  --cal-indigo-meta: #3453bd;
+  --cal-indigo-solid: #3e63dd;
+  --cal-indigo-solid-ink: #ffffff;
+
+  --cal-violet-rail: #8e4ec6;
+  --cal-violet-surface: #f2e2fc;
+  --cal-violet-meta: #8145b5;
+  --cal-violet-solid: #8e4ec6;
+  --cal-violet-solid-ink: #ffffff;
+
+  --cal-green-rail: #30a46c;
+  --cal-green-surface: #d6f1df;
+  --cal-green-meta: #18744a;
+  --cal-green-solid: #218358;
+  --cal-green-solid-ink: #ffffff;
+
+  --cal-cyan-rail: #00a2c7;
+  --cal-cyan-surface: #caf1f6;
+  --cal-cyan-meta: #0c6f88;
+  --cal-cyan-solid: #0c7a94;
+  --cal-cyan-solid-ink: #ffffff;
+
+  --cal-amber-rail: #f5a524;
+  --cal-amber-surface: #fdebc2;
+  --cal-amber-meta: #935500;
+  --cal-amber-solid: #f5a524;
+  --cal-amber-solid-ink: #1f1d1a;
+
+  --cal-pink-rail: #d6409f;
+  --cal-pink-surface: #fbdcef;
+  --cal-pink-meta: #b8247f;
+  --cal-pink-solid: #c2298a;
+  --cal-pink-solid-ink: #ffffff;
+}
+
+.dark {
+  --cal-ink: #edebe8;
+
+  --cal-indigo-rail: #5b7fff;
+  --cal-indigo-surface: #1d2e62;
+  --cal-indigo-meta: #9eb1ff;
+
+  --cal-violet-rail: #a875e6;
+  --cal-violet-surface: #48295c;
+  --cal-violet-meta: #d19dff;
+
+  --cal-green-rail: #33b074;
+  --cal-green-surface: #174933;
+  --cal-green-meta: #3dd68c;
+
+  --cal-cyan-rail: #23afd0;
+  --cal-cyan-surface: #004558;
+  --cal-cyan-meta: #4ccce6;
+
+  --cal-amber-rail: #ffc53d;
+  --cal-amber-surface: #4d3000;
+  --cal-amber-meta: #ffca16;
+
+  --cal-pink-rail: #e4589f;
+  --cal-pink-surface: #591c47;
+  --cal-pink-meta: #ff8dcc;
+}
+
 /* AI agent cursor — warm accent */
 .bn-collaboration-cursor__caret {
   background-color: var(--sidebar-terracotta) !important;
