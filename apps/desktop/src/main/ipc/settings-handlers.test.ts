@@ -153,7 +153,7 @@ vi.mock('../store', () => ({
 import {
   applyGlobalCaptureShortcut,
   registerSettingsHandlers,
-  setGlobalCaptureAppliedHandler,
+  setQuickCaptureShortcutHost,
   unregisterSettingsHandlers
 } from './settings-handlers'
 import { getDatabase } from '../database'
@@ -961,147 +961,239 @@ describe('settings-handlers', () => {
   })
 
   describe('global capture shortcut', () => {
-    it('#given no binding #when registered #then leaves shortcuts it does not own alone', () => {
+    const J = { key: 'J', modifiers: { ctrl: true } }
+    const L = { key: 'L', modifiers: { ctrl: true } }
+    const M = { key: 'M', modifiers: { ctrl: true } }
+    let quickCaptureOpens = 0
+    let fallbackAvailable = true
+
+    // Mirrors Electron: a non-ASCII or blank key throws, an accelerator another
+    // app (or this process) already holds returns false.
+    function fakeOs(takenByOtherApps: string[] = []): Map<string, () => void> {
+      const held = new Map<string, () => void>()
+      mockGlobalShortcutRegister.mockImplementation((accelerator: string, callback: () => void) => {
+        if (accelerator.split('+').some((part) => !/^[\x21-\x7e]+$/.test(part))) {
+          throw new Error(
+            `Error processing argument at index 0, conversion failure from ${accelerator}`
+          )
+        }
+        if (takenByOtherApps.includes(accelerator) || held.has(accelerator)) return false
+        held.set(accelerator, callback)
+        return true
+      })
+      mockGlobalShortcutUnregister.mockImplementation((accelerator: string) => {
+        held.delete(accelerator)
+      })
+      return held
+    }
+
+    function keyboardStore(initial: Record<string, unknown>): () => Record<string, unknown> {
+      let raw = JSON.stringify(initial)
+      ;(settingsQueries.getSetting as Mock).mockImplementation((_db: unknown, key: string) =>
+        key === 'keyboard' ? raw : null
+      )
+      ;(settingsQueries.setSetting as Mock).mockImplementation(
+        (_db: unknown, key: string, value: string) => {
+          if (key === 'keyboard') raw = value
+        }
+      )
+      return () => JSON.parse(raw) as Record<string, unknown>
+    }
+
+    beforeEach(() => {
+      quickCaptureOpens = 0
+      fallbackAvailable = true
+      Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
+      setQuickCaptureShortcutHost({
+        open: () => {
+          quickCaptureOpens += 1
+        },
+        syncFallback: (configuredRegistered) => !configuredRegistered && fallbackAvailable
+      })
       registerSettingsHandlers()
-      ;(settingsQueries.getSetting as Mock).mockReturnValue(JSON.stringify({}))
+      fakeOs()
+      applyGlobalCaptureShortcut()
+    })
 
-      const result = applyGlobalCaptureShortcut()
+    afterEach(() => {
+      setQuickCaptureShortcutHost(null)
+    })
 
-      expect(result).toEqual({ success: true, registered: false })
+    it('#given no binding #when applied #then only the fallback holds quick capture', () => {
+      const held = fakeOs()
+      keyboardStore({ overrides: {} })
+
+      expect(applyGlobalCaptureShortcut()).toEqual({ status: 'unbound', fallbackRegistered: true })
       // unregisterAll() would also drop the quick capture fallback accelerator
       // registered by main/index.ts, killing quick capture entirely (#1087).
       expect(mockGlobalShortcutUnregisterAll).not.toHaveBeenCalled()
-      expect(mockGlobalShortcutRegister).not.toHaveBeenCalled()
+      expect([...held.keys()]).toEqual([])
     })
 
-    it('#given macOS permission missing #when registered #then reports permission requirement', () => {
-      registerSettingsHandlers()
+    it('#given the default shortcut is taken #when applied without a binding #then reports it', () => {
+      fakeOs()
+      keyboardStore({ overrides: {} })
+      fallbackAvailable = false
+
+      expect(applyGlobalCaptureShortcut()).toEqual({ status: 'unbound', fallbackRegistered: false })
+    })
+
+    it('#given macOS permission missing #when applied #then reports permission requirement', () => {
+      const held = fakeOs()
       Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
-      ;(settingsQueries.getSetting as Mock).mockReturnValue(
-        JSON.stringify({ globalCapture: { key: 'Space', modifiers: { meta: true } } })
-      )
+      keyboardStore({ overrides: {}, globalCapture: { key: 'Space', modifiers: { meta: true } } })
       mockIsTrustedAccessibilityClient.mockReturnValueOnce(false)
 
       expect(applyGlobalCaptureShortcut()).toEqual({
-        success: false,
-        registered: false,
-        permissionRequired: true
+        status: 'permission_required',
+        fallbackRegistered: true
       })
-      expect(mockGlobalShortcutRegister).not.toHaveBeenCalled()
+      expect([...held.keys()]).toEqual([])
     })
 
-    it('#given shortcut conflict #when registered #then reports accelerator in use', () => {
-      registerSettingsHandlers()
-      Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
-      ;(settingsQueries.getSetting as Mock).mockReturnValue(
-        JSON.stringify({
-          globalCapture: { key: 'Space', modifiers: { meta: true, shift: true, alt: true } }
-        })
-      )
-      mockGlobalShortcutRegister.mockReturnValueOnce(false)
+    it('#given a saved binding another app owns #when applied #then reports it in use', () => {
+      fakeOs(['CommandOrControl+Alt+Shift+Space'])
+      keyboardStore({
+        overrides: {},
+        globalCapture: { key: 'Space', modifiers: { meta: true, shift: true, alt: true } }
+      })
+
+      expect(applyGlobalCaptureShortcut()).toEqual({ status: 'in_use', fallbackRegistered: true })
+    })
+
+    it('#given a free combo #when saved #then persists it and firing it opens quick capture', async () => {
+      const held = fakeOs()
+      const saved = keyboardStore({ overrides: {}, globalCapture: J })
+      applyGlobalCaptureShortcut()
+
+      const result = await invokeHandler(SettingsChannels.invoke.SET_GLOBAL_CAPTURE, L)
+
+      expect(result).toEqual({ status: 'registered', fallbackRegistered: false })
+      expect(saved().globalCapture).toEqual(L)
+      expect([...held.keys()]).toEqual(['Control+L'])
+      held.get('Control+L')?.()
+      expect(quickCaptureOpens).toBe(1)
+    })
+
+    it('#given a combo another app owns #when saved #then keeps the previous binding saved and working', async () => {
+      const held = fakeOs(['Control+M'])
+      const saved = keyboardStore({ overrides: {}, globalCapture: J })
+      applyGlobalCaptureShortcut()
+
+      const result = await invokeHandler(SettingsChannels.invoke.SET_GLOBAL_CAPTURE, M)
+
+      expect(result).toEqual({ status: 'in_use', fallbackRegistered: false })
+      expect(saved().globalCapture).toEqual(J)
+      expect([...held.keys()]).toEqual(['Control+J'])
+      held.get('Control+J')?.()
+      expect(quickCaptureOpens).toBe(1)
+    })
+
+    it('#given a key Electron cannot parse #when saved #then keeps the previous binding', async () => {
+      const held = fakeOs()
+      const saved = keyboardStore({ overrides: {}, globalCapture: J })
+      applyGlobalCaptureShortcut()
+
+      const result = await invokeHandler(SettingsChannels.invoke.SET_GLOBAL_CAPTURE, {
+        key: '˚',
+        modifiers: { meta: true, alt: true }
+      })
+
+      expect(result).toEqual({ status: 'unsupported', fallbackRegistered: false })
+      expect(saved().globalCapture).toEqual(J)
+      expect([...held.keys()]).toEqual(['Control+J'])
+    })
+
+    it('#given a saved binding Electron cannot parse #when applied #then reports it instead of throwing', () => {
+      fakeOs()
+      keyboardStore({ overrides: {}, globalCapture: { key: ' ', modifiers: { meta: true } } })
 
       expect(applyGlobalCaptureShortcut()).toEqual({
-        success: false,
-        registered: false,
-        error: 'Shortcut CommandOrControl+Alt+Shift+Space is already in use'
+        status: 'unsupported',
+        fallbackRegistered: true
       })
     })
 
-    it('#given shortcut registered #when accelerator fires #then opens quick capture windows', () => {
-      registerSettingsHandlers()
-      Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
-      ;(settingsQueries.getSetting as Mock).mockReturnValue(
-        JSON.stringify({
-          globalCapture: { key: 'K', modifiers: { ctrl: true } }
-        })
-      )
-      let callback: (() => void) | undefined
-      mockGetAllWindows.mockReturnValue([
-        { isDestroyed: () => false, webContents: { send: mockSend } },
-        { isDestroyed: () => true, webContents: { send: vi.fn() } }
-      ])
-      mockGlobalShortcutRegister.mockImplementationOnce((_accelerator, cb) => {
-        callback = cb
-        return true
+    it('#given the default accelerator #when saved as the binding #then takes it over from the fallback', async () => {
+      const held = fakeOs()
+      held.set('CommandOrControl+Shift+Space', () => undefined)
+      let fallbackHeld = true
+      setQuickCaptureShortcutHost({
+        open: () => {
+          quickCaptureOpens += 1
+        },
+        syncFallback: (configuredRegistered) => {
+          if (configuredRegistered && fallbackHeld) {
+            held.delete('CommandOrControl+Shift+Space')
+            fallbackHeld = false
+          }
+          return fallbackHeld
+        }
+      })
+      const saved = keyboardStore({ overrides: {}, globalCapture: null })
+
+      const result = await invokeHandler(SettingsChannels.invoke.SET_GLOBAL_CAPTURE, {
+        key: 'Space',
+        modifiers: { meta: true, shift: true }
       })
 
-      expect(applyGlobalCaptureShortcut()).toEqual({ success: true, registered: true })
+      expect(result).toEqual({ status: 'registered', fallbackRegistered: false })
+      expect(saved().globalCapture).toEqual({
+        key: 'Space',
+        modifiers: { meta: true, shift: true }
+      })
+      held.get('CommandOrControl+Shift+Space')?.()
+      expect(quickCaptureOpens).toBe(1)
+    })
 
-      callback?.()
-      expect(mockGlobalShortcutRegister).toHaveBeenCalledWith('Control+K', expect.any(Function))
-      expect(mockSend).toHaveBeenCalledWith('quick-capture:open')
+    it('#given a binding #when cleared #then saves null and releases the accelerator', async () => {
+      const held = fakeOs()
+      const saved = keyboardStore({ overrides: {}, globalCapture: J })
+      applyGlobalCaptureShortcut()
+
+      const result = await invokeHandler(SettingsChannels.invoke.SET_GLOBAL_CAPTURE, null)
+
+      expect(result).toEqual({ status: 'unbound', fallbackRegistered: true })
+      expect(saved().globalCapture).toBeNull()
+      expect([...held.keys()]).toEqual([])
+    })
+
+    it('#given a malformed payload #when saved #then rejects it at the boundary', async () => {
+      const saved = keyboardStore({ overrides: {}, globalCapture: J })
+
+      await expect(
+        invokeHandler(SettingsChannels.invoke.SET_GLOBAL_CAPTURE, { key: '', modifiers: {} })
+      ).rejects.toThrow()
+      expect(saved().globalCapture).toEqual(J)
     })
 
     it('#given a re-apply #when the accelerator changes #then releases only the accelerator it owns', () => {
-      registerSettingsHandlers()
-      Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
-      ;(settingsQueries.getSetting as Mock).mockReturnValue(
-        JSON.stringify({ globalCapture: { key: 'J', modifiers: { ctrl: true } } })
-      )
+      const held = fakeOs()
+      held.set('Control+Shift+X', () => undefined)
+      keyboardStore({ overrides: {}, globalCapture: J })
       applyGlobalCaptureShortcut()
-      mockGlobalShortcutUnregister.mockClear()
-      ;(settingsQueries.getSetting as Mock).mockReturnValue(
-        JSON.stringify({ globalCapture: { key: 'L', modifiers: { ctrl: true } } })
-      )
+      keyboardStore({ overrides: {}, globalCapture: L })
 
-      expect(applyGlobalCaptureShortcut()).toEqual({ success: true, registered: true })
-      expect(mockGlobalShortcutUnregister).toHaveBeenCalledTimes(1)
-      expect(mockGlobalShortcutUnregister).toHaveBeenCalledWith('Control+J')
+      expect(applyGlobalCaptureShortcut()).toEqual({
+        status: 'registered',
+        fallbackRegistered: false
+      })
+      expect([...held.keys()]).toEqual(['Control+Shift+X', 'Control+L'])
       expect(mockGlobalShortcutUnregisterAll).not.toHaveBeenCalled()
     })
 
-    it('#given repeated saves #when the accelerator is unchanged #then re-registers exactly once each time', () => {
-      registerSettingsHandlers()
-      Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
-      ;(settingsQueries.getSetting as Mock).mockReturnValue(
-        JSON.stringify({ globalCapture: { key: 'P', modifiers: { ctrl: true } } })
-      )
-      applyGlobalCaptureShortcut()
-      mockGlobalShortcutRegister.mockClear()
-      mockGlobalShortcutUnregister.mockClear()
+    it('#given repeated applies #when the accelerator is unchanged #then it stays registered once', () => {
+      const held = fakeOs()
+      keyboardStore({ overrides: {}, globalCapture: J })
 
       applyGlobalCaptureShortcut()
       applyGlobalCaptureShortcut()
 
-      // Each save releases the previous binding before taking it again, so no
-      // stale duplicate registration is left behind.
-      expect(mockGlobalShortcutUnregister.mock.calls).toEqual([['Control+P'], ['Control+P']])
-      expect(mockGlobalShortcutRegister).toHaveBeenCalledTimes(2)
-    })
-
-    it('#given a fallback owner #when applying succeeds or fails #then it is told the real outcome', () => {
-      registerSettingsHandlers()
-      Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
-      const onApplied = vi.fn()
-      setGlobalCaptureAppliedHandler(onApplied)
-      ;(settingsQueries.getSetting as Mock).mockReturnValue(
-        JSON.stringify({ globalCapture: { key: 'M', modifiers: { ctrl: true } } })
-      )
-      mockGlobalShortcutRegister.mockReturnValueOnce(false)
-
-      // A conflict is reported to the caller AND handed to the fallback owner,
-      // instead of being swallowed with quick capture left unbound (#1087).
-      const conflict = applyGlobalCaptureShortcut()
-      expect(conflict.success).toBe(false)
-      expect(conflict.error).toBe('Shortcut Control+M is already in use')
-      expect(onApplied).toHaveBeenLastCalledWith(false)
-
-      applyGlobalCaptureShortcut()
-      expect(onApplied).toHaveBeenLastCalledWith(true)
-
-      setGlobalCaptureAppliedHandler(null)
-    })
-
-    it('#given no binding #when applied #then the fallback owner is told nothing is registered', () => {
-      registerSettingsHandlers()
-      const onApplied = vi.fn()
-      setGlobalCaptureAppliedHandler(onApplied)
-      ;(settingsQueries.getSetting as Mock).mockReturnValue(JSON.stringify({}))
-
-      expect(applyGlobalCaptureShortcut()).toEqual({ success: true, registered: false })
-      expect(onApplied).toHaveBeenCalledWith(false)
-
-      setGlobalCaptureAppliedHandler(null)
+      expect(applyGlobalCaptureShortcut()).toEqual({
+        status: 'registered',
+        fallbackRegistered: false
+      })
+      expect([...held.keys()]).toEqual(['Control+J'])
     })
   })
 
