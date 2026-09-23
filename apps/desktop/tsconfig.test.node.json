@@ -110,7 +110,6 @@
     "src/main/ipc/reminder-handlers.test.ts",
     "src/main/ipc/saved-filters-handlers.test.ts",
     "src/main/ipc/search-handlers.test.ts",
-    "src/main/ipc/settings-handlers.test.ts",
     "src/main/ipc/sync-attachment-handlers.test.ts",
     "src/main/ipc/sync-core-handlers.test.ts",
     "src/main/ipc/tasks-domain.test.ts",

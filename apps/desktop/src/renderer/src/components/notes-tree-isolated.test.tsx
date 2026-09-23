@@ -25,7 +25,8 @@ const mocks = vi.hoisted(() => ({
     collapseAll: vi.fn(),
     expandAll: vi.fn(),
     expandNode: vi.fn(),
-    expandNodes: vi.fn()
+    expandNodes: vi.fn(),
+    setNodesExpanded: vi.fn()
   },
   virtualActions: {
     collapseAll: vi.fn(),
@@ -50,7 +51,8 @@ vi.mock('@/lib/ipc-error', () => ({
   extractErrorMessage: (_err: unknown, fallback: string) => fallback
 }))
 
-vi.mock('@/lib/virtualized-tree-utils', () => ({
+vi.mock('@/lib/virtualized-tree-utils', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   shouldVirtualize: () => mocks.virtualized
 }))
 
@@ -282,6 +284,7 @@ const createData = () => ({
     ],
     rootNotes: [rootNote]
   },
+  showFiles: true,
   notePositions: {},
   setNotePositions: vi.fn(),
   folderTemplateNames: new Map([['Work', 'Daily']]),
@@ -355,6 +358,42 @@ describe('NotesTree isolated coverage', () => {
       callback(0)
       return 0
     })
+  })
+
+  it('opens and closes one folder subtree from its context menu', () => {
+    render(
+      <TabProvider>
+        <NotesTree />
+      </TabProvider>
+    )
+
+    // Two folder rows (Work, Work/Nested) each carry the pair; the first is Work.
+    fireEvent.click(screen.getAllByRole('button', { name: /tree.actions.expandSubfolders/ })[0])
+    expect(mocks.treeActions.setNodesExpanded).toHaveBeenLastCalledWith(
+      ['folder-Work', 'folder-Work/Nested'],
+      true
+    )
+
+    fireEvent.click(screen.getAllByRole('button', { name: /tree.actions.collapseSubfolders/ })[1])
+    expect(mocks.treeActions.setNodesExpanded).toHaveBeenLastCalledWith(
+      ['folder-Work/Nested'],
+      false
+    )
+  })
+
+  // Reordering writes positions over every item in the folder, so the actions
+  // get the tree that still holds the files `showFiles` hides.
+  it('hands the unfiltered tree to the reorder actions', () => {
+    const unfilteredTree = { folders: [], rootNotes: [rootNote] }
+    mocks.data = { ...createData(), unfilteredTree }
+
+    render(
+      <TabProvider>
+        <NotesTree />
+      </TabProvider>
+    )
+
+    expect(mocks.lastDeps.tree).toBe(unfilteredTree)
   })
 
   it('drives non-virtual actions, folder menus, reveal, and imperative handles', async () => {

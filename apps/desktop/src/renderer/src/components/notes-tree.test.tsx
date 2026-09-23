@@ -4,8 +4,9 @@
  * Tests for the NotesTree component with folder tree and drag-drop functionality.
  */
 
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { toast } from 'sonner'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRef, type RefObject } from 'react'
@@ -135,7 +136,8 @@ vi.mock('@/hooks/use-general-settings', () => ({
   })
 }))
 
-vi.mock('@/lib/virtualized-tree-utils', () => ({
+vi.mock('@/lib/virtualized-tree-utils', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   shouldVirtualize: vi.fn().mockReturnValue(false)
 }))
 
@@ -236,11 +238,11 @@ const setupMocks = (
 // ============================================================================
 
 const patchTemplatesMock = () => {
-  const w = window as Window & { api?: Record<string, unknown> }
+  // SAFETY: the DOM test setup installs `window.api` as a plain mock object;
+  // only `templates.list` is replaced, and only when the mock provides it.
+  const w = window as unknown as { api?: { templates?: Record<string, unknown> } }
   if (w.api?.templates) {
-    ;(w.api.templates as Record<string, unknown>).list = vi
-      .fn()
-      .mockResolvedValue({ templates: [] })
+    w.api.templates.list = vi.fn().mockResolvedValue({ templates: [] })
   }
 }
 
@@ -530,6 +532,159 @@ describe('T522: NotesTree - context menu', () => {
 
     expect(await screen.findByText('Save as Template')).toBeInTheDocument()
     expect(screen.queryByText('New note from this note')).not.toBeInTheDocument()
+  })
+})
+
+describe('NotesTree - one folder subtree, view options', () => {
+  // A deep vault where every folder holds a summary note named like itself —
+  // the shape of #2358.
+  const deepNotes: NoteListItem[] = [
+    createNote('p1', 'P1/P1 Summary.md'),
+    createNote('personal', 'P1/Personal/Personal Summary.md'),
+    createNote('identity', 'P1/Personal/Identity/Identity Summary.md'),
+    createNote('scan', 'P1/Personal/Scan.pdf', { fileType: 'pdf' }),
+    createNote('root', 'Inbox Note.md')
+  ]
+  const deepFolders: FolderInfo[] = [
+    { path: 'P1', icon: null },
+    { path: 'P1/Personal', icon: null },
+    { path: 'P1/Personal/Identity', icon: null },
+    { path: 'Zeta', icon: null }
+  ]
+  const realSettings = window.api.settings
+  const rowIds = () =>
+    Array.from(document.querySelectorAll('[data-tree-view] [data-tree-node-id]')).map((row) =>
+      row.getAttribute('data-tree-node-id')
+    )
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    patchTemplatesMock()
+    setupMocks(deepNotes, deepFolders)
+  })
+
+  afterEach(() => {
+    window.api.settings = realSettings
+  })
+
+  it('Alt+click opens and closes the whole subtree, a plain click only the folder', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<NotesTree />)
+
+    await user.keyboard('{Alt>}')
+    await user.click(screen.getByText('P1'))
+    await user.keyboard('{/Alt}')
+    expect(screen.getByText('Identity Summary')).toBeInTheDocument()
+
+    await user.keyboard('{Alt>}')
+    await user.click(screen.getByText('P1'))
+    await user.keyboard('{/Alt}')
+    await waitFor(() => expect(screen.queryByText('Personal')).not.toBeInTheDocument())
+
+    // Reopening P1 alone finds Personal closed too.
+    await user.click(screen.getByText('P1'))
+    expect(screen.getByText('Personal')).toBeInTheDocument()
+    expect(screen.queryByText('Personal Summary')).not.toBeInTheDocument()
+  })
+
+  it('opens and closes one folder subtree from its context menu', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<NotesTree />)
+
+    await user.pointer({ target: screen.getByText('P1'), keys: '[MouseRight]' })
+    await user.click(await screen.findByText('Expand All Subfolders'))
+    expect(await screen.findByText('Identity Summary')).toBeInTheDocument()
+
+    await user.pointer({ target: screen.getByText('P1'), keys: '[MouseRight]' })
+    await user.click(await screen.findByText('Collapse All Subfolders'))
+    await waitFor(() => expect(screen.queryByText('Personal')).not.toBeInTheDocument())
+  })
+
+  it('keeps folders before notes by default and lists notes first when asked', async () => {
+    const user = userEvent.setup()
+    const { unmount } = renderWithProviders(<NotesTree />)
+    await user.click(screen.getByText('P1'))
+
+    expect(rowIds()).toEqual(['folder-P1', 'folder-P1/Personal', 'p1', 'folder-Zeta', 'root'])
+    unmount()
+
+    window.api.settings = {
+      ...realSettings,
+      getSidebarNotesFirst: vi.fn(() => Promise.resolve(true))
+    }
+    renderWithProviders(<NotesTree />)
+    await waitFor(() => expect(rowIds()).toEqual(['root', 'folder-P1', 'folder-Zeta']))
+    await user.click(screen.getByText('P1'))
+
+    expect(rowIds()).toEqual(['root', 'folder-P1', 'p1', 'folder-P1/Personal', 'folder-Zeta'])
+  })
+
+  it('hides vault files but keeps every folder when files are off', async () => {
+    const user = userEvent.setup()
+    window.api.settings = {
+      ...realSettings,
+      getSidebarShowFiles: vi.fn(() => Promise.resolve(false))
+    }
+    renderWithProviders(<NotesTree />)
+
+    await user.click(screen.getByText('P1'))
+    await user.click(screen.getByText('Personal'))
+
+    await waitFor(() => expect(screen.queryByText('Scan')).not.toBeInTheDocument())
+    expect(screen.getByText('Personal Summary')).toBeInTheDocument()
+    expect(screen.getByText('Identity')).toBeInTheDocument()
+    expect(screen.getByText('Zeta')).toBeInTheDocument()
+  })
+
+  it('drops a file from the selection once files are hidden, so Delete leaves it alone', async () => {
+    const user = userEvent.setup()
+    const listeners: Array<(event: { key: string; value: unknown }) => void> = []
+    const realOnSettingsChanged = window.api.onSettingsChanged
+    window.api.onSettingsChanged = vi.fn((listener) => {
+      listeners.push(listener)
+      return () => {}
+    }) as typeof window.api.onSettingsChanged
+
+    try {
+      renderWithProviders(<NotesTree />)
+      await user.click(screen.getByText('P1'))
+      await user.click(screen.getByText('Personal'))
+      await user.click(screen.getByText('Scan'))
+
+      act(() => {
+        listeners.forEach((listener) => listener({ key: 'sidebar.showFiles', value: false }))
+      })
+      await waitFor(() => expect(screen.queryByText('Scan')).not.toBeInTheDocument())
+
+      fireEvent.keyDown(document.querySelector('[data-tree-view]')!, { key: 'Delete' })
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    } finally {
+      window.api.onSettingsChanged = realOnSettingsChanged
+    }
+  })
+
+  it('explains instead of revealing a file while files are hidden', async () => {
+    const info = vi.spyOn(toast, 'info').mockImplementation(() => 0)
+    window.api.settings = {
+      ...realSettings,
+      getSidebarShowFiles: vi.fn(() => Promise.resolve(false))
+    }
+    renderWithProviders(<NotesTree />)
+    await waitFor(() => expect(window.api.settings.getSidebarShowFiles).toHaveBeenCalled())
+    await act(async () => {})
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('reveal-in-sidebar', {
+          detail: { path: 'P1/Personal/Scan.pdf', entityId: 'scan' }
+        })
+      )
+    })
+
+    expect(info).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Personal Summary')).not.toBeInTheDocument()
+    info.mockRestore()
   })
 })
 

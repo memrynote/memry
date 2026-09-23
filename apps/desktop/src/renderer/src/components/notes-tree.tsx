@@ -7,9 +7,11 @@ import {
   useRef,
   useEffect,
   useImperativeHandle,
+  useMemo,
   type ReactNode
 } from 'react'
 import { getI18n } from 'react-i18next'
+import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   TreeLabel,
@@ -47,6 +49,8 @@ import {
   getFileExtensionLabel,
   getFileIcon,
   collectAllFolderIds,
+  collectFolderSubtreeIds,
+  isVaultFile,
   type FolderNode
 } from '@/components/notes-tree-utils'
 import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
@@ -66,14 +70,20 @@ import {
   LayoutGrid,
   X,
   Monitor,
-  Smile
+  Smile,
+  ChevronsDown,
+  ChevronsUp
 } from '@/lib/icons'
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
 import { useOpenTarget } from '@/hooks/use-open-target'
-import { shouldVirtualize } from '@/lib/virtualized-tree-utils'
+import {
+  orderFolderEntries,
+  shouldVirtualize,
+  type FolderEntry
+} from '@/lib/virtualized-tree-utils'
 import {
   VirtualizedNotesTree,
   type VirtualizedTreeActions
@@ -116,7 +126,18 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   // Optional on purpose: canvas embeds and unit tests mount the tree without a
   // SyncProvider, and "no provider" must read as "no initial sync running".
   const initialSyncInProgress = useSyncOptional()?.state.initialSyncProgress != null
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [storedSelectedIds, setSelectedIds] = useState<string[]>([])
+  // A file hidden by "Show files" off leaves the selection with it. Otherwise a
+  // file selected before the toggle would ride along, unseen, with the next
+  // drag or bulk delete of the notes that are still visible.
+  const { showFiles, noteMap } = data
+  const selectedIds = useMemo(() => {
+    if (showFiles) return storedSelectedIds
+    return storedSelectedIds.filter((id) => {
+      const note = noteMap.get(id)
+      return !note || !isVaultFile(note)
+    })
+  }, [storedSelectedIds, showFiles, noteMap])
 
   const treeContainerRef = useRef<HTMLDivElement>(null)
   const treeActionsRef = useRef<TreeActionsHandle | null>(null)
@@ -176,7 +197,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
 
   const actions = useNoteTreeActions({
     noteMap: data.noteMap,
-    tree: data.tree,
+    // Reordering only: positions are written over the list that still holds
+    // the files `showFiles` hides, so they keep their slots.
+    tree: data.unfilteredTree,
     folders: data.folders,
     notePositions: data.notePositions,
     setNotePositions: data.setNotePositions,
@@ -210,6 +233,18 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     treeActionsRef.current?.expandNodes(allIds)
     virtualTreeActionsRef.current?.expandAll()
   }, [data.tree])
+
+  // One folder and everything below it, from its context menu or Alt+click.
+  const getSubtreeIds = useCallback(
+    (folderPath: string) => collectFolderSubtreeIds(data.tree, folderPath),
+    [data.tree]
+  )
+  const setSubtreeExpanded = useCallback(
+    (folderPath: string, expanded: boolean) => {
+      treeActionsRef.current?.setNodesExpanded(getSubtreeIds(folderPath), expanded)
+    },
+    [getSubtreeIds]
+  )
 
   useImperativeHandle(
     ref,
@@ -292,6 +327,14 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     ) => {
       const { entityId, rename } = event.detail
       if (!entityId) return
+
+      // A PDF or image tab asking to be revealed while "Show files" is off has
+      // no row to land on; say why instead of silently doing nothing.
+      const target = data.noteMap.get(entityId)
+      if (!data.showFiles && target && isVaultFile(target)) {
+        toast.info(tCommon('toast.filesHiddenInSidebar'))
+        return
+      }
       // Deliberately not checked against `noteMap`: a note created a moment ago
       // is not in the tree query yet, and dropping the request here is what used
       // to make a brand-new note impossible to reveal. RevealHandler waits.
@@ -325,7 +368,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     return () => {
       window.removeEventListener('reveal-in-sidebar', handleRevealInSidebar as EventListener)
     }
-  }, [data.tree, data.noteMap, handleRevealComplete])
+  }, [data.tree, data.noteMap, data.showFiles, handleRevealComplete, tCommon])
 
   // The virtualized tree has no RevealHandler — that lives inside TreeProvider,
   // which only the plain tree renders — so drive it through its imperative
@@ -531,6 +574,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         <TreeNodeTrigger
           {...{ [FILE_DROP_FOLDER_ATTR]: folder.path }}
           onMouseDown={middleClickOpen(folderTabData(folder.path, folder.icon))}
+          getSubtreeNodeIds={() => getSubtreeIds(folder.path)}
           className={cn(
             fileDropFolder === folder.path &&
               'border-2 border-dashed border-primary bg-primary/10 hover:bg-primary/10'
@@ -546,6 +590,15 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               <ContextMenuItem onClick={() => void actions.handleCreateSubfolder(folder.path)}>
                 <FolderPlus className="me-2 h-4 w-4" />
                 {t('tree.actions.newFolder')}
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => setSubtreeExpanded(folder.path, true)}>
+                <ChevronsUp className="me-2 h-4 w-4" />
+                {t('tree.actions.expandSubfolders')}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => setSubtreeExpanded(folder.path, false)}>
+                <ChevronsDown className="me-2 h-4 w-4" />
+                {t('tree.actions.collapseSubfolders')}
               </ContextMenuItem>
               <ContextMenuSeparator />
               <ContextMenuItem onClick={() => actions.handleSetFolderTemplate(folder.path)}>
@@ -652,21 +705,25 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         </TreeNodeTrigger>
         {hasChildren && (
           <TreeNodeContent>
-            {folder.children.map((child, index) =>
-              renderFolder(
-                child,
-                level + 1,
-                index === folder.children.length - 1 && folder.notes.length === 0
-              )
-            )}
-            {folder.notes.map((note, index) =>
-              renderNote(note, level + 1, index === folder.notes.length - 1)
+            {renderEntries(
+              orderFolderEntries(folder.children, folder.notes, data.tree.notesFirst),
+              level + 1
             )}
           </TreeNodeContent>
         )}
       </TreeNode>
     )
   }
+
+  // One level of the tree in display order (see `orderFolderEntries`); the
+  // last row is last whichever group it belongs to.
+  const renderEntries = (entries: FolderEntry[], level: number, hideNoteLines = false) =>
+    entries.map((entry, index) => {
+      const isLast = index === entries.length - 1
+      return entry.type === 'folder'
+        ? renderFolder(entry.folder, level, isLast)
+        : renderNote(entry.note, level, isLast, hideNoteLines)
+    })
 
   return (
     <div
@@ -748,15 +805,10 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           />
           <FolderRevealHandler />
           <TreeView>
-            {data.tree.folders.map((folder, index) =>
-              renderFolder(
-                folder,
-                0,
-                index === data.tree.folders.length - 1 && data.tree.rootNotes.length === 0
-              )
-            )}
-            {data.tree.rootNotes.map((note, index) =>
-              renderNote(note, 0, index === data.tree.rootNotes.length - 1, true)
+            {renderEntries(
+              orderFolderEntries(data.tree.folders, data.tree.rootNotes, data.tree.notesFirst),
+              0,
+              true
             )}
           </TreeView>
         </TreeProvider>

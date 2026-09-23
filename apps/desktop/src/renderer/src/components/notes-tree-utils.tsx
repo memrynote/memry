@@ -126,7 +126,10 @@ export function buildTreeFromNotes(
   // Defaults to 'manual', which is exactly what this function did before sort
   // modes existed: stored position first, newest-first (notes) / A→Z (folders)
   // for anything unpositioned. Callers that pass nothing keep the old order.
-  sortMode: SidebarSortMode = 'manual'
+  sortMode: SidebarSortMode = 'manual',
+  // `sidebar.notesFirst`. Only decides which group each level draws first;
+  // the sort mode still orders inside each group.
+  notesFirst = false
 ): TreeStructure {
   const folderMap = new Map<string, FolderNode>()
   const rootNotes: NoteListItem[] = []
@@ -208,7 +211,36 @@ export function buildTreeFromNotes(
 
   return {
     folders: rootFolders,
-    rootNotes
+    rootNotes,
+    notesFirst
+  }
+}
+
+/** A non-markdown vault file (PDF, image, audio, video) rather than a note. */
+export function isVaultFile(note: NoteListItem): boolean {
+  return !!note.fileType && note.fileType !== 'markdown'
+}
+
+/**
+ * The tree without non-markdown vault files, for `sidebar.showFiles` off.
+ *
+ * Folders always stay, even one that only holds files: hiding a folder would
+ * hide a place the user can still create a note in or drop onto. The tree shows
+ * no per-folder counts; what reads the filtered lists is `hasChildren`, so a
+ * folder holding only hidden files draws no chevron and counts toward the
+ * virtualization threshold as the one row it is.
+ */
+export function hideVaultFiles(tree: TreeStructure): TreeStructure {
+  const filterFolder = (folder: FolderNode): FolderNode => ({
+    ...folder,
+    children: folder.children.map(filterFolder),
+    notes: folder.notes.filter((note) => !isVaultFile(note))
+  })
+
+  return {
+    ...tree,
+    folders: tree.folders.map(filterFolder),
+    rootNotes: tree.rootNotes.filter((note) => !isVaultFile(note))
   }
 }
 
@@ -222,6 +254,52 @@ export function collectAllFolderIds(tree: TreeStructure): string[] {
   }
   walk(tree.folders)
   return ids
+}
+
+/**
+ * Node ids of the folder at `folderPath` and every folder below it, the folder
+ * itself first. Empty when the path is not in the tree.
+ */
+export function collectFolderSubtreeIds(tree: TreeStructure, folderPath: string): string[] {
+  const find = (folders: FolderNode[]): FolderNode | null => {
+    for (const folder of folders) {
+      if (folder.path === folderPath) return folder
+      if (folderPath.startsWith(`${folder.path}/`)) return find(folder.children)
+    }
+    return null
+  }
+
+  const root = find(tree.folders)
+  if (!root) return []
+
+  const ids: string[] = []
+  const walk = (folder: FolderNode): void => {
+    ids.push(`folder-${folder.path}`)
+    folder.children.forEach(walk)
+  }
+  walk(root)
+  return ids
+}
+
+/**
+ * `expandedIds` with every id in `nodeIds` opened or closed. Returns the
+ * original set when nothing changes, so callers can skip the state update and
+ * the persistence write behind it.
+ */
+export function setFoldersExpanded(
+  expandedIds: Set<string>,
+  nodeIds: string[],
+  expanded: boolean
+): Set<string> {
+  const changed = nodeIds.filter((id) => expandedIds.has(id) !== expanded)
+  if (changed.length === 0) return expandedIds
+
+  const next = new Set(expandedIds)
+  for (const id of changed) {
+    if (expanded) next.add(id)
+    else next.delete(id)
+  }
+  return next
 }
 
 // ============================================================================

@@ -82,6 +82,7 @@
     "undoFailed": "Failed to undo action",
     "filesImported": "{count, plural, one {Imported # file} other {Imported # files}}",
     "filesImportFailed": "{count, plural, one {Failed to import # file} other {Failed to import # files}}",
+    "filesHiddenInSidebar": "Files are hidden in the sidebar. Turn on Show files in the Collections sort menu to see them.",
     "moreRemindersDue": "{count, plural, one {# more reminder due} other {# more reminders due}}",
     "moreRemindersDueHint": "Check the reminders panel for details",
     "searchIndexRepaired": "Search index repaired",

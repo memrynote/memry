@@ -7,6 +7,7 @@ import {
   getAllFolderIds,
   getParentFolderId,
   estimateTreeHeight,
+  orderFolderEntries,
   shouldVirtualize,
   type FolderNode,
   type TreeStructure
@@ -174,6 +175,68 @@ describe('virtualized-tree-utils', () => {
         'folder-Work/Project',
         'folder-Personal'
       ])
+    })
+  })
+
+  describe('notesFirst ordering', () => {
+    const expandAll = new Set(['folder-Work', 'folder-Work/Project', 'folder-Personal'])
+    const rows = (tree: TreeStructure) =>
+      flattenTree(tree, expandAll).map((item) => `${item.id}${item.isLast ? ' (last)' : ''}`)
+
+    // The tree every earlier build drew, pinned so notes-first cannot leak in
+    // through an absent flag.
+    it('keeps folders before notes at every level when the flag is absent or off', () => {
+      const { tree } = buildSampleTree()
+      const expected = [
+        'folder-Work',
+        'folder-Work/Project',
+        'note-project-1',
+        'note-project-2 (last)',
+        'note-work-1 (last)',
+        'folder-Personal',
+        'note-root (last)'
+      ]
+
+      expect(rows(tree)).toEqual(expected)
+      expect(rows({ ...tree, notesFirst: false })).toEqual(expected)
+    })
+
+    it('puts notes before folders at every level, the vault root included', () => {
+      const { tree } = buildSampleTree()
+
+      expect(rows({ ...tree, notesFirst: true })).toEqual([
+        'note-root',
+        'folder-Work',
+        'note-work-1',
+        'folder-Work/Project (last)',
+        'note-project-1',
+        'note-project-2 (last)',
+        'folder-Personal (last)'
+      ])
+    })
+
+    // A level with only one group has no ordering to flip; its last row is
+    // still the last row.
+    it('marks the last row of a single-group level either way', () => {
+      const { tree } = buildSampleTree()
+      const notesOnly: TreeStructure = { folders: [], rootNotes: tree.rootNotes, notesFirst: true }
+      const foldersOnly: TreeStructure = { folders: tree.folders, rootNotes: [], notesFirst: true }
+
+      expect(flattenTree(notesOnly, new Set()).map((item) => item.isLast)).toEqual([true])
+      expect(flattenTree(foldersOnly, new Set()).map((item) => item.isLast)).toEqual([false, true])
+    })
+
+    it('orders one level and keeps each group in its given order', () => {
+      const { tree } = buildSampleTree()
+      const [work, personal] = tree.folders
+      const [workNote] = work.notes
+      const ids = (notesFirst: boolean) =>
+        orderFolderEntries(tree.folders, [tree.rootNotes[0], workNote], notesFirst).map((entry) =>
+          entry.type === 'folder' ? entry.folder.path : entry.note.id
+        )
+
+      expect(ids(false)).toEqual([work.path, personal.path, 'note-root', 'note-work-1'])
+      expect(ids(true)).toEqual(['note-root', 'note-work-1', work.path, personal.path])
     })
   })
 

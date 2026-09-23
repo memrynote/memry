@@ -23,6 +23,10 @@ import {
 import { SIDEBAR_SORT_SETTINGS_KEY } from '../../settings/sidebar-sort-store'
 import { SIDEBAR_SECTION_ORDER_SETTINGS_KEY } from '../../settings/sidebar-section-order-store'
 import { SIDEBAR_NAV_COLLAPSED_SETTINGS_KEY } from '../../settings/sidebar-nav-store'
+import {
+  SIDEBAR_NOTES_FIRST_SETTINGS_KEY,
+  SIDEBAR_SHOW_FILES_SETTINGS_KEY
+} from '../../settings/sidebar-tree-view-store'
 import { createLogger } from '../../lib/logger'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import { applyTraySetting } from '../../tray'
@@ -76,6 +80,22 @@ class SettingsHandler implements SyncItemHandler<SettingsSyncPayload> {
 }
 
 export const settingsHandler = new SettingsHandler()
+
+/**
+ * Persist one merged local-DB-only sidebar boolean and tell the renderer.
+ * Absent (a payload from a build without the flag) leaves the stored row alone.
+ * A failed write is logged and swallowed so one unwritable key cannot fail the
+ * whole synced settings item.
+ */
+function propagateMergedSidebarFlag(key: string, value: boolean | undefined): void {
+  if (typeof value !== 'boolean') return
+  try {
+    setSetting(getDatabase(), key, JSON.stringify(value))
+    broadcastToAllWindows(SettingsChannels.events.CHANGED, { key, value })
+  } catch (err) {
+    log.warn(`Failed to propagate merged ${key}:`, err)
+  }
+}
 
 function propagateMergedSettings(merged: SyncedSettings): void {
   // Inbox settings live only in the local data DB (not portable config.json
@@ -172,6 +192,12 @@ function propagateMergedSettings(merged: SyncedSettings): void {
       log.warn('Failed to propagate merged sidebar nav collapsed flag:', err)
     }
   }
+
+  // The Collections tree view options, guarded the same way and for the same
+  // reason: `false` is a real value for both (folders first again, files
+  // hidden), so a truthy check would drop exactly those merges.
+  propagateMergedSidebarFlag(SIDEBAR_NOTES_FIRST_SETTINGS_KEY, merged.sidebar?.notesFirst)
+  propagateMergedSidebarFlag(SIDEBAR_SHOW_FILES_SETTINGS_KEY, merged.sidebar?.showFiles)
 
   let vaultPath: string | null = null
   try {

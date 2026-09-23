@@ -318,17 +318,38 @@ vi.mock('@/components/ui/picker', async () => {
       </PickerCtx.Provider>
     )
   }
-  Picker.Trigger = ({ children }: { children: ReactNode }) => {
+  Picker.Trigger = ({
+    children,
+    'data-testid': testId
+  }: {
+    children: ReactNode
+    'data-testid'?: string
+  }) => {
     const { toggle } = React.useContext(PickerCtx)
-    return <span onClick={toggle}>{children}</span>
+    return (
+      <span data-testid={testId} onClick={toggle}>
+        {children}
+      </span>
+    )
   }
   Picker.Content = ({ children }: { children: ReactNode }) => {
     const { open } = React.useContext(PickerCtx)
     return open ? <div>{children}</div> : null
   }
   Picker.List = ({ children }: { children: ReactNode }) => <div>{children}</div>
-  Picker.Item = ({ label, onClick }: { label: string; onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>
+  Picker.Separator = () => <hr />
+  Picker.Item = ({
+    label,
+    onClick,
+    checked,
+    'data-testid': testId
+  }: {
+    label: string
+    onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void
+    checked?: boolean
+    'data-testid'?: string
+  }) => (
+    <button type="button" data-testid={testId} aria-pressed={checked} onClick={onClick}>
       {label}
     </button>
   )
@@ -500,6 +521,78 @@ describe('AppSidebar', () => {
     expect(toast.error).toHaveBeenCalledWith('filesImportFailed:{"count":1}', {
       description: 'bad.zip: unsupported'
     })
+  })
+
+  it('reports an import that throws through the IPC error message', async () => {
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
+    mocks.importFiles.mockRejectedValueOnce(new Error('vault is read-only'))
+
+    await act(async () => {
+      await mocks.fileDrop.onDrop?.(['a.pdf'], '')
+    })
+
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('vault is read-only')
+  })
+
+  // With "Show files" off a dropped PDF lands and then does not appear in the
+  // tree, so the toast has to say why instead of reading as a failed import.
+  it('explains a file import the sidebar hides while files are off', async () => {
+    const realSettings = window.api.settings
+    window.api.settings = {
+      ...realSettings,
+      getSidebarShowFiles: vi.fn(() => Promise.resolve(false))
+    }
+    try {
+      render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
+      await waitFor(() => expect(window.api.settings.getSidebarShowFiles).toHaveBeenCalled())
+      mocks.importFiles.mockResolvedValue({ imported: 1, failed: 0, errors: [] })
+
+      await act(async () => {
+        await mocks.fileDrop.onDrop?.(['note.md'], '')
+      })
+      expect(toast.success).toHaveBeenLastCalledWith('filesImported:{"count":1}')
+
+      await act(async () => {
+        await mocks.fileDrop.onDrop?.(['/tmp/scan.PDF'], '')
+      })
+      expect(toast.success).toHaveBeenLastCalledWith('filesImported:{"count":1}', {
+        description: 'filesHiddenInSidebar'
+      })
+    } finally {
+      window.api.settings = realSettings
+    }
+  })
+
+  // Only Collections has a tree to reorder or filter; every other section keeps
+  // exactly the sort menu it had.
+  it('offers the two tree view options in the Collections sort menu only', async () => {
+    const setSidebarNotesFirst = vi.fn(() => Promise.resolve({ success: true }))
+    const realSettings = window.api.settings
+    window.api.settings = { ...realSettings, setSidebarNotesFirst }
+    try {
+      render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
+
+      for (const surface of ['projects', 'bookmarks']) {
+        fireEvent.click(screen.getByTestId(`sidebar-sort-${surface}`))
+      }
+      expect(screen.queryByTestId('sidebar-view-option-notes-first')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('sidebar-view-option-show-files')).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('sidebar-sort-collections'))
+      const notesFirst = screen.getByTestId('sidebar-view-option-notes-first')
+      expect(notesFirst).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByTestId('sidebar-view-option-show-files')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
+
+      fireEvent.click(notesFirst)
+      expect(setSidebarNotesFirst).toHaveBeenCalledWith(true)
+      await waitFor(() => expect(notesFirst).toHaveAttribute('aria-pressed', 'true'))
+    } finally {
+      window.api.settings = realSettings
+    }
   })
 
   it('imports into the folder the drop landed on, ignoring the selected folder', async () => {

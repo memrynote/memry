@@ -40,6 +40,7 @@ import { CanvasTree, type CanvasTreeActions } from '@/components/sidebar/canvas-
 import { SidebarSortPicker } from '@/components/sidebar/sidebar-sort-picker'
 import { useSidebarSortLabels } from '@/components/sidebar/use-sidebar-sort-labels'
 import { useSidebarSortMode } from '@/hooks/use-sidebar-sort-mode'
+import { useSidebarTreeViewOptions } from '@/hooks/use-sidebar-tree-view-options'
 import { compareListItems, isReorderable } from '@/components/sidebar/sidebar-list-sort'
 import { SortableProjectList } from '@/components/sidebar/sortable-project-list'
 import { SidebarSectionAction } from '@/components/sidebar/sidebar-section-action'
@@ -72,7 +73,7 @@ import type { Project } from '@/data/tasks-data'
 import type { AppPage } from '@/App'
 import type { BookmarkWithItem } from '@/hooks/use-bookmarks'
 import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
-import { getAllSupportedExtensions } from '@memry/shared/file-types'
+import { getAllSupportedExtensions, getExtension, getFileType } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useFileDrop, FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
@@ -124,36 +125,52 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   const { mode: bookmarksSortMode, setMode: setBookmarksSortMode } = useSidebarSortMode('bookmarks')
   const { mode: canvasesSortMode, setMode: setCanvasesSortMode } = useSidebarSortMode('canvases')
   const sortLabels = useSidebarSortLabels()
+  const treeViewOptions = useSidebarTreeViewOptions()
+  const { t: tNotes } = useT('notes')
   const [tagsActions, setTagsActions] = useState<React.ReactNode>(null)
   const notesActionsRef = useRef<NotesTreeActions | null>(null)
   const [foldersExpanded, setFoldersExpanded] = useState(false)
   const sidebarScrollRef = useRef<HTMLDivElement>(null)
   const targetFolderRef = useRef('')
 
-  const handleFileDrop = useCallback(async (paths: string[], targetFolder: string) => {
-    try {
-      // Where the file was dropped, not what happened to be selected.
-      const result = await notesService.importFiles(paths, targetFolder)
-      const tCommon = getI18n().getFixedT(null, 'common')
+  const { showFiles } = treeViewOptions
+  const handleFileDrop = useCallback(
+    async (paths: string[], targetFolder: string) => {
+      try {
+        // Where the file was dropped, not what happened to be selected.
+        const result = await notesService.importFiles(paths, targetFolder)
+        const tCommon = getI18n().getFixedT(null, 'common')
 
-      if (result.imported > 0) {
-        toast.success(tCommon('toast.filesImported', { count: result.imported }))
-      }
-      if (result.failed > 0) {
-        toast.error(tCommon('toast.filesImportFailed', { count: result.failed }), {
-          description: result.errors?.join('\n')
-        })
-      }
-    } catch (err) {
-      log.error('Failed to import dropped files', err)
-      toast.error(
-        extractErrorMessage(
-          err,
-          getI18n().getFixedT(null, 'common')('phaseI.errors.failedToImportFiles')
+        if (result.imported > 0) {
+          // With "Show files" off a dropped PDF or image lands and then does not
+          // appear, which reads as a failed import unless the toast says why.
+          const hidesSomeImports =
+            !showFiles &&
+            paths.some((path) => (getFileType(getExtension(path)) ?? 'markdown') !== 'markdown')
+          const message = tCommon('toast.filesImported', { count: result.imported })
+          if (hidesSomeImports) {
+            toast.success(message, { description: tCommon('toast.filesHiddenInSidebar') })
+          } else {
+            toast.success(message)
+          }
+        }
+        if (result.failed > 0) {
+          toast.error(tCommon('toast.filesImportFailed', { count: result.failed }), {
+            description: result.errors?.join('\n')
+          })
+        }
+      } catch (err) {
+        log.error('Failed to import dropped files', err)
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'common')('phaseI.errors.failedToImportFiles')
+          )
         )
-      )
-    }
-  }, [])
+      }
+    },
+    [showFiles]
+  )
 
   const { setSelectedFolder } = useSelectedFolder()
 
@@ -545,6 +562,21 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
                 tPhaseF('phaseF.componentsAppSidebar.collections'),
                 collectionsSortMode
               )}
+              viewOptionsLabel={tNotes('tree.viewOptions.label')}
+              viewOptions={[
+                {
+                  id: 'notes-first',
+                  label: tNotes('tree.viewOptions.notesFirst'),
+                  checked: treeViewOptions.notesFirst,
+                  onCheckedChange: treeViewOptions.setNotesFirst
+                },
+                {
+                  id: 'show-files',
+                  label: tNotes('tree.viewOptions.showFiles'),
+                  checked: treeViewOptions.showFiles,
+                  onCheckedChange: treeViewOptions.setShowFiles
+                }
+              ]}
             />
             <SidebarSectionAction
               icon={foldersExpanded ? ChevronsDown : ChevronsUp}
@@ -728,7 +760,10 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       <div
         ref={sidebarScrollRef}
         data-tour="sidebar-collections"
-        className="relative flex-1 min-h-0 overflow-y-auto scrollbar-thin group-data-[collapsible=icon]:overflow-hidden"
+        // `scroll-pt-6` matches the sticky section header (SidebarSection,
+        // h-6): a row focused or scrolled into view natively lands below it
+        // instead of under it.
+        className="relative flex-1 min-h-0 overflow-y-auto scroll-pt-6 scrollbar-thin group-data-[collapsible=icon]:overflow-hidden"
         // Anything dropped outside a folder row lands in the vault root.
         {...{ [FILE_DROP_FOLDER_ATTR]: '' }}
         {...dropHandlers}

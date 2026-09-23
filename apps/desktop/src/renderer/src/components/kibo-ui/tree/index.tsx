@@ -24,7 +24,7 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { IconPicker, getIconByName } from '@/components/icon-picker'
-import { remapExpandedFolderIds } from '@/components/notes-tree-utils'
+import { remapExpandedFolderIds, setFoldersExpanded } from '@/components/notes-tree-utils'
 import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
 import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-cards'
 import { useT } from '@memry/i18n/renderer'
@@ -82,6 +82,8 @@ type TreeContextType = {
   collapseNode: (nodeId: string) => void
   expandAll: () => void
   expandNodes: (nodeIds: string[]) => void
+  /** Open or close every listed node, leaving the rest of the tree alone. */
+  setNodesExpanded: (nodeIds: string[], expanded: boolean) => void
   collapseAll: () => void
   renameNode: (oldNodeId: string, newNodeId: string) => void
   setDragState: (state: Partial<DragState>) => void
@@ -397,6 +399,10 @@ export const TreeProvider = ({
     setExpandedIds(new Set(nodeIds))
   }, [])
 
+  const setNodesExpanded = useCallback((nodeIds: string[], expanded: boolean) => {
+    setExpandedIds((prev) => setFoldersExpanded(prev, nodeIds, expanded))
+  }, [])
+
   const collapseAll = useCallback(() => {
     setExpandedIds(new Set())
   }, [])
@@ -490,6 +496,7 @@ export const TreeProvider = ({
     collapseNode,
     expandAll,
     expandNodes,
+    setNodesExpanded,
     collapseAll,
     renameNode,
     setDragState,
@@ -618,6 +625,11 @@ export type TreeNodeTriggerProps = ComponentProps<typeof m.div> & {
   showIconMenu?: boolean
   /** When true, clicking only expands/collapses without triggering selection (faster for folders) */
   expandOnly?: boolean
+  /**
+   * Node ids of this row's whole subtree, itself included. When set, Option/Alt
+   * + click opens or closes all of them together instead of just this row.
+   */
+  getSubtreeNodeIds?: () => string[]
 }
 
 export const TreeNodeTrigger = ({
@@ -627,6 +639,7 @@ export const TreeNodeTrigger = ({
   contextMenuContent,
   showIconMenu = true,
   expandOnly = false,
+  getSubtreeNodeIds,
   ...props
 }: TreeNodeTriggerProps) => {
   const { t: tPhaseF } = useT('common')
@@ -640,6 +653,7 @@ export const TreeNodeTrigger = ({
     getNodeInfo,
     expandNode,
     collapseNode,
+    setNodesExpanded,
     expandedIds,
     draggable,
     dragState,
@@ -872,7 +886,11 @@ export const TreeNodeTrigger = ({
             onClick={(e) => {
               setFocusedId(nodeId)
               const hasModifier = e.ctrlKey || e.metaKey || e.shiftKey
-              if (!expandOnly || !hasModifier) {
+              if (e.altKey && getSubtreeNodeIds) {
+                // The whole subtree follows this row: closed opens everything
+                // below it, open closes everything below it.
+                setNodesExpanded(getSubtreeNodeIds(), !expandedIds.has(nodeId))
+              } else if (!expandOnly || !hasModifier) {
                 toggleExpanded(nodeId)
               }
               if (!expandOnly || hasModifier) {

@@ -131,6 +131,7 @@ of scrolling the sidebar.
 | Open a folder, then step inside it  | <kbd>→</kbd>                              |
 | Close a folder, or go to its parent | <kbd>←</kbd>                              |
 | Delete selected (asks first)        | <kbd>Delete</kbd> or <kbd>Backspace</kbd> |
+| Open / close a folder and all below | <kbd>⌥</kbd>+click the folder             |
 
 <kbd>↓</kbd> and <kbd>↑</kbd> walk every visible row in order, in and out of open
 folders, and stop at the ends rather than wrapping. <kbd>→</kbd> opens a closed

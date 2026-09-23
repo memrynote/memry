@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { useSidebarSortMode } from './use-sidebar-sort-mode'
+import { useSidebarTreeViewOptions } from './use-sidebar-tree-view-options'
 import {
   useNotesList,
   useNoteFoldersQuery,
@@ -7,7 +8,11 @@ import {
   type NoteListItem
 } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
-import { buildTreeFromNotes, type TreeStructure } from '@/components/notes-tree-utils'
+import {
+  buildTreeFromNotes,
+  hideVaultFiles,
+  type TreeStructure
+} from '@/components/notes-tree-utils'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Hook:NoteTreeData')
@@ -41,7 +46,16 @@ export interface NoteTreeData {
   setFolderIcon: ReturnType<typeof useNoteFoldersQuery>['setFolderIcon']
   refreshFolders: ReturnType<typeof useNoteFoldersQuery>['refetch']
   mutations: ReturnType<typeof useNoteMutations>
+  /** What the tree draws: view options applied. */
   tree: TreeStructure
+  /**
+   * Same order as `tree`, but with the files `sidebar.showFiles` hides still in
+   * it. Reordering writes positions over this list, so a hidden file keeps its
+   * slot between the notes the user did drag.
+   */
+  unfilteredTree: TreeStructure
+  /** `sidebar.showFiles`: false means `tree` leaves non-markdown files out. */
+  showFiles: boolean
   noteMap: Map<string, NoteListItem>
   notePositions: Record<string, number>
   setNotePositions: React.Dispatch<React.SetStateAction<Record<string, number>>>
@@ -59,6 +73,7 @@ export interface NoteTreeData {
 export function useNoteTreeData(): NoteTreeData {
   const [limit, setLimit] = useState(NOTE_TREE_PAGE_SIZE)
   const { mode: sortMode } = useSidebarSortMode('collections')
+  const { notesFirst, showFiles } = useSidebarTreeViewOptions()
 
   // `fields: 'tree'` — the sidebar renders path/title/modified/tags/emoji/
   // localOnly/fileType and nothing else, so main skips the snippet and the
@@ -140,9 +155,14 @@ export function useNoteTreeData(): NoteTreeData {
     void fetchPositions()
   }, [notes])
 
-  const tree = useMemo(() => {
-    return buildTreeFromNotes(notes, folders, notePositions, sortMode)
-  }, [notes, folders, notePositions, sortMode])
+  const unfilteredTree = useMemo(() => {
+    return buildTreeFromNotes(notes, folders, notePositions, sortMode, notesFirst)
+  }, [notes, folders, notePositions, sortMode, notesFirst])
+
+  const tree = useMemo(
+    () => (showFiles ? unfilteredTree : hideVaultFiles(unfilteredTree)),
+    [unfilteredTree, showFiles]
+  )
 
   const noteMap = useMemo(() => {
     const map = new Map<string, NoteListItem>()
@@ -181,6 +201,8 @@ export function useNoteTreeData(): NoteTreeData {
     refreshFolders,
     mutations,
     tree,
+    unfilteredTree,
+    showFiles,
     noteMap,
     notePositions,
     setNotePositions,

@@ -99,6 +99,8 @@
       "openToTheSide": "Open to the Side",
       "newNote": "New Note",
       "newFolder": "New Folder",
+      "expandSubfolders": "Expand All Subfolders",
+      "collapseSubfolders": "Collapse All Subfolders",
       "rename": "Rename",
       "applyTemplate": "Apply Template",
       "saveAsTemplate": "Save as Template",
@@ -118,6 +120,12 @@
       "ariaExpanded": "Navigation section, expanded",
       "ariaCollapsed": "Navigation section, collapsed",
       "saveFailed": "Could not save the navigation section state"
+    },
+    "viewOptions": {
+      "label": "View options",
+      "notesFirst": "Notes before folders",
+      "showFiles": "Show files",
+      "saveFailed": "Could not save the sidebar view options"
     },
     "deleteDialog": {
       "noteTitle": "Delete Note",
