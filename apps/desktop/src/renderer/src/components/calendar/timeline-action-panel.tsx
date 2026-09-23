@@ -25,7 +25,9 @@ import {
   Eraser,
   FolderInput
 } from '@/lib/icons'
+import { Kbd } from '@/components/ui/kbd'
 import { cn } from '@/lib/utils'
+import { CalendarCardHeader } from './calendar-card'
 import { toLocalDateString } from './date-utils'
 
 export type TimelinePanelPage = 'root' | 'start' | 'due' | 'project'
@@ -47,14 +49,15 @@ export function Keycaps({
   className?: string
 }): React.JSX.Element {
   return (
-    <span className={cn('flex shrink-0 items-center gap-0.5', className)}>
+    <span aria-hidden="true" className={cn('inline-flex shrink-0 items-center gap-0.5', className)}>
       {keys.map((key) => (
-        <kbd
+        // Same keycap as the calendar detail cards' action bar.
+        <Kbd
           key={key}
-          className="inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] bg-surface-active px-1 font-sans text-[11px] font-medium text-text-secondary shadow-[inset_0_-1px_0_var(--color-border)]"
+          className="h-[18px] min-w-[18px] border border-border bg-popover text-[11px]"
         >
           {key}
-        </kbd>
+        </Kbd>
       ))}
     </span>
   )
@@ -67,6 +70,7 @@ interface TimelineActionPanelProps {
   onPageChange: (page: TimelinePanelPage) => void
   task: Task | null
   taskColor: string
+  projectName: string
   projects: readonly Project[]
   weekStartsOn: 0 | 1
   onAction: (action: TimelineTaskAction) => void
@@ -79,7 +83,7 @@ interface TimelineActionPanelProps {
 }
 
 const ITEM_CLASS =
-  'h-[34px] gap-2.5 rounded-[7px] px-2.5 text-[13px] data-[selected=true]:bg-surface-active data-[selected=true]:text-foreground [&_svg]:size-4 [&_svg]:text-text-secondary'
+  'h-8 gap-2.5 rounded-[5px] px-2 text-[13px] data-[selected=true]:bg-accent data-[selected=true]:text-foreground [&_svg]:size-4 [&_svg]:text-muted-foreground'
 
 function ActionItem({
   value,
@@ -114,6 +118,7 @@ export function TimelineActionPanel({
   onPageChange,
   task,
   taskColor,
+  projectName,
   projects,
   weekStartsOn,
   onAction,
@@ -153,7 +158,8 @@ export function TimelineActionPanel({
         side="top"
         align="end"
         sideOffset={8}
-        className="w-[26rem] overflow-hidden rounded-xl p-0 shadow-lg"
+        // The calendar detail card's shell, so the panel reads as its sibling.
+        className="w-[26rem] overflow-hidden rounded-lg border-border p-0 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_12px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.4),0_16px_40px_rgba(0,0,0,0.55)]"
         data-testid="timeline-action-panel"
         onCloseAutoFocus={(event) => {
           event.preventDefault()
@@ -163,7 +169,7 @@ export function TimelineActionPanel({
         {task && (
           <Command
             loop
-            className="rounded-xl"
+            className="rounded-lg"
             onKeyDown={(event) => {
               if (
                 page !== 'root' &&
@@ -175,22 +181,19 @@ export function TimelineActionPanel({
               }
             }}
           >
-            <div className="flex h-12 items-center gap-2.5 border-b border-border px-3.5">
-              <span
-                className="flex h-[22px] max-w-[45%] shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-foreground"
-                style={{ backgroundColor: `color-mix(in srgb, ${taskColor} 14%, transparent)` }}
-              >
-                <span
-                  className="size-1.5 shrink-0 rounded-[2px]"
-                  style={{ backgroundColor: taskColor }}
-                />
-                <span className="truncate">{task.title || t('timeline.untitled')}</span>
+            <CalendarCardHeader
+              dotStyle={{ backgroundColor: taskColor }}
+              label={
+                <>
+                  {t('timeline.actions.task')} · {projectName}
+                  {page !== 'root' && ` · ${t(`timeline.actions.page.${page}`)}`}
+                </>
+              }
+            />
+            <div className="flex h-10 items-center gap-2 border-t border-border/70 px-3.5">
+              <span className="max-w-[45%] shrink-0 truncate text-[13px] font-semibold text-foreground">
+                {task.title || t('timeline.untitled')}
               </span>
-              {page !== 'root' && (
-                <span className="shrink-0 text-xs text-text-tertiary">
-                  {t(`timeline.actions.page.${page}`)}
-                </span>
-              )}
               <CommandPrimitive.Input
                 autoFocus
                 value={search}
@@ -200,7 +203,7 @@ export function TimelineActionPanel({
                     ? t('timeline.actions.search-projects')
                     : t('timeline.actions.search')
                 }
-                className="h-12 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-text-tertiary"
+                className="h-10 min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
               />
             </div>
 

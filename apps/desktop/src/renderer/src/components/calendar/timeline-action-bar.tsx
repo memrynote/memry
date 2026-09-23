@@ -60,7 +60,7 @@ export function TimelineActionBar({
   return (
     <div
       data-testid="timeline-action-bar"
-      className="flex h-10 shrink-0 items-center justify-between gap-4 border-t border-border bg-background ps-6 pe-4"
+      className="flex h-10 shrink-0 items-center justify-between gap-4 border-t border-border/70 bg-foreground/[0.02] ps-6 pe-4"
     >
       <div className="flex min-w-0 items-center gap-2" aria-live="polite">
         {selection ? (

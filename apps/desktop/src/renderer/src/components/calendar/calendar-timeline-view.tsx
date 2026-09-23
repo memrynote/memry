@@ -620,6 +620,9 @@ export function CalendarTimelineView({
                               select(row.key)
                               drag.startEdit(event, row.task, row.shape, edit)
                             }}
+                            onToggleComplete={() =>
+                              runAction(row, row.isCompleted ? 'uncomplete' : 'complete')
+                            }
                             onSchedulePointerDown={(event) => drag.startSchedule(event, row.task)}
                             dayFromPointer={drag.dayFromPointer}
                           />
@@ -660,6 +663,7 @@ export function CalendarTimelineView({
             onPageChange={setPanelPage}
             task={selectedTaskRow?.task ?? null}
             taskColor={selectedTaskRow?.color ?? 'var(--color-tint)'}
+            projectName={selectedTaskRow?.projectName ?? ''}
             projects={actions.projects}
             weekStartsOn={weekStartsOn}
             onAction={(action) => selectedTaskRow && runAction(selectedTaskRow, action)}

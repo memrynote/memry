@@ -3,8 +3,8 @@ import { useT } from '@memry/i18n/renderer'
 import { StatusIcon } from '@/components/tasks/status-icon'
 import { priorityConfig } from '@/data/task-model'
 import { CalendarDays, ChevronDown, Flag, Plus } from '@/lib/icons'
-import { withAlpha } from '@/lib/color'
 import { cn } from '@/lib/utils'
+import { ChipBar, ChipCheckbox, eventBarVars, taskBarVars } from './timeline-chip'
 import { parseLocalDate } from './date-utils'
 import { TIMELINE_LIST_WIDTH } from './timeline-axis'
 import {
@@ -191,7 +191,7 @@ export function TimelineGroupHeader({
             )}
             style={{
               ...spanStyle(group.summary, { window, dayWidth }),
-              backgroundColor: withAlpha(group.color, 0.3)
+              backgroundColor: `color-mix(in srgb, ${group.color} 35%, transparent)`
             }}
           />
         )}
@@ -309,6 +309,7 @@ export interface TaskRowProps extends Geometry {
   onSelect: () => void
   onOpen: (rect: DOMRect) => void
   onBarPointerDown: (event: React.PointerEvent, edit: TimelineEdit) => void
+  onToggleComplete: () => void
   onSchedulePointerDown: (event: React.PointerEvent) => void
   dayFromPointer: (event: React.PointerEvent) => string | null
 }
@@ -340,7 +341,7 @@ function ResizeHandle({
     >
       <span
         className={cn(
-          'h-3 w-1 rounded-full bg-background shadow-[0_0_0_1px_currentColor] transition-opacity duration-100',
+          'h-3 w-1 rounded-full bg-background shadow-[0_0_0_1px_var(--chip-rail)] transition-opacity duration-100',
           visible ? 'opacity-100' : 'opacity-0 group-hover/bar:opacity-100'
         )}
       />
@@ -361,6 +362,7 @@ export function TimelineTaskRowView({
   onSelect,
   onOpen,
   onBarPointerDown,
+  onToggleComplete,
   onSchedulePointerDown,
   dayFromPointer
 }: TaskRowProps): React.JSX.Element {
@@ -371,8 +373,11 @@ export function TimelineTaskRowView({
   const bounds = shapeBounds(shape)
   const placement = bounds ? placeInWindow(bounds.first, bounds.last, window) : null
   const isDragging = preview !== null
+  const solid = isSelected || isDragging
+  const vars = taskBarVars(color)
   const geometry = { window, dayWidth }
   const trackWidth = window.dayCount * dayWidth
+  const completeLabel = t('chip.complete-task', { title: task.title })
 
   const lastDay = shape.kind === 'span' ? shape.end : shape.kind === 'due' ? shape.date : null
   const dueIsToday = !isCompleted && lastDay === today
@@ -387,8 +392,8 @@ export function TimelineTaskRowView({
 
   const title = task.title || t('timeline.untitled')
   const barTextClass = cn(
-    'truncate text-xs font-medium text-foreground',
-    isCompleted && 'text-text-secondary line-through decoration-text-tertiary'
+    'min-w-0 truncate text-xs leading-4 font-semibold',
+    isCompleted && !solid && 'text-muted-foreground line-through'
   )
 
   let visual: React.ReactNode = null
@@ -396,45 +401,46 @@ export function TimelineTaskRowView({
 
   if (shape.kind === 'span' && placement) {
     const style = spanStyle(placement, geometry)
-    const fits = titleFits(title, Number(style.width))
+    // The checkbox needs its own room, so it counts toward the fit.
+    const fits = titleFits(title, Number(style.width) - 16)
     if (!fits) outsideLabelAt = (placement.to + 1) * dayWidth + 6
     visual = (
-      <div
+      <ChipBar
         data-testid="timeline-task-bar"
         data-kind="span"
+        data-solid={solid ? 'true' : undefined}
+        vars={vars}
+        position={style}
+        placement={placement}
+        solid={solid}
+        done={isCompleted}
         onPointerDown={(event) => onBarPointerDown(event, 'move')}
-        className={cn(
-          'group/bar absolute top-[5px] flex h-[22px] cursor-grab items-center rounded-md px-2.5 active:cursor-grabbing',
-          placement.clippedStart && 'rounded-s-none',
-          placement.clippedEnd && 'rounded-e-none',
-          isCompleted && 'opacity-55'
-        )}
-        style={{
-          ...style,
-          color,
-          backgroundColor: withAlpha(color, isSelected || isDragging ? 0.24 : 0.15),
-          boxShadow: `inset 0 0 0 ${isSelected || isDragging ? 1.5 : 1}px ${withAlpha(
-            color,
-            isSelected || isDragging ? 0.9 : 0.28
-          )}`
-        }}
+        className="cursor-grab gap-1.5 ps-[11px] pe-2.5 active:cursor-grabbing"
       >
         {!placement.clippedStart && (
           <ResizeHandle
             side="start"
-            visible={isSelected || isDragging}
+            visible={solid}
             onPointerDown={(event) => onBarPointerDown(event, 'resize-start')}
+          />
+        )}
+        {fits && !isDragging && (
+          <ChipCheckbox
+            checked={isCompleted}
+            solid={solid}
+            label={completeLabel}
+            onToggle={onToggleComplete}
           />
         )}
         {fits && <span className={barTextClass}>{title}</span>}
         {!placement.clippedEnd && (
           <ResizeHandle
             side="end"
-            visible={isSelected || isDragging}
+            visible={solid}
             onPointerDown={(event) => onBarPointerDown(event, 'resize-end')}
           />
         )}
-      </div>
+      </ChipBar>
     )
   } else if (shape.kind === 'due' && placement) {
     outsideLabelAt = placement.from * dayWidth + dayWidth / 2 + 12
@@ -444,20 +450,15 @@ export function TimelineTaskRowView({
         data-kind="due"
         onPointerDown={(event) => onBarPointerDown(event, 'move')}
         className="absolute top-0 flex h-full cursor-grab items-center justify-center active:cursor-grabbing"
-        style={{ insetInlineStart: placement.from * dayWidth, width: dayWidth }}
+        style={{ ...vars, insetInlineStart: placement.from * dayWidth, width: dayWidth }}
       >
         <span
           className={cn(
             'size-2.5 rotate-45 rounded-[2px] transition-shadow',
-            isCompleted && 'opacity-55'
+            solid ? 'bg-(--chip-solid)' : 'bg-(--chip-rail)',
+            solid && 'shadow-[0_0_0_2px_var(--background),0_0_0_3.5px_var(--chip-solid)]',
+            isCompleted && !solid && 'opacity-55'
           )}
-          style={{
-            backgroundColor: color,
-            boxShadow:
-              isSelected || isDragging
-                ? `0 0 0 2px var(--color-background), 0 0 0 3.5px ${color}`
-                : undefined
-          }}
         />
       </div>
     )
@@ -466,33 +467,30 @@ export function TimelineTaskRowView({
     const fits = titleFits(title, Number(style.width))
     if (!fits) outsideLabelAt = (placement.to + 1) * dayWidth + 6
     visual = (
-      <div
+      <ChipBar
         data-testid="timeline-task-bar"
         data-kind="start"
+        vars={vars}
+        position={{
+          ...style,
+          // Fades toward the future (leftward in RTL): the end is not known.
+          backgroundImage:
+            'linear-gradient(to var(--timeline-fade-to), var(--chip-surface) 35%, transparent)'
+        }}
+        placement={placement}
+        // A fade cannot go solid and keep its title readable, so selection
+        // is an outline here instead.
+        solid={false}
+        done={isCompleted}
         onPointerDown={(event) => onBarPointerDown(event, 'move')}
         className={cn(
-          'absolute top-[5px] flex h-[22px] cursor-grab items-center overflow-hidden rounded-s-md px-2.5 active:cursor-grabbing',
-          // The fade runs toward the future, which is left in RTL.
+          'cursor-grab rounded-e-none bg-transparent! ps-[11px] pe-2.5 active:cursor-grabbing',
           '[--timeline-fade-to:right] rtl:[--timeline-fade-to:left]',
-          isCompleted && 'opacity-55'
+          solid && 'shadow-[inset_0_0_0_1.5px_var(--chip-rail)]'
         )}
-        style={{
-          ...style,
-          backgroundImage: `linear-gradient(to var(--timeline-fade-to), ${withAlpha(
-            color,
-            isSelected || isDragging ? 0.3 : 0.2
-          )}, ${withAlpha(color, 0)})`
-        }}
       >
-        {!placement.clippedStart && (
-          <span
-            aria-hidden="true"
-            className="absolute inset-y-0 start-0 w-0.5"
-            style={{ backgroundColor: color }}
-          />
-        )}
         {fits && <span className={barTextClass}>{title}</span>}
-      </div>
+      </ChipBar>
     )
   }
 
@@ -524,12 +522,11 @@ export function TimelineTaskRowView({
         <div
           aria-hidden="true"
           data-testid="timeline-schedule-ghost"
-          className="pointer-events-none absolute top-[5px] flex h-[22px] items-center justify-center rounded-md border border-dashed"
+          className="pointer-events-none absolute top-[5px] flex h-[22px] items-center justify-center rounded-[6px] border border-dashed border-(--chip-rail)/60 text-(--chip-rail)"
           style={{
+            ...vars,
             insetInlineStart: offset * dayWidth + 2,
-            width: Math.max(dayWidth - 4, 18),
-            borderColor: withAlpha(color, 0.6),
-            color
+            width: Math.max(dayWidth - 4, 18)
           }}
         >
           <Plus className="size-3" />
@@ -590,15 +587,25 @@ export function TimelineTaskRowView({
       trackWidth={trackWidth}
       listCell={
         <>
-          <span
-            className="relative flex shrink-0 justify-center"
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={isCompleted}
+            aria-label={completeLabel}
+            className="relative flex shrink-0 cursor-pointer justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-(--tint-ring)"
             style={{ width: 14, marginInlineStart: row.depth === 1 ? 58 : 42 }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onDoubleClick={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation()
+              onToggleComplete()
+            }}
           >
             <StatusIcon
               type={row.statusType}
               color={row.statusType === 'todo' ? 'var(--color-text-tertiary)' : row.statusColor}
             />
-          </span>
+          </button>
           <span
             className={cn(
               'relative min-w-0 flex-1 truncate text-[13px] text-foreground',
@@ -685,7 +692,7 @@ export function TimelineEventRowView({
   onOpen
 }: EventRowProps): React.JSX.Element {
   const { t } = useT('calendar')
-  const { item, placement, color } = row
+  const { item, placement } = row
   const isImported = item.source.provider !== null && !item.source.isMemryManaged
   const range =
     row.start === row.end
@@ -696,8 +703,9 @@ export function TimelineEventRowView({
           count: inclusiveDays(row.start, row.end)
         })
   const trackWidth = window.dayCount * dayWidth
+  const vars = eventBarVars(row)
   const style = placement ? spanStyle(placement, { window, dayWidth }) : null
-  const fits = style ? titleFits(item.title, Number(style.width) - 3) : false
+  const fits = style ? titleFits(item.title, Number(style.width) - 8) : false
 
   return (
     <RowFrame
@@ -712,9 +720,9 @@ export function TimelineEventRowView({
         <>
           <span
             className="relative flex shrink-0 justify-center"
-            style={{ width: 14, marginInlineStart: 42 }}
+            style={{ ...vars, width: 14, marginInlineStart: 42 }}
           >
-            <span className="h-3.5 w-[3px] rounded-full" style={{ backgroundColor: color }} />
+            <span className="h-3.5 w-[3px] rounded-full bg-(--chip-rail)" />
           </span>
           <span className="relative min-w-0 flex-1 truncate text-[13px] text-foreground">
             {item.title}
@@ -733,28 +741,21 @@ export function TimelineEventRowView({
         placement &&
         style && (
           <>
-            <div
+            <ChipBar
               data-testid="timeline-event-bar"
-              className={cn(
-                'absolute top-[5px] flex h-[22px] overflow-hidden rounded',
-                placement.clippedStart && 'rounded-s-none',
-                placement.clippedEnd && 'rounded-e-none'
-              )}
-              style={{
-                ...style,
-                backgroundColor: withAlpha(color, isSelected ? 0.3 : 0.18),
-                boxShadow: isSelected ? `inset 0 0 0 1.5px ${color}` : undefined
-              }}
+              data-solid={isSelected ? 'true' : undefined}
+              vars={vars}
+              position={style}
+              placement={placement}
+              solid={isSelected}
+              className="ps-[11px] pe-2"
             >
-              {!placement.clippedStart && (
-                <span className="w-[3px] shrink-0" style={{ backgroundColor: color }} />
-              )}
               {fits && (
-                <span className="truncate px-2 text-xs leading-[22px] font-medium text-foreground">
+                <span className="min-w-0 truncate text-xs leading-4 font-semibold">
                   {item.title}
                 </span>
               )}
-            </div>
+            </ChipBar>
             {!fits && (
               <span
                 className="pointer-events-none absolute top-2 text-xs whitespace-nowrap text-text-secondary"

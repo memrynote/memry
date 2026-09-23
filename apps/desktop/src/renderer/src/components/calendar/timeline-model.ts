@@ -311,7 +311,10 @@ export interface TimelineEventRow {
   start: string
   end: string
   placement: TimelinePlacement | null
+  /** Rail colour as a literal, for dots and legends. */
   color: string
+  /** The event's own colour (or its calendar's); null means the type hue. */
+  displayColor: string | null
 }
 
 export type TimelineRow = TimelineTaskRow | TimelineEventRow
@@ -476,7 +479,9 @@ export function buildEventRows(
         start,
         end,
         placement,
-        color: item.source.color ?? EVENT_TYPE_COLORS[item.visualType]
+        // Same colour a chip gets: the event's own (or its calendar's), else its type hue.
+        color: item.displayColor ?? EVENT_TYPE_COLORS[item.visualType],
+        displayColor: item.displayColor ?? null
       }
       return [row]
     })

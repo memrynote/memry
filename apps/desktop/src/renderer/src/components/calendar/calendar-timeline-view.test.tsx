@@ -395,6 +395,90 @@ describe('CalendarTimelineView', () => {
     expect(screen.getByText('timeline.empty-title')).toBeInTheDocument()
   })
 
+  it('paints bars the way calendar chips are painted, solid only while selected or open', () => {
+    const { rerender } = renderView()
+    const bar = () => within(row(/^Write draft/)).getByTestId('timeline-task-bar')
+
+    // Project colour through the chip's rail / surface shape; title stays ink.
+    expect(bar().style.getPropertyValue('--chip-rail')).toBe('#22aa66')
+    expect(bar().dataset.solid).toBeUndefined()
+
+    fireEvent.pointerDown(row(/^Write draft/), { button: 0 })
+    expect(bar().dataset.solid).toBe('true')
+
+    fireEvent.keyDown(screen.getByRole('grid'), { key: 'Escape' })
+    expect(bar().dataset.solid).toBeUndefined()
+
+    // Its card is open: the bar is the one solid shape, like the chip.
+    rerender(
+      <CalendarTimelineView
+        anchorDate="2026-03-15"
+        weekStartsOn={1}
+        settings={DEFAULT_TIMELINE_SETTINGS}
+        openItemId="Write draft"
+      />
+    )
+    expect(bar().dataset.solid).toBe('true')
+  })
+
+  it('completes a task from its checkbox, on the bar and in the list', () => {
+    renderView()
+    const [listCheckbox, barCheckbox] = within(row(/^Write draft/)).getAllByRole('checkbox')
+
+    fireEvent.click(barCheckbox)
+    expect(updateTask).toHaveBeenLastCalledWith(
+      'Write draft',
+      expect.objectContaining({ statusId: 'launch-done', completedAt: expect.any(Date) })
+    )
+    expect(row(/^Write draft/)).toHaveAttribute('aria-selected', 'false')
+
+    updateTask.mockClear()
+    fireEvent.click(listCheckbox)
+    expect(updateTask).toHaveBeenCalledWith(
+      'Write draft',
+      expect.objectContaining({ completedAt: expect.any(Date) })
+    )
+  })
+
+  it('colours an event with its own colour, else its type hue', () => {
+    const base = {
+      sourceType: 'event' as const,
+      descriptionPreview: null,
+      isAllDay: true,
+      timezone: 'UTC',
+      visualType: 'event' as const,
+      editability: { canMove: true, canResize: true, canEditText: true, canDelete: true },
+      source: {
+        provider: null,
+        calendarSourceId: null,
+        title: null,
+        color: null,
+        kind: null,
+        isMemryManaged: true
+      },
+      binding: null,
+      snoozeOffsetMinutes: null,
+      startAt: d('2026-03-09').toISOString(),
+      endAt: d('2026-03-12').toISOString()
+    }
+    renderView({
+      items: [
+        {
+          ...base,
+          projectionId: 'event:a',
+          sourceId: 'a',
+          title: 'Tomato offsite',
+          displayColor: '#d50000'
+        },
+        { ...base, projectionId: 'event:b', sourceId: 'b', title: 'Plain offsite' }
+      ]
+    })
+    const tomato = within(row(/^Tomato offsite/)).getByTestId('timeline-event-bar')
+    const plain = within(row(/^Plain offsite/)).getByTestId('timeline-event-bar')
+    expect(tomato.style.getPropertyValue('--chip-rail')).toBe('#d50000')
+    expect(plain.style.getPropertyValue('--chip-rail')).toBe('var(--cal-indigo-rail)')
+  })
+
   it('shows what is selected in the action bar', () => {
     renderView()
     const bar = screen.getByTestId('timeline-action-bar')
