@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Hesaptan sil",
       "deleteVaultFailed": "Kasa silinemedi",
       "deleteVaultTitle": "“{name}” hesabınızdan silinsin mi?",
-      "removeVaultTitle": "“{name}” listeden kaldırılsın mı?"
+      "removeVaultTitle": "“{name}” listeden kaldırılsın mı?",
+      "missing": "Klasör bulunamadı"
     },
     "componentsWindowControls": {
       "searchK": "Ara (⌘K)",

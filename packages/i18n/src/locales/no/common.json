@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Slett fra kontoen",
       "deleteVaultFailed": "Kunne ikke slette hvelvet",
       "deleteVaultTitle": "Slette «{name}» fra kontoen din?",
-      "removeVaultTitle": "Fjerne «{name}» fra listen?"
+      "removeVaultTitle": "Fjerne «{name}» fra listen?",
+      "missing": "Finner ikke mappen"
     },
     "componentsWindowControls": {
       "searchK": "Søk (⌘K)",

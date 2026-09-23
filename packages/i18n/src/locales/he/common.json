@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "מחק מהחשבון",
       "deleteVaultFailed": "לא ניתן היה למחוק את הכספת",
       "deleteVaultTitle": "למחוק את “{name}” מהחשבון שלך?",
-      "removeVaultTitle": "להסיר את “{name}” מהרשימה?"
+      "removeVaultTitle": "להסיר את “{name}” מהרשימה?",
+      "missing": "התיקייה לא נמצאה"
     },
     "componentsWindowControls": {
       "searchK": "חפש (⌘K)",

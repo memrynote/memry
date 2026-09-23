@@ -92,6 +92,7 @@ export interface VaultInfo {
   lastOpened: string
   isDefault: boolean
   vaultUuid?: string
+  isMissing?: boolean
 }
 
 export type NoteFrontmatter = NotesRpc.Note['frontmatter']

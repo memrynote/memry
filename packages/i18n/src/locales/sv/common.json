@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Ta bort från kontot",
       "deleteVaultFailed": "Det gick inte att ta bort valvet",
       "deleteVaultTitle": "Ta bort “{name}” från ditt konto?",
-      "removeVaultTitle": "Ta bort “{name}” från listan?"
+      "removeVaultTitle": "Ta bort “{name}” från listan?",
+      "missing": "Mappen hittades inte"
     },
     "componentsWindowControls": {
       "searchK": "Sök (⌘K)",

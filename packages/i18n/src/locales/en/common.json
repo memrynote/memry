@@ -754,7 +754,8 @@
       "deleteVaultTitle": "Delete “{name}” from your account?",
       "deleteVaultBody": "This permanently removes all synced data for this vault from Memry's servers and cannot be undone. Your files on disk are not deleted.",
       "deleteVaultConfirm": "Delete from account",
-      "deleteVaultFailed": "Could not delete vault"
+      "deleteVaultFailed": "Could not delete vault",
+      "missing": "Folder not found"
     },
     "componentsWindowControls": {
       "searchK": "Search (⌘K)",

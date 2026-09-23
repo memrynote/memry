@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Usuń z konta",
       "deleteVaultFailed": "Nie udało się usunąć skarbca",
       "deleteVaultTitle": "Usunąć „{name}” z Twojego konta?",
-      "removeVaultTitle": "Usunąć „{name}” z listy?"
+      "removeVaultTitle": "Usunąć „{name}” z listy?",
+      "missing": "Nie znaleziono folderu"
     },
     "componentsWindowControls": {
       "searchK": "Szukaj (⌘K)",

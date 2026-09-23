@@ -376,7 +376,8 @@
       "deleteVaultConfirm": "Izbriši s računa",
       "deleteVaultFailed": "Nije moguće izbrisati trezor",
       "deleteVaultTitle": "Izbrisati „{name}” s vašeg računa?",
-      "removeVaultTitle": "Ukloniti „{name}” s popisa?"
+      "removeVaultTitle": "Ukloniti „{name}” s popisa?",
+      "missing": "Mapa nije pronađena"
     },
     "componentsWindowControls": {
       "searchK": "Pretraživanje (⌘K)",

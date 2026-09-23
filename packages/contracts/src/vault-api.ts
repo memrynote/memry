@@ -24,6 +24,12 @@ export interface VaultInfo {
   isDefault: boolean
   /** Server vault uuid; stamped when the vault is opened while sync is set up */
   vaultUuid?: string
+  /**
+   * The folder is not reachable on this machine right now: deleted, or on a
+   * drive or share that is not mounted. Set by `vault:get-all` only; the entry
+   * stays registered until the user forgets it.
+   */
+  isMissing?: boolean
 }
 
 export interface AccountVaultInfo {
