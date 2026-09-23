@@ -27,6 +27,11 @@ vi.mock('@/hooks/use-account-vaults', () => ({
   useAccountVaults: () => ({ accountVaults: mocks.accountVaults, refresh: mocks.refresh })
 }))
 
+// The activity log has its own tests; it needs a query client this suite does not build.
+vi.mock('@/components/settings/vault-activity', () => ({
+  VaultActivitySettings: () => null
+}))
+
 import { VaultSettings } from './vault-section'
 
 describe('VaultSettings account vaults', () => {

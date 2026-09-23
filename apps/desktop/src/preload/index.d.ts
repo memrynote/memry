@@ -916,6 +916,11 @@ import type {
 } from '@memry/contracts/search-api'
 
 import type { RecentlyOpenedItem, RecordRecentlyOpenedInput } from '@memry/contracts/recents-api'
+import type {
+  ListVaultActivityInput,
+  ListVaultActivityResult,
+  VaultActivityRetentionDays
+} from '@memry/contracts/vault-activity-api'
 
 export interface SearchClientAPI {
   query(params: {
@@ -947,6 +952,16 @@ export interface SearchClientAPI {
 export interface RecentsClientAPI {
   record(input: RecordRecentlyOpenedInput): Promise<{ recorded: boolean }>
   list(limit?: number): Promise<RecentlyOpenedItem[]>
+}
+
+// Vault activity API (device-local log of files added, removed, skipped, failed)
+export interface VaultActivityClientAPI {
+  list(input?: ListVaultActivityInput): Promise<ListVaultActivityResult>
+  clear(): Promise<{ cleared: true }>
+  setRetention(
+    days: VaultActivityRetentionDays
+  ): Promise<{ retentionDays: VaultActivityRetentionDays }>
+  reveal(): Promise<{ revealed: boolean }>
 }
 
 // Graph API
@@ -1835,6 +1850,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   tags: TagsClientAPI
   reminders: RemindersClientAPI
   recents: RecentsClientAPI
+  vaultActivity: VaultActivityClientAPI
   search: SearchClientAPI
   graph: GraphClientAPI
   quickCapture: QuickCaptureClientAPI
@@ -1896,6 +1912,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
   onVaultError: (callback: (error: string) => void) => () => void
   onVaultIndexRecovered: (callback: (event: IndexRecoveredEvent) => void) => () => void
+  onVaultActivityChanged: (callback: () => void) => () => void
   // Saved Filters event subscriptions
   onSavedFilterCreated: (callback: (event: SavedFilterCreatedEvent) => void) => () => void
   onSavedFilterUpdated: (callback: (event: SavedFilterUpdatedEvent) => void) => () => void

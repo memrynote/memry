@@ -54,6 +54,7 @@ import { HintModeProvider } from '@/contexts/hint-mode'
 import { HintOverlay, HintIndicator } from '@/components/hint-overlay'
 import { CommandPalette } from '@/components/search/command-palette'
 import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-modal-context'
+import { onOpenSettingsRequested } from '@/lib/settings-navigation'
 import { SettingsModal } from '@/components/settings-modal'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { useCalendarChangeEvents } from '@/hooks/use-calendar-change-events'
@@ -342,6 +343,8 @@ const AppContent = (): React.JSX.Element => {
       openSettings(section)
     })
   }, [openSettings])
+
+  useEffect(() => onOpenSettingsRequested(openSettings), [openSettings])
 
   useEffect(() => {
     return window.api.onInboxOpenItem((itemId) => {

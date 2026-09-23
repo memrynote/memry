@@ -1263,7 +1263,8 @@
       "storageUsage": "Storage Usage",
       "location": "Location",
       "accountVaults": "Vaults in your account",
-      "largeNotes": "Notes near the sync limit"
+      "largeNotes": "Notes near the sync limit",
+      "activity": "Activity"
     },
     "loadingStorage": "Loading storage info...",
     "signInStorage": "Sign in to view storage usage",
@@ -1306,6 +1307,62 @@
       "description": "Notes larger than {limit} stop syncing. Split these into smaller notes to keep them in sync.",
       "over": "Not syncing",
       "approaching": "Approaching the limit"
+    },
+    "activity": {
+      "description": "Files added to or removed from the vault outside Memry, imports, and anything skipped or failed. Kept on this device only.",
+      "retention": {
+        "label": "Vault activity",
+        "days": "{count, plural, one {Keep # day} other {Keep # days}}"
+      },
+      "filter": {
+        "all": "All",
+        "problems": "Skipped and failed"
+      },
+      "reveal": "Show log file",
+      "clear": "Clear",
+      "clearTitle": "Clear vault activity?",
+      "clearBody": "This removes every entry from this device's activity log. Your files are not touched.",
+      "clearConfirm": "Clear activity",
+      "empty": "Nothing recorded yet. Files you add to the vault folder, imports, and anything Memry skips will appear here.",
+      "emptyProblems": "Nothing was skipped and nothing failed.",
+      "unavailable": "Open a vault to see its activity.",
+      "loadFailed": "Could not load vault activity",
+      "actionFailed": "Could not update vault activity",
+      "showItems": "{count, plural, one {Show # item} other {Show # items}}",
+      "toastAction": "Details",
+      "entry": {
+        "added": "Added {path}",
+        "removed": "Removed {path}",
+        "renamed": "Renamed {oldPath} to {path}",
+        "skipped": "Skipped {path}",
+        "skippedUnsupported": "Memry does not open {ext} files, so the file was left as is.",
+        "readFailed": "Could not read {path}",
+        "indexFailed": "Could not add {path}",
+        "copyFailed": "Could not copy {path} into the vault",
+        "uploadFailed": "Could not upload {path}",
+        "uploadFailedHint": "It stays on this device until an upload succeeds.",
+        "downloadFailed": "Could not download {path}",
+        "fileTooLarge": "{path} is too large to sync",
+        "noteTooLarge": "“{title}” is too large to sync",
+        "noteTooLargeUnnamed": "A note is too large to sync",
+        "importFailed": "{importer} import failed",
+        "failedGeneric": "Something went wrong with {path}",
+        "failedGenericUnnamed": "Something went wrong",
+        "scan": "Found changes made while Memry was closed",
+        "indexRebuilt": "Search index built",
+        "import": "{importer} import",
+        "importCanceled": "{importer} import, canceled",
+        "unknown": "Unrecognized activity"
+      },
+      "counts": {
+        "added": "{count, plural, one {# new file} other {# new files}}",
+        "indexed": "{count, plural, one {# file indexed} other {# files indexed}}",
+        "imported": "{count, plural, one {# imported} other {# imported}}",
+        "attachments": "{count, plural, one {# attachment} other {# attachments}}",
+        "skipped": "{count, plural, one {# skipped} other {# skipped}}",
+        "unsupported": "{count, plural, one {# unsupported file skipped} other {# unsupported files skipped}}",
+        "failed": "{count, plural, one {# failed} other {# failed}}"
+      }
     }
   },
   "tags": {

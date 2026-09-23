@@ -242,6 +242,7 @@ beforeEach(async () => {
 })
 
 import { useAuth } from './auth-context'
+import { onOpenSettingsRequested } from '@/lib/settings-navigation'
 import {
   SyncProvider,
   useSync,
@@ -480,8 +481,30 @@ describe('SyncProvider', () => {
 
       expect(toastMock.error).toHaveBeenCalledWith(
         'A note is too large to sync. Splitting it into smaller notes will fix this.',
-        { duration: 10000 }
+        expect.objectContaining({ duration: 10000 })
       )
+    })
+
+    it('#then offers the vault activity log from the too-large toast', async () => {
+      // The toast is gone in ten seconds; the activity log keeps the failure.
+      renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(syncStatusListeners.length).toBeGreaterThan(0))
+
+      act(() => {
+        for (const cb of syncStatusListeners) {
+          cb({ status: 'error', pendingCount: 0, errorCategory: 'note_too_large' })
+        }
+      })
+
+      const options = toastMock.error.mock.calls.at(-1)?.[1] as {
+        action: { label: string; onClick: () => void }
+      }
+      expect(options.action.label).toBe('Details')
+      const opened = vi.fn()
+      const unsubscribe = onOpenSettingsRequested(opened)
+      options.action.onClick()
+      unsubscribe()
+      expect(opened).toHaveBeenCalledWith('vault:activity')
     })
 
     it('#then names the note when the main process reports which one is too large', async () => {
@@ -502,7 +525,7 @@ describe('SyncProvider', () => {
 
       expect(toastMock.error).toHaveBeenCalledWith(
         '"Server log dump" is too large to sync. Splitting it into smaller notes will fix this.',
-        { duration: 10000 }
+        expect.objectContaining({ duration: 10000 })
       )
     })
 

@@ -82,6 +82,10 @@ vi.mock('../lib/logger', () => ({
   createLogger: () => loggerMock
 }))
 
+vi.mock('../lib/window-broadcast', () => ({
+  broadcastToAllWindows: vi.fn()
+}))
+
 // ============================================================================
 // Test Suite
 // ============================================================================
@@ -154,6 +158,56 @@ describe('indexer', () => {
       expect(result.indexed).toBe(3)
       expect(result.skipped).toBe(0)
       expect(result.errors).toBe(0)
+    })
+
+    it('records a first build as one summary, then later new files one by one', async () => {
+      const activityLog = await import('./activity-log')
+      activityLog.openActivityLog(tempVault.path)
+      try {
+        createTestNote(tempVault, { title: 'Note 1', content: 'Content 1' })
+        fs.writeFileSync(path.join(tempVault.notesDir, 'report.docx'), 'binary')
+        await indexer.indexVault(tempVault.path, { activity: 'scan' })
+
+        createTestNote(tempVault, { title: 'Note 2', content: 'Content 2' })
+        await indexer.indexVault(tempVault.path, { activity: 'scan' })
+
+        expect(activityLog.listActivity()).toEqual([
+          expect.objectContaining({ kind: 'added', path: 'notes/Note-2.md' }),
+          expect.objectContaining({ kind: 'scan', reason: 'index-rebuilt', counts: { added: 1 } }),
+          expect.objectContaining({ kind: 'skipped', path: 'notes/report.docx' })
+        ])
+      } finally {
+        await activityLog.closeActivityLog()
+      }
+    })
+
+    it('records files that could not be read or indexed as failures', async () => {
+      const activityLog = await import('./activity-log')
+      activityLog.openActivityLog(tempVault.path)
+      try {
+        createTestNote(tempVault, { title: 'Known', content: 'Content' })
+        await indexer.indexVault(tempVault.path, { activity: 'scan' })
+
+        const lockedPath = createTestNote(tempVault, { title: 'Locked', content: 'Secret' })
+        unreadablePaths.set(lockedPath, 'EACCES')
+        fs.writeFileSync(path.join(tempVault.notesDir, 'scan.pdf'), '%PDF-1.4')
+        await indexer.indexVault(tempVault.path, { activity: 'scan' })
+
+        const entries = activityLog.listActivity()
+        expect(entries).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              kind: 'failed',
+              path: 'notes/Locked.md',
+              reason: 'read-failed',
+              message: 'EACCES'
+            }),
+            expect.objectContaining({ kind: 'added', path: 'notes/scan.pdf' })
+          ])
+        )
+      } finally {
+        await activityLog.closeActivityLog()
+      }
     })
 
     it('T374: indexes files in journal/ folder', async () => {

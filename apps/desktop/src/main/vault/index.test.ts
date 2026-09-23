@@ -399,7 +399,8 @@ describe('vault lifecycle', () => {
     expect(mocks.promoteSpatialCanvas).toHaveBeenCalledWith({ kind: 'data-db' })
     expect(mocks.reloadPropertyDefinitions).toHaveBeenCalled()
     expect(mocks.indexVault).toHaveBeenCalledWith('/vault/work', {
-      shouldStop: expect.any(Function)
+      shouldStop: expect.any(Function),
+      activity: 'scan'
     })
     expect(mocks.startWatcher).toHaveBeenCalledWith('/vault/work')
     expect(mocks.startSyncRuntime).toHaveBeenCalled()
@@ -518,7 +519,8 @@ describe('vault lifecycle', () => {
     await vi.waitFor(() =>
       expect(mocks.indexVault).toHaveBeenCalledWith('/vault/work', {
         shouldStop: expect.any(Function),
-        forcePaths: ['notes/Mobile.md', 'notes/Other.md']
+        forcePaths: ['notes/Mobile.md', 'notes/Other.md'],
+        activity: 'scan'
       })
     )
   })
@@ -576,7 +578,8 @@ describe('vault lifecycle', () => {
     expect(mocks.resetIndexDatabase).toHaveBeenCalledWith('/vault/rebuild/index.db')
     expect(mocks.rebuildIndex).not.toHaveBeenCalled()
     expect(mocks.indexVault).toHaveBeenCalledWith('/vault/rebuild', {
-      shouldStop: expect.any(Function)
+      shouldStop: expect.any(Function),
+      activity: 'rebuild'
     })
     await vi.waitFor(() =>
       expect(mocks.sent).toContainEqual({
@@ -747,7 +750,7 @@ describe('vault lifecycle', () => {
     // Order: the background walk settled before the manual walk began, and the
     // manual walk is an unconditional full pass (no cancellation plumbing).
     expect(events).toEqual(['open-walk-settled', 'reindex-walk-started'])
-    expect(mocks.indexVault).toHaveBeenLastCalledWith('/vault/reindex-race')
+    expect(mocks.indexVault).toHaveBeenLastCalledWith('/vault/reindex-race', { activity: 'scan' })
     expect(getStatus()).toEqual(expect.objectContaining({ isIndexing: false, indexProgress: 100 }))
   })
 
@@ -869,7 +872,7 @@ describe('vault lifecycle', () => {
     expect(mocks.startWatcher).toHaveBeenCalledWith('/vault/config', ['node_modules'])
 
     await reindex()
-    expect(mocks.indexVault).toHaveBeenCalledWith('/vault/config')
+    expect(mocks.indexVault).toHaveBeenCalledWith('/vault/config', { activity: 'scan' })
     expect(getStatus().indexProgress).toBe(100)
   })
 

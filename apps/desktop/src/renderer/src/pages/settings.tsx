@@ -186,7 +186,9 @@ export function SettingsPage() {
             {activeSection === 'tasks' && <TasksSettings />}
             {activeSection === 'inbox' && <InboxSettings />}
             {activeSection === 'calendar' && <CalendarSettingsSection />}
-            {activeSection === 'vault' && <VaultSettings />}
+            {activeSection === 'vault' && (
+              <VaultSettings focusTarget={focusTarget} focusRequestId={focusRequestId} />
+            )}
             {activeSection === 'appearance' && <AppearanceSettings />}
             {isAssistantSection && (
               <AISettings

@@ -57,6 +57,43 @@ A name collision never overwrites: a second `report.pdf` becomes `report (1).pdf
 
 Unsupported file types are skipped rather than failing the whole drop; the supported extensions are listed in the sidebar while you drag. To attach a file **inside** a note instead of adding it to the vault, drop it onto the editor — see [Attachments](./notes/attachments.md).
 
+## Adding Files to the Vault Folder
+
+Your vault is an ordinary folder, so you can also copy files into it with Finder, Explorer, git, or a sync tool. Memry picks up changes while it is running, and on the next launch it catches up on anything that changed while it was closed.
+
+**What Memry reads:**
+
+| Type     | Extensions                                       |
+| -------- | ------------------------------------------------ |
+| Notes    | `.md`                                            |
+| PDF      | `.pdf`                                           |
+| Images   | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg` |
+| Audio    | `.mp3`, `.wav`, `.ogg`, `.m4a`, `.flac`, `.aac`  |
+| Video    | `.mp4`, `.webm`, `.mov`, `.avi`, `.mkv`          |
+| Canvases | `.excalidraw` (in the canvases folder)           |
+
+**What Memry leaves alone:**
+
+- Any other file type (`.docx`, `.xlsx`, `.epub`, …). The file stays in the folder untouched, but it does not appear in the sidebar or in search. Each one is listed once in [Vault Activity](#vault-activity) as skipped.
+- Hidden files and folders, whose names start with a dot.
+- The `attachments` folder, which holds files embedded in notes.
+- Folders named in the vault's exclude list (`.git`, `node_modules`, `.trash`, `.obsidian` by default).
+
+**Do not edit `.memry/`.** That hidden folder holds the vault's databases, settings, and activity log. Everything else in the vault folder is yours to add, move, rename, and delete.
+
+## Vault Activity
+
+The messages that appear while Memry picks up files are gone after a few seconds. **Settings → Vault → Activity** keeps a record you can read afterwards:
+
+- **Added / Removed / Renamed** — a file that appeared in, disappeared from, or was renamed in the vault folder outside Memry.
+- **Skipped** — a file Memry does not read, named with its extension.
+- **Failed** — a file that could not be read or added, a sidebar drop that could not be copied, or a file or note that could not sync.
+- **Import** — one line per import run with its counts. Expand it to see which items failed or were skipped, and why.
+- **Found changes made while Memry was closed** — a summary when the launch-time catch-up found many new files at once.
+- **Search index built** — Memry read the whole vault from scratch: the first time a folder is opened, or after the index had to be rebuilt.
+
+The record stays on this device and is never synced. It is also written to `.memry/activity.jsonl`, one JSON entry per line; **Show log file** opens its folder. Entries are kept for 30 days by default (7 and 90 are available), and **Clear** empties the log. Error messages about sync offer a **Details** button that opens this list.
+
 ## Importing from Notion
 
 memrynote imports a Notion **HTML** export (not the Markdown or CSV export).

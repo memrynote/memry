@@ -426,6 +426,17 @@ If the vault open on this device is **not** one of them, the section says so at 
 
 The vault path on disk. **Reveal** opens it in Finder / Explorer.
 
+### Activity
+
+A record of what happened to files that entered or left the vault without going through the editor: files you put in or removed from the vault folder, what each import brought in, and anything Memry skipped or could not handle. See [Vault Activity](./import.md#vault-activity) for what is recorded.
+
+- **Keep for** — 7, 30 (default), or 90 days. Older entries are dropped.
+- **All / Skipped and failed** — switch between every entry and only the ones that need a look.
+- **Show log file** — reveals `.memry/activity.jsonl`, the same entries as plain JSON lines.
+- **Clear** — removes every entry after a confirmation. Your files are not touched.
+
+The log is kept on this device only and is never synced.
+
 ---
 
 ## Tags

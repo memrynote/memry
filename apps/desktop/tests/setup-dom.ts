@@ -418,6 +418,14 @@ const createMockApi = () => ({
     reorder: vi.fn().mockResolvedValue({ success: true })
   },
 
+  // Vault activity API
+  vaultActivity: {
+    list: vi.fn().mockResolvedValue({ entries: [], retentionDays: 30, available: true }),
+    clear: vi.fn().mockResolvedValue({ cleared: true }),
+    setRetention: vi.fn().mockResolvedValue({ retentionDays: 30 }),
+    reveal: vi.fn().mockResolvedValue({ revealed: true })
+  },
+
   // Agent Chat API
   agent: {
     listConversations: vi.fn().mockResolvedValue([]),
@@ -537,6 +545,7 @@ const createMockApi = () => ({
   onVaultIndexProgress: vi.fn().mockReturnValue(() => {}),
   onVaultError: vi.fn().mockReturnValue(() => {}),
   onVaultIndexRecovered: vi.fn().mockReturnValue(() => {}),
+  onVaultActivityChanged: vi.fn().mockReturnValue(() => {}),
   onNoteCreated: vi.fn().mockReturnValue(() => {}),
   onNoteUpdated: vi.fn().mockReturnValue(() => {}),
   onNoteDeleted: vi.fn().mockReturnValue(() => {}),

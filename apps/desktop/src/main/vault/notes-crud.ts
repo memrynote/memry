@@ -36,6 +36,7 @@ import {
   generateUniquePath
 } from './file-ops'
 import { moveDirectory } from './move-directory'
+import { recordDropCopyFailure } from './activity-log'
 import {
   getNoteCacheById,
   getNoteCacheByPath,
@@ -1008,6 +1009,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
       const message = error instanceof Error ? error.message : 'Unknown error'
       errors.push(`Failed to import ${path.basename(sourcePath)}: ${message}`)
       logger.warn('Failed to import file', { sourcePath, error })
+      recordDropCopyFailure(path.basename(sourcePath), message)
     }
   }
 
