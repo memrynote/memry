@@ -317,6 +317,13 @@ struct NoteReadView: View {
             ReviewMarkStyle.unambiguous(model.comments, in: model.exportText)
         )
         .calmAnimation(.normal, value: model.phase)
+        // This screen carries its own bottom toolbar (link and date menus,
+        // undo/redo). Left showing, the platform tab bar renders underneath
+        // it as a second glass surface, and the two composite into a
+        // ghosted overlap of icons behind the tab bar's own. A pushed note
+        // hides the tab bar, as a detail screen does everywhere else on
+        // this OS, so exactly one bottom bar is on screen at a time.
+        .toolbar(.hidden, for: .tabBar)
         .modifier(
             NoteReadToolbar(
                 model: model,
