@@ -8,7 +8,7 @@
  *      Roam markup,
  *   3. resolve block references against the uid index (safe wikilink fallback).
  *
- * This orchestrator only does IO: read the JSON files, then `createNote` per
+ * This orchestrator only does IO: read the JSON files, then `createImportedNote` per
  * page under the `Roam/` root, honoring cancellation and reporting progress.
  *
  * Firebase asset download (`firebasestorage.googleapis.com` image URLs in block
@@ -17,7 +17,7 @@
  */
 
 import fs from 'fs/promises'
-import { createNote } from '../../vault/notes-crud'
+import { createImportedNote } from '../_shared/imported-note'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { indexBlocks, mapPages } from '@memry/importers/roam'
@@ -98,7 +98,7 @@ export const roamImporter: Importer = {
 async function writeNote(note: NotePlan, ctx: ImportContext): Promise<void> {
   try {
     ctx.status(importingItemStatus(note.title))
-    await createNote({
+    await createImportedNote({
       title: note.title,
       content: note.body,
       folder: note.folder,

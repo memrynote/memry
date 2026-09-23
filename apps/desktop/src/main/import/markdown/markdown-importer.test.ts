@@ -243,6 +243,193 @@ describe('markdownImporter (integration)', () => {
     }
   )
 
+  describe('checklist → tasks', () => {
+    const CHECKLIST = [
+      '# Trip',
+      '',
+      '- [ ] Pack bags',
+      '  - [ ] Passport',
+      '  - [x] Charger',
+      '- [x] Book hotel',
+      '- [ ] Already imported {task:existing1}',
+      '',
+      '```md',
+      '- [ ] Documented example',
+      '```',
+      ''
+    ].join('\n')
+
+    const insertProject = (id: string, name: string, isInbox: number, position: number): void => {
+      dataDb.sqlite
+        .prepare('INSERT INTO projects (id, name, color, position, is_inbox) VALUES (?, ?, ?, ?, ?)')
+        .run(id, name, '#6366f1', position, isInbox)
+    }
+
+    const writeChecklistSource = (): string => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'markdown-import-checklist-'))
+      fs.writeFileSync(path.join(root, 'trip.md'), CHECKLIST)
+      return root
+    }
+
+    interface TaskRow {
+      id: string
+      title: string
+      project_id: string
+      parent_id: string | null
+      completed_at: string | null
+    }
+
+    const listTaskRows = (): TaskRow[] =>
+      dataDb.sqlite
+        .prepare('SELECT id, title, project_id, parent_id, completed_at FROM tasks')
+        .all() as TaskRow[]
+
+    it('creates real tasks, nests one level, completes ticked lines, and rewrites the file', async () => {
+      insertProject('inbox', 'Inbox', 1, 0)
+      const root = writeChecklistSource()
+      try {
+        const ctx = importContext.createImportContext('it-checklist', new AbortController().signal)
+        const summary = await importer.markdownImporter.run({ sourcePaths: [root] }, ctx)
+        expect(summary.failed).toEqual([])
+
+        const rows = listTaskRows()
+        expect(rows.map((row) => row.title).sort()).toEqual([
+          'Book hotel',
+          'Charger',
+          'Pack bags',
+          'Passport'
+        ])
+
+        const byTitle = new Map(rows.map((row) => [row.title, row]))
+        const packBags = byTitle.get('Pack bags')!
+        // 1-level subtask depth, exactly as the editor resolves it.
+        expect(byTitle.get('Passport')!.parent_id).toBe(packBags.id)
+        expect(byTitle.get('Charger')!.parent_id).toBe(packBags.id)
+        expect(byTitle.get('Book hotel')!.parent_id).toBeNull()
+
+        // `- [x]` imports as a completed task; `- [ ]` stays open.
+        expect(packBags.completed_at).toBeNull()
+        expect(byTitle.get('Passport')!.completed_at).toBeNull()
+        expect(byTitle.get('Charger')!.completed_at).not.toBeNull()
+        expect(byTitle.get('Book hotel')!.completed_at).not.toBeNull()
+
+        const note = indexDb.sqlite
+          .prepare('SELECT id, path FROM note_cache WHERE path LIKE ?')
+          .get('%trip.md') as { id: string; path: string } | undefined
+        expect(note).toBeDefined()
+
+        // Every task links to the note's REAL persisted id.
+        const linkedNoteIds = dataDb.sqlite
+          .prepare('SELECT DISTINCT note_id FROM task_notes')
+          .all() as { note_id: string }[]
+        expect(linkedNoteIds).toEqual([{ note_id: note!.id }])
+        expect(
+          (dataDb.sqlite.prepare('SELECT count(*) AS n FROM task_notes').get() as { n: number }).n
+        ).toBe(4)
+
+        const content = fs.readFileSync(path.join(tempVault.path, note!.path), 'utf8')
+        expect(content).toContain(`- [ ] Pack bags {task:${packBags.id}}`)
+        // Original indentation survives: the import must not restructure the note.
+        expect(content).toContain(`  - [ ] Passport {task:${byTitle.get('Passport')!.id}}`)
+        expect(content).toContain(`  - [x] Charger {task:${byTitle.get('Charger')!.id}}`)
+        expect(content).toContain(`- [x] Book hotel {task:${byTitle.get('Book hotel')!.id}}`)
+        // A line that already carries a suffix is never converted twice, and a
+        // checkbox inside a fence is documentation.
+        expect(content).toContain('- [ ] Already imported {task:existing1}')
+        expect(content).toContain('- [ ] Documented example\n```')
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true })
+      }
+    })
+
+    it('files the tasks into the configured default project over the inbox', async () => {
+      insertProject('inbox', 'Inbox', 1, 0)
+      insertProject('work', 'Work', 0, 1)
+      dataDb.sqlite
+        .prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+        .run('tasks', JSON.stringify({ defaultProjectId: 'work' }))
+
+      const root = writeChecklistSource()
+      try {
+        const ctx = importContext.createImportContext('it-default', new AbortController().signal)
+        await importer.markdownImporter.run({ sourcePaths: [root] }, ctx)
+
+        const projectIds = new Set(listTaskRows().map((row) => row.project_id))
+        expect([...projectIds]).toEqual(['work'])
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true })
+      }
+    })
+
+    it('converts a CRLF checklist and keeps the line endings', async () => {
+      insertProject('inbox', 'Inbox', 1, 0)
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'markdown-import-crlf-'))
+      fs.writeFileSync(path.join(root, 'trip.md'), CHECKLIST.replace(/\n/g, '\r\n'))
+      try {
+        const ctx = importContext.createImportContext('it-crlf', new AbortController().signal)
+        const summary = await importer.markdownImporter.run({ sourcePaths: [root] }, ctx)
+        expect(summary.failed).toEqual([])
+
+        const rows = listTaskRows()
+        expect(rows.map((row) => row.title).sort()).toEqual([
+          'Book hotel',
+          'Charger',
+          'Pack bags',
+          'Passport'
+        ])
+
+        const note = indexDb.sqlite
+          .prepare('SELECT path FROM note_cache WHERE path LIKE ?')
+          .get('%trip.md') as { path: string } | undefined
+        const content = fs.readFileSync(path.join(tempVault.path, note!.path), 'utf8')
+        const packBags = rows.find((row) => row.title === 'Pack bags')!
+        // The suffix lands before the `\r`, not after it.
+        expect(content).toContain(`- [ ] Pack bags {task:${packBags.id}}\r\n`)
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true })
+      }
+    })
+
+    it('rolls the tasks back when the note write fails', async () => {
+      insertProject('inbox', 'Inbox', 1, 0)
+      const notesCrud = await import('../../vault/notes-crud')
+      vi.spyOn(notesCrud, 'createNote').mockRejectedValue(new Error('disk full'))
+
+      const root = writeChecklistSource()
+      try {
+        const ctx = importContext.createImportContext('it-rollback', new AbortController().signal)
+        const summary = await importer.markdownImporter.run({ sourcePaths: [root] }, ctx)
+
+        expect(summary.failed).toHaveLength(1)
+        // No note was written, so its tasks must not outlive the attempt.
+        expect(listTaskRows()).toEqual([])
+        expect(dataDb.sqlite.prepare('SELECT count(*) AS n FROM task_notes').get()).toEqual({ n: 0 })
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true })
+      }
+    })
+
+    it('leaves the checkboxes as markdown when there is no project to file into', async () => {
+      const root = writeChecklistSource()
+      try {
+        const ctx = importContext.createImportContext('it-noproject', new AbortController().signal)
+        const summary = await importer.markdownImporter.run({ sourcePaths: [root] }, ctx)
+
+        expect(summary.failed).toEqual([])
+        expect(listTaskRows()).toEqual([])
+
+        const note = indexDb.sqlite
+          .prepare('SELECT path FROM note_cache WHERE path LIKE ?')
+          .get('%trip.md') as { path: string } | undefined
+        expect(fs.readFileSync(path.join(tempVault.path, note!.path), 'utf8')).toContain(
+          '- [ ] Pack bags\n'
+        )
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true })
+      }
+    })
+  })
+
   it('stops early when cancelled', async () => {
     const ac = new AbortController()
     ac.abort()

@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises'
 import * as path from 'path'
 import { JSDOM } from 'jsdom'
-import { createNote } from '../../vault/notes-crud'
+import { createImportedNote } from '../_shared/imported-note'
 import { createLogger } from '../../lib/logger'
 import { htmlToMarkdown } from '../_shared/html-to-markdown'
 import { parseJournalDate, mapEntry } from '@memry/importers/apple-journal'
@@ -96,7 +96,7 @@ export const appleJournalImporter: Importer = {
           filenameStem
         })
 
-        await createNote({
+        await createImportedNote({
           title: plan.title,
           content: plan.content,
           folder: plan.folder,

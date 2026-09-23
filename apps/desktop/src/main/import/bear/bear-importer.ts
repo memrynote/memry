@@ -1,4 +1,4 @@
-import { createNote } from '../../vault/notes-crud'
+import { createImportedNote } from '../_shared/imported-note'
 import { saveAttachment } from '../../vault/attachments'
 import { attachmentMarkdown, encodeAttachmentUrl } from '../_shared/attachment-markdown'
 import { generateNoteId } from '../../lib/id'
@@ -211,7 +211,7 @@ export const bearImporter: Importer = {
           }
         }
 
-        await createNote({
+        await createImportedNote({
           id: noteId,
           title: mapped.title,
           content: rewritten,

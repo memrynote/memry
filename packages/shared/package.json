@@ -17,6 +17,7 @@
     "./youtube": "./src/youtube.ts",
     "./task-block": "./src/task-block.ts",
     "./obsidian-tasks": "./src/obsidian-tasks.ts",
+    "./obsidian-task-import": "./src/obsidian-task-import.ts",
     "./markdown-class": "./src/markdown-class.ts",
     "./link-references": "./src/link-references.ts",
     "./markdown-fences": "./src/markdown-fences.ts",

@@ -42,7 +42,7 @@ import {
   importingItemStatus,
   onenoteDownloadingAttachmentStatus
 } from '@memry/importers/messages'
-import { createNote } from '../../vault/notes-crud'
+import { createImportedNote } from '../_shared/imported-note'
 import {
   getFileExtension,
   isAllowedFileType,
@@ -332,7 +332,7 @@ async function importPage(
   let content = markdown
   if (inkMarkdown) content += inkMarkdown
 
-  await createNote({
+  await createImportedNote({
     id: noteId,
     title: plan.title,
     content,

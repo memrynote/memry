@@ -1,7 +1,7 @@
 import { JSDOM } from 'jsdom'
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { createNote } from '../../vault/notes-crud'
+import { createImportedNote } from '../_shared/imported-note'
 import { saveAttachment } from '../../vault/attachments'
 import { attachmentMarkdown, encodeAttachmentUrl } from '../_shared/attachment-markdown'
 import { generateNoteId } from '../../lib/id'
@@ -252,7 +252,7 @@ export const htmlImporter: Importer = {
           ctx.reportAttachment()
         }
 
-        await createNote({
+        await createImportedNote({
           id: noteId,
           title: notePlan.title,
           content: rewritten,

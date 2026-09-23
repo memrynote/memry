@@ -17,7 +17,7 @@ import {
   importingItemStatus,
   toImportMessage
 } from '@memry/importers/messages'
-import { createNote } from '../../vault/notes-crud'
+import { createImportedNote } from '../_shared/imported-note'
 import { createLogger } from '../../lib/logger'
 import type { Importer, ImportContext, ImportInput, ImportPreview, ImportSummary } from '../types'
 
@@ -112,7 +112,7 @@ async function run(input: ImportInput, ctx: ImportContext): Promise<ImportSummar
 
       try {
         ctx.status(importingItemStatus(note.title))
-        await createNote({
+        await createImportedNote({
           title: note.title,
           content: note.content,
           folder: note.folder,
