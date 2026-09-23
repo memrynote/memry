@@ -1610,18 +1610,18 @@ export function NotePage({ noteId }: NotePageProps) {
                 overwrite the whole file without the replace prompt. It also
                 has no block editor, so there is no caret to insert at. */}
             {!isLargeFile && (
-              <Picker.Item
-                value="apply-template"
-                label={t('tree.actions.applyTemplate')}
-                icon={<LayoutTemplate className="size-4" />}
-              />
-            )}
-            {!isLargeFile && (
-              <Picker.Item
-                value="insert-template"
-                label={t('editor.slashMenu.insertTemplate.title')}
-                icon={<PenLine className="size-4" />}
-              />
+              <>
+                <Picker.Item
+                  value="apply-template"
+                  label={t('tree.actions.applyTemplate')}
+                  icon={<LayoutTemplate className="size-4" />}
+                />
+                <Picker.Item
+                  value="insert-template"
+                  label={t('editor.slashMenu.insertTemplate.title')}
+                  icon={<PenLine className="size-4" />}
+                />
+              </>
             )}
             <Picker.Item
               value="save-as-template"
