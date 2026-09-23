@@ -155,20 +155,22 @@ xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry \
 
 ## Phase 0: setup and facts (serial)
 
-- [ ] TP001 Create the worktree and branch from `main` (§0.3). Install, build the
+- [x] TP001 Create the worktree and branch from `main` (§0.3). Install, build the
       xcframework, build and launch the app on the simulator, reach the vault
       screen (sign in via §0.4 if needed). Record baseline:
       `cargo test -p memry-core` result, Unit/Conformance plan counts, and the
       exact CI commands from `.github/workflows/rust-ci.yml` and the iOS
       workflow.
-- [ ] TP002 Read: root/iOS/desktop `AGENTS.md`, `DESIGN.md`, `PRODUCT.md`,
+      Evidence: worktree `.worktrees/ios-tasks-parity` on `feat/ios-tasks-parity` @0a4eab28a; `pnpm install` done, xcframework release built; signed in via OTP + recovery phrase, MemryNote vault open: `apps/ios/SpikeEvidence/tasks-parity/TP001-vault-open.png`. Baseline: `cargo test -p memry-core` 749 passed / 0 failed / 1 ignored (49 binaries); Unit plan 503 tests in 84 suites passed; Conformance plan 21 tests in 5 suites passed. CI (`rust-ci.yml`, run from `crates/`, toolchain 1.98.1, `RUSTFLAGS=-D warnings`): `cargo fmt --all --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test -p memry-core`, `node scripts/check-line-ceilings.mjs` (rs ≤600, Features swift ≤400, contracts/scripts ts ≤300), then macOS job `crates/memry-core/build-xcframework.sh` + `git diff --exit-code packages/swift/MemryCore/Sources/MemryCore/Generated/`. There is no iOS xcodebuild workflow in `.github/workflows/` (iOS CI was dropped); iOS plans run locally only.
+- [x] TP002 Read: root/iOS/desktop `AGENTS.md`, `DESIGN.md`, `PRODUCT.md`,
       `specs/002-native-foundation-ios/spec.md` FR-057..FR-061,
       `specs/003-ios-note-parity/tasks.md` (conventions),
       `docs/protocol/` chapters 06 (field merge) and 13 (payloads),
       `crates/memry-core/src/domain/{tasks,task_views,task_merge,projects}.rs`,
       `crates/memry-core/src/api/mod.rs`, `apps/ios/Memry/Features/Notes/VaultTabsView.swift`
       (Tasks tab is a `ComingSoonTab` today).
-- [ ] TP003 Verify and write to §5 Verified facts, each with the file:line that
+      Evidence: read in full root/iOS/desktop `AGENTS.md`, `DESIGN.md`, `PRODUCT.md`, spec 002 FR-056..FR-062 (`spec.md:295-301`), spec 003 tasks conventions, protocol 13 §13.1-13.12 and 06 headings/§6.7-6.8, `domain/{tasks,task_views,projects}.rs` in full, `task_merge.rs` header, `api/mod.rs`, `VaultTabsView.swift` (Tasks = `ComingSoonTab` at `:36-41`). Findings feed §5.
+- [x] TP003 Verify and write to §5 Verified facts, each with the file:line that
       proves it:
   - priority integer ↔ none/low/medium/high/urgent mapping
   - desktop default statuses for a new project (ids, names, colors, types,
@@ -184,9 +186,11 @@ xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry \
     a plain text editor with markdown preview
   - whether local notifications are already scheduled for note reminders
     (FR-061), and where
-- [ ] TP004 Add an entry to `specs/002-native-foundation-ios/spec-defects.md`
+    Evidence: §5 filled, eight facts, each with file:line; repeatConfig real payloads read from `memry-vaults/MemryNote/.memry/data.db` via `sqlite3 -readonly`.
+- [x] TP004 Add an entry to `specs/002-native-foundation-ios/spec-defects.md`
       recording that FR-057 and FR-060 are superseded by this plan (D2, D4),
       with the reason.
+      Evidence: `specs/002-native-foundation-ios/spec-defects.md` row 141 (superseded by D2/D4).
 
 **Commit** Phase 0 docs only.
 
@@ -489,9 +493,85 @@ of its flows via XcodeBuildMCP with screenshots saved to
 
 <!-- fact — file:line -->
 
+- **Priority** is the wire integer 0..4 = none/low/medium/high/urgent:
+  `apps/desktop/src/renderer/src/features/tasks/use-task-queries.ts:36-50`
+  (`priorityMap` / `priorityReverseMap`), same table at
+  `components/note/content-area/task-block/task-block-utils.ts:20-33`. An
+  unknown integer reads as `none` (`use-task-queries.ts:106`). UI sort order is
+  urgent 0 .. none 4 (`data/task-model.ts:112-160`).
+- **Default statuses for a new project** (`apps/desktop/src/main/database/queries/projects.ts:471-503`):
+  `${projectId}-todo` "To Do" `#6b7280` position 0 isDefault=true isDone=false;
+  `${projectId}-in-progress` "In Progress" `#F59E0B` position 1 isDefault=false
+  isDone=false; `${projectId}-done` "Done" `#22c55e` position 2 isDefault=false
+  isDone=true. The inbox uses ids `inbox-todo/-in-progress/-done` with the same
+  names and colors (`apps/desktop/src/main/database/defaults.ts:36-70`). Custom
+  statuses: id `${projectId}-${order}`, isDefault = `type==='todo' && order===0`,
+  isDone = `type==='done'` (`queries/projects.ts:505-525`).
+  **Wire** (`packages/contracts/src/sync-payloads.ts:216-224`, `StatusSyncSchema`)
+  carries `id,name,color,position,isDefault?,isDone?,createdAt?` and **no type**.
+  Type is derived on read (`use-task-queries.ts:58-75`): isDone -> done;
+  else isDefault -> (position 0 ? todo : in_progress); else in_progress.
+  So a non-default, non-done status is always `in_progress` on desktop.
+- **repeatConfig wire shape** as desktop's UI writes it
+  (`use-task-queries.ts:171-189`, `toServiceRepeatConfig`): `{frequency,
+interval, daysOfWeek?, monthlyType?, dayOfMonth?, weekOfMonth?,
+dayOfWeekForMonth?, endType, endDate: 'YYYY-MM-DD' | null (formatDateKey),
+endCount?, completedCount: number, createdAt: full ISO string}`. The reader
+  (`use-task-queries.ts:77-97`) returns null unless `frequency` and `endType`
+  are present, defaults interval 1 / completedCount 0, and parses `endDate`
+  with `new Date(...)`. **Real payloads read from the staging vault**
+  (`memry-vaults/MemryNote/.memry/data.db`, tasks `lY4eb5kE6k4Xsw73Wbo6T`,
+  `csdiJDTJ0vSfOSURRbzwB`) carry a foreign shape
+  `{"freq":"daily","until":"2026-09-25"}` / `{"freq":"weekly","byDay":"SU"}`
+  written by a non-desktop-UI writer; desktop reads those as "repeating, no
+  renderable config" (`isRepeating: !!repeatConfig`, `repeatConfig: null`).
+  iOS must tolerate and preserve both. No desktop-UI-shaped payload exists in
+  any local vault DB; TP082 creates one on desktop and reads it on iOS.
+- **Task id format**: main `generateId()` = `nanoid()` (21 chars URL-safe,
+  `apps/desktop/src/main/lib/id.ts:7`, `isValidId` regex `:40`). The staging
+  vault's 73 task ids and 8 project ids are nanoid-shaped; the default inbox id is
+  the literal `inbox` (`defaults.ts:36`). Renderer optimistic ids
+  `task-${Date.now()}-${rand}` (`data/task-model.ts:185`) never reach the wire.
+- **Sync types**: `task_activity`, `reminder` and `settings` are in the Rust
+  core's 13 subscribed types (`crates/memry-core/src/protocol/types.rs:40`) and
+  are projected (`storage/migrations/data/0002_projections.sql:254` task_activity,
+  `:273` reminders; settings via `projectors/settings.rs` +
+  `settings_field_clocks`). `filter` (saved filters) **is** a record type
+  desktop syncs (`apps/desktop/src/main/sync/item-handlers/index.ts:48`,
+  `FilterSyncPayloadSchema` `sync-payloads.ts:69-75`: `name, config, position,
+clock, createdAt`) but is in the core's **unsubscribed** list
+  (`protocol/types.rs:62`), so the core neither receives nor projects it today.
+  Reminders with `targetType:'task'` share the reminder type
+  (`sync-payloads.ts:154-170`). Saved-filter `config` =
+  `{filters: TaskFilters, sort?: {field,direction}, starred?}`
+  (`packages/contracts/src/saved-filters-api.ts:36-90`, zod defaults `:113-127`).
+- **Task settings**: synced group `tasks` carries `defaultProjectId`,
+  `defaultSortOrder`, `staleInboxDays`, `showCompleted`, `sortBy`
+  (`packages/contracts/src/settings-sync.ts:37-44`). `defaultView` is a
+  **local-only** desktop setting (`settings-schemas.ts:130-147`, defaults
+  `manual`/`all`/`7`/`null`), not on the wire.
+- **iOS localization**: literal strings in `*Copy.swift` values, no string
+  catalog (`apps/ios/Memry/Features/Auth/SignInCopy.swift:23-24`, "Literals, not
+  a localization catalogue", spec-defect 98). No `.xcstrings`/`.strings` file
+  exists under `apps/ios`.
+- **Task description**: desktop stores a plain markdown string edited through a
+  BlockNote instance (`components/tasks/task-description-editor.tsx:4,67-85`).
+  The iOS editor edits CRDT note blocks only (`apps/ios/Memry/Editor/NoteEditor.swift`
+  via `Notes.editBlock`); there is no markdown editor. iOS therefore needs a
+  plain-text markdown editor with a rendered preview.
+- **Local notifications**: not scheduled anywhere on iOS today. No
+  `UNUserNotificationCenter` use under `apps/ios/Memry`; there is no
+  notification seam in `apps/ios/Memry/Seams/`. The core keeps a per-device
+  `local_notifications` table (`storage/migrations/data/0001_baseline.sql:151`)
+  and note reminders are listed/added/dismissed/snoozed through
+  `api/notes.rs:82` and `api/notes_write.rs:356-392`, but nothing fires them.
+
 ## 6. Decisions log (agent-made choices during the run)
 
 <!-- date — task id — choice — why -->
+
+- 2026-09-24 — TP001 — Simulator driving goes through `apps/ios/MemryUITests/AgentDriverUITests.swift` (file-command XCUITest harness, skipped unless `TEST_RUNNER_MEMRY_DRIVER_DIR` is set) instead of AXe/`xcodebuildmcp ui-automation` taps — Xcode 27 ships no Simulator.app; AXe HID via Device Hub delivered touches only briefly after a reboot and then silently dropped them (and `simctl io screenshot` returned stale frames). XCUITest event synthesis and `XCUIScreen` screenshots work headless. `xcodebuildmcp` is still used for build/run/logs.
+- 2026-09-24 — TP001 — Found, not fixed (out of scope): vault picker rows (`VaultListView.VaultChoiceList`) use `.buttonStyle(.plain)` without `contentShape`, so tapping the empty middle of a row does nothing; only the icon/name/chevron are hit-testable.
 
 ## 7. Blockers
 
