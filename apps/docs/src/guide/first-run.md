@@ -106,6 +106,8 @@ After setup, memrynote shows a brief in-app tour pointing out the sidebar, tabs,
 
 The tour counts as seen once you finish it, skip it, or close it. If it never got that far — you quit the app while the tour was still on screen — it is not counted, and memrynote offers it again on the next launch. Either way it opens the right-hand Day Panel so the calendar and Agent steps have something to point at, and leaves it open afterwards.
 
+The record that you have seen the tour is saved in the vault's own settings, so it survives app updates and reinstalls. The tour is also skipped for any vault that already holds notes, because that vault is not new.
+
 ## Next Steps
 
 - Take [a Tour of memrynote](/guide/tour)
