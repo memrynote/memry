@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { CalendarChannels } from './ipc-channels.ts'
-import { CalendarEventColorSchema, type CalendarEventColor } from './calendar-event-colors.ts'
+import { CalendarEventColorSchema, type CalendarEventColor } from './calendar-colors.ts'
 
 export { CalendarChannels }
 
@@ -320,8 +320,18 @@ export interface CalendarProjectionItem {
    * date isn't lost. Undefined/false for upcoming or non-`note_date` items.
    */
   isTriggered?: boolean
-  /** For `event` items: the colour the user gave the event. Undefined for other item types. */
+  /**
+   * For `event` and `external_event` items: the event's own colour, set in
+   * Memry or in Google. Null when the event shows its calendar's colour.
+   * Undefined for other item types.
+   */
   color?: CalendarEventColor | null
+  /**
+   * The `#rrggbb` to paint the item with: the event's own colour, else the
+   * colour of the Google calendar it lives on. Null or undefined keeps the
+   * item-type colour.
+   */
+  displayColor?: string | null
 }
 
 export type CalendarProviderAccountConnectionStatus =

@@ -1,4 +1,4 @@
-import type { CalendarEventColor } from '@memry/contracts/calendar-event-colors'
+import type { CalendarEventColor } from '@memry/contracts/calendar-colors'
 
 export interface CalendarEventDraft {
   title: string

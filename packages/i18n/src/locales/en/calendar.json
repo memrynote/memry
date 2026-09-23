@@ -80,7 +80,7 @@
     "remove-from-project": "Remove from {project}",
     "project-update-failed": "Could not update the event's project",
     "color": "Color",
-    "no-color": "No color"
+    "default-color": "Default color"
   },
   "delete-dialog": {
     "title": "Delete event?",
@@ -204,15 +204,18 @@
     "open": "Open note",
     "couldNotOpen": "Could not open note"
   },
-  "event-color": {
-    "red": "Red",
-    "orange": "Orange",
-    "yellow": "Yellow",
-    "green": "Green",
-    "blue": "Blue",
-    "purple": "Purple",
-    "pink": "Pink",
-    "gray": "Gray"
+  "calendar-color": {
+    "tomato": "Tomato",
+    "flamingo": "Flamingo",
+    "tangerine": "Tangerine",
+    "banana": "Banana",
+    "sage": "Sage",
+    "basil": "Basil",
+    "peacock": "Peacock",
+    "blueberry": "Blueberry",
+    "lavender": "Lavender",
+    "grape": "Grape",
+    "graphite": "Graphite"
   },
   "subscribedEvent": {
     "kind": "Subscribed calendar",

@@ -10,10 +10,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { DatePickerContent } from '@/components/tasks/date-picker-content'
 import {
   CALENDAR_EVENT_COLORS,
+  calendarColorHex,
   type CalendarEventColor
-} from '@memry/contracts/calendar-event-colors'
+} from '@memry/contracts/calendar-colors'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
-import { calendarEventColorVar } from '@/lib/calendar-event-colors'
+import { inkOnCalendarColor } from '@/lib/calendar-colors'
 import { CalendarIcon, Check } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { type ClockFormat, formatTimeString } from '@/lib/time-format'
@@ -340,45 +341,52 @@ interface EventColorFieldProps {
 function EventColorField({ value, onChange, disabled }: EventColorFieldProps) {
   const { t } = useT('calendar')
   const labelId = useId()
+  // Google's event colours, in Google's order. Light ones (Banana) sit close to
+  // the popover, so every swatch carries a border to keep its edge visible.
   const swatchClass = cn(
-    'flex size-5 items-center justify-center rounded-full transition-transform duration-100',
-    'hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-    'focus-visible:ring-offset-1 focus-visible:ring-offset-popover disabled:pointer-events-none'
+    'flex size-5 items-center justify-center rounded-full border border-border',
+    'transition-transform duration-100 hover:scale-110 focus:outline-none',
+    'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+    'focus-visible:ring-offset-popover disabled:pointer-events-none'
   )
+  const defaultLabel = t('form.default-color')
 
   return (
     <div className="flex flex-col gap-1 text-sm">
       <span id={labelId} className="text-xs font-medium text-muted-foreground">
         {t('form.color')}
       </span>
-      <div role="group" aria-labelledby={labelId} className="flex gap-1.5">
+      <div role="group" aria-labelledby={labelId} className="flex flex-wrap gap-1.5">
         <button
           type="button"
-          className={cn(swatchClass, 'border border-border bg-background text-foreground')}
-          aria-label={t('form.no-color')}
+          className={cn(swatchClass, 'bg-background text-foreground')}
+          aria-label={defaultLabel}
+          title={defaultLabel}
           aria-pressed={value === null}
           disabled={disabled}
           onClick={() => onChange(null)}
         >
           {value === null && <Check className="size-3" />}
         </button>
-        {CALENDAR_EVENT_COLORS.map((color) => (
-          <button
-            key={color}
-            type="button"
-            className={swatchClass}
-            style={{
-              backgroundColor: calendarEventColorVar(color),
-              color: 'var(--calendar-event-on-color)'
-            }}
-            aria-label={t(`event-color.${color}`)}
-            aria-pressed={value === color}
-            disabled={disabled}
-            onClick={() => onChange(color)}
-          >
-            {value === color && <Check className="size-3" />}
-          </button>
-        ))}
+        {CALENDAR_EVENT_COLORS.map((color) => {
+          const hex = calendarColorHex(color)
+          const label = t(`calendar-color.${color}`)
+          return (
+            <button
+              key={color}
+              type="button"
+              className={swatchClass}
+              style={{ backgroundColor: hex, color: inkOnCalendarColor(hex) }}
+              aria-label={label}
+              title={label}
+              aria-pressed={value === color}
+              disabled={disabled}
+              onClick={() => onChange(color)}
+            >
+              {value === color && <Check className="size-3" />}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

@@ -17,6 +17,7 @@ import type {
   CalendarProviderStatus,
   CalendarRangeResponse,
   CalendarSourceListResponse,
+  IcsCalendarMutationResponse,
   RetryCalendarSourceSyncResponse
 } from '@memry/contracts/calendar-api'
 
@@ -341,25 +342,25 @@ describe('calendar-handlers', () => {
         endAt: '2026-04-12T09:15:00.000Z',
         timezone: 'UTC',
         isAllDay: false,
-        color: 'green'
+        color: 'basil'
       }
     )
-    expect(created.event).toEqual(expect.objectContaining({ color: 'green', colorId: '10' }))
+    expect(created.event).toEqual(expect.objectContaining({ color: 'basil', colorId: '10' }))
 
     const range = await invokeHandler<CalendarRangeResponse>(CalendarChannels.invoke.GET_RANGE, {
       startAt: '2026-04-12T00:00:00.000Z',
       endAt: '2026-04-13T00:00:00.000Z'
     })
     expect(range.items).toEqual([
-      expect.objectContaining({ sourceId: 'calendar-event-generated-id', color: 'green' })
+      expect.objectContaining({ sourceId: 'calendar-event-generated-id', color: 'basil' })
     ])
 
     vi.mocked(enqueueLocalSyncUpdate).mockClear()
     const recoloured = await invokeHandler<CalendarEventMutationResponse>(
       CalendarChannels.invoke.UPDATE_EVENT,
-      { id: 'calendar-event-generated-id', color: 'red' }
+      { id: 'calendar-event-generated-id', color: 'tomato' }
     )
-    expect(recoloured.event).toEqual(expect.objectContaining({ color: 'red', colorId: '11' }))
+    expect(recoloured.event).toEqual(expect.objectContaining({ color: 'tomato', colorId: '11' }))
     expect(enqueueLocalSyncUpdate).toHaveBeenCalledWith(
       'calendar_event',
       'calendar-event-generated-id',
@@ -373,7 +374,7 @@ describe('calendar-handlers', () => {
     expect(cleared.event).toEqual(expect.objectContaining({ color: null, colorId: null }))
   })
 
-  it('keeps a Google colour id when the form re-saves the colour it already shows', async () => {
+  it('does not mark the colour edited when the form re-saves the colour the event has', async () => {
     registerCalendarHandlers()
     await invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
       title: 'Offsite',
@@ -381,17 +382,17 @@ describe('calendar-handlers', () => {
       timezone: 'UTC',
       isAllDay: false
     })
-    // Lavender, set in Google Calendar. Memry shows it as purple.
+    // Lavender, set in Google Calendar.
     db.run(sql`UPDATE calendar_events SET color_id = '1' WHERE id = 'calendar-event-generated-id'`)
     vi.mocked(enqueueLocalSyncUpdate).mockClear()
 
     const saved = await invokeHandler<CalendarEventMutationResponse>(
       CalendarChannels.invoke.UPDATE_EVENT,
-      { id: 'calendar-event-generated-id', title: 'Offsite day', color: 'purple' }
+      { id: 'calendar-event-generated-id', title: 'Offsite day', color: 'lavender' }
     )
 
     expect(saved.event).toEqual(
-      expect.objectContaining({ title: 'Offsite day', color: 'purple', colorId: '1' })
+      expect.objectContaining({ title: 'Offsite day', color: 'lavender', colorId: '1' })
     )
     expect(enqueueLocalSyncUpdate).toHaveBeenCalledWith(
       'calendar_event',
@@ -400,7 +401,7 @@ describe('calendar-handlers', () => {
     )
   })
 
-  it('rejects a colour outside the palette at the schema boundary', async () => {
+  it('rejects a calendar-only colour on an event at the schema boundary', async () => {
     registerCalendarHandlers()
 
     await expect(
@@ -409,7 +410,7 @@ describe('calendar-handlers', () => {
         startAt: '2026-04-12T09:00:00.000Z',
         timezone: 'UTC',
         isAllDay: false,
-        color: '#ff0000'
+        color: 'cobalt'
       })
     ).rejects.toThrow()
   })
@@ -1576,9 +1577,12 @@ describe('calendar-handlers', () => {
       registerCalendarHandlers()
 
       expect(
-        await invokeHandler(CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR, {
-          url: 'club fixtures'
-        })
+        await invokeHandler<IcsCalendarMutationResponse>(
+          CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR,
+          {
+            url: 'club fixtures'
+          }
+        )
       ).toEqual({
         success: false,
         source: null,
@@ -1594,15 +1598,18 @@ describe('calendar-handlers', () => {
         () => new Response('', { status: 404 })
       )
 
-      const subscribed = await invokeHandler(CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR, {
-        url: 'webcal://club.example.com/fixtures.ics'
-      })
+      const subscribed = await invokeHandler<IcsCalendarMutationResponse>(
+        CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR,
+        {
+          url: 'webcal://club.example.com/fixtures.ics'
+        }
+      )
       expect(subscribed).toMatchObject({
         success: true,
         source: { provider: 'ics', remoteId: FEED_URL, title: 'Club fixtures' }
       })
       expect(mirroredEventCount()).toBe(1)
-      const sourceId = subscribed.source.id
+      const sourceId = subscribed.source!.id
 
       expect(
         await invokeHandler(CalendarChannels.invoke.REFRESH_ICS_CALENDAR, { sourceId })
@@ -1612,24 +1619,30 @@ describe('calendar-handlers', () => {
         source: { id: sourceId, syncStatus: 'error', lastError: 'not_found' }
       })
 
-      const removed = await invokeHandler(CalendarChannels.invoke.UNSUBSCRIBE_ICS_CALENDAR, {
-        sourceId
-      })
+      const removed = await invokeHandler<IcsCalendarMutationResponse>(
+        CalendarChannels.invoke.UNSUBSCRIBE_ICS_CALENDAR,
+        {
+          sourceId
+        }
+      )
       expect(removed).toMatchObject({ success: true, source: { id: sourceId } })
-      expect(removed.source.archivedAt).toEqual(expect.any(String))
+      expect(removed.source!.archivedAt).toEqual(expect.any(String))
       expect(mirroredEventCount()).toBe(0)
     })
 
     it('hiding a subscribed calendar drops its local events without queueing sync deletes', async () => {
       registerCalendarHandlers()
       stubFetch(() => new Response(FEED, { status: 200 }))
-      const subscribed = await invokeHandler(CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR, {
-        url: FEED_URL
-      })
+      const subscribed = await invokeHandler<IcsCalendarMutationResponse>(
+        CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR,
+        {
+          url: FEED_URL
+        }
+      )
       expect(mirroredEventCount()).toBe(1)
 
       const updated = await invokeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION, {
-        id: subscribed.source.id,
+        id: subscribed.source!.id,
         isSelected: false
       })
 

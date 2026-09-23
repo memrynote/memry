@@ -177,23 +177,15 @@ Dark mode uses lighter, more legible variants.
 
 ---
 
-## Calendar Event Colors
+## Calendar Colors
 
-The colours a user gives a calendar event. The hues match the BlockNote text palette, so a red event and red text are the same red. No Tailwind mapping: chips set them inline through `calendarEventChipStyle()` in `lib/calendar-event-colors.ts`.
+Calendar events use Google Calendar's palette, not theme tokens: the same 24 calendar colours Google shows, 11 of which an event can take on its own. The names, Google colour ids, and hexes live in `packages/contracts/src/calendar-colors.ts`. A Google calendar with a custom colour shows that hex. There are no CSS variables for these colours and no Tailwind mapping: chips set them inline through `calendarColorChipStyle()` in `lib/calendar-colors.ts`.
 
-| Token                       | Warm / White | Dark      | Usage                                     |
-| --------------------------- | ------------ | --------- | ----------------------------------------- |
-| `--calendar-event-red`      | `#ba3f38`    | `#da5c52` | Red event                                 |
-| `--calendar-event-orange`   | `#9d5b00`    | `#c07104` | Orange event                              |
-| `--calendar-event-yellow`   | `#7e7100`    | `#998800` | Yellow event                              |
-| `--calendar-event-green`    | `#007a44`    | `#199758` | Green event                               |
-| `--calendar-event-blue`     | `#0070a5`    | `#008ccd` | Blue event                                |
-| `--calendar-event-purple`   | `#8550b8`    | `#a06cd5` | Purple event                              |
-| `--calendar-event-pink`     | `#b33e74`    | `#d25a8f` | Pink event                                |
-| `--calendar-event-gray`     | `#696969`    | `#838383` | Gray event                                |
-| `--calendar-event-on-color` | `#ffffff`    | `#121212` | Title on a selected chip (solid hue fill) |
+- A resting chip fills with 20% of the colour mixed into `--background` and keeps `--foreground` for the title.
+- A selected chip goes solid, with black or white title ink, whichever contrasts more with that colour (`inkOnCalendarColor()`).
+- Picker swatches carry a `--border` edge, so light colours such as Banana stay visible on `--popover`.
 
-A resting chip fills with 20% of the hue mixed into `--background` and keeps `--foreground` for the title. `calendar-event-colors-css.test.ts` holds both title pairs to 4.5:1 and every swatch to 3:1 on `--popover`, in every theme.
+`lib/calendar-colors.test.ts` holds the resting title to 4.5:1 in every theme and the selected title to 4.5:1, for all 24 colours and for the custom-colour extremes (black, white, mid grey).
 
 ---
 

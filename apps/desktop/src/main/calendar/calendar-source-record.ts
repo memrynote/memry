@@ -1,4 +1,5 @@
 import type { CalendarSourceRecord } from '@memry/contracts/calendar-api'
+import { calendarDisplayHex } from '@memry/contracts/calendar-colors'
 import type { CalendarSource } from '@memry/db-schema/schema/calendar-sources'
 
 export function mapCalendarSource(row: CalendarSource): CalendarSourceRecord {
@@ -10,7 +11,7 @@ export function mapCalendarSource(row: CalendarSource): CalendarSourceRecord {
     remoteId: row.remoteId,
     title: row.title,
     timezone: row.timezone ?? null,
-    color: row.color ?? null,
+    color: calendarDisplayHex(row.color),
     isPrimary: row.isPrimary,
     isSelected: row.isSelected,
     isMemryManaged: row.isMemryManaged,

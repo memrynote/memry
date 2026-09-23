@@ -38,7 +38,7 @@ import {
 import {
   calendarEventColorFromColorId,
   colorIdForCalendarEventColor
-} from '@memry/contracts/calendar-event-colors'
+} from '@memry/contracts/calendar-colors'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
@@ -490,9 +490,9 @@ export function registerCalendarHandlers(): void {
         if (Object.prototype.hasOwnProperty.call(input, 'targetCalendarId')) {
           changes.targetCalendarId = input.targetCalendarId ?? null
         }
-        // Several Google ids share one Memry colour. Re-saving the colour the
-        // event already shows must keep the id it came with (Lavender stays
-        // Lavender in Google) and must not mark colorId as edited.
+        // The form sends the colour on every save. Re-saving the colour the
+        // event already has must not mark colorId as edited, or each save
+        // would bump its field clock and push it to Google again.
         if (
           Object.prototype.hasOwnProperty.call(input, 'color') &&
           calendarEventColorFromColorId(existing.colorId) !== (input.color ?? null)

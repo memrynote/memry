@@ -60,23 +60,35 @@ describe('CalendarItemChip', () => {
     expect(chip).toHaveClass('opacity-60')
   })
 
-  it('paints a coloured event with its hue as the fill and ink for the title', () => {
-    render(<CalendarItemChip item={eventItem({ color: 'green' })} />)
+  it('tints a coloured event with its colour and keeps ink for the title', () => {
+    render(<CalendarItemChip item={eventItem({ color: 'sage', displayColor: '#33b679' })} />)
 
     const chip = screen.getByText('Planning').closest('[data-visual-type]') as HTMLElement
-    expect(chip).toHaveAttribute('data-event-color', 'green')
-    expect(chip.style.backgroundColor).toBe(
-      'color-mix(in srgb, var(--calendar-event-green) 20%, var(--background))'
-    )
+    expect(chip).toHaveAttribute('data-event-color', '#33b679')
+    expect(chip.style.backgroundColor).toBe('color-mix(in srgb, #33b679 20%, var(--background))')
     expect(chip.style.color).toBe('var(--foreground)')
   })
 
-  it('goes solid with the on-colour ink when a coloured event is selected', () => {
-    render(<CalendarItemChip item={eventItem({ color: 'red' })} isSelected />)
+  it('goes solid with readable ink when a coloured event is selected', () => {
+    render(
+      <CalendarItemChip item={eventItem({ color: 'tomato', displayColor: '#d50000' })} isSelected />
+    )
 
     const chip = screen.getByText('Planning').closest('[data-visual-type]') as HTMLElement
-    expect(chip.style.backgroundColor).toBe('var(--calendar-event-red)')
-    expect(chip.style.color).toBe('var(--calendar-event-on-color)')
+    expect(chip.style.backgroundColor).toBe('rgb(213, 0, 0)')
+    expect(chip.style.color).toBe('rgb(255, 255, 255)')
+  })
+
+  it('paints an external event with the colour of its Google calendar', () => {
+    render(
+      <CalendarItemChip
+        item={eventItem({ visualType: 'external_event', color: null, displayColor: '#4285f4' })}
+      />
+    )
+
+    const chip = screen.getByText('Planning').closest('[data-visual-type]') as HTMLElement
+    expect(chip).toHaveAttribute('data-event-color', '#4285f4')
+    expect(chip.style.backgroundColor).toBe('color-mix(in srgb, #4285f4 20%, var(--background))')
   })
 
   it('keeps the event-type colour for an event with no colour', () => {

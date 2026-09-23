@@ -111,13 +111,13 @@ describe('CalendarEventForm colour', () => {
   }
 
   it('marks the event colour as the pressed swatch', () => {
-    renderForm('blue')
+    renderForm('peacock')
 
-    expect(screen.getByRole('button', { name: 'event-color.blue' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'calendar-color.peacock' })).toHaveAttribute(
       'aria-pressed',
       'true'
     )
-    expect(screen.getByRole('button', { name: 'form.no-color' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'form.default-color' })).toHaveAttribute(
       'aria-pressed',
       'false'
     )
@@ -126,15 +126,15 @@ describe('CalendarEventForm colour', () => {
   it('puts the picked colour on the draft', () => {
     const onDraftChange = renderForm(null)
 
-    fireEvent.click(screen.getByRole('button', { name: 'event-color.pink' }))
+    fireEvent.click(screen.getByRole('button', { name: 'calendar-color.flamingo' }))
 
-    expect(onDraftChange).toHaveBeenCalledWith({ ...draft, color: 'pink' })
+    expect(onDraftChange).toHaveBeenCalledWith({ ...draft, color: 'flamingo' })
   })
 
-  it('clears the colour from the draft with No color', () => {
-    const onDraftChange = renderForm('green')
+  it('clears the colour from the draft with Default color', () => {
+    const onDraftChange = renderForm('sage')
 
-    fireEvent.click(screen.getByRole('button', { name: 'form.no-color' }))
+    fireEvent.click(screen.getByRole('button', { name: 'form.default-color' }))
 
     expect(onDraftChange).toHaveBeenCalledWith({ ...draft, color: null })
   })

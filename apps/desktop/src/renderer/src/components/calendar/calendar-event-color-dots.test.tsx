@@ -31,7 +31,7 @@ vi.mock('@/services/calendar-service', () => ({
 
 function event(
   title: string,
-  color: CalendarProjectionItem['color'],
+  displayColor: string | null,
   startAt = '2026-05-10T09:00:00.000Z'
 ): CalendarProjectionItem {
   return {
@@ -56,7 +56,8 @@ function event(
     },
     binding: null,
     snoozeOffsetMinutes: null,
-    color
+    color: null,
+    displayColor
   }
 }
 
@@ -67,13 +68,13 @@ function dotBeside(title: string): HTMLElement {
 }
 
 describe('event colour dots', () => {
-  it('colours the year view day list by event colour', () => {
+  it('colours the year view day list by display colour', () => {
     vi.useFakeTimers()
     try {
       render(
         <CalendarYearView
           anchorDate="2026-05-10"
-          items={[event('Standup', 'red'), event('Review', null)]}
+          items={[event('Standup', '#d50000'), event('Review', null)]}
           onViewChange={vi.fn()}
           onAnchorChange={vi.fn()}
         />
@@ -81,16 +82,16 @@ describe('event colour dots', () => {
       fireEvent.click(screen.getAllByRole('button', { name: /Sunday, May 10/i })[0])
       act(() => vi.advanceTimersByTime(250))
 
-      expect(dotBeside('Standup').style.backgroundColor).toBe('var(--calendar-event-red)')
+      expect(dotBeside('Standup').style.backgroundColor).toBe('rgb(213, 0, 0)')
       expect(dotBeside('Review').style.backgroundColor).toBe('rgb(146, 206, 212)')
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('colours a search result by event colour', async () => {
+  it('colours a search result by display colour', async () => {
     mockGetRange.mockResolvedValue({
-      items: [event('Standup', 'blue', new Date().toISOString())]
+      items: [event('Standup', '#3f51b5', new Date().toISOString())]
     })
     const user = userEvent.setup()
     renderWithProviders(<CalendarSearch onJump={vi.fn()} />)
@@ -100,6 +101,6 @@ describe('event colour dots', () => {
 
     const result = await screen.findByText('Standup')
     const dot = result.closest('button')?.querySelector('span[aria-hidden="true"]') as HTMLElement
-    expect(dot.style.backgroundColor).toBe('var(--calendar-event-blue)')
+    expect(dot.style.backgroundColor).toBe('rgb(63, 81, 181)')
   })
 })

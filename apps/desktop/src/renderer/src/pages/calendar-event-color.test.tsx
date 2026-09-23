@@ -47,7 +47,12 @@ function todayAt(hours: number): string {
   return date.toISOString()
 }
 
-function colouredEvent(): CalendarProjectionItem {
+function colouredEvent(
+  colors: Pick<CalendarProjectionItem, 'color' | 'displayColor'> = {
+    color: 'tomato',
+    displayColor: '#d50000'
+  }
+): CalendarProjectionItem {
   return {
     projectionId: 'event:event-1',
     sourceType: 'event',
@@ -70,7 +75,7 @@ function colouredEvent(): CalendarProjectionItem {
     },
     binding: null,
     snoozeOffsetMinutes: null,
-    color: 'red'
+    ...colors
   }
 }
 
@@ -103,12 +108,12 @@ describe('CalendarPage event colour', () => {
     await screen.findByTestId('event-edit-popover')
 
     await user.type(screen.getByPlaceholderText('New Event'), 'Kickoff')
-    await user.click(screen.getByRole('button', { name: 'Green' }))
+    await user.click(screen.getByRole('button', { name: 'Basil' }))
     await user.click(screen.getByTestId('event-edit-save'))
 
     await waitFor(() =>
       expect(mockCreateEvent).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Kickoff', color: 'green' })
+        expect.objectContaining({ title: 'Kickoff', color: 'basil' })
       )
     )
   })
@@ -121,12 +126,33 @@ describe('CalendarPage event colour', () => {
     await user.click(await screen.findByRole('button', { name: /Standup/ }))
     await screen.findByTestId('event-edit-popover')
 
-    expect(screen.getByRole('button', { name: 'Red' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Tomato' })).toHaveAttribute('aria-pressed', 'true')
     await user.click(screen.getByTestId('event-edit-save'))
 
     await waitFor(() =>
       expect(mockUpdateEvent).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'event-1', color: 'red' })
+        expect.objectContaining({ id: 'event-1', color: 'tomato' })
+      )
+    )
+  })
+
+  it('opens an event that shows its calendar colour with Default color selected', async () => {
+    showItems([colouredEvent({ color: null, displayColor: '#4285f4' })])
+    const user = userEvent.setup()
+    renderWithProviders(<CalendarPage />)
+
+    await user.click(await screen.findByRole('button', { name: /Standup/ }))
+    await screen.findByTestId('event-edit-popover')
+
+    expect(screen.getByRole('button', { name: 'Default color' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    await user.click(screen.getByTestId('event-edit-save'))
+
+    await waitFor(() =>
+      expect(mockUpdateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'event-1', color: null })
       )
     )
   })

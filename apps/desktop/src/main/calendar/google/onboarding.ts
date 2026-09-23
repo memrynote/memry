@@ -4,6 +4,7 @@ import type {
   SetDefaultGoogleCalendarInput,
   SetDefaultGoogleCalendarResponse
 } from '@memry/contracts/calendar-api'
+import { calendarDisplayHex } from '@memry/contracts/calendar-colors'
 import {
   CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
   type CalendarGoogleSettings
@@ -20,7 +21,7 @@ function toDescriptorRecord(d: GoogleCalendarDescriptor): GoogleCalendarDescript
     id: d.id,
     title: d.title,
     timezone: d.timezone,
-    color: d.color,
+    color: calendarDisplayHex(d.color),
     isPrimary: d.isPrimary
   }
 }

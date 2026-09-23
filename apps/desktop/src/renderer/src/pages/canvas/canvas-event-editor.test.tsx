@@ -118,7 +118,7 @@ describe('CanvasEventEditor', () => {
   })
 
   it('saves via calendarService.updateEvent and calls onDone', async () => {
-    mocks.getEvent.mockResolvedValue(makeEvent({ colorId: '9', color: 'blue' }))
+    mocks.getEvent.mockResolvedValue(makeEvent({ colorId: '9', color: 'blueberry' }))
     mocks.updateEvent.mockResolvedValue({ success: true })
     const onDone = vi.fn()
     render(<CanvasEventEditor eventId="ev1" onDone={onDone} />)
@@ -126,7 +126,12 @@ describe('CanvasEventEditor', () => {
     screen.getByTestId('save').click()
     await waitFor(() => expect(mocks.updateEvent).toHaveBeenCalled())
     const payload = mocks.updateEvent.mock.calls[0][0]
-    expect(payload).toMatchObject({ id: 'ev1', title: 'Standup', isAllDay: false, color: 'blue' })
+    expect(payload).toMatchObject({
+      id: 'ev1',
+      title: 'Standup',
+      isAllDay: false,
+      color: 'blueberry'
+    })
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
   })
 

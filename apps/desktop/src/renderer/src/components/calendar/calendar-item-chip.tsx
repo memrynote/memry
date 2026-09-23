@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { AlarmClock, Calendar2, CheckSquare3, NotificationSnooze, StickyNote } from '@/lib/icons'
-import { calendarEventChipStyle } from '@/lib/calendar-event-colors'
+import { calendarColorChipStyle } from '@/lib/calendar-colors'
 import { getEventBaseColor, getEventBgColor, getEventTextColor } from '@/lib/event-type-colors'
 import { formatTimeOfDay } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
@@ -64,9 +64,9 @@ export function CalendarItemChip({
     // Fired note_date chips are kept but faded so the date isn't lost.
     item.isTriggered && 'opacity-60'
   )
-  const eventColor = item.color ?? undefined
+  const displayColor = item.displayColor ?? undefined
   const chipStyle = useMemo<React.CSSProperties>(() => {
-    if (eventColor) return calendarEventChipStyle(eventColor, isSelected)
+    if (displayColor) return calendarColorChipStyle(displayColor, isSelected)
     return isSelected
       ? {
           backgroundColor: getEventBaseColor(item.visualType),
@@ -76,7 +76,7 @@ export function CalendarItemChip({
           backgroundColor: getEventBgColor(item.visualType),
           color: getEventTextColor(item.visualType)
         }
-  }, [eventColor, item.visualType, isSelected])
+  }, [displayColor, item.visualType, isSelected])
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -134,7 +134,7 @@ export function CalendarItemChip({
         }}
         onContextMenu={deletable || addableToProject ? handleContextMenu : undefined}
         data-visual-type={item.visualType}
-        data-event-color={eventColor}
+        data-event-color={displayColor}
         data-triggered={item.isTriggered ? 'true' : undefined}
       >
         {content}
@@ -147,7 +147,7 @@ export function CalendarItemChip({
       className={cls}
       style={chipStyle}
       data-visual-type={item.visualType}
-      data-event-color={eventColor}
+      data-event-color={displayColor}
       data-triggered={item.isTriggered ? 'true' : undefined}
     >
       {content}
