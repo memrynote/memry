@@ -455,6 +455,13 @@
     "more": "{count} more",
     "viaProperty": "{property} → {title}"
   },
+  "outgoingLinks": {
+    "summary": "{count, plural, one {# outgoing link} other {# outgoing links}}",
+    "sectionAria": "Outgoing links",
+    "unresolved": "Not created yet",
+    "showMore": "Show {count} more outgoing links",
+    "more": "{count} more"
+  },
   "comments": {
     "railAria": "Comments",
     "badgeAria": "{count, plural, one {# comment} other {# comments}}",

@@ -469,10 +469,13 @@ export function useNoteLinksQuery(noteId: string | null, options: { enabled?: bo
       }
     })
 
+    // A created note resolves any outgoing link that named its title.
+    const unsubCreated = onNoteCreated(refresh)
     const unsubDeleted = onNoteDeleted(refresh)
 
     return () => {
       unsubUpdated()
+      unsubCreated()
       unsubDeleted()
     }
   }, [noteId, queryClient])
