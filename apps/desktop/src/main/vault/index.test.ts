@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     taskCount: number
     lastOpened: string
     isDefault: boolean
+    vaultUuid?: string
   }>,
   currentVaultPath: null as string | null,
   config: {
@@ -936,6 +937,35 @@ describe('vault lifecycle', () => {
       'projection_reconcile',
       expect.any(Error)
     )
+  })
+
+  it('lists known vaults with their account uuid and marks unreachable folders missing', () => {
+    const row = { noteCount: 3, taskCount: 1, lastOpened: '2026-09-01T00:00:00.000Z' }
+    mocks.vaults = [
+      { ...row, path: '/vault/here', name: 'Here', isDefault: true, vaultUuid: 'uuid-here' },
+      { ...row, path: '/vault/unplugged', name: 'Unplugged', isDefault: false }
+    ]
+    mocks.isValidDirectory.mockImplementation((p: string) => p === '/vault/here')
+
+    expect(getAllVaults().vaults).toEqual([
+      {
+        ...row,
+        path: '/vault/here',
+        name: 'Here',
+        isDefault: true,
+        vaultUuid: 'uuid-here',
+        isMissing: false
+      },
+      {
+        ...row,
+        path: '/vault/unplugged',
+        name: 'Unplugged',
+        isDefault: false,
+        vaultUuid: undefined,
+        isMissing: true
+      }
+    ])
+    expect(mocks.vaults.map((v) => v.path)).toEqual(['/vault/here', '/vault/unplugged'])
   })
 
   it('returns default config when closed and closes/removes the active vault', async () => {
