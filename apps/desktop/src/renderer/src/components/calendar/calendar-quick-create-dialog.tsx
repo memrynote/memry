@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
-import { POPOVER_WIDTH, computePopoverPosition } from './popover-position'
+import { useAnchoredPopoverPosition } from './popover-position'
 import type { AnchorRect, CalendarEventDraft } from './types'
 import { getI18n } from 'react-i18next'
 
@@ -112,7 +112,7 @@ export function CalendarQuickCreateDialog({
   }
 
   const datetimeLabel = formatDatetimeDisplay(startAt, endAt, isAllDay, i18n.language)
-  const { top, left } = computePopoverPosition(anchorRect)
+  const position = useAnchoredPopoverPosition(anchorRect)
 
   return (
     <DialogPrimitive.Root
@@ -133,7 +133,8 @@ export function CalendarQuickCreateDialog({
           className={cn(
             'fixed z-50 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none'
           )}
-          style={{ top, left, width: POPOVER_WIDTH }}
+          ref={position.ref}
+          style={position.style}
         >
           <DialogPrimitive.Title className="sr-only">
             {t('form.create-calendar-event')}

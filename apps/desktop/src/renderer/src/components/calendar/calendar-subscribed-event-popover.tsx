@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
 import { Link } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 import type { AnchorRect } from './types'
-import { POPOVER_WIDTH, computePopoverPosition } from './popover-position'
+import { useAnchoredPopoverPosition } from './popover-position'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -48,8 +48,17 @@ function SubscribedEventPopover({
   onDismiss
 }: SubscribedEventTarget & { onDismiss: () => void }): React.JSX.Element {
   const { t, i18n } = useT('calendar')
-  const containerRef = useRef<HTMLDivElement>(null)
-  const { top, left } = computePopoverPosition(anchorRect, { estimatedHeight: 180 })
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const { ref: positionRef, style: positionStyle } = useAnchoredPopoverPosition(anchorRect, {
+    estimatedHeight: 180
+  })
+  const setContainer = useCallback(
+    (node: HTMLDivElement | null) => {
+      containerRef.current = node
+      positionRef(node)
+    },
+    [positionRef]
+  )
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -71,11 +80,11 @@ function SubscribedEventPopover({
 
   return (
     <div
-      ref={containerRef}
+      ref={setContainer}
       role="dialog"
       aria-label={kindLabel}
       data-testid="calendar-subscribed-event-popover"
-      style={{ position: 'fixed', top, left, width: POPOVER_WIDTH }}
+      style={{ position: 'fixed', ...positionStyle }}
       className={cn(
         'z-50 rounded-lg border border-border bg-popover p-4 text-popover-foreground shadow-lg',
         'flex flex-col gap-3'

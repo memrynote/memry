@@ -85,6 +85,10 @@ as the grid scrolls.
 
 Click an event to open the popover. Edit title, time, and description in place. The popover has a "Open in tab" action for full editing.
 
+Calendar popovers open beside the item you clicked and always stay inside the window. Near the
+bottom edge a popover shifts up just enough to fit. In a window shorter than the popover, it pins
+to the top edge and its contents scroll; resize the window and it moves or grows to match.
+
 ### Assigning a Project
 
 The event form (opened from **+** in the toolbar, or from an existing event) has a **Project**
