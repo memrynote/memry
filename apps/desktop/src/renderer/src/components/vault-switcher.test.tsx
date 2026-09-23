@@ -209,4 +209,23 @@ describe('VaultSwitcher missing vault folder', () => {
     await waitFor(() => expect(screen.queryByText('Gone')).not.toBeInTheDocument())
     expect(window.api.vault.remove).toHaveBeenCalledWith('/vaults/Gone')
   })
+
+  it('forgets a missing vault from the keyboard', async () => {
+    serveVaults([ACTIVE, OLD, GONE], [ACTIVE, OLD])
+    render(<VaultSwitcher />)
+    fireEvent.keyDown(await screen.findByLabelText('Remove Gone from list'), { key: 'Enter' })
+    fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.remove2'))
+
+    await waitFor(() => expect(screen.queryByText('Gone')).not.toBeInTheDocument())
+    expect(mocks.switchVault).not.toHaveBeenCalled()
+  })
+
+  it('deletes a local vault from the account from the keyboard', async () => {
+    render(<VaultSwitcher />)
+    fireEvent.keyDown(await screen.findByLabelText('Delete Old from account'), { key: 'Enter' })
+    fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.deleteVaultConfirm'))
+
+    await waitFor(() => expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
+    expect(mocks.switchVault).not.toHaveBeenCalled()
+  })
 })
