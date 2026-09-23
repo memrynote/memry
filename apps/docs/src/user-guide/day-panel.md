@@ -6,11 +6,13 @@ A right-side panel with calendar, tasks, and the schedule for a selected date.
 
 ## What's In It
 
-Three stacked sections:
+Stacked sections:
 
 1. **Calendar picker** — month grid with heatmap dots indicating activity
-2. **Today's tasks** — tasks due on the focused date
-3. **Schedule** — calendar events and a journal preview for the focused date
+2. **Day timeline** — the focused date as an hour-by-hour grid (on every tab except Calendar)
+3. **Today's tasks** — tasks due on the focused date
+4. **Schedule** — calendar events for the focused date, listed only while the Calendar tab is
+   active, since everywhere else the day timeline shows them
 
 ## The Calendar Picker
 
@@ -21,6 +23,21 @@ A compact monthly grid:
 - Click any date to set focus across the panel
 
 Use the prev / next arrows or the month label to jump months.
+
+## Day Timeline
+
+The focused date's calendar, hour by hour, like the Calendar tab's Day view. It opens at the
+current time on today, and at 07:00 on any other day.
+
+- Drag a task from **Today's tasks** onto an hour to block that time for it. The drop sets the
+  task's time; nothing is copied.
+- Drag a block to move it. Drag its top or bottom edge to change its length.
+- Drag across empty hours to create an event.
+- Click a block to open the Calendar tab on that day.
+
+A completed task leaves the timeline. See [Time Blocks](/user-guide/calendar#time-blocks).
+
+On the Calendar tab the timeline is hidden, because the tab already shows the day.
 
 ## Today's Tasks
 
@@ -33,6 +50,9 @@ Tasks with a due date matching the focused date. Each row shows:
 - Subtask progress (if any)
 
 Click a task to open its detail drawer; right-click for the context menu (status / priority / etc.).
+
+Open tasks are draggable: onto the day timeline above, onto the Calendar tab's grid, or onto
+any other task drop target.
 
 ## Schedule
 
