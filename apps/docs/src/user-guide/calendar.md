@@ -52,6 +52,13 @@ All-day and multi-day events appear in an **Events** group at the top. Double-cl
 select it and press Enter, to open it. Timed events, reminders, and notes stay in the other
 views.
 
+Bars are drawn like the chips in the other views (see [Reading a Chip](#reading-a-chip)): a
+colored bar on the leading edge and a tinted fill, with the title in plain text. A task bar uses
+its project's color; an event uses its own color, or its type's color if it has none. The
+selected bar, or the one whose card is open, is the only solid bar on screen. Tasks have a
+checkbox on the bar and next to the title in the list, so you can complete one without opening
+it. Enter opens the same task and event cards as the other views.
+
 ### Rescheduling
 
 - Drag a bar to move it; drag either end to change the start or due date. Escape cancels a drag.
