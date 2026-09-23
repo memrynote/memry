@@ -139,6 +139,7 @@
     "noRelatedItems": "No related items yet",
     "removeRelatedItem": "Remove related item {title}",
     "relatedItemFallback": "item",
+    "relatedItemMissing": "That related item is no longer in this vault.",
     "activity": "Activity",
     "activityShowAll": "Show all {count}",
     "activityEmpty": "Nothing recorded yet. Edits to this task appear here.",

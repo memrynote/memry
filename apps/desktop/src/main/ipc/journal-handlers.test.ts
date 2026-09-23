@@ -158,6 +158,48 @@ describe('journal-handlers', () => {
     expect(result).toEqual(expect.objectContaining({ properties: { mood: 'good' } }))
   })
 
+  // A journal file the vault scanner/watcher indexed first carries a fresh note
+  // id, not `j<date>`. The entry the renderer holds is what the journal editor
+  // passes as its note id, so a task created inside that day would otherwise be
+  // linked to an id nothing resolves and its related item would open a blank
+  // note (#2271).
+  it('gets an entry under the cached note id, not the file-derived one', async () => {
+    registerJournalHandlers()
+    ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
+    ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue(undefined)
+
+    const result = await invokeHandler(JournalChannels.invoke.GET_ENTRY, { date: '2025-01-01' })
+
+    expect(result).toEqual(expect.objectContaining({ id: 'cache-1', content: 'Hello journal' }))
+  })
+
+  it('gets an entry under the canonical id when data.db and the cache disagree', async () => {
+    registerJournalHandlers()
+    ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
+    ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue({ id: 'canonical-1' })
+
+    const result = await invokeHandler(JournalChannels.invoke.GET_ENTRY, { date: '2025-01-01' })
+
+    expect(result).toEqual(expect.objectContaining({ id: 'canonical-1' }))
+  })
+
+  it('keeps the deterministic id when nothing is indexed for the date', async () => {
+    registerJournalHandlers()
+    ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
+    ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue(undefined)
+    ;(notesQueries.getNoteCacheByPath as Mock).mockReturnValue(undefined)
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue(undefined)
+
+    const result = await invokeHandler(JournalChannels.invoke.GET_ENTRY, { date: '2025-01-01' })
+
+    expect(result).toEqual(expect.objectContaining({ id: 'j2025-01-01' }))
+  })
+
   it('creates a journal entry and emits event', async () => {
     registerJournalHandlers()
     // Properties are now passed to writeJournalEntryWithContent and serialized to frontmatter
@@ -324,6 +366,40 @@ describe('journal-handlers', () => {
     expect(result).toEqual(expect.objectContaining({ content: 'Updated content' }))
     expect(noteSync.syncNoteToCache).toHaveBeenCalled()
     expect(projections.flushProjectionEvents).not.toHaveBeenCalled()
+  })
+
+  // The renderer caches the update result (and the ENTRY_UPDATED payload) as the
+  // open entry, so a file-derived id here would put the divergent id straight
+  // back into the editor after the first save (#2271).
+  it('returns and broadcasts the cached note id after an update', async () => {
+    registerJournalHandlers()
+
+    const send = vi.fn()
+    ;(BrowserWindow.getAllWindows as Mock).mockReturnValue([
+      { isDestroyed: () => false, webContents: { send } }
+    ])
+    ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
+    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+      entry: { ...baseEntry, content: 'Updated content' },
+      fileContent: 'serialized',
+      frontmatter: { date: baseEntry.date, tags: baseEntry.tags }
+    })
+    ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+    ;(journalVault.serializeJournalEntry as Mock).mockReturnValue('serialized')
+    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue(undefined)
+
+    const result = await invokeHandler(JournalChannels.invoke.UPDATE_ENTRY, {
+      date: '2025-01-01',
+      content: 'Updated content'
+    })
+
+    expect(result).toEqual(expect.objectContaining({ id: 'cache-1' }))
+    expect(runtimeEffects.enqueueJournalUpdate).toHaveBeenCalledWith('cache-1', '2025-01-01')
+    expect(send).toHaveBeenCalledWith(
+      JournalChannels.events.ENTRY_UPDATED,
+      expect.objectContaining({ entry: expect.objectContaining({ id: 'cache-1' }) })
+    )
   })
 
   it('flushes projections when update creates a missing journal entry', async () => {
