@@ -63,18 +63,36 @@ Checkbox legend: validate, design, failing test, implement, gates, docs, live, c
 - [x] docs (`docs/protocol/05-record-sync.md` §5.5; `apps/docs/src/architecture/sync-protocol.md` Cursors; docs:impact strict green; docs:build green)
 - [x] live (Playwright two-device E2E on Miniflare; main 1/7 tasks, head 7/7; `evidence/pr01-live-*.txt`)
 - [x] commit
-- [ ] PR
-- [ ] verdict
+- [x] PR https://github.com/memrynote/memry/pull/2384
+- [x] verdict: swarm PASS at e3c744797 (gates, red-first, receipts); patch-id unchanged after the restack onto PR00
 
 ### PR02 `fix/sync-journal-apply-tx` (#2284)
 
 - [x] validate
-- [ ] design · [ ] failing test · [ ] implement · [ ] gates · [ ] docs · [ ] commit · [ ] PR · [ ] verdict
+- [x] design (sync `buildJournalEntryWrite`, deferred file via the crash journal; property-definition delete journals `properties.md`)
+- [x] failing test (`page-apply-file-writes.test.ts`: 3 failed before the fix)
+- [x] implement
+- [x] gates (desktop test:main 9184, lint, typecheck, architecture, contracts)
+- [x] docs (`apps/docs/src/architecture/sync-protocol.md` page-transaction paragraph)
+- [x] commit
+- [x] PR https://github.com/memrynote/memry/pull/2386
+- [ ] verdict
 
 ### PR03 `fix/sync-schema-invalid` (#2285)
 
 - [x] validate
-- [ ] design · [ ] failing test · [ ] implement · [ ] gates · [ ] docs · [ ] commit · [ ] PR · [ ] verdict
+- [x] design (interrogate + comment review: `/tmp/sa-interrogate/pr03-*.md`; ledger kinds, 100-id chunks, manifest exclusion, orphan guard, breaker count)
+- [x] failing test (apply-item and pull-coordinator tests failed on the parent branch)
+- [x] implement
+- [x] gates (desktop test:main 9198, lint, typecheck)
+- [x] docs (protocol 05 §5.14 non-envelope rule changed with reason; apps/docs sync-protocol + sync-handlers)
+- [x] commit
+- [ ] PR
+- [ ] verdict
+
+### PR00 `fix/eventkit-provider-test-platform` (tooling, not an epic issue)
+
+- main's Unit & integration job fails on Linux since #2375 (two EventKit provider tests). Fixed in its own PR at the stack root: https://github.com/memrynote/memry/pull/2387
 
 ### PR04 `fix/sync-dirty-recovery-all-types` (#2286)
 
@@ -193,6 +211,12 @@ Checkbox legend: validate, design, failing test, implement, gates, docs, live, c
 
 ## Acceptance map
 
+- #2284 row exists before commit returns, file written by flushFiles: `page-apply-file-writes.test.ts` "commits the row with the page and writes the file on flush".
+- #2284 crash between commit and flush, replay writes the file: `page-apply-file-writes.test.ts` "replays the file write after a crash between commit and flush"; property delete: "journals the properties.md rewrite so a crash cannot bring the definition back".
+- #2284 no `.then(` in item-handler apply paths: grep returns nothing (PR02 body).
+- #2285 schema failure returns schema_invalid, recorded, re-fetched and re-applied after an app update: `apply-item.test.ts` "#then returns schema_invalid ...", `pull-coordinator.test.ts` "#then the item is re-fetched by id and applied, though the cursor moved past it", `item-recovery.test.ts`, `schema-invalid-ledger.test.ts`.
+- #2285 malformed pull response: cursor not advanced, pull_page_dropped still emitted: `pull-coordinator.test.ts` "#then logs pull_page_dropped ...".
+
 One line per acceptance criterion: issue, criterion, test name or live result.
 
 - #2282 two concurrent pushes, no reader sees the higher range before the lower: `push-batch-pipeline.test.ts` "never lets a reader page past a range that commits after a higher one" (real SQLite, held batch).
@@ -206,6 +230,11 @@ One line per acceptance criterion: issue, criterion, test name or live result.
 - #2382 #2283-shape regression: `engine.test.ts` "#then the skipped update arrives and the repair is recorded".
 
 ## Decisions
+
+- PR00: main was red on Linux (EventKit provider tests). Fixed in its own PR and placed at the stack root so the stack's CI can go green.
+- PR03: protocol 05 §5.14 said a non-envelope page is dropped and the cursor advances; #2285 (Review) requires holding it. Changed the doc with the reason (server fault, not a poisoned item). The shared TS pull engine and the Rust core still drop; added to PR24 (#2304) scope.
+- PR03: interrogate found the ledger retry would 400 past 100 ids, orphan repair would tombstone children of a schema-invalid parent on every device, and ledger items would trigger a full re-pull on every manifest check. All three fixed with tests.
+- #2385 filed (journal the note/journal file deletes); it is a child of #2279 and is covered by an extra unit after PR24.
 
 Full trail in `decisions.tsv` (worktree root, uncommitted).
 
