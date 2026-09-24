@@ -521,9 +521,10 @@ of its flows via XcodeBuildMCP with screenshots saved to
       renderer tests, i18n, architecture, contracts, all three iOS plans,
       `git diff --check`). Record counts vs the TP001 baseline.
       Evidence: 2026-09-24 on HEAD after 8d80a5b85 (+ UI test scroll fix). Rust: `cargo fmt --check` clean, `cargo clippy -p memry-core --all-targets -D warnings` clean, `cargo test -p memry-core` 66 binaries 915 passed / 0 failed / 1 ignored (TP001: 49 binaries 749/0/1), line ceilings passed (360 files), `build-xcframework.sh --release` exit 0 with generated Swift unchanged. Vectors: `vectors:generate` produced no diff, `vectors:check` passed (16 classes; TP001: 14). `pnpm lint` 0 errors (3 warnings, pre-existing), `pnpm typecheck` 18/18, `test:renderer` 784 files / 9988 passed (+2 expected-fail, 7 skipped), `i18n:check` passed, `check:architecture` + `check:contracts` passed, `git diff --check $(merge-base main)` clean. iOS: Conformance 27 tests in 7 suites (TP001: 21/5), Unit 669 tests in 99 suites (TP001: 503/84), UI 8 executed / 0 failures / 1 skipped (on-demand AgentDriverUITests).
-- [ ] TP084 Desktop regression: `pnpm --filter @memry/desktop test:desktop`
+- [x] TP084 Desktop regression: `pnpm --filter @memry/desktop test:desktop`
       green; `electron-vite build`, then `pnpm --filter @memry/desktop test:e2e`
       for the task specs only.
+      Evidence: `pnpm test:desktop`: 1588 files / 22416 passed (+3 expected-fail, 13 skipped), after fixing a failure that predates this branch (seed note lacked the `whiteboard` block, §6 TP084). `electron-vite build` then `pnpm --filter @memry/desktop test:e2e` for the task specs (tasks, tasks-kanban, inline-subtasks, project-hub, project-unassign, saved-filters-events, task-block-empty-title): 46 passed (9.1 min).
 
 ---
 
@@ -654,6 +655,7 @@ clock, createdAt`) but is in the core's **unsubscribed** list
 - 2026-09-24 — Phase 4 verification — Toggled one unmarked task line ("Unchecked item", memrynote Launch) and the stale-inbox setting to check writes, and set both straight back (§0.5 exception, net zero change).
 - 2026-09-24 — TP082 — A write made from a note (tick, convert, nest) now asks the tasks store for a debounced pass (`requestVaultSync`), and foregrounding syncs from the vault scope rather than the Tasks tab (a hidden tab missed scene changes). Known, not changed: a note **body** edit made on another device (no record change) is fetched when the note is opened or refreshed, not by the background pass (spec 003 behaviour); a desktop-side checklist-to-task conversion therefore shows on the phone after the note is refreshed.
 - 2026-09-24 — TP042 — Quick add keeps focus after a submit (rapid entry), so its keyboard carries a Done key, and the list and Kanban dismiss it on scroll; without it the keyboard covered the tab bar with no way out on a short list.
+- 2026-09-24 — TP084 — `pnpm test:desktop` failed before this branch (on main too): the iOS parity seed note did not use the `whiteboard` block added by 73bfcbfba, which its "every registered block" test requires. Fixed by adding a whiteboard block to the seed's Embeds section, pointing at the first seeded canvas. Seed-only change; no product code.
 
 ## 7. Blockers
 
