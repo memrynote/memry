@@ -332,16 +332,14 @@ export function normalizeWikiLinks(
   let didChange = false
 
   const nextBlocks = blocks.map((block) => {
-    if (block.type === 'codeBlock') {
-      return block
-    }
-
     let blockChanged = false
     let nextBlock: Block = block
 
     // Children are still walked: a sibling block nested under the caret's block
-    // is a different block, and its links promote as usual.
-    if (block.content && block.id !== options?.skipBlockId) {
+    // is a different block, and its links promote as usual. The same holds for
+    // a code block: its own text is literal, but a list indented under it is
+    // not code, and skipping it left every link there as raw `[[…]]`.
+    if (block.content && block.type !== 'codeBlock' && block.id !== options?.skipBlockId) {
       if (typeof block.content === 'string' || Array.isArray(block.content)) {
         const normalized = normalizeInlineContent(block.content as any)
         if (normalized.didChange) {

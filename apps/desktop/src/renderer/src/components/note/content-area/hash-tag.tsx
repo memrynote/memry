@@ -238,12 +238,15 @@ export function normalizeHashTags(
   let didChange = false
 
   const nextBlocks = blocks.map((block) => {
-    if (block.type === 'codeBlock') return block
-
     let blockChanged = false
     let nextBlock: Block = block
 
-    if (block.content && (typeof block.content === 'string' || Array.isArray(block.content))) {
+    // A code block's own text is literal; blocks nested under it are not code.
+    if (
+      block.type !== 'codeBlock' &&
+      block.content &&
+      (typeof block.content === 'string' || Array.isArray(block.content))
+    ) {
       const normalized = normalizeInlineContentHashTags(
         block.content as any,
         noteTags,
@@ -301,9 +304,8 @@ export function extractInlineTags(blocks: Block[]): string[] {
   }
 
   function walkBlock(block: Block): void {
-    if (block.type === 'codeBlock') return
-
-    if (Array.isArray(block.content)) {
+    // A code block's own text is literal; blocks nested under it are not code.
+    if (block.type !== 'codeBlock' && Array.isArray(block.content)) {
       for (const item of block.content as any[]) {
         if (item?.type === 'hashTag' && item.props?.tag) {
           addTag(item.props.tag as string)

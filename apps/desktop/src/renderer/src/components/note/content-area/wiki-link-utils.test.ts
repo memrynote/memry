@@ -203,6 +203,26 @@ describe('wiki-link utils', () => {
     ])
   })
 
+  it('promotes links in blocks nested under a code block, and not in the code itself', () => {
+    // #given a code block used as a heading with a list indented under it, the
+    // shape of a note whose links reopened as raw `[[…]]` on every visit
+    const blocks = normalizeWikiLinks([
+      {
+        id: 'code',
+        type: 'codeBlock',
+        content: '[[literal]]',
+        children: [{ id: 'item', type: 'bulletListItem', content: '[[Nested]]' }]
+      }
+    ] as any)
+
+    // #then the code stays literal and the nested item gets its chip
+    expect(blocks.didChange).toBe(true)
+    expect((blocks.blocks[0] as any).content).toBe('[[literal]]')
+    expect((blocks.blocks[0] as any).children[0].content).toEqual([
+      { type: 'wikiLink', props: { target: 'Nested', alias: '' } }
+    ])
+  })
+
   // #1439. Promotion runs on every change, so this fires on mere open: before
   // the marks moved into the node's props, `**[[A]]**` became `[[A]]` on disk
   // the first time anyone looked at the note.

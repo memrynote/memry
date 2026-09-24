@@ -23,7 +23,7 @@ function splitTextNode(node: InlineNode): InlineNode[] {
     if (m.index > last) {
       out.push({ type: 'text', text: text.slice(last, m.index), styles: node.styles })
     }
-    out.push(createDateMentionContent(data) as unknown as InlineNode)
+    out.push(createDateMentionContent(data))
     last = m.index + m[0].length
   }
   if (last === 0) return [node]
@@ -62,12 +62,11 @@ export function normalizeDateMentions(blocks: Block[]): { blocks: Block[]; didCh
   let didChange = false
 
   const nextBlocks = blocks.map((block) => {
-    if (block.type === 'codeBlock') return block
-
     let blockChanged = false
     let nextBlock: Block = block
 
-    if (Array.isArray(block.content)) {
+    // A code block's own text is literal; blocks nested under it are not code.
+    if (block.type !== 'codeBlock' && Array.isArray(block.content)) {
       const normalized = normalizeInlineContent(block.content as any)
       if (normalized.didChange) {
         blockChanged = true

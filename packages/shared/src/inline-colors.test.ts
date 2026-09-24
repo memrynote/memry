@@ -157,6 +157,30 @@ describe('extractInlineColorRuns / restoreInlineColorTokens (serialize side)', (
     expect(wrapped[0]).toBe(blocks[0])
   })
 
+  it('wraps runs in blocks nested under a code block, but not the code itself', () => {
+    const blocks = [
+      {
+        type: 'codeBlock',
+        props: { language: 'text' },
+        content: [{ type: 'text', text: 'modules', styles: { textColor: 'red' } }],
+        children: [
+          {
+            type: 'bulletListItem',
+            props: {},
+            content: [{ type: 'text', text: 'A', styles: { textColor: 'red' } }],
+            children: []
+          }
+        ]
+      }
+    ]
+
+    const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks)
+    const code = wrapped[0] as { content: unknown; children: Array<{ content: unknown }> }
+    expect(code.content).toBe(blocks[0].content)
+    expect(replacements.size).toBeGreaterThan(0)
+    expect(code.children[0].content).not.toBe(blocks[0].children[0].content)
+  })
+
   it('wraps runs inside BlockNote 0.47 tableCell objects', () => {
     const blocks = [
       {

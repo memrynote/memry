@@ -148,14 +148,11 @@ export function normalizeLinkMentions(blocks: Block[]): { blocks: Block[]; didCh
   let didChange = false
 
   const nextBlocks = blocks.map((block) => {
-    if (block.type === 'codeBlock') {
-      return block
-    }
-
     let blockChanged = false
     let nextBlock: Block = block
 
-    if (block.content) {
+    // A code block's own text is literal; blocks nested under it are not code.
+    if (block.content && block.type !== 'codeBlock') {
       if (typeof block.content === 'string' || Array.isArray(block.content)) {
         const normalized = normalizeInlineContent(block.content as any)
         if (normalized.didChange) {

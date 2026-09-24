@@ -134,6 +134,55 @@ for (const mode of ['store', 'no-store'] as const) {
       }
     })
 
+    /**
+     * The reported note, byte for byte in shape: a code block used as a
+     * heading, with a list indented under it. Open-time promotion skipped a code
+     * block's children, so every visit read `[[…]]` where the store could not
+     * keep the chips a click had made.
+     */
+    test('links in a list nested under a code block are chips on every visit', async () => {
+      const app = await launch(mode)
+      try {
+        const [a, b, src, other] = ['Module A', 'Module B', 'Grades', 'Elsewhere'].map(uniqueLabel)
+        const dash =
+          '<span style="color:rgb(255, 255, 255);background-color:rgb(26, 26, 26)">\u2014\u2014\u2014 </span>'
+        await createNotes(app.page, [
+          { title: a, content: 'A.\n' },
+          { title: b, content: 'B.\n' },
+          { title: other, content: 'Somewhere else.\n' },
+          {
+            title: src,
+            content: [
+              '```text',
+              ' modules & gpa:',
+              '```',
+              '',
+              '<!-- memry:block-nesting-level=1 -->',
+              '',
+              `- *[[${a}]]* ${dash}`,
+              '',
+              `- *[[${b}]]* ${dash}`,
+              '',
+              '##### `gpa:`',
+              '',
+              '<!-- memry:block-nesting-level=0 -->',
+              ''
+            ].join('\n')
+          }
+        ])
+
+        for (let round = 0; round < 3; round++) {
+          await open(app.page, src)
+          await expect
+            .poll(() => editorState(app.page), { message: `round ${round}` })
+            .toEqual({ chips: 2, rawBrackets: false })
+          await open(app.page, other)
+        }
+      } finally {
+        await close(app)
+      }
+    })
+
     test('links written into the file while the note is open become chips and stay chips', async () => {
       const app = await launch(mode)
       try {

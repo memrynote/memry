@@ -86,6 +86,29 @@ describe('normalizeLinkMentions', () => {
     expect((out[1] as any).children[0].content[0].type).toBe('linkMention')
   })
 
+  it('promotes a mention nested under a code block, and not in the code itself', () => {
+    const blocks = [
+      {
+        type: 'codeBlock',
+        props: {},
+        content: [{ type: 'text', text: token, styles: {} }],
+        children: [
+          {
+            type: 'bulletListItem',
+            props: {},
+            content: [{ type: 'text', text: token, styles: {} }],
+            children: []
+          }
+        ]
+      }
+    ] as unknown as Block[]
+
+    const { blocks: out, didChange } = normalizeLinkMentions(blocks)
+    expect(didChange).toBe(true)
+    expect((out[0] as any).content[0].text).toBe(token)
+    expect((out[0] as any).children[0].content[0].type).toBe('linkMention')
+  })
+
   it('is a no-op when no token is present', () => {
     const blocks = [
       {
