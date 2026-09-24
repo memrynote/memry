@@ -1,9 +1,10 @@
-import { Hono } from 'hono'
+import { Hono, type MiddlewareHandler } from 'hono'
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
 import { LEGACY_RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { deviceIdentifier, type RateLimitOptions } from '../middleware/rate-limit'
+import type * as RateLimitModule from '../middleware/rate-limit'
 import type { AppContext } from '../types'
 
 // ============================================================================
@@ -2091,15 +2092,116 @@ describe('CRDT rate limit wiring', () => {
     expect(optionsFor('crdt_pull')).toMatchObject({ maxRequests: 600, windowSeconds: 60 })
   })
 
-  it('leaves the non-CRDT limiters keyed by the default user/IP chain', () => {
-    // #then — out of scope for this change
+  it('leaves the record pull limiters keyed by the default user/IP chain', () => {
+    // #then — sync_changes moves to per-device only once pulls are coalesced (#2290)
     expect(optionsFor('sync_pull')?.identifier).toBeUndefined()
-    expect(optionsFor('sync_push')?.identifier).toBeUndefined()
+    expect(optionsFor('sync_changes')?.identifier).toBeUndefined()
   })
 
   it('gives the manifest bucket room for a paginated integrity check', () => {
     // #then — a paginated client spends ceil(rows / 1000) requests per check
     // instead of 1; 30/min keeps a 30k-row vault inside a single window.
     expect(optionsFor('sync_manifest')).toMatchObject({ maxRequests: 30, windowSeconds: 60 })
+  })
+})
+
+// ============================================================================
+// Record push rate limit (#2288)
+//
+// Runs the real limiter middleware with the options the route was built with,
+// against a counting RATE_LIMITER stand-in, so the assertion covers both the
+// route wiring and the ceiling comparison.
+// ============================================================================
+
+describe('record push rate limit', () => {
+  const pushOptions = () => {
+    const options = rateLimiterOptions.find((o) => o.keyPrefix === 'sync_push')
+    if (!options) throw new Error('sync_push limiter was not built')
+    return options
+  }
+
+  const createCountingNamespace = () => {
+    const counts = new Map<string, number>()
+    const namespace = {
+      idFromName: (name: string) => name,
+      get: (key: string) => ({
+        fetch: async () => {
+          const count = (counts.get(key) ?? 0) + 1
+          counts.set(key, count)
+          return Response.json({ count, windowStart: Math.floor(Date.now() / 1000) })
+        }
+      })
+    }
+    return { namespace, counts }
+  }
+
+  const sendPush = async (
+    limiter: MiddlewareHandler<AppContext>,
+    namespace: unknown,
+    deviceId: string
+  ) => {
+    const c = {
+      env: { RATE_LIMITER: namespace },
+      get: (key: string) =>
+        key === 'userId' ? 'user-1' : key === 'deviceId' ? deviceId : undefined,
+      req: { url: 'http://localhost/sync/push', header: () => undefined },
+      header: vi.fn()
+    }
+    const next = vi.fn().mockResolvedValue(undefined)
+    await limiter(c as never, next)
+    return next
+  }
+
+  it('is 300 per 60 s keyed by device, with no bootstrap elevation', () => {
+    // #then — #2288: was 60/min per user, shared by every device on the account
+    expect(pushOptions()).toMatchObject({
+      keyPrefix: 'sync_push',
+      maxRequests: 300,
+      windowSeconds: 60,
+      identifier: deviceIdentifier
+    })
+    expect(pushOptions().getElevatedLimits).toBeUndefined()
+  })
+
+  it('lets one device push 300 times a minute and 429s the 301st', async () => {
+    // #given — #2288
+    const { createRateLimiter } = await vi.importActual<typeof RateLimitModule>(
+      '../middleware/rate-limit'
+    )
+    const limiter = createRateLimiter(pushOptions())
+    const { namespace } = createCountingNamespace()
+
+    // #when
+    for (let i = 0; i < 300; i++) {
+      expect(await sendPush(limiter, namespace, 'device-a')).toHaveBeenCalled()
+    }
+
+    // #then
+    await expect(sendPush(limiter, namespace, 'device-a')).rejects.toMatchObject({
+      code: ErrorCodes.RATE_LIMITED,
+      statusCode: 429
+    })
+  })
+
+  it('gives a second device of the same user its own push bucket', async () => {
+    // #given — #2288: device A spent its whole budget
+    const { createRateLimiter } = await vi.importActual<typeof RateLimitModule>(
+      '../middleware/rate-limit'
+    )
+    const limiter = createRateLimiter(pushOptions())
+    const { namespace, counts } = createCountingNamespace()
+    for (let i = 0; i < 300; i++) {
+      await sendPush(limiter, namespace, 'device-a')
+    }
+
+    // #when
+    const next = await sendPush(limiter, namespace, 'device-b')
+
+    // #then
+    expect(next).toHaveBeenCalled()
+    expect([...counts.keys()].sort()).toEqual([
+      'sync_push:device:device-a',
+      'sync_push:device:device-b'
+    ])
   })
 })
