@@ -408,4 +408,63 @@ describe('TemplateEditorPage', () => {
       { name: 'Status', type: 'select', value: 'todo', options: ['todo', 'done'] }
     ])
   })
+
+  describe('switching away', () => {
+    const saved = {
+      id: 'tpl-1',
+      name: 'Meeting',
+      isBuiltIn: false,
+      tags: [],
+      properties: [],
+      content: ''
+    }
+
+    it('writes an edit still inside the auto-save debounce when the tab unmounts', async () => {
+      queryData = saved
+      const user = userEvent.setup()
+      const { unmount } = render(<TemplateEditorPage templateId="tpl-1" tabId="tab-1" />)
+
+      await user.type(screen.getByLabelText('template title'), ' Notes')
+      expect(updateTemplate).not.toHaveBeenCalled()
+      unmount()
+
+      await waitFor(() =>
+        expect(updateTemplate).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'tpl-1', name: 'Meeting Notes' })
+        )
+      )
+    })
+
+    it('keeps the cache the tab remounts from in step with every write', async () => {
+      queryData = saved
+      const user = userEvent.setup()
+      render(<TemplateEditorPage templateId="tpl-1" tabId="tab-1" />)
+
+      await user.type(screen.getByLabelText('template title'), ' Notes')
+      await user.click(screen.getByRole('button', { name: /^update$/i }))
+
+      await waitFor(() =>
+        expect(setQueryData).toHaveBeenCalledWith(['template-editor', 'tpl-1'], {
+          id: 'tpl-1',
+          name: 'Meeting'
+        })
+      )
+    })
+
+    it('does not write edits the close prompt discarded', async () => {
+      queryData = saved
+      const user = userEvent.setup()
+      const { unmount } = render(<TemplateEditorPage templateId="tpl-1" tabId="tab-1" />)
+
+      await user.type(screen.getByLabelText('template title'), ' Notes')
+      const guard = registerCloseGuard.mock.calls.at(-1)?.[1] as unknown as {
+        discard: () => void
+      }
+      guard.discard()
+      unmount()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(updateTemplate).not.toHaveBeenCalled()
+    })
+  })
 })
