@@ -367,10 +367,10 @@ service, so it never shows up twice.
 - **An event you point at a calendar goes to that calendar.** The calendar picker in the event
   form lists the calendars you can write to, grouped by service when more than one is connected.
 - **Everything else goes to your default calendar.** Tasks, reminders, inbox snoozes and events
-  without a chosen calendar go to the default you picked in Settings → Calendar: Google's default
-  calendar, or a CalDAV calendar chosen under **Default calendar** in its account's section. Until
-  you pick one, Google keeps its old behaviour: the default Google calendar from onboarding, or
-  else the memrynote calendar it creates for you.
+  without a chosen calendar go to your default calendar: a CalDAV calendar chosen under **Default
+  calendar** in its account's section in Settings → Calendar, or else the Google calendar picked
+  during Google Calendar onboarding, or else the memrynote calendar Google creates for you. If the
+  CalDAV default is disconnected or hidden, items go back to that Google chain.
 
 The default is chosen per device. An item that another device already wrote to a calendar is
 never written a second time by this one, even when this device's default is a different service.

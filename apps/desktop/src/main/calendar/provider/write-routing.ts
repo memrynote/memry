@@ -114,11 +114,49 @@ function readStoredDefaultWriteTarget(db: DataDb): DefaultWriteTarget | undefine
  */
 export function readDefaultWriteTarget(db: DataDb): DefaultWriteTarget {
   const stored = readStoredDefaultWriteTarget(db)
-  if (stored !== undefined) return stored
+  if (stored !== undefined && (stored === null || isLiveDefaultWriteTarget(db, stored))) {
+    return stored
+  }
   const { defaultTargetCalendarId } = readCalendarGoogleSettings(db)
   return defaultTargetCalendarId
     ? { provider: GOOGLE_CALENDAR_PROVIDER, remoteCalendarId: defaultTargetCalendarId }
     : null
+}
+
+/**
+ * A non-Google default only counts while its calendar is still connected and
+ * shown. Otherwise disconnecting CalDAV (here or on another device, whose
+ * archived rows sync in) would leave every task, reminder and snooze routed to
+ * a provider that no longer writes anything, and Google would never be tried.
+ * Google targets are exempt: its managed memrynote calendar has no source row
+ * until the first push creates it, and that is how older builds always routed.
+ */
+function isLiveDefaultWriteTarget(db: DataDb, target: NonNullable<DefaultWriteTarget>): boolean {
+  if (target.provider === GOOGLE_CALENDAR_PROVIDER) return true
+  return db
+    .select({ provider: calendarSources.provider, isSelected: calendarSources.isSelected })
+    .from(calendarSources)
+    .where(
+      and(
+        eq(calendarSources.kind, 'calendar'),
+        eq(calendarSources.remoteId, target.remoteCalendarId),
+        isNull(calendarSources.archivedAt)
+      )
+    )
+    .all()
+    .some((row) => row.provider === target.provider && row.isSelected)
+}
+
+/**
+ * Forget a stored default whose calendar is gone (disconnect, a calendar the
+ * server no longer lists, or one the user hid), so Settings stops showing it
+ * and routing falls back to Google's chain.
+ */
+export function dropStaleDefaultWriteTarget(db: DataDb): void {
+  const stored = readStoredDefaultWriteTarget(db)
+  if (stored && !isLiveDefaultWriteTarget(db, stored)) {
+    deleteSetting(db, DEFAULT_WRITE_TARGET_SETTINGS_KEY)
+  }
 }
 
 export function writeDefaultWriteTarget(db: DataDb, target: DefaultWriteTarget): void {

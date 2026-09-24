@@ -27,19 +27,38 @@ const MAX_REDIRECTS = 5
 const DEFAULT_TIMEOUT_MS = 30_000
 
 /**
- * The hosts that may receive this account's credentials: the server's own
- * host and, when it has at least three labels, its parent domain and every
- * subdomain of it. `caldav.icloud.com` covers `p67-caldav.icloud.com`;
- * `dav.fastmail.com` covers `caldav.fastmail.com`. An IP address or a
- * two-label host covers only itself and its subdomains. Credentials never
- * travel from HTTPS to plain HTTP, and plain HTTP gets them only for the exact
- * origin the user typed (a LAN server).
+ * Providers that spread one account over several hosts inside a domain they
+ * own outright (every subdomain is theirs). iCloud redirects discovery to a
+ * per-account partition host (`p67-caldav.icloud.com`).
+ */
+const MULTI_HOST_PROVIDER_DOMAINS = [
+  'icloud.com',
+  'me.com',
+  'fastmail.com',
+  'yahoo.com',
+  'zoho.com'
+]
+
+function withinDomain(host: string, domain: string): boolean {
+  return host === domain || host.endsWith(`.${domain}`)
+}
+
+/**
+ * The hosts that may receive this account's credentials: the exact host the
+ * user connected to, plus, for a known multi-host provider, the rest of that
+ * provider's own domain. Never a parent domain in general: under a shared
+ * suffix (`myname.synology.me`, `family.duckdns.org`) the parent is every
+ * other customer, and a PROPFIND href or an open redirect pointing there would
+ * receive the app password. Credentials never travel from HTTPS to plain
+ * HTTP, and plain HTTP gets them only for the exact origin the user typed (a
+ * LAN server).
  */
 export function createCredentialScope(serverUrl: string): (target: URL) => boolean {
   const origin = new URL(serverUrl)
   const host = origin.hostname.toLowerCase()
-  const labels = host.split('.')
-  const base = isIP(host) || labels.length < 3 ? host : labels.slice(1).join('.')
+  const providerDomain = isIP(host)
+    ? undefined
+    : MULTI_HOST_PROVIDER_DOMAINS.find((domain) => withinDomain(host, domain))
 
   return (target) => {
     const targetHost = target.hostname.toLowerCase()
@@ -48,8 +67,7 @@ export function createCredentialScope(serverUrl: string): (target: URL) => boole
     }
     if (target.protocol !== 'https:') return false
     if (targetHost === host) return true
-    if (isIP(host)) return false
-    return targetHost === base || targetHost.endsWith(`.${base}`)
+    return providerDomain !== undefined && withinDomain(targetHost, providerDomain)
   }
 }
 

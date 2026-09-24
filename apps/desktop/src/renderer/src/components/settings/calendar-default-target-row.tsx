@@ -30,7 +30,9 @@ export function CalendarDefaultTargetRow({
       .then((listed) => {
         if (cancelled) return
         setCalendars(listed.calendars)
-        setValue(listed.currentDefaultId ?? NOT_DEFAULT)
+        // A default on a calendar this device cannot write to is not offered.
+        const current = listed.calendars.find((calendar) => calendar.id === listed.currentDefaultId)
+        setValue(current?.id ?? NOT_DEFAULT)
       })
       .catch((cause: unknown) => log.warn('Could not list calendars for the default target', cause))
     return () => {

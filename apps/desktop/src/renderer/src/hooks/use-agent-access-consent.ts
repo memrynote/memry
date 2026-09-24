@@ -54,7 +54,18 @@ export function useAgentAccessConsent(providerIds: string[]): AgentAccessConsent
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const checkedRef = useRef(new Set<string>())
+  const mountedRef = useRef(true)
   const providerKey = providerIds.join('\u0000')
+
+  // Only unmounting stops a read. Cancelling on every provider-list change
+  // would drop the reads already marked as checked, and their prompts would
+  // never open while this component stays mounted.
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     const unchecked = providerKey
@@ -63,12 +74,11 @@ export function useAgentAccessConsent(providerIds: string[]): AgentAccessConsent
     if (unchecked.length === 0) return
     for (const provider of unchecked) checkedRef.current.add(provider)
 
-    let cancelled = false
     void (async () => {
       for (const provider of unchecked) {
         try {
           const consent = await readConsent(provider)
-          if (cancelled) return
+          if (!mountedRef.current) return
           if (consent === null) {
             setPending((current) => (current.includes(provider) ? current : [...current, provider]))
           }
@@ -77,10 +87,6 @@ export function useAgentAccessConsent(providerIds: string[]): AgentAccessConsent
         }
       }
     })()
-
-    return () => {
-      cancelled = true
-    }
   }, [providerKey])
 
   const promptProvider = pending[0] ?? null

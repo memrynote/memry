@@ -7,6 +7,7 @@ import { getCalendarSourceById } from '../repositories/calendar-sources-reposito
 import { syncCalendarSourceUpdate } from '../runtime-effects'
 import { ProviderAuthError, type ProviderError } from '../provider/errors'
 import { purgeCalendarSourceMirrors, upsertSyncedCalendarSource } from '../provider/source-mirrors'
+import { dropStaleDefaultWriteTarget } from '../provider/write-routing'
 import {
   CALDAV,
   caldavAccountId,
@@ -218,6 +219,7 @@ function archiveSources(db: DataDb, sources: CalendarSource[]): void {
     syncCalendarSourceUpdate(source.id)
     emitCalendarChanged({ entityType: 'calendar_source', id: source.id })
   }
+  dropStaleDefaultWriteTarget(db)
 }
 
 /**

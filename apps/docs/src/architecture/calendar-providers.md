@@ -63,8 +63,10 @@ hold events (VTODO-only task lists) are skipped. The XML requests and responses 
 partition host such as `p67-caldav.icloud.com`. `fetch` drops the `Authorization` header on any
 cross-origin redirect, and re-attaching it blindly would send the app password wherever a server
 points. The transport follows redirects itself and attaches credentials only to hosts in the
-account's scope: the server's host, and, when that host has at least three labels, its parent
-domain and every subdomain (`caldav.icloud.com` covers `*.icloud.com`). Credentials never move
+account's scope: the exact host the user connected to, plus, for a provider that owns its whole
+domain and spreads accounts over several hosts (iCloud, Fastmail, Yahoo, Zoho), the rest of that
+domain (`caldav.icloud.com` covers `*.icloud.com`). There is no general parent-domain rule: under a
+shared suffix such as `myname.synology.me` the parent is every other customer. Credentials never move
 from HTTPS to plain HTTP; plain HTTP gets them only for the exact origin the user typed, which is
 how a LAN Radicale works. Servers that only offer HTTP Digest are answered from their challenge.
 
@@ -120,14 +122,16 @@ through it. An unknown provider still gets `Unsupported calendar provider: <id>`
 
 Generic IPC channels sit next to the provider-specific ones:
 
-| Generic                                                    | Kept as a permanent alias                                  |
-| ---------------------------------------------------------- | ---------------------------------------------------------- |
-| `calendar:list-providers`                                  | none                                                       |
-| `calendar:list-provider-calendars`                         | `calendar:list-google-calendars`                           |
-| `calendar:set-default-provider-calendar`                   | `calendar:set-default-google-calendar`                     |
-| `calendar:retry-source-sync`                               | `calendar:retry-google-source-sync`                        |
-| `settings:{get,set}CalendarProviderSettings`               | `settings:{get,set}CalendarGoogleSettings`                 |
-| `calendar:connect-provider` with `connection.kind = 'url'` | `calendar:subscribe-ics`, `unsubscribe-ics`, `refresh-ics` |
+| Generic                                                    | Kept as a permanent alias                  |
+| ---------------------------------------------------------- | ------------------------------------------ |
+| `calendar:list-providers`                                  | none                                       |
+| `calendar:list-provider-calendars`                         | `calendar:list-google-calendars`           |
+| `calendar:set-default-provider-calendar`                   | `calendar:set-default-google-calendar`     |
+| `calendar:retry-source-sync`                               | `calendar:retry-google-source-sync`        |
+| `settings:{get,set}CalendarProviderSettings`               | `settings:{get,set}CalendarGoogleSettings` |
+| `calendar:connect-provider` with `connection.kind = 'url'` | `calendar:subscribe-ics`                   |
+| `calendar:disconnect-provider` with `sourceId`             | `calendar:unsubscribe-ics`                 |
+| `calendar:refresh-provider` with `sourceId`                | `calendar:refresh-ics`                     |
 
 The old channels are never removed. During a partial update an older renderer can talk to a
 newer main process, and a missing channel breaks the app in that window.
@@ -162,7 +166,9 @@ then forked.
    id no source knows stays Google's, and if two providers ever share an id, Google wins;
 3. otherwise `calendar.defaultWriteTarget` (`{ provider, remoteCalendarId }`), which falls back
    to `calendar.google.defaultTargetCalendarId`, so an install with only Google settings routes
-   exactly as before;
+   exactly as before. A non-Google default counts only while its calendar source is live and
+   selected; disconnecting or hiding it (here, or on another device whose rows sync in) falls
+   back to the Google chain instead of routing items to a provider that writes nothing;
 4. otherwise Google's managed memrynote calendar, as before.
 
 `provider/write-dispatch.ts` hands the change to that provider's writer only, and only when the
@@ -230,6 +236,8 @@ Hazards 1 and 2 exist only once a second provider can write. Before a writable p
 than Google connects, memrynote reads the account's devices from `GET /devices`, which now
 includes the build each device last connected with, and lists every other device below
 `CALENDAR_MULTI_WRITER_MIN_APP_VERSION`. A device with no recorded version counts as outdated.
+Phones and web clients (`ios`, `android`, `web`) are skipped: they never push to an external
+calendar or read `target_calendar_id`, so no version of them can cause either hazard.
 The connect is refused until the user updates those devices or explicitly accepts the risk,
 and the double-push consequence is spelled out. When the device list cannot be read, the user
 must accept blind. Without a Memry account nothing syncs, so nothing is checked.

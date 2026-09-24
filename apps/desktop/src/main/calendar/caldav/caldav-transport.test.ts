@@ -14,6 +14,18 @@ describe('credential scope (#1399)', () => {
     expect(inScope(new URL('http://p67-caldav.icloud.com/'))).toBe(false)
   })
 
+  it('never widens to a parent domain under a shared suffix', () => {
+    const synology = createCredentialScope('https://myname.synology.me:5001/')
+    expect(synology(new URL('https://myname.synology.me:5001/caldav/'))).toBe(true)
+    expect(synology(new URL('https://attacker.synology.me/'))).toBe(false)
+    expect(synology(new URL('https://synology.me/'))).toBe(false)
+    const duckdns = createCredentialScope('https://dav.family.duckdns.org/')
+    expect(duckdns(new URL('https://other.duckdns.org/'))).toBe(false)
+    expect(duckdns(new URL('https://family.duckdns.org/'))).toBe(false)
+    const fastmail = createCredentialScope('https://caldav.fastmail.com/')
+    expect(fastmail(new URL('https://d123.caldav.fastmail.com/'))).toBe(true)
+  })
+
   it('keeps plain HTTP to the exact origin the user typed (a LAN server)', () => {
     const inScope = createCredentialScope('http://192.168.1.5:5232/')
     expect(inScope(new URL('http://192.168.1.5:5232/me/'))).toBe(true)

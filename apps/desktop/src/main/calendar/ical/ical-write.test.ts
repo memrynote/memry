@@ -218,6 +218,74 @@ describe('updates patch the stored object (#1400)', () => {
     expect(excluded).toContain('X-CUSTOM-FIELD;X-PARAM=keep:opaque value')
   })
 
+  it('writes EXDATE and RECURRENCE-ID with the series value type (RFC 5545 §3.8.4.4)', () => {
+    const allDay = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:x',
+      'BEGIN:VEVENT',
+      'UID:all-day',
+      'DTSTAMP:20260101T000000Z',
+      'DTSTART;VALUE=DATE:20260701',
+      'DTEND;VALUE=DATE:20260702',
+      'RRULE:FREQ=DAILY;COUNT=3',
+      'SUMMARY:Holiday',
+      'END:VEVENT',
+      'END:VCALENDAR',
+      ''
+    ].join('\r\n')
+    const excluded = excludeOccurrence(allDay, '2026-07-02T00:00:00.000Z')
+    expect(excluded).toContain('EXDATE;VALUE=DATE:20260702')
+    expect(
+      expandCalendarEvents(parseICalendar(excluded), WINDOW).map((instance) => instance.startAt)
+    ).toEqual(['2026-07-01T00:00:00.000Z', '2026-07-03T00:00:00.000Z'])
+    const overridden = patchICalendar(
+      allDay,
+      memryEvent({
+        title: 'Holiday (moved)',
+        isAllDay: true,
+        startAt: '2026-07-02T00:00:00.000Z',
+        endAt: '2026-07-03T00:00:00.000Z',
+        timezone: 'UTC'
+      }),
+      { recurrenceId: '2026-07-02T00:00:00.000Z' }
+    )
+    expect(overridden).toContain('RECURRENCE-ID;VALUE=DATE:20260702')
+
+    const zoned = eventToICalendar(
+      memryEvent({
+        startAt: '2026-06-01T07:00:00.000Z',
+        endAt: '2026-06-01T08:00:00.000Z',
+        timezone: 'Europe/Berlin',
+        recurrence: ['RRULE:FREQ=DAILY;COUNT=3']
+      }),
+      { uid: 'zoned' }
+    )
+    const zonedExcluded = excludeOccurrence(zoned, '2026-06-02T07:00:00.000Z')
+    expect(zonedExcluded).toContain('EXDATE;TZID=Europe/Berlin:20260602T090000')
+    expect(
+      expandCalendarEvents(parseICalendar(zonedExcluded), WINDOW).map(
+        (instance) => instance.startAt
+      )
+    ).toEqual(['2026-06-01T07:00:00.000Z', '2026-06-03T07:00:00.000Z'])
+  })
+
+  it('reads a promoted occurrence the series no longer produces as cancelled', () => {
+    const excluded = excludeOccurrence(FOREIGN, '2026-06-11T09:00:00.000Z')
+    const read = (raw: string, recurrenceId: string) =>
+      icalToRemoteEvent(raw, {
+        href: 'https://dav.example.com/cal/apple-1.ics',
+        calendarId: 'https://dav.example.com/cal/',
+        etag: '"e2"',
+        remoteEventId: `https://dav.example.com/cal/apple-1.ics::${recurrenceId}`,
+        recurrenceId
+      }).status
+    expect(read(excluded, '2026-06-11T09:00:00.000Z')).toBe('cancelled')
+    expect(read(excluded, '2026-06-12T09:00:00.000Z')).toBe('confirmed')
+    // Past the end of the COUNT.
+    expect(read(FOREIGN, '2026-06-20T09:00:00.000Z')).toBe('cancelled')
+  })
+
   it('owns the recurrence of objects it created, so removing a repeat removes the RRULE', () => {
     const created = eventToICalendar(memryEvent({ recurrence: ['RRULE:FREQ=WEEKLY'] }), {
       uid: 'memry-1'

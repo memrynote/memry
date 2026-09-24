@@ -38,7 +38,7 @@ import {
   replaceObjectInstances
 } from './caldav-mirror'
 import type { CaldavTransport } from './caldav-transport'
-import { applyBoundCaldavObject } from './caldav-write'
+import { applyBoundCaldavObject, boundObjectEtags } from './caldav-write'
 
 const log = createLogger('Calendar:CaldavSync')
 
@@ -132,16 +132,11 @@ async function applyDeletions(
   db: DataDb,
   source: CalendarSource,
   hrefs: string[],
-  deps: CaldavSyncDeps
+  window: { startAt: string; endAt: string }
 ): Promise<number> {
   let changed = 0
   for (const href of hrefs) {
-    await applyBoundCaldavObject(
-      db,
-      source,
-      { href, deleted: true },
-      windowAt(deps.now?.() ?? new Date())
-    )
+    await applyBoundCaldavObject(db, source, { href, deleted: true }, window)
     changed += removeObjectInstances(db, source.id, href)
   }
   return changed
@@ -166,12 +161,33 @@ async function pullFull(
   }
   const objects = await queryObjectsInWindow(source.remoteId, window, transport)
   let changed = await applyObjects(db, source, objects, window, nowIso)
-  changed += removeUnseenObjects(
-    db,
-    source.id,
-    new Set(objects.map((object) => object.href)),
-    window
-  )
+  const seen = new Set(objects.map((object) => object.href))
+  changed += removeUnseenObjects(db, source.id, seen, window)
+
+  // Bound objects have no mirror rows, and one outside the window is not in
+  // the query above. Check them against the full listing: gone ones are
+  // deleted, changed ones flow back into their items.
+  const bound = [...boundObjectEtags(db, source)].filter(([href]) => !seen.has(href))
+  if (bound.length > 0) {
+    const listed = new Map(
+      (await listObjectEtags(source.remoteId, transport)).map((entry) => [entry.href, entry.etag])
+    )
+    const changedBound = bound.filter(
+      ([href, etag]) => listed.has(href) && listed.get(href) !== etag
+    )
+    const fetched = await fetchObjects(
+      source.remoteId,
+      changedBound.map(([href]) => href),
+      transport
+    )
+    changed += await applyObjects(db, source, fetched, window, nowIso)
+    changed += await applyDeletions(
+      db,
+      source,
+      bound.filter(([href]) => !listed.has(href)).map(([href]) => href),
+      window
+    )
+  }
   return { cursor, changed }
 }
 
@@ -210,7 +226,7 @@ async function syncSourceWithTransport(
       transport
     )
     let changed = await applyObjects(db, source, objects, window, nowIso)
-    changed += await applyDeletions(db, source, changes.deleted, deps)
+    changed += await applyDeletions(db, source, changes.deleted, window)
     saveSource(db, source, {
       syncCursor: changes.syncToken ? `sync-token:${changes.syncToken}` : source.syncCursor,
       syncStatus: 'ok',
@@ -228,18 +244,28 @@ async function syncSourceWithTransport(
   }
   const remote = await listObjectEtags(source.remoteId, transport)
   const known = knownObjectEtags(db, source.id)
+  // Bound objects are known too: they have no mirror rows (#1400).
+  const bound = boundObjectEtags(db, source)
   const remoteHrefs = new Set(remote.map((entry) => entry.href))
-  const stale = remote.filter(
-    (entry) => !known.has(entry.href) || known.get(entry.href) !== entry.etag
+  const stale = remote.filter((entry) => {
+    const mirrored = known.get(entry.href)
+    const written = bound.get(entry.href)
+    if (mirrored === undefined && written === undefined) return true
+    return (
+      (mirrored !== undefined && mirrored !== entry.etag) ||
+      (written !== undefined && written !== entry.etag)
+    )
+  })
+  const deleted = [...new Set([...known.keys(), ...bound.keys()])].filter(
+    (href) => !remoteHrefs.has(href)
   )
-  const deleted = [...known.keys()].filter((href) => !remoteHrefs.has(href))
   const objects = await fetchObjects(
     source.remoteId,
     stale.map((entry) => entry.href),
     transport
   )
   let changed = await applyObjects(db, source, objects, window, nowIso)
-  changed += await applyDeletions(db, source, deleted, deps)
+  changed += await applyDeletions(db, source, deleted, window)
   saveSource(db, source, {
     syncCursor: ctag ? `ctag:${ctag}` : null,
     syncStatus: 'ok',

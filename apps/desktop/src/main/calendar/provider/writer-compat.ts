@@ -26,6 +26,14 @@ export interface RemoteDeviceForCompat {
   appVersion?: string | null
 }
 
+/**
+ * Clients that never write to an external calendar: they neither push
+ * bindings nor resolve `target_calendar_id`, so no version of them can double
+ * push. iOS registers with a semver (`0.1.0`) that would always read as below
+ * the desktop floor. Any other platform string is checked (fail closed).
+ */
+const NON_WRITER_PLATFORMS = new Set(['ios', 'android', 'web'])
+
 export interface WriterCompatDeps {
   isSignedIn(): Promise<boolean>
   /** The account's live devices from `GET /devices`, or null when unreadable. */
@@ -75,6 +83,7 @@ export async function checkProviderWriterCompat(
   const currentId = deps.currentDeviceId()
   const outdatedDevices: CalendarWriterCompatDevice[] = devices
     .filter((device) => device.id !== currentId)
+    .filter((device) => !NON_WRITER_PLATFORMS.has(device.platform))
     .filter(
       (device) =>
         !device.appVersion ||

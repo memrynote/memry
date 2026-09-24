@@ -36,6 +36,7 @@ import { listSelectedCaldavCalendars, syncCaldavCalendarSource, syncCaldavNow } 
 import { syncLocalSourceToCaldav } from './caldav-write'
 import {
   clearDefaultWriteTargetFor,
+  dropStaleDefaultWriteTarget,
   readDefaultWriteTarget,
   writeDefaultWriteTarget
 } from '../provider/write-routing'
@@ -171,6 +172,7 @@ export const caldavCalendarProvider: ProviderDefinition = {
         })
         syncCalendarSourceUpdate(after.id)
       }
+      dropStaleDefaultWriteTarget(db)
       return
     }
     if (!before.isSelected) {

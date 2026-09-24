@@ -278,6 +278,54 @@ function masterOf(root: ICAL.Component): ICAL.Component | null {
 }
 
 /**
+ * An EXDATE or RECURRENCE-ID line for one occurrence of `master`. RFC 5545
+ * requires the same value type as DTSTART, and clients match occurrences by
+ * it: a DATE for an all-day series, the series' TZID for a zoned one (when
+ * the object carries that VTIMEZONE and it is a zone we can compute), UTC
+ * otherwise.
+ */
+function occurrenceLine(
+  name: 'EXDATE' | 'RECURRENCE-ID',
+  root: ICAL.Component,
+  master: ICAL.Component,
+  recurrenceId: string
+): string {
+  const start = master.getFirstPropertyValue('dtstart')
+  if (start instanceof ICAL.Time && start.isDate) {
+    return `${name};VALUE=DATE:${dateStamp(recurrenceId)}`
+  }
+  const tzid = start instanceof ICAL.Time ? start.zone?.tzid : undefined
+  const hasZone =
+    tzid &&
+    !isUtcZone(tzid) &&
+    root
+      .getAllSubcomponents('vtimezone')
+      .some((zone) => zone.getFirstPropertyValue('tzid') === tzid)
+  if (tzid && hasZone) return `${name};TZID=${tzid}:${zonedStamp(recurrenceId, tzid)}`
+  return `${name}:${utcStamp(recurrenceId)}`
+}
+
+/**
+ * Whether the series still produces this occurrence. Another client deleting
+ * one occurrence adds an EXDATE (or shortens the RRULE); the occurrence is then
+ * gone even though the object is not.
+ */
+function seriesHasOccurrence(master: ICAL.Component, recurrenceId: string): boolean {
+  const event = new ICAL.Event(master)
+  if (!event.isRecurring()) return toInstant(event.startDate, null) === recurrenceId
+  const iterator = event.iterator()
+  for (let step = 0; step < 50_000; step += 1) {
+    const next = iterator.next()
+    if (!next) return false
+    const instant = toInstant(next, null)
+    if (instant === recurrenceId) return true
+    if (instant > recurrenceId) return false
+  }
+  // Too far out to tell: keep the occurrence rather than delete a Memry item.
+  return true
+}
+
+/**
  * Patch a stored object with a Memry item's fields. With `recurrenceId`, the
  * change applies to one occurrence: its override is patched, or created from
  * the master when the object has none yet.
@@ -304,7 +352,9 @@ export function patchICalendar(
       for (const name of ['rrule', 'exdate', 'rdate']) target.removeAllProperties(name)
       target.removeAllSubcomponents('valarm')
       target.addProperty(
-        ICAL.Property.fromString(`RECURRENCE-ID:${utcStamp(options.recurrenceId)}`)
+        ICAL.Property.fromString(
+          occurrenceLine('RECURRENCE-ID', root, master, options.recurrenceId)
+        )
       )
       root.addSubcomponent(target)
     }
@@ -333,7 +383,7 @@ export function excludeOccurrence(
   for (const override of root.getAllSubcomponents('vevent')) {
     if (recurrenceIdMatches(override, recurrenceId)) root.removeSubcomponent(override)
   }
-  master.addProperty(ICAL.Property.fromString(`EXDATE:${utcStamp(recurrenceId)}`))
+  master.addProperty(ICAL.Property.fromString(occurrenceLine('EXDATE', root, master, recurrenceId)))
   const sequence = Number(master.getFirstPropertyValue('sequence') ?? 0)
   master.updatePropertyWithValue('sequence', Number.isFinite(sequence) ? sequence + 1 : 1)
   master.updatePropertyWithValue('dtstamp', ICAL.Time.fromJSDate(now, true))
@@ -434,7 +484,10 @@ export function icalToRemoteEvent(
   const tzid = start.zone?.tzid
   const startAt = toInstant(start, null)
   const endAt = end ? toInstant(end, null) : null
-  const status = textProp(vevent, 'status')?.toUpperCase()
+  const occurrenceGone = Boolean(
+    input.recurrenceId && !override && master && !seriesHasOccurrence(master, input.recurrenceId)
+  )
+  const status = occurrenceGone ? 'CANCELLED' : textProp(vevent, 'status')?.toUpperCase()
   const updated =
     vevent.getFirstPropertyValue('last-modified') ?? vevent.getFirstPropertyValue('dtstamp')
   const colorName = textProp(vevent, 'color')?.toLowerCase()

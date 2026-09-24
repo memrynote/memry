@@ -89,6 +89,19 @@ describe('mitigation (b): version floor before a second writable provider connec
         expect(writerCompatAllowsConnect(result, undefined)).toBe(true)
       }))
 
+    it('skips phones and web clients: they never write to an external calendar', () =>
+      withWritable(async () => {
+        const result = await checkProviderWriterCompat(
+          provider,
+          deps([
+            { id: 'phone', name: 'iPhone', platform: 'ios', appVersion: '0.1.0' },
+            { id: 'tablet', name: 'Tablet', platform: 'android', appVersion: null },
+            { id: 'old-pc', name: 'Old PC', platform: 'windows', appVersion: '2026.919.1' }
+          ])
+        )
+        expect(result.outdatedDevices.map((device) => device.id)).toEqual(['old-pc'])
+      }))
+
     it('asks for an acknowledgement when the device list cannot be read', () =>
       withWritable(async () => {
         const result = await checkProviderWriterCompat(provider, deps(new Error('offline')))

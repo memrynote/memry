@@ -21,6 +21,7 @@ import {
 import { syncLocalSourceToProvider } from './write-dispatch'
 import {
   DEFAULT_WRITE_TARGET_SETTINGS_KEY,
+  dropStaleDefaultWriteTarget,
   findCalendarByRemoteId,
   readDefaultWriteTarget,
   resolveWriteRoute,
@@ -251,6 +252,42 @@ describe('write routing: exactly one provider writes each item (#2372)', () => {
 
     expect(fakeWriter.syncLocalSource).toHaveBeenCalledTimes(1)
     expect(googleWriter.syncLocalSource).not.toHaveBeenCalled()
+  })
+
+  it('a default whose calendar was disconnected or hidden falls back to Google’s chain', async () => {
+    setSetting(
+      db,
+      'calendar.google',
+      JSON.stringify({ defaultTargetCalendarId: 'primary@example.com', pushEventsToGoogle: true })
+    )
+    writeDefaultWriteTarget(db, { provider: FAKE, remoteCalendarId: COLLECTION })
+    insertTask('routed-task-6')
+    const target = { sourceType: 'task' as const, sourceId: 'routed-task-6' }
+
+    // Hidden: the calendar is still connected but unticked.
+    dbResult.db
+      .update(calendarSources)
+      .set({ isSelected: false })
+      .where(eq(calendarSources.id, `${FAKE}-calendar:work`))
+      .run()
+    expect(resolveWriteRoute(db, target)).toMatchObject({
+      provider: 'google',
+      remoteCalendarId: 'primary@example.com',
+      reason: 'default_target'
+    })
+
+    // Disconnected (possibly on another device, whose tombstone synced here).
+    dbResult.db
+      .update(calendarSources)
+      .set({ isSelected: true, archivedAt: NOW })
+      .where(eq(calendarSources.id, `${FAKE}-calendar:work`))
+      .run()
+    await syncLocalSourceToProvider(db, target)
+    expect(googleWriter.syncLocalSource).toHaveBeenCalledTimes(1)
+    expect(fakeWriter.syncLocalSource).not.toHaveBeenCalled()
+
+    dropStaleDefaultWriteTarget(db)
+    expect(getSetting(db, DEFAULT_WRITE_TARGET_SETTINGS_KEY)).toBeFalsy()
   })
 
   it('choosing a Google default later moves the cross-provider default back to Google', () => {

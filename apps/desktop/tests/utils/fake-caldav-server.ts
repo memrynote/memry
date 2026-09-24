@@ -47,6 +47,11 @@ export interface FakeCaldavServerOptions {
   wellKnownRedirectHost?: string
   /** Offer only Digest authentication. */
   digestOnly?: boolean
+  /**
+   * Answer PUTs without an ETag and store the object slightly rewritten, as a
+   * server that normalises what it stores does (RFC 4791 §5.3.4).
+   */
+  rewritesOnPut?: boolean
 }
 
 function escapeXml(value: string): string {
@@ -322,7 +327,21 @@ export class FakeCaldavServer {
     }
 
     if (record.body.includes('calendar-query')) {
-      return multistatus([...objects.entries()].map(([name, object]) => withData(name, object)))
+      // A time-range filter, roughly: a series always matches, a single event
+      // when its DTSTART falls inside the range.
+      const range = /time-range[^>]*start="(\d{8}T\d{6}Z)"[^>]*end="(\d{8}T\d{6}Z)"/.exec(
+        record.body
+      )
+      const inRange = ([, object]: [string, StoredObject]): boolean => {
+        if (!range || object.data.includes('RRULE:')) return true
+        const start = /DTSTART[^:\r\n]*:(\d{8}(?:T\d{6}Z?)?)/.exec(object.data)?.[1]
+        if (!start) return true
+        const compact = start.length === 8 ? `${start}T000000Z` : start.replace(/Z?$/, 'Z')
+        return compact >= range[1] && compact < range[2]
+      }
+      return multistatus(
+        [...objects.entries()].filter(inRange).map(([name, object]) => withData(name, object))
+      )
     }
     return new Response('', { status: 400 })
   }
@@ -355,6 +374,14 @@ export class FakeCaldavServer {
       if (ifNoneMatch === '*' && existing) return new Response('', { status: 412 })
       if (ifMatch && (!existing || existing.etag !== ifMatch))
         return new Response('', { status: 412 })
+      if (this.options.rewritesOnPut) {
+        this.putObject(
+          calendar.path,
+          name,
+          record.body.replace('END:VEVENT', 'X-SERVER-NORMALISED:1\r\nEND:VEVENT')
+        )
+        return new Response(existing ? null : '', { status: existing ? 204 : 201 })
+      }
       const etag = this.putObject(calendar.path, name, record.body)
       return new Response(existing ? null : '', { status: existing ? 204 : 201, headers: { etag } })
     }

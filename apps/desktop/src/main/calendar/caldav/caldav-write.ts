@@ -14,7 +14,7 @@ import {
   patchICalendar
 } from '../ical/ical-write'
 import type { ICalExpansionWindow } from '../ical/ical-events'
-import { ProviderConflictError } from '../provider/errors'
+import { ProviderConflictError, ProviderGoneError } from '../provider/errors'
 import { isProviderPushEnabled } from '../provider/provider-settings'
 import type { WriteRoute } from '../provider/write-routing'
 import {
@@ -85,6 +85,14 @@ export function storedObjectFor(db: DataDb, binding: CalendarBinding | undefined
 }
 
 /**
+ * The object was deleted on the server. Not a conflict: retrying cannot
+ * succeed, so the write stops and the caller applies the remote delete.
+ */
+function objectGone(): ProviderGoneError {
+  return new ProviderGoneError(CALDAV, 'The calendar object no longer exists')
+}
+
+/**
  * The write adapter for one account. It remembers the newest object it has
  * seen per href, so the conflict loop's retry patches what the server holds
  * now, not the stale copy that caused the 412.
@@ -103,6 +111,20 @@ export function createCaldavWriteAdapter(
     return fetched
   }
 
+  /**
+   * What the server holds after a PUT. A server that rewrote the object may
+   * answer without an ETag (RFC 4791 §5.3.4); then the stored copy and its
+   * ETag are read back, so the next write sends a real If-Match and the next
+   * pull recognises the object as our own write.
+   */
+  async function written(href: string, data: string, etag: string | null): Promise<CaldavObject> {
+    const object = etag
+      ? { href, etag, data }
+      : ((await getObject(href, transport)) ?? { href, etag, data })
+    fresh.set(href, object)
+    return object
+  }
+
   return {
     async upsertEvent({ calendarId, eventId, event, ifMatch }) {
       if (!eventId) {
@@ -110,27 +132,35 @@ export function createCaldavWriteAdapter(
         const href = new URL(`${uid}.ics`, calendarId.endsWith('/') ? calendarId : `${calendarId}/`)
           .href
         const data = eventToICalendar(event, { uid })
-        const etag = await putObject(href, data, { create: true }, transport)
-        fresh.set(href, { href, etag, data })
-        return icalToRemoteEvent(data, { href, calendarId, etag, remoteEventId: href })
+        const object = await written(
+          href,
+          data,
+          await putObject(href, data, { create: true }, transport)
+        )
+        return icalToRemoteEvent(object.data, {
+          href,
+          calendarId,
+          etag: object.etag,
+          remoteEventId: href
+        })
       }
 
       const href = hrefOfRemoteEventId(eventId)
       const recurrenceId = recurrenceIdOf(eventId)
       const cached = fresh.get(href)
       const base = cached?.data ?? stored(href) ?? (await currentObject(href))?.data
-      if (!base) throw new ProviderConflictError(CALDAV, 'The calendar object no longer exists')
+      if (!base) throw objectGone()
       const etag = cached?.etag ?? ifMatch ?? null
       const data = patchICalendar(base, event, { recurrenceId })
-      const precondition = etag ? { etag } : null
-      const nextEtag = precondition
-        ? await putObject(href, data, precondition, transport)
-        : await putObject(href, data, { etag: '*' }, transport)
-      fresh.set(href, { href, etag: nextEtag, data })
-      return icalToRemoteEvent(data, {
+      const object = await written(
+        href,
+        data,
+        await putObject(href, data, { etag: etag ?? '*' }, transport)
+      )
+      return icalToRemoteEvent(object.data, {
         href,
         calendarId,
-        etag: nextEtag,
+        etag: object.etag,
         remoteEventId: eventId,
         recurrenceId
       })
@@ -140,7 +170,7 @@ export function createCaldavWriteAdapter(
       const href = hrefOfRemoteEventId(eventId)
       fresh.delete(href)
       const object = await currentObject(href)
-      if (!object) throw new ProviderConflictError(CALDAV, 'The calendar object no longer exists')
+      if (!object) throw objectGone()
       return icalToRemoteEvent(object.data, {
         href,
         calendarId,
@@ -248,12 +278,22 @@ export async function syncLocalSourceToCaldav(
   const adapter = createCaldavWriteAdapter(transport, () => storedObjectFor(db, binding))
 
   if (shouldSourceBeOnCalendar(db, target)) {
-    return await pushSourceToProvider(db, CALDAV, target, {
-      adapter,
-      calendarId,
-      snapshotExtras: (remote) => ({ caldavRaw: (remote.raw as { ical?: string }).ical ?? null }),
-      threeWayMerge: true
-    })
+    try {
+      return await pushSourceToProvider(db, CALDAV, target, {
+        adapter,
+        calendarId,
+        snapshotExtras: (remote) => ({
+          caldavRaw: (remote.raw as { ical?: string }).ical ?? null
+        }),
+        threeWayMerge: true
+      })
+    } catch (error) {
+      // Deleted on the server since the last pull: apply that delete, the
+      // same as the pull would, instead of failing every later push.
+      if (!(error instanceof ProviderGoneError) || !binding) throw error
+      await applyProviderDelete(db, CALDAV, binding, { actor: TaskActivityActors.SYNC })
+      return null
+    }
   }
   await deleteSourceFromProvider(db, CALDAV, target, { adapter, ifMatchOnDelete: true })
   return null
@@ -272,6 +312,38 @@ function bindingsForObject(db: DataDb, source: CalendarSource, href: string): Ca
     )
     .all()
     .filter((binding) => hrefOfRemoteEventId(binding.remoteEventId) === href)
+}
+
+/**
+ * The objects of one calendar that Memry items are bound to, by href, with the
+ * ETag last written or read. They have no mirror rows, so a pull that decides
+ * deletions from the mirror alone would never notice one was deleted.
+ */
+export function boundObjectEtags(db: DataDb, source: CalendarSource): Map<string, string | null> {
+  const etags = new Map<string, string | null>()
+  const bindings = db
+    .select({
+      remoteEventId: calendarBindings.remoteEventId,
+      remoteVersion: calendarBindings.remoteVersion
+    })
+    .from(calendarBindings)
+    .where(
+      and(
+        eq(calendarBindings.provider, CALDAV),
+        eq(calendarBindings.remoteCalendarId, source.remoteId),
+        isNull(calendarBindings.archivedAt)
+      )
+    )
+    .all()
+  for (const binding of bindings) {
+    const href = hrefOfRemoteEventId(binding.remoteEventId)
+    // A whole-object binding carries the object's ETag; occurrence bindings
+    // of the same series share it.
+    if (!etags.has(href) || binding.remoteEventId === href) {
+      etags.set(href, binding.remoteVersion)
+    }
+  }
+  return etags
 }
 
 /**
