@@ -454,6 +454,9 @@ describe('FileBlock HTML embed (#1872)', () => {
     expect(frame).toHaveAttribute('referrerpolicy', 'no-referrer')
     expect(frame).toHaveStyle({ height: '480px' })
     expect(screen.getByText('report.html')).toBeInTheDocument()
+    // The block content is a flex row: without full width the embed measures
+    // its own card as the column and can neither grow nor align.
+    expect(frame.closest('.file-block')).toHaveClass('w-full')
   })
 
   it('resizes width and height like the PDF embed, from the keyboard', () => {

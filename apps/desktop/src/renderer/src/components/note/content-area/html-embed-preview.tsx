@@ -212,7 +212,7 @@ export function HtmlPreview({
     'absolute -bottom-1 z-10 h-3.5 w-3.5 touch-none border-b-2 border-foreground/60 opacity-40 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary'
 
   return (
-    <div ref={viewRef} className="file-html-wrap">
+    <div ref={viewRef} className="file-html-wrap w-full">
       <div
         className={cn(
           'file-html group relative rounded-md border border-border bg-muted/30 p-2',

@@ -939,7 +939,10 @@ function FileBlockRender({
 
   return (
     <AttachmentBlockContextMenu url={url} name={name} onRenamed={handleRenamed}>
-      <div className="file-block my-2" contentEditable={false}>
+      {/* `.bn-block-content` is a flex row, so this div is sized to its
+          content. The HTML embed measures its column from inside it and needs
+          the full width, or it could only ever shrink and never align. */}
+      <div className={cn('file-block my-2', htmlSrc && 'w-full')} contentEditable={false}>
         {isPdf ? (
           <PdfPreview
             // Keyed by URL so a changed one rebuilds the preview from scratch. A
