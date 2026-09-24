@@ -69,6 +69,8 @@ private let ownCopy: [any Error] = [
     StorageError.IndexRebuildRequired(what: payload),
     StorageError.OutOfSpace(neededBytes: 1, availableBytes: 0),
     StorageError.Failed(what: payload),
+    StorageError.NotFound(what: payload),
+    StorageError.Invalid(what: payload),
     TransportError.Offline,
     TransportError.Timeout(elapsedMs: 30_000),
     TransportError.Tls(what: payload),

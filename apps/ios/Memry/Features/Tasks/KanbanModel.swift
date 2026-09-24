@@ -63,6 +63,14 @@ struct KanbanColumn: Identifiable, Equatable, Sendable {
         }
     }
 
+    /// Whether a card can be moved here. Not onto Overdue: that would clear
+    /// the date ("Rescheduled to No Due Date"), which is not what the column
+    /// says; the list's drop targets exclude Overdue for the same reason.
+    var acceptsMove: Bool {
+        if case .due("overdue") = target { return false }
+        return true
+    }
+
     /// Whether the column offers "+". Not on a done column (desktop), and
     /// not on Overdue, whose drop and add would clear the date.
     var acceptsAdd: Bool {

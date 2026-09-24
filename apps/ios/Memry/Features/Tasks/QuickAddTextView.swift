@@ -182,8 +182,16 @@ struct QuickAddTextView: UIViewRepresentable {
             let caret = view.caretRect(for: view.endOfDocument)
             ghostLabel.text = ghost
             ghostLabel.isHidden = false
-            let width = max(view.bounds.width - caret.maxX, 0)
-            ghostLabel.frame = CGRect(x: caret.maxX, y: caret.minY, width: width, height: caret.height)
+            // Toward the writing direction: after the caret on the right in
+            // left-to-right text, before it on the left in right-to-left text.
+            if view.effectiveUserInterfaceLayoutDirection == .rightToLeft {
+                ghostLabel.textAlignment = .right
+                ghostLabel.frame = CGRect(x: 0, y: caret.minY, width: max(caret.minX, 0), height: caret.height)
+            } else {
+                ghostLabel.textAlignment = .left
+                let width = max(view.bounds.width - caret.maxX, 0)
+                ghostLabel.frame = CGRect(x: caret.maxX, y: caret.minY, width: width, height: caret.height)
+            }
         }
 
         private static var lineHeight: CGFloat { QuickAddTextView.font.lineHeight }

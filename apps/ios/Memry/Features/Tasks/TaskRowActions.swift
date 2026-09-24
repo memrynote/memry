@@ -141,7 +141,7 @@ private struct TaskRowMenu: View {
             .accessibilityIdentifier("tasks.row.menu.duplicate")
             if store.rowCanBecomeSubtask(task) {
                 Button(action: pickParent) {
-                    Label(TasksCopy.rowMakeSubtaskOf, systemImage: "arrow.turn.down.right")
+                    Label(TasksCopy.rowMakeSubtaskOf, systemImage: "arrow.turn.down.forward")
                 }
                 .accessibilityIdentifier("tasks.row.menu.makeSubtask")
             }

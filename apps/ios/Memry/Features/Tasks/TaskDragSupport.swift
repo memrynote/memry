@@ -79,13 +79,18 @@ struct TaskListOrders {
     static let key = "task-orders"
 
     var defaults: UserDefaults = .standard
+    /// Scopes the orders to one vault (desktop keeps one vault per window, so
+    /// its `task-orders` key needs no scope; the phone switches vaults).
+    var vaultId: String?
+
+    private var key: String { vaultId.map { "\(Self.key).\($0)" } ?? Self.key }
 
     private struct Stored: Codable {
         var orders: [String: [String]] = [:]
     }
 
     private var stored: Stored {
-        guard let data = defaults.data(forKey: Self.key),
+        guard let data = defaults.data(forKey: key),
               let decoded = try? JSONDecoder().decode(Stored.self, from: data)
         else { return Stored() }
         return decoded
@@ -102,7 +107,7 @@ struct TaskListOrders {
             next.orders[section] = order
         }
         if let data = try? JSONEncoder().encode(next) {
-            defaults.set(data, forKey: Self.key)
+            defaults.set(data, forKey: key)
         }
     }
 

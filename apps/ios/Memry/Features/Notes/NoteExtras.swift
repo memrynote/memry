@@ -229,8 +229,9 @@ struct LinkedTasksSection: View {
             isCollapsed.toggle()
         } label: {
             HStack(spacing: Tokens.Space.small) {
-                Image(systemName: "chevron.right")
-                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                // Two symbols rather than a rotation: a rotated forward
+                // chevron points up, not down, in right-to-left layouts.
+                Image(systemName: isCollapsed ? "chevron.forward" : "chevron.down")
                     .foregroundStyle(Tokens.Text.tertiary.color)
                 Text(TasksCopy.linkedTasksTitle)
                     .font(Tokens.Typography.heading.font)

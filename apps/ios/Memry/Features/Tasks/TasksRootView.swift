@@ -120,7 +120,11 @@ struct VaultTasksScope<Content: View>: View {
     }
 
     private func make() {
-        guard store == nil else { return }
+        // One store per vault: a store for another vault must never take this
+        // vault's writes.
+        guard store?.vaultId != vault.id() else { return }
+        store = nil
+        failure = nil
         guard let secureStore else {
             failure = ErrorMapping.userFacing(SyncError.Locked)
             return

@@ -203,7 +203,8 @@ extension TasksStore {
     /// - Returns: whether a write was made.
     @discardableResult
     func kanbanMove(taskId: String, to column: KanbanColumn, dueBuckets: [String: String] = [:]) async -> Bool {
-        guard let task = items[taskId],
+        guard column.acceptsMove,
+              let task = items[taskId],
               kanbanColumnId(for: task, dueBuckets: dueBuckets) != column.id
         else { return false }
         let id = task.id

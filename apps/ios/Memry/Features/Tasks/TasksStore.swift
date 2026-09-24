@@ -69,6 +69,8 @@ final class TasksStore {
     private(set) var failure: UserFacingError?
     private(set) var isLoading = false
     private(set) var isSyncing = false
+    /// The vault this store reads and writes.
+    let vaultId: String
     /// Whether `state` came from a saved view state (desktop's
     /// `tasks-view-state`), so the default-view preference must not replace it.
     let restoredState: Bool
@@ -105,6 +107,7 @@ final class TasksStore {
         self.executor = executor
         self.filler = filler
         self.defaults = defaults
+        self.vaultId = vaultId
         stateKey = "tasks-view-state.\(vaultId)"
         if let data = defaults.data(forKey: stateKey),
            let saved = try? JSONDecoder().decode(TasksViewState.self, from: data) {

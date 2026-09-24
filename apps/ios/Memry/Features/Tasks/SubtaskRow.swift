@@ -42,7 +42,7 @@ struct SubtaskRow: View {
             Button(TasksCopy.subtaskDelete, systemImage: "trash", role: .destructive) {
                 Task { await store.requestDelete(subtask) }
             }
-            Button(TasksCopy.subtaskPromote, systemImage: "arrow.up.left") {
+            Button(TasksCopy.subtaskPromote, systemImage: "arrow.up.backward") {
                 Task { await store.promoteToTask(subtask) }
             }
         }
@@ -60,7 +60,7 @@ struct SubtaskRow: View {
         NavigationLink(value: TasksRoute.task(subtask.id)) {
             Label(TasksCopy.subtaskOpen, systemImage: "arrow.forward")
         }
-        Button(TasksCopy.subtaskPromote, systemImage: "arrow.up.left") {
+        Button(TasksCopy.subtaskPromote, systemImage: "arrow.up.backward") {
             Task { await store.promoteToTask(subtask) }
         }
         if canMoveUp {

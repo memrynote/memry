@@ -50,7 +50,11 @@ extension TasksStore {
     // MARK: Layout
 
     /// The list's sections for the current page answer.
-    func listSections(orders: TaskListOrders = TaskListOrders()) -> [TaskListSection] {
+    /// This vault's manual orders.
+    var listOrders: TaskListOrders { TaskListOrders(vaultId: vaultId) }
+
+    func listSections(orders: TaskListOrders? = nil) -> [TaskListSection] {
+        let orders = orders ?? listOrders
         guard let result else { return [] }
         _ = scratch[Self.orderRevisionKey]
         let topLevel = result.taskIds.filter { items[$0]?.parentId == nil }
@@ -216,14 +220,14 @@ extension TasksStore {
         from source: IndexSet,
         to destination: Int,
         selection: Set<String> = [],
-        orders: TaskListOrders = TaskListOrders()
+        orders: TaskListOrders? = nil
     ) async {
         let order = TaskReorder.topLevelOrder(
             rows: section.rows, moving: source, destination: destination, selection: selection
         )
         let current = section.rows.filter { $0.depth == 0 }.map(\.id)
         guard order != current else { return }
-        orders.apply([section.id: order])
+        (orders ?? listOrders).apply([section.id: order])
         // Redraw from the new order now, not after the write's refresh.
         scratch[Self.orderRevisionKey] = UUID().uuidString
         let positions = TaskReorder.positions(for: order)

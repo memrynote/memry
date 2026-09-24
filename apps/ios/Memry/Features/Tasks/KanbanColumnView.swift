@@ -61,7 +61,7 @@ struct KanbanColumnView: View {
                     )
             }
             .dropDestination(for: String.self) { ids, _ in
-                guard let id = ids.first else { return false }
+                guard let id = ids.first, column.acceptsMove else { return false }
                 onDrop(id, column)
                 return true
             } isTargeted: { isTargeted = $0 }

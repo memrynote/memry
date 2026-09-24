@@ -103,6 +103,7 @@ struct TasksKanbanTests {
         #expect(lane(lanes, "due-today") == [today])
         #expect(lane(lanes, "due-noDueDate") == [undated])
         #expect(lanes.first { $0.id == "due-overdue" }?.column.acceptsAdd == false)
+        #expect(lanes.first { $0.id == "due-overdue" }?.column.acceptsMove == false)
 
         #expect(vault.store.kanbanDueDate("tomorrow") == "2026-01-15")
         #expect(vault.store.kanbanDueDate("upcoming") == "2026-01-17")

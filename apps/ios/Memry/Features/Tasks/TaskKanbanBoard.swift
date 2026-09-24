@@ -165,7 +165,7 @@ private struct KanbanStripChip: View {
         }
         .buttonStyle(.plain)
         .dropDestination(for: String.self) { ids, _ in
-            guard let id = ids.first else { return false }
+            guard let id = ids.first, lane.column.acceptsMove else { return false }
             onDrop(id, lane.column)
             return true
         } isTargeted: { isTargeted = $0 }

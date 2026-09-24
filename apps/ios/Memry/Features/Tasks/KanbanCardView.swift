@@ -15,7 +15,9 @@ struct KanbanCardView: View {
     let onMove: (KanbanColumn) -> Void
 
     private var isDone: Bool { task.isDone || column.isDoneColumn }
-    private var otherColumns: [KanbanColumn] { allColumns.filter { $0.id != column.id } }
+    private var otherColumns: [KanbanColumn] {
+        allColumns.filter { $0.id != column.id && $0.acceptsMove }
+    }
 
     var body: some View {
         NavigationLink(value: TasksRoute.task(task.id)) {
@@ -66,7 +68,7 @@ struct KanbanCardView: View {
             complete()
         }
         if !otherColumns.isEmpty {
-            Menu(TasksCopy.kanbanMoveTo, systemImage: "arrow.right.square") {
+            Menu(TasksCopy.kanbanMoveTo, systemImage: "arrow.forward.square") {
                 ForEach(otherColumns) { target in
                     Button(target.title) { onMove(target) }
                 }
