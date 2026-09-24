@@ -510,7 +510,7 @@ export function registerCalendarHandlers(): void {
           return {
             success: false,
             source: null,
-            error: getMainI18n().t('errors:calendar.onlySourcesSelectable')
+            error: getMainI18n().t('errors:calendar.onlyCalendarSourcesRetryable')
           }
         }
         return await definition.retrySource(db, source)

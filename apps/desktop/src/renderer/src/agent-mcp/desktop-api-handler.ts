@@ -41,16 +41,24 @@ async function normalizeDesktopApiArgs(operation: string, args: unknown[]): Prom
   }
 }
 
-// Google Workspace Limited Use: Google-synced events are invisible to the agent
-// until the user explicitly opts in. Anything other than a stored `true` — not
-// asked yet, opted out, or a settings read that failed — stays native-only.
-async function hasAgentGoogleEventConsent(): Promise<boolean> {
+// No provider's external events reach the agent until the user explicitly
+// consented for that provider (#1394). Google's Workspace Limited Use gate is
+// one instance of the rule; an ICS feed or a CalDAV calendar gets its own
+// answer instead of inheriting Google's. Anything other than a stored `true` —
+// not asked yet, opted out, or a settings read that failed — keeps that
+// provider's events out.
+async function agentConsentedCalendarProviders(): Promise<string[]> {
   try {
-    const settings = await window.api.settings.getCalendarGoogleSettings()
-    return settings.agentReadEventsConsent === true
+    const { providers } = await window.api.calendar.listProviders()
+    const consented: string[] = []
+    for (const { id } of providers) {
+      const settings = await window.api.settings.getCalendarProviderSettings({ provider: id })
+      if (settings?.agentReadEventsConsent === true) consented.push(id)
+    }
+    return consented
   } catch (error) {
     log.warn('Calendar consent lookup failed; keeping agent reads native-only', error)
-    return false
+    return []
   }
 }
 
@@ -65,12 +73,16 @@ async function normalizeCalendarRangeInput(args: unknown[]): Promise<JsonRecord>
       : (objectArg(args[0]) ?? {})
   const start = stringValue(input.startAt, input.start)
   const end = stringValue(input.endAt, input.end)
+  const externalProviders = await agentConsentedCalendarProviders()
   return {
     startAt: start ? normalizeCalendarRangeBound(start, 'start') : start,
     endAt: end ? normalizeCalendarRangeBound(end, 'end') : end,
     // Resolved from stored consent, never from the caller: an agent that asks
     // for external events cannot talk its way past the user's answer.
-    includeExternal: await hasAgentGoogleEventConsent()
+    // `includeExternal` stays for an older main process that predates the
+    // per-provider allow-list.
+    includeExternal: externalProviders.length > 0,
+    externalProviders
   }
 }
 

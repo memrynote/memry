@@ -175,7 +175,9 @@
     "listGoogleCalendarsFailed": "Failed to list Google calendars",
     "setDefaultGoogleCalendarFailed": "Failed to set default Google calendar",
     "retryGoogleSourceSyncFailed": "Failed to retry Google Calendar source sync",
-    "promoteExternalEventFailed": "Failed to promote external calendar event"
+    "promoteExternalEventFailed": "Failed to promote external calendar event",
+    "onlyCalendarSourcesRetryable": "Only calendar sources can be retried",
+    "invalidProviderSettings": "Invalid calendar provider settings"
   },
   "canvasFolder": {
     "exists": "A canvas folder with that name already exists here.",

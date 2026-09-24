@@ -1,18 +1,17 @@
 import { deleteSecret, getSecret, setSecret } from '../../secrets/secret-storage'
+import { providerSecretAccountKey, type ProviderSecretKind } from '../provider/secrets'
 
+// Kept verbatim: it equals providerSecretService('google'), and existing
+// installs hold their tokens under exactly this service and these keys.
 const SERVICE = 'com.memry.calendar.google'
 
 export const LEGACY_DEFAULT_ACCOUNT_ID = '__memry_default__'
 
-export type GoogleTokenKind = 'access-token' | 'refresh-token'
+/** Google's subset of the provider secret kinds (#1394). */
+export type GoogleTokenKind = Extract<ProviderSecretKind, 'access-token' | 'refresh-token'>
 
 export function getAccountKey(accountId: string, kind: GoogleTokenKind): string {
-  if (!accountId || !accountId.trim()) {
-    throw new Error('getAccountKey requires a non-empty accountId')
-  }
-  const deviceSuffix = process.env.MEMRY_DEVICE
-  const base = `${kind}-${accountId}`
-  return deviceSuffix ? `${base}-${deviceSuffix}` : base
+  return providerSecretAccountKey(accountId, kind)
 }
 
 async function setPassword(

@@ -90,7 +90,12 @@ export const GetCalendarRangeSchema = z.object({
   includeUnselectedSources: z.boolean().default(false),
   // false = native memrynote events only, no Google-synced external events
   // (forced by the agent MCP surface for Google Workspace Limited Use).
-  includeExternal: z.boolean().optional()
+  // Kept for older renderers; `externalProviders` narrows it per provider.
+  includeExternal: z.boolean().optional(),
+  // #1394: allow-list of providers whose external events may appear. The
+  // agent read path sends exactly the providers the user consented to; an
+  // empty list means no external events at all. Omitted = no filter.
+  externalProviders: z.array(z.string().min(1)).max(64).optional()
 })
 
 export const ListCalendarSourcesSchema = z.object({

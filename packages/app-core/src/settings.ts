@@ -27,6 +27,7 @@ export type SettingsGroupName =
   | 'graph'
   | 'calendar'
   | 'calendar.google'
+  | 'calendar.ics'
   | 'voiceTranscription'
   | 'journal'
   | 'tabs'
@@ -114,6 +115,11 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
     onboardingCompleted: false,
     promoteConfirmDismissed: false
   },
+  // #1394: per-provider groups share the base; a read-only provider has no
+  // one-way switch.
+  'calendar.ics': {
+    agentReadEventsConsent: null
+  },
   voiceTranscription: {
     provider: 'local',
     memoNameMode: 'transcript'
@@ -144,6 +150,7 @@ const jsonSettingsGroupNames = new Set<SettingsGroupName>([
   'graph',
   'calendar',
   'calendar.google',
+  'calendar.ics',
   'voiceTranscription'
 ])
 

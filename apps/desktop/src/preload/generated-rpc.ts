@@ -306,6 +306,8 @@ export function createGeneratedRpcApi({
       "setGraphSettings": ((settings) => invoke("settings:setGraphSettings", settings)) as GeneratedRpcApi["settings"]["setGraphSettings"],
       "getCalendarGoogleSettings": (() => invoke("settings:getCalendarGoogleSettings")) as GeneratedRpcApi["settings"]["getCalendarGoogleSettings"],
       "setCalendarGoogleSettings": ((settings) => invoke("settings:setCalendarGoogleSettings", settings)) as GeneratedRpcApi["settings"]["setCalendarGoogleSettings"],
+      "getCalendarProviderSettings": ((input) => invoke("settings:getCalendarProviderSettings", input)) as GeneratedRpcApi["settings"]["getCalendarProviderSettings"],
+      "setCalendarProviderSettings": ((input) => invoke("settings:setCalendarProviderSettings", input)) as GeneratedRpcApi["settings"]["setCalendarProviderSettings"],
       "getCalendarSettings": (() => invoke("settings:getCalendarSettings")) as GeneratedRpcApi["settings"]["getCalendarSettings"],
       "setCalendarSettings": ((settings) => invoke("settings:setCalendarSettings", settings)) as GeneratedRpcApi["settings"]["setCalendarSettings"],
       "getFeaturesSettings": (() => invoke("settings:getFeaturesSettings")) as GeneratedRpcApi["settings"]["getFeaturesSettings"],

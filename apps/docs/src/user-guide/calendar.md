@@ -414,6 +414,22 @@ improve AI models.
 Note that promoting an external event (above) copies it into your vault as a memrynote event. From
 then on it is your own event, and the assistant can read it regardless of this setting.
 
+### AI Access Is Asked Per Calendar Service
+
+The Google rule above applies to every calendar service on its own: **no service's events reach
+the AI assistant until you allow that service.** Each one gets its own question and its own stored
+answer.
+
+- The first time you open the calendar with calendars from a service you have not answered for —
+  a [subscribed calendar](#subscribed-calendars), for example — memrynote asks about that service.
+  Google keeps its original question, shown above.
+- Allowing Google does not allow anything else. If you allowed Google before subscribed calendars
+  asked on their own, the assistant stops seeing subscribed events until you allow them too.
+- A service you have not answered for counts as **Don't allow**.
+
+The assistant never chooses which services it may read. memrynote looks up your stored answers on
+every question and sends the assistant only the events from services you allowed.
+
 ### If the account says "Reconnect required"
 
 An account can drop back to **Reconnect required** without you doing anything — most often after an

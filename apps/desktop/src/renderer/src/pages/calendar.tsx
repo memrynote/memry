@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { GOOGLE_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
 import { isReadOnlyExternalItem } from '@/lib/calendar-external-items'
 import {
   CalendarShell,
@@ -699,10 +700,16 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
     const settings = await window.api.settings.getCalendarGoogleSettings()
     // Promotion copies the event into native storage, where the agent can read it
-    // regardless of the Google-events consent gate. While that consent is anything but
-    // a stored `true`, confirm every time — "don't ask again" must not silently widen
-    // what the agent can see.
-    const agentAccessOff = settings.agentReadEventsConsent !== true
+    // regardless of the event provider's consent gate (#1394). While that consent is
+    // anything but a stored `true`, confirm every time — "don't ask again" must not
+    // silently widen what the agent can see.
+    const provider = item.source.provider
+    const consent =
+      !provider || provider === GOOGLE_CALENDAR_PROVIDER
+        ? settings.agentReadEventsConsent
+        : (await window.api.settings.getCalendarProviderSettings({ provider }))
+            ?.agentReadEventsConsent
+    const agentAccessOff = consent !== true
     if (settings.promoteConfirmDismissed && !agentAccessOff) {
       await runPromote({ item, anchorRect: rect }, { dontAskAgain: false })
       return
@@ -965,7 +972,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   return (
     <>
       <AgentAccessConsentDialog
-        hasImportedSources={importedSources.some((source) => source.provider === 'google')}
+        providerIds={[...new Set(importedSources.map((source) => source.provider))]}
       />
 
       <PromoteExternalDialog

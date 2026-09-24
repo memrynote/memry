@@ -484,7 +484,10 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
         isNull(calendarSources.archivedAt),
         sql`${calendarExternalEvents.startAt} < ${input.endAt}`,
         sql`coalesce(${calendarExternalEvents.endAt}, ${calendarExternalEvents.startAt}) >= ${input.startAt}`,
-        input.includeUnselectedSources ? undefined : eq(calendarSources.isSelected, true)
+        input.includeUnselectedSources ? undefined : eq(calendarSources.isSelected, true),
+        input.externalProviders
+          ? inArray(calendarSources.provider, input.externalProviders)
+          : undefined
       )
     )
     .orderBy(asc(calendarExternalEvents.startAt))
@@ -681,7 +684,9 @@ export function getCalendarRangeProjection(
     ...loadReminderItems(db, input),
     ...loadNoteDateReminderItems(db, indexDb, input),
     ...loadInboxSnoozeItems(db, input),
-    ...(input.includeExternal === false ? [] : loadExternalEvents(db, input)),
+    ...(input.includeExternal === false || input.externalProviders?.length === 0
+      ? []
+      : loadExternalEvents(db, input)),
     ...notePropertyItems,
     ...noteCreatedItems
   ])

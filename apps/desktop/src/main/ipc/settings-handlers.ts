@@ -22,6 +22,8 @@ import {
   CALENDAR_SETTINGS_DEFAULTS,
   FEATURES_SETTINGS_DEFAULTS,
   INBOX_SETTINGS_DEFAULTS,
+  GetCalendarProviderSettingsSchema,
+  SetCalendarProviderSettingsSchema,
   ShortcutBindingSchema
 } from '@memry/contracts/settings-schemas'
 import type {
@@ -36,6 +38,7 @@ import type {
   BackupSettings,
   VoiceTranscriptionSettings,
   CalendarGoogleSettings,
+  CalendarProviderSettings,
   CalendarSettings,
   FeaturesSettings,
   InboxSettings
@@ -123,6 +126,11 @@ import {
   type TerminalCommandStatus as BaseTerminalCommandStatus
 } from '../cli/terminal-command'
 import { getMainI18n } from '../lib/main-i18n'
+import {
+  calendarProviderSettingsShape,
+  sanitizeCalendarProviderSettingsUpdates
+} from '../calendar/provider/provider-settings'
+import { unsupportedProviderError } from '../calendar/provider/registry'
 import { applyTraySetting } from '../tray'
 
 // ============================================================================
@@ -1243,6 +1251,38 @@ export function registerSettingsHandlers(): void {
       writeGroupSettings('calendar.google', CALENDAR_GOOGLE_SETTINGS_DEFAULTS, updates)
   )
 
+  // #1394: one handler pair for every provider's `calendar.<providerId>` group.
+  // For Google this reads and writes the same `calendar.google` group the
+  // legacy channels above do, with the same defaults.
+  ipcMain.handle(
+    SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS,
+    (_event, input: unknown): CalendarProviderSettings | null => {
+      const parsed = GetCalendarProviderSettingsSchema.safeParse(input)
+      const shape = parsed.success ? calendarProviderSettingsShape(parsed.data.provider) : null
+      if (!shape) return null
+      return readGroupSettings(
+        shape.key,
+        shape.defaults as Record<string, unknown>
+      ) as CalendarProviderSettings
+    }
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_CALENDAR_PROVIDER_SETTINGS,
+    (_event, input: unknown): { success: boolean; error?: string } => {
+      const parsed = SetCalendarProviderSettingsSchema.safeParse(input)
+      if (!parsed.success) return { success: false, error: parsed.error.message }
+      const shape = calendarProviderSettingsShape(parsed.data.provider)
+      const updates = sanitizeCalendarProviderSettingsUpdates(
+        parsed.data.provider,
+        parsed.data.updates
+      )
+      if (!shape) return { success: false, error: unsupportedProviderError(parsed.data.provider) }
+      if (!updates)
+        return { success: false, error: getMainI18n().t('errors:calendar.invalidProviderSettings') }
+      return writeGroupSettings(shape.key, shape.defaults as Record<string, unknown>, updates)
+    }
+  )
+
   ipcMain.handle(SettingsChannels.invoke.GET_CALENDAR_SETTINGS, () =>
     readGroupSettings('calendar', CALENDAR_SETTINGS_DEFAULTS)
   )
@@ -1520,6 +1560,8 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_GRAPH_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_CALENDAR_GOOGLE_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_CALENDAR_PROVIDER_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_CALENDAR_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_CALENDAR_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_FEATURES_SETTINGS)

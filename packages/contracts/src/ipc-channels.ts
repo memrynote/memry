@@ -479,6 +479,10 @@ export const SettingsChannels = {
     GET_CALENDAR_GOOGLE_SETTINGS: 'settings:getCalendarGoogleSettings',
     /** M2: update Google Calendar defaults (partial merge) */
     SET_CALENDAR_GOOGLE_SETTINGS: 'settings:setCalendarGoogleSettings',
+    /** #1394: read one provider's `calendar.<providerId>` settings group */
+    GET_CALENDAR_PROVIDER_SETTINGS: 'settings:getCalendarProviderSettings',
+    /** #1394: merge updates into one provider's settings group */
+    SET_CALENDAR_PROVIDER_SETTINGS: 'settings:setCalendarProviderSettings',
     /** Get calendar preferences (day panel dot source + click behavior) */
     GET_CALENDAR_SETTINGS: 'settings:getCalendarSettings',
     /** Update calendar preferences (partial merge) */
