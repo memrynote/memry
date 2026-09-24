@@ -28,7 +28,7 @@ import {
   JournalStatsFooter,
   type JournalViewState
 } from '@/components/journal'
-import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
+import { ContentArea, type Block, type HeadingInfo, type InlineTagsOrigin } from '@/components/note'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import {
   BacklinksSection,
@@ -833,6 +833,33 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [entryTags, updateTags]
   )
 
+  // Inline #tag sync, as on the note page: the body's tags seed a baseline on
+  // open and only a typed change is written to the entry's tag list.
+  const inlineTagsRef = useRef<Set<string>>(new Set())
+
+  const handleInlineTagsChange = useCallback(
+    (currentInlineTags: string[], origin: InlineTagsOrigin) => {
+      // Opening an entry must not modify it (#1454): a load report only seeds
+      // the baseline later edits are diffed against.
+      if (origin === 'load') {
+        inlineTagsRef.current = new Set(currentInlineTags)
+        return
+      }
+
+      const prev = inlineTagsRef.current
+      const current = new Set(currentInlineTags)
+      const tagsToAdd = currentInlineTags.filter((t) => !prev.has(t) && !entryTags.includes(t))
+      const tagsToRemove = Array.from(prev).filter((t) => !current.has(t) && entryTags.includes(t))
+
+      inlineTagsRef.current = current
+
+      if (tagsToAdd.length === 0 && tagsToRemove.length === 0) return
+
+      updateTags([...entryTags.filter((t) => !tagsToRemove.includes(t)), ...tagsToAdd])
+    },
+    [entryTags, updateTags]
+  )
+
   // Backlinks transform
   const backlinks: Backlink[] = useMemo(() => {
     return rawBacklinks.map((bl) => {
@@ -1101,6 +1128,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               onInternalLinkClick={(...args) =>
                                 void handleInternalLinkClick(...args)
                               }
+                              noteTags={entryTags}
+                              tagColorMap={tagColorMap}
+                              tagIconMap={tagIconMap}
+                              onInlineTagsChange={handleInlineTagsChange}
                               focusAtEndRef={focusAtEndRef}
                               marqueeZoneEl={marqueeZoneEl}
                               review={{

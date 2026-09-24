@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { JournalPage } from './journal'
 import React from 'react'
 
@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   entryError: null as string | null,
   externalUpdateCount: 0,
   contentAreaMounts: 0,
+  contentAreaProps: null as any,
   entry: {
     id: 'j2026-01-15',
     date: '2026-01-15',
@@ -271,16 +272,18 @@ vi.mock('@/components/journal', () => ({
 }))
 
 vi.mock('@/components/note', () => ({
-  ContentArea: ({
-    initialContent,
-    placeholder,
-    externalContentRevision,
-    onMarkdownChange,
-    onLinkClick,
-    onInternalLinkClick,
-    onHeadingsChange,
-    focusAtEndRef
-  }: any) => {
+  ContentArea: (props: any) => {
+    const {
+      initialContent,
+      placeholder,
+      externalContentRevision,
+      onMarkdownChange,
+      onLinkClick,
+      onInternalLinkClick,
+      onHeadingsChange,
+      focusAtEndRef
+    } = props
+    mocks.contentAreaProps = props
     focusAtEndRef.current = vi.fn()
     // Counting mounts (not renders) is the whole point: an external update must
     // reach the live editor as a prop, never as a fresh editor instance.
@@ -488,6 +491,38 @@ describe('JournalPage', () => {
     // sitting earlier in the document.
     expect(scrolledInto).toHaveLength(1)
     expect(scrolledInto[0]?.hasAttribute('data-outside-pane')).toBe(false)
+  })
+
+  it('hands the editor the tag props the note page does, so inline #tags render as chips', () => {
+    render(<JournalPage />)
+
+    // Without these the editor has nothing to promote `#work` against, and a
+    // body tag reopened from the vault file renders as plain text.
+    const props = mocks.contentAreaProps
+    expect(props.noteTags).toEqual(['work'])
+    expect(props.tagColorMap.get('work')).toBe('blue')
+    expect(props.tagIconMap).toBeInstanceOf(Map)
+    expect(props.onInlineTagsChange).toEqual(expect.any(Function))
+  })
+
+  it('seeds the inline tag baseline on open and writes only typed tag changes', () => {
+    render(<JournalPage />)
+    const { onInlineTagsChange } = mocks.contentAreaProps
+
+    // #when the entry opens carrying `#work` and `#draft` in its body
+    act(() => onInlineTagsChange(['work', 'draft'], 'load'))
+
+    // #then opening it modified nothing (#1454)
+    expect(mocks.updateTags).not.toHaveBeenCalled()
+
+    // #when the user types `#life`
+    act(() => onInlineTagsChange(['work', 'draft', 'life'], 'edit'))
+    expect(mocks.updateTags).toHaveBeenCalledWith(['work', 'life'])
+
+    // #when the user deletes the body's `#work` (the mocked entry still lists
+    // only `work`, since `updateTags` is a stub)
+    act(() => onInlineTagsChange(['draft', 'life'], 'edit'))
+    expect(mocks.updateTags).toHaveBeenLastCalledWith([])
   })
 
   it("opens an entry's outgoing link through the wiki-link resolver", async () => {
