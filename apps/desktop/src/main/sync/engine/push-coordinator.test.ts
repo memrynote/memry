@@ -569,6 +569,119 @@ describe('PushCoordinator', () => {
       expect(queue.getPendingCount()).toBe(0)
       expect(stateManager.setState).not.toHaveBeenCalledWith('error')
     })
+
+    function enqueueTasks(queue: SyncQueueManager, prefix: string, count: number): void {
+      for (let i = 0; i < count; i++) {
+        queue.enqueue({
+          type: 'task',
+          itemId: `${prefix}-${i}`,
+          operation: 'update',
+          payload: JSON.stringify({ title: `${prefix} ${i}` })
+        })
+      }
+    }
+
+    // #2293
+    it('#then the lowered ceiling climbs back once full batches land cleanly again', async () => {
+      const { coordinator, queue, ctx } = createHarness(getDb())
+      ctx.options.pushBatchSize = 8
+      let edgeRefusesAbove = 2
+      const sentSizes: number[] = []
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        sentSizes.push(body.items.length)
+        if (body.items.length > edgeRefusesAbove) {
+          throw new SyncServerError('Server error (503)', 503)
+        }
+        return {
+          accepted: body.items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+
+      enqueueTasks(queue, 'first', 4)
+      await coordinator.push()
+      expect(sentSizes).toEqual([4, 2, 2])
+
+      // The server recovers. Every third clean full batch doubles the size, up
+      // to the configured one, instead of pushing 2 at a time until restart.
+      edgeRefusesAbove = Number.POSITIVE_INFINITY
+      sentSizes.length = 0
+      enqueueTasks(queue, 'second', 30)
+      await coordinator.push()
+
+      expect(sentSizes).toEqual([2, 4, 4, 4, 8, 8])
+      expect(queue.getPendingCount()).toBe(0)
+    })
+
+    // #2293
+    it('#then a vault still refused at the raised size spends one refused request per raise', async () => {
+      const { coordinator, queue, ctx } = createHarness(getDb())
+      ctx.options.pushBatchSize = 8
+      const sentSizes: number[] = []
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        sentSizes.push(body.items.length)
+        if (body.items.length > 2) throw new SyncServerError('Server error (503)', 503)
+        return {
+          accepted: body.items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+
+      enqueueTasks(queue, 'first', 4)
+      await coordinator.push()
+      sentSizes.length = 0
+      enqueueTasks(queue, 'second', 10)
+      await coordinator.push()
+
+      expect(sentSizes).toEqual([2, 4, 2, 2, 2, 2])
+      expect(queue.getPendingCount()).toBe(0)
+    })
+  })
+
+  describe('#given a 5xx on a batch that cannot be split any further', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    // #2293: halving a one-item batch would resend the identical request at
+    // once; the retry ladder backs off first.
+    it('#then it is retried with backoff instead of resent at once, and lands', async () => {
+      const { coordinator, queue, stateManager } = createHarness(getDb())
+      postToServerMock
+        .mockRejectedValueOnce(new SyncServerError('Server error (503)', 503))
+        .mockRejectedValueOnce(new SyncServerError('Server error (503)', 503))
+        .mockImplementation(async (_path: string, body: PushBody) => ({
+          accepted: body.items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }))
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Transient' })
+      })
+
+      const run = coordinator.push()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(postToServerMock).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(60_000)
+      await run
+
+      expect(postToServerMock).toHaveBeenCalledTimes(3)
+      expect(queue.getPendingCount()).toBe(0)
+      expect(stateManager.setState).not.toHaveBeenCalledWith('error')
+    })
   })
 
   describe('#given the access token is stale #when the server answers 401', () => {
@@ -658,7 +771,7 @@ describe('PushCoordinator', () => {
       expect(queue.peek()[0].payload).toBe(payload)
     })
 
-    it('#then a per-item STORAGE_QUOTA_EXCEEDED rejection keeps the row and stops the batch', async () => {
+    it('#then a per-item STORAGE_QUOTA_EXCEEDED rejection keeps the row', async () => {
       const { coordinator, queue, ctx, stateManager } = createHarness(getDb())
       const markPushSynced = vi.fn()
       getHandlerMock.mockReturnValue({ markPushSynced })
@@ -684,6 +797,75 @@ describe('PushCoordinator', () => {
       })
       expect(ctx.lastError).toBe('errors:sync.storageQuotaExceeded')
       expect(stateManager.setState).toHaveBeenCalledWith('error')
+    })
+
+    // #2293
+    it('#then the rest of the same response is still acked and recorded', async () => {
+      const { coordinator, queue, stateManager } = createHarness(getDb())
+      const markPushSynced = vi.fn()
+      getHandlerMock.mockReturnValue({ markPushSynced })
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => ({
+        accepted: body.items.filter((i) => i.id === 'task-ok').map((i) => i.id),
+        rejected: [
+          { id: 'task-big', reason: 'STORAGE_QUOTA_EXCEEDED' },
+          { id: 'task-bad', reason: 'VALIDATION_ERROR' }
+        ].filter((r) => body.items.some((i) => i.id === r.id)),
+        serverTime: Math.floor(Date.now() / 1000),
+        maxCursor: 0
+      }))
+      for (const itemId of ['task-big', 'task-ok', 'task-bad']) {
+        queue.enqueue({
+          type: 'task',
+          itemId,
+          operation: 'update',
+          payload: JSON.stringify({ title: itemId })
+        })
+      }
+
+      await coordinator.push()
+
+      // One request: the accepted item behind the quota rejection is acked from
+      // this response, not re-sent to be acked as a replay.
+      expect(postToServerMock).toHaveBeenCalledTimes(1)
+      expect(markPushSynced).toHaveBeenCalledWith(expect.anything(), 'task-ok')
+      expect(stateManager.emitItemSynced).toHaveBeenCalledWith('task-ok', 'task', 'push')
+      const left = queue.peek()
+      expect(left.map((row) => row.itemId).sort()).toEqual(['task-bad', 'task-big'])
+      expect(left.every((row) => row.attempts === 1)).toBe(true)
+    })
+
+    // #2293: the server refuses only items that grow storage, so a delete
+    // queued behind a quota rejection must still go out in the same run.
+    it('#then later batches keep going out, so a delete that frees space is not blocked', async () => {
+      const { coordinator, queue, ctx } = createHarness(getDb())
+      ctx.options.pushBatchSize = 1
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        const [item] = body.items
+        const refused = item.operation !== 'delete'
+        return {
+          accepted: refused ? [] : [item.id],
+          rejected: refused ? [{ id: item.id, reason: 'STORAGE_QUOTA_EXCEEDED' }] : [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-new',
+        operation: 'create',
+        payload: JSON.stringify({ title: 'New' })
+      })
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-old',
+        operation: 'delete',
+        payload: JSON.stringify({ id: 'task-old', clock: { 'device-1': 2 } })
+      })
+
+      await coordinator.push()
+
+      expect(postToServerMock).toHaveBeenCalledTimes(2)
+      expect(queue.peek().map((row) => row.itemId)).toEqual(['task-new'])
     })
   })
 

@@ -158,23 +158,42 @@ because the newest row carries the whole payload as it stood at enqueue time
 
 **Normative** (`apps/desktop/src/main/sync/engine/sync-context.ts`):
 
-| Constant              | Value | Line   |
-| --------------------- | ----- | ------ |
-| `PUSH_BATCH_SIZE`     | 100   | `:126` |
-| `MIN_PUSH_BATCH_SIZE` | 1     | `:131` |
-| `MAX_PUSH_ITERATIONS` | 50    | `:132` |
+| Constant                                | Value | Line   |
+| --------------------------------------- | ----- | ------ |
+| `PUSH_BATCH_SIZE`                       | 100   | `:146` |
+| `MIN_PUSH_BATCH_SIZE`                   | 1     | `:151` |
+| `PUSH_CEILING_RAISE_AFTER_CLEAN_PUSHES` | 3     | `:155` |
+| `MAX_PUSH_ITERATIONS`                   | 50    | `:156` |
 
-**A 5xx on `/sync/push` is answered by halving the batch, not by resending the
-same one**, and the reduced size becomes a ceiling for the rest of the run
-(`apps/desktop/src/main/sync/engine/push-coordinator.ts:258-269`). `retryOn5xx`
-is therefore `false` for this call (`:243-245`).
+**A 5xx on a batch that can still be split is answered by halving it, not by
+resending the same one**, and the reduced size becomes a ceiling
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:279-289`). `retryOn5xx`
+is therefore `false` for any batch larger than `MIN_PUSH_BATCH_SIZE` (`:244`,
+`:265`).
 
 The reason is on record: Cloudflare terminates an oversized `/sync/push` at the
 edge with an empty 503 body before any handler runs, so there is **no per-item
 verdict** and an identical resend fails identically
-(`apps/desktop/src/main/sync/engine/push-coordinator.ts:250-257`). Without
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:270-278`). Without
 halving, the run ends there and the same rows return next cycle forever — one
 vault sat at 2914 pending rows for five days.
+
+**A batch at `MIN_PUSH_BATCH_SIZE` is retried with backoff** (chapter 00
+§0.6.1, `retryOn5xx: true`). It has no smaller shape, so halving cannot answer
+its 5xx, and a one-item request is not the oversized-batch case the rule above
+guards against; the 5xx is a transient server fault and the backoff ladder is
+the only move left. Before #2293 the run ended on it instead.
+
+**The ceiling is not permanent.** After `PUSH_CEILING_RAISE_AFTER_CLEAN_PUSHES`
+consecutive full-size pushes that got a response, it doubles, up to
+`PUSH_BATCH_SIZE`, where it is cleared. A vault that is still too big at the
+doubled size pays one refused request per raise and halves again. Before
+#2293 one transient 5xx pinned the ceiling for the life of the process.
+
+**A per-item `STORAGE_QUOTA_EXCEEDED` refuses that item only.** The client
+marks it failed and acks the rest of the response, and the run keeps
+dequeuing: the server refuses only items that grow storage, so a delete or a
+shrinking update still commits and is the way out of the quota.
 
 ## 5.7 Replay detection is a clock dominance rule, not a timestamp window
 

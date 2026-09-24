@@ -287,14 +287,20 @@ of it the per-item Ed25519 signature check.
 The push loop therefore reads a `5xx` as a statement about the batch's **shape** rather than a
 transient blip. It halves the batch and keeps going — from `PUSH_BATCH_SIZE` (100) down to
 `MIN_PUSH_BATCH_SIZE` (1) — so the queue drains at whatever size the server can take. `withRetry`
-is given `retryOn5xx: false` for this one call: retrying an identical request first spends the
-backoff budget before the loop can adapt, then dead-letters the batch and ends the run. That is how
-one vault sat at 2914 pending changes for five days, with `POST /sync/pull` and `GET /sync/manifest`
-taking collateral 503s from the same isolate.
+is given `retryOn5xx: false` for any batch that can still be split: retrying an identical request
+first spends the backoff budget before the loop can adapt, then dead-letters the batch and ends the
+run. That is how one vault sat at 2914 pending changes for five days, with `POST /sync/pull` and
+`GET /sync/manifest` taking collateral 503s from the same isolate. A one-item batch has no smaller
+shape, so its 5xx is retried with the standard backoff instead of ending the run.
 
 The size that worked is remembered on the coordinator rather than re-derived per run, so a vault
-refused at 100 does not re-spend those doomed requests every cycle. It only ever shrinks; a restart
-clears it and the loop starts optimistically from the configured size again.
+refused at 100 does not re-spend those doomed requests every cycle. It is not permanent: after three
+consecutive full-size pushes that got a response the size doubles, back up to the configured one. A
+vault still too big at the doubled size pays one refused request per raise and halves again.
+
+A per-item `STORAGE_QUOTA_EXCEEDED` rejection refuses only that item. The rest of the same response
+is still acked, and the run keeps dequeuing, because the server refuses only items that grow storage:
+a delete or a shrinking update still commits and is how a vault gets back under its quota.
 
 ### The per-item attempt budget is spent per sync cycle
 

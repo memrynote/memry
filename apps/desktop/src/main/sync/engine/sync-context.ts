@@ -149,6 +149,10 @@ export const PUSH_BATCH_SIZE = 100
 // makes progress, which is the point: the alternative is a queue that never
 // drains.
 export const MIN_PUSH_BATCH_SIZE = 1
+// Clean full-size pushes at a lowered batch ceiling before it doubles back
+// toward PUSH_BATCH_SIZE (#2293). A vault still refused at the doubled size
+// spends one refused request per this many clean ones, then halves again.
+export const PUSH_CEILING_RAISE_AFTER_CLEAN_PUSHES = 3
 export const MAX_PUSH_ITERATIONS = 50
 export const CLOCK_SKEW_THRESHOLD_SECONDS = 300
 // The server's MAX_CHANGES_LIMIT for GET /sync/changes. Pinning 100 here made
