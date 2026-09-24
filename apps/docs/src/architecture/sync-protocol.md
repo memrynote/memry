@@ -624,6 +624,14 @@ schedule additional pulls in between. The interval is armed before the first ful
 failure in that first sync is logged rather than propagated, so one transient error at startup
 cannot leave a session without a pull cycle.
 
+`changes_available` wakes are filtered and coalesced. A wake whose `cursor` is at or below
+`LAST_CURSOR` is dropped: cursors are assigned in commit order and only the pull moves
+`LAST_CURSOR`, so every row it announces is already applied. The wake's cursor is only compared,
+never stored. A wake that arrives while a wake-driven pull is queued adds nothing, and any number
+that arrive while a pull runs queue exactly one trailing pull, so a peer pushing N requests in a
+burst no longer costs N serial pulls. The stale-lock watchdog clears the queued flag, so a pull
+chained behind an abandoned sync cannot swallow later wakes.
+
 The tick does not always pull. Its pull exists to heal a `changes_available` broadcast that never
 arrived, so when the socket has been continuously connected since the previous tick — same
 `connectionGeneration`, still `connected` — the request is skipped: the socket pings every 25s and
