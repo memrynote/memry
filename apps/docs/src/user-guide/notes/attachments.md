@@ -164,8 +164,12 @@ itself. Things to know:
   `localStorage` or cookies starts fresh every time.
 - **Links open in your browser.** Clicking a link inside the page opens it in your default
   browser and leaves the embed where it was. Pop-up dialogs such as `alert()` are blocked.
-- **Height.** The embed opens 480 px tall. Drag the handle under it, or focus the handle and
-  use `↑` / `↓`, to change the height. The height is saved with the note.
+- **Size and alignment.** The embed opens as wide as the note column and 480 px tall. Resize it like
+  a PDF embed: drag either bottom corner to change the width and height together. You can also
+  focus a corner and use `←` / `→` for width and `↑` / `↓` for height. The toolbar that appears on
+  hover aligns it **left**, **center** or **right**. Size and alignment are saved with the note.
+  An embed dragged all the way to the column edge keeps following the column when the window is
+  resized.
 
 On a device running an older version of Memry, the same block shows as a plain file card with a
 download button.

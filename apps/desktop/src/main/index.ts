@@ -30,7 +30,6 @@ import { createHash, randomUUID } from 'node:crypto'
 import { join, resolve, normalize } from 'path'
 import { homedir } from 'node:os'
 import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs'
-import { readFile } from 'node:fs/promises'
 import { lookup as mimeLookup } from 'mime-types'
 import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -1491,9 +1490,12 @@ const appReady = app.whenReady().then(async () => {
       // would run on the trusted memry-file origin with read access to the
       // whole vault. Rendering goes through memry-html://, sandboxed; here the
       // bytes are only ever text (a download link still gets the file).
+      // Read through the same file:// fetch as the full-file path below rather
+      // than re-opening the checked path (CodeQL js/file-system-race).
       if (isHtmlEmbedPath(filePath)) {
-        return new Response(await readFile(filePath), {
-          status: 200,
+        const file = await net.fetch(`file://${filePath}`)
+        return new Response(file.body, {
+          status: file.status,
           headers: {
             'Content-Type': 'text/plain; charset=utf-8',
             'X-Content-Type-Options': 'nosniff'

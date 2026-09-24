@@ -456,25 +456,69 @@ describe('FileBlock HTML embed (#1872)', () => {
     expect(screen.getByText('report.html')).toBeInTheDocument()
   })
 
-  it('uses the stored height and commits keyboard resizes to the block', () => {
+  it('resizes width and height like the PDF embed, from the keyboard', () => {
     const Render = (createFileBlock as any).render
     const updateBlock = vi.fn()
-    const block = { props: htmlProps({ height: 300 }) }
-    render(<Render block={block} editor={{ updateBlock }} />)
+    const block = { props: htmlProps({ width: 400, height: 300 }) }
+    const { container } = render(<Render block={block} editor={{ updateBlock }} />)
 
     expect(screen.getByTestId('html-embed')).toHaveStyle({ height: '300px' })
+    expect(container.querySelector('.file-html')).toHaveStyle({ width: '400px' })
 
     const handle = screen.getByRole('slider', {
       name: 'phaseF.componentsNoteContentAreaFileBlock.resizeHtml'
     })
     fireEvent.keyDown(handle, { key: 'ArrowDown' })
     expect(updateBlock).toHaveBeenLastCalledWith(block, {
-      props: { ...block.props, width: 0, height: 320 }
+      props: { ...block.props, width: 400, height: 320 }
     })
     fireEvent.keyDown(handle, { key: 'ArrowUp', shiftKey: true })
     expect(updateBlock).toHaveBeenLastCalledWith(block, {
-      props: { ...block.props, width: 0, height: 200 }
+      props: { ...block.props, width: 400, height: 200 }
     })
+    fireEvent.keyDown(handle, { key: 'ArrowRight' })
+    expect(updateBlock).toHaveBeenLastCalledWith(block, {
+      props: { ...block.props, width: 420, height: 300 }
+    })
+    fireEvent.keyDown(handle, { key: 'ArrowLeft', shiftKey: true })
+    expect(updateBlock).toHaveBeenLastCalledWith(block, {
+      props: { ...block.props, width: 300, height: 300 }
+    })
+  })
+
+  it('aligns the embed within the column', () => {
+    const Render = (createFileBlock as any).render
+    const updateBlock = vi.fn()
+    const block = { props: htmlProps({ width: 400, align: 'center' }) }
+    const { container } = render(<Render block={block} editor={{ updateBlock }} />)
+
+    expect(container.querySelector('.file-html')).toHaveClass('ms-auto', 'me-auto')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'phaseF.componentsNoteContentAreaFileBlock.alignRight' })
+    )
+    expect(updateBlock).toHaveBeenLastCalledWith(block, {
+      props: { ...block.props, align: 'right' }
+    })
+  })
+
+  it('abandons an interrupted drag instead of committing it', () => {
+    const Render = (createFileBlock as any).render
+    const updateBlock = vi.fn()
+    render(<Render block={{ props: htmlProps({ height: 300 }) }} editor={{ updateBlock }} />)
+    const handle = screen.getByRole('slider', {
+      name: 'phaseF.componentsNoteContentAreaFileBlock.resizeHtml'
+    })
+    handle.setPointerCapture = vi.fn()
+    handle.releasePointerCapture = vi.fn()
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 0, clientY: 0 })
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 0, clientY: 100 })
+    expect(screen.getByTestId('html-embed')).toHaveStyle({ height: '400px' })
+
+    fireEvent.pointerCancel(handle, { pointerId: 1 })
+    expect(screen.getByTestId('html-embed')).toHaveStyle({ height: '300px' })
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 0, clientY: 100 })
+    expect(updateBlock).not.toHaveBeenCalled()
   })
 
   it('falls back to the download card for a ref that is not a vault attachment', () => {

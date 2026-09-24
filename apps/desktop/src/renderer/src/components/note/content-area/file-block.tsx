@@ -962,8 +962,11 @@ function FileBlockRender({
           <HtmlPreview
             src={htmlSrc}
             name={name}
+            width={width ?? 0}
             height={height ?? 0}
-            onResize={(nextHeight) => handleResize(width ?? 0, nextHeight)}
+            align={align ?? 'left'}
+            onResize={handleResize}
+            onAlign={handleAlign}
             menu={menuButton}
           />
         ) : isVideo ? (
