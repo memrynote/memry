@@ -124,23 +124,29 @@ and where it is produced:
 | `changes_available`          | `{ cursor?, vaultId? }` (`packages/contracts/src/sync-socket.ts:59-62`) | the default broadcast type (`apps/sync-server/src/durable-objects/user-sync-state.ts:177`), sent after a record push (`apps/sync-server/src/routes/sync.ts:439`) |
 | `crdt_updated`               | `{ vaultId?, noteId }` (`packages/contracts/src/sync-socket.ts:63-66`)  | after a CRDT update push (`apps/sync-server/src/routes/sync.ts:731`), a snapshot push (`:930`) and a batch (`:1062`)                                             |
 | `calendar_changes_available` | `{ sourceId }`                                                          | the calendar webhook route (`apps/sync-server/src/routes/webhooks.ts:183-187`)                                                                                   |
-| `auth_ok`                    | `{ exp? }` (`packages/contracts/src/sync-socket.ts:67`)                 | the in-place re-auth reply (§9.8)                                                                                                                                |
-| `error`                      | `{ code?, message? }` (`packages/contracts/src/sync-socket.ts:68`)      | `WS_RATE_LIMITED` (`apps/sync-server/src/durable-objects/user-sync-state.ts:293-298`) and `WS_TOKEN_EXPIRED` (`:401-406`)                                        |
+| `auth_ok`                    | `{ exp? }` (`packages/contracts/src/sync-socket.ts:74`)                 | the in-place re-auth reply (§9.8)                                                                                                                                |
+| `error`                      | `{ code?, message? }` (`packages/contracts/src/sync-socket.ts:75`)      | `WS_RATE_LIMITED` (`apps/sync-server/src/durable-objects/user-sync-state.ts:293-298`) and `WS_TOKEN_EXPIRED` (`:401-406`)                                        |
 | `linking_request`            | `{ sessionId, newDeviceName, newDevicePlatform }`                       | `POST /auth/linking/scan` (`apps/sync-server/src/routes/linking.ts:155-163`)                                                                                     |
 | `linking_approved`           | `{ sessionId }`                                                         | `POST /auth/linking/approve` (`apps/sync-server/src/routes/linking.ts:262-266`)                                                                                  |
 | `heartbeat`                  | **none**                                                                | **no producer**; see §9.5.2                                                                                                                                      |
 
-### 9.5.1 The three payload shapes the contract does not declare — Q09.3
+### 9.5.1 Calendar and linking payload shapes — Q09.3
 
 `calendar_changes_available`, `linking_request` and `linking_approved` are in
 `SYNC_SOCKET_MESSAGE_TYPES` (`packages/contracts/src/sync-socket.ts:21`, `:25`,
-`:26`) but have **no payload schema** in the contract, so
-`parseSyncSocketFrame` collapses them to `{ kind: 'ignored' }`
-(`packages/contracts/src/sync-socket.ts:128-129`). Desktop reads their payloads
-directly instead (`apps/desktop/src/main/sync/engine.ts:848-853`).
+`:26`) and have payload schemas in the contract
+(`packages/contracts/src/sync-socket.ts:67-73`), so `parseSyncSocketFrame`
+narrows them to `{ kind: 'calendar_changes_available', sourceId }`,
+`{ kind: 'linking_request', sessionId, newDeviceName, newDevicePlatform }` and
+`{ kind: 'linking_approved', sessionId }` (`:138-149`). Desktop parses every
+frame through that helper (`apps/desktop/src/main/sync/websocket.ts:154-166`).
+Until #2291 the contract had no schema for them and desktop read their payloads
+directly; a frame missing a required field was forwarded to the renderer as-is.
+It is now `ignored`.
 
-**Normative — the shapes are those in the table above.** They are read from their
-producers, not from the contract. Specifically:
+**Normative — the shapes are those in the table above**, as sent by their
+producers. All listed fields are required (`sourceId` non-empty); unknown
+payload keys are stripped, never rejected. Specifically:
 
 ```
 linking_request   { sessionId: string, newDeviceName: string, newDevicePlatform: string }
@@ -172,8 +178,9 @@ share of notifications, so a client MUST keep polling the calendar provider.
 
 `heartbeat` is in the type list (`packages/contracts/src/sync-socket.ts:22`),
 has no payload schema, and **has no producer anywhere in
-`apps/sync-server/src`**. Desktop handles it as an explicit no-op
-(`apps/desktop/src/main/sync/engine.ts:836-837`).
+`apps/sync-server/src`**. `parseSyncSocketFrame` collapses it to `ignored`
+(`packages/contracts/src/sync-socket.ts:158-159`), which desktop drops with a
+debug log (`apps/desktop/src/main/sync/websocket.ts:161-164`).
 
 **Normative — `heartbeat` is dead. There is no server-initiated keepalive.** The
 keepalive is client-initiated and is §9.6. A client MUST ignore a `heartbeat`
@@ -195,9 +202,9 @@ costs a wake on every beat and consumes rate-limit budget**
 (`packages/contracts/src/sync-socket.ts:32-37`).
 
 Reference cadence: send `ping` every **25 s**
-(`apps/desktop/src/main/sync/websocket.ts:16`, `PING_INTERVAL_MS = 25_000`,
-started at `:303-309`), and terminate the socket if no frame arrives within the
-heartbeat timeout (`apps/desktop/src/main/sync/websocket.ts:319-325`).
+(`apps/desktop/src/main/sync/websocket.ts:15`, `PING_INTERVAL_MS = 25_000`,
+started at `:301-307`), and terminate the socket if no frame arrives within the
+heartbeat timeout (`apps/desktop/src/main/sync/websocket.ts:317-323`).
 
 ## 9.7 Inbound rate limit
 
@@ -217,7 +224,7 @@ is the whole reason the keepalive text is fixed.
 { "type": "auth", "payload": { "token": "<fresh access token>" } }
 ```
 
-(`packages/contracts/src/sync-socket.ts:86-89`) and the server answers `auth_ok`
+(`packages/contracts/src/sync-socket.ts:104-107`) and the server answers `auth_ok`
 with the new `exp`
 (`apps/sync-server/src/durable-objects/user-sync-state.ts:304-308`).
 
@@ -243,33 +250,33 @@ access token (chapter 02 §2.10), rather than tearing the socket down.
 
 **4004 and 4009 are terminal.** A conforming client MUST latch reconnection off
 for both — for 4004 by signing the device out, for 4009 until the application is
-updated (`apps/desktop/src/main/sync/websocket.ts:180-202`, where 4004 clears
+updated (`apps/desktop/src/main/sync/websocket.ts:178-200`, where 4004 clears
 `shouldBeConnected` and 4009 sets `versionRejected`).
 
 ## 9.10 Reconnect and backoff — Q09.4
 
 **Normative.** A reconnect policy exists in the reference implementation
-(`apps/desktop/src/main/sync/websocket.ts:13-16`, `:335-350`) and this chapter
+(`apps/desktop/src/main/sync/websocket.ts:12-15`, `:333-348`) and this chapter
 adopts it:
 
 | Constant                  | Value  | Line  |
 | ------------------------- | ------ | ----- |
-| `BASE_RECONNECT_DELAY_MS` | 1 000  | `:14` |
-| `MAX_RECONNECT_DELAY_MS`  | 30 000 | `:13` |
-| `RECONNECT_JITTER_MS`     | 500    | `:15` |
+| `BASE_RECONNECT_DELAY_MS` | 1 000  | `:13` |
+| `MAX_RECONNECT_DELAY_MS`  | 30 000 | `:12` |
+| `RECONNECT_JITTER_MS`     | 500    | `:14` |
 
 ```
 delay = min(BASE * 2^attempt + random()*JITTER, MAX)
 ```
 
-(`apps/desktop/src/main/sync/websocket.ts:340-344`), with `attempt` incremented
-per scheduled reconnect (`:346`) and **reset to zero on a successful open**.
+(`apps/desktop/src/main/sync/websocket.ts:338-342`), with `attempt` incremented
+per scheduled reconnect (`:344`) and **reset to zero on a successful open**.
 
 A reconnect MUST NOT be scheduled when any of these latches is set:
 the client no longer wants a connection, the handshake was rejected `401`, the
 version was rejected, or transport pinning failed
-(`apps/desktop/src/main/sync/websocket.ts:336-337`). A reconnect MUST only fire
-when the device believes it is online (`:350`).
+(`apps/desktop/src/main/sync/websocket.ts:334-335`). A reconnect MUST only fire
+when the device believes it is online (`:348`).
 
 ### 9.10.1 What a client does between a 4003 and a successful refresh
 
@@ -309,12 +316,13 @@ MUST NOT treat a missed broadcast as data loss.**
 
 ## 9.12 Frame parsing rules
 
-**Normative** (`packages/contracts/src/sync-socket.ts:95-130`):
+**Normative** (`packages/contracts/src/sync-socket.ts:113-160`):
 
 - **`null` is returned only when the frame is not a message envelope at all** —
-  bad JSON, or no `type` (`:99-106`). That is the only case worth logging.
+  bad JSON, or no `type` (`:116-124`). That is the only case worth logging.
 - Everything else collapses to a single `ignored` outcome: the keepalive answer
-  (`:96`), a type with no handler (`:128-129`), and **a known type whose payload
-  does not carry what it needs** (`:114`, `:118`, `:122`, `:126`).
+  (`:114`), a type with no handler (`:158-159`), and **a known type whose payload
+  does not carry what it needs** (`:132`, `:136`, `:140`, `:144`, `:148`, `:152`,
+  `:156`).
 - **An unrecognised frame MUST never reach a throw**
-  (`packages/contracts/src/sync-socket.ts:70-77`).
+  (`packages/contracts/src/sync-socket.ts:83-87`).

@@ -3,7 +3,7 @@ import { EventEmitter } from 'events'
 import { INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS, SyncEngine, type SyncEngineDeps } from './engine'
 import { NetworkError } from './http-client'
 import { SYNC_STATE_KEYS } from './engine/sync-context'
-import type { WebSocketMessage } from './websocket'
+import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
 import { createMockDeps, createMockNetwork, setupTestDb } from '@tests/utils/engine-mocks'
 
 describe('SyncEngine', () => {
@@ -404,9 +404,9 @@ describe('SyncEngine', () => {
       })
 
       deps.ws.emit('message', {
-        type: 'error',
-        payload: { code: 'AUTH_DEVICE_REVOKED' }
-      } as WebSocketMessage)
+        kind: 'error',
+        code: 'AUTH_DEVICE_REVOKED'
+      } satisfies SyncSocketEvent)
 
       expect(engine.currentState).toBe('error')
       expect(deps.ws.disconnect).toHaveBeenCalled()
@@ -458,9 +458,9 @@ describe('SyncEngine', () => {
       await engine.start()
 
       deps.ws.emit('message', {
-        type: 'error',
-        payload: { code: 'AUTH_DEVICE_REVOKED' }
-      } as WebSocketMessage)
+        kind: 'error',
+        code: 'AUTH_DEVICE_REVOKED'
+      } satisfies SyncSocketEvent)
 
       expect(engine.currentState).toBe('error')
 

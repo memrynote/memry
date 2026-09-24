@@ -36,10 +36,57 @@ describe('parseSyncSocketFrame', () => {
     })
   })
 
+  // #2291: desktop parses every frame through this helper, so the three types
+  // whose payload it acts on must be narrowed, not collapsed to `ignored`.
+  it('narrows the exact payloads the server emits for calendar and linking frames', () => {
+    // UserSyncState /broadcast wraps the webhook body's sourceId into payload.
+    expect(
+      parseSyncSocketFrame(frame('calendar_changes_available', { sourceId: 'google:primary' }))
+    ).toEqual({ kind: 'calendar_changes_available', sourceId: 'google:primary' })
+    // /notify-linking forwards the route's payload verbatim.
+    expect(
+      parseSyncSocketFrame(
+        frame('linking_request', {
+          sessionId: 's1',
+          newDeviceName: 'Laptop',
+          newDevicePlatform: 'macos'
+        })
+      )
+    ).toEqual({
+      kind: 'linking_request',
+      sessionId: 's1',
+      newDeviceName: 'Laptop',
+      newDevicePlatform: 'macos'
+    })
+    expect(parseSyncSocketFrame(frame('linking_approved', { sessionId: 's1' }))).toEqual({
+      kind: 'linking_approved',
+      sessionId: 's1'
+    })
+  })
+
+  it('strips unknown payload keys instead of rejecting the frame (#2291)', () => {
+    expect(
+      parseSyncSocketFrame(frame('linking_approved', { sessionId: 's1', addedLater: true }))
+    ).toEqual({ kind: 'linking_approved', sessionId: 's1' })
+  })
+
+  it('ignores calendar and linking frames missing a required field (#2291)', () => {
+    expect(parseSyncSocketFrame(frame('calendar_changes_available', {}))).toEqual({
+      kind: 'ignored',
+      type: 'calendar_changes_available'
+    })
+    expect(parseSyncSocketFrame(frame('linking_request', { sessionId: 's1' }))).toEqual({
+      kind: 'ignored',
+      type: 'linking_request'
+    })
+    expect(parseSyncSocketFrame(frame('linking_approved'))).toEqual({
+      kind: 'ignored',
+      type: 'linking_approved'
+    })
+  })
+
   it('ignores the types this client has no handler for', () => {
-    for (const type of ['calendar_changes_available', 'linking_request', 'linking_approved']) {
-      expect(parseSyncSocketFrame(frame(type, {}))).toEqual({ kind: 'ignored', type })
-    }
+    expect(parseSyncSocketFrame(frame('heartbeat'))).toEqual({ kind: 'ignored', type: 'heartbeat' })
   })
 
   it('ignores a type it has never heard of instead of failing the frame', () => {
