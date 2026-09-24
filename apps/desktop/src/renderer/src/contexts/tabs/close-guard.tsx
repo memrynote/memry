@@ -16,6 +16,11 @@ export interface TabCloseGuard {
   /** Persist the pending work. Resolve false to keep the tab open. */
   save: () => Promise<boolean>
   /**
+   * The user chose Don't Save. Lets a page that persists on unmount skip that
+   * write for the work just thrown away.
+   */
+  discard?: () => void
+  /**
    * False when the pending work cannot be persisted yet (a template with no
    * name, say). The prompt then drops its Save button rather than offering a
    * button that silently does nothing.
@@ -114,6 +119,10 @@ export function useCloseGuardRegistry(): CloseGuardRegistry {
           // Failed save: leave the prompt up and the tab dirty rather than
           // silently discarding the user's work.
           if (!saved) return
+        }
+
+        if (resolution === 'discard') {
+          guardsRef.current.get(current.tabId)?.discard?.()
         }
 
         advance()

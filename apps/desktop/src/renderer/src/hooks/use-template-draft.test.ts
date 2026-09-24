@@ -160,6 +160,170 @@ describe('useTemplateDraft', () => {
     expect(toastError).toHaveBeenCalled()
   })
 
+  it('reports each successful update through onSaved', async () => {
+    const onSaved = vi.fn()
+    const { result } = renderHook(() =>
+      useTemplateDraft({
+        templateId: 'tpl-1',
+        initial: { ...emptyFields, name: 'Meeting' },
+        onSaved
+      })
+    )
+
+    act(() => result.current.setFields({ content: 'hello' }))
+    await act(async () => {
+      await result.current.save()
+    })
+
+    expect(onSaved).toHaveBeenCalledWith({ id: 'tpl-1', name: 'X' })
+  })
+
+  it('runs writes one at a time', async () => {
+    let release: (value: unknown) => void = () => {}
+    updateTemplate.mockImplementationOnce(() => new Promise((resolve) => (release = resolve)))
+    const { result } = renderHook(() =>
+      useTemplateDraft({
+        templateId: 'tpl-1',
+        initial: { ...emptyFields, name: 'Meeting' }
+      })
+    )
+
+    act(() => result.current.setFields({ content: 'a' }))
+    let first: Promise<boolean> = Promise.resolve(false)
+    await act(async () => {
+      first = result.current.save()
+    })
+    expect(updateTemplate).toHaveBeenCalledWith(expect.objectContaining({ content: 'a' }))
+    act(() => result.current.setFields({ content: 'ab' }))
+    let second: Promise<boolean> = Promise.resolve(false)
+    act(() => {
+      second = result.current.save()
+    })
+    await act(async () => {})
+
+    expect(updateTemplate).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      release({ id: 'tpl-1', name: 'X' })
+      await first
+      await second
+    })
+
+    expect(updateTemplate).toHaveBeenCalledTimes(2)
+    expect(updateTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ content: 'ab' }))
+  })
+
+  describe('unmount', () => {
+    const existing = { templateId: 'tpl-flush', initial: { ...emptyFields, name: 'Meeting' } }
+
+    it('flushes edits still inside the debounce instead of dropping them', async () => {
+      const { result, unmount } = renderHook(() => useTemplateDraft(existing))
+
+      act(() => result.current.setFields({ content: 'typed' }))
+      unmount()
+      await act(async () => {})
+
+      expect(updateTemplate).toHaveBeenCalledTimes(1)
+      expect(updateTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tpl-flush', content: 'typed' })
+      )
+    })
+
+    it('writes nothing when there is nothing pending', async () => {
+      const { unmount } = renderHook(() => useTemplateDraft(existing))
+
+      unmount()
+      await act(async () => {})
+
+      expect(updateTemplate).not.toHaveBeenCalled()
+    })
+
+    it('never writes an uncreated draft', async () => {
+      const { result, unmount } = renderHook(() => useTemplateDraft({ initial: emptyFields }))
+
+      act(() => result.current.setFields({ name: 'Meeting' }))
+      unmount()
+      await act(async () => {})
+
+      expect(createTemplate).not.toHaveBeenCalled()
+    })
+
+    it('skips the flush after discard', async () => {
+      const { result, unmount } = renderHook(() => useTemplateDraft(existing))
+
+      act(() => result.current.setFields({ content: 'typed' }))
+      act(() => result.current.discard())
+      unmount()
+      await act(async () => {})
+
+      expect(updateTemplate).not.toHaveBeenCalled()
+    })
+
+    it('flushes again for the editor teardown edit that lands after unmount', async () => {
+      const { result, unmount } = renderHook(() => useTemplateDraft(existing))
+      const { setFields } = result.current
+
+      act(() => setFields({ content: 'typ' }))
+      unmount()
+      setFields({ content: 'typed' })
+      await act(async () => {})
+
+      expect(updateTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ content: 'typed' }))
+    })
+
+    it('restores edits whose flush failed, and retries them', async () => {
+      updateTemplate.mockResolvedValueOnce(null)
+      const first = renderHook(() => useTemplateDraft(existing))
+
+      act(() => first.result.current.setFields({ content: 'typed' }))
+      first.unmount()
+      await act(async () => {})
+      expect(toastError).toHaveBeenCalled()
+
+      const second = renderHook(() => useTemplateDraft(existing))
+      expect(second.result.current.fields.content).toBe('typed')
+      expect(second.result.current.mountedFields.content).toBe('typed')
+      expect(second.result.current.isDirty).toBe(true)
+
+      await act(async () => {
+        vi.advanceTimersByTime(800)
+      })
+      await waitFor(() => expect(updateTemplate).toHaveBeenCalledTimes(2))
+      expect(updateTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ content: 'typed' }))
+      second.unmount()
+    })
+
+    it('restores edits when the tab comes back before the flush lands', async () => {
+      let release: (value: unknown) => void = () => {}
+      updateTemplate.mockImplementationOnce(() => new Promise((resolve) => (release = resolve)))
+      const first = renderHook(() => useTemplateDraft(existing))
+
+      act(() => first.result.current.setFields({ content: 'typed' }))
+      first.unmount()
+      await act(async () => {})
+
+      const second = renderHook(() => useTemplateDraft(existing))
+      expect(second.result.current.fields.content).toBe('typed')
+
+      await act(async () => {
+        release({ id: 'tpl-flush', name: 'X' })
+      })
+      second.unmount()
+    })
+
+    it('forgets flushed edits once they are written', async () => {
+      const first = renderHook(() => useTemplateDraft(existing))
+
+      act(() => first.result.current.setFields({ content: 'typed' }))
+      first.unmount()
+      await act(async () => {})
+
+      const second = renderHook(() => useTemplateDraft(existing))
+      expect(second.result.current.fields.content).toBe('')
+      second.unmount()
+    })
+  })
+
   it('refuses to save a blank name', async () => {
     const { result } = renderHook(() => useTemplateDraft({ initial: emptyFields }))
 

@@ -98,11 +98,22 @@ function TemplateEditorSurface({
     [tabId, setTabEntity, queryClient]
   )
 
-  const { fields, setFields, state, templateId, isDirty, canSave, save } = useTemplateDraft({
-    templateId: initialTemplateId,
-    initial,
-    onCreated: handleCreated
-  })
+  // Switching back to this tab remounts the page from this cache entry, so it
+  // has to follow every write or the editor reopens on the content it loaded.
+  const handleSaved = useCallback(
+    (saved: Template) => {
+      queryClient.setQueryData(['template-editor', saved.id], saved)
+    },
+    [queryClient]
+  )
+
+  const { fields, mountedFields, setFields, state, templateId, isDirty, canSave, save, discard } =
+    useTemplateDraft({
+      templateId: initialTemplateId,
+      initial,
+      onCreated: handleCreated,
+      onSaved: handleSaved
+    })
 
   // ==========================================================================
   // Tab wiring
@@ -145,9 +156,10 @@ function TemplateEditorSurface({
       // offer a Save that would silently do nothing.
       canSave: () => canSaveRef.current,
       isDirty: () => !suppressGuardRef.current && isDirtyRef.current,
-      save: () => saveRef.current()
+      save: () => saveRef.current(),
+      discard
     })
-  }, [tabId, isBuiltIn, registerCloseGuard])
+  }, [tabId, isBuiltIn, registerCloseGuard, discard])
 
   // ==========================================================================
   // Tags
@@ -295,11 +307,13 @@ function TemplateEditorSurface({
       const deleted = await deleteTemplate(templateId)
       if (!deleted) return
       suppressGuardRef.current = true
+      // Otherwise the unmount flush would write to the template just removed.
+      discard()
       if (tabId) closeTab(tabId)
     } catch (err) {
       log.error('Failed to delete template:', err)
     }
-  }, [templateId, deleteTemplate, tabId, closeTab])
+  }, [templateId, deleteTemplate, tabId, closeTab, discard])
 
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
 
@@ -435,7 +449,7 @@ function TemplateEditorSurface({
 
         <div className="editor-click-area flex-1 pb-[30vh] relative">
           <ContentArea
-            initialContent={initial.content}
+            initialContent={mountedFields.content}
             contentType="markdown"
             placeholder={t('templateEditor.content.placeholder')}
             stickyToolbar={editorSettings.toolbarMode === 'sticky'}
