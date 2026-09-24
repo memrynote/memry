@@ -27,6 +27,9 @@ protocol VaultSearching: Sendable {
     /// searchable term returns **empty** — an empty box is not a request for
     /// the whole vault.
     func notes(query: String, limit: UInt32) async throws -> [SearchResult]
+    /// Tasks matching `query`, best first (TP056). Its own ranking: a bm25
+    /// score is relative to its table, so the two lists are never merged.
+    func tasks(query: String, limit: UInt32) async throws -> [SearchResult]
     /// Brings the index up to date. Idempotent, and safe on any schedule.
     func reindex() async throws
     /// Every note linking to this one (N800).
@@ -51,6 +54,11 @@ struct CoreVaultSearch: VaultSearching {
     func notes(query: String, limit: UInt32) async throws -> [SearchResult] {
         let search = search
         return try await executor.run { try search.notes(query: query, limit: limit) }
+    }
+
+    func tasks(query: String, limit: UInt32) async throws -> [SearchResult] {
+        let search = search
+        return try await executor.run { try search.tasks(query: query, limit: limit) }
     }
 
     func reindex() async throws {
@@ -80,6 +88,9 @@ final class VaultSearchViewModel {
     }
 
     private(set) var phase: Phase = .idle
+    /// The tasks the same query matched (TP056), shown in their own section.
+    /// Empty while idle, searching or after a failure.
+    private(set) var taskHits: [SearchResult] = []
 
     private let search: any VaultSearching
     /// How long a keystroke waits before it becomes a query.
@@ -129,6 +140,7 @@ final class VaultSearchViewModel {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             phase = .idle
+            taskHits = []
             return
         }
         phase = .searching
@@ -136,8 +148,10 @@ final class VaultSearchViewModel {
             do {
                 try await Task.sleep(for: debounce)
                 let hits = try await search.notes(query: trimmed, limit: 50)
+                let tasks = await taskMatches(trimmed)
                 guard !Task.isCancelled else { return }
-                Log.storage.info("searched this vault", .count(hits.count))
+                Log.storage.info("searched this vault", .count(hits.count + tasks.count))
+                taskHits = tasks
                 phase = .results(hits)
             } catch is CancellationError {
                 // A newer query owns the screen now.
@@ -145,8 +159,24 @@ final class VaultSearchViewModel {
                 guard !Task.isCancelled else { return }
                 let mapped = ErrorMapping.userFacing(error)
                 Log.storage.error("this vault could not be searched", .code(mapped.code))
+                taskHits = []
                 phase = .failed(mapped)
             }
+        }
+    }
+
+    /// The task half of a query. A failure here is logged and reads as no
+    /// task matches: the note results still answer the query, and replacing
+    /// them with an error would hide what the index did find.
+    private func taskMatches(_ query: String) async -> [SearchResult] {
+        do {
+            return try await search.tasks(query: query, limit: 20)
+        } catch is CancellationError {
+            return []
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("this vault's tasks could not be searched", .code(mapped.code))
+            return []
         }
     }
 }

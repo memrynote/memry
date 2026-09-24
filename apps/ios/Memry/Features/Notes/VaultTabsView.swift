@@ -28,6 +28,8 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
     /// Cross-tab navigation: search, note task blocks and reminder taps open a
     /// task through it.
     @State private var router = TasksRouter()
+    /// Reminder notification taps (TP053), handed over by the app delegate.
+    private let reminderTaps = ReminderTaps.shared
 
     var body: some View {
         TabView(selection: $router.selectedTab) {
@@ -54,20 +56,32 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
             }
         }
         .environment(router)
+        // A tapped reminder opens its task; a tap from a cold start waits in
+        // `ReminderTaps` until this shell exists, hence `initial: true`.
+        .onChange(of: reminderTaps.pending, initial: true) {
+            reminderTaps.take()?.open(in: router)
+        }
+        // The vault closed or the account signed out: no reminder text may
+        // outlive it on the lock screen. The next vault refills its own window.
+        .onDisappear {
+            Task { await ReminderScheduler.shared.clearAll() }
+        }
         // The More tab holds the way out, so the shell stops drawing it over
         // every screen of the vault.
         .preference(key: SignOutHostedKey.self, value: true)
     }
 }
 
-/// The account's own page inside a vault: what is not on the phone yet, and
-/// the way out.
+/// The account's own page inside a vault: Settings > Tasks, what is not on
+/// the phone yet, and the way out.
 private struct MoreTab: View {
     @Environment(AccountViewModel.self) private var account: AccountViewModel?
+    @Environment(TasksRouter.self) private var router
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                tasksSettingsRow
                 ContentUnavailableView {
                     Label("More", systemImage: "hourglass")
                 } description: {
@@ -80,6 +94,41 @@ private struct MoreTab: View {
             .navigationTitle("More")
             .background(Tokens.Canvas.background.color)
         }
+    }
+
+    /// Settings > Tasks lives in the Tasks tab's stack (it needs the tasks
+    /// store), so this row switches there and shows it.
+    private var tasksSettingsRow: some View {
+        Button {
+            router.selectedTab = .tasks
+            router.path = [.settings]
+        } label: {
+            HStack(spacing: Tokens.Space.medium) {
+                Image(systemName: "checkmark.circle")
+                    .foregroundStyle(Tokens.Text.secondary.color)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                    Text(TasksCopy.reminderMoreTasksRow)
+                        .font(Tokens.Typography.body.font)
+                        .foregroundStyle(Tokens.Text.primary.color)
+                    Text(TasksCopy.reminderMoreTasksDetail)
+                        .font(Tokens.Typography.caption.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                }
+                Spacer(minLength: Tokens.Space.small)
+                Image(systemName: "chevron.forward")
+                    .foregroundStyle(Tokens.Text.tertiary.color)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
+            .padding(.horizontal, Tokens.Space.inset)
+            .padding(.vertical, Tokens.Space.small)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("tasks.more.settings")
     }
 }
 

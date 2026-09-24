@@ -1,12 +1,28 @@
 import Inject
 import SwiftUI
+import UIKit
+import UserNotifications
 
 @main
 struct MemryApp: App {
+    @UIApplicationDelegateAdaptor(MemryAppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup {
             RootView()
         }
+    }
+}
+
+/// Installs the reminder notification delegate before launch finishes, so a
+/// tap that launched the app is delivered (TP053, FR-061).
+final class MemryAppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        UNUserNotificationCenter.current().delegate = ReminderNotificationDelegate.shared
+        return true
     }
 }
 

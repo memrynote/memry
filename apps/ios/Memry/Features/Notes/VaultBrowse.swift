@@ -270,6 +270,9 @@ final class VaultBrowseViewModel {
     /// The raw search surface, for the reads that are not a query — the
     /// backlinks section (N800) is one.
     let searcher: (any VaultSearching)?
+    /// The task writes a note screen makes (TP054), `nil` without an
+    /// identity to sign with, like ``writer``.
+    let noteTasks: (any NoteTaskWriting)?
 
     /// The last failed write, for the screen to show and dismiss. Separate
     /// from ``phase`` because a failed write leaves the vault readable: the
@@ -284,9 +287,11 @@ final class VaultBrowseViewModel {
         writer: (any NotesWriting)? = nil,
         editor: (any BlockEditing)? = nil,
         metadataWriter: (any NoteMetadataWriting)? = nil,
-        search: (any VaultSearching)? = nil
+        search: (any VaultSearching)? = nil,
+        noteTasks: (any NoteTaskWriting)? = nil
     ) {
         self.reader = reader
+        self.noteTasks = noteTasks
         self.filler = filler
         self.writer = writer
         self.editor = editor
@@ -315,7 +320,8 @@ final class VaultBrowseViewModel {
             // A vault whose index will not open is still a vault worth
             // browsing, so this failure is absorbed into "no full-text search"
             // rather than into "no screen".
-            search: try? CoreVaultSearch(vault: vault, executor: executor)
+            search: try? CoreVaultSearch(vault: vault, executor: executor),
+            noteTasks: store.map { CoreNoteTasks(vault: vault, store: $0, executor: executor) }
         )
     }
 

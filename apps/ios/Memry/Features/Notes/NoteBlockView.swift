@@ -96,7 +96,9 @@ struct NoteBlockView: View {
         case "bulletListItem", "numberedListItem":
             ListItemRow(marker: marker ?? bullet, text: inline, alignment: alignment)
         case "checkListItem":
+            // TP054: convert into a task, and nest under a task line.
             CheckItemRow(isChecked: flag("checked"), text: inline)
+                .modifier(ChecklistTaskMenu(blockId: block.id))
         case "taskBlock":
             // A task block is `content: none`: its words are the `title`
             // prop. The task itself adds what desktop's row shows beside

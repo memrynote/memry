@@ -236,6 +236,17 @@ final class TasksStore {
     }
 
     /// Reverts the last undoable change.
+    /// Two changes as one undo: `undo` reverts `changed` last-first and
+    /// brings back everything in `removed`.
+    nonisolated static func merge(_ first: TaskChange?, _ second: TaskChange?) -> TaskChange {
+        TaskChange(
+            changed: (first?.changed ?? []) + (second?.changed ?? []),
+            created: (first?.created ?? []) + (second?.created ?? []),
+            deleted: (first?.deleted ?? []) + (second?.deleted ?? []),
+            removed: (first?.removed ?? []) + (second?.removed ?? [])
+        )
+    }
+
     func undo() async {
         guard let undoable else { return }
         self.undoable = nil
