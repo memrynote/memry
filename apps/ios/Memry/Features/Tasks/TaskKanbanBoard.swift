@@ -41,6 +41,7 @@ struct TaskKanbanBoard: View {
             .contentMargins(.horizontal, Tokens.Space.section, for: .scrollContent)
             .scrollIndicators(.hidden)
         }
+        .scrollDismissesKeyboard(.interactively)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(TasksCopy.kanbanBoard)
         .accessibilityIdentifier("tasks.kanban.board")

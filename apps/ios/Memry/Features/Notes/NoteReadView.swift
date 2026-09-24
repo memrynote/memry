@@ -167,9 +167,11 @@ struct NoteReadView: View {
     @State private var taskActions: NoteTaskActions
     /// Opens a task in the Tasks tab. Absent outside the vault shell.
     @Environment(TasksRouter.self) private var router: TasksRouter?
+    @Environment(\.requestVaultSync) private var requestVaultSync
 
     private var taskBridge: NoteTaskBridge {
         .note(tasks: taskActions, editor: editorModel, router: router) {
+            requestVaultSync?()
             await model.reload()
             await linkedTasks.load()
         }

@@ -42,6 +42,9 @@ struct TaskListBody: View {
             rows(sections)
         }
         .listStyle(.plain)
+        // Quick add keeps its focus after each submit (rapid entry, as on
+        // desktop), so scrolling the list is how the keyboard goes away.
+        .scrollDismissesKeyboard(.interactively)
         .scrollContentBackground(.hidden)
         .background(Tokens.Canvas.background.color)
         .refreshable { await store.sync() }

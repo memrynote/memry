@@ -47,7 +47,6 @@ final class TasksRouter {
 struct TasksRootView: View {
     let store: TasksStore
     @Environment(TasksRouter.self) private var router
-    @Environment(\.scenePhase) private var scenePhase
     @State private var toastLift: CGFloat = 0
 
     var body: some View {
@@ -82,9 +81,6 @@ struct TasksRootView: View {
         .onChange(of: router.selectedTab) { _, tab in
             if tab == .tasks { Task { await store.refresh() } }
         }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await store.sync() } }
-        }
     }
 }
 
@@ -97,17 +93,30 @@ struct VaultTasksScope<Content: View>: View {
     let secureStore: (any SecureStore)?
     let filler: (any VaultFilling)?
     @ViewBuilder let content: (TasksStore?, UserFacingError?) -> Content
+    @Environment(\.scenePhase) private var scenePhase
     @State private var store: TasksStore?
     @State private var failure: UserFacingError?
 
     var body: some View {
         content(store, failure)
+            .environment(\.requestVaultSync, syncRequest)
+            // Pull and push when the vault opens and on every return to the
+            // foreground, whichever tab shows: a tab's own views miss scene
+            // changes while hidden.
+            .onChange(of: scenePhase, initial: true) { _, phase in
+                if phase == .active, let store { Task { await store.sync() } }
+            }
             .background {
                 if let store {
                     Color.clear.reminderScheduling(store: store)
                 }
             }
             .task(id: vault.id()) { make() }
+    }
+
+    private var syncRequest: (@MainActor () -> Void)? {
+        guard let store else { return nil }
+        return { store.scheduleSync() }
     }
 
     private func make() {
@@ -143,4 +152,11 @@ struct TasksTabContent: View {
             ProgressView(TasksCopy.loading)
         }
     }
+}
+
+extension EnvironmentValues {
+    /// Asks for a sync pass soon (debounced, one at a time, through the tasks
+    /// store). A write made outside the Tasks tab, such as ticking a task line
+    /// in a note, would otherwise wait in the outbox until the next pass.
+    @Entry var requestVaultSync: (@MainActor () -> Void)?
 }

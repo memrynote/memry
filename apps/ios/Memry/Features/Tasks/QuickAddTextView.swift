@@ -48,6 +48,7 @@ struct QuickAddTextView: UIViewRepresentable {
         view.autocorrectionType = .default
         view.accessibilityLabel = TasksCopy.quickAddLabel
         view.accessibilityIdentifier = "tasks.quickAdd.field"
+        view.inputAccessoryView = Self.dismissBar(for: view)
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         let placeholderLabel = context.coordinator.placeholder
@@ -66,6 +67,21 @@ struct QuickAddTextView: UIViewRepresentable {
         ghostLabel.isAccessibilityElement = false
         view.addSubview(ghostLabel)
         return view
+    }
+
+    /// Return submits and keeps the focus (rapid entry, as on desktop), so
+    /// the keyboard carries its own way out; the field may sit over a list
+    /// too short to scroll it away.
+    private static func dismissBar(for view: UITextView) -> UIToolbar {
+        let bar = UIToolbar()
+        bar.sizeToFit()
+        let done = UIBarButtonItem(
+            systemItem: .done,
+            primaryAction: UIAction { [weak view] _ in view?.resignFirstResponder() }
+        )
+        done.accessibilityIdentifier = "tasks.quickAdd.dismissKeyboard"
+        bar.items = [UIBarButtonItem(systemItem: .flexibleSpace), done]
+        return bar
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
