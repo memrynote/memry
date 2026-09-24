@@ -162,11 +162,13 @@ needed.
 
 ## Phase 0: facts (serial)
 
-- [ ] IB000 Read goal.md, AGENTS files, DESIGN.md, PRODUCT.md, spec 004 §0–§1,
+- [x] IB000 Read goal.md, AGENTS files, DESIGN.md, PRODUCT.md, spec 004 §0–§1,
       spec 005 §0.3/§6, artboards 00, 00b, 01–23 (`get_jsx` + screenshot),
       and the desktop inbox code named in goal.md. Record in §5.
-- [ ] IB001 Fill §5 F1–F12 with file:line citations. Each fact is what the
+      Evidence: read root/iOS/desktop AGENTS, PRODUCT.md, DESIGN.md (mobile mapping, motion, copy, a11y), spec 004 §0–§1/§5/§6, spec 005 §0–§1/§6; Paper `paper_get_jsx AKS-0` (00: 24 audit rows, 6 rules, 9 SwiftUI notes, 3 open questions), `paper_get_tree_summary 9M5-0` (00b flow), `paper_get_jsx` text of 01–23 (captions of 12, 13, 15, 22 carried into IB12/IB13/IB15/IB22); desktop `main/inbox/*` (domain, capture, crud, queries, snooze, stats, filing, batch, duplicates, attachments, jobs, review-scheduler, suggestions head), `inbox-handler.ts`, `sync-payloads.ts`, `db-schema/schema/inbox.ts`, `domain-inbox/commands.ts`, `snooze-presets.ts`, `reminder-panel.ts`, `lib/reminders.ts`. Screenshots are taken per artboard at its Phase 4 item (§0.7).
+- [x] IB001 Fill §5 F1–F12 with file:line citations. Each fact is what the
       code does, not what a comment says.
+      Evidence: §5 F1–F12 filled with file:line citations; decisions from them in §6 (IB001/F1, F3, F4, F8, F9, F11).
 
 ## Phase 1: core read side (Rust)
 
@@ -336,25 +338,141 @@ Each item lists what it must carry. Verification per §0.7.
 
 ## 5. Verified facts (filled by IB001)
 
-- F1 Inbox row columns desktop keeps locally vs in the sync payload.
-- F2 Merge rule in `inbox-handler.ts` (keys, clocks, deletes).
-- F3 Attachment storage path and how inbox attachments sync (or don't).
-- F4 `captureSource` values and capture paths per type.
-- F5 Filing outputs: note content, frontmatter, `filedTo`, `filedAction`
-  values, image embed/link and fallback.
-- F6 `metadata` shapes per type (link, social, voice, image, PDF, reminder)
-  and which process writes them.
-- F7 Snooze presets, snooze-due scheduler, review scheduler timing.
-- F8 Suggestions: inputs (embeddings, folder scoring), whether any of it is
-  available to iOS, and the AI setting that gates it.
-- F9 Convert to event / reminder: records written and their sync types.
-- F10 Stats definitions (stale threshold, processed, streak, heatmap).
-- F11 Inbox preferences storage (settings record keys) and sync.
-- F12 Reminder panel entries: sources, viewed state, navigation targets.
+- **F1 Columns vs payload.** Desktop's row (`packages/db-schema/src/schema/inbox.ts:103-229`)
+  holds the 13 schema keys plus local columns `viewedAt` (:159),
+  `processingStatus`/`processingError` (:166-169), `attachmentPath` (:183),
+  `thumbnailPath` (:186), `transcription`/`transcriptionStatus` (:193-196),
+  `syncedAt`, `localOnly` (:220). The push payload is **the whole Drizzle row
+  serialised** (`inbox-handler.ts:147` `JSON.stringify(item)`), so those local
+  columns ride on the wire as extra keys; `InboxSyncPayloadSchema`
+  (`packages/contracts/src/sync-payloads.ts:50-66`) is a plain `z.object`, so
+  desktop strips them on parse and never applies them. Tags live in
+  `inbox_item_tags` (`schema/inbox.ts:245`) and **never sync**. `metadata` is
+  `z.unknown().nullable()`: any JSON. `duration`/`pageCount`/`excerpt` are read
+  from `metadata` (`main/inbox/domain.ts:118-137`). Stale = older than the
+  local `inbox.staleThresholdDays` setting, default 7 (`stats.ts:23-24,57-62`).
+- **F2 Merge rule** (`apps/desktop/src/main/sync/item-handlers/inbox-handler.ts`):
+  document-level `resolveClock` (:32) → skip when local dominates, LWW on
+  concurrent; on update `title`/`type` use `data.x ?? existing` (null or absent
+  keeps, :52-54), every nullable key uses `hasKey` (:48): absent keeps, present
+  (incl. `null`) replaces (:55-72); `modifiedAt = data.modifiedAt ?? now`.
+  Insert defaults `title 'Untitled'`, `type 'note'` (:86-87). Delete: skipped
+  only when the local clock is ahead of the tombstone (:121), else the row is
+  removed. Unclocked rows are seeded as creates on a full sync (:154-173).
+- **F3 Attachments.** Stored at `attachments/inbox/{itemId}/{prefix}-{name}.{ext}`
+  (`attachments.ts:154,164,278`), thumbnails `thumbnail.{jpg|png}` (:318).
+  Limit 50 MB for every type (`MAX_INBOX_FILE_SIZE`, :24); MIME allow-lists
+  :30-69. **Inbox attachments do not sync**: nothing under `main/sync/**`
+  uploads `attachments/inbox/`, and the attachment backfill skips it
+  (`sync/attachment-backfill.test.ts:92-94`). A binary item's bytes exist only
+  on the capturing device until it is filed (filing moves the file into the
+  vault and `syncFiledBinary` pushes it as a note attachment, `filing.ts:229-240`).
+- **F4 captureSource** values: `quick-capture | inline | browser-extension | api | reminder`
+  (`schema/inbox.ts:88-94`, `capture.ts:54`). The in-page composer sends
+  `inline` (`renderer/.../capture-input.tsx:110,136,180,234`). Nothing in the
+  renderer reads it. Capture paths: text → `type note`, title = first 50 chars
+  - `...` (`domain.ts:216-218`); link → `link` or `social`, title
+    `titleFromUrl`, `processingStatus pending`, metadata `{url, fetchStatus:'pending'}`
+    (`domain.ts:243-261`, `domain-inbox/src/commands.ts:128-133`); image/audio/video/PDF
+    by MIME → `image|voice|video|pdf`, title = filename without extension,
+    metadata `{originalFilename, fileSize, mimeType}` (+ `format,width,height,hasExif`
+    for images) (`domain.ts:163-169,302-356`); voice memo → title
+    `Voice memo (m:ss)`, metadata `{duration, format, fileSize, waveform?}`,
+    `transcriptionStatus pending|failed` (`capture.ts:220-270`). Duplicates:
+    URL = exact `sourceUrl` match among unfiled, unarchived rows; content =
+    sha256 of the first 500 chars among unfiled, unarchived `note` rows, only for
+    content ≥ 20 chars (`duplicates.ts:10-74`); `force` skips both
+    (`commands.ts:140-170`).
+- **F5 Filing outputs** (`filing.ts`): `markItemAsFiled` sets `filedAt`,
+  `filedTo`, `filedAction`, `modifiedAt` and **clears** `snoozedUntil`/`snoozeReason`,
+  then pushes (:541-576). `filedAction` values: `folder` (:687,764), `note`
+  (:824), `task` with `filedTo = taskId` (:911), `event` with `filedTo = eventId`
+  (:1004), `reminder` with `filedTo = note path` (:1068), `linked` with
+  `filedTo = first target note path` or the attachment path (:1208,1355,1490).
+  Text items become a note (`createNoteCommand`) titled `generateNoteTitle`
+  (:303-338), body `generateNoteContent` (:381-499), tags = item tags + `inbox`,
+  properties from `metadata.properties`. Binary items (`image|voice|pdf|video`,
+  :100-102) move the file into the folder under `getFiledBinaryFilename`
+  (:357-367) and index/push it as a binary note. Linking appends
+  `- [[title]] - desc *(YYYY-MM-DD)*` under `## Inbox Captures` in every target
+  note (:397-416,1466-1486); image `embed` mode saves the image as an
+  attachment of the first target note and falls back to link when the
+  attachment store refuses it (`fellBackToLink`, :1172-1215,1273-1277).
+  Bulk file is folder-only (`batch.ts:104-116`).
+- **F6 metadata shapes** (`packages/contracts/src/inbox-api.ts:39-145`):
+  link `{url, siteName?, description?, excerpt?, heroImage?, favicon?, author?, publishedDate?, fetchedAt, fetchStatus}`,
+  written by desktop main's metadata job as `{url, fetchStatus:'complete', siteName, description, heroImage, favicon, author, publishedDate}`
+  or `{url, fetchStatus:'failed', error}` (`jobs.ts:240-300`); article extract
+  adds `extractionStatus` (`jobs.ts:314`); social `{platform, postUrl, authorName, authorHandle, postContent, mediaUrls, extractionStatus}`
+  (`commands.ts:115-126`); voice, image, PDF, clip, reminder as the interfaces
+  above. **Enrichment jobs do not push** (`jobs.ts`, `transcription.ts` call no
+  `syncInbox*`): peers see enrichment only when the row is next pushed.
+- **F7 Snooze**: presets are renderer-side (`components/snooze/snooze-presets.ts`):
+  Later today = max(now+3h, 18:00), or 09:00 tomorrow after 18:00 (:141-155);
+  Tomorrow 09:00 (:161-166); This weekend = next Saturday 09:00 (:172-174);
+  Next week = next Monday 09:00 (:180-182); In 1 h / In 2 h (:187-196).
+  `snoozeItem` refuses past times and filed items, sets `snoozedUntil`,
+  `snoozeReason`, `modifiedAt`, pushes (`snooze.ts:144-201`). Unsnooze sets both
+  to null and pushes (:209-250). The scheduler runs every minute and clears
+  due snoozes (`snoozedUntil <= now`, unfiled) with a push each, then emits
+  `SNOOZE_DUE` (:322-372). The review nudge fires once per local day at or after
+  `reviewReminderTime` when enabled and the reviewable count > 0
+  (`review-scheduler.ts:50-70`); reviewable = unfiled, unsnoozed, unarchived,
+  excluding viewed reminders (`stats.ts:140-160`).
+- **F8 Suggestions** need desktop's local embedding model and `vec_notes`
+  (`suggestions.ts:1-35,315-340`) and the local `filing_history` table, and
+  return `[]` unless the **device-local** `ai.enabled` setting is on (:66,110-120,678-682).
+  `ai` is not a group of the synced settings (`settings-sync.ts`). None of it
+  reaches iOS.
+- **F9 Convert**: task = direct `insertTask` into the inbox project (or the
+  chosen one), priority/due/time from the input, description = content,
+  tags + `inbox`, then `syncTaskCreate` (`filing.ts:844-935`); event = a
+  `calendar_event` record (`upsertCalendarEvent` + `syncCalendarEventCreate`,
+  :940-1025), refused for note-only types `image|pdf|video|clip` (:111-113);
+  reminder = a new note + a note-target `reminder` record (:1030-1075),
+  refused for note-only types and past times.
+- **F10 Stats** (`stats.ts`, `queries.ts:146-213`): `inbox_stats` is rebuilt
+  from the rows (`rebuildInboxStatsTable`, `stats.ts:218-262`, driven by
+  `projections/projectors/inbox-stats-projector.ts`): capture counts on the UTC
+  date of `createdAt`, processed on the UTC date of `filedAt`, archived on
+  `archivedAt`. Today = UTC date (:265-268). This week = stats dates ≥ UTC date
+  7 days ago (:520-535). Ratio = captured/processed rounded to 0.1, or captured
+  when processed = 0 (:537-542). Age buckets fresh < 3 days, aging to the
+  stale cutoff, stale beyond (:548-585). Streak = consecutive UTC days with
+  processed > 0, today may be empty if yesterday counts (:440-470). Avg time to
+  process = mean minutes createdAt→filedAt over items filed in the last 30
+  days (:408-437). Heatmap = last 84 days, `[hour][mon..sun]`, from
+  `strftime` of the stored UTC string (`queries.ts:318-340`). Type distribution
+  over the same 84 days (:342-360). Filing history = filed rows by `filedAt`
+  desc (:280-305).
+- **F11 Preferences**: synced settings group `inbox` carries only
+  `reviewReminderEnabled`, `reviewReminderTime` (`settings-sync.ts:69-74`),
+  applied by desktop's settings handler (`settings-handler.ts:106-124`).
+  `imageFilingMode` (`embed|link`, default `embed`) and
+  `imageFilingModeRemembered` are **desktop-local** (`settings-schemas.ts:420-441`).
+  Last-notified date is device-local (`review-reminder-constants.ts:2`).
+- **F12 Reminder panel** (`renderer/src/lib/reminder-panel.ts`): Upcoming =
+  pending/snoozed reminders + inbox items snoozed into the future (reminder
+  items expand to their target), deduped, ascending (:131-175); Past = active
+  `reminder` inbox items whose snooze is not in the future, by
+  `metadata.remindAt` desc (:177-195). Reminder inbox rows are created by
+  desktop when a reminder fires, id `inbox_rem_…`, type `reminder`, metadata
+  `ReminderMetadata` (`main/lib/reminders.ts:190-230`). Opening one marks it
+  viewed (`crud.ts` `handleMarkViewed`, sets `viewedAt` + `modifiedAt`, pushes).
+  Targets: note, journal day (`targetId` = YYYY-MM-DD), task (+ `projectId`),
+  highlight (`inbox-api.ts:118-145`).
 
 ## 6. Decisions log
 
 <!-- date — id — choice — why -->
+
+- 2026-09-25 — IB000 — The worktree already existed at `.worktrees/ios-inbox` on `origin/main` HEAD under the branch name `ios-inbox`; renamed to `feat/ios-inbox` (§0.3 name) instead of creating a second worktree.
+- 2026-09-25 — IB001/F1 — iOS reads the extra keys desktop's full-row payload carries (`transcription`, `transcriptionStatus`, `viewedAt`, `processingStatus`, `attachmentPath`, `thumbnailPath`) and writes the same keys on its own payloads. Desktop strips unknown keys on parse, so this is inside the current wire (no schema change). Tags stay device-local on iOS, as on desktop.
+- 2026-09-25 — IB001/F3 — Inbox attachments do not sync on desktop, so iOS does not sync them either (a new attachment channel is a wire change, out of scope §0.5). A binary item captured on the other device shows its metadata, title and thumbnail-less row with an "on another device" note; filing it on iOS is refused with that reason (desktop refuses a missing attachment the same way, `filing.ts:633`). A binary captured on iOS reaches desktop's files when it is filed on iOS as a note attachment.
+- 2026-09-25 — IB001/F4 — iOS writes desktop's value set: the in-app composer writes `captureSource: "inline"` (desktop's capture bar), the Share extension `"quick-capture"` (desktop's floating capture window, which the 00 audit maps to the extension). No new value on the wire.
+- 2026-09-25 — IB001/F8 — D5 resolves to "no suggestions on iOS": the gating AI setting is device-local on desktop and the inputs (embeddings, filing history) never sync. The File sheet and the row menu show Recent folders (derived from synced filed rows, labelled Recent, no match strength), the swipe and bottom bar read "File…", the cluster pill is hidden.
+- 2026-09-25 — IB001/F9 — D6: the Event segment is hidden on iOS (event conversion writes a `calendar_event` record, a type iOS does not subscribe to). Task and Reminder ship.
+- 2026-09-25 — IB001/F11 — Review reminder enabled/time use the synced `inbox` settings group; image filing mode and "ask again" are device-local on iOS (UserDefaults), as on desktop.
 
 ## 7. Blockers
 
