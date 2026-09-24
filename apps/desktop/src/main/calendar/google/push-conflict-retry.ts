@@ -11,6 +11,7 @@ import { enqueueLocalSyncUpdate } from '../../sync/local-mutations'
 import { initAllFieldClocks } from '@memry/sync-client/field-merge'
 import { CALENDAR_EVENT_SYNCABLE_FIELDS, mergeCalendarEventFields } from '../field-merge-calendar'
 import { emitCalendarChanged } from '../change-events'
+import { ProviderConflictError } from '../provider/errors'
 import {
   mapCalendarEventToGoogleInput,
   mapGoogleEventToCalendarEventChanges,
@@ -33,6 +34,7 @@ function getNow(): string {
 }
 
 function isPreconditionFailedError(error: unknown): boolean {
+  if (error instanceof ProviderConflictError) return true
   return (
     typeof error === 'object' &&
     error !== null &&
@@ -76,13 +78,22 @@ export function loadSourceAsGoogleEvent(
   }
 }
 
+/**
+ * Upsert with `If-Match`; on a precondition failure (HTTP 412 or
+ * `ProviderConflictError`), refetch the remote, merge it into the local event
+ * field by field, and retry with the new ETag. Shared by every writable
+ * provider (#1393); `providerId` only labels the logs and the final error.
+ */
 export async function pushEventWithConflictRetry(
   db: DataDb,
   target: CalendarSyncTarget,
   client: Pick<GoogleCalendarClient, 'upsertEvent' | 'getEvent'>,
   resolvedCalendarId: string,
-  existingBinding: typeof calendarBindings.$inferSelect | undefined
+  existingBinding: typeof calendarBindings.$inferSelect | undefined,
+  options: { providerId?: string } = {}
 ): Promise<GoogleCalendarRemoteEvent> {
+  const label =
+    !options.providerId || options.providerId === 'google' ? 'Google' : options.providerId
   let ifMatch: string | null = existingBinding?.remoteVersion ?? null
 
   for (let attempt = 0; attempt < MAX_PUSH_CONFLICT_RETRIES; attempt++) {
@@ -109,7 +120,7 @@ export async function pushEventWithConflictRetry(
       }
 
       ifMatch = remote.etag ?? null
-      log.warn('Google upsert returned 412; merged remote and retrying', {
+      log.warn(`${label} upsert returned 412; merged remote and retrying`, {
         sourceType: target.sourceType,
         sourceId: target.sourceId,
         attempt: attempt + 1,
@@ -126,13 +137,13 @@ export async function pushEventWithConflictRetry(
     enqueueLocalSyncUpdate('calendar_binding', existingBinding.id)
   }
 
-  log.error('Google upsert exhausted conflict retries', {
+  log.error(`${label} upsert exhausted conflict retries`, {
     sourceType: target.sourceType,
     sourceId: target.sourceId,
     attempts: MAX_PUSH_CONFLICT_RETRIES
   })
   throw new Error(
-    `Google calendar push gave up after ${MAX_PUSH_CONFLICT_RETRIES} 412 conflicts for ${target.sourceType}:${target.sourceId}`
+    `${label} calendar push gave up after ${MAX_PUSH_CONFLICT_RETRIES} 412 conflicts for ${target.sourceType}:${target.sourceId}`
   )
 }
 

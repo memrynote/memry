@@ -157,6 +157,27 @@ Promotion binds the copy to the source's own provider. Choosing a Google default
 picker after a cross-provider default exists moves the cross-provider default to Google, so the
 older control keeps working.
 
+## Write engine
+
+`calendar/sync/write-engine.ts` holds the two-way engine every writable provider shares: push
+(with `If-Match` and the refetch, merge and retry loop on a 412 or `ProviderConflictError`),
+delete, remote write-back into the Memry event, task, reminder or snooze a binding points at,
+and the binding bookkeeping. It is parameterized on the provider id and a small adapter
+(`upsertEvent`, `getEvent`, `deleteEvent`). Google's exports in `google/sync-service.ts` are thin
+wrappers over it, so Google behaves exactly as before; CalDAV is the second writer.
+
+- **Writes are gated in the engine.** Every write path starts with
+  `assertProviderWritable`: a provider without `supportsWrite` never reaches `calendar_bindings`
+  or a push call, whatever its definition carries.
+- **In-flight tracking per provider and account.** `runExclusive` keys a sync pass by provider
+  and account, so one slow provider never blocks another. Google keeps a single slot for its
+  whole pass, as before.
+- **Cursor reset.** `pullWithCursorReset` clears a rejected cursor (`ProviderGoneError`) on the
+  synced source row and pulls in full.
+- **Polling.** `sync/poll-runner.ts` schedules providers without push. A
+  `ProviderRateLimitError`, or a pass that reports `retryAfterMs`, pushes the next pass out by at
+  least what the server asked for. Google keeps its push-aware runner and cadence.
+
 ## Cross-version compatibility
 
 Calendar sources, bindings and external events sync between devices, and devices update at

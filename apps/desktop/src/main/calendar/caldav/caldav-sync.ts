@@ -8,7 +8,9 @@ import {
   upsertCalendarSource
 } from '../repositories/calendar-sources-repository'
 import { syncCalendarSourceUpdate } from '../runtime-effects'
-import { ProviderAuthError, ProviderGoneError, type ProviderError } from '../provider/errors'
+import { ProviderAuthError, ProviderRateLimitError, type ProviderError } from '../provider/errors'
+import { pullWithCursorReset } from '../sync/cursor-reset'
+import { runExclusive } from '../sync/write-engine'
 import {
   CALDAV,
   hasCaldavAuthFailure,
@@ -282,17 +284,13 @@ export async function syncCaldavCalendarSource(
   }
 
   try {
-    const result = await syncSourceWithTransport(db, source, transport, deps)
+    const result = await pullWithCursorReset(db, CALDAV, source, (current) =>
+      syncSourceWithTransport(db, current, transport, deps)
+    )
     setCaldavAuthFailure(db, account.accountId, false)
     return result
   } catch (error) {
     const mapped = classifyCaldavFailure(error, transport)
-    if (mapped instanceof ProviderGoneError && source.syncCursor) {
-      log.warn('CalDAV sync token rejected; pulling the calendar in full', { sourceId })
-      const reset = { ...source, syncCursor: null }
-      saveSource(db, source, { syncCursor: null, syncStatus: 'pending' })
-      return await syncSourceWithTransport(db, reset, transport, deps)
-    }
     if (mapped instanceof ProviderAuthError) setCaldavAuthFailure(db, account.accountId, true)
     recordFailure(db, source, mapped ?? (error instanceof Error ? error : new Error(String(error))))
     throw mapped ?? error
@@ -315,22 +313,17 @@ export function listSelectedCaldavCalendars(db: DataDb, accountId?: string): Cal
     .filter((source) => !accountId || source.accountId === accountId)
 }
 
-const inFlight = new WeakMap<DataDb, Set<string>>()
-
 /**
  * One pass over every CalDAV account this device can sync. Accounts are
- * independent: one slow or failing server never blocks another, and an
- * account already syncing is skipped rather than run twice.
+ * independent: each runs in its own exclusive slot (#1393), so one slow or
+ * failing server never blocks another, and an account already syncing is
+ * skipped rather than run twice. A server that rate-limits reports
+ * `retryAfterMs` so the runner backs off.
  */
 export async function syncCaldavNow(
   db: DataDb,
   deps: CaldavSyncDeps & { accountId?: string } = {}
-): Promise<{ synced: number; failed: number }> {
-  let running = inFlight.get(db)
-  if (!running) {
-    running = new Set()
-    inFlight.set(db, running)
-  }
+): Promise<{ synced: number; failed: number; retryAfterMs?: number }> {
   const accounts = listCaldavAccountSources(db).filter(
     (account) =>
       account.accountId &&
@@ -341,14 +334,15 @@ export async function syncCaldavNow(
   const outcomes = await Promise.all(
     accounts.map(async (account) => {
       const accountId = account.accountId as string
-      if (running.has(accountId)) return { synced: 0, failed: 0 }
       // Another device's account: the mirror arrives through sync, and this
       // device has no password to pull with.
-      if (!(await readCaldavPassword(accountId))) return { synced: 0, failed: 0 }
-      running.add(accountId)
-      let synced = 0
-      let failed = 0
-      try {
+      if (!(await readCaldavPassword(accountId))) {
+        return { synced: 0, failed: 0, retryAfterMs: undefined }
+      }
+      const outcome = await runExclusive(`${CALDAV}:${accountId}`, async () => {
+        let synced = 0
+        let failed = 0
+        let retryAfterMs: number | undefined
         for (const source of listSelectedCaldavCalendars(db, accountId)) {
           try {
             await syncCaldavCalendarSource(db, source.id, deps)
@@ -359,21 +353,23 @@ export async function syncCaldavNow(
               sourceId: source.id,
               kind: error instanceof Error ? error.name : 'unknown'
             })
+            if (error instanceof ProviderRateLimitError) {
+              retryAfterMs = Math.max(retryAfterMs ?? 0, error.retryAfterMs)
+              break
+            }
             // A rejected password fails every calendar the same way; stop.
             if (error instanceof ProviderAuthError || hasCaldavAuthFailure(db, accountId)) break
           }
         }
-      } finally {
-        running.delete(accountId)
-      }
-      return { synced, failed }
+        return { synced, failed, retryAfterMs }
+      })
+      return outcome ?? { synced: 0, failed: 0, retryAfterMs: undefined }
     })
   )
-  return outcomes.reduce(
-    (total, outcome) => ({
-      synced: total.synced + outcome.synced,
-      failed: total.failed + outcome.failed
-    }),
-    { synced: 0, failed: 0 }
-  )
+  const retryAfter = Math.max(0, ...outcomes.map((outcome) => outcome.retryAfterMs ?? 0))
+  return {
+    synced: outcomes.reduce((total, outcome) => total + outcome.synced, 0),
+    failed: outcomes.reduce((total, outcome) => total + outcome.failed, 0),
+    ...(retryAfter > 0 ? { retryAfterMs: retryAfter } : {})
+  }
 }
