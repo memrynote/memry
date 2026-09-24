@@ -12,6 +12,7 @@ import { readMarkdownSourceFromYDoc } from '@memry/shared/markdown-source'
 import { getCrdtProvider, resetCrdtProvider } from './sync/crdt-provider'
 import { getWritebackDebugState } from './sync/crdt-writeback'
 import { getCrdtQueue, getNetworkMonitor, startSyncRuntime } from './sync/runtime'
+import { syncStateTestHooks, type SyncStateTestHooks } from './sync/sync-test-hooks'
 import { getDatabase } from './database'
 import { sql } from 'drizzle-orm'
 import { getNoteMetadataById } from '@memry/storage-data'
@@ -127,7 +128,7 @@ export interface GoogleEventProbe {
   end: { dateTime?: string | null; date?: string | null } | null
 }
 
-interface MemryTestHooks {
+interface MemryTestHooks extends SyncStateTestHooks {
   bootstrapSyncDevice(input: SyncTestBootstrapInput): Promise<{ deviceId: string }>
   setNetworkOnlineForTests(online: boolean): Promise<void>
   resetVaultDirectoryThrottle(): Promise<void>
@@ -323,6 +324,8 @@ export function registerTestHooks(): void {
 
       network.setOnlineForTests(online)
     },
+
+    ...syncStateTestHooks,
 
     async resetVaultDirectoryThrottle(): Promise<void> {
       // The sync runtime's own startup refresh stamps the vault-directory
