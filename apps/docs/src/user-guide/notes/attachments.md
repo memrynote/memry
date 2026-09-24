@@ -1,7 +1,7 @@
 # Attachments
 
 Drop files onto a note to attach them. PDFs preview inline, audio and video files render with
-playback controls, and other file types appear as download blocks.
+playback controls, HTML files run inline, and other file types appear as download blocks.
 
 <!-- screenshot: PDF preview block inside a note -->
 
@@ -11,7 +11,7 @@ Three ways:
 
 - **Drag from your OS file manager** — drop a file onto the editor at the position you want it. The file is **copied** into the vault attachments directory (`<vault>/attachments/`), so the original on your filesystem can be moved or deleted without breaking the note.
 - **Drag from the sidebar** — drag a file item (PDF, image, audio, …) from the left sidebar onto a note. This **embeds it by reference** using the item's own vault path, so no second copy is made.
-- **Slash menu** — `/image`, `/media`, `/pdf` and `/file` all open the same attachment picker, narrowed to the kind you asked for.
+- **Slash menu** — `/image`, `/media`, `/pdf`, `/html` and `/file` all open the same attachment picker, narrowed to the kind you asked for.
 
 ### The attachment picker
 
@@ -146,6 +146,29 @@ it, and the message names both the file's size and the limit.
 The player only loads what it needs to show the first frame and the duration, and fetches the rest
 as you watch, so a note with several videos opens as quickly as any other note, and seeking does
 not wait for the whole file.
+
+## HTML Attachments
+
+An `.html` or `.htm` file renders as a live page inside the note. Its scripts run, and it can
+reach the web, so a chart, a report or a small tool saved as one HTML file works in the note the
+way it does in a browser. Add one with `/html`, the attachment picker, or by dropping the file
+onto the note.
+
+The page runs **sandboxed**, so it cannot read your notes, your other attachments or the app
+itself. Things to know:
+
+- **One self-contained file.** The page can load from `https://` addresses, such as scripts and
+  fonts from a CDN. It cannot load files that sit next to it on disk. Stylesheets, scripts and
+  images must be inline in the file or come from the web.
+- **No saved state.** The sandbox gives the page no storage, so a page that relies on
+  `localStorage` or cookies starts fresh every time.
+- **Links open in your browser.** Clicking a link inside the page opens it in your default
+  browser and leaves the embed where it was. Pop-up dialogs such as `alert()` are blocked.
+- **Height.** The embed opens 480 px tall. Drag the handle under it, or focus the handle and
+  use `↑` / `↓`, to change the height. The height is saved with the note.
+
+On a device running an older version of Memry, the same block shows as a plain file card with a
+download button.
 
 ## Image Attachments
 

@@ -89,12 +89,20 @@ export const ALLOWED_FILE_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'tx
 export const ALLOWED_VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov']
 
 /**
+ * HTML documents the file block embeds (#1872). Rendered only through the
+ * sandboxed `memry-html://` scheme (see `html-embed-protocol.ts`); memry-file
+ * serves their bytes as plain text.
+ */
+export const ALLOWED_HTML_EXTENSIONS = ['html', 'htm']
+
+/**
  * All allowed extensions combined
  */
 export const ALLOWED_EXTENSIONS = [
   ...ALLOWED_IMAGE_EXTENSIONS,
   ...ALLOWED_FILE_EXTENSIONS,
-  ...ALLOWED_VIDEO_EXTENSIONS
+  ...ALLOWED_VIDEO_EXTENSIONS,
+  ...ALLOWED_HTML_EXTENSIONS
 ]
 
 /**
@@ -221,7 +229,10 @@ export function getMimeType(filename: string): string {
     // Video
     mp4: 'video/mp4',
     webm: 'video/webm',
-    mov: 'video/quicktime'
+    mov: 'video/quicktime',
+    // HTML
+    html: 'text/html',
+    htm: 'text/html'
   }
   return mimeTypes[ext] || 'application/octet-stream'
 }

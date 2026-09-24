@@ -2305,6 +2305,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                           // between two things that do the same thing.
                           aliases: ['media', 'video', 'audio', 'movie'],
                           onItemClick: () => openAttachmentPicker('media')
+                        },
+                        {
+                          ...fileItem,
+                          key: 'html',
+                          title: t('editor.slashMenu.html.title'),
+                          subtext: t('editor.slashMenu.html.subtext'),
+                          aliases: ['html', 'htm', 'webpage', 'embed'],
+                          onItemClick: () => openAttachmentPicker('html')
                         }
                       ]
                     : []

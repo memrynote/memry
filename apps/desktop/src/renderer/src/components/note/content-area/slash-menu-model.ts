@@ -72,7 +72,7 @@ const CATALOG: ReadonlyArray<readonly [SlashMenuGroupId, readonly string[]]> = [
       'insert_template'
     ]
   ],
-  ['media', ['image', 'pdf', 'media', 'video', 'audio', 'file']],
+  ['media', ['image', 'pdf', 'media', 'video', 'audio', 'html', 'file']],
   ['ai', ['ai']]
 ]
 

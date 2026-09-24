@@ -9,6 +9,12 @@ export interface FrameNavigationContext {
   currentUrl: string
   /** Whether the app runs against the dev server (electron-vite HMR). */
   isDev: boolean
+  /**
+   * The navigating frame's own current URL, when known. Lets a link clicked
+   * inside an attached HTML embed (a memry-html: frame) open in the browser
+   * instead of replacing the embed.
+   */
+  frameUrl?: string
 }
 
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
@@ -46,10 +52,27 @@ function isSameDocument(a: URL, b: URL): boolean {
  */
 export function decideFrameNavigation(
   rawUrl: string,
-  { isMainFrame, currentUrl, isDev }: FrameNavigationContext
+  { isMainFrame, currentUrl, isDev, frameUrl }: FrameNavigationContext
 ): FrameNavigationDecision {
   const target = parseUrl(rawUrl)
   if (!target) return 'deny'
+
+  // Attached HTML embeds (#1872). The scheme's handler only serves vault html
+  // attachments, sandboxed. It is a frame's document and never the app's: in
+  // the main frame it would replace the SPA and trap the window.
+  if (target.protocol === 'memry-html:') return isMainFrame ? 'deny' : 'allow'
+
+  // A link followed inside an embed leaves it for the browser, the way it would
+  // from a note. Letting it navigate in place would either be refused by the
+  // app's frame-src (a blank frame) or strand the reader on a page with no way
+  // back to the file.
+  if (
+    !isMainFrame &&
+    frameUrl?.startsWith('memry-html:') &&
+    (target.protocol === 'https:' || target.protocol === 'http:')
+  ) {
+    return isLoopback(target) || !isAllowedExternalUrl(rawUrl) ? 'deny' : 'open-external'
+  }
 
   // App-controlled local scheme. Inline resource loads (<img>/<audio>/<video>,
   // react-pdf fetch) never fire will-frame-navigate, so a memry-file event here

@@ -24,9 +24,22 @@ export function resolveMemryFilePath(
   rawUrl: string,
   platform: NodeJS.Platform = process.platform
 ): string | null {
+  return resolveLocalSchemePath(rawUrl, 'memry-file:', platform)
+}
+
+/**
+ * The same decoding as {@link resolveMemryFilePath} for any app scheme that
+ * carries an absolute path as `<scheme>//local/<absolute path>` — memry-file
+ * and memry-html share the shape so the renderer can swap one for the other.
+ */
+export function resolveLocalSchemePath(
+  rawUrl: string,
+  protocol: 'memry-file:' | 'memry-html:',
+  platform: NodeJS.Platform = process.platform
+): string | null {
   try {
     const url = new URL(rawUrl)
-    if (url.protocol !== 'memry-file:') return null
+    if (url.protocol !== protocol) return null
 
     let filePath = decodeURIComponent(url.pathname)
     const pathModule = platform === 'win32' ? path.win32 : path.posix

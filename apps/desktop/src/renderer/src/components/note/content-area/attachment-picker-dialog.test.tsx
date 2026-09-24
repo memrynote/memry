@@ -358,4 +358,11 @@ describe('attachmentKindMatches', () => {
     expect(attachmentKindMatches('APPLICATION/PDF', 'pdf')).toBe(true)
     expect(attachmentKindMatches('application/zip', 'file')).toBe(true)
   })
+
+  it('#1872: narrows /html to html documents', () => {
+    expect(attachmentKindMatches('text/html', 'html')).toBe(true)
+    expect(attachmentKindMatches('text/plain', 'html')).toBe(false)
+    expect(attachmentKindMatches('text/html', 'media')).toBe(false)
+    expect(ATTACHMENT_ACCEPT.html).toBe('text/html,.html,.htm')
+  })
 })

@@ -24,14 +24,14 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command'
 import { Kbd } from '@/components/ui/kbd'
-import { File, FileText, Image, Loader2, Music, Search, Upload, Video } from '@/lib/icons'
+import { File, FileCode, FileText, Image, Loader2, Music, Search, Upload, Video } from '@/lib/icons'
 
 /**
  * What the caller is asking for. The kind narrows the vault list and the file
  * dialog's `accept`; it never changes what gets inserted, because an upload and
  * a reference produce the same two block types.
  */
-export type AttachmentKind = 'image' | 'media' | 'pdf' | 'file'
+export type AttachmentKind = 'image' | 'media' | 'pdf' | 'html' | 'file'
 
 /** What main hands back for a picked attachment; the block props come from it. */
 export interface InsertedAttachment {
@@ -92,6 +92,7 @@ export const ATTACHMENT_ACCEPT: Record<AttachmentKind, string | undefined> = {
   image: 'image/*',
   media: `image/*,audio/*,${VIDEO_ACCEPT}`,
   pdf: 'application/pdf,.pdf',
+  html: 'text/html,.html,.htm',
   file: undefined
 }
 
@@ -143,6 +144,8 @@ export function attachmentKindMatches(mimeType: string, kind: AttachmentKind): b
       return mime.startsWith('image/') || mime.startsWith('video/') || mime.startsWith('audio/')
     case 'pdf':
       return mime === 'application/pdf'
+    case 'html':
+      return mime === 'text/html'
     case 'file':
       return true
   }
@@ -161,6 +164,7 @@ function rowIcon(entry: VaultAttachmentEntry): React.ReactNode {
   if (mime.startsWith('video/')) return <Video className={className} />
   if (mime.startsWith('audio/')) return <Music className={className} />
   if (mime === 'application/pdf') return <FileText className={className} />
+  if (mime === 'text/html') return <FileCode className={className} />
   return <File className={className} />
 }
 
