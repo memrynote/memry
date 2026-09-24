@@ -194,7 +194,9 @@ export class SyncEngine extends SyncEventEmitter {
         push: () => this.push(),
         scheduleSync: (fn) => this.scheduleSync(fn)
       },
-      (itemId, itemType) => this.quarantine.isQuarantined(itemId, itemType)
+      (itemId, itemType) =>
+        this.quarantine.isQuarantined(itemId, itemType) ||
+        this.pullCoordinator.schemaInvalid.has(itemType, itemId)
     )
     // Wired after the runner exists, for the same reason the coordinators above
     // are: the coordinator raises the debt and the runner is what persists it,
@@ -601,7 +603,10 @@ export class SyncEngine extends SyncEventEmitter {
   }
 
   getQuarantinedItems(): QuarantinedItemInfo[] {
-    return this.quarantine.getQuarantinedItems()
+    return [
+      ...this.quarantine.getQuarantinedItems(),
+      ...this.pullCoordinator.schemaInvalid.quarantinedItems()
+    ]
   }
 
   // --- Internal orchestration ---

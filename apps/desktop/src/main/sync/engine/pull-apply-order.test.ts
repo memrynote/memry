@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { sortByApplyOrder } from './pull-coordinator'
+import { sortByApplyOrder } from './apply-order'
 
 describe('sortByApplyOrder', () => {
   it('applies FK parents before children regardless of cursor order', () => {

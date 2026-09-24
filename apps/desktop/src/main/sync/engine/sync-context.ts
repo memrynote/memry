@@ -131,7 +131,9 @@ export const SYNC_STATE_KEYS = {
    * a page the pull refuses every time would otherwise restart it forever.
    * `done`: a pull delivered after the reset, or there was nothing to repair.
    */
-  CURSOR_SKIP_REPAIR: 'cursorSkipRepair'
+  CURSOR_SKIP_REPAIR: 'cursorSkipRepair',
+  /** JSON map of items this build's schema refused; see `SchemaInvalidLedger` (#2285). */
+  SCHEMA_INVALID_ITEMS: 'schemaInvalidItems'
 } as const
 
 // Item ids are NOT unique across item types (default project id 'inbox', tag

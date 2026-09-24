@@ -836,8 +836,10 @@ describe('ItemApplier', () => {
     })
   })
 
+  // #2285: 'skipped' meant "local is newer" and dropped a newer peer's payload
+  // for good. 'schema_invalid' lets the pull record it for a retry.
   describe('#given a payload that fails schema validation', () => {
-    it('#then returns skipped and leaves the local row exactly as it was', () => {
+    it('#then returns schema_invalid and leaves the local row exactly as it was', () => {
       testDb.db
         .insert(tasks)
         .values({
@@ -859,7 +861,7 @@ describe('ItemApplier', () => {
         clock: { 'device-B': 9 }
       })
 
-      expect(result).toBe('skipped')
+      expect(result).toBe('schema_invalid')
       const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
       expect(task!.title).toBe('Local Title')
       expect(task!.clock).toEqual({ 'device-A': 1 })
@@ -883,7 +885,7 @@ describe('ItemApplier', () => {
         })
       ]
 
-      expect(results).toEqual(['skipped', 'applied'])
+      expect(results).toEqual(['schema_invalid', 'applied'])
       expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-bad')).get()).toBeUndefined()
       expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeDefined()
     })

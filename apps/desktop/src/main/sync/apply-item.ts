@@ -21,6 +21,9 @@ export interface ApplyItemInput {
   vaultKey?: Uint8Array
 }
 
+/** 'schema_invalid': the payload failed this build's schema; the pull records it for a retry (#2285). */
+export type ApplyItemResult = ApplyResult | 'schema_invalid'
+
 export class ItemApplier {
   /** Applies that changed a local row ('applied' or 'conflict') since construction. */
   changedCount = 0
@@ -36,13 +39,13 @@ export class ItemApplier {
    * its page-transaction-scoped data DB (see bulk-apply.ts). Absent, behavior
    * is unchanged.
    */
-  apply(input: ApplyItemInput, dbOverride?: DrizzleDb): ApplyResult {
+  apply(input: ApplyItemInput, dbOverride?: DrizzleDb): ApplyItemResult {
     const result = this.dispatch(input, dbOverride)
     if (result === 'applied' || result === 'conflict') this.changedCount++
     return result
   }
 
-  private dispatch(input: ApplyItemInput, dbOverride?: DrizzleDb): ApplyResult {
+  private dispatch(input: ApplyItemInput, dbOverride?: DrizzleDb): ApplyItemResult {
     const db = dbOverride ?? this.db
     const ctx = { db, emit: this.emitToWindows, vaultKey: input.vaultKey }
     const adapter = this.adapters?.getRemote(input.type) ?? getRemoteSyncAdapter(input.type)
@@ -105,18 +108,14 @@ export class ItemApplier {
       data = adapter ? adapter.schema.parse(parsed) : handler!.schema.parse(parsed)
     } catch (err) {
       log.error('Schema validation failed', { type: input.type, itemId: input.itemId, error: err })
-      // Unlike 'parse_error' (corrupt-tracker refetch flow), 'skipped' still
-      // advances the cursor and never retries — a schema-drift item from a
-      // newer peer silently never lands here. Same mixed-version tripwire as
-      // the unknown-type case above, for known types with drifted payloads.
       trackMainEvent('sync_skipped_unknown_type', {
         surface: 'sync',
         action: 'schema_validation_failed',
         objectType: 'sync_item',
-        result: 'skipped',
+        result: 'failed',
         dimensions: { itemType: input.type }
       })
-      return 'skipped'
+      return 'schema_invalid'
     }
 
     // Zod strips every key the handler schema has no field for, and the push
