@@ -198,3 +198,94 @@ async fn an_attachment_manifest_is_signed_as_the_registered_device() {
         .expect("a manifest upload");
     assert_eq!(body_json(&manifest)["signerDeviceId"], json!(device_id));
 }
+
+/// Two passes started together over one vault run one after the other: the
+/// outbox row goes out once, and the second pass finds nothing to push.
+#[tokio::test]
+async fn overlapping_passes_over_one_vault_push_a_row_once() {
+    let (public, secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
+    let device_id = "server-device-1";
+    let store = FakeSecureStore::new();
+    store.put_text(
+        SecureStoreKey::AccessToken,
+        &jwt(json!({"sub": "user-1", "device_id": device_id, "type": "access", "exp": 9_999_999_999u64})),
+    );
+    store
+        .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
+        .expect("plant the master key");
+    store
+        .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
+        .expect("plant the signing key");
+
+    let vault = scratch_vault();
+    let note_id = vault
+        .notes_writer(store.clone())
+        .expect("a writer")
+        .create("Written once".to_string(), None)
+        .expect("create");
+    tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+
+    let devices = || {
+        response(
+            200,
+            &json!({"devices": [{"id": device_id, "signingPublicKey": BASE64.encode(&public)}]})
+                .to_string(),
+        )
+    };
+    let empty_page = || {
+        response(
+            200,
+            &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": null}).to_string(),
+        )
+    };
+    // Held in flight, so the second pass is started while the first runs.
+    let transport = FakeTransport::slow(
+        vec![
+            devices(),
+            empty_page(),
+            response(
+                200,
+                &json!({"accepted": [note_id], "rejected": [], "serverTime": 1, "maxCursor": 1})
+                    .to_string(),
+            ),
+            devices(),
+            empty_page(),
+        ],
+        20,
+    );
+    let session = Arc::new(
+        AuthSession::new(
+            transport.clone(),
+            store,
+            BASE.to_string(),
+            "ios".to_string(),
+            DeviceDescriptor {
+                name: "Phone".to_string(),
+                platform: DevicePlatform::Ios,
+                os_version: None,
+                app_version: "1.0.0".to_string(),
+                vault_id: None,
+            },
+        )
+        .expect("a session"),
+    );
+
+    let first = vault.sync(Arc::clone(&session));
+    let second = vault.sync(session);
+    let (a, b) = tokio::join!(first.sync_now(), second.sync_now());
+    let (a, b) = (a.expect("first pass"), b.expect("second pass"));
+
+    assert_eq!(
+        transport.calls_to("/sync/push").len(),
+        1,
+        "{:?}",
+        transport
+            .calls()
+            .iter()
+            .map(|c| c.url.clone())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(a.pushed + b.pushed, 1);
+    assert_eq!(a.rejected + b.rejected, 0);
+    assert_eq!(b.pending, 0);
+}

@@ -344,6 +344,52 @@ fn an_edit_ticks_the_document_clock_and_each_changed_field_and_keeps_unknown_key
 }
 
 #[test]
+fn an_edit_resending_an_unchanged_field_leaves_its_clock_alone() {
+    // A phone form saves every field; only the changed one may win a merge,
+    // or a rename would beat desktop's concurrent description edit.
+    let db = open("projects-edit-unchanged");
+    db.call_blocking(|conn| {
+        seed(
+            conn,
+            "project",
+            "proj-u",
+            json!({
+                "name": "Agent Test Old", "description": "Before", "color": "#0ea5e9",
+                "icon": "📦", "position": 1, "archivedAt": "2025-01-01T00:00:00.000Z",
+                "clock": {"device-b": 3},
+                "fieldClocks": {"description": {"device-b": 2}, "icon": {"device-b": 2}}
+            }),
+        );
+        let edit = ProjectEdit {
+            name: Some("Agent Test Renamed"),
+            description: Some(Some("Before")),
+            color: Some("#0ea5e9"),
+            icon: Some(Some("📦")),
+            statuses: None,
+        };
+        projects::update(conn, "proj-u", &edit, DEVICE, NOW)?;
+        projects::set_archived(conn, "proj-u", true, DEVICE, NOW)?;
+
+        let payload = payload_of(conn, "project", "proj-u");
+        let clocks = &payload["fieldClocks"];
+        assert_eq!(clocks["name"], json!({"device-a": 1}));
+        assert_eq!(clocks["description"], json!({"device-b": 2}), "unchanged");
+        assert_eq!(clocks["icon"], json!({"device-b": 2}), "unchanged");
+        assert!(
+            clocks.get("color").is_none_or(Value::is_null),
+            "unchanged: {clocks}"
+        );
+        assert_eq!(
+            payload["archivedAt"],
+            json!("2025-01-01T00:00:00.000Z"),
+            "archiving an archived project keeps its first instant"
+        );
+        Ok(())
+    })
+    .expect("the edit");
+}
+
+#[test]
 fn a_status_reconcile_keeps_drops_adds_and_retypes_and_leaves_tasks_alone() {
     let db = open("projects-reconcile");
     db.call_blocking(|conn| {

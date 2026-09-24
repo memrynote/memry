@@ -220,7 +220,7 @@ fn validate(inputs: &[StatusInput<'_>]) -> Result<(), StorageError> {
 }
 
 fn invalid(what: String) -> StorageError {
-    StorageError::Failed { what }
+    StorageError::Invalid { what }
 }
 
 #[cfg(test)]

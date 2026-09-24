@@ -185,18 +185,28 @@ impl NotesWriter {
                 let now = now_ms();
                 let applied = body_write::edit_block(conn, &note_id, &edit, &device_id, now);
                 if let (Ok(true), Some(flip)) = (&applied, flip) {
-                    let _ = if flip.checked {
-                        tasks::complete(
-                            conn,
-                            &flip.task_id,
-                            LocalDateTime::from_ms(now),
-                            &device_id,
-                            now,
-                        )
-                        .map(|_| ())
-                    } else {
-                        tasks::uncomplete(conn, &flip.task_id, &device_id, now).map(|_| ())
-                    };
+                    // Through the same bookkeeping as `Tasks::complete`, so the
+                    // flip is in the task's activity log as desktop's
+                    // `tasks:complete` puts it there. Best effort: the body
+                    // edit is already durable, and a task that is gone (deleted
+                    // on another device) leaves the line ticked, as desktop does.
+                    if let Ok(before) = crate::api::tasks_write::source_notes(conn) {
+                        let write = if flip.checked {
+                            tasks::complete(
+                                conn,
+                                &flip.task_id,
+                                LocalDateTime::from_ms(now),
+                                &device_id,
+                                now,
+                            )
+                            .map(|completion| completion.write)
+                        } else {
+                            tasks::uncomplete(conn, &flip.task_id, &device_id, now)
+                        };
+                        if let Ok(write) = write {
+                            crate::api::tasks_write::after(conn, &write, &before, &device_id, now);
+                        }
+                    }
                 }
                 Ok(applied)
             })

@@ -213,7 +213,7 @@ pub(super) fn require_parent(
     parent_id: &str,
     project_id: &str,
 ) -> Result<StoredTask, StorageError> {
-    let refuse = |why: &str| StorageError::Failed {
+    let refuse = |why: &str| StorageError::Invalid {
         what: format!("task {task_id} cannot be a subtask of {parent_id}: {why}"),
     };
     if parent_id == task_id {

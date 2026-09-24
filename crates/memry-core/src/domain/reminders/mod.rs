@@ -317,7 +317,7 @@ fn new_id() -> String {
 }
 
 fn invalid(what: String) -> StorageError {
-    StorageError::Failed { what }
+    StorageError::Invalid { what }
 }
 
 #[cfg(test)]

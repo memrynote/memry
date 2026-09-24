@@ -188,7 +188,7 @@ pub fn set_link_pinned(
         }
     }
     if !found {
-        return Err(StorageError::Failed {
+        return Err(StorageError::NotFound {
             what: format!("project {project_id} has no link to {item_id}"),
         });
     }

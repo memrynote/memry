@@ -203,7 +203,7 @@ pub(super) fn find_live(
 
 /// [`find_live`] for a task the caller named: absence is an error.
 pub(super) fn load_live(conn: &Connection, task_id: &str) -> Result<StoredTask, StorageError> {
-    find_live(conn, task_id)?.ok_or_else(|| StorageError::Failed {
+    find_live(conn, task_id)?.ok_or_else(|| StorageError::NotFound {
         what: format!("no task {task_id}"),
     })
 }

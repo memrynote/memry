@@ -192,9 +192,13 @@ pub fn set_archived(
 ) -> Result<Durable<String>, StorageError> {
     let project = require_live(conn, project_id)?;
     if archived && project.is_inbox {
-        return Err(StorageError::Failed {
+        return Err(StorageError::Invalid {
             what: "cannot archive the inbox project".to_owned(),
         });
+    }
+    // Archiving an archived project keeps its first `archivedAt`.
+    if archived == project.archived_at.is_some() {
+        return edit_project(conn, project_id, Vec::new(), device_id, now_ms);
     }
     let at = archived.then(|| iso(now_ms)).transpose()?;
     edit_project(
@@ -270,15 +274,17 @@ pub fn delete(
 ) -> Result<Durable<()>, StorageError> {
     let project = require_live(conn, project_id)?;
     if project.is_inbox {
-        return Err(StorageError::Failed {
+        return Err(StorageError::Invalid {
             what: "cannot delete the inbox project".to_owned(),
         });
     }
     let target = match disposition {
         TaskDisposition::Delete => None,
-        TaskDisposition::MoveToInbox => Some(inbox(conn)?.ok_or_else(|| StorageError::Failed {
-            what: "there is no inbox project to move the tasks to".to_owned(),
-        })?),
+        TaskDisposition::MoveToInbox => {
+            Some(inbox(conn)?.ok_or_else(|| StorageError::Invalid {
+                what: "there is no inbox project to move the tasks to".to_owned(),
+            })?)
+        }
     };
     let note_ids = links::markdown_note_ids(conn, project_id)?;
 
@@ -317,6 +323,18 @@ pub(super) fn edit_project(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
+    // A field already holding the value is not a change: writing it would
+    // tick its field clock and let an unchanged value beat a concurrent edit
+    // made on another device (a phone rename re-sending the old description
+    // would win over desktop's new one). Only `modifiedAt` then moves.
+    let stored = notes::require_payload(conn, ITEM_TYPE, project_id)?;
+    let changes: Vec<(&'static str, Change)> = changes
+        .into_iter()
+        .filter(|(key, change)| match change {
+            Change::Set(value) => stored.object().get(*key).unwrap_or(&Value::Null) != value,
+            Change::Remove => stored.object().contains_key(*key),
+        })
+        .collect();
     tasks::edit_merged(
         conn,
         ITEM_TYPE,
@@ -342,7 +360,7 @@ pub(super) fn valid_color(color: &str) -> Result<(), StorageError> {
     if bytes.len() == 7 && bytes[0] == b'#' && bytes[1..].iter().all(u8::is_ascii_hexdigit) {
         Ok(())
     } else {
-        Err(StorageError::Failed {
+        Err(StorageError::Invalid {
             what: format!("`{color}` is not a #rrggbb colour"),
         })
     }
@@ -350,7 +368,7 @@ pub(super) fn valid_color(color: &str) -> Result<(), StorageError> {
 
 fn valid_name(name: &str) -> Result<(), StorageError> {
     if name.trim().is_empty() || name.chars().count() > MAX_PROJECT_NAME_CHARS {
-        return Err(StorageError::Failed {
+        return Err(StorageError::Invalid {
             what: format!("a project name must be 1 to {MAX_PROJECT_NAME_CHARS} characters"),
         });
     }
@@ -359,7 +377,7 @@ fn valid_name(name: &str) -> Result<(), StorageError> {
 
 fn valid_description(description: &str) -> Result<(), StorageError> {
     if description.chars().count() > MAX_PROJECT_DESCRIPTION_CHARS {
-        return Err(StorageError::Failed {
+        return Err(StorageError::Invalid {
             what: format!(
                 "a project description must be at most {MAX_PROJECT_DESCRIPTION_CHARS} characters"
             ),

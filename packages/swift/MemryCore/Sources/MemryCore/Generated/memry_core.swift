@@ -8981,7 +8981,10 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * **`async`**: tens of round trips on a busy vault. Like every sync call
      * it cannot be cancelled from the shell (spec-defect 108); a killed pass
      * resumes at the last cursor it committed, and an unsent outbox row stays
-     * queued. Safe to call repeatedly; concurrent calls simply run twice.
+     * queued. Safe to call repeatedly. Passes over one vault run one at a
+     * time: two overlapping passes would push the same outbox rows twice and
+     * report the second copy as rejected, so a second call waits for the
+     * first and then runs its own pass.
      */
     func syncNow() async throws  -> SyncPassSummary
     
@@ -9247,7 +9250,10 @@ open func uploadAttachment(noteId: String, filename: String, mimeType: String, b
      * **`async`**: tens of round trips on a busy vault. Like every sync call
      * it cannot be cancelled from the shell (spec-defect 108); a killed pass
      * resumes at the last cursor it committed, and an unsent outbox row stays
-     * queued. Safe to call repeatedly; concurrent calls simply run twice.
+     * queued. Safe to call repeatedly. Passes over one vault run one at a
+     * time: two overlapping passes would push the same outbox rows twice and
+     * report the second copy as rejected, so a second call waits for the
+     * first and then runs its own pass.
      */
 open func syncNow()async throws  -> SyncPassSummary  {
     return
@@ -12085,7 +12091,13 @@ public func FfiConverterTypeParsedDate_lower(_ value: ParsedDate) -> RustBuffer 
 
 
 /**
- * A project editor's contents.
+ * A project editor's contents: the **whole** form, as it stands when saved.
+ *
+ * On update every text field is the form's value, so `nil` description or
+ * icon is the user's clear (an explicit `null` on the wire). `color` is
+ * never cleared (a project always has one): `nil` keeps the stored colour.
+ * A field equal to the stored value is not written and keeps its clock, so
+ * re-sending an untouched field never beats another device's edit to it.
  */
 public struct ProjectDraft: Equatable, Hashable {
     public var name: String
@@ -19084,6 +19096,20 @@ enum StorageError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     )
     case Failed(what: String
     )
+    /**
+     * The item a write names is not in this vault (any more): deleted here
+     * or on another device, or never synced. Nothing was changed.
+     */
+    case NotFound(what: String
+    )
+    /**
+     * A rule refused the write — an Inbox cannot be archived, a reminder
+     * cannot be in the past, a project needs two statuses. Nothing was
+     * changed, and retrying the same write will be refused again. `what` is
+     * for the log, not for the user.
+     */
+    case Invalid(what: String
+    )
 
     
 
@@ -19129,6 +19155,12 @@ public struct FfiConverterTypeStorageError: FfiConverterRustBuffer {
         case 6: return .Failed(
             what: try FfiConverterString.read(from: &buf)
             )
+        case 7: return .NotFound(
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 8: return .Invalid(
+            what: try FfiConverterString.read(from: &buf)
+            )
 
          default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -19168,6 +19200,16 @@ public struct FfiConverterTypeStorageError: FfiConverterRustBuffer {
         
         case let .Failed(what):
             writeInt(&buf, Int32(6))
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case let .NotFound(what):
+            writeInt(&buf, Int32(7))
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case let .Invalid(what):
+            writeInt(&buf, Int32(8))
             FfiConverterString.write(what, into: &buf)
             
         }
@@ -21857,7 +21899,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 60438) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_sync_now() != 32723) {
+    if (uniffi_memry_core_checksum_method_vaultsync_sync_now() != 13576) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_create_project() != 54330) {

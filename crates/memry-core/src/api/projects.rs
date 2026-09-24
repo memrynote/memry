@@ -25,7 +25,13 @@ pub struct StatusDraft {
     pub order: i64,
 }
 
-/// A project editor's contents.
+/// A project editor's contents: the **whole** form, as it stands when saved.
+///
+/// On update every text field is the form's value, so `nil` description or
+/// icon is the user's clear (an explicit `null` on the wire). `color` is
+/// never cleared (a project always has one): `nil` keeps the stored colour.
+/// A field equal to the stored value is not written and keeps its clock, so
+/// re-sending an untouched field never beats another device's edit to it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct ProjectDraft {
     pub name: String,
@@ -69,7 +75,7 @@ impl From<task_settings::TaskSettings> for TaskSettingsItem {
 }
 
 fn invalid(what: String) -> StorageError {
-    StorageError::Failed { what }
+    StorageError::Invalid { what }
 }
 
 fn status_inputs(drafts: &[StatusDraft]) -> Result<Vec<StatusInput<'_>>, StorageError> {

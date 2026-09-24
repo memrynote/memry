@@ -11,6 +11,7 @@
 //! | projects, saved filters and settings round-trip           | D2, TP022, TP023  |
 //! | quick add and date parsing cross the FFI                  | D1                |
 //! | undoing a delete brings the task and subtasks back        | TP051             |
+//! | a missing item and a refused write are typed errors       | TP092             |
 
 mod http_fakes;
 
@@ -19,6 +20,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use http_fakes::FakeSecureStore;
+use memry_core::api::errors::StorageError;
 use memry_core::api::projects::ProjectDraft;
 use memry_core::api::task_extras::{parse_task_date, repeat_preview};
 use memry_core::api::task_records::RepeatRule;
@@ -432,4 +434,27 @@ fn undoing_a_delete_brings_the_task_and_its_subtasks_back() {
 
     tasks.undo(back).expect("undo the undo");
     assert!(tasks.all().expect("all").is_empty());
+}
+
+#[test]
+fn a_missing_item_and_a_refused_write_are_typed_errors() {
+    let vault = vault();
+    let tasks = tasks(&vault);
+    inbound(
+        &vault,
+        "project",
+        "inbox",
+        json!({"name": "Inbox", "isInbox": true, "color": "#6b7280", "clock": {"desktop": 1}}),
+    );
+
+    let missing = tasks.set_title("no-such-task".into(), "x".into());
+    assert!(
+        matches!(missing, Err(StorageError::NotFound { .. })),
+        "{missing:?}"
+    );
+    let refused = tasks.set_project_archived("inbox".into(), true);
+    assert!(
+        matches!(refused, Err(StorageError::Invalid { .. })),
+        "{refused:?}"
+    );
 }

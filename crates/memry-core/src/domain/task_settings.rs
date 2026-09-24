@@ -204,7 +204,7 @@ fn read_meta(conn: &Connection, key: &str) -> Result<Option<String>, StorageErro
 }
 
 fn refused(key: &str, value: &str) -> StorageError {
-    StorageError::Failed {
+    StorageError::Invalid {
         what: format!("tasks.{key}: `{value}` is not a valid value"),
     }
 }

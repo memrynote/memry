@@ -111,7 +111,13 @@ impl RepeatConfig {
             .and_then(LocalDateTime::parse);
         Some(Self {
             frequency,
-            interval: object.get("interval").and_then(integer).unwrap_or(1),
+            // Desktop's picker writes 1..=99; a wire value far outside it
+            // (a hand-edited or hostile payload) would overflow date math.
+            interval: object
+                .get("interval")
+                .and_then(integer)
+                .unwrap_or(1)
+                .clamp(1, 9_999),
             days_of_week,
             monthly_type,
             day_of_month: object.get("dayOfMonth").and_then(integer),

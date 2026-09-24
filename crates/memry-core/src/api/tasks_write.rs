@@ -65,18 +65,37 @@ fn text(value: Option<String>) -> Value {
 
 /// The source note of every live task, read **before** a write that may
 /// tombstone some of them.
-fn source_notes(conn: &Connection) -> Result<HashMap<String, (String, String)>, StorageError> {
-    Ok(task_records::all(conn)?
-        .into_iter()
-        .filter_map(|task| {
-            let note = task.source_note_id.clone()?;
-            Some((task.id.clone(), (note, task.title.clone())))
+pub(crate) fn source_notes(
+    conn: &Connection,
+) -> Result<HashMap<String, (String, String)>, StorageError> {
+    // From the projection: three columns of the tasks that have a source
+    // note, rather than every payload parsed.
+    let mut statement = conn
+        .prepare(
+            "SELECT id, source_note_id, title FROM tasks
+              WHERE deleted_at IS NULL AND source_note_id IS NOT NULL",
+        )
+        .map_err(sql_failed)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                (row.get::<_, String>(1)?, row.get::<_, String>(2)?),
+            ))
         })
-        .collect())
+        .map_err(sql_failed)?;
+    rows.collect::<Result<HashMap<_, _>, _>>()
+        .map_err(sql_failed)
+}
+
+fn sql_failed(error: rusqlite::Error) -> StorageError {
+    StorageError::Failed {
+        what: error.to_string(),
+    }
 }
 
 /// Activity rows and note lines for a write that has committed.
-fn after(
+pub(crate) fn after(
     conn: &Connection,
     write: &TaskWrite,
     before: &HashMap<String, (String, String)>,
@@ -358,7 +377,7 @@ impl Tasks {
     pub fn complete(&self, id: String, local_now: String) -> Result<TaskCompletion, StorageError> {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            let local = LocalDateTime::parse(&local_now).ok_or_else(|| StorageError::Failed {
+            let local = LocalDateTime::parse(&local_now).ok_or_else(|| StorageError::Invalid {
                 what: format!("`{local_now}` is not a local instant"),
             })?;
             let now = now_ms();

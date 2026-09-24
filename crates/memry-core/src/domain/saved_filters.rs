@@ -132,7 +132,7 @@ pub fn create(
     valid_name(filter.name)?;
     let config = valid_config(filter.config)?;
     if !config.get("filters").is_some_and(Value::is_object) {
-        return Err(StorageError::Failed {
+        return Err(StorageError::Invalid {
             what: "a saved filter's config needs a `filters` object".to_owned(),
         });
     }
@@ -256,7 +256,7 @@ pub fn reorder(
     now_ms: i64,
 ) -> Result<Vec<String>, StorageError> {
     if ids.len() != positions.len() {
-        return Err(StorageError::Failed {
+        return Err(StorageError::Invalid {
             what: "ids and positions arrays must have the same length".to_owned(),
         });
     }
@@ -328,7 +328,7 @@ fn edit_in(
 fn live_payload(tx: &Connection, filter_id: &str) -> Result<StoredPayload, StorageError> {
     let row = sync_items::load(tx, ITEM_TYPE, filter_id)?;
     if row.as_ref().is_none_or(|row| row.deleted_at.is_some()) {
-        return Err(StorageError::Failed {
+        return Err(StorageError::NotFound {
             what: format!("no saved filter {filter_id}"),
         });
     }
@@ -366,7 +366,7 @@ fn next_position(tx: &Connection) -> Result<i64, StorageError> {
 fn valid_name(name: &str) -> Result<(), StorageError> {
     let len = name.encode_utf16().count();
     if len == 0 || len > MAX_NAME_LEN {
-        return Err(StorageError::Failed {
+        return Err(StorageError::Invalid {
             what: format!("a saved filter name is 1 to {MAX_NAME_LEN} characters"),
         });
     }
@@ -375,7 +375,7 @@ fn valid_name(name: &str) -> Result<(), StorageError> {
 
 fn valid_config(config: &Value) -> Result<&Value, StorageError> {
     if !config.is_object() {
-        return Err(StorageError::Failed {
+        return Err(StorageError::Invalid {
             what: "a saved filter's config is a JSON object".to_owned(),
         });
     }

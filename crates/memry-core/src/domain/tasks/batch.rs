@@ -124,7 +124,7 @@ impl<'c> Batch<'c> {
         changes: Vec<(&'static str, Value)>,
     ) -> Result<bool, StorageError> {
         let Some(stored) = find_live(&self.tx, task_id)? else {
-            return Err(StorageError::Failed {
+            return Err(StorageError::NotFound {
                 what: format!("no task {task_id}"),
             });
         };
@@ -312,7 +312,7 @@ fn restorable_field(field: &str) -> Result<&'static str, StorageError> {
         .chain(UNCLOCKED_FIELDS.iter())
         .copied()
         .find(|known| *known == field)
-        .ok_or_else(|| StorageError::Failed {
+        .ok_or_else(|| StorageError::Invalid {
             what: format!("`{field}` is not a task field an undo can restore"),
         })
 }

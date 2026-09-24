@@ -154,7 +154,7 @@ impl Tasks {
 }
 
 fn parse_now(now: &str) -> Result<LocalDateTime, StorageError> {
-    LocalDateTime::parse(now).ok_or_else(|| StorageError::Failed {
+    LocalDateTime::parse(now).ok_or_else(|| StorageError::Invalid {
         what: format!("`{now}` is not a local YYYY-MM-DDTHH:MM:SS instant"),
     })
 }
@@ -237,9 +237,13 @@ fn view(conn: &Connection, query: &TaskViewQuery) -> Result<TaskViewResult, Stor
         None => filtered.iter().map(|task| task.id.clone()).collect(),
     };
 
+    let filtered_by_id: HashMap<&str, &task_filter::FilterTask> = filtered
+        .iter()
+        .map(|task| (task.id.as_str(), *task))
+        .collect();
     let visible: Vec<&task_filter::FilterTask> = task_ids
         .iter()
-        .filter_map(|id| filtered.iter().find(|task| &task.id == id).copied())
+        .filter_map(|id| filtered_by_id.get(id.as_str()).copied())
         .filter(|task| task.parent_id.is_none())
         .collect();
     let groups = task_filter::group_tasks_for_sort(

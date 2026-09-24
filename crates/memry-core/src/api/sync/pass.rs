@@ -14,7 +14,8 @@
 //! 3. Push: the outbox drained by [`PushCoordinator`], sealed with this
 //!    device's identity ([`AccountSealer`]).
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, LazyLock, Mutex};
 
 use rusqlite::params;
 use zeroize::Zeroizing;
@@ -61,6 +62,19 @@ impl From<PullError> for SyncError {
     }
 }
 
+/// One lock per vault, shared by every `VaultSync` the shell mints for it.
+static PASS_GATES: LazyLock<Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn pass_gate(vault_id: &str) -> Arc<tokio::sync::Mutex<()>> {
+    // A poisoned map only means another thread panicked while inserting; the
+    // map itself is still a valid set of locks.
+    let mut gates = PASS_GATES
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    Arc::clone(gates.entry(vault_id.to_owned()).or_default())
+}
+
 impl From<PushError> for SyncError {
     fn from(error: PushError) -> Self {
         match error {
@@ -77,8 +91,13 @@ impl VaultSync {
     /// **`async`**: tens of round trips on a busy vault. Like every sync call
     /// it cannot be cancelled from the shell (spec-defect 108); a killed pass
     /// resumes at the last cursor it committed, and an unsent outbox row stays
-    /// queued. Safe to call repeatedly; concurrent calls simply run twice.
+    /// queued. Safe to call repeatedly. Passes over one vault run one at a
+    /// time: two overlapping passes would push the same outbox rows twice and
+    /// report the second copy as rejected, so a second call waits for the
+    /// first and then runs its own pass.
     pub async fn sync_now(&self) -> Result<SyncPassSummary, SyncError> {
+        let gate = pass_gate(&self.vault_id);
+        let _held = gate.lock().await;
         let started = now_ms();
         let cipher = self.cipher().await?;
         let http = self.session.http();

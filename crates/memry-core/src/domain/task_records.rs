@@ -11,7 +11,7 @@
 
 use std::collections::HashMap;
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
@@ -134,9 +134,45 @@ pub fn all(conn: &Connection) -> Result<Vec<TaskRecord>, StorageError> {
     Ok(tasks)
 }
 
-/// One live task, or `None`.
+/// One live task, or `None`. Reads that one row and its own project's
+/// statuses, not the whole vault.
 pub fn get(conn: &Connection, task_id: &str) -> Result<Option<TaskRecord>, StorageError> {
-    Ok(all(conn)?.into_iter().find(|task| task.id == task_id))
+    let row = conn
+        .query_row(
+            "SELECT s.payload
+               FROM sync_items s
+               JOIN tasks t ON t.id = s.item_id
+              WHERE s.item_type = 'task'
+                AND s.item_id = ?1
+                AND s.deleted_at IS NULL
+                AND t.deleted_at IS NULL
+                AND s.payload IS NOT NULL",
+            params![task_id],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    let Some(payload) = row else {
+        return Ok(None);
+    };
+    let project_id = serde_json::from_str::<Value>(&payload)
+        .ok()
+        .and_then(|value| {
+            value
+                .get("projectId")
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+        });
+    let mut types = HashMap::new();
+    if let Some(project_id) = project_id {
+        for status in projects::statuses(conn, &project_id)? {
+            types.insert(
+                (project_id.clone(), status.id.clone()),
+                status.status_type(),
+            );
+        }
+    }
+    record(task_id, &payload, &types).map(Some)
 }
 
 /// `(project_id, status_id) -> type` for every live status.

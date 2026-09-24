@@ -89,7 +89,7 @@ pub fn set_parent(
         let task = load_live(conn, task_id)?;
         require_parent(conn, task_id, parent_id, task.project_id())?;
         if !subtask_ids(conn, task_id)?.is_empty() {
-            return Err(StorageError::Failed {
+            return Err(StorageError::Invalid {
                 what: format!(
                     "task {task_id} cannot be a subtask of {parent_id}: it has subtasks of its own"
                 ),
@@ -114,7 +114,7 @@ pub fn reorder(
     now_ms: i64,
 ) -> Result<TaskWrite, StorageError> {
     if task_ids.len() != positions.len() {
-        return Err(StorageError::Failed {
+        return Err(StorageError::Invalid {
             what: "taskIds and positions arrays must have the same length".to_owned(),
         });
     }
@@ -147,7 +147,7 @@ pub(super) fn move_in(
     project_id: &str,
 ) -> Result<(), StorageError> {
     if projects::get(batch.conn(), project_id)?.is_none() {
-        return Err(StorageError::Failed {
+        return Err(StorageError::NotFound {
             what: format!("no project {project_id} to move task {} to", task.id),
         });
     }
@@ -203,7 +203,7 @@ pub(super) fn require_status_kind(
 ) -> Result<StatusKind, StorageError> {
     status_by_id(conn, status_id)?
         .map(|status| status_kind(&status))
-        .ok_or_else(|| StorageError::Failed {
+        .ok_or_else(|| StorageError::NotFound {
             what: format!("no status {status_id}"),
         })
 }

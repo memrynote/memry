@@ -348,7 +348,7 @@ fn status_by_id(conn: &Connection, status_id: &str) -> Result<Option<Status>, St
 
 /// A live project a write is about to change, or the error that says why not.
 fn require_live(conn: &Connection, project_id: &str) -> Result<Project, StorageError> {
-    get(conn, project_id)?.ok_or_else(|| StorageError::Failed {
+    get(conn, project_id)?.ok_or_else(|| StorageError::NotFound {
         what: format!("no project {project_id}"),
     })
 }

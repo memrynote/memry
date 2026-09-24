@@ -20,7 +20,7 @@ use crate::domain::task_parse::{completion, natural_date, quick_add};
 use crate::domain::task_records;
 
 fn local(now: &str) -> Result<LocalDateTime, StorageError> {
-    LocalDateTime::parse(now).ok_or_else(|| StorageError::Failed {
+    LocalDateTime::parse(now).ok_or_else(|| StorageError::Invalid {
         what: format!("`{now}` is not a local YYYY-MM-DDTHH:MM:SS instant"),
     })
 }
@@ -526,7 +526,7 @@ impl Tasks {
         }
         let device = self.device_id.clone();
         let converted = task_id.clone();
-        self.db.call_blocking(move |conn| {
+        let rewritten = self.db.call_blocking(move |conn| {
             note_tasks::convert_checklist_to_task(
                 conn,
                 &note_id,
@@ -537,7 +537,14 @@ impl Tasks {
             )
             .map_err(failed)?;
             Ok(())
-        })?;
+        });
+        // Three writes, as desktop makes them. If the note changed between the
+        // candidate read and the rewrite, the block is refused: take the task
+        // back out rather than leave one no note line points at.
+        if let Err(error) = rewritten {
+            let _ = self.delete(task_id, false);
+            return Err(error);
+        }
         Ok(Some(task_id))
     }
 }

@@ -226,7 +226,7 @@ pub fn assign(
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
     if super::projects::get(conn, project_id)?.is_none() {
-        return Err(StorageError::Failed {
+        return Err(StorageError::NotFound {
             what: format!("no project {project_id} to assign to"),
         });
     }
@@ -399,7 +399,7 @@ pub(crate) fn nullable(value: Option<&str>) -> Value {
 /// non-empty string short enough to key a row by.
 pub(crate) fn valid_item_id(id: &str) -> Result<&str, StorageError> {
     if id.is_empty() || id.len() > MAX_ITEM_ID_LEN {
-        return Err(StorageError::Failed {
+        return Err(StorageError::Invalid {
             what: format!("`{id}` is not an item id: non-empty, at most {MAX_ITEM_ID_LEN} bytes"),
         });
     }

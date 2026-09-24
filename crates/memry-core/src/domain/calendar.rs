@@ -120,6 +120,8 @@ impl CivilDate {
 
     /// `startOfWeek(date, weekStartsOn)`.
     pub fn start_of_week(self, week_starts_on: u32) -> Self {
+        // A week start arrives from the shell unchecked; 0..=6 is its range.
+        let week_starts_on = week_starts_on % 7;
         let day = self.weekday();
         let diff = if day < week_starts_on { 7 } else { 0 } + day - week_starts_on;
         self.add_days(-i64::from(diff))
