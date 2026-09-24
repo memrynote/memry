@@ -21,7 +21,7 @@ import { safeBase64Decode, verifyEd25519 } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { deleteBlobs, generateItemBlobKey, getBlob, putBlob } from './blob'
-import { allocateCursorRange } from './cursor'
+import { reserveCursors } from './cursor'
 import { getDevice, type Device } from './device'
 import { adjustStorageUsed, checkQuota, reserveStorage } from './quota'
 
@@ -399,7 +399,6 @@ interface PreparedPushItem {
   version: number
   sizeDelta: number
   reservedBytes: number
-  serverCursor?: number
 }
 
 /**
@@ -407,7 +406,7 @@ interface PreparedPushItem {
  *
  * Per-item error semantics are those of the old serial loop: every failure is
  * captured as that item's outcome (AppError code, or INTERNAL_ERROR for
- * anything untyped) and never aborts its neighbours — except the Stage 8
+ * anything untyped) and never aborts its neighbours — except the Stage 7
  * commit, which is all-or-nothing per wave (see its comment). What changed is
  * the I/O shape only — per-stage batching instead of per-item round trips:
  *
@@ -418,9 +417,8 @@ interface PreparedPushItem {
  *   5. storage reservation                         (one summed reserve; on
  *      failure, the old per-item reserve loop so quota outcomes match exactly)
  *   6. R2 puts with bounded concurrency
- *   7. one cursor range for the whole wave         (single atomic db.batch)
- *   8. upserts + storage shrinks                   (one transactional db.batch)
- *   9. replaced-blob cleanup                       (one bulk R2 delete, best-effort)
+ *   7. cursor range + upserts + storage shrinks    (one transactional db.batch)
+ *   8. replaced-blob cleanup                       (one bulk R2 delete, best-effort)
  */
 const processPushWave = async (
   db: D1Database,
@@ -627,33 +625,16 @@ const processPushWave = async (
   }
   let stored = prepared.filter((entry) => outcomes[entry.index] === undefined)
 
-  // Stage 7: one cursor range for the wave, assigned in item order so cursor
-  // order matches request order exactly as the serial loop produced it.
-  if (stored.length > 0) {
-    try {
-      const range = await allocateCursorRange(db, userId, stored.length)
-      stored.forEach((entry, offset) => {
-        entry.serverCursor = range.first + offset
-      })
-    } catch (error) {
-      for (const entry of stored) {
-        refundBytes += entry.reservedBytes
-        rejectWithError(entry.index, error)
-      }
-      stored = []
-    }
-  }
-
-  // Stage 8: upserts and storage shrinks, one transactional db.batch. This is
-  // the one deliberate semantic delta vs the serial loop: the old code caught a
-  // failed item commit per item and went on, so a transient D1 write error on
-  // item k rejected only k while k+1..n still landed. Now the batch either
-  // lands whole or rejects every item in the wave (a client retries rejected
-  // items either way), and a row never lands without its shrink adjustment.
+  // Stage 7: cursor range, upserts and storage shrinks, one transactional
+  // db.batch. The range is reserved inside the commit so cursor order equals
+  // commit order (#2282). The batch lands whole or rejects every item in the
+  // wave (a client retries rejected items either way), and a row never lands
+  // without its shrink adjustment.
   if (stored.length > 0) {
     const now = Math.floor(Date.now() / 1000)
+    const cursors = reserveCursors(db, userId, stored.length)
     const statements: D1PreparedStatement[] = []
-    for (const entry of stored) {
+    for (const [position, entry] of stored.entries()) {
       const { item, existing } = entry
       const deletedAt = item.operation === 'delete' ? (item.deletedAt ?? now) : null
       statements.push(
@@ -664,7 +645,7 @@ const processPushWave = async (
               version, crypto_version, operation, server_cursor, signer_device_id, signature,
               state_vector, clock, created_at, updated_at, deleted_at,
               client_platform, client_version
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cursors.cursorSql}, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (user_id, vault_id, item_type, item_id) DO UPDATE SET
               blob_key = excluded.blob_key,
               size_bytes = excluded.size_bytes,
@@ -697,7 +678,7 @@ const processPushWave = async (
             entry.version,
             CRYPTO_VERSION,
             item.operation,
-            entry.serverCursor,
+            ...cursors.cursorBinds(position),
             item.signerDeviceId,
             item.signature,
             item.stateVector ?? null,
@@ -719,9 +700,12 @@ const processPushWave = async (
     }
 
     try {
-      await db.batch(statements)
-      for (const entry of stored) {
-        outcomes[entry.index] = { accepted: true, serverCursor: entry.serverCursor }
+      const results = await db.batch(cursors.batch(statements))
+      for (const [position, entry] of stored.entries()) {
+        outcomes[entry.index] = {
+          accepted: true,
+          serverCursor: cursors.cursorAt(results, position)
+        }
       }
     } catch (error) {
       for (const entry of stored) {
@@ -732,7 +716,7 @@ const processPushWave = async (
     }
   }
 
-  // Stage 9: replaced-blob cleanup. The rows now point at the new
+  // Stage 8: replaced-blob cleanup. The rows now point at the new
   // content-addressed objects, so every previous version's blob is unreachable
   // through any row and can go — in ONE bulk delete. Best-effort: a failed
   // delete leaks bounded orphan objects, never a dangling row. An in-flight

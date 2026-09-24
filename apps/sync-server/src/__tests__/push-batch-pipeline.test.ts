@@ -256,6 +256,74 @@ describe('cursor allocation', () => {
   })
 })
 
+// #2282
+describe('cursor order equals commit order (#2282)', () => {
+  const holdFirstUpsertBatch = (db: D1Database) => {
+    const sqlOf = new WeakMap<object, string>()
+    let release: () => void = () => {}
+    const released = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let held = false
+    let reachedHold: () => void = () => {}
+    const holding = new Promise<void>((resolve) => {
+      reachedHold = resolve
+    })
+    const gated = {
+      ...db,
+      prepare: (sql: string) => {
+        const statement = db.prepare(sql)
+        sqlOf.set(statement, sql)
+        return statement
+      },
+      batch: async (statements: D1PreparedStatement[]) => {
+        const commitsItems = statements.some((s) =>
+          sqlOf.get(s)?.includes('INSERT INTO sync_items')
+        )
+        if (commitsItems && !held) {
+          held = true
+          reachedHold()
+          await released
+        }
+        return db.batch(statements)
+      }
+    } as D1Database
+    return { db: gated, release, holding }
+  }
+
+  it('never lets a reader page past a range that commits after a higher one', async () => {
+    const gate = holdFirstUpsertBatch(harness.db)
+    const xItems = await Promise.all(
+      ['x1', 'x2', 'x3'].map((id) => buildItem({ id, clock: { [DEVICE_A]: 1 } }))
+    )
+    const yItems = [
+      await buildItem({ id: 'y1', clock: { [DEVICE_B]: 1 }, signerDeviceId: DEVICE_B })
+    ]
+
+    const pushX = processRecordPushBatch(gate.db, storage, USER_ID, DEVICE_A, xItems)
+    await gate.holding
+    const fromY = await processRecordPushBatch(gate.db, storage, USER_ID, DEVICE_B, yItems)
+    expect(fromY.accepted).toEqual(['y1'])
+
+    const firstPage = await getChanges(harness.db, USER_ID, 0)
+    expect(firstPage.items.map((item) => item.id)).toEqual(['y1'])
+
+    gate.release()
+    const fromX = await pushX
+    expect(fromX.accepted).toEqual(['x1', 'x2', 'x3'])
+
+    const secondPage = await getChanges(harness.db, USER_ID, firstPage.nextCursor)
+    expect(secondPage.items.map((item) => item.id)).toEqual(['x1', 'x2', 'x3'])
+
+    const cursorById = new Map(itemRows().map((row) => [row.item_id, row.server_cursor]))
+    expect(fromX.outcomes.map((outcome) => outcome.serverCursor)).toEqual(
+      ['x1', 'x2', 'x3'].map((id) => cursorById.get(id))
+    )
+    expect(fromX.maxCursor).toBe(cursorById.get('x3'))
+    expect(fromY.maxCursor).toBe(cursorById.get('y1'))
+  })
+})
+
 describe('R2 put concurrency bound', () => {
   it('keeps at most 8 puts in flight across a 30-item batch', async () => {
     let inFlight = 0

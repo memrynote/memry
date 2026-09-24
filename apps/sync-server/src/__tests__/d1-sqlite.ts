@@ -59,8 +59,7 @@ export const createSqliteD1 = (): SqliteD1 => {
     let bindings: unknown[] = []
 
     // `reader` is true for SELECT *and* for `INSERT/UPDATE ... RETURNING`, so
-    // it is also the test for "this statement produces rows" -- which matters:
-    // allocateCursorRange reads its range top out of a batched UPDATE ... RETURNING.
+    // it is also the test for "this statement produces rows".
     const runSync = (): D1Result => {
       const rows = statement.reader ? (statement.all(...bindings) as Row[]) : []
       const changes = statement.reader ? rows.length : Number(statement.run(...bindings).changes)
