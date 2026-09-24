@@ -1079,7 +1079,9 @@ describe('getChanges', () => {
     // #then
     expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('item_type IN'))
     expect(result).toEqual({
-      items: [{ id: 'item-note', type: 'note', version: 1, modifiedAt: 1000, size: 256 }],
+      items: [
+        { id: 'item-note', type: 'note', version: 1, modifiedAt: 1000, size: 256, serverCursor: 5 }
+      ],
       deleted: [],
       hasMore: false,
       nextCursor: 6

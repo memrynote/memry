@@ -120,6 +120,7 @@ export const logSyncValidationFailure = (params: {
 
 export const logRecordPushBatch = (params: {
   endpoint: string
+  vaultId: string
   latencyMs: number
   outcomes: RecordPushBatchOutcome[]
 }): void => {
@@ -152,8 +153,12 @@ export const logRecordPushBatch = (params: {
 
   let accepted = 0
   let rejected = 0
+  const acceptedCursors: number[] = []
 
   for (const outcome of params.outcomes) {
+    if (outcome.accepted && outcome.serverCursor !== undefined) {
+      acceptedCursors.push(outcome.serverCursor)
+    }
     const domain = toSyncDomain(outcome.type)
     const entry = domains[domain] ?? {
       accepted: 0,
@@ -203,10 +208,18 @@ export const logRecordPushBatch = (params: {
     domainTypes[outcome.type] = itemTypeEntry
   }
 
+  // Push-accept hop of the end-to-end trace (#2280): joins the broadcast log
+  // and the receiving device's apply telemetry on the server cursor. Bounds
+  // only: a batch split into waves can interleave another device's cursors.
   logger.info('Record sync push processed', {
     transport: 'record',
     operation: 'push',
     endpoint: params.endpoint,
+    vaultId: params.vaultId,
+    itemCount: acceptedCursors.length,
+    ...(acceptedCursors.length > 0
+      ? { cursorRange: [Math.min(...acceptedCursors), Math.max(...acceptedCursors)] }
+      : {}),
     accepted,
     rejected,
     totalMutations: params.outcomes.length,

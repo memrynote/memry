@@ -17,6 +17,7 @@ describe('sync telemetry', () => {
 
     logRecordPushBatch({
       endpoint: '/sync/records/push',
+      vaultId: 'vault-1',
       latencyMs: 80,
       outcomes: [
         { id: 'note-1', type: 'note', accepted: true, serverCursor: 10 },
@@ -61,6 +62,7 @@ describe('sync telemetry', () => {
 
     logRecordPushBatch({
       endpoint: '/sync/records/push',
+      vaultId: 'vault-1',
       latencyMs: 1_500,
       outcomes: [
         { id: 'project-1', type: 'project', accepted: true },
@@ -95,6 +97,46 @@ describe('sync telemetry', () => {
       folders: { accepted: 1 },
       calendar: { accepted: 2 }
     })
+  })
+
+  // #2280: the push-accept hop of the end-to-end trace, keyed by server cursor.
+  it('logs the vault, the accepted cursor range and its item count, and no item ids', () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+
+    logRecordPushBatch({
+      endpoint: '/sync/push',
+      vaultId: 'vault-1',
+      latencyMs: 40,
+      outcomes: [
+        { id: 'task-a', type: 'task', accepted: true, serverCursor: 12 },
+        { id: 'task-b', type: 'task', accepted: false, reason: 'SYNC_REPLAY_DETECTED' },
+        { id: 'note-c', type: 'note', accepted: true, serverCursor: 10 },
+        { id: 'note-d', type: 'note', accepted: true, serverCursor: 11 }
+      ]
+    })
+
+    const line = String(infoSpy.mock.calls[0][0])
+    const payload = JSON.parse(line) as Record<string, unknown>
+    expect(payload).toMatchObject({ vaultId: 'vault-1', cursorRange: [10, 12], itemCount: 3 })
+    for (const id of ['task-a', 'task-b', 'note-c', 'note-d']) {
+      expect(line).not.toContain(id)
+    }
+  })
+
+  // #2280
+  it('omits the cursor range when nothing was accepted', () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+
+    logRecordPushBatch({
+      endpoint: '/sync/push',
+      vaultId: 'vault-1',
+      latencyMs: 5,
+      outcomes: [{ id: 'task-a', type: 'task', accepted: false, reason: 'SYNC_INVALID_ITEM' }]
+    })
+
+    const payload = JSON.parse(String(infoSpy.mock.calls[0][0])) as Record<string, unknown>
+    expect(payload.itemCount).toBe(0)
+    expect(payload).not.toHaveProperty('cursorRange')
   })
 
   it('logs record query metrics with exact record domain types', () => {

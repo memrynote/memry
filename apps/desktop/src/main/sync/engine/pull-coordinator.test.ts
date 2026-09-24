@@ -163,6 +163,65 @@ describe('PullCoordinator', () => {
     })
   })
 
+  // #2280
+  describe('#given a live change with a commit time #when the pull applies it', () => {
+    it('#then reports commit-to-apply latency keyed by the item server cursor', async () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      const now = Date.now()
+      vi.spyOn(await import('../http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          {
+            id: 'task-live',
+            type: 'task',
+            version: 2,
+            modifiedAt: 1,
+            size: 10,
+            serverCursor: 12,
+            committedAtMs: now - 1_000
+          }
+        ],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 12,
+        serverTimeMs: now
+      })
+      vi.spyOn(await import('../http-client'), 'postToServer').mockResolvedValue({
+        items: [
+          {
+            id: 'task-live',
+            type: 'task',
+            operation: 'update',
+            cryptoVersion: 1,
+            blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+            signature: 'sig',
+            signerDeviceId: 'device-2',
+            clock: { 'device-2': 2 }
+          }
+        ]
+      })
+      vi.spyOn(await import('../decrypt'), 'decryptItemFromPull').mockReturnValue({
+        content: new TextEncoder().encode(JSON.stringify({ title: 'live' })),
+        verified: true
+      })
+      vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
+      const track = vi.spyOn(await import('../../telemetry/track'), 'trackMainEvent')
+
+      await engine.pull()
+
+      const e2e = track.mock.calls.filter(
+        ([name, options]) => name === 'sync_run_completed' && options.action === 'e2e_latency'
+      )
+      expect(e2e).toHaveLength(1)
+      const metrics = e2e[0][1].metrics as { durationMs: number; value: number }
+      expect(metrics.value).toBe(12)
+      expect(metrics.durationMs).toBeGreaterThanOrEqual(900)
+      expect(metrics.durationMs).toBeLessThan(10_000)
+
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given a one-page pull #when INITIAL_SYNC_PROGRESS could be emitted', () => {
     // The emission is gated on ctx.fullSyncActive so socket reconnects and
     // periodic ticks never masquerade as initial-sync progress. Nothing pinned

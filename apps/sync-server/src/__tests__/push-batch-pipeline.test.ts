@@ -561,3 +561,48 @@ describe('CRDT storeUpdates batching', () => {
     expect(sequences).toEqual(Array.from({ length: 100 }, (_, i) => i + 1))
   })
 })
+
+// #2280: the join key and the commit time of the end-to-end sync trace, read
+// back through the change feed against the real migration ledger.
+describe('change feed trace fields', () => {
+  it('returns each live ref with its server cursor and the ms commit time of its push', async () => {
+    const before = Date.now()
+    const result = await push([
+      await buildItem({ id: 'task-t1', clock: { [DEVICE_A]: 1 } }),
+      await buildItem({ id: 'task-t2', clock: { [DEVICE_A]: 1 } })
+    ])
+    const after = Date.now()
+
+    const changes = await getChanges(harness.db, USER_ID, 0)
+
+    expect(changes.items.map((item) => item.serverCursor)).toEqual(
+      result.outcomes.map((outcome) => outcome.serverCursor)
+    )
+    for (const item of changes.items) {
+      expect(item.committedAtMs).toBeGreaterThanOrEqual(before)
+      expect(item.committedAtMs).toBeLessThanOrEqual(after)
+    }
+  })
+
+  it('rewrites the commit time when the row is written again', async () => {
+    await push([await buildItem({ id: 'task-t3', clock: { [DEVICE_A]: 1 } })])
+    harness.raw
+      .prepare('UPDATE sync_items SET committed_at_ms = 1 WHERE item_id = ?')
+      .run('task-t3')
+
+    await push([await buildItem({ id: 'task-t3', clock: { [DEVICE_A]: 2 }, data: 'v2' })])
+
+    const [ref] = (await getChanges(harness.db, USER_ID, 0)).items
+    expect(ref.committedAtMs).toBeGreaterThan(1)
+  })
+
+  it('omits committedAtMs for a row written before the column existed', async () => {
+    await push([await buildItem({ id: 'task-legacy', clock: { [DEVICE_A]: 1 } })])
+    harness.raw.prepare('UPDATE sync_items SET committed_at_ms = NULL').run()
+
+    const [ref] = (await getChanges(harness.db, USER_ID, 0)).items
+
+    expect(ref).not.toHaveProperty('committedAtMs')
+    expect(ref.serverCursor).toBe(1)
+  })
+})

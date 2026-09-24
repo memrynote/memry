@@ -484,11 +484,28 @@ export const ChangesResponseSchema = z.object({
   nextCursor: z.number().int().min(0)
 })
 
+/**
+ * A `/sync/changes` ref. The two optional fields are the end-to-end sync trace
+ * (#2280), absent on a server that predates it and on a row written before the
+ * commit time was recorded:
+ * - `serverCursor` is the row's cursor, the join key across push accept, the
+ *   broadcast and the receiving device's apply. It is NOT a pull cursor: only
+ *   the page's `nextCursor`, after apply, advances one (protocol 05 §5.11).
+ * - `committedAtMs` is the server's epoch-ms time of the push batch that last
+ *   wrote the row.
+ */
+export const RecordChangesItemRefSchema = RecordSyncItemRefSchema.extend({
+  serverCursor: z.number().int().min(0).optional(),
+  committedAtMs: z.number().int().min(0).optional()
+})
+
 export const RecordChangesResponseSchema = z.object({
-  items: z.array(RecordSyncItemRefSchema),
+  items: z.array(RecordChangesItemRefSchema),
   deleted: z.array(z.string().min(1)),
   hasMore: z.boolean(),
-  nextCursor: z.number().int().min(0)
+  nextCursor: z.number().int().min(0),
+  /** Server epoch ms when the page was answered; clock-offset reference (#2280). */
+  serverTimeMs: z.number().int().min(0).optional()
 })
 
 export const ClientPlatformSchema = z.enum(CLIENT_PLATFORMS)

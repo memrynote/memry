@@ -281,6 +281,38 @@ describe('PushCoordinator', () => {
     })
   })
 
+  // #2280 (Review): the origin-side half of the end-to-end latency.
+  describe('#given a queued mutation #when the server accepts it', () => {
+    it('#then reports enqueue-to-accept lag keyed by the response maxCursor', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      const track = vi.spyOn(await import('../../telemetry/track'), 'trackMainEvent')
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => ({
+        accepted: body.items.map((i) => i.id),
+        rejected: [],
+        serverTime: Math.floor(Date.now() / 1000),
+        maxCursor: 31
+      }))
+      const enqueuedAt = Date.now()
+      queue.enqueue({
+        type: 'settings',
+        itemId: 'settings-1',
+        operation: 'update',
+        payload: JSON.stringify({ theme: 'dark' })
+      })
+
+      await coordinator.push()
+
+      const lag = track.mock.calls.filter(
+        ([name, options]) => name === 'sync_run_completed' && options.action === 'push_lag'
+      )
+      expect(lag).toHaveLength(1)
+      const metrics = lag[0][1].metrics as { durationMs: number; value: number }
+      expect(metrics.value).toBe(31)
+      expect(metrics.durationMs).toBeLessThanOrEqual(Date.now() - enqueuedAt)
+      track.mockRestore()
+    })
+  })
+
   describe('#given a queued local mutation #when the server accepts it', () => {
     it('#then it is pushed, dropped from the queue, and marked synced locally', async () => {
       const { coordinator, queue, stateManager, emitToRenderer } = createHarness(getDb())

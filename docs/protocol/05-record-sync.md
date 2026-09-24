@@ -332,6 +332,13 @@ items were applied** (`packages/sync-client/src/pull/engine.ts:25-26`, `:358`).
 A client MUST NOT advance the cursor before applying, and MUST NOT keep a
 per-type cursor: the feed is one ordered stream.
 
+**A ref's own `serverCursor` (§5.11.1) MUST NOT advance the cursor either**
+(`packages/contracts/src/sync-api.ts:491-493`). It names the row for the
+latency trace (#2280); a client that advanced to it mid-page would claim the
+rest of the page as applied. Only the page's `nextCursor`, after the page is
+applied, moves the cursor
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:325`).
+
 ## 5.11.1 The response shapes
 
 **Normative.** The chapters describe these routes' _behaviour_ at length and
@@ -341,16 +348,37 @@ absent, never `null`.
 
 **A ref row** — the unit `items[]` carries on every record route:
 
-| Field          | Type                           |
-| -------------- | ------------------------------ |
-| `id`           | string                         |
-| `type`         | `SyncItemType`                 |
-| `version`      | non-negative integer           |
-| `modifiedAt`   | non-negative integer, epoch ms |
-| `size`         | non-negative integer, bytes    |
-| `stateVector?` | string                         |
+| Field          | Type                                |
+| -------------- | ----------------------------------- |
+| `id`           | string                              |
+| `type`         | `SyncItemType`                      |
+| `version`      | non-negative integer                |
+| `modifiedAt`   | non-negative integer, epoch seconds |
+| `size`         | non-negative integer, bytes         |
+| `stateVector?` | string                              |
 
 A ref row is metadata only. It carries **no ciphertext**.
+
+`modifiedAt` is **epoch seconds**, not milliseconds: it is the row's
+`updated_at`, written as `Math.floor(Date.now() / 1000)`
+(`apps/sync-server/src/services/sync.ts:634`, read back at `:944` and `:1013`).
+This table said epoch ms until #2280 needed a millisecond commit time and found
+the column could not supply one.
+
+**A `/sync/changes` ref adds two optional fields** (#2280,
+`RecordChangesItemRefSchema` in `packages/contracts/src/sync-api.ts:497`). The
+manifest ref does not carry them.
+
+| Field            | Type                                                           |
+| ---------------- | -------------------------------------------------------------- |
+| `serverCursor?`  | non-negative integer, the row's `server_cursor`                |
+| `committedAtMs?` | non-negative integer, epoch ms of the push batch that wrote it |
+
+Both are absent against a server that predates them. `committedAtMs` is also
+absent for a row last written before migration `0010`, which has no commit time
+and is not backfilled (`apps/sync-server/src/services/sync.ts:1015-1016`).
+`serverCursor` is a trace key, never a pull cursor (§5.11). A client that does
+not know the fields ignores them; one that does MUST treat either as optional.
 
 **`POST /sync/pull`** — request `{ itemIds: string[] }`, **1 to 100**. The
 field is `itemIds`, not `ids`.
@@ -373,10 +401,17 @@ The four ciphertext fields are identical in both spellings; only their nesting
 differs. A conforming reader accepts the nested form, and `record-envelope.json`
 pins the flat one because the vectors are written from the writer's side.
 
-**`GET /sync/changes`** → `{ items: <ref row>[], deleted: string[], hasMore: boolean, nextCursor: integer }`.
+**`GET /sync/changes`** → `{ items: <changes ref>[], deleted: string[], hasMore: boolean, nextCursor: integer, serverTimeMs?: integer }`.
 
-All four are **required**. `nextCursor` is an **integer, not a string** — a
+The first four are **required**. `nextCursor` is an **integer, not a string** — a
 port that types it as string-or-number will serialise the wrong thing back.
+`deleted` stays a bare id array; the trace fields are on live refs only.
+
+`serverTimeMs` is the server's epoch-ms time when it answered the page
+(`apps/sync-server/src/routes/sync.ts:381`), optional because an older server
+does not send it. It exists so a client can estimate its clock offset from the
+request's round-trip midpoint for the latency trace. It is not an input to any
+sync decision; §5.16 skew detection keeps using the seconds `serverTime`.
 
 **`GET /sync/manifest`** → `{ items: <ref row>[], serverTime: integer, nextCursor?: integer }`.
 

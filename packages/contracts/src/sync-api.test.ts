@@ -548,6 +548,34 @@ describe('RecordChangesResponseSchema', () => {
       }).success
     ).toBe(true)
   })
+
+  // #2280
+  it('keeps the optional trace fields: ref serverCursor and committedAtMs, page serverTimeMs', () => {
+    const ref = { id: 'task-1', type: 'task', version: 2, modifiedAt: 1, size: 3 }
+    const parsed = RecordChangesResponseSchema.parse({
+      items: [{ ...ref, serverCursor: 41, committedAtMs: 1_700_000_000_123 }, ref],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 41,
+      serverTimeMs: 1_700_000_000_456
+    })
+
+    expect(parsed.items[0]).toMatchObject({ serverCursor: 41, committedAtMs: 1_700_000_000_123 })
+    expect(parsed.items[1]).not.toHaveProperty('committedAtMs')
+    expect(parsed.serverTimeMs).toBe(1_700_000_000_456)
+  })
+
+  // #2280
+  it('rejects a fractional commit time', () => {
+    expect(
+      RecordChangesResponseSchema.safeParse({
+        items: [{ id: 't', type: 'task', version: 1, modifiedAt: 1, size: 1, committedAtMs: 1.5 }],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      }).success
+    ).toBe(false)
+  })
 })
 
 describe('SyncStatusSchema', () => {
