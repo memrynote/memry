@@ -22,8 +22,15 @@ const mocks = vi.hoisted(() => ({
   syncGoogleCalendarSource: vi.fn(),
   listGoogleCalendars: vi.fn(),
   setDefaultGoogleCalendar: vi.fn(),
-  resolveDefaultGoogleAccountId: vi.fn((..._args: unknown[]) => null as string | null)
+  resolveDefaultGoogleAccountId: vi.fn((..._args: unknown[]) => null as string | null),
+  eventKitBridgeLoaded: vi.fn()
 }))
+
+// #1405: the factory runs only if something imports the bridge module.
+vi.mock('../calendar/eventkit/eventkit-bridge', () => {
+  mocks.eventKitBridgeLoaded()
+  return { createEventKitBridge: vi.fn() }
+})
 
 vi.mock('electron', () => ({
   ipcMain: {
@@ -167,7 +174,7 @@ describe('calendar provider registry and generic channels (#1392)', () => {
     })
 
     it('registers Google, ICS and CalDAV with their declared capabilities', () => {
-      expect(listProviders().map((definition) => definition.id)).toEqual([
+      expect(listProviders('linux').map((definition) => definition.id)).toEqual([
         'google',
         'ics',
         'caldav'
@@ -199,7 +206,11 @@ describe('calendar provider registry and generic channels (#1392)', () => {
     expect(response.providers).toEqual([
       { id: 'google', capabilities: PROVIDER_CAPABILITIES.google },
       { id: 'ics', capabilities: PROVIDER_CAPABILITIES.ics },
-      { id: 'caldav', capabilities: PROVIDER_CAPABILITIES.caldav }
+      { id: 'caldav', capabilities: PROVIDER_CAPABILITIES.caldav },
+      // #2374: macOS Calendar exists only on macOS.
+      ...(process.platform === 'darwin'
+        ? [{ id: 'apple-eventkit', capabilities: PROVIDER_CAPABILITIES['apple-eventkit'] }]
+        : [])
     ])
   })
 
@@ -473,6 +484,53 @@ describe('calendar provider registry and generic channels (#1392)', () => {
         source: null,
         error: 'Only Google calendar sources can be retried'
       })
+    })
+  })
+
+  describe('macOS Calendar on Windows and Linux (#2374)', () => {
+    const realPlatform = process.platform
+
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', { value: realPlatform })
+    })
+
+    it.each(['win32', 'linux'])(
+      'is absent on %s, answers unsupported_platform, writes nothing and never loads the bridge',
+      async (platform) => {
+        Object.defineProperty(process, 'platform', { value: platform })
+
+        const listed = await invokeHandler<ListCalendarProvidersResponse>(
+          CalendarChannels.invoke.LIST_PROVIDERS
+        )
+        expect(listed.providers.map((provider) => provider.id)).not.toContain('apple-eventkit')
+
+        for (const channel of [
+          CalendarChannels.invoke.CONNECT_PROVIDER,
+          CalendarChannels.invoke.DISCONNECT_PROVIDER,
+          CalendarChannels.invoke.REFRESH_PROVIDER
+        ]) {
+          const response = await invokeHandler<CalendarProviderMutationResponse>(channel, {
+            provider: 'apple-eventkit'
+          })
+          expect(response).toMatchObject({
+            success: false,
+            errorCode: 'unsupported_platform',
+            error: 'Unsupported calendar provider: apple-eventkit'
+          })
+        }
+
+        expect(dbResult.db.all(sql`SELECT id FROM calendar_sources`)).toEqual([])
+        expect(dbResult.db.all(sql`SELECT id FROM calendar_external_events`)).toEqual([])
+        expect(mocks.eventKitBridgeLoaded).not.toHaveBeenCalled()
+      }
+    )
+
+    it('keeps the plain unsupported error, without a platform code, for an unknown provider', async () => {
+      const response = await invokeHandler<CalendarProviderMutationResponse>(
+        CalendarChannels.invoke.CONNECT_PROVIDER,
+        { provider: 'outlook' }
+      )
+      expect(response).not.toHaveProperty('errorCode')
     })
   })
 })

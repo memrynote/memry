@@ -85,6 +85,19 @@ export function getProvider(
   return definition
 }
 
+/**
+ * Whether this build ships the provider but this OS does not offer it (the
+ * macOS Calendar provider on Windows or Linux). Callers still treat it as
+ * absent; this only picks the error code they report.
+ */
+export function isProviderExcludedOnPlatform(
+  providerId: string,
+  platform: string = process.platform
+): boolean {
+  const definition = providers.get(providerId)
+  return Boolean(definition && !isProviderAvailableOn(definition.capabilities, platform))
+}
+
 /** Every provider available on this platform, in registration order. */
 export function listProviders(platform: string = process.platform): ProviderDefinition[] {
   return [...providers.values()].filter((definition) =>

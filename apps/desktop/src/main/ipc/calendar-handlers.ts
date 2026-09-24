@@ -1,8 +1,9 @@
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { and, asc, eq, isNull } from 'drizzle-orm'
 import { CalendarChannels } from '@memry/contracts/ipc-channels'
 import {
+  CALENDAR_PROVIDER_UNSUPPORTED_PLATFORM,
   CreateCalendarEventSchema,
   GetCalendarRangeSchema,
   ListCalendarEventsSchema,
@@ -10,6 +11,7 @@ import {
   ListGoogleCalendarsSchema,
   ListProviderCalendarsSchema,
   PromoteExternalEventSchema,
+  GetExternalEventSchema,
   RetryCalendarSourceSyncSchema,
   SearchCalendarEventsSchema,
   SetDefaultGoogleCalendarSchema,
@@ -38,6 +40,7 @@ import {
   type ListGoogleCalendarsResponse,
   type ListProviderCalendarsResponse,
   type PromoteExternalEventResponse,
+  type GetExternalEventResponse,
   type RetryCalendarSourceSyncResponse,
   type SetDefaultGoogleCalendarResponse,
   type SetDefaultProviderCalendarResponse
@@ -61,6 +64,7 @@ import {
 import { searchCalendarEventsByTitle } from '../calendar/repositories/calendar-events-repository'
 import { resolveDefaultGoogleAccountId } from '../calendar/google/oauth'
 import { getCalendarRangeProjection } from '../calendar/projection'
+import { getExternalEventDetails } from '../calendar/external-event-details'
 import { getCalendarEnabledPropertyNames } from '../calendar/calendar-property-visibility'
 import { getCalendarSettings } from './settings-handlers'
 import { listGoogleCalendars, setDefaultGoogleCalendar } from '../calendar/google/onboarding'
@@ -81,7 +85,12 @@ import { getMainI18n } from '../lib/main-i18n'
 import { mapCalendarSource } from '../calendar/calendar-source-record'
 import { registerCalendarIcsHandlers, unregisterCalendarIcsHandlers } from './calendar-ics-handlers'
 import { registerBuiltinCalendarProviders } from '../calendar/provider/builtin-providers'
-import { getProvider, listProviders, unsupportedProviderError } from '../calendar/provider/registry'
+import {
+  getProvider,
+  isProviderExcludedOnPlatform,
+  listProviders,
+  unsupportedProviderError
+} from '../calendar/provider/registry'
 import {
   purgeCalendarSourceMirrors,
   upsertSyncedCalendarSource
@@ -151,7 +160,12 @@ async function unsupportedProvider(
   return {
     success: false,
     status: await buildProviderStatus(db, provider),
-    error: unsupportedProviderError(provider)
+    error: unsupportedProviderError(provider),
+    // The error text stays byte-identical; the code tells a provider this OS
+    // does not offer (macOS Calendar on Windows/Linux) from one that does not exist.
+    ...(isProviderExcludedOnPlatform(provider)
+      ? { errorCode: CALENDAR_PROVIDER_UNSUPPORTED_PLATFORM }
+      : {})
   }
 }
 
@@ -502,7 +516,14 @@ export function registerCalendarHandlers(): void {
       async (input): Promise<DiscoverProviderCalendarsResponse> => {
         const definition = getProvider(input.provider)
         if (!definition?.discover) {
-          return { success: false, calendars: [], error: unsupportedProviderError(input.provider) }
+          return {
+            success: false,
+            calendars: [],
+            error: unsupportedProviderError(input.provider),
+            ...(isProviderExcludedOnPlatform(input.provider)
+              ? { errorCode: CALENDAR_PROVIDER_UNSUPPORTED_PLATFORM }
+              : {})
+          }
         }
         return await definition.discover(input.connection)
       }
@@ -519,6 +540,19 @@ export function registerCalendarHandlers(): void {
         'errors:calendar.connectProviderFailed'
       )
     )
+  )
+
+  ipcMain.handle(
+    CalendarChannels.invoke.OPEN_OS_CALENDAR_SETTINGS,
+    async (): Promise<{ success: boolean }> => {
+      // A fixed deep link (never user input), so it bypasses the http(s)
+      // openExternal allowlist, as the microphone settings link does.
+      if (process.platform !== 'darwin') return { success: false }
+      await shell.openExternal(
+        'x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars'
+      )
+      return { success: true }
+    }
   )
 
   ipcMain.handle(
@@ -600,6 +634,19 @@ export function registerCalendarHandlers(): void {
   )
 
   ipcMain.handle(
+    CalendarChannels.invoke.GET_EXTERNAL_EVENT,
+    createValidatedHandler(
+      GetExternalEventSchema,
+      withDb(
+        (db, input): GetExternalEventResponse => ({
+          event: getExternalEventDetails(db, input.externalEventId)
+        }),
+        'errors:calendar.getExternalEventFailed'
+      )
+    )
+  )
+
+  ipcMain.handle(
     CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT,
     createValidatedHandler(
       PromoteExternalEventSchema,
@@ -650,5 +697,7 @@ export function unregisterCalendarHandlers(): void {
   ipcMain.removeHandler(CalendarChannels.invoke.SET_DEFAULT_PROVIDER_CALENDAR)
   ipcMain.removeHandler(CalendarChannels.invoke.RETRY_SOURCE_SYNC)
   ipcMain.removeHandler(CalendarChannels.invoke.CHECK_PROVIDER_WRITER_COMPAT)
+  ipcMain.removeHandler(CalendarChannels.invoke.OPEN_OS_CALENDAR_SETTINGS)
+  ipcMain.removeHandler(CalendarChannels.invoke.GET_EXTERNAL_EVENT)
   ipcMain.removeHandler(CalendarChannels.invoke.DISCOVER_PROVIDER_CALENDARS)
 }

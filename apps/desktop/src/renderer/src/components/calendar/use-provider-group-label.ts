@@ -11,6 +11,8 @@ export function useProviderGroupLabel(): (provider: string) => string {
         return t('filter.provider-calendars.ics')
       case 'caldav':
         return t('filter.provider-calendars.caldav')
+      case 'apple-eventkit':
+        return t('filter.provider-calendars.apple-eventkit')
       default:
         return t('filter.provider-calendars.other')
     }

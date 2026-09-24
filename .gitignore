@@ -118,3 +118,6 @@ buildServer.json
 # xcode-build-server's compile database, regenerated from a build log. Same
 # reasoning as buildServer.json above: it names one developer's DerivedData.
 .compile
+
+# Built by apps/desktop/scripts/build-eventkit-helper.mjs on macOS only (#1405).
+apps/desktop/native/eventkit/bin/

@@ -178,7 +178,8 @@
     "retryGoogleSourceSyncFailed": "Failed to retry Google Calendar source sync",
     "promoteExternalEventFailed": "Failed to promote external calendar event",
     "onlyCalendarSourcesRetryable": "Only calendar sources can be retried",
-    "invalidProviderSettings": "Invalid calendar provider settings"
+    "invalidProviderSettings": "Invalid calendar provider settings",
+    "getExternalEventFailed": "Could not load this event. It is still on your calendar; try opening it again."
   },
   "canvasFolder": {
     "exists": "A canvas folder with that name already exists here.",

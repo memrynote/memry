@@ -6,7 +6,8 @@ import { createRendererI18n } from '@memry/i18n/renderer'
 import type {
   CalendarProviderCapabilities,
   CalendarProviderDescriptor,
-  CalendarProviderStatus
+  CalendarProviderStatus,
+  CalendarSourceRecord
 } from '@memry/contracts/calendar-api'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { CalendarProviderSections } from './calendar-provider-sections'
@@ -22,7 +23,8 @@ const mocks = vi.hoisted(() => ({
   updateSourceSelection: vi.fn(),
   retrySourceSync: vi.fn(),
   listProviderCalendars: vi.fn(),
-  setDefaultProviderCalendar: vi.fn()
+  setDefaultProviderCalendar: vi.fn(),
+  openOsCalendarSettings: vi.fn()
 }))
 
 vi.mock('@/services/calendar-service', () => ({
@@ -141,7 +143,7 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
       within(screen.getByTestId('calendar-provider-section-ics')).getByTestId('ics-section-body')
     ).toBeInTheDocument()
     // A provider main left out (another platform's) does not exist here.
-    expect(screen.queryByTestId('calendar-provider-section-macos-calendar')).toBeNull()
+    expect(screen.queryByTestId('calendar-provider-section-apple-eventkit')).toBeNull()
   })
 
   it('a read-only provider shows the badge and its poll interval, and no push switch', async () => {
@@ -277,5 +279,193 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
         }
       })
     )
+  })
+})
+
+describe('Settings → Calendar → This Mac (#2374)', () => {
+  const MAC: CalendarProviderDescriptor = {
+    id: 'apple-eventkit',
+    capabilities: {
+      supportsWrite: false,
+      supportsCreateCalendar: false,
+      supportsPush: true,
+      supportsMultiAccount: false,
+      requiresMemryAccount: false,
+      mirrorScope: 'device',
+      sourceScope: 'device',
+      platforms: ['darwin'],
+      incrementalMode: 'full',
+      authFlow: 'os-permission'
+    }
+  }
+
+  function macCalendar(
+    id: string,
+    title: string,
+    metadata: Record<string, unknown>,
+    isSelected = true
+  ): CalendarSourceRecord {
+    return {
+      id: `apple-eventkit:${id}`,
+      provider: 'apple-eventkit',
+      kind: 'calendar',
+      accountId: 'this-mac',
+      remoteId: id,
+      title,
+      timezone: null,
+      color: null,
+      isPrimary: false,
+      isSelected,
+      isMemryManaged: false,
+      syncCursor: null,
+      syncStatus: 'ok',
+      lastSyncedAt: null,
+      lastError: null,
+      metadata,
+      archivedAt: null,
+      syncedAt: null,
+      createdAt: '2026-09-24T08:00:00.000Z',
+      modifiedAt: '2026-09-24T08:00:00.000Z'
+    }
+  }
+
+  function macStatus(
+    connected: boolean,
+    account: Partial<CalendarProviderStatus['accounts'][number]> = {}
+  ): CalendarProviderStatus {
+    const base = status('apple-eventkit', connected)
+    return connected
+      ? {
+          ...base,
+          accounts: [{ ...base.accounts[0], accountId: 'this-mac', email: 'This Mac', ...account }]
+        }
+      : base
+  }
+
+  beforeAll(async () => {
+    i18nEn ??= await createRendererI18n({ locale: 'en' })
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.listProviders.mockResolvedValue({ providers: [MAC] })
+    mocks.getProviderStatus.mockResolvedValue(macStatus(false))
+    mocks.listSources.mockResolvedValue({ sources: [] })
+    mocks.openOsCalendarSettings.mockResolvedValue({ success: true })
+    window.api = {
+      ...window.api,
+      settings: {
+        ...window.api.settings,
+        getCalendarProviderSettings: vi.fn(async () => ({ agentReadEventsConsent: null })),
+        setCalendarProviderSettings: vi.fn(async () => ({ success: true }))
+      }
+    }
+  })
+
+  it('has no entry when main does not list it (Windows, Linux)', async () => {
+    mocks.listProviders.mockResolvedValue({ providers: PROVIDERS })
+    renderSections()
+
+    await screen.findByTestId('calendar-provider-section-read-only-dav')
+    expect(screen.queryByTestId('calendar-provider-section-apple-eventkit')).toBeNull()
+    expect(screen.queryByText('This Mac')).toBeNull()
+  })
+
+  it('explains what it reads and asks for access only when the user presses the button', async () => {
+    mocks.connectProvider.mockResolvedValue({ success: true, status: macStatus(true) })
+    const user = userEvent.setup()
+    renderSections()
+
+    const section = await screen.findByTestId('calendar-provider-section-apple-eventkit')
+    expect(within(section).getByText('This Mac')).toBeInTheDocument()
+    expect(within(section).getByText(/never leave this Mac/)).toBeInTheDocument()
+    expect(mocks.connectProvider).not.toHaveBeenCalled()
+
+    await user.click(within(section).getByRole('button', { name: 'Allow calendar access' }))
+    expect(mocks.connectProvider).toHaveBeenCalledWith({ provider: 'apple-eventkit' })
+  })
+
+  it('a denied permission explains the fix and links to System Settings', async () => {
+    mocks.connectProvider.mockResolvedValue({
+      success: false,
+      errorCode: 'permission_denied',
+      status: macStatus(false)
+    })
+    const user = userEvent.setup()
+    renderSections()
+
+    const section = await screen.findByTestId('calendar-provider-section-apple-eventkit')
+    await user.click(within(section).getByRole('button', { name: 'Allow calendar access' }))
+
+    const problem = await within(section).findByTestId('macos-calendar-problem')
+    expect(problem).toHaveTextContent('Privacy & Security → Calendars')
+    await user.click(within(problem).getByRole('button', { name: 'Open System Settings' }))
+    expect(mocks.openOsCalendarSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['permission_restricted', /management profile/, false],
+    ['permission_write_only', /Full Access/, true]
+  ])('%s gets its own copy', async (errorCode, copy, fixable) => {
+    mocks.connectProvider.mockResolvedValue({
+      success: false,
+      errorCode,
+      status: macStatus(false)
+    })
+    const user = userEvent.setup()
+    renderSections()
+
+    const section = await screen.findByTestId('calendar-provider-section-apple-eventkit')
+    await user.click(within(section).getByRole('button', { name: 'Allow calendar access' }))
+
+    const problem = await within(section).findByTestId('macos-calendar-problem')
+    expect(problem).toHaveTextContent(copy)
+    expect(within(problem).queryByRole('button', { name: 'Open System Settings' }) !== null).toBe(
+      fixable
+    )
+  })
+
+  it('groups calendars by account and labels one already connected directly', async () => {
+    mocks.getProviderStatus.mockResolvedValue(macStatus(true))
+    mocks.listSources.mockResolvedValue({
+      sources: [
+        macCalendar('home', 'Home', { sourceTitle: 'iCloud', connectedVia: null }),
+        macCalendar(
+          'work',
+          'Work',
+          { sourceTitle: 'me@example.com', connectedVia: 'google' },
+          false
+        ),
+        macCalendar('birthdays', 'Birthdays', { sourceTitle: 'Other', connectedVia: null })
+      ]
+    })
+    renderSections()
+
+    const section = await screen.findByTestId('calendar-provider-section-apple-eventkit')
+    const google = await within(section).findByRole('region', { name: 'me@example.com' })
+    expect(within(google).getByRole('checkbox', { name: 'Work' })).not.toBeChecked()
+    expect(google).toHaveTextContent('Already connected via Google Calendar')
+    expect(
+      within(within(section).getByRole('region', { name: 'iCloud' })).getByRole('checkbox', {
+        name: 'Home'
+      })
+    ).toBeChecked()
+    expect(within(section).getByTestId('calendar-provider-read-only-apple-eventkit')).toBeVisible()
+  })
+
+  it('a permission revoked in System Settings shows why, with the fix', async () => {
+    mocks.getProviderStatus.mockResolvedValue(
+      macStatus(true, {
+        status: 'reconnect_required',
+        reconnectReason: 'rejected',
+        lastError: 'permission_denied'
+      })
+    )
+    renderSections()
+
+    const section = await screen.findByTestId('calendar-provider-section-apple-eventkit')
+    const problem = await within(section).findByTestId('macos-calendar-problem')
+    expect(problem).toHaveAttribute('data-code', 'permission_denied')
+    expect(within(problem).getByRole('button', { name: 'Check again' })).toBeInTheDocument()
   })
 })

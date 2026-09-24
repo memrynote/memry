@@ -262,6 +262,10 @@ Paste a calendar's shared link (ICS or `webcal://`) and press **Subscribe** to a
 
 Once you have a subscription, **Let AI read these events** decides whether the AI assistant can read your subscribed calendars. It is separate from the Google switch: allowing Google does not allow subscribed calendars. See [AI access per calendar service](/user-guide/calendar#ai-access-is-asked-per-calendar-service).
 
+### This Mac (macOS)
+
+On a Mac, **This Mac** shows the calendars the built-in Calendar app already has, read-only and without signing in. **Allow calendar access** is the only thing that shows the macOS permission question. Calendars are grouped by the account Calendar files them under; tick the ones you want. If access was denied or later turned off, the section says why, with **Open System Settings** and **Check again**. These calendars stay on this Mac and never sync. See [macOS Calendar](/user-guide/calendar#macos-calendar-this-mac). Windows and Linux don't list this section.
+
 ### Other Calendar Services
 
 Settings → Calendar has one section per calendar service memrynote supports on your operating system. A service that does not exist on your system is not listed at all. Each section shows only what that service can do:

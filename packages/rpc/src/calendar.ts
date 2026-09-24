@@ -10,6 +10,7 @@ import {
   IcsCalendarSourceRequestSchema,
   ListCalendarSourcesSchema,
   PromoteExternalEventSchema,
+  GetExternalEventSchema,
   RetryCalendarSourceSyncSchema,
   SearchCalendarEventsSchema,
   SetDefaultGoogleCalendarSchema,
@@ -42,6 +43,8 @@ import {
   type ListGoogleCalendarsResponse,
   type ListProviderCalendarsResponse,
   type PromoteExternalEventResponse,
+  type GetExternalEventResponse,
+  type CalendarExternalEventDetails,
   type RetryCalendarSourceSyncResponse,
   type SetDefaultGoogleCalendarResponse,
   type SetDefaultProviderCalendarResponse
@@ -64,6 +67,7 @@ export type UpdateCalendarSourceSelectionInput = z.input<typeof UpdateCalendarSo
 export type CalendarProviderRequest = z.input<typeof CalendarProviderRequestSchema>
 export type ListGoogleCalendarsInput = z.input<typeof ListGoogleCalendarsSchema>
 export type PromoteExternalEventInput = z.input<typeof PromoteExternalEventSchema>
+export type GetExternalEventInput = z.input<typeof GetExternalEventSchema>
 export type SetDefaultGoogleCalendarInput = z.input<typeof SetDefaultGoogleCalendarSchema>
 export type RetryCalendarSourceSyncInput = z.input<typeof RetryCalendarSourceSyncSchema>
 export type SubscribeIcsCalendarInput = z.input<typeof SubscribeIcsCalendarSchema>
@@ -93,6 +97,8 @@ export type {
   IcsFeedErrorCode,
   ListGoogleCalendarsResponse,
   PromoteExternalEventResponse,
+  GetExternalEventResponse,
+  CalendarExternalEventDetails,
   RetryCalendarSourceSyncResponse,
   SetDefaultGoogleCalendarResponse
 }
@@ -201,6 +207,9 @@ export const calendarRpc = defineDomain({
       channel: CalendarChannels.invoke.CHECK_PROVIDER_WRITER_COMPAT,
       params: ['input']
     }),
+    openOsCalendarSettings: defineMethod<() => Promise<{ success: boolean }>>({
+      channel: CalendarChannels.invoke.OPEN_OS_CALENDAR_SETTINGS
+    }),
     retrySourceSync: defineMethod<
       (input: RetryCalendarSourceSyncInput) => Promise<RetryCalendarSourceSyncResponse>
     >({
@@ -218,6 +227,12 @@ export const calendarRpc = defineDomain({
       (input: SetDefaultGoogleCalendarInput) => Promise<SetDefaultGoogleCalendarResponse>
     >({
       channel: CalendarChannels.invoke.SET_DEFAULT_GOOGLE_CALENDAR,
+      params: ['input']
+    }),
+    getExternalEvent: defineMethod<
+      (input: GetExternalEventInput) => Promise<GetExternalEventResponse>
+    >({
+      channel: CalendarChannels.invoke.GET_EXTERNAL_EVENT,
       params: ['input']
     }),
     promoteExternalEvent: defineMethod<

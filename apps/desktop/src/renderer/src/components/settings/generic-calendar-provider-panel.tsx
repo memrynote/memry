@@ -4,6 +4,7 @@ import type {
   CalendarProviderAccountStatus,
   CalendarProviderDescriptor,
   CalendarProviderMutationResponse,
+  CalendarProviderStatus,
   CalendarSourceRecord
 } from '@memry/contracts/calendar-api'
 import { useT } from '@memry/i18n/renderer'
@@ -52,13 +53,22 @@ function expectSuccess(result: CalendarProviderMutationResponse, fallback: strin
 export function GenericCalendarProviderPanel({
   provider,
   renderConnectForm,
-  describeReconnect
+  describeReconnect,
+  renderConnectedNotice,
+  calendarGroupLabel,
+  calendarNote
 }: {
   provider: CalendarProviderDescriptor
   /** A provider-specific connect form (CalDAV presets); defaults to the form for its auth flow. */
   renderConnectForm?: (args: ProviderConnectFormArgs) => ReactNode
   /** Copy for an account that needs reconnecting on this device. */
   describeReconnect?: (account: CalendarProviderAccountStatus) => string
+  /** Shown under the header while connected (a single-account provider's state). */
+  renderConnectedNotice?: (status: CalendarProviderStatus) => ReactNode
+  /** Groups the calendar list under these headings, in first-seen order. */
+  calendarGroupLabel?: (source: CalendarSourceRecord) => string
+  /** A short muted line under one calendar. */
+  calendarNote?: (source: CalendarSourceRecord) => string | null
 }): React.JSX.Element {
   const { t } = useT('settings')
   const queryClient = useQueryClient()
@@ -171,6 +181,8 @@ export function GenericCalendarProviderPanel({
 
       {(!connected || (showConnectForm && canAddAnother)) && connectForm}
 
+      {connected && status && renderConnectedNotice?.(status)}
+
       {connected && capabilities.supportsMultiAccount && accounts.length > 0 && (
         <ProviderAccountList
           accounts={accounts}
@@ -187,6 +199,8 @@ export function GenericCalendarProviderPanel({
       {connected && calendars.length > 0 && (
         <ProviderCalendarList
           calendars={calendars}
+          groupLabel={calendarGroupLabel}
+          note={calendarNote}
           selectionPending={selectionMutation.isPending}
           retryPending={retryMutation.isPending}
           onSelect={(input) => selectionMutation.mutate(input)}
@@ -290,22 +304,27 @@ function ProviderAccountList({
 /** The provider's calendars: show or hide each, retry a failed one. */
 function ProviderCalendarList({
   calendars,
+  groupLabel,
+  note,
   selectionPending,
   retryPending,
   onSelect,
   onRetry
 }: {
   calendars: CalendarSourceRecord[]
+  groupLabel?: (source: CalendarSourceRecord) => string
+  note?: (source: CalendarSourceRecord) => string | null
   selectionPending: boolean
   retryPending: boolean
   onSelect: (input: { id: string; isSelected: boolean }) => void
   onRetry: (sourceId: string) => void
 }): React.JSX.Element {
   const { t } = useT('settings')
-  return (
-    <ul className="grid gap-1.5" aria-label={t('calendar.providers.calendars')}>
-      {calendars.map((source) => (
-        <li key={source.id} className="flex items-center justify-between gap-3">
+  const renderCalendar = (source: CalendarSourceRecord): React.JSX.Element => {
+    const hint = note?.(source) ?? null
+    return (
+      <li key={source.id} className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
           <label className="flex min-w-0 items-center gap-2 text-xs text-foreground">
             <Checkbox
               checked={source.isSelected}
@@ -317,20 +336,45 @@ function ProviderCalendarList({
             />
             <span className="truncate">{source.title}</span>
           </label>
-          {source.syncStatus === 'error' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 shrink-0 px-2 text-[11px]/4"
-              disabled={retryPending}
-              onClick={() => onRetry(source.id)}
-            >
-              {t('calendar.providers.retry')}
-            </Button>
-          )}
-        </li>
+          {hint && <p className="ps-6 text-[11px]/4 text-muted-foreground">{hint}</p>}
+        </div>
+        {source.syncStatus === 'error' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 shrink-0 px-2 text-[11px]/4"
+            disabled={retryPending}
+            onClick={() => onRetry(source.id)}
+          >
+            {t('calendar.providers.retry')}
+          </Button>
+        )}
+      </li>
+    )
+  }
+
+  if (!groupLabel) {
+    return (
+      <ul className="grid gap-1.5" aria-label={t('calendar.providers.calendars')}>
+        {calendars.map(renderCalendar)}
+      </ul>
+    )
+  }
+
+  const groups = new Map<string, CalendarSourceRecord[]>()
+  for (const source of calendars) {
+    const label = groupLabel(source)
+    groups.set(label, [...(groups.get(label) ?? []), source])
+  }
+  return (
+    <div className="grid gap-3" aria-label={t('calendar.providers.calendars')} role="group">
+      {[...groups.entries()].map(([label, members]) => (
+        <section key={label} className="grid gap-1.5" aria-label={label}>
+          <h4 className="text-[11px]/4 font-medium text-muted-foreground">{label}</h4>
+          <ul className="grid gap-1.5">{members.map(renderCalendar)}</ul>
+        </section>
       ))}
-    </ul>
+    </div>
   )
 }
 

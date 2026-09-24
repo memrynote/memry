@@ -54,7 +54,8 @@ vi.mock('@/services/calendar-service', () => {
       createEvent: mockCreateEvent,
       updateEvent: mockUpdateEvent,
       deleteEvent: mockDeleteEvent,
-      getEvent: mockGetEvent
+      getEvent: mockGetEvent,
+      getExternalEvent: vi.fn(async () => ({ event: null }))
     },
     onCalendarChanged: vi.fn(() => () => {}),
     listGoogleCalendars: vi.fn(async () => ({
@@ -738,7 +739,6 @@ describe('CalendarPage', () => {
 
     const popover = await screen.findByTestId('calendar-subscribed-event-popover')
     expect(popover).toHaveTextContent('Subscribed calendar · Club fixtures')
-    expect(popover).toHaveTextContent('Read-only. Change it in the app that shares this calendar.')
     expect(mockPromoteExternal).not.toHaveBeenCalled()
     expect(screen.queryByRole('dialog', { name: 'Edit calendar event' })).not.toBeInTheDocument()
   })

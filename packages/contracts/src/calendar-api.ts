@@ -67,6 +67,11 @@ export const PromoteExternalEventSchema = z.object({
   externalEventId: z.string().min(1)
 })
 
+/** #2374: one mirrored external event with its details, for the read-only event card. */
+export const GetExternalEventSchema = z.object({
+  externalEventId: z.string().min(1)
+})
+
 export const ListGoogleCalendarsSchema = z.object({}).optional().default({})
 
 export const SetDefaultGoogleCalendarSchema = z.object({
@@ -232,6 +237,19 @@ export const GOOGLE_CALENDAR_PROVIDER = 'google'
 export const CALDAV_CALENDAR_PROVIDER = 'caldav'
 
 /**
+ * `calendar_sources.provider` for the calendars macOS Calendar.app already has,
+ * read through EventKit (#2374). macOS only, read-only, and nothing it writes
+ * leaves the device.
+ */
+export const APPLE_EVENTKIT_CALENDAR_PROVIDER = 'apple-eventkit'
+
+/**
+ * `errorCode` a provider operation returns when the provider exists in this
+ * build but not on this OS (the macOS Calendar provider on Windows or Linux).
+ */
+export const CALENDAR_PROVIDER_UNSUPPORTED_PLATFORM = 'unsupported_platform'
+
+/**
  * Whether a provider's rows travel through sync. `synced` rows are enqueued
  * like any other record; `device` rows never leave the device that wrote them.
  */
@@ -281,8 +299,8 @@ export const DEVICE_LOCAL_CALENDAR_PROVIDERS: {
   readonly sources: readonly string[]
   readonly mirrors: readonly string[]
 } = {
-  sources: [],
-  mirrors: [ICS_CALENDAR_PROVIDER]
+  sources: [APPLE_EVENTKIT_CALENDAR_PROVIDER],
+  mirrors: [ICS_CALENDAR_PROVIDER, APPLE_EVENTKIT_CALENDAR_PROVIDER]
 }
 
 /**
@@ -373,6 +391,7 @@ export type CalendarProviderConnection = z.infer<typeof CalendarProviderConnecti
 export type ListProviderCalendarsInput = z.infer<typeof ListProviderCalendarsSchema>
 export type SetDefaultProviderCalendarInput = z.infer<typeof SetDefaultProviderCalendarSchema>
 export type PromoteExternalEventInput = z.infer<typeof PromoteExternalEventSchema>
+export type GetExternalEventInput = z.infer<typeof GetExternalEventSchema>
 export type ListGoogleCalendarsInput = z.infer<typeof ListGoogleCalendarsSchema>
 export type SetDefaultGoogleCalendarInput = z.infer<typeof SetDefaultGoogleCalendarSchema>
 
@@ -628,6 +647,38 @@ export interface CalendarProviderMutationResponse {
   errorCode?: string
   /** #1392: the source a URL connect created or a per-source refresh touched. */
   source?: CalendarSourceRecord | null
+}
+
+/**
+ * #2374: what the read-only event card shows for a mirrored event. Fields a
+ * provider does not supply are null (an ICS feed has no attendees).
+ */
+export interface CalendarExternalEventDetails {
+  id: string
+  title: string
+  description: string | null
+  location: string | null
+  startAt: string
+  endAt: string | null
+  timezone: string | null
+  isAllDay: boolean
+  status: string
+  recurrenceRule: Record<string, unknown> | null
+  attendees: CalendarEventAttendeeRecord[] | null
+  reminders: CalendarEventRemindersRecord | null
+  conferenceData: CalendarEventConferenceDataRecord | null
+  source: {
+    id: string
+    provider: string
+    title: string
+    color: string | null
+    /** The account the calendar belongs to, when the provider knows it. */
+    accountTitle: string | null
+  } | null
+}
+
+export interface GetExternalEventResponse {
+  event: CalendarExternalEventDetails | null
 }
 
 export interface CalendarProviderDescriptor {

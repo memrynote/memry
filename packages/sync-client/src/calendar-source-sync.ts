@@ -2,9 +2,30 @@ import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import type { VectorClock } from '@memry/contracts/sync-api'
+import { DEVICE_LOCAL_CALENDAR_PROVIDERS } from '@memry/contracts/calendar-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
 
+/**
+ * A device-local provider's source row (`sourceScope: 'device'`, the macOS
+ * Calendar provider) never leaves the device: no create, update or delete is
+ * ever enqueued for it, so other platforms and older builds never see it.
+ */
+function isDeviceLocalSource(row: { provider?: unknown } | null | undefined): boolean {
+  return (
+    typeof row?.provider === 'string' &&
+    DEVICE_LOCAL_CALENDAR_PROVIDERS.sources.includes(row.provider)
+  )
+}
+
+function parseSnapshot(snapshotPayload: string): { provider?: unknown } | null {
+  try {
+    const parsed = JSON.parse(snapshotPayload) as unknown
+    return parsed && typeof parsed === 'object' ? (parsed as { provider?: unknown }) : null
+  } catch {
+    return null
+  }
+}
 
 interface CalendarSourceSyncDeps {
   queue: SyncQueueManager
@@ -39,8 +60,7 @@ export class CalendarSourceSyncService {
       getDeviceId: deps.getDeviceId,
       load: (id) =>
         deps.db.select().from(calendarSources).where(eq(calendarSources.id, id)).get() as
-          | Record<string, unknown>
-          | undefined,
+          Record<string, unknown> | undefined,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const nextClock = incrementClock(existingClock, deviceId)
@@ -54,8 +74,11 @@ export class CalendarSourceSyncService {
         return { ...local, clock: nextClock }
       },
       serialize: (local) => local,
+      shouldSkip: (local) => isDeviceLocalSource(local),
       buildDeletePayload: ({ itemId, local, extra, deviceId }) => {
         const snapshotPayload = extra[0]
+        // The row may already be gone; its snapshot still says where it came from.
+        if (snapshotPayload && isDeviceLocalSource(parseSnapshot(snapshotPayload))) return null
         if (snapshotPayload) return withIncrementedClock(snapshotPayload, deviceId)
         if (local) return withIncrementedClock(JSON.stringify(local), deviceId)
         return JSON.stringify({ id: itemId, clock: incrementClock({}, deviceId) })
