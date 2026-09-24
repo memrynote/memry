@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import {
   MeasuringStrategy,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragOverEvent,
   type DragStartEvent
 } from '@dnd-kit/core'
@@ -54,6 +55,7 @@ const mockOpenSidebarItem = vi.fn()
 // used outside a real `DndContext`, so this doesn't break the render).
 const dndMocks = vi.hoisted(() => ({
   onDragStart: null as null | ((event: DragStartEvent) => void),
+  onDragMove: null as null | ((event: DragMoveEvent) => void),
   onDragOver: null as null | ((event: DragOverEvent) => void),
   onDragEnd: null as null | ((event: DragEndEvent) => void),
   measuring: null as null | { droppable?: { strategy?: unknown } }
@@ -65,12 +67,14 @@ vi.mock('@dnd-kit/core', async () => {
     ...actual,
     DndContext: (props: {
       onDragStart?: (event: DragStartEvent) => void
+      onDragMove?: (event: DragMoveEvent) => void
       onDragOver?: (event: DragOverEvent) => void
       onDragEnd?: (event: DragEndEvent) => void
       measuring?: { droppable?: { strategy?: unknown } }
       children?: ReactNode
     }): ReactNode => {
       dndMocks.onDragStart = props.onDragStart ?? null
+      dndMocks.onDragMove = props.onDragMove ?? null
       dndMocks.onDragOver = props.onDragOver ?? null
       dndMocks.onDragEnd = props.onDragEnd ?? null
       dndMocks.measuring = props.measuring ?? null
@@ -98,16 +102,94 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
 }))
 
 describe('TagsHubPage', () => {
-  // Regression for the intermittent "Maximum update depth exceeded" crash:
-  // a tag drag re-parents the dragged chip's DOM node between `CategoryBlock`s
-  // on every category-preview update. With dnd-kit's default measuring,
-  // re-measuring droppables while dragging picks up the reflow that causes,
-  // which can flip `over` to a different category under a stationary pointer
-  // and loop forever. Freezing droppable rects to their pre-drag geometry
-  // makes collision detection immune to reflow the drag itself causes.
-  it('freezes droppable measurement to pre-drag geometry, so the tag drag preview cannot feed back into collision detection', () => {
+  // Turns off dnd-kit's continuous droppable re-measuring during a drag. This
+  // narrows the reflow feedback below but cannot close it: dnd-kit still
+  // re-measures every droppable when the preview re-mounts the chip.
+  it('stops continuous droppable re-measuring while dragging', () => {
     render(<TagsHubPage />)
     expect(dndMocks.measuring?.droppable?.strategy).toBe(MeasuringStrategy.BeforeDragging)
+  })
+
+  // Regression for React #185 ("Maximum update depth exceeded") on the tag hub,
+  // seen right after users create a category and drag a tag into it. Moving
+  // the chip into the new, empty category reflows the page, dnd-kit
+  // re-measures, and the pointer that has not moved now reads as over the
+  // category the chip just left. Previewing that flip moves the chip back,
+  // which reflows again, with no pointer input in between.
+  it('ignores an over change the preview itself caused until the pointer moves again', async () => {
+    mockUseTagCategories.mockReturnValue({
+      categories: [
+        {
+          id: 'cat-1',
+          name: 'Work',
+          sortOrder: 0,
+          tags: [
+            { tag: 'meetings', color: 'blue', icon: null, count: 3, sortOrder: 0 },
+            { tag: 'standup', color: 'blue', icon: null, count: 2, sortOrder: 1 }
+          ]
+        },
+        { id: 'cat-2', name: 'New', sortOrder: 1, tags: [] }
+      ],
+      uncategorized: [],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      createTag: vi.fn(),
+      reorder: vi.fn().mockResolvedValue(undefined)
+    })
+
+    render(<TagsHubPage />)
+
+    const active = {
+      id: 'meetings',
+      data: { current: { type: 'tag', tag: 'meetings', categoryId: 'cat-1' } }
+    }
+    const overNew = {
+      id: 'tag-container-cat-2',
+      data: { current: { type: 'tag-container', categoryId: 'cat-2' } }
+    }
+    const overWork = {
+      id: 'tag-container-cat-1',
+      data: { current: { type: 'tag-container', categoryId: 'cat-1' } }
+    }
+    const workChips = (): string[] =>
+      Array.from(
+        screen.getByText('Work').closest('section')?.querySelectorAll('[title]') ?? []
+      ).map((el) => el.getAttribute('title') ?? '')
+
+    await act(async () => {
+      dndMocks.onDragStart?.({ active } as unknown as DragStartEvent)
+    })
+    await act(async () => {
+      dndMocks.onDragOver?.({
+        active,
+        over: overNew,
+        delta: { x: 0, y: 40 }
+      } as unknown as DragOverEvent)
+    })
+    expect(workChips()).toEqual(['standup (2)'])
+
+    // Same drag offset: the pointer did not move, only the layout did.
+    await act(async () => {
+      dndMocks.onDragOver?.({
+        active,
+        over: overWork,
+        delta: { x: 0, y: 40 }
+      } as unknown as DragOverEvent)
+    })
+    expect(workChips()).toEqual(['standup (2)'])
+
+    // The pointer moves and is still over Work: now the move is the user's.
+    await act(async () => {
+      dndMocks.onDragMove?.({
+        active,
+        over: overWork,
+        delta: { x: 0, y: 41 }
+      } as unknown as DragMoveEvent)
+    })
+    expect(workChips()).toEqual(['standup (2)', 'meetings (3)'])
   })
 
   it('renders the create affordances', () => {
@@ -302,7 +384,7 @@ describe('TagsHubPage', () => {
       dndMocks.onDragStart?.({ active } as unknown as DragStartEvent)
     })
     await act(async () => {
-      dndMocks.onDragOver?.({ active, over } as unknown as DragOverEvent)
+      dndMocks.onDragOver?.({ active, over, delta: { x: 0, y: 40 } } as unknown as DragOverEvent)
     })
 
     // The chip has left Work and now sits ahead of "personal" in Personal —
@@ -357,7 +439,7 @@ describe('TagsHubPage', () => {
       dndMocks.onDragStart?.({ active } as unknown as DragStartEvent)
     })
     await act(async () => {
-      dndMocks.onDragOver?.({ active, over } as unknown as DragOverEvent)
+      dndMocks.onDragOver?.({ active, over, delta: { x: 0, y: 40 } } as unknown as DragOverEvent)
     })
     // Released without moving further. The preview has already put "meetings"
     // where "personal" used to be, so the chip now under the pointer is
@@ -430,7 +512,11 @@ describe('TagsHubPage', () => {
       dndMocks.onDragStart?.({ active } as unknown as DragStartEvent)
     })
     await act(async () => {
-      dndMocks.onDragOver?.({ active, over: overPersonal } as unknown as DragOverEvent)
+      dndMocks.onDragOver?.({
+        active,
+        over: overPersonal,
+        delta: { x: 0, y: 40 }
+      } as unknown as DragOverEvent)
     })
     // The pointer carried on past "personal" before release, so `over` is
     // "personal" — which now sits *behind* the previewed chip. Position within
