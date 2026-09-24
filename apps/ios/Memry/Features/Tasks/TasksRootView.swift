@@ -69,36 +69,41 @@ struct TasksRootView: View {
         .overlay(alignment: .bottom) { TasksToast(store: store) }
         .subtaskPrompts(store: store)
         .repeatPrompts(store: store)
-        .task { await store.load() }
+        .task {
+            await store.load()
+            await store.openOnDefaultView()
+        }
+        // A task ticked in a note, or opened from search, changed the vault
+        // while another tab showed: coming back re-reads it.
+        .onChange(of: router.selectedTab) { _, tab in
+            if tab == .tasks { Task { await store.refresh() } }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await store.sync() } }
         }
     }
 }
 
-/// Builds the store for an opened vault, or explains why tasks cannot load.
-struct TasksTabContent: View {
+/// Builds the vault's tasks store as soon as the vault opens, not when the
+/// Tasks tab is first shown (`TabView` builds tabs lazily): reminder
+/// notifications (TP053, FR-062) refill from this store at launch and on every
+/// foreground, whichever tab is showing.
+struct VaultTasksScope<Content: View>: View {
     let vault: Vault
     let secureStore: (any SecureStore)?
     let filler: (any VaultFilling)?
+    @ViewBuilder let content: (TasksStore?, UserFacingError?) -> Content
     @State private var store: TasksStore?
     @State private var failure: UserFacingError?
 
     var body: some View {
-        Group {
-            if let store {
-                TasksRootView(store: store)
-            } else if let failure {
-                NavigationStack {
-                    ErrorNotice(error: failure, code: nil)
-                        .padding(Tokens.Space.screenInline)
-                        .navigationTitle(TasksCopy.title)
+        content(store, failure)
+            .background {
+                if let store {
+                    Color.clear.reminderScheduling(store: store)
                 }
-            } else {
-                ProgressView(TasksCopy.loading)
             }
-        }
-        .task(id: vault.id()) { make() }
+            .task(id: vault.id()) { make() }
     }
 
     private func make() {
@@ -112,6 +117,26 @@ struct TasksTabContent: View {
             store = TasksStore(core: tasks, filler: filler, vaultId: vault.id())
         } catch {
             failure = ErrorMapping.userFacing(error)
+        }
+    }
+}
+
+/// The Tasks tab: the store's screens, or why there are none.
+struct TasksTabContent: View {
+    let store: TasksStore?
+    let failure: UserFacingError?
+
+    var body: some View {
+        if let store {
+            TasksRootView(store: store)
+        } else if let failure {
+            NavigationStack {
+                ErrorNotice(error: failure, code: nil)
+                    .padding(Tokens.Space.screenInline)
+                    .navigationTitle(TasksCopy.title)
+            }
+        } else {
+            ProgressView(TasksCopy.loading)
         }
     }
 }

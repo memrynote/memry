@@ -109,6 +109,12 @@ struct TasksBulkTests {
         _ = await vault.store.setDue(of: [first], date: "2026-02-02", time: "09:30")
         #expect(vault.store.items[first]?.dueTime == "09:30")
 
+        // A preset moves the day and keeps each task's own time (desktop).
+        _ = await vault.store.setDue(of: [first, second], preset: .tomorrow)
+        #expect(vault.store.items[first]?.dueDate == "2026-01-15")
+        #expect(vault.store.items[first]?.dueTime == "09:30")
+        #expect(vault.store.items[second]?.dueTime == nil)
+
         _ = await vault.store.setDue(of: [first, second], date: nil, time: "09:30")
         #expect(vault.store.items[first]?.dueDate == nil)
         #expect(vault.store.items[first]?.dueTime == nil)

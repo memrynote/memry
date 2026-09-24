@@ -108,14 +108,25 @@ extension TasksStore {
     }
 
     /// A preset day, resolved by the core's date parser against the local
-    /// clock. A preset writes no time, as the core writes date and time
-    /// together.
+    /// clock. Each task keeps its own time, as desktop's preset does: the core
+    /// writes date and time together, so tasks sharing a time go in one call,
+    /// and the calls are one undo.
     func setDue(of selection: Set<String>, preset: TaskBulkDuePreset) async -> Bool {
         guard let parsed = parseTaskDate(input: preset.phrase, now: localNow()) else {
             Log.core.error("a bulk due-date preset did not parse")
             return false
         }
-        return await setDue(of: selection, date: parsed.date, time: nil)
+        let tasks = selectedTasks(selection)
+        guard !tasks.isEmpty else { return false }
+        let date = parsed.date
+        let batches = Dictionary(grouping: tasks, by: \.dueTime).map { time, tasks in (time, tasks.map(\.id)) }
+        return await bulk(TasksCopy.bulkDueDateSet(tasks.count)) { core in
+            var merged: TaskChange?
+            for (time, ids) in batches {
+                merged = TasksStore.merge(merged, try core.bulkSetDue(ids: ids, date: date, time: time))
+            }
+            return TasksStore.merge(merged, nil)
+        }
     }
 
     /// Moves every selected task to `project`.

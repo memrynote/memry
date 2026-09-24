@@ -12,6 +12,9 @@ struct AddTaskSheet: View {
     var initialTitle: String = ""
     var parentId: String?
     var projectId: String?
+    /// A due date to start with (`YYYY-MM-DD`): "Add task for today" on the
+    /// Today tab's empty state.
+    var dueDate: String?
 
     @Environment(\.dismiss) private var dismiss
     @State private var draft = TaskDraft()
@@ -136,6 +139,7 @@ struct AddTaskSheet: View {
         guard !didStart else { return }
         didStart = true
         draft = store.newTaskDraft(title: initialTitle, parentId: parentId, projectId: projectId)
+        if let dueDate { draft.dueDate = dueDate }
         titleFocused = true
     }
 

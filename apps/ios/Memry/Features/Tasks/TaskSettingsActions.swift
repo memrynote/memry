@@ -82,12 +82,11 @@ extension TasksStore {
     /// once per store. Desktop `pages/tasks.tsx:211`: stored tab, else the
     /// preference, else `all`. The list calls this after the store loads.
     ///
-    /// "No view state" is read as the page state still being the untouched
-    /// default: the store does not say whether it restored a saved one.
+    /// A store that restored a saved view state keeps it (`restoredState`).
     func openOnDefaultView() async {
         guard scratch[Self.openingViewKey] == nil else { return }
         scratch[Self.openingViewKey] = "applied"
-        guard state == TasksViewState() else { return }
+        guard !restoredState else { return }
         if settings == nil { await loadTaskSettings() }
         guard let tab = Self.openingTab(for: state, defaultView: settings?.defaultView) else { return }
         await update { $0.tab = tab }

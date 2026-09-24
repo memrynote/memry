@@ -69,6 +69,9 @@ final class TasksStore {
     private(set) var failure: UserFacingError?
     private(set) var isLoading = false
     private(set) var isSyncing = false
+    /// Whether `state` came from a saved view state (desktop's
+    /// `tasks-view-state`), so the default-view preference must not replace it.
+    let restoredState: Bool
     /// The last change a toast may undo.
     var undoable: TasksUndo?
     /// A short confirmation the list shows (e.g. "Task completed!").
@@ -106,8 +109,10 @@ final class TasksStore {
         if let data = defaults.data(forKey: stateKey),
            let saved = try? JSONDecoder().decode(TasksViewState.self, from: data) {
             state = saved
+            restoredState = true
         } else {
             state = TasksViewState()
+            restoredState = false
         }
     }
 

@@ -20,6 +20,7 @@ struct TaskListScreen: View {
     @State private var selection: Set<String> = []
     @State private var showsFilters = false
     @State private var showsAddTask = false
+    @State private var addTaskDue: String?
     @State private var showsScopePicker = false
 
     var body: some View {
@@ -32,7 +33,7 @@ struct TaskListScreen: View {
             .taskKeyboardShortcuts(store: store, selection: $selection, visibleIds: store.listVisibleIds)
             .sheet(isPresented: $showsFilters) { TaskFilterSheet(store: store) }
             .sheet(isPresented: $showsAddTask) {
-                AddTaskSheet(store: store, projectId: store.state.projectId)
+                AddTaskSheet(store: store, projectId: store.state.projectId, dueDate: addTaskDue)
             }
             .sheet(isPresented: $showsScopePicker) { TaskListScopeSheet(store: store) }
             .onChange(of: editMode.isEditing) { _, isEditing in
@@ -46,7 +47,10 @@ struct TaskListScreen: View {
         if store.showsKanban {
             TaskKanbanBoard(store: store)
         } else {
-            TaskListBody(store: store, selection: $selection) { showsAddTask = true }
+            TaskListBody(store: store, selection: $selection) {
+                addTaskDue = emptyStateDue
+                showsAddTask = true
+            }
         }
     }
 
@@ -107,6 +111,7 @@ struct TaskListScreen: View {
             }
             filterButton
             Button {
+                addTaskDue = nil
                 showsAddTask = true
             } label: {
                 Image(systemName: "plus")
@@ -128,5 +133,16 @@ struct TaskListScreen: View {
         }
         .accessibilityValue(count > 0 ? "\(count) \(TasksCopy.activeFilterCount)" : "")
         .accessibilityIdentifier("tasks.filterButton")
+    }
+
+    /// The due date the empty state's "Add task for today/tomorrow" starts
+    /// with, resolved by the core's date parser against the local clock.
+    private var emptyStateDue: String? {
+        let phrase: String? = switch store.state.tab {
+        case .today: "today"
+        case .tomorrow: "tomorrow"
+        case .all, .next7, .archived: nil
+        }
+        return phrase.flatMap { parseTaskDate(input: $0, now: store.localNow())?.date }
     }
 }
