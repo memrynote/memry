@@ -515,6 +515,11 @@ export function NotePage({ noteId }: NotePageProps) {
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const pendingMarkdownRef = useRef<string | null>(null)
+  // The note whose save lifecycle is running: registered below, cleared when
+  // its cleanup has flushed. The editor's teardown flush reports its last edit
+  // after that cleanup (#1900), so an edit for a note that is no longer live
+  // must not land in the refs above, which now belong to the next note.
+  const liveNoteIdRef = useRef<string | null>(null)
 
   // ============================================================================
   // Sync lastSavedContent with note data from query
@@ -545,6 +550,7 @@ export function NotePage({ noteId }: NotePageProps) {
     if (!noteId) return
 
     const registryKey = `note-page:${noteId}`
+    liveNoteIdRef.current = noteId
 
     registerPendingSave(registryKey, async () => {
       const pending = pendingMarkdownRef.current
@@ -567,6 +573,7 @@ export function NotePage({ noteId }: NotePageProps) {
       }
 
       unregisterPendingSave(registryKey)
+      liveNoteIdRef.current = null
     }
   }, [noteId])
 
@@ -800,6 +807,17 @@ export function NotePage({ noteId }: NotePageProps) {
   const handleMarkdownChange = useCallback(
     (markdown: string) => {
       if (!noteId || !note) return
+
+      // A late edit from an editor torn down after this note's save lifecycle
+      // ended. Nothing is left to debounce it or flush it on quit, so it is
+      // saved now, to the note it was typed in.
+      if (liveNoteIdRef.current !== noteId) {
+        if (isDeleted) return
+        updateNoteRef.current({ id: noteId, content: markdown }).catch((err: unknown) => {
+          log.error('Failed to save note after its editor closed:', err)
+        })
+        return
+      }
 
       // Block saves if note was deleted
       if (isDeleted) {
