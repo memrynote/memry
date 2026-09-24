@@ -743,6 +743,20 @@ export const CalendarChannels = {
     REFRESH_PROVIDER: 'calendar:refresh-provider',
     /** M2: copy an external Google event into an editable Memry event */
     PROMOTE_EXTERNAL_EVENT: 'calendar:promote-external-event',
+    /** #1392: every provider this platform offers, with its capabilities */
+    LIST_PROVIDERS: 'calendar:list-providers',
+    /** #1392: a provider's writable calendars for target/default selection */
+    LIST_PROVIDER_CALENDARS: 'calendar:list-provider-calendars',
+    /** #1392: persist a provider calendar as the default write target */
+    SET_DEFAULT_PROVIDER_CALENDAR: 'calendar:set-default-provider-calendar',
+    /** #1392: re-run sync for one calendar source of any provider */
+    RETRY_SOURCE_SYNC: 'calendar:retry-source-sync',
+    // ------------------------------------------------------------------------
+    // Compatibility surface: the provider-specific channels below are kept as
+    // permanent aliases of the generic ones above (#1392). During a partial
+    // update an older renderer can talk to a newer main process, so removing
+    // or changing any of them breaks the app in that window. Never delete them.
+    // ------------------------------------------------------------------------
     /** M2: list the user's Google calendars for target/default selection */
     LIST_GOOGLE_CALENDARS: 'calendar:list-google-calendars',
     /** M2: persist the onboarding choice for default target Google calendar */

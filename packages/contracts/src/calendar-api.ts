@@ -104,9 +104,47 @@ export const UpdateCalendarSourceSelectionSchema = z.object({
   isSelected: z.boolean()
 })
 
+/**
+ * What a non-OAuth provider needs to connect (#1392). OAuth providers send no
+ * connection payload; the flow runs in main.
+ */
+export const CalendarProviderConnectionSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('url'),
+    url: z.string().trim().min(1).max(4096),
+    title: z.string().trim().max(200).optional()
+  }),
+  z.object({
+    kind: z.literal('basic'),
+    serverUrl: z.string().trim().min(1).max(4096),
+    username: z.string().trim().min(1).max(320),
+    password: z.string().min(1).max(1024),
+    /** Server preset the user picked, for copy and telemetry only. */
+    preset: z.string().trim().max(64).optional(),
+    /** Remote calendar ids to show; omitted = the provider's default selection. */
+    selectedCalendarIds: z.array(z.string().min(1).max(4096)).max(500).optional()
+  })
+])
+
 export const CalendarProviderRequestSchema = z.object({
   provider: z.string().min(1),
-  accountId: z.string().min(1).optional()
+  accountId: z.string().min(1).optional(),
+  /** #1392: one source of a provider, for providers whose sources have no account (ICS). */
+  sourceId: z.string().min(1).optional(),
+  /** #1392: additive. Older callers send `{ provider }` only. */
+  connection: CalendarProviderConnectionSchema.optional(),
+  /** #1392: attach `capabilities` to the returned status. */
+  includeCapabilities: z.boolean().optional()
+})
+
+export const ListProviderCalendarsSchema = z.object({
+  provider: z.string().min(1)
+})
+
+export const SetDefaultProviderCalendarSchema = z.object({
+  provider: z.string().min(1),
+  calendarId: z.string().nullable(),
+  markOnboardingComplete: z.boolean().default(true)
 })
 
 export const RetryCalendarSourceSyncSchema = z.object({
@@ -229,6 +267,9 @@ export type GetCalendarRangeInput = z.infer<typeof GetCalendarRangeSchema>
 export type ListCalendarSourcesInput = z.infer<typeof ListCalendarSourcesSchema>
 export type UpdateCalendarSourceSelectionInput = z.infer<typeof UpdateCalendarSourceSelectionSchema>
 export type CalendarProviderRequest = z.infer<typeof CalendarProviderRequestSchema>
+export type CalendarProviderConnection = z.infer<typeof CalendarProviderConnectionSchema>
+export type ListProviderCalendarsInput = z.infer<typeof ListProviderCalendarsSchema>
+export type SetDefaultProviderCalendarInput = z.infer<typeof SetDefaultProviderCalendarSchema>
 export type PromoteExternalEventInput = z.infer<typeof PromoteExternalEventSchema>
 export type ListGoogleCalendarsInput = z.infer<typeof ListGoogleCalendarsSchema>
 export type SetDefaultGoogleCalendarInput = z.infer<typeof SetDefaultGoogleCalendarSchema>
@@ -402,6 +443,8 @@ export interface CalendarProviderAccountStatus {
 
 export interface CalendarProviderStatus {
   provider: string
+  /** #1392: optional so an older renderer that ignores it keeps working. */
+  capabilities?: CalendarProviderCapabilities
   connected: boolean
   hasLocalAuth: boolean
   account: Pick<CalendarSourceRecord, 'id' | 'title'> | null
@@ -469,6 +512,19 @@ export interface CalendarProviderMutationResponse {
   success: boolean
   status: CalendarProviderStatus
   error?: string
+  /** #1392: a code the renderer localizes (an `IcsFeedErrorCode`, a CalDAV connect failure). */
+  errorCode?: string
+  /** #1392: the source a URL connect created or a per-source refresh touched. */
+  source?: CalendarSourceRecord | null
+}
+
+export interface CalendarProviderDescriptor {
+  id: string
+  capabilities: CalendarProviderCapabilities
+}
+
+export interface ListCalendarProvidersResponse {
+  providers: CalendarProviderDescriptor[]
 }
 
 // ============================================================================
@@ -489,6 +545,15 @@ export interface ListGoogleCalendarsResponse {
   currentDefaultId: string | null
 }
 
+export type ProviderCalendarDescriptorRecord = GoogleCalendarDescriptorRecord
+
+export interface ListProviderCalendarsResponse {
+  provider: string
+  calendars: ProviderCalendarDescriptorRecord[]
+  primary: ProviderCalendarDescriptorRecord | null
+  currentDefaultId: string | null
+}
+
 export interface PromoteExternalEventResponse {
   success: boolean
   eventId: string | null
@@ -499,3 +564,5 @@ export interface SetDefaultGoogleCalendarResponse {
   success: boolean
   error?: string
 }
+
+export type SetDefaultProviderCalendarResponse = SetDefaultGoogleCalendarResponse
