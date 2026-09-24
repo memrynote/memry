@@ -1,9 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import {
   createDateMentionContent,
   createDateMentionPillDom,
-  formatDateMentionLabel
+  formatDateMentionLabel,
+  setDateMentionPrefs
 } from './date-mention'
+import { buildNowMentionValue } from './date-suggestions'
 
 // Wednesday. Local-time ISO (no trailing Z) keeps the calendar-day math
 // stable regardless of the machine's timezone.
@@ -166,5 +168,48 @@ describe('createDateMentionPillDom', () => {
     // Alarm clock SVG has a <circle>; the dropped calendar had a <rect>.
     expect(icon?.querySelector('circle')).not.toBeNull()
     expect(icon?.querySelector('rect')).toBeNull()
+  })
+})
+
+// Kept last: setDateMentionPrefs sets module state the earlier tests assume unset.
+describe('@now pill label', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function nowPill() {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-17T01:24:37'))
+    return { anchorId: 'dm_now', ...buildNowMentionValue() }
+  }
+
+  function pillLabel(value: ReturnType<typeof nowPill>): string | null {
+    return createDateMentionPillDom(value).querySelector('.date-mention-label')?.textContent ?? null
+  }
+
+  it('reads "Today HH:mm" under the 24h clock setting', () => {
+    const value = nowPill()
+    setDateMentionPrefs({ clockFormat: '24h' })
+    expect(pillLabel(value)).toBe('Today 01:24')
+  })
+
+  it('reads the 12h equivalent under the 12h clock setting', () => {
+    const value = nowPill()
+    setDateMentionPrefs({ clockFormat: '12h' })
+    expect(pillLabel(value)).toBe('Today 1:24 AM')
+  })
+
+  it('moves to the relative, then absolute, day label on later days like any timed pill', () => {
+    const { dateISO, hasTime } = nowPill()
+    const opts = { clockFormat: '24h' as const, weekStartsOn: 1 as const }
+    expect(
+      formatDateMentionLabel(dateISO, hasTime, { ...opts, now: new Date('2026-06-18T09:00:00') })
+    ).toBe('Yesterday 01:24')
+    expect(
+      formatDateMentionLabel(dateISO, hasTime, { ...opts, now: new Date('2026-06-23T09:00:00') })
+    ).toBe('Last Wednesday 01:24')
+    expect(
+      formatDateMentionLabel(dateISO, hasTime, { ...opts, now: new Date('2026-07-15T09:00:00') })
+    ).toBe('17 Jun, 2026 01:24')
   })
 })

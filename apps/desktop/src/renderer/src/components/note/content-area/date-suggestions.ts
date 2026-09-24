@@ -101,6 +101,32 @@ export function buildDateSuggestions(query: string, now: Date = new Date()): Dat
   }
 }
 
+/**
+ * `@now` and its partial `@no`, case-insensitive. A lone "n" is left to the
+ * existing "next …" / "November" completions. The parser has no "now" word, so
+ * this is matched here rather than parsed.
+ */
+export function isNowQuery(query: string): boolean {
+  const q = query.toLowerCase()
+  return q.length >= 2 && 'now'.startsWith(q)
+}
+
+/**
+ * Today at the current local minute, as a timed date pill. Call it at insert
+ * time so the pill carries the moment of insertion, not of menu open.
+ */
+export function buildNowMentionValue(now: Date = new Date()): DateMentionValue {
+  const at = new Date(now)
+  at.setSeconds(0, 0)
+  return {
+    dateISO: at.toISOString(),
+    hasTime: true,
+    dateFormat: 'relative',
+    remind: 'none',
+    timeFormat: 'system'
+  }
+}
+
 // Leading tokens that signal "a date is being typed" but may not parse on their
 // own yet (connectors that need a completion, plus partial weekday/month words).
 const DATE_KEYWORDS = [

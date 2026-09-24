@@ -2,11 +2,12 @@
  * Mention suggestion menu for BlockNote (`@` trigger).
  *
  * Dual-intent quick-insert: when the query parses as a date, a "Date" group
- * (a plain-date row + a "Remind me — <subtitle>" row) is shown on top; the
- * most-recently-modified notes follow and insert as wiki links, then a small
- * "Canvases" group. A "Show more" footer reveals the full note list. The footer
- * is a plain button — NOT a menu item — because selecting any item closes the
- * menu and clears the query.
+ * (a plain-date row + a "Remind me — <subtitle>" row) is shown on top; `@now`
+ * (or `@no`) leads that group with a "Now" row that inserts today at the current
+ * time. The most-recently-modified notes follow and insert as wiki links, then a
+ * small "Canvases" group. A "Show more" footer reveals the full note list. The
+ * footer is a plain button — NOT a menu item — because selecting any item
+ * closes the menu and clears the query.
  *
  * A canvas can land two ways (a link, or the live board embedded as a
  * whiteboard block), so picking one opens `CanvasChoiceMenu` at the caret
@@ -22,6 +23,8 @@ import type { DateMentionValue } from './date-mention-popover'
 import { InlineChoiceMenu } from './inline-choice-menu'
 
 export type MentionSuggestionItem =
+  // Carries no value: the time is read when it is picked, not when the menu opens.
+  | { kind: 'now' }
   | { kind: 'date'; label: string; value: DateMentionValue }
   | { kind: 'remind'; subtitle: string; value: DateMentionValue }
   | { kind: 'date-hint' }
@@ -107,7 +110,9 @@ export function MentionMenu({
     )
   }
 
-  const hasDateGroup = items.some((item) => item.kind === 'date' || item.kind === 'remind')
+  const hasDateGroup = items.some(
+    (item) => item.kind === 'now' || item.kind === 'date' || item.kind === 'remind'
+  )
   const firstNoteIndex = items.findIndex((item) => item.kind === 'note')
   const firstCanvasIndex = items.findIndex((item) => item.kind === 'canvas')
 
@@ -141,6 +146,22 @@ export function MentionMenu({
                 <Clock className="size-3.5 shrink-0" />
                 <span>{t('menus.mention.dateHint')}</span>
               </div>
+            )
+          }
+
+          if (item.kind === 'now') {
+            return (
+              <button
+                key="now"
+                type="button"
+                className={itemClassName(isSelected)}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => onItemClick?.(item)}
+              >
+                <Clock className="size-3.5 shrink-0" />
+                <span>{t('menus.mention.now')}</span>
+              </button>
             )
           }
 
