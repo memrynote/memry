@@ -29,6 +29,13 @@ const mocks = vi.hoisted(() => ({
   externalUpdateCount: 0,
   contentAreaMounts: 0,
   contentAreaProps: null as any,
+  heatmapYears: [] as number[],
+  heatmapByYear: {
+    2025: [{ date: '2025-12-21', level: 2, characterCount: 300 }],
+    2026: [{ date: '2026-01-15', level: 2, characterCount: 7 }]
+  } as Record<number, Array<{ date: string; level: number; characterCount: number }>>,
+  noHeatmap: [] as Array<{ date: string; level: number; characterCount: number }>,
+  yearStats: [{ month: 1, entryCount: 1, totalCharacterCount: 7, averageLevel: 2 }],
   entry: {
     id: 'j2026-01-15',
     date: '2026-01-15',
@@ -103,13 +110,14 @@ vi.mock('@/hooks/use-journal', () => ({
     retrySave: mocks.retrySave,
     dismissSaveError: mocks.dismissSaveError
   }),
-  useJournalHeatmap: () => ({ data: [{ date: '2026-01-15', level: 2 }] }),
+  useJournalHeatmap: (year: number) => {
+    mocks.heatmapYears.push(year)
+    return { data: mocks.heatmapByYear[year] ?? mocks.noHeatmap }
+  },
   useMonthEntries: () => ({
     data: [{ date: '2026-01-15', preview: 'Today', characterCount: 7 }]
   }),
-  useYearStats: () => ({
-    data: [{ month: 1, entryCount: 1, totalCharacterCount: 7, averageLevel: 2 }]
-  })
+  useYearStats: () => ({ data: mocks.yearStats })
 }))
 
 vi.mock('@/hooks/use-notes-query', () => ({
@@ -257,15 +265,21 @@ vi.mock('@/components/journal', () => ({
       {wordCount}:{characterCount}
     </div>
   ),
-  JournalMonthView: ({ year, month, onDayClick }: any) => (
+  JournalMonthView: ({ year, month, heatmapData, onDayClick }: any) => (
     <div data-testid="month-view">
       {year}:{month}
+      <span data-testid="month-heatmap">
+        {heatmapData.map((e: { date: string }) => e.date).join(',')}
+      </span>
       <button onClick={() => onDayClick('2026-01-20')}>open day</button>
     </div>
   ),
-  JournalYearView: ({ year, onMonthClick }: any) => (
+  JournalYearView: ({ year, monthStats, onMonthClick }: any) => (
     <div data-testid="year-view">
       {year}
+      <span data-testid="year-dots">
+        {monthStats.map((s: { activityDots: number[] }) => s.activityDots.join('')).join('|')}
+      </span>
       <button onClick={() => onMonthClick(2)}>open month</button>
     </div>
   )
@@ -410,6 +424,8 @@ describe('JournalPage', () => {
     mocks.entryError = null
     mocks.externalUpdateCount = 0
     mocks.contentAreaMounts = 0
+    mocks.heatmapYears = []
+    mocks.yearStats = [{ month: 1, entryCount: 1, totalCharacterCount: 7, averageLevel: 2 }]
     mocks.entry = { ...mocks.entry, id: 'j2026-01-15', date: '2026-01-15', content: '# Today' }
     mocks.resolveWikiLink.mockResolvedValue({ type: 'note', id: 'note-2', title: 'Linked Note' })
     vi.stubGlobal('localStorage', {
@@ -626,6 +642,30 @@ describe('JournalPage', () => {
     expect(localStorage.setItem).toHaveBeenCalledWith('memry_journal_full_width', 'true')
     expect(mocks.toggleBookmark).toHaveBeenCalled()
     expect(mocks.openSettingsModal).toHaveBeenCalledWith('journal')
+  })
+
+  it("keys the month view heatmap to the viewed month's year, not the selected day's", () => {
+    // Selected day is 2026-01-15; month navigation never moves it.
+    render(<JournalPage />)
+
+    fireEvent.click(screen.getByText('month'))
+    expect(screen.getByTestId('month-heatmap')).toHaveTextContent('2026-01-15')
+
+    fireEvent.click(screen.getByText('header prev'))
+    expect(screen.getByTestId('month-view')).toHaveTextContent('2025:11')
+    expect(screen.getByTestId('month-heatmap')).toHaveTextContent('2025-12-21')
+    expect(mocks.heatmapYears.at(-1)).toBe(2025)
+  })
+
+  it('shows activity in the year view for a month whose entries have no counted characters', () => {
+    // September has one entry whose characterCount is 0/NULL -> averageLevel 0.
+    mocks.yearStats = [{ month: 9, entryCount: 1, totalCharacterCount: 0, averageLevel: 0 }]
+    render(<JournalPage />)
+
+    fireEvent.click(screen.getByText('year'))
+    const monthDots = screen.getByTestId('year-dots').textContent?.split('|')
+    expect(monthDots?.[8]).toBe('11111')
+    expect(monthDots?.[7]).toBe('00000')
   })
 
   it('navigates day view with arrow keys after BlockNote loses focus', () => {
