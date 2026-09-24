@@ -12,7 +12,14 @@ private struct ProjectDeleteDialog: ViewModifier {
     @Binding var project: ProjectItem?
     let store: TasksStore
     let onDeleted: () -> Void
-    @State private var taskCount = 0
+
+    /// Counted from the tasks the store already holds, not fetched: a count
+    /// that arrived after the dialog opened showed a project with tasks as
+    /// empty, and its one button would have deleted every task in it.
+    private var taskCount: Int {
+        guard let id = project?.id else { return 0 }
+        return store.items.values.filter { $0.projectId == id }.count
+    }
 
     func body(content: Content) -> some View {
         content
@@ -34,11 +41,6 @@ private struct ProjectDeleteDialog: ViewModifier {
                 Button(Copy.cancel, role: .cancel) {}
             } message: { _ in
                 Text(message)
-            }
-            .task(id: project?.id) {
-                guard let id = project?.id else { return }
-                let stats = await store.projectStatsById()[id]
-                taskCount = Int(stats?.taskCount ?? 0)
             }
     }
 
