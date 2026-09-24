@@ -530,10 +530,12 @@ of its flows via XcodeBuildMCP with screenshots saved to
 
 ## Phase 6: wrap-up (serial)
 
-- [ ] TP090 `pnpm docs:impact --base <branch base> --strict`; update
+- [x] TP090 `pnpm docs:impact --base <branch base> --strict`; update
       `apps/docs/src/**` where it reports missing docs; `pnpm docs:build`.
-- [ ] TP091 Update `apps/ios/AGENTS.md` if a new rule came out of this work,
+      Evidence: `pnpm docs:impact --base bfe71ac5d --strict` first reported missing-docs (desktop task logic + contracts vectors); added `apps/docs/src/user-guide/tasks/on-iphone.md` (views, capture tokens, row actions, selection/drag, filters, projects, reminders and the 60-notification window, tasks in notes, settings, differences from desktop) and its sidebar entry; `pnpm docs:build` passed; impact re-run: "docs changed on this branch", exit 0 (4215aa41b).
+- [x] TP091 Update `apps/ios/AGENTS.md` if a new rule came out of this work,
       and `specs/002-native-foundation-ios/compliance.md` for FR-057..FR-061.
+      Evidence: `apps/ios/AGENTS.md`: new rules from this run (Unit plan wipes the simulator keychain; TasksUITests precondition; notification delegate completion-handler methods on the main actor; a reordering List must not own a multi-selection; observe scenePhase at vault scope; no note/reminder text in notification bodies; sign server-checked data with the registered device id; writes outside the Tasks tab call `requestVaultSync`). `specs/002-native-foundation-ios/compliance.md` §9: FR-057..FR-062 status with evidence ids (FR-057/FR-060 superseded by D4/D2; FR-058/059/061/062 met); pointer added to specs/002 tasks.md US7.
 - [ ] TP092 Review pass by a fable-5-1 subagent over the full branch diff:
       compat (D7), no `!`/`try!` outside tests, no raw error strings, logical
       layout. Fix what it finds.

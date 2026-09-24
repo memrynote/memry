@@ -504,6 +504,11 @@ notifications that fire with the app closed.
 instance; recurrence advances, desktop reflects it, and the reminder fires on time
 with the app closed.
 
+> **Spec 004 (iOS tasks parity) delivered the task half of this story** with a
+> different split: the Tasks tab, task editing, note checkbox ↔ task, writable
+> projects (superseding FR-060) and reminder scheduling in the shell. The items
+> below are left as written; their FR status is in `compliance.md` §9.
+
 - [ ] T196 [US7] Implement occurrence expansion in `crates/memry-core/src/domain/reminders.rs`: recurrence expanded to concrete occurrences **in Rust**, never in the shell, with stable ids `reminder.<syncItemId>.<occurrenceEpoch>` (FR-037, research R12)
 - [ ] T197 [US7] Implement the reconcile pass in `crates/memry-core/src/domain/reminders.rs` over `local_notifications`: a rolling window budgeted at 56 of the platform's 64 slots, recomputed from already-synced data, with the pending count exposed to the shell (FR-062, SC-011)
 - [ ] T198 [US7] Implement `apps/ios/Memry/Seams/Notifications.swift`: `UNCalendarNotificationTrigger` per occurrence, generic body text by default because the system stores notification bodies in plaintext, and authorization requested **after** the first reminder is created rather than at launch (research R12)
