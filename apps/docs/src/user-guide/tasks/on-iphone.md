@@ -51,7 +51,7 @@ Dragging works in selection mode, from the handle on the right of each row:
 - Into another due-date group (Today, Tomorrow, This Week, Later, No Due Date), it reschedules the task and keeps its time.
 - If the row you drag is selected, the whole selection moves.
 
-Outside selection mode, a long press opens the Move menu instead of starting a drag. In Kanban, drag a card onto a column name in the strip to move it there.
+Outside selection mode, a long press opens the Move menu instead of starting a drag. In Kanban, drag a card onto a column name in the strip to move it there. Overdue takes no cards: a date can't be moved into the past from the board.
 
 ## Filters and saved filters
 
