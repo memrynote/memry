@@ -99,7 +99,6 @@ export function SidebarNav({
           className={cn(
             'flex flex-1 min-w-0 cursor-pointer items-center gap-1.5 px-2 py-1 h-6 shrink-0',
             'text-[11px] leading-3.5 font-medium tracking-[0.04em]',
-            "font-['DM_Sans',system-ui,sans-serif]",
             'text-sidebar-section-heading',
             'focus-visible:outline-none'
           )}

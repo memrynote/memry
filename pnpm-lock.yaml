@@ -254,9 +254,6 @@ importers:
       '@fontsource-variable/crimson-pro':
         specifier: ^5.2.8
         version: 5.2.8
-      '@fontsource-variable/dm-sans':
-        specifier: ^5.2.8
-        version: 5.2.8
       '@fontsource-variable/geist':
         specifier: ^5.2.9
         version: 5.2.9
@@ -3053,9 +3050,6 @@ packages:
 
   '@fontsource-variable/crimson-pro@5.2.8':
     resolution: {integrity: sha512-En4uvz5Wb9gZFi/EVPA9jfC7Bh5NLYwOGc2KhUIT5mPSKrOSCaI1IyvQ3SbUXeHJ04MhWJiRLJSuU9CmyDcOIA==}
-
-  '@fontsource-variable/dm-sans@5.2.8':
-    resolution: {integrity: sha512-AxkvMTvNWgfrmlyjiV05vlHYJa+nRQCf1EfvIrQAPBpFJW0O9VTz7oAFr9S3lvbWdmnFoBk7yFqQL86u64nl2g==}
 
   '@fontsource-variable/geist@5.2.9':
     resolution: {integrity: sha512-TP+QSBG3wxKGPE33CbMy/L0Nu3qvJ6Fy81Yc4LnQ95xH+i+cfEp8fyU8/kfV14YwszxIFPhnoMTbjL71waVpyQ==}
@@ -17160,8 +17154,6 @@ snapshots:
   '@floating-ui/utils@0.2.12': {}
 
   '@fontsource-variable/crimson-pro@5.2.8': {}
-
-  '@fontsource-variable/dm-sans@5.2.8': {}
 
   '@fontsource-variable/geist@5.2.9': {}
 
