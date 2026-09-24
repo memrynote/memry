@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { SyncEngine, SYNC_LOCK_STALE_MS, PERIODIC_PULL_MAX_QUIET_MS } from './engine'
 import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
+import { SYNC_STATE_KEYS } from './engine/sync-context'
 import {
   createMockDeps,
   createMockNetwork,
@@ -323,6 +324,130 @@ describe('SyncEngine', () => {
       expect(getServerMock).toHaveBeenCalled()
       await engine.stop()
       vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given changes_available wakes #when they arrive in bursts or behind the cursor', () => {
+    const PULL_DURATION_MS = 100
+
+    const wake = (cursor?: number): SyncSocketEvent => ({
+      kind: 'changes_available',
+      ...(cursor === undefined ? {} : { cursor })
+    })
+
+    // Every pull takes PULL_DURATION_MS of fake time, so a wake can land while
+    // one is running. The pull itself is stubbed: these tests count pulls, and
+    // the stub never moves LAST_CURSOR, so only the test decides the cursor.
+    const startEngineWithTimedPull = async (): Promise<{
+      engine: SyncEngine
+      ws: ReturnType<typeof createMockWs>
+      pull: ReturnType<typeof vi.spyOn>
+    }> => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      const ws = createMockWs()
+      const engine = new SyncEngine(createMockDeps(getDb(), { ws }))
+      vi.spyOn(engine, 'fullSync').mockResolvedValue()
+      await engine.start()
+      const pull = vi
+        .spyOn(engine, 'pull')
+        .mockImplementation(
+          () => new Promise<boolean>((resolve) => setTimeout(() => resolve(true), PULL_DURATION_MS))
+        )
+      return { engine, ws, pull }
+    }
+
+    const stopEngine = async (engine: SyncEngine): Promise<void> => {
+      await engine.stop()
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
+
+    // #2290: ten wakes in 50 ms used to queue ten serial pulls.
+    it('#then ten wakes within 50 ms cost at most two pulls', async () => {
+      vi.useFakeTimers()
+      const { engine, ws, pull } = await startEngineWithTimedPull()
+
+      for (let cursor = 1; cursor <= 10; cursor++) {
+        ws.emit('message', wake(cursor))
+        await vi.advanceTimersByTimeAsync(5)
+      }
+      await vi.advanceTimersByTimeAsync(PULL_DURATION_MS * 12)
+
+      expect(pull.mock.calls.length).toBeGreaterThanOrEqual(1)
+      expect(pull.mock.calls.length).toBeLessThanOrEqual(2)
+      await stopEngine(engine)
+    })
+
+    // #2290: a wake at or below LAST_CURSOR announces rows this device has
+    // already applied (cursors are commit-ordered, #2282).
+    it('#then a wake whose cursor is at or below LAST_CURSOR pulls nothing', async () => {
+      vi.useFakeTimers()
+      const { engine, ws, pull } = await startEngineWithTimedPull()
+      engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '42')
+
+      ws.emit('message', wake(42))
+      ws.emit('message', wake(7))
+      await vi.advanceTimersByTimeAsync(PULL_DURATION_MS * 3)
+
+      expect(pull).not.toHaveBeenCalled()
+      // The filter only skips: LAST_CURSOR is still the pull's to move.
+      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('42')
+
+      ws.emit('message', wake(43))
+      ws.emit('message', wake())
+      await vi.advanceTimersByTimeAsync(PULL_DURATION_MS * 3)
+
+      expect(pull.mock.calls.length).toBeGreaterThanOrEqual(1)
+      await stopEngine(engine)
+    })
+
+    // #2290: wakes during a running pull may announce rows that pull's page
+    // already missed, so exactly one pull must follow it — never zero, never one
+    // per wake.
+    it('#then wakes during a running pull queue exactly one follow-up pull', async () => {
+      vi.useFakeTimers()
+      const { engine, ws, pull } = await startEngineWithTimedPull()
+
+      ws.emit('message', wake(1))
+      await vi.advanceTimersByTimeAsync(PULL_DURATION_MS / 2)
+      expect(pull).toHaveBeenCalledTimes(1)
+
+      ws.emit('message', wake(2))
+      ws.emit('message', wake(3))
+      ws.emit('message', wake(4))
+      await vi.advanceTimersByTimeAsync(PULL_DURATION_MS / 2 - 1)
+      expect(pull).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(PULL_DURATION_MS * 5)
+      expect(pull).toHaveBeenCalledTimes(2)
+      await stopEngine(engine)
+    })
+
+    // #2290: a follow-up queued behind a sync that never settles must not keep
+    // swallowing wakes once the stale-lock watchdog abandons that sync.
+    it('#then a wake after the stale-lock watchdog fires schedules a pull again', async () => {
+      vi.useFakeTimers()
+      const { engine, ws, pull } = await startEngineWithTimedPull()
+      pull.mockImplementationOnce(() => new Promise<boolean>(() => {}))
+
+      ws.emit('message', wake(1))
+      ws.emit('message', wake(2))
+      await vi.advanceTimersByTimeAsync(PULL_DURATION_MS)
+      expect(pull).toHaveBeenCalledTimes(1)
+
+      engine['ctx'].syncing = true
+      engine['syncLockAcquiredAt'] = Date.now() - SYNC_LOCK_STALE_MS - 1
+      engine['recoverStaleSyncLock']()
+
+      ws.emit('message', wake(3))
+      await vi.advanceTimersByTimeAsync(PULL_DURATION_MS * 3)
+      expect(pull).toHaveBeenCalledTimes(2)
+      await stopEngine(engine)
     })
   })
 

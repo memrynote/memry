@@ -305,6 +305,17 @@ than immediately.
 still runs its normal pull; **a client MUST NOT use the broadcast's `cursor` as
 its own cursor** (chapter 05 §5.11).
 
+A client MAY drop a `changes_available` whose `cursor` is at or below its own
+applied cursor without pulling. This is a skip filter, not cursor adoption, and
+it is exact only because the server assigns cursors in commit order (chapter 05
+§5.5, #2282) and the pull cursor moves only after apply (§5.11): every row at or
+below the applied cursor is already on the device. A broadcast without a
+`cursor` MUST still be treated as a wake. The desktop also coalesces wakes: one
+that arrives while a wake-driven pull is queued adds nothing, and any number
+that arrive while a pull runs queue exactly one trailing pull
+(`apps/desktop/src/main/sync/engine.ts` `scheduleWakePull`, #2290). The periodic
+pull stays the fallback for a missed broadcast.
+
 **A device is excluded from its own broadcast** by `excludeDeviceId`
 (`apps/sync-server/src/durable-objects/user-sync-state.ts:188`), and a broadcast
 carrying a `vaultId` reaches only sockets attached to that vault (`:189`).
