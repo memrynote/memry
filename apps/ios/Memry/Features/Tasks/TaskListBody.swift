@@ -5,11 +5,11 @@ import SwiftUI
 // flat list), subtasks one level in under their parents, the Done section
 // last, and Today's progress on top.
 //
-// **Drag.** Each section's `onMove` reorders inside that section and writes
-// the order (TaskListOrders + positions). A row also offers its ids to drag
-// out (`itemProvider`, which leaves the List's own reordering intact), and a
-// due-date group's header takes a drop and reschedules (`handleSectionDrop`).
-// In edit mode, dragging a selected row moves the whole selected set.
+// **Drag.** One `onMove` over the whole list (headers are rows, see
+// `TaskListFlatItem`): a move inside a group reorders it and writes the order
+// (TaskListOrders + positions); a move into another due-date group reschedules
+// (`handleSectionDrop`). In edit mode, dragging a selected row moves the whole
+// selected set. A header also takes drops from outside the List.
 
 struct TaskListBody: View {
     let store: TasksStore
@@ -18,18 +18,14 @@ struct TaskListBody: View {
 
     @Environment(\.editMode) private var editMode
 
-    /// Selection only exists in edit mode: outside it a tap opens the task,
-    /// and a bound selection would keep the tapped row highlighted and carry
-    /// it into the next drag or Select.
+    /// Selection only exists in edit mode. The page owns it, not the List: a
+    /// List that holds a multi-selection turns a drag into a drag session and
+    /// never calls `onMove`, so moving a selected set would do nothing.
     private var isEditing: Bool { editMode?.wrappedValue.isEditing == true }
-
-    private var listSelection: Binding<Set<String>> {
-        isEditing ? $selection : .constant([])
-    }
 
     var body: some View {
         let sections = store.listSections()
-        List(selection: listSelection) {
+        List {
             if let progress = store.todayProgress {
                 TaskTodayProgress(done: progress.done, total: progress.total)
                     .listRowSeparator(.hidden)
@@ -43,9 +39,7 @@ struct TaskListBody: View {
                 .listRowSeparator(.hidden)
                 .listRowBackground(Tokens.Canvas.background.color)
             }
-            ForEach(sections) { section in
-                listSection(section)
-            }
+            rows(sections)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -54,34 +48,38 @@ struct TaskListBody: View {
         .accessibilityIdentifier("tasks.list")
     }
 
-    @ViewBuilder
-    private func listSection(_ section: TaskListSection) -> some View {
-        if section.title == nil {
-            Section { rows(section) }
-        } else {
-            Section {
-                rows(section)
-            } header: {
-                TaskListGroupHeader(store: store, section: section)
-            }
-        }
-    }
-
-    private func rows(_ section: TaskListSection) -> some View {
-        ForEach(section.rows) { row in
-            if let task = store.items[row.id] {
-                TaskRowView(task: task, store: store, depth: row.depth)
-                    .tag(row.id)
-                    .moveDisabled(row.depth > 0)
-                    .itemProvider {
-                        TaskDragPayload.itemProvider(store.dragIds(for: row.id, selection: isEditing ? selection : []))
-                    }
-                    .modifier(TaskRowMoveActions(store: store, section: section, row: row))
+    private func rows(_ sections: [TaskListSection]) -> some View {
+        let items = TaskListFlatItem.items(sections)
+        return ForEach(items) { item in
+            if let row = item.row {
+                if let task = store.items[row.id] {
+                    TaskRowView(task: task, store: store, depth: row.depth)
+                        .tag(row.id)
+                        .moveDisabled(row.depth > 0)
+                        .modifier(TaskRowSelecting(isEditing: isEditing, isSelected: selection.contains(row.id)) {
+                            if selection.contains(row.id) { selection.remove(row.id) } else { selection.insert(row.id) }
+                        })
+                        .modifier(TaskRowMoveActions(store: store, section: sections[item.section], row: row))
+                }
+            } else {
+                TaskListGroupHeader(store: store, section: sections[item.section])
+                    .moveDisabled(true)
+                    .selectionDisabled()
+                    .listRowSeparator(.hidden)
             }
         }
         .onMove { source, destination in
             let selected = isEditing ? selection : []
-            Task { await store.moveRows(in: section, from: source, to: destination, selection: selected) }
+            switch TaskListMove.resolve(items, sections: sections, from: source, to: destination) {
+            case let .reorder(index, from, to):
+                Task { await store.moveRows(in: sections[index], from: from, to: to, selection: selected) }
+            case let .reschedule(index, ids):
+                guard let bucket = sections[index].dropBucket, let first = ids.first else { return }
+                let moving = selected.contains(first) ? store.dragIds(for: first, selection: selected) : ids
+                Task { await store.reschedule(moving, to: bucket) }
+            case .none:
+                break
+            }
         }
     }
 }
@@ -184,6 +182,32 @@ private struct TaskListDropTarget: ViewModifier {
                 Task { await store.reschedule(ids, to: bucket) }
                 return true
             } isTargeted: { isTargeted = $0 }
+        } else {
+            content
+        }
+    }
+}
+
+/// Edit mode's selection mark and tap, drawn by the page because the List
+/// does not own the selection (see `TaskListBody.isEditing`).
+private struct TaskRowSelecting: ViewModifier {
+    let isEditing: Bool
+    let isSelected: Bool
+    let toggle: () -> Void
+
+    func body(content: Content) -> some View {
+        if isEditing {
+            HStack(spacing: Tokens.Space.small) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(Tokens.Typography.body.font)
+                    .foregroundStyle(isSelected ? Tokens.Interaction.actionFill.color : Tokens.Text.tertiary.color)
+                    .accessibilityHidden(true)
+                content.allowsHitTesting(false)
+            }
+            .contentShape(.rect)
+            .onTapGesture(perform: toggle)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+            .accessibilityAction { toggle() }
         } else {
             content
         }

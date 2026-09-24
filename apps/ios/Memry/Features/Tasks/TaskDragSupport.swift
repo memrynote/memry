@@ -26,10 +26,6 @@ enum TaskDragPayload {
         guard text.hasPrefix(prefix) else { return [] }
         return text.dropFirst(prefix.count).split(separator: ",").map(String.init)
     }
-
-    static func itemProvider(_ ids: [String]) -> NSItemProvider {
-        NSItemProvider(object: encode(ids) as NSString)
-    }
 }
 
 /// One row of a list section: a top-level task or a subtask riding under it.
@@ -149,4 +145,61 @@ enum TaskDueBucket: String, CaseIterable, Sendable {
         guard sortField == "dueDate" else { return nil }
         self.init(rawValue: groupKey)
     }
+}
+
+/// One List row of the flattened list: a group's header (`row == nil`) or a
+/// task row under it. Headers are rows rather than `Section` headers so that
+/// one `onMove` sees every destination, including another group: a List moves
+/// a row only inside its own `ForEach`, and a cross-section drop never reached
+/// a section's `onInsert` or its header's drop target.
+struct TaskListFlatItem: Identifiable, Equatable {
+    let section: Int
+    let row: TaskListRow?
+    let sectionId: String
+
+    var id: String { row.map { "row:\($0.id)" } ?? "header:\(sectionId)" }
+
+    /// The sections in list order: each titled section's header, then its rows.
+    static func items(_ sections: [TaskListSection]) -> [TaskListFlatItem] {
+        sections.enumerated().flatMap { index, section in
+            let header = section.title == nil
+                ? []
+                : [TaskListFlatItem(section: index, row: nil, sectionId: section.id)]
+            return header + section.rows.map { TaskListFlatItem(section: index, row: $0, sectionId: section.id) }
+        }
+    }
+}
+
+/// What a List move of the flattened list means.
+enum TaskListMove: Equatable {
+    /// Inside one section: the section-relative `onMove` arguments.
+    case reorder(section: Int, from: IndexSet, to: Int)
+    /// Into another due-date group: the moved top-level task ids.
+    case reschedule(section: Int, ids: [String])
+    /// Headers, subtasks, mixed sections, or a group that takes no drop.
+    case none
+
+    static func resolve(
+        _ items: [TaskListFlatItem],
+        sections: [TaskListSection],
+        from source: IndexSet,
+        to destination: Int
+    ) -> TaskListMove {
+        let moved = source.compactMap { items.indices.contains($0) ? items[$0] : nil }
+        guard let first = moved.first, moved.allSatisfy({ $0.row != nil && $0.section == first.section }),
+              destination > 0, destination <= items.count
+        else { return .none }
+        let target = items[destination - 1].section
+        guard sections.indices.contains(target) else { return .none }
+        if target == first.section {
+            let rows = sections[target].rows
+            let local = IndexSet(moved.compactMap { item in rows.firstIndex { $0.id == item.row?.id } })
+            let before = items[..<destination].filter { $0.section == target && $0.row != nil }.count
+            return .reorder(section: target, from: local, to: before)
+        }
+        guard sections[target].dropBucket != nil else { return .none }
+        let ids = moved.compactMap { $0.row?.depth == 0 ? $0.row?.id : nil }
+        return ids.isEmpty ? .none : .reschedule(section: target, ids: ids)
+    }
+
 }
