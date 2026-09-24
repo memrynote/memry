@@ -18,9 +18,18 @@ struct TaskListBody: View {
 
     @Environment(\.editMode) private var editMode
 
+    /// Selection only exists in edit mode: outside it a tap opens the task,
+    /// and a bound selection would keep the tapped row highlighted and carry
+    /// it into the next drag or Select.
+    private var isEditing: Bool { editMode?.wrappedValue.isEditing == true }
+
+    private var listSelection: Binding<Set<String>> {
+        isEditing ? $selection : .constant([])
+    }
+
     var body: some View {
         let sections = store.listSections()
-        List(selection: $selection) {
+        List(selection: listSelection) {
             if let progress = store.todayProgress {
                 TaskTodayProgress(done: progress.done, total: progress.total)
                     .listRowSeparator(.hidden)
@@ -65,13 +74,13 @@ struct TaskListBody: View {
                     .tag(row.id)
                     .moveDisabled(row.depth > 0)
                     .itemProvider {
-                        TaskDragPayload.itemProvider(store.dragIds(for: row.id, selection: selection))
+                        TaskDragPayload.itemProvider(store.dragIds(for: row.id, selection: isEditing ? selection : []))
                     }
                     .modifier(TaskRowMoveActions(store: store, section: section, row: row))
             }
         }
         .onMove { source, destination in
-            let selected = editMode?.wrappedValue.isEditing == true ? selection : []
+            let selected = isEditing ? selection : []
             Task { await store.moveRows(in: section, from: source, to: destination, selection: selected) }
         }
     }

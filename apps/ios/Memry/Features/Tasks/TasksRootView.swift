@@ -48,6 +48,7 @@ struct TasksRootView: View {
     let store: TasksStore
     @Environment(TasksRouter.self) private var router
     @Environment(\.scenePhase) private var scenePhase
+    @State private var toastLift: CGFloat = 0
 
     var body: some View {
         @Bindable var router = router
@@ -66,7 +67,10 @@ struct TasksRootView: View {
                     }
                 }
         }
-        .overlay(alignment: .bottom) { TasksToast(store: store) }
+        .overlay(alignment: .bottom) {
+            TasksToast(store: store).padding(.bottom, router.path.isEmpty ? toastLift : 0)
+        }
+        .onPreferenceChange(TasksToastLiftKey.self) { toastLift = $0 }
         .subtaskPrompts(store: store)
         .repeatPrompts(store: store)
         .task {

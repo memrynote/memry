@@ -72,19 +72,39 @@ final class ReminderTaps {
 final class ReminderNotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Sendable {
     static let shared = ReminderNotificationDelegate()
 
+    // The completion-handler forms, finished on the main actor. The `async`
+    // forms let the system complete the response off the main thread, and
+    // UIKit's snapshot update after a notification tap then asserts "Call must
+    // be made on main thread" and terminates the app (seen on iOS 26).
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification
-    ) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .list, .sound])
     }
 
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) async {
-        guard let tap = ReminderTap(userInfo: response.notification.request.content.userInfo) else { return }
-        await MainActor.run { ReminderTaps.shared.receive(tap) }
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let tap = ReminderTap(userInfo: response.notification.request.content.userInfo)
+        let done = ReminderCompletion(completionHandler)
+        Task { @MainActor in
+            if let tap { ReminderTaps.shared.receive(tap) }
+            done.call()
+        }
+    }
+}
+
+/// Carries the system's completion handler to the main actor. It is called
+/// exactly once, there.
+private struct ReminderCompletion: @unchecked Sendable {
+    let call: () -> Void
+
+    init(_ call: @escaping () -> Void) {
+        self.call = call
     }
 }
 

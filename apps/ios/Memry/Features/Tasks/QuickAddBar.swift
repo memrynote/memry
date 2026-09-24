@@ -48,12 +48,18 @@ struct QuickAddBar: View {
                 trailingButtons
             }
             .padding(.horizontal, Tokens.Space.medium)
+            .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.control))
             .overlay(
                 RoundedRectangle(cornerRadius: Tokens.Radius.control)
                     .stroke(isFocused ? accent : Tokens.Line.border.color, lineWidth: Tokens.Size.hairline)
             )
             if isFocused { hints }
         }
+        // The bar sits in the list's bottom inset: an opaque canvas behind it
+        // keeps scrolled rows from showing through.
+        .padding(.horizontal, Tokens.Space.inset)
+        .padding(.vertical, Tokens.Space.small)
+        .background(Tokens.Canvas.background.color)
         .calmAnimation(.fast, value: isFocused)
         .task(id: text) { await reparse() }
         .sheet(isPresented: $showsHelp) { QuickAddHelpSheet() }

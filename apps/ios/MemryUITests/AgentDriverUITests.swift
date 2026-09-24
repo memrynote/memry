@@ -13,6 +13,8 @@ import XCTest
 @MainActor
 final class AgentDriverUITests: XCTestCase {
     private let app = XCUIApplication()
+    /// System alerts (notification permission) live in SpringBoard.
+    private let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
     private var directory = URL(fileURLWithPath: "/")
 
     override func setUp() async throws {
@@ -122,6 +124,13 @@ final class AgentDriverUITests: XCTestCase {
             }
             app.typeKey(keyValue(key), modifierFlags: flags)
             return ["ok": true]
+        case "wheel":
+            // Sets one picker wheel (a time picker's hour, minute, AM/PM).
+            let wheels = app.pickerWheels
+            let index = command["index"] as? Int ?? 0
+            guard wheels.count > index else { return ["ok": false, "error": "no wheel \(index)"] }
+            wheels.element(boundBy: index).adjust(toPickerWheelValue: command["value"] as? String ?? "")
+            return ["ok": true, "count": wheels.count]
         case "home":
             XCUIDevice.shared.press(.home)
             return ["ok": true]
@@ -140,6 +149,17 @@ final class AgentDriverUITests: XCTestCase {
         }
         guard let element = find(command, timeout: timeout) else {
             return ["ok": false, "error": "not found"]
+        }
+        // Read before acting: a tapped button may be gone afterwards, and
+        // reading a vanished element's label is a test failure that ends the
+        // driver.
+        let label = element.label
+        // A tap on an element with no hit point (off screen, covered) is a
+        // test failure that ends the driver; answer with an error instead.
+        let needsHitPoint = ["tap", "doubletap", "longpress", "drag"].contains(action)
+            || (action == "type" && command["tapFirst"] as? Bool ?? true)
+        if needsHitPoint, command["dx"] == nil, !element.isHittable {
+            return ["ok": false, "error": "not hittable", "label": label]
         }
         switch action {
         case "tap":
@@ -188,15 +208,19 @@ final class AgentDriverUITests: XCTestCase {
         default:
             break
         }
-        return ["ok": true, "label": element.label]
+        return ["ok": true, "label": label]
     }
 
     /// Selector: `ident` (accessibility identifier), `label` (exact), `contains` (label substring),
     /// optional `type` (button, cell, staticText, textField, textView, switch,
     /// image, other, any) and `index`.
     private func find(_ command: [String: Any], timeout: Double) -> XCUIElement? {
+        // Querying an app that is not running is a test failure that ends the
+        // driver; answer "not found" instead.
+        let target = command["app"] as? String == "springboard" ? springboard : app
+        guard target.state != .notRunning else { return nil }
         let type = elementType(command["type"] as? String)
-        var query = app.descendants(matching: type)
+        var query = target.descendants(matching: type)
         if let identifier = command["ident"] as? String {
             query = query.matching(identifier: identifier)
         } else if let label = command["label"] as? String {

@@ -100,3 +100,14 @@ private struct TasksToastCard: View {
         .accessibilityIdentifier("tasks.toast")
     }
 }
+
+/// The height of whatever the list keeps at its bottom edge (the quick add
+/// bar, the selection bar), so the toast floats above it instead of covering
+/// the field being typed into.
+struct TasksToastLiftKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}

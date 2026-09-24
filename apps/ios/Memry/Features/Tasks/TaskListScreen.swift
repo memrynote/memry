@@ -21,14 +21,19 @@ struct TaskListScreen: View {
     @State private var showsFilters = false
     @State private var showsAddTask = false
     @State private var addTaskDue: String?
+    @State private var footerHeight: CGFloat = 0
     @State private var showsScopePicker = false
 
     var body: some View {
         content
             .safeAreaInset(edge: .top, spacing: 0) { header }
-            .safeAreaInset(edge: .bottom, spacing: 0) { footer }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                footer.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { footerHeight = $0 }
+            }
+            .preference(key: TasksToastLiftKey.self, value: footerHeight)
             .environment(\.editMode, $editMode)
             .navigationTitle(TasksCopy.title)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
             .taskKeyboardShortcuts(store: store, selection: $selection, visibleIds: store.listVisibleIds)
             .sheet(isPresented: $showsFilters) { TaskFilterSheet(store: store) }
