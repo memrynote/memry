@@ -46,6 +46,11 @@ import {
 } from '../repositories/calendar-sources-repository'
 import { emitCalendarChanged, emitCalendarProjectionChanged } from '../change-events'
 import { readCalendarGoogleSettings } from './calendar-google-settings'
+import {
+  findLiveBinding,
+  readDefaultWriteTarget,
+  resolveWriteRoute
+} from '../provider/write-routing'
 import type { CalendarSyncTarget, GoogleCalendarClient, GoogleCalendarRemoteEvent } from '../types'
 
 const log = createLogger('Calendar:GoogleSync')
@@ -411,8 +416,13 @@ async function resolveTargetCalendarId(
     return eventTarget
   }
 
-  // User's onboarding-selected default (covers tasks / reminders / snoozes too).
-  const { defaultTargetCalendarId } = readCalendarGoogleSettings(db)
+  // User's default write target (covers tasks / reminders / snoozes too). It
+  // falls back to calendar.google.defaultTargetCalendarId, so installs with
+  // only Google settings resolve exactly as before (#2372). A default on
+  // another provider never reaches here: routing sent the item there.
+  const defaultTarget = readDefaultWriteTarget(db)
+  const defaultTargetCalendarId =
+    defaultTarget?.provider === 'google' ? defaultTarget.remoteCalendarId : null
   if (defaultTargetCalendarId) {
     await ensureGoogleCalendarSourceSelected(db, client, defaultTargetCalendarId, accountId)
     return defaultTargetCalendarId
@@ -436,6 +446,12 @@ export async function pushSourceToGoogleCalendar(
   } = {}
 ): Promise<typeof calendarBindings.$inferSelect> {
   const existingBinding = getExistingGoogleBinding(db, target)
+  // One writer per item (#2372): an item another provider already holds is
+  // never created in Google as well.
+  const liveBinding = findLiveBinding(db, target)
+  if (liveBinding && liveBinding.provider !== 'google') {
+    throw new Error(`Calendar item is written by ${liveBinding.provider}, not Google`)
+  }
   const routedAccountId = resolveTargetGoogleAccountId(db, target, existingBinding)
   if (!routedAccountId) {
     throw new Error('No connected Google account to push to')
@@ -529,6 +545,10 @@ export async function syncLocalSourceToGoogleCalendar(
   // One-way (inbound-only) mode: pull Google → memrynote stays on, but never
   // push/update/delete memrynote items out to Google.
   if (!readCalendarGoogleSettings(db).pushEventsToGoogle) return null
+  // One writer per item (#2372): a live binding of another provider, an event
+  // targeting another provider's calendar, or a default target elsewhere
+  // means this item is not Google's to push.
+  if (resolveWriteRoute(db, target).provider !== 'google') return null
 
   if (shouldSourceSyncToGoogleCalendar(db, target)) {
     return await pushSourceToGoogleCalendar(db, target, deps)

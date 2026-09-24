@@ -68,9 +68,12 @@ export function promoteExternalEvent(
 
   // Idempotency: repeat calls should return the existing promoted event
   // without creating duplicate rows or re-emitting create events.
+  // The binding takes the source's provider (#2372): a promoted CalDAV event
+  // is written back by CalDAV, never by Google.
+  const provider = sourceRow.provider
   const existingBinding = findCalendarBindingByRemoteEvent(
     db,
-    'google',
+    provider,
     remoteCalendarId,
     mirror.remoteEventId
   )
@@ -115,7 +118,7 @@ export function promoteExternalEvent(
     id: bindingId,
     sourceType: 'event',
     sourceId: eventId,
-    provider: 'google',
+    provider,
     remoteCalendarId,
     remoteEventId: mirror.remoteEventId,
     ownershipMode: 'provider_managed',
@@ -138,7 +141,8 @@ export function promoteExternalEvent(
   emitCalendarChanged({ entityType: 'calendar_event', id: eventId })
   emitCalendarProjectionChanged(`event:${eventId}`)
 
-  log.info('Promoted external Google event to memrynote event', {
+  log.info('Promoted external event to memrynote event', {
+    provider,
     externalEventId: input.externalEventId,
     eventId,
     remoteCalendarId,
@@ -151,7 +155,7 @@ export function promoteExternalEvent(
   trackMainEvent('calendar_event_created', {
     surface: 'calendar',
     action: 'promoted',
-    source: 'google_promote',
+    source: provider === 'google' ? 'google_promote' : `${provider}_promote`,
     result: 'success'
   })
 

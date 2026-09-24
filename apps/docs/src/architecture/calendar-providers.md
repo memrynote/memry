@@ -84,6 +84,33 @@ newer main process, and a missing channel breaks the app in that window.
   allowed, whatever the answer for Google was. See
   [AI access per calendar service](/user-guide/calendar#ai-access-is-asked-per-calendar-service).
 
+## Write routing: one writer per item
+
+**Problem.** Device A has Google and a second writable provider, with the second provider's
+"Work" calendar as the default, so a task gets a binding to it. Device B has Google with pushing
+on. It receives the task and the binding, the user edits the title, and B's Google push, which
+only looked for Google bindings, found none and created the task in Google too. Every later edit
+then forked.
+
+**Solution.** `provider/write-routing.ts` resolves the one provider allowed to write an item:
+
+1. a live binding of **any** provider (the oldest, should two exist);
+2. otherwise the event's `target_calendar_id`, looked up in `calendar_sources` across providers.
+   The column keeps its bare-id format because older builds read it as a Google calendar id. An
+   id no source knows stays Google's, and if two providers ever share an id, Google wins;
+3. otherwise `calendar.defaultWriteTarget` (`{ provider, remoteCalendarId }`), which falls back
+   to `calendar.google.defaultTargetCalendarId`, so an install with only Google settings routes
+   exactly as before;
+4. otherwise Google's managed memrynote calendar, as before.
+
+`provider/write-dispatch.ts` hands the change to that provider's writer only, and only when the
+provider's capabilities say `supportsWrite`. The Google push path checks the route as well, so it
+refuses an item another provider holds even when called directly.
+
+Promotion binds the copy to the source's own provider. Choosing a Google default in Google's own
+picker after a cross-provider default exists moves the cross-provider default to Google, so the
+older control keeps working.
+
 ## Cross-version compatibility
 
 Calendar sources, bindings and external events sync between devices, and devices update at

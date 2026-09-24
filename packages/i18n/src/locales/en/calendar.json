@@ -346,5 +346,16 @@
   "subscribedEvent": {
     "kind": "Subscribed calendar",
     "readOnly": "Read-only. Change it in the app that shares this calendar."
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Subscribed calendars"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

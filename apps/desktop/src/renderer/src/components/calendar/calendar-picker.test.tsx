@@ -92,3 +92,47 @@ describe('CalendarPicker (M2)', () => {
     expect(screen.getByRole('option', { name: 'Use my default calendar' })).toBeInTheDocument()
   })
 })
+
+describe('CalendarPicker with more than one writable provider (#2372)', () => {
+  it('groups the calendars under each provider', () => {
+    render(
+      <CalendarPicker
+        calendars={CALENDARS}
+        groups={[
+          { label: 'Google Calendar', calendars: CALENDARS },
+          {
+            label: 'CalDAV',
+            calendars: [
+              {
+                id: 'https://dav.example.com/calendars/me/work/',
+                title: 'Work (Fastmail)',
+                timezone: 'UTC',
+                color: null,
+                isPrimary: false
+              }
+            ]
+          }
+        ]}
+        value={null}
+        onChange={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole('group', { name: 'Google Calendar' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'CalDAV' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Work (Fastmail)' })).toBeInTheDocument()
+  })
+
+  it('stays a flat list with a single provider', () => {
+    render(
+      <CalendarPicker
+        calendars={CALENDARS}
+        groups={[{ label: 'Google Calendar', calendars: CALENDARS }]}
+        value={null}
+        onChange={vi.fn()}
+      />
+    )
+    expect(screen.queryByRole('group')).toBeNull()
+    expect(screen.getByRole('option', { name: 'Work' })).toBeInTheDocument()
+  })
+})

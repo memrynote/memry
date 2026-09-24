@@ -46,7 +46,8 @@ import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
   syncGoogleCalendarNow,
-  syncGoogleCalendarSource
+  syncGoogleCalendarSource,
+  syncLocalSourceToGoogleCalendar
 } from './sync-service'
 
 const log = createLogger('Calendar:GoogleProvider')
@@ -421,5 +422,8 @@ export const googleCalendarProvider: ProviderDefinition = {
     setDefaultGoogleCalendar(db, {
       calendarId: input.calendarId,
       markOnboardingComplete: input.markOnboardingComplete
-    })
+    }),
+  writer: {
+    syncLocalSource: (db, target) => syncLocalSourceToGoogleCalendar(db, target)
+  }
 }

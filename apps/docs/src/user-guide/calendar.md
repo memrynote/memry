@@ -356,6 +356,24 @@ To switch to **one-way (inbound only)**, open [Settings → Calendar](/user-guid
 
 Switching to one-way is non-destructive — anything already synced to Google before the change stays there; only new pushes, updates, and deletes are stopped.
 
+### Where New Events Go
+
+Every memrynote item that appears on an external calendar is written by exactly one calendar
+service, so it never shows up twice.
+
+- **An item already on a calendar stays there.** Once an event, task, reminder or snooze has been
+  written to a calendar, later edits go back to that same calendar, from every device. Picking a
+  different calendar for an event that is already written does not move it.
+- **An event you point at a calendar goes to that calendar.** The calendar picker in the event
+  form lists the calendars you can write to, grouped by service when more than one is connected.
+- **Everything else goes to your default calendar.** Tasks, reminders, inbox snoozes and events
+  without a chosen calendar go to the default you picked in Settings → Calendar. Until you pick one,
+  Google keeps its old behaviour: the default Google calendar from onboarding, or else the
+  memrynote calendar it creates for you.
+
+The default is chosen per device. An item that another device already wrote to a calendar is
+never written a second time by this one, even when this device's default is a different service.
+
 ### How Often Google Events Refresh
 
 Inbound pulls run on a schedule. One pull covers everything at once — every linked account and every

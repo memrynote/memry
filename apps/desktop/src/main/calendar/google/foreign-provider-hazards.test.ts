@@ -1,8 +1,8 @@
 /**
  * #1396 hazards 1 and 2, against the Google push path. These are the exact
  * situations an older build hits when another device connects a second
- * writable provider. They are pinned here for #2372: `it.fails` marks what
- * the Google path still gets wrong, and #2372 turns each into a plain `it`.
+ * writable provider. #2372 fixed both for new builds (they were `it.fails`
+ * pins until then); older builds are covered by the version floor.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestDataDb, seedTestData, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -133,54 +133,51 @@ describe('Google push path with another provider’s rows (#1396 hazards 1-2)', 
     dbResult.close()
   })
 
-  it.fails(
-    'hazard 1: never pushes a task another provider already holds to Google, even when Google is the default target',
-    async () => {
-      dbResult.db
-        .insert(tasks)
-        .values({
-          id: 'task-1',
-          projectId,
-          statusId,
-          title: 'Renew passport',
-          position: 1,
-          dueDate: '2026-09-30',
-          clock: { 'device-a': 1 },
-          fieldClocks: {},
-          createdAt: NOW,
-          modifiedAt: NOW
-        })
-        .run()
-      dbResult.db
-        .insert(calendarBindings)
-        .values({
-          id: 'calendar_binding:caldav:task:task-1',
-          sourceType: 'task',
-          sourceId: 'task-1',
-          provider: 'caldav',
-          remoteCalendarId: CALDAV_COLLECTION,
-          remoteEventId: `${CALDAV_COLLECTION}task-1.ics`,
-          ownershipMode: 'memry_managed',
-          writebackMode: 'broad',
-          remoteVersion: '"c1"',
-          clock: { 'device-a': 1 },
-          createdAt: NOW,
-          modifiedAt: NOW
-        })
-        .run()
-      const client = pushClient()
+  it('hazard 1: never pushes a task another provider already holds to Google, even when Google is the default target', async () => {
+    dbResult.db
+      .insert(tasks)
+      .values({
+        id: 'hazard-task-1',
+        projectId,
+        statusId,
+        title: 'Renew passport',
+        position: 1,
+        dueDate: '2026-09-30',
+        clock: { 'device-a': 1 },
+        fieldClocks: {},
+        createdAt: NOW,
+        modifiedAt: NOW
+      })
+      .run()
+    dbResult.db
+      .insert(calendarBindings)
+      .values({
+        id: 'calendar_binding:caldav:task:hazard-task-1',
+        sourceType: 'task',
+        sourceId: 'hazard-task-1',
+        provider: 'caldav',
+        remoteCalendarId: CALDAV_COLLECTION,
+        remoteEventId: `${CALDAV_COLLECTION}hazard-task-1.ics`,
+        ownershipMode: 'memry_managed',
+        writebackMode: 'broad',
+        remoteVersion: '"c1"',
+        clock: { 'device-a': 1 },
+        createdAt: NOW,
+        modifiedAt: NOW
+      })
+      .run()
+    const client = pushClient()
 
-      await syncLocalSourceToGoogleCalendar(
-        db,
-        { sourceType: 'task', sourceId: 'task-1' },
-        { client }
-      )
+    await syncLocalSourceToGoogleCalendar(
+      db,
+      { sourceType: 'task', sourceId: 'hazard-task-1' },
+      { client }
+    )
 
-      expect(client.upsertEvent).not.toHaveBeenCalled()
-    }
-  )
+    expect(client.upsertEvent).not.toHaveBeenCalled()
+  })
 
-  it.fails('hazard 2: never sends a CalDAV collection URL to Google as a calendar id', async () => {
+  it('hazard 2: never sends a CalDAV collection URL to Google as a calendar id', async () => {
     dbResult.db
       .insert(calendarEvents)
       .values({

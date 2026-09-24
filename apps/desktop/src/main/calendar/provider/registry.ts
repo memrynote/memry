@@ -7,9 +7,26 @@ import type {
   SetDefaultProviderCalendarInput,
   SetDefaultProviderCalendarResponse
 } from '@memry/contracts/calendar-api'
+import type { CalendarBinding } from '@memry/db-schema/schema/calendar-bindings'
 import type { CalendarSource } from '@memry/db-schema/schema/calendar-sources'
 import type { DataDb } from '../../database'
+import type { CalendarSyncTarget } from '../types'
 import { isProviderAvailableOn } from './capabilities'
+import type { WriteRoute } from './write-routing'
+
+/**
+ * What a writable provider exposes to the write path: reconcile one Memry
+ * item with its remote calendar (create, update, or delete when the item no
+ * longer belongs on a calendar). Called only for the provider the write
+ * route picked (#2372).
+ */
+export interface ProviderWriter {
+  syncLocalSource(
+    db: DataDb,
+    target: CalendarSyncTarget,
+    route: WriteRoute
+  ): Promise<CalendarBinding | null>
+}
 
 /**
  * One calendar provider as the IPC surface and the engine see it (#1392). The
@@ -39,6 +56,8 @@ export interface ProviderDefinition {
     db: DataDb,
     input: SetDefaultProviderCalendarInput
   ): SetDefaultProviderCalendarResponse
+  /** The push path. Only providers with `supportsWrite` are ever asked. */
+  writer?: ProviderWriter
 }
 
 const providers = new Map<string, ProviderDefinition>()
