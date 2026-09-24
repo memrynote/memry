@@ -91,3 +91,32 @@ describe('CalendarSidebar', () => {
     expect(onToggleImportedSource).toHaveBeenCalledWith(SECONDARY.id)
   })
 })
+
+describe('CalendarSidebar grouped by provider (#1395)', () => {
+  it('lists each provider’s calendars under its own heading, Google first', () => {
+    const feed = source({
+      id: 'ics-calendar:club',
+      provider: 'ics',
+      accountId: null,
+      remoteId: 'https://club.example.com/fixtures.ics',
+      title: 'Club fixtures'
+    })
+    const dav = source({
+      id: 'caldav-calendar:work',
+      provider: 'caldav',
+      remoteId: 'https://dav.example.com/calendars/me/work/',
+      title: 'Work (Fastmail)'
+    })
+    renderSidebar({ importedSources: [feed, PRIMARY, dav] })
+
+    const google = screen.getByTestId('calendar-filter-provider-google')
+    const ics = screen.getByTestId('calendar-filter-provider-ics')
+    const caldav = screen.getByTestId('calendar-filter-provider-caldav')
+    expect(google).toHaveTextContent('filter.google-calendars')
+    expect(google).toHaveTextContent('Work')
+    expect(ics).toHaveTextContent('filter.provider-calendars.ics')
+    expect(ics).toHaveTextContent('Club fixtures')
+    expect(caldav).toHaveTextContent('filter.provider-calendars.caldav')
+    expect(google.compareDocumentPosition(ics) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})

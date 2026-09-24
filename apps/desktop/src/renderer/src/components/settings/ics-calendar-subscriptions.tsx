@@ -5,6 +5,7 @@ import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { ProviderAgentAccessRow } from '@/components/settings/calendar-provider-agent-access'
 import {
   calendarService,
   onCalendarChanged,
@@ -212,6 +213,13 @@ export function IcsCalendarSubscriptions(): React.JSX.Element {
         <p role="alert" className="text-xs text-destructive">
           {extractErrorMessage(rowActionError, unknownError('ipc'))}
         </p>
+      )}
+
+      {/* #1394: subscribed calendars have their own AI answer, separate from Google's. */}
+      {sources.length > 0 && (
+        <div className="-mx-4 -mb-3 border-t border-border/60">
+          <ProviderAgentAccessRow providerId={ICS_CALENDAR_PROVIDER} />
+        </div>
       )}
     </div>
   )

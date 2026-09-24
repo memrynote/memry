@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ICS_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
+import { GOOGLE_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
+import { isReadOnlyExternalItem } from '@/lib/calendar-external-items'
 import {
   CalendarShell,
   type AnchorRect,
@@ -216,6 +217,16 @@ function dueDateTimeFromDate(date: Date): { dueDate: string; dueTime: string } {
     dueDate: formatDateKey(date),
     dueTime: `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
   }
+}
+
+/** The stored agent-read answer for an event's provider; Google keeps its own channel. */
+async function agentReadConsent(
+  provider: string | null | undefined,
+  googleConsent: boolean | null | undefined
+): Promise<boolean | null | undefined> {
+  if (!provider || provider === GOOGLE_CALENDAR_PROVIDER) return googleConsent
+  const settings = await window.api.settings.getCalendarProviderSettings({ provider })
+  return settings?.agentReadEventsConsent
 }
 
 export function CalendarPage({ className: _className }: CalendarPageProps): React.JSX.Element {
@@ -688,8 +699,9 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     if (item.sourceType !== 'external_event') return
 
     setNotePopoverState(null)
-    // A subscribed feed is read-only end to end: no promote-to-edit.
-    if (item.source.provider === ICS_CALENDAR_PROVIDER) {
+    // An event from a provider without a write path (a subscribed feed) is
+    // read-only end to end: no promote-to-edit.
+    if (isReadOnlyExternalItem(item)) {
       setPopoverState(null)
       setTaskPopoverState(null)
       setInboxSnoozePopoverState(null)
@@ -698,10 +710,11 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
     const settings = await window.api.settings.getCalendarGoogleSettings()
     // Promotion copies the event into native storage, where the agent can read it
-    // regardless of the Google-events consent gate. While that consent is anything but
-    // a stored `true`, confirm every time — "don't ask again" must not silently widen
-    // what the agent can see.
-    const agentAccessOff = settings.agentReadEventsConsent !== true
+    // regardless of the event provider's consent gate (#1394). While that consent is
+    // anything but a stored `true`, confirm every time — "don't ask again" must not
+    // silently widen what the agent can see.
+    const agentAccessOff =
+      (await agentReadConsent(item.source.provider, settings.agentReadEventsConsent)) !== true
     if (settings.promoteConfirmDismissed && !agentAccessOff) {
       await runPromote({ item, anchorRect: rect }, { dontAskAgain: false })
       return
@@ -964,7 +977,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   return (
     <>
       <AgentAccessConsentDialog
-        hasImportedSources={importedSources.some((source) => source.provider === 'google')}
+        providerIds={[...new Set(importedSources.map((source) => source.provider))]}
       />
 
       <PromoteExternalDialog

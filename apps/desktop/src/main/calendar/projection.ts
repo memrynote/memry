@@ -1,6 +1,5 @@
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, lt, ne, or, sql } from 'drizzle-orm'
 import {
-  ICS_CALENDAR_PROVIDER,
   type CalendarProjectionBinding,
   type CalendarProjectionEditability,
   type CalendarProjectionItem,
@@ -22,6 +21,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { noteCache, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import type { DataDb, IndexDb } from '../database'
+import { sourceCapabilities } from './provider/capabilities'
 
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
@@ -484,14 +484,19 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
         isNull(calendarSources.archivedAt),
         sql`${calendarExternalEvents.startAt} < ${input.endAt}`,
         sql`coalesce(${calendarExternalEvents.endAt}, ${calendarExternalEvents.startAt}) >= ${input.startAt}`,
-        input.includeUnselectedSources ? undefined : eq(calendarSources.isSelected, true)
+        input.includeUnselectedSources ? undefined : eq(calendarSources.isSelected, true),
+        input.externalProviders
+          ? inArray(calendarSources.provider, input.externalProviders)
+          : undefined
       )
     )
     .orderBy(asc(calendarExternalEvents.startAt))
     .all()
 
-  // Google events become editable by promotion into a memrynote event. A
-  // subscribed feed has no write path at all, so its events are read-only.
+  // Events from a writable provider become editable by promotion into a
+  // memrynote event. A provider with no write path (a subscribed feed, or one
+  // this build does not know) has nowhere to write back, so its events are
+  // read-only.
   const promotable: CalendarProjectionEditability = {
     canMove: true,
     canResize: true,
@@ -516,7 +521,7 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
     isAllDay: event.isAllDay,
     timezone: event.timezone ?? source.timezone ?? LOCAL_TIMEZONE,
     visualType: 'external_event',
-    editability: source.provider === ICS_CALENDAR_PROVIDER ? readOnly : promotable,
+    editability: sourceCapabilities(source).supportsWrite ? promotable : readOnly,
     source: externalSource(source),
     binding: null,
     snoozeOffsetMinutes: null,
@@ -679,7 +684,9 @@ export function getCalendarRangeProjection(
     ...loadReminderItems(db, input),
     ...loadNoteDateReminderItems(db, indexDb, input),
     ...loadInboxSnoozeItems(db, input),
-    ...(input.includeExternal === false ? [] : loadExternalEvents(db, input)),
+    ...(input.includeExternal === false || input.externalProviders?.length === 0
+      ? []
+      : loadExternalEvents(db, input)),
     ...notePropertyItems,
     ...noteCreatedItems
   ])

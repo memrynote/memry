@@ -34,7 +34,12 @@
     "google-calendars": "Google calendars",
     "refresh-google-calendars": "Refresh Google calendars",
     "not-syncing": "Not syncing · tick to turn on",
-    "enable-source-failed": "Could not turn that calendar on."
+    "enable-source-failed": "Could not turn that calendar on.",
+    "provider-calendars": {
+      "ics": "Subscribed calendars",
+      "caldav": "CalDAV calendars",
+      "other": "Other calendars"
+    }
   },
   "visual-type": {
     "event": "Event",
@@ -97,7 +102,17 @@
     "footnote": "You can change this any time in Settings → Integrations → Google Calendar.",
     "allow": "Allow",
     "deny": "Don't allow",
-    "save-error": "Failed to save your choice"
+    "save-error": "Failed to save your choice",
+    "provider": {
+      "aria": "Choose whether AI can read your {provider} events",
+      "title": "Let AI read your {provider} events?",
+      "body": "You'll keep seeing these events in memrynote either way. This only decides whether the AI agent can read them when you ask it about your schedule. Each calendar service gets its own answer.",
+      "footnote": "You can change this any time in Settings → Calendar."
+    },
+    "provider-names": {
+      "ics": "subscribed calendar",
+      "caldav": "CalDAV calendar"
+    }
   },
   "promote-dialog": {
     "aria": "Edit external calendar event",
@@ -336,5 +351,16 @@
   "subscribedEvent": {
     "kind": "Subscribed calendar",
     "readOnly": "Read-only. Change it in the app that shares this calendar."
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Subscribed calendars"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

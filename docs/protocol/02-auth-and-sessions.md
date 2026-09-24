@@ -76,6 +76,13 @@ The device id field is spelled **`id`**, not `deviceId`. `signingPublicKey` is
 the Ed25519 key committed at registration and is what chapter 01 §1.4.0's
 signer lookup resolves. `revokedAt` is null for a live device.
 
+**`GET /devices`**
+
+Response: `{ devices: [{ id, name, platform, appVersion, lastSyncAt, createdAt, updatedAt }] }`
+for the account's live devices. `appVersion` is the build the device last
+opened a realtime socket with (chapter 09 §9.2); it was added later, so a
+client MUST treat a missing `appVersion` as unknown, never as current.
+
 **`POST /auth/refresh`**
 
 Request: `refreshToken` (string).

@@ -51,6 +51,12 @@ Failures:
 A successful handshake answers `101` with the socket
 (`apps/sync-server/src/durable-objects/user-sync-state.ts:161`).
 
+**Normative.** Before answering `101`, the server stores the handshake's
+`X-App-Version` as the device's `app_version` when it differs from the stored
+one. This is best effort: a failed write never refuses the connection. The
+value is what `GET /devices` reports as `appVersion` (chapter 02), so other
+devices can warn before a change older builds would mishandle (#1396).
+
 **This version gate is not the one in chapter 11.** It uses `X-App-Version`
 against `MIN_APP_VERSION`, not `x-memry-client` against `client_policies`. See
 chapter 11 §11.11.

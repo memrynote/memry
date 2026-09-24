@@ -35,6 +35,9 @@ devices.get('/', deviceListRateLimit, async (c) => {
     id: d.id,
     name: d.name,
     platform: d.platform,
+    // Additive (#1396): the build each device last connected with, so a client
+    // can warn before a change that older builds would mishandle.
+    appVersion: d.app_version,
     lastSyncAt: d.last_sync_at,
     createdAt: d.created_at,
     updatedAt: d.updated_at

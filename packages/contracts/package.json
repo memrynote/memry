@@ -13,6 +13,7 @@
     "./bookmark-types": "./src/bookmark-types.ts",
     "./bookmarks-api": "./src/bookmarks-api.ts",
     "./calendar-api": "./src/calendar-api.ts",
+    "./caldav-presets": "./src/caldav-presets.ts",
     "./calendar-date": "./src/calendar-date.ts",
     "./calendar-colors": "./src/calendar-colors.ts",
     "./canvas-api": "./src/canvas-api.ts",

@@ -20,7 +20,12 @@ export interface GoogleCalendarDescriptor {
   isPrimary: boolean
 }
 
-export interface GoogleCalendarRemoteEvent {
+/**
+ * A remote event as any writable provider returns it (#1391). The field names
+ * are the ones the Google engine always used; `raw` is the provider's own
+ * representation (Google's JSON, a CalDAV object's parsed iCalendar).
+ */
+export interface RemoteCalendarEvent {
   id: string
   calendarId: string
   title: string
@@ -43,7 +48,8 @@ export interface GoogleCalendarRemoteEvent {
   raw: Record<string, unknown>
 }
 
-export interface GoogleCalendarUpsertEventInput {
+/** A Memry item as a provider receives it on push (#1391). */
+export interface UpsertRemoteEventInput {
   sourceType: CalendarSyncSourceType
   sourceId: string
   title: string
@@ -62,6 +68,10 @@ export interface GoogleCalendarUpsertEventInput {
   recurringEventId?: string | null
   originalStartTime?: string | null
 }
+
+/** Kept so the Google engine does not churn: the neutral types are the same shape. */
+export type GoogleCalendarRemoteEvent = RemoteCalendarEvent
+export type GoogleCalendarUpsertEventInput = UpsertRemoteEventInput
 
 export interface GoogleCalendarClient {
   listCalendars(): Promise<GoogleCalendarDescriptor[]>

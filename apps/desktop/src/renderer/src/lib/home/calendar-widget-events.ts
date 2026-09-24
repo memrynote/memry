@@ -1,7 +1,7 @@
-import { ICS_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import { getEventBaseColor } from '@/lib/event-type-colors'
 import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
+import { externalEventSourceLabel } from '@/lib/calendar-external-items'
 
 // A today's-schedule event shaped for the Home Calendar widget. Pure data — no React, no i18n,
 // so the time math (sort, duration, now-line, next-up) is unit-testable. The component turns
@@ -14,11 +14,6 @@ export interface CalendarWidgetEvent {
   title: string
   color: string
   metaLabel: string | null
-}
-
-function capitalize(value: string): string {
-  if (!value) return value
-  return value[0].toUpperCase() + value.slice(1)
 }
 
 function formatSnoozeOffset(minutes: number): string {
@@ -34,8 +29,7 @@ function formatSnoozeOffset(minutes: number): string {
 function getMetaLabel(item: CalendarProjectionItem): string | null {
   switch (item.visualType) {
     case 'external_event':
-      if (item.source.provider === ICS_CALENDAR_PROVIDER) return item.source.title
-      return item.source.provider ? capitalize(item.source.provider) : null
+      return externalEventSourceLabel(item.source)
     case 'reminder':
       return item.snoozeOffsetMinutes !== null ? formatSnoozeOffset(item.snoozeOffsetMinutes) : null
     case 'snooze':

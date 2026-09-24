@@ -25,6 +25,8 @@ import {
 } from '@/services/calendar-service'
 import { VISUAL_TYPE_META, VISUAL_TYPE_ORDER } from './visual-type-meta'
 import { createLogger } from '@/lib/logger'
+import { groupSourcesByProvider } from '@/lib/calendar-source-groups'
+import { useProviderGroupLabel } from './use-provider-group-label'
 
 const log = createLogger('CalendarShell')
 
@@ -162,6 +164,7 @@ export function CalendarShell({
   const chipViewProps = { ...viewProps, onDeleteItem, onAddToProject }
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { t } = useT('calendar')
+  const groupLabel = useProviderGroupLabel()
   const hasGoogleCalendars = importedSources.length > 0
 
   // Scroll-edge state for the floating chrome: true once content is beneath it.
@@ -278,12 +281,16 @@ export function CalendarShell({
             })}
           </div>
 
-          {importedSources.length > 0 && (
-            <div className="space-y-3">
+          {groupSourcesByProvider(importedSources).map((group) => (
+            <div
+              key={group.provider}
+              className="space-y-3"
+              data-testid={`calendar-filter-provider-${group.provider}`}
+            >
               <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {t('filter.google-calendars')}
+                {groupLabel(group.provider)}
               </h3>
-              {importedSources.map((source) => (
+              {group.sources.map((source) => (
                 <label
                   key={source.id}
                   data-testid={`calendar-filter-source-${source.id}`}
@@ -307,7 +314,7 @@ export function CalendarShell({
                 </label>
               ))}
             </div>
-          )}
+          ))}
         </div>
       </PopoverContent>
     </Popover>

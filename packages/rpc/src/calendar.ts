@@ -5,6 +5,7 @@ import {
   UpdateCalendarEventSchema,
   ListCalendarEventsSchema,
   ListGoogleCalendarsSchema,
+  ListProviderCalendarsSchema,
   GetCalendarRangeSchema,
   IcsCalendarSourceRequestSchema,
   ListCalendarSourcesSchema,
@@ -12,9 +13,12 @@ import {
   RetryCalendarSourceSyncSchema,
   SearchCalendarEventsSchema,
   SetDefaultGoogleCalendarSchema,
+  SetDefaultProviderCalendarSchema,
   SubscribeIcsCalendarSchema,
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
+  CheckProviderWriterCompatSchema,
+  DiscoverProviderCalendarsSchema,
   type CalendarChangedEvent,
   type CalendarDeleteResponse,
   type CalendarEventListResponse,
@@ -29,12 +33,17 @@ import {
   type CalendarSourceListResponse,
   type CalendarSourceMutationResponse,
   type CalendarSourceRecord,
+  type CalendarWriterCompatResponse,
+  type DiscoverProviderCalendarsResponse,
   type IcsCalendarMutationResponse,
   type IcsFeedErrorCode,
+  type ListCalendarProvidersResponse,
   type ListGoogleCalendarsResponse,
+  type ListProviderCalendarsResponse,
   type PromoteExternalEventResponse,
   type RetryCalendarSourceSyncResponse,
-  type SetDefaultGoogleCalendarResponse
+  type SetDefaultGoogleCalendarResponse,
+  type SetDefaultProviderCalendarResponse
 } from '../../contracts/src/calendar-api.ts'
 import {
   defineDomain,
@@ -58,6 +67,10 @@ export type SetDefaultGoogleCalendarInput = z.input<typeof SetDefaultGoogleCalen
 export type RetryCalendarSourceSyncInput = z.input<typeof RetryCalendarSourceSyncSchema>
 export type SubscribeIcsCalendarInput = z.input<typeof SubscribeIcsCalendarSchema>
 export type IcsCalendarSourceRequest = z.input<typeof IcsCalendarSourceRequestSchema>
+export type ListProviderCalendarsInput = z.input<typeof ListProviderCalendarsSchema>
+export type SetDefaultProviderCalendarInput = z.input<typeof SetDefaultProviderCalendarSchema>
+export type CheckProviderWriterCompatInput = z.input<typeof CheckProviderWriterCompatSchema>
+export type DiscoverProviderCalendarsInput = z.input<typeof DiscoverProviderCalendarsSchema>
 
 export type {
   CalendarChangedEvent,
@@ -157,6 +170,39 @@ export const calendarRpc = defineDomain({
       (input: CalendarProviderRequest) => Promise<CalendarProviderMutationResponse>
     >({
       channel: CalendarChannels.invoke.REFRESH_PROVIDER,
+      params: ['input']
+    }),
+    listProviders: defineMethod<() => Promise<ListCalendarProvidersResponse>>({
+      channel: CalendarChannels.invoke.LIST_PROVIDERS
+    }),
+    listProviderCalendars: defineMethod<
+      (input: ListProviderCalendarsInput) => Promise<ListProviderCalendarsResponse>
+    >({
+      channel: CalendarChannels.invoke.LIST_PROVIDER_CALENDARS,
+      params: ['input']
+    }),
+    setDefaultProviderCalendar: defineMethod<
+      (input: SetDefaultProviderCalendarInput) => Promise<SetDefaultProviderCalendarResponse>
+    >({
+      channel: CalendarChannels.invoke.SET_DEFAULT_PROVIDER_CALENDAR,
+      params: ['input']
+    }),
+    discoverProviderCalendars: defineMethod<
+      (input: DiscoverProviderCalendarsInput) => Promise<DiscoverProviderCalendarsResponse>
+    >({
+      channel: CalendarChannels.invoke.DISCOVER_PROVIDER_CALENDARS,
+      params: ['input']
+    }),
+    checkProviderWriterCompat: defineMethod<
+      (input: CheckProviderWriterCompatInput) => Promise<CalendarWriterCompatResponse>
+    >({
+      channel: CalendarChannels.invoke.CHECK_PROVIDER_WRITER_COMPAT,
+      params: ['input']
+    }),
+    retrySourceSync: defineMethod<
+      (input: RetryCalendarSourceSyncInput) => Promise<RetryCalendarSourceSyncResponse>
+    >({
+      channel: CalendarChannels.invoke.RETRY_SOURCE_SYNC,
       params: ['input']
     }),
     listGoogleCalendars: defineMethod<

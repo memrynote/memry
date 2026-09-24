@@ -356,6 +356,25 @@ To switch to **one-way (inbound only)**, open [Settings → Calendar](/user-guid
 
 Switching to one-way is non-destructive — anything already synced to Google before the change stays there; only new pushes, updates, and deletes are stopped.
 
+### Where New Events Go
+
+Every memrynote item that appears on an external calendar is written by exactly one calendar
+service, so it never shows up twice.
+
+- **An item already on a calendar stays there.** Once an event, task, reminder or snooze has been
+  written to a calendar, later edits go back to that same calendar, from every device. Picking a
+  different calendar for an event that is already written does not move it.
+- **An event you point at a calendar goes to that calendar.** The calendar picker in the event
+  form lists the calendars you can write to, grouped by service when more than one is connected.
+- **Everything else goes to your default calendar.** Tasks, reminders, inbox snoozes and events
+  without a chosen calendar go to your default calendar: a CalDAV calendar chosen under **Default
+  calendar** in its account's section in Settings → Calendar, or else the Google calendar picked
+  during Google Calendar onboarding, or else the memrynote calendar Google creates for you. If the
+  CalDAV default is disconnected or hidden, items go back to that Google chain.
+
+The default is chosen per device. An item that another device already wrote to a calendar is
+never written a second time by this one, even when this device's default is a different service.
+
 ### How Often Google Events Refresh
 
 Inbound pulls run on a schedule. One pull covers everything at once — every linked account and every
@@ -414,6 +433,22 @@ improve AI models.
 Note that promoting an external event (above) copies it into your vault as a memrynote event. From
 then on it is your own event, and the assistant can read it regardless of this setting.
 
+### AI Access Is Asked Per Calendar Service
+
+The Google rule above applies to every calendar service on its own: **no service's events reach
+the AI assistant until you allow that service.** Each one gets its own question and its own stored
+answer.
+
+- The first time you open the calendar with calendars from a service you have not answered for —
+  a [subscribed calendar](#subscribed-calendars), for example — memrynote asks about that service.
+  Google keeps its original question, shown above.
+- Allowing Google does not allow anything else. If you allowed Google before subscribed calendars
+  asked on their own, the assistant stops seeing subscribed events until you allow them too.
+- A service you have not answered for counts as **Don't allow**.
+
+The assistant never chooses which services it may read. memrynote looks up your stored answers on
+every question and sends the assistant only the events from services you allowed.
+
 ### If the account says "Reconnect required"
 
 An account can drop back to **Reconnect required** without you doing anything — most often after an
@@ -457,6 +492,20 @@ rest of your vault; each device downloads the calendar itself. The events are ne
 **Remove** unsubscribes on every device and clears the events.
 
 Treat a secret calendar link like a password: anyone who has it can read that calendar.
+
+## CalDAV Calendars
+
+Calendars from iCloud (Apple Calendar), Fastmail, Nextcloud, Radicale, Baïkal, Zoho, Yahoo,
+mailbox.org, Posteo, Synology and other CalDAV servers connect in
+[Settings → Calendar](/user-guide/settings#calendar) → **CalDAV** with a username and an app
+password, on every operating system. See [CalDAV Calendars](/user-guide/caldav/) for each
+service's steps.
+
+Their events appear on the calendar, the Day Panel and the Home widget with the calendar's name
+as their label, and the calendar page lists them under **CalDAV calendars**. memrynote checks for
+changes every 15 minutes, and the events sync to your other devices, which show them without the
+app password. CalDAV calendars are two-way: see
+[Writing to a CalDAV Calendar](/user-guide/caldav/#writing-to-a-caldav-calendar).
 
 ## Day Cell Click Behavior
 

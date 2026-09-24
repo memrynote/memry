@@ -122,16 +122,38 @@ export class UserSyncState extends DurableObject<Bindings> {
     }
 
     const device = await this.env.DB.prepare(
-      'SELECT revoked_at FROM devices WHERE id = ? AND user_id = ?'
+      'SELECT revoked_at, app_version FROM devices WHERE id = ? AND user_id = ?'
     )
       .bind(claims.deviceId, claims.userId)
-      .first<{ revoked_at: number | null }>()
+      .first<{ revoked_at: number | null; app_version: string | null }>()
 
     if (!device || device.revoked_at) {
       return Response.json(
         { error: { code: ErrorCodes.AUTH_DEVICE_REVOKED, message: 'Device revoked' } },
         { status: 403 }
       )
+    }
+
+    // `devices.app_version` was written once, at registration, so it went
+    // stale on the first update. Other devices now read it to warn before a
+    // change older builds cannot handle (#1396), so keep it current. Only the
+    // version string is stored; nothing else about the request is. Best
+    // effort: failing to record a version must never refuse a connection.
+    if (device.app_version !== appVersion) {
+      try {
+        await this.env.DB.prepare(
+          'UPDATE devices SET app_version = ?, updated_at = ? WHERE id = ? AND user_id = ?'
+        )
+          .bind(
+            appVersion.slice(0, 32),
+            Math.floor(Date.now() / 1000),
+            claims.deviceId,
+            claims.userId
+          )
+          .run()
+      } catch {
+        // Next connect retries it.
+      }
     }
 
     const tag = `device:${claims.deviceId}`
