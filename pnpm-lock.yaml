@@ -172,9 +172,6 @@ importers:
       sqlite-vec:
         specifier: 0.1.7-alpha.2
         version: 0.1.7-alpha.2
-      tsdav:
-        specifier: 2.3.4
-        version: 2.3.4
       velopack:
         specifier: 1.2.110-ge826545
         version: 1.2.110-ge826545
@@ -746,6 +743,9 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.1.18)
+      tsdav:
+        specifier: 2.3.4
+        version: 2.3.4
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

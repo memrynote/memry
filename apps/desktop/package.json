@@ -110,7 +110,6 @@
     "libsodium-wrappers-sumo": "^0.8.2",
     "sharp": "0.35.4",
     "sqlite-vec": "0.1.7-alpha.2",
-    "tsdav": "2.3.4",
     "velopack": "1.2.110-ge826545",
     "y-leveldb": "^0.2.0",
     "yjs": "^13.6.29"
@@ -303,6 +302,7 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
     "tailwindcss-animate": "^1.0.7",
+    "tsdav": "2.3.4",
     "typescript": "^5.9.3",
     "vite": "^7.3.6",
     "vitest": "4.1.10",
