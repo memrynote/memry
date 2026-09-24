@@ -3,8 +3,8 @@ import { eq } from 'drizzle-orm'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
-
 
 interface BookmarkSyncDeps {
   queue: SyncQueueManager
@@ -31,14 +31,15 @@ export class BookmarkSyncService {
   private controller: RecordSyncController<Record<string, unknown>, [], [string]>
 
   constructor(deps: BookmarkSyncDeps) {
+    const load = (bookmarkId: string): Record<string, unknown> | undefined =>
+      deps.db.select().from(bookmarks).where(eq(bookmarks.id, bookmarkId)).get() as
+        Record<string, unknown> | undefined
+
     this.controller = new RecordSyncController({
       type: 'bookmark',
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
-      load: (bookmarkId) =>
-        deps.db.select().from(bookmarks).where(eq(bookmarks.id, bookmarkId)).get() as
-          | Record<string, unknown>
-          | undefined,
+      load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
@@ -48,6 +49,10 @@ export class BookmarkSyncService {
         return { ...local, clock: newClock }
       },
       serialize: (local) => local,
+      recoverPendingChange: (bookmarkId, deviceId) =>
+        recoverOfflineDocClock(load(bookmarkId), deviceId, (clock) =>
+          deps.db.update(bookmarks).set({ clock }).where(eq(bookmarks.id, bookmarkId)).run()
+        ),
       buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
     })
   }

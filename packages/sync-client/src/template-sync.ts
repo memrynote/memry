@@ -3,8 +3,8 @@ import { eq } from 'drizzle-orm'
 import { templates } from '@memry/db-schema/schema/templates'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
-
 
 interface TemplateSyncDeps {
   queue: SyncQueueManager
@@ -31,14 +31,15 @@ export class TemplateSyncService {
   private controller: RecordSyncController<Record<string, unknown>, [], [string]>
 
   constructor(deps: TemplateSyncDeps) {
+    const load = (templateId: string): Record<string, unknown> | undefined =>
+      deps.db.select().from(templates).where(eq(templates.id, templateId)).get() as
+        Record<string, unknown> | undefined
+
     this.controller = new RecordSyncController({
       type: 'template',
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
-      load: (templateId) =>
-        deps.db.select().from(templates).where(eq(templates.id, templateId)).get() as
-          | Record<string, unknown>
-          | undefined,
+      load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
@@ -48,6 +49,10 @@ export class TemplateSyncService {
         return { ...local, clock: newClock }
       },
       serialize: (local) => local,
+      recoverPendingChange: (templateId, deviceId) =>
+        recoverOfflineDocClock(load(templateId), deviceId, (clock) =>
+          deps.db.update(templates).set({ clock }).where(eq(templates.id, templateId)).run()
+        ),
       buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
     })
   }
@@ -58,6 +63,10 @@ export class TemplateSyncService {
 
   enqueueUpdate(templateId: string): void {
     this.controller.enqueueUpdate(templateId)
+  }
+
+  enqueueRecoveredUpdate(templateId: string): void {
+    this.controller.enqueueRecoveredUpdate(templateId)
   }
 
   enqueueDelete(templateId: string, snapshotPayload: string): void {
