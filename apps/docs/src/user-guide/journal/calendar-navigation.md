@@ -22,6 +22,8 @@ A grid of squares — one per day — with intensity reflecting entry length.
 
 The heatmap uses raw word count, normalized within the visible month, so a quiet month doesn't look identical to a busy one.
 
+Every day that has an entry shows as one, even an empty entry or one whose length has not been counted yet; those get the lightest shade instead of reading "No entry". Moving to a month in another year shows that year's entries, whichever day you had selected.
+
 ## Year View
 
 Annual statistics for the focused year:
