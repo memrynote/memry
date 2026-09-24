@@ -374,6 +374,9 @@ unclassifiable as well as fatal.
    `{}` does not parse against its schema, and seed any FK parent the fixture needs. The registry
    test fails on an unregistered type and on an applied write that does not emit, so it is the one
    place a half-wired type shows up as a failure rather than as silence.
+10. Give the type an entry in `DIRTY_RECOVERY` (`main/sync/dirty-recovery.ts`): a sweep, or an
+    exemption with a one-line reason. The table is keyed by `RecordSyncItemType`, so the build fails
+    until you do, and `dirty-recovery.test.ts` checks it against `RECORD_SYNC_ITEM_TYPES`.
 
 Steps 5 and 6 are three separate registrations and each fails silently on its own:
 `enqueueLocalSync*` typechecks and no-ops when no push service is registered, so the entity never
@@ -415,6 +418,20 @@ payload that already has a clock — handler-built or frozen — is untouched, a
 is sent as-is. This stamp is **not** persisted, because the cases that reach it have no local row to
 persist to; it matches the `{ id, clock: increment({}, deviceId) }` fallback `buildDeletePayload`
 already uses. It is a queue-unblocking backstop, not a substitute for stamping at write time.
+
+### Dirty recovery
+
+A local edit writes the row, the clock and the outbox row in three transactions. A crash between the
+last two, or an `increment*ClockOffline` fallback while the runtime is down, leaves a clocked row with
+no queue row. `recoverDirtyItems` runs at every sync runtime start and re-enqueues those rows, driven
+by `DIRTY_RECOVERY`: one entry per record sync item type, either a sweep (select the rows with
+`syncedAt IS NULL` or a modification time past `syncedAt`, then hand each to the type's local sync
+service) or an exemption naming why the type has no usable dirty marker. Clock-less rows are left to
+`seedUnclocked`. A never-synced row goes out as a create; a modified one as a recovered update at its
+stored clock. Both rebind `_offline` ticks first through `recoverPendingChange`, so the placeholder
+device id never reaches the wire. Exempt types (settings, tag definitions and categories, folder
+configs, property definitions, the calendar types, canvases, agent chat) rely on the transactional
+outbox planned in #2301.
 
 Handlers that persist locally encrypted fields must receive the vault key from the sync engine during
 pull apply and push payload encoding. Agent conversation and message handlers use that key to decrypt
