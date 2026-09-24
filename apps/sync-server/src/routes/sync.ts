@@ -476,10 +476,6 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
     throw error
   }
 
-  if (result.maxCursor > 0) {
-    await updateDeviceCursor(c.env.DB, deviceId, userId, result.maxCursor, vaultId)
-  }
-
   if (result.accepted.length > 0) {
     await updateDevice(c.env.DB, deviceId, userId, {
       last_sync_at: Math.floor(Date.now() / 1000)
