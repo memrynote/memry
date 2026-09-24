@@ -98,6 +98,7 @@ describe('device routes', () => {
           id: 'device-2',
           name: 'MacBook',
           platform: 'darwin',
+          appVersion: '1.0.0',
           lastSyncAt: 100,
           createdAt: 50,
           updatedAt: 75

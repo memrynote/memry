@@ -77,6 +77,54 @@ describe('UserSyncState', () => {
     })
   })
 
+  describe('/connect — keeps devices.app_version current (#1396)', () => {
+    function recordingDB(storedVersion: string | null, failUpdate = false) {
+      const statements: Array<{ sql: string; args: unknown[] }> = []
+      return {
+        statements,
+        prepare: (sql: string) => ({
+          bind: (...args: unknown[]) => ({
+            first: async () => ({ revoked_at: null, app_version: storedVersion }),
+            all: async () => ({ results: [] }),
+            run: async () => {
+              if (failUpdate) throw new Error('D1 unavailable')
+              statements.push({ sql, args })
+              return { success: true }
+            }
+          })
+        })
+      }
+    }
+
+    it('records the connecting build when it differs from the stored one', async () => {
+      const db = recordingDB('2026.919.1')
+      const doObj = createDO(db as unknown as ReturnType<typeof createMockDB>)
+
+      const res = await doObj.fetch(connectRequest('valid-token', '2026.1001.1'))
+
+      expect(res.status).toBe(101)
+      expect(db.statements).toHaveLength(1)
+      expect(db.statements[0].sql).toContain('UPDATE devices SET app_version = ?')
+      expect(db.statements[0].args[0]).toBe('2026.1001.1')
+      expect(db.statements[0].args.slice(2)).toEqual(['device-1', 'user-1'])
+    })
+
+    it('does not write when the stored version is already current', async () => {
+      const db = recordingDB('2026.1001.1')
+      const doObj = createDO(db as unknown as ReturnType<typeof createMockDB>)
+
+      expect((await doObj.fetch(connectRequest('valid-token', '2026.1001.1'))).status).toBe(101)
+      expect(db.statements).toHaveLength(0)
+    })
+
+    it('still connects when recording the version fails', async () => {
+      const db = recordingDB('2026.919.1', true)
+      const doObj = createDO(db as unknown as ReturnType<typeof createMockDB>)
+
+      expect((await doObj.fetch(connectRequest('valid-token', '2026.1001.1'))).status).toBe(101)
+    })
+  })
+
   describe('/connect', () => {
     it('returns 101 with valid token and accepts WebSocket', async () => {
       // #given
