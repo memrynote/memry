@@ -11,3 +11,12 @@ struct TaskSelectionBar: View {
 
     var body: some View { EmptyView() }
 }
+
+extension View {
+    /// TP047 — hardware keyboard: Cmd+A, Cmd+Return, Cmd+Delete, Esc.
+    func taskKeyboardShortcuts(
+        store: TasksStore,
+        selection: Binding<Set<String>>,
+        visibleIds: [String]
+    ) -> some View { self }
+}

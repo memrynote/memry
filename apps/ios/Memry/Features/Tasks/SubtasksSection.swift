@@ -10,3 +10,17 @@ struct SubtasksSection: View {
 
     var body: some View { EmptyView() }
 }
+
+/// TP046 — pick a parent task (same project / other projects, search).
+struct ParentPickerSheet: View {
+    let task: TaskItem
+    let store: TasksStore
+
+    var body: some View { EmptyView() }
+}
+
+extension View {
+    /// TP046 — hosts the complete-parent, all-subtasks-done and delete-parent
+    /// dialogs the store raises.
+    func subtaskPrompts(store: TasksStore) -> some View { self }
+}

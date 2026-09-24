@@ -67,6 +67,8 @@ struct TasksRootView: View {
                 }
         }
         .overlay(alignment: .bottom) { TasksToast(store: store) }
+        .subtaskPrompts(store: store)
+        .repeatPrompts(store: store)
         .task { await store.load() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await store.sync() } }

@@ -18,6 +18,27 @@ import Observation
 // Feature screens add operations in `TasksStore+<Feature>.swift` extensions
 // built on ``perform(_:_:)``, so no two screens edit this file.
 
+/// A question a screen asks before it writes (e.g. "complete the subtasks
+/// too?"). Raised by a store extension, answered by the block that owns the
+/// case (subtasks: TP046, repeating: TP045).
+enum TasksPrompt: Equatable, Sendable, Identifiable {
+    case completeParent(taskId: String)
+    case allSubtasksDone(parentId: String)
+    case deleteParent(taskId: String)
+    case stopRepeating(taskId: String)
+    case editRepeating(taskId: String)
+
+    var id: String {
+        switch self {
+        case let .completeParent(id): "completeParent-\(id)"
+        case let .allSubtasksDone(id): "allSubtasksDone-\(id)"
+        case let .deleteParent(id): "deleteParent-\(id)"
+        case let .stopRepeating(id): "stopRepeating-\(id)"
+        case let .editRepeating(id): "editRepeating-\(id)"
+        }
+    }
+}
+
 /// An undoable change with the words its toast shows.
 struct TasksUndo: Equatable, Sendable {
     let message: String
@@ -52,6 +73,11 @@ final class TasksStore {
     var undoable: TasksUndo?
     /// A short confirmation the list shows (e.g. "Task completed!").
     var toast: String?
+    /// A dialog a block raised and another answers.
+    var prompt: TasksPrompt?
+    /// Free-form state a feature block may keep between screens, keyed by
+    /// the block (extensions cannot add stored properties).
+    var scratch: [String: String] = [:]
 
     // MARK: Dependencies
 
