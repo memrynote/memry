@@ -34,7 +34,12 @@
     "google-calendars": "Google calendars",
     "refresh-google-calendars": "Refresh Google calendars",
     "not-syncing": "Not syncing · tick to turn on",
-    "enable-source-failed": "Could not turn that calendar on."
+    "enable-source-failed": "Could not turn that calendar on.",
+    "provider-calendars": {
+      "ics": "Subscribed calendars",
+      "caldav": "CalDAV calendars",
+      "other": "Other calendars"
+    }
   },
   "visual-type": {
     "event": "Event",

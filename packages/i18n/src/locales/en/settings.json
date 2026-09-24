@@ -644,6 +644,51 @@
         "not_a_calendar": "This link does not return a calendar. Copy the ICS or webcal link from your calendar app's sharing settings.",
         "unknown": "Couldn't update this calendar ({code}). Try again later."
       }
+    },
+    "providers": {
+      "caldav": {
+        "name": "CalDAV"
+      },
+      "statuses": {
+        "connected": "Connected",
+        "notConnected": "Not Connected"
+      },
+      "readOnly": "Read-only",
+      "pollInterval": "Checks for changes every {minutes} minutes. Changes made elsewhere are not instant.",
+      "connect": "Connect",
+      "connecting": "Connecting…",
+      "connectFailed": "Could not connect. Check the details and try again.",
+      "disconnect": "Disconnect",
+      "disconnectFailed": "Could not disconnect. Try again.",
+      "syncNow": "Sync Now",
+      "refreshFailed": "Sync failed. Your calendars stay as they were; try again later.",
+      "addAccount": "Add account",
+      "accounts": "Accounts",
+      "calendars": "Calendars",
+      "retry": "Retry now",
+      "reconnectRequired": "This device has no password for this account. Connect it again to sync from here.",
+      "push": {
+        "label": "Write memrynote events to this calendar",
+        "description": "Turn off for one-way sync: you keep seeing these events in memrynote, but memrynote events and tasks are not written here."
+      },
+      "agentAccess": {
+        "label": "Let AI read these events",
+        "description": "Off until you turn it on. Each calendar service has its own answer; allowing Google does not allow this one.",
+        "error": "Failed to update AI access"
+      },
+      "basic": {
+        "serverLabel": "Server address",
+        "serverPlaceholder": "https://dav.example.com",
+        "usernameLabel": "Username",
+        "passwordLabel": "App password"
+      },
+      "compat": {
+        "outdated": "These devices on your account run a memrynote version older than {version}:",
+        "unverified": "memrynote could not check which versions your other devices run.",
+        "unknownVersion": "version unknown",
+        "consequence": "An older version can copy tasks and events from this calendar into Google Calendar as duplicates, or fail to sync them. Update those devices first, or continue if you accept that.",
+        "acknowledge": "I understand, connect anyway"
+      }
     }
   },
   "account": {

@@ -260,6 +260,17 @@ Link a Google account to show external events alongside vault events on the [Cal
 
 Paste a calendar's shared link (ICS or `webcal://`) and press **Subscribe** to add it to the [Calendar](/user-guide/calendar#subscribed-calendars) as a read-only calendar. Each subscription shows its host, when it last updated, and why the last update failed, with **Refresh** and **Remove** buttons.
 
+Once you have a subscription, **Let AI read these events** decides whether the AI assistant can read your subscribed calendars. It is separate from the Google switch: allowing Google does not allow subscribed calendars. See [AI access per calendar service](/user-guide/calendar#ai-access-is-asked-per-calendar-service).
+
+### Other Calendar Services
+
+Settings → Calendar has one section per calendar service memrynote supports on your operating system. A service that does not exist on your system is not listed at all. Each section shows only what that service can do:
+
+- A service memrynote can only read shows a **Read-only** badge and has no switch for writing memrynote events to it.
+- A service without instant change notifications says how often memrynote checks it for changes.
+- A service that allows several accounts lists them, each with its own **Disconnect**, and has **Add account**.
+- **Let AI read these events** is asked per service, as described above.
+
 ### Week Start
 
 **Week Start** — Sunday or Monday. Sets the first day of the week everywhere in memrynote: the Calendar month, year, and mini views, the sidebar mini-calendar, task date pickers, task week filters, and relative date labels.

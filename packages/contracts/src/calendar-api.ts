@@ -235,6 +235,8 @@ export interface CalendarProviderCapabilities {
   platforms?: CalendarProviderPlatform[]
   incrementalMode: CalendarProviderIncrementalMode
   authFlow: CalendarProviderAuthFlow
+  /** For `supportsPush: false` providers: how often this device polls, in milliseconds. */
+  pollIntervalMs?: number
 }
 
 /**
