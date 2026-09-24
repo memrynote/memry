@@ -54,6 +54,7 @@ function prependTagIcon(dom: HTMLElement, iconValue: string, colorHex: string): 
     })
   } else {
     const span = document.createElement('span')
+    span.className = 'font-emoji'
     span.textContent = iconValue
     span.style.marginInlineEnd = '3px'
     span.setAttribute('aria-hidden', 'true')

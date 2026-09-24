@@ -1,4 +1,5 @@
 @import './base.css';
+@import './emoji-font.css';
 
 :root {
   --chrome-width: 180px;
