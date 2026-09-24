@@ -500,11 +500,12 @@ of its flows via XcodeBuildMCP with screenshots saved to
       runs `task-parsing.json` and `task-filtering.json` through the FFI.
       Conformance plan green.
       Evidence: `apps/ios/MemryConformanceTests/TasksConformanceTests.swift`: natural dates (644), ghost completion date+repeat, recurrence next+preview, quick add over a scratch vault holding the vectors' projects (the one `+<vector id>` case is Rust-only: ids are core-minted), due windows/views/counts and every task-filtering section through the new seam `api/task_conformance.rs` (Rust check `tests/api_task_conformance.rs` 2 passed). `xcodebuild test -testPlan Conformance`: 27 tests in 7 suites passed (was 21/5).
-- [ ] TP081 UI tests `apps/ios/MemryUITests/TasksUITests.swift`:
+- [x] TP081 UI tests `apps/ios/MemryUITests/TasksUITests.swift`:
       quick add `[agent] meeting @may 17 3pm !high #test` → due May 17 15:00, high,
       tagged; complete a daily repeating task → next occurrence exists; bulk
       complete 3 tasks + undo; add and complete subtasks → parent prompt;
       filter + save + reapply; kanban drag changes status. UI plan green.
+      Evidence: `apps/ios/MemryUITests/TasksUITests.swift` (6 XCTest UI tests on the signed-in staging vault, precondition §0.4, each on its own `[agent] ui-<run>` tasks): quick add `@may 17 3pm !high #test` → row reads Priority: High, May 17 … 15:00, Tags: test; daily repeat complete → "Next occurrence" toast + a Due Tomorrow repeating row; bulk complete 3 → one Undo reopens all; two subtasks completed → "Keep task open" prompt; Repeating preset saved, cleared, reapplied (scope label shows it); kanban card dragged onto In Progress → "In Progress column, 1 task". `xcodebuild test-without-building -testPlan UI`: 8 executed, 0 failures, 1 skipped (AgentDriverUITests, on-demand only).
 - [ ] TP082 Cross-device against staging with desktop `dev:staging` on the
       same account:
   - phone → desktop: create, edit every field, complete repeating, delete,
