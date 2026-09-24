@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 101,
+    "exportedCaseCount": 109,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 111,
+    "caseCount": 119,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -471,6 +471,29 @@
       "sha256": "ebbad0916b2f5693c4bdb6c812897e9bd9da97860243a08bb091bec42cae2902"
     },
     {
+      "name": "inline checkbox and inline image in table cells",
+      "markdown": "| a        | b               |\n| -------- | --------------- |\n| [x] done | ![alt](img.png) |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "a7552caa88e6dbd705b29cafb21148f65aab633b94bafb0e3006221f31c864bd"
+    },
+    {
+      "name": "aliased wiki link and marked runs in table cells",
+      "markdown": "| a                     | b                   |\n| --------------------- | ------------------- |\n| [[Roadmap\\|the plan]] | **bold** *it* ~~s~~ |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "07245cdfca58917dc842a8ec803cc56becc480b157a343a471b78929560da645"
+    },
+    {
+      "name": "marked wiki link in a table cell",
+      "markdown": "| a         | b                                                                                                                                                                                        |\n| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| **[[A]]** | ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) |",
+      "canonical": null,
+      "pending": {
+        "renderer": 2365
+      },
+      "sha256": "b73e795a7532c0b16cc3a679cad2d20e1883f2d804b0a2379ae5a30c824a3976"
+    },
+    {
       "name": "mention and date tokens in list items",
       "markdown": "- ((mention:https%3A%2F%2Fexample.com%2Fplain))\n- ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
       "canonical": null,
@@ -574,6 +597,56 @@
       "canonical": null,
       "pending": null,
       "sha256": "0dd6752076d0c5cbceeaa7c9ef205cb042a9e2267d91b444b0c4867de7cc9e92"
+    },
+    {
+      "name": "callout nested under a list item",
+      "markdown": "- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n> [!info]\n> Heads up\n\n<!-- memry:block-nesting-level=0 -->",
+      "canonical": null,
+      "pending": {
+        "renderer": 2365,
+        "main": 2365
+      },
+      "sha256": "86e3ba6d04559507172ef9a3996da441b0e8f7f780b53fbd2bd08cea3056d551"
+    },
+    {
+      "name": "task block nested under a list item",
+      "markdown": "- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n- [ ] a task {task:t1}\n\n<!-- memry:block-nesting-level=0 -->",
+      "canonical": null,
+      "pending": {
+        "renderer": 2365,
+        "main": 2365
+      },
+      "sha256": "38a3468fe78783f95e41e97b0ea1b70e871bdb2ba1c4cd4aead94fef43464282"
+    },
+    {
+      "name": "file marker nested under a list item",
+      "markdown": "- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n<!-- file:{\"url\":\"memry-file://local/v/a/x.pdf\",\"name\":\"x.pdf\",\"size\":1234,\"mimeType\":\"application/pdf\"} -->\n\n<!-- memry:block-nesting-level=0 -->",
+      "canonical": null,
+      "pending": {
+        "renderer": 2365,
+        "main": 2365
+      },
+      "sha256": "19a0424fe5fb536a384f04200ed1117d30c4ccbb5c30c8d7629a12ae15584d9e"
+    },
+    {
+      "name": "youtube embed marker nested under a list item",
+      "markdown": "- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)\n\n<!-- memry:block-nesting-level=0 -->",
+      "canonical": null,
+      "pending": {
+        "renderer": 2365,
+        "main": 2365
+      },
+      "sha256": "d44ce5af1de259778c0e8a8f25a024171059ce426627c439132d1502b4772c65"
+    },
+    {
+      "name": "bookmark marker nested under a list item",
+      "markdown": "- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n![bookmark](https://example.com/a)\n\n<!-- memry:block-nesting-level=0 -->",
+      "canonical": null,
+      "pending": {
+        "renderer": 2365,
+        "main": 2365
+      },
+      "sha256": "57cc158d8adac3e7bb8f67fc85f2ec3d48901bb6c3fcccb3502cd974082d4300"
     },
     {
       "name": "mermaid fence",
